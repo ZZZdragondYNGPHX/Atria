@@ -1,4 +1,5 @@
 import { mountNativePlayControls } from '../native/play-controls.js';
+import { mountAtriaPlayProduct } from '../native/play-product.js';
 
 const REQUIRED_NATIVE_IDS = Object.freeze([
     'sheld',
@@ -75,6 +76,8 @@ export function mountNativePlayHost({
     const originalStageChildren = [...stage.childNodes];
     const origin = documentRef.createComment('atria-native-play-host-origin');
     const previousSheldMarker = native.sheld.getAttribute('data-atria-native-play-mounted');
+    const previousSheldClass = native.sheld.getAttribute('class');
+    const previousSheldAriaHidden = native.sheld.getAttribute('aria-hidden');
     const previousStageMarker = stage.getAttribute('data-atria-native-play-mounted');
 
     originalParent.insertBefore(origin, native.sheld);
@@ -89,19 +92,25 @@ export function mountNativePlayHost({
     root.setAttribute('aria-label', 'Play');
 
     stage.replaceChildren(root);
+    native.sheld.classList.add('atria-native-play-abi');
+    native.sheld.setAttribute('aria-hidden', 'true');
+    native.sheld.dataset.atriaNativePlayMounted = 'true';
     root.appendChild(native.sheld);
+
+    const product = mountAtriaPlayProduct({
+        document: documentRef,
+        root,
+        native,
+    });
     const productControls = mountNativePlayControls({ document: documentRef, root });
     stage.dataset.atriaNativePlayMounted = 'true';
-    native.sheld.dataset.atriaNativePlayMounted = 'true';
 
     let mounted = true;
     const nativeComponentMounts = new Map();
     let stageOwnership = null;
 
     function resolveNativeComponent(componentId) {
-        if (componentId === 'conversation') return native.chat;
-        if (componentId === 'composer') return native.sendForm;
-        return null;
+        return product.getComponent(componentId);
     }
 
     function mountNativeComponent(componentId, slot) {
@@ -205,41 +214,31 @@ export function mountNativePlayHost({
         if (!mounted) return false;
         for (const id of REQUIRED_NATIVE_IDS) {
             if (documentRef.querySelectorAll(`#${id}`).length !== 1) {
-                throw new Error(`R7C Native Play Host integrity failure for #${id}`);
+                throw new Error(`A6 Native Play ABI integrity failure for #${id}`);
             }
+        }
+        if (native.chat.parentNode !== native.sheld) {
+            throw new Error('A6 Native Play requires legacy #chat to stay inside the hidden generation ABI');
         }
         if (native.formSheld.parentNode !== native.sheld) {
-            throw new Error('R7C Native Play Host requires #form_sheld to remain inside #sheld');
+            throw new Error('A6 Native Play requires #form_sheld to remain inside the hidden generation ABI');
         }
-        if (!native.sendForm.contains(native.sendTextarea)) {
-            throw new Error('R7C Native Play Host requires #send_textarea to remain inside #send_form');
+        if (native.sendForm.parentNode !== native.formSheld || !native.sendForm.contains(native.sendTextarea)) {
+            throw new Error('A6 Native Play lost the hidden generation composer ABI');
         }
-
-        const conversationMount = nativeComponentMounts.get('conversation');
-        if (conversationMount) {
-            if (native.chat.parentNode !== conversationMount.slot) {
-                throw new Error('R7C Native Play Host lost composed Conversation ownership');
-            }
-        } else if (native.chat.parentNode !== native.sheld) {
-            throw new Error('R7C Native Play Host requires #chat to restore under #sheld');
-        }
-
-        const composerMount = nativeComponentMounts.get('composer');
-        if (composerMount) {
-            if (native.sendForm.parentNode !== composerMount.slot) {
-                throw new Error('R7C Native Play Host lost composed Composer ownership');
-            }
-        } else if (native.sendForm.parentNode !== native.formSheld) {
-            throw new Error('R7C Native Play Host requires #send_form to restore under #form_sheld');
-        }
-
         if (native.sheld.parentNode !== root || !stage.contains(root)) {
-            throw new Error('R7C Native Play Host lost ownership of the native #sheld subtree');
+            throw new Error('A6 Native Play Host lost ownership of the Native generation ABI');
         }
-        if (documentRef.getElementById('chat') !== native.chat
-            || documentRef.getElementById('send_form') !== native.sendForm
-            || documentRef.getElementById('send_textarea') !== native.sendTextarea) {
-            throw new Error('R7C Native Play Host detected replaced native nodes');
+
+        for (const [id, handle] of nativeComponentMounts) {
+            if (handle.node.parentNode !== handle.slot) {
+                throw new Error(`A6 Native product component '${id}' lost composed ownership`);
+            }
+        }
+        if (documentRef.getElementById('atria-play-product') !== product.root
+            || documentRef.getElementById('atria-play-conversation') !== product.conversation
+            || documentRef.getElementById('atria-play-composer') !== product.composer) {
+            throw new Error('A6 Native Play detected replaced product nodes');
         }
         return true;
     }
@@ -256,12 +255,15 @@ export function mountNativePlayHost({
         getActiveNativeComponents: () => [...nativeComponentMounts.keys()],
         acquireStageOwnership,
         getStageOwner: () => stageOwnership?.owner || null,
+        resolveHostSurface: id => product.resolveSurface(id),
+        product,
         productControls,
         unmount() {
             if (!mounted) return false;
 
             restoreNativeComponents();
             productControls.dispose();
+            product.dispose();
             stageOwnership?.release();
             stageOwnership = null;
 
@@ -278,6 +280,8 @@ export function mountNativePlayHost({
             }
 
             restoreAttribute(native.sheld, 'data-atria-native-play-mounted', previousSheldMarker);
+            restoreAttribute(native.sheld, 'class', previousSheldClass);
+            restoreAttribute(native.sheld, 'aria-hidden', previousSheldAriaHidden);
             restoreAttribute(stage, 'data-atria-native-play-mounted', previousStageMarker);
             stage.replaceChildren(...originalStageChildren);
             root.remove();
