@@ -2,6 +2,12 @@ import { randomUUID } from 'node:crypto';
 
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { createNativeId } from '../identity.js';
+import {
+    VERSIONED_MODEL_PROMPT_RESOURCE_TYPES,
+    assertVersionedModelPromptResource,
+    getVersionedModelPromptResourceDefinition,
+    getVersionedModelPromptResourceIdentity,
+} from '../model-prompt-runtime/resources.js';
 
 export const STUDIO_RESOURCE_OPERATION_TYPES = Object.freeze({
     attach: 'resource.attach',
@@ -63,6 +69,23 @@ function defaultForkPath(assetId) {
     return 'assets/forks/' + assetId;
 }
 
+function isVersionedModelPromptType(resourceType) {
+    return VERSIONED_MODEL_PROMPT_RESOURCE_TYPES.includes(resourceType);
+}
+
+function genericDependency(source, resourceType, resourceId) {
+    return source.dependencies.resources.find(item => (
+        item.resourceType === resourceType && item.resourceId === resourceId
+    ));
+}
+
+function genericProjectResource(source, resourceType, resourceId) {
+    return source.resources.find(item => {
+        if (item.resourceType !== resourceType) return false;
+        return getVersionedModelPromptResourceIdentity(item.resourceType, item.resource).resourceId === resourceId;
+    });
+}
+
 export class LibraryAuthoringPlanner {
     constructor({ libraryService, idFactory = randomUUID }) {
         if (!libraryService) throw new TypeError('LibraryAuthoringPlanner requires libraryService');
@@ -111,6 +134,16 @@ export class LibraryAuthoringPlanner {
                 revision,
                 derivativeResourceId,
                 path: input.path || defaultForkPath(derivativeResourceId),
+            });
+        }
+        if (isVersionedModelPromptType(target.resourceType)) {
+            const definition = getVersionedModelPromptResourceDefinition(target.resourceType);
+            return Object.freeze({
+                ...input,
+                revision,
+                derivativeResourceId: input.derivativeResourceId || createNativeId(definition.idKind, this._idFactory),
+                derivativeRevision: input.derivativeRevision
+                    || ('fork_' + String(this._idFactory()).replaceAll('-', '').toLowerCase()),
             });
         }
         throw new TypeError('Fork is unsupported for Library resourceType ' + target.resourceType);
@@ -171,6 +204,30 @@ export class LibraryAuthoringPlanner {
         return next;
     }
 
+    _attachVersioned(source, exact) {
+        const next = cloneSource(source);
+        const existing = genericDependency(next, exact.ref.resourceType, exact.ref.resourceId);
+        if (existing) {
+            if (existing.revision === exact.ref.revision) return next;
+            throw new ConflictError('library_resource_update_required', {
+                resourceType: exact.ref.resourceType,
+                resourceId: exact.ref.resourceId,
+                attachedRevision: existing.revision,
+                requestedRevision: exact.ref.revision,
+            });
+        }
+        if (genericProjectResource(next, exact.ref.resourceType, exact.ref.resourceId)) {
+            throw new ConflictError('library_resource_project_owned_collision', exact.ref);
+        }
+        next.dependencies.resources.push({
+            resourceType: exact.ref.resourceType,
+            resourceId: exact.ref.resourceId,
+            revision: exact.ref.revision,
+            scope: 'library',
+        });
+        return next;
+    }
+
     async _planAttach(handle, source, operation) {
         const revision = requireRevision(operation.input?.revision);
         const exact = await this._library.getExact(handle, {
@@ -182,6 +239,7 @@ export class LibraryAuthoringPlanner {
         if (operation.target.resourceType === 'core.world') next = this._attachWorld(source, exact);
         else if (operation.target.resourceType === 'core.knowledge') next = this._attachKnowledge(source, exact);
         else if (operation.target.resourceType === 'core.asset') next = this._attachAsset(source, exact);
+        else if (isVersionedModelPromptType(operation.target.resourceType)) next = this._attachVersioned(source, exact);
         else throw new TypeError('Attach is unsupported for Library resourceType ' + operation.target.resourceType);
 
         return {
@@ -233,6 +291,17 @@ export class LibraryAuthoringPlanner {
                 });
             }
             item.knowledgeRevisionId = toRevision;
+        } else if (isVersionedModelPromptType(operation.target.resourceType)) {
+            const item = genericDependency(next, operation.target.resourceType, operation.target.resourceId);
+            if (!item) throw new NotFoundError('attached library versioned resource', operation.target);
+            if (item.revision !== fromRevision) {
+                throw new ConflictError('library_resource_revision_conflict', {
+                    ...operation.target,
+                    expectedRevision: fromRevision,
+                    actualRevision: item.revision,
+                });
+            }
+            item.revision = toRevision;
         } else {
             throw new TypeError('Explicit update is unsupported for Library resourceType ' + operation.target.resourceType);
         }
@@ -459,6 +528,51 @@ export class LibraryAuthoringPlanner {
         };
     }
 
+    _forkVersioned(source, operation, exact) {
+        const definition = getVersionedModelPromptResourceDefinition(operation.target.resourceType);
+        const resource = structuredClone(exact.snapshot);
+        resource[definition.idField] = operation.input.derivativeResourceId;
+        resource.revision = operation.input.derivativeRevision;
+        if (operation.input.displayName) resource.displayName = operation.input.displayName;
+        resource.provenance = [
+            ...(Array.isArray(resource.provenance) ? resource.provenance : []),
+            {
+                source: 'atria.resource-fork',
+                ref: `library:${exact.ref.resourceType}:${exact.ref.resourceId}@${exact.ref.revision}`,
+            },
+        ];
+        const asserted = assertVersionedModelPromptResource(operation.target.resourceType, resource);
+        const identity = getVersionedModelPromptResourceIdentity(operation.target.resourceType, asserted);
+        const next = cloneSource(source);
+        if (
+            genericProjectResource(next, operation.target.resourceType, identity.resourceId)
+            || genericDependency(next, operation.target.resourceType, identity.resourceId)
+        ) {
+            throw new ConflictError('project_resource_target_exists', {
+                resourceType: operation.target.resourceType,
+                resourceId: identity.resourceId,
+            });
+        }
+        next.resources.push({
+            resourceType: operation.target.resourceType,
+            resource: asserted,
+        });
+        return {
+            next,
+            fileWrites: [],
+            change: Object.freeze({
+                operationId: operation.operationId,
+                kind: 'resource-fork',
+                source: exact.ref,
+                derivative: Object.freeze({
+                    resourceType: operation.target.resourceType,
+                    resourceId: identity.resourceId,
+                    revision: identity.revision,
+                }),
+            }),
+        };
+    }
+
     async _planFork(handle, source, operation) {
         const revision = requireRevision(operation.input?.revision);
         const exact = await this._library.getExact(handle, {
@@ -474,6 +588,9 @@ export class LibraryAuthoringPlanner {
         }
         if (operation.target.resourceType === 'core.asset') {
             return this._forkAsset(source, operation, exact);
+        }
+        if (isVersionedModelPromptType(operation.target.resourceType)) {
+            return this._forkVersioned(source, operation, exact);
         }
         throw new TypeError('Fork is unsupported for Library resourceType ' + operation.target.resourceType);
     }

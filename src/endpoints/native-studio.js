@@ -5,9 +5,11 @@ import {
     getAssetStore,
     getKnowledgeRepo,
     getPackageRepo,
+    getStorageEngine,
     getWorldRepo,
 } from '../storage/index.js';
 import { ProjectStore } from '../native/project-store.js';
+import { VersionedJsonResourceHandler } from '../native/model-prompt-runtime/persistence.js';
 import { StudioService } from '../native/authoring/studio-service.js';
 import { ProjectAgentService } from '../native/project-agent.js';
 
@@ -22,6 +24,9 @@ function services() {
             knowledgeRepo: getKnowledgeRepo(),
             assetStore: getAssetStore(),
             packageRepo: getPackageRepo(),
+            versionedJsonResources: new VersionedJsonResourceHandler({
+                engine: getStorageEngine(),
+            }),
         });
         projectAgentService = new ProjectAgentService({ studio: studioService });
     }
