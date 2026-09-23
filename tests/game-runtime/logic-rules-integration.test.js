@@ -1,7 +1,7 @@
 import { describe, expect, jest, test } from '@jest/globals';
 
 import { createGameLogicRuntime } from '../../public/scripts/extensions/game-runtime/logic/runtime.js';
-import { createWorldRuntime } from '../../public/scripts/extensions/game-runtime/world/runtime.js';
+import { createSessionWorldTestAdapter } from './helpers/session-world-adapter.js';
 
 function makePersistence() {
     let value = null;
@@ -70,13 +70,13 @@ const rules = [
 
 async function makeRuntime(commands) {
     const persistence = makePersistence();
-    const world = createWorldRuntime({
+    const world = createSessionWorldTestAdapter({
         initialState: { hp: 10, dead: false, kills: 0 },
         schema,
         reducers,
         persistence,
     });
-    await world.load([0]);
+    await world.load();
     return {
         persistence,
         world,

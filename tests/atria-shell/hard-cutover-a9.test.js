@@ -25,6 +25,8 @@ describe('A9 hard cutover acceptance', () => {
         expect(exists('public/scripts/extensions/game-runtime/manifest.js')).toBe(false);
         expect(exists('public/scripts/extensions/game-runtime/world/branch.js')).toBe(false);
         expect(exists('public/scripts/extensions/game-runtime/world/persistence.js')).toBe(false);
+        expect(exists('public/scripts/extensions/game-runtime/world/runtime.js')).toBe(false);
+        expect(exists('public/scripts/extensions/game-runtime/world/journal.js')).toBe(false);
     });
 
     test('retired Chat State game-world namespace is absent from active Native consumers', () => {

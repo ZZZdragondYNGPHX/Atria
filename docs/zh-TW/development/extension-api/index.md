@@ -11,7 +11,7 @@
 | [生成請求](/zh-TW/development/extension-api/generation) | `generateTask`、工具註冊、`generateRaw` / `generateQuietPrompt`、Service 類別、connection profile |
 | [斜線指令](/zh-TW/development/extension-api/slash-commands) | 註冊與執行斜線指令、具名 / 不具名引數、列舉 |
 | [巨集與變數](/zh-TW/development/extension-api/macros-and-variables) | 巨集註冊、內建巨集參考、`substituteParams`、本地與全域變數 |
-| [Skill](/zh-TW/development/extension-api/skills) | `context.skills.*` —— 安裝、讀取、寫入、搜尋、遷移作用域、嵌入打包 / 抽取；CardApp ctx 對等 |
+| [Skill](/zh-TW/development/extension-api/skills) | `context.skills.*` —— 安裝、讀取、寫入、搜尋、遷移作用域、嵌入打包 / 抽取 |
 | [UI 與彈窗](/zh-TW/development/extension-api/ui-and-popups) | 彈窗、載入器、範本、訊息格式化 |
 | [IterationStudio](/zh-TW/development/extension-api/iteration-studio) | AI 驅動迭代編輯的共享彈窗框架 —— 對話、會話、diff 預覽、批准 / 拒絕生命週期。adapter 提供工件形狀和工具 |
 | [外掛整合](/zh-TW/development/extension-api/plugin-integration) | 正則執行時、搜尋工具、擴充 API 註冊表、事件系統、i18n、設定儲存、除錯與 scraper 註冊、tokenization、工具函式、symbols 與常數 |
@@ -82,6 +82,5 @@ Atria 基於 SillyTavern 建構，但在 API 層面有以下主要差異：
 ## 相關頁面
 
 - [前端外掛開發](/zh-TW/development/frontend-plugin) — 外掛結構、事件系統、UI 整合
-- [角色卡開發](/zh-TW/development/card-developers) — 角色卡擴充功能欄位和 CardApp
 - [增量同步](/zh-TW/improvements/incremental-sync) — 增量儲存的技術細節
 - [預設解耦](/zh-TW/improvements/preset-decoupling) — 預設與 API 選擇的解耦機制

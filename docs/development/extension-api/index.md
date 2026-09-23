@@ -11,7 +11,7 @@ This is the complete reference for the Atria Extension API, intended for plugin 
 | [Generation](/development/extension-api/generation) | `generateTask`, tool registration, `generateRaw` / `generateQuietPrompt`, service classes, connection profiles |
 | [Slash Commands](/development/extension-api/slash-commands) | Registering and executing slash commands, named/unnamed arguments, enums |
 | [Macros & Variables](/development/extension-api/macros-and-variables) | Macro registration, built-in macro reference, `substituteParams`, local & global variables |
-| [Skills](/development/extension-api/skills) | `context.skills.*` — install, read, write, search, scope migration, embed pack/extract; CardApp ctx parity |
+| [Skills](/development/extension-api/skills) | `context.skills.*` — install, read, write, search, scope migration, embed pack/extract |
 | [UI & Popups](/development/extension-api/ui-and-popups) | Popups, loaders, templates, message formatting |
 | [IterationStudio](/development/extension-api/iteration-studio) | Shared popup framework for AI-driven iterative editing — conversation, sessions, diff preview, approve/reject lifecycle. Adapters supply the artifact shape + tools |
 | [Plugin Integration](/development/extension-api/plugin-integration) | Atria Shell compatibility rules, regex runtime, search tools, extension API registry, event system, i18n, settings storage, debug & scraper registration, tokenization, utilities, symbols & constants |
@@ -82,6 +82,5 @@ Atria is built on SillyTavern but has the following major API-level differences:
 ## Related Pages
 
 - [Frontend Plugin Development](/development/frontend-plugin) — Plugin structure, event system, UI integration
-- [Character Card Development](/development/card-developers) — Character Card extension fields and CardApp
 - [Incremental Sync](/improvements/incremental-sync) — Technical details of incremental saving
 - [Preset Decoupling](/improvements/preset-decoupling) — Mechanism for decoupling presets from API selection

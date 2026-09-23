@@ -36,11 +36,16 @@ Atria 內建了多個面向角色扮演場景的專業工具——記憶圖、�
 
 → [多 Agent 編排詳細文件](/zh-TW/features/orchestrator/)
 
-### 角色卡編輯助手（CEA / CardApp Studio）
+### 角色卡編輯助手（CEA）
 
-整合 CodeMirror 6 程式碼編輯器的 AI 輔助角色卡編輯工具。支援透過自然語言對話編輯角色卡和世界書，每批修改提供 diff 審批。當角色卡更新時，自動偵測世界書變更並提供智慧同步方案。普通角色卡用彈窗版編輯助手，含 CardApp 的角色卡進入功能更完整的 Studio。
+面向 SillyTavern 相容角色卡和世界書的 AI 輔助編輯工具，提供自然語言修改、diff 審批和迭代歷史。Native 遊戲 / 專案製作已統一遷移到 Build → Atria Studio。
 
-→ [角色卡編輯助手概覽](/zh-TW/features/card-editor/)　·　[普通彈窗](/zh-TW/features/card-editor/popup)　·　[CardApp Studio](/zh-TW/features/card-editor/studio)
+→ [角色卡編輯助手概覽](/zh-TW/features/card-editor/)　·　[普通彈窗](/zh-TW/features/card-editor/popup)
+
+### Native Build / Atria Studio / Project Agent
+
+Build 是 Atria 的正式製作入口。Atria Studio 提供專案資源樹、結構化編輯、UI Builder、Source、Preview、Simulation、Build、Problems、Changes 和 Git History；Project Agent 透過同一 Authoring Operation / Workspace / ChangeSet 邊界進行規劃、驗證、預覽與人工 Review。
+
 
 ### 搜尋外掛（Search Tools）
 
@@ -62,10 +67,6 @@ SillyTavern 中 API 預設和聊天補全預設是連動切換的。Atria 將兩
 
 - **原生工具呼叫**：相容 OpenAI、Claude、Gemini 等 API 的原生 tool call 格式
 - **純文字函式呼叫**：透過文字協定實現工具呼叫，適用於不支援原生工具呼叫的模型
-
-### CardApp
-
-角色卡內嵌應用執行環境。允許角色卡攜帶自訂應用邏輯，提供上下文 API 和生命週期管理。
 
 ### 提示詞分組 & 預設分組
 

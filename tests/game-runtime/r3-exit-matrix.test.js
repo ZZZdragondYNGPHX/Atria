@@ -2,7 +2,7 @@ import { describe, expect, test } from '@jest/globals';
 
 import { createGameLogicRuntime } from '../../public/scripts/extensions/game-runtime/logic/runtime.js';
 import { createReducerRegistry } from '../../public/scripts/extensions/game-runtime/logic/reducers.js';
-import { createWorldRuntime } from '../../public/scripts/extensions/game-runtime/world/runtime.js';
+import { createSessionWorldTestAdapter } from './helpers/session-world-adapter.js';
 
 function makePersistence() {
     let value = null;
@@ -124,13 +124,13 @@ const rules = [
 ];
 
 async function createFixture(persistence) {
-    const world = createWorldRuntime({
+    const world = createSessionWorldTestAdapter({
         initialState: { hp: 10, dead: false, score: 0 },
         schema,
         reducers: reducerRegistry.toMap(),
         persistence,
     });
-    await world.load([0]);
+    await world.load();
 
     const logic = createGameLogicRuntime({
         world,
@@ -185,13 +185,13 @@ describe('R3 Game Logic Runtime exit matrix', () => {
         const first = await createFixture(persistence);
         const committed = await first.logic.dispatch('strike', { bonus: 2 });
 
-        const reloaded = createWorldRuntime({
+        const reloaded = createSessionWorldTestAdapter({
             initialState: { hp: 10, dead: false, score: 0 },
             schema,
             reducers: reducerRegistry.toMap(),
             persistence,
         });
-        const replayed = await reloaded.load([0]);
+        const replayed = await reloaded.load();
 
         expect(replayed.state).toEqual(committed.afterState);
         expect(reloaded.getJournal().events.map(event => event.type)).toEqual([

@@ -36,11 +36,16 @@ Before the creative LLM generates a response, multiple agents are automatically 
 
 → [Orchestrator Documentation](/features/orchestrator/)
 
-### Character Card Editing Assistant (CEA / CardApp Studio)
+### Character Card Editing Assistant (CEA)
 
-An AI-assisted character card editing tool with an integrated CodeMirror 6 code editor. It supports editing character cards and world info through natural language conversation, with diff-based approval for each batch of changes. When a character card is updated, it automatically detects world info changes and offers intelligent sync options. Regular cards use the popup editor; cards with an embedded CardApp open in the more capable Studio.
+An AI-assisted editor for SillyTavern-compatible character cards and World Info, with natural-language edits, diff review and iteration history. Native game/project authoring now lives in Build → Atria Studio.
 
-→ [CEA Overview](/features/card-editor/)　·　[Popup](/features/card-editor/popup)　·　[CardApp Studio](/features/card-editor/studio)
+→ [CEA Overview](/features/card-editor/) · [Popup](/features/card-editor/popup)
+
+### Native Build / Atria Studio / Project Agent
+
+Build is Atria's product authoring entry point. Atria Studio provides the project resource tree, structured editors, UI Builder, Source, Preview, Simulation, Build, Problems, Changes and Git History. Project Agent plans, validates and previews through the same Authoring Operation / Workspace / ChangeSet boundary and stops at explicit human Review.
+
 
 ### Search Tools
 
@@ -62,10 +67,6 @@ A unified function call / tool call runtime supporting two modes:
 
 - **Native tool calls**: Compatible with native tool call formats from OpenAI, Claude, Gemini, and other APIs
 - **Plain-text function calls**: Implements tool calls through a text protocol, suitable for models that don't support native tool calls
-
-### CardApp
-
-An embedded application runtime within character cards. Allows character cards to carry custom application logic, providing context APIs and lifecycle management.
 
 ### Prompt Groups & Preset Groups
 

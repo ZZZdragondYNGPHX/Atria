@@ -396,7 +396,6 @@ export function createCharacterEditorUi(deps) {
         root.on('click.cea', '#cea_open_editor_popup', async function () {
             await openCharacterEditorPopup(getContext());
         });
-
     }
 
     return {

@@ -177,15 +177,6 @@ describe('N8 .atriasave portability / Checkpoint B', () => {
                     },
                 }],
                 statePatch: {
-                    atri_world_state: {
-                        primaryWorldId: 'world_save',
-                        worlds: {
-                            world_save: {
-                                worldRevisionId: 'worldv_save',
-                                state: { quest: 'open' },
-                            },
-                        },
-                    },
                     atri_game_runtime: {
                         schemaVersion: 1,
                         nextEventSeq: 2,

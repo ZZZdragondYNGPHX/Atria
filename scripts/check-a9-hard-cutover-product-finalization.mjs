@@ -32,6 +32,8 @@ const retired = [
     'public/scripts/extensions/game-runtime/manifest.js',
     'public/scripts/extensions/game-runtime/world/branch.js',
     'public/scripts/extensions/game-runtime/world/persistence.js',
+    'public/scripts/extensions/game-runtime/world/runtime.js',
+    'public/scripts/extensions/game-runtime/world/journal.js',
     'public/scripts/extensions/game-runtime/ui/immersive.js',
 ];
 for (const target of retired) assertAbsent(target);

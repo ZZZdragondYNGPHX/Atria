@@ -2,7 +2,7 @@ import { describe, expect, test } from '@jest/globals';
 
 import { GAME_LOGIC_ERROR_CODES, GameLogicError } from '../../public/scripts/extensions/game-runtime/logic/errors.js';
 import { createGameLogicRuntime } from '../../public/scripts/extensions/game-runtime/logic/runtime.js';
-import { createWorldRuntime } from '../../public/scripts/extensions/game-runtime/world/runtime.js';
+import { createSessionWorldTestAdapter } from './helpers/session-world-adapter.js';
 
 function makePersistence(seed = null) {
     let value = seed == null ? null : structuredClone(seed);
@@ -119,13 +119,13 @@ const commands = [
 
 async function makeRuntime() {
     const persistence = makePersistence();
-    const world = createWorldRuntime({
+    const world = createSessionWorldTestAdapter({
         initialState: { hp: 20 },
         schema,
         reducers,
         persistence,
     });
-    await world.load([0]);
+    await world.load();
 
     const nativeWorld = {
         ...world,
@@ -267,13 +267,13 @@ describe('Game Logic Runtime command transaction', () => {
         });
         expect(persistence.writes).toBe(1);
 
-        const reloaded = createWorldRuntime({
+        const reloaded = createSessionWorldTestAdapter({
             initialState: { hp: 20 },
             schema,
             reducers,
             persistence,
         });
-        const replayed = await reloaded.load([0]);
+        const replayed = await reloaded.load();
         expect(replayed.state).toEqual(committed.afterState);
         expect(reloaded.getJournal().events[0].payload).toEqual(committed.events[0].payload);
     });
@@ -294,13 +294,13 @@ describe('Game Logic Runtime command transaction', () => {
 
     test('simulation and commit share one transaction queue without overlap', async () => {
         const persistence = makePersistence();
-        const world = createWorldRuntime({
+        const world = createSessionWorldTestAdapter({
             initialState: { hp: 20 },
             schema,
             reducers,
             persistence,
         });
-        await world.load([0]);
+        await world.load();
 
         let entered = 0;
         let releaseFirst;

@@ -100,6 +100,12 @@ jobs:
           public/scripts/native/knowledge-runtime.js
           public/scripts/native/context-compiler.js
           tests/atria-shell/hard-cutover-a9.test.js
+          tests/game-runtime/helpers/session-world-adapter.js
+          tests/game-runtime/logic-runtime.test.js
+          tests/game-runtime/r3-exit-matrix.test.js
+          tests/game-runtime/ui-component.test.js
+          tests/game-runtime/logic-rules-integration.test.js
+          tests/game-runtime/declarative.test.js
       - name: Run complete Node regression
         env:
           ATRIA_DISABLE_MYSQL_TESTS: 1

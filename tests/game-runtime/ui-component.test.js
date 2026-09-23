@@ -4,7 +4,7 @@ import { createGameLogicRuntime } from '../../public/scripts/extensions/game-run
 import { createComponentUiRuntime } from '../../public/scripts/extensions/game-runtime/ui/runtime.js';
 import { createSelectorRuntime } from '../../public/scripts/extensions/game-runtime/ui/selectors.js';
 import { createSurfaceHost } from '../../public/scripts/extensions/game-runtime/ui/surfaces.js';
-import { createWorldRuntime } from '../../public/scripts/extensions/game-runtime/world/runtime.js';
+import { createSessionWorldTestAdapter } from './helpers/session-world-adapter.js';
 
 function makeElement(tagName = 'div') {
     return {
@@ -44,7 +44,7 @@ function makePersistence() {
 
 describe('R4 Component UI vertical slice', () => {
     test('component reads selectors and mutates world only through typed command actions', async () => {
-        const world = createWorldRuntime({
+        const world = createSessionWorldTestAdapter({
             initialState: { hp: 10 },
             schema: {
                 type: 'object',
@@ -61,7 +61,7 @@ describe('R4 Component UI vertical slice', () => {
             },
             persistence: makePersistence(),
         });
-        await world.load([0]);
+        await world.load();
 
         const logicWorld = {
             getState: () => world.getState(),
