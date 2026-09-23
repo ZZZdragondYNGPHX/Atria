@@ -1,6 +1,7 @@
 import { compileFormula, evaluateFormulaAst } from '../logic/formula.js';
 import { loadGamePackageJsonResource } from '../package-loader.js';
 import { cloneGameUiValue } from './clone.js';
+import { setComponentHiddenReason } from './component-model.js';
 
 const SELECTOR_ID_PATTERN = /^[a-z][a-z0-9._-]{0,63}$/;
 const COMMAND_ID_PATTERN = /^[a-z][a-z0-9._-]{0,63}$/;
@@ -125,15 +126,10 @@ export function compileGameSelectorDefinitions(raw) {
 }
 
 export async function loadGameSelectorDefinitions(packageState, options = {}) {
-    const resource = packageState?.manifest?.ui?.selectors;
+    const resource = packageState?.runtime?.experience?.selectors;
     if (!resource) return [];
 
-    const charId = String(packageState?.charId || '').trim();
-    if (!charId) {
-        throw new Error('Game UI selectors cannot load without a character package id');
-    }
-
-    const raw = await loadGamePackageJsonResource(charId, resource, {
+    const raw = await loadGamePackageJsonResource(packageState, resource, {
         fetchImpl: options.fetchImpl,
         headers: options.headers || {},
     });
@@ -156,7 +152,7 @@ function setBoundValue(element, binding, value) {
         if (typeof value !== 'boolean') {
             throw new Error('data-atria-bind-hidden selector must return a boolean');
         }
-        element.hidden = value;
+        setComponentHiddenReason(element, 'binding', value);
         return;
     }
     throw new Error(`Unsupported Game UI binding '${binding}'`);
@@ -180,6 +176,25 @@ function bindSelectorElements(root, context, cleanups) {
             render(context.selectors.get(selectorId));
             cleanups.push(context.selectors.subscribe(selectorId, render));
         }
+    }
+}
+
+function bindVisibilityElements(root, context, cleanups) {
+    for (const element of root.querySelectorAll('[data-atria-visible-selector]')) {
+        const selectorId = String(element.dataset.atriaVisibleSelector || '').trim();
+        if (!SELECTOR_ID_PATTERN.test(selectorId)) {
+            throw new Error('data-atria-visible-selector requires a valid selector id');
+        }
+        const when = String(element.dataset.atriaVisibleWhen || 'truthy').trim();
+        if (!['truthy', 'falsy'].includes(when)) {
+            throw new Error(`Component visibility mode '${when}' is unsupported`);
+        }
+        const render = value => {
+            const visible = when === 'truthy' ? Boolean(value) : !Boolean(value);
+            setComponentHiddenReason(element, 'visibility', !visible);
+        };
+        render(context.selectors.get(selectorId));
+        cleanups.push(context.selectors.subscribe(selectorId, render));
     }
 }
 
@@ -242,6 +257,7 @@ export function bindDeclarativeGameUi(root, context) {
     const cleanups = [];
     try {
         bindSelectorElements(root, context, cleanups);
+        bindVisibilityElements(root, context, cleanups);
         bindCommandElements(root, context, cleanups);
     } catch (error) {
         for (const cleanup of cleanups.splice(0).reverse()) cleanup();
