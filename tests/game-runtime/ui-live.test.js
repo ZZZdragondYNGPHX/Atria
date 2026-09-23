@@ -183,9 +183,11 @@ describe('A4 Native Experience Runtime activation', () => {
 
     test('Hybrid owns Stage composition while reusing the exact Native Conversation and Composer slots', async () => {
         const { playHost, shellFoundation } = shellFixture();
-        const chat = playHost.native.chat;
-        const composer = playHost.native.sendForm;
+        const legacyChat = playHost.native.chat;
+        const legacyComposer = playHost.native.sendForm;
         const textarea = playHost.native.sendTextarea;
+        const conversation = playHost.product.getComponent('conversation');
+        const composer = playHost.product.getComponent('composer');
 
         const session = await activateNativeExperienceRuntime(
             state('hybrid'),
@@ -216,11 +218,13 @@ describe('A4 Native Experience Runtime activation', () => {
 
         expect(playHost.getStageOwner()).toBe('game-runtime:hybrid');
         expect(playHost.root.style.display).toBe('none');
-        expect(chat.parentElement.dataset.atriaComponentId).toBe('conversation-slot');
+        expect(conversation.parentElement.dataset.atriaComponentId).toBe('conversation-slot');
         expect(composer.parentElement.dataset.atriaComponentId).toBe('composer-slot');
-        expect(document.getElementById('chat')).toBe(chat);
-        expect(document.getElementById('send_form')).toBe(composer);
+        expect(document.getElementById('chat')).toBe(legacyChat);
+        expect(document.getElementById('send_form')).toBe(legacyComposer);
         expect(document.getElementById('send_textarea')).toBe(textarea);
+        expect(legacyChat.parentElement).toBe(playHost.native.sheld);
+        expect(legacyComposer.parentElement).toBe(playHost.native.formSheld);
         expect(document.querySelectorAll('#chat')).toHaveLength(1);
         expect(document.querySelectorAll('#send_form')).toHaveLength(1);
         expect(playHost.assertIntegrity()).toBe(true);
@@ -229,8 +233,10 @@ describe('A4 Native Experience Runtime activation', () => {
 
         expect(playHost.getStageOwner()).toBeNull();
         expect(playHost.root.style.display).toBe('');
-        expect(chat.parentElement).toBe(playHost.native.sheld);
-        expect(composer.parentElement).toBe(playHost.native.formSheld);
+        expect(conversation.parentElement).toBe(playHost.product.root);
+        expect(composer.parentElement).toBe(playHost.product.root);
+        expect(legacyChat.parentElement).toBe(playHost.native.sheld);
+        expect(legacyComposer.parentElement).toBe(playHost.native.formSheld);
         expect(playHost.assertIntegrity()).toBe(true);
         playHost.unmount();
     });
