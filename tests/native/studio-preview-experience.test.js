@@ -63,16 +63,16 @@ describe('A4 Native Studio Experience preview', () => {
                     ? { mode: 'text' }
                     : { mode, componentModelVersion: 1 },
             );
-            expect(preview.runtime.experience.mode).toBe(mode);
-            if (mode === 'text') {
-                expect(preview.runtime.experience).toEqual({ mode: 'text' });
-            } else {
-                expect(preview.runtime.experience).toMatchObject({
+            const expectedRuntimeExperience = mode === 'text'
+                ? { mode: 'text' }
+                : {
+                    mode,
+                    componentModelVersion: 1,
                     component: 'ui/main.json',
                     selectors: 'ui/selectors.json',
                     surface: 'app.root',
-                });
-            }
+                };
+            expect(preview.runtime.experience).toEqual(expectedRuntimeExperience);
         }
 
         expect(host.list()).toHaveLength(4);
