@@ -1,5 +1,4 @@
 import { cloneGameLlmValue } from './clone.js';
-import { getGameBranchId } from '../world/branch.js';
 import {
     advanceTurnContext,
     createTurnContext,
@@ -61,14 +60,13 @@ function isAbortError(error, signal) {
 
 function normalizeBranchResult(raw, fallbackAnchor) {
     const source = raw && typeof raw === 'object' ? raw : {};
-    const branchPath = Array.isArray(source.branchPath)
-        ? [...source.branchPath]
-        : [...(fallbackAnchor?.branchPath || [])];
-    return {
-        branchPath,
-        branchId: String(source.branchId || getGameBranchId(branchPath)),
-        variantId: String(source.variantId || ''),
-    };
+    const sessionId = String(source.sessionId || fallbackAnchor?.sessionId || '').trim();
+    const branchId = String(source.branchId || fallbackAnchor?.branchId || '').trim();
+    const revisionId = String(source.revisionId || fallbackAnchor?.revisionId || '').trim();
+    if (!sessionId || !branchId || !revisionId) {
+        throw new Error('Turn attempt requires Native Session/Branch/Revision identity');
+    }
+    return { sessionId, branchId, revisionId };
 }
 
 export function createTurnTransaction(input = {}) {
@@ -363,7 +361,9 @@ export function createGameTurnController(options = {}) {
                 turnId: record.turnId,
                 anchor: {
                     ...clone(turnContext.anchor),
-                    branchPath: branch.branchPath,
+                    sessionId: branch.sessionId,
+                    branchId: branch.branchId,
+                    revisionId: branch.revisionId,
                 },
             });
             return executeAttempt(branchedTurn, {
@@ -502,7 +502,9 @@ export function createGameTurnController(options = {}) {
                 turnId: record.turnId,
                 anchor: {
                     ...clone(record.baseTurn.anchor),
-                    branchPath: branch.branchPath,
+                    sessionId: branch.sessionId,
+                    branchId: branch.branchId,
+                    revisionId: branch.revisionId,
                 },
                 resolvedCommands: [],
                 commandResults: [],
