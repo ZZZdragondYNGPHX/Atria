@@ -2,7 +2,7 @@
 
 ## Status
 
-**P0 已完成并验证。当前停止在 P1 接手点；P1–P8 尚未实施。**
+**P0、P1 已完成并验证。当前停止在 P2 接手点；P2–P8 尚未实施。**
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Baseline: `main@2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
@@ -214,3 +214,81 @@ The package-side author-intent contract is frozen at `AtriaPackage.runtime.model
 The new Core boundary is `src/native/model-prompt-runtime/`. Its P0 architecture guard rejects direct dependency on SillyTavern globals/DOM/PresetManager/PromptManager, `Atria.getContext()`, `generateTask`, direct Atria dispatch senders, browser persistence, and `package.presets` authority.
 
 No user-visible Runtime/UI cutover occurred in P0.
+
+
+## P1 completion record
+
+P1 — Native Resource & Persistence Foundation 已完成并验证。
+
+- validated HEAD: `802a68654f53015800e141fd052f1a006df149e0`
+- P1 workflow: Model Prompt Runtime P1 Checks #6
+- P1 run: `35836303381`
+- P0 workflow on the same HEAD: Model Prompt Runtime P0 Checks #17
+- P0 run: `35836303445`
+- baseline main remains: `2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
+- branch remains ahead-only; no merge to main was performed.
+
+P1 implemented:
+
+- generic `VersionedJsonResourceHandler` on the existing Native `native_resources` infrastructure;
+- versioned Library resources for `core.prompt-module`, `core.prompt-program`, and `core.generation-profile`;
+- immutable exact revision lookup that never follows latest when an exact ref is supplied;
+- A2 Resource Registry descriptors for the three resource types;
+- NativeLibraryService list/get-exact through the handler seam;
+- Library Attach/Fork/Update through the existing A1 Workspace/ChangeSet path;
+- derived-readonly Resource Graph nodes plus forward/reverse exact-reference edges;
+- delete-safety via reverse Resource Graph references;
+- Project source `resources` and exact `dependencies.resources`;
+- Package dependency closure that recursively resolves exact Prompt Program → Prompt Module dependencies and fails closed on missing exact revisions;
+- Package build vendoring that rewrites Project/Library exact refs to exact Package-scope refs for the generated PackageVersion;
+- Package resource closure validation, including `runtime.modelPrompt` exact resource membership;
+- player-owned Connection Profile / Model Profile / Runtime Route persistence;
+- Connection persistence remains `secretRef` only; secret material is rejected by the frozen P0 contract;
+- project/library/package origin and provenance remain explicit.
+
+Authority decisions preserved:
+
+- no PromptStore / GenerationStore / second Library;
+- no second Resource Graph;
+- no WorldRepo / KnowledgeRepo / AssetStore rewrite;
+- Resource Graph remains derived-readonly;
+- Studio mutations remain inside A1 Authoring Operation / Workspace / ChangeSet;
+- Project Agent still consumes Registry / Graph / A1 authority;
+- no Generation Service implementation, Prompt Compiler, first-party generation cutover, Runtime UI cutover, or A6/A8 replacement-gate changes were performed in P1.
+
+P1 commits:
+
+- `a2c2fee0` — add P1 Native resource persistence foundation
+- `bff67534` — integrate P1 resources with A2 authoring authority
+- `1822358d` — close P1 model/prompt Package dependencies
+- `577eeedc` — preserve frozen P0 Package metadata contract
+- `84d3fe50` — add P1 resource/package integration tests
+- `fd38b8ec` — add P1 CI workflow
+- `342452b4` — align persistence test fixture with normalized Model contract
+- `ce900854` — focused lint fix
+- `61f0b1aa` — prove project/library/package origin + provenance
+- `0ff8fcb4` — add P1 architecture guard
+- `802a6865` — enforce P1 architecture guard in CI
+
+Actually validated on `802a68654f53015800e141fd052f1a006df149e0`:
+
+- P1 focused + adjacent Native: 9 suites / 37 tests passed;
+- P0 architecture guard: success;
+- P1 resource/persistence architecture guard + syntax: success;
+- frozen A1 guard: success;
+- frozen A2 guard: success;
+- frozen A7 guard: success;
+- frozen A8 guard: success;
+- focused ESLint: success;
+- P0 Checks #17: success.
+
+Not executed in P1:
+
+- full Node regression;
+- frontend build;
+- browser E2E;
+- Android;
+- Docker;
+- real-host model request.
+
+P2 is the next phase. Do not redo P0/P1.
