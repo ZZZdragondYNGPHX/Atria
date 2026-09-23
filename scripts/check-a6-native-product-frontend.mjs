@@ -56,8 +56,18 @@ requirePattern(
 
 requirePattern(
     'public/scripts/atria-shell/library-runtime-workspaces.js',
-    /master-detail[\s\S]*id:\s*['"]capabilities['"][\s\S]*atriaRuntimeCapabilities/,
-    'A6 Library/Runtime must use product patterns and expose Runtime Capabilities',
+    /master-detail/,
+    'A6 Library must use the master-detail product pattern',
+);
+requirePattern(
+    'public/scripts/atria-shell/library-runtime-workspaces.js',
+    /id:\s*['"]capabilities['"]/,
+    'A6 Runtime must expose a Capabilities route',
+);
+requirePattern(
+    'public/scripts/atria-shell/library-runtime-workspaces.js',
+    /atriaRuntimeCapabilities/,
+    'A6 Runtime Capabilities must project the active Native runtime',
 );
 requirePattern(
     'public/scripts/atria-shell/library-runtime-workspaces.js',
@@ -77,8 +87,13 @@ requirePattern(
 );
 requirePattern(
     'public/scripts/atria-shell/utility-workspaces.js',
-    /atriaSettingsPrimary[\s\S]*atriaSettingsCompatibility/,
+    /atriaSettingsPrimary/,
     'A6 Settings must have an Atria-native primary surface',
+);
+requirePattern(
+    'public/scripts/atria-shell/utility-workspaces.js',
+    /atriaSettingsCompatibility/,
+    'A6 Settings must isolate compatibility controls under Advanced',
 );
 requirePattern(
     'public/scripts/atria-shell/utility-workspaces.js',
