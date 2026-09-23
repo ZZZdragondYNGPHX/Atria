@@ -1908,3 +1908,102 @@ body[data-atria-native-session-active="true"] #char_connections_button {
         padding-top: var(--atri-space-3);
     }
 }
+
+
+/* A6 utility product surfaces. Legacy controllers can remain under Advanced,
+ * but the primary product content is rendered by Atria components.
+ */
+.atria-native-plugin-surface,
+.atria-product-settings-grid,
+.atria-account-overview {
+    min-width: 0;
+}
+
+.atria-native-plugin-surface {
+    display: grid;
+    gap: var(--atri-space-3);
+}
+
+.atria-native-plugin-surface > h3,
+.atria-native-plugin-surface > p,
+.atria-product-setting-card > h3,
+.atria-product-setting-card > p,
+.atria-account-card > h3,
+.atria-account-card > p {
+    margin: 0;
+}
+
+.atria-native-plugin-surface > p,
+.atria-product-setting-card > p,
+.atria-account-card > p {
+    color: var(--atri-color-text-muted);
+    line-height: 1.5;
+}
+
+.atria-plugin-legacy-body {
+    display: grid;
+    gap: var(--atri-space-3);
+}
+
+.atria-product-settings-grid,
+.atria-account-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: var(--atri-space-3);
+}
+
+.atria-product-setting-card,
+.atria-account-card {
+    min-width: 0;
+    min-height: 156px;
+    display: grid;
+    align-content: start;
+    gap: var(--atri-space-2);
+    padding: var(--atri-space-4);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-color-surface);
+}
+
+.atria-product-setting-card__value {
+    color: var(--atri-color-accent);
+}
+
+.atria-product-setting-card > .atria-utility-action {
+    margin-top: auto;
+    justify-self: start;
+}
+
+.atria-settings-compatibility,
+.atria-account-advanced,
+.atria-plugin-compatibility[data-atria-legacy-plugins="true"] {
+    margin-top: var(--atri-space-4);
+    padding: var(--atri-space-3);
+    border: 1px solid var(--atri-color-border);
+    border-radius: var(--atri-radius-lg);
+    background: color-mix(in srgb, var(--atri-color-surface) 70%, transparent);
+}
+
+.atria-settings-compatibility > summary,
+.atria-account-advanced > summary,
+.atria-plugin-compatibility[data-atria-legacy-plugins="true"] > summary {
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.atria-account-advanced__body {
+    min-width: 0;
+    margin-top: var(--atri-space-3);
+}
+
+@media (max-width: 719px) {
+    .atria-product-settings-grid,
+    .atria-account-overview {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .atria-product-setting-card,
+    .atria-account-card {
+        min-height: 0;
+    }
+}
