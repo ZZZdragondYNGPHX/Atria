@@ -287,6 +287,19 @@ function createResourceTree(documentRef, state, selectView) {
                 list.append(child);
             });
         }
+        const pluginDescriptors = (state.registry?.descriptors || [])
+            .filter(descriptor => descriptor.provider?.kind === 'plugin');
+        for (const descriptor of pluginDescriptors) {
+            if (needle && !descriptor.displayName.toLowerCase().includes(needle)
+                && !descriptor.resourceType.toLowerCase().includes(needle)) continue;
+            const row = button(documentRef, `Plugin · ${descriptor.displayName}`, () => {
+                state.selectedPluginResourceType = descriptor.resourceType;
+                selectView('plugin-resource');
+            }, { active: state.activeView === 'plugin-resource' && state.selectedPluginResourceType === descriptor.resourceType });
+            row.className = 'atria-studio-resource-tree__item';
+            row.dataset.atriaStudioPluginResource = descriptor.resourceType;
+            list.append(row);
+        }
     }
 
     filter.addEventListener('input', () => render(filter.value));
@@ -773,8 +786,24 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         }
     }
 
+    function attachedRevision(item) {
+        if (item.resourceType === 'core.world') {
+            return state.source.dependencies.worlds
+                .find(value => value.worldId === item.resourceId)?.worldRevisionId || null;
+        }
+        if (item.resourceType === 'core.knowledge') {
+            return state.source.dependencies.knowledge
+                .find(value => value.knowledgeBaseId === item.resourceId)?.knowledgeRevisionId || null;
+        }
+        if (item.resourceType === 'core.asset') {
+            return state.source.dependencies.assets
+                .find(value => value.assetId === item.resourceId)?.contentHash || null;
+        }
+        return null;
+    }
+
     function renderLibraryRelations(body) {
-        body.append(heading(documentRef, 'Library Attach / Fork', 'Attach pins an exact immutable revision. Updates are explicit; Library latest is never followed implicitly.'));
+        body.append(heading(documentRef, 'Library Attach / Fork / Update', 'Attach pins an exact immutable revision. Updates are explicit; Library latest is never followed implicitly.'));
         const list = documentRef.createElement('div');
         list.className = 'atria-studio-library-relations';
         for (const item of state.library) {
@@ -816,7 +845,33 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                     log(error.status === 409 ? 'conflict' : 'error', error?.message || String(error), error.details);
                 }
             });
-            row.append(info, revisionSelect, attach, fork);
+            const fromRevision = attachedRevision(item);
+            const update = ['core.world', 'core.knowledge'].includes(item.resourceType)
+                ? button(documentRef, 'Update', async () => {
+                    const current = attachedRevision(item);
+                    if (!current || current === revisionSelect.value) {
+                        log('info', current ? 'Selected revision is already attached.' : 'Attach this resource before updating it.');
+                        return;
+                    }
+                    try {
+                        const result = await nativeStudioClient.updateResource(projectId, {
+                            resourceType: item.resourceType,
+                            resourceId: item.resourceId,
+                            fromRevision: current,
+                            toRevision: revisionSelect.value,
+                            baseRevision: state.revision.revision,
+                            origin: createHumanOrigin(),
+                        });
+                        log('success', `Updated ${item.resourceId} from ${current} to ${revisionSelect.value}.`, result.changeSet);
+                        await refreshProject();
+                        renderEditor();
+                    } catch (error) {
+                        log(error.status === 409 ? 'conflict' : 'error', error?.message || String(error), error.details);
+                    }
+                }, { disabled: !fromRevision })
+                : null;
+            if (fromRevision) info.textContent += ` · attached ${fromRevision}`;
+            row.append(info, revisionSelect, attach, fork, update);
             list.append(row);
         }
         body.append(list);
@@ -1003,6 +1058,22 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         else if (state.activeView === 'preview') void renderPreview(body);
         else if (state.activeView === 'build') renderBuild(body);
         else if (state.activeView === 'source') void renderSource(body);
+        else if (state.activeView === 'plugin-resource') {
+            const descriptor = (state.registry?.descriptors || [])
+                .find(item => item.resourceType === state.selectedPluginResourceType);
+            body.append(heading(
+                documentRef,
+                descriptor?.displayName || 'Plugin Resource',
+                'Plugin-defined authoring resource types reuse the A2 Resource Registry and A5 contribution authority.',
+            ));
+            const matching = state.resources.filter(item => item.resourceType === state.selectedPluginResourceType);
+            const pre = documentRef.createElement('pre');
+            pre.textContent = JSON.stringify({
+                descriptor,
+                resources: matching,
+            }, null, 2);
+            body.append(pre);
+        }
     }
     state.renderEditor = renderEditor;
 
@@ -1107,7 +1178,6 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
 
     function updateMobile() {
         shell.dataset.atriaStudioMobileView = state.mobileView;
-        if (state.mobileView === 'project') resourceTreeSelect(state.activeView);
         if (state.mobileView === 'preview' && state.activeView !== 'preview') {
             state.activeView = 'preview';
             renderEditor();
