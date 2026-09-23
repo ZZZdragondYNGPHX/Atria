@@ -12,6 +12,38 @@ function clone(value) {
     return value == null ? value : structuredClone(value);
 }
 
+function runtimeJsonPath(value, field) {
+    const path = String(value || '').trim();
+    if (
+        !path
+        || path.length > 512
+        || path.includes('\\')
+        || path.includes('\0')
+        || path.startsWith('/')
+        || /^[A-Za-z][A-Za-z0-9+.-]*:/.test(path)
+        || path.split('/').some(segment => !segment || segment === '.' || segment === '..')
+        || !path.toLowerCase().endsWith('.json')
+    ) {
+        throw new TypeError(field + ' must be a safe declarative .json package path');
+    }
+    return path;
+}
+
+function gameRuntimeSource(value) {
+    if (value === undefined) return Object.freeze({});
+    if (!plain(value)) throw new TypeError('Native Runtime game config must be an object');
+    const allowed = new Set(['logic', 'observations']);
+    for (const key of Object.keys(value)) {
+        if (!allowed.has(key)) throw new TypeError("Native Runtime game config contains unsupported field '" + key + "'");
+    }
+    return Object.freeze({
+        ...(value.logic === undefined ? {} : { logic: runtimeJsonPath(value.logic, 'Native Runtime game.logic') }),
+        ...(value.observations === undefined ? {} : {
+            observations: runtimeJsonPath(value.observations, 'Native Runtime game.observations'),
+        }),
+    });
+}
+
 function runtimeSource(manifest, entryPoint) {
     const packageRuntime = plain(manifest?.runtime) ? manifest.runtime : {};
     const entryRuntime = plain(entryPoint?.runtime) ? entryPoint.runtime : {};
@@ -20,13 +52,15 @@ function runtimeSource(manifest, entryPoint) {
         throw new TypeError('Native Runtime requires an explicit experience contract');
     }
 
-    const packageGame = plain(packageRuntime.game) ? packageRuntime.game : {};
-    const entryGame = plain(entryRuntime.game) ? entryRuntime.game : {};
-    const game = { ...clone(packageGame), ...clone(entryGame) };
+    const packageGame = gameRuntimeSource(packageRuntime.game);
+    const entryGame = gameRuntimeSource(entryRuntime.game);
+    const game = gameRuntimeSource({ ...packageGame, ...entryGame });
 
     return Object.freeze({
         experience: clone(experience),
-        game: Object.freeze(game),
+        game,
+        primaryWorldId: entryPoint.primaryWorldId
+            ?? (entryPoint.worldIds.length === 1 ? entryPoint.worldIds[0] : null),
     });
 }
 
