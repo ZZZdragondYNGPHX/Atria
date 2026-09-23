@@ -289,7 +289,7 @@ function actionButton(documentRef, label, handler, { primary = false, disabled =
     button.type = 'button';
     button.textContent = label;
     button.disabled = disabled;
-    if (primary) button.dataset.primary = 'true';
+    if (primary) button.dataset.variant = 'primary';
     button.addEventListener('click', handler);
     return button;
 }
