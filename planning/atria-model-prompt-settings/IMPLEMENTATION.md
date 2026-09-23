@@ -1,6 +1,6 @@
 # 实施蓝图：Atria Native Model / Prompt / Runtime P0–P8
 
-**状态：P0、P1、P2 已完成并验证；P3 为下一实施阶段。**
+**状态：P0–P3 已完成并验证；P4 为下一实施阶段。**
 
 正式实现分支：`refactor/atria-model-prompt-settings`
 
@@ -594,3 +594,17 @@ Secret send boundary, Provider adapters and immutable concurrency isolation are 
 P2 focused: 33 tests; Native FS/SQLite: 48 suites / 347 tests; required guards, lint,
 syntax and frontend build passed locally. See P2-VALIDATION.md for exclusions and limits.
 P3 Compiler, P4 first-party cutover and P5 UI remain unimplemented. Stop until continuation.
+
+## P3 completion checkpoint (2026-09-23)
+
+P3 is complete at `5e51332b34146236fd4d4a6d45c25ef7c37a9e08` on the existing work branch.
+Request Context Providers, exact Prompt Compiler, typed request-local values and declared
+artifacts, bounded condition DSL, derive/conflict checks, semantic stage/target projections,
+immutable IR/provenance and protocol render fixtures are implemented. No first-party/UI
+cutover or main merge occurred. Earlier P3-future statements above are historical.
+
+Local validation: Native FS/SQLite 49 suites / 385 tests; final P3 focused 38 tests;
+P0–P3 and A1/A2/A7/A8 guards, root/focused lint, syntax and frontend build passed.
+See planning/atria-model-prompt-settings/P3-VALIDATION.md for exact commands, the final
+narrow adapter change retest and exclusions. P4 First-party Runtime Cutover is next,
+only after explicit continuation. A6/A8 transitional gates remain unchanged in P3.

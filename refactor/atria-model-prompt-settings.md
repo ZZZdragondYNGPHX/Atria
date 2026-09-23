@@ -2,7 +2,7 @@
 
 ## Status
 
-**P0、P1、P2 已完成并验证。当前停止在 P3 接手点；P3–P8 尚未实施。**
+**P0–P3 已完成并验证。当前停止在 P4 接手点；P4–P8 尚未实施。**
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Baseline: `main@2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
@@ -301,3 +301,17 @@ Local results: P2 33 tests; Native FS/SQLite 48 suites / 347 tests; P0/P1/P2 gua
 A1/A2/A7/A8 guards, root/focused lint, syntax and frontend build passed.
 No main merge or first-party/UI cutover. See planning/atria-model-prompt-settings/P2-VALIDATION.md
 for unavailable external engines and other limits. P3 is next after explicit continuation.
+
+## P3 completion checkpoint (2026-09-23)
+
+P3 is complete at `5e51332b34146236fd4d4a6d45c25ef7c37a9e08` on the existing work branch.
+Request Context Providers, exact Prompt Compiler, typed request-local values and declared
+artifacts, bounded condition DSL, derive/conflict checks, semantic stage/target projections,
+immutable IR/provenance and protocol render fixtures are implemented. No first-party/UI
+cutover or main merge occurred. Earlier P3-future statements above are historical.
+
+Local validation: Native FS/SQLite 49 suites / 385 tests; final P3 focused 38 tests;
+P0–P3 and A1/A2/A7/A8 guards, root/focused lint, syntax and frontend build passed.
+See planning/atria-model-prompt-settings/P3-VALIDATION.md for exact commands, the final
+narrow adapter change retest and exclusions. P4 First-party Runtime Cutover is next,
+only after explicit continuation. A6/A8 transitional gates remain unchanged in P3.

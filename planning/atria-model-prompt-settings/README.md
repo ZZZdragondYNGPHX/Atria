@@ -1,6 +1,6 @@
 # Atria 模型、提示词与 Runtime 原生化企划
 
-**状态：P0、P1、P2 已完成并验证；当前下一阶段为 P3 — Request Context & Prompt Compiler。**
+**状态：P0–P3 已完成并验证；当前下一阶段为 P4 — First-party Runtime Cutover。**
 
 ## 当前基线
 
@@ -148,3 +148,17 @@ request-local immutable config、send-boundary Secret 和两种 Provider adapter
 P0/P1/P2 与 A1/A2/A7/A8 guards、lint、syntax、frontend build 均通过。
 
 详见 [P2-VALIDATION.md](P2-VALIDATION.md)。下一阶段仅 P3，不重做 P0/P1/P2。
+
+## P3 completion checkpoint (2026-09-23)
+
+P3 is complete at `5e51332b34146236fd4d4a6d45c25ef7c37a9e08` on the existing work branch.
+Request Context Providers, exact Prompt Compiler, typed request-local values and declared
+artifacts, bounded condition DSL, derive/conflict checks, semantic stage/target projections,
+immutable IR/provenance and protocol render fixtures are implemented. No first-party/UI
+cutover or main merge occurred. Earlier P3-future statements above are historical.
+
+Local validation: Native FS/SQLite 49 suites / 385 tests; final P3 focused 38 tests;
+P0–P3 and A1/A2/A7/A8 guards, root/focused lint, syntax and frontend build passed.
+See planning/atria-model-prompt-settings/P3-VALIDATION.md for exact commands, the final
+narrow adapter change retest and exclusions. P4 First-party Runtime Cutover is next,
+only after explicit continuation. A6/A8 transitional gates remain unchanged in P3.
