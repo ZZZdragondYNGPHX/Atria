@@ -397,6 +397,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
         collectionSelection: {},
         selectedGraphNode: null,
         pending: null,
+        agentReview: null,
         validation: null,
         output: [],
         preview: null,
@@ -495,9 +496,20 @@ async function mountProjectStudio(documentRef, root, projectId) {
         projectId,
         getRevision: () => state.revision,
         onLog: log,
+        onTaskState: task => {
+            state.agentReview = task.status === 'review' ? task : null;
+            if (task.validation) state.validation = task.validation;
+            if (task.preview) state.preview = task.preview;
+            if (task.simulation) state.simulation = task.simulation;
+            if (task.status === 'review') state.activityTab = 'changes';
+            else if (task.validation?.status === 'failed') state.activityTab = 'problems';
+            renderActivity();
+            if (state.activeView === 'preview' || state.activeView === 'simulation') renderEditor();
+        },
         onProjectCommitted: async () => {
             await refreshProject();
             state.pending = null;
+            state.agentReview = null;
             renderEditor();
             renderActivity();
             void renderInspector();
@@ -1190,6 +1202,31 @@ async function mountProjectStudio(documentRef, root, projectId) {
                     button(documentRef, 'Apply ChangeSet', applyPending, { primary: true }),
                 ));
             }
+        } else if (state.agentReview) {
+            const title = documentRef.createElement('h4');
+            title.textContent = 'Project Agent Review';
+            const pre = documentRef.createElement('pre');
+            pre.textContent = JSON.stringify({
+                taskId: state.agentReview.taskId,
+                baseRevision: state.agentReview.baseRevision,
+                workspaceId: state.agentReview.workspace?.workspaceId,
+                operations: state.agentReview.operations || [],
+                changes: state.agentReview.inspection?.changes || [],
+                validation: state.agentReview.validation,
+                preview: state.agentReview.preview,
+                simulation: state.agentReview.simulation,
+                highImpact: state.agentReview.review?.highImpact === true,
+            }, null, 2);
+            body.append(
+                title,
+                panel(
+                    documentRef,
+                    'info',
+                    'Review required',
+                    'Inspect the Agent ChangeSet here; Commit remains an explicit action in the Project Agent panel.',
+                ),
+                pre,
+            );
         } else {
             body.append(panel(documentRef, 'empty', 'No pending ChangeSet', 'Structured edits first enter review; applying runs validation and commits only on success.'));
         }
