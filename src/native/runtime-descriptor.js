@@ -9,10 +9,6 @@ function plain(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function clone(value) {
-    return value == null ? value : structuredClone(value);
-}
-
 function runtimeJsonPath(value, field) {
     const path = String(value || '').trim();
     if (
