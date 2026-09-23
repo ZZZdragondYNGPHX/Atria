@@ -23,7 +23,7 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
                 <section id="user-settings-block" class="drawer-content closedDrawer" aria-hidden="true">
                     <div id="account_controls"></div>
                     <div id="UI-language-block"><select id="ui_language_select"><option>English</option></select></div>
-                    <div id="UI-Theme-Block"></div>
+                    <div id="UI-Theme-Block"><select id="themes"><option>Default</option></select><label><input type="checkbox" id="reduced_motion">Reduced Motion</label><label><input id="enableLabMode">Sampling</label></div>
                     <div id="movingUIModeCheckBlock"></div>
                     <div id="power-user-options-block"></div>
                 </section>
@@ -141,7 +141,7 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         expect(settingsOne.dataset.atriaWorkspaceEmbedded).toBeUndefined();
     });
 
-    test('Settings presents Atria product cards and keeps the exact legacy authority under Advanced', async () => {
+    test('Settings moves preference-only controls and never exposes generation authority, even under Advanced', async () => {
         const slot = document.getElementById('slot');
         const settingsRoot = document.getElementById('user-settings-block');
         const language = document.getElementById('ui_language_select');
@@ -151,24 +151,28 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         const controller = mountSettingsUtility({ document, body: slot });
 
         expect(slot.querySelector('[data-atria-settings-primary="true"]')).not.toBeNull();
-        expect(slot.contains(settingsRoot)).toBe(true);
+        expect(slot.contains(settingsRoot)).toBe(false);
+        expect(slot.querySelector('#enableLabMode')).toBeNull();
+        expect(slot.querySelector('#reduced_motion')).not.toBeNull();
         expect(document.getElementById('ui_language_select')).toBe(language);
         expect(document.querySelectorAll('#ui_language_select')).toHaveLength(1);
-        expect(settingsRoot.dataset.atriaWorkspaceEmbedded).toBe('true');
-        expect(settingsRoot.classList.contains('openDrawer')).toBe(true);
-        expect(accountControls.hidden).toBe(true);
+        expect(settingsRoot.dataset.atriaWorkspaceEmbedded).toBeUndefined();
+        expect(settingsRoot.classList.contains('closedDrawer')).toBe(true);
+        expect(accountControls.hidden).toBe(false);
         expect(slot.textContent).toContain('Appearance');
         expect(slot.textContent).toContain('Accessibility');
 
-        const compatibility = slot.querySelector('[data-atria-settings-compatibility="true"]');
+        const compatibility = slot.querySelector('[data-atria-settings-compatibility="preferences-only"]');
         expect(compatibility.open).toBe(false);
-        slot.querySelector('[data-atria-settings-section="language"] .atria-utility-action').click();
+        compatibility.querySelector('summary').click();
         await Promise.resolve();
         expect(compatibility.open).toBe(true);
         expect(document.getElementById('ui_language_select')).toBe(language);
 
         controller.dispose();
         expect(settingsRoot.parentNode).toBe(originalParent);
+        expect(settingsRoot.contains(language)).toBe(true);
+        expect(settingsRoot.querySelector('#reduced_motion')).not.toBeNull();
         expect(settingsRoot.className).toBe('drawer-content closedDrawer');
         expect(settingsRoot.getAttribute('aria-hidden')).toBe('true');
         expect(accountControls.hidden).toBe(false);

@@ -1,3 +1,4 @@
+import { formatShellText, translateShellText } from '../atria-shell/localization.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { runtimeRequest } from './runtime-client.js';
 import { nativeStudioClient } from './studio-client.js';
@@ -22,7 +23,7 @@ export function resourceRef(type, resource, scope) {
 }
 function element(doc, tag, text, parent) {
     const node = doc.createElement(tag);
-    if (text !== undefined) node.textContent = text;
+    if (text !== undefined) node.textContent = tag === 'pre' ? text : translateShellText(text);
     parent?.append(node);
     return node;
 }
@@ -33,11 +34,11 @@ function action(doc, parent, label, handler) {
 function input(doc, parent, label, value, multiline = false) {
     const wrapper = element(doc, 'label', label, parent);
     const node = element(doc, multiline ? 'textarea' : 'input', undefined, wrapper);
-    node.setAttribute('aria-label', label); if (!multiline) node.type = 'text'; node.value = value ?? ''; return node;
+    node.setAttribute('aria-label', translateShellText(label)); if (!multiline) node.type = 'text'; node.value = value ?? ''; return node;
 }
 function select(doc, parent, label, options, value = '') {
     const wrapper = element(doc, 'label', label, parent); const node = element(doc, 'select', undefined, wrapper);
-    node.setAttribute('aria-label', label);
+    node.setAttribute('aria-label', translateShellText(label));
     for (const [key, name] of options) { const option = element(doc, 'option', name, node); option.value = key; }
     node.value = value; return node;
 }
@@ -104,7 +105,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
     root.dataset.atriPromptEditor = 'true';
     function render() {
         root.replaceChildren();
-        const title = element(doc, 'h3', draft.displayName, root); title.tabIndex = -1;
+        const title = element(doc, 'h3', undefined, root); title.textContent = draft.displayName; title.tabIndex = -1;
         element(doc, 'p', 'New exact revision · existing references stay pinned. Review changes before committing in Studio.', root);
         const toolbar = element(doc, 'div', undefined, root); toolbar.className = 'atri-prompt-actions';
         action(doc, toolbar, 'Back to resources', onBack);
@@ -133,15 +134,15 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 const renderStages = () => {
                     tree.querySelectorAll('fieldset').forEach(node => node.remove());
                     stages.forEach((stage, index) => {
-                        const row = element(doc, 'fieldset', undefined, tree); element(doc, 'legend', `Stage ${index + 1}`, row);
-                        const id = input(doc, row, 'Stage ID ' + (index + 1), stage.stageId); id.addEventListener('input', () => { stage.stageId = id.value; });
+                        const row = element(doc, 'fieldset', undefined, tree); element(doc, 'legend', formatShellText('Stage ${0}', [index + 1], undefined, 'atria.product.stageIndex'), row);
+                        const id = input(doc, row, formatShellText('Stage ID ${0}', [index + 1], undefined, 'atria.product.stageIdIndex'), stage.stageId); id.addEventListener('input', () => { stage.stageId = id.value; });
                         for (const ref of stage.moduleRefs) {
                             const line = element(doc, 'div', undefined, row); const module = entries.find(item => exactKey(item.ref) === exactKey(ref));
                             element(doc, 'span', (module?.resource.displayName || ref.resourceId) + ' · ' + ref.revision + ' · ' + ref.scope, line);
                             action(doc, line, 'Remove module', () => { stage.moduleRefs = stage.moduleRefs.filter(v => v !== ref); renderStages(); });
                         }
                         const choices = entries.filter(item => item.ref.resourceType === 'core.prompt-module' && (entry.ref.scope !== 'library' || item.ref.scope === 'library') && item.ref.scope !== 'package');
-                        const picker = select(doc, row, 'Module for stage ' + (index + 1), [['', 'Choose exact module…'], ...choices.map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope])]);
+                        const picker = select(doc, row, formatShellText('Module for stage ${0}', [index + 1], undefined, 'atria.product.stageModuleIndex'), [['', 'Choose exact module…'], ...choices.map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope])]);
                         action(doc, row, 'Add module', () => { if (picker.value && !stage.moduleRefs.some(v => exactKey(v) === picker.value)) stage.moduleRefs.push(JSON.parse(picker.value)); renderStages(); });
                         action(doc, row, 'Move stage up', () => { if (index) { [stages[index - 1], stages[index]] = [stages[index], stages[index - 1]]; renderStages(); } });
                         action(doc, row, 'Remove stage', () => { if (stages.length > 1) { stages.splice(index, 1); renderStages(); } });
@@ -171,7 +172,13 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
 
 export function mountPromptLibrary({ document: doc, body, route, host }) {
     let disposed = false; let sequence = 0;
-    const type = { 'prompt-programs': 'core.prompt-program', 'prompt-modules': 'core.prompt-module', 'generation-profiles': 'core.generation-profile' }[route.child?.id] || 'core.prompt-program';
+    const type = { 'prompt-programs': 'core.prompt-program', 'prompt-modules': 'core.prompt-module', 'generation-profiles': 'core.generation-profile' }[route.child?.id?.split(':')[0]] || 'core.prompt-program';
+    let selectedRef;
+    function selectRoute(nextRoute) {
+        selectedRef = null;
+        try { selectedRef = JSON.parse(decodeURIComponent((nextRoute.child?.id || '').split(':').slice(1).join(':'))); } catch { /* Section route, not an exact resource link. */ }
+    }
+    selectRoute(route);
     async function render() {
         const token = ++sequence; body.replaceChildren(); element(doc, 'p', 'Loading exact resources…', body);
         try {
@@ -184,7 +191,7 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
                 if (!fresh) next.resource.revision = createStudioNativeId('rev');
                 mountPromptEditor({ document: doc, parent: root, entry: next, entries, onBack: render, onSave: async resource => {
                     await runtimeRequest('/resources', { method: 'POST', body: { resourceType: type, resource } });
-                    root.replaceChildren(); element(doc, 'p', 'Saved immutable Library revision.', root); action(doc, root, 'Reload resources', render);
+                    root.replaceChildren(); void host.refreshSearch?.(); element(doc, 'p', 'Saved immutable Library revision.', root); action(doc, root, 'Reload resources', render);
                 } });
             };
             action(doc, root, 'New resource', () => { const resource = newPromptResource(type); editor({ resource, ref: resourceRef(type, resource, { scope: 'library' }) }, true); });
@@ -193,9 +200,9 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
                 list.replaceChildren(); const matching = entries.filter(item => item.ref.resourceType === type && (item.resource.displayName + item.ref.resourceId).toLowerCase().includes(filter.value.toLowerCase()));
                 if (!matching.length) element(doc, 'p', 'No resources yet. Create one or open Build to author project assets.', list);
                 for (const entry of matching) {
-                    const row = element(doc, 'article', undefined, list); row.className = 'atri-prompt-resource';
-                    element(doc, 'h3', entry.resource.displayName, row);
-                    element(doc, 'p', entry.ref.scope + ' · ' + entry.ref.revision + (entry.ref.scope === 'package' ? ' · Read-only original' : ''), row);
+                    const row = element(doc, 'article', undefined, list); row.className = 'atri-prompt-resource'; row.dataset.atriResourceKey = exactKey(entry.ref); row.tabIndex = -1;
+                    element(doc, 'h3', undefined, row).textContent = entry.resource.displayName;
+                    element(doc, 'p', entry.ref.scope + ' · ' + entry.ref.revision + (entry.ref.scope === 'package' ? ' · ' + translateShellText('Read-only original') : ''), row);
                     const details = element(doc, 'details', undefined, row); element(doc, 'summary', 'Origin / Derived From / exact content', details);
                     element(doc, 'pre', JSON.stringify({ origin: entry.ref, derivedFrom: entry.resource.parentRef || entry.resource.provenance || [], resource: entry.resource }, null, 2), details);
                     action(doc, row, 'Used By', async () => {
@@ -212,15 +219,19 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
                             try {
                                 const plan = forkPromptClosure(entries, entry, { derive });
                                 for (const item of plan.entries) await runtimeRequest('/resources', { method: 'POST', body: { resourceType: item.ref.resourceType, resource: item.resource } });
-                                row.replaceChildren(); element(doc, 'p', 'Created independent Library resource.', row); action(doc, row, 'Reload resources', render);
+                                row.replaceChildren(); void host.refreshSearch?.(); element(doc, 'p', 'Created independent Library resource.', row); action(doc, row, 'Reload resources', render);
                             } catch (e) { error(doc, row, e); fork.disabled = false; }
                         });
                     }
                 }
             }; filter.addEventListener('input', renderList); renderList();
+            if (selectedRef) {
+                const match = [...list.children].find(node => node.dataset.atriResourceKey === exactKey(selectedRef));
+                if (match) { match.dataset.selected = 'true'; match.focus(); match.scrollIntoView?.({ block: 'start' }); } else error(doc, root, 'The requested exact revision is unavailable. References never follow latest.');
+            }
         } catch (e) { if (!disposed && token === sequence) { body.replaceChildren(); error(doc, body, e); action(doc, body, 'Retry resources', render); } }
     }
-    void render(); return { dispose() { disposed = true; sequence++; } };
+    void render(); return { updateRoute(nextRoute) { selectRoute(nextRoute); void render(); }, dispose() { disposed = true; sequence++; } };
 }
 
 export async function mountStudioPromptTools({ document: doc, body, state, stageProject, runtimeDesign = false }) {
@@ -294,7 +305,7 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
                 if (!matching.length) element(doc, 'p', 'No resources of this kind yet.', list);
                 for (const entry of matching) {
                     const row = element(doc, 'article', undefined, list); row.className = 'atri-prompt-resource';
-                    element(doc, 'h4', entry.resource.displayName, row); element(doc, 'p', entry.ref.scope + ' · ' + entry.ref.revision + (entry.ref.scope === 'package' ? ' · Read-only original — Fork to author' : ''), row);
+                    element(doc, 'h4', undefined, row).textContent = entry.resource.displayName; element(doc, 'p', entry.ref.scope + ' · ' + entry.ref.revision + (entry.ref.scope === 'package' ? ' · ' + translateShellText('Read-only original — Fork to author') : ''), row);
                     if (entry.ref.scope === 'project') action(doc, row, 'Edit project resource', () => edit(entry));
                     else if (entry.ref.scope === 'library') action(doc, row, 'Review Attach exact', async () => {
                         try {

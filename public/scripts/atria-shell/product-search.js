@@ -18,7 +18,7 @@ function fulfilled(result) {
  * caches persistently, or renders foreign-domain content. Every result runs
  * the WorkspaceHost route that owns the selected entity.
  */
-export function createProductSearchIndex({ registry, host, productClient = nativeProductClient, loadRuntime = runtimeRequest } = {}) {
+export function createProductSearchIndex({ registry, host, productClient = nativeProductClient, loadRuntime = runtimeRequest, loadResources = () => runtimeRequest('/resources') } = {}) {
     if (!registry?.register || !host) throw new Error('Product Search requires registry and WorkspaceHost');
 
     let disposed = false;
@@ -41,6 +41,7 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
             productClient.listKnowledge(),
             productClient.listProjects(),
             loadRuntime(),
+            loadResources(),
         ]);
         if (disposed || token !== revision) return false;
 
@@ -100,13 +101,23 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
             });
         }
         const runtime = result[4].status === 'fulfilled' ? result[4].value : {};
-        for (const [section, key] of Object.entries({ routes: 'runtimeRouteId', models: 'modelProfileId', connections: 'connectionProfileId', profiles: 'generationProfileId' })) {
+        for (const [section, key] of Object.entries({ routes: 'runtimeRouteId', models: 'modelProfileId', connections: 'connectionProfileId' })) {
             for (const item of runtime[section] || []) {
                 const id = item[key];
                 add({ id: 'runtime.' + section + '.' + safeId(id), title: item.displayName,
                     description: section + ' · Runtime', group: 'Runtime', keywords: ['runtime', section, id, item.displayName],
                     run: () => host.openRuntimeSection(section, id) });
             }
+        }
+        for (const entry of fulfilled(result[5])) {
+            const { ref, resource } = entry;
+            if (!ref?.revision || !ref.resourceId || !['core.prompt-program', 'core.prompt-module', 'core.generation-profile'].includes(ref.resourceType)) continue;
+            const title = clean(resource.displayName || ref.resourceId);
+            const key = JSON.stringify(ref, Object.keys(ref).sort());
+            add({ id: 'resource.prompt.' + encodeURIComponent(key), title,
+                description: ref.resourceType + ' · ' + ref.scope + ' · ' + ref.revision,
+                group: 'Library', keywords: ['prompt', 'generation', ref.resourceId, ref.revision, ref.scope, title],
+                run: () => host.openLibraryResource(ref, title) });
         }
         return true;
     }

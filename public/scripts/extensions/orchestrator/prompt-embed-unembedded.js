@@ -1,3 +1,4 @@
+import { legacyPromptManager, nativePromptUiActive } from '../../native/generation-compat.js';
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups
 
@@ -50,6 +51,7 @@ export async function promptEmbedUnembeddedPresetsForCharacterApply({
     notifyError,
     escapeHtml,
 }) {
+    if (nativePromptUiActive()) return { proceed: true, embeddedCount: 0 };
     const resolveByName = context?.character?.presets?.resolveByName;
     const unembedded = activeCharacter
         ? collectUnembeddedPresets(profile, activeCharacter, resolveByName)
@@ -104,7 +106,7 @@ export async function promptEmbedUnembeddedPresetsForCharacterApply({
     }
 
     // Embed all path.
-    const presetManager = context.getPresetManager?.('openai');
+    const presetManager = legacyPromptManager(context);
     const addPreset = context?.character?.presets?.add;
     if (typeof addPreset !== 'function') {
         notifyError(i18n('Character-bound preset API is unavailable; cannot embed.'));

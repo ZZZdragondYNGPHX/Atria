@@ -3352,3 +3352,14 @@ not a wall of unlabeled inputs.
 }
 
 .atria-app-shell :is(.atri-prompt-library, [data-atria-studio-view="prompt-authoring"], [data-atria-studio-view="runtime-design"]) [role="alert"] { color: var(--atri-color-danger, var(--atri-color-text)); }
+
+/* Preference controls share their original persistence, not the legacy drawer layout. */
+.atria-app-shell .atria-product-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--atri-space-4); align-items: start; }
+.atria-app-shell .atria-product-setting-card { min-width: 0; }
+.atria-app-shell .atria-product-setting-card :is(label, details > label) { display: flex; align-items: center; gap: 10px; margin-block: 12px; flex-wrap: wrap; }
+.atria-app-shell .atria-product-setting-card :is(select, input[type="range"]) { min-width: 0; max-width: 100%; flex: 1; }
+.atria-app-shell .atria-product-setting-card summary { cursor: pointer; min-height: 44px; padding-block: 10px; }
+.atria-app-shell .atri-prompt-resource[data-selected="true"] { border-inline-start: 3px solid var(--atri-color-accent); padding-inline-start: 12px; }
+@media (max-width: 700px) { .atria-app-shell .atria-product-settings-grid { grid-template-columns: minmax(0, 1fr); } }
+
+@media (max-width: 700px) { .atria-app-shell .atria-product-setting-card label { min-height: 44px; } }

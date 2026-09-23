@@ -52,3 +52,28 @@ test('Runtime Design reloads exact role recommendations and preserves optional r
     button(document.body, 'Set role recommendation').click();
     expect(JSON.parse(document.querySelector('[aria-label="Runtime requirements JSON"]').value).roles[0].optionalCapabilities).toEqual(['generation.tools']);
 });
+
+test('P7 same-section route updates focus the exact revision and never substitute latest', async () => {
+    const resource = newPromptResource('core.prompt-program'); resource.displayName = 'Pinned';
+    const ref = resourceRef('core.prompt-program', resource, { scope: 'library' });
+    globalThis.fetch = jest.fn(async () => response([{ ref, resource }]));
+    const view = mountPromptLibrary({ document, body: document.body, route: { child: { id: 'prompt-programs' } }, host: {} }); await flush();
+    view.updateRoute({ child: { id: 'prompt-programs:' + encodeURIComponent(JSON.stringify(ref)) } }); await flush();
+    expect(document.activeElement.dataset.selected).toBe('true'); expect(JSON.parse(document.activeElement.dataset.atriResourceKey)).toEqual(ref);
+    view.updateRoute({ child: { id: 'prompt-programs:' + encodeURIComponent(JSON.stringify({ ...ref, revision: 'missing' })) } }); await flush();
+    expect(document.querySelector('[role="alert"]').textContent).toContain('exact revision is unavailable');
+    expect(document.querySelector('[data-selected="true"]')).toBeNull(); view.dispose();
+});
+
+
+test('P7 translated editor chrome never translates user resource names or JSON payload', async () => {
+    const previous = globalThis.__i18n; globalThis.__i18n = { translate: (text, key) => key?.startsWith('atria.') ? 'Translated' : text };
+    try {
+        const resource = newPromptResource('core.prompt-program'); resource.displayName = 'Routes';
+        const ref = resourceRef('core.prompt-program', resource, { scope: 'library' });
+        globalThis.fetch = jest.fn(async () => response([{ ref, resource }]));
+        const mounted = mountPromptLibrary({ document, body: document.body, route: { child: { id: 'prompt-programs' } }, host: {} }); await flush();
+        expect(document.querySelector('article h3').textContent).toBe('Routes');
+        expect(document.querySelector('pre').textContent).toContain('"displayName": "Routes"'); mounted.dispose();
+    } finally { globalThis.__i18n = previous; }
+});

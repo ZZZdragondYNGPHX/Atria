@@ -40,7 +40,7 @@ const STUDIO_VIEWS = Object.freeze([
     ['agents', 'Agents'],
     ['skills', 'Skills'],
     ['plugins', 'Plugins'],
-    ['presets', 'Presets / Processors'],
+    ['metadata', 'Package Metadata'],
     ['simulation', 'Test / Simulation'],
     ['preview', 'Preview'],
     ['build', 'Build'],
@@ -1072,19 +1072,17 @@ async function mountProjectStudio(documentRef, root, projectId) {
         else if (state.activeView === 'agents') renderPackageJson(body, 'Agents / Orchestration', 'orchestration', 'Project orchestration configuration is edited without invoking A8 Project Agent.');
         else if (state.activeView === 'skills') renderPackageJson(body, 'Skills', 'skills', 'Native project/package Skill declarations use the A5 scope authority.');
         else if (state.activeView === 'plugins') renderNestedRuntimeJson(body, 'Plugins', 'plugins', 'Package-runtime plugins remain declarative and capability-defined.');
-        else if (state.activeView === 'presets') {
+        else if (state.activeView === 'metadata') {
             renderJsonSection(documentRef, body, {
-                title: 'Presets / Processors / Localization / Permissions',
+                title: 'Processors / Localization / Permissions',
                 description: 'Advanced structured project metadata remains inside the same Project source authority.',
                 value: {
-                    presets: state.source.package.presets || {},
                     processors: state.source.package.processors || {},
                     localization: state.source.package.localization || {},
                     permissions: state.source.package.permissions || [],
                 },
                 onStage: parsed => {
                     const next = patchProjectSource(state.source, source => {
-                        source.package.presets = parsed.presets || {};
                         source.package.processors = parsed.processors || {};
                         source.package.localization = parsed.localization || {};
                         source.package.permissions = parsed.permissions || [];

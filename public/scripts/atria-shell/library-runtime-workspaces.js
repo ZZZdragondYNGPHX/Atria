@@ -51,7 +51,7 @@ export function normalizeLibrarySection(route) {
         || childId.startsWith('world:')
         || childId.startsWith('knowledge:')
     ) return 'worlds-knowledge';
-    return sectionById(LIBRARY_SECTIONS, childId, 'works').id;
+    return sectionById(LIBRARY_SECTIONS, childId.split(':')[0], 'works').id;
 }
 
 export function normalizeRuntimeSection(route) {

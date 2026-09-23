@@ -251,6 +251,8 @@ export function createAtriaWorkspaceHost({
     let lastRouteSignature = JSON.stringify(navigation.getRoute());
     const commandDisposers = [];
     let productSearch = null;
+    const refreshSearchOnOpen = () => { void productSearch?.refresh?.().catch(error => console.warn('[atria-shell] Search refresh failed', error)); };
+    documentRef.addEventListener('atria-command-open', refreshSearchOnOpen);
 
     function contextState() {
         return navigation.getContext?.() || {
@@ -266,7 +268,7 @@ export function createAtriaWorkspaceHost({
             : descriptor.kind === 'build'
                 ? translateShellText('Build projects and exact World / Knowledge dependencies use ProjectStore authority.')
                 : descriptor.kind === 'library'
-                    ? formatShellText('Library / ${0} uses Native Package, World and Knowledge authorities; Skills keep their existing manager.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.library')
+                    ? formatShellText('Library / ${0} uses exact Native Package, World, Knowledge, Prompt and Generation resources.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.library')
                     : descriptor.kind === 'runtime'
                         ? formatShellText('Runtime / ${0} uses Native routes and exact model, connection, Generation and Prompt resources.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.nativeRuntime')
                         : descriptor.kind === 'diagnostics'
@@ -503,6 +505,13 @@ export function createAtriaWorkspaceHost({
         );
     }
 
+    function openLibraryResource(ref, label = '') {
+        const sections = { 'core.prompt-program': 'prompt-programs', 'core.prompt-module': 'prompt-modules', 'core.generation-profile': 'generation-profiles' };
+        const section = sections[ref?.resourceType];
+        if (!section || !ref.resourceId || !ref.revision) return false;
+        return openLibraryDetail(section + ':' + encodeURIComponent(JSON.stringify(ref)), label || ref.resourceId, 'detail', 'workspace-library-resource');
+    }
+
     function openRuntimeSection(section = 'routes', resourceId = '') {
         const requestedId = String(section || 'routes').trim().toLowerCase();
         // Retrieval used to be a duplicate Runtime tab pointing at the same
@@ -664,7 +673,7 @@ export function createAtriaWorkspaceHost({
         else if (target.closest?.('#extensions-settings-button')) openUtility('plugins');
         else if (target.closest?.('#user-settings-button')) openUtility('settings');
         else if (target.matches?.('[data-atria-action="manage-skills"]')) openLibrarySection('skills');
-        else if (target.id === 'leftNavDrawerIcon') openRuntimeSection('presets');
+        else if (target.id === 'leftNavDrawerIcon') openLibrarySection('prompt-programs');
         else openRuntimeSection('connections');
     }
 
@@ -676,6 +685,7 @@ export function createAtriaWorkspaceHost({
         openLibraryWork,
         openLibraryWorld,
         openLibraryKnowledge,
+        openLibraryResource,
         openRuntimeSection,
         openBuild,
         openWorldInfo,
@@ -691,6 +701,7 @@ export function createAtriaWorkspaceHost({
             disposed = true;
             sequence += 1;
             documentRef.removeEventListener('click', onLegacyClick, true);
+            documentRef.removeEventListener('atria-command-open', refreshSearchOnOpen);
             unsubscribeNavigation?.();
             productSearch?.dispose?.();
             productSearch = null;
@@ -789,19 +800,11 @@ export function createAtriaWorkspaceHost({
         }),
         shell.registry.register({
             id: 'workspace.runtime-overview',
-            title: translateShellText('Open Runtime Overview'),
-            description: translateShellText('Open current runtime health and routing projection'),
-            group: translateShellText('Workspaces'),
-            keywords: ['runtime', 'overview', 'health'],
-            run: () => openRuntimeSection('overview'),
-        }),
-        shell.registry.register({
-            id: 'workspace.runtime-roles',
             title: translateShellText('Open Runtime Routes'),
             description: translateShellText('Configure Native model and prompt routes'),
             group: translateShellText('Workspaces'),
-            keywords: ['runtime', 'roles', 'narrator', 'intent'],
-            run: () => openRuntimeSection('roles'),
+            keywords: ['runtime', 'overview', 'health'],
+            run: () => openRuntimeSection('routes'),
         }),
         shell.registry.register({
             id: 'workspace.connections',
@@ -812,13 +815,17 @@ export function createAtriaWorkspaceHost({
             run: () => openRuntimeSection('connections'),
         }),
         shell.registry.register({
-            id: 'workspace.presets',
+            id: 'workspace.generation-profiles',
             title: translateShellText('Open Generation Profiles'),
             description: translateShellText('Edit Native Generation resources'),
             group: translateShellText('Workspaces'),
-            keywords: ['runtime', 'presets', 'prompts'],
-            run: () => openRuntimeSection('presets'),
+            keywords: ['library', 'generation', 'profiles'],
+            run: () => openLibrarySection('generation-profiles'),
         }),
+        ...[['prompt-programs', 'Prompt Programs'], ['prompt-modules', 'Prompt Modules']].map(([id, title]) => shell.registry.register({
+            id: 'workspace.' + id, title: translateShellText(title), group: translateShellText('Library'),
+            keywords: ['library', 'prompt', id], run: () => openLibrarySection(id),
+        })),
         shell.registry.register({
             id: 'workspace.world-info',
             title: translateShellText('Open World Info Workspace'),

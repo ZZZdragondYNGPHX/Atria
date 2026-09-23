@@ -98,8 +98,8 @@ requirePattern(
 );
 requirePattern(
     'public/scripts/atria-shell/utility-workspaces.js',
-    /atriaSettingsCompatibility/,
-    'A6 Settings must isolate compatibility controls under Advanced',
+    /PREFERENCE_CONTROLS[\s\S]*atriaSettingsCompatibility = 'preferences-only'/,
+    'P7 A6 Settings must allowlist preferences and keep only appearance controls under Advanced',
 );
 requirePattern(
     'public/scripts/atria-shell/utility-workspaces.js',

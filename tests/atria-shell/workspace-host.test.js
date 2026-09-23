@@ -417,8 +417,8 @@ describe('R7G WorkspaceHost', () => {
         presets.click();
         await flushWorkspace();
         expect(navigation.getRoute()).toMatchObject({
-            domain: 'runtime',
-            child: { id: 'profiles' },
+            domain: 'library',
+            child: { id: 'prompt-programs' },
         });
 
         const skills = document.createElement('button');

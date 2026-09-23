@@ -45,3 +45,21 @@ export function streamFirstPartyGeneration(context, role, options = {}) {
     })();
     return { stream, result };
 }
+
+// Non-Native authoring affordances only. Native product identity never resolves a name.
+export function nativePromptUiActive() {
+    return nativeGenerationActive() || globalThis.document?.body?.dataset?.atriaShellMounted === 'true';
+}
+
+export function legacyPromptManager(context) {
+    return nativePromptUiActive() ? null : context?.getPresetManager?.('openai');
+}
+
+export function legacyPromptNames(context) {
+    const names = legacyPromptManager(context)?.getAllPresets?.();
+    return Array.isArray(names) ? [...new Set(names.map(name => String(name || '').trim()).filter(Boolean))] : [];
+}
+
+export function nativeRouteOptions() {
+    return '<option value="" disabled selected>Native Runtime route — configure in Runtime</option>';
+}

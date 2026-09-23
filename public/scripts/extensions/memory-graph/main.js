@@ -1,3 +1,4 @@
+import { legacyPromptNames, nativePromptUiActive, nativeRouteOptions } from '../../native/generation-compat.js';
 import { isNativeGenerationFailure, executeFirstPartyGeneration, firstPartyGenerationAvailable } from '../../native/generation-compat.js';
 import { nativeGenerationActive } from '../../native/generation-client.js';
 // SPDX-License-Identifier: AGPL-3.0-or-later
@@ -1065,19 +1066,10 @@ function escapeHtml(value) {
         .replaceAll('\'', '&#39;');
 }
 
-function getOpenAIPresetNames(context) {
-    const manager = context.getPresetManager?.('openai');
-    if (!manager || typeof manager.getAllPresets !== 'function') {
-        return [];
-    }
-    const names = manager.getAllPresets();
-    if (!Array.isArray(names)) {
-        return [];
-    }
-    return [...new Set(names.map(name => String(name || '').trim()).filter(Boolean))];
-}
+function getOpenAIPresetNames(context) { return legacyPromptNames(context); }
 
 function renderOpenAIPresetOptions(context, selectedName = '') {
+    if (nativePromptUiActive()) return nativeRouteOptions();
     const selected = String(selectedName || '').trim();
     const names = getOpenAIPresetNames(context);
     const options = [`<option value="">${escapeHtml(i18n('(Current preset)'))}</option>`];
@@ -1091,10 +1083,11 @@ function renderOpenAIPresetOptions(context, selectedName = '') {
 }
 
 function getConnectionProfiles() {
-    return getChatCompletionConnectionProfiles();
+    return nativePromptUiActive() ? [] : getChatCompletionConnectionProfiles();
 }
 
 function renderConnectionProfileOptions(selectedName = '') {
+    if (nativePromptUiActive()) return nativeRouteOptions();
     const selected = String(selectedName || '').trim();
     const names = getConnectionProfiles().map(profile => profile.name);
     const options = [`<option value="">${escapeHtml(i18n('(Current API config)'))}</option>`];

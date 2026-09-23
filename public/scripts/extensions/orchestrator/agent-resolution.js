@@ -1,3 +1,4 @@
+import { legacyPromptNames, nativePromptUiActive, nativeRouteOptions } from '../../native/generation-compat.js';
 /**
  * Agent / preset / connection-profile resolution for the orchestrator.
  *
@@ -97,19 +98,10 @@ function escapeHtml(value) {
         .replaceAll('\'', '&#39;');
 }
 
-export function getOpenAIPresetNames(context) {
-    const manager = context?.getPresetManager?.('openai');
-    if (!manager || typeof manager.getAllPresets !== 'function') {
-        return [];
-    }
-    const names = manager.getAllPresets();
-    if (!Array.isArray(names)) {
-        return [];
-    }
-    return [...new Set(names.map(name => String(name || '').trim()).filter(Boolean))];
-}
+export function getOpenAIPresetNames(context) { return legacyPromptNames(context); }
 
 export function renderOpenAIPresetOptions(context, selectedName = '', emptyLabel = i18n('(Current preset)')) {
+    if (nativePromptUiActive()) return nativeRouteOptions();
     const selected = String(selectedName || '').trim();
     const globalNames = getOpenAIPresetNames(context);
     const character = context?.characters?.[context?.characterId];
@@ -158,7 +150,7 @@ export function renderOpenAIPresetOptions(context, selectedName = '', emptyLabel
 }
 
 export function getConnectionProfiles() {
-    return getChatCompletionConnectionProfiles();
+    return nativePromptUiActive() ? [] : getChatCompletionConnectionProfiles();
 }
 
 export function sanitizeConnectionProfileName(value = '') {
@@ -228,6 +220,7 @@ export function sanitizeConnectionProfilesForAiPrompt(profiles = getConnectionPr
  * @returns {{local_global: string[], card_bound: string[]}}
  */
 export function sanitizeOpenAIPresetNamesForAiPrompt(context) {
+    if (nativePromptUiActive()) return { local_global: [], card_bound: [] };
     const flatNames = getOpenAIPresetNames(context);
     const character = context?.characters?.[context?.characterId];
     const cardList = character ? listCardBoundPresets(character) : [];
@@ -238,6 +231,7 @@ export function sanitizeOpenAIPresetNamesForAiPrompt(context) {
 }
 
 export function buildAgentApiRoutingPromptData(settings = extension_settings[MODULE_NAME]) {
+    if (nativePromptUiActive()) return { runtime_authority: 'Native Runtime', role: 'role.orchestrator', policy: 'Use exact player Runtime routes. Do not author legacy preset names or Connection settings.' };
     return {
         global_orchestration_api_preset: sanitizeConnectionProfileName(settings?.llmNodeApiPresetName || ''),
         empty_value_behavior: 'Empty apiPresetName falls back to the global orchestration API preset. If that is also empty, runtime uses the current chat API configuration.',
@@ -247,6 +241,7 @@ export function buildAgentApiRoutingPromptData(settings = extension_settings[MOD
 }
 
 export function buildAgentPromptPresetRoutingPromptData(context, settings = extension_settings[MODULE_NAME]) {
+    if (nativePromptUiActive()) return { runtime_authority: 'Native Runtime', role: 'role.orchestrator', policy: 'Use exact player Runtime routes. Do not author legacy preset names or Connection settings.' };
     const split = sanitizeOpenAIPresetNamesForAiPrompt(context);
     return {
         global_orchestration_prompt_preset: sanitizePromptPresetName(settings?.llmNodePresetName || ''),
@@ -325,6 +320,7 @@ export function resolveOrchestrationAgentPromptPresetName(settings, preset = nul
 }
 
 export function renderConnectionProfileOptions(selectedName = '', emptyLabel = i18n('(Current API config)')) {
+    if (nativePromptUiActive()) return nativeRouteOptions();
     const selected = sanitizeConnectionProfileName(selectedName);
     const names = getConnectionProfiles().map(profile => profile.name);
     const options = [`<option value="">${escapeHtml(String(emptyLabel || i18n('(Current API config)')))}</option>`];

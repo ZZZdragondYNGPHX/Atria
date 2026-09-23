@@ -1,3 +1,4 @@
+import { translateShellText } from '../atria-shell/localization.js';
 import { runtimeRequest, runtimeRemediation, getRuntimeEvidence } from './runtime-client.js';
 import { nativeSessionRuntime } from './session-runtime.js';
 
@@ -15,7 +16,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     root.className = 'atri-runtime'; root.dataset.atriaRuntimeNative = section;
     body.replaceChildren(root);
     function node(tag, text, parent = root) {
-        const el = doc.createElement(tag); if (text !== undefined) el.textContent = text;
+        const el = doc.createElement(tag); if (text !== undefined) el.textContent = tag === 'pre' ? text : translateShellText(text);
         parent?.append(el); return el;
     }
     function button(text, action, parent = root) {
@@ -32,7 +33,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     function field(parent, label, value = '', options) {
         const wrap = node('label', label, parent);
         const input = node(options ? 'select' : 'input', undefined, wrap);
-        input.setAttribute('aria-label', label);
+        input.setAttribute('aria-label', translateShellText(label));
         if (options) {
             for (const [key, title] of options) { const opt = node('option', title, input); opt.value = key; }
             if (value && !options.some(([key]) => key === String(value))) { const opt = node('option', String(value) + ' (retained)', input); opt.value = value; }
@@ -59,7 +60,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     function renderList() {
         activeEditor = null; root.onkeydown = null; restoreShell(); body.append(root); root.replaceChildren(); delete root.dataset.editor;
         root.removeAttribute('role'); root.removeAttribute('aria-modal');
-        heading(section[0].toUpperCase() + section.slice(1), {
+        heading(translateShellText(section[0].toUpperCase() + section.slice(1)), {
             routes: 'Choose how each role runs. Every route binds a model, connection and exact Generation and Prompt resources.',
             connections: 'Provider endpoints and exact Secret references. Credentials stay in the existing Secret store.',
             models: 'Remote model identity, context limits and capability provenance.',
@@ -86,7 +87,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             if (!items.length) notice(data[section].length ? 'No matching results.' : 'No ' + section + ' yet. Create one to get started.', list);
             for (const item of items) {
                 const row = node('article', undefined, list); row.className = 'atri-runtime-row';
-                const text = node('div', undefined, row); node('h3', item.displayName, text); node('p', summary(item), text);
+                const text = node('div', undefined, row); node('h3', undefined, text).textContent = item.displayName; node('p', summary(item), text);
                 button('Edit ' + item.displayName, () => edit(item), row);
             }
         }
@@ -99,7 +100,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         if (globalThis.matchMedia?.('(max-width: 700px)').matches) {
             const shell = doc.querySelector('.atria-app-shell');
             if (shell) { const inert = shell.inert; shell.inert = true; restoreShell = () => { shell.inert = inert; restoreShell = () => {}; }; }
-            doc.body.append(root); root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', 'Runtime editor');
+            doc.body.append(root); root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-label', translateShellText('Runtime editor'));
         }
         const back = button('Back to ' + section, () => { renderList(); root.querySelector('input')?.focus(); });
         const title = node('h2', (original ? 'Edit ' : 'New ') + section.replace(/s$/, '')); title.tabIndex = -1;

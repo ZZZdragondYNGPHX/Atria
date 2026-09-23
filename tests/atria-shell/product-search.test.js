@@ -30,7 +30,7 @@ describe('A6 Product Search', () => {
             }]),
         };
 
-        const index = createProductSearchIndex({ registry, host, productClient, loadRuntime: async () => ({ models: [{ modelProfileId: 'model_1', displayName: 'Moon Model' }] }) });
+        const index = createProductSearchIndex({ registry, host, productClient, loadResources: async () => [], loadRuntime: async () => ({ models: [{ modelProfileId: 'model_1', displayName: 'Moon Model' }] }) });
         await index.refresh();
 
         const results = registry.search('moon');
@@ -54,4 +54,15 @@ describe('A6 Product Search', () => {
         index.dispose();
         expect(registry.search('moon')).toEqual([]);
     });
+});
+
+
+test('P7 search keeps duplicate resource names and exact owners separate, routing only to Library detail', async () => {
+    const registry = createCommandRegistry(); const host = { openLibraryResource: jest.fn() };
+    const refs = ['r1', 'r2'].map(revision => ({ scope: 'library', resourceType: 'core.prompt-program', resourceId: 'pprog_1', revision }));
+    refs.push({ ...refs[0], scope: 'package', packageId: 'pkg_1', packageVersionId: 'pkgv_1' });
+    const index = createProductSearchIndex({ registry, host, productClient: { listWorks: async () => [], listWorlds: async () => [], listKnowledge: async () => [], listProjects: async () => [] }, loadRuntime: async () => ({}), loadResources: async () => refs.map(ref => ({ ref, resource: { displayName: 'Same Prompt' } })) });
+    await index.refresh(); const results = registry.search('Same Prompt'); expect(results).toHaveLength(3);
+    for (const result of results) await registry.execute(result.id);
+    expect(host.openLibraryResource.mock.calls.map(call => call[0])).toEqual(expect.arrayContaining(refs)); index.dispose();
 });

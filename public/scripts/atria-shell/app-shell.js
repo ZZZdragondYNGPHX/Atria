@@ -433,6 +433,7 @@ export function createAtriaAppShell({
         if (commandOpen) return false;
         commandOpen = true;
         commandSurface.hidden = false;
+        documentRef.dispatchEvent(new windowRef.CustomEvent('atria-command-open'));
         renderCommands();
         queueMicrotask(() => commandInput.focus());
         return true;

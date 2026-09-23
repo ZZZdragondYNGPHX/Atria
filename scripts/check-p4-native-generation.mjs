@@ -12,18 +12,13 @@ const paths = ['public/scripts/native', 'public/scripts/extensions/game-runtime'
     'public/scripts/extensions/memory-graph', 'public/scripts/extensions/search-tools'].flatMap(walk);
 paths.push('public/scripts/lib/iter-tool-calling.js');
 const compatibility = 'public/scripts/native/generation-compat.js';
-const presetUi = new Set([
-    'public/scripts/extensions/orchestrator/agent-resolution.js',
-    'public/scripts/extensions/orchestrator/prompt-embed-unembedded.js',
-    'public/scripts/extensions/memory-graph/main.js',
-    'public/scripts/extensions/search-tools/main.js',
-]);
+
 const forbidden = /\b(?:context|ctx|atriaContext)\s*(?:\?\.|\.)\s*generateTask(?:Stream)?\s*\(|buildPresetAwarePromptMessages\s*\(|connectionProfiles\s*\.\s*resolve\s*\(/;
 for (const path of paths) {
     const source = read(path).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
     if (path !== compatibility && forbidden.test(source)) throw new Error('P4 legacy generation residual: ' + path);
     const presetCalls = source.match(/getPresetManager\s*(?:\?\.)?\s*\(/g) || [];
-    if (presetCalls.length > (presetUi.has(path) ? 1 : 0)) throw new Error('P4 unlisted legacy preset authority: ' + path);
+    if (presetCalls.length > (path === compatibility ? 1 : 0)) throw new Error('P4 unlisted legacy preset authority: ' + path);
 }
 requirePattern(compatibility, /!nativeGenerationActive\(\) && !options\.nativeSource/);
 requirePattern(compatibility, /executeNativeGeneration\(/);
