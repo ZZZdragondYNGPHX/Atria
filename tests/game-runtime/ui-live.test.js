@@ -40,21 +40,21 @@ function resourceFetch(resources) {
             ok: true,
             status: 200,
             async json() {
-                return structuredClone(resources[path]);
+                return JSON.parse(JSON.stringify(resources[path]));
             },
         };
     });
 }
 
 function worldSession(initial = {}) {
-    let world = structuredClone(initial);
+    let world = JSON.parse(JSON.stringify(initial));
     return {
-        getState: () => structuredClone(world),
+        getState: () => JSON.parse(JSON.stringify(world)),
         async dispatchCommandInternal(commandId, args) {
             if (commandId === 'damage') {
                 world = { ...world, hp: Number(world.hp || 0) - Number(args.amount || 0) };
             }
-            return { status: 'committed', afterState: structuredClone(world) };
+            return { status: 'committed', afterState: JSON.parse(JSON.stringify(world)) };
         },
         simulateCommandInternal: jest.fn(async () => ({ status: 'simulated' })),
     };
