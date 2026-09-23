@@ -7,6 +7,16 @@ describe('SkillScope helpers', () => {
             expect(encodeScopePath({ kind: 'global' })).toBe('global');
         });
 
+        test('encodes Native project/package scopes', () => {
+            expect(encodeScopePath({ kind: 'project', projectId: 'project_abc' }))
+                .toBe('project/project_abc');
+            expect(encodeScopePath({
+                kind: 'package',
+                packageId: 'pkg_abc',
+                packageVersionId: 'pkgv_def',
+            })).toBe('package/pkg_abc/pkgv_def');
+        });
+
         test('encodes preset (name only — apiId is intentionally not part of the key)', () => {
             expect(encodeScopePath({ kind: 'preset', name: 'claude-rp-4' }))
                 .toBe('preset/claude-rp-4');
@@ -49,6 +59,13 @@ describe('SkillScope helpers', () => {
     describe('decodeScopePath', () => {
         test('round-trips global', () => {
             expect(decodeScopePath('global')).toEqual({ kind: 'global' });
+        });
+
+        test('round-trips Native project/package scopes', () => {
+            expect(decodeScopePath('project/project_abc'))
+                .toEqual({ kind: 'project', projectId: 'project_abc' });
+            expect(decodeScopePath('package/pkg_abc/pkgv_def'))
+                .toEqual({ kind: 'package', packageId: 'pkg_abc', packageVersionId: 'pkgv_def' });
         });
 
         test('round-trips preset', () => {
@@ -97,6 +114,12 @@ describe('SkillScope helpers', () => {
     describe('isValidScope', () => {
         test('accepts valid', () => {
             expect(isValidScope({ kind: 'global' })).toBe(true);
+            expect(isValidScope({ kind: 'project', projectId: 'project_abc' })).toBe(true);
+            expect(isValidScope({
+                kind: 'package',
+                packageId: 'pkg_abc',
+                packageVersionId: 'pkgv_def',
+            })).toBe(true);
             expect(isValidScope({ kind: 'preset', name: 'b' })).toBe(true);
             expect(isValidScope({ kind: 'character', characterFile: 'x.png' })).toBe(true);
         });
@@ -111,6 +134,12 @@ describe('SkillScope helpers', () => {
     describe('scopeLabel', () => {
         test('formats human-readable labels', () => {
             expect(scopeLabel({ kind: 'global' })).toBe('global');
+            expect(scopeLabel({ kind: 'project', projectId: 'project_abc' })).toBe('project:project_abc');
+            expect(scopeLabel({
+                kind: 'package',
+                packageId: 'pkg_abc',
+                packageVersionId: 'pkgv_def',
+            })).toBe('package:pkg_abc@pkgv_def');
             expect(scopeLabel({ kind: 'preset', name: 'rp' })).toBe('preset:rp');
             expect(scopeLabel({ kind: 'character', characterFile: 'alice.png' })).toBe('character:alice.png');
         });

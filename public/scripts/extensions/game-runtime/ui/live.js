@@ -1,4 +1,5 @@
 import { loadGameSelectorDefinitions } from './declarative.js';
+import { createPackageRuntimeContributionRegistry } from './plugin-contributions.js';
 import { createFullGameHost } from './full-host.js';
 import { createAtriaSurfaceAdapter } from './host-surfaces.js';
 import { loadGameComponentDefinition } from './package.js';
@@ -8,13 +9,16 @@ import { createSurfaceHost } from './surfaces.js';
 
 const EXPERIENCE_MODES = new Set(['text', 'component', 'hybrid', 'full']);
 
-function createTextExperienceSession() {
+function createTextExperienceSession(contributions) {
     let disposed = false;
     return Object.freeze({
         mode: 'text',
         status: 'active',
         mountId: null,
         recoveryActive: false,
+        getContributions(query = {}) {
+            return contributions.list(query);
+        },
         refresh() {
             return [];
         },
@@ -32,9 +36,11 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
         throw new Error(`Unsupported Native Experience mode '${mode}'`);
     }
 
+    const contributions = createPackageRuntimeContributionRegistry(packageState?.runtime?.plugins || []);
+
     // Text remains the A3 host ABI. It participates in the same Experience
     // dispatcher, but A4 does not replace Native Conversation / Composer.
-    if (mode === 'text') return createTextExperienceSession();
+    if (mode === 'text') return createTextExperienceSession(contributions);
 
     const documentRef = options.document || globalThis.document;
     if (!documentRef) {
@@ -43,10 +49,13 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
 
     const shellFoundation = options.shell || globalThis.Atria?.shell || null;
     const nativePlayHost = options.nativePlayHost || shellFoundation?.getPlayHost?.() || null;
-    const selectorDefinitions = await loadGameSelectorDefinitions(packageState, {
-        fetchImpl: options.fetchImpl,
-        headers: options.headers || {},
-    });
+    const selectorDefinitions = [
+        ...await loadGameSelectorDefinitions(packageState, {
+            fetchImpl: options.fetchImpl,
+            headers: options.headers || {},
+        }),
+        ...contributions.selectorDefinitions(),
+    ];
 
     const isFull = mode === 'full';
     const adapter = isFull ? null : createAtriaSurfaceAdapter(documentRef, {
@@ -138,6 +147,9 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
         },
         get recoveryActive() {
             return fullHost?.isActive?.() || false;
+        },
+        getContributions(query = {}) {
+            return contributions.list(query);
         },
         refresh() {
             return componentRuntime.refreshSelectors();

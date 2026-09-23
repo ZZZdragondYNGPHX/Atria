@@ -1,0 +1,88 @@
+name: Native Authoring Platform A5 Checks
+
+on:
+  push:
+    branches:
+      - refactor/atria-native-authoring-platform-product-frontend
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-authoring-a5-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  a5-plugin-skill:
+    name: A5 Plugin & Skill Platform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install root dependencies
+        run: npm ci --ignore-scripts
+      - name: Build SQLite native binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests
+      - name: Run A5 focused and adjacent Native regressions
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          native/plugin-platform.test.js
+          native/plugin-build-play.test.js
+          native/native-skill-platform.test.js
+          native/authoring-contracts.test.js
+          native/resource-registry.test.js
+          native/runtime-descriptor.test.js
+          native/project-composition.test.js
+          native/package-build-install.test.js
+          native/studio-service.test.js
+          native/session-core.contract.test.js
+          native/session-projection.test.js
+          game-runtime/plugin-contributions.test.js
+          game-runtime/ui-live.test.js
+          game-runtime/ui-package.test.js
+          game-runtime/ui-component-model.test.js
+          skills/scope.test.js
+      - name: Run A5 residual guard
+        run: node scripts/check-a5-plugin-skill-platform.mjs
+      - name: Check A5 guard syntax
+        run: node --check scripts/check-a5-plugin-skill-platform.mjs
+      - name: Run frozen A0/A1/A2/A3/A4 guards
+        run: |
+          node scripts/check-a0-native-authoring-hard-cutover.mjs
+          node scripts/check-a1-native-authoring-backend.mjs
+          node scripts/check-a2-library-resource-architecture.mjs
+          node scripts/check-a3-native-game-runtime-cutover.mjs
+          node scripts/check-a4-experience-runtime.mjs
+      - name: Run A5 focused lint
+        run: >-
+          npx eslint
+          src/native/authoring-contracts.js
+          src/native/plugin-platform.js
+          src/native/host-plugin-loader.js
+          src/native/package-composition.js
+          src/native/runtime-descriptor.js
+          src/native/skill-platform.js
+          src/native/index.js
+          src/skills/scope.js
+          src/skills/repository.js
+          public/scripts/extensions/orchestrator/skill-resolution.js
+          public/scripts/extensions/game-runtime/ui/plugin-contributions.js
+          public/scripts/extensions/game-runtime/ui/live.js
+          tests/native/plugin-platform.test.js
+          tests/native/plugin-build-play.test.js
+          tests/native/native-skill-platform.test.js
+          tests/game-runtime/plugin-contributions.test.js
+          tests/skills/scope.test.js
+      - name: Run full root lint
+        run: npm run lint
