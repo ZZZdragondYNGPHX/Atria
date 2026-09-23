@@ -271,26 +271,26 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
         controller.dispose();
     });
 
-    test('Studio lists ProjectStore projects and saves exact World/Knowledge/Binding dependencies', async () => {
+    test('Build lists ProjectStore projects and saves exact World/Knowledge/Binding dependencies', async () => {
         const slot = document.getElementById('slot');
-        const host = { openStudio: jest.fn() };
+        const host = { openBuild: jest.fn() };
         const controller = mountNativeStudioWorkspace({
             document,
             slot,
-            route: { domain: 'studio', child: null },
+            route: { domain: 'build', child: null },
             host,
         });
         await flush();
 
-        expect(slot.querySelector('[data-atria-studio-projects="true"]')).not.toBeNull();
-        slot.querySelector('[data-atria-studio-project-id] button').click();
-        expect(host.openStudio).toHaveBeenCalledWith(
+        expect(slot.querySelector('[data-atria-build-projects="true"]')).not.toBeNull();
+        slot.querySelector('[data-atria-build-project-id] button').click();
+        expect(host.openBuild).toHaveBeenCalledWith(
             'project_11111111111111111111111111111111',
             'Native Project',
         );
 
         controller.updateRoute({
-            domain: 'studio',
+            domain: 'build',
             child: {
                 id: 'project:project_11111111111111111111111111111111',
                 kind: 'detail',
@@ -298,7 +298,7 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
         });
         await flush();
 
-        expect(slot.querySelector('[data-atria-studio-project-detail]')).not.toBeNull();
+        expect(slot.querySelector('[data-atria-build-project-detail]')).not.toBeNull();
         const worldRow = slot.querySelector('[data-atria-dependency-kind="world"]');
         const knowledgeRow = slot.querySelector('[data-atria-dependency-kind="knowledge"]');
         expect(worldRow.querySelector('input').checked).toBe(true);
