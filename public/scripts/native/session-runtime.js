@@ -197,6 +197,53 @@ export class NativeSessionRuntime {
         });
     }
 
+    commitStatePatch(statePatch = {}, { deleteNamespaces = [] } = {}) {
+        this.assertWritable();
+        if (!statePatch || typeof statePatch !== 'object' || Array.isArray(statePatch)) {
+            throw new TypeError('Native runtime state patch must be an object');
+        }
+        if (!Array.isArray(deleteNamespaces)) {
+            throw new TypeError('Native runtime deleteNamespaces must be an array');
+        }
+        const patch = Object.fromEntries(
+            Object.entries(statePatch).map(([namespace, value]) => [
+                normalizeNativeStateNamespace(namespace),
+                copy(value),
+            ]),
+        );
+        const deletes = deleteNamespaces.map(normalizeNativeStateNamespace);
+        const sessionId = this.snapshot.session.sessionId;
+        return this._queue(async () => {
+            this.assertWritable();
+            if (this.snapshot.session.sessionId !== sessionId) {
+                this._failBarrier(committedTimelineMutation('Native Session changed during a queued state write'));
+            }
+            if (Object.keys(patch).length === 0 && deletes.length === 0) return this.snapshot;
+            const previous = this.snapshot;
+            try {
+                const next = await this.request('command', {
+                    sessionId,
+                    expectedRevisionId: previous.revision.revisionId,
+                    command: {
+                        type: 'runtime',
+                        statePatch: patch,
+                        deleteNamespaces: deletes,
+                    },
+                });
+                this.snapshot = next;
+                this._clearStagedStates([...Object.keys(patch), ...deletes]);
+                this.host?.revision?.(projectNativeSession(next));
+                await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, {
+                    stateNamespaces: Object.keys(patch),
+                    deletedStateNamespaces: deletes,
+                });
+                return next;
+            } catch (error) {
+                throw this._report(error, { fatal: true });
+            }
+        });
+    }
+
     deleteState(namespace) {
         this.assertWritable();
         const key = normalizeNativeStateNamespace(namespace);
@@ -595,6 +642,28 @@ export class NativeSessionRuntime {
             });
         }
         return true;
+    }
+
+    async forkRevision(revisionId = this.snapshot?.revision?.revisionId, { displayName } = {}) {
+        this.assertWritable();
+        await this.persist();
+        const previous = this.snapshot;
+        const next = await this.request('command', {
+            sessionId: previous.session.sessionId,
+            expectedRevisionId: previous.revision.revisionId,
+            command: {
+                type: 'fork',
+                revisionId,
+                ...(displayName === undefined ? {} : { displayName }),
+            },
+        });
+        this.snapshot = next;
+        this.history = false;
+        this.generation = null;
+        await this.host.install(projectNativeSession(next));
+        await this._emit(NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED, next, previous, { reason: 'runtime-attempt' });
+        await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { reason: 'runtime-attempt' });
+        return next;
     }
 
     async fork(index, { swipeId = null } = {}) {
