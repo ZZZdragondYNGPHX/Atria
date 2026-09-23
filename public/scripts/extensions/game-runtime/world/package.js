@@ -1,44 +1,44 @@
-import { loadGamePackageJsonResource } from '../package-loader.js';
 import { assertValidWorldState } from './schema.js';
 
-function isPlainObject(value) {
-    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+function clone(value) {
+    return value === undefined ? undefined : structuredClone(value);
 }
 
-export async function loadGameWorldDefinition(packageState, options = {}) {
-    const manifest = packageState?.manifest;
-    const world = manifest?.world;
-    if (!world) {
-        return null;
+export function loadGameWorldDefinition(packageState, options = {}) {
+    const snapshot = options.nativeRuntime?.snapshot ?? packageState?.snapshot;
+    if (!snapshot) throw new Error('Native Game World requires an active Native Session snapshot');
+
+    const stateRoot = snapshot.states?.atri_world_state;
+    if (!stateRoot || typeof stateRoot !== 'object') {
+        throw new Error('Native Session is missing atri_world_state');
     }
 
-    const charId = String(packageState?.charId || '').trim();
-    if (!charId) {
-        throw new Error('Game World cannot load without a character package id');
+    const requestedWorldId = packageState?.runtime?.primaryWorldId ?? stateRoot.primaryWorldId ?? null;
+    if (!requestedWorldId) {
+        const initialState = clone(stateRoot.initialState ?? {});
+        const schema = { type: 'object' };
+        assertValidWorldState(initialState, schema);
+        return Object.freeze({
+            worldId: null,
+            worldRevisionId: null,
+            schema,
+            baseline: clone(initialState),
+        });
     }
 
-    const shared = {
-        fetchImpl: options.fetchImpl,
-        headers: options.headers || {},
-    };
-    const [schema, initialState] = await Promise.all([
-        loadGamePackageJsonResource(charId, world.schema, shared),
-        loadGamePackageJsonResource(charId, world.initial, shared),
-    ]);
-
-    if (!isPlainObject(schema)) {
-        throw new Error('World schema must be a JSON object');
-    }
-    if (!isPlainObject(initialState)) {
-        throw new Error('World initial state must be a JSON object');
+    const packaged = snapshot.worlds?.find(item => item?.world?.worldId === requestedWorldId);
+    const slot = stateRoot.worlds?.[requestedWorldId];
+    if (!packaged || !slot || slot.worldRevisionId !== packaged.revision.worldRevisionId) {
+        throw new Error('Native Game World dependency does not match the Session PackageVersion');
     }
 
-    assertValidWorldState(initialState, schema);
-
-    return {
-        schema: structuredClone(schema),
-        initialState: structuredClone(initialState),
-        schemaPath: world.schema,
-        initialPath: world.initial,
-    };
+    const schema = clone(packaged.revision.schema ?? { type: 'object' });
+    const baseline = clone(packaged.revision.baseline ?? {});
+    assertValidWorldState(slot.state, schema);
+    return Object.freeze({
+        worldId: requestedWorldId,
+        worldRevisionId: packaged.revision.worldRevisionId,
+        schema,
+        baseline,
+    });
 }
