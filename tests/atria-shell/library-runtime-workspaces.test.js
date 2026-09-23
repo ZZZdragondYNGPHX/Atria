@@ -105,7 +105,7 @@ describe('N9 Library / Runtime domain adapters', () => {
 
         expect(normalizeRuntimeSection({ child: null })).toBe('overview');
         expect(normalizeRuntimeSection({ child: { id: 'retrieval' } })).toBe('connections');
-        expect(RUNTIME_SECTIONS.map(section => section.id)).toEqual(['overview', 'roles', 'connections', 'presets']);
+        expect(RUNTIME_SECTIONS.map(section => section.id)).toEqual(['overview', 'roles', 'connections', 'presets', 'capabilities']);
     });
 
     test('Works is the default Library authority and does not mount the Character controller', async () => {
@@ -128,6 +128,7 @@ describe('N9 Library / Runtime domain adapters', () => {
         });
         await flush();
 
+        expect(slot.querySelector('[data-atria-pattern="master-detail"]')).not.toBeNull();
         expect(slot.querySelector('[data-atria-native-library="works"]')).not.toBeNull();
         expect(slot.querySelector('[data-atria-native-works="true"]')).not.toBeNull();
         expect(slot.querySelector('[data-atria-work-id]')).not.toBeNull();
@@ -139,6 +140,42 @@ describe('N9 Library / Runtime domain adapters', () => {
             'pkg_11111111111111111111111111111111',
             'Native Work',
         );
+
+        controller.dispose();
+    });
+
+    test('Runtime Capabilities is a read-only projection of the active Native exact version', async () => {
+        const slot = document.getElementById('slot');
+        globalThis.Atria.nativeSessionRuntime = {
+            snapshot: {
+                packageVersion: { packageVersionId: 'pkgv_exact' },
+                manifest: {
+                    packageVersionId: 'pkgv_exact',
+                    capabilities: ['world.logic'],
+                    permissions: ['network'],
+                    runtime: {
+                        experience: { mode: 'component' },
+                        plugins: [{ pluginId: 'example.package-ui' }],
+                        skills: ['combat-writing'],
+                    },
+                },
+            },
+        };
+        const host = { openRuntimeSection: jest.fn() };
+        const controller = mountRuntimeDomainWorkspace({
+            document,
+            slot,
+            route: { domain: 'runtime', child: { id: 'capabilities' } },
+            host,
+        });
+        await flush();
+
+        const root = slot.querySelector('[data-atria-runtime-capabilities="true"]');
+        expect(root).not.toBeNull();
+        expect(root.textContent).toContain('component');
+        expect(root.textContent).toContain('pkgv_exact');
+        expect(root.textContent).toContain('example.package-ui');
+        expect(root.textContent).toContain('combat-writing');
 
         controller.dispose();
     });
