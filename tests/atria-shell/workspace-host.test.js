@@ -70,7 +70,7 @@ describe('R7G WorkspaceHost', () => {
         const records = [];
         const adapters = {
             agents: makeAdapter('agents', records),
-            studio: makeAdapter('studio', records),
+            build: makeAdapter('build', records),
             library: makeAdapter('library', records),
             runtime: makeAdapter('runtime', records),
             diagnostics: makeAdapter('diagnostics', records),
@@ -161,7 +161,7 @@ describe('R7G WorkspaceHost', () => {
         const records = [];
         const adapters = {
             agents: makeAdapter('agents', records),
-            studio: makeAdapter('studio', records),
+            build: makeAdapter('build', records),
             library: makeAdapter('library', records),
             runtime: makeAdapter('runtime', records),
             diagnostics: makeAdapter('diagnostics', records),
@@ -271,7 +271,7 @@ describe('R7G WorkspaceHost', () => {
             navigation,
             adapters: {
                 agents,
-                studio: makeAdapter('studio', records),
+                build: makeAdapter('build', records),
                 library: makeAdapter('library', records),
                 runtime: makeAdapter('runtime', records),
                 diagnostics: makeAdapter('diagnostics', records),
@@ -318,7 +318,7 @@ describe('R7G WorkspaceHost', () => {
         const records = [];
         const adapters = {
             agents: makeAdapter('agents', records),
-            studio: makeAdapter('studio', records),
+            build: makeAdapter('build', records),
             library: makeAdapter('library', records),
             runtime: makeAdapter('runtime', records),
             diagnostics: makeAdapter('diagnostics', records),
@@ -336,11 +336,11 @@ describe('R7G WorkspaceHost', () => {
         await flushWorkspace();
         const agentsController = records.find(item => item.kind === 'agents').controller;
 
-        host.openStudio('project_11111111111111111111111111111111', 'Project');
+        host.openBuild('project_11111111111111111111111111111111', 'Project');
         await flushWorkspace();
 
         expect(agentsController.dispose).toHaveBeenCalledTimes(1);
-        expect(host.getActiveWorkspace()?.key).toBe('studio');
+        expect(host.getActiveWorkspace()?.key).toBe('build');
         expect(navigation.getRoute().child?.id).toBe('project:project_11111111111111111111111111111111');
         expect(document.querySelectorAll('#chat')).toHaveLength(1);
         expect(document.querySelectorAll('#send_form')).toHaveLength(1);
@@ -370,7 +370,7 @@ describe('R7G WorkspaceHost', () => {
             navigation,
             adapters: {
                 agents: makeAdapter('agents', records),
-                studio: makeAdapter('studio', records),
+                build: makeAdapter('build', records),
                 library: makeAdapter('library', records),
                 runtime: makeAdapter('runtime', records),
                 diagnostics: makeAdapter('diagnostics', records),
@@ -482,7 +482,7 @@ describe('R7G WorkspaceHost', () => {
             navigation,
             adapters: {
                 agents: makeAdapter('agents', records),
-                studio: makeAdapter('studio', records),
+                build: makeAdapter('build', records),
                 library: makeAdapter('library', records),
                 runtime: makeAdapter('runtime', records),
                 diagnostics: makeAdapter('diagnostics', records),
@@ -493,10 +493,10 @@ describe('R7G WorkspaceHost', () => {
             },
         });
 
-        host.openStudio('project_22222222222222222222222222222222', 'Project');
+        host.openBuild('project_22222222222222222222222222222222', 'Project');
         await flushWorkspace();
         expect(navigation.getRoute()).toMatchObject({
-            domain: 'studio',
+            domain: 'build',
             child: { id: 'project:project_22222222222222222222222222222222', kind: 'detail' },
         });
 
