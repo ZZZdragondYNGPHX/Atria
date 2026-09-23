@@ -56,8 +56,9 @@ const commands = [
             },
         },
         execute({ args, world }) {
-            expect(Object.isFrozen(args)).toBe(true);
-            expect(Object.isFrozen(world)).toBe(true);
+            if (!Object.isFrozen(args) || !Object.isFrozen(world)) {
+                throw new Error('Game Logic command inputs must be frozen');
+            }
             return [{
                 type: 'DamageDealt',
                 payload: { amount: args.amount },
@@ -353,7 +354,7 @@ describe('Game Logic Runtime command transaction', () => {
     });
 
     test('zero-event command is a no-change transaction and does not write', async () => {
-        const { persistence, world, logic } = await makeRuntime();
+        const { persistence, logic } = await makeRuntime();
 
         const result = await logic.dispatch('noop', {});
 
