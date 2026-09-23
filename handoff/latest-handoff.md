@@ -1,10 +1,10 @@
-# Active checkpoint: Native Authoring Platform A3 complete; ready for A4
+# Active checkpoint: Native Authoring Platform A4 complete; ready for A5
 
 ## Status
 
-**Atria Native Authoring Platform & Product Frontend Refactor has completed A3 — Native Game Runtime Cutover.**
+**Atria Native Authoring Platform & Product Frontend Refactor has completed A4 — Experience Runtime.**
 
-Prior Native Content & Session Architecture N0–N10 remains complete and frozen. A0–A2 remain frozen and validated.
+Prior Native Content & Session Architecture N0–N10 remains complete and frozen. A0–A3 remain frozen and validated.
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Stable baseline: `main@fd9a493c9040b32f4892bd92531030e58b066244`
@@ -13,110 +13,123 @@ Prior Native Content & Session Architecture N0–N10 remains complete and frozen
 - A1 validated HEAD: `bf09c79e07204ee39303e52e89a3da3b2f7617da`
 - A2 validated HEAD: `8510e423a3faf492340fabc32a612d4796a875e3`
 - A3 validated HEAD: `ba1ba05e0cd53b0947be34bed62707a297d97ac2`
+- A4 validated HEAD: `b68e7ee930c869b5a8a118faf22ef4e38e35cb87`
 - Formal plan: `refactor/atria-native-authoring-platform-product-frontend.md`
 - Detailed handoff: `handoff/atria-native-authoring-platform-product-frontend.md`
-- Next phase: **A4 — Experience Runtime**
+- Next phase: **A5 — Plugin & Skill Platform**
 - Continue on the same implementation branch. Do not create a new branch and do not merge `main`.
 
-Formal plan design did not change during A3; no mechanical plan edit was required.
+Formal plan design did not change during A4; no mechanical plan edit was required.
 
-## A3 implemented
+## A4 implemented
 
-### Native Runtime Descriptor
+### Unified Native Experience Runtime
 
-A3 added a derived Runtime Descriptor compiler/resolver backed by exact Native Package authority:
+All four explicit Experience modes now activate from the A3 Native Runtime Descriptor:
 
-`PackageVersion + EntryPoint → Runtime Descriptor`
+- Text
+- Component
+- Hybrid
+- Full
 
-It preserves exact PackageVersion content identity and explicit Experience mode. Runtime Descriptor is never persisted as a competing package/runtime repository.
+Text remains the validated A3 Native Conversation/Composer host ABI.
 
-Native Session HTTP now exposes:
+Component / Hybrid / Full share one declarative Component Model and one UI runtime rather than separate engines.
 
-- `/api/native/session/runtime/resolve`
-- `/api/native/session/runtime/resource`
+### Shared Component Model
 
-Runtime resources resolve only from the exact PackageVersion pinned by the Session. The A3 runtime resource surface is declarative `.json` only and does not expose arbitrary package JavaScript execution.
+A4 added `public/scripts/extensions/game-runtime/ui/component-model.js`.
 
-### Game Runtime authority
+The shared model covers:
 
-The active A3 Text Runtime no longer depends on:
+- id / type;
+- props;
+- bindings;
+- actions;
+- visibility;
+- responsive behavior;
+- children;
+- Native Conversation / Composer slots for Hybrid / Full.
 
-- `game.json` / `GAME_MANIFEST_PATH`;
-- charId / Character package identity;
-- `/api/card-app/*` runtime loading;
-- swipe-derived Game World branch paths;
-- Chat State `atri_game_world`;
-- independent Game World branch/timeline persistence.
+Selectors, typed actions, responsive environment, surfaces and Native component mounting reuse the existing mature game-runtime UI algorithms.
 
-Mature algorithms remain reused: command registry/validation, declarative logic, formula, reducers, rules, deterministic RNG, interpretation, observation, LLM intent/event/narrative/orchestration, memory and turn-controller concepts.
+### Native package/runtime authority
 
-### Native World / Branch / Revision
+Component Model and selector resources are resolved only from the exact Session-bound PackageVersion through `/api/native/session/runtime/resource`.
 
-- exact packaged WorldRevision provides immutable schema/baseline;
-- current World state lives in SessionRevision `atri_world_state`;
-- game-domain event projection lives in SessionRevision `atri_game_runtime`;
-- World state + game event projection commit atomically through the Native runtime state path;
-- Session / Branch / SessionRevision remains the only history/branch authority.
+A4 does not restore:
 
-Game transactions and LLM Turn Context use Native `sessionId + branchId + revisionId` identity instead of floor/swipe branch identity.
+- `game.json`;
+- charId / Character runtime identity;
+- `/api/card-app/*`;
+- HTML package runtime entrypoints;
+- swipe-derived branches;
+- Chat State Game World authority;
+- arbitrary package JavaScript/module/worker/eval execution.
 
-Turn attempts/retries use real Native Branches.
+### Host modes
 
-### Text Experience
+Component keeps Atria Play as the main Host and mounts into semantic surfaces.
 
-Text Experience is now the A3 end-to-end runtime baseline.
+Hybrid owns Stage composition but reuses the exact live Native Conversation / Composer nodes through Native slots.
 
-The existing Conversation/Composer/generation machinery remains only as an internal host ABI. Normal Native Text user turns are committed through the Native Session write barrier, routed into Game Runtime, and resulting narrative is published back through Native Timeline authority.
+Full owns Stage visuals only. Host-owned recovery remains outside the package stage and provides Exit, Stop, Save and Diagnostics.
 
-Component / Hybrid / Full activation is deliberately deferred to A4.
+None of these modes owns Session / Branch / SessionRevision / Package / World authority.
 
-## A3 validation
+### Native Preview
 
-Validated at `ba1ba05e0cd53b0947be34bed62707a297d97ac2`.
+Studio Preview derives the same Runtime Descriptor / Experience projection for all four modes while remaining volatile and non-persistent. It creates no Session or Branch authority.
 
-### Native Authoring Platform A3 Checks #12
+## A4 validation
 
-- Run: **35805724557**
-- focused + adjacent Native regressions: **15 suites / 165 tests passed**
-- A3 Native Game Runtime residual guard: **success**
-- A3 guard syntax: **success**
-- frozen A0/A1/A2 guards: **success**
+Validated at `b68e7ee930c869b5a8a118faf22ef4e38e35cb87`.
+
+### Native Authoring Platform A4 Checks #8
+
+- Run: **35807675180**
+- focused + adjacent Native regressions: **28 suites / 210 tests passed**
+- A4 Experience Runtime residual guard: **success**
+- A4 guard syntax: **success**
+- frozen A0/A1/A2/A3 guards: **success**
 - focused ESLint: **success**
 - full root lint: **success**
 
-Frozen workflows on the same HEAD:
+Independent frozen workflows on the same HEAD:
 
-- **A0 Checks #61**, Run **35805724614** — **5 suites / 50 tests passed**, success.
-- **A1 Checks #48**, Run **35805724567** — **7 suites / 60 tests passed**, success.
-- **A2 Checks #46**, Run **35805724587** — **10 suites / 52 tests passed**, success.
+- **A0 Checks #89**, Run **35807675140** — success.
+- **A1 Checks #76**, Run **35807675151** — success.
+- **A2 Checks #74**, Run **35807675161** — success.
+- **A3 Checks #40**, Run **35807675147** — success.
 
 ## Key decisions
 
-- Runtime Descriptor is derived, not a second Package authority.
-- Native Session / Branch / SessionRevision remains runtime history/state authority.
-- WorldRevision is immutable definition/baseline; current World state is SessionRevision state.
-- Game-domain event projection is SessionRevision state, not a parallel Session timeline.
-- Existing mature algorithms are retained behind Native authority.
-- A3 activates Text only.
-- No compatibility alias, dual read/write, charId bridge, CardApp runtime bridge or swipe branch bridge was introduced.
+- Runtime Descriptor remains derived from exact PackageVersion + EntryPoint.
+- Native Session / Branch / SessionRevision remains runtime authority.
+- Component / Hybrid / Full use one shared Component Model.
+- Text is not reimplemented.
+- Hybrid/Full stage composition reuses Atria Play Host ownership.
+- Full visual ownership is not Host/Session authority.
+- package-runtime v1 remains declarative/capability-defined.
+- Native Preview remains non-persistent.
 - Formal plan remains unchanged.
 
 ## Explicitly not started
 
-A3 deliberately did not implement:
+A4 deliberately did not implement:
 
-- A4 shared Component Model;
-- Component surfaces;
-- Hybrid stage composition/native slots;
-- Full stage ownership/recovery;
-- A5 Plugin platform;
+- A5 Atria Plugin manifest/API;
+- A5 contribution registry / Host Plugin boundary;
+- A5 permission/dependency model;
+- A5 Native Skill integration;
 - A6 Product Frontend;
-- A7 Studio Authoring UX;
-- A8 Project Agent product workflow.
+- A7 Studio UX;
+- A8 Project Agent;
+- A9 final hard-cutover cleanup.
 
-## Next action — A4 only
+## Next action — A5 only
 
-Start **A4 — Experience Runtime** from the actual latest remote HEAD of the same implementation branch.
+Start **A5 — Plugin & Skill Platform** from the actual latest remote HEAD of the same implementation branch.
 
 Before editing, re-read:
 
@@ -127,20 +140,19 @@ Before editing, re-read:
 5. `docs:handoff/atria-native-authoring-platform-product-frontend.md`
 6. `src/native/authoring-contracts.js`
 7. `src/native/runtime-descriptor.js`
-8. `src/native/session-core.js`
-9. `public/scripts/native/session-runtime.js`
-10. A3 `public/scripts/extensions/game-runtime/` Text Runtime implementation
-11. existing Atria Play host / surface / structured UI runtime code relevant to Component / Hybrid / Full.
+8. A4 Experience Runtime under `public/scripts/extensions/game-runtime/ui/`
+9. current Native Skill / orchestration / extension contribution code relevant to Plugin & Skill integration.
 
-A4 must preserve A3's Native authority and Text baseline while implementing the frozen Experience Runtime:
+A5 must implement the frozen Plugin & Skill Platform:
 
-- shared Component Model;
-- Component semantic surfaces;
-- Hybrid stage composition/native slots;
-- Full stage ownership/recovery;
-- declarative/capability-defined package runtime only;
-- exact PackageVersion + EntryPoint and Native Session / Branch / SessionRevision identity.
+- Atria Plugin manifest/API;
+- contribution registry;
+- Host Plugin boundary;
+- declarative/capability-defined package-runtime v1;
+- permission/dependency model;
+- Native Skill scopes;
+- Build/Play contribution integration.
 
-Do not restore `game.json`, charId, CardApp runtime loading, swipe-derived Game World branches or Chat State Game World authority.
+Preserve A0–A4 authority. Do not introduce a competing Native persistence authority, do not permit arbitrary package JS in package-runtime v1, do not start A6/A7/A8 early, do not create a new branch, and do not merge `main`.
 
-Stop after A4 validation/handoff. Do not enter A5 early, do not create a new branch, and do not merge `main`.
+Stop after A5 validation/handoff.
