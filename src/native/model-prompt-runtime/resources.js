@@ -109,7 +109,7 @@ export function assertPackageVersionedModelPromptResourceEnvelope(value, {
     const keys = new Set(Object.keys(value));
     for (const key of keys) {
         if (!['resourceType', 'resource', 'origin'].includes(key)) {
-            throw new TypeError(field + " contains unsupported field '" + key + "'");
+            throw new TypeError(field + ' contains unsupported field \'\'' + key + '\'\'');
         }
     }
     const resource = assertVersionedModelPromptResource(value.resourceType, value.resource);
