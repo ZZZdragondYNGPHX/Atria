@@ -43,8 +43,8 @@ describe('A9 hard cutover acceptance', () => {
         const studio = read('public/scripts/native/studio-workspace.js');
         const agent = read('public/scripts/native/studio-agent.js');
 
-        expect(startup).toContain("app.use('/api/native/session'");
-        expect(startup).toContain("app.use('/api/native/studio'");
+        expect(startup).toContain('app.use(\'/api/native/session\'');
+        expect(startup).toContain('app.use(\'/api/native/studio\'');
         expect(runtime).toContain('/api/native/session/');
         expect(world).toContain('commitStatePatch');
         expect(studio).toContain('mountNativeStudioAgent');
