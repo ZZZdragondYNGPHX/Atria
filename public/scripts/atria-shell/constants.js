@@ -1,7 +1,7 @@
 export const ATRIA_PRIMARY_DOMAINS = Object.freeze([
     Object.freeze({ id: 'play', label: 'Play', icon: 'fa-solid fa-play' }),
     Object.freeze({ id: 'library', label: 'Library', icon: 'fa-solid fa-layer-group' }),
-    Object.freeze({ id: 'studio', label: 'Studio', icon: 'fa-solid fa-pen-ruler' }),
+    Object.freeze({ id: 'build', label: 'Build', icon: 'fa-solid fa-hammer' }),
     Object.freeze({ id: 'agents', label: 'Agents', icon: 'fa-solid fa-diagram-project' }),
     Object.freeze({ id: 'runtime', label: 'Runtime', icon: 'fa-solid fa-gauge-high' }),
 ]);
