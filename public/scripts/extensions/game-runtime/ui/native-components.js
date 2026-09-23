@@ -7,10 +7,10 @@ const NATIVE_COMPONENT_SET = new Set(GAME_NATIVE_COMPONENTS);
 
 function resolveNativeNode(documentRef, componentId) {
     if (componentId === 'conversation') {
-        return documentRef.getElementById('chat');
+        return documentRef.querySelector('[data-atria-native-product-component="conversation"]');
     }
     if (componentId === 'composer') {
-        return documentRef.getElementById('send_form');
+        return documentRef.querySelector('[data-atria-native-product-component="composer"]');
     }
     return null;
 }
