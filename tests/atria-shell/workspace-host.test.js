@@ -63,6 +63,20 @@ describe('R7G WorkspaceHost', () => {
         `;
     });
 
+    test('P8 append-style adapters remove only the completed activation loading placeholder', async () => {
+        const navigation = createAtriaNavigationAuthority({ window });
+        const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry(), navigation });
+        const agents = ({ slot }) => {
+            const root = document.createElement('section'); root.textContent = 'Ready Agents'; slot.append(root);
+            return { root, dispose: () => root.remove() };
+        };
+        const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters: { agents } });
+        host.openAgentSection('orchestration'); await flushWorkspace();
+        expect(shell.slots.workspace.textContent).toBe('Ready Agents');
+        expect(shell.slots.workspace.textContent).not.toContain('Opening workspace');
+        host.dispose(); shell.destroy(); navigation.dispose();
+    });
+
     test('maps Agents child routes without creating a second top-level router', async () => {
         const navigation = createAtriaNavigationAuthority({ window });
         const registry = createCommandRegistry();

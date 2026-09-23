@@ -337,10 +337,11 @@ export function createAtriaWorkspaceHost({
         if (token !== sequence || disposed) return;
 
         slot.dataset.atriaWorkspaceHost = descriptor.key;
-        slot.replaceChildren(createLocalizedStatePanel(documentRef, 'loading', {
+        const loading = createLocalizedStatePanel(documentRef, 'loading', {
             title: descriptor.title,
             message: 'Opening workspace…',
-        }));
+        });
+        slot.replaceChildren(loading);
         setWorkspaceContext(descriptor);
 
         const adapter = adapters[descriptor.kind] || adapters.placeholder;
@@ -360,6 +361,9 @@ export function createAtriaWorkspaceHost({
                 descriptor,
                 host: api,
             });
+            // Append-style adapters (Agents) do not replace the host placeholder.
+            // Remove only this activation's node, never another route's content.
+            loading.remove();
         } catch (error) {
             if (token !== sequence || disposed) return;
             console.error('[atria-shell] Workspace mount failed', {

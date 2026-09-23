@@ -113,6 +113,11 @@ export async function openExtensionsDrawer(page) {
     }).catch(() => false);
 
     if (openedByShell) {
+        // Compatibility settings are intentionally nested inside the explicit
+        // legacy island. Open both disclosure levels using real UI gestures.
+        const legacy = page.locator('[data-atria-legacy-plugins="true"]');
+        await legacy.waitFor({ state: 'visible', timeout: 10_000 });
+        if (!await legacy.evaluate(el => el.open)) await legacy.locator('> summary').click();
         const compatibility = page.locator('[data-atria-plugin-compatibility="true"]');
         await compatibility.waitFor({ state: 'visible', timeout: 10_000 });
         if (!await compatibility.evaluate(el => el.open).catch(() => false)) {

@@ -2049,3 +2049,24 @@
         border-radius: 0;
     }
 }
+
+/* Embedded width, not the browser viewport, determines inspector capacity. */
+#agent-memory-workspace[data-atria-workspace-embedded="true"] {
+    container: atri-agent-workspace / inline-size;
+}
+@media (min-width: 761px) {
+    @container atri-agent-workspace (max-width: 1100px) {
+        #agent-memory-workspace .atria-workspace-frame:has(> .atria-workspace-inspector:not([hidden])) {
+            position: relative;
+            grid-template-columns: var(--atri-workspace-nav-width) minmax(0, 1fr);
+        }
+        #agent-memory-workspace .atria-workspace-inspector:not([hidden]) {
+            position: absolute;
+            inset: 0 0 0 auto;
+            width: min(380px, calc(100% - var(--atri-workspace-nav-width)));
+            z-index: 7;
+            background: var(--atri-workspace-bg);
+            box-shadow: -12px 0 30px #0004;
+        }
+    }
+}
