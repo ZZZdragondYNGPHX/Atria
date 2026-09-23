@@ -215,10 +215,14 @@ export async function runNativeStudioAgentTask({
     }
 
     let context = await nativeStudioClient.getAgentContext(projectId, taskId);
-    const packageRef = context.task?.preview?.packageVersionId
+    const preflight = await nativeStudioClient.preflight(
+        projectId,
+        context.task.baseRevision,
+    ).catch(() => null);
+    const packageRef = preflight?.packageVersion?.packageVersionId
         ? {
-            packageId: context.task.preview.packageId,
-            packageVersionId: context.task.preview.packageVersionId,
+            packageId: preflight.manifest?.packageId || context.project?.source?.project?.packageId,
+            packageVersionId: preflight.packageVersion.packageVersionId,
         }
         : null;
     const skillEntries = await listNativeSkills(projectId, packageRef).catch(() => []);
@@ -340,6 +344,7 @@ export function mountNativeStudioAgent({
     projectId,
     getRevision,
     onProjectCommitted = async () => {},
+    onTaskState = () => {},
     onLog = () => {},
 }) {
     let disposed = false;
@@ -348,6 +353,10 @@ export function mountNativeStudioAgent({
     let messages = [];
     let running = false;
     let controller = null;
+
+    const notifyTask = () => {
+        if (activeTask) onTaskState(clone(activeTask));
+    };
 
     slot.dataset.atriaStudioAi = 'agent';
     slot.classList.add('atria-project-agent');
@@ -381,6 +390,7 @@ export function mountNativeStudioAgent({
             if (!taskSelect.value) return;
             activeTask = await nativeStudioClient.getAgentTask(projectId, taskSelect.value);
             messages = [{ role: 'user', content: activeTask.intent }];
+            notifyTask();
             render();
         });
         header.append(taskSelect);
@@ -404,6 +414,7 @@ export function mountNativeStudioAgent({
                     });
                     tasks = await nativeStudioClient.listAgentTasks(projectId);
                     messages = [{ role: 'user', content: intent }];
+                    notifyTask();
                     onLog('agent', 'Created Project Task', activeTask);
                     await continueTask();
                 } catch (error) {
@@ -431,6 +442,7 @@ export function mountNativeStudioAgent({
             taskId: activeTask.taskId,
             baseRevision: activeTask.baseRevision,
             operations: activeTask.operations?.length || 0,
+            changes: activeTask.inspection?.changes || [],
             validation: activeTask.validation || null,
             preview: activeTask.preview ? {
                 previewId: activeTask.preview.previewId,
@@ -438,6 +450,10 @@ export function mountNativeStudioAgent({
             } : null,
             simulation: activeTask.simulation || null,
             review: activeTask.review || null,
+            history: (activeTask.timeline || []).slice(-8).map(item => ({
+                type: item.type,
+                at: item.at,
+            })),
         }, null, 2);
         progress.append(progressTitle, pre);
         slot.append(progress, renderConversation(documentRef, messages));
@@ -456,6 +472,7 @@ export function mountNativeStudioAgent({
                 try {
                     activeTask = await nativeStudioClient.commitAgentTask(projectId, activeTask.taskId);
                     tasks = await nativeStudioClient.listAgentTasks(projectId);
+                    notifyTask();
                     onLog('agent', 'Committed Project Agent ChangeSet', activeTask.changeSets?.at(-1));
                     await onProjectCommitted(activeTask);
                 } catch (error) {
@@ -472,6 +489,7 @@ export function mountNativeStudioAgent({
                 if (running) controller?.abort();
                 activeTask = await nativeStudioClient.takeOverAgentTask(projectId, activeTask.taskId);
                 tasks = await nativeStudioClient.listAgentTasks(projectId);
+                notifyTask();
                 onLog('agent', 'Human takeover activated', activeTask);
                 render();
             }));
@@ -499,18 +517,21 @@ export function mountNativeStudioAgent({
                     if (disposed) return;
                     if (update.task) activeTask = clone(update.task);
                     if (update.messages) messages = clone(update.messages);
+                    notifyTask();
                     render();
                 },
             });
             activeTask = result.task;
             messages = result.messages;
             tasks = await nativeStudioClient.listAgentTasks(projectId);
+            notifyTask();
             onLog('agent', `Project Agent stopped at ${activeTask.status}`, activeTask);
         } catch (error) {
             if (!controller.signal.aborted) {
                 onLog(error.status === 409 ? 'conflict' : 'error', error?.message || String(error), error?.details);
             }
             activeTask = await nativeStudioClient.getAgentTask(projectId, activeTask.taskId).catch(() => activeTask);
+            notifyTask();
         } finally {
             controller = null;
             running = false;
@@ -535,6 +556,7 @@ export function mountNativeStudioAgent({
             tasks = await nativeStudioClient.listAgentTasks(projectId);
             if (activeTask) {
                 activeTask = await nativeStudioClient.getAgentTask(projectId, activeTask.taskId);
+                notifyTask();
             }
             render();
         },
