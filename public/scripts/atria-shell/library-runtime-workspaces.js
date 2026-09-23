@@ -3,6 +3,7 @@ import {
     createAtriaStatePanel,
 } from './primitives.js';
 import { formatShellText, translateShellText } from './localization.js';
+import { applyAtriaPattern } from './patterns.js';
 import {
     mountNativeWorksWorkspace,
     mountNativeWorldKnowledgeWorkspace,
@@ -36,6 +37,7 @@ export const RUNTIME_SECTIONS = Object.freeze([
     Object.freeze({ id: 'roles', label: 'Roles' }),
     Object.freeze({ id: 'connections', label: 'Connections' }),
     Object.freeze({ id: 'presets', label: 'Model / Prompt Presets' }),
+    Object.freeze({ id: 'capabilities', label: 'Capabilities' }),
 ]);
 
 function sectionById(list, id, fallbackId) {
@@ -75,6 +77,7 @@ function buildDomainFrame(documentRef, {
     const root = documentRef.createElement('section');
     root.className = 'atria-domain-workspace';
     root.dataset.atriaDomainWorkspace = domain;
+    applyAtriaPattern(root, domain === 'library' ? 'master-detail' : 'runtime-status');
 
     const nav = documentRef.createElement('nav');
     nav.className = 'atria-domain-workspace__nav';
@@ -569,6 +572,66 @@ async function mountPresetWorkspace({ document: documentRef, body }) {
     };
 }
 
+
+function mountRuntimeCapabilities({ document: documentRef, body }) {
+    const runtime = globalThis.Atria?.nativeSessionRuntime || null;
+    const snapshot = runtime?.snapshot || null;
+    const manifest = snapshot?.manifest || {};
+    const descriptor = snapshot?.runtime || manifest.runtime || {};
+    const experience = descriptor?.experience || manifest.runtime?.experience || {};
+    const plugins = Array.isArray(descriptor?.plugins)
+        ? descriptor.plugins
+        : Array.isArray(manifest.runtime?.plugins) ? manifest.runtime.plugins : [];
+    const permissions = Array.isArray(manifest.permissions) ? manifest.permissions : [];
+    const capabilities = Array.isArray(manifest.capabilities) ? manifest.capabilities : [];
+    const skillIds = Array.isArray(descriptor?.skills)
+        ? descriptor.skills.map(item => typeof item === 'string' ? item : item?.skillId).filter(Boolean)
+        : Array.isArray(manifest.runtime?.skills) ? manifest.runtime.skills : [];
+
+    const root = documentRef.createElement('section');
+    root.className = 'atria-runtime-capabilities';
+    root.dataset.atriaRuntimeCapabilities = 'true';
+
+    renderOverviewCard(documentRef, root, {
+        title: 'Experience',
+        description: snapshot
+            ? formatShellText('Mode: ${0} · exact PackageVersion ${1}', [
+                experience.mode || 'text',
+                snapshot.packageVersion?.packageVersionId || manifest.packageVersionId || 'unknown',
+            ], undefined, 'atria.shell.runtime.experienceSummary')
+            : 'Open a Native game to inspect its exact runtime capabilities.',
+        status: snapshot ? 'Active' : 'Idle',
+        tone: snapshot ? 'success' : 'neutral',
+    });
+    renderOverviewCard(documentRef, root, {
+        title: 'Package Capabilities',
+        description: capabilities.length ? capabilities.join(' · ') : 'No additional package capabilities declared.',
+        status: String(capabilities.length),
+    });
+    renderOverviewCard(documentRef, root, {
+        title: 'Permissions',
+        description: permissions.length ? permissions.join(' · ') : 'No package permissions declared.',
+        status: String(permissions.length),
+    });
+    renderOverviewCard(documentRef, root, {
+        title: 'Plugins',
+        description: plugins.length
+            ? plugins.map(item => item.pluginId || item.id || 'plugin').join(' · ')
+            : 'No Package Runtime plugins declared for the active exact version.',
+        status: String(plugins.length),
+    });
+    renderOverviewCard(documentRef, root, {
+        title: 'Skills',
+        description: skillIds.length
+            ? skillIds.join(' · ')
+            : 'No package-scoped Skills declared for the active exact version.',
+        status: String(skillIds.length),
+    });
+
+    body.replaceChildren(root);
+    return { root, dispose: () => root.remove() };
+}
+
 async function mountLibrarySection(args) {
     const section = normalizeLibrarySection(args.route);
     if (section === 'works') return mountNativeWorksWorkspace(args);
@@ -583,6 +646,7 @@ async function mountRuntimeSection(args) {
     if (section === 'connections') {
         return await mountConnectionManagerWorkspace(args);
     }
+    if (section === 'capabilities') return mountRuntimeCapabilities(args);
     return await mountPresetWorkspace(args);
 }
 
