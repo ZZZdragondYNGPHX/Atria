@@ -353,6 +353,7 @@ export function createGameTurnController(options = {}) {
                     previousAttemptId: record.activeAttemptId,
                     attemptIndex: record.attemptIds.length,
                     kind: input.kind || 'initial',
+                    baseAnchor: clone(record.baseTurn.anchor),
                 }),
                 turnContext.anchor,
             );
@@ -494,6 +495,7 @@ export function createGameTurnController(options = {}) {
                     previousAttemptId: record.activeAttemptId,
                     attemptIndex: record.attemptIds.length,
                     kind: 'retry',
+                    baseAnchor: clone(record.baseTurn.anchor),
                 }),
                 record.baseTurn.anchor,
             );
