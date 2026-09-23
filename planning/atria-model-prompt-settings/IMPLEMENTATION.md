@@ -1,6 +1,6 @@
 # 实施蓝图：Atria Native Model / Prompt / Runtime P0–P8
 
-**状态：P0、P1 已完成并验证；P2 为下一实施阶段。**
+**状态：P0、P1、P2 已完成并验证；P3 为下一实施阶段。**
 
 正式实现分支：`refactor/atria-model-prompt-settings`
 
@@ -584,3 +584,13 @@ Run：`35836303381`
 - focused ESLint: passed.
 
 P1 stopped before P2. Generation Service, Route Resolver execution, provider adapters, Prompt Compiler, first-party cutover and Runtime UI remain unimplemented.
+
+## P2 completion checkpoint
+
+The preceding P1 statement is historical. P2 is complete on
+`5d5ab196c37ad7ff25db44d9dd249c0863b94115`.
+Generation Core, common exact resolution, capability enforcement, full-route fallback,
+Secret send boundary, Provider adapters and immutable concurrency isolation are implemented.
+P2 focused: 33 tests; Native FS/SQLite: 48 suites / 347 tests; required guards, lint,
+syntax and frontend build passed locally. See P2-VALIDATION.md for exclusions and limits.
+P3 Compiler, P4 first-party cutover and P5 UI remain unimplemented. Stop until continuation.

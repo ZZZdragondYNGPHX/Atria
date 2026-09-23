@@ -621,3 +621,11 @@ These are structural contracts only. P0 does not yet implement P2 Generation Ser
 - `package.presets` runtime authority
 
 The guard includes a self-test proving that representative violations are detected.
+
+## 18. P2 execution realization
+
+P2 is implemented at `5d5ab196c37ad7ff25db44d9dd249c0863b94115`.
+See P2-VALIDATION.md and the implementation branch's
+src/native/model-prompt-runtime/README.md for concrete Port signatures, fallback
+policy, immutable request configuration and validation. Prompt preparation remains
+an injected Port for P3; no first-party or UI cutover occurred in P2.

@@ -2,7 +2,7 @@
 
 ## Status
 
-**P0、P1 已完成并验证。当前停止在 P2 接手点；P2–P8 尚未实施。**
+**P0、P1、P2 已完成并验证。当前停止在 P3 接手点；P3–P8 尚未实施。**
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Baseline: `main@2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
@@ -291,4 +291,13 @@ Not executed in P1:
 - Docker;
 - real-host model request.
 
-P2 is the next phase. Do not redo P0/P1.
+## P2 completion record
+
+Validated HEAD: `5d5ab196c37ad7ff25db44d9dd249c0863b94115` on the same work branch.
+GenerationService.execute, exact RouteResolver, capability tri-state/provenance,
+fail-closed requirements, full-route fallback, immutable config, send-boundary Secret
+and explicit Provider adapters are complete.
+Local results: P2 33 tests; Native FS/SQLite 48 suites / 347 tests; P0/P1/P2 guards,
+A1/A2/A7/A8 guards, root/focused lint, syntax and frontend build passed.
+No main merge or first-party/UI cutover. See planning/atria-model-prompt-settings/P2-VALIDATION.md
+for unavailable external engines and other limits. P3 is next after explicit continuation.

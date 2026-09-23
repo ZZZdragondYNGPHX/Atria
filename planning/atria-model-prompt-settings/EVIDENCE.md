@@ -335,3 +335,13 @@ Validation evidence:
 - Model Prompt Runtime P0 Checks #17 / Run `35836303445`: success.
 
 P1 did not execute full Node regression, frontend build, browser E2E, Android, Docker, or a real-host model request.
+
+## P2 implementation evidence
+
+P2 validated HEAD: `5d5ab196c37ad7ff25db44d9dd249c0863b94115`.
+Generation Core / exact resolution / capability / fallback / Secret boundary / Provider
+execution are now implemented. P2 focused: 33 tests. Native FS/SQLite: 48 suites / 347 tests.
+P0/P1/P2 and A1/A2/A7/A8 guards, lint, syntax and frontend build passed locally.
+Loopback HTTP and streamed response integration ran for both protocol adapters.
+See P2-VALIDATION.md for complete evidence, environment repairs and exclusions.
+The earlier P0/P1 future-work statements are historical; P3–P8 remain unimplemented.

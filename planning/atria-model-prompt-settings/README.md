@@ -1,6 +1,6 @@
 # Atria 模型、提示词与 Runtime 原生化企划
 
-**状态：P0、P1 已完成并验证；当前下一阶段为 P2 — Generation Core & Route Resolution。**
+**状态：P0、P1、P2 已完成并验证；当前下一阶段为 P3 — Request Context & Prompt Compiler。**
 
 ## 当前基线
 
@@ -138,4 +138,13 @@ P1 validated HEAD：`802a68654f53015800e141fd052f1a006df149e0`。
 - Secret 仅保存 `secretRef`；
 - P1 architecture guard 与 CI。
 
-下一阶段只执行 P2，不重做 P0/P1。
+## P2 已落实
+
+P2 validated HEAD：`5d5ab196c37ad7ff25db44d9dd249c0863b94115`。
+
+GenerationService、exact RouteResolver、能力三态/provenance、完整路由 fallback、
+request-local immutable config、send-boundary Secret 和两种 Provider adapter fixtures
+已实现。本地 Native FS/SQLite：48 suites / 347 tests；P2 focused：33 tests；
+P0/P1/P2 与 A1/A2/A7/A8 guards、lint、syntax、frontend build 均通过。
+
+详见 [P2-VALIDATION.md](P2-VALIDATION.md)。下一阶段仅 P3，不重做 P0/P1/P2。
