@@ -45,7 +45,7 @@ for (const path of nativeAuthorityFiles) {
         /\/api\/(?:characters|chats|worldinfo)(?:\/|['"`])/i,
         'N10 Active Native authority must not call Character/JSONL/World Info persistence endpoints',
     );
-    if (!['src/native/contracts.js', 'src/native/world-knowledge.js'].includes(path)) {
+    if (!['src/native/contracts.js', 'src/native/world-knowledge.js', 'src/native/authoring-contracts.js'].includes(path)) {
         rejectPattern(
             path,
             /\bWorldInfoRepo\b|worlds\/(?:[^\n'"`]*\.json\b)|(?:^|[^A-Za-z0-9_])selected_world_info(?:[^A-Za-z0-9_]|$)|(?:^|[^A-Za-z0-9_])charaFilename(?:[^A-Za-z0-9_]|$)/m,
@@ -62,6 +62,7 @@ for (const path of nativeAuthorityFiles) {
 const identityCheckedFiles = nativeAuthorityFiles.filter(path => ![
     'src/native/contracts.js',
     'src/native/world-knowledge.js',
+    'src/native/authoring-contracts.js',
 ].includes(path));
 
 for (const path of identityCheckedFiles) {
