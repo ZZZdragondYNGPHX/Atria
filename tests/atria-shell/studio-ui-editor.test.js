@@ -38,6 +38,7 @@ describe('A7 Structured UI editor', () => {
         expect(root.querySelector('[data-atria-studio-canvas="true"] [data-atria-component-id="label"]'))
             .not.toBeNull();
 
+        controller.select('label');
         tabs.find(node => node.textContent === 'Bindings').click();
         const bindings = root.querySelector('[aria-label="Component bindings JSON"]');
         bindings.value = JSON.stringify({
