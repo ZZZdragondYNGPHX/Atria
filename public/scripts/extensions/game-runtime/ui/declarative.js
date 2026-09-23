@@ -190,7 +190,8 @@ function bindVisibilityElements(root, context, cleanups) {
             throw new Error(`Component visibility mode '${when}' is unsupported`);
         }
         const render = value => {
-            const visible = when === 'truthy' ? Boolean(value) : !Boolean(value);
+            const truthy = Boolean(value);
+            const visible = when === 'truthy' ? truthy : !truthy;
             setComponentHiddenReason(element, 'visibility', !visible);
         };
         render(context.selectors.get(selectorId));
