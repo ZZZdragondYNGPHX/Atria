@@ -68,6 +68,30 @@ export const nativeStudioClient = Object.freeze({
     }),
     resolveResourceClosure: projectId => request(`projects/${encode(projectId)}/resources/closure`),
 
+    listAgentTasks: projectId => request(`projects/${encode(projectId)}/agent/tasks`),
+    createAgentTask: (projectId, body) => request(`projects/${encode(projectId)}/agent/tasks`, {
+        method: 'POST',
+        body,
+    }),
+    getAgentTask: (projectId, taskId) => request(
+        `projects/${encode(projectId)}/agent/tasks/${encode(taskId)}`,
+    ),
+    getAgentContext: (projectId, taskId) => request(
+        `projects/${encode(projectId)}/agent/tasks/${encode(taskId)}/context`,
+    ),
+    executeAgentTool: (projectId, taskId, body) => request(
+        `projects/${encode(projectId)}/agent/tasks/${encode(taskId)}/tool`,
+        { method: 'POST', body },
+    ),
+    commitAgentTask: (projectId, taskId) => request(
+        `projects/${encode(projectId)}/agent/tasks/${encode(taskId)}/commit`,
+        { method: 'POST', body: {} },
+    ),
+    takeOverAgentTask: (projectId, taskId) => request(
+        `projects/${encode(projectId)}/agent/tasks/${encode(taskId)}/takeover`,
+        { method: 'POST', body: {} },
+    ),
+
     inspectWorkspace: (projectId, workspace) => request(`projects/${encode(projectId)}/workspaces/inspect`, {
         method: 'POST',
         body: workspace,
