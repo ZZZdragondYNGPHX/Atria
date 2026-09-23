@@ -1,106 +1,95 @@
-# NEXT：P0 — Baseline / Contracts / Guard Evolution
+# NEXT：P1 — Native Resource & Persistence Foundation
 
 ## 当前状态
 
-- 设计：已封板。
-- 产品代码：尚未开始本 refactor 的实现。
-- 当前集成基线：`main@2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
-- 正式实现分支：`refactor/atria-model-prompt-settings`
-- 正式总纲：`refactor/atria-model-prompt-settings.md`
-- 详细设计：本目录 README / DESIGN / EVIDENCE / IMPLEMENTATION。
-- N0–N10 / A0–A9：继续作为 frozen semantic foundations。
+P0 — Baseline / Contracts / Guard Evolution 已完成并验证。
 
-实现分支已从上述 current main 创建。开始任何代码修改前必须重新 fetch 远端分支；如果别的会话已经继续推进，以远端实际最新 HEAD 为准，不得回退到创建时基线。
+- Repository: `ZZZdragondYNGPHX/Atria`
+- main baseline: `2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
+- work branch: `refactor/atria-model-prompt-settings`
+- P0 validated HEAD: `472e1a9f0759a460d845a2e6c618983c35e18654`
+- P0 workflow: Model Prompt Runtime P0 Checks #6
+- P0 run: `35832249672`
+- P1–P8 尚未实施。
+- 不要创建新分支，不要合并 main。
+
+开始前必须重新 fetch 远端工作分支。若其他会话已推进，保留其提交，不得回退到 P0 HEAD。
 
 ## 下一阶段
 
 只执行：
 
-**P0 — Baseline / Contracts / Guard Evolution**
+**P1 — Native Resource & Persistence Foundation**
 
-不要提前执行 P1–P8。
+不要提前执行 P2–P8。
 
-## P0 目标
+## P1 目标
 
-1. 再核对当前工作分支与 main 是否出现新提交。
-2. 将最终设计落成 Native contracts：
+建立 Native Prompt / Generation / Connection / Model / Route 的唯一持久化真源，并严格复用 A1/A2。
+
+### 必做
+
+1. 建立 generic versioned JSON resource handler/seam，承载：
+   - `core.prompt-module`
+   - `core.prompt-program`
+   - `core.generation-profile`
+2. 接入现有 A2 Resource Registry / derived-readonly Resource Graph。
+3. 接入 NativeLibraryService：
+   - list
+   - get exact
+   - immutable revision identity
+4. 接入 LibraryAuthoring：
+   - Attach
+   - Fork
+   - Update
+5. 接入 Package dependency closure，所有依赖使用 exact revisions，缺依赖 fail closed。
+6. 建立 player-owned persistence：
    - Connection Profile
    - Model Profile
-   - Generation Profile
-   - Prompt Module
-   - Prompt Program
    - Runtime Route
-   - RequestContextPlan
-   - Prompt IR
-   - EffectiveRequestSnapshot
-3. 冻结 capability supported/unsupported/unknown + provenance。
-4. 冻结 package runtime metadata 的新结构；不要扶正 `package.presets`。
-5. 冻结 Port contracts：
-   - Generation Service
-   - Route Resolver
-   - Provider Port
-   - Secret Port
-   - Context Provider
-6. 建立本 refactor 的 architecture/residual guard skeleton。
-7. 建立 frozen-guard evolution matrix：
-   - A6 Advanced Connection compatibility；
-   - A6 standalone Capabilities route；
-   - A8 Studio Agent `generateTask`。
-8. P0 不提前切 UI/Runtime，不删除旧 seam。
+7. Secret persistence 只保存 `secretRef`，不得保存 secret value。
+8. 保持 project/library/package origin/provenance。
+9. Studio 写入继续通过 A1 Authoring Operation / Workspace / ChangeSet。
+10. Project Agent 继续通过 Registry / Graph / A1 authority 动态发现能力。
 
-## P0 红线
+## P1 红线
 
-- 不创建新分支。
-- 不合并 main。
-- 不重做 N0–N10 / A0–A9。
-- 不创建第二套 Session / Project / Library authority。
-- 不让 Prompt 直接获得持久状态写权限。
-- 不让 Package 保存用户 Secret / private Connection。
-- 不建立 PromptStore / second Resource Graph。
-- 不把 `Atria.getContext()` 定义成新 Core 的必需依赖。
-- 不为了新 contract 大规模重写 provider sender。
-- 不通过删掉 frozen guard 来消除冲突。
+- 不创建 PromptStore / GenerationStore / 第二个 Library。
+- 不创建第二套 Resource Graph。
+- 不重写 WorldRepo / KnowledgeRepo / AssetStore。
+- Resource Graph 仍 derived-readonly。
+- 不实现 Generation Service.execute；这是 P2。
+- 不实现 Prompt Compiler；这是 P3。
+- 不切 first-party generation；这是 P4。
+- 不切 Runtime UI；这是 P5。
+- 不修改 A6/A8 replacement gates。
+- Package 不得持有 private Connection / Model / concrete Runtime Route / Secret value。
+- 不读写 `package.presets` 作为 Native runtime authority。
+- 不新增 Native Core → ST globals/DOM/PresetManager/PromptManager 依赖。
 
-## P0 验证
+## P1 验证
 
-至少需要：
+至少覆盖：
 
-- contract unit tests；
-- invalid scope/identity refs；
-- secret redaction/serialization tests；
-- package private-runtime rejection；
-- capability tri-state/provenance tests；
-- architecture guard syntax + behavior；
-- relevant A0–A9 / N0–N10 frozen guards；
-- focused ESLint；
-- broader checks只报告实际执行项。
+- generic resource schema / revision round-trip；
+- exact refs 不追 latest；
+- same-name different IDs 不冲突；
+- Library list/get exact；
+- Attach/Fork/Update；
+- Resource Graph forward/reverse refs；
+- Package closure dependency inclusion；
+- missing exact dependency fail closed；
+- delete safety / reverse ref behavior；
+- Connection/Model/Route persistence；
+- secret value never serialized；
+- project/library/package origin/provenance；
+- relevant A1/A2/A7/A8 guards；
+- P0 architecture guard；
+- focused ESLint。
 
-Android / Docker 不运行，除非用户另行明确要求。
+Android / Docker 默认不运行。
 
-## P0 完成后的动作
-
-完成并验证 P0 后必须停下。
-
-更新：
-
-- `docs:planning/atria-model-prompt-settings/`
-- `docs:refactor/atria-model-prompt-settings.md`
-- `docs:handoff/latest-handoff.md`
-
-记录：
-
-- 工作分支 live HEAD；
-- P0 commits；
-- tests/checks；
-- frozen guard evolution matrix；
-- 未完成 P1–P8；
-- P1 目标。
-
-然后给用户 **P1 新对话提示词**，不得在同一轮直接继续 P1。
-
-## 新对话接手摘要
-
-新对话启动时依次读取：
+## 开始前读取
 
 1. `main:AGENTS.md`
 2. `main:FORK_MAINTENANCE.md`
@@ -111,5 +100,23 @@ Android / Docker 不运行，除非用户另行明确要求。
 7. `EVIDENCE.md`
 8. `IMPLEMENTATION.md`
 9. 本文件
+10. P0 implementation:
+    - `src/native/model-prompt-runtime/contracts.js`
+    - `src/native/model-prompt-runtime/ports.js`
+    - `tests/native/model-prompt-runtime-contracts.test.js`
+    - `scripts/check-p0-model-prompt-runtime-architecture.mjs`
+11. Existing A1/A2 seams:
+    - `src/native/authoring/resource-registry.js`
+    - `src/native/authoring/resource-graph.js`
+    - `src/native/authoring/library-service.js`
+    - `src/native/authoring/library-authoring.js`
+    - `src/native/dependency-closure.js`
+    - `src/native/authoring/studio-service.js`
 
-然后 fetch `refactor/atria-model-prompt-settings`，以实际远端 HEAD 为准，只执行 P0。
+## 不要重复
+
+- 不重新设计六个核心对象。
+- 不重做 P0 contracts / ports / identity families。
+- 不重新命名 `runtime.modelPrompt`。
+- 不重做 P0 guard。
+- 不重做 N0–N10 / A0–A9。

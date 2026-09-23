@@ -263,3 +263,46 @@ A6 guard 当前还明确：
 - final residual guard。
 
 这些必须在 P0–P8 实施阶段逐步取得。
+
+
+## 15. P0 implementation evidence
+
+P0 is now implementation evidence rather than design-only intent.
+
+Validated branch HEAD:
+
+`472e1a9f0759a460d845a2e6c618983c35e18654`
+
+Workflow:
+
+- Model Prompt Runtime P0 Checks #6
+- Run `35832249672`
+
+Actually executed and passed:
+
+- 5 focused/adjacent suites, 63 tests;
+- P0 architecture residual guard;
+- architecture guard violation self-test;
+- architecture guard syntax check;
+- A0–A9 frozen residual guards;
+- N9 Native Product authority guard;
+- N10 Native hard-cutover residual guard;
+- focused ESLint for P0 touched source/tests.
+
+P0 also produced two intentional frozen-test evolutions:
+
+1. N0 Native ID family test now includes the six new Native model/prompt/runtime identity families. This extends opaque Native identity without replacing any prior family.
+2. N10 literal scanning now treats `src/native/authoring-contracts.js` as a contract validator, alongside existing contract validator files, so strings that are explicitly rejected as legacy fields are not misclassified as runtime dependencies. Runtime implementation scanning remains unchanged.
+
+No full Node regression, frontend build, Android test, Docker validation, browser E2E, or real-host model request was executed for P0; none should be reported as passed.
+
+The following remain future-stage evidence and are still not implemented by P0:
+
+- generic versioned JSON resource persistence;
+- Library Attach/Fork/Update for Prompt/Generation;
+- Generation Service implementation;
+- Prompt compiler;
+- provider adapter cutover;
+- Runtime product UI;
+- first-party `generateTask` cutover;
+- final P8 residual/integration validation.

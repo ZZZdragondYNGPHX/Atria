@@ -569,3 +569,55 @@ Legacy ST compatibility island可继续使用，不等于 Native 仍依赖它。
 - 一次性重写全部 provider network stack；
 - 自动无损转换所有 ST 用户数据；
 - Android / Docker 默认构建。
+
+
+## 17. P0 contract realization
+
+P0 已把本设计的核心边界冻结为代码合同，validated HEAD 为 `472e1a9f0759a460d845a2e6c618983c35e18654`。
+
+### 已冻结的具体 ABI
+
+- Native ID families：
+  - Connection Profile → `conn_*`
+  - Model Profile → `model_*`
+  - Generation Profile → `genprof_*`
+  - Prompt Module → `pmod_*`
+  - Prompt Program → `pprog_*`
+  - Runtime Route → `route_*`
+- Package runtime author intent：`runtime.modelPrompt`
+- model/prompt resource exact refs：
+  - `core.prompt-module`
+  - `core.prompt-program`
+  - `core.generation-profile`
+- player-private objects remain outside Package：
+  - Connection Profile
+  - Model Profile
+  - concrete Runtime Route
+  - Secret values
+- runtime artifact serialization must remain secret-free.
+
+### Port boundary
+
+P0 freezes these minimum Port shapes:
+
+- Generation Service: `execute`
+- Route Resolver: `resolve`
+- Provider Port: `resolveCapabilities / countTokens / renderRequest / send / parseStream / normalizeResponse`
+- Secret Port: `resolveSecret`
+- Context Provider: `buildRequestContextPlan`
+
+These are structural contracts only. P0 does not yet implement P2 Generation Service or provider adapters.
+
+### No New SillyTavern Authority guard
+
+`src/native/model-prompt-runtime/` may not directly depend on:
+
+- `Atria.getContext()`
+- `generateTask`
+- PresetManager / PromptManager
+- `extension_settings` / `power_user` / `oai_settings`
+- host DOM / browser persistence
+- direct `atria-dispatch` sender modules
+- `package.presets` runtime authority
+
+The guard includes a self-test proving that representative violations are detected.

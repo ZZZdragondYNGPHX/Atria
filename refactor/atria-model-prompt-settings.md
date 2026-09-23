@@ -2,7 +2,7 @@
 
 ## Status
 
-**Implementation-ready design. Product code implementation has not started.**
+**P0 已完成并验证。当前停止在 P1 接手点；P1–P8 尚未实施。**
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Baseline: `main@2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
@@ -183,3 +183,34 @@ See `planning/atria-model-prompt-settings/IMPLEMENTATION.md` for phase exits and
 - no complete provider-network-stack rewrite in the same task;
 - no automatic lossless conversion of all ST presets;
 - no Android or Docker build unless explicitly requested.
+
+
+## P0 completion record
+
+P0 — Baseline / Contracts / Guard Evolution 已在 `refactor/atria-model-prompt-settings` 完成并验证。
+
+- validated HEAD: `472e1a9f0759a460d845a2e6c618983c35e18654`
+- workflow: Model Prompt Runtime P0 Checks #6
+- run: `35832249672`
+- baseline main: `2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
+- branch remained ahead-only; no merge to main was performed.
+
+P0 froze these Native contracts in code:
+
+- Connection Profile
+- Model Profile
+- Generation Profile
+- Prompt Module
+- Prompt Program
+- Runtime Route
+- RequestContextPlan
+- Prompt IR
+- EffectiveRequestSnapshot
+- capability supported / unsupported / unknown + provenance
+- Generation Service / Route Resolver / Provider Port / Secret Port / Context Provider
+
+The package-side author-intent contract is frozen at `AtriaPackage.runtime.modelPrompt`. It may carry role capability requirements and exact package Prompt Program / Generation Profile refs. It must not carry player Connection, Model, concrete Runtime Route, secret material, or secret values.
+
+The new Core boundary is `src/native/model-prompt-runtime/`. Its P0 architecture guard rejects direct dependency on SillyTavern globals/DOM/PresetManager/PromptManager, `Atria.getContext()`, `generateTask`, direct Atria dispatch senders, browser persistence, and `package.presets` authority.
+
+No user-visible Runtime/UI cutover occurred in P0.

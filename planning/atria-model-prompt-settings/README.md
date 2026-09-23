@@ -1,6 +1,6 @@
 # Atria 模型、提示词与 Runtime 原生化企划
 
-**状态：设计已封板，正式实现分支已创建；产品代码尚未开始实施。**
+**状态：P0 已完成并验证；当前下一阶段为 P1 — Native Resource & Persistence Foundation。**
 
 ## 当前基线
 
@@ -103,3 +103,20 @@ N0–N10、A0–A9 的**语义不变量**继续保留。
 5. 给出下一阶段可直接复制的新对话提示词。
 
 Android / Docker 保持 opt-in。
+
+
+## P0 已落实
+
+P0 validated HEAD：`472e1a9f0759a460d845a2e6c618983c35e18654`。
+
+P0 已把设计从文档冻结成代码合同与 CI 边界：
+
+- 六个核心对象 contracts；
+- RequestContextPlan / Prompt IR / EffectiveRequestSnapshot；
+- capability 三态与 provenance；
+- `runtime.modelPrompt` Package metadata；
+- 五类 Port contracts；
+- `src/native/model-prompt-runtime/` architecture guard；
+- frozen guard evolution matrix。
+
+P0 没有切换 Runtime UI，没有删除 A6/A8 过渡 seam，也没有进入 P1 persistence。

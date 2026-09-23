@@ -1,6 +1,6 @@
 # 实施蓝图：Atria Native Model / Prompt / Runtime P0–P8
 
-**状态：implementation-ready。**
+**状态：P0 已完成并验证；P1 为下一实施阶段。**
 
 正式实现分支：`refactor/atria-model-prompt-settings`
 
@@ -508,3 +508,39 @@ Native product paths residual scan 不得包含未白名单的：
 - 需要重做 N0–N10/A0–A9 核心 authority；
 - 要为了一个阶段同时重写全部 provider network stack；
 - 发现 live branch 已被其他会话推进且本地计划会回退它。
+
+
+## P0 completion checkpoint
+
+P0 validated HEAD：`472e1a9f0759a460d845a2e6c618983c35e18654`  
+Workflow：Model Prompt Runtime P0 Checks #6  
+Run：`35832249672`
+
+### P0 commits
+
+- `7de1e882` — define P0 model prompt runtime contracts
+- `8f45fd91` — define P0 generation port contracts
+- `c92bd06a` — add Native model/prompt/runtime identity families
+- `cf0c0198` — freeze Package `runtime.modelPrompt`
+- `1ada3f4d` — export P0 contracts
+- `db4c7013` — narrow secret-material detection
+- `66821215` — add P0 contract tests
+- `c16f83da` — add P0 architecture residual guard
+- `9885659b` — add P0 CI workflow
+- `2682444d` — evolve frozen Native ID family test
+- `734c850b` — narrow N10 literal-validator exception
+- `9d269b7a` — focused lint fixes
+- `6ace980a` — remove unused P0 fixture
+- `472e1a9f` — align P0 lint workflow with repository module rules
+
+### Frozen guard evolution matrix
+
+| Existing assertion | P0 classification | Replacement gate | P0 action |
+| --- | --- | --- | --- |
+| A6 requires Advanced Connection compatibility editor | Transitional seam | P5 Native Connections product UI is implemented and validated | Preserve unchanged |
+| A6 requires standalone Runtime Capabilities route | Transitional seam | P5 capabilities are represented through Models / Routes / Diagnostics with product/navigation tests | Preserve unchanged |
+| A8 requires Studio Agent `generateTask` | Transitional seam | P4 Studio Agent uses Generation Service while tool-schema projection + human Review/Commit invariants are proven | Preserve unchanged |
+| N0 opaque Native identity families | Semantic invariant, extensible vocabulary | New first-class objects require opaque IDs | Extended expected family list |
+| N10 rejects legacy Character/WorldInfo identity/storage | Semantic invariant | Never replaced | Kept; contract-validator literal exception narrowed to `authoring-contracts.js` only |
+
+No frozen guard was wholesale disabled.
