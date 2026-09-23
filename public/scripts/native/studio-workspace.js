@@ -378,7 +378,7 @@ async function loadProjectState(projectId) {
     return { detail, registry, graph, resources, library, history };
 }
 
-async function mountProjectStudio(documentRef, root, projectId, host) {
+async function mountProjectStudio(documentRef, root, projectId) {
     const loaded = await loadProjectState(projectId);
     const state = {
         projectId,
@@ -1226,7 +1226,7 @@ export function mountNativeStudioWorkspace({
             const childId = String(nextRoute?.child?.id || '');
             if (childId.startsWith('project:')) {
                 const projectId = childId.slice('project:'.length);
-                projectController = await mountProjectStudio(documentRef, root, projectId, host);
+                projectController = await mountProjectStudio(documentRef, root, projectId);
             } else {
                 await renderProjectList(documentRef, root, host);
             }
