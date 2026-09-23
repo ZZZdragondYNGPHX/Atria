@@ -2,7 +2,7 @@
 
 ## Current status
 
-Planning/design is complete and frozen. **A0, A1, A2, A3, A4, A5, A6, A7 and A8 are complete and validated; A9 is next.**
+Planning/design is complete and frozen. **A0 through A9 are complete and validated; Final Integration / Merge Main is next.**
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Stable baseline: `main@fd9a493c9040b32f4892bd92531030e58b066244`
@@ -17,9 +17,10 @@ Planning/design is complete and frozen. **A0, A1, A2, A3, A4, A5, A6, A7 and A8 
 - A6 validated HEAD: `e33704b91ecb0373902132fe8af9c80b204aa8ce`
 - A7 validated HEAD: `40cb1b98ecbf2ccf76599421ea1ccf625af35071`
 - A8 validated HEAD: `a5430d41c010aca297b77184271d4cf2819a5631`
+- **A9 validated HEAD: `8233c0dfe34989c294d18a93eae57f38eb70030a`**
 - Formal plan: `refactor/atria-native-authoring-platform-product-frontend.md`
 - Prior Native Content & Session Architecture N0–N10 remains complete and must not be redone.
-- Do not merge `main`; continue A9 on the same implementation branch.
+- A9 is complete. Do not resume implementation; Final Integration / Merge Main is the only remaining phase.
 
 ## Task identity
 
@@ -215,32 +216,28 @@ Use the same implementation branch for all phases:
 
 After every phase: validate, commit/push, update docs/handoff, stop, and provide the next-phase takeover prompt. Do not create a new branch per phase. Do not merge `main` until the complete refactor reaches final integration.
 
-## Current next action — A9 only
+## Current next action — Final Integration / Merge Main
 
-Start **A9 — Hard Cutover & Product Finalization** from the actual latest remote HEAD of the same implementation branch.
+A9 is complete and validated. Do not redo N0–N10 or A0–A9.
 
-Before A9 editing, re-read:
+Before integration:
 
-1. `main:AGENTS.md`
-2. `main:FORK_MAINTENANCE.md`
-3. `docs:handoff/latest-handoff.md`
-4. `docs:refactor/atria-native-authoring-platform-product-frontend.md`
-5. this handoff
-6. A0–A8 residual guards and validated replacement surfaces
-7. A3 Native Runtime cutover
-8. A6 Native Product Frontend
-9. A7 Studio Authoring UX
-10. A8 Project Agent / Workspace / Review integration.
+1. fetch `main`, `docs` and `refactor/atria-native-authoring-platform-product-frontend`;
+2. confirm the implementation branch still points to A9 validated HEAD `8233c0dfe34989c294d18a93eae57f38eb70030a` unless a later explicitly documented validation commit exists;
+3. re-read `main:AGENTS.md`, `main:FORK_MAINTENANCE.md`, `docs:handoff/latest-handoff.md`, the formal plan, and this handoff;
+4. inspect any integration conflict against the A0–A9 authority model instead of restoring legacy compatibility.
 
-A9 is removal/finalization, not architecture redesign.
+Final Integration scope:
 
-Delete retired CardApp/legacy authoring/runtime/product paths only after checking that A0–A8 replacements cover their justified consumers. Do not preserve compatibility aliases merely to reduce deletion risk.
+- create/update the PR from the implementation branch into `main`;
+- run/confirm required PR CI;
+- resolve ordinary integration conflicts without reopening architecture design;
+- merge only when CI is green;
+- verify merged `main`;
+- update final docs bookkeeping if needed;
+- delete `refactor/atria-native-authoring-platform-product-frontend` after successful merge.
 
-A9 must run full residual scans, focused acceptance, broader regression/build/lint and final product validation.
-
-Do not merge `main` until A9/final integration is complete and explicitly ready.
-
-Stop again after A9 validation/final integration handoff.
+Do not restore CardApp/`game.json`/charId/swipe/Chat State authority to satisfy stale tests or integration conflicts.
 
 ---
 
@@ -1767,3 +1764,161 @@ A9 should remove:
 
 A9 must finish with full residual scans, focused acceptance, broader regression/build/lint and final product validation.
 
+
+
+---
+
+## A9 implementation record — complete
+
+A9 — **Hard Cutover & Product Finalization** is complete and validated.
+
+- Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
+- A8 prior validated HEAD: `a5430d41c010aca297b77184271d4cf2819a5631`
+- **A9 validated HEAD: `8233c0dfe34989c294d18a93eae57f38eb70030a`**
+- Formal plan remained unchanged; A9 executed the frozen removal/finalization scope.
+- Do not continue feature implementation on this branch. Final Integration / Merge Main is next.
+
+### Removed authority
+
+A9 physically removed or disconnected:
+
+- `src/endpoints/card-app.js` and `/api/card-app/*`;
+- `public/scripts/extensions/card-app/*`;
+- CardApp packing/extraction/deletion in character import/export;
+- `card-apps` user-directory, sync and Storage Inspector authority;
+- `public/scripts/extensions/character-editor-assistant/studio/*`;
+- old CardApp Studio AI/session/file-edit tools and product entrypoints;
+- old CardApp Studio docs/tutorials/images;
+- `game.json` package/runtime authority and loader;
+- charId Game Package identity;
+- swipe-derived Game World branch authority;
+- Chat State `atri_game_world` authority;
+- old Game World branch/persistence/runtime/journal;
+- old immersive/CardApp product Play surface;
+- old `.atria game.json` distribution layer;
+- obsolete tests that existed only to verify retired authority.
+
+Still-valid tests were rewritten against the current Native Session / Runtime Descriptor contracts rather than restoring compatibility paths.
+
+### Current authority after A9
+
+- Package / immutable PackageVersion;
+- Native Runtime Descriptor;
+- Native Session / Branch / SessionRevision;
+- `atri_world_state` current world state;
+- `atri_game_runtime` committed Game Runtime event state;
+- Atria-native Play Conversation / Composer / Session Header;
+- A7 Atria Studio;
+- A8 Project Agent;
+- A1 Authoring Operation / Workspace / ChangeSet / Validation / Commit;
+- A2 Resource Registry / derived Resource Graph;
+- A4 Component Model / Native Preview;
+- A5 Plugin / Skill boundaries.
+
+### Intentionally retained internal ABI
+
+#### SillyTavern generation/message DOM
+
+`public/scripts/atria-shell/native-play-host.js` retains one real `#sheld/#chat/#send_form/#send_textarea` subtree only to preserve SillyTavern generation/message state machines, delegated listeners, attachments/autocomplete and related host behavior.
+
+The subtree is explicitly marked `atria-native-play-abi` and hidden from the product UI. Visible Play is mounted by `mountAtriaPlayProduct()`.
+
+This is an internal ABI, not official product DOM authority.
+
+#### Session projection into host message shape
+
+`public/scripts/native/session-projection.js` remains a runtime ABI adapter. It projects immutable Native Timeline/Variant identity into the SillyTavern message/swipe-shaped runtime representation required by the existing generation engine.
+
+It explicitly owns no storage, filename lookup, latest-pointer resolution or host DOM authority. Native message/variant IDs remain canonical.
+
+#### Game Runtime extension manifest
+
+`public/scripts/extensions/game-runtime/manifest.json` is retained because it is the SillyTavern extension descriptor that loads the current Atria Game Runtime extension.
+
+It is not the retired `game.json` package/runtime manifest authority.
+
+### Final residual scan
+
+A9 adds `scripts/check-a9-hard-cutover-product-finalization.mjs`.
+
+The validated guard confirms:
+
+- retired CardApp endpoint/runtime paths are absent;
+- Character import/export no longer bridges CardApp package storage;
+- `card-apps` is absent from active storage/sync authority;
+- active Game Runtime has no `GAME_MANIFEST_PATH`, `game.json`, `/api/card-app/*`, charId/characterId Game identity, `atri_game_world`, or swipe-derived branch helper authority;
+- active Native Session consumers contain no `atri_game_world` fallback;
+- CEA contains no retired CardApp Studio/session/tool authority;
+- old World branch/persistence/runtime/journal are absent;
+- old `.atria game.json` distribution authority is absent;
+- hidden SillyTavern Play ABI remains explicit and Atria-native Play remains the visible product surface.
+
+Guard result on validated HEAD:
+
+- **A9 Hard Cutover residual guard passed — 46 active Game Runtime files scanned.**
+- A0–A8 frozen residual guards also pass on the same HEAD.
+
+### Validation
+
+Validated on A9 HEAD `8233c0dfe34989c294d18a93eae57f38eb70030a`.
+
+**Native Authoring Platform A9 Checks #6**
+
+- Run: **35819590765**
+- focused + adjacent acceptance: **26 suites / 175 tests passed**
+- A9 residual guard: **success**
+- A9 guard syntax: **success**
+- frozen A0/A1/A2/A3/A4/A5/A6/A7/A8 guards: **success**
+- A9 focused ESLint: **success**
+- complete Node regression: **759 suites / 8104 tests passed**
+- skipped: **6 suites / 88 tests**
+- frontend webpack build: **success**
+- full root lint: **success**
+
+Independent frozen workflows on the same HEAD:
+
+- A0 Checks #183 / Run **35819590659** — success
+- A1 Checks #170 / Run **35819590639** — success
+- A2 Checks #168 / Run **35819590715** — success
+- A3 Checks #134 / Run **35819590535** — success
+- A4 Checks #102 / Run **35819590697** — success
+- A5 Checks #93 / Run **35819590663** — success
+- A6 Checks #60 / Run **35819590792** — success
+- A7 Checks #43 / Run **35819590829** — success
+- A8 Checks #21 / Run **35819590624** — success
+
+### Completed / remaining
+
+Completed:
+
+- N0–N10;
+- A0–A9;
+- Native authoring/runtime/product replacement;
+- hard cutover;
+- legacy authority deletion;
+- full residual scan;
+- focused + complete Node regression;
+- frontend build;
+- lint;
+- frozen phase verification.
+
+Remaining:
+
+- Final Integration / Merge Main only.
+
+### Final Integration entry conditions
+
+Final Integration must start by re-fetching `main`, `docs` and the implementation branch.
+
+Do not repeat A0–A9 and do not reintroduce removed legacy authority.
+
+The integration owner must:
+
+1. confirm A9 validated HEAD;
+2. create/update the PR into `main`;
+3. run/confirm required PR CI;
+4. resolve integration conflicts within the frozen A0–A9 authority model;
+5. merge only after CI succeeds;
+6. verify merged `main`;
+7. perform final docs bookkeeping;
+8. delete `refactor/atria-native-authoring-platform-product-frontend` after the merge is verified.
