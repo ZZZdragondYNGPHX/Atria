@@ -359,3 +359,16 @@ P0–P3 and A1/A2/A7/A8 guards, root/focused lint, syntax and frontend build pas
 See planning/atria-model-prompt-settings/P3-VALIDATION.md for exact commands, the final
 narrow adapter change retest and exclusions. P4 First-party Runtime Cutover is next,
 only after explicit continuation. A6/A8 transitional gates remain unchanged in P3.
+
+## P4 implementation checkpoint (2026-09-23)
+
+P4 complete at `6cba266814a7ff04666220f1031efdb844ad4e46`. See P4-VALIDATION.md
+for exact commands, exclusions and actual transport/browser evidence. P4 composes
+existing storage/context/Session/Studio authorities and cuts first-party Native
+requests over to GenerationService. Legacy dispatch is an explicit non-Native
+island; native preset/WI lookups and outer retries are bypassed. A8
+executeNativeGeneration replacement retains tool projection and human authority;
+A6 replacement gates remain unchanged for P5. No main merge or P5 implementation.
+Runtime host ABI, supported controls and residual whitelist are documented in
+src/native/model-prompt-runtime/README.md. P5 must provision explicit routes and
+use Native compile-only preview instead of legacy Generate dryRun.

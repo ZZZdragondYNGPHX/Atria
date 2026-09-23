@@ -1,57 +1,49 @@
-# Active checkpoint: Model / Prompt / Runtime — P3 complete, ready for P4
+# Active checkpoint: Model / Prompt / Runtime — P4 complete, ready for P5
 
 - Repository: ZZZdragondYNGPHX/Atria
 - Work branch: refactor/atria-model-prompt-settings
-- Main baseline (unchanged): 2d1c3ec9c8039ecc4728ebe712f4a9f14186906f
-- P2 validated HEAD: 5d5ab196c37ad7ff25db44d9dd249c0863b94115
-- P3 validated/pushed HEAD: 5e51332b34146236fd4d4a6d45c25ef7c37a9e08
+- Main unchanged: 2d1c3ec9c8039ecc4728ebe712f4a9f14186906f
+- P3 HEAD: 5e51332b34146236fd4d4a6d45c25ef7c37a9e08
+- P4 validated/pushed HEAD: 6cba266814a7ff04666220f1031efdb844ad4e46
 - Date: 2026-09-23
-- Next: P4 First-party Runtime Cutover, only after explicit continuation.
-- Continue the same work branch; do not merge main or redo P0–P3.
-- N0–N10/A0–A9 semantics remain frozen. A6/A8 replacement gates unchanged in P3.
+- Next: P5 Native Runtime Product UI, only after explicit continuation.
+- Same branch; no main merge, new branch or P0–P4 redo.
 
 ## Delivered
 
-PromptCompiler implements the P2 preparePrompt port over the exact resolved resource
-closure. Bounded single-parent derive, stable module slots, add/disable/replace/configure,
-typed Host/Program/Module/Request Local values, finite condition DSL, declared public
-cross-stage artifacts, semantic target/stage ordering, exclusive conflicts, Response
-Directive, immutable IR/provenance/preview diagnostics and stage projections.
+Native Game/Role Router, Play, Studio Agent, Orchestrator and Memory/Search use
+an authenticated generation host, P2 resolver/service and P3 context/compiler over
+P1 exact resources. No second Store/Library/fact scanner. Non-Native legacy sender
+remains an explicit adapter. Concrete OpenAI-compatible/raw-text HTTP/SSE ports
+use exact Secret IDs and documented controls. Host retries precede complete-route
+fallback; outer legacy loops cannot replay terminal Native errors.
 
-Task/Studio Context Providers delegate existing host selection. Native Session provider
-and host adapter reuse compileNativeContextPlan without a second fact scanner. Selected
-facts/history/input and source refs are consumed once; stale revisions and unresolved
-reserves fail closed. Final full-request token accounting remains at the P2 Provider Port.
+Play retains Draft/Revision/Retry/Continue and orchestration behavior. Live drafts
+are presentation-only; Stop cancels/discards. Real screenshots found/fixed mobile
+Play layout and an uncaught Stop abort. Studio retains backend tools, pinned Task
+base revision, Skills and human Review/Commit/Takeover. Fixed Create Task's initial
+execution. A8 now requires executeNativeGeneration; other A8 and all A6 gates remain.
 
-OpenAI-compatible/raw-text transport fixtures now use the P3 renderer. Conservative
-Anthropic/Gemini render-only fixtures reject unsupported interleaved system semantics.
-Kernel tools/output authority is carried from the host request, never granted by modules.
-No persistent prompt side effects, new Store/Library/Graph, or first-party/UI cutover.
+## Validation
 
-## Actually executed locally
+- Broad FS/SQLite: 206 suites / 1807 tests passed.
+- Final caller follow-up: 143 suites / 1744 tests passed.
+- Focused P2–P4/client/Play/A9: 6 suites / 98 tests passed. Counts overlap.
+- P0–P4, A1/A2/A6/A7/A8, N9/N10 guards, lint, syntax/diff and webpack passed.
+- Local server + Playwright Edge: four desktop/mobile cases passed, including
+  streaming/Stop/Timeline and Studio create/takeover. Screenshots visually checked.
+- Earlier SQL failures were absent MySQL/PostgreSQL services; final runs use the
+  existing disable switches. A9 Windows path bug fixed. No Android/Docker run.
+- No live external model credentials or real mobile device certification.
 
-- Final P3 focused: 38 tests passed.
-- Native + matched adjacent: 49 suites / 385 tests passed with FS/SQLite.
-  Existing ATRIA_DISABLE_MYSQL_TESTS=1 / ATRIA_DISABLE_POSTGRES_TESTS=1 switches used.
-- Earlier focused/adjacent run: 8 suites / 110 tests, before two additional P3 cases.
-- After the broad run, Native adapter settings/snapshot immutability was tightened and
-  covered by the existing adapter test; the final 38-test P3 run passed.
-- P0/P1/P2/P3 guards, P0 self-test, P2/P3 mutation self-tests passed.
-- Frozen A1/A2/A7/A8 guards passed unchanged.
-- Root lint; focused source/test lint; JS/MJS syntax; git diff --check passed.
-- Frontend webpack prebuild passed with cache outside the repository.
+See planning/atria-model-prompt-settings/P4-VALIDATION.md for commands/exclusions.
+Runtime ABI and residual whitelist: src/native/model-prompt-runtime/README.md.
 
-## Boundaries and limitations
+## Next
 
-No real provider account/Secret request; synthetic fixtures only. No full all-repository
-Node regression, MySQL/PostgreSQL service, Android or Docker run. No UI files or production
-frontend consumers changed, so no browser/Playwright UI acceptance was performed.
-P4 must follow the user's desktop/mobile interaction and screenshot requirements whenever
-frontend/UI changes occur. P3 conservative protocol fixtures are not production
-Anthropic/Gemini transports; P2 transport tools/output/prefill limitations remain fail-closed.
-Native recent raw history preserves existing speaker-labelled TurnGroups as supplied user
-history messages; it does not reconstruct individual messages from canonical Timeline.
-Host orchestrators must supply declared public artifacts; the compiler never runs stages.
-
-Details: planning/atria-model-prompt-settings/P3-VALIDATION.md.
-Next instructions: planning/atria-model-prompt-settings/NEXT.md.
+Use planning/atria-model-prompt-settings/NEXT.md. P5 delivers Native Runtime
+Routes/Models/Connections/Profiles/Diagnostics and missing-route remediation.
+Native users need explicit P1 configuration; no legacy model fallback exists.
+Legacy Native dry-run is rejected; preview must use P3. Evolve A6's transitional
+gates only after replacement UI works and passes visual verification. Do not start
+P6–P8 or merge main.

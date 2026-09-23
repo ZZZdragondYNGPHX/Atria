@@ -1,6 +1,6 @@
 # Atria 模型、提示词与 Runtime 原生化企划
 
-**状态：P0–P3 已完成并验证；当前下一阶段为 P4 — First-party Runtime Cutover。**
+**状态：P0–P4 已完成并验证；当前下一阶段为 P5 — Native Runtime Product UI。**
 
 ## 当前基线
 
@@ -162,3 +162,12 @@ P0–P3 and A1/A2/A7/A8 guards, root/focused lint, syntax and frontend build pas
 See planning/atria-model-prompt-settings/P3-VALIDATION.md for exact commands, the final
 narrow adapter change retest and exclusions. P4 First-party Runtime Cutover is next,
 only after explicit continuation. A6/A8 transitional gates remain unchanged in P3.
+
+## P4 completion checkpoint (2026-09-23)
+
+P4 is complete at `6cba266814a7ff04666220f1031efdb844ad4e46`. First-party Native
+generation uses the exact route service/context/compiler. A8 seam replacement is
+verified; human Review/Commit and A6 gates remain. Broad 206 suites/1807 tests,
+final callers 143 suites/1744 tests, four real desktop/mobile browser cases, guards,
+lint and webpack passed. See P4-VALIDATION.md in the planning pack. Earlier
+P4-future statements are historical. Next is P5 only after explicit continuation.
