@@ -1,6 +1,6 @@
 # Atria 模型、提示词与 Runtime 原生化企划
 
-**状态：P0 已完成并验证；当前下一阶段为 P1 — Native Resource & Persistence Foundation。**
+**状态：P0、P1 已完成并验证；当前下一阶段为 P2 — Generation Core & Route Resolution。**
 
 ## 当前基线
 
@@ -120,3 +120,22 @@ P0 已把设计从文档冻结成代码合同与 CI 边界：
 - frozen guard evolution matrix。
 
 P0 没有切换 Runtime UI，没有删除 A6/A8 过渡 seam，也没有进入 P1 persistence。
+
+
+## P1 已落实
+
+P1 validated HEAD：`802a68654f53015800e141fd052f1a006df149e0`。
+
+已完成：
+
+- generic versioned JSON resource handler；
+- Prompt Module / Prompt Program / Generation Profile 的 Library exact persistence；
+- A2 Registry / derived Resource Graph 接入；
+- Attach / Fork / Update 复用 A1 Workspace / ChangeSet；
+- Project / Library / Package exact origin + provenance；
+- Package exact dependency closure 与 missing-exact fail closed；
+- Connection / Model / player Runtime Route persistence；
+- Secret 仅保存 `secretRef`；
+- P1 architecture guard 与 CI。
+
+下一阶段只执行 P2，不重做 P0/P1。
