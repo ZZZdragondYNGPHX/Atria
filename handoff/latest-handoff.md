@@ -1,10 +1,10 @@
-# Active checkpoint: Native Authoring Platform A7 complete; ready for A8
+# Active checkpoint: Native Authoring Platform A8 complete; ready for A9
 
 ## Status
 
-**Atria Native Authoring Platform & Product Frontend Refactor has completed A7 — Studio Authoring UX.**
+**Atria Native Authoring Platform & Product Frontend Refactor has completed A8 — Project Agent / Vibe Coding.**
 
-Prior Native Content & Session Architecture N0–N10 remains complete and frozen. A0–A6 remain frozen and validated.
+Prior Native Content & Session Architecture N0–N10 and A0–A7 remain complete, frozen and validated.
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Stable baseline: `main@fd9a493c9040b32f4892bd92531030e58b066244`
@@ -17,240 +17,202 @@ Prior Native Content & Session Architecture N0–N10 remains complete and frozen
 - A5 validated HEAD: `eefd6550d9b2af6c2777984e12d5f61de0898415`
 - A6 validated HEAD: `e33704b91ecb0373902132fe8af9c80b204aa8ce`
 - A7 validated HEAD: `40cb1b98ecbf2ccf76599421ea1ccf625af35071`
+- **A8 validated HEAD: `a5430d41c010aca297b77184271d4cf2819a5631`**
 - Formal plan: `refactor/atria-native-authoring-platform-product-frontend.md`
 - Detailed handoff: `handoff/atria-native-authoring-platform-product-frontend.md`
-- Next phase: **A8 — Project Agent / Vibe Coding**
+- Next phase: **A9 — Hard Cutover & Product Finalization**
 - Continue on the same implementation branch. Do not create a new branch and do not merge `main`.
 
-Formal plan design did not change during A7; no mechanical plan edit was required.
+Formal plan design did not change during A8.
 
-## A7 implementation record — complete
+## A8 implementation record — complete
 
-A7 — **Studio Authoring UX** is complete and validated.
+### Project Agent state model
 
-- Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
-- A6 prior validated HEAD: `e33704b91ecb0373902132fe8af9c80b204aa8ce`
-- A7 validated HEAD: `40cb1b98ecbf2ccf76599421ea1ccf625af35071`
-- Formal plan remains unchanged; A7 implemented the frozen Studio UX without adding a second Project/Resource/Preview/Plugin/Skill/Runtime authority.
-- Do not merge `main`; continue A8 on the same implementation branch.
+A8 replaces the A7 placeholder with a Project-level Agent centered on:
 
-### Implemented
+- Project Tasks;
+- Plan;
+- Progress / execution state;
+- Changes;
+- Diagnostics;
+- auxiliary Conversation.
 
-#### Full Atria Studio workspace
+Conversation remains browser-side supportive context and is not Project truth.
 
-Opening a Build project now mounts a full Atria Studio workspace rather than the A6 project-detail/dependency form.
+Server-side `ProjectAgentService` owns semantic Task execution state and records:
 
-Desktop exposes:
+- intent;
+- explicit `baseRevision`;
+- Plan and per-step progress;
+- proposed Authoring Operations;
+- Workspace;
+- dry-run Changes;
+- validation diagnostics;
+- Native Preview / simulation inspection;
+- repair rounds;
+- Review state;
+- committed ChangeSet references;
+- semantic Task timeline;
+- human takeover/conflict state.
 
-- Project/Resource Explorer;
-- Editor Host;
-- contextual Inspector;
-- Activity panel;
-- Preview/Run/Build controls;
-- reserved AI product position for A8.
+Project revision/Git remains the source-history authority.
 
-Project resource entry points cover:
+### Shared A1 authoring authority
 
-- Overview;
-- Experience;
-- Actors;
-- EntryPoints;
-- Worlds;
-- Knowledge;
-- Game Logic;
-- UI;
-- Assets;
-- Memory;
-- Agents / Orchestration;
-- Skills;
-- Plugins;
-- Presets / Processors / Localization / Permissions;
-- Test / Simulation;
-- Preview;
-- Build;
-- Source.
+All Agent writes are forced to:
 
-A5 Plugin-defined `authoring.resource` descriptors are projected dynamically from the existing A2 Resource Registry into the Resource Explorer. A7 does not create another resource registry.
+- `origin.kind = 'agent'`;
+- an explicit Task `baseRevision`;
+- existing A1 Authoring Operations;
+- one A1 Workspace / ChangeSet path;
+- existing validation;
+- explicit human Review before Commit.
 
-#### Shared authoring boundary / ChangeSet review
+There is no ProjectStore/repository write API exposed to the Agent.
 
-A7 adds a browser-side Native Studio client and authoring helpers, but all writes still terminate at the A1 Native Studio boundary.
+No Agent Commit tool is exposed to the model. The model stops at Review; Commit is an explicit Studio UI action.
 
-Human editing follows:
+No silent rebase is implemented. If the project advances after Task creation, A8 stops at `project_revision_conflict`.
 
-`Authoring Operation → Workspace(baseRevision) → inspect/review → execute → Validation → Commit`
+### Domain tools / Resource Graph / Skills / Plugins
 
-Structured project edits use `project.save`; source/UI/asset changes use A1 source operations, and multi-file/manifest changes share one Workspace.
+AI tools are projected from the existing Native Studio/A2 authoring capabilities:
 
-The Studio never imports or writes ProjectStore/WorldRepo/KnowledgeRepo/AssetStore directly.
+- project structured save;
+- exact Library Attach;
+- explicit exact-revision Update;
+- exact Library Fork;
+- source write/move/delete only as low-level fallback;
+- Project/source reads;
+- Resource Registry discovery;
+- Resource Graph query / References / Used By;
+- exact dependency closure;
+- validation.
 
-Revision conflicts surface at the Changes review boundary. A7 never silently rebases staged human edits over a newer Project revision.
+Plugin-defined `authoring.resource` descriptors remain visible through the existing A2 Resource Registry and are included in Agent planning context. A8 does not invent write executors for plugin resource capabilities that A1/A2 cannot actually execute.
 
-Activity provides:
+A5 Native Skills are read-only Agent know-how. A8 resolves global/project/exact-package scope using the existing Skills API and exact package preflight identity.
 
-- Problems;
-- Output;
-- History/diff;
-- Changes / ChangeSet review.
+### Validate → Preview / Simulate → Review
 
-#### Structured UI
+A8 adds an A1 `StudioService.evaluateWorkspace()` seam.
 
-A7 adds an Atria Structured UI editor with the frozen first-class views:
+It:
 
-- Design;
-- Structure;
-- Bindings;
-- Source.
+1. verifies the exact base revision;
+2. snapshots current Project state;
+3. applies existing Authoring Operations temporarily;
+4. runs A1 validation;
+5. builds an existing A4 Native Preview;
+6. invokes the existing simulation seam;
+7. restores the Project snapshot unconditionally;
+8. returns Changes/diagnostics/preview/simulation for Review.
 
-The editor consumes the existing A4 `compileExperienceComponentModel()` and `renderExperienceComponentModel()` authority.
+No Git/source commit occurs during evaluation.
 
-Design/Structure/Bindings/Source edit one JSON Component Model and stage source writes through the A1 authoring boundary.
+A bounded repair loop is enforced server-side. Default maximum is 3 rounds; a Task becomes blocked when the limit is exhausted.
 
-Arbitrary HTML/JS visual-designer round-tripping was not implemented. Unsupported/executable fields remain rejected by the A4 compiler.
+Review freezes the Plan/operation set so the reviewed Workspace cannot be silently changed before Commit.
 
-#### World / Knowledge / Assets / Library relationships
+### A7 Studio integration
 
-Project-owned World and Knowledge snapshots are editable as structured Project source.
+The A7 AI product position now hosts Project Agent.
 
-Library authoring interactions expose:
+Desktop adds an AI side panel; mobile continues to use the dedicated Project / Editor / Preview / AI / More model.
 
-- Attach exact revision;
-- Fork to project ownership;
-- explicit Update from one pinned revision to another.
+Agent results reuse A7 surfaces:
 
-No `Library latest` implicit build input was introduced.
+- validation → Problems;
+- Agent action logs → Output;
+- dry-run ChangeSet → Changes;
+- Native Preview → Preview;
+- simulation → Test / Simulation;
+- committed ChangeSet → Git History.
 
-Assets support project-local import/removal as a single transactional Workspace combining source-file and manifest operations.
+Human Takeover terminates Agent mutation while leaving the normal Studio fully usable.
 
-The Inspector consumes the derived A2 Resource Graph for:
+If AI/generation is unavailable or unused, all human A7 authoring remains intact.
 
-- resource identity/ownership/authority;
-- References;
-- Used By.
+### Semantic development history
 
-The graph remains read-only derived authority.
+Committed Agent ChangeSets continue to use existing A1 Git history. Agent commits include both ChangeSet identity and semantic Task ID in the Git commit message.
 
-#### Preview / Simulation / Build
+Task timeline records intent/plan/operations/validation/review/commit/takeover/conflict semantics without replacing Git source history.
 
-Studio exposes existing A1/A4 seams for:
+### Main implementation surfaces
 
-- validation;
-- Native Preview;
-- simulation;
-- build preflight;
-- `.atria` build/download.
-
-Native Preview remains volatile and does not create Session/Branch persistence.
-
-Build continues to resolve the exact dependency closure through the existing Native package builder.
-
-#### Mobile Studio
-
-Compact Studio uses separate views rather than squeezing the desktop panes:
-
-- Project;
-- Editor;
-- Preview;
-- AI;
-- More.
-
-Preview restores the prior editor view when returning to Editor. AI is only an A7 placeholder/product position; no A8 Project Agent planning or mutation workflow exists yet.
-
-### Added / changed implementation surfaces
-
+- `src/native/project-agent.js`
+- `src/native/authoring/studio-service.js`
+- `src/native/index.js`
+- `src/endpoints/native-studio.js`
 - `public/scripts/native/studio-client.js`
-- `public/scripts/native/studio-authoring.js`
-- `public/scripts/native/studio-ui-editor.js`
+- `public/scripts/native/studio-agent.js`
 - `public/scripts/native/studio-workspace.js`
 - `public/css/atria-studio.css`
-- `tests/atria-shell/studio-authoring.test.js`
-- `tests/atria-shell/studio-ui-editor.test.js`
-- `tests/atria-shell/studio-workspace-a7.test.js`
-- `tests/atria-shell/native-product-workspaces.test.js`
-- `scripts/check-a7-studio-authoring-ux.mjs`
-- `.github/workflows/native-authoring-platform-a7.yml`
+- `tests/native/project-agent.test.js`
+- `tests/native/project-agent-http.test.js`
+- `tests/atria-shell/studio-agent-a8.test.js`
+- `scripts/check-a8-project-agent.mjs`
+- `.github/workflows/native-authoring-platform-a8.yml`
 
-### Key decisions
+## Validation
 
-- A7 is UX/application composition over A1–A6 authorities, not a new editor persistence architecture.
-- Human and future Agent writes share the same Authoring Operation / Workspace / ChangeSet boundary.
-- Resource Graph remains a derived read-only projection.
-- Library Attach pins exact immutable identity; revision movement is explicit Update only.
-- Structured UI promises lossless round-trip only for the shared Atria Component Model.
-- A4 compiler/runtime remains the Component Model authority.
-- Native Preview remains non-persistent.
-- Plugin-defined Build resources come from the existing A2 Registry/A5 Contribution Registry.
-- Mobile Studio is a current-view/drill-down product layout.
-- A8 Project Agent is deliberately not started.
-- Formal plan did not change.
+Validated on A8 HEAD `a5430d41c010aca297b77184271d4cf2819a5631`.
 
-### Validation
+**Native Authoring Platform A8 Checks #15**
 
-Validated on A7 HEAD `40cb1b98ecbf2ccf76599421ea1ccf625af35071`.
-
-**Native Authoring Platform A7 Checks #8**
-
-- Run: **35813893750**
-- focused + adjacent regressions: **16 suites / 47 tests passed**
-- A7 Studio Authoring UX residual guard: **success**
-- A7 guard syntax: **success**
-- frozen A0/A1/A2/A3/A4/A5/A6 guards: **success**
-- A7 focused ESLint: **success**
+- Run: **35816240985**
+- focused + adjacent regressions: **15 suites / 42 tests passed**
+- A8 Project Agent residual guard: **success**
+- A8 guard syntax: **success**
+- frozen A0/A1/A2/A3/A4/A5/A6/A7 guards: **success**
+- A8 focused ESLint: **success**
 - full root lint: **success**
 
 Independent frozen workflows on the same HEAD:
 
-- **A0 Checks #148**, Run **35813893721** — success.
-- **A1 Checks #135**, Run **35813893784** — success.
-- **A2 Checks #133**, Run **35813893716** — success.
-- **A3 Checks #99**, Run **35813893759** — success.
-- **A4 Checks #67**, Run **35813893788** — success.
-- **A5 Checks #58**, Run **35813893922** — success.
-- **A6 Checks #25**, Run **35813893762** — success.
+- **A0 Checks #177**, Run **35816240997** — success.
+- **A1 Checks #164**, Run **35816240974** — success.
+- **A2 Checks #162**, Run **35816240957** — success.
+- **A3 Checks #128**, Run **35816240984** — success.
+- **A4 Checks #96**, Run **35816240972** — success.
+- **A5 Checks #87**, Run **35816240990** — success.
+- **A6 Checks #54**, Run **35816240965** — success.
+- **A7 Checks #37**, Run **35816241039** — success.
 
-### Explicitly not implemented in A7
+## Explicitly not implemented in A8
 
-- A8 Project Agent Tasks / Plan / automatic operation planning;
-- A8 AI operation execution/repair loop/human takeover;
-- A8 semantic Task state beyond existing Project Git/ChangeSet history;
-- A9 final obsolete-product hard-cutover cleanup;
-- arbitrary HTML/JS ↔ visual designer conversion;
-- a second Project/Resource/Preview/Plugin/Skill/Package/Runtime authority.
+- A9 CardApp/legacy hard-cutover deletion;
+- `/api/card-app/*` removal;
+- `game.json` cleanup;
+- charId / swipe-path / old Chat State authority cleanup;
+- old Studio AI/session/tool cleanup;
+- old product-facing Play DOM removal;
+- a second Project/Resource/Preview/Package/Runtime authority;
+- silent Agent rebase;
+- AI-owned Commit.
 
-### A8 entry conditions
+## A9 entry conditions
 
-A8 starts only from the actual latest remote HEAD of `refactor/atria-native-authoring-platform-product-frontend`, preserving A0–A7.
+A9 starts only from the actual latest remote HEAD of `refactor/atria-native-authoring-platform-product-frontend`, preserving A0–A8.
 
-A8 must consume:
+A9 is cleanup/finalization, not another architecture redesign. It may remove retired systems only after verifying their replacement consumers remain covered by A0–A8.
 
-- the A1 Authoring Operation / Workspace / ChangeSet / Validation / Commit boundary;
-- A2 Resource Registry / Resource Graph / exact Library relationships;
-- A4 Native Preview / simulation / shared Component Model;
-- A5 Native Skills and Plugin authoring contribution boundaries;
-- A7 Studio Task/AI product position and Changes review UI.
+A9 authority is the formal plan section **A9 — Hard Cutover & Product Finalization**.
 
-A8 must not grant the Project Agent a privileged write path. Agent writes must use `origin.kind = 'agent'` and the same revision/conflict/validation semantics as human editing.
+A9 must remove, where replacement coverage is already validated:
 
-Do not start A9 final hard-cutover cleanup during A8 unless required to fix an A8 correctness defect.
+- CardApp Studio/runtime product paths;
+- `/api/card-app/*`;
+- `game.json` authority/loader;
+- charId Game Package identity;
+- swipe-path game branch authority;
+- Chat State world authority;
+- old Studio AI tools/sessions;
+- old product-facing Play DOM;
+- obsolete compatibility entrypoints with no justified consumers.
 
+A9 must run full residual scans, focused acceptance, broader regression/build/lint and final product validation.
 
-## Next action — A8 only
-
-Start **A8 — Project Agent / Vibe Coding** from the actual latest remote HEAD of the same implementation branch.
-
-Before editing, re-read:
-
-1. `main:AGENTS.md`
-2. `main:FORK_MAINTENANCE.md`
-3. this latest handoff
-4. `docs:refactor/atria-native-authoring-platform-product-frontend.md`
-5. `docs:handoff/atria-native-authoring-platform-product-frontend.md`
-6. A1 Native Authoring Backend / StudioService / Authoring Operation → Workspace → ChangeSet
-7. A2 Resource Registry / Resource Graph / Library Attach/Fork/Update
-8. A4 Native Preview / simulation / shared Component Model
-9. A5 Plugin / Skill Platform
-10. A7 Studio workspace, Changes review, AI placeholder and mobile AI view.
-
-A8 must implement only the frozen Project Agent / Vibe Coding phase. It must use the same A1 authoring boundary as human editing and may not create a privileged AI write path or second Project authority.
-
-Do not start A9 final hard-cutover cleanup early. Stop after A8 validation/handoff.
+Do not merge `main` until A9/final integration is complete and explicitly ready.
