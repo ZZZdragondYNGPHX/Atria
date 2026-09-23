@@ -1,4 +1,5 @@
 import { assertNativeId } from './identity.js';
+import { assertPackageModelPromptRuntimeMetadata } from './model-prompt-runtime/contracts.js';
 import {
     assertKnowledgeBinding,
     assertPackagedKnowledgeSnapshot,
@@ -581,10 +582,19 @@ export function assertAtriaPackageManifest(value) {
         knowledgeBindings,
         assets,
     };
+    if (value.runtime !== undefined) {
+        const runtime = cloneJson(plain(value.runtime, 'AtriaPackage.runtime'), 'AtriaPackage.runtime');
+        if (runtime.modelPrompt !== undefined) {
+            runtime.modelPrompt = assertPackageModelPromptRuntimeMetadata(runtime.modelPrompt, {
+                packageId,
+                packageVersionId,
+            });
+        }
+        out.runtime = Object.freeze(runtime);
+    }
     for (const key of [
         'description',
         'author',
-        'runtime',
         'orchestration',
         'memory',
         'ui',
