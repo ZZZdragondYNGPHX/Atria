@@ -32,23 +32,23 @@ describe('R7D Navigation Authority', () => {
     test('models detail/workspace child routes without creating a second router', () => {
         const navigation = createAtriaNavigationAuthority({ window });
 
-        navigation.navigate('studio');
+        navigation.navigate('build');
         navigation.navigateChild({ id: 'project/demo', label: 'Demo', kind: 'detail' });
 
         expect(navigation.getRoute()).toMatchObject({
-            domain: 'studio',
+            domain: 'build',
             child: {
                 id: 'project/demo',
                 label: 'Demo',
                 kind: 'detail',
             },
         });
-        expect(navigation.getRoute().breadcrumb).toEqual(['Studio', 'Demo']);
+        expect(navigation.getRoute().breadcrumb).toEqual(['Build', 'Demo']);
         expect(window.location.search).toContain('atriaChild=project%2Fdemo');
 
         navigation.clearChild({ history: 'replace' });
         expect(navigation.getRoute().child).toBeNull();
-        expect(navigation.getRoute().breadcrumb).toEqual(['Studio']);
+        expect(navigation.getRoute().breadcrumb).toEqual(['Build']);
 
         navigation.dispose();
     });
