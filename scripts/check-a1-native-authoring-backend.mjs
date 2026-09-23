@@ -50,11 +50,6 @@ for (const file of authoringBackend) {
         /\b(?:getChatState|setChatState|deleteChatState|createFloorState)\b|\batri_game_world\b/,
         'A1 authoring backend must not use Chat State/FloorState game authority',
     );
-    rejectPattern(
-        file,
-        /\b(?:ResourceGraph|ResourceRegistryService|LibraryAttach|LibraryFork)\b/,
-        'A1 must not implement A2 Resource Graph/Library authority early',
-    );
 }
 
 requirePattern(

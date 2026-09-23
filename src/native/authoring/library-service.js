@@ -208,15 +208,18 @@ export class NativeLibraryService {
             if (typeof revision !== 'string' || !HASH_RE.test(revision)) {
                 throw new TypeError('Library Asset revision must be a lowercase SHA-256 content hash');
             }
+            const current = await this._assets.getRef(handle, resourceId);
+            if (!current || current.contentHash !== revision) {
+                throw new NotFoundError('library asset exact reference', { resourceId, revision });
+            }
             const bytes = await this._assets.readBlob(handle, revision);
             if (!bytes) throw new NotFoundError('library asset content', { resourceId, revision });
-            const current = await this._assets.getRef(handle, resourceId);
             const ref = assertAssetRef({
                 assetId: resourceId,
                 contentHash: revision,
                 size: bytes.length,
-                ...(current?.contentHash === revision && current.mediaType ? { mediaType: current.mediaType } : {}),
-                ...(current?.contentHash === revision && current.logicalName ? { logicalName: current.logicalName } : {}),
+                ...(current.mediaType ? { mediaType: current.mediaType } : {}),
+                ...(current.logicalName ? { logicalName: current.logicalName } : {}),
             });
             return Object.freeze({
                 ref: exactReference({ resourceType, resourceId, revision }),

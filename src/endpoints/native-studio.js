@@ -4,6 +4,7 @@ import { getUserDirectories } from '../users.js';
 import {
     getAssetStore,
     getKnowledgeRepo,
+    getPackageRepo,
     getWorldRepo,
 } from '../storage/index.js';
 import { ProjectStore } from '../native/project-store.js';
@@ -18,6 +19,7 @@ function services() {
             worldRepo: getWorldRepo(),
             knowledgeRepo: getKnowledgeRepo(),
             assetStore: getAssetStore(),
+            packageRepo: getPackageRepo(),
         });
     }
     return { studio: studioService };
@@ -96,6 +98,48 @@ export function createNativeStudioRouter(getServices = services) {
         }
     };
 
+    router.get('/resources/registry', route(async (_req, res, { studio }) => {
+        res.json(studio.getResourceRegistry());
+    }));
+
+    router.get('/library/resources', route(async (req, res, { studio }, handle) => {
+        res.json(await studio.listLibraryResources(handle, {
+            ...(req.query.resourceType == null ? {} : { resourceType: req.query.resourceType }),
+            ...(req.query.search == null ? {} : { search: req.query.search }),
+        }));
+    }));
+
+    router.get('/resources/graph', route(async (_req, res, { studio }, handle) => {
+        res.json(await studio.getResourceGraph(handle));
+    }));
+
+    router.get('/resources', route(async (req, res, { studio }, handle) => {
+        res.json(await studio.queryResources(handle, {
+            ...(req.query.resourceType == null ? {} : { resourceType: req.query.resourceType }),
+            ...(req.query.projectId == null ? {} : { projectId: req.query.projectId }),
+            ...(req.query.ownership == null ? {} : { ownership: req.query.ownership }),
+            ...(req.query.search == null ? {} : { search: req.query.search }),
+        }));
+    }));
+
+    router.post('/resources/references', route(async (req, res, { studio }, handle) => {
+        const body = req.body || {};
+        res.json(await studio.getResourceReferences(handle, {
+            resourceType: body.resourceType,
+            resourceId: body.resourceId,
+            ...(body.revision == null ? {} : { revision: body.revision }),
+        }, { reverse: body.reverse === true }));
+    }));
+
+    router.post('/resources/delete-safety', route(async (req, res, { studio }, handle) => {
+        const body = req.body || {};
+        res.json(await studio.inspectResourceDelete(handle, {
+            resourceType: body.resourceType,
+            resourceId: body.resourceId,
+            ...(body.revision == null ? {} : { revision: body.revision }),
+        }));
+    }));
+
     router.get('/projects', route(async (_req, res, { studio }, handle) => {
         res.json(await studio.listProjects(handle));
     }));
@@ -157,6 +201,22 @@ export function createNativeStudioRouter(getServices = services) {
     router.post('/projects/:projectId/workspaces/execute', route(async (req, res, { studio }, handle) => {
         const workspace = workspaceFromBody(studio, req.params.projectId, req.body || {});
         res.json(await studio.executeWorkspace(handle, workspace));
+    }));
+
+    router.get('/projects/:projectId/resources/closure', route(async (req, res, { studio }, handle) => {
+        res.json(await studio.resolveResourceClosure(handle, req.params.projectId));
+    }));
+
+    router.post('/projects/:projectId/resources/attach', route(async (req, res, { studio }, handle) => {
+        res.json(await studio.attachLibraryResource(handle, req.params.projectId, req.body || {}));
+    }));
+
+    router.post('/projects/:projectId/resources/fork', route(async (req, res, { studio }, handle) => {
+        res.json(await studio.forkLibraryResource(handle, req.params.projectId, req.body || {}));
+    }));
+
+    router.post('/projects/:projectId/resources/update', route(async (req, res, { studio }, handle) => {
+        res.json(await studio.updateLibraryResource(handle, req.params.projectId, req.body || {}));
     }));
 
     router.post('/projects/:projectId/validate', route(async (req, res, { studio }, handle) => {

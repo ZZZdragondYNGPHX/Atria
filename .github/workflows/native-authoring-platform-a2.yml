@@ -35,6 +35,10 @@ jobs:
           native/resource-registry.test.js
           native/library-resource.test.js
           native/resource-graph.test.js
+          native/library-authoring.test.js
+          native/library-build-closure.test.js
+          native/studio-resource-http.test.js
+          native/studio-service.test.js
           native/project-composition.test.js
           native/package-build-install.test.js
           native/world-knowledge.test.js
@@ -46,15 +50,25 @@ jobs:
         run: node scripts/check-a0-native-authoring-contracts.mjs
       - name: Run A1 authoring backend guard
         run: node scripts/check-a1-native-authoring-backend.mjs
+      - name: Check A1 guard syntax
+        run: node --check scripts/check-a1-native-authoring-backend.mjs
       - name: Run A2 focused lint
         run: >-
           npx eslint
           src/native/authoring/resource-registry.js
           src/native/authoring/library-service.js
           src/native/authoring/resource-graph.js
+          src/native/authoring/library-authoring.js
+          src/native/authoring/studio-service.js
+          src/native/project-source.js
+          src/native/dependency-closure.js
+          src/endpoints/native-studio.js
           src/native/index.js
           tests/native/resource-registry.test.js
           tests/native/library-resource.test.js
           tests/native/resource-graph.test.js
+          tests/native/library-authoring.test.js
+          tests/native/library-build-closure.test.js
+          tests/native/studio-resource-http.test.js
       - name: Run full root lint
         run: npm run lint

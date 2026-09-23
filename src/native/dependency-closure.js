@@ -88,6 +88,9 @@ export async function resolveProjectDependencyClosure({
     const bindings = new Map();
     const assets = new Map();
     const projectAssetIds = new Set((source.assetFiles || []).map(item => item.assetId));
+    const exactAssetDependencies = new Map(
+        (source.dependencies?.assets || []).map(item => [item.assetId, item.contentHash]),
+    );
 
     const addKnowledgeSnapshot = (snapshot) => {
         const parsed = assertPackagedKnowledgeSnapshot(snapshot);
@@ -151,10 +154,27 @@ export async function resolveProjectDependencyClosure({
         return vendored;
     };
 
-    const loadAsset = async (assetId) => {
-        if (assets.has(assetId)) return assets.get(assetId);
+    const loadAsset = async (assetId, expectedContentHash = null) => {
+        if (assets.has(assetId)) {
+            const existing = assets.get(assetId);
+            if (expectedContentHash && existing.ref.contentHash !== expectedContentHash) {
+                throw new NativeDependencyError('native_asset_dependency_revision_mismatch', {
+                    assetId,
+                    expectedContentHash,
+                    actualContentHash: existing.ref.contentHash,
+                });
+            }
+            return existing;
+        }
         const payload = await assetStore.read(handle, assetId);
         if (!payload) throw new NativeDependencyError('native_asset_dependency_missing', { assetId });
+        if (expectedContentHash && payload.ref.contentHash !== expectedContentHash) {
+            throw new NativeDependencyError('native_asset_dependency_revision_mismatch', {
+                assetId,
+                expectedContentHash,
+                actualContentHash: payload.ref.contentHash,
+            });
+        }
         assets.set(assetId, payload);
         return payload;
     };
@@ -221,6 +241,9 @@ export async function resolveProjectDependencyClosure({
     for (const bindingId of source.dependencies?.knowledgeBindings || []) {
         await loadBinding(bindingId);
     }
+    for (const dependency of source.dependencies?.assets || []) {
+        await loadAsset(dependency.assetId, dependency.contentHash);
+    }
     for (const dependency of source.dependencies?.worlds || []) {
         const world = await worldRepo.get(handle, dependency.worldId);
         const revision = await worldRepo.getRevision(
@@ -245,7 +268,9 @@ export async function resolveProjectDependencyClosure({
             if (!bindings.has(bindingId)) await loadBinding(bindingId);
         }
         for (const assetId of snapshot.revision.assetIds) {
-            if (!assets.has(assetId) && !projectAssetIds.has(assetId)) await loadAsset(assetId);
+            if (!assets.has(assetId) && !projectAssetIds.has(assetId)) {
+                await loadAsset(assetId, exactAssetDependencies.get(assetId) || null);
+            }
         }
     }
 

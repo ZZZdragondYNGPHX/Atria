@@ -65,7 +65,7 @@ export const CORE_RESOURCE_DESCRIPTORS = Object.freeze([
         displayName: 'Asset',
         provider: { kind: 'core' },
         authority: 'native-library',
-        capabilities: ['create', 'read', 'update', 'delete', 'attach', 'fork', 'publish', 'preview'],
+        capabilities: ['create', 'read', 'delete', 'attach', 'fork', 'publish', 'preview'],
         schema: { type: 'object' },
         metadata: { category: 'media', ownership: ['project', 'library'], immutableRevision: 'contentHash' },
     },

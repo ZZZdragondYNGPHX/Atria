@@ -15,6 +15,13 @@ import {
 import { buildProjectPackage } from '../package-composition.js';
 import { validateAtriaProjectSource } from '../project-source.js';
 import { StudioPreviewHost } from '../studio-preview.js';
+import {
+    LibraryAuthoringPlanner,
+    STUDIO_RESOURCE_OPERATION_TYPES,
+} from './library-authoring.js';
+import { NativeLibraryService } from './library-service.js';
+import { createCoreResourceRegistry } from './resource-registry.js';
+import { ResourceGraph } from './resource-graph.js';
 
 export const STUDIO_SOURCE_OPERATION_TYPES = Object.freeze({
     write: 'source.write',
@@ -29,6 +36,7 @@ const HISTORY_AUTHOR = Object.freeze({
 });
 
 const SOURCE_ENCODINGS = new Set(['utf8', 'base64']);
+const RESOURCE_OPERATION_TYPES = new Set(Object.values(STUDIO_RESOURCE_OPERATION_TYPES));
 
 function opaqueId(prefix, idFactory) {
     return prefix + '_' + String(idFactory()).replaceAll('-', '').toLowerCase();
@@ -99,6 +107,8 @@ export class StudioService {
         worldRepo,
         knowledgeRepo,
         assetStore,
+        packageRepo = null,
+        resourceRegistry = null,
         gitClient = createGitClient(),
         previewHost = new StudioPreviewHost(),
         validators = [],
@@ -127,6 +137,27 @@ export class StudioService {
         this._worlds = worldRepo;
         this._knowledge = knowledgeRepo;
         this._assets = assetStore;
+        this._packages = packageRepo;
+        this._resourceRegistry = resourceRegistry || createCoreResourceRegistry();
+        this._library = new NativeLibraryService({
+            worldRepo,
+            knowledgeRepo,
+            assetStore,
+            packageRepo,
+        });
+        this._resourceGraph = new ResourceGraph({
+            registry: this._resourceRegistry,
+            libraryService: this._library,
+            projectStore,
+            worldRepo,
+            knowledgeRepo,
+            assetStore,
+            packageRepo,
+        });
+        this._libraryAuthoring = new LibraryAuthoringPlanner({
+            libraryService: this._library,
+            idFactory,
+        });
         this._git = gitClient;
         this._previewHost = previewHost;
         this._validators = [...validators];
@@ -230,6 +261,7 @@ export class StudioService {
             await this._projects.create(handle, source, { files });
             try {
                 const revision = await this._revisionUnlocked(handle, projectId);
+                this._resourceGraph.invalidate(handle);
                 return Object.freeze({
                     source: await this._project(handle, projectId),
                     files: await this._projects.listFiles(handle, projectId),
@@ -245,7 +277,9 @@ export class StudioService {
     async deleteProject(handle, projectId, expectedRevision) {
         return this._queue(projectId, async () => {
             await this._assertBaseRevision(handle, projectId, expectedRevision);
-            return this._projects.delete(handle, projectId);
+            const deleted = await this._projects.delete(handle, projectId);
+            if (deleted) this._resourceGraph.invalidate(handle);
+            return deleted;
         });
     }
 
@@ -265,6 +299,39 @@ export class StudioService {
             encoding: 'base64',
             content: bytes.toString('base64'),
         });
+    }
+
+    getResourceRegistry() {
+        return this._resourceRegistry.contract();
+    }
+
+    async listLibraryResources(handle, query = {}) {
+        return this._library.list(handle, query);
+    }
+
+    async getLibraryResource(handle, reference) {
+        return this._library.getExact(handle, reference);
+    }
+
+    async getResourceGraph(handle) {
+        return this._resourceGraph.refresh(handle);
+    }
+
+    async queryResources(handle, query = {}) {
+        return this._resourceGraph.query(handle, query);
+    }
+
+    async getResourceReferences(handle, reference, options = {}) {
+        return this._resourceGraph.references(handle, reference, options);
+    }
+
+    async inspectResourceDelete(handle, reference) {
+        return this._resourceGraph.inspectDelete(handle, reference);
+    }
+
+    async resolveResourceClosure(handle, projectId) {
+        await this._project(handle, projectId);
+        return this._resourceGraph.resolveBuildClosure(handle, projectId);
     }
 
     createWorkspace({ projectId, baseRevision, origin, operations, workspaceId = undefined }) {
@@ -377,6 +444,11 @@ export class StudioService {
                 after: fingerprint(afterBytes),
             });
         }
+        if (RESOURCE_OPERATION_TYPES.has(operation.operationType)) {
+            const source = await this._project(handle, projectId);
+            const planned = await this._libraryAuthoring.plan(handle, projectId, source, operation);
+            return planned.change;
+        }
         throw new TypeError('Unsupported Native Studio authoring operation: ' + operation.operationType);
     }
 
@@ -426,6 +498,14 @@ export class StudioService {
                 throw new TypeError('project.save target must identify the Workspace core.project');
             }
             return this._projects.save(handle, operation.input?.source);
+        }
+        if (RESOURCE_OPERATION_TYPES.has(operation.operationType)) {
+            const source = await this._project(handle, projectId);
+            const planned = await this._libraryAuthoring.plan(handle, projectId, source, operation);
+            for (const file of planned.fileWrites) {
+                await this._projects.writeFile(handle, projectId, file.path, file.bytes);
+            }
+            return this._projects.save(handle, planned.next);
         }
         throw new TypeError('Unsupported Native Studio authoring operation: ' + operation.operationType);
     }
@@ -515,6 +595,7 @@ export class StudioService {
                     HISTORY_AUTHOR,
                 );
                 const resulting = await this._revisionUnlocked(handle, workspace.projectId);
+                this._resourceGraph.invalidate(handle);
                 return Object.freeze({
                     changeSet: assertAuthoringChangeSet({
                         changeSetId,
@@ -590,6 +671,72 @@ export class StudioService {
             operationType: STUDIO_SOURCE_OPERATION_TYPES.saveProject,
             target: { resourceType: 'core.project', resourceId: projectId },
             input: { source },
+        }));
+    }
+
+    async attachLibraryResource(handle, projectId, {
+        resourceType,
+        resourceId,
+        revision,
+        baseRevision,
+        origin,
+    }) {
+        return this.executeWorkspace(handle, this._singleOperation({
+            projectId,
+            baseRevision,
+            origin,
+            operationType: STUDIO_RESOURCE_OPERATION_TYPES.attach,
+            target: { resourceType, resourceId },
+            input: { revision },
+        }));
+    }
+
+    async updateLibraryResource(handle, projectId, {
+        resourceType,
+        resourceId,
+        fromRevision,
+        toRevision,
+        baseRevision,
+        origin,
+    }) {
+        return this.executeWorkspace(handle, this._singleOperation({
+            projectId,
+            baseRevision,
+            origin,
+            operationType: STUDIO_RESOURCE_OPERATION_TYPES.update,
+            target: { resourceType, resourceId },
+            input: { fromRevision, toRevision },
+        }));
+    }
+
+    async forkLibraryResource(handle, projectId, {
+        resourceType,
+        resourceId,
+        revision,
+        displayName,
+        path,
+        derivativeResourceId,
+        derivativeRevision,
+        derivativeEntryIds,
+        baseRevision,
+        origin,
+    }) {
+        const target = { resourceType, resourceId };
+        const input = await this._libraryAuthoring.prepareForkInput(handle, target, {
+            revision,
+            ...(displayName == null ? {} : { displayName }),
+            ...(path == null ? {} : { path }),
+            ...(derivativeResourceId == null ? {} : { derivativeResourceId }),
+            ...(derivativeRevision == null ? {} : { derivativeRevision }),
+            ...(derivativeEntryIds == null ? {} : { derivativeEntryIds }),
+        });
+        return this.executeWorkspace(handle, this._singleOperation({
+            projectId,
+            baseRevision,
+            origin,
+            operationType: STUDIO_RESOURCE_OPERATION_TYPES.fork,
+            target,
+            input,
         }));
     }
 

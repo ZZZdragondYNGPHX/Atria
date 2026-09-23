@@ -157,14 +157,6 @@ export class ResourceGraph {
         return parent;
     }
 
-    async _ensureLibraryExact(nodes, edges, ref) {
-        const key = nodeKey('library', ref.resourceType, ref.resourceId, ref.revision);
-        if (nodes.has(key)) return nodes.get(key);
-        const exact = await this._library.getExact(ref);
-        void exact;
-        return null;
-    }
-
     async _addExactLibraryResource(handle, nodes, edges, ref) {
         const key = nodeKey('library', ref.resourceType, ref.resourceId, ref.revision);
         if (nodes.has(key)) return nodes.get(key);
@@ -453,6 +445,14 @@ export class ResourceGraph {
                     resourceType: 'core.knowledge',
                     resourceId: dependency.knowledgeBaseId,
                     revision: dependency.knowledgeRevisionId,
+                });
+                this._addEdge(edges, project.key, target.key, 'attaches-exact');
+            }
+            for (const dependency of source.dependencies?.assets || []) {
+                const target = await this._addExactLibraryResource(handle, nodes, edges, {
+                    resourceType: 'core.asset',
+                    resourceId: dependency.assetId,
+                    revision: dependency.contentHash,
                 });
                 this._addEdge(edges, project.key, target.key, 'attaches-exact');
             }

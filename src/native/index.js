@@ -93,6 +93,11 @@ export {
 export { ResourceGraph } from './authoring/resource-graph.js';
 
 export {
+    LibraryAuthoringPlanner,
+    STUDIO_RESOURCE_OPERATION_TYPES,
+} from './authoring/library-authoring.js';
+
+export {
     NativeDependencyError,
     resolveProjectDependencyClosure,
 } from './dependency-closure.js';
