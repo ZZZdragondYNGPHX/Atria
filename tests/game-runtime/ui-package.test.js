@@ -27,7 +27,7 @@ function jsonFetch(payload) {
             ok: true,
             status: 200,
             async json() {
-                return structuredClone(payload);
+                return JSON.parse(JSON.stringify(payload));
             },
         };
     });
