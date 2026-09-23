@@ -115,13 +115,13 @@ async function renderProjectDetail(documentRef, root, route, host) {
         status: `Package ${source.package.version} · ${files.length} source file(s)`,
         tone: 'success',
     });
-    hero.dataset.atriaStudioProjectDetail = projectId;
+    hero.dataset.atriaBuildProjectDetail = projectId;
 
     const heroActions = actions(documentRef);
     heroActions.append(button(documentRef, 'Delete Project', async () => {
-        if (typeof globalThis.confirm === 'function' && !globalThis.confirm('Delete this Native Studio Project source tree?')) return;
+        if (typeof globalThis.confirm === 'function' && !globalThis.confirm('Delete this Native Build Project source tree?')) return;
         await nativeProductClient.deleteProject(projectId);
-        host.openStudio();
+        host.openBuild();
     }));
     hero.append(heroActions);
     root.append(hero);
@@ -274,12 +274,12 @@ async function renderProjectDetail(documentRef, root, route, host) {
 
 async function renderProjectList(documentRef, root, host) {
     const projects = await nativeProductClient.listProjects();
-    root.dataset.atriaStudioProjects = 'true';
+    root.dataset.atriaBuildProjects = 'true';
     if (!projects.length) {
         root.append(panel(
             documentRef,
             'empty',
-            'No Native Studio Projects',
+            'No Native Build Projects',
             'Native authoring projects are stored by opaque projectId under ProjectStore.',
         ));
         return;
@@ -292,10 +292,10 @@ async function renderProjectList(documentRef, root, host) {
             description: `Package source ${project.packageId}`,
             status: `Updated ${formatTime(project.updatedAt || project.createdAt)}`,
         });
-        card.dataset.atriaStudioProjectId = project.projectId;
+        card.dataset.atriaBuildProjectId = project.projectId;
         const cardActions = actions(documentRef);
         cardActions.append(button(documentRef, 'Open Project', () => (
-            host.openStudio(project.projectId, project.displayName)
+            host.openBuild(project.projectId, project.displayName)
         )));
         card.append(cardActions);
         grid.append(card);
@@ -314,10 +314,10 @@ export function mountNativeStudioWorkspace({
 
     async function render(nextRoute = route) {
         const token = ++sequence;
-        slot.replaceChildren(panel(documentRef, 'loading', 'Studio Projects', 'Loading ProjectStore…'));
+        slot.replaceChildren(panel(documentRef, 'loading', 'Build Projects', 'Loading ProjectStore…'));
         const root = documentRef.createElement('section');
         root.className = 'atria-native-studio';
-        root.dataset.atriaNativeStudio = 'true';
+        root.dataset.atriaNativeBuild = 'true';
         try {
             if (String(nextRoute?.child?.id || '').startsWith('project:')) {
                 await renderProjectDetail(documentRef, root, nextRoute, host);
@@ -327,7 +327,7 @@ export function mountNativeStudioWorkspace({
             if (!disposed && token === sequence) slot.replaceChildren(root);
         } catch (error) {
             if (!disposed && token === sequence) {
-                slot.replaceChildren(panel(documentRef, 'error', 'Studio Projects', error?.message || String(error)));
+                slot.replaceChildren(panel(documentRef, 'error', 'Build Projects', error?.message || String(error)));
             }
         }
     }
