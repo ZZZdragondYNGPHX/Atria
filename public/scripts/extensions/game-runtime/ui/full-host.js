@@ -96,9 +96,9 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
     recovery.style.pointerEvents = 'auto';
 
     const actions = [
-        ['exit', 'Exit Game UI', options.onExit],
+        ['exit', 'Exit Experience', options.onExit],
         ['stop', 'Stop generation', options.onStopGeneration],
-        ['disable', 'Disable package', options.onDisablePackage],
+        ['save', 'Save', options.onSave],
         ['diagnostics', 'Diagnostics', options.onDiagnostics],
     ];
 
