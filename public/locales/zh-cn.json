@@ -6554,7 +6554,6 @@
     "Dismiss failure notice": "关闭失败提示",
     "atria.shell.domain.play": "游玩",
     "atria.shell.domain.library": "书库",
-    "atria.shell.domain.studio": "工作室",
     "atria.shell.domain.agents": "智能体",
     "atria.shell.domain.runtime": "运行时",
     "atria.shell.utility.command": "命令",
@@ -6735,5 +6734,6 @@
     "Version": "版本",
     "UI mode": "UI 模式",
     "This preview describes the current project. Use Play to run the real conversation/game surface.": "这里展示当前项目的预览信息。请进入“游玩”运行真实的对话/游戏界面。",
-    "This preview describes the current CardApp project. Use Play to run the live surface.": "这里展示当前 CardApp 项目的预览信息。请进入“游玩”运行实时界面。"
+    "This preview describes the current CardApp project. Use Play to run the live surface.": "这里展示当前 CardApp 项目的预览信息。请进入“游玩”运行实时界面。",
+    "atria.shell.domain.build": "构建"
 }
