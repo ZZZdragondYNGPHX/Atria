@@ -1,6 +1,6 @@
 # 实施蓝图：Atria Native Model / Prompt / Runtime P0–P8
 
-**状态：P0 已完成并验证；P1 为下一实施阶段。**
+**状态：P0、P1 已完成并验证；P2 为下一实施阶段。**
 
 正式实现分支：`refactor/atria-model-prompt-settings`
 
@@ -544,3 +544,43 @@ Run：`35832249672`
 | N10 rejects legacy Character/WorldInfo identity/storage | Semantic invariant | Never replaced | Kept; contract-validator literal exception narrowed to `authoring-contracts.js` only |
 
 No frozen guard was wholesale disabled.
+
+
+## P1 completion checkpoint
+
+P1 validated HEAD：`802a68654f53015800e141fd052f1a006df149e0`  
+Workflow：Model Prompt Runtime P1 Checks #6  
+Run：`35836303381`
+
+### P1 commits
+
+- `a2c2fee0` — add P1 Native resource persistence foundation
+- `bff67534` — integrate P1 resources with A2 authoring authority
+- `1822358d` — close P1 model/prompt Package dependencies
+- `577eeedc` — preserve frozen P0 Package metadata contract
+- `84d3fe50` — add P1 resource/package integration tests
+- `fd38b8ec` — add P1 CI workflow
+- `342452b4` — align persistence test fixture with normalized Model contract
+- `ce900854` — focused lint fix
+- `61f0b1aa` — prove project/library/package origin + provenance
+- `0ff8fcb4` — add P1 architecture guard
+- `802a6865` — enforce P1 architecture guard in CI
+
+### P1 exit status
+
+- generic resource schema / revision round-trip: passed;
+- exact refs do not follow latest: passed;
+- same-name different IDs: passed;
+- Library list/get exact: passed;
+- Attach/Fork/Update through A1 authority: passed;
+- Resource Graph forward/reverse refs: passed;
+- Package closure + missing exact fail closed: passed;
+- delete safety / reverse refs: passed;
+- Connection/Model/Route persistence: passed;
+- secret value never serialized: passed by contract and persistence tests;
+- project/library/package origin + provenance: passed;
+- P0 architecture guard: passed;
+- A1/A2/A7/A8 frozen guards: passed;
+- focused ESLint: passed.
+
+P1 stopped before P2. Generation Service, Route Resolver execution, provider adapters, Prompt Compiler, first-party cutover and Runtime UI remain unimplemented.
