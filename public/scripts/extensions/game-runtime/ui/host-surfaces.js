@@ -26,6 +26,7 @@ export function createAtriaSurfaceAdapter(documentRef = globalThis.document, opt
     }
 
     const anchors = new Map();
+    const borrowedAnchors = new Set();
     const mode = String(options.mode || 'component').trim();
     const shellFoundation = options.shell || null;
     const shell = shellFoundation?.getShell?.() || shellFoundation;
@@ -44,6 +45,15 @@ export function createAtriaSurfaceAdapter(documentRef = globalThis.document, opt
         if (existing) {
             anchors.set(surfaceId, existing);
             return existing;
+        }
+
+        if (mode === 'component' && typeof nativePlayHost?.resolveHostSurface === 'function') {
+            const nativeSurface = nativePlayHost.resolveHostSurface(surfaceId);
+            if (nativeSurface) {
+                anchors.set(surfaceId, nativeSurface);
+                borrowedAnchors.add(nativeSurface);
+                return nativeSurface;
+            }
         }
 
         const sheld = documentRef.getElementById?.('sheld');
@@ -113,9 +123,10 @@ export function createAtriaSurfaceAdapter(documentRef = globalThis.document, opt
         resolveSurface: ensureAnchor,
         destroy() {
             for (const anchor of anchors.values()) {
-                anchor.remove?.();
+                if (!borrowedAnchors.has(anchor)) anchor.remove?.();
             }
             anchors.clear();
+            borrowedAnchors.clear();
             stageOwnership?.release?.();
             stageOwnership = null;
         },
