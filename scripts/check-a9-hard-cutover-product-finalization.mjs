@@ -81,6 +81,14 @@ for (const file of activeGameRuntime) {
     );
 }
 
+for (const file of walk('public/scripts/native')) {
+    assertNoMatch(
+        file,
+        /\batri_game_world\b/,
+        'A9 active Native Session consumers must not retain retired game-world namespace',
+    );
+}
+
 const cea = [
     ...walk('public/scripts/extensions/character-editor-assistant'),
 ].filter(file => !file.includes('/editor-iteration/'));

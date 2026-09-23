@@ -121,9 +121,7 @@ export function buildNativeKnowledgeStateProviders(snapshot) {
     for (const namespace of Object.keys(states).filter(key => key.startsWith('atri_')).sort()) {
         const raw = states[namespace];
         let state = raw;
-        if (namespace === 'atri_game_world' && raw?.schemaVersion === 1 && raw?.state && typeof raw.state === 'object') {
-            state = raw.state;
-        } else if (namespace === 'atri_variables' && raw?.schemaVersion === 1 && raw?.values && typeof raw.values === 'object') {
+        if (namespace === 'atri_variables' && raw?.schemaVersion === 1 && raw?.values && typeof raw.values === 'object') {
             state = raw.values;
         }
         providers.push({
@@ -133,14 +131,14 @@ export function buildNativeKnowledgeStateProviders(snapshot) {
             revision: snapshot?.revision?.revisionId ?? null,
             contract: 'Native SessionState/revision',
         });
-        if (namespace === 'atri_game_world' && raw?.journal && typeof raw.journal === 'object') {
-            const events = Array.isArray(raw.journal.events) ? raw.journal.events : [];
+        if (namespace === 'atri_game_runtime') {
+            const events = Array.isArray(raw?.events) ? raw.events : [];
             const latestEvent = events.at(-1) ?? null;
             providers.push({
                 providerId: 'atri_event_journal',
                 status: 'ready',
                 fields: flattenScalars({
-                    lastSeq: Number(raw.journal.nextSeq || 1) - 1,
+                    lastSeq: Number(raw?.nextEventSeq || 1) - 1,
                     latestEvent,
                 }),
                 revision: snapshot?.revision?.revisionId ?? null,

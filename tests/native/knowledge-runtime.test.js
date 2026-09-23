@@ -12,22 +12,25 @@ function snapshotFromFixture(fixture = sessionFixture()) {
         manifest: fixture.manifest,
         knowledge: { schemaVersion: 1, bindings: [fixture.binding], snapshots: [] },
         states: {
-            atri_game_world: {
-                schemaVersion: 1,
-                state: { hp: 8, location: 'harbor', quest: { stage: 2 } },
-                journal: {
-                    version: 1,
-                    nextSeq: 2,
-                    events: [{
-                        id: 'event:1',
-                        seq: 1,
-                        type: 'arrive',
-                        payload: { location: 'harbor' },
-                        branchPath: [],
-                        branchId: 'root',
-                    }],
-                    snapshots: [],
+            atri_world_state: {
+                primaryWorldId: fixture.worldId,
+                worlds: {
+                    [fixture.worldId]: {
+                        worldRevisionId: fixture.worldRevisionId,
+                        state: { hp: 8, location: 'harbor', quest: { stage: 2 } },
+                    },
                 },
+            },
+            atri_game_runtime: {
+                schemaVersion: 1,
+                nextEventSeq: 2,
+                events: [{
+                    id: 'event:1',
+                    seq: 1,
+                    type: 'arrive',
+                    payload: { location: 'harbor' },
+                    branchId: 'root',
+                }],
             },
         },
         revision: {
@@ -83,8 +86,8 @@ describe('N6 Native KnowledgeCompiler / KnowledgePlan', () => {
         entry.content = 'The party is still at the castle.';
         entry.applicability = {
             stateConditions: [{
-                providerId: 'atri_game_world',
-                path: ['location'],
+                providerId: 'atri_world_state',
+                path: ['worlds', snapshot.manifest.worlds[0].world.worldId, 'state', 'location'],
                 operator: 'eq',
                 value: 'castle',
             }],
@@ -153,8 +156,8 @@ describe('N6 Native KnowledgeCompiler / KnowledgePlan', () => {
 
         sessionKnowledge.entries[0].applicability = {
             stateConditions: [{
-                providerId: 'atri_game_world',
-                path: ['location'],
+                providerId: 'atri_world_state',
+                path: ['worlds', snapshot.manifest.worlds[0].world.worldId, 'state', 'location'],
                 operator: 'eq',
                 value: 'castle',
             }],
@@ -178,15 +181,15 @@ describe('N6 Native KnowledgeCompiler / KnowledgePlan', () => {
                 memoryId: 'memory-old-location',
                 content: 'Earlier the party was at the castle.',
                 stateClaim: {
-                    providerId: 'atri_game_world',
-                    path: ['location'],
+                    providerId: 'atri_world_state',
+                    path: ['worlds', snapshot.manifest.worlds[0].world.worldId, 'state', 'location'],
                     value: 'castle',
                 },
             }],
         });
 
         expect(plan.authorityEvidence.currentState).toEqual(expect.arrayContaining([
-            expect.objectContaining({ providerId: 'atri_game_world', status: 'ready' }),
+            expect.objectContaining({ providerId: 'atri_world_state', status: 'ready' }),
         ]));
         expect(plan.authorityEvidence.memory.included).toHaveLength(0);
         expect(plan.authorityEvidence.memory.rejected).toEqual([
@@ -283,7 +286,7 @@ describe('N6 Native KnowledgeCompiler / KnowledgePlan', () => {
     test('Native providers expose current state and committed Event Journal without floor/swipe identity', () => {
         const snapshot = snapshotFromFixture();
         const providers = buildNativeKnowledgeStateProviders(snapshot);
-        expect(providers.find(item => item.providerId === 'atri_game_world')).toMatchObject({
+        expect(providers.find(item => item.providerId === 'atri_world_state')).toMatchObject({
             status: 'ready',
             revision: snapshot.revision.revisionId,
             contract: 'Native SessionState/revision',

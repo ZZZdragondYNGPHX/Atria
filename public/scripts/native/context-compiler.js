@@ -294,42 +294,8 @@ function groupTimeline(timeline, revision, narrativeThroughSequence, promptConte
 function currentStateItems(snapshot) {
     const states = snapshot?.states && typeof snapshot.states === 'object' ? snapshot.states : {};
     const result = [];
-    const gameWorld = states.atri_game_world;
     const nativeWorld = states.atri_world_state;
-    if (gameWorld && typeof gameWorld === 'object') {
-        const worldState = gameWorld.schemaVersion === 1 && gameWorld.state && typeof gameWorld.state === 'object'
-            ? gameWorld.state
-            : gameWorld;
-        result.push(normalizeContextItem({
-            contextItemId: 'state:atri_game_world',
-            lane: CONTEXT_LANES.currentState,
-            authority: KNOWLEDGE_AUTHORITY.currentState.id,
-            authorityRank: KNOWLEDGE_AUTHORITY.currentState.rank,
-            priority: 1000,
-            content: 'Authoritative current world state:\n' + JSON.stringify(worldState),
-            required: true,
-            sourceRefs: [{
-                kind: 'state',
-                providerId: 'atri_game_world',
-                revisionId: snapshot?.revision?.revisionId,
-                branchId: snapshot?.revision?.branchId,
-            }],
-        }));
-        const events = Array.isArray(gameWorld?.journal?.events) ? gameWorld.journal.events.slice(-16) : [];
-        if (events.length) {
-            result.push(normalizeContextItem({
-                contextItemId: 'state:atri_event_journal:' + String(events.at(-1)?.id || events.length),
-                lane: CONTEXT_LANES.currentState,
-                authority: KNOWLEDGE_AUTHORITY.eventJournal.id,
-                authorityRank: KNOWLEDGE_AUTHORITY.eventJournal.rank,
-                priority: 900,
-                content: 'Recent committed Event Journal:\n' + JSON.stringify(events),
-                sourceRefs: events
-                    .filter(event => event?.id || event?.eventId)
-                    .map(event => eventSourceRef(event, snapshot?.revision)),
-            }));
-        }
-    } else if (nativeWorld && typeof nativeWorld === 'object') {
+    if (nativeWorld && typeof nativeWorld === 'object') {
         result.push(normalizeContextItem({
             contextItemId: 'state:atri_world_state',
             lane: CONTEXT_LANES.currentState,
@@ -346,6 +312,24 @@ function currentStateItems(snapshot) {
             }],
         }));
     }
+
+    const runtimeEvents = Array.isArray(states.atri_game_runtime?.events)
+        ? states.atri_game_runtime.events.slice(-16)
+        : [];
+    if (runtimeEvents.length) {
+        result.push(normalizeContextItem({
+            contextItemId: 'state:atri_event_journal:' + String(runtimeEvents.at(-1)?.id || runtimeEvents.length),
+            lane: CONTEXT_LANES.currentState,
+            authority: KNOWLEDGE_AUTHORITY.eventJournal.id,
+            authorityRank: KNOWLEDGE_AUTHORITY.eventJournal.rank,
+            priority: 900,
+            content: 'Recent committed Event Journal:\n' + JSON.stringify(runtimeEvents),
+            sourceRefs: runtimeEvents
+                .filter(event => event?.id || event?.eventId)
+                .map(event => eventSourceRef(event, snapshot?.revision)),
+        }));
+    }
+
     const variables = states.atri_variables?.values;
     if (variables && typeof variables === 'object' && Object.keys(variables).length) {
         result.push(normalizeContextItem({

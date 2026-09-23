@@ -177,10 +177,19 @@ describe('N8 .atriasave portability / Checkpoint B', () => {
                     },
                 }],
                 statePatch: {
-                    atri_game_world: {
+                    atri_world_state: {
+                        primaryWorldId: 'world_save',
+                        worlds: {
+                            world_save: {
+                                worldRevisionId: 'worldv_save',
+                                state: { quest: 'open' },
+                            },
+                        },
+                    },
+                    atri_game_runtime: {
                         schemaVersion: 1,
-                        revisionId: view.revision.revisionId,
-                        journal: [{ eventId: 'event_1', type: 'quest_open', sourceRefs: [{ messageId: view.timeline[0].messageId }] }],
+                        nextEventSeq: 2,
+                        events: [{ id: 'event_1', seq: 1, type: 'quest_open', sourceRefs: [{ messageId: view.timeline[0].messageId }] }],
                     },
                     atri_memory_graph: {
                         nodes: { harbor: { fact: 'gate open' } },

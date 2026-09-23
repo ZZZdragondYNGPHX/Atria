@@ -139,7 +139,7 @@ function snapshotSave(overrides = {}) {
         },
         knowledgeHead: 'knowledge_set_1',
         stateHeads: {
-            atri_game_world: 'world_head_1',
+            atri_world_state: 'native_world_head_1',
             atri_memory_graph: 'memory_head_1',
             atri_orchestrator: 'orch_head_1',
         },
@@ -178,7 +178,7 @@ function snapshotSave(overrides = {}) {
             timelineEntries: [message],
             variants: [variant],
             stateRecords: [
-                { namespace: 'atri_game_world', head: 'world_head_1', data: { hp: 90 } },
+                { namespace: 'atri_world_state', head: 'native_world_head_1', data: { hp: 90 } },
                 { namespace: 'atri_memory_graph', head: 'memory_head_1', data: { nodes: [] } },
                 { namespace: 'atri_orchestrator', head: 'orch_head_1', data: { round: 4 } },
                 {
@@ -362,11 +362,11 @@ describe('N0 Session, Timeline, Revision and SavePoint contracts', () => {
             timelineHead: null,
             knowledgeHead: 'knowledge_set_1',
             stateHeads: {
-                atri_game_world: 'world_head_1',
+                atri_world_state: 'native_world_head_1',
                 atri_memory_graph: 'memory_head_1',
             },
             createdAt: 10,
-        }).stateHeads.atri_game_world).toBe('world_head_1');
+        }).stateHeads.atri_world_state).toBe('native_world_head_1');
 
         expect(() => assertSessionRevision({
             revisionId: IDs.revisionId,
@@ -384,7 +384,7 @@ describe('N0 Session, Timeline, Revision and SavePoint contracts', () => {
             branchId: IDs.branchId,
             timelineHead: null,
             knowledgeHead: 'knowledge_set_1',
-            stateHeads: { atri_game_world: 'states/world.json' },
+            stateHeads: { atri_world_state: 'states/world.json' },
             createdAt: 10,
         })).toThrow(/state-head token/);
     });

@@ -42,13 +42,19 @@ function buildSnapshot(turns = 20, { branchId = 'branch-root', derived = null, g
             snapshots: [],
         },
         states: {
-            atri_game_world: {
-                schemaVersion: 1,
-                state: { hp: 8, location: 'harbor', quest: { stage: 2 } },
-                journal: {
-                    version: 1,
-                    events: [{ id: 'event-arrive', seq: 1, type: 'arrive', payload: { location: 'harbor' }, branchId }],
+            atri_world_state: {
+                primaryWorldId: fixture.worldId,
+                worlds: {
+                    [fixture.worldId]: {
+                        worldRevisionId: fixture.worldRevisionId,
+                        state: { hp: 8, location: 'harbor', quest: { stage: 2 } },
+                    },
                 },
+            },
+            atri_game_runtime: {
+                schemaVersion: 1,
+                nextEventSeq: 2,
+                events: [{ id: 'event-arrive', seq: 1, type: 'arrive', payload: { location: 'harbor' }, branchId }],
             },
             ...(derived ? { atri_context_derived: derived } : {}),
         },
@@ -240,9 +246,9 @@ describe('N7 SessionContextCompiler / Checkpoint C', () => {
         expect(plan.sourceSelection.rawMessageIds.length).toBeGreaterThan(0);
     });
 
-    test('canonical atri_world_state remains authoritative when Game Runtime world state is absent', async () => {
+    test('canonical atri_world_state remains authoritative without an event journal', async () => {
         const snapshot = buildSnapshot(4);
-        delete snapshot.states.atri_game_world;
+        delete snapshot.states.atri_game_runtime;
         snapshot.states.atri_world_state = {
             primaryWorldId: 'world-native',
             worlds: {
@@ -257,7 +263,7 @@ describe('N7 SessionContextCompiler / Checkpoint C', () => {
         expect(world).toBeDefined();
         expect(world.required).toBe(true);
         expect(world.content).toContain('"location":"library"');
-        expect(plan.included.some(item => item.contextItemId === 'state:atri_game_world')).toBe(false);
+        expect(plan.included.some(item => item.contextItemId.startsWith('state:atri_event_journal:'))).toBe(false);
     });
 
     test('Narrator / Actor / Agent Context views preserve target isolation and Knowledge identity', async () => {

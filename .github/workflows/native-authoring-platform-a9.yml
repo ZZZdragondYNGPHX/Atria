@@ -42,6 +42,9 @@ jobs:
           native/runtime-http.test.js
           native/session-runtime-http.test.js
           native/session-projection.test.js
+          native/knowledge-runtime.test.js
+          native/context-compiler.test.js
+          native/save-system.test.js
           native/studio-service.test.js
           native/studio-http.test.js
           native/studio-preview-experience.test.js
@@ -94,6 +97,8 @@ jobs:
           public/scripts/extensions/game-runtime/world/session.js
           public/scripts/native/studio-workspace.js
           public/scripts/native/studio-agent.js
+          public/scripts/native/knowledge-runtime.js
+          public/scripts/native/context-compiler.js
           tests/atria-shell/hard-cutover-a9.test.js
       - name: Run complete Node regression
         env:
