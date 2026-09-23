@@ -1,141 +1,135 @@
 import { describe, expect, jest, test } from '@jest/globals';
 
-import { GAME_PACKAGE_STATUS, loadGamePackage } from '../../public/scripts/extensions/game-runtime/package-loader.js';
+import {
+    GAME_PACKAGE_STATUS,
+    loadGamePackageJsonResource,
+    loadNativeGamePackage,
+} from '../../public/scripts/extensions/game-runtime/package-loader.js';
 
-function response({ status = 200, body = null, jsonError = null } = {}) {
+function response({ status = 200, body = null, text = null, jsonError = null } = {}) {
     return {
         ok: status >= 200 && status < 300,
         status,
         async json() {
             if (jsonError) throw jsonError;
-            return body;
+            return structuredClone(body);
+        },
+        async text() {
+            return text ?? JSON.stringify(body);
         },
     };
 }
 
-const manifest = {
-    format: 'atria-game',
-    manifestVersion: 1,
-    id: 'demo.game',
-    name: 'Demo Game',
-    version: '1.0.0',
-    runtime: { min: 1 },
+const descriptor = {
+    format: 'atria-native-runtime-descriptor',
+    schemaVersion: 1,
+    packageId: 'package_0123456789abcdef0123456789abcdef',
+    packageVersionId: 'packageVersion_0123456789abcdef0123456789abcdef',
+    packageContentHash: 'a'.repeat(64),
+    entryPointId: 'entryPoint_0123456789abcdef0123456789abcdef',
+    experience: { mode: 'text' },
+    capabilities: ['game-runtime'],
+    resources: [],
+    plugins: [],
+    skills: [],
 };
 
-describe('Game Package loader', () => {
-    test('treats missing game.json as no package instead of a runtime error', async () => {
-        const fetchImpl = jest.fn(async () => response({ status: 404 }));
-        const result = await loadGamePackage('hero', { fetchImpl });
-        expect(result.status).toBe(GAME_PACKAGE_STATUS.NONE);
-        expect(result.active).toBe(false);
-        expect(result.errors).toEqual([]);
+describe('A3 Native Game Runtime loader', () => {
+    test('does not activate without an active Native Session identity', async () => {
+        const fetchImpl = jest.fn();
+        const result = await loadNativeGamePackage('', { fetchImpl });
+        expect(result).toEqual({
+            status: GAME_PACKAGE_STATUS.NONE,
+            active: false,
+            sessionId: '',
+            descriptor: null,
+            runtime: null,
+            errors: [],
+        });
+        expect(fetchImpl).not.toHaveBeenCalled();
     });
 
-    test('activates a validated game.json package', async () => {
-        const fetchImpl = jest.fn(async () => response({ body: manifest }));
-        const result = await loadGamePackage('hero', { fetchImpl, headers: { 'x-test': '1' } });
+    test('resolves Text Experience through Native Session runtime API', async () => {
+        const fetchImpl = jest.fn(async () => response({
+            body: {
+                descriptor,
+                runtime: {
+                    experience: { mode: 'text' },
+                    game: { logic: 'logic/main.json' },
+                    primaryWorldId: null,
+                },
+            },
+        }));
+        const result = await loadNativeGamePackage('session_current', {
+            fetchImpl,
+            headers: { 'x-test': '1' },
+        });
 
         expect(result.status).toBe(GAME_PACKAGE_STATUS.READY);
         expect(result.active).toBe(true);
-        expect(result.manifest.id).toBe('demo.game');
-        expect(fetchImpl).toHaveBeenCalledWith('/api/card-app/hero/game.json', {
-            headers: { 'x-test': '1' },
+        expect(result.descriptor).toEqual(descriptor);
+        expect(fetchImpl).toHaveBeenCalledWith('/api/native/session/runtime/resolve', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-test': '1',
+            },
+            body: JSON.stringify({ sessionId: 'session_current' }),
             cache: 'no-store',
         });
     });
 
-    test('rejects malformed JSON while preserving the host recovery shell', async () => {
-        const fetchImpl = jest.fn(async () => response({ jsonError: new SyntaxError('bad json') }));
-        const result = await loadGamePackage('hero', { fetchImpl });
-        expect(result.status).toBe(GAME_PACKAGE_STATUS.INVALID);
-        expect(result.active).toBe(false);
-        expect(result.errors[0]).toContain('not valid JSON');
-    });
-
-    test('rejects a manifest that fails schema validation', async () => {
+    test('keeps non-Text descriptors inactive until A4 without changing identity', async () => {
+        const componentDescriptor = {
+            ...descriptor,
+            experience: { mode: 'component', componentModelVersion: 1 },
+        };
         const fetchImpl = jest.fn(async () => response({
-            body: { ...manifest, ui: { mode: 'full', entry: '../escape.html' } },
-        }));
-        const result = await loadGamePackage('hero', { fetchImpl });
-        expect(result.status).toBe(GAME_PACKAGE_STATUS.INVALID);
-        expect(result.active).toBe(false);
-        expect(result.errors.join('\n')).toContain('safe package-relative path');
-    });
-
-    test('rejects a valid manifest whose declared package file is missing', async () => {
-        const withUi = {
-            ...manifest,
-            ui: {
-                mode: 'component',
-                entry: 'ui/hud.html',
-                selectors: 'ui/selectors.json',
-                immersive: 'ui/immersive.json',
-            },
-        };
-        const fetchImpl = jest.fn(async (url) => {
-            if (url.endsWith('/game.json')) {
-                return response({ body: withUi });
-            }
-            if (url.endsWith('/files')) {
-                return response({
-                    body: {
-                        files: [
-                            { path: 'game.json', type: 'file' },
-                            { path: 'ui/hud.html', type: 'file' },
-                            { path: 'ui/selectors.json', type: 'file' },
-                        ],
-                    },
-                });
-            }
-            throw new Error(`unexpected URL ${url}`);
-        });
-
-        const result = await loadGamePackage('hero', { fetchImpl });
-
-        expect(result.status).toBe(GAME_PACKAGE_STATUS.INVALID);
-        expect(result.active).toBe(false);
-        expect(result.errors).toEqual([
-            "Game Package declares missing file 'ui/immersive.json'",
-        ]);
-    });
-
-    test('activates when every declared package file exists', async () => {
-        const withWorld = {
-            ...manifest,
-            world: {
-                schema: 'world/schema.json',
-                initial: 'world/initial.json',
-            },
-        };
-        const fetchImpl = jest.fn(async (url) => {
-            if (url.endsWith('/game.json')) {
-                return response({ body: withWorld });
-            }
-            return response({
-                body: {
-                    files: [
-                        { path: 'game.json', type: 'file' },
-                        { path: 'world/schema.json', type: 'file' },
-                        { path: 'world/initial.json', type: 'file' },
-                    ],
+            body: {
+                descriptor: componentDescriptor,
+                runtime: {
+                    experience: { mode: 'component', componentModelVersion: 1 },
+                    game: {},
+                    primaryWorldId: null,
                 },
-            });
-        });
-
-        const result = await loadGamePackage('hero', { fetchImpl });
-
+            },
+        }));
+        const result = await loadNativeGamePackage('session_component', { fetchImpl });
         expect(result.status).toBe(GAME_PACKAGE_STATUS.READY);
-        expect(result.active).toBe(true);
-        expect(fetchImpl).toHaveBeenCalledTimes(2);
+        expect(result.active).toBe(false);
+        expect(result.descriptor.entryPointId).toBe(descriptor.entryPointId);
     });
 
-    test('reports transport failures without activating the package', async () => {
-        const fetchImpl = jest.fn(async () => {
-            throw new Error('offline');
+    test('loads declarative resources from the exact Session-bound PackageVersion', async () => {
+        const fetchImpl = jest.fn(async () => response({
+            body: { commands: [], reducers: [] },
+        }));
+        const body = await loadGamePackageJsonResource(
+            { sessionId: 'session_current' },
+            'logic/main.json',
+            { fetchImpl },
+        );
+        expect(body).toEqual({ commands: [], reducers: [] });
+        expect(fetchImpl).toHaveBeenCalledWith('/api/native/session/runtime/resource', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: 'session_current',
+                path: 'logic/main.json',
+            }),
+            cache: 'no-store',
         });
-        const result = await loadGamePackage('hero', { fetchImpl });
+    });
+
+    test('reports Native runtime transport failure without any CardApp fallback', async () => {
+        const fetchImpl = jest.fn(async () => response({
+            status: 404,
+            body: { error: 'native_session_failed' },
+        }));
+        const result = await loadNativeGamePackage('session_missing', { fetchImpl });
         expect(result.status).toBe(GAME_PACKAGE_STATUS.ERROR);
         expect(result.active).toBe(false);
-        expect(result.errors.join('\n')).toContain('offline');
+        expect(result.errors.join('\n')).toContain('runtime/resolve failed');
+        expect(fetchImpl.mock.calls.flat().join(' ')).not.toContain('/api/card-app/');
     });
 });
