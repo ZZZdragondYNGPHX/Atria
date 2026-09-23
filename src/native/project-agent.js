@@ -361,6 +361,16 @@ export class ProjectAgentService {
         }
     }
 
+    _ensureDraftMutable(task) {
+        this._ensureMutable(task);
+        if (task.status === 'review' || task.status === 'committing') {
+            throw new ConflictError('project_agent_review_locked', {
+                taskId: task.taskId,
+                status: task.status,
+            });
+        }
+    }
+
     _setStepStatus(task, stepId, status) {
         if (!stepId || !task.plan) return;
         const step = task.plan.steps.find(item => item.id === stepId);
@@ -473,7 +483,7 @@ export class ProjectAgentService {
     setPlan(handle, projectId, id, planValue) {
         const task = this._task(handle, id);
         if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { taskId: id, projectId });
-        this._ensureMutable(task);
+        this._ensureDraftMutable(task);
         const plan = normalizePlan(planValue);
         task.plan = plan;
         task.status = 'planned';
@@ -483,7 +493,7 @@ export class ProjectAgentService {
     }
 
     async _propose(handle, task, toolName, args = {}) {
-        this._ensureMutable(task);
+        this._ensureDraftMutable(task);
         if (!task.plan) throw new TypeError('Project Agent must set a Plan before proposing operations');
         await this._assertTaskBaseRevision(handle, task);
         const origin = this._origin(task);
@@ -592,7 +602,7 @@ export class ProjectAgentService {
     async resetOperations(handle, projectId, id) {
         const task = this._task(handle, id);
         if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { taskId: id, projectId });
-        this._ensureMutable(task);
+        this._ensureDraftMutable(task);
         await this._assertTaskBaseRevision(handle, task);
         if (task.preview?.previewId) this._studio.closePreview(handle, task.preview.previewId);
         task.proposals = [];
@@ -614,7 +624,7 @@ export class ProjectAgentService {
     async prepareReview(handle, projectId, id, options = {}) {
         const task = this._task(handle, id);
         if (task.projectId !== projectId) throw new NotFoundError('native project agent task', { taskId: id, projectId });
-        this._ensureMutable(task);
+        this._ensureDraftMutable(task);
         if (!task.plan) throw new TypeError('Project Agent requires a Plan before review');
         if (!task.proposals.length) throw new TypeError('Project Agent requires proposed operations before review');
         await this._assertTaskBaseRevision(handle, task);
@@ -756,6 +766,12 @@ export class ProjectAgentService {
                 this._event(task, 'conflict', {
                     expectedRevision: task.baseRevision,
                     details: error?.details,
+                });
+            } else {
+                task.status = 'review';
+                task.updatedAt = Date.now();
+                this._event(task, 'commit.failed', {
+                    message: error?.message || String(error),
                 });
             }
             throw error;
