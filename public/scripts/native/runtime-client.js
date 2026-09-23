@@ -16,6 +16,8 @@ export function getRuntimeEvidence() { return latestEvidence; }
 
 export function runtimeRemediation(code) {
     const actions = {
+        native_generation_context_ambiguous: ['Choose either a Session or a Project context, not both.', 'diagnostics'],
+        native_generation_route_ref_invalid: ['Choose an exact player Runtime route. Session-scoped routes are not provisioned by this host.', 'routes'],
         native_generation_route_missing: ['No route is configured for this role. Create a route with an exact Model, Generation and Prompt.', 'routes'],
         native_generation_route_ambiguous: ['Several primary routes match this role. Assign distinct roles or link alternatives as fallbacks.', 'routes'],
         native_generation_configuration_invalid: ['Save failed. Check required fields, references and revision uniqueness. Your edits are still here.', null],

@@ -94,7 +94,7 @@ describe('P4 authenticated Native generation host and real HTTP transport', () =
     test('missing/ambiguous Native routes, stale revision and stopped Studio task fail before Secret', async () => {
         const f = await fixture();
         await expect(f.host.execute(f.h.handle, { ...f.request, revision: 'old' })).rejects.toMatchObject({ code: 'native_generation_revision_conflict' });
-        await expect(f.host.execute(f.h.handle, { ...f.request, routeRef: { runtimeRouteId: createNativeId('runtimeRoute') } })).rejects.toMatchObject({ code: 'native_generation_route_missing' });
+        await expect(f.host.execute(f.h.handle, { ...f.request, routeRef: { scope: 'player', runtimeRouteId: createNativeId('runtimeRoute') } })).rejects.toMatchObject({ code: 'native_generation_route_missing' });
         await f.persistence.saveRuntimeRoute(f.h.handle, { ...f.routes[0], runtimeRouteId: createNativeId('runtimeRoute') });
         await expect(f.host.execute(f.h.handle, f.request)).rejects.toMatchObject({ code: 'native_generation_route_ambiguous' });
         f.host.agent.getContext = async () => ({ task: { status: 'review', baseRevision: 'r1' }, tools: [] });
@@ -266,5 +266,23 @@ describe('P6 scoped catalog and authoring preview', () => {
         await expect(f.host.execute(f.h.handle, { ...input, previewRefs: { promptProgramRef: { ...promptProgramRef, projectId: createNativeId('project') } } }, undefined, undefined, { preview: true })).rejects.toThrow();
         await expect(f.host.execute(f.h.handle, { ...input, previewRefs: { promptProgramRef: { ...promptProgramRef, revision: 'missing' } } }, undefined, undefined, { preview: true })).rejects.toThrow();
         expect(f.secretPort.resolveSecret).not.toHaveBeenCalled();
+    });
+});
+
+
+describe('P8 host request identity hard cut', () => {
+    test.each(['session', 'library', undefined])('rejects explicit %s route scope before configuration lookup or send', async scope => {
+        const f = await fixture(); const list = jest.spyOn(f.persistence, 'listRuntimeRoutes');
+        const input = { ...f.request, routeRef: { scope, runtimeRouteId: f.routes[0].runtimeRouteId } };
+        await expect(f.host.execute(f.h.handle, input)).rejects.toMatchObject({ code: 'native_generation_route_ref_invalid' });
+        expect(list).not.toHaveBeenCalled(); expect(f.secretPort.resolveSecret).not.toHaveBeenCalled(); expect(f.requests).toEqual([]);
+    });
+    test('rejects conflicting context and cross-scope route metadata, preserving exact config', async () => {
+        const f = await fixture(); const before = await f.persistence.listRuntimeRoutes(f.h.handle);
+        await expect(f.host.execute(f.h.handle, { ...f.request, sessionId: createNativeId('session') })).rejects.toMatchObject({ code: 'native_generation_context_ambiguous' });
+        await expect(f.host.execute(f.h.handle, { ...f.request, routeRef: { scope: 'player', runtimeRouteId: f.routes[0].runtimeRouteId, sessionId: createNativeId('session') } }, undefined, undefined, { preview: true })).rejects.toMatchObject({ code: 'native_generation_route_ref_invalid' });
+        expect(await f.persistence.listRuntimeRoutes(f.h.handle)).toEqual(before); expect(f.requests).toEqual([]); expect(f.secretPort.resolveSecret).not.toHaveBeenCalled();
+        const result = await f.host.execute(f.h.handle, { ...f.request, routeRef: { scope: 'player', runtimeRouteId: f.routes[0].runtimeRouteId } });
+        expect(result.snapshot.runtimeRouteId).toBe(f.routes[0].runtimeRouteId);
     });
 });

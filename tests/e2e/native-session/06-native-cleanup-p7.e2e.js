@@ -26,6 +26,14 @@ for (const width of [1440, 390]) test(`P7 preferences, exact search and localiza
     await page.route('**/api/horde/text-workers', route => route.fulfill({ json: [] }));
     await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
     await awaitMainUI(page, server.baseURL);
+    const emptyShellBoundary = await page.evaluate(async () => {
+        const { executeFirstPartyGeneration } = await import('/scripts/native/generation-compat.js');
+        let legacyCalls = 0;
+        try { await executeFirstPartyGeneration({ generateTask: () => { legacyCalls++; } }, 'narrator'); }
+        catch (error) { return { code: error.code, legacyCalls }; }
+        return { code: 'unexpected-success', legacyCalls };
+    });
+    expect(emptyShellBoundary).toEqual({ code: 'native_generation_context_required', legacyCalls: 0 });
     const openSettings = () => page.evaluate(() => window.Atria.shell.getWorkspaceHost().openUtility('settings'));
     const shot = name => page.screenshot({ path: info.outputPath(`${name}-${width}.png`), fullPage: true });
     await openSettings(); const settings = page.locator('[data-atria-utility-workspace="settings"]');

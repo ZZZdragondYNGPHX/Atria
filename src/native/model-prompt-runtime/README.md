@@ -1,254 +1,184 @@
-# P2 execution boundary
+# Native Model / Prompt / Runtime — integrated contract (P8)
 
-`GenerationService.execute(request)` is a host-independent entry point. It does not
-replace any first-party caller yet. Prompt compilation remains P3; callers supply
-`preparePrompt({ request, resolved, contextPlan })` as a port returning P0 Prompt IR.
-It is called again for every fallback route, with that route's exact Prompt resources.
+This is the current API/composition reference. Phase-by-phase implementation and
+validation history lives on `docs:planning/atria-model-prompt-settings/`. The
+first-party product uses this pipeline now; it is not a future P2/P3 proposal.
 
-## Composition
+## Authority and composition
 
-- `RouteResolver({ persistence, library, providers, getScopedResource?, getSessionRoute? })`
-  reads the existing P1 NativeModelPromptPersistence and Library `getExact(handle, ref)`.
-  Project/Package reads are supplied by their existing authority through
-  `getScopedResource(handle, exactRef) -> { snapshot, origin }`. It must return the
-  exact owner and revision. Session routes similarly come from the Session owner.
-  These ports are reads, not new stores; absent ports fail closed.
-- `providers` maps Connection `providerAdapter` IDs to all six P0 Provider Port methods.
-  Capability sources combine conservatively: explicit unsupported wins; supported
-  evidence beats unknown; all provenance survives. Missing evidence means unknown.
-- `GenerationService({ resolver, contextProvider, preparePrompt, secretPort, providerFor?, now? })`
-  returns deeply immutable `{ snapshot, response }`.
-  `providerFor(adapterId)` allows a host to supply providers independently of a
-  minimal P0 resolver; it defaults to the concrete RouteResolver's provider lookup.
-- `execute({ handle, requestId, role, routeRef, requirements?,
-  unknownCapabilityOverrides?, fallbackMode?, signal?, ...contextInput })` clones
-  JSON request input before the first await. Context/Prompt ports consume that input
-  and the deeply frozen resolved config. No request overrides are written back.
+`NativeGenerationHost` composes authenticated Session/Studio context,
+`NativeModelPromptPersistence`, the P1 `VersionedJsonResourceHandler`,
+`RouteResolver`, `PromptCompiler`, `GenerationService`, an explicit HTTP Provider
+Port and the existing Secret Store adapter. Core imports no browser/SillyTavern
+settings, presets, DOM, sender globals or persistent prompt state.
 
-`fallbackMode` defaults to `disabled`. `automatic` opts into bounded complete-route
-fallback; `confirm` returns `generation_fallback_confirmation_required` instead of
-sending the next route. Resubmission is the host's explicit confirmation action.
-Original requirements survive fallback, along with tools/output-contract identity.
-The route's `maxFallbackAttempts` bounds attempts; route cycles cannot cause loops.
-Retries (`maxRetries`) remain owned by the caller's Role Router; this service does
-not silently retry or implement a second orchestration engine.
+- Connection/Model/Runtime Route: stable player-owned Native IDs in existing Store.
+- Generation Profile/Prompt Module/Prompt Program: immutable exact revisions in
+  Library, Project source or installed Package. No name lookup or latest fallback.
+- Request Context Plan/Prompt IR/Effective Request Snapshot: immutable request-owned
+  values, not another storage layer. Provider/config reads are snapshotted for a
+  request; concurrent edits cannot rewrite its accepted evidence.
+- Project writes: A1 Workspace/ChangeSet, human Review/Apply. A8 AI edits retain
+  tool projection, pinned base revision, Review/Commit/Takeover. Package originals
+  are read-only. Fork creates independent resources; no predecessor-key fallback.
 
-Explicit streaming, reasoning, and tool-choice controls require respectively
-`generation.streaming`, `generation.reasoning`, and `generation.tools` evidence.
-Prompt IR tools/output contracts require `generation.tools` and
-`generation.structured-output` in effective requirements. Unknown capabilities
-remain unknown in snapshots even when the explicit override permits their use.
-The override adds user provenance; it cannot override unsupported evidence.
+`RouteResolver({ persistence, library, providers, getScopedResource?,
+getSessionRoute? })` is read-through. Scoped ports must return `{ snapshot,
+origin }` matching every requested owner/ID/revision. Core supports a Session-route
+port, but the current HTTP host provisions **player routes only**. An explicit
+Session-scoped route is rejected, never reinterpreted as a player route.
 
-Provider `countTokens({ resolved, contextPlan, promptIr })` returns a nonnegative
-integer. It must use an appropriate host tokenizer. Input plus reserved output is
-checked against the newly resolved model on every attempt. `renderRequest` consumes
-`{ resolved, snapshot }`; only `send(rendered, { secret, signal })` receives the
-credential. `parseStream(raw, { signal })` consumes the response/stream and returns
-an assembled value; `normalizeResponse(parsed)` returns the public response. P2
-does not expose live token callbacks. Send and parsing are bounded by route timeout.
-`resolveSecret(secretRef, { handle, signal })` receives the same authenticated owner
-handle as persistence, so a shared service need not rely on a mutable active user.
+`GenerationService({ resolver, contextProvider, preparePrompt, secretPort,
+providerFor?, now? })` accepts request-owned input; `preparePrompt` is supplied by
+`PromptCompiler`. No compile/resolve/send path provisions a resource or writes
+config. UI save paths are separate authenticated P1/A1 operations.
 
-Only a `ProviderFailure('transport' | 'provider' | 'timeout')` thrown by **send**
-permits fallback. Adapters must classify known transient transport/provider failures;
-they must not wrap every exception in ProviderFailure. All other errors, including
-Secret Port, parser, config, capability, budget and cancellation errors, stop.
-Error payloads/causes are never copied into public diagnostics. Known credential
-echoes in config or normalized output are rejected. Endpoints containing URL auth,
-query strings or fragments are rejected before dispatch.
+## Authenticated HTTP API
 
-The minimal adapter in `src/native/adapters/generation-provider.js` implements
-OpenAI-compatible messages and raw-text rendering using injected send/tokenizer/
-stream ports. It accepts only its documented controls (temperature, topP, maxTokens,
-stop sequences, streaming enabled), and rejects unsupported controls instead of
-silently ignoring them. It does not import a global ST sender: a future host adapter
-may supply an audited explicit-config sender. Real provider cutover belongs to P4.
+Prefix: `/api/native/generation`. Existing authentication/CSRF controls apply;
+the owner is `request.user.profile.handle`, never a submitted `handle`.
 
-P0 snapshots retain their frozen ABI. Their existing diagnostics field includes
-effective non-secret Connection/Model/Generation/resource configuration so mutable
-player profiles do not make an accepted request unexplainable. Secret refs remain in
-the private resolved config; secret values never become snapshot/config fields.
-# P3 Request Context and Prompt Compiler
+| Method / path | Contract |
+| --- | --- |
+| GET `/configuration` | Player `connections`, `models`, `routes`, current Generation `profiles`, and Library resource revision summaries. |
+| PUT `/configuration/connections` | Save validated player Connection; exact Secret ID, never its value. |
+| PUT `/configuration/models` | Save Model with stable Connection ref. |
+| PUT `/configuration/routes` | Save player Route with exact Prompt/Generation refs and bounded, same-role, acyclic fallback graph. Library closure validated before save; Project/Package owner checked in context at preview/execute. |
+| PUT `/configuration/profiles` | Commit immutable Library Generation revision; existing routes stay pinned. |
+| GET `/resources` | Read-through exact Library revisions, current Project source resources, installed Package contents. |
+| POST `/resources` | `{ resourceType, resource }` commits a Library Prompt/Generation revision via P1; no Package/Project mutation. |
+| POST `/preview` | Compile/render/budget validation only; no Secret resolve, send, or persistence. |
+| POST `/execute` | Execute exact request; JSON response or SSE with `Accept: text/event-stream`. |
 
-P3 adds an opt-in preparation port; first-party consumers remain unchanged until P4.
-Construct `new PromptCompiler({ hostDefinitions })` and inject its bound
-`preparePrompt` into `GenerationService`. `compile` additionally returns immutable
-diagnostics and selected stage IDs for preview. Compilation has no persistence,
-network, model execution, Secret lookup or state mutation path.
+Preview/execute request fields:
 
-The compiler consumes the exact `resolved.resources` closure produced by P2. It
-validates resource identities again, resolves a bounded single-parent chain and
-flattens stable module slots. Child stages append to parent order; redeclaring a
-stage must retain its targets, condition and consumes contract. Derive `add`
-introduces a new stable slot, `disable` suppresses it, `replace` changes its exact
-resource while retaining the slot ID, and `configure.config` contains typed module
-parameter values only. Duplicate operations on one slot in a child fail closed.
-Definition conflicts and exclusive targets fail with deterministic `prompt_*` codes.
+- `requestId`: caller's request identity; `role`: `narrator`, `intent_resolver`,
+  `event_interpreter`, `orchestrator`, `studio`, `memory` or `search`.
+- Exactly one context: `{ sessionId, revisionId }` or `{ projectId, revision }`.
+  Optional `taskId` pins an A8 Task in the Project context. Stale revisions and
+  review/blocked/conflict/taken-over/completed Tasks fail before send.
+- Optional `routeRef: { scope: "player", runtimeRouteId }`. Additional scope/owner
+  fields are rejected. Without a ref, there must be one primary matching-role
+  route (fallback-only routes do not count as primaries). Missing/ambiguous routes
+  require explicit configuration; no implicit legacy/global route is chosen.
+- `messages`, `tools`, `outputContract`: supplemental task/tool dialogue and output
+  authority. Native selected facts/history remain owned by the context adapter.
+- `prompt`: typed `parameters`, request `locals`, checked `artifacts`, `stageIds`.
+  Caller-supplied `prompt.host` is rejected.
+- `fallbackMode`: `disabled` (default), `automatic`, or `confirm`.
+  `unknownCapabilityOverrides` permit explicit unknown evidence only, not unsupported.
+- `/preview` only: `previewRefs.promptProgramRef` / `generationProfileRef`.
+  They must resolve exactly in the committed context, never an unsaved draft.
+  Execute rejects preview overrides; request JSON cannot turn execute into preview.
 
-Within each stage, semantic target order, descending priority and stable slot ID
-determine ordering. Provider renderers place context before/after history/input;
-Response Directive follows current input and prefill is last. Program
-`exclusiveTargets` supplements the always-exclusive `response.prefill` target.
+A normal result contains `{ snapshot, response, routing }`; preview also supplies
+`preview: true` and `rendered` instead of sending. `routing` carries `fallbackUsed`
+and attempts `{ runtimeRouteId, retry, status }`; preview attempts are empty.
+SSE emits `data: {"chunk": ...}`, then `data: {"result": ...}` or a sanitized
+machine-code error. Disconnect/Stop cancels the underlying provider request.
 
-Variable syntax is `{{scope.name}}` with optional own-property JSON paths. Scopes:
+Errors remain `native_generation_*` / `generation_*`, with 409 for revision
+conflicts, 400 for rejected input/configuration/runtime failures and 401 without
+an authenticated owner. Unknown internal exceptions are not returned verbatim.
+`native_generation_route_ref_invalid` rejects scope ambiguity;
+`native_generation_context_ambiguous` rejects conflicting Session/Project input.
+No error handler catches a Native failure and retries through a legacy sender.
 
-- `host`: typed read-only host view declared by the host's compiler instance.
-- `param`: Program definitions, values from `request.prompt.parameters`.
-- `module`: Module definitions, values from derive configure and defaults.
-- `local`: Program `locals` definitions, values from `request.prompt.locals`.
-- `artifact`: Program `artifacts` definitions, each `{ type, stageId }` declaring
-  the producer. A later stage explicitly lists names in `consumes`. Host-supplied
-  `request.prompt.artifacts[name] = { stageId, value }` must match that producer.
+## Compiler and context semantics
 
-Local values are request scratch inputs, not persistent writes. Artifacts must be
-explicit public workflow outputs, never implicit access to hidden model reasoning.
-The compiler does not execute a stage or generate its artifact. A missing consumed
-artifact fails closed. `request.prompt.stageIds` selects an orchestrator projection;
-omitting it consumes all stages in Program order, using the same resources. The
-host remains responsible for choosing projection responsibility and supplying outputs.
+Prompt Modules target semantic positions (foundation/character/world/style/response,
+agent task/evidence/constraints, before/after history/input, response prefill/post
+history). Programs order stages and exact module refs. Stage order is canonical;
+within a stage target, priority and stable module ID provide deterministic ordering.
+Conditions are finite validated data, never executable JavaScript/ST macros.
 
-Types are string/number/boolean/json with required/default. Finite conditions use
-`op/path/value` (eq, neq, gt/gte/lt/lte, exists, in, contains), `all`, `any`, or `not`.
-Depth is bounded to 16; conjunctions/disjunctions to 64 entries; in to 256 entries;
-contains to 4096 characters/elements. There is no expression/script execution.
-New optional resource fields are omitted when absent, preserving the P0/P1 normalized
-shape and existing resource hashes. Existing valid resources need no migration.
+`PromptCompiler({ hostDefinitions })` accepts `{ request, resolved, contextPlan }`.
+Parameters, request locals, module parameters and prior-stage artifacts use typed,
+scoped declarations. Artifact producers must precede consumers and declarations/
+conditions cannot escape their scopes. Persistent game state remains in Session
+State/Revision, not local Prompt variables. Projections do not create a second
+Orchestrator or reorder producer/consumer stages.
 
-Context providers delegate host-owned fact selection. Task/Studio readers return
-`{ source, items, budget, provenance }`; exact project/revision identity is required.
-Native Session accepts an existing selected Context Plan. The host adapter at
-`src/native/adapters/native-session-context.js` invokes the existing Native Context
-Compiler rather than adding another Timeline/Knowledge scanner. It preserves selected
-content and source refs, refuses stale revisions/unresolved reservations, and never
-also adds the duplicate renderedWarmContext. Recent raw TurnGroups retain their
-speaker-labelled text in user history messages; the adapter does not reconstruct
-individual messages from canonical Timeline text. Current input comes from selected
-context items, not a second `request.input` append.
+Host-owned read-only string fields: `host.role`, `sourceKind`, `sessionId`,
+`branchId`, `revisionId`, `projectId`, `projectRevision` (irrelevant IDs are empty).
+Task dialogue is supplemental; a tool-result round does not append an empty user
+message or duplicate the current input after the transcript.
 
-Context selection estimates remain selection metadata. GenerationService calls the
-Provider token counter once on the final IR per route attempt, covering instructions,
-facts, history, input and protocol overhead. Provider implementations must count their
-complete rendered payload; selection estimates must not be added a second time.
-Native external prompt reserves leave room for directives within the final ceiling.
+Derive supports add/disable/replace/configure over exact ancestors. Cycles, duplicate
+module identities, inconsistent stages, conflicting definitions and invalid typed
+configuration fail closed. Exclusive targets and response directives are validated.
 
-`renderPromptProtocol` provides OpenAI-compatible/raw-text fixtures, plus conservative
-Anthropic/Gemini projections. The latter reject interleaved system directives they
-cannot preserve instead of silently hoisting/reordering them. Tools/output contracts
-are carried separately from instructions. P2 transport adapters remain deliberately
-limited: unsupported tools/output/prefill and generation controls still fail closed.
-P3 does not add production Anthropic/Gemini transports or first-party UI/call cutover.
+Budget validation counts the final rendered request, including tools/output
+contracts, using the Model tokenizer. Input + reserved output must fit the Model
+context limit. The same context/compiler/provider counting runs on preview and on
+every fallback route. Unsupported tokenizers or controls fail, not silently degrade.
 
-## P4 host integration
+## Providers, Secret and fallback
 
-`POST /api/native/generation/execute` composes the existing Session/Studio services,
-P1 player profiles and exact Library resources with RouteResolver, PromptCompiler
-and GenerationService. Authentication owns the handle. A caller supplies a pinned
-Session revision or Project revision (and a Studio Task when applicable), a role,
-task messages, tools/output contract and optional exact player route/projection.
-Without an explicit route, exactly one non-fallback root for that role must exist.
-Missing/ambiguous routes fail closed; legacy active presets are never a default.
+Production HTTP adapters: `provider.openai-compatible` (chat-completion messages)
+and `provider.raw-text` (text completions). Endpoints are explicit URLs; embedded
+URL credentials, query strings and fragments are rejected. Redirects are disabled.
+Bearer authentication uses an already provisioned exact Secret ID. This feature
+adds no credential importer/provisioner or external provider account setup.
 
-Production adapters are `provider.openai-compatible` and `provider.raw-text` with
-an exact completions endpoint URL. Both use bearer authentication by exact Secret
-ID and JSON/SSE transport. OpenAI-compatible additionally supports function tools
-and JSON Schema output. The configured tokenizer encoding must be `cl100k_base`
-or `o200k_base`; the complete serialized body plus conservative framing is counted
-once. Supported Generation controls are temperature/topP, maxTokens, stop sequences,
-streaming.enabled and toolChoice.value. Unsupported controls/model hints/connection
-options fail before secrets or network. Other provider families remain future work.
+Implemented controls: sampling temperature/topP, output maxTokens, stop sequences,
+streaming enabled, toolChoice value. OpenAI-compatible additionally carries tools
+and JSON-schema output. Raw text rejects tools/structured output. Tokenizers are
+`cl100k_base` / `o200k_base`. Reasoning/cache/provider extensions, custom network
+options, unsupported hints/message formats and other provider families fail closed.
+Anthropic/Gemini protocol render fixtures are not production transports.
 
-The host supplies read-only string variables `host.role`, `host.sourceKind`,
-`host.sessionId`, `host.branchId`, `host.revisionId`, `host.projectId` and
-`host.projectRevision` (inapplicable identities are empty). Caller-supplied host
-values are rejected. `prompt.parameters`, `locals`, `artifacts` and `stageIds` retain
-P3 semantics. Task dialogue follows selected Session input; tool-result rounds do
-not append an empty user message or repeat the current input after the transcript.
+Capability decisions retain supported/unsupported/unknown plus provenance. Explicit
+unsupported wins over supported evidence. Unknown required capability needs an
+explicit override; unknown is not rewritten as provider support.
 
-The role host retries typed send failures within the selected route's timeout and
-retry budget, then Core resolves a complete fallback. Configuration, cancellation,
-parser/tool/application failures never trigger retries/fallback. Fallback mode is
-explicit (`disabled` by default; Game Runtime role router requests `automatic`).
-The response includes immutable request evidence and a route-attempt trace. SSE
-text is cumulative; credential-prefix tails are withheld until safe, and the final
-response is checked before publication. Transport cancellation reaches the provider.
+Only the send boundary receives a Secret value. Snapshots/config/debug evidence
+contain no credential value. Core withholds credential-prefix stream tails and
+rejects a credential echoed in output/config. Native Play publishes accepted
+assistant content only through the existing Draft/Revision lifecycle; Stop never
+publishes a late or uncommitted response.
 
-Native Play preserves the existing user/assistant Draft publication boundary,
-retry branch and continuation behavior. Live text is presentation-only until
-accepted; Stop discards it. Spec/agenda/loop/director reuse the existing Orchestrator
-bridge and same Prompt resource store. Studio keeps server-projected tools, pinned
-Task base revision, read-only Skills and human Review/Commit/Takeover authority.
-P5 configuration UI and A6 replacement gates are intentionally untouched.
+The host owns same-route retries (`maxRetries`) inside that route's send timeout.
+Core owns complete-route fallback (`maxFallbackAttempts`), recompiling/recounting
+with the fallback's own model/connection/exact resources. Only typed transient
+send transport/provider/timeout failures permit fallback. Configuration, Secret,
+parser/output/application errors and cancellation do not. Tools/output contract
+and inherited requirements must survive fallback unchanged. Confirm mode reports
+`generation_fallback_confirmation_required`; resubmission is an explicit decision.
 
-Residual compatibility is explicit:
+## Package closure and product boundaries
 
-- `public/scripts/native/generation-compat.js` alone dispatches to the legacy
-  generateTask/stream facade when no Native Session/Project source exists.
-- Game role-router's old injected port remains for non-Native callers; production
-  Native composition injects the new generation seam. Pure LLM helpers no longer
-  discover a global legacy sender.
-- Orchestrator/Memory/Search `getOpenAIPresetNames` and the explicit character
-  preset embedding dialog retain legacy configuration UI listing. They cannot
-  resolve Native model/prompt authority. Native Orchestrator runtime preset/WI
-  resolvers return before those paths; direct director resolution does likewise.
-- Third-party extension facades and legacy `Generate` remain available. Native
-  Play branches before the legacy prompt pipeline; legacy-only code below that
-  branch is retained for compatibility and existing frozen checks.
+Package build resolves the exact resource closure through existing Library/Project
+services and projects it to Package ownership. Derived Programs flatten/freeze
+into standalone stages and typed configured module defaults. Logical IDs preserve
+ordering/replacement aliases. Ordinary Program refs stay exact. Build-time
+structural freezing may defer required bindings in ancestor templates; runtime
+compilation always validates selected bindings. Offline installed Packages never
+consult Library current revisions. Package/Project/Library Used By is owner-scoped
+and derived read-only from canonical authorities.
 
-`scripts/check-p4-native-generation.mjs` scans first-party sender call sites;
-poisoned-legacy tests exercise all Native roles. A8's literal seam assertion now
-requires executeNativeGeneration while retaining every Review/Commit invariant.
+Library owns Prompt/Generation discovery and Fork/Derive; Build owns A1-reviewed
+Project authoring. Runtime owns player Models/Connections/Routes. Settings contains
+allowlisted preferences only. Search routes to exact owning Library resources or
+Runtime editors and refreshes when Command opens. Missing revisions do not follow
+latest. Localized UI chrome never translates saved IDs/names/JSON.
 
-## P5 Runtime product surfaces
+The sole first-party legacy sender facade is `public/scripts/native/generation-compat.js`.
+It permits legacy dispatch only without a Native Session, without an explicit
+Native source and outside mounted Native Shell. Empty Native Shell must fail for
+missing context, not silently invoke ST. Explicit non-Native host/recovery and
+third-party compatibility retain their existing behavior. `package.presets`, old
+names and compatibility UI never become Native runtime authority. Navigation-only
+old section redirects do not resolve resources and can remain host conveniences.
 
-Runtime owns Routes (default), Models, Connections, Profiles and Diagnostics. Its
-configuration endpoint at `/api/native/generation/configuration` reads the existing
-P1 player profiles and exact Library resource revisions. PUT to a named collection
-uses the same P1 persistence methods; Generation edits commit a new immutable
-Library revision. Existing routes remain pinned. Profile fields are preserved;
-unsupported provider controls still fail closed during preview/execution.
+## Validation / maintenance
 
-Authenticated POST `/api/native/generation/preview` uses the P4 host's pinned
-Session or Project identity and the same GenerationService pipeline, stopping
-after render/budget validation and before Secret resolution or send. It never
-persists configuration or context. Execute cannot enable preview via request JSON.
-Diagnostics renders snapshot/effective config, token budget, prompt provenance,
-capabilities and the latest successful request's fallback attempts in memory.
-Preview attempts are empty because preview never sends. Error actions navigate
-to owning Runtime sections; machine-readable error codes remain intact.
-
-Connections accept exact Secret IDs only, with no credential creation/import.
-Endpoint credentials/query/fragment are rejected by the configuration API.
-Route saves validate exact Library dependencies and bounded same-role acyclic
-fallback links. Project/Package refs remain exact and are validated with their
-host context at preview/execute. The UI selects Library revisions and preserves
-existing scoped refs; new scoped-resource authoring/pickers remain P6 work.
-Prompt authoring and import are not added in P5. A new installation without a
-Prompt Program must provision one through existing A1 authoring/P1 APIs until P6.
-
-Runtime editors own their DOM; there is no legacy Connection Manager or preset
-reparenting. Mobile uses a viewport-sized editor with background inert, focus
-containment, Back/Escape and request cancellation on dispose. Product Search is
-an ephemeral projection navigating stable resource IDs, not a persistent index.
-Saving failures preserve edits; a successful save with failed list refresh is
-reported distinctly and cannot accidentally submit a duplicate revision.
-
-## P6 authoring integration
-
-`GET /api/native/generation/resources` is an authenticated read-through catalog of
-exact Library revisions, current Project sources and installed Package resources.
-`POST /resources` commits immutable Library revisions via the P1 handler; Project
-writes remain A1 Workspace/ChangeSet operations with human Review/Apply. Package
-originals have no edit endpoint. Resource Graph projections include installed
-Package contents, and scoped reference queries distinguish same-ID owners.
-
-Compile-only `/preview` accepts `previewRefs.promptProgramRef` and/or
-`previewRefs.generationProfileRef`. The selected exact context/owner still applies;
-these refs never persist or affect send/fallback and are rejected by execution.
-
-Package build freezes derived Programs into standalone stages and typed module
-parameter defaults. Logical module IDs preserve ordering/replacement aliases.
-Ordinary pinned Program refs remain unchanged. `flattenPromptProgram` defaults to
-strict binding validation; only build-time structural freezing opts out so an
-ancestor template can leave required bindings to a descendant. Runtime compilation
-still validates every selected binding. Installed output needs no Library lookup.
+`node scripts/check-p8-model-prompt-integration.mjs` runs P0-P7, A0-A9, N9/N10 plus
+final no-write/exact-read/Native-fallback checks. Earlier N0-N8 invariants are covered
+by applicable Native contract/Session/Context/Save/Package tests and N9/N10 guards;
+there are no separate N0-N8 guard scripts in this repository. The permanent
+`.github/workflows/model-prompt-runtime.yml` runs on main/PRs and replaces temporary
+phase-only workflows. Runtime/resource HTTP tests, poisoned-legacy/concurrency/
+Secret/fallback tests, offline Package tests and real-host desktop/mobile browser
+cases accompany the guards. Historical completed evidence and exclusions remain
+on the docs branch, not in stale API promises.

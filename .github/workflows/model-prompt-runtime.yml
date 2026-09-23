@@ -1,12 +1,17 @@
-name: Model Prompt Runtime P4-P7 Checks
+name: Native Model Prompt Runtime
 on:
   push:
-    branches: [refactor/atria-model-prompt-settings]
+    branches: [main, refactor/atria-model-prompt-settings]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: native-model-prompt-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  native-generation:
+  integration:
     runs-on: ubuntu-latest
     env:
       ATRIA_DISABLE_MYSQL_TESTS: '1'
@@ -17,24 +22,19 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
+      - run: npm rebuild better-sqlite3 --ignore-scripts=false
       - run: npm ci --ignore-scripts --prefix tests
+      - run: node scripts/check-p8-model-prompt-integration.mjs
       - run: npm run test:unit --prefix tests -- --runInBand native atria-shell game-runtime orchestrator
-      - name: Architecture guards
-        run: |
-          node scripts/check-p0-model-prompt-runtime-architecture.mjs
-          node scripts/check-p1-model-prompt-resource-foundation.mjs
-          node scripts/check-p2-generation-core.mjs
-          node scripts/check-p3-prompt-compiler.mjs
-          node scripts/check-p4-native-generation.mjs
-          node scripts/check-p5-native-runtime-ui.mjs
-          node scripts/check-p6-native-authoring.mjs
-          node scripts/check-p7-product-cleanup.mjs
-          node scripts/check-a6-native-product-frontend.mjs
-          node scripts/check-a8-project-agent.mjs
-          node scripts/check-n10-native-hard-cutover.mjs
       - run: npm run lint
       - run: npm run frontend:prebuild-cache
       - run: npx --prefix tests playwright install --with-deps chromium
       - run: npx playwright test e2e/native-session/03-native-generation-p4.e2e.js e2e/native-session/04-native-runtime-p5.e2e.js e2e/native-session/05-native-authoring-p6.e2e.js e2e/native-session/06-native-cleanup-p7.e2e.js --project=e2e --workers=1
         working-directory: tests
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: native-model-prompt-browser-failure
+          path: tests/test-results
+          if-no-files-found: ignore

@@ -3,7 +3,7 @@ import { executeNativeGeneration, nativeGenerationActive } from './generation-cl
 // Explicit compatibility island for non-Native chats. Native callers never enter
 // the old generation facade, preset resolver or world-info/macro assembly path.
 export async function executeFirstPartyGeneration(context, role, options = {}) {
-    if (!nativeGenerationActive() && !options.nativeSource) return context.generateTask(options);
+    if (!nativePromptUiActive() && !options.nativeSource) return context.generateTask(options);
     const result = await executeNativeGeneration({
         role, source: options.nativeSource, messages: options.taskMessages || [], tools: options.tools || [],
         outputContract: options.jsonSchema || null, abortSignal: options.abortSignal,
@@ -15,7 +15,7 @@ export async function executeFirstPartyGeneration(context, role, options = {}) {
 }
 
 export function firstPartyGenerationAvailable(context) {
-    return nativeGenerationActive() || typeof context?.generateTask === 'function';
+    return nativePromptUiActive() || typeof context?.generateTask === 'function';
 }
 
 // Route retries have already been exhausted by the Native host. Legacy caller
@@ -25,11 +25,11 @@ export function isNativeGenerationFailure(error) {
 }
 
 export function firstPartyStreamingEnabled(context, presetName) {
-    return nativeGenerationActive() || (typeof context?.isStreamingPresetEnabled === 'function' && context.isStreamingPresetEnabled(presetName));
+    return nativePromptUiActive() || (typeof context?.isStreamingPresetEnabled === 'function' && context.isStreamingPresetEnabled(presetName));
 }
 
 export function streamFirstPartyGeneration(context, role, options = {}) {
-    if (!nativeGenerationActive() && !options.nativeSource) return context.generateTaskStream(options);
+    if (!nativePromptUiActive() && !options.nativeSource) return context.generateTaskStream(options);
     const queue = []; let wake; let done = false;
     const result = executeFirstPartyGeneration(context, role, { ...options, onChunk: chunk => {
         queue.push(chunk); wake?.();

@@ -17,6 +17,12 @@ export class NativeGenerationHost {
     async execute(handle, value, signal, onChunk, { preview = false } = {}) {
         const input = immutable(value);
         if (!ROLES.has(input.role)) fail('native_generation_role_invalid');
+        // The HTTP host currently owns player routes only. Never reinterpret an
+        // explicit session/foreign scope or silently choose one of two contexts.
+        if (input.sessionId && input.projectId) fail('native_generation_context_ambiguous');
+        if (input.routeRef !== undefined && (!input.routeRef || typeof input.routeRef !== 'object' || Array.isArray(input.routeRef)
+            || input.routeRef.scope !== 'player' || typeof input.routeRef.runtimeRouteId !== 'string'
+            || Object.keys(input.routeRef).some(key => !['scope', 'runtimeRouteId'].includes(key)))) fail('native_generation_route_ref_invalid');
         const role = 'role.' + input.role;
         let snapshot; let project; let source; let runtime;
         if (input.sessionId) {

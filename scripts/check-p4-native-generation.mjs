@@ -20,7 +20,7 @@ for (const path of paths) {
     const presetCalls = source.match(/getPresetManager\s*(?:\?\.)?\s*\(/g) || [];
     if (presetCalls.length > (path === compatibility ? 1 : 0)) throw new Error('P4 unlisted legacy preset authority: ' + path);
 }
-requirePattern(compatibility, /!nativeGenerationActive\(\) && !options\.nativeSource/);
+requirePattern(compatibility, /!nativePromptUiActive\(\) && !options\.nativeSource/);
 requirePattern(compatibility, /executeNativeGeneration\(/);
 requirePattern('public/scripts/native/studio-agent.js', /executeNativeGeneration\([\s\S]*context\.task\.baseRevision/);
 requirePattern('public/scripts/extensions/game-runtime/index.js', /executeGeneration:[^\n]*executeFirstPartyGeneration/);
