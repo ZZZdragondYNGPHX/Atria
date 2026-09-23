@@ -205,3 +205,39 @@ export {
     resolveNativeSkillEntries,
     toNativeSkillScope,
 } from './skill-platform.js';
+
+export {
+    ATRIA_CAPABILITY_PROVENANCE_KINDS,
+    ATRIA_CAPABILITY_STATES,
+    ATRIA_CONTEXT_SOURCE_KINDS,
+    ATRIA_MODEL_PROMPT_SCHEMA_VERSION,
+    ATRIA_PACKAGE_MODEL_PROMPT_FIELD,
+    ATRIA_RESOURCE_REF_SCOPES,
+    ATRIA_RUNTIME_ROUTE_SCOPES,
+    assertCapabilityDecision,
+    assertConnectionProfile,
+    assertEffectiveRequestSnapshot,
+    assertExactResourceRef,
+    assertGenerationProfile,
+    assertModelProfile,
+    assertPackageModelPromptRuntimeMetadata,
+    assertPromptIR,
+    assertPromptModule,
+    assertPromptProgram,
+    assertRequestContextPlan,
+    assertRuntimeRoute,
+    serializeEffectiveRequestSnapshot,
+} from './model-prompt-runtime/contracts.js';
+
+export {
+    CONTEXT_PROVIDER_METHODS,
+    GENERATION_SERVICE_METHODS,
+    PROVIDER_PORT_METHODS,
+    ROUTE_RESOLVER_METHODS,
+    SECRET_PORT_METHODS,
+    assertContextProviderPort,
+    assertGenerationServicePort,
+    assertProviderPort,
+    assertRouteResolverPort,
+    assertSecretPort,
+} from './model-prompt-runtime/ports.js';
