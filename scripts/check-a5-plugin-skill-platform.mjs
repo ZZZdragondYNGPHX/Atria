@@ -14,7 +14,7 @@ function rejectPattern(path, pattern, message) {
 
 requirePattern(
     'src/native/plugin-platform.js',
-    /class HostPluginBoundary[\s\S]*origin[\s\S]*kind: ['"]plugin['"]/,
+    /class HostPluginBoundary[\s\S]*const pluginOrigin = Object\.freeze\(\{ kind: ['"]plugin['"][\s\S]*origin: pluginOrigin/,
     'A5 Host Plugin authoring must force Plugin origin through the shared Authoring Operation boundary',
 );
 rejectPattern(
