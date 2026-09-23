@@ -76,21 +76,18 @@ export async function wipeBrowserFixture(page) {
 }
 
 /**
- * Open the Browser Storage Inspector popup via real UI gestures.
- * Returns the Inspector container locator.
+ * Open the current Storage Management controller used by Atria Account.
+ * The legacy SillyTavern settings drawer is hidden by the A6 product shell,
+ * so this suite exercises the retained controller directly instead of
+ * depending on the retired drawer navigation surface.
+ *
+ * Returns the Browser Inspector container locator.
  */
 export async function openBrowserStorageInspector(page) {
-    const drawerClosed = await page.locator('#user-settings-button .drawer-icon.closedIcon').count().then(n => n > 0);
-    if (drawerClosed) {
-        await page.locator('#user-settings-button .drawer-toggle').click();
-        await page.waitForFunction(() => {
-            const el = document.getElementById('user-settings-block');
-            return el && !el.classList.contains('closedDrawer');
-        }, { timeout: 5_000 });
-    }
-    await page.locator('#account_button').click();
-    const profilePopup = page.locator('dialog.popup[open]').last();
-    await profilePopup.locator('.userStorageManagementButton').click();
+    await page.evaluate(async () => {
+        const mod = await import('/scripts/storage-management.js');
+        void mod.openStorageManagement();
+    });
     const management = page.locator('.storageManagementCenter').last();
     await management.waitFor({ state: 'visible', timeout: 10_000 });
     await management.locator('.storageManagementTab[data-tab="browser"]').click();
