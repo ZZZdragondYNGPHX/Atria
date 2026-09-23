@@ -84,12 +84,16 @@ function getTransactionIdentity(world, commandId, rngSeed) {
     const journal = world.getJournal();
     const snapshot = world.getSnapshot();
     const nextSeq = Number.isInteger(journal?.nextSeq) ? journal.nextSeq : 1;
-    const branchPath = Array.isArray(snapshot?.branchPath) ? [...snapshot.branchPath] : [];
-    const branchKey = branchPath.length > 0 ? branchPath.join('.') : 'root';
-    const transactionId = 'tx:' + nextSeq + ':' + branchKey + ':' + commandId;
+    const branchId = String(snapshot?.branchId || '').trim();
+    const revisionId = String(snapshot?.revisionId || '').trim();
+    if (!branchId || !revisionId) {
+        throw new Error('Game Logic Runtime requires Native Branch/Revision identity');
+    }
+    const transactionId = 'tx:' + nextSeq + ':' + branchId + ':' + commandId;
     return {
         transactionId,
-        branchPath,
+        branchId,
+        revisionId,
         rngSeed: String(rngSeed) + '|' + transactionId,
     };
 }
@@ -288,7 +292,8 @@ export function createGameLogicRuntime(options = {}) {
             beforeState,
             afterState: clone(projected.state),
             events: clone(projected.committed || projected.events || []),
-            branchPath: clone(projected.branchPath || identity.branchPath),
+            branchId: String(projected.branchId || identity.branchId),
+            revisionId: String(projected.revisionId || identity.revisionId),
             rngTrace,
             ruleTrace: clone(ruled.trace),
             committed: options.simulate !== true,
