@@ -2,11 +2,88 @@
 
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
-import { createImmersiveProviderRegistry } from '../../public/scripts/immersive/providers.js';
-import { activateGamePackageUi } from '../../public/scripts/extensions/game-runtime/ui/live.js';
+import { activateNativeExperienceRuntime } from '../../public/scripts/extensions/game-runtime/ui/live.js';
 import { mountNativePlayHost } from '../../public/scripts/atria-shell/native-play-host.js';
 
-describe('Live Game Package UI activation', () => {
+function state(mode, options = {}) {
+    return {
+        sessionId: options.sessionId || 'session_experience',
+        descriptor: {
+            packageId: 'package_0123456789abcdef0123456789abcdef',
+            packageVersionId: 'packageVersion_0123456789abcdef0123456789abcdef',
+            entryPointId: 'entryPoint_0123456789abcdef0123456789abcdef',
+            experience: mode === 'text'
+                ? { mode: 'text' }
+                : { mode, componentModelVersion: 1 },
+        },
+        runtime: {
+            experience: mode === 'text'
+                ? { mode: 'text' }
+                : {
+                    mode,
+                    componentModelVersion: 1,
+                    component: options.component || 'ui/main.json',
+                    ...(options.selectors ? { selectors: options.selectors } : {}),
+                    surface: options.surface || 'app.root',
+                },
+        },
+    };
+}
+
+function resourceFetch(resources) {
+    return jest.fn(async (url, init) => {
+        expect(url).toBe('/api/native/session/runtime/resource');
+        expect(init.method).toBe('POST');
+        const { path } = JSON.parse(init.body);
+        if (!(path in resources)) throw new Error('unexpected resource ' + path);
+        return {
+            ok: true,
+            status: 200,
+            async json() {
+                return structuredClone(resources[path]);
+            },
+        };
+    });
+}
+
+function worldSession(initial = {}) {
+    let world = structuredClone(initial);
+    return {
+        getState: () => structuredClone(world),
+        async dispatchCommandInternal(commandId, args) {
+            if (commandId === 'damage') {
+                world = { ...world, hp: Number(world.hp || 0) - Number(args.amount || 0) };
+            }
+            return { status: 'committed', afterState: structuredClone(world) };
+        },
+        simulateCommandInternal: jest.fn(async () => ({ status: 'simulated' })),
+    };
+}
+
+function shellFixture() {
+    const stage = document.getElementById('atria-stage');
+    const recovery = document.getElementById('atria-test-recovery');
+    const playHost = mountNativePlayHost({ document, stage });
+    const shell = {
+        slots: {
+            stage,
+            recovery,
+            dock: document.getElementById('atria-test-dock'),
+            transient: document.getElementById('atria-test-transient'),
+        },
+    };
+    return {
+        stage,
+        recovery,
+        playHost,
+        shellFoundation: {
+            getShell: () => shell,
+            getPlayHost: () => playHost,
+        },
+    };
+}
+
+describe('A4 Native Experience Runtime activation', () => {
     beforeEach(() => {
         document.body.innerHTML = `
             <div id="left-nav-panel"></div>
@@ -23,574 +100,230 @@ describe('Live Game Package UI activation', () => {
         `;
     });
 
-    test('mounts a static Component into the declared stable surface and disposes cleanly', async () => {
-        const fetchImpl = jest.fn(async () => ({
-            ok: true,
-            status: 200,
-            async text() {
-                return '<div id="runtime-hud">Ready</div>';
-            },
-        }));
-        const worldSession = {
-            getState: () => ({ hp: 10 }),
-            dispatchCommandInternal: jest.fn(),
-            simulateCommandInternal: jest.fn(),
-        };
+    test('Text participates in the shared dispatcher without replacing the A3 host ABI', async () => {
+        const chat = document.getElementById('chat');
+        const composer = document.getElementById('send_form');
 
-        const session = await activateGamePackageUi({
-            charId: 'hero',
-            manifest: {
-                ui: {
-                    mode: 'component',
-                    entry: 'ui/hud.html',
-                    surface: 'chat.header',
-                },
-            },
-        }, worldSession, {
-            document,
-            fetchImpl,
-        });
+        const session = await activateNativeExperienceRuntime(
+            state('text'),
+            worldSession(),
+            { document, fetchImpl: jest.fn() },
+        );
 
         expect(session).toMatchObject({
-            mode: 'component',
+            mode: 'text',
             status: 'active',
-            mountId: 'package.component',
+            mountId: null,
+            recoveryActive: false,
         });
-        expect(document.querySelector(
-            '[data-atria-game-host-surface="chat.header"] #runtime-hud',
-        )?.textContent).toBe('Ready');
-
-        await session.dispose();
+        expect(document.getElementById('chat')).toBe(chat);
+        expect(document.getElementById('send_form')).toBe(composer);
         expect(document.querySelectorAll('[data-atria-game-host-surface]')).toHaveLength(0);
-        expect(document.getElementById('chat')).not.toBeNull();
-        expect(document.getElementById('send_form')).not.toBeNull();
+        await session.dispose();
     });
 
-
-    test('declared selectors and command actions update live Component DOM through World state', async () => {
-        let world = { hp: 10 };
-        const fetchImpl = jest.fn(async (url) => {
-            if (url.endsWith('/ui/selectors.json')) {
-                return {
-                    ok: true,
-                    status: 200,
-                    async json() {
-                        return [
-                            { id: 'player.hp', formula: 'world.hp' },
-                        ];
+    test('Component mounts structured UI into a semantic host surface and updates via Native World actions', async () => {
+        const world = worldSession({ hp: 10 });
+        const fetchImpl = resourceFetch({
+            'ui/selectors.json': [
+                { id: 'player.hp', formula: 'world.hp' },
+            ],
+            'ui/hud.json': {
+                id: 'hud',
+                type: 'container',
+                children: [
+                    {
+                        id: 'hp',
+                        type: 'text',
+                        bindings: { text: 'player.hp' },
                     },
-                };
-            }
-            if (url.endsWith('/ui/hud.html')) {
-                return {
-                    ok: true,
-                    status: 200,
-                    async text() {
-                        return `
-                            <div>
-                                <span id="hp" data-atria-bind-text="player.hp"></span>
-                                <button
-                                    id="damage"
-                                    data-atria-command="damage"
-                                    data-atria-command-args='{"amount":3}'
-                                >Damage</button>
-                            </div>
-                        `;
+                    {
+                        id: 'damage',
+                        type: 'button',
+                        props: { text: 'Damage' },
+                        actions: {
+                            click: {
+                                commandId: 'damage',
+                                args: { amount: 3 },
+                            },
+                        },
                     },
-                };
-            }
-            throw new Error('unexpected URL ' + url);
-        });
-        const worldSession = {
-            getState: () => ({ ...world }),
-            async dispatchCommandInternal(commandId, args) {
-                expect(commandId).toBe('damage');
-                expect(args).toEqual({ amount: 3 });
-                world = { hp: world.hp - args.amount };
-                return {
-                    status: 'committed',
-                    afterState: { ...world },
-                };
+                ],
             },
-            simulateCommandInternal: jest.fn(),
-        };
-
-        const session = await activateGamePackageUi({
-            charId: 'hero',
-            manifest: {
-                ui: {
-                    mode: 'component',
-                    entry: 'ui/hud.html',
-                    surface: 'chat.header',
-                    selectors: 'ui/selectors.json',
-                },
-            },
-        }, worldSession, {
-            document,
-            fetchImpl,
         });
 
-        const hp = document.querySelector('#hp');
-        const damage = document.querySelector('#damage');
+        const session = await activateNativeExperienceRuntime(
+            state('component', {
+                component: 'ui/hud.json',
+                selectors: 'ui/selectors.json',
+                surface: 'chat.header',
+            }),
+            world,
+            { document, fetchImpl },
+        );
+
+        expect(session.mode).toBe('component');
+        expect(session.mountId).toBe('experience.component');
+        const hp = document.querySelector('[data-atria-component-id="hp"]');
+        const damage = document.querySelector('[data-atria-component-id="damage"]');
         expect(hp.textContent).toBe('10');
 
         damage.click();
         await new Promise(resolve => setTimeout(resolve, 0));
-
-        expect(world).toEqual({ hp: 7 });
         expect(hp.textContent).toBe('7');
         expect(damage.dataset.atriaCommandState).toBe('success');
 
-        await session.dispose();
-    });
-
-    test('registers and disposes an Immersive provider from declared Selector presentation', async () => {
-        let world = {
-            hp: 10,
-            scene: 'inn',
-        };
-        const fetchImpl = jest.fn(async (url) => {
-            if (url.endsWith('/ui/selectors.json')) {
-                return {
-                    ok: true,
-                    status: 200,
-                    async json() {
-                        return [
-                            { id: 'player.hp', formula: 'world.hp' },
-                            { id: 'scene.id', formula: 'world.scene' },
-                        ];
-                    },
-                };
-            }
-            if (url.endsWith('/ui/immersive.json')) {
-                return {
-                    ok: true,
-                    status: 200,
-                    async json() {
-                        return {
-                            scene: {
-                                id: { selector: 'scene.id' },
-                            },
-                            hud: {
-                                primary: [{
-                                    id: 'hp',
-                                    label: 'HP',
-                                    selector: 'player.hp',
-                                }],
-                            },
-                        };
-                    },
-                };
-            }
-            if (url.endsWith('/ui/hud.html')) {
-                return {
-                    ok: true,
-                    status: 200,
-                    async text() {
-                        return '<div>HUD</div>';
-                    },
-                };
-            }
-            throw new Error('unexpected URL ' + url);
-        });
-        const registry = createImmersiveProviderRegistry();
-        const worldSession = {
-            getState: () => ({ ...world }),
-            async dispatchCommandInternal() {
-                world = { hp: 5, scene: 'road' };
-                return { status: 'committed', afterState: { ...world } };
-            },
-            simulateCommandInternal: jest.fn(),
-        };
-
-        const session = await activateGamePackageUi({
-            charId: 'hero',
-            manifest: {
-                id: 'demo.game',
-                ui: {
-                    mode: 'component',
-                    entry: 'ui/hud.html',
-                    surface: 'chat.header',
-                    selectors: 'ui/selectors.json',
-                    immersive: 'ui/immersive.json',
-                },
-            },
-        }, worldSession, {
-            document,
-            fetchImpl,
-            immersiveApi: {
-                registerProvider: provider => registry.register(provider),
-            },
-        });
-
-        expect(session.immersiveStatus).toBe('active');
-        expect(registry.getSnapshot().providers).toEqual([
-            { id: 'game-runtime:demo.game', priority: 100 },
-        ]);
-        expect(registry.getSnapshot().scene).toEqual({ id: 'inn' });
-        expect(registry.getSnapshot().hud.summary.primary[0].value).toBe('10');
-
-        world = { hp: 6, scene: 'road' };
-        session.refresh();
-        await new Promise(resolve => queueMicrotask(resolve));
-
-        expect(registry.getSnapshot().scene).toEqual({ id: 'road' });
-        expect(registry.getSnapshot().hud.summary.primary[0].value).toBe('6');
+        expect(document.querySelector(
+            '[data-atria-game-host-surface="chat.header"] [data-atria-component-id="hud"]',
+        )).not.toBeNull();
 
         await session.dispose();
-
-        expect(registry.getSnapshot().providers).toEqual([]);
-    });
-
-    test('Hybrid recomposes the original native conversation and composer, then restores them', async () => {
-        const chat = document.getElementById('chat');
-        const sendForm = document.getElementById('send_form');
-        const formSheld = document.getElementById('form_sheld');
-        const fetchImpl = jest.fn(async () => ({
-            ok: true,
-            status: 200,
-            async text() {
-                return `
-                    <section id="hybrid-shell">
-                        <div id="conversation-slot" data-atria-native-component="conversation"></div>
-                        <aside>Game HUD</aside>
-                        <div id="composer-slot" data-atria-native-component="composer"></div>
-                    </section>
-                `;
-            },
-        }));
-
-        const session = await activateGamePackageUi({
-            charId: 'hero',
-            manifest: {
-                ui: {
-                    mode: 'hybrid',
-                    entry: 'ui/game.html',
-                    surface: 'app.root',
-                },
-            },
-        }, {
-            getState: () => ({}),
-            dispatchCommandInternal: jest.fn(),
-            simulateCommandInternal: jest.fn(),
-        }, {
-            document,
-            fetchImpl,
-        });
-
-        expect(session).toMatchObject({
-            mode: 'hybrid',
-            status: 'active',
-            mountId: 'package.hybrid',
-        });
-        expect(document.getElementById('chat')).toBe(chat);
-        expect(document.getElementById('send_form')).toBe(sendForm);
-        expect(chat.parentElement.id).toBe('conversation-slot');
-        expect(sendForm.parentElement.id).toBe('composer-slot');
-
-        await session.dispose();
-
-        expect(chat.parentElement.id).toBe('sheld');
-        expect(sendForm.parentElement).toBe(formSheld);
-        expect(document.querySelector('#hybrid-shell')).toBeNull();
         expect(document.querySelectorAll('[data-atria-game-host-surface]')).toHaveLength(0);
     });
 
-    test('Full takes over the main experience while host recovery remains outside package control', async () => {
-        const chat = document.getElementById('chat');
-        const sendForm = document.getElementById('send_form');
-        const sheld = document.getElementById('sheld');
-        const formSheld = document.getElementById('form_sheld');
-        const exitGameUi = jest.fn();
-        const stopGeneration = jest.fn();
-        const disablePackage = jest.fn();
-        const openDiagnostics = jest.fn();
-        const fetchImpl = jest.fn(async () => ({
-            ok: true,
-            status: 200,
-            async text() {
-                return `
-                    <section id="full-shell">
-                        <h1>Game</h1>
-                        <div id="full-conversation" data-atria-native-component="conversation"></div>
-                        <div id="full-composer" data-atria-native-component="composer"></div>
-                    </section>
-                `;
-            },
-        }));
-
-        const session = await activateGamePackageUi({
-            charId: 'hero',
-            manifest: {
-                ui: {
-                    mode: 'full',
-                    entry: 'ui/game.html',
-                    surface: 'app.root',
-                },
-            },
-        }, {
-            getState: () => ({}),
-            dispatchCommandInternal: jest.fn(),
-            simulateCommandInternal: jest.fn(),
-        }, {
-            document,
-            fetchImpl,
-            hostActions: {
-                exitGameUi,
-                stopGeneration,
-                disablePackage,
-                openDiagnostics,
-            },
-        });
-
-        expect(session).toMatchObject({
-            mode: 'full',
-            status: 'active',
-            mountId: 'package.full',
-            recoveryActive: true,
-        });
-        expect(document.body.dataset.atriaGameFullActive).toBe('true');
-        expect(sheld.style.display).toBe('none');
-        expect(document.getElementById('chat')).toBe(chat);
-        expect(document.getElementById('send_form')).toBe(sendForm);
-        expect(chat.parentElement.id).toBe('full-conversation');
-        expect(sendForm.parentElement.id).toBe('full-composer');
-
-        const recovery = document.getElementById('atria-game-full-recovery');
-        expect(document.getElementById('atria-game-full-root').contains(recovery)).toBe(false);
-        recovery.querySelector('[data-atria-game-recovery-action="stop"]').click();
-        recovery.querySelector('[data-atria-game-recovery-action="diagnostics"]').click();
-        expect(stopGeneration).toHaveBeenCalledTimes(1);
-        expect(openDiagnostics).toHaveBeenCalledTimes(1);
-
-        document.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'Escape',
-            bubbles: true,
-            cancelable: true,
-        }));
-        expect(exitGameUi).toHaveBeenCalledTimes(1);
-
-        await session.dispose();
-
-        expect(document.body.dataset.atriaGameFullActive).toBeUndefined();
-        expect(sheld.style.display).toBe('');
-        expect(chat.parentElement).toBe(sheld);
-        expect(sendForm.parentElement).toBe(formSheld);
-        expect(document.getElementById('atria-game-full-root')).toBeNull();
-        expect(document.getElementById('atria-game-full-recovery')).toBeNull();
-    });
-
-    test('broken Full package restores host without ever completing takeover', async () => {
-        const sheld = document.getElementById('sheld');
-        const fetchImpl = jest.fn(async () => ({
-            ok: true,
-            status: 200,
-            async text() {
-                return `
-                    <section>
-                        <div data-atria-native-component="unknown-native-component"></div>
-                    </section>
-                `;
-            },
-        }));
-
-        await expect(activateGamePackageUi({
-            charId: 'hero',
-            manifest: {
-                ui: {
-                    mode: 'full',
-                    entry: 'ui/game.html',
-                    surface: 'app.root',
-                },
-            },
-        }, {
-            getState: () => ({}),
-            dispatchCommandInternal: jest.fn(),
-            simulateCommandInternal: jest.fn(),
-        }, {
-            document,
-            fetchImpl,
-            hostActions: {
-                exitGameUi: jest.fn(),
-            },
-        })).rejects.toThrow(/Unknown native Game UI component/);
-
-        expect(sheld.style.display).toBe('');
-        expect(document.body.dataset.atriaGameFullActive).toBeUndefined();
-        expect(document.getElementById('atria-game-full-root')).toBeNull();
-        expect(document.getElementById('atria-game-full-recovery')).toBeNull();
-        expect(document.getElementById('chat').parentElement).toBe(sheld);
-    });
-
-    test('R7C Shell hosts Hybrid and Full in Stage with one native Conversation and Composer', async () => {
-        const stage = document.getElementById('atria-stage');
-        const recovery = document.getElementById('atria-test-recovery');
-        const playHost = mountNativePlayHost({ document, stage });
-        const shell = {
-            slots: {
-                stage,
-                recovery,
-                dock: document.getElementById('atria-test-dock'),
-                transient: document.getElementById('atria-test-transient'),
-            },
-        };
-        const shellFoundation = {
-            getShell: () => shell,
-            getPlayHost: () => playHost,
-        };
+    test('Hybrid owns Stage composition while reusing the exact Native Conversation and Composer slots', async () => {
+        const { playHost, shellFoundation } = shellFixture();
         const chat = playHost.native.chat;
-        const sendForm = playHost.native.sendForm;
+        const composer = playHost.native.sendForm;
         const textarea = playHost.native.sendTextarea;
-        const worldSession = {
-            getState: () => ({}),
-            dispatchCommandInternal: jest.fn(),
-            simulateCommandInternal: jest.fn(),
-        };
 
-        const hybrid = await activateGamePackageUi({
-            charId: 'hero',
-            manifest: {
-                ui: {
-                    mode: 'hybrid',
-                    entry: 'ui/hybrid.html',
-                    surface: 'app.root',
-                },
+        const session = await activateNativeExperienceRuntime(
+            state('hybrid'),
+            worldSession(),
+            {
+                document,
+                shell: shellFoundation,
+                fetchImpl: resourceFetch({
+                    'ui/main.json': {
+                        id: 'hybrid-root',
+                        type: 'container',
+                        children: [
+                            {
+                                id: 'conversation-slot',
+                                type: 'native-slot',
+                                props: { component: 'conversation' },
+                            },
+                            {
+                                id: 'composer-slot',
+                                type: 'native-slot',
+                                props: { component: 'composer' },
+                            },
+                        ],
+                    },
+                }),
             },
-        }, worldSession, {
-            document,
-            shell: shellFoundation,
-            fetchImpl: async () => ({
-                ok: true,
-                status: 200,
-                async text() {
-                    return `
-                        <section id="r7c-hybrid">
-                            <div id="r7c-hybrid-conversation" data-atria-native-component="conversation"></div>
-                            <div id="r7c-hybrid-composer" data-atria-native-component="composer"></div>
-                        </section>
-                    `;
-                },
-            }),
-        });
+        );
 
         expect(playHost.getStageOwner()).toBe('game-runtime:hybrid');
         expect(playHost.root.style.display).toBe('none');
-        expect(document.querySelector('#r7c-hybrid')).not.toBeNull();
-        expect(chat.parentElement.id).toBe('r7c-hybrid-conversation');
-        expect(sendForm.parentElement.id).toBe('r7c-hybrid-composer');
+        expect(chat.parentElement.dataset.atriaComponentId).toBe('conversation-slot');
+        expect(composer.parentElement.dataset.atriaComponentId).toBe('composer-slot');
         expect(document.getElementById('chat')).toBe(chat);
-        expect(document.getElementById('send_form')).toBe(sendForm);
+        expect(document.getElementById('send_form')).toBe(composer);
         expect(document.getElementById('send_textarea')).toBe(textarea);
         expect(document.querySelectorAll('#chat')).toHaveLength(1);
         expect(document.querySelectorAll('#send_form')).toHaveLength(1);
-        expect(document.querySelectorAll('#send_textarea')).toHaveLength(1);
         expect(playHost.assertIntegrity()).toBe(true);
 
-        await hybrid.dispose();
+        await session.dispose();
 
         expect(playHost.getStageOwner()).toBeNull();
         expect(playHost.root.style.display).toBe('');
         expect(chat.parentElement).toBe(playHost.native.sheld);
-        expect(sendForm.parentElement).toBe(playHost.native.formSheld);
-        expect(playHost.assertIntegrity()).toBe(true);
-
-        const full = await activateGamePackageUi({
-            charId: 'hero',
-            manifest: {
-                ui: {
-                    mode: 'full',
-                    entry: 'ui/full.html',
-                    surface: 'app.root',
-                },
-            },
-        }, worldSession, {
-            document,
-            shell: shellFoundation,
-            hostActions: {
-                exitGameUi: jest.fn(),
-                stopGeneration: jest.fn(),
-                disablePackage: jest.fn(),
-                openDiagnostics: jest.fn(),
-            },
-            fetchImpl: async () => ({
-                ok: true,
-                status: 200,
-                async text() {
-                    return `
-                        <section id="r7c-full">
-                            <div id="r7c-full-conversation" data-atria-native-component="conversation"></div>
-                            <div id="r7c-full-composer" data-atria-native-component="composer"></div>
-                        </section>
-                    `;
-                },
-            }),
-        });
-
-        const fullRoot = document.getElementById('atria-game-full-root');
-        const fullRecovery = document.getElementById('atria-game-full-recovery');
-        expect(full.recoveryActive).toBe(true);
-        expect(playHost.getStageOwner()).toBe('game-runtime:full');
-        expect(fullRoot.parentElement).toBe(stage);
-        expect(fullRecovery.parentElement).toBe(recovery);
-        expect(fullRoot.contains(fullRecovery)).toBe(false);
-        expect(chat.parentElement.id).toBe('r7c-full-conversation');
-        expect(sendForm.parentElement.id).toBe('r7c-full-composer');
-        expect(document.querySelectorAll('#chat')).toHaveLength(1);
-        expect(document.querySelectorAll('#send_form')).toHaveLength(1);
-        expect(document.querySelectorAll('#send_textarea')).toHaveLength(1);
-
-        await full.dispose();
-
-        expect(playHost.getStageOwner()).toBeNull();
-        expect(chat.parentElement).toBe(playHost.native.sheld);
-        expect(sendForm.parentElement).toBe(playHost.native.formSheld);
-        expect(document.getElementById('atria-game-full-root')).toBeNull();
-        expect(document.getElementById('atria-game-full-recovery')).toBeNull();
+        expect(composer.parentElement).toBe(playHost.native.formSheld);
         expect(playHost.assertIntegrity()).toBe(true);
         playHost.unmount();
     });
 
-    test('R7C Full mount failure restores Stage and Native Play ownership', async () => {
-        const stage = document.getElementById('atria-stage');
-        const playHost = mountNativePlayHost({ document, stage });
-        const shell = {
-            slots: {
-                stage,
-                recovery: document.getElementById('atria-test-recovery'),
-                dock: document.getElementById('atria-test-dock'),
-                transient: document.getElementById('atria-test-transient'),
-            },
-        };
-        const shellFoundation = {
-            getShell: () => shell,
-            getPlayHost: () => playHost,
-        };
+    test('Full owns the visual Stage while Native recovery remains outside package control', async () => {
+        const { stage, recovery, playHost, shellFoundation } = shellFixture();
+        const exitExperience = jest.fn();
+        const stopGeneration = jest.fn();
+        const save = jest.fn();
+        const openDiagnostics = jest.fn();
 
-        await expect(activateGamePackageUi({
-            charId: 'hero',
-            manifest: {
-                ui: {
-                    mode: 'full',
-                    entry: 'ui/broken.html',
-                    surface: 'app.root',
+        const session = await activateNativeExperienceRuntime(
+            state('full'),
+            worldSession(),
+            {
+                document,
+                shell: shellFoundation,
+                hostActions: {
+                    exitExperience,
+                    stopGeneration,
+                    save,
+                    openDiagnostics,
                 },
+                fetchImpl: resourceFetch({
+                    'ui/main.json': {
+                        id: 'full-root',
+                        type: 'container',
+                        children: [
+                            { id: 'title', type: 'text', props: { text: 'Full Experience' } },
+                            {
+                                id: 'conversation-slot',
+                                type: 'native-slot',
+                                props: { component: 'conversation' },
+                            },
+                            {
+                                id: 'composer-slot',
+                                type: 'native-slot',
+                                props: { component: 'composer' },
+                            },
+                        ],
+                    },
+                }),
             },
-        }, {
-            getState: () => ({}),
-            dispatchCommandInternal: jest.fn(),
-            simulateCommandInternal: jest.fn(),
-        }, {
-            document,
-            shell: shellFoundation,
-            fetchImpl: async () => ({
-                ok: true,
-                status: 200,
-                async text() {
-                    return '<div data-atria-native-component="unknown-native-component"></div>';
-                },
-            }),
-            hostActions: { exitGameUi: jest.fn() },
-        })).rejects.toThrow(/Unknown native Game UI component/);
+        );
+
+        const fullRoot = document.getElementById('atria-game-full-root');
+        const fullRecovery = document.getElementById('atria-game-full-recovery');
+        expect(session.recoveryActive).toBe(true);
+        expect(playHost.getStageOwner()).toBe('game-runtime:full');
+        expect(fullRoot.parentElement).toBe(stage);
+        expect(fullRecovery.parentElement).toBe(recovery);
+        expect(fullRoot.contains(fullRecovery)).toBe(false);
+        expect(fullRoot.textContent).toContain('Full Experience');
+
+        const actions = [...fullRecovery.querySelectorAll('[data-atria-game-recovery-action]')]
+            .map(node => node.dataset.atriaGameRecoveryAction);
+        expect(actions).toEqual(['exit', 'stop', 'save', 'diagnostics']);
+
+        fullRecovery.querySelector('[data-atria-game-recovery-action="save"]').click();
+        fullRecovery.querySelector('[data-atria-game-recovery-action="diagnostics"]').click();
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(save).toHaveBeenCalledTimes(1);
+        expect(openDiagnostics).toHaveBeenCalledTimes(1);
+
+        await session.dispose();
+        expect(playHost.getStageOwner()).toBeNull();
+        expect(document.getElementById('atria-game-full-root')).toBeNull();
+        expect(document.getElementById('atria-game-full-recovery')).toBeNull();
+        expect(playHost.native.chat.parentElement).toBe(playHost.native.sheld);
+        expect(playHost.native.sendForm.parentElement).toBe(playHost.native.formSheld);
+        expect(playHost.assertIntegrity()).toBe(true);
+        playHost.unmount();
+    });
+
+    test('broken Full Component Model restores Stage and Native Play ownership', async () => {
+        const { playHost, shellFoundation } = shellFixture();
+
+        await expect(activateNativeExperienceRuntime(
+            state('full'),
+            worldSession(),
+            {
+                document,
+                shell: shellFoundation,
+                hostActions: { exitExperience: jest.fn() },
+                fetchImpl: resourceFetch({
+                    'ui/main.json': {
+                        id: 'broken',
+                        type: 'native-slot',
+                        props: { component: 'unknown' },
+                    },
+                }),
+            },
+        )).rejects.toThrow(/conversation or composer/);
 
         expect(playHost.getStageOwner()).toBeNull();
         expect(playHost.root.style.display).toBe('');
@@ -601,5 +334,4 @@ describe('Live Game Package UI activation', () => {
         expect(playHost.assertIntegrity()).toBe(true);
         playHost.unmount();
     });
-
 });
