@@ -228,3 +228,43 @@ describe('P4 Native Play publication uses the existing lifecycle', () => {
         expect(f.events).toEqual(['prepare', 'started', 'assistant:normal', 'persist', 'ended']);
     });
 });
+
+describe('P6 scoped catalog and authoring preview', () => {
+    test('catalog reads authenticated exact owners; Library commits cannot mutate Package originals', async () => {
+        const f = await fixture();
+        const packageId = createNativeId('package'), packageVersionId = createNativeId('packageVersion');
+        f.project.source.resources = [{ resourceType: 'core.prompt-module', resource: { ...f.module, displayName: 'Project module' } }];
+        const packaged = { resourceType: 'core.prompt-module', resource: { ...f.module, displayName: 'Package module' } };
+        f.host.studio.listProjects = jest.fn(async handle => { expect(handle).toBe(f.h.handle); return [{ project: f.project.source.project }]; });
+        f.host.studio.listLibraryResources = jest.fn(async () => [{ resourceId: packageId, revisions: [packageVersionId] }]);
+        f.host.packageInstaller = { open: jest.fn(async handle => { expect(handle).toBe(f.h.handle); return { manifest: { resources: [packaged] } }; }) };
+        const app = express(); app.use(express.json());
+        app.use((req, _res, next) => { if (req.headers['x-test-user']) req.user = { profile: { handle: f.h.handle } }; next(); });
+        app.use('/generation', createNativeGenerationRouter(() => f.host));
+        await supertest(app).get('/generation/resources').expect(401); await supertest(app).post('/generation/resources').send({}).expect(401);
+        const list = await supertest(app).get('/generation/resources').set('x-test-user', 'yes').expect(200);
+        expect(list.body.map(item => item.ref.scope)).toEqual(expect.arrayContaining(['library', 'project', 'package']));
+        expect(list.body.find(item => item.ref.scope === 'package').ref).toMatchObject({ packageId, packageVersionId });
+        const post = body => supertest(app).post('/generation/resources').set('x-test-user', 'yes').send(body);
+        await post({ resourceType: 'core.prompt-module', resource: { ...f.module, revision: 'p6-new', body: 'Edited Library' } }).expect(200);
+        await post({ resourceType: 'core.prompt-module', resource: { ...f.module, body: 'Overwrite pinned revision' } }).expect(400);
+        await post({ resourceType: 'core.connection-profile', resource: f.connection }).expect(400);
+        expect(packaged.resource.body).toBe(f.module.body);
+        expect((await f.library.getExact(f.h.handle, f.routes[0].promptProgramRef)).snapshot).toMatchObject(f.prompt);
+    });
+    test('preview selects exact Project authoring resources without mutating route, Secret or execution path', async () => {
+        const f = await fixture();
+        const scoped = { ...f.prompt, promptProgramId: createNativeId('promptProgram'), revision: 'project-exact', responseDirective: { body: 'Project preview only' } };
+        f.project.source.resources = [{ resourceType: 'core.prompt-program', resource: scoped }];
+        const promptProgramRef = { scope: 'project', projectId: f.request.projectId, resourceType: 'core.prompt-program', resourceId: scoped.promptProgramId, revision: scoped.revision };
+        const input = { ...f.request, previewRefs: { promptProgramRef } };
+        const before = await f.persistence.listRuntimeRoutes(f.h.handle);
+        const preview = await f.host.execute(f.h.handle, input, undefined, undefined, { preview: true });
+        expect(preview.snapshot.promptProgramRef).toEqual(promptProgramRef); expect(JSON.stringify(preview.rendered)).toContain('Project preview only');
+        expect(await f.persistence.listRuntimeRoutes(f.h.handle)).toEqual(before); expect(f.requests).toEqual([]); expect(f.secretPort.resolveSecret).not.toHaveBeenCalled();
+        await expect(f.host.execute(f.h.handle, input)).rejects.toMatchObject({ code: 'native_generation_preview_only' });
+        await expect(f.host.execute(f.h.handle, { ...input, previewRefs: { promptProgramRef: { ...promptProgramRef, projectId: createNativeId('project') } } }, undefined, undefined, { preview: true })).rejects.toThrow();
+        await expect(f.host.execute(f.h.handle, { ...input, previewRefs: { promptProgramRef: { ...promptProgramRef, revision: 'missing' } } }, undefined, undefined, { preview: true })).rejects.toThrow();
+        expect(f.secretPort.resolveSecret).not.toHaveBeenCalled();
+    });
+});

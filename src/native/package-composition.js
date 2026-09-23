@@ -1,3 +1,4 @@
+import { freezePackagePromptPrograms } from './model-prompt-runtime/package-freeze.js';
 import { createHash } from 'node:crypto';
 
 import {
@@ -91,7 +92,7 @@ export async function buildProjectPackage({
         packageId: source.project.packageId,
         packageVersionId,
     });
-    const packagedModelPromptResources = closure.resources.map(item => {
+    const mappedModelPromptResources = closure.resources.map(item => {
         const resource = mapVersionedModelPromptResourceRefs(
             item.resourceType,
             item.resource,
@@ -107,6 +108,7 @@ export async function buildProjectPackage({
             }),
         });
     });
+    const packagedModelPromptResources = freezePackagePromptPrograms(mappedModelPromptResources, { scope: 'package', packageId: source.project.packageId, packageVersionId });
     const packagedResourceKeys = new Set(packagedModelPromptResources.map(item => {
         const identity = getVersionedModelPromptResourceIdentity(item.resourceType, item.resource);
         return identity.resourceType + ':' + identity.resourceId + '@' + identity.revision;

@@ -3,6 +3,9 @@ import { describe, expect, test } from '@jest/globals';
 import { createGitClient } from '../../src/git/client.js';
 import {
     AssetStore,
+    PackageInstaller,
+    PackageRepo,
+    PromptCompiler,
     KnowledgeRepo,
     ProjectStore,
     StudioPreviewHost,
@@ -19,7 +22,7 @@ function promptModule(id, revision, body) {
         promptModuleId: id,
         revision,
         displayName: 'Shared Prompt Module',
-        target: 'prompt.system',
+        target: 'system.foundation',
         stages: ['stage.main'],
         priority: 0,
         body,
@@ -45,7 +48,7 @@ function promptProgram(id, revision, moduleRef) {
         displayName: 'Narrative Program',
         stages: [{
             stageId: 'stage.main',
-            targets: ['prompt.system'],
+            targets: ['system.foundation'],
             moduleRefs: [moduleRef],
         }],
         provenance: [{ source: 'atria.test', ref: revision }],
@@ -359,4 +362,33 @@ describe('P1 A2 Library / Graph / Package integration', () => {
             await h.cleanup();
         }
     });
+});
+
+
+test('P6 derived Package installs offline, freezes exact closure and never follows Library latest', async () => {
+    const h = await makeTempFsEngine(), offline = await makeTempFsEngine();
+    try {
+        const { service, versionedJsonResources } = makeService(h);
+        const module = { ...promptModule(createNativeId('promptModule'), 'm1', 'Frozen {{module.tone}}'), parameters: { tone: { type: 'string', default: 'calm' } } };
+        const moduleRef = { scope: 'library', resourceType: 'core.prompt-module', resourceId: module.promptModuleId, revision: 'm1' };
+        const parent = promptProgram(createNativeId('promptProgram'), 'parent', moduleRef);
+        const child = { ...promptProgram(createNativeId('promptProgram'), 'child', moduleRef), stages: [{ stageId: 'stage.main', targets: ['system.foundation'], moduleRefs: [] }],
+            parentRef: { scope: 'library', resourceType: 'core.prompt-program', resourceId: parent.promptProgramId, revision: 'parent' },
+            derive: [{ op: 'configure', moduleId: module.promptModuleId, config: { tone: 'warm' } }] };
+        const generation = generationProfile(createNativeId('generationProfile'), 'g1');
+        for (const [type, value] of [['core.prompt-module', module], ['core.prompt-program', parent], ['core.prompt-program', child], ['core.generation-profile', generation]]) await versionedJsonResources.commit(h.handle, type, value);
+        const source = projectSource({ programRef: { scope: 'library', resourceType: 'core.prompt-program', resourceId: child.promptProgramId, revision: 'child' }, generationRef: { scope: 'library', resourceType: 'core.generation-profile', resourceId: generation.generationProfileId, revision: 'g1' } });
+        const created = await service.createProject(h.handle, source);
+        const built = await service.buildProject(h.handle, source.project.projectId, { baseRevision: created.revision.revision });
+        await versionedJsonResources.commit(h.handle, 'core.prompt-module', { ...module, revision: 'm2', body: 'LATEST MUST NOT APPEAR' });
+        const installer = new PackageInstaller({ packageRepo: new PackageRepo({ engine: offline.engine }), assetStore: new AssetStore({ engine: offline.engine, directoriesByHandle: () => offline.dirs }) });
+        await installer.install(offline.handle, built.built.archive, { permissionGrant: [] });
+        const manifest = (await installer.open(offline.handle, source.project.packageId, built.built.packageVersion.packageVersionId)).manifest;
+        const promptProgramRef = manifest.runtime.modelPrompt.roles[0].promptProgramRef;
+        const resources = manifest.resources.map(item => ({ resource: item.resource, ref: { ...item.origin, resourceType: item.resourceType, resourceId: item.resource.promptModuleId || item.resource.promptProgramId || item.resource.generationProfileId, revision: item.resource.revision } }));
+        const compiled = new PromptCompiler().compile({ request: { requestId: 'offline' }, resolved: { route: { promptProgramRef }, resources }, contextPlan: { schemaVersion: 1, requestId: 'offline', source: { kind: 'studio', projectId: source.project.projectId, revision: 'offline' }, items: [], budget: { maxTokens: 1000, reservedOutputTokens: 100 } } });
+        expect(compiled.promptIr.directives).toEqual(['Frozen warm']);
+        expect(resources.find(item => item.ref.resourceId === child.promptProgramId).resource).toMatchObject({ parentRef: null, derive: [] });
+        expect(await new VersionedJsonResourceHandler({ engine: offline.engine }).listWithRevisions(offline.handle)).toEqual([]);
+    } finally { await h.cleanup(); await offline.cleanup(); }
 });

@@ -9,7 +9,7 @@ const exact = item => ({ scope: 'library', resourceType: item.resourceType, reso
 const refKey = value => JSON.stringify(value, Object.keys(value).sort());
 
 export function mountNativeRuntimeWorkspace({ document: doc, body, section, route, host }) {
-    let disposed = false; let data; let selectedRoute = route; let activeEditor = null; let restoreShell = () => {};
+    let disposed = false; let data; let scopedResources = []; let selectedRoute = route; let activeEditor = null; let restoreShell = () => {};
     const controller = new AbortController();
     const root = doc.createElement('section');
     root.className = 'atri-runtime'; root.dataset.atriaRuntimeNative = section;
@@ -47,7 +47,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     function heading(title, description) { node('h2', title); node('p', description).className = 'atri-runtime-description'; }
     const options = (items, key) => [['', 'Choose…'], ...items.map(item => [item[key], item.displayName + ' · ' + item[key].slice(-8)])];
     function resourceOptions(type) {
-        return [['', 'Choose an exact Library revision…'], ...data.resources.filter(item => item.resourceType === type)
+        return [['', 'Choose an exact revision…'], ...scopedResources.filter(item => item.ref.resourceType === type && item.ref.scope !== 'library').map(item => [refKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope]), ...data.resources.filter(item => item.resourceType === type)
             .flatMap(item => (item.revisions.length ? item.revisions : [item.currentRevision]).map(revision => [refKey({ ...exact(item), revision }), item.displayName + ' · ' + revision + ' · Library']))];
     }
     function summary(item) {
@@ -192,6 +192,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 if (disposed) return;
                 notice('Saved. Refreshing…', status);
                 data = await runtimeRequest('/configuration', { signal: controller.signal });
+                if (section === 'routes') scopedResources = await runtimeRequest('/resources', { signal: controller.signal });
                 if (disposed) return;
                 renderList(); notice('Saved successfully. Exact route references remain pinned.'); root.querySelector('input')?.focus();
                 void host.refreshSearch?.();
@@ -248,6 +249,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         root.replaceChildren(); notice('Loading Native Runtime…');
         try {
             data = await runtimeRequest('/configuration', { signal: controller.signal });
+            if (section === 'routes') scopedResources = await runtimeRequest('/resources', { signal: controller.signal });
             if (disposed) return;
             if (section === 'diagnostics') diagnostics(); else { renderList(); deepLink(selectedRoute); }
         } catch (error) { if (!disposed) { root.replaceChildren(); failure(error, root); button('Retry loading', load); } }

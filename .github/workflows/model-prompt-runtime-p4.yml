@@ -1,4 +1,4 @@
-name: Model Prompt Runtime P4-P5 Checks
+name: Model Prompt Runtime P4-P6 Checks
 on:
   push:
     branches: [refactor/atria-model-prompt-settings]
@@ -28,11 +28,12 @@ jobs:
           node scripts/check-p3-prompt-compiler.mjs
           node scripts/check-p4-native-generation.mjs
           node scripts/check-p5-native-runtime-ui.mjs
+          node scripts/check-p6-native-authoring.mjs
           node scripts/check-a6-native-product-frontend.mjs
           node scripts/check-a8-project-agent.mjs
           node scripts/check-n10-native-hard-cutover.mjs
       - run: npm run lint
       - run: npm run frontend:prebuild-cache
       - run: npx --prefix tests playwright install --with-deps chromium
-      - run: npx playwright test e2e/native-session/03-native-generation-p4.e2e.js e2e/native-session/04-native-runtime-p5.e2e.js --project=e2e --workers=1
+      - run: npx playwright test e2e/native-session/03-native-generation-p4.e2e.js e2e/native-session/04-native-runtime-p5.e2e.js e2e/native-session/05-native-authoring-p6.e2e.js --project=e2e --workers=1
         working-directory: tests

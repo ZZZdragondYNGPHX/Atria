@@ -11,7 +11,7 @@ export const PROMPT_TARGETS = Object.freeze([
 const refKey = value => JSON.stringify(assertExactResourceRef(value));
 
 // Reads only the exact closure already validated by RouteResolver, never a Library head.
-export function flattenPromptProgram(resolved) {
+export function flattenPromptProgram(resolved, { validateBindings = true } = {}) {
     const resources = new Map();
     for (const entry of resolved.resources) {
         const key = refKey(entry.ref);
@@ -99,7 +99,7 @@ export function flattenPromptProgram(resolved) {
             if (disabled) continue;
             if (!PROMPT_TARGETS.includes(module.target) || !module.stages.includes(stage.stageId)
                 || (stage.targets.length && !stage.targets.includes(module.target))) promptError('module_target_stage');
-            bindValues(module.parameters, config);
+            if (validateBindings) bindValues(module.parameters, config);
         }
     }
     return immutable(result);

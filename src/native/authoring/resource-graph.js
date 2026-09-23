@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { PackageInstaller } from '../package-composition.js';
 import { resolveProjectDependencyClosure } from '../dependency-closure.js';
 import {
     VERSIONED_MODEL_PROMPT_RESOURCE_TYPES,
@@ -280,7 +281,7 @@ export class ResourceGraph {
         }
 
         if (ref.resourceType === 'core.package') {
-            return this._addNode(nodes, {
+            const packageNode = this._addNode(nodes, {
                 key,
                 scope: 'library',
                 resourceType: ref.resourceType,
@@ -293,6 +294,30 @@ export class ResourceGraph {
                 immutable: true,
                 metadata: {},
             });
+            // Read the installed content authority, not same-ID Library resources.
+            const installer = new PackageInstaller({ packageRepo: this._packages, assetStore: this._assets });
+            const { manifest } = await installer.open(handle, ref.resourceId, ref.revision);
+            const scope = 'package/' + ref.resourceId + '/' + ref.revision;
+            const resourceKey = value => nodeKey(scope, value.resourceType, value.resourceId, value.revision);
+            for (const item of manifest.resources || []) {
+                const identity = getVersionedModelPromptResourceIdentity(item.resourceType, item.resource);
+                const resourceNode = this._addNode(nodes, {
+                    key: resourceKey(identity), scope, ...identity, contentIdentity: hash(item.resource),
+                    authority: 'installed-package', ownership: 'package', immutable: true,
+                    metadata: { origin: 'package', packageId: ref.resourceId, packageVersionId: ref.revision, provenance: item.resource.provenance || [] },
+                });
+                this._addEdge(edges, packageNode.key, resourceNode.key, 'contains');
+            }
+            for (const item of manifest.resources || []) {
+                const from = resourceKey(getVersionedModelPromptResourceIdentity(item.resourceType, item.resource));
+                for (const dependency of collectVersionedModelPromptResourceRefs(item.resourceType, item.resource)) {
+                    this._addEdge(edges, from, resourceKey(dependency), 'references-exact');
+                }
+            }
+            for (const role of manifest.runtime?.modelPrompt?.roles || []) {
+                for (const dependency of [role.promptProgramRef, role.generationProfileRef].filter(Boolean)) this._addEdge(edges, packageNode.key, resourceKey(dependency), 'recommends-exact');
+            }
+            return packageNode;
         }
 
         const binding = exact.snapshot;
@@ -635,9 +660,12 @@ export class ResourceGraph {
 
     async references(handle, value, { reverse = false } = {}) {
         const graph = await this.refresh(handle);
+        const scope = value.scope === 'project' ? 'project/' + value.projectId
+            : value.scope === 'package' ? 'package/' + value.packageId + '/' + value.packageVersionId : value.scope;
         const keys = new Set(graph.nodes
             .filter(node => (
                 node.resourceType === value.resourceType
+                && (!scope || node.scope === scope)
                 && node.resourceId === value.resourceId
                 && (value.revision == null || node.revision === value.revision)
             ))

@@ -1,3 +1,4 @@
+import { mountStudioPromptTools } from './prompt-authoring.js';
 import {
     createAtriaRuntimeCard,
     createAtriaStatePanel,
@@ -26,6 +27,8 @@ import { mountStructuredUiEditor } from './studio-ui-editor.js';
 const STUDIO_VIEWS = Object.freeze([
     ['overview', 'Overview'],
     ['experience', 'Experience'],
+    ['prompt-authoring', 'Prompt Authoring'],
+    ['runtime-design', 'Runtime Design'],
     ['actors', 'Actors'],
     ['entrypoints', 'EntryPoints'],
     ['worlds', 'Worlds'],
@@ -527,9 +530,11 @@ async function mountProjectStudio(documentRef, root, projectId) {
 
     async function stageOperations(operations, label) {
         const workspace = workspaceFor(operations);
+        let accepted = false;
         try {
             const inspected = await nativeStudioClient.inspectWorkspace(projectId, workspace);
             state.pending = { label, workspace, inspected };
+            accepted = true;
             state.activityTab = 'changes';
             log('review', `ChangeSet review ready: ${label}`, inspected.changes);
         } catch (error) {
@@ -542,6 +547,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
             }
         }
         renderActivity();
+        return accepted;
     }
 
     function stageProject(nextSource, label) {
@@ -1054,6 +1060,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
         center.append(body);
 
         if (state.activeView === 'overview') renderOverview(body);
+        else if (['prompt-authoring', 'runtime-design'].includes(state.activeView)) void mountStudioPromptTools({ document: documentRef, body, state, stageProject, runtimeDesign: state.activeView === 'runtime-design' });
         else if (state.activeView === 'experience') renderExperience(body);
         else if (['actors', 'entrypoints', 'worlds', 'knowledge'].includes(state.activeView)) {
             renderCollectionEditor(documentRef, body, state, state.activeView, stageProject);

@@ -1,3 +1,4 @@
+import { mountPromptLibrary } from '../native/prompt-authoring.js';
 import { mountNativeRuntimeWorkspace } from '../native/runtime-workspace.js';
 import {
     createAtriaStatePanel,
@@ -20,6 +21,9 @@ function createLocalizedStatePanel(documentRef, kind, options = {}) {
 export const LIBRARY_SECTIONS = Object.freeze([
     Object.freeze({ id: 'works', label: 'Works' }),
     Object.freeze({ id: 'worlds-knowledge', label: 'Worlds & Knowledge' }),
+    Object.freeze({ id: 'prompt-programs', label: 'Prompt Programs' }),
+    Object.freeze({ id: 'prompt-modules', label: 'Prompt Modules' }),
+    Object.freeze({ id: 'generation-profiles', label: 'Generation Profiles' }),
     Object.freeze({ id: 'skills', label: 'Skills' }),
 ]);
 
@@ -148,6 +152,7 @@ async function mountLibrarySection(args) {
     const section = normalizeLibrarySection(args.route);
     if (section === 'works') return mountNativeWorksWorkspace(args);
     if (section === 'worlds-knowledge') return mountNativeWorldKnowledgeWorkspace(args);
+    if (['prompt-programs', 'prompt-modules', 'generation-profiles'].includes(section)) return mountPromptLibrary(args);
     return await mountSkillsWorkspace(args);
 }
 

@@ -45,6 +45,13 @@ export class NativeGenerationHost {
             route = matches[0];
         }
         if (!route) fail('native_generation_route_missing');
+        if (input.previewRefs && !preview) fail('native_generation_preview_only');
+        if (input.previewRefs && (typeof input.previewRefs !== 'object' || Array.isArray(input.previewRefs)
+            || Object.keys(input.previewRefs).some(key => !['promptProgramRef', 'generationProfileRef'].includes(key)))) fail('native_generation_preview_refs_invalid');
+        if (preview && input.previewRefs) route = { ...route,
+            ...(input.previewRefs.promptProgramRef ? { promptProgramRef: input.previewRefs.promptProgramRef } : {}),
+            ...(input.previewRefs.generationProfileRef ? { generationProfileRef: input.previewRefs.generationProfileRef } : {}),
+        };
         const requirements = [...new Set([
             ...(runtime?.modelPrompt?.roles.find(item => item.role === role)?.requiredCapabilities || []),
             ...(input.tools?.length ? ['generation.tools'] : []), ...(input.outputContract ? ['generation.structured-output'] : []),
@@ -65,7 +72,9 @@ export class NativeGenerationHost {
             });
             return entry && { snapshot: entry.resource, origin: ref.scope === 'project' ? { scope: 'project', projectId: ref.projectId } : entry.origin };
         };
-        const resolver = new RouteResolver({ persistence: this.persistence, library: this.library, providers: this.providers, getScopedResource });
+        const persistence = Object.create(this.persistence);
+        if (preview && input.previewRefs) persistence.getRuntimeRoute = async (owner, id) => id === route.runtimeRouteId ? route : this.persistence.getRuntimeRoute(owner, id);
+        const resolver = new RouteResolver({ persistence, library: this.library, providers: this.providers, getScopedResource });
         const nativeContext = snapshot ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }) }) : null;
         const contextProvider = { buildRequestContextPlan: async (request, resolved) => {
             const selected = nativeContext ? await nativeContext.buildRequestContextPlan(request, resolved) : {

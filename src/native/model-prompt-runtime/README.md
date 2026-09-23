@@ -232,3 +232,23 @@ containment, Back/Escape and request cancellation on dispose. Product Search is
 an ephemeral projection navigating stable resource IDs, not a persistent index.
 Saving failures preserve edits; a successful save with failed list refresh is
 reported distinctly and cannot accidentally submit a duplicate revision.
+
+## P6 authoring integration
+
+`GET /api/native/generation/resources` is an authenticated read-through catalog of
+exact Library revisions, current Project sources and installed Package resources.
+`POST /resources` commits immutable Library revisions via the P1 handler; Project
+writes remain A1 Workspace/ChangeSet operations with human Review/Apply. Package
+originals have no edit endpoint. Resource Graph projections include installed
+Package contents, and scoped reference queries distinguish same-ID owners.
+
+Compile-only `/preview` accepts `previewRefs.promptProgramRef` and/or
+`previewRefs.generationProfileRef`. The selected exact context/owner still applies;
+these refs never persist or affect send/fallback and are rejected by execution.
+
+Package build freezes derived Programs into standalone stages and typed module
+parameter defaults. Logical module IDs preserve ordering/replacement aliases.
+Ordinary pinned Program refs remain unchanged. `flattenPromptProgram` defaults to
+strict binding validation; only build-time structural freezing opts out so an
+ancestor template can leave required bindings to a descendant. Runtime compilation
+still validates every selected binding. Installed output needs no Library lookup.

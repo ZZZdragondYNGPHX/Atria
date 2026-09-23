@@ -1,3 +1,4 @@
+import { getVersionedModelPromptResourceIdentity, VERSIONED_MODEL_PROMPT_RESOURCE_TYPES } from '../native/model-prompt-runtime/resources.js';
 import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
 import express from 'express';
 import { getStorageEngine } from '../storage/index.js';
@@ -46,6 +47,45 @@ export function createNativeGenerationRouter(getHost = services) {
                 .map(item => host.library.getCurrent(handle, item.resourceType, item.resourceId)));
             response.json({ connections, models, routes, resources, profiles: profiles.map(item => item.snapshot) });
         } catch { response.status(500).json({ error: 'native_generation_configuration_unavailable' }); }
+    });
+    // Read-through catalog: exact P1 Library, Project source and installed Package authority.
+    router.get('/resources', async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        try {
+            const host = getHost();
+            const entries = [];
+            const append = (resourceType, resource, scope) => {
+                const identity = getVersionedModelPromptResourceIdentity(resourceType, resource);
+                entries.push({ ref: { resourceType, resourceId: identity.resourceId, revision: identity.revision, ...scope }, resource });
+            };
+            for (const item of await host.library.listWithRevisions(handle)) {
+                for (const revision of item.revisions) {
+                    const exact = await host.library.getExact(handle, { ...item, revision });
+                    append(item.resourceType, exact.snapshot, { scope: 'library' });
+                }
+            }
+            for (const item of await host.studio.listProjects(handle)) {
+                const project = await host.studio.getProject(handle, item.project.projectId);
+                for (const entry of project.source.resources || []) append(entry.resourceType, entry.resource, { scope: 'project', projectId: item.project.projectId });
+            }
+            for (const item of await host.studio.listLibraryResources(handle, { resourceType: 'core.package' })) {
+                for (const version of item.revisions) {
+                    const opened = await host.packageInstaller.open(handle, item.resourceId, version);
+                    for (const entry of opened.manifest.resources || []) append(entry.resourceType, entry.resource, { scope: 'package', packageId: item.resourceId, packageVersionId: version });
+                }
+            }
+            response.json(entries);
+        } catch { response.status(500).json({ error: 'native_generation_resources_unavailable' }); }
+    });
+    router.post('/resources', async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        try {
+            const { resourceType, resource } = request.body;
+            if (!VERSIONED_MODEL_PROMPT_RESOURCE_TYPES.includes(resourceType)) throw new TypeError('Unsupported resource');
+            response.json(await getHost().library.commit(handle, resourceType, resource));
+        } catch { response.status(400).json({ error: 'native_generation_resource_invalid' }); }
     });
     router.put('/configuration/:kind', async (request, response) => {
         const handle = request.user?.profile?.handle;

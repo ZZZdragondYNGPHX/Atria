@@ -1,0 +1,18 @@
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+const read = path => readFileSync(path, 'utf8');
+const ui = read('public/scripts/native/prompt-authoring.js');
+assert.doesNotMatch(ui, /getPresetManager|PromptManager|connectionManager|oai_settings|power_user|localStorage|indexedDB|executeWorkspace|applyChangeSet/);
+for (const name of ['core.prompt-program', 'core.prompt-module', 'core.generation-profile', 'Read-only original', 'Used By', 'Advanced editor', 'Stage / module tree', 'stageProject', 'previewRefs']) assert.ok(ui.includes(name), name);
+assert.match(ui, /entry.ref.scope === 'library'\) action\(doc, row, 'New revision'/);
+assert.match(ui, /if \(!await stageProject\(source, label\)\)/);
+assert.match(ui, /result.closure.resources/);
+const studio = read('public/scripts/native/studio-workspace.js');
+assert.match(studio, /\['prompt-authoring', 'Prompt Authoring'\]/); assert.match(studio, /\['runtime-design', 'Runtime Design'\]/);
+assert.match(studio, /projectSaveOperation\(projectId, nextSource\)/);
+const freeze = read('src/native/model-prompt-runtime/package-freeze.js');
+assert.match(freeze, /flattenPromptProgram/); assert.match(freeze, /parentRef: null, derive: \[\]/);
+assert.doesNotMatch(freeze, /getCurrent|getExact|listWithRevisions/);
+assert.match(read('src/native/adapters/generation-host.js'), /input.previewRefs && !preview/);
+assert.match(read('src/native/package-composition.js'), /freezePackagePromptPrograms\(mappedModelPromptResources/);
+console.log('P6 Library / Studio exact authoring guard passed.');
