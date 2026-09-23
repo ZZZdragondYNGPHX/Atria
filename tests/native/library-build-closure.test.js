@@ -5,7 +5,6 @@ import { describe, expect, test } from '@jest/globals';
 import {
     AssetStore,
     KnowledgeRepo,
-    NativeDependencyError,
     WorldRepo,
     createNativeId,
     resolveProjectDependencyClosure,
