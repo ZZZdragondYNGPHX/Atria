@@ -38,6 +38,7 @@ jobs:
         run: >-
           npm run test:unit --prefix tests -- --runInBand
           native/runtime-descriptor.test.js
+          native/runtime-http.test.js
           game-runtime/package-loader.test.js
           game-runtime/world-session.test.js
           game-runtime/logic-runtime.test.js
@@ -79,6 +80,7 @@ jobs:
           public/scripts/extensions/game-runtime/llm/turn-controller.js
           public/scripts/extensions/game-runtime/llm/memory-bridge.js
           tests/native/runtime-descriptor.test.js
+          tests/native/runtime-http.test.js
           tests/game-runtime/package-loader.test.js
           tests/game-runtime/world-session.test.js
           tests/game-runtime/llm-turn-context.test.js
