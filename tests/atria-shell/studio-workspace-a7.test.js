@@ -176,6 +176,9 @@ describe('A7 Atria Studio workspace', () => {
         const executed = requests.find(item => item.path.endsWith('/workspaces/execute'));
         expect(executed.body.workspaceId).toBe(inspected.body.workspaceId);
         expect(executed.body.baseRevision).toBe(revision);
+
+        [...slot.querySelectorAll('.atria-studio-activity-tabs button')]
+            .find(node => node.textContent === 'Output').click();
         expect(slot.textContent).toContain('ChangeSet changeset_111 committed');
 
         controller.dispose();
