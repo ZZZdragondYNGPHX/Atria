@@ -2,7 +2,7 @@
 
 ## Status
 
-**P0–P5 已完成并验证。当前停止在 P6 接手点；P6–P8 尚未实施。**
+**P0–P6 已完成并验证。当前停止在 P7 接手点；P7–P8 尚未实施。**
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Baseline: `main@2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
@@ -335,3 +335,16 @@ A6/P0 replacement gates evolved after actual visual verification. Broad FS/SQLit
 Guards/lint/syntax/prebuild passed. Exact commands, intermediate visual defects,
 exclusions and P6 obligations: P5-VALIDATION.md. No main merge or P6 implementation.
 P6 Library & Studio Authoring is next, only after explicit continuation.
+
+
+## P6 completion checkpoint (2026-09-23)
+
+P6 complete at `2351be51e8c8cbdadf0966104ec607018e93de6e`. Library Prompt/Generation exact resource
+views and Fork/Derive, A1-reviewed Studio Prompt Authoring/Runtime Design, scoped
+pickers/preview, Package derive freeze and owner-aware Package Resource Graph are
+implemented. Primary Build and A1/A2/A7/A8 authority remain. Final regression:
+209 suites / 1830 tests; final P6 real-browser desktop/mobile: 2 passed, with 8
+adjacent P4/P5 cases passing separately in the combined run. Final screenshots
+inspected. Broader storage run has four failures reproduced on unchanged P5;
+see P6-VALIDATION.md for exact evidence, intermediate failures and exclusions.
+No main merge or P7/P8 implementation. P7 is next only on explicit continuation.

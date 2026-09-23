@@ -1,47 +1,49 @@
-# NEXT: P6 — Library & Studio Authoring
+# NEXT: P7 — Product Surface Cleanup
 
-P0-P5 complete. Stop until explicit user continuation.
+P0-P6 complete. Stop until explicit user continuation.
 
-- Work branch: refactor/atria-model-prompt-settings
-- Main baseline: 2d1c3ec9c8039ecc4728ebe712f4a9f14186906f
-- P5 validated HEAD: 0cb56b9a0d37789025fb8069d08f6f43ead2413d
-- Evidence: P5-VALIDATION.md; runtime ABI: src/native/model-prompt-runtime/README.md.
+- Work branch: `refactor/atria-model-prompt-settings`
+- Main unchanged: `2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
+- P6 validated/pushed HEAD: `2351be51e8c8cbdadf0966104ec607018e93de6e`
+- Evidence: P6-VALIDATION.md; runtime ABI: src/native/model-prompt-runtime/README.md.
 
 ## Next-session prompt
 
-Continue Atria Model / Prompt / Runtime Native Refactor on the same work branch.
-Fetch work branch/main/docs and preserve newer commits. Do not create a new branch,
-redo P0-P5 or merge main. Read main:AGENTS.md, main:FORK_MAINTENANCE.md,
-docs:handoff/latest-handoff.md, refactor plan/planning pack, P5-VALIDATION.md and
-current P1 resource/A1 authoring/A2 Library/A7 Studio/A8 Agent code/tests/guards.
+Continue Atria Model / Prompt / Runtime Native Refactor P7 only, on the same work
+branch. Fetch work branch/main/docs and preserve newer commits. Read main:AGENTS.md,
+main:FORK_MAINTENANCE.md, docs:handoff/latest-handoff.md, the refactor overview and
+planning pack, P6-VALIDATION.md and current P0-P6/A1/A2/A6/A7/A8 code/tests/guards.
+Do not create a new branch, redo P0-P6, merge main or implement P8.
 
-Execute P6 only as specified in IMPLEMENTATION.md and DESIGN.md:
-Library exposes Prompt Programs, Prompt Modules and Generation Profiles with origin,
-exact revision, Derived From, Used By, read-only Package originals and Fork/Derive.
-Existing Build/A7 Studio adds Prompt Authoring and Runtime Design, Simple/Advanced
-Prompt editor, stage/module tree, workspace editor/inspector, conditions/parameters/
-provenance and compile preview. AI edits must use A1 operations and human Review,
-not direct mutation. Keep Build as the primary authoring domain.
+P7 scope from IMPLEMENTATION.md / DESIGN.md:
+- Settings retains product preferences, not Model/Prompt/Connection/Runtime authority.
+- Native Runtime must not embed ConnectionManager/PresetManager editors.
+- Global Search navigates to owning routes only; update labels/localization/docs.
+- Confine legacy compatibility to an explicit developer/host island.
+- Remove old name-based runtime identity and package.presets runtime authority.
+- Residual scans reject non-allowlisted legacy managers, globals and DOM selectors.
 
-Package work includes runtime requirements/recommended exact refs, exact build
-closure and flattened/frozen derive resources. Installed Packages must not track
-Library latest or allow player edits to Package originals. Reuse existing Store,
-Library, Resource Graph and Session authority. No second prompt database, no legacy
-preset fallback. Preserve P4 request isolation/tools/Secret/fallback and A8 gates.
+Retain primary Build navigation; Studio Project changes go through A1 human
+Review/Apply, AI through A8. Retain P6 exact Library refs, read-only Package
+originals/Fork, owner-scoped Resource Graph, frozen Package derive closure and
+P4 execution isolation/Secret/send/fallback. No automatic migration or dual-write.
+Preview remains compile-only with committed exact context; it cannot submit model
+requests or persist overrides. No second prompt/resource store.
 
-P5 now provides P1 configuration HTTP APIs and compile-only preview with pinned
-Session/Project context. Runtime Profiles create immutable Library revisions and
-routes remain pinned. P5 selects Library revisions and preserves existing scoped
-refs; finish the scoped-resource authoring/picker flow within P6's intended scope.
-No Prompt visual editor or Secret provisioning/import was added in P5. Unsupported
-provider controls still fail closed; do not label P3 render fixtures as transports.
+Frontend changes require real local servers and Playwright desktop/mobile
+interaction, screenshots and visual review, fixes and recapture. Do not accept
+DOM assertions alone. P6 specifically fixed control contrast, compressed Studio
+tree, invisible save errors and lost Runtime Design recommendation selections.
 
-For frontend/UI changes, start local servers, open real pages with Playwright,
-interact at desktop/mobile sizes, capture and inspect screenshots, fix defects and
-recapture. Tests alone missed P5's 44px mobile editor; verify actual visual geometry
-and focus/keyboard behavior. Use independent mobile Studio layouts.
+Run focused/adjacent tests, applicable guards, lint/syntax/prebuild and real browser
+integration. P6 final Native/game-runtime/orchestrator regression: 209/1830 passed.
+The separate storage extension has four failures in three suites reproduced on
+unchanged P5 under Windows; do not claim all storage passes or silently weaken tests.
+Temporary baseline comparison data is ignored under tests/.e2e-scratch; exclude the
+p6-baseline worktree from Jest discovery if present (command in P6-VALIDATION.md).
+P6 browser tests stub only optional Horde discovery to avoid unrelated TLS/non-JSON
+errors; Native requests remain real. Android/Docker remain opt-in; MySQL/PostgreSQL
+services and real external model credentials were not validated.
 
-Run focused/adjacent tests, relevant frozen N/A/P0-P6 guards, lint/syntax/build and
-real browser integration. Android/Docker remain opt-in. Use existing SQL disable
-switches when services are absent and report exclusions honestly. Record actual
-results and update/push work/docs. Stop before P7 until explicit continuation.
+Update/push work/docs with actual evidence, then stop before P8. Give the user a
+copyable P8 continuation prompt only after P7 is genuinely complete.
