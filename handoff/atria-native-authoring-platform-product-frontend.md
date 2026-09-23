@@ -2,7 +2,7 @@
 
 ## Current status
 
-Planning/design is complete and frozen. **A0, A1, A2, A3, A4 and A5 are complete and validated; A6 is next.**
+Planning/design is complete and frozen. **A0, A1, A2, A3, A4, A5 and A6 are complete and validated; A7 is next.**
 
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Stable baseline: `main@fd9a493c9040b32f4892bd92531030e58b066244`
@@ -14,9 +14,10 @@ Planning/design is complete and frozen. **A0, A1, A2, A3, A4 and A5 are complete
 - A3 validated HEAD: `ba1ba05e0cd53b0947be34bed62707a297d97ac2`
 - A4 validated HEAD: `b68e7ee930c869b5a8a118faf22ef4e38e35cb87`
 - A5 validated HEAD: `eefd6550d9b2af6c2777984e12d5f61de0898415`
+- A6 validated HEAD: `e33704b91ecb0373902132fe8af9c80b204aa8ce`
 - Formal plan: `refactor/atria-native-authoring-platform-product-frontend.md`
 - Prior Native Content & Session Architecture N0–N10 remains complete and must not be redone.
-- Do not merge `main`; continue A6 on the same implementation branch.
+- Do not merge `main`; continue A7 on the same implementation branch.
 
 ## Task identity
 
@@ -212,25 +213,28 @@ Use the same implementation branch for all phases:
 
 After every phase: validate, commit/push, update docs/handoff, stop, and provide the next-phase takeover prompt. Do not create a new branch per phase. Do not merge `main` until the complete refactor reaches final integration.
 
-## Current next action — A6 only
+## Current next action — A7 only
 
-Start **A6 — Native Product Frontend** from the actual latest remote HEAD of the same implementation branch.
+Start **A7 — Studio Authoring UX** from the actual latest remote HEAD of the same implementation branch.
 
-Before A6 editing, re-read:
+Before A7 editing, re-read:
 
 1. `main:AGENTS.md`
 2. `main:FORK_MAINTENANCE.md`
 3. `docs:handoff/latest-handoff.md`
 4. `docs:refactor/atria-native-authoring-platform-product-frontend.md`
 5. this handoff
-6. A5 Plugin & Skill Platform implementation and tests
-7. A4 Experience Runtime and current Atria shell/product routing/frontend foundations.
+6. A1 Native Authoring Backend / StudioService and Authoring Operation → Workspace → ChangeSet implementation
+7. A2 Resource Registry / Resource Graph / Library attachment implementation
+8. A4 Experience Runtime / Component Model / Native Preview
+9. A5 Plugin & Skill Platform
+10. A6 Build domain, Atria Product UI System, navigation/search and mobile product foundations.
 
-A6 must implement only the frozen **Native Product Frontend**. It must consume the existing A0–A5 Native authorities and A5 Plugin/Skill surfaces rather than creating alternate product/runtime state.
+A7 must implement only the frozen **Studio Authoring UX**. It must consume the A1 authoring backend and A2/A4/A5/A6 seams rather than creating alternate Project, Resource, Preview, Plugin, Skill or runtime authority.
 
-A6 must not start A7 Studio Authoring UX, A8 Project Agent / Vibe Coding, or A9 final hard-cutover cleanup early.
+A7 must not start A8 Project Agent / Vibe Coding or A9 final hard-cutover cleanup early.
 
-Stop again after A6 validation/handoff. Do not create a new branch and do not merge `main`.
+Stop again after A7 validation/handoff. Do not create a new branch and do not merge `main`.
 
 ---
 
@@ -1165,3 +1169,189 @@ Independent frozen workflows on the same HEAD:
 A6 starts only from the actual latest remote HEAD of `refactor/atria-native-authoring-platform-product-frontend`, preserving A0–A5.
 
 A6 must consume the established Native Package / Resource / Authoring / Runtime Descriptor / Experience / Plugin / Skill authorities. It must not create alternate persistence or runtime authority, and it must not start A7 Studio UX or A8 Project Agent implementation early.
+
+
+---
+
+## A6 implementation record — complete
+
+A6 — **Native Product Frontend** is complete and validated.
+
+- Implementation branch: `refactor/atria-native-authoring-platform-product-frontend`
+- A5 prior validated HEAD: `eefd6550d9b2af6c2777984e12d5f61de0898415`
+- A6 validated HEAD: `e33704b91ecb0373902132fe8af9c80b204aa8ce`
+- Formal plan remains unchanged; A6 implemented the frozen Native Product Frontend without creating a second Native authority.
+- Do not merge `main`; continue A7 on the same implementation branch.
+
+### Implemented
+
+#### Product IA / Build
+
+The Atria primary product domains are now:
+
+- Play
+- Library
+- Build
+- Agents
+- Runtime
+
+`Studio` is no longer a primary product route. Build owns Native project discovery/detail routing. The existing Native Studio workspace function remains an internal implementation seam for A7 rather than a product domain.
+
+#### Atria-native Play
+
+A6 added `public/scripts/native/play-product.js` with:
+
+- Native Session Header;
+- Atria Conversation renderer;
+- Message Renderer;
+- Atria Composer;
+- product semantic Component surfaces.
+
+Conversation reads the committed Native Session Timeline projection only.
+
+Composer bridges the existing A3 generation entrypoint by writing through the existing hidden Native generation ABI; it does not create its own message/timeline store.
+
+The legacy `#chat/#send_form` subtree remains mounted as one hidden internal generation ABI. It is not the official Atria product UI.
+
+A4 Component / Hybrid / Full Native slots now reuse the Atria product Conversation / Composer components while retaining the same shared Component Model, Stage ownership and Host recovery semantics.
+
+#### Library
+
+Library uses the Atria master-detail product pattern and continues to consume existing Native Package / World / Knowledge / Skill authorities.
+
+No second Library persistence/index authority was added.
+
+#### Runtime
+
+Runtime product surfaces now cover:
+
+- Overview
+- Roles
+- Connections
+- Model / Prompt Presets
+- Capabilities
+
+Capabilities is a read-only projection of the active exact Native package/runtime snapshot.
+
+Connections is Native-first. Existing Connection Manager controls retain their persistence authority but are isolated under Advanced instead of acting as the primary product page.
+
+#### Product Search
+
+A6 added `public/scripts/atria-shell/product-search.js`.
+
+The search index is transient and read-only. It enumerates Native:
+
+- Works
+- Worlds
+- Knowledge Bases
+- Projects
+
+and registers command results that navigate only to their authoritative Library / Build route.
+
+It does not render foreign-domain content in the caller's page and does not persist another search/index authority.
+
+#### Plugins / Skills
+
+Plugins is now Native-first and projects exact installed Package Runtime plugin declarations/capabilities.
+
+SillyTavern-compatible frontend/server extensions remain available only under Advanced / Legacy.
+
+Skills remain primarily under Library and continue to use the A5 global/project/package Native scope authority.
+
+#### Settings / Account / Diagnostics
+
+Settings now exposes Atria-native product cards first. The existing User Settings form is an Advanced compatibility controller that retains its original persistence authority.
+
+Account now exposes Atria-native identity/storage/snapshot/backup overview first. The old account/profile controller is lazy-mounted only under Advanced.
+
+Diagnostics remains one routed global product utility backed by the existing diagnostics authority.
+
+#### Product UI / responsive behavior
+
+A6 extends the existing Atria Product UI System and semantic `--atri-*` tokens with:
+
+- Atria-native Play layout;
+- master-detail Library layout;
+- Native-first Runtime connection/capability cards;
+- Native-first Plugins / Settings / Account product cards;
+- compact/mobile variants using the same authoritative routes/components.
+
+### Key decisions
+
+- Atria product UI is presentation/interaction over existing Native authority, never a new persistence layer.
+- Build is the product domain; Studio is the A7 project workspace.
+- Visible Play uses Atria Conversation/Composer; SillyTavern chat DOM remains internal generation ABI only.
+- Component / Hybrid / Full continue to share the same A4 Component Model and Atria Native component instances.
+- Compatibility controllers may remain under Advanced when A6 is not responsible for replacing their persistence authority.
+- Search results always navigate to owning domains.
+- Formal plan did not change.
+
+### Guard / CI
+
+A6 added:
+
+- `scripts/check-a6-native-product-frontend.mjs`
+- `.github/workflows/native-authoring-platform-a6.yml`
+- `tests/atria-shell/native-play-product.test.js`
+- `tests/atria-shell/product-search.test.js`
+
+and updated adjacent A4/Atria-shell regression coverage for the A6 product component contract.
+
+The A6 residual guard enforces:
+
+- Build as the primary authoring product domain;
+- no Studio primary route;
+- Native Session-backed Atria Play Conversation/Composer;
+- no second Play persistence/runtime authority;
+- old chat DOM isolated as internal generation ABI;
+- Atria product Conversation/Composer used by Native component slots;
+- Library master-detail and Runtime Capabilities;
+- Native-first Runtime Connections;
+- Native-first Plugins / Settings / Account;
+- Product Search as route-only authority projection.
+
+### Validation
+
+Validated on A6 HEAD `e33704b91ecb0373902132fe8af9c80b204aa8ce`.
+
+**Native Authoring Platform A6 Checks #6**
+
+- Run: **35811659445**
+- focused + adjacent regressions: **20 suites / 123 tests passed**
+- A6 residual guard: **success**
+- A6 guard syntax: **success**
+- frozen A0/A1/A2/A3/A4/A5 guards: **success**
+- focused ESLint: **success**
+- full root lint: **success**
+
+Independent frozen workflows on the same HEAD:
+
+- **A0 Checks #129**, Run **35811660076** — success.
+- **A1 Checks #116**, Run **35811659453** — success.
+- **A2 Checks #114**, Run **35811659446** — success.
+- **A3 Checks #80**, Run **35811659476** — success.
+- **A4 Checks #48**, Run **35811659437** — success.
+- **A5 Checks #39**, Run **35811659435** — success.
+
+### Explicitly not implemented in A6
+
+- full A7 Studio project workspace UX;
+- A7 Design / Structure / Bindings / Source editors;
+- A7 Inspector / Preview / project-local asset editing flows;
+- A7 mobile Project / Editor / Preview / AI / More views;
+- A8 Project Agent / Vibe Coding;
+- A9 final obsolete product-surface cleanup.
+
+### A7 entry conditions
+
+A7 starts only from the actual latest remote HEAD of `refactor/atria-native-authoring-platform-product-frontend`, preserving A0–A6.
+
+A7 must use:
+
+- A1 StudioService / Authoring Operations / Workspace / ChangeSet;
+- A2 Resource Registry / Resource Graph / Library attachment authority;
+- A4 shared Component Model and Native Preview;
+- A5 Plugin/Skill contribution and scope boundaries;
+- A6 Build domain and Atria Product UI System.
+
+A7 must not create a parallel project/editor persistence model and must not start A8/A9 early.
