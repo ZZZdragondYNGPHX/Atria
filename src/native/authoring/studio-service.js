@@ -354,11 +354,17 @@ export class StudioService {
             });
         }
         if (operation.operationType === STUDIO_SOURCE_OPERATION_TYPES.saveProject) {
-            if (operation.target.resourceId !== projectId) {
-                throw new TypeError('project.save target.resourceId must match Workspace projectId');
+            if (
+                operation.target.resourceType !== 'core.project'
+                || operation.target.resourceId !== projectId
+            ) {
+                throw new TypeError('project.save target must identify the Workspace core.project');
             }
             const next = validateAtriaProjectSource(operation.input?.source);
             if (!next.ok) throw new TypeError(next.errors.join('; '));
+            if (next.project.project.projectId !== projectId) {
+                throw new TypeError('project.save source projectId must match Workspace projectId');
+            }
             const current = await this._project(handle, projectId);
             const beforeBytes = Buffer.from(JSON.stringify(current));
             const afterBytes = Buffer.from(JSON.stringify(next.project));
@@ -377,6 +383,11 @@ export class StudioService {
     async inspectWorkspace(handle, workspaceValue) {
         const workspace = assertAuthoringWorkspace(workspaceValue);
         if (!workspace.operations.length) throw new TypeError('Authoring workspace must contain at least one operation');
+        for (const operation of workspace.operations) {
+            if (!sameOrigin(operation.origin, workspace.origin)) {
+                throw new TypeError('Authoring operation origin must match its Workspace origin');
+            }
+        }
         return this._queue(workspace.projectId, async () => {
             await this._assertBaseRevision(handle, workspace.projectId, workspace.baseRevision);
             const changes = [];
@@ -408,8 +419,11 @@ export class StudioService {
             return this._projects.deleteFile(handle, projectId, operation.target.path);
         }
         if (operation.operationType === STUDIO_SOURCE_OPERATION_TYPES.saveProject) {
-            if (operation.target.resourceId !== projectId) {
-                throw new TypeError('project.save target.resourceId must match Workspace projectId');
+            if (
+                operation.target.resourceType !== 'core.project'
+                || operation.target.resourceId !== projectId
+            ) {
+                throw new TypeError('project.save target must identify the Workspace core.project');
             }
             return this._projects.save(handle, operation.input?.source);
         }
