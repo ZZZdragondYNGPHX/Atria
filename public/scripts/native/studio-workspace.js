@@ -20,6 +20,7 @@ import {
     sourceWriteOperation,
 } from './studio-authoring.js';
 import { nativeStudioClient } from './studio-client.js';
+import { mountNativeStudioAgent } from './studio-agent.js';
 import { mountStructuredUiEditor } from './studio-ui-editor.js';
 
 const STUDIO_VIEWS = Object.freeze([
@@ -404,6 +405,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
         activityTab: 'problems',
         disposed: false,
         renderEditor: () => {},
+        aiOpen: false,
     };
 
     const shell = documentRef.createElement('section');
@@ -486,6 +488,21 @@ async function mountProjectStudio(documentRef, root, projectId) {
         revision.textContent = `Revision ${state.revision.revision.slice(0, 12)}`;
         tree.render();
     }
+
+    const aiController = mountNativeStudioAgent({
+        document: documentRef,
+        slot: ai,
+        projectId,
+        getRevision: () => state.revision,
+        onLog: log,
+        onProjectCommitted: async () => {
+            await refreshProject();
+            state.pending = null;
+            renderEditor();
+            renderActivity();
+            void renderInspector();
+        },
+    });
 
     function workspaceFor(operations) {
         return createStudioWorkspace({
@@ -1199,6 +1216,10 @@ async function mountProjectStudio(documentRef, root, projectId) {
         button(documentRef, 'Preview', runPreview),
         button(documentRef, 'Simulate', runSimulation),
         button(documentRef, 'Build', () => runBuild({ download: false })),
+        button(documentRef, 'AI', () => {
+            state.aiOpen = !state.aiOpen;
+            ai.classList.toggle('atria-studio-ai-placeholder--open', state.aiOpen);
+        }, { active: state.aiOpen }),
     );
 
     renderEditor();
@@ -1210,6 +1231,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
         updateRoute() {},
         dispose() {
             state.disposed = true;
+            aiController.dispose();
         },
     };
 }
