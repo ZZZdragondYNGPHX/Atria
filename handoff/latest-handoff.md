@@ -1,132 +1,90 @@
-# Active checkpoint: Atria Model / Prompt / Runtime Native Refactor — P0 complete, ready for P1
+# Active checkpoint: Atria Model / Prompt / Runtime Native Refactor — P1 complete, ready for P2
 
 ## Status
 
 Atria Native Content & Session N0–N10 and Native Authoring Platform / Product Frontend A0–A9 remain frozen semantic foundations.
 
-Current staged refactor:
-
-**Atria Model / Prompt / Runtime Native Refactor**
-
-P0 — Baseline / Contracts / Guard Evolution is complete and validated.
-
 - Repository: `ZZZdragondYNGPHX/Atria`
 - main baseline: `2d1c3ec9c8039ecc4728ebe712f4a9f14186906f`
 - implementation branch: `refactor/atria-model-prompt-settings`
 - P0 validated HEAD: `472e1a9f0759a460d845a2e6c618983c35e18654`
-- workflow: Model Prompt Runtime P0 Checks #6
-- run: `35832249672`
-- next phase: **P1 — Native Resource & Persistence Foundation**
-- P1–P8 have not been implemented.
-- Do not merge main and do not create a new branch.
+- P1 validated HEAD: `802a68654f53015800e141fd052f1a006df149e0`
+- P1 workflow: Model Prompt Runtime P1 Checks #6
+- P1 run: `35836303381`
+- P0 workflow on same HEAD: Model Prompt Runtime P0 Checks #17
+- P0 run: `35836303445`
+- next phase: **P2 — Generation Core & Route Resolution**
+- P2–P8 have not been implemented.
+- Do not create a new branch and do not merge main.
 
-## P0 delivered
+## P1 delivered
 
-P0 froze code contracts for:
+- generic versioned JSON resource handler on existing Native storage;
+- `core.prompt-module`, `core.prompt-program`, `core.generation-profile`;
+- immutable exact revision identities;
+- A2 Resource Registry + derived-readonly Resource Graph integration;
+- NativeLibraryService list/get exact;
+- A1/A2 Attach/Fork/Update;
+- exact Package dependency closure with recursive Prompt Program dependencies;
+- missing exact dependency fail closed;
+- Package build vendoring to exact PackageVersion refs;
+- player Connection / Model / Runtime Route persistence;
+- `secretRef`-only Connection persistence;
+- project/library/package origin + provenance;
+- P1 architecture guard + CI.
 
-1. Connection Profile
-2. Model Profile
-3. Generation Profile
-4. Prompt Module
-5. Prompt Program
-6. Runtime Route
+## P1 commits
 
-Runtime artifacts:
+- `a2c2fee0` — add P1 Native resource persistence foundation
+- `bff67534` — integrate P1 resources with A2 authoring authority
+- `1822358d` — close P1 model/prompt Package dependencies
+- `577eeedc` — preserve frozen P0 Package metadata contract
+- `84d3fe50` — add P1 resource/package integration tests
+- `fd38b8ec` — add P1 CI workflow
+- `342452b4` — align persistence test fixture with normalized Model contract
+- `ce900854` — focused lint fix
+- `61f0b1aa` — prove project/library/package origin + provenance
+- `0ff8fcb4` — add P1 architecture guard
+- `802a6865` — enforce P1 architecture guard in CI
 
-- RequestContextPlan
-- Prompt IR
-- EffectiveRequestSnapshot
+## P1 validation
 
-Capability contract:
+Actually executed on `802a68654f53015800e141fd052f1a006df149e0`:
 
-- supported
-- unsupported
-- unknown
-- provenance
+- 9 suites / 37 tests passed;
+- P0 architecture guard: success;
+- P1 architecture guard: success;
+- P1 guard syntax: success;
+- A1 guard: success;
+- A2 guard: success;
+- A7 guard: success;
+- A8 guard: success;
+- focused ESLint: success;
+- P0 Checks #17: success.
 
-Ports:
+Not run:
 
-- Generation Service
-- Route Resolver
-- Provider Port
-- Secret Port
-- Context Provider
+- full Node regression;
+- frontend build;
+- browser E2E;
+- Android;
+- Docker;
+- real-host model request.
 
-Package author intent:
+## Key decisions
 
-- `runtime.modelPrompt`
-- role capability requirements
-- exact Prompt Program refs
-- exact Generation Profile refs
-- no player-private Connection / Model / concrete Route / secret value
+- no PromptStore / GenerationStore / second Library;
+- no second Resource Graph;
+- no WorldRepo / KnowledgeRepo / AssetStore rewrite;
+- Resource Graph stays derived-readonly;
+- Studio writes stay under A1 Workspace/ChangeSet;
+- Library exact refs never follow latest;
+- Package gets vendored exact model/prompt resources and no private Connection/Model/Route/Secret;
+- P0 Package contract compatibility is preserved when older package fixtures omit the new `resources` field;
+- P2 must consume these P1 authorities rather than add parallel persistence.
 
-New Core boundary:
+## P2 objective
 
-- `src/native/model-prompt-runtime/contracts.js`
-- `src/native/model-prompt-runtime/ports.js`
+Implement Generation Core + Route Resolver only. Do not implement the Prompt Compiler, first-party cutover, or Runtime UI.
 
-Architecture guard:
-
-- `scripts/check-p0-model-prompt-runtime-architecture.mjs`
-- rejects direct ST globals / DOM / PresetManager / PromptManager / `Atria.getContext()` / `generateTask` / direct dispatch sender / browser persistence / `package.presets` authority
-- includes violation-detection self-test.
-
-## P0 validation
-
-Actually executed on `472e1a9f0759a460d845a2e6c618983c35e18654`:
-
-- 5 suites / 63 tests passed
-- P0 architecture residual guard: success
-- P0 guard self-test: success
-- P0 guard syntax: success
-- A0–A9 frozen guards: success
-- N9 guard: success
-- N10 guard: success
-- focused ESLint: success
-
-Not executed in P0:
-
-- full Node regression
-- frontend build
-- browser E2E
-- Android
-- Docker
-- real-host model request
-
-Do not report those as passed.
-
-## Frozen guard evolution matrix
-
-- A6 Advanced Connection compatibility editor:
-  - transitional seam
-  - preserve until P5 Native Connections UI is implemented + validated
-- A6 standalone Runtime Capabilities route:
-  - transitional seam
-  - preserve until P5 capabilities are integrated into Models / Routes / Diagnostics and navigation is validated
-- A8 Studio Agent `generateTask`:
-  - transitional seam
-  - preserve until P4 Generation Service cutover proves tool projection + human Review/Commit invariants
-- N0 Native ID family list:
-  - extended in P0 for the six new opaque identity families
-- N10 legacy identity/storage invariant:
-  - preserved
-  - only `src/native/authoring-contracts.js` was added to the existing contract-validator literal exception so rejected legacy key names do not count as runtime dependencies
-
-No frozen guard was wholesale disabled.
-
-## P1 immediate objective
-
-Build the persistence/resource foundation only:
-
-- generic versioned JSON resource handler for Prompt Module / Prompt Program / Generation Profile
-- A2 Registry / Resource Graph integration
-- Library exact list/get
-- Attach/Fork/Update
-- Package exact dependency closure
-- Connection / Model / Runtime Route player persistence
-- secretRef-only persistence
-- origin/provenance
-
-Do not implement P2 Generation Service, P3 Prompt Compiler, P4 runtime cutover, or P5 UI in the P1 checkpoint.
-
-Before work, fetch the remote implementation branch and preserve any newer commits.
+Read `planning/atria-model-prompt-settings/NEXT.md` for the P2 execution checklist.
