@@ -76,11 +76,11 @@ function routeDescriptor(route) {
             title: AGENT_SECTION_LABELS[section] || 'Agents',
         });
     }
-    if (route?.domain === 'studio') {
+    if (route?.domain === 'build') {
         return Object.freeze({
-            key: 'studio',
-            kind: 'studio',
-            title: 'Studio',
+            key: 'build',
+            kind: 'build',
+            title: 'Build',
         });
     }
     if (route?.domain === 'library') {
@@ -202,7 +202,7 @@ async function mountAgentsWorkspace({ document: documentRef, slot, descriptor, h
     };
 }
 
-async function mountStudioWorkspace(args) {
+async function mountBuildWorkspace(args) {
     const studio = await import('../native/studio-workspace.js');
     return studio.mountNativeStudioWorkspace(args);
 }
@@ -221,7 +221,7 @@ async function mountDiagnosticsWorkspace({ slot }) {
 export function createAtriaWorkspaceAdapters() {
     return Object.freeze({
         agents: mountAgentsWorkspace,
-        studio: mountStudioWorkspace,
+        build: mountBuildWorkspace,
         library: mountLibraryDomainWorkspace,
         runtime: mountRuntimeDomainWorkspace,
         diagnostics: mountDiagnosticsWorkspace,
@@ -261,8 +261,8 @@ export function createAtriaWorkspaceHost({
         const current = contextState();
         const detail = descriptor.kind === 'agents'
             ? formatShellText('Current Agents view: ${0}', [translateShellText(AGENT_SECTION_LABELS[descriptor.section] || descriptor.section)], undefined, 'atria.shell.context.agents')
-            : descriptor.kind === 'studio'
-                ? translateShellText('Native Studio Projects and exact World / Knowledge dependencies use ProjectStore authority.')
+            : descriptor.kind === 'build'
+                ? translateShellText('Build projects and exact World / Knowledge dependencies use ProjectStore authority.')
                 : descriptor.kind === 'library'
                     ? formatShellText('Library / ${0} uses Native Package, World and Knowledge authorities; Skills keep their existing manager.', [translateShellText(descriptor.title)], undefined, 'atria.shell.context.library')
                     : descriptor.kind === 'runtime'
@@ -533,24 +533,24 @@ export function createAtriaWorkspaceHost({
         });
     }
 
-    function openStudio(projectId = null, label = '') {
+    function openBuild(projectId = null, label = '') {
         const id = String(projectId || '').trim();
         const route = navigation.getRoute();
         if (!id) {
-            if (route.domain !== 'studio') {
-                return navigateToDomain('studio', { reason: 'workspace-studio' });
+            if (route.domain !== 'build') {
+                return navigateToDomain('build', { reason: 'workspace-build' });
             }
             if (route.child) {
                 return navigation.clearChild({
                     history: 'push',
-                    reason: 'workspace-studio-projects',
+                    reason: 'workspace-build-projects',
                 });
             }
             return route;
         }
-        if (route.domain !== 'studio') {
-            navigation.navigate('studio', {
-                reason: 'workspace-studio-domain',
+        if (route.domain !== 'build') {
+            navigation.navigate('build', {
+                reason: 'workspace-build-domain',
                 history: 'push',
             });
         }
@@ -559,7 +559,7 @@ export function createAtriaWorkspaceHost({
             label: String(label || 'Project'),
             kind: 'detail',
         }, {
-            reason: 'workspace-studio-project-detail',
+            reason: 'workspace-build-project-detail',
             history: 'push',
         });
     }
@@ -674,7 +674,7 @@ export function createAtriaWorkspaceHost({
         openLibraryWorld,
         openLibraryKnowledge,
         openRuntimeSection,
-        openStudio,
+        openBuild,
         openWorldInfo,
         openUtility,
         closeActive,
@@ -737,12 +737,12 @@ export function createAtriaWorkspaceHost({
             run: () => openAgentSection('diagnostics'),
         }),
         shell.registry.register({
-            id: 'workspace.studio',
-            title: translateShellText('Open Studio Projects'),
-            description: translateShellText('Open Native ProjectStore authoring projects'),
+            id: 'workspace.build',
+            title: translateShellText('Open Build Projects'),
+            description: translateShellText('Open Native ProjectStore build projects'),
             group: translateShellText('Workspaces'),
-            keywords: ['studio', 'projects', 'world', 'knowledge', 'editor'],
-            run: () => openStudio(),
+            keywords: ['build', 'projects', 'world', 'knowledge', 'package'],
+            run: () => openBuild(),
         }),
         shell.registry.register({
             id: 'workspace.works',
