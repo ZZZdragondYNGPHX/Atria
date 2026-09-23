@@ -19,7 +19,7 @@ describe('Atria Shell localization', () => {
         const required = [
             'atria.shell.domain.play',
             'atria.shell.domain.library',
-            'atria.shell.domain.studio',
+            'atria.shell.domain.build',
             'atria.shell.domain.agents',
             'atria.shell.domain.runtime',
             'atria.shell.utility.command',
