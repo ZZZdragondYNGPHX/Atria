@@ -1,4 +1,4 @@
-# Latest handoff — Frontend redesign Phase 7
+# Checkpoint handoff — Frontend redesign Phase 7
 
 Updated: 2026-09-24.
 

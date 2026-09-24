@@ -238,8 +238,8 @@ migrated with the new design and recorded in the phase log.
 
 ## 8. Delivery phases
 
-Phase 1 is integrated into main. Phases 2–5 are implemented and pushed on
-`refactor/atria-product-frontend-redesign`. Continue Phase 6 only after the user
+Phase 1 is integrated into main. Phases 2–7 are implemented and pushed on
+`refactor/atria-product-frontend-redesign`. Continue Phase 8 only after the user
 says continue. Keep this branch through Phase 8; do not merge into main or delete
 the branch at individual phase checkpoints.
 
@@ -430,3 +430,39 @@ continues without Session persistence. Native creation, exact Library attachment
 resource writes and build use the existing backend endpoints.
 
 See `PHASE-6.md` for validation, review corrections and screenshot evidence.
+
+
+## 14. Phase 7 Agents and Utilities specification and decisions — 2026-09-24
+
+Utilities use a readable single-column canvas and grouped rows. Settings exposes
+Theme and Font Scale directly; color-level appearance controls remain disclosed.
+Every preference is the existing allowlisted control with its original listeners
+and persistence. Account shows the actual profile, account facts and data/recovery
+actions immediately. Destructive actions remain in a separate disclosure and use
+the existing confirmation/controller. Backup and storage retain their existing
+permission and resource logic inside the shared dialog presentation.
+
+Plugins is Native-first: installed works supply exact PackageVersion declarations,
+with identity/contributions disclosed as evidence. Legacy extension management and
+plugin-owned settings stay in Advanced; this is an extension compatibility island,
+not the retired SillyTavern migration feature. Extension writes announce progress,
+rollback on failure and explain reload requirements.
+
+Agents keeps the existing orchestration controller. One section navigation strip
+replaces embedded duplicate chrome. Orchestration separates preset source-list,
+authoring content and an optional Inspector. Compact starts with the preset list
+collapsed and uses a two-column navigation grid. Medium Inspector overlays within
+the workspace, makes covered content inert and restores focus when dismissed.
+Keyboard navigation and Escape/Back pass through the existing Shell authority.
+Preset input/confirmation uses the shared Popup controller. Run, Memory and Agent
+Diagnostics retain their current run-state, graph, source and human authority.
+
+Diagnostics keeps Guided / Startup / Expert modes. Incidents are rows with a
+separate detail view on compact, module health is disclosed, and raw logs remain
+behind Expert. Loading and service errors are visible with Refresh recovery.
+Filters keep bounded log rendering; refreshed lists preserve keyboard focus.
+
+The domain stylesheet is `atria-utilities.css`; embedded Agent rules stay with
+its controller. Phase 1 tokens, Environment breakpoints and measured keyboard
+viewport remain authoritative. Stale lazy mounts cannot replace a newer route.
+See `PHASE-7.md` for actual validation, review corrections and screenshot evidence.
