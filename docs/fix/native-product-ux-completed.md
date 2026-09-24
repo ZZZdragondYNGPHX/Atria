@@ -715,4 +715,24 @@ Source and Prompt semantics. Current narrow-screen screenshots were inspected.
 All Group 6 changed JavaScript passed ESLint; diff checks and frontend cache compilation
 passed. No live cloud provider or physical-device validation is claimed.
 
-Next: NUX-033 in Group 7.
+## Group 7
+
+### NUX-033
+
+Resource Bundle v1 exports a root plus verified exact closure from Library, Project
+or installed Package resources. Shared preflight rejects missing/cyclic/unreachable
+or corrupted dependencies and player configuration. Reviewed imports create independent
+identities through existing repositories, rewrite references and retain provenance.
+Interrupted writes report completed copies and resume with the same review identity.
+Trusted Resource Registry adapters extend this format to additional resource types.
+Prompt/Generation and World/Knowledge surfaces expose export and reviewed import,
+including historical World/Knowledge revisions. No new store or Project write path.
+Contract: [Resource Bundle](resource-bundle-contract.md).
+
+Validation: six Native suites passed 21 cases; four Shell suites passed 15 cases;
+final file-picker/localization checks passed six. Real Edge at 390px passed actual
+export, read-only review, interruption, same-token retry, independent identity and
+navigation. The final screenshot was inspected after adding a keyboard-accessible
+file selection button. Changed product JavaScript passed ESLint and diff checks.
+
+Next: NUX-034 in Group 7.

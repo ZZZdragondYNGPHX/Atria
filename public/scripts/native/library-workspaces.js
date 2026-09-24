@@ -1,3 +1,4 @@
+import { resourceBundleExport, mountResourceBundleImport } from './resource-bundle-controls.js';
 import { mountLibraryRevisionHistory } from './library-revision-history.js';
 import { renderResourceReferenceRows } from './resource-reference-rows.js';
 import { nativeStudioClient } from './studio-client.js';
@@ -204,6 +205,7 @@ async function worldKnowledge(doc, root, route, host) {
         const hero = heading(doc, root, resource.displayName, tl(knowledge ? 'Knowledge available to your stories.' : 'A shared setting for your stories.'), true);
         hero.dataset[knowledge ? 'atriaKnowledgeDetail' : 'atriaWorldDetail'] = id;
         const revisionActions = actions(doc, root);
+        resourceBundleExport(doc, revisionActions, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId: id, revision: resource.currentRevisionId }, resource.displayName);
         action(doc, revisionActions, resource.currentRevisionId ? 'New revision' : 'Create first revision', () => {
             const reload = async saved => {
                 root.replaceChildren(); await worldKnowledge(doc, root, route, host);
@@ -250,6 +252,7 @@ async function worldKnowledge(doc, root, route, host) {
     }
     const items = await (knowledge ? client.listKnowledge() : client.listWorlds());
     heading(doc, root, label, knowledge ? 'Keep reusable knowledge for your stories.' : 'The settings your stories share.');
+    mountResourceBundleImport({ document: doc, root, host, onReload: async () => { root.replaceChildren(); await worldKnowledge(doc, root, route, host); } });
     const form = el(doc, 'form', 'atri-library-create', undefined, root);
     const name = field(doc, form, 'New ' + singular + ' name'); name.required = true;
     const create = action(doc, form, 'Create ' + singular, async () => {

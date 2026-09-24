@@ -89,32 +89,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 统一资源便携、PackageVersion、Session、Save 与引用冲突的产品闭环。
 
-## NUX-033 — Prompt / Generation / World / Knowledge have no lightweight portable resource format
-
-**Current evidence**
-
-- Prompt Program / Module / Generation Profile are serializable exact resources.
-- World / Knowledge have immutable exact revisions.
-- Full `.atria` packages are self-contained but too heavy for sharing one reusable resource system.
-- Plain one-object JSON can break exact dependencies.
-
-**Acceptance**
-
-Introduce one Atria **Resource Bundle** mechanism:
-
-- root resource + exact dependency closure;
-- preflight;
-- conflict reporting;
-- import as new identity/revision where legal;
-- origin/provenance;
-- no player Secrets.
-
-It should cover Prompt, Generation, World, Knowledge and future plugin-defined resource types rather than inventing separate formats.
-
----
-
----
-
 ## NUX-034 — Package-scoped World / Knowledge reuse is weaker than Prompt reuse
 
 **Current evidence**

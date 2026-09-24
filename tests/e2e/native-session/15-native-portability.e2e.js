@@ -1,0 +1,57 @@
+import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { startServer, tearDownServer } from '../_lib/server.js';
+import { disableExtensions } from '../_lib/fixtures.js';
+import { awaitMainUI } from '../_lib/page.js';
+import { seedNativeSessionDataRoot } from './_helpers.js';
+let server;
+test.beforeAll(async () => {
+    const seed = await seedNativeSessionDataRoot({ suffix: 'native-portability' });
+    disableExtensions({ dataRoot: seed.dataRoot, names: ['stable-diffusion'] });
+    server = await startServer({ batchKey: 'generation', scenarioId: 'native-portability', useExistingDataRoot: seed.dataRoot });
+});
+test.afterAll(async () => { await tearDownServer(server); });
+
+test('Resource Bundle exports an exact World, reviews without writes and retries the same import at 390px', async ({ page }, info) => {
+    test.setTimeout(120000);
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const original = await page.evaluate(async () => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        const world = await client.createWorld('Portable harbor');
+        await client.commitWorldRevision(world.worldId, { baseRevisionId: null, content: { baseline: { coast: 'Harbor' }, knowledgeBindingIds: [], assetIds: [], metadata: {} } });
+        window.Atria.shell.getWorkspaceHost().openLibraryWorld(world.worldId, world.displayName); return world.worldId;
+    });
+    const detail = page.locator('[data-atria-native-library="worlds-knowledge"]');
+    const downloading = page.waitForEvent('download');
+    await detail.getByRole('button', { name: 'Export Resource Bundle', exact: true }).first().click();
+    const download = await downloading; expect(download.suggestedFilename()).toMatch(/\.atriabundle$/);
+    const bytes = await readFile(await download.path()), bundle = JSON.parse(bytes.toString());
+    expect(bundle.root.resourceId).toBe(original); expect(bundle.resources).toHaveLength(1);
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('worlds'));
+    const importer = page.locator('[data-atria-resource-bundle]');
+    await importer.getByText('Import Resource Bundle', { exact: true }).click();
+    await importer.getByLabel('Resource Bundle file').setInputFiles({ name: 'harbor.atriabundle', mimeType: 'application/json', buffer: bytes });
+    await expect(importer).toContainText('1 exact resources will be copied');
+    const count = () => page.evaluate(async () => (await (await import('/scripts/native/product-client.js')).nativeProductClient.listWorlds()).filter(item => item.world.displayName === 'Portable harbor').length);
+    expect(await count()).toBe(1);
+    let attempts = 0; const tokens = [];
+    await page.route('**/api/native/studio/resources/bundle/import', async route => {
+        tokens.push(route.request().postDataJSON().token);
+        if (!attempts++) await route.fulfill({ status: 500, json: { error: 'native_resource_bundle_interrupted', details: { completed: [], retryable: true } } });
+        else await route.continue();
+    });
+    await importer.getByRole('button', { name: 'Import into Library', exact: true }).click();
+    await expect(importer.getByRole('alert')).toContainText('Import was interrupted');
+    await page.screenshot({ path: info.outputPath('bundle-review-retry-390.png') });
+    await importer.getByRole('button', { name: 'Retry import', exact: true }).click();
+    await expect(importer).toContainText('Resource Bundle imported into Library.');
+    expect(tokens[0]).toEqual(tokens[1]); expect(await count()).toBe(2);
+    await importer.getByRole('button', { name: 'Open imported resource', exact: true }).click();
+    await expect(page.locator('[data-atria-world-detail]')).not.toHaveAttribute('data-atria-world-detail', original);
+    await expect(detail.getByRole('heading', { name: 'Portable harbor', exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

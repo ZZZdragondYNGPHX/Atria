@@ -107,3 +107,16 @@ describe('A2 Native Studio resource HTTP surface', () => {
         expect(studio.resolveResourceClosure).toHaveBeenCalledWith('resource-user', 'project_x');
     });
 });
+
+ test('Resource Bundle routes use the authenticated owner and preserve the reviewed token', async () => {
+    const studio = { exportResourceBundle: jest.fn(async () => ({ format: 'atria-resource-bundle' })), preflightResourceBundle: jest.fn(async () => ({ canImport: true })), importResourceBundle: jest.fn(async () => ({ resources: [] })) };
+    const app = appFor(studio), ref = { scope: 'library', resourceType: 'core.world', resourceId: 'world_a', revision: 'worldv_a' }, bundle = { root: ref }, token = { seed: 'reviewed' };
+    expect((await request(app).post('/resources/bundle/export').send({ ref, handle: 'other' })).status).toBe(200);
+    expect(studio.exportResourceBundle).toHaveBeenCalledWith('resource-user', ref);
+    for (const operation of ['preflight', 'import']) {
+        expect((await request(app).post('/resources/bundle/' + operation).send({ bundle, token, handle: 'other' })).status).toBe(200);
+        expect(studio[operation + 'ResourceBundle']).toHaveBeenCalledWith('resource-user', bundle, token);
+    }
+    const unauthenticated = express(); unauthenticated.use(createNativeStudioRouter(() => ({ studio })));
+    expect((await request(unauthenticated).post('/resources/bundle/import').send({ bundle, token })).status).toBe(401);
+ });

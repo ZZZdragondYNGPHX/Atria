@@ -106,6 +106,16 @@ export function createNativeStudioRouter(getServices = services) {
         }
     };
 
+    router.post('/resources/bundle/export', route(async (req, res, { studio }, handle) => {
+        res.json(await studio.exportResourceBundle(handle, req.body?.ref));
+    }));
+    router.post('/resources/bundle/preflight', route(async (req, res, { studio }, handle) => {
+        res.json(await studio.preflightResourceBundle(handle, req.body?.bundle, req.body?.token));
+    }));
+    router.post('/resources/bundle/import', route(async (req, res, { studio }, handle) => {
+        res.json(await studio.importResourceBundle(handle, req.body?.bundle, req.body?.token));
+    }));
+
     router.get('/resources/registry', route(async (_req, res, { studio }) => {
         res.json(studio.getResourceRegistry());
     }));

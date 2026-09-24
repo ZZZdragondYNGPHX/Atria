@@ -56,6 +56,9 @@ export const nativeStudioClient = Object.freeze({
     listSources: projectId => request(`projects/${encode(projectId)}/sources`),
     readSource: (projectId, path) => request(`projects/${encode(projectId)}/source${query({ path })}`),
 
+    exportResourceBundle: ref => request('resources/bundle/export', { method: 'POST', body: { ref } }),
+    preflightResourceBundle: (bundle, token) => request('resources/bundle/preflight', { method: 'POST', body: { bundle, token } }),
+    importResourceBundle: (bundle, token) => request('resources/bundle/import', { method: 'POST', body: { bundle, token } }),
     getResourceRegistry: () => request('resources/registry'),
     prepareOperation: (projectId, operation) => request(`projects/${encode(projectId)}/operations/prepare`, { method: 'POST', body: operation }),
     listLibraryResources: options => request('library/resources' + query(options)),

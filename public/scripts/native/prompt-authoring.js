@@ -1,3 +1,4 @@
+import { resourceBundleExport, mountResourceBundleImport } from './resource-bundle-controls.js';
 import { mountPromptCondition, mountPromptParameters, mountPromptDerive } from './prompt-semantics.js';
 import { renderResourceReferenceRows } from './resource-reference-rows.js';
 import { formatShellText, translateShellText } from '../atria-shell/localization.js';
@@ -251,6 +252,7 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
             const header = element(doc, 'header', undefined, root); header.className = 'atri-library-heading';
             element(doc, 'h2', PROMPT_TYPES[type][0], header);
             element(doc, 'p', 'Exact revisions from Library, Projects and installed Packages. Package originals are read-only.', header);
+            mountResourceBundleImport({ document: doc, root, host, onReload: render });
             const editor = (entry, fresh = false) => {
                 root.replaceChildren(); const next = clone(entry);
                 if (!fresh) next.resource.revision = createStudioNativeId('rev');
@@ -277,6 +279,7 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
                     const row = element(doc, 'article', undefined, list); row.className = 'atri-prompt-resource'; row.dataset.atriResourceKey = exactKey(entry.ref); row.tabIndex = -1;
                     element(doc, 'h3', undefined, row).textContent = entry.resource.displayName;
                     element(doc, 'p', entry.ref.scope + ' · ' + entry.ref.revision + (entry.ref.scope === 'package' ? ' · ' + translateShellText('Read-only original') : ''), row);
+                    resourceBundleExport(doc, row, entry.ref, entry.resource.displayName);
                     const details = element(doc, 'details', undefined, row); element(doc, 'summary', 'Origin / Derived From / exact content', details);
                     element(doc, 'pre', JSON.stringify({ origin: entry.ref, derivedFrom: entry.resource.parentRef || entry.resource.provenance || [], resource: entry.resource }, null, 2), details);
                     action(doc, row, 'Used By', async () => {
@@ -402,6 +405,7 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
                             await stage(plan.entries, (derive ? 'Derive ' : 'Fork ') + entry.resource.displayName);
                         } catch (e) { error(doc, status, e); }
                     });
+                    resourceBundleExport(doc, row, entry.ref, entry.resource.displayName);
                     const details = element(doc, 'details', undefined, row); element(doc, 'summary', 'Inspector — origin / derived from / provenance', details);
                     element(doc, 'pre', JSON.stringify({ origin: entry.ref, derivedFrom: entry.resource.parentRef, provenance: entry.resource.provenance, conditions: entry.resource.condition, parameters: entry.resource.parameters }, null, 2), details);
                     action(doc, details, 'Used By', async () => { try { const rows = element(doc, 'div', undefined, details); renderResourceReferenceRows({ document: doc, root: rows, references: await nativeStudioClient.getResourceReferences(entry.ref, { reverse: true }), host }); } catch (e) { error(doc, status, e); } });

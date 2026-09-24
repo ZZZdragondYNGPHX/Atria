@@ -1,3 +1,4 @@
+import { resourceBundleExport } from './resource-bundle-controls.js';
 import { nativeProductClient as client } from './product-client.js';
 import { nativeStudioClient } from './studio-client.js';
 import { createStudioNativeId } from './studio-authoring.js';
@@ -49,6 +50,7 @@ export function mountLibraryRevisionHistory({ document: doc, root, detail, knowl
         el(doc, 'strong', '', tl(id === resource.currentRevisionId ? 'Current revision' : 'Earlier revision'), row);
         el(doc, 'span', 'atri-library-meta', revision.createdAt ? new Date(revision.createdAt).toLocaleString() : '—', row);
         disclosure(doc, row, 'Exact revision details', revision);
+        resourceBundleExport(doc, row, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId, revision: id }, resource.displayName);
         action(doc, row, 'Inspect revision', async () => {
             const selected = knowledge ? await client.getKnowledge(resourceId, id) : { ...detail, currentRevision: revision };
             const current = knowledge ? await client.getKnowledge(resourceId, resource.currentRevisionId) : detail;

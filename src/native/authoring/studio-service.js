@@ -21,6 +21,8 @@ import {
 } from './library-authoring.js';
 import { NativeLibraryService } from './library-service.js';
 import { createCoreResourceRegistry } from './resource-registry.js';
+import { ResourceBundleService } from '../resource-bundle.js';
+import { createCoreBundleAdapters } from '../resource-bundle-adapters.js';
 import { ResourceGraph } from './resource-graph.js';
 
 export const STUDIO_SOURCE_OPERATION_TYPES = Object.freeze({
@@ -157,6 +159,8 @@ export class StudioService {
             packageRepo,
             versionedJsonResources,
         });
+        this._resourceBundles = new ResourceBundleService({ registry: this._resourceRegistry,
+            adapters: createCoreBundleAdapters({ library: this._library, worldRepo, knowledgeRepo, assetStore, packageRepo, projectStore, versionedJsonResources }) });
         this._versionedJsonResources = versionedJsonResources;
         this._libraryAuthoring = new LibraryAuthoringPlanner({
             libraryService: this._library,
@@ -303,6 +307,13 @@ export class StudioService {
             encoding: 'base64',
             content: bytes.toString('base64'),
         });
+    }
+
+    registerResourceBundleAdapter(type, adapter) { this._resourceBundles.registerAdapter(type, adapter); }
+    exportResourceBundle(handle, ref) { return this._resourceBundles.export(handle, ref); }
+    preflightResourceBundle(handle, bundle, token) { return this._resourceBundles.preflight(handle, bundle, token); }
+    async importResourceBundle(handle, bundle, token) {
+        try { return await this._resourceBundles.import(handle, bundle, token); } finally { this._resourceGraph.invalidate(handle); }
     }
 
     getResourceRegistry() {
