@@ -146,11 +146,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         let serialize;
         if (section === 'connections') {
             let fields = group(form, 'Provider connection');
-            const adapter = field(fields, 'Provider transport', value.providerAdapter || 'provider.openai-compatible', [['provider.openai-compatible', 'OpenAI-compatible messages'], ['provider.raw-text', 'Raw text completions']]);
+            const adapter = field(fields, 'Provider transport', value.providerAdapter || 'provider.openai-compatible', [['provider.openai-compatible', 'OpenAI-compatible messages'], ['provider.raw-text', 'Raw text completions'], ['provider.anthropic', 'Anthropic Messages'], ['provider.gemini', 'Gemini GenerateContent']]);
             const endpoint = field(fields, 'Completions endpoint URL', value.endpoint); endpoint.type = 'url'; endpoint.required = true;
             fields = group(form, 'Authentication');
             const secret = field(fields, 'Exact Secret ID', value.secretRef?.secretId); secret.required = true;
-            notice('Bearer authentication only. Enter the stored Secret ID, never the key value. Anthropic and Gemini transports are not available.', fields);
+            notice('Select a stored Secret ID, never the key value. Gemini uses the API base URL, such as https://generativelanguage.googleapis.com/v1beta. Other transports use the full generation endpoint.', fields);
             serialize = () => ({ ...value, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value, secretRef: { scope: 'player', secretId: secret.value } });
         } else if (section === 'models') {
             let fields = group(form, 'Model connection');
@@ -162,8 +162,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const output = number(fields, 'Output token limit', value.limits?.outputTokens || 1024, 1);
             const encoding = field(fields, 'Tokenizer encoding', value.tokenizer?.encoding || 'cl100k_base', [['cl100k_base', 'cl100k_base'], ['o200k_base', 'o200k_base']]);
             fields = group(form, 'Capabilities');
-            notice('Adapter metadata supports streaming for both transports, and tools / structured output for OpenAI-compatible. Model restrictions still apply. Unknown required capabilities fail closed.', fields);
-            const capabilities = ['generation.streaming', 'generation.tools', 'generation.structured-output'].map(capability => {
+            notice('All transports support streaming. Message transports support tools, structured output and reasoning. OpenAI and Anthropic support explicit cache controls. Model restrictions still apply.', fields);
+            const capabilities = ['generation.streaming', 'generation.tools', 'generation.structured-output', 'generation.reasoning', 'generation.cache'].map(capability => {
                 const existing = value.capabilities?.find(item => item.capability === capability);
                 const input = field(fields, capability, existing?.state || '', [['', 'Use adapter metadata'], ['unknown', 'Unknown'], ['unsupported', 'Unsupported'], ['supported', 'Supported — explicit user override']]);
                 node('small', existing ? existing.provenance.map(item => item.kind + ': ' + item.source).join(' · ') : 'Provenance: built-in adapter metadata', fields);
@@ -190,10 +190,24 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             };
             stop.addEventListener('input', validateStop); validateStop();
             const tools = field(fields, 'Tool choice', value.toolChoice?.value || '', [['', 'Host default'], ['auto', 'Auto'], ['none', 'None'], ['required', 'Required']]);
-            notice('Supported controls are shown here. Reasoning, cache, provider extensions and model hints are currently unsupported. Existing unsupported fields are preserved and preview rejects them.', fields);
+            fields = group(form, 'Provider controls');
+            notice('Use only controls supported by the selected route. OpenAI uses effort and cache key; Anthropic uses thinking mode and ephemeral cache; Gemini uses thinking budget or level. Unsupported combinations fail preview.', fields);
+            const thinkingMode = field(fields, 'Thinking mode (Anthropic)', value.reasoning?.mode || '', [['', 'Default'], ['adaptive', 'Adaptive'], ['enabled', 'Token budget'], ['disabled', 'Disabled']]);
+            const effort = field(fields, 'Reasoning effort (OpenAI / Anthropic adaptive)', value.reasoning?.effort || '', [['', 'Default'], ...['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].map(item => [item, item])]);
+            const thinkingBudget = number(fields, 'Thinking budget tokens (Anthropic / Gemini)', value.reasoning?.budgetTokens ?? '', -1);
+            const thinkingLevel = field(fields, 'Thinking level (Gemini)', value.reasoning?.level || '', [['', 'Default'], ...['minimal', 'low', 'medium', 'high'].map(item => [item, item])]);
+            const cacheKey = field(fields, 'Cache key (OpenAI)', value.cache?.key || '');
+            const cacheRetention = field(fields, 'Cache retention (OpenAI)', value.cache?.retention || '', [['', 'Default'], ['in_memory', 'In memory'], ['24h', '24 hours']]);
+            const cacheMode = field(fields, 'Cache mode (Anthropic)', value.cache?.mode || '', [['', 'Default'], ['ephemeral', 'Ephemeral']]);
+            const cacheTtl = field(fields, 'Cache lifetime (Anthropic)', value.cache?.ttl || '', [['', 'Default'], ['5m', '5 minutes'], ['1h', '1 hour']]);
             serialize = () => {
                 const result = { ...value, revision: revision.value, sampling: { ...value.sampling }, output: { ...value.output, maxTokens: Number(max.value) }, streaming: { ...value.streaming, enabled: stream.value === 'true' }, stop: { ...value.stop, sequences: JSON.parse(stop.value) }, toolChoice: tools.value ? { ...value.toolChoice, value: tools.value } : {} };
                 delete result.scope;
+                result.reasoning = { ...value.reasoning }; result.cache = { ...value.cache };
+                for (const [section, key, input] of [['reasoning', 'mode', thinkingMode], ['reasoning', 'effort', effort], ['reasoning', 'level', thinkingLevel], ['cache', 'key', cacheKey], ['cache', 'retention', cacheRetention], ['cache', 'mode', cacheMode], ['cache', 'ttl', cacheTtl]]) {
+                    if (input.value) result[section][key] = input.value; else delete result[section][key];
+                }
+                if (thinkingBudget.value === '') delete result.reasoning.budgetTokens; else result.reasoning.budgetTokens = Number(thinkingBudget.value);
                 for (const [key, input] of [['temperature', temperature], ['topP', topP]]) { if (input.value === '') delete result.sampling[key]; else result.sampling[key] = Number(input.value); }
                 return result;
             };

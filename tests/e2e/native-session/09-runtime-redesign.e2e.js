@@ -104,8 +104,15 @@ test('Profile validation retains draft and an immutable save does not repin rout
     await expect(root(page).getByLabel('Stop sequences (JSON array)')).toBeFocused();
     await shot(page, info, 'profile-validation-light-320');
     await root(page).getByLabel('Stop sequences (JSON array)').fill('["END"]');
+    await root(page).getByLabel('Reasoning effort (OpenAI / Anthropic adaptive)', { exact: true }).selectOption('high');
+    await root(page).getByLabel('Cache key (OpenAI)', { exact: true }).fill('native-ux-profile');
+    await root(page).getByLabel('Cache retention (OpenAI)', { exact: true }).selectOption('24h');
+    await root(page).getByLabel('Cache retention (OpenAI)', { exact: true }).scrollIntoViewIfNeeded();
+    await shot(page, info, 'profile-provider-controls-320');
     await root(page).getByLabel('New exact revision').fill('phase5-review');
+    const savedProfile = page.waitForRequest(req => req.url().endsWith('/configuration/profiles') && req.method() === 'PUT');
     await root(page).getByRole('button', { name: 'Save', exact: true }).click();
+    expect((await savedProfile).postDataJSON()).toMatchObject({ reasoning: { effort: 'high' }, cache: { key: 'native-ux-profile', retention: '24h' } });
     await expect(root(page).getByRole('button', { name: 'Edit P4 generation', exact: true })).toBeVisible();
     await open(page, 'routes');
     await root(page).getByRole('button', { name: 'Edit narrator', exact: true }).click();

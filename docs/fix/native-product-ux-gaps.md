@@ -69,37 +69,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 闭合 Secret → Connection → Model → Generation Profile → Runtime Route 的第一方 Native 配置链。
 
-## NUX-003 — Native generation provider support is materially incomplete
-
-**Current evidence**
-
-Production Native generation currently registers:
-
-- `provider.openai-compatible`
-- `provider.raw-text`
-
-Runtime UI explicitly states Anthropic and Gemini transports are unavailable.
-
-The HTTP adapter rejects configured `reasoning`, `cache`, `providerExtensions`, connection options/network policy and model hints that it cannot consume.
-
-**Impact**
-
-Mainstream provider-native capabilities and modern reasoning/cache controls cannot be represented/executed by the first-party Native Runtime even though the schema reserves those concepts.
-
-**Acceptance**
-
-Define and implement the intended provider matrix. At minimum:
-
-- provider-native protocol adapters required by the product;
-- capability discovery/validation;
-- explicit supported reasoning/cache/tool controls per adapter;
-- fail-closed behavior for unsupported controls;
-- no fallback to legacy preset/provider authority.
-
----
-
----
-
 ## NUX-004 — Runtime Connection setup requires an opaque Secret ID
 
 **Current evidence**

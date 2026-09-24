@@ -94,6 +94,7 @@ export class RouteResolver {
             ...route.requirements, ...input.requirements,
             ...(generation.streaming.enabled === true ? ['generation.streaming'] : []),
             ...(Object.keys(generation.reasoning).length ? ['generation.reasoning'] : []),
+            ...(Object.keys(generation.cache).length ? ['generation.cache'] : []),
             ...(Object.keys(generation.toolChoice).length ? ['generation.tools'] : []),
         ])].sort();
         for (const capability of required) {

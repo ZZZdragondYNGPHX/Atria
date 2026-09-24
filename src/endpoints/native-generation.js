@@ -9,6 +9,7 @@ import { getNativeStudioServices } from './native-studio.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../native/model-prompt-runtime/persistence.js';
 import { NativeGenerationHost } from '../native/adapters/generation-host.js';
 import { createHttpGenerationProvider } from '../native/adapters/http-generation-provider.js';
+import { createNativeMessagesProvider } from '../native/adapters/native-messages-provider.js';
 
 function services() {
     const { core, packageInstaller } = getNativeSessionServices();
@@ -20,6 +21,8 @@ function services() {
         providers: {
             'provider.openai-compatible': createHttpGenerationProvider(),
             'provider.raw-text': createHttpGenerationProvider({ format: 'raw-text' }),
+            'provider.anthropic': createNativeMessagesProvider({ format: 'anthropic' }),
+            'provider.gemini': createNativeMessagesProvider({ format: 'gemini' }),
         },
         secretPort: { resolveSecret: async (ref, { handle }) => {
             // Native refs identify one exact Secret ID. Never resolve the active key.

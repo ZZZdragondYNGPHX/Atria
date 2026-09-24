@@ -56,4 +56,46 @@ Playwright bundled Chromium installation stalled during extraction; browser
 validation used installed Edge through an untracked local test configuration.
 Pre-existing workspace rule edits and old test artifacts remain excluded.
 
-Next: Group 2, NUX-003, following the active backlog order.
+## Group 2 — Native Runtime / Provider Foundation
+
+### NUX-003
+
+Production registers four Native adapters. All use the existing exact Runtime
+Route, configuration, PromptIR, capability and Secret-at-send boundaries.
+
+| Adapter | Tools / structured output | Reasoning | Explicit cache |
+| --- | --- | --- | --- |
+| OpenAI-compatible messages | Function tools, JSON Schema | effort | key, in-memory / 24h retention |
+| Anthropic Messages | Function tools, JSON Schema | adaptive effort or enabled token budget | automatic ephemeral, 5m / 1h |
+| Gemini GenerateContent | Function tools, JSON Schema | budget or level | unsupported |
+| Raw text completions | unsupported | unsupported | unsupported |
+
+All support streaming. Protocol capability evidence does not override known
+unsupported model capabilities. Unknown fields/combinations fail before Secret
+resolution. Anthropic/Gemini preserve leading system authority and reject
+interleaved system slots that cannot retain their original position. Unsupported
+modalities fail rather than disappearing. Signed provider tool content survives
+the Studio loop and remains bound to the connection, model and original message.
+Their local budget check uses a conservative UTF-8 byte bound, not an inaccurate
+OpenAI tokenizer. Gemini external cached contexts are rejected because their
+unavailable contents cannot participate in Native context accounting.
+
+Runtime editors reuse existing fields, focus, responsive sheets and translations.
+Gemini accepts an API base URL; other transports accept the generation endpoint.
+Provider model discovery and connection health remain NUX-005, next after NUX-004.
+
+Validation: seven focused/adjacent suites, 120 tests passed; final changed tests
+rechecked (15 passed). Real local HTTP covers both new protocols, streaming and
+nonstreaming authentication. Real Edge narrow/light profile editing and exact
+revision preservation passed; inspected the 320px provider-controls screenshot.
+Changed-file ESLint and diff checks passed. Live paid provider accounts were not
+used; protocol behavior is tested against controlled HTTP servers.
+
+Protocol references: [OpenAI Chat](https://developers.openai.com/api/reference/resources/chat),
+[Anthropic Messages](https://platform.claude.com/docs/en/api/typescript/messages),
+[Anthropic thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking),
+[Anthropic caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching),
+[Gemini generation](https://ai.google.dev/api/generate-content),
+[Gemini thinking](https://ai.google.dev/gemini-api/docs/thinking).
+
+Next: NUX-004, following the active backlog order.

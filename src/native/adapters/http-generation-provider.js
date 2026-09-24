@@ -6,22 +6,40 @@ import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.j
 export function createHttpGenerationProvider({ format = 'openai-compatible', fetchImpl = fetch } = {}) {
     const messages = format === 'openai-compatible';
     if (!messages && format !== 'raw-text') throw new TypeError('Unsupported Native provider');
-    const supported = ['generation.streaming', ...(messages ? ['generation.tools', 'generation.structured-output'] : [])];
+    const supported = ['generation.streaming', ...(messages ? ['generation.tools', 'generation.structured-output', 'generation.reasoning', 'generation.cache'] : [])];
     const render = ({ resolved, promptIr, reserve }) => {
         const { generation, model, connection } = resolved;
-        for (const section of ['reasoning', 'cache', 'providerExtensions']) {
+        for (const section of messages ? ['providerExtensions'] : ['reasoning', 'cache', 'providerExtensions']) {
             if (Object.keys(generation[section]).length) throw new GenerationError('generation_adapter_control_unsupported');
         }
         if (Object.keys(connection.networkPolicy).length || Object.keys(connection.options).length
             || Object.keys(model.messageFormat).length || Object.keys(model.providerHints).length) throw new GenerationError('generation_adapter_control_unsupported');
         const allowed = { sampling: ['temperature', 'topP'], output: ['maxTokens'], stop: ['sequences'], streaming: ['enabled'], toolChoice: ['value'] };
+        if (messages) Object.assign(allowed, { reasoning: ['effort'], cache: ['key', 'retention'] });
         for (const [section, keys] of Object.entries(allowed)) {
             if (Object.keys(generation[section]).some(key => !keys.includes(key))) throw new GenerationError('generation_adapter_control_unsupported');
         }
         const maxTokens = generation.output.maxTokens ?? reserve;
         if (!Number.isSafeInteger(maxTokens) || maxTokens < 1 || maxTokens > reserve) throw new GenerationError('generation_adapter_output_budget');
         const sequence = renderPromptMessages(promptIr);
+        if (sequence.some(message => message.providerState)) throw new GenerationError('generation_adapter_prompt_unsupported');
         const body = { model: model.remoteModelId, max_tokens: maxTokens, stream: generation.streaming.enabled ?? false };
+        if (messages && Object.keys(generation.reasoning).length) {
+            if (!['none', 'minimal', 'low', 'medium', 'high', 'xhigh'].includes(generation.reasoning.effort)) throw new GenerationError('generation_adapter_control_unsupported');
+            body.reasoning_effort = generation.reasoning.effort;
+            body.max_completion_tokens = maxTokens;
+            delete body.max_tokens;
+        }
+        if (messages && Object.keys(generation.cache).length) {
+            if (generation.cache.key !== undefined) {
+                if (typeof generation.cache.key !== 'string' || !generation.cache.key || generation.cache.key.length > 512) throw new GenerationError('generation_adapter_control_unsupported');
+                body.prompt_cache_key = generation.cache.key;
+            }
+            if (generation.cache.retention !== undefined) {
+                if (!['in_memory', '24h'].includes(generation.cache.retention)) throw new GenerationError('generation_adapter_control_unsupported');
+                body.prompt_cache_retention = generation.cache.retention;
+            }
+        }
         if (typeof body.stream !== 'boolean') throw new GenerationError('generation_adapter_stream_invalid');
         if (messages) body.messages = sequence;
         else {

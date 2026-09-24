@@ -21,7 +21,8 @@ export function renderPromptMessages(value) {
     ];
     if (messages.some(item => !item || !['system', 'user', 'assistant', 'tool'].includes(item.role)
         || (typeof item.content !== 'string' && !(item.role === 'assistant' && item.content === null && item.tool_calls?.length))
-        || Object.keys(item).some(key => !['role', 'content', 'tool_calls', 'tool_call_id', 'name'].includes(key))
+        || Object.keys(item).some(key => !['role', 'content', 'tool_calls', 'tool_call_id', 'name', 'providerState'].includes(key))
+        || (item.providerState !== undefined && item.role !== 'assistant')
         || (item.role === 'tool' && typeof item.tool_call_id !== 'string')
         || (item.tool_calls !== undefined && (item.role !== 'assistant' || !Array.isArray(item.tool_calls)))
         || (item.tool_call_id !== undefined && item.role !== 'tool'))) promptError('message_invalid');
@@ -33,6 +34,7 @@ export function renderPromptMessages(value) {
 export function renderPromptProtocol(value, format) {
     const ir = assertPromptIR(value);
     const messages = renderPromptMessages(ir);
+    if (messages.some(message => message.providerState !== undefined)) promptError('renderer_unsupported');
     const authority = { tools: ir.tools, outputContract: ir.outputContract };
     if (format === 'openai-compatible') return immutable({ messages, ...authority });
     if (format === 'raw-text') return immutable({

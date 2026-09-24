@@ -106,7 +106,8 @@ describe('A8 Native Studio Project Agent client', () => {
                     generationRound += 1;
                     if (generationRound === 1) {
                         return {
-                            assistantText: 'I will first define the project plan.',
+                            assistantText: ' I will first define the project plan. ',
+                            providerState: { binding: { provider: 'anthropic', connectionProfileId: 'exact-connection', model: 'exact-model' }, content: [{ type: 'thinking', signature: 'signed-tool-round' }] },
                             toolCalls: [{
                                 raw: { id: 'call_plan' },
                                 name: 'atri_agent_set_plan',
@@ -209,6 +210,9 @@ describe('A8 Native Studio Project Agent client', () => {
 
         expect(result.task.status).toBe('review');
         expect(calls.filter(item => item.type === 'generate')).toHaveLength(2);
+        const secondRequest = calls.filter(item => item.type === 'fetch' && item.path === '/api/native/generation/execute')[1].body;
+        expect(secondRequest.messages).toContainEqual(expect.objectContaining({ role: 'assistant', content: ' I will first define the project plan. ',
+            providerState: expect.objectContaining({ content: [{ type: 'thinking', signature: 'signed-tool-round' }] }) }));
         expect(calls.filter(item => item.type === 'fetch' && item.path.endsWith('/tool')).map(item => item.body.name))
             .toEqual(['atri_agent_set_plan', 'atri_agent_prepare_review']);
         expect(calls.some(item => item.type === 'fetch' && item.path.endsWith('/commit'))).toBe(false);

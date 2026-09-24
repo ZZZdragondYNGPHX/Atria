@@ -165,10 +165,11 @@ function normalizeToolCalls(result) {
         .filter(call => call.name);
 }
 
-function assistantToolMessage(text, calls) {
+function assistantToolMessage(text, calls, providerState) {
     return {
         role: 'assistant',
         content: text || '',
+        ...(providerState ? { providerState } : {}),
         tool_calls: calls.map(call => ({
             id: call.id,
             type: 'function',
@@ -246,7 +247,7 @@ export async function runNativeStudioAgentTask({
             abortSignal,
         });
 
-        const text = String(result?.assistantText || '').trim();
+        const text = result?.providerState ? String(result.assistantText || '') : String(result?.assistantText || '').trim();
         const calls = normalizeToolCalls(result).filter(call => allowed.has(call.name));
         if (!calls.length) {
             if (text) transcript.push({ role: 'assistant', content: text });
@@ -254,7 +255,7 @@ export async function runNativeStudioAgentTask({
             return { task: context.task, messages: transcript };
         }
 
-        transcript.push(assistantToolMessage(text, calls));
+        transcript.push(assistantToolMessage(text, calls, result.providerState));
         for (const call of calls) {
             if (abortSignal?.aborted) throw new Error('Project Agent request aborted');
             const toolResult = await executeModelTool(projectId, taskId, call, skillEntries);
