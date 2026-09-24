@@ -6895,5 +6895,7 @@
     "Tool name": "工具名稱",
     "Check the numeric limits.": "請檢查數值範圍。",
     "Choose a supported streaming option.": "請選擇支援的串流輸出選項。",
-    "retained": "已保留"
+    "retained": "已保留",
+    "Incompatible fallbacks were removed from this draft after the role changed.": "角色變更後，已從草稿中移除不相容的備用路由。",
+    "This role conflicts with a fallback relationship. Remove the incompatible fallback reference before changing the role.": "此角色與備用路由關係衝突。請先移除不相容的備用參照，再變更角色。"
 }

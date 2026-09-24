@@ -176,16 +176,17 @@ test('Profile validation retains draft in Library and an immutable save does not
     await expect(page.locator('.atri-prompt-library')).toBeVisible();
 });
 
-test('Fallback edits preserve role validation, ordering, failed draft and the same route identity', async ({ page }, info) => {
+test('Fallback edits filter roles and preserve ordering and route identity', async ({ page }, info) => {
     await boot(page); await open(page, 'routes');
     await expect(root(page)).toContainText('Ambiguous primary routes'); await shot(page, info, 'routes-desktop');
     await root(page).getByRole('button', { name: 'Edit narrator', exact: true }).click();
-    await root(page).getByLabel('Add fallback route').selectOption(resources.routes[2].runtimeRouteId);
+    await expect(root(page).getByLabel('Add fallback route').locator(`option[value="${resources.routes[2].runtimeRouteId}"]`)).toHaveCount(0);
+    await root(page).getByLabel('Add fallback route').selectOption(resources.routes[1].runtimeRouteId);
     await root(page).getByRole('button', { name: 'Add fallback', exact: true }).click();
-    await root(page).getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(root(page).getByRole('alert')).toBeFocused();
-    await shot(page, info, 'route-fallback-error');
-    await root(page).getByRole('button', { name: 'Remove fallback', exact: true }).click();
+    await root(page).getByLabel('Role', { exact: true }).selectOption('role.memory');
+    await expect(root(page).getByRole('button', { name: 'Remove fallback', exact: true })).toHaveCount(0);
+    await expect(root(page)).toContainText('Incompatible fallbacks were removed');
+    await root(page).getByLabel('Role', { exact: true }).selectOption('role.narrator');
     await root(page).getByLabel('Add fallback route').selectOption(resources.routes[1].runtimeRouteId);
     await root(page).getByRole('button', { name: 'Add fallback', exact: true }).click();
     const request = page.waitForRequest(req => req.url().endsWith('/configuration/routes') && req.method() === 'PUT');

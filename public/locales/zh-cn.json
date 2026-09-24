@@ -7340,5 +7340,7 @@
     "Tool name": "工具名称",
     "Check the numeric limits.": "请检查数值范围。",
     "Choose a supported streaming option.": "请选择支持的流式输出选项。",
-    "retained": "已保留"
+    "retained": "已保留",
+    "Incompatible fallbacks were removed from this draft after the role changed.": "角色更改后，已从草稿中移除不兼容的备用路由。",
+    "This role conflicts with a fallback relationship. Remove the incompatible fallback reference before changing the role.": "此角色与备用路由关系冲突。请先移除不兼容的备用引用，再更改角色。"
 }

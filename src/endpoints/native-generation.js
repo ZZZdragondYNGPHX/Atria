@@ -202,7 +202,7 @@ export function createNativeGenerationRouter(getHost = services) {
             }
             if (method) return response.json(await host.persistence[method](handle, request.body));
             return response.sendStatus(404);
-        } catch { response.status(400).json({ error: 'native_generation_configuration_invalid' }); }
+        } catch (error) { response.status(400).json({ error: error.code === 'native_runtime_fallback_role' ? error.code : 'native_generation_configuration_invalid' }); }
     });
     router.post(['/execute', '/preview'], async (request, response) => {
         const handle = request.user?.profile?.handle;

@@ -16,6 +16,7 @@ export function getRuntimeEvidence() { return latestEvidence; }
 
 export function runtimeRemediation(code) {
     const actions = {
+        native_runtime_fallback_role: ['This role conflicts with a fallback relationship. Remove the incompatible fallback reference before changing the role.', null],
         native_runtime_referenced: ['This item is still in use. Update its references before deleting it.', null],
         native_runtime_delete_failed: ['Could not delete this item. Reload and try again.', null],
         native_resource_archive_failed: ['Could not change the archive state. Reload and try again.', null],

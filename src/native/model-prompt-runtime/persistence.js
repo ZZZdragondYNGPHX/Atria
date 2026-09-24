@@ -304,8 +304,12 @@ export class NativeModelPromptPersistence {
                 });
             }
             for (const ref of route.fallbackRouteRefs) {
-                if (!await this.getRuntimeRoute(handle, ref.runtimeRouteId)) throw new NotFoundError('fallback route');
+                const target = await this.getRuntimeRoute(handle, ref.runtimeRouteId);
+                if (!target) throw new NotFoundError('fallback route');
+                if (target.role !== route.role) throw new ConflictError('native_runtime_fallback_role');
             }
+            const incoming = (await this.listRuntimeRoutes(handle)).filter(item => item.role !== route.role && item.fallbackRouteRefs.some(ref => ref.runtimeRouteId === route.runtimeRouteId));
+            if (incoming.length) throw new ConflictError('native_runtime_fallback_role');
             return this._save(
                 handle,
                 NATIVE_RESOURCE_KINDS.runtimeRoute,

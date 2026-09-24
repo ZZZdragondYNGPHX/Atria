@@ -69,22 +69,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 闭合 Secret → Connection → Model → Generation Profile → Runtime Route 的第一方 Native 配置链。
 
-## NUX-008 — Runtime fallback editor offers invalid route choices
-
-**Current evidence**
-
-Fallbacks must use the same role. The editor explains this but populates “Add fallback route” from every other route.
-
-The backend rejects mismatched roles later.
-
-**Acceptance**
-
-Only same-role routes are selectable. Changing a route's role must revalidate or clear incompatible fallback refs before save.
-
----
-
----
-
 ## NUX-009 — Runtime Diagnostics requires raw Project ID / revision
 
 **Current evidence**

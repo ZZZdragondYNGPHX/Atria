@@ -129,6 +129,8 @@ describe('P2 Generation Core with P1 filesystem authorities', () => {
             expect(rendered.body.temperature).toBe(rendered.body.model === 'a' ? 0.2 : 0.8);
             return { choices: [{ message: { content: `${rendered.body.model}:${rendered.body.messages[1].content}` } }] };
         } });
+        f.routes[0].fallbackRouteRefs = [];
+        await f.persistence.saveRuntimeRoute(f.h.handle, f.routes[0]);
         f.routes[1].role = 'role.editor';
         await f.library.commit(f.h.handle, 'core.generation-profile', { ...f.generation, revision: 'r2', sampling: { temperature: 0.8 } });
         f.routes[1].generationProfileRef.revision = 'r2';

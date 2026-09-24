@@ -51,3 +51,12 @@ test('cleanup obeys the backup gate and rejects unknown Runtime kinds', async ()
     await expect(f.library.setArchived(f.handle, 'core.generation-profile', f.generation.generationProfileId, true)).rejects.toMatchObject({ code: 'storage_read_only' });
     await expect(f.persistence.deleteProfile(f.handle, 'arbitrary', 'id')).rejects.toThrow();
 });
+
+test('role changes cannot invalidate outgoing or incoming fallback references', async () => {
+    const f = await fixture();
+    const primary = { ...f.routes[0], fallbackRouteRefs: [{ scope: 'player', runtimeRouteId: f.routes[1].runtimeRouteId }] };
+    await f.persistence.saveRuntimeRoute(f.handle, primary);
+    await expect(f.persistence.saveRuntimeRoute(f.handle, { ...primary, role: 'role.memory' })).rejects.toMatchObject({ code: 'native_runtime_fallback_role' });
+    await expect(f.persistence.saveRuntimeRoute(f.handle, { ...f.routes[1], role: 'role.memory' })).rejects.toMatchObject({ code: 'native_runtime_fallback_role' });
+    expect((await f.persistence.getRuntimeRoute(f.handle, f.routes[1].runtimeRouteId)).role).toBe('role.narrator');
+});

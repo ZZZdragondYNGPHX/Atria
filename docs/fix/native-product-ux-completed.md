@@ -189,4 +189,18 @@ revision and canonical owner link. Screenshot inspected. ESLint passed with only
 three pre-existing conditional-test warnings in the older Runtime E2E file;
 diff check passed.
 
-Next: NUX-008, following the active backlog order.
+### NUX-008
+
+Fallback choices now include only other same-role routes and exclude already
+selected entries. Role changes remove incompatible draft fallbacks with explicit
+feedback. Backend persistence rejects both outgoing role mismatches and changes
+that would invalidate incoming fallback references; the HTTP boundary returns an
+actionable role-conflict code.
+
+Validation: three backend suites / 63 tests passed, plus the adjacent Runtime
+client suite / 10 tests. A pre-existing concurrency fixture now detaches the
+fallback before assigning a different role. One real Edge fallback scenario
+passed: wrong-role option absent, role-change cleanup, valid selection and exact
+route identity preserved. Changed-file ESLint and diff check passed.
+
+Next: NUX-009, following the active backlog order.

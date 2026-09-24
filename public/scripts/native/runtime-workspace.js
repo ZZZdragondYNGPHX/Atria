@@ -319,11 +319,29 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     const row = node('div', undefined, fallbackList); row.className = 'atri-runtime-toolbar';
                     node('span', undefined, row).textContent = (index + 1) + '. ' + (data.routes.find(item => item.runtimeRouteId === id)?.displayName || 'Missing route: ' + id);
                     if (index) button('Move up', () => { [fallbackIds[index - 1], fallbackIds[index]] = [id, fallbackIds[index - 1]]; showFallbacks(); fallbackList.querySelector('button')?.focus(); }, row);
-                    button('Remove fallback', () => { fallbackIds = fallbackIds.filter(item => item !== id); showFallbacks(); fallbackList.querySelector('button')?.focus(); }, row);
+                    button('Remove fallback', () => { fallbackIds = fallbackIds.filter(item => item !== id); showFallbacks(); (fallbackList.querySelector('button') || fallback).focus(); }, row);
                 });
+                refreshChoices();
             }
-            const fallback = field(fields, 'Add fallback route', '', options(data.routes.filter(item => item.runtimeRouteId !== value.runtimeRouteId), ids.routes));
-            button('Add fallback', () => { if (fallback.value && !fallbackIds.includes(fallback.value)) { fallbackIds.push(fallback.value); showFallbacks(); fallback.focus(); } }, fields);
+            const eligible = () => data.routes.filter(item => item.runtimeRouteId !== value.runtimeRouteId && item.role === role.value);
+            const fallback = field(fields, 'Add fallback route', '', [['', 'Choose…']]);
+            const addFallback = button('Add fallback', () => { if (eligible().some(item => item.runtimeRouteId === fallback.value) && !fallbackIds.includes(fallback.value)) { fallbackIds.push(fallback.value); showFallbacks(); fallback.focus(); } }, fields);
+            function refreshChoices() {
+                const previous = fallback.value; fallback.replaceChildren();
+                for (const [id, label] of options(eligible().filter(item => !fallbackIds.includes(item.runtimeRouteId)), ids.routes)) {
+                    const option = node('option', undefined, fallback); option.value = id; option.textContent = id ? label : translateShellText(label);
+                }
+                fallback.value = previous; addFallback.disabled = !fallback.value;
+            }
+            fallback.addEventListener('change', () => { addFallback.disabled = !fallback.value; });
+            const fallbackStatus = node('div', undefined, fields);
+            role.addEventListener('change', () => {
+                const allowed = new Set(eligible().map(item => item.runtimeRouteId));
+                const previous = fallbackIds.length; fallbackIds = fallbackIds.filter(id => allowed.has(id));
+                fallbackStatus.replaceChildren();
+                if (previous !== fallbackIds.length) notice('Incompatible fallbacks were removed from this draft after the role changed.', fallbackStatus);
+                showFallbacks();
+            });
             notice('Fallback routes must use the same role. They are tried in the order shown.', fields);
             showFallbacks();
             fields = group(form, 'Request policy');
