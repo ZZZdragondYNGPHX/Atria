@@ -7086,5 +7086,22 @@
     "Create a Knowledge revision before creating a binding.": "建立綁定前，請先建立 Knowledge 修訂。",
     "Binding changes affect future resolutions. Installed works and sessions keep their snapshots.": "綁定修改影響後續解析。已安裝作品和工作階段保留自己的快照。",
     "Each attachment change creates a World revision. Historical references remain protected.": "每次掛載變更都會建立 World 修訂。歷史引用仍受保護。",
-    "Referenced bindings cannot be deleted. Historical World revisions also protect their bindings.": "仍被引用的綁定無法刪除。歷史 World 修訂同樣保護其綁定。"
+    "Referenced bindings cannot be deleted. Historical World revisions also protect their bindings.": "仍被引用的綁定無法刪除。歷史 World 修訂同樣保護其綁定。",
+    "World baseline": "World 基線",
+    "World schema": "World 結構定義",
+    "World assets": "World 資產",
+    "Knowledge bindings": "Knowledge 綁定",
+    "Project-owned source": "專案自有來源檔案",
+    "Remove field": "移除欄位",
+    "Add field": "新增欄位",
+    "Remove missing reference": "移除缺失參照",
+    "Loading dependencies…": "正在載入依賴…",
+    "Missing dependency": "缺失依賴",
+    "World schema and baseline must be objects.": "World 結構定義和基線必須為物件。",
+    "must contain unique references": "必須包含不重複的參照",
+    "Resolve missing dependencies before review.": "審閱前請處理缺失依賴。",
+    "Enter a finite number.": "請輸入有限數值。",
+    "Enter a new unique field name.": "請輸入尚未使用的欄位名稱。",
+    "Attach or fork resources in Library before composing this World.": "請先在 Library 中掛載或衍生資源，再組合此 World。",
+    "No available dependencies. Create resources in Library first.": "尚無可用依賴。請先在 Library 中建立資源。"
 }

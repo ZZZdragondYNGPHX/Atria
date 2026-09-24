@@ -1,4 +1,5 @@
 import { mountKnowledgeEditor } from './knowledge-editor.js';
+import { mountWorldEditor } from './world-editor.js';
 import { validateKnowledgeEditorValue } from './knowledge-contracts.js';
 import { mountStudioValueEditor } from './studio-value-editor.js';
 import { createAtriaShellEnvironment } from '../atria-shell/environment.js';
@@ -407,8 +408,9 @@ function renderCollectionEditor(documentRef, body, state, view, stageProject) {
     });
     body.append(field(documentRef, title, chooser));
 
-    const mountEditor = view === 'knowledge' ? mountKnowledgeEditor : mountStudioValueEditor;
+    const mountEditor = view === 'knowledge' ? mountKnowledgeEditor : view === 'worlds' ? mountWorldEditor : mountStudioValueEditor;
     mountEditor({ document: documentRef, root: body, value: items[index], label: title + ' resource JSON',
+        projectSource: state.source, library: state.library,
         onReview: parsed => stageProject(normalizeCollectionPatch(state.source, view, index, parsed), `Update ${title} resource`),
     });
 }

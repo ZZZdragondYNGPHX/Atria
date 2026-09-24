@@ -81,24 +81,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 补齐 World / Knowledge 的完整作者工作流；兼容 ABI 清理必须最后执行。
 
-## NUX-022 — WorldRevision composition is not productized
-
-**Current evidence**
-
-WorldRevision can contain schema, baseline, exact KnowledgeBinding IDs and Asset IDs. Library exposes history but not a semantic composition editor.
-
-**Impact**
-
-The World abstraction exists architecturally but is not usable as a complete authoring object.
-
-**Acceptance**
-
-A World editor must compose baseline/schema, Knowledge bindings and assets into a reviewed immutable revision, with dependency preview and exact references.
-
----
-
----
-
 ## NUX-023 — Revision UX is incomplete for World / Knowledge
 
 **Current evidence**

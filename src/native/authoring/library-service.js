@@ -107,10 +107,11 @@ export class NativeLibraryService {
 
         if (types.includes('core.knowledge-binding')) {
             for (const binding of await this._knowledge.listBindings(handle)) {
+                const base = await this._knowledge.get(handle, binding.source.knowledgeBaseId);
                 output.push(Object.freeze({
                     resourceType: 'core.knowledge-binding',
                     resourceId: binding.knowledgeBindingId,
-                    displayName: binding.knowledgeBindingId,
+                    displayName: binding.metadata?.displayName || base?.displayName || binding.knowledgeBindingId,
                     currentRevision: digestJson(binding),
                     revisions: Object.freeze([digestJson(binding)]),
                     authority: 'native-library',

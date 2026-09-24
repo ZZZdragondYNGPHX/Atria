@@ -492,4 +492,42 @@ delete. Screenshot inspected. Three editor cases passed again after adding the
 compact-content/budget controls. Changed-file ESLint has no errors; existing browser
 matrix conditional-style warnings remain. Diff check passed.
 
-Next: NUX-021, following the active backlog order.
+### NUX-021
+
+Library Binding management now supports create/edit/delete, explicit exact Knowledge
+revision selection, enabled/mode/target/visibility/priority, Used By navigation and
+World attach/detach review. Updates/deletes compare captured integrity tokens; World
+attachment writes compare the captured World head and publish immutable revisions.
+Historical references remain protected. Related repository writes share ordered
+locks so FS publication cannot race attachment/deletion or exact source removal.
+
+Validation: seven focused/adjacent suites passed 46 cases, including FS/SQLite races,
+Project/historical World blockers, HTTP delegation and retained failed-save drafts.
+One real Edge 390px scenario passed explicit old-revision selection, save retry,
+World attach/detach and historical deletion protection; screenshot inspected.
+Changed-file ESLint had no errors; the existing browser matrix retained 15 style
+warnings. Commit: 224bf3c55.
+
+### NUX-022
+
+Library and Studio now share a World composition editor for typed nested baseline
+and schema fields, named Knowledge bindings and assets. Dependency previews expose
+exact Knowledge revisions and asset hashes; missing references remain explicit and
+block review. Source drafts remain available. Library publishes immutable revisions;
+Studio continues through ChangeSet Review/Apply. Dependency-load failures can retry.
+
+Browser regression exposed an existing Resource Graph collision when a World used a
+Library Binding already present in the graph. World traversal now reuses canonical
+exact Binding resolution instead of independently constructing a conflicting node.
+
+Validation: eight focused/adjacent suites passed 18 cases, including schema/baseline
+composition, exact assets, failed loading/Source preservation, Studio ownership,
+Library closure and multiple World revisions sharing one canonical Binding node.
+
+Four real Edge scenarios passed after the graph fix, covering 390px World composition,
+Binding lifecycle, Studio validation, immutable revision creation/retry and 320px
+Knowledge semantic authoring. World composition screenshot inspected. The initial
+combined run exposed the graph collision and was interrupted after diagnosis;
+its corrected complete rerun passed. Changed-file lint and diff checks passed.
+
+Next: NUX-023, following the active backlog order.

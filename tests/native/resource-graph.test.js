@@ -54,6 +54,27 @@ function projectSource(worldId, worldRevisionId) {
 }
 
 describe('A2 derived Resource Graph', () => {
+    test('composed Worlds reuse the canonical binding node across immutable revisions', async () => {
+        const h = await makeTempFsEngine();
+        try {
+            const projects = new ProjectStore({ directoriesByHandle: () => h.dirs });
+            const worlds = new WorldRepo({ engine: h.engine });
+            const knowledge = new KnowledgeRepo({ engine: h.engine });
+            const assets = new AssetStore({ engine: h.engine, directoriesByHandle: () => h.dirs });
+            const library = new NativeLibraryService({ worldRepo: worlds, knowledgeRepo: knowledge, assetStore: assets });
+            const graph = new ResourceGraph({ projectStore: projects, worldRepo: worlds, knowledgeRepo: knowledge, assetStore: assets, libraryService: library, registry: createCoreResourceRegistry() });
+            const knowledgeBaseId = createNativeId('knowledgeBase'), knowledgeRevisionId = createNativeId('knowledgeRevision'), knowledgeBindingId = createNativeId('knowledgeBinding'), worldId = createNativeId('world');
+            await knowledge.create(h.handle, { knowledgeBaseId, currentRevisionId: null, displayName: 'Canon' });
+            await knowledge.commitRevision(h.handle, { knowledgeBaseId, knowledgeRevisionId, entryIds: [] }, []);
+            await knowledge.saveBinding(h.handle, { knowledgeBindingId, source: { kind: 'library', knowledgeBaseId, knowledgeRevisionId }, enabled: true, mode: 'augment' });
+            await worlds.create(h.handle, { worldId, currentRevisionId: null, displayName: 'Harbor' });
+            for (let index = 0; index < 2; index++) await worlds.commitRevision(h.handle, { worldId, worldRevisionId: createNativeId('worldRevision'), knowledgeBindingIds: [knowledgeBindingId], assetIds: [], baseline: { index } });
+            const result = await graph.refresh(h.handle);
+            expect(result.nodes.filter(item => item.resourceType === 'core.knowledge-binding')).toHaveLength(1);
+            const binding = result.nodes.find(item => item.resourceId === knowledgeBindingId);
+            expect(result.edges.filter(item => item.to === binding.key && item.kind === 'references')).toHaveLength(2);
+        } finally { await h.cleanup(); }
+    });
     test('derives exact project -> Library references, reverse references, delete safety and stable refresh generations', async () => {
         const h = await makeTempFsEngine();
         try {

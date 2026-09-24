@@ -199,26 +199,10 @@ export class ResourceGraph {
                 const binding = await this._knowledge.getBinding(handle, bindingId);
                 if (!binding) continue;
                 const bindingRevision = hash(binding);
-                const bindingNode = this._addNode(nodes, {
-                    key: nodeKey('library', 'core.knowledge-binding', bindingId, bindingRevision),
-                    scope: 'library',
-                    resourceType: 'core.knowledge-binding',
-                    resourceId: bindingId,
-                    revision: bindingRevision,
-                    contentIdentity: bindingRevision,
-                    displayName: bindingId,
-                    authority: 'native-library',
-                    ownership: 'library',
-                    immutable: false,
-                    metadata: { mutableRoot: true },
+                const bindingNode = await this._addExactLibraryResource(handle, nodes, edges, {
+                    resourceType: 'core.knowledge-binding', resourceId: bindingId, revision: bindingRevision,
                 });
                 this._addEdge(edges, node.key, bindingNode.key, 'references');
-                const knowledgeNode = await this._addExactLibraryResource(handle, nodes, edges, {
-                    resourceType: 'core.knowledge',
-                    resourceId: binding.source.knowledgeBaseId,
-                    revision: binding.source.knowledgeRevisionId,
-                });
-                this._addEdge(edges, bindingNode.key, knowledgeNode.key, 'references-exact');
             }
             for (const assetId of exact.snapshot.revision.assetIds) {
                 const current = await this._assets.getRef(handle, assetId);

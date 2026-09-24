@@ -7531,5 +7531,22 @@
     "Create a Knowledge revision before creating a binding.": "创建绑定前，请先创建 Knowledge 修订。",
     "Binding changes affect future resolutions. Installed works and sessions keep their snapshots.": "绑定修改影响后续解析。已安装作品和会话保留自己的快照。",
     "Each attachment change creates a World revision. Historical references remain protected.": "每次挂载变更都会创建 World 修订。历史引用仍受保护。",
-    "Referenced bindings cannot be deleted. Historical World revisions also protect their bindings.": "仍被引用的绑定无法删除。历史 World 修订同样保护其绑定。"
+    "Referenced bindings cannot be deleted. Historical World revisions also protect their bindings.": "仍被引用的绑定无法删除。历史 World 修订同样保护其绑定。",
+    "World baseline": "World 基线",
+    "World schema": "World 结构定义",
+    "World assets": "World 资产",
+    "Knowledge bindings": "Knowledge 绑定",
+    "Project-owned source": "项目自有源文件",
+    "Remove field": "移除字段",
+    "Add field": "添加字段",
+    "Remove missing reference": "移除缺失引用",
+    "Loading dependencies…": "正在加载依赖…",
+    "Missing dependency": "缺失依赖",
+    "World schema and baseline must be objects.": "World 结构定义和基线必须为对象。",
+    "must contain unique references": "必须包含不重复的引用",
+    "Resolve missing dependencies before review.": "审阅前请处理缺失依赖。",
+    "Enter a finite number.": "请输入有限数值。",
+    "Enter a new unique field name.": "请输入尚未使用的字段名。",
+    "Attach or fork resources in Library before composing this World.": "请先在 Library 中挂载或派生资源，再组合此 World。",
+    "No available dependencies. Create resources in Library first.": "尚无可用依赖。请先在 Library 中创建资源。"
 }

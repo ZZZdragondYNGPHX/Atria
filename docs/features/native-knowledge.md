@@ -97,3 +97,15 @@ Installed Package and Session snapshots are not rewritten by Library edits.
 Repository writes serialize related binding/base/world keys in a stable order so
 FS commit-last publication cannot race attachment against binding deletion or
 exact revision deletion against binding creation.
+
+### World composition
+
+Library and Studio share a World composition editor for nested baseline/schema
+fields, Knowledge bindings and assets. Dependency choices come from the existing
+Library catalog or the Project's declared resources, never a name-to-latest
+resolver. Binding choices expose the pinned KnowledgeRevision; Library assets
+expose their exact content hash. Project-owned assets retain source-file ownership.
+Missing references remain visible and must be explicitly removed or resolved.
+Review includes dependency names and exact references. Library publishes a new
+immutable WorldRevision; project-owned Worlds continue through ChangeSet Review
+and Apply. Advanced Source preserves metadata and arbitrary structured fields.

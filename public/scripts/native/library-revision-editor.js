@@ -1,4 +1,4 @@
-import { mountStudioValueEditor } from './studio-value-editor.js';
+import { mountWorldEditor } from './world-editor.js';
 import { mountKnowledgeEditor } from './knowledge-editor.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { nativeProductClient as client } from './product-client.js';
@@ -17,12 +17,16 @@ export function mountLibraryRevisionEditor({ document: doc, root, detail, knowle
     const close = action(doc, section, 'Back to resource', onClose);
     const editor = el(doc, 'div', '', undefined, section);
     const review = el(doc, 'section', 'atri-library-section', undefined, section); review.hidden = true;
-    const mountEditor = knowledge ? mountKnowledgeEditor : mountStudioValueEditor;
+    const mountEditor = knowledge ? mountKnowledgeEditor : mountWorldEditor;
     mountEditor({ document: doc, root: editor, value, label: knowledge ? 'Knowledge revision JSON' : 'World revision JSON',
-        onReview: draft => {
+        onReview: (draft, { dependencies = [] } = {}) => {
             editor.hidden = true; review.hidden = false; review.replaceChildren();
             el(doc, 'h3', '', tl('Review revision'), review);
             el(doc, 'p', '', tl('Saving creates a new revision and moves the Library head. It does not update existing bindings, Projects or Sessions.'), review);
+            for (const item of dependencies) {
+                const row = el(doc, 'div', 'atri-library-version', undefined, review);
+                el(doc, 'h4', '', item.name, row); el(doc, 'p', 'atri-library-meta', item.exact || tl('Project-owned source'), row);
+            }
             const content = disclosure(doc, review, 'Revision content', draft); content.open = true;
             const back = action(doc, review, 'Back to editing', () => { review.hidden = true; editor.hidden = false; editor.querySelector('button')?.focus(); });
             const save = action(doc, review, 'Save immutable revision', async () => {

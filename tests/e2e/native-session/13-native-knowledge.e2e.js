@@ -67,6 +67,27 @@ test('Library binding management keeps exact revisions and protects historical r
         return (await client.getKnowledge(id)).bindings[0].binding;
     }, seeded.base.knowledgeBaseId);
     expect(saved).toMatchObject({ source: { knowledgeRevisionId: seeded.first.knowledgeRevisionId }, mode: 'override', priority: -2, target: { kind: 'actor', id: 'navigator' }, visibility: ['actor'] });
+    await page.evaluate(world => window.Atria.shell.getWorkspaceHost().openLibraryWorld(world.worldId, world.displayName), seeded.world);
+    const library = page.locator('[data-atria-native-library="worlds-knowledge"]');
+    await library.getByRole('button', { name: 'New revision', exact: true }).click();
+    const editor = library.locator('.atri-world-editor');
+    await editor.getByLabel('baseline new field', { exact: true }).fill('weather');
+    await editor.getByRole('button', { name: 'Add field', exact: true }).first().click();
+    await editor.getByLabel('baseline.weather', { exact: true }).fill('rain');
+    await editor.getByLabel('Navigator canon', { exact: true }).check();
+    await editor.getByRole('button', { name: 'Review Changes', exact: true }).click();
+    await expect(library.getByRole('heading', { name: 'Navigator canon', exact: true })).toBeVisible();
+    await library.getByRole('button', { name: 'Save immutable revision', exact: true }).click();
+    await expect(library.getByRole('button', { name: 'New revision', exact: true })).toBeVisible();
+    const composed = await page.evaluate(async world => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        return (await client.getWorld(world.worldId)).currentRevision;
+    }, seeded.world);
+    expect(composed).toMatchObject({ baseline: { weather: 'rain' }, knowledgeBindingIds: [saved.knowledgeBindingId] });
+    await library.getByRole('button', { name: 'New revision', exact: true }).click();
+    await expect(editor.getByLabel('baseline.weather', { exact: true })).toHaveValue('rain');
+    await page.screenshot({ path: info.outputPath('world-composition-390.png') });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
 test('Knowledge typed delivery and invalid Source stay inside Studio Review at 390px', async ({ page }, info) => {
@@ -136,7 +157,7 @@ test('Library creates first and subsequent immutable World and Knowledge revisio
         let firstId;
         for (const index of [1, 2]) {
             if (index === 2) await root.getByRole('button', { name: 'New revision', exact: true }).click();
-            const editor = root.locator(knowledge ? '.atri-knowledge-editor' : '.atri-studio-value-editor');
+            const editor = root.locator(knowledge ? '.atri-knowledge-editor' : '.atri-world-editor');
             await editor.getByRole('button', { name: 'Source', exact: true }).click();
             const json = editor.getByRole('textbox', { name: knowledge ? 'Knowledge revision JSON' : 'World revision JSON' });
             const draft = JSON.parse(await json.inputValue());
