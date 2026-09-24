@@ -5,6 +5,55 @@ import { runtimeGenerationError } from '../../public/scripts/native/runtime-clie
 const flush = () => new Promise(done => setTimeout(done, 0));
 const config = { connections: [{ schemaVersion: 1, scope: 'player', connectionProfileId: 'conn_11111111111111111111111111111111', displayName: 'Exact connection', endpoint: 'https://example.invalid/chat', providerAdapter: 'provider.openai-compatible', secretRef: { scope: 'player', secretId: 'stored-id' } }], models: [], routes: [], profiles: [], resources: [] };
 const response = (body, ok = true) => ({ ok, json: async () => body });
+
+test('Diagnostics pins Build inventory and requires an explicit revision selection after refresh', async () => {
+    let revision = 'a'.repeat(40);
+    const projectId = 'project_11111111111111111111111111111111';
+    globalThis.fetch = jest.fn(async url => {
+        if (url.endsWith('/studio/projects')) return response([{ project: { projectId, displayName: 'Authored world' }, revision: { revision } }]);
+        if (url.endsWith('/preview')) return response({ error: 'native_generation_context_required' }, false);
+        return response({ ...config, routes: [{ runtimeRouteId: 'route-one', displayName: 'Narrator', role: 'role.narrator' }] });
+    });
+    const body = document.createElement('div'); document.body.append(body);
+    const view = mountNativeRuntimeWorkspace({ document, body, section: 'diagnostics', host: {} }); await flush();
+    const project = view.root.querySelector('[aria-label="Build Project"]');
+    const exact = view.root.querySelector('[aria-label="Exact Project revision"]');
+    view.root.querySelector('[aria-label="Route to preview"]').value = 'route-one';
+    const form = view.root.querySelector('form');
+    const submit = () => form.dispatchEvent(new Event('submit', { cancelable: true }));
+    submit(); await flush();
+    expect(globalThis.fetch.mock.calls.filter(([url]) => url.endsWith('/preview'))).toHaveLength(0);
+    project.value = projectId; project.dispatchEvent(new Event('change'));
+    expect(exact.value).toBe(revision);
+    submit(); await flush();
+    const writes = globalThis.fetch.mock.calls.filter(([url]) => url.endsWith('/preview'));
+    expect(JSON.parse(writes[0][1].body)).toMatchObject({ projectId, revision });
+    revision = 'b'.repeat(40);
+    [...view.root.querySelectorAll('button')].find(button => button.textContent === 'Refresh Projects').click(); await flush();
+    expect(exact.value).toBe(''); expect(view.root.textContent).toContain('The Project revision changed');
+    submit(); await flush();
+    expect(globalThis.fetch.mock.calls.filter(([url]) => url.endsWith('/preview'))).toHaveLength(1);
+    exact.value = revision; exact.dispatchEvent(new Event('change')); submit(); await flush();
+    expect(JSON.parse(globalThis.fetch.mock.calls.filter(([url]) => url.endsWith('/preview'))[1][1].body).revision).toBe(revision);
+    view.dispose();
+});
+
+test('Diagnostics retries failed Build inventory and ignores superseded refreshes', async () => {
+    const pending = [];
+    globalThis.fetch = jest.fn(async url => url.endsWith('/studio/projects') ? new Promise(resolve => pending.push(resolve)) : response(config));
+    const body = document.createElement('div'); document.body.append(body);
+    const view = mountNativeRuntimeWorkspace({ document, body, section: 'diagnostics', host: {} }); await flush();
+    pending.shift()(response({ error: 'offline' }, false)); await flush();
+    expect(view.root.textContent).toContain('Could not load Build Projects');
+    const refresh = [...view.root.querySelectorAll('button')].find(button => button.textContent === 'Refresh Projects');
+    refresh.click(); refresh.click();
+    pending[1](response([])); await flush();
+    pending[0](response([{ project: { projectId: 'stale', displayName: 'Stale project' }, revision: { revision: 'old' } }])); await flush();
+    expect(view.root.textContent).toContain('No Build Projects are available');
+    expect(view.root.textContent).not.toContain('Stale project');
+    expect(view.root.querySelector('[aria-label="Build Project"]').disabled).toBe(true);
+    view.dispose();
+});
 afterEach(() => { delete globalThis.fetch; document.body.replaceChildren(); });
 function mount() {
     const body = document.createElement('div'); document.body.append(body);

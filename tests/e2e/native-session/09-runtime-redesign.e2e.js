@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { resolve } from 'node:path';
 import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
+import { createNativeId } from '../../../src/native/identity.js';
 import { seedGenerationProfiles } from '../../native/helpers/generation-fixture.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { disableExtensions } from '../_lib/fixtures.js';
@@ -205,7 +206,7 @@ test('Diagnostics reports missing pinned context locally without sending a gener
     let sends = 0; page.on('request', req => { if (/\/api\/native\/generation\/generate$/.test(req.url())) sends++; });
     await root(page).getByRole('button', { name: 'Compile preview' }).click();
     await expect(root(page).getByRole('alert')).toBeFocused();
-    await expect(root(page).getByRole('alert')).toContainText('Project ID');
+    await expect(root(page).getByRole('alert')).toContainText('Build Project');
     expect(sends).toBe(0); await shot(page, info, 'diagnostics-error-medium-light');
 });
 
@@ -219,4 +220,30 @@ test('Chinese compact Runtime section picker, large text, filter empty and conne
     await expect(root(page).getByText('身份验证', { exact: true })).toBeVisible();
     await root(page).locator('select[name="Stored Secret"]').scrollIntoViewIfNeeded();
     await shot(page, info, 'connection-zh-light-320');
+});
+
+test('Diagnostics selects a real Build Project and submits its exact revision at 320px', async ({ page }, info) => {
+    await boot(page, 320); await light(page);
+    const projectId = createNativeId('project');
+    const source = { format: 'atria-project-source', schemaVersion: 1,
+        project: { projectId, packageId: createNativeId('package'), displayName: 'Diagnostics world', createdAt: 10, updatedAt: 10 },
+        package: { name: 'Diagnostics world', version: '1.0.0', actors: [], capabilities: ['narrative'], permissions: [], entryPoints: [{ entryPointId: createNativeId('entryPoint'), displayName: 'Main', actorIds: [], worldIds: [], knowledgeBindingIds: [] }] },
+        resources: [], worlds: [], knowledge: [], knowledgeBindings: [], assetFiles: [], dependencies: { worlds: [], knowledge: [], knowledgeBindings: [], assets: [], resources: [] } };
+    const exact = await page.evaluate(async source => {
+        const headers = window.Atria.getContext().getRequestHeaders();
+        const created = await fetch('/api/native/studio/projects', { method: 'POST', headers, body: JSON.stringify({ source }) });
+        if (!created.ok) throw new Error(await created.text());
+        const result = await fetch('/api/native/studio/projects/' + source.project.projectId + '/revision', { headers });
+        return (await result.json()).revision;
+    }, source);
+    await open(page, 'diagnostics');
+    await expect(root(page).getByLabel('Build Project', { exact: true })).toBeEnabled();
+    await root(page).getByLabel('Build Project', { exact: true }).selectOption(projectId);
+    await expect(root(page).getByLabel('Exact Project revision', { exact: true })).toHaveValue(exact);
+    await root(page).getByLabel('Route to preview').selectOption(resources.routes[0].runtimeRouteId);
+    const request = page.waitForRequest('**/api/native/generation/preview');
+    await root(page).getByRole('button', { name: 'Compile preview' }).click();
+    expect((await request).postDataJSON()).toMatchObject({ projectId, revision: exact });
+    await expect(root(page).getByRole('heading', { name: 'Compiled preview — no request sent' })).toBeVisible();
+    await shot(page, info, 'diagnostics-build-picker-320');
 });

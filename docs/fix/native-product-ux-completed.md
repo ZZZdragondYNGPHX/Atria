@@ -203,4 +203,18 @@ fallback before assigning a different role. One real Edge fallback scenario
 passed: wrong-role option absent, role-change cleanup, valid selection and exact
 route identity preserved. Changed-file ESLint and diff check passed.
 
-Next: NUX-009, following the active backlog order.
+### NUX-009
+
+Diagnostics now reads Build's Project inventory and selects its current exact
+revision. Raw IDs are confined to Advanced context details. Refresh preserves an
+unchanged pin and requires explicit reselection when Build has changed; failed,
+empty, overlapping and disposed inventory loads cannot submit an unverified
+context. Native Session remains the context owner when active. Historical Project
+execution is not introduced: the existing host accepts the current exact revision.
+
+Validation: Runtime client suite / 12 tests passed, including stale-pin refresh,
+exact request payload and failed/overlapping inventory recovery. Two real Edge
+Diagnostics scenarios passed, including creating a real Build Project and compiling
+its exact revision at 320px. Screenshot inspected; ESLint and diff check passed.
+
+Next: NUX-010, following the active backlog order.

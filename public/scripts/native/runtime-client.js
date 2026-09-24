@@ -34,7 +34,7 @@ export function runtimeRemediation(code) {
         native_generation_route_missing: ['No route is configured for this role. Create a route with an exact Model, Generation and Prompt.', 'routes'],
         native_generation_route_ambiguous: ['Several primary routes match this role. Assign distinct roles or link alternatives as fallbacks.', 'routes'],
         native_generation_configuration_invalid: ['Save failed. Check required fields, references and revision uniqueness. Your edits are still here.', null],
-        native_generation_context_required: ['Open a Native game, or enter a Project ID and its exact revision, then preview again.', null],
+        native_generation_context_required: ['Open a Native game, or select a Build Project and its exact revision, then preview again.', null],
         native_generation_revision_conflict: ['The context changed. Reopen the current Session or Project and preview again.', null],
         generation_secret_unavailable: ['The exact Secret reference is unavailable. Update the connection reference.', 'connections'],
         generation_context_budget_exceeded: ['The full request exceeds the model budget. Review model limits and selected context.', 'models'],

@@ -5,6 +5,7 @@ import { createAtriaShellEnvironment } from '../atria-shell/environment.js';
 import { createAtriaStatePanel } from '../atria-shell/primitives.js';
 import { confirmLibraryAction } from './library-ui.js';
 import { createStudioNativeId } from './studio-authoring.js';
+import { nativeStudioClient } from './studio-client.js';
 
 const ids = { connections: 'connectionProfileId', models: 'modelProfileId', routes: 'runtimeRouteId' };
 const prefixes = { connections: 'conn', models: 'model', routes: 'route' };
@@ -426,9 +427,55 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const routeSelect = field(routing, 'Route to preview', '', options(data.routes, ids.routes)); routeSelect.required = true;
         if (!data.routes.length) { notice('Create a route before compiling a preview.', routing); button('Manage routes', () => host.openRuntimeSection('routes'), routing); }
         const context = group(form, 'Pinned context', nativeSessionRuntime.active ? 'The current Native session supplies the exact context.' : 'Choose a Project and its exact revision, or open a Native game.');
-        const project = field(context, 'Project ID (when no game is open)'); const revision = field(context, 'Project revision');
-        project.disabled = revision.disabled = nativeSessionRuntime.active;
+        const project = field(context, 'Build Project', '', [['', 'Choose…']]); const revision = field(context, 'Exact Project revision', '', [['', 'Choose…']]);
+        project.required = revision.required = true;
+        project.disabled = true; revision.disabled = true;
         project.parentElement.hidden = revision.parentElement.hidden = nativeSessionRuntime.active;
+        if (!nativeSessionRuntime.active) {
+            let inventory = []; let inventoryVersion = 0;
+            const feedback = node('div', undefined, context);
+            const advanced = node('details', undefined, context); node('summary', 'Advanced / raw context IDs', advanced);
+            const raw = node('pre', '', advanced);
+            const updateRevision = (previous = null) => {
+                const selected = inventory.find(item => item.project.projectId === project.value);
+                revision.replaceChildren();
+                const empty = node('option', 'Choose…', revision); empty.value = '';
+                if (selected) {
+                    const option = node('option', undefined, revision); option.value = selected.revision.revision;
+                    option.textContent = translateShellText('Current Build revision') + ' · ' + selected.revision.revision.slice(0, 12);
+                    revision.value = previous === null || previous === selected.revision.revision ? selected.revision.revision : '';
+                    if (previous && previous !== selected.revision.revision) notice('The Project revision changed. Select its current revision before previewing.', feedback);
+                }
+                revision.disabled = !selected;
+                raw.textContent = JSON.stringify({ projectId: project.value || null, revision: revision.value || null }, null, 2);
+            };
+            project.addEventListener('change', () => { feedback.replaceChildren(); updateRevision(); });
+            revision.addEventListener('change', () => { raw.textContent = JSON.stringify({ projectId: project.value, revision: revision.value }, null, 2); });
+            const refreshProjects = async () => {
+                const version = ++inventoryVersion; const previous = project.value; const pinned = revision.value;
+                project.disabled = revision.disabled = true; feedback.replaceChildren(); notice('Loading Build Projects…', feedback);
+                try {
+                    const result = await nativeStudioClient.listProjects();
+                    if (disposed || version !== inventoryVersion || !context.isConnected) return;
+                    if (!Array.isArray(result)) throw new Error('Invalid Project inventory');
+                    inventory = result; project.replaceChildren();
+                    const empty = node('option', 'Choose…', project); empty.value = '';
+                    for (const item of inventory) {
+                        const option = node('option', undefined, project); option.value = item.project.projectId;
+                        option.textContent = item.project.displayName + ' · ' + item.project.projectId.slice(-8);
+                    }
+                    project.value = previous; project.disabled = !inventory.length; feedback.replaceChildren(); updateRevision(pinned);
+                    if (!inventory.length) notice('No Build Projects are available. Create one in Build or open a Native game.', feedback);
+                } catch {
+                    if (disposed || version !== inventoryVersion || !context.isConnected) return;
+                    feedback.replaceChildren(); notice('Could not load Build Projects. Retry to choose an exact context.', feedback, true);
+                }
+            };
+            button('Refresh Projects', refreshProjects, context);
+            button('Open Build', () => host.openBuild(), context);
+            notice('Preview uses the selected current Build revision. Later edits require an explicit refresh and selection.', context);
+            void refreshProjects();
+        }
         const message = field(group(form, 'Preview input'), 'Preview message', 'Preview this route.');
         const actions = node('footer', undefined, form); actions.className = 'atri-runtime-actions';
         const submit = node('button', 'Compile preview', actions); submit.type = 'submit';
@@ -438,8 +485,9 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             try {
                 const snapshot = nativeSessionRuntime.snapshot;
                 const source = nativeSessionRuntime.active ? { sessionId: snapshot.session.sessionId, revisionId: snapshot.revision.revisionId } : project.value ? { projectId: project.value, revision: revision.value } : {};
+                if (!nativeSessionRuntime.active && (!source.projectId || !source.revision || project.disabled || revision.disabled)) throw Object.assign(new Error('Select a Project context'), { code: 'native_generation_context_required' });
                 const selected = data.routes.find(item => item.runtimeRouteId === routeSelect.value);
-                const preview = await runtimeRequest('/preview', { method: 'POST', signal: controller.signal, body: { ...source, requestId: 'preview-' + crypto.randomUUID(), role: selected.role.slice(5), routeRef: { scope: 'player', runtimeRouteId: selected.runtimeRouteId }, messages: [{ role: 'user', content: message.value }] } });
+                const preview = await runtimeRequest('/preview', { method: 'POST', signal: controller.signal, body: { ...source, requestId: createStudioNativeId('preview'), role: selected.role.slice(5), routeRef: { scope: 'player', runtimeRouteId: selected.runtimeRouteId }, messages: [{ role: 'user', content: message.value }] } });
                 if (!disposed) { result.replaceChildren(); evidence(preview, result); const title = result.querySelector('h3'); title.tabIndex = -1; title.focus(); }
             } catch (error) { if (!disposed) { result.replaceChildren(); failure(error, result); } } finally { submit.disabled = false; submit.removeAttribute('aria-busy'); }
         });

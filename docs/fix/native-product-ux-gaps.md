@@ -69,22 +69,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 闭合 Secret → Connection → Model → Generation Profile → Runtime Route 的第一方 Native 配置链。
 
-## NUX-009 — Runtime Diagnostics requires raw Project ID / revision
-
-**Current evidence**
-
-When no Native Session owns context, Diagnostics asks users to type Project ID and Project revision manually.
-
-Build already owns a project/revision inventory.
-
-**Acceptance**
-
-Use a project + exact revision picker backed by Build authority. Keep raw IDs only in Advanced/debug mode.
-
----
-
----
-
 ## NUX-010 — First-time Native Runtime setup has no dependency-guided readiness flow
 
 **Current evidence**

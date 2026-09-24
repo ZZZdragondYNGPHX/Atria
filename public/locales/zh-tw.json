@@ -6897,5 +6897,17 @@
     "Choose a supported streaming option.": "請選擇支援的串流輸出選項。",
     "retained": "已保留",
     "Incompatible fallbacks were removed from this draft after the role changed.": "角色變更後，已從草稿中移除不相容的備用路由。",
-    "This role conflicts with a fallback relationship. Remove the incompatible fallback reference before changing the role.": "此角色與備用路由關係衝突。請先移除不相容的備用參照，再變更角色。"
+    "This role conflicts with a fallback relationship. Remove the incompatible fallback reference before changing the role.": "此角色與備用路由關係衝突。請先移除不相容的備用參照，再變更角色。",
+    "Build Project": "Build 專案",
+    "Exact Project revision": "精確專案版本",
+    "Advanced / raw context IDs": "進階 / 上下文原始 ID",
+    "Current Build revision": "目前 Build 版本",
+    "The Project revision changed. Select its current revision before previewing.": "專案版本已變更。請重新選擇目前版本後預覽。",
+    "Loading Build Projects…": "正在載入 Build 專案…",
+    "No Build Projects are available. Create one in Build or open a Native game.": "尚無 Build 專案。請在 Build 建立專案，或開啟 Native 遊戲。",
+    "Could not load Build Projects. Retry to choose an exact context.": "無法載入 Build 專案。請重試以選擇精確上下文。",
+    "Refresh Projects": "重新整理專案",
+    "Open Build": "開啟 Build",
+    "Preview uses the selected current Build revision. Later edits require an explicit refresh and selection.": "預覽使用所選的目前 Build 版本。後續編輯需重新整理並選擇版本。",
+    "Open a Native game, or select a Build Project and its exact revision, then preview again.": "請開啟 Native 遊戲，或選擇 Build 專案及其精確版本，然後重新預覽。"
 }
