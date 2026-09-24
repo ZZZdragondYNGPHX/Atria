@@ -83,6 +83,22 @@ export function knowledgeEditorFieldOptions(path) {
 export function validateKnowledgeEditorValue(value) {
     for (const [index, entry] of (value.entries || []).entries()) {
         normalizeKnowledgeDelivery(entry.delivery, 'entries.' + index + '.delivery');
+        normalizeKnowledgeDiscovery(entry.discovery, 'entries.' + index + '.discovery');
         normalizeKnowledgeApplicability(entry.applicability);
     }
+}
+
+
+export function normalizeKnowledgeDiscovery(value, field = 'KnowledgeEntry.discovery') {
+    if (value === undefined) return undefined;
+    object(value, field, ['keywords', 'aliases', 'regex']);
+    const result = {};
+    for (const key of ['keywords', 'aliases', 'regex']) {
+        if (value[key] === undefined) continue;
+        const items = value[key];
+        if (!Array.isArray(items) || items.some(item => typeof item !== 'string' || !item.length || item.length > 1024)
+            || new Set(items).size !== items.length) throw new TypeError(field + '.' + key + ' must contain unique non-empty strings of at most 1024 characters');
+        result[key] = [...items];
+    }
+    return Object.freeze(result);
 }

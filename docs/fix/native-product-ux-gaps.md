@@ -73,28 +73,9 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 Implementation and validation: [completed work](native-product-ux-completed.md).
 
-# Group 4 — P0 — Native Knowledge Semantics
+# Group 4 — Completed
 
-**Group goal:** 先保证所有可作者配置的 Knowledge 字段都有明确 contract、validation 与 runtime 行为。
-
-## NUX-018 — semanticHints / vectorHints are accepted but have no discovered Native retrieval consumer
-
-**Current evidence**
-
-The fields exist in the Native Knowledge contract and tests. Repository audit found no Native Knowledge selection path consuming them.
-
-**Impact**
-
-Authors can reasonably assume a configured semantic/vector hint affects retrieval when it may currently be inert metadata.
-
-**Acceptance**
-
-Either implement documented semantic/vector retrieval behavior or mark/reject these fields until supported.
-
----
-
----
-
+Implementation and validation: [completed work](native-product-ux-completed.md).
 
 # Group 5 — P0 → P2 — World / Knowledge Authoring
 

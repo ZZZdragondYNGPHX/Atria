@@ -418,4 +418,17 @@ draft retention and corrected ChangeSet Review passed; screenshot inspected. The
 first browser fixture reused the category name for its resource; giving the fixture
 a distinct name removed the ambiguous test locator. Changed-file lint/diff passed.
 
-Next: NUX-018, following the active backlog order.
+### NUX-018
+
+Native Knowledge discovery accepts only its supported keywords/aliases/regex
+contract. semanticHints and vectorHints, even empty placeholders, now produce
+field-path errors in Studio, server persistence and detached Native compilation.
+They cannot imply retrieval behavior, invoke compatibility providers or silently
+survive as inert authoring options. Native Memory retrieval remains its own
+established responsibility; no speculative Knowledge retrieval service was added.
+
+Validation: five focused suites passed 98 cases. Real Edge 390px Studio rejected
+both unsupported hint fields while retaining the draft, and accepted a corrected
+ChangeSet for Review. Changed-file lint and diff check passed.
+
+Next: NUX-019, following the active backlog order.

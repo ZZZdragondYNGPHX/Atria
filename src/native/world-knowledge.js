@@ -1,4 +1,4 @@
-import { normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector, KNOWLEDGE_TARGET_KINDS } from '../../public/scripts/native/knowledge-contracts.js';
+import { normalizeKnowledgeDiscovery, normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector, KNOWLEDGE_TARGET_KINDS } from '../../public/scripts/native/knowledge-contracts.js';
 import { assertNativeId } from './identity.js';
 
 export const KNOWLEDGE_BINDING_MODES = Object.freeze(['augment', 'override']);
@@ -113,19 +113,6 @@ function uniqueStrings(values, field, allowed = null) {
 function optionalJsonObject(value, field) {
     if (value === undefined) return undefined;
     return cloneJson(plain(value, field), field);
-}
-
-function assertDiscovery(value) {
-    if (value === undefined) return undefined;
-    plain(value, 'KnowledgeEntry.discovery');
-    assertOnlyKeys(value, new Set(['keywords', 'aliases', 'regex', 'semanticHints', 'vectorHints']), 'KnowledgeEntry.discovery');
-    return Object.freeze({
-        ...(value.keywords === undefined ? {} : { keywords: uniqueStrings(value.keywords, 'KnowledgeEntry.discovery.keywords') }),
-        ...(value.aliases === undefined ? {} : { aliases: uniqueStrings(value.aliases, 'KnowledgeEntry.discovery.aliases') }),
-        ...(value.regex === undefined ? {} : { regex: uniqueStrings(value.regex, 'KnowledgeEntry.discovery.regex') }),
-        ...(value.semanticHints === undefined ? {} : { semanticHints: cloneJson(value.semanticHints, 'KnowledgeEntry.discovery.semanticHints') }),
-        ...(value.vectorHints === undefined ? {} : { vectorHints: cloneJson(value.vectorHints, 'KnowledgeEntry.discovery.vectorHints') }),
-    });
 }
 
 function assertLifecycle(value) {
@@ -280,7 +267,7 @@ export function assertKnowledgeEntry(value) {
     return Object.freeze({
         knowledgeEntryId: assertNativeId(value.knowledgeEntryId, 'knowledgeEntry', 'KnowledgeEntry.knowledgeEntryId'),
         content: text(value.content, 'KnowledgeEntry.content', { allowEmpty: true, maxLength: 4 * 1024 * 1024 }),
-        ...(value.discovery === undefined ? {} : { discovery: assertDiscovery(value.discovery) }),
+        ...(value.discovery === undefined ? {} : { discovery: normalizeKnowledgeDiscovery(value.discovery) }),
         ...(value.applicability === undefined ? {} : { applicability: normalizeKnowledgeApplicability(value.applicability) }),
         ...(value.lifecycle === undefined ? {} : { lifecycle: assertLifecycle(value.lifecycle) }),
         ...(value.relations === undefined ? {} : { relations: assertRelations(value.relations) }),

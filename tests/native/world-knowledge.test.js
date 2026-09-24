@@ -94,7 +94,6 @@ function knowledgeSnapshot() {
                 discovery: {
                     aliases: ['old gate'],
                     regex: ['gate.*dusk'],
-                    semanticHints: ['city gate opening time'],
                 },
                 applicability: {
                     stateConditions: [{ providerId: 'atri_world_state', path: ['time', 'phase'], operator: 'eq', value: 'night' }],

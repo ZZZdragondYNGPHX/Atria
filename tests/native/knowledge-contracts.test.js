@@ -1,5 +1,5 @@
 import { test, expect } from '@jest/globals';
-import { normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector } from '../../public/scripts/native/knowledge-contracts.js';
+import { normalizeKnowledgeDiscovery, validateKnowledgeEditorValue, normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector } from '../../public/scripts/native/knowledge-contracts.js';
 import { bindingFor, knowledgeSnapshot } from './helpers/session-fixture.js';
 import { assertKnowledgeEntry, assertKnowledgeBinding } from '../../src/native/world-knowledge.js';
 const condition = { providerId: 'atri_variables', path: ['hp'], operator: 'gt', value: 0 };
@@ -46,4 +46,12 @@ test('Binding persistence uses the same target schema as entry delivery and runt
     const binding = bindingFor(knowledgeSnapshot('Bound knowledge'), 'library');
     expect(assertKnowledgeBinding({ ...binding, target: { kind: 'actor', id: 'actor-a' } }).target).toEqual({ kind: 'actor', id: 'actor-a' });
     expect(() => assertKnowledgeBinding({ ...binding, target: { kind: 'actor', actorId: 'actor-a' } })).toThrow('KnowledgeBinding.target.actorId');
+});
+
+
+test.each(['semanticHints', 'vectorHints'])('%s is rejected by editor and persistence until Native selection supports it', key => {
+    const discovery = { keywords: ['harbor'], [key]: ['ignored before'] };
+    expect(() => normalizeKnowledgeDiscovery(discovery)).toThrow('discovery.' + key);
+    expect(() => assertKnowledgeEntry({ ...entry(undefined), discovery })).toThrow('discovery.' + key);
+    expect(() => validateKnowledgeEditorValue({ entries: [{ discovery }] })).toThrow('entries.0.discovery.' + key);
 });

@@ -49,3 +49,13 @@ kind/id contract. Binding and entry selectors must both match.
 The current Studio Knowledge editor uses these same enums for existing fields.
 Source edits receive field-path errors before Review and retain their drafts.
 Server-side revision validation remains authoritative for every caller.
+
+## Discovery fields
+
+Native supports `keywords`, `aliases` and `regex` arrays. `semanticHints` and
+`vectorHints` are unsupported: Studio Source, server revision writes and detached
+runtime snapshots reject either field, including empty placeholders. They are not
+silently treated as descriptive metadata or forwarded to compatibility retrieval.
+Native Memory embedding/rerank resources do not imply a Knowledge retrieval
+consumer. No provider, vector index, inference cost or second authority is created
+by declaring these fields.

@@ -344,3 +344,10 @@ test('typed targets match exact kinds and IDs; delivery positions never silently
     entry.delivery.position = 'before-chat';
     expect(() => compileNativeKnowledgePlan(snapshot)).toThrow('delivery.position');
 });
+
+
+test.each(['semanticHints', 'vectorHints'])('runtime refuses inert %s in detached snapshots', key => {
+    const snapshot = snapshotFromFixture();
+    snapshot.manifest.knowledge[0].entries[0].discovery = { [key]: [] };
+    expect(() => compileNativeKnowledgePlan(snapshot)).toThrow('discovery.' + key);
+});

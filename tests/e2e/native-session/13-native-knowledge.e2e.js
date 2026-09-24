@@ -50,7 +50,13 @@ test('Knowledge typed delivery and invalid Source stay inside Studio Review at 3
     await expect(editor.getByRole('alert')).toContainText('entries.0.delivery.position');
     await expect(json).toHaveValue(JSON.stringify(draft));
     await page.screenshot({ path: info.outputPath('knowledge-invalid-source-390.png') });
-    draft.entries[0].delivery.position = 'after'; await json.fill(JSON.stringify(draft));
+    draft.entries[0].delivery.position = 'after';
+    for (const key of ['semanticHints', 'vectorHints']) {
+        draft.entries[0].discovery = { [key]: [] }; await json.fill(JSON.stringify(draft));
+        await editor.getByRole('button', { name: 'Review Changes', exact: true }).click();
+        await expect(editor.getByRole('alert')).toContainText('entries.0.discovery.' + key);
+    }
+    delete draft.entries[0].discovery; await json.fill(JSON.stringify(draft));
     await editor.getByRole('button', { name: 'Review Changes', exact: true }).click();
     await studio.locator('.atria-studio-mobile-nav').getByRole('button', { name: 'More', exact: true }).click();
     await expect(studio.getByRole('button', { name: 'Apply ChangeSet', exact: true })).toBeVisible();
