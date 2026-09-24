@@ -1,81 +1,67 @@
-# Frontend redesign — Phase 4 pushed; await Phase 5 authorization
+# Frontend redesign — Phase 5 pushed; await Phase 6 authorization
 
 - Date: 2026-09-24
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Main: `402b53a98a823573591db4e9fd015f98e6effbdb` (Phase 1 integrated)
-- Current branch: `refactor/atria-product-frontend-redesign`
-- Pushed HEAD: `1ee087510c39926616ccc8cfad22cb435e63de36`
-- Completed: Phases 1–4. Outstanding: Phases 5–8.
-- **Stop at this checkpoint.** Continue only when the user says continue.
-- Keep this branch. Do not recreate it from main, merge or delete it at individual
-  phase checkpoints. Phases 2–4 are intentionally unmerged.
+- Branch: `refactor/atria-product-frontend-redesign`
+- Pushed HEAD: `853c590bff9169a5e29804bd9fe565a4371b51a4`
+- Complete: Phases 1–5. Outstanding: Phases 6–8.
+- **Stop. Continue Phase 6 only when the user says continue.**
+- Retain this branch; do not recreate, merge or delete at individual checkpoints.
+  Phases 2–5 remain intentionally unmerged.
 
-## Authority and records
+## Authority
 
-1. `planning/atria-product-frontend-redesign/DESIGN.md` — formal visual and
-   interaction authority, including Phase 4 decisions in section 11.
-2. `planning/atria-product-frontend-redesign/PHASE-4.md` — delivered scope,
-   implementation HEAD, decisions, validation, review corrections and screenshots.
-3. `PHASE-1.md`, `PHASE-2.md`, `PHASE-3.md` — complete; do not redo.
-4. `refactor/atria-product-frontend-redesign.md` — original architecture/scope audit,
-   not a competing visual design.
-5. Main `AGENTS.md` / `FORK_MAINTENANCE.md` — repository rules. The user explicitly
-   requires retaining the redesign branch and stopping after each phase, overriding
-   the usual per-task merge/delete lifecycle.
+1. `planning/atria-product-frontend-redesign/DESIGN.md` including section 12.
+2. `planning/atria-product-frontend-redesign/PHASE-5.md` for implementation,
+   exact validations, review corrections, limitations and screenshots.
+3. PHASE-1 through PHASE-4 are completed; do not redo them.
+4. Original `refactor/atria-product-frontend-redesign.md` is the architecture audit,
+   not a competing visual specification.
+5. Current repository rules plus the user's explicit multi-phase checkpoint protocol.
 
-## Completed in Phase 4
+## Completed
 
-Library Works/poster search, package/save review and permission retry, Work hero,
-progress, versions and exact dependencies; World/Knowledge grouped resources,
-revision details and readable prose; origin-filtered Prompt Programs/Modules/
-Generation Profiles with immutable structured editing; Skills inventory, native
-keyboard controls, collection import and file editor conflict feedback.
+Runtime Routes/Models/Connections/Profiles/Diagnostics grouped forms and lists,
+independent token-based stylesheet, exact-ID details, immutable profile feedback,
+Library Prompt link, pending/error states and focused recovery. Compact editors use
+Environment's 719px boundary and measured keyboard viewport, preserve drafts when
+resizing, trap Tab, handle Escape and restore Shell inert state. Medium/compact
+section picker keeps WorkspaceHost navigation. Chinese/large-text and safe-area
+presentation checked. No backend or parallel authority added.
 
-Medium/compact use a full-width accessible Library picker through WorkspaceHost.
-Focus returns after confirmation cancellation; errors preserve input, exact
-references remain pinned, and late responses cannot replace newer workspaces.
-Package originals remain read-only and Fork/Derive retain their dependency closure.
-Skills uses the original controller/scope/expectedSha256 authority. The misleading
-per-item bundled button was removed because its endpoint installs the collection.
+Exact configuration/resource/Secret/Session/Studio ownership remains unchanged.
+SillyTavern migration is retired. Do not restore its UI/endpoints or introduce
+legacy-to-Native migration during this redesign.
 
-No backend changes or new router, persistence, configuration or runtime state.
-Navigation, Native Session/generation ABI, Game Stage/transient/recovery, Studio
-ChangeSet/human review, exact Library resources and plugin ownership remain.
+## Executed checks
 
-**User decision:** SillyTavern migration is retired. Do not restore its UI or
-endpoints. Atria backup restore, storage-engine migration and existing upstream
-Native ABI remain; no broad upstream removal is authorized.
+- Shell: 25 suites / 104 tests passed.
+- Runtime/frontend/backend: 6 suites / 61 tests passed.
+- Final focused deep-link test run: 1 suite / 6 tests passed (counts overlap).
+- Full lint plus final changed-file lint passed.
+- Aggregate P8 guards passed; three cold frontend builds passed.
+- Final Edge/Playwright: 13 tests passed (Library/Runtime routing, existing P5
+  and new Phase 5 acceptance); 10 Runtime cases rerun after final diagnostics
+  polish also passed, with targeted lint, guards and the third cold build.
+- Actual screenshots inspected at 1440/900/390/320, dark/light, Chinese20px,
+  loading/empty/error, exact refs, preview, keyboard/focus and safe areas.
+- Evidence in `planning/atria-product-frontend-redesign/phase-5-images/`.
 
-## Executed acceptance
+No physical Android/Termux/IME, live model credentials, Docker/Android build,
+SQL matrix or full repository suite was run. No known unfinished Phase 5 item.
 
-- Jest: **48 suites / 558 tests** in Shell, Skills UI and Skills backend.
-- Post-polish regression: **35 suites / 337 tests**, then **4 suites / 32 tests**
-  after the final focused review adjustments.
-- Full lint and all changed JS/test targeted lint passed.
-- P8 aggregate architecture/residual guard passed (P0–P7, A0–A9, N9/N10).
-- Two cold frontend builds passed with isolated scratch data roots.
-- Playwright: **8 Phase 4 cases + 12 existing cross-domain cases passed**,
-  including real installation, permission/error/retry, start/resume, deletion
-  protection, immutable resources, package Fork, Program/Profile editing,
-  Skills creation/save/hash conflicts, navigation history and Native ABI identity.
-- Actual screenshots inspected at 1440px desktop, 900px medium and 320px compact;
-  dark/light, Chinese, larger text, dialog/error/retry, no horizontal overflow.
-  Additional 320px Library form checked with a simulated 420px visual keyboard.
-- Selected evidence: `planning/atria-product-frontend-redesign/phase-4-images/`.
+## Local concurrent changes
 
-No physical Android/Termux, real-device IME, live model service, Docker/Android
-build or SQL backend matrix was run. Device keyboard/safe areas are simulated;
-this record does not claim physical-device validation. No known unfinished
-Phase 4 implementation item remains.
+Root `AGENTS.md` and `FORK_MAINTENANCE.md` changed externally during Phase 5.
+They were read and preserved, excluded from the implementation commit. At the
+last check, the referenced `public/AGENTS.md` did not exist. Recheck current files
+at next startup; preserve all external work.
 
-## Next after continuation
+## Next
 
-**Phase 5 — Runtime:** Routes, Models, Connections, Profiles and Diagnostics,
-using the approved grouped forms and compact editor direction. Preserve exact
-model/connection/route/generation/prompt authority, Secret ownership and the
-existing controller/persistence path. Do not redo Library or start Phase 6–8.
-
-At next startup: fetch, read this handoff and the current main rules, verify the
-retained branch HEAD, inspect current Runtime code/tests, and continue from this
-branch. Follow any actual later main movement deliberately; do not reset the
-unmerged Phases 2–4 back to Phase 1.
+Fetch; verify actual main and the retained branch; read current rules, this handoff,
+DESIGN and PHASE-5; inspect current code. Execute only **Phase 6 — Build / Studio**:
+authoring workspace, review/ChangeSet/conflict, preview and Project Agent. Preserve
+inspect/review/execute, exact revisions and human authority. Complete local and real
+browser validation, commit/push, update docs and stop before Phase 7.

@@ -238,10 +238,10 @@ migrated with the new design and recorded in the phase log.
 
 ## 8. Delivery phases
 
-Phase 1 is integrated into main. Phases 2 and 3 are implemented and pushed on
-`refactor/atria-product-frontend-redesign`; stop at this checkpoint. Continue
-Phase 4 only after the user says continue. Keep this branch for Phases 2–8;
-do not merge main or delete the branch at individual phase checkpoints.
+Phase 1 is integrated into main. Phases 2–5 are implemented and pushed on
+`refactor/atria-product-frontend-redesign`. Continue Phase 6 only after the user
+says continue. Keep this branch through Phase 8; do not merge into main or delete
+the branch at individual phase checkpoints.
 
 1. **Foundations and frame:** tokens, appearance, icon set, shared component
    stylesheet/builders, responsive Shell, search, inspector, menu, state panels,
@@ -378,3 +378,25 @@ typography and WorkspaceHost. No visual direction is replaced.
 
 Evidence: `PHASE-4.md`. This phase does not redesign Runtime, Build/Studio, Agents
 or utilities. SillyTavern migration remains retired.
+
+## 12. Phase 5 Runtime specification and decisions — 2026-09-24
+
+The approved Runtime direction is implemented as semantic grouped forms and quiet
+resource rows, with desktop label/value alignment and compact full-width fields.
+Identity details are disclosed; grouping separates connection/authentication,
+model/budget/capabilities, route/exact resources/fallback/policy, and profile
+revision/sampling/output. Diagnostics separates route/context/input and shows
+compiled evidence behind disclosures. Active Native Session owns preview context;
+Project fields are unavailable while it supplies that context.
+
+Medium/compact use a labelled section picker through WorkspaceHost. The compact
+editor uses the existing Environment's 719px breakpoint and measured visual
+viewport, retains its draft across resizing, traps Tab, consumes Escape and
+restores Shell inert/focus state. Form errors receive focus; pending writes are
+announced and deduplicated. The same exact Native resources and Secret references
+are saved; immutable profile writes never silently repin routes. Unsupported
+capabilities/controls remain explicit and fail closed. Visual Prompt authoring is
+reached through the already delivered Library. No new configuration authority.
+
+Runtime CSS is extracted into its own domain stylesheet using the Phase 1 tokens.
+See `PHASE-5.md` for acceptance, review corrections and screenshots.
