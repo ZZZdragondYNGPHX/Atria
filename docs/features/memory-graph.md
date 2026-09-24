@@ -64,7 +64,7 @@ When you send a message, Memory Graph looks at the conversation context and reca
 ::: tip Which one?
 **LLM Recall is the default because it's the easiest to configure** — you already have an LLM API set up for chat, and that's all it needs.
 
-**RAG Recall is faster and aligns with how production retrieval systems work** (semantic vector search). It requires an **Embedding Profile** to be set up first — embedding profiles live in the Connection Manager next to chat-completion connections, so any plugin (Vector Storage, Memory Graph, future ones) can pick the same provider/model/key triplet from a shared list.
+**RAG Recall** uses semantic vector search. In Atria Native, first create an embedding resource in **Runtime → Retrieval**, then select its exact revision in **Memory → Maintenance → Memory retrieval**. Retrieval is a player-owned Native family, separate from generation routes and portable Library content. Its immutable revisions own provider, model, endpoint, typed options and an exact reference to the existing Secret store; credentials are never copied into Memory settings or Packages.
 
 Inside RAG Recall, two opt-in switches let you trade extra cost for better quality:
 
@@ -269,11 +269,11 @@ When you swipe or regenerate on the same floor, Memory Graph reuses the previous
 
 | Setting | Default | Description |
 |---|---|---|
-| Embedding Profile | (none) | Connection-Manager profile that owns the embedding provider/model/endpoint/key. Created in the Memory Graph UI or in Vector Storage; profiles are shared. |
+| Embedding Profile | (none) | Exact player-owned Native retrieval revision (mode `embed`), managed in Runtime → Retrieval and selected in Memory Maintenance. |
 | Vector Top-K | `20` | Top-K for vector retrieval |
 | Max recall results | `15` | Final cap on the number of nodes injected per recall |
 | Enable rerank | `off` | Whether to apply a cross-encoder rerank over the vector hits |
-| Rerank Profile | (none) | Connection-Manager profile (mode `rerank`) defining the rerank provider/model/endpoint/key. Only consulted when "Enable rerank" is on. Shared with Vector Storage. |
+| Rerank Profile | (none) | Exact player-owned Native retrieval revision (mode `rerank`). Only consulted when "Enable rerank" is on; managed in Runtime → Retrieval. |
 | Enable query rewrite | `off` | Whether to add an extra LLM call before retrieval that rewrites the recent dialogue into a concise sentence optimised for vector search |
 | Query rewrite API preset | (none) | Connection profile to use for the rewrite LLM call. Only consulted when "Enable query rewrite" is on. |
 | Query rewrite prompt preset | (none) | Chat-completion preset to use for the rewrite LLM call |
@@ -309,7 +309,11 @@ That's the whole path. There is no graph-diffusion stage and no cognitive layer 
 
 ### Vector index
 
-Memory Graph uses incremental updates to manage vector embeddings — content changes are detected via hash comparison, and only changed nodes get re-embedded. The active **embedding profile** (selected in Memory Graph settings) is the single source of truth for provider/model/endpoint/secret; the Vector Storage backend reads the same Connection-Manager registry, so two plugins can share or diverge as needed without copying private state.
+Memory Graph detects content changes through hashes and re-embeds changed nodes. Native RAG and Hybrid retrieval pass only an exact `nativeRetrievalRef`; the server resolves that revision and its Secret. Native vector caches are isolated by profile ID and revision, including endpoint and options changes. Creating a new revision leaves existing selections pinned; changing the Memory selection rebuilds the selected revision’s index. Cache-only list/delete/purge operations do not need an available provider Secret.
+
+The Native family retains embedding protocols (OpenAI-compatible providers, Cohere, Jina, NomicAI, Google AI Studio/Vertex, local Transformers/WebLLM, Ollama, llama.cpp, vLLM, KoboldCpp and Extras) and Cohere/Jina/custom rerank. Supply the API base URL explicitly; NomicAI uses its full embedding URL and Google bases include `/v1` or `/v1beta`. Vertex offers explicit API-key, service-account and proxy authentication. Browser WebLLM requires its existing browser engine.
+
+Connection Manager profiles remain confined to non-Native compatibility callers. Native Memory neither reads them nor automatically converts old user data. Native resources use the existing storage engine and participate in Native backup/restore; derived vector caches can be rebuilt.
 
 When inserting vectors, Memory Graph includes `nodeId` in the `metadata` field. The vector backend stores `metadata` as-is; other plugins can use `metadata` for their own data, returned alongside query results. This design lets the `hash → nodeId` mapping bypass the frontend index cache — even if the cache is lost, nodes can be matched directly from query results.
 

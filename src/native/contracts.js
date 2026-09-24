@@ -68,6 +68,7 @@ export const NATIVE_RESOURCE_KINDS = Object.freeze({
     connectionProfile: 'atri_connection_profile',
     modelProfile: 'atri_model_profile',
     runtimeRoute: 'atri_runtime_route',
+    retrievalProfile: 'atri_retrieval_profile',
 });
 
 export const NATIVE_STORE_FAMILIES = Object.freeze([
@@ -876,6 +877,7 @@ const RESOURCE_KEY_SPECS = Object.freeze({
     [NATIVE_RESOURCE_KINDS.versionedJsonResourceRevision]: [['handle', 'handle'], ['resourceType', 'resourceType'], ['resourceId', 'token'], ['revision', 'token']],
     [NATIVE_RESOURCE_KINDS.connectionProfile]: [['handle', 'handle'], ['connectionProfileId', 'connectionProfile']],
     [NATIVE_RESOURCE_KINDS.modelProfile]: [['handle', 'handle'], ['modelProfileId', 'modelProfile']],
+    [NATIVE_RESOURCE_KINDS.retrievalProfile]: [['handle', 'handle'], ['retrievalProfileId', 'retrievalProfile'], ['revision', 'token']],
     [NATIVE_RESOURCE_KINDS.runtimeRoute]: [['handle', 'handle'], ['runtimeRouteId', 'runtimeRoute']],
 });
 

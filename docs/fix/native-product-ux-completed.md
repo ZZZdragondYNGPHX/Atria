@@ -311,4 +311,40 @@ Memory Maintenance save passed, including all four task selections; after removi
 the browser-default fieldset border, the scenario passed again and its screenshot
 was inspected. Changed-file ESLint and diff check passed.
 
-Next: NUX-014, following the active backlog order.
+### NUX-014
+
+Player-owned Native Retrieval resources now own embedding/rerank provider,
+model, explicit endpoint, typed options and exact Secret references. Immutable
+revisions use the existing Native storage engine and Runtime write serialization;
+all Native backup/restore paths include the new kind. Runtime → Retrieval reuses
+the current editor primitives, compact modal/focus handling and Secret store.
+Memory Maintenance saves exact embedding/rerank refs in its existing settings.
+Creating a revision does not switch callers. The old automatic inline-settings
+to Connection Manager conversion was removed, including its startup path.
+
+RAG and Hybrid execution both resolve Native refs before the compatibility
+EmbeddingService path. Server requests accept payloads plus exact refs, reject
+provider/credential overrides, and resolve only the referenced Secret. Existing
+provider protocols are retained, including local/browser models and Vertex auth
+modes. Local pipeline model switches serialize inference. Native vector indexes
+are isolated by exact retrieval revision and outside compatibility purge scopes;
+Memory reset passes its exact profile through the existing vector adapter.
+Connection Manager remains only a non-Native compatibility owner.
+
+Validation: all 50 Memory/Schema suites passed (660 cases). Five vector/retrieval
+suites passed (200 cases). Final seven focused suites passed (55 cases), including
+actual protocol requests against a simulated provider, FS/SQLite immutable and
+concurrent writes, all-kind Native backup/cross-engine round trips, shared client
+fallback isolation, local model concurrency and Shell routing. The adjusted
+Memory vector adapter suite passed all three cases; after removing the old
+automatic conversion, four adjacent suites passed all 61 cases. Two real Edge scenarios
+passed: create a Secret and rerank revision; create embedding revisions and pin
+Memory at 320px. The latter passed again with Tab/Shift+Tab focus containment and local-only
+provider fields hidden. Saving also locks navigation and fields until completion.
+Screenshots inspected; changed-file ESLint and diff check passed. Initial browser
+attempts exposed the old retrieval-to-connections alias; corrected tests passed.
+A newly introduced static script import broke Memory test mocks; removing that
+unnecessary dependency restored all 660 tests. No live cloud credentials or GPU
+model inference were required or claimed.
+
+Next: NUX-015, following the active backlog order.

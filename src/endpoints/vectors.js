@@ -3,6 +3,7 @@ import fs from 'node:fs';
 
 import vectra from 'vectra';
 import express from 'express';
+import { createRetrievalMiddleware } from '../native/retrieval-execution.js';
 import sanitize from 'sanitize-filename';
 
 import { getNomicAIBatchVector, getNomicAIVector } from '../vectors/nomicai-vectors.js';
@@ -86,7 +87,7 @@ async function getVector(source, sourceSettings, text, isQuery, directories, req
         case 'openrouter':
             return getOpenAIVector(text, source, directories, sourceSettings.model, sourceSettings, request);
         case 'transformers':
-            return getTransformersVector(text);
+            return getTransformersVector(text, sourceSettings.native ? sourceSettings.model : undefined);
         case 'extras':
             return getExtrasVector(text, sourceSettings.extrasUrl, sourceSettings.extrasKey, request);
         // palm/vertexai already receive the Express request via
@@ -157,7 +158,7 @@ async function getBatchVector(source, sourceSettings, texts, isQuery, directorie
                 results.push(...await getOpenAIBatchVector(batch, source, directories, sourceSettings.model, sourceSettings, request));
                 break;
             case 'transformers':
-                results.push(...await getTransformersBatchVector(batch));
+                results.push(...await getTransformersBatchVector(batch, sourceSettings.native ? sourceSettings.model : undefined));
                 break;
             case 'extras':
                 results.push(...await getExtrasBatchVector(batch, sourceSettings.extrasUrl, sourceSettings.extrasKey, request));
@@ -215,7 +216,7 @@ async function getBatchVector(source, sourceSettings, texts, isQuery, directorie
  * @returns {string} The model scope for the source
  */
 function getModelScope(sourceSettings) {
-    return (sourceSettings?.model || '');
+    return (sourceSettings?.indexScope || sourceSettings?.model || '');
 }
 
 /**
@@ -228,7 +229,7 @@ function getModelScope(sourceSettings) {
  */
 async function getIndex(directories, collectionId, source, sourceSettings) {
     const model = getModelScope(sourceSettings);
-    const pathToFile = path.join(directories.vectors, sanitize(source), sanitize(collectionId), sanitize(model));
+    const pathToFile = path.join(directories.vectors, sanitize(sourceSettings.native ? 'atri-retrieval' : source), sanitize(collectionId), sanitize(model));
     const store = new vectra.LocalIndex(pathToFile);
 
     if (!await store.isIndexCreated()) {
@@ -396,6 +397,7 @@ async function multiQueryCollection(directories, collectionIds, source, sourceSe
  * @returns {Promise<any>} Promise
  */
 async function regenerateCorruptedIndexErrorHandler(req, res, error) {
+    if (req.nativeRetrieval) return res.status(500).json({ error: 'native_retrieval_execution_failed' });
     if (error instanceof SyntaxError && !req.query.regenerated) {
         const collectionId = String(req.body.collectionId);
         const source = String(req.body.source) || 'transformers';
@@ -419,6 +421,7 @@ async function regenerateCorruptedIndexErrorHandler(req, res, error) {
 }
 
 export const router = express.Router();
+router.use(createRetrievalMiddleware());
 
 router.post('/query', async (req, res) => {
     const source = String(req.body.source) || 'transformers';
@@ -558,7 +561,7 @@ router.post('/rerank', async (req, res) => {
         const topK = Number(req.body.topK) || 5;
         const source = String(req.body.source) || 'cohere';
         const credentials = getCommonCredentials(req);
-        const rerankSettings = {
+        const rerankSettings = req.nativeRetrieval?.settings || {
             model: String(req.body.model || ''),
             apiUrl: String(req.body.apiUrl || ''),
             apiKey: String(req.body.apiKey || ''),
@@ -679,6 +682,11 @@ router.post('/purge', async (req, res) => {
         }
 
         const collectionId = String(req.body.collectionId);
+        if (req.nativeRetrieval) {
+            const index = await getIndex(req.user.directories, collectionId, req.body.source, req.nativeRetrieval.settings);
+            if (await index.isIndexCreated()) await index.deleteIndex();
+            return res.sendStatus(200);
+        }
 
         for (const source of SOURCES) {
             const sourcePath = path.join(req.user.directories.vectors, sanitize(source), sanitize(collectionId));

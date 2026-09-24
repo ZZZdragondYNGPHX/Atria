@@ -242,7 +242,7 @@ describe('R7G WorkspaceHost', () => {
 
         host.openRuntimeSection('retrieval');
         await flushWorkspace();
-        expect(navigation.getRoute().child?.id).toBe('connections');
+        expect(navigation.getRoute().child?.id).toBe('retrieval');
         expect(adapters.runtime).toHaveBeenCalledTimes(1);
 
         host.openUtility('diagnostics');
@@ -605,7 +605,7 @@ describe('R7G WorkspaceHost', () => {
         expect(routeDescriptor({
             domain: 'runtime',
             child: { id: 'retrieval', label: 'Retrieval', kind: 'workspace' },
-        })).toMatchObject({ key: 'runtime', kind: 'runtime', section: 'connections', title: 'Connections' });
+        })).toMatchObject({ key: 'runtime', kind: 'runtime', section: 'retrieval', title: 'Retrieval' });
         expect(routeDescriptor({ domain: 'play', child: null, breadcrumb: ['Play'] })).toBeNull();
     });
 });

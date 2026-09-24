@@ -25,7 +25,7 @@ import {
 // The FS engine has no transaction isolation. Serialize this authority's writes
 // across persistence instances, as Native Session publication already does.
 const runtimeWrites = new Map();
-async function withRuntimeWrite(handle, operation) {
+export async function withRuntimeWrite(handle, operation) {
     const next = (runtimeWrites.get(handle) || Promise.resolve()).catch(() => {}).then(operation);
     runtimeWrites.set(handle, next);
     try { return await next; } finally { if (runtimeWrites.get(handle) === next) runtimeWrites.delete(handle); }

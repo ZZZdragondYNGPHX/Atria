@@ -16,6 +16,10 @@ export function getRuntimeEvidence() { return latestEvidence; }
 
 export function runtimeRemediation(code) {
     const actions = {
+        native_retrieval_unavailable: ['This exact retrieval revision is unavailable. Select another revision in Memory or create one in Runtime Retrieval.', 'retrieval'],
+        native_retrieval_secret_unavailable: ['The retrieval Secret is unavailable. Create a retrieval revision with an existing stored Secret.', 'retrieval'],
+        native_retrieval_invalid: ['Check the retrieval task, model, endpoint, stored Secret and provider options.', 'retrieval'],
+        native_retrieval_execution_failed: ['Retrieval failed. Check the selected provider endpoint and model, then retry.', 'retrieval'],
         native_runtime_fallback_role: ['This role conflicts with a fallback relationship. Remove the incompatible fallback reference before changing the role.', null],
         native_runtime_referenced: ['This item is still in use. Update its references before deleting it.', null],
         native_runtime_delete_failed: ['Could not delete this item. Reload and try again.', null],

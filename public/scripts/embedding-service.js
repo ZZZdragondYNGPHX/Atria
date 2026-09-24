@@ -1,3 +1,4 @@
+import { NativeRetrievalService } from './native/retrieval-client.js';
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 //
@@ -143,6 +144,7 @@ export const EmbeddingService = {
      * @returns {Promise<void>}
      */
     async insert({ profile, collectionId, items, signal, extraBody }) {
+        if (profile?.nativeRetrievalRef) return NativeRetrievalService.insert({ profile, collectionId, items, signal });
         if (!Array.isArray(items) || items.length === 0) return;
         const resolved = resolveProfile(profile, 'embed');
         if (!resolved) {
@@ -177,6 +179,7 @@ export const EmbeddingService = {
      * @returns {Promise<VectorQueryResponse>}
      */
     async query({ profile, collectionId, searchText, topK = 10, threshold = 0, includeVectors = false, signal, extraBody }) {
+        if (profile?.nativeRetrievalRef) return NativeRetrievalService.query({ profile, collectionId, searchText, topK, threshold, includeVectors, signal });
         const resolved = resolveProfile(profile, 'embed');
         if (!resolved) {
             throw new Error('Embedding profile not found');
@@ -206,6 +209,7 @@ export const EmbeddingService = {
      * @returns {Promise<Record<string, VectorQueryResponse>>}
      */
     async queryMulti({ profile, collectionIds, searchText, topK = 10, threshold = 0, signal, extraBody }) {
+        if (profile?.nativeRetrievalRef) return NativeRetrievalService.queryMulti({ profile, collectionIds, searchText, topK, threshold, signal });
         const resolved = resolveProfile(profile, 'embed');
         if (!resolved) {
             throw new Error('Embedding profile not found');
@@ -235,6 +239,7 @@ export const EmbeddingService = {
      * @returns {Promise<VectorQueryResponse>}
      */
     async queryByVector({ profile, collectionId, vector, topK = 10, threshold = 0, includeVectors = false, signal }) {
+        if (profile?.nativeRetrievalRef) return NativeRetrievalService.queryByVector({ profile, collectionId, vector, topK, threshold, includeVectors, signal });
         const resolved = resolveProfile(profile, 'embed');
         if (!resolved) {
             throw new Error('Embedding profile not found');
@@ -259,6 +264,7 @@ export const EmbeddingService = {
      * @returns {Promise<number[]>}
      */
     async listHashes({ profile, collectionId, signal }) {
+        if (profile?.nativeRetrievalRef) return NativeRetrievalService.listHashes({ profile, collectionId, signal });
         const resolved = resolveProfile(profile, 'embed');
         if (!resolved) {
             throw new Error('Embedding profile not found');
@@ -280,6 +286,7 @@ export const EmbeddingService = {
      * @returns {Promise<void>}
      */
     async deleteByHashes({ profile, collectionId, hashes, signal }) {
+        if (profile?.nativeRetrievalRef) return NativeRetrievalService.deleteByHashes({ profile, collectionId, hashes, signal });
         if (!Array.isArray(hashes) || hashes.length === 0) return;
         const resolved = resolveProfile(profile, 'embed');
         if (!resolved) {
@@ -299,7 +306,8 @@ export const EmbeddingService = {
      * @param {string} args.collectionId
      * @param {AbortSignal} [args.signal]
      */
-    async purgeCollection({ collectionId, signal }) {
+    async purgeCollection({ collectionId, signal, profile }) {
+        if (profile?.nativeRetrievalRef) return NativeRetrievalService.purgeCollection({ collectionId, signal, profile });
         await vectorFetch('/api/vector/purge', {
             collectionId: String(collectionId),
         }, signal);
@@ -316,6 +324,7 @@ export const EmbeddingService = {
      * @returns {Promise<Array<{relevance_score: number, [key: string]: any}>>}
      */
     async rerank({ profile, query, documents, topK = 10, signal }) {
+        if (profile?.nativeRetrievalRef) return NativeRetrievalService.rerank({ profile, query, documents, topK, signal });
         const resolved = resolveProfile(profile, 'rerank');
         if (!resolved) {
             throw new Error('Rerank profile not found');

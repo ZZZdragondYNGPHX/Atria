@@ -39,6 +39,7 @@ export function getCommonCredentials(request) {
  * @returns {object} - An object that can be used as `sourceSettings` in functions that take that parameter.
  */
 export function getSourceSettings(source, request) {
+    if (request.nativeRetrieval) return request.nativeRetrieval.settings;
     const credentials = getCommonCredentials(request);
     switch (source) {
         case 'togetherai':

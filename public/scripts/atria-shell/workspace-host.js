@@ -530,10 +530,7 @@ export function createAtriaWorkspaceHost({
     function openRuntimeSection(section = 'routes', resourceId = '') {
         const requestedId = String(section || 'routes').trim().toLowerCase();
         if (requestedId === 'profiles' || requestedId === 'presets') return openLibrarySection('generation-profiles');
-        // Retrieval used to be a duplicate Runtime tab pointing at the same
-        // Connection Manager. Keep callers compatible while routing to the
-        // single Connections surface.
-        const aliases = { overview: 'routes', roles: 'routes', retrieval: 'connections', presets: 'profiles', capabilities: 'models' };
+        const aliases = { overview: 'routes', roles: 'routes', presets: 'profiles', capabilities: 'models' };
         const id = aliases[requestedId] || requestedId;
         const item = RUNTIME_SECTIONS.find(candidate => candidate.id === id) || RUNTIME_SECTIONS[0];
         if (navigation.getRoute().domain !== 'runtime') {

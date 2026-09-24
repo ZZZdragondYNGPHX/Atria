@@ -1,8 +1,10 @@
+import { mountMemoryRetrieval } from '../../native/retrieval-picker.js';
 import { MEMORY_ROUTE_TASKS, normalizeMemoryRoutes } from './native-routing.js';
 import { mountRuntimeRoutePicker } from '../../native/runtime-route-picker.js';
 import { translateShellText as tl } from '../../atria-shell/localization.js';
 
 export function mountMemoryRouting(parent, service) {
+    mountMemoryRetrieval(parent, service);
     const doc = parent.ownerDocument;
     const form = doc.createElement('form'); form.className = 'workspace-memory-overview-section'; parent.append(form);
     const heading = doc.createElement('h3'); heading.textContent = tl('Memory Runtime Routes'); form.append(heading);

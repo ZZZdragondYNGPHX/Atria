@@ -29,7 +29,7 @@ export async function getOllamaBatchVector(texts, apiUrl, model, keep, directori
     const headers = {};
     if (reverseProxy && proxyPassword) {
         headers['Authorization'] = `Bearer ${proxyPassword}`;
-    } else {
+    } else if (!settings.native) {
         setAdditionalHeadersByType(headers, TEXTGEN_TYPES.OLLAMA, baseUrl, directories, secretId);
     }
 

@@ -49,7 +49,7 @@ export async function getNomicAIBatchVector(texts, source, directories, sourceSe
 
     const body = {
         texts: texts,
-        model: config.model,
+        model: settings.native ? settings.model : config.model,
     };
 
     if (request) attachInspectionEndpoint(request, url, key, body);

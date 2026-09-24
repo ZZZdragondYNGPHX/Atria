@@ -73,42 +73,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 先补齐 Orchestrator / Memory 的 Native route 与 provider ownership，再清理兼容 preset vocabulary。
 
-## NUX-014 — Memory embedding / rerank provider ownership remains outside Native Runtime
-
-**New finding in the post-redesign re-audit**
-
-**Current evidence**
-
-Memory Graph's vector embedding and rerank configuration still relies on Connection Manager embedding/rerank profiles and their provider/model/endpoint/secret ownership.
-
-At the same time, Memory's first-party LLM generation path now uses Native Runtime through `role.memory`.
-
-**Impact**
-
-One Native Memory feature is split across two provider/configuration authorities:
-
-- Native Runtime for generation;
-- compatibility-era Connection Manager profiles for embedding/rerank.
-
-Users must understand both models, and Native Memory cannot be fully configured from the Native Runtime/Library product model.
-
-**Acceptance**
-
-Define one deliberate Native ownership model for embedding/rerank configuration.
-
-If embedding/rerank remain a separate resource family, make that separation first-class in Atria and expose it through Native product UI rather than requiring compatibility-only management. Do not silently copy Secrets or provider state between authorities.
-
-**Evidence**
-
-- `public/scripts/extensions/memory-graph/main.js`
-- `public/scripts/embedding-service.js`
-- `public/scripts/extensions/connection-manager/embed-rerank.js`
-- `docs/features/memory-graph.md`
-
----
-
----
-
 ## NUX-015 — Orchestrator and Memory still persist compatibility-era preset names
 
 **Current evidence**

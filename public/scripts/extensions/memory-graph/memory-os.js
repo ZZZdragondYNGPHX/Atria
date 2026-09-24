@@ -24,7 +24,7 @@ export function createMemoryVectorAdapter(legacy) {
         sync: (store, profile, chatKey, options) => legacy.syncVectorIndex(store, profile, chatKey, options),
         search: (query, store, profile, chatKey, options) => legacy.findSimilarNodes(query, store, profile, chatKey, options),
         removeByHashes: (collectionId, profile, hashes, signal) => legacy.deleteVectorItems(collectionId, profile, hashes, signal),
-        purge: (collectionId, signal) => legacy.purgeVectorCollection(collectionId, signal),
+        purge: (collectionId, signal, profile) => legacy.purgeVectorCollection(collectionId, signal, profile),
     });
 }
 

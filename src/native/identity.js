@@ -25,6 +25,7 @@ export const NATIVE_ID_FAMILIES = Object.freeze({
     promptModule: 'pmod',
     promptProgram: 'pprog',
     runtimeRoute: 'route',
+    retrievalProfile: 'retr',
 });
 
 const FAMILY_BY_PREFIX = Object.freeze(Object.fromEntries(

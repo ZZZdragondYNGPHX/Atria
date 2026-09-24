@@ -1,3 +1,4 @@
+import { renderRetrievalWorkspace } from './retrieval-workspace.js';
 import { translateShellText } from '../atria-shell/localization.js';
 import { runtimeRequest, runtimeRemediation, getRuntimeEvidence } from './runtime-client.js';
 import { nativeSessionRuntime } from './session-runtime.js';
@@ -73,6 +74,16 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         return input;
     }
     function heading(title, description) { const header = node('header'); header.className = 'atri-runtime-heading'; node('h2', title, header); node('p', description, header).className = 'atri-runtime-description'; }
+    function bindEditorKeyboard(back) {
+        root.onkeydown = event => {
+            if (event.key === 'Tab' && root.getAttribute('role') === 'dialog') {
+                const controls = [...root.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), summary')].filter(control => control.getClientRects().length);
+                const first = controls[0]; const last = controls.at(-1);
+                if (event.shiftKey && doc.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && doc.activeElement === last) { event.preventDefault(); first.focus(); }
+            }
+            if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (!back.disabled) back.click(); }
+        };
+    }
     function group(form, title, description) {
         const section = node('fieldset', undefined, form); section.className = 'atri-runtime-group';
         node('legend', title, section);
@@ -437,14 +448,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 }
             } finally { save.removeAttribute('aria-busy'); save.disabled = saved; back.disabled = false; }
         });
-        root.onkeydown = event => {
-            if (event.key === 'Tab' && root.getAttribute('role') === 'dialog') {
-                const controls = [...root.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), summary')];
-                const first = controls[0]; const last = controls.at(-1);
-                if (event.shiftKey && doc.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && doc.activeElement === last) { event.preventDefault(); first.focus(); }
-            }
-            if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); if (!back.disabled) back.click(); }
-        };
+        bindEditorKeyboard(back);
         title.focus();
     }
     function evidence(result, parent) {
@@ -537,6 +541,10 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const sequence = ++loadingSequence;
         root.replaceChildren(createAtriaStatePanel(doc, 'loading', { title: translateShellText('Loading Native Runtime…') }));
         try {
+            if (section === 'retrieval') {
+                await renderRetrievalWorkspace({ root, node, field, group, button, notice, bindEditorKeyboard, signal: controller.signal, enter: () => { activeEditor = 'retrieval'; root.dataset.editor = 'true'; adaptEditor(); }, leave: () => { activeEditor = null; root.onkeydown = null; delete root.dataset.editor; restoreShell(); if (root.parentNode !== body) body.append(root); root.removeAttribute('role'); root.removeAttribute('aria-modal'); root.removeAttribute('aria-label'); } });
+                return;
+            }
             const configuration = await runtimeRequest('/configuration', { signal: controller.signal });
             const resources = section === 'routes' ? await runtimeRequest('/resources', { signal: controller.signal }) : [];
             if (disposed || sequence !== loadingSequence) return;

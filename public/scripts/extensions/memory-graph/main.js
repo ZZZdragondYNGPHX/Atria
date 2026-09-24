@@ -1,3 +1,4 @@
+import { normalizeMemoryRetrieval } from '../../native/retrieval-contracts.js';
 import { memoryRouteOptions, normalizeMemoryRoutes } from './native-routing.js';
 import { legacyPromptNames, nativePromptUiActive, nativeRouteOptions } from '../../native/generation-compat.js';
 import { isNativeGenerationFailure, executeFirstPartyGeneration, firstPartyGenerationAvailable } from '../../native/generation-compat.js';
@@ -87,8 +88,6 @@ import {
 } from './vector-index.js';
 import {
     renderProfileSelect,
-    upsertEmbeddingProfile,
-    upsertRerankProfile,
 } from '../connection-manager/embed-rerank.js';
 
 // Symmetric relations collapse direction: A→B and B→A merge into a single
@@ -568,65 +567,6 @@ function cloneDefault(value) {
     return Array.isArray(value) || typeof value === 'object' ? structuredClone(value) : value;
 }
 
-/**
- * One-time migration that lifts memory-graph's private `embeddingSource` /
- * `embeddingModel` / `rerankSource` / `rerankModel` fields into shared
- * Connection Manager profiles. Subsequent runs short-circuit when the new
- * `embeddingProfileId` / `rerankProfileId` ids are already present.
- */
-function migrateLegacyProfileSettings() {
-    const s = extension_settings[MODULE_NAME];
-    if (!s || typeof s !== 'object') return;
-
-    let changed = false;
-
-    if (!s.embeddingProfileId && (s.embeddingSource || s.embeddingModel)) {
-        const source = String(s.embeddingSource || 'transformers').trim();
-        const model = String(s.embeddingModel || '').trim();
-        const baseName = `Memory Graph: ${source}${model ? ' ' + model : ''}`.trim();
-        const profile = {
-            mode: 'embed',
-            name: baseName,
-            source,
-        };
-        if (model) profile.model = model;
-        const stored = upsertEmbeddingProfile(profile);
-        if (stored) {
-            s.embeddingProfileId = stored.id;
-            changed = true;
-        }
-    }
-
-    if (!s.rerankProfileId && s.rerankSource) {
-        const source = String(s.rerankSource).trim();
-        const model = String(s.rerankModel || '').trim();
-        const baseName = `Memory Graph rerank: ${source}${model ? ' ' + model : ''}`.trim();
-        const profile = {
-            mode: 'rerank',
-            name: baseName,
-            source,
-        };
-        if (model) profile.model = model;
-        const stored = upsertRerankProfile(profile);
-        if (stored) {
-            s.rerankProfileId = stored.id;
-            changed = true;
-        }
-    }
-
-    // Drop the now-orphaned legacy fields so they don't drift back into use.
-    if ('embeddingSource' in s) { delete s.embeddingSource; changed = true; }
-    if ('embeddingModel' in s) { delete s.embeddingModel; changed = true; }
-    if ('rerankSource' in s) { delete s.rerankSource; changed = true; }
-    if ('rerankModel' in s) { delete s.rerankModel; changed = true; }
-
-    if (changed) {
-        try {
-            saveSettingsDebounced();
-        } catch { /* settings layer not yet available — caller saves later. */ }
-    }
-}
-
 export function getDefaultNodeTypeSchema() {
     return structuredClone(defaultNodeTypeSchema);
 }
@@ -800,11 +740,6 @@ function ensureSettings() {
             extension_settings[MODULE_NAME][key] = cloneDefault(value);
         }
     }
-
-    // Legacy migration: convert old embeddingSource/embeddingModel + rerankSource/rerankModel
-    // into Connection Manager profiles so memory-graph stops reading the vectors plugin's
-    // private settings.
-    migrateLegacyProfileSettings();
 
     if (extension_settings[MODULE_NAME].schemaIterationApiPresetName !== undefined) {
         extension_settings[MODULE_NAME].requestApiPresetName ||= String(extension_settings[MODULE_NAME].schemaIterationApiPresetName || '');
@@ -4596,7 +4531,7 @@ async function resetMemoryGraphForWorkspace(context) {
     await clearAllMemoryLorebookProjection(context, settings);
     try {
         const vectorConfig = getVectorConfigFromSettings(settings);
-        if (vectorConfig) await getMemoryVectorStore(settings).purge(buildCollectionId(chatKey));
+        if (vectorConfig) await getMemoryVectorStore(settings).purge(buildCollectionId(chatKey), undefined, vectorConfig);
     } catch (vectorError) {
         console.warn(`[${MODULE_NAME}] Failed to purge vector collection on reset`, vectorError);
     }
@@ -4613,6 +4548,12 @@ async function resetMemoryGraphForWorkspace(context) {
 
 export function getMemoryWorkspacePorts(context) {
     return {
+        getNativeRetrieval: () => normalizeMemoryRetrieval(getSettings().nativeRetrieval),
+        setNativeRetrieval: async input => {
+            const value = normalizeMemoryRetrieval(input); const settings = getSettings(); const previous = settings.nativeRetrieval;
+            settings.nativeRetrieval = value;
+            try { await saveSettings(); } catch (error) { if (settings.nativeRetrieval === value) settings.nativeRetrieval = previous; throw error; }
+        },
         getNativeRoutes: () => normalizeMemoryRoutes(getSettings().nativeRoutes),
         setNativeRoutes: async input => {
             const settings = getSettings(); const previous = settings.nativeRoutes;
@@ -15102,6 +15043,7 @@ function bindUi() {
     root.find('#atria_rpg_memory_rag_use_query_rewrite').prop('checked', Boolean(settings.ragUseQueryRewrite));
 
     function refreshMemoryEmbeddingSelect() {
+        if (nativePromptUiActive()) return;
         const sel = /** @type {HTMLSelectElement} */ (root.find('#atria_rpg_memory_embedding_profile')[0]);
         if (!sel) return;
         renderProfileSelect(sel, 'embed', settings.embeddingProfileId || '');
@@ -15112,6 +15054,7 @@ function bindUi() {
         }
     }
     function refreshMemoryRerankSelect() {
+        if (nativePromptUiActive()) return;
         const sel = /** @type {HTMLSelectElement} */ (root.find('#atria_rpg_memory_rerank_profile')[0]);
         if (!sel) return;
         renderProfileSelect(sel, 'rerank', settings.rerankProfileId || '');

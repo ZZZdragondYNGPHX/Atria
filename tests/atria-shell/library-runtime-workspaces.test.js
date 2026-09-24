@@ -110,8 +110,8 @@ describe('N9 Library / Runtime domain adapters', () => {
         expect(LIBRARY_SECTIONS.map(section => section.id)).toEqual(['works', 'worlds-knowledge', 'prompt-programs', 'prompt-modules', 'generation-profiles', 'skills']);
 
         expect(normalizeRuntimeSection({ child: null })).toBe('routes');
-        expect(normalizeRuntimeSection({ child: { id: 'retrieval' } })).toBe('connections');
-        expect(RUNTIME_SECTIONS.map(section => section.id)).toEqual(['routes', 'models', 'connections', 'diagnostics']);
+        expect(normalizeRuntimeSection({ child: { id: 'retrieval' } })).toBe('retrieval');
+        expect(RUNTIME_SECTIONS.map(section => section.id)).toEqual(['routes', 'models', 'connections', 'retrieval', 'diagnostics']);
     });
 
     test('Works is the default Library authority and does not mount the Character controller', async () => {

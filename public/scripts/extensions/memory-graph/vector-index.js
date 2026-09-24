@@ -1,3 +1,5 @@
+import { NativeRetrievalService, memoryRetrievalProfile } from '../../native/retrieval-client.js';
+import { nativePromptUiActive } from '../../native/generation-compat.js';
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 //
@@ -43,6 +45,7 @@ export {
  * @returns {object|null}
  */
 export function getVectorConfigFromSettings(settings) {
+    if (nativePromptUiActive()) return memoryRetrievalProfile(settings, 'embed');
     const id = String(settings?.embeddingProfileId || '').trim();
     if (!id) return null;
     return getEmbeddingProfileById(id) || null;
@@ -55,6 +58,7 @@ export function getVectorConfigFromSettings(settings) {
  * @returns {object|null}
  */
 export function getRerankProfileFromSettings(settings) {
+    if (nativePromptUiActive()) return memoryRetrievalProfile(settings, 'rerank');
     const id = String(settings?.rerankProfileId || '').trim();
     if (!id) return null;
     return getRerankProfileById(id) || null;
@@ -74,7 +78,7 @@ export function getRerankProfileFromSettings(settings) {
 export async function insertVectorItems(collectionId, profile, items, signal) {
     if (!items?.length) return;
     if (!profile) return;
-    await EmbeddingService.insert({
+    await (profile?.nativeRetrievalRef ? NativeRetrievalService : EmbeddingService).insert({
         profile,
         collectionId,
         items: items.map(item => ({
@@ -99,7 +103,7 @@ export async function insertVectorItems(collectionId, profile, items, signal) {
  */
 export async function queryVectorCollection(collectionId, profile, searchText, topK = 10, threshold = 0.0, signal, includeVectors = false) {
     if (!profile) return [];
-    const response = await EmbeddingService.query({
+    const response = await (profile?.nativeRetrievalRef ? NativeRetrievalService : EmbeddingService).query({
         profile,
         collectionId,
         searchText,
@@ -124,7 +128,7 @@ export async function queryVectorCollection(collectionId, profile, searchText, t
  */
 export async function queryVectorCollectionByVector(collectionId, profile, vector, topK = 10, threshold = 0.0, signal, includeVectors = false) {
     if (!profile) return [];
-    const response = await EmbeddingService.queryByVector({
+    const response = await (profile?.nativeRetrievalRef ? NativeRetrievalService : EmbeddingService).queryByVector({
         profile,
         collectionId,
         vector,
@@ -145,7 +149,7 @@ export async function queryVectorCollectionByVector(collectionId, profile, vecto
 export async function deleteVectorItems(collectionId, profile, hashes, signal) {
     if (!hashes?.length) return;
     if (!profile) return;
-    await EmbeddingService.deleteByHashes({
+    await (profile?.nativeRetrievalRef ? NativeRetrievalService : EmbeddingService).deleteByHashes({
         profile,
         collectionId,
         hashes,
@@ -156,8 +160,8 @@ export async function deleteVectorItems(collectionId, profile, hashes, signal) {
 /**
  * Purge a collection across all sources. Profile-agnostic.
  */
-export async function purgeVectorCollection(collectionId, signal) {
-    await EmbeddingService.purgeCollection({ collectionId, signal });
+export async function purgeVectorCollection(collectionId, signal, profile) {
+    await (profile?.nativeRetrievalRef ? NativeRetrievalService : EmbeddingService).purgeCollection({ collectionId, signal, profile });
 }
 
 /**
@@ -166,7 +170,7 @@ export async function purgeVectorCollection(collectionId, signal) {
 export async function rerankDocuments(query, documents, rerankProfile, topK = 10, signal) {
     if (!rerankProfile) return [];
     const docObjects = (documents || []).map((text, index) => ({ text: String(text || ''), index }));
-    const results = await EmbeddingService.rerank({
+    const results = await (rerankProfile?.nativeRetrievalRef ? NativeRetrievalService : EmbeddingService).rerank({
         profile: rerankProfile,
         query,
         documents: docObjects,
@@ -229,7 +233,7 @@ export async function syncVectorIndex(store, profile, chatId, options = {}) {
             collectionDiff && `collection ${JSON.stringify(state.collectionId)}→${JSON.stringify(collectionId)}`,
         ].filter(Boolean).join(', ');
         console.warn(`[memory-graph/vector-index] purge before rebuild: ${wipeReason} (had ${Object.keys(state.nodeToHash).length} in mirror)`);
-        await purgeVectorCollection(collectionId, signal);
+        await purgeVectorCollection(collectionId, signal, profile);
         state.source = profile.source;
         state.model = profile.model || '';
         state.collectionId = collectionId;
@@ -243,7 +247,7 @@ export async function syncVectorIndex(store, profile, chatId, options = {}) {
     // user data path change). Ask the server what's actually stored instead.
     let remoteHashes = new Set();
     try {
-        const hashList = await EmbeddingService.listHashes({ profile, collectionId, signal });
+        const hashList = await (profile?.nativeRetrievalRef ? NativeRetrievalService : EmbeddingService).listHashes({ profile, collectionId, signal });
         remoteHashes = new Set((hashList || []).map(h => Number(h)));
     } catch (error) {
         console.warn('[memory-graph/vector-index] listHashes failed, treating remote as empty:', error);

@@ -162,6 +162,25 @@ export function getProjectIdFromServiceAccount(serviceAccount) {
  * @returns {Promise<{url: string, headers: object, apiName: string, baseUrl: string, safetySettings: object[]}>} URL, headers, and API name
  */
 export async function getGoogleApiConfig(request, model, endpoint = 'generateContent') {
+    if (request.nativeRetrieval) {
+        const { profile, secret } = request.nativeRetrieval;
+        const baseUrl = profile.endpoint;
+        const headers = { 'Content-Type': 'application/json' };
+        if (profile.source === 'palm') {
+            headers['x-goog-api-key'] = secret;
+            return { url: `${baseUrl}/models/${encodeURIComponent(model)}:${endpoint}`, headers, apiName: 'Google AI Studio', baseUrl, safetySettings: [] };
+        }
+        const mode = profile.options.authMode || 'express';
+        let project = profile.options.projectId;
+        if (mode === 'full') {
+            const account = JSON.parse(secret);
+            project = getProjectIdFromServiceAccount(account);
+            headers.Authorization = `Bearer ${await getAccessToken(await generateJWTToken(account))}`;
+        } else if (mode === 'proxy') headers.Authorization = `Bearer ${secret}`;
+        else headers['x-goog-api-key'] = secret;
+        const prefix = project ? `/projects/${encodeURIComponent(project)}/locations/${encodeURIComponent(profile.options.region || 'us-central1')}` : '';
+        return { url: `${baseUrl}${prefix}/publishers/google/models/${encodeURIComponent(model)}:${endpoint}`, headers, apiName: 'Google Vertex AI', baseUrl, safetySettings: [] };
+    }
     const useVertexAi = request.body.api === 'vertexai';
     const region = request.body.vertexai_region || 'us-central1';
     const apiName = useVertexAi ? 'Google Vertex AI' : 'Google AI Studio';

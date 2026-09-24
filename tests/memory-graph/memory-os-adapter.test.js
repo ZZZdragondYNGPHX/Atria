@@ -75,7 +75,7 @@ describe('Memory OS Phase 1 vector boundary', () => {
         const profile = { source: 'openai' };
         await vectors.removeByHashes('mg_chat', profile, hashes, controller.signal);
         expect(backend.deleteVectorItems).toHaveBeenCalledWith('mg_chat', profile, hashes, controller.signal);
-        await vectors.purge('mg_chat', controller.signal);
-        expect(backend.purgeVectorCollection).toHaveBeenCalledWith('mg_chat', controller.signal);
+        await vectors.purge('mg_chat', controller.signal, profile);
+        expect(backend.purgeVectorCollection).toHaveBeenCalledWith('mg_chat', controller.signal, profile);
     });
 });

@@ -1,6 +1,7 @@
 import { getVersionedModelPromptResourceIdentity, VERSIONED_MODEL_PROMPT_RESOURCE_TYPES } from '../native/model-prompt-runtime/resources.js';
 import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
 import express from 'express';
+import { NativeRetrievalPersistence } from '../native/retrieval-persistence.js';
 import { getStorageEngine } from '../storage/index.js';
 import { getUserDirectories } from '../users.js';
 import { readSecret, SECRET_KEYS, SecretManager } from './secrets.js';
@@ -40,6 +41,14 @@ function services() {
 
 export function createNativeGenerationRouter(getHost = services) {
     const router = express.Router();
+    router.get('/retrieval', async (req, res) => {
+        if (!req.user?.profile?.handle) return res.sendStatus(401);
+        try { res.json(await new NativeRetrievalPersistence({ engine: getStorageEngine() }).list(req.user.profile.handle)); } catch { res.status(500).json({ error: 'native_retrieval_unavailable' }); }
+    });
+    router.post('/retrieval', async (req, res) => {
+        if (!req.user?.profile?.handle) return res.sendStatus(401);
+        try { res.json(await new NativeRetrievalPersistence({ engine: getStorageEngine() }).commit(req.user.profile.handle, req.body)); } catch (error) { res.status(error.code === 'native_immutable_conflict' ? 409 : 400).json({ error: error.code === 'storage_read_only' ? error.code : 'native_retrieval_invalid' }); }
+    });
     router.delete('/configuration/:kind/:id', async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
