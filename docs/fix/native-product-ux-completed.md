@@ -249,4 +249,15 @@ referenced Work deletion with the exact blocking Session, World/Knowledge editin
 resource revision retry, Skills and compact Chinese layouts. Reference-error
 screenshot inspected. Changed-file ESLint and diff check passed.
 
-Group 2 regression in progress before push; next active item is NUX-012.
+### Group 2 regression
+
+All 22 selected Native Runtime/provider/Secret/resource/Product and client suites
+passed: 214 tests, no skips. Real Edge regression passed all 24 scenarios across
+Runtime redesign (10), Library redesign (8), Runtime edit/preview/recovery (4)
+and Library/Studio authoring (2). Viewports covered 320, 390, 900 and 1440px,
+light/dark and Chinese surfaces. Existing optional Stable Diffusion discovery in
+the older fixtures logged localhost:7860 connection failures; all six Runtime/
+authoring tests still passed with no page errors. No external paid-provider,
+physical-device, Docker or Android-build validation is claimed.
+
+Next: Group 3 / NUX-012, following the active backlog order.
