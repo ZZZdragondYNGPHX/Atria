@@ -1,5 +1,5 @@
 import { test, expect } from '@jest/globals';
-import { normalizeKnowledgeDiscovery, validateKnowledgeEditorValue, normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector } from '../../public/scripts/native/knowledge-contracts.js';
+import { normalizeKnowledgeLifecycle, parseKnowledgeRegex, normalizeKnowledgeDiscovery, validateKnowledgeEditorValue, normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector } from '../../public/scripts/native/knowledge-contracts.js';
 import { bindingFor, knowledgeSnapshot } from './helpers/session-fixture.js';
 import { assertKnowledgeEntry, assertKnowledgeBinding } from '../../src/native/world-knowledge.js';
 const condition = { providerId: 'atri_variables', path: ['hp'], operator: 'gt', value: 0 };
@@ -54,4 +54,16 @@ test.each(['semanticHints', 'vectorHints'])('%s is rejected by editor and persis
     expect(() => normalizeKnowledgeDiscovery(discovery)).toThrow('discovery.' + key);
     expect(() => assertKnowledgeEntry({ ...entry(undefined), discovery })).toThrow('discovery.' + key);
     expect(() => validateKnowledgeEditorValue({ entries: [{ discovery }] })).toThrow('entries.0.discovery.' + key);
+});
+
+
+test.each([{ sticky: { turns: 2 } }, { cooldown: -1 }, { delay: 1.5 }, { probability: 101 }, { sticky: null }])('lifecycle rejects unusable values before authoring commit: %j', lifecycle => {
+    expect(() => normalizeKnowledgeLifecycle(lifecycle)).toThrow('KnowledgeEntry.lifecycle');
+    expect(() => assertKnowledgeEntry({ ...entry(undefined), lifecycle })).toThrow('KnowledgeEntry.lifecycle');
+});
+test('regular expressions are validated and preserve explicit flags', () => {
+    expect(parseKnowledgeRegex('/harbor/i').test('HARBOR')).toBe(true);
+    expect(parseKnowledgeRegex('gate.*dusk').test('gate after dusk')).toBe(true);
+    expect(() => normalizeKnowledgeDiscovery({ regex: ['['] })).toThrow('discovery.regex[0]');
+    expect(() => normalizeKnowledgeDiscovery({ regex: ['/port/g'] })).toThrow('discovery.regex[0]');
 });

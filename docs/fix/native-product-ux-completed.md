@@ -465,4 +465,31 @@ passed. The initial FS concurrency test exposed missing isolation and passed aft
 repository serialization. An HTTP test initially used the wrong router mount path;
 the corrected seven-case suite passed.
 
-Next: NUX-020, following the active backlog order.
+### NUX-020
+
+One semantic Knowledge editor now serves Library revision drafts and project-owned
+Studio Knowledge. It covers content/title, discovery, typed scalar state conditions,
+all/any/direct activation, lifecycle, required/related entry selection, exclusive
+groups, target rules, visibility, position/priority and compact-content/budget hints.
+Entries can be added, deleted and reordered while preserving IDs. Referenced entries
+cannot be deleted until their references are explicitly removed; deletion uses the
+existing confirmation. Source remains an advanced escape hatch with retained drafts
+and whole-revision validation. Library revision Review and Studio ChangeSet Apply
+remain the only commit paths.
+
+Lifecycle turn fields now require non-negative integers instead of inert arbitrary
+JSON. Regex discovery validates syntax/flags and preserves regex semantics through
+the temporary downstream adapter. User metadata and unedited content remain intact;
+exact identities are exposed in Details. Existing Library tokens/controls style the
+editor, including 320px layouts and Chinese labels.
+
+Validation: seven focused/adjacent suites passed 108 cases, covering typed fields,
+Source errors/retry, stable identity/reordering, reference blockers, immutable writes
+and Studio integration. Three real Edge scenarios passed: 390px Studio validation,
+World/Knowledge immutable revision creation and retry, and 320px semantic authoring
+without Source including conditions, relations, lifecycle, reorder and confirmed
+delete. Screenshot inspected. Three editor cases passed again after adding the
+compact-content/budget controls. Changed-file ESLint has no errors; existing browser
+matrix conditional-style warnings remain. Diff check passed.
+
+Next: NUX-021, following the active backlog order.

@@ -59,3 +59,23 @@ silently treated as descriptive metadata or forwarded to compatibility retrieval
 Native Memory embedding/rerank resources do not imply a Knowledge retrieval
 consumer. No provider, vector index, inference cost or second authority is created
 by declaring these fields.
+
+## Entry authoring
+
+Library revisions and Studio project-owned Knowledge use the same semantic editor.
+Create, order and delete entries within a detached draft. Entry IDs remain stable
+through reorder; required/related entries are selected by their displayed title.
+Deleting a referenced entry is blocked until the author explicitly removes its
+references. Review validates the whole revision and recomputes its ordered entry
+identity list. Library creates a new immutable revision; Studio continues through
+ChangeSet Review/Apply. Exact entry/revision IDs remain in Details. Advanced Source
+supports opaque metadata and preserves unedited content rather than a second store.
+
+The editor covers content/title, discovery, typed scalar state predicates and
+all/any/direct activation, lifecycle, relations and delivery. Probability is a
+finite percentage from 0–100. Sticky/cooldown/delay are non-negative integer turn
+counts; object-shaped placeholders are rejected. Missing lifecycle values retain
+existing defaults. Regex discovery accepts a JavaScript pattern or `/pattern/flags`
+with `i`, `m`, `s`, `u`; malformed expressions and stateful flags fail validation.
+The temporary delivery adapter preserves these expressions as regexes, never
+silently demotes an authored pattern to a keyword.

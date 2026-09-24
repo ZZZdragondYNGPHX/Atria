@@ -1,5 +1,6 @@
 import { WORLD_INFO_CONDITION_OPERATORS } from '../atri-world-info-state-conditions.js';
 
+export const KNOWLEDGE_CONDITION_OPERATORS = WORLD_INFO_CONDITION_OPERATORS;
 export const KNOWLEDGE_CONDITION_LOGIC = Object.freeze(['all', 'any']);
 const blocked = new Set(['__proto__', 'constructor', 'prototype']);
 const scalar = value => value === null || typeof value === 'string' || typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value));
@@ -80,11 +81,24 @@ export function knowledgeEditorFieldOptions(path) {
     return undefined;
 }
 
-export function validateKnowledgeEditorValue(value) {
-    for (const [index, entry] of (value.entries || []).entries()) {
+export function validateKnowledgeEditorValue(value, { complete = false } = {}) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('Knowledge revision must be an object');
+    if (!Array.isArray(value.entries)) throw new TypeError('entries must be an array');
+    const ids = new Set(value.entries.map(entry => entry?.knowledgeEntryId));
+    if (complete && ids.size !== value.entries.length) throw new TypeError('entries contain duplicate identities');
+    for (const [index, entry] of value.entries.entries()) {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new TypeError('entries.' + index + ' must be an object');
         normalizeKnowledgeDelivery(entry.delivery, 'entries.' + index + '.delivery');
         normalizeKnowledgeDiscovery(entry.discovery, 'entries.' + index + '.discovery');
         normalizeKnowledgeApplicability(entry.applicability);
+        normalizeKnowledgeLifecycle(entry.lifecycle);
+        const relations = normalizeKnowledgeRelations(entry.relations);
+        if (complete) {
+            object(entry, 'entries.' + index, ['knowledgeEntryId', 'content', 'discovery', 'applicability', 'lifecycle', 'relations', 'delivery', 'metadata']);
+            if (!/^kentry_[a-f0-9]{32}$/.test(entry.knowledgeEntryId || '')) throw new TypeError('entries.' + index + '.knowledgeEntryId must be an exact identity');
+            if (typeof entry.content !== 'string' || entry.content.length > 4 * 1024 * 1024) throw new TypeError('entries.' + index + '.content must be text of at most 4 MiB');
+            for (const key of ['requiredEntryIds', 'relatedEntryIds']) for (const id of relations?.[key] || []) if (!ids.has(id)) throw new TypeError('entries.' + index + '.relations.' + key + ' references a missing entry');
+        }
     }
 }
 
@@ -98,7 +112,41 @@ export function normalizeKnowledgeDiscovery(value, field = 'KnowledgeEntry.disco
         const items = value[key];
         if (!Array.isArray(items) || items.some(item => typeof item !== 'string' || !item.length || item.length > 1024)
             || new Set(items).size !== items.length) throw new TypeError(field + '.' + key + ' must contain unique non-empty strings of at most 1024 characters');
+        if (key === 'regex') items.forEach((pattern, index) => { try { parseKnowledgeRegex(pattern); } catch { throw new TypeError(field + '.regex[' + index + '] must be a valid regular expression'); } });
         result[key] = [...items];
     }
     return Object.freeze(result);
+}
+
+
+export function normalizeKnowledgeLifecycle(value, field = 'KnowledgeEntry.lifecycle') {
+    if (value === undefined) return undefined;
+    object(value, field, ['probability', 'sticky', 'cooldown', 'delay']);
+    if (value.probability !== undefined && (typeof value.probability !== 'number' || !Number.isFinite(value.probability) || value.probability < 0 || value.probability > 100)) throw new TypeError(field + '.probability must be between 0 and 100');
+    for (const key of ['sticky', 'cooldown', 'delay']) if (value[key] !== undefined && (!Number.isSafeInteger(value[key]) || value[key] < 0)) throw new TypeError(field + '.' + key + ' must be a non-negative integer turn count');
+    return Object.freeze({ ...value });
+}
+
+export function normalizeKnowledgeRelations(value, field = 'KnowledgeEntry.relations') {
+    if (value === undefined) return undefined;
+    object(value, field, ['requiredEntryIds', 'relatedEntryIds', 'exclusiveGroup']);
+    const result = {};
+    for (const key of ['requiredEntryIds', 'relatedEntryIds']) {
+        if (value[key] === undefined) continue;
+        if (!Array.isArray(value[key]) || value[key].some(id => !/^kentry_[a-f0-9]{32}$/.test(id)) || new Set(value[key]).size !== value[key].length) throw new TypeError(field + '.' + key + ' must contain unique exact entry identities');
+        result[key] = [...value[key]];
+    }
+    if (value.exclusiveGroup !== undefined) {
+        if (typeof value.exclusiveGroup !== 'string' || !value.exclusiveGroup.length || value.exclusiveGroup.length > 256) throw new TypeError(field + '.exclusiveGroup must be a non-empty name of at most 256 characters');
+        result.exclusiveGroup = value.exclusiveGroup;
+    }
+    return Object.freeze(result);
+}
+
+
+export function parseKnowledgeRegex(value) {
+    const literal = /^\/(.*)\/([a-z]*)$/s.exec(value);
+    const flags = literal ? literal[2] : '';
+    if (/[^imsu]/.test(flags)) throw new TypeError('Supported regular expression flags: i, m, s, u');
+    return new RegExp(literal ? literal[1] : value, flags);
 }

@@ -81,33 +81,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 补齐 World / Knowledge 的完整作者工作流；兼容 ABI 清理必须最后执行。
 
-## NUX-020 — KnowledgeEntry lacks a semantic first-class editor
-
-**Current evidence**
-
-The Native contract supports:
-
-- content;
-- discovery: keywords / aliases / regex / semanticHints / vectorHints;
-- applicability;
-- lifecycle;
-- relations;
-- delivery.
-
-Library mostly renders entries read-only. Studio now has a generic nested value editor, but it does not understand Knowledge semantics.
-
-**Impact**
-
-Atria's richer Native Knowledge model is harder to author correctly than a simple lore editor.
-
-**Acceptance**
-
-Provide a KnowledgeEntry editor that understands every supported Native field, including create/delete/reorder, safe defaults, validation, relation selection and exact revision review. Keep Source/JSON only as an Advanced escape hatch.
-
----
-
----
-
 ## NUX-021 — KnowledgeBinding is not a first-class management object
 
 **Current evidence**

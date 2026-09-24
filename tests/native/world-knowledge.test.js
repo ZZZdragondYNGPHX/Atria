@@ -102,9 +102,9 @@ function knowledgeSnapshot() {
                 },
                 lifecycle: {
                     probability: 100,
-                    sticky: { turns: 2 },
-                    cooldown: { turns: 1 },
-                    delay: { turns: 0 },
+                    sticky: 2,
+                    cooldown: 1,
+                    delay: 0,
                 },
                 relations: {
                     requiredEntryIds: [IDs.knowledgeEntryA],

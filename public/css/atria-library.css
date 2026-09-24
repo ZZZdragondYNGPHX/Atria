@@ -14,7 +14,7 @@
 .atri-library-button[aria-busy="true"] { cursor: progress; }
 .atri-library-button:not(:disabled):active:not(:focus-visible) { transform: scale(.97); }
 .atri-library-field { display: grid; gap: 8px; font-size: var(--atri-text-callout); min-width: 0; }
-.atria-app-shell .atri-library-field > input, .atria-app-shell .atri-library-field > select,
+.atria-app-shell .atri-library-field > input, .atria-app-shell .atri-library-field > select, .atria-app-shell .atri-library-field > textarea,
 .atria-app-shell .atri-library-section-picker select { min-width: 0; max-width: 100%; width: 100%; background: var(--atri-surface-2); color: var(--atri-text-primary); border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-md); min-height: 40px; padding: 8px 12px; font: inherit; font-size: max(16px, var(--atri-text-body)); margin: 0; }
 .atri-library-field > input[type="search"] { max-width: 420px; }
 .atri-library-field > input[type="file"] { white-space: normal; }
@@ -187,3 +187,8 @@
 
 .atri-library-revision-editor { display: grid; gap: 20px; }
 .atri-library-revision-editor .atria-studio-field { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+
+.atri-knowledge-editor, .atri-knowledge-fields { display: grid; gap: 20px; min-width: 0; }
+.atri-knowledge-editor textarea { resize: vertical; min-height: 96px; }
+.atri-knowledge-rule { display: grid; gap: 12px; padding-block: 16px; border-bottom: 1px solid var(--atri-separator); }
+.atri-knowledge-editor .atri-library-details[open] > :not(summary) { margin-block: 12px; }

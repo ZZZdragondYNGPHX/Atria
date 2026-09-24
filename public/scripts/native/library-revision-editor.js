@@ -1,5 +1,5 @@
 import { mountStudioValueEditor } from './studio-value-editor.js';
-import { knowledgeEditorFieldOptions, validateKnowledgeEditorValue } from './knowledge-contracts.js';
+import { mountKnowledgeEditor } from './knowledge-editor.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { nativeProductClient as client } from './product-client.js';
 import { el, action, heading, disclosure, feedback, libraryError } from './library-ui.js';
@@ -17,8 +17,8 @@ export function mountLibraryRevisionEditor({ document: doc, root, detail, knowle
     const close = action(doc, section, 'Back to resource', onClose);
     const editor = el(doc, 'div', '', undefined, section);
     const review = el(doc, 'section', 'atri-library-section', undefined, section); review.hidden = true;
-    mountStudioValueEditor({ document: doc, root: editor, value, label: knowledge ? 'Knowledge revision JSON' : 'World revision JSON',
-        ...(knowledge ? { fieldOptions: knowledgeEditorFieldOptions, validate: validateKnowledgeEditorValue } : {}),
+    const mountEditor = knowledge ? mountKnowledgeEditor : mountStudioValueEditor;
+    mountEditor({ document: doc, root: editor, value, label: knowledge ? 'Knowledge revision JSON' : 'World revision JSON',
         onReview: draft => {
             editor.hidden = true; review.hidden = false; review.replaceChildren();
             el(doc, 'h3', '', tl('Review revision'), review);

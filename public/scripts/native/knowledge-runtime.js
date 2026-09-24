@@ -1,4 +1,4 @@
-import { normalizeKnowledgeDiscovery, normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector } from './knowledge-contracts.js';
+import { parseKnowledgeRegex, normalizeKnowledgeLifecycle, normalizeKnowledgeRelations, normalizeKnowledgeDiscovery, normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector } from './knowledge-contracts.js';
 import {
     WORLD_INFO_CONDITION_RESULT,
     evaluateWorldInfoStateConditions,
@@ -223,6 +223,8 @@ export function compileNativeKnowledgePlan(snapshot, options = {}) {
         for (const [sourceEntryIndex, entry] of (source.entries ?? []).entries()) {
             normalizeKnowledgeDelivery(entry.delivery);
             normalizeKnowledgeDiscovery(entry.discovery);
+            normalizeKnowledgeLifecycle(entry.lifecycle);
+            normalizeKnowledgeRelations(entry.relations);
             const candidate = {
                 identity: [
                     binding.knowledgeBindingId,
@@ -386,7 +388,7 @@ export function knowledgePlanToWorldInfoEntries(plan) {
         const keys = [
             ...(discovery.keywords ?? []),
             ...(discovery.aliases ?? []),
-            ...(discovery.regex ?? []),
+            ...(discovery.regex ?? []).map(pattern => parseKnowledgeRegex(pattern).toString()),
         ].map(String).filter(Boolean);
         const relations = entry.relations ?? {};
         return {

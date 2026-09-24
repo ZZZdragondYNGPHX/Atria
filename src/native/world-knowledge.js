@@ -1,4 +1,4 @@
-import { normalizeKnowledgeDiscovery, normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector, KNOWLEDGE_TARGET_KINDS } from '../../public/scripts/native/knowledge-contracts.js';
+import { normalizeKnowledgeLifecycle, normalizeKnowledgeRelations, normalizeKnowledgeDiscovery, normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector, KNOWLEDGE_TARGET_KINDS } from '../../public/scripts/native/knowledge-contracts.js';
 import { assertNativeId } from './identity.js';
 
 export const KNOWLEDGE_BINDING_MODES = Object.freeze(['augment', 'override']);
@@ -115,50 +115,6 @@ function optionalJsonObject(value, field) {
     return cloneJson(plain(value, field), field);
 }
 
-function assertLifecycle(value) {
-    if (value === undefined) return undefined;
-    plain(value, 'KnowledgeEntry.lifecycle');
-    assertOnlyKeys(value, new Set(['probability', 'sticky', 'cooldown', 'delay']), 'KnowledgeEntry.lifecycle');
-    if (
-        value.probability !== undefined
-        && (
-            typeof value.probability !== 'number'
-            || !Number.isFinite(value.probability)
-            || value.probability < 0
-            || value.probability > 100
-        )
-    ) {
-        throw new TypeError('KnowledgeEntry.lifecycle.probability must be between 0 and 100');
-    }
-    return Object.freeze({
-        ...(value.probability === undefined ? {} : { probability: value.probability }),
-        ...(value.sticky === undefined ? {} : { sticky: cloneJson(value.sticky, 'KnowledgeEntry.lifecycle.sticky') }),
-        ...(value.cooldown === undefined ? {} : { cooldown: cloneJson(value.cooldown, 'KnowledgeEntry.lifecycle.cooldown') }),
-        ...(value.delay === undefined ? {} : { delay: cloneJson(value.delay, 'KnowledgeEntry.lifecycle.delay') }),
-    });
-}
-
-function assertRelations(value) {
-    if (value === undefined) return undefined;
-    plain(value, 'KnowledgeEntry.relations');
-    assertOnlyKeys(
-        value,
-        new Set(['requiredEntryIds', 'relatedEntryIds', 'exclusiveGroup']),
-        'KnowledgeEntry.relations',
-    );
-    return Object.freeze({
-        ...(value.requiredEntryIds === undefined ? {} : {
-            requiredEntryIds: uniqueNativeIds(value.requiredEntryIds, 'knowledgeEntry', 'KnowledgeEntry.relations.requiredEntryIds'),
-        }),
-        ...(value.relatedEntryIds === undefined ? {} : {
-            relatedEntryIds: uniqueNativeIds(value.relatedEntryIds, 'knowledgeEntry', 'KnowledgeEntry.relations.relatedEntryIds'),
-        }),
-        ...(value.exclusiveGroup == null ? {} : {
-            exclusiveGroup: text(value.exclusiveGroup, 'KnowledgeEntry.relations.exclusiveGroup', { maxLength: 256 }),
-        }),
-    });
-}
-
 export function assertWorld(value) {
     noLegacyWorldKnowledgeIdentity(value, 'World');
     assertOnlyKeys(
@@ -269,8 +225,8 @@ export function assertKnowledgeEntry(value) {
         content: text(value.content, 'KnowledgeEntry.content', { allowEmpty: true, maxLength: 4 * 1024 * 1024 }),
         ...(value.discovery === undefined ? {} : { discovery: normalizeKnowledgeDiscovery(value.discovery) }),
         ...(value.applicability === undefined ? {} : { applicability: normalizeKnowledgeApplicability(value.applicability) }),
-        ...(value.lifecycle === undefined ? {} : { lifecycle: assertLifecycle(value.lifecycle) }),
-        ...(value.relations === undefined ? {} : { relations: assertRelations(value.relations) }),
+        ...(value.lifecycle === undefined ? {} : { lifecycle: normalizeKnowledgeLifecycle(value.lifecycle) }),
+        ...(value.relations === undefined ? {} : { relations: normalizeKnowledgeRelations(value.relations) }),
         ...(value.delivery === undefined ? {} : { delivery: normalizeKnowledgeDelivery(value.delivery) }),
         metadata: value.metadata === undefined ? {} : optionalJsonObject(value.metadata, 'KnowledgeEntry.metadata'),
     });

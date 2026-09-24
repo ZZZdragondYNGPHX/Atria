@@ -1,4 +1,5 @@
-import { knowledgeEditorFieldOptions, validateKnowledgeEditorValue } from './knowledge-contracts.js';
+import { mountKnowledgeEditor } from './knowledge-editor.js';
+import { validateKnowledgeEditorValue } from './knowledge-contracts.js';
 import { mountStudioValueEditor } from './studio-value-editor.js';
 import { createAtriaShellEnvironment } from '../atria-shell/environment.js';
 import { mountStudioPromptTools } from './prompt-authoring.js';
@@ -406,8 +407,8 @@ function renderCollectionEditor(documentRef, body, state, view, stageProject) {
     });
     body.append(field(documentRef, title, chooser));
 
-    mountStudioValueEditor({ document: documentRef, root: body, value: items[index], label: title + ' resource JSON',
-        ...(view === 'knowledge' ? { fieldOptions: knowledgeEditorFieldOptions, validate: validateKnowledgeEditorValue } : {}),
+    const mountEditor = view === 'knowledge' ? mountKnowledgeEditor : mountStudioValueEditor;
+    mountEditor({ document: documentRef, root: body, value: items[index], label: title + ' resource JSON',
         onReview: parsed => stageProject(normalizeCollectionPatch(state.source, view, index, parsed), `Update ${title} resource`),
     });
 }
