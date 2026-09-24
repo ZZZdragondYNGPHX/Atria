@@ -29,13 +29,13 @@ test('Memory tasks use independent exact routes and the shared schema runner sen
 });
 
 test('Memory routing save errors preserve selected task routes for retry', async () => {
-    globalThis.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes: [{ runtimeRouteId: ref(1).runtimeRouteId, role: 'role.memory', displayName: 'Memory model' }] }) }));
+    globalThis.fetch = jest.fn(async url => ({ ok: true, json: async () => url.endsWith('/retrieval') ? [] : ({ routes: [{ runtimeRouteId: ref(1).runtimeRouteId, role: 'role.memory', displayName: 'Memory model' }] }) }));
     let fail = true;
-    const service = { getNativeRoutes: () => ({}), setNativeRoutes: jest.fn(async () => { if (fail) throw new Error('offline'); }) };
+    const service = { getNativeRetrieval: () => ({}), setNativeRetrieval: jest.fn(), getNativeRoutes: () => ({}), setNativeRoutes: jest.fn(async () => { if (fail) throw new Error('offline'); }) };
     mountMemoryRouting(document.body, service); await flush();
     const select = document.querySelector('[aria-label="Schema assistance route"]');
     select.value = ref(1).runtimeRouteId; select.dispatchEvent(new Event('change'));
-    const submit = () => document.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+    const submit = () => select.closest('form').dispatchEvent(new Event('submit', { cancelable: true }));
     submit(); await flush();
     expect(document.activeElement.textContent).toContain('Your selections are still here');
     expect(select.value).toBe(ref(1).runtimeRouteId);

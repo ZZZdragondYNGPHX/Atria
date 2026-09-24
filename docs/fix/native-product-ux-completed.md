@@ -431,4 +431,13 @@ Validation: five focused suites passed 98 cases. Real Edge 390px Studio rejected
 both unsupported hint fields while retaining the draft, and accepted a corrected
 ChangeSet for Review. Changed-file lint and diff check passed.
 
+
+Group 4 final regression covered 86 Native/Shell suites: 668 passed cases and
+66 skipped cases (external database-engine cases excluded). The broad run found
+two stale Group 3 fixtures: missing retrievalProfile in the frozen ID list and
+a Memory routing service mock lacking retrieval ports/selecting the first form.
+Both were corrected; their two suites / 27 cases passed. The other 84 suites
+passed in the broad run. Real Edge 390px Knowledge editing, validation/draft
+recovery and ChangeSet Review passed. No live external database validation claimed.
+
 Next: NUX-019, following the active backlog order.

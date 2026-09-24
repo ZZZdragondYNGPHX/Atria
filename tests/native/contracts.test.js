@@ -231,6 +231,7 @@ describe('N0 opaque Native identity', () => {
             promptModule: 'pmod',
             promptProgram: 'pprog',
             runtimeRoute: 'route',
+            retrievalProfile: 'retr',
         });
     });
 
