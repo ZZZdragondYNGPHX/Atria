@@ -137,3 +137,16 @@ ChangeSet Review/Apply path as other human edits. Detach removes only the explic
 project dependency, also via Review/Apply. EntryPoint/World consumers block illegal
 detach and link to their owning editor. World/Knowledge deletion first presents
 reverse-reference blockers; repository checks remain authoritative at write time.
+
+### Promoting session Knowledge
+
+Play Timeline names embedded Knowledge by its content and source session, with entry
+counts and readable excerpts. Exact identities live in Details. Save to Library
+first resolves the destination, offers naming for a new base (or displays the
+existing base name), previews whether the Library head changes, and asks for an
+explicit confirmation. The source Session binding remains session-owned.
+
+Promotion checks a captured Library head, compares entry content as well as revision
+metadata when exact identity already exists, and accepts a stable target Binding ID
+for retry. New Knowledge roots and revisions publish through the existing repository
+transaction. Repeating an already-completed request reuses its Library Binding.

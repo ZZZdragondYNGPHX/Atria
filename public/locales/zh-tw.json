@@ -7129,5 +7129,22 @@
     "Review detach": "審閱解除參照",
     "Exact reference": "精確參照",
     "Unavailable resource": "資源不可用",
-    "Resolve references before deleting": "刪除前請先處理參照"
+    "Resolve references before deleting": "刪除前請先處理參照",
+    "Session Knowledge": "工作階段知識",
+    "From this session": "來自此工作階段",
+    "Current story": "目前故事",
+    "Knowledge entries": "筆知識",
+    "Exact source details": "精確來源詳情",
+    "Library destination": "Library 儲存目標",
+    "Add this exact Knowledge revision to the existing Library resource.": "將此精確 Knowledge 修訂儲存至既有 Library 資源。",
+    "Create a Knowledge Base in your Library from this content.": "依據此內容在 Library 中建立知識庫。",
+    "Your session remains unchanged. A reusable Library binding will be created.": "目前工作階段保持不變，將建立可重用的 Library 綁定。",
+    "This exact revision is already in Library; its current head stays unchanged.": "此精確修訂已存在於 Library，不改變其目前版本。",
+    "Saving adds this revision and makes it the Library current revision.": "儲存將新增此修訂，並將其設為 Library 目前版本。",
+    "Review promotion": "審閱儲存內容",
+    "Exact destination details": "精確目標詳情",
+    "Back to naming": "返回命名",
+    "Confirm save to Library": "確認儲存至 Library",
+    "Open in Library": "在 Library 中開啟",
+    "This exact session Knowledge snapshot is unavailable.": "此工作階段的精確知識快照無法使用。"
 }

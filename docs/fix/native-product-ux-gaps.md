@@ -81,22 +81,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 补齐 World / Knowledge 的完整作者工作流；兼容 ABI 清理必须最后执行。
 
-## NUX-025 — Embedded Knowledge promotion still exposes internal identity instead of content intent
-
-**Current evidence**
-
-Play Timeline lists session-scoped Knowledge using raw `knowledgeBindingId` text.
-
-“Save to my Library” asks only for a Knowledge Base name, then promotes the binding.
-
-**Acceptance**
-
-Show human-readable content/source summary, destination preview and structured naming/confirmation before promotion. Keep raw IDs behind Details.
-
----
-
----
-
 ## NUX-026 — Native Knowledge still projects through the old World Info ABI
 
 **Current evidence**

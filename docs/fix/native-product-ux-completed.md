@@ -568,4 +568,23 @@ scenario passed deletion blockers, owner navigation and Update/Fork/Detach with
 assertions that no project mutation occurs before Apply. Screenshot inspected.
 Changed-file lint and diff checks passed.
 
-Next: NUX-025, following the active backlog order.
+### NUX-025
+
+Play Timeline now presents embedded Knowledge by human name, source story, entry
+count and content excerpts; opaque identities stay in Details. Save to Library
+previews a new or existing destination, provides naming, explains head behavior and
+requires explicit confirmation. Failed saves retain the review draft. Success links
+to the Library resource while leaving Session ownership unchanged.
+
+Promotion validates the captured Library head and compares exact entry content,
+not only revision metadata. New roots/revisions publish atomically through Knowledge
+repository creation, and a stable target Binding identity prevents duplicate retries.
+
+Validation: four focused/adjacent suites passed 26 cases (two optional external DB
+cases skipped), covering save/import parity, content collisions, retry identity,
+UI review and unchanged Session bindings. A real Edge 390px flow passed source and
+destination preview, naming, confirmed promotion and Library navigation. Screenshot
+inspected; one UI case reran after removing the duplicate review action and fixing
+singular count text. Changed-file lint and diff checks passed.
+
+Next: NUX-026, following the active backlog order.

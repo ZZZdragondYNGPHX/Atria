@@ -28,6 +28,19 @@ const SAVE_HARNESSES = [
 
 const digest = value => createHash('sha256').update(value).digest('hex');
 
+test('promotion rejects different content hidden behind the same exact Knowledge revision identity', async () => {
+    const h = await makeTempFsEngineHarness();
+    try {
+        const f = await installFixture(h); const snapshot = knowledgeSnapshot('Session canon'); const binding = bindingFor(snapshot, 'session');
+        const view = await f.core.create(h.handle, { ...f.start, sessionBindings: [binding], sessionKnowledge: [snapshot] });
+        await f.knowledgeRepo.create(h.handle, { ...snapshot.knowledgeBase, currentRevisionId: null });
+        await f.knowledgeRepo.commitRevision(h.handle, snapshot.revision, snapshot.entries.map(entry => ({ ...entry, content: 'Different Library content' })));
+        await expect(f.saveSystem.promoteEmbeddedKnowledge(h.handle, view.session.sessionId, { knowledgeBindingId: binding.knowledgeBindingId })).rejects.toMatchObject({ code: 'native_save_library_revision_conflict' });
+        expect(await f.knowledgeRepo.listBindings(h.handle)).toHaveLength(0);
+        expect((await f.knowledgeRepo.listEntries(h.handle, snapshot.knowledgeBase.knowledgeBaseId, snapshot.revision.knowledgeRevisionId))[0].content).toBe('Different Library content');
+    } finally { await h.cleanup(); }
+});
+
 async function installExactPackage(sourceHarness, targetHarness, sourceServices, targetServices, view) {
     const archive = await sourceServices.assetStore.readBlob(
         sourceHarness.handle,
@@ -425,12 +438,19 @@ describe('N8 .atriasave portability / Checkpoint B', () => {
                 item => item.knowledgeBindingId === binding.knowledgeBindingId,
             ).source.kind).toBe('session');
 
+            const targetBindingId = createNativeId('knowledgeBinding');
+            const promotion = { knowledgeBindingId: binding.knowledgeBindingId, expectedLibraryRevisionId: null, targetBindingId, displayName: 'My canon' };
             const promoted = await other.saveSystem.promoteEmbeddedKnowledge(
                 target.handle,
                 imported.session.sessionId,
-                { knowledgeBindingId: binding.knowledgeBindingId },
+                promotion,
             );
             expect(promoted.binding.source.kind).toBe('library');
+            expect(promoted.knowledgeBase.displayName).toBe('My canon');
+            const retry = await other.saveSystem.promoteEmbeddedKnowledge(target.handle, imported.session.sessionId, promotion);
+            expect(retry.binding.knowledgeBindingId).toBe(targetBindingId);
+            expect(await other.knowledgeRepo.listBindings(target.handle)).toHaveLength(1);
+            await expect(other.saveSystem.promoteEmbeddedKnowledge(target.handle, imported.session.sessionId, { ...promotion, targetBindingId: createNativeId('knowledgeBinding') })).rejects.toMatchObject({ code: 'native_write_conflict' });
             expect(await other.knowledgeRepo.get(
                 target.handle,
                 library.knowledgeBase.knowledgeBaseId,

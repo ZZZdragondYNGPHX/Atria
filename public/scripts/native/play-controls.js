@@ -1,3 +1,4 @@
+import { mountEmbeddedKnowledgePromotion } from './embedded-knowledge-promotion.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import {
     arrayBufferToBase64,
@@ -313,31 +314,7 @@ export function mountNativePlayControls({
                 const embeddedTitle = documentRef.createElement('h4');
                 embeddedTitle.textContent = tl('Embedded Knowledge');
                 drawerBody.append(embeddedTitle);
-                for (const binding of embedded) {
-                    const row = documentRef.createElement('div');
-                    row.className = 'atria-native-play-drawer__row';
-                    row.dataset.atriaEmbeddedKnowledge = binding.knowledgeBindingId;
-                    const label = documentRef.createElement('span');
-                    label.textContent = binding.knowledgeBindingId;
-                    const promote = actionButton(documentRef, 'Save to my Library', async () => {
-                        promote.disabled = true;
-                        const displayName = await ask('Knowledge Base name');
-                        if (displayName === false || displayName === null) { promote.disabled = false; return; }
-                        try {
-                            await nativeProductClient.promoteKnowledge(detail.snapshot.session.sessionId, {
-                                revisionId: detail.snapshot.revision.revisionId,
-                                knowledgeBindingId: binding.knowledgeBindingId,
-                                displayName,
-                            });
-                            promote.textContent = tl('Saved to Library');
-                        } catch (error) {
-                            status.textContent = error?.message || String(error);
-                            promote.disabled = false;
-                        }
-                    });
-                    row.append(label, promote);
-                    drawerBody.append(row);
-                }
+                for (const binding of embedded) mountEmbeddedKnowledgePromotion({ document: documentRef, root: drawerBody, detail, binding, host: globalThis.Atria?.shell?.getWorkspaceHost?.() });
             }
 
             const timelineTitle = documentRef.createElement('h4');

@@ -7574,5 +7574,22 @@
     "Review detach": "审阅解除引用",
     "Exact reference": "精确引用",
     "Unavailable resource": "资源不可用",
-    "Resolve references before deleting": "删除前请先处理引用"
+    "Resolve references before deleting": "删除前请先处理引用",
+    "Session Knowledge": "会话知识",
+    "From this session": "来自此会话",
+    "Current story": "当前故事",
+    "Knowledge entries": "条知识",
+    "Exact source details": "精确来源详情",
+    "Library destination": "Library 保存目标",
+    "Add this exact Knowledge revision to the existing Library resource.": "将此精确 Knowledge 修订保存到已有 Library 资源。",
+    "Create a Knowledge Base in your Library from this content.": "根据此内容在 Library 中创建知识库。",
+    "Your session remains unchanged. A reusable Library binding will be created.": "当前会话保持不变，将创建可复用的 Library 绑定。",
+    "This exact revision is already in Library; its current head stays unchanged.": "此精确修订已存在于 Library，不改变其当前版本。",
+    "Saving adds this revision and makes it the Library current revision.": "保存将添加此修订，并将其设为 Library 当前版本。",
+    "Review promotion": "审阅保存内容",
+    "Exact destination details": "精确目标详情",
+    "Back to naming": "返回命名",
+    "Confirm save to Library": "确认保存到 Library",
+    "Open in Library": "在 Library 中打开",
+    "This exact session Knowledge snapshot is unavailable.": "此会话的精确知识快照不可用。"
 }

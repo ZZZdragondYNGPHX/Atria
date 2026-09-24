@@ -5,7 +5,8 @@ import {
     assertAtriaSave,
 } from './contracts.js';
 import { NativeDependencyError } from './dependency-closure.js';
-import { createNativeId } from './identity.js';
+import { assertNativeId, createNativeId } from './identity.js';
+import { ConflictError } from '../storage/errors.js';
 import {
     buildAtriaSaveContainer,
     inspectAtriaSaveContainer,
@@ -428,6 +429,8 @@ export class NativeSaveSystem {
         revisionId = undefined,
         knowledgeBindingId,
         displayName = undefined,
+        expectedLibraryRevisionId = undefined,
+        targetBindingId = undefined,
     }) {
         const view = await this._core.load(handle, sessionId, { revisionId });
         const binding = view.knowledge.bindings.find(item => item.knowledgeBindingId === knowledgeBindingId);
@@ -443,33 +446,35 @@ export class NativeSaveSystem {
             throw new NativeDependencyError('native_save_embedded_knowledge_missing', { knowledgeBindingId });
         }
         const snapshot = clone(wrapped.snapshot);
+        const promoted = {
+            ...clone(binding),
+            knowledgeBindingId: targetBindingId === undefined ? createNativeId('knowledgeBinding') : assertNativeId(targetBindingId, 'knowledgeBinding'),
+            source: { ...clone(binding.source), kind: 'library' },
+        };
+        const existingBinding = await this._knowledge.getBinding(handle, promoted.knowledgeBindingId);
+        if (existingBinding && hashNativeDocument(existingBinding) !== hashNativeDocument(promoted)) throw new ConflictError('native_write_conflict');
         const existing = await this._knowledge.get(handle, snapshot.knowledgeBase.knowledgeBaseId);
-        if (!existing) {
-            await this._knowledge.create(handle, {
-                ...snapshot.knowledgeBase,
-                displayName: displayName ?? snapshot.knowledgeBase.displayName,
-                currentRevisionId: null,
-            });
-        }
+        if (!existingBinding && expectedLibraryRevisionId !== undefined && (existing?.currentRevisionId ?? null) !== expectedLibraryRevisionId) throw new ConflictError('native_write_conflict');
+        const name = displayName === undefined ? snapshot.knowledgeBase.displayName : String(displayName).trim();
+        if (!name) throw new TypeError('Knowledge Base displayName is required');
         const exact = await this._knowledge.getRevision(
             handle,
             snapshot.knowledgeBase.knowledgeBaseId,
             snapshot.revision.knowledgeRevisionId,
         );
         if (!exact) {
-            await this._knowledge.commitRevision(handle, snapshot.revision, snapshot.entries);
-        } else if (hashNativeDocument(exact) !== hashNativeDocument(snapshot.revision)) {
+            await this._knowledge.commitRevision(handle, snapshot.revision, snapshot.entries, {
+                expectedCurrentRevisionId: existing?.currentRevisionId ?? null,
+                ...(!existing ? { createRoot: { ...snapshot.knowledgeBase, displayName: name, currentRevisionId: null } } : {}),
+            });
+        } else if (hashNativeDocument(exact) !== hashNativeDocument(snapshot.revision)
+            || hashNativeDocument(await this._knowledge.listEntries(handle, snapshot.knowledgeBase.knowledgeBaseId, snapshot.revision.knowledgeRevisionId)) !== hashNativeDocument(snapshot.entries)) {
             throw new NativeDependencyError('native_save_library_revision_conflict', {
                 knowledgeBaseId: snapshot.knowledgeBase.knowledgeBaseId,
                 knowledgeRevisionId: snapshot.revision.knowledgeRevisionId,
             });
         }
-        const promoted = {
-            ...clone(binding),
-            knowledgeBindingId: createNativeId('knowledgeBinding'),
-            source: { ...clone(binding.source), kind: 'library' },
-        };
-        await this._knowledge.saveBinding(handle, promoted);
+        if (!existingBinding) await this._knowledge.saveBinding(handle, promoted, { expectedIntegrity: null });
         return Object.freeze({
             knowledgeBase: await this._knowledge.get(handle, snapshot.knowledgeBase.knowledgeBaseId),
             revision: await this._knowledge.getRevision(

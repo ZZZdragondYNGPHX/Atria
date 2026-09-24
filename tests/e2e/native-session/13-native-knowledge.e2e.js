@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createNativeId } from '../../../src/native/identity.js';
-import { knowledgeSnapshot } from '../../native/helpers/session-fixture.js';
+import { bindingFor, knowledgeSnapshot } from '../../native/helpers/session-fixture.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { disableExtensions } from '../_lib/fixtures.js';
 import { awaitMainUI } from '../_lib/page.js';
@@ -14,6 +14,44 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => { await tearDownServer(server); });
+
+test('Play previews and names embedded Knowledge before confirmed Library promotion at 390px', async ({ page }, info) => {
+    test.setTimeout(180000);
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const snapshot = knowledgeSnapshot('The harbor closes at dusk.'); snapshot.knowledgeBase.displayName = 'Harbor curfew';
+    const binding = bindingFor(snapshot, 'session');
+    const sessionId = await page.evaluate(async ({ snapshot, binding }) => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        const works = await client.listWorks();
+        const created = await client.startWork(works[0].package.packageId, { displayTitle: 'Curfew voyage', sessionBindings: [binding], sessionKnowledge: [snapshot] });
+        await window.Atria.openNativeSession(created.session.sessionId); window.Atria.shell.getWorkspaceHost().openPlay();
+        return created.session.sessionId;
+    }, { snapshot, binding });
+    await page.getByRole('button', { name: 'Timeline', exact: true }).click();
+    const row = page.locator('[data-atria-embedded-knowledge="' + binding.knowledgeBindingId + '"]');
+    await expect(row.getByRole('heading', { name: 'Harbor curfew', exact: true })).toBeVisible();
+    await expect(row).toContainText('The harbor closes at dusk.'); await expect(row).toContainText('Curfew voyage');
+    await row.getByRole('button', { name: 'Save to my Library', exact: true }).click();
+    await row.getByLabel('Knowledge Base name', { exact: true }).fill('My curfew canon');
+    await row.getByRole('button', { name: 'Review promotion', exact: true }).click();
+    await page.screenshot({ path: info.outputPath('promotion-review-390.png') });
+    await row.getByRole('button', { name: 'Confirm save to Library', exact: true }).click();
+    await expect(row).toContainText('Saved to Library');
+    const result = await page.evaluate(async ({ sessionId, baseId }) => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        return { session: await client.getSession(sessionId), library: await client.getKnowledge(baseId) };
+    }, { sessionId, baseId: snapshot.knowledgeBase.knowledgeBaseId });
+    expect(result.library.knowledgeBase.displayName).toBe('My curfew canon');
+    expect(result.library.entries[0].content).toBe('The harbor closes at dusk.');
+    expect(result.session.snapshot.knowledge.bindings.find(item => item.knowledgeBindingId === binding.knowledgeBindingId).source.kind).toBe('session');
+    await row.getByRole('button', { name: 'Open in Library', exact: true }).click();
+    await expect(page.locator('[data-atria-knowledge-detail]').getByRole('heading', { name: 'My curfew canon', exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
 
 test('references navigate owners and Library relationship writes wait for Studio Apply at 390px', async ({ page }, info) => {
     test.setTimeout(180000);
