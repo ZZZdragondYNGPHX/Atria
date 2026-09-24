@@ -120,6 +120,11 @@ repository test suite was run. Agent generation/commit authority is covered by
 existing targeted unit contracts; the browser intentionally exercises unavailable
 Agent recovery without external credentials.
 
+Final cleanup of task-generated local test directories was rejected by automatic
+approval review (`blocked by policy`). Phase 6 test-result directories, isolated
+fixture data, logs and build caches remain local and are not committed. Only the
+selected screenshot evidence is stored on docs.
+
 Selected screenshots are under `phase-6-images/`: overview-dark-1440,
 ui-design-1440, agent-error-1440, inspector-900, overview-light-320, conflict-320,
 review-320, source-error-320, project-list-320, project-loading-320, project-retry-320, studio-zh-large-light-320,

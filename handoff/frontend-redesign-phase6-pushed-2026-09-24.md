@@ -62,6 +62,10 @@ They were read and preserved, excluded from the code commit. Do not reset them.
 The earlier referenced `public/AGENTS.md` was absent; recheck current instructions
 at the next startup.
 
+Task-generated test-result directories, fixture data, logs and build caches remain
+local: automatic approval review rejected recursive cleanup (`blocked by policy`).
+They were not committed; docs contains only selected screenshot evidence.
+
 ## Next
 
 Fetch and verify current main and the retained branch. Read current rules, this
