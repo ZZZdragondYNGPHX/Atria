@@ -238,9 +238,9 @@ migrated with the new design and recorded in the phase log.
 
 ## 8. Delivery phases
 
-Phase 1 is integrated into main. Phase 2 is implemented and pushed on
+Phase 1 is integrated into main. Phases 2 and 3 are implemented and pushed on
 `refactor/atria-product-frontend-redesign`; stop at this checkpoint. Continue
-Phase 3 only after the user says continue. Keep this branch for Phases 2–8;
+Phase 4 only after the user says continue. Keep this branch for Phases 2–8;
 do not merge main or delete the branch at individual phase checkpoints.
 
 1. **Foundations and frame:** tokens, appearance, icon set, shared component
@@ -298,3 +298,44 @@ palette, system typography, focus treatment and appearance resolver.
 
 Evidence: `PHASE-2.md`. This does not redesign Play, Library, Runtime, Studio,
 Agents, Settings, Plugins or Account content.
+
+## 10. Phase 3 Play specification and decisions — 2026-09-24
+
+The foundation and domain direction above remain authoritative. Play presentation
+now lives in `atria-play.css`; the Shell retains viewport, ABI isolation and stage
+ownership rules.
+
+- **Landing:** a typographic invitation, Continue session objects and a Recent
+  works shelf. Covers use the existing icon and semantic palette, selected by a
+  stable package-id hash. No invented artwork, new cover persistence or resource
+  identity is introduced. Loading, missing dependencies, empty and retry states
+  are visible; Browse Library and work covers use WorkspaceHost.
+- **Reading:** restrained actor labels, unboxed narrative at the existing reading
+  width, tonal player turns and centered system notes. Keyed DOM projection keeps
+  committed prose and reader position stable while a transient reply streams.
+  Jump to latest is explicit when the reader moves away from the bottom.
+- **Composer:** auto-growing field with a circular Send/Stop control. Enter adds
+  a paragraph; Ctrl/Cmd+Enter sends except during IME composition. The existing
+  generation ABI remains the only submission path. History/recovery states offer
+  Return to current story / Reload session through existing session authority.
+- **Controls:** Timeline, Context and Save remain visible; retry/re-enter/restart,
+  quick save and load use More. More closes on action, outside interaction and
+  Escape; focus returns to its visible trigger. Save/password/name inputs reuse
+  the shared Popup controller, with pending and result feedback.
+- **Inspector:** Timeline & Saves and Context occupy the existing Dock/compact
+  Sheet without duplicate headings. Technical payloads are disclosed on demand.
+  Request ordering prevents stale Timeline results from replacing Context.
+  Import keeps exact dependency preflight and immutable conflicts: an existing
+  conflicting session is never overwritten to accommodate the UI.
+- **Native Game:** both sidebars use Shell's Dock; modal/drawer anchors are native
+  dialogs with a host-owned Close action, focus/Escape handling and measured
+  viewport limits. Low-specificity form defaults keep unstyled package fields
+  readable while allowing package styles. Full Game retains stage leases; its
+  expandable recovery controls remain outside package content, below the global
+  bar, with pending/error feedback and focus restoration on exit.
+- **Adjacent corrections:** compact Sheet keyboard focus wraps within the Sheet;
+  dialog, More and recovery dismissal joins existing Escape/Back ordering. A
+  dismissed global notice cannot be revived by pointer re-entry during its fade.
+
+Evidence: `PHASE-3.md`. This phase does not redesign Library, Runtime, Build,
+Agents or utilities. SillyTavern migration remains retired.
