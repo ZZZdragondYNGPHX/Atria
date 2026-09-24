@@ -1,4 +1,6 @@
 import { initAccessibility } from './a11y.js';
+import { installAtriaAppearance } from './atria-shell/appearance.js';
+import { createAtriaShellEnvironment } from './atria-shell/environment.js';
 
 /**
  * CRSF token for requests.
@@ -13,7 +15,9 @@ let oauthAvailable = false;
  */
 async function getCsrfToken() {
     const response = await fetch('/csrf-token');
+    if (!response.ok) throw new Error('Cannot connect to Atria. Try again.');
     const data = await response.json();
+    if (!data.token) throw new Error('Could not start a secure sign-in session. Try again.');
     return data.token;
 }
 
@@ -32,7 +36,7 @@ async function getUserList() {
 
     if (!response.ok) {
         const errorData = await response.json();
-        return displayError(errorData.error || 'An error occurred');
+        throw new Error(errorData.error || 'The request could not be completed. Try again.');
     }
 
     if (response.status === 204) {
@@ -96,7 +100,7 @@ async function getRegistrationInfo() {
  * @param {{handle: string, name: string, password: string}} payload
  * @returns {Promise<void>}
  */
-async function submitRegistration(payload) {
+async function submitRegistrationRequest(payload) {
     try {
         const response = await fetch('/api/users/register', {
             method: 'POST',
@@ -118,7 +122,7 @@ async function submitRegistration(payload) {
         }
     } catch (error) {
         console.error('Error registering:', error);
-        displayError(String(error));
+        displayError(error instanceof TypeError ? 'Cannot reach Atria. Check your connection and try again.' : error.message);
     }
 }
 
@@ -127,7 +131,7 @@ async function submitRegistration(payload) {
  * @param {string} handle User handle
  * @returns {Promise<void>}
  */
-async function sendRecoveryPart1(handle) {
+async function sendRecoveryPart1Request(handle) {
     const response = await fetch('/api/users/recover-step1', {
         method: 'POST',
         headers: {
@@ -139,7 +143,7 @@ async function sendRecoveryPart1(handle) {
 
     if (!response.ok) {
         const errorData = await response.json();
-        return displayError(errorData.error || 'An error occurred');
+        throw new Error(errorData.error || 'The request could not be completed. Try again.');
     }
 
     showRecoveryBlock();
@@ -152,7 +156,7 @@ async function sendRecoveryPart1(handle) {
  * @param {string} newPassword New password
  * @returns {Promise<void>}
  */
-async function sendRecoveryPart2(handle, code, newPassword) {
+async function sendRecoveryPart2Request(handle, code, newPassword) {
     const recoveryData = {
         handle,
         code,
@@ -170,10 +174,10 @@ async function sendRecoveryPart2(handle, code, newPassword) {
 
     if (!response.ok) {
         const errorData = await response.json();
-        return displayError(errorData.error || 'An error occurred');
+        throw new Error(errorData.error || 'The request could not be completed. Try again.');
     }
 
-    await performLogin(handle, newPassword);
+    await performLoginRequest(handle, newPassword);
 }
 
 /**
@@ -182,7 +186,7 @@ async function sendRecoveryPart2(handle, code, newPassword) {
  * @param {string} password User's password
  * @returns {Promise<void>}
  */
-async function performLogin(handle, password) {
+async function performLoginRequest(handle, password) {
     const userInfo = {
         handle,
         password,
@@ -200,7 +204,7 @@ async function performLogin(handle, password) {
 
         if (!response.ok) {
             const errorData = await response.json();
-            return displayError(errorData.error || 'An error occurred');
+            throw new Error(errorData.error || 'The request could not be completed. Try again.');
         }
 
         const data = await response.json();
@@ -210,9 +214,34 @@ async function performLogin(handle, password) {
         }
     } catch (error) {
         console.error('Error logging in:', error);
-        displayError(String(error));
+        displayError(error instanceof TypeError ? 'Cannot reach Atria. Check your connection and try again.' : error.message);
     }
 }
+
+let requestPending = false;
+async function runAccountRequest(action) {
+    if (requestPending) return;
+    requestPending = true;
+    document.querySelector('.atri-login').setAttribute('aria-busy', 'true');
+    const buttons = [...document.querySelectorAll('.atri-login button')];
+    buttons.forEach(button => { button.disabled = true; });
+    $('#loginStatus').text('Please wait…').prop('hidden', false);
+    displayError('');
+    try {
+        await action();
+    } catch (error) {
+        displayError(error.message || 'Cannot reach Atria. Check your connection and try again.');
+    } finally {
+        requestPending = false;
+        buttons.forEach(button => { button.disabled = false; });
+        document.querySelector('.atri-login').removeAttribute('aria-busy');
+        $('#loginStatus').prop('hidden', true);
+    }
+}
+const performLogin = (...args) => runAccountRequest(() => performLoginRequest(...args));
+const submitRegistration = (...args) => runAccountRequest(() => submitRegistrationRequest(...args));
+const sendRecoveryPart1 = (...args) => runAccountRequest(() => sendRecoveryPart1Request(...args));
+const sendRecoveryPart2 = (...args) => runAccountRequest(() => sendRecoveryPart2Request(...args));
 
 /**
  * Handles the user selection event.
@@ -240,7 +269,11 @@ async function onUserSelected(user) {
 
     $('#passwordRecoveryBlock').hide();
     $('#passwordEntryBlock').show();
-    $('#loginButton').off('click').on('click', async () => {
+    $('#selectedAccount').text(user.name);
+    $('.userSelect').attr('aria-pressed', 'false');
+    $('#userPassword').val('').trigger('focus');
+    $('#loginForm').off('submit').on('submit', async (event) => {
+        event.preventDefault();
         const password = String($('#userPassword').val());
         await performLogin(user.handle, password);
     });
@@ -249,7 +282,8 @@ async function onUserSelected(user) {
         await sendRecoveryPart1(user.handle);
     });
 
-    $('#sendRecovery').off('click').on('click', async () => {
+    $('#passwordRecoveryBlock').off('submit').on('submit', async (event) => {
+        event.preventDefault();
         const code = String($('#recoveryCode').val());
         const newPassword = String($('#newPassword').val());
         await sendRecoveryPart2(user.handle, code, newPassword);
@@ -264,6 +298,7 @@ async function onUserSelected(user) {
  */
 function displayError(message) {
     $('#errorMessage').text(message);
+    if (message) $('#errorMessage').trigger('focus');
 }
 
 /**
@@ -283,6 +318,7 @@ function redirectToHome() {
 function showRecoveryBlock() {
     $('#passwordEntryBlock').hide();
     $('#passwordRecoveryBlock').show();
+    $('#recoveryCode').trigger('focus');
     displayError('');
 }
 
@@ -292,6 +328,7 @@ function showRecoveryBlock() {
 function onCancelRecoveryClick() {
     $('#passwordRecoveryBlock').hide();
     $('#passwordEntryBlock').show();
+    $('#userPassword').trigger('focus');
     displayError('');
 }
 
@@ -342,6 +379,7 @@ function hideRegisterBlock() {
     }
     $('#oauthLoginBlock').toggle(oauthAvailable);
     $('#registerEntryBlock').show();
+    $('#openRegisterLink').trigger('focus');
     displayError('');
 }
 
@@ -375,7 +413,10 @@ function configureRegistration(registrationPayload) {
     }
 
     $('#openRegisterLink').off('click').on('click', showRegisterBlock);
-    $('#submitRegister').off('click').on('click', onSubmitRegistrationClick);
+    $('#registerBlock').off('submit').on('submit', (event) => {
+        event.preventDefault();
+        void onSubmitRegistrationClick();
+    });
     $('#cancelRegister').off('click').on('click', hideRegisterBlock);
 }
 
@@ -389,13 +430,16 @@ function configureNormalLogin(userList) {
     $('#discreetLoginPrompt').hide();
 
     for (const user of userList) {
-        const userBlock = $('<div></div>').addClass('userSelect');
+        const userBlock = $('<button type="button"></button>').addClass('userSelect').attr('aria-pressed', 'false');
         const avatarBlock = $('<div></div>').addClass('avatar');
-        avatarBlock.append($('<img>').attr('src', user.avatar));
+        avatarBlock.append($('<img>').attr({ src: user.avatar, alt: '', loading: 'lazy' }));
         userBlock.append(avatarBlock);
         userBlock.append($('<span></span>').addClass('userName').text(user.name));
         userBlock.append($('<small></small>').addClass('userHandle').text(user.handle));
-        userBlock.on('click', () => onUserSelected(user));
+        userBlock.on('click', () => {
+            userBlock.attr('aria-pressed', 'true');
+            void onUserSelected(user).then(() => userBlock.attr('aria-pressed', 'true'));
+        });
         $('#userList').append(userBlock);
     }
 }
@@ -410,7 +454,8 @@ function configureDiscreetLogin() {
     $('#userList').hide();
     $('#passwordRecoveryBlock').hide();
     $('#passwordEntryBlock').show();
-    $('#loginButton').off('click').on('click', async () => {
+    $('#loginForm').off('submit').on('submit', async (event) => {
+        event.preventDefault();
         const handle = String($('#userHandle').val());
         const password = String($('#userPassword').val());
         await performLogin(handle, password);
@@ -421,7 +466,8 @@ function configureDiscreetLogin() {
         await sendRecoveryPart1(handle);
     });
 
-    $('#sendRecovery').off('click').on('click', async () => {
+    $('#passwordRecoveryBlock').off('submit').on('submit', async (event) => {
+        event.preventDefault();
         const handle = String($('#userHandle').val());
         const code = String($('#recoveryCode').val());
         const newPassword = String($('#newPassword').val());
@@ -454,37 +500,34 @@ function handleOAuthErrorParam() {
     displayError(messages[error] || 'OAuth login failed.');
 }
 
-(async function () {
-    initAccessibility();
+initAccessibility();
+installAtriaAppearance();
+createAtriaShellEnvironment(document.documentElement);
+$('#cancelRecovery').on('click', onCancelRecoveryClick);
+$('#retryLogin').on('click', initializeLogin);
 
-    csrfToken = await getCsrfToken();
-    const [userList, oauthPayload, registrationPayload] = await Promise.all([
-        getUserList(),
-        getOAuthProviders(),
-        getRegistrationInfo(),
-    ]);
-
-    if (discreetLogin) {
-        configureDiscreetLogin();
-    } else {
-        configureNormalLogin(userList);
+async function initializeLogin() {
+    $('#retryLogin').prop('hidden', true);
+    $('#loginStatus').text('Connecting to Atria…').prop('hidden', false);
+    displayError('');
+    try {
+        csrfToken = await getCsrfToken();
+        const [userList, oauthPayload, registrationPayload] = await Promise.all([
+            getUserList(), getOAuthProviders(), getRegistrationInfo(),
+        ]);
+        $('#userList').empty();
+        if (discreetLogin) configureDiscreetLogin();
+        else configureNormalLogin(userList);
+        $('#emptyAccounts').prop('hidden', discreetLogin || userList.length > 0);
+        configureOAuthButtons(oauthPayload);
+        configureRegistration(registrationPayload);
+        $('#userSelectBlock').prop('hidden', false);
+        handleOAuthErrorParam();
+    } catch (error) {
+        displayError(error.message || 'Cannot reach Atria. Check your connection and try again.');
+        $('#retryLogin').prop('hidden', false);
+    } finally {
+        $('#loginStatus').prop('hidden', true);
     }
-
-    configureOAuthButtons(oauthPayload);
-    configureRegistration(registrationPayload);
-    handleOAuthErrorParam();
-
-    document.getElementById('shadow_popup').style.opacity = '';
-    $('#cancelRecovery').on('click', onCancelRecoveryClick);
-    $(document).on('keydown', (evt) => {
-        if (evt.key === 'Enter' && document.activeElement.tagName === 'INPUT') {
-            if ($('#registerBlock').is(':visible')) {
-                $('#submitRegister').trigger('click');
-            } else if ($('#passwordRecoveryBlock').is(':visible')) {
-                $('#sendRecovery').trigger('click');
-            } else {
-                $('#loginButton').trigger('click');
-            }
-        }
-    });
-})();
+}
+void initializeLogin();

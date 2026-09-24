@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html data-atria-starting="true">
 
 <head>
     <title>Atria</title>
     <base href="/">
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, viewport-fit=cover, initial-scale=1, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <meta name="viewport" content="width=device-width, viewport-fit=cover, initial-scale=1, interactive-widget=resizes-content">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="darkreader-lock">
@@ -51,6 +51,12 @@
     <link rel="stylesheet" type="text/css" href="css/atria-tokens.css">
     <link rel="stylesheet" type="text/css" href="css/atria-components.css">
     <link rel="stylesheet" type="text/css" href="css/atria-shell.css">
+    <link rel="stylesheet" type="text/css" href="css/atria-play.css">
+    <link rel="stylesheet" type="text/css" href="css/atria-library.css">
+    <link rel="stylesheet" type="text/css" href="css/atria-runtime.css">
+    <link rel="stylesheet" type="text/css" href="css/atria-build.css">
+    <link rel="stylesheet" type="text/css" href="css/atria-utilities.css">
+    <link rel="stylesheet" href="css/atria-entry.css">
     <link rel="stylesheet" type="text/css" href="css/immersive.css">
     <link rel="stylesheet" type="text/css" href="css/macros.css">
     <link rel="stylesheet" type="text/css" href="scripts/variable-op-log/panel.css">
@@ -63,7 +69,8 @@
 </head>
 
 <body class="no-blur">
-    <div id="preloader"></div>
+    <div id="preloader" role="status" aria-label="Starting Atria"><div class="atri-startup"><span class="atri-entry-mark" aria-hidden="true">A</span><strong>Atria</strong><span class="atri-entry-progress" aria-hidden="true"></span><span class="atri-startup-status">Preparing your workspace…</span><button class="atri-startup-retry" type="button" hidden>Reload Atria</button></div></div>
+    <script src="scripts/atria-entry-startup.js" defer></script>
     <div id="bg1"></div>
     <div id="character_context_menu" class="hidden">
         <ul>
@@ -6833,11 +6840,11 @@
                     <textarea class="popup-input text_pole result-control auto-select" rows="1" data-result="1" data-result-event="submit"></textarea>
                     <div class="popup-inputs"></div>
                     <div class="popup-controls">
-                        <div class="popup-button-ok menu_button result-control" data-result="1" data-i18n="Delete">Delete</div>
-                        <div class="popup-button-cancel menu_button result-control" data-result="0" data-i18n="Cancel">Cancel</div>
+                        <button type="button" class="popup-button-ok menu_button result-control" data-result="1" data-i18n="Delete">Delete</button>
+                        <button type="button" class="popup-button-cancel menu_button result-control" data-result="0" data-i18n="Cancel">Cancel</button>
                     </div>
                 </div>
-                <div class="popup-button-close right_menu_button fa-solid fa-circle-xmark" data-result="0" title="Close popup" data-i18n="[title]Close popup"></div>
+                <button type="button" aria-label="Close popup" class="popup-button-close right_menu_button fa-solid fa-circle-xmark" data-result="0" title="Close popup" data-i18n="[title]Close popup"></button>
             </dialog>
         </template>
         <div id="shadow_popup">
@@ -8060,84 +8067,11 @@
         </div>
 
         <div id="onboarding_template" class="template_element">
-            <div class="onboarding">
-                <h3 data-i18n="Welcome to Atria!">Welcome to Atria!</h3>
-                <div id="onboarding-UI-language-block" class="flex-container alignItemsBaseline">
-                    <span data-i18n="UI Language">Language:</span>
-                    <select id="onboarding_ui_language_select" class="flex1 margin0">
-                        <option value="en">English</option>
-                    </select>
-                </div>
-                <b data-i18n="Atria is aimed at advanced users.">
-                    Atria is aimed at advanced users.
-                </b>
-                <ul class="justifyLeft marginTopBot5">
-                    <li><span data-i18n="welcome_message_part_1">Read the</span> <a href="https://docs.sillytavern.app/" target="_blank" data-i18n="welcome_message_part_2">Official Documentation</a><span data-i18n="welcome_message_part_3">.</span></li>
-                    <li><span data-i18n="welcome_message_part_4">Type</span> <code>/help</code> <span data-i18n="welcome_message_part_5">in chat for commands and macros.</span></li>
-                    <li><span data-i18n="welcome_message_part_6">Join the</span> <a href="https://discord.gg/sillytavern" data-i18n="Discord server" target="_blank">Discord server</a> <span data-i18n="welcome_message_part_7">for info and announcements.</span></li>
-                </ul>
-                <div class="onboardingMigrationPanel">
-                    <h3 data-i18n="Migrate from SillyTavern">Migrate from SillyTavern</h3>
-                    <div class="justifyLeft onboardingMigrationIntro" data-i18n="Import your existing data before you start chatting.">
-                        Import your existing data before you start chatting.
-                    </div>
-                    <ol class="justifyLeft onboardingMigrationSteps marginTopBot5">
-                        <li data-i18n="Prepare and upload your previous data folder ZIP.">Prepare and upload your previous data folder ZIP.</li>
-                        <li data-i18n="Upload your previous config.yaml if you want to carry over server settings.">Upload your previous config.yaml if you want to carry over server settings.</li>
-                        <li data-i18n="Upload global third-party extensions ZIP if you used server-wide plugins.">Upload global third-party extensions ZIP if you used server-wide plugins.</li>
-                    </ol>
-                    <div class="onboardingMigrationActions flex-container flexWrap flexGap10 marginTopBot5">
-                        <div class="menu_button menu_button_icon onboardingImportDataZipButton">
-                            <i class="fa-fw fa-solid fa-box-archive"></i>
-                            <span data-i18n="Import Data ZIP">Import Data ZIP</span>
-                        </div>
-                        <div class="menu_button menu_button_icon onboardingImportConfigButton">
-                            <i class="fa-fw fa-solid fa-file-lines"></i>
-                            <span data-i18n="Import config.yaml">Import config.yaml</span>
-                        </div>
-                        <div class="menu_button menu_button_icon onboardingImportGlobalExtensionsButton">
-                            <i class="fa-fw fa-solid fa-puzzle-piece"></i>
-                            <span data-i18n="Import Global Extensions ZIP">Import Global Extensions ZIP</span>
-                        </div>
-                    </div>
-                    <div class="onboardingMigrationStatus menu_button_note marginTopBot5"></div>
-                    <form hidden>
-                        <input type="file" class="onboardingImportDataZipInput" accept=".zip,application/zip">
-                        <input type="file" class="onboardingImportConfigInput">
-                        <input type="file" class="onboardingImportGlobalExtensionsInput" accept=".zip,application/zip">
-                    </form>
-                </div>
-                <div class="expander"></div>
-                <div class="textAlignCenter">
-                    <h3 data-i18n="Looking for AI characters?">
-                        Looking for AI characters?
-                    </h3>
-                    <span>
-                        <span class="menu_button menu_button_icon external_import_button">
-                            <i class="fa-solid fa-cloud-arrow-down"></i>
-                            <span data-i18n="onboarding_import">Import</span>
-                        </span>
-                        <span data-i18n="from supported sources or view">
-                            from supported sources or view
-                        </span>
-                        <span class="open_characters_library menu_button menu_button_icon">
-                            <i class="fa-solid fa-image-portrait"></i>
-                            <span data-i18n="Sample characters">Sample characters</span>
-                        </span>
-                    </span>
-                </div>
-                <div class="expander"></div>
-                <h3 data-i18n="Your Persona">
-                    Your Persona
-                </h3>
-                <div class="justifyLeft margin-bot-10px">
-                    <span data-i18n="Before you get started, you must select a persona name.">
-                        Before you get started, you must select a persona name.
-                    </span>
-                    <br>
-                    <span data-i18n="welcome_message_part_8">This can be changed at any time via the</span> <code><i class="fa-solid fa-face-smile"></i></code> <span data-i18n="welcome_message_part_9">icon.</span>
-                </div>
-                <h4 data-i18n="Persona Name:">Persona Name:</h4>
+            <div class="onboarding atri-onboarding">
+                <header><span class="atri-entry-mark" aria-hidden="true">A</span><h1 data-i18n="Welcome to Atria">Welcome to Atria</h1><p data-i18n="A place to play, keep and create interactive stories.">A place to play, keep and create interactive stories.</p></header>
+                <div id="onboarding-UI-language-block"><label for="onboarding_ui_language_select" data-i18n="UI Language">Language</label><select id="onboarding_ui_language_select"><option value="en">English</option></select></div>
+                <div class="atri-onboarding-persona"><label class="atri-persona-label" data-i18n="Persona Name:">Persona name</label><p class="atri-persona-help" data-i18n="Choose the name you’ll use in stories. You can change it later in your persona settings.">Choose the name you’ll use in stories. You can change it later in your persona settings.</p><p class="atri-persona-error" role="alert" hidden data-i18n="Enter a persona name to get started.">Enter a persona name to get started.</p></div>
+                <details class="atri-onboarding-explore"><summary data-i18n="New to Atria?">New to Atria?</summary><p data-i18n="Explore works in Library, continue your stories in Play, or create your own in Build. Configure your AI connection in Runtime when you’re ready.">Explore works in Library, continue your stories in Play, or create your own in Build. Configure your AI connection in Runtime when you’re ready.</p></details>
             </div>
         </div>
         <div id="group_member_template" class="template_element">

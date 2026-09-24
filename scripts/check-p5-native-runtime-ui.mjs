@@ -20,5 +20,7 @@ assert.match(read('src/endpoints/native-generation.js'), /host.library.commit/);
 const service = read('src/native/model-prompt-runtime/generation-service.js');
 assert.ok(service.indexOf('if (preview) return') < service.indexOf('await this._send'));
 assert.match(read('public/scripts/atria-shell/product-search.js'), /host.openRuntimeSection\(section, id\)/);
-assert.match(read('public/css/atria-shell.css'), /atri-runtime\[data-editor\].*position: fixed/);
+assert.match(read('public/css/atria-runtime.css'), /atri-runtime\[data-atria-viewport="compact"\]\[data-editor\].*position: fixed/);
+assert.match(read('public/index.html'), /css\/atria-runtime.css/);
+assert.match(ui, /createAtriaShellEnvironment/);
 console.log('P5 Native Runtime product UI guard passed.');

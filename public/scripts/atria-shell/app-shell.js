@@ -828,6 +828,18 @@ export function createAtriaAppShell({
 
     sheetScrim.addEventListener('click', closeSheet);
     sheetClose.addEventListener('click', closeSheet);
+    sheetPanel.addEventListener('keydown', event => {
+        if (event.key !== 'Tab') return;
+        const nodes = [...sheetPanel.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), summary, a[href], [tabindex="0"]')]
+            .filter(node => node.getClientRects().length && node.tabIndex >= 0);
+        const first = nodes[0];
+        const last = nodes.at(-1);
+        if (event.shiftKey && (documentRef.activeElement === first || !nodes.includes(documentRef.activeElement))) {
+            event.preventDefault(); last?.focus();
+        } else if (!event.shiftKey && documentRef.activeElement === last) {
+            event.preventDefault(); first?.focus();
+        }
+    });
 
     function stepSheet(direction) {
         const current = navigationAuthority.getContext().sheetState;
@@ -897,6 +909,10 @@ export function createAtriaAppShell({
     }
 
     function dismissChildRouteForBack(kind) {
+        // Give the active Workspace controller its transient panels before
+        // consuming the existing Navigation Authority child route (Escape/Back).
+        const transient = new documentRef.defaultView.CustomEvent('atria-workspace-back', { cancelable: true });
+        if (!workspace.dispatchEvent(transient)) return true;
         const route = navigationAuthority.getRoute();
         if (!route.child || route.child.kind !== kind) return false;
         if (navigationAuthority.canGoBackWithinAtria()) {
@@ -932,6 +948,16 @@ export function createAtriaAppShell({
         }
 
         if (event.key !== 'Escape') return;
+        // Native modal frames own their Escape before the inspector or routes.
+        if (documentRef.querySelector('dialog[open]')) return;
+        const playMore = root.querySelector('.atria-play-more[open], .atria-game-recovery-panel[open]');
+        if (playMore) {
+            playMore.open = false;
+            playMore.querySelector('summary')?.focus();
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return;
+        }
 
         const consumeEscape = () => {
             event.preventDefault();

@@ -1,194 +1,122 @@
 import { test, expect } from '@playwright/test';
-
-import {
-    appendConnectionProfile,
-    bootstrapCustomBackend,
-    disableExtensions,
-    markOnboarded,
-} from '../_lib/fixtures.js';
-import { startMockLLM } from '../_lib/mockLLM.js';
-import {
-    abortGenerationViaUI,
-    awaitMainUI,
-    branchFromMessageViaUI,
-    continueViaUI,
-    deleteMessageViaUI,
-    editMessageViaUI,
-    getChatSnapshot,
-    openOptionsAndClick,
-    regenerateViaUI,
-    selectCharacterProgrammatic,
-    sendMessageAndAwaitReply,
-    swipeRightOnLatest,
-} from '../_lib/page.js';
+import { createServer } from 'node:http';
+import { writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
+import { seedGenerationProfiles } from '../../native/helpers/generation-fixture.js';
+import { disableExtensions } from '../_lib/fixtures.js';
+import { awaitMainUI } from '../_lib/page.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
+import { seedNativeSessionDataRoot, createAndOpenNativeSession, snapshotLegacyPersistence } from '../native-session/_helpers.js';
 
-let server;
-let mock;
-
+// N10 retired editable legacy messages/swipes. Protect their Native equivalents
+// through real generation and immutable Session operations, keeping the ABI unique.
+let server, provider, seeded, legacy;
+let reply = 0;
 test.describe.configure({ mode: 'serial' });
+test.use({ actionTimeout: 12000 });
 
 test.beforeAll(async () => {
-    mock = await startMockLLM({ latencyMs: 1500 });
-    server = await startServer({
-        batchKey: 'regression',
-        scenarioId: 'r7b-native-actions',
+    provider = createServer(async (req, res) => {
+        let body = ''; for await (const chunk of req) body += chunk;
+        const input = JSON.parse(body);
+        const message = input.messages?.filter(item => item.role === 'user').at(-1)?.content || '';
+        const chunk = content => 'data: ' + JSON.stringify({ choices: [{ delta: { content } }] }) + '\n\n';
+        res.setHeader('Content-Type', 'text/event-stream');
+        if (String(message).includes('Wait at the gate')) {
+            res.write(chunk('Uncommitted harbour draft'));
+            const timer = setTimeout(() => res.end(chunk(' late result') + 'data: [DONE]\n\n'), 30000);
+            res.on('close', () => clearTimeout(timer));
+        } else res.end(chunk(`Harbour reply ${++reply}. The keeper raises the lantern.`) + 'data: [DONE]\n\n');
     });
-    markOnboarded({ dataRoot: server.dataRoot });
-    disableExtensions({
-        dataRoot: server.dataRoot,
-        names: ['stable-diffusion'],
-    });
-    bootstrapCustomBackend({ dataRoot: server.dataRoot, baseURL: mock.baseURL });
-    appendConnectionProfile({ dataRoot: server.dataRoot, baseURL: mock.baseURL });
+    await new Promise(done => provider.listen(0, '127.0.0.1', done));
+    seeded = await seedNativeSessionDataRoot({ suffix: 'phase8-action-continuity' });
+    const root = resolve(seeded.dataRoot, seeded.handle);
+    const engine = new FsEngine({ directoriesByHandle: () => ({ root, assets: resolve(root, 'assets') }) });
+    await seedGenerationProfiles({ engine, handle: seeded.handle, endpoint: `http://127.0.0.1:${provider.address().port}/v1/chat/completions`, roles: ['narrator'], streaming: true });
+    await engine.close();
+    writeFileSync(resolve(root, 'secrets.json'), JSON.stringify({ api_key_custom: [{ id: 'p4-synthetic-key', value: 'phase8-test-only', active: true, label: 'Synthetic fixture' }], _migrated: true }));
+    disableExtensions({ dataRoot: seeded.dataRoot, names: ['stable-diffusion'] });
+    server = await startServer({ batchKey: 'generation', scenarioId: 'phase8-actions', useExistingDataRoot: seeded.dataRoot });
+    legacy = snapshotLegacyPersistence(seeded.dataRoot);
 });
 
 test.afterAll(async () => {
-    await tearDownServer(server);
-    await mock?.stop();
+    await tearDownServer(server, { removeData: false });
+    await new Promise(done => { provider?.closeAllConnections(); provider?.close(done); });
 });
 
-async function awaitR7BMainUI(page) {
+async function boot(page) {
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/**', route => route.fulfill({ json: [] }));
     await awaitMainUI(page, server.baseURL);
-    await page.waitForFunction(() => (
-        window.Atria?.shell?.isMounted?.()
-        && document.getElementById('atria-native-play-host')?.contains(document.getElementById('sheld'))
-    ), null, { timeout: 15_000 });
+    await createAndOpenNativeSession(page, seeded.start);
+}
+async function stable(page) {
+    expect(await page.evaluate(() => ({
+        chat: document.querySelectorAll('#chat').length,
+        sendForm: document.querySelectorAll('#send_form').length,
+        textarea: document.querySelectorAll('#send_textarea').length,
+        parent: document.getElementById('sheld').parentElement.id,
+        native: document.querySelectorAll('[data-atria-composer="native"]').length,
+    }))).toEqual({ chat: 1, sendForm: 1, textarea: 1, parent: 'atria-native-play-host', native: 1 });
+    expect(snapshotLegacyPersistence(seeded.dataRoot)).toEqual(legacy);
+}
+async function more(page, label) {
+    const toolbar = page.locator('[data-atria-native-play-actions]');
+    await toolbar.locator('summary').click();
+    await toolbar.getByRole('button', { name: label, exact: true }).click();
+}
+async function send(page, text) {
+    const nextReply = reply + 1;
+    const composer = page.locator('[data-atria-composer="native"]');
+    await composer.getByRole('textbox', { name: 'Message', exact: true }).fill(text);
+    await composer.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(page.locator('[data-atria-conversation="native"]')).toContainText(`Harbour reply ${nextReply}`);
+    await expect(composer.getByRole('button', { name: 'Send', exact: true })).toBeVisible();
 }
 
-async function assertSingleNativeOwnership(page) {
-    const state = await page.evaluate(() => {
-        const shell = document.getElementById('atria-app-shell');
-        const stage = document.getElementById('atria-stage');
-        const sheld = document.getElementById('sheld');
-        const chat = document.getElementById('chat');
-        const formSheld = document.getElementById('form_sheld');
-        const sendForm = document.getElementById('send_form');
-        const textarea = document.getElementById('send_textarea');
-        return {
-            sheld: document.querySelectorAll('#sheld').length,
-            chat: document.querySelectorAll('#chat').length,
-            sendForm: document.querySelectorAll('#send_form').length,
-            textarea: document.querySelectorAll('#send_textarea').length,
-            inShell: Boolean(shell?.contains(sheld)),
-            inStage: Boolean(stage?.contains(sheld)),
-            hierarchy: Boolean(
-                chat?.parentElement === sheld
-                && formSheld?.parentElement === sheld
-                && sendForm?.parentElement === formSheld
-                && sendForm?.contains(textarea),
-            ),
-        };
-    });
-    expect(state).toEqual({
-        sheld: 1,
-        chat: 1,
-        sendForm: 1,
-        textarea: 1,
-        inShell: true,
-        inStage: true,
-        hierarchy: true,
-    });
-}
+test('Native send, retry, re-enter, saves and restart preserve immutable history and one ABI', async ({ page }) => {
+    await boot(page);
+    await send(page, 'Read the harbour chart.');
+    const original = await page.evaluate(() => structuredClone(window.Atria.nativeSessionRuntime.snapshot));
+    const previousReply = reply;
+    await more(page, 'Retry Reply');
+    await expect(page.locator('[data-atria-conversation="native"]')).toContainText(`Harbour reply ${previousReply + 1}`);
+    await expect.poll(() => page.evaluate(() => window.Atria.nativeSessionRuntime.snapshot.timeline.length)).toBe(original.timeline.length);
+    await more(page, 'Re-enter Turn');
+    await expect(page.locator('[data-atria-composer="native"] textarea')).toHaveValue('Read the harbour chart.');
+    await expect(page.locator('[data-atria-composer="native"] textarea')).toBeFocused();
+    await send(page, 'Read the northern chart instead.');
+    await more(page, 'Quick Save');
+    await expect(page.locator('.atria-native-play-actions__status')).toContainText('Saved');
+    await page.getByRole('button', { name: 'Timeline', exact: true }).click();
+    const drawer = page.locator('[data-atria-native-play-drawer]');
+    await expect(drawer.locator('[data-atria-save-id]')).toHaveCount(1);
+    await drawer.locator('[data-atria-timeline-message-id]').first().getByRole('button', { name: 'Restart From Here' }).click();
+    await expect(drawer).toBeHidden();
+    await expect.poll(() => page.evaluate(() => window.Atria.nativeSessionRuntime.snapshot.timeline.length)).toBe(1);
+    const history = await page.evaluate(async original => {
+        const response = await fetch('/api/native/session/load', { method: 'POST', headers: window.Atria.getContext().getRequestHeaders(), body: JSON.stringify({ sessionId: original.session.sessionId, revisionId: original.revision.revisionId }) });
+        if (!response.ok) throw new Error(await response.text());
+        return response.json();
+    }, original);
+    expect(history.timeline).toEqual(original.timeline);
+    await stable(page);
+});
 
-test.describe('R7B native Play action continuity', () => {
-    test('send, continue, edit, regenerate, swipe, search, history, branch and delete stay native after reparent', async ({ page }) => {
-        mock.scriptReply('*Seraphina nods.* "R7B-A: native send reached the real generation path."');
-        mock.scriptReply(' "R7B-B: native continue extended the same reply."');
-        mock.scriptReply('*Seraphina resets her answer.* "R7B-C: native regenerate replaced the active answer."');
-        mock.scriptReply('*Seraphina tries another angle.* "R7B-D: native swipe produced another variant."');
-
-        await awaitR7BMainUI(page);
-        await selectCharacterProgrammatic(page, 'Seraphina');
-        await page.waitForFunction(() => document.querySelectorAll('#chat .mes').length >= 1, null, { timeout: 10_000 });
-        await assertSingleNativeOwnership(page);
-
-        const first = await sendMessageAndAwaitReply(page, 'R7B native send check.');
-        expect(first.text).toContain('R7B-A');
-
-        const userId = first.replyId - 1;
-        await editMessageViaUI(page, userId, 'R7B edited user message.');
-        await expect(page.locator(`.mes[mesid="${userId}"] .mes_text`)).toContainText('R7B edited user message');
-
-        await editMessageViaUI(page, first.replyId, 'R7B edited assistant message.');
-        await expect(page.locator(`.mes[mesid="${first.replyId}"] .mes_text`)).toContainText('R7B edited assistant message');
-
-        const beforeContinueCount = await page.locator('#chat .mes').count();
-        const continued = await continueViaUI(page);
-        expect(continued.text).toContain('R7B-B');
-        await expect(page.locator('#chat .mes')).toHaveCount(beforeContinueCount);
-
-        const regenerated = await regenerateViaUI(page);
-        expect(regenerated.text || regenerated).toContain('R7B-C');
-        await expect(page.locator('#chat .mes')).toHaveCount(beforeContinueCount);
-
-        const swiped = await swipeRightOnLatest(page);
-        await page.waitForFunction(({ id, marker }) => {
-            const stop = document.getElementById('mes_stop');
-            const text = document.querySelector(`.mes[mesid="${id}"] .mes_text`)?.textContent || '';
-            return text.includes(marker)
-                && (!stop || getComputedStyle(stop).display === 'none')
-                && document.body.dataset.swiping !== 'true';
-        }, { id: swiped.swipeId, marker: 'R7B-D' }, { timeout: 30_000 });
-        await expect(page.locator(`.mes[mesid="${swiped.swipeId}"] .mes_text`)).toContainText('R7B-D');
-        await assertSingleNativeOwnership(page);
-
-        await openOptionsAndClick(page, 'option_search_chat');
-        await expect(page.locator('#current_chat_tools_panel')).toBeVisible();
-        await page.locator('#current_chat_tools_query').fill('R7B-D');
-        await expect(page.locator('#chat .mes.chat_tools_match_found')).toHaveCount(1);
-        await page.locator('#current_chat_tools_close').click();
-        await expect(page.locator('#current_chat_tools_panel')).toBeHidden();
-
-        await openOptionsAndClick(page, 'option_select_chat');
-        await expect(page.locator('#shadow_select_chat_popup')).toBeVisible();
-        await expect(page.locator('#select_chat_popup')).toBeVisible();
-        await page.locator('#select_chat_cross').click();
-        await expect(page.locator('#shadow_select_chat_popup')).toBeHidden();
-
-        const beforeBranch = await getChatSnapshot(page);
-        const branchAt = Number(await page.locator('#chat .last_mes').getAttribute('mesid'));
-        expect(Number.isInteger(branchAt)).toBe(true);
-        await branchFromMessageViaUI(page, branchAt);
-        await page.waitForFunction(
-            oldId => window.Atria.getContext().getCurrentChatId?.() !== oldId,
-            beforeBranch.chatId,
-            { timeout: 15_000 },
-        );
-        await assertSingleNativeOwnership(page);
-
-        const beforeDeleteCount = await page.locator('#chat .mes').count();
-        const deleteTarget = page.locator('#chat .mes[is_user="true"]').last();
-        const deleteId = Number(await deleteTarget.getAttribute('mesid'));
-        expect(Number.isInteger(deleteId)).toBe(true);
-        await deleteMessageViaUI(page, deleteId);
-        await expect(page.locator('#chat .mes')).toHaveCount(beforeDeleteCount - 1);
-        await assertSingleNativeOwnership(page);
-    });
-
-    test('Stop aborts the one native generation source and the same Composer can send again', async ({ page }) => {
-        mock.scriptReply(
-            '*Seraphina begins a deliberately long reply for the R7B stop check. '
-            + 'The lantern swings, the tide turns, and the sentence keeps going long enough to interrupt safely.',
-        );
-        mock.scriptReply('*Seraphina starts again.* "R7B recovery send succeeded after Stop."');
-
-        await awaitR7BMainUI(page);
-        await selectCharacterProgrammatic(page, 'Seraphina');
-        await page.waitForFunction(() => document.querySelectorAll('#chat .mes').length >= 1, null, { timeout: 10_000 });
-        await assertSingleNativeOwnership(page);
-
-        await page.locator('#send_textarea').fill('R7B stop generation check.');
-        await page.locator('#send_but:not(.displayNone)').waitFor({ state: 'visible', timeout: 30_000 });
-        await page.evaluate(() => document.getElementById('send_but')?.click());
-        await page.locator('#mes_stop').waitFor({ state: 'visible', timeout: 10_000 });
-        await abortGenerationViaUI(page);
-        await page.locator('#mes_stop').waitFor({ state: 'hidden', timeout: 15_000 });
-        await page.waitForFunction(() => document.body.dataset.generating !== 'true', null, { timeout: 15_000 });
-        await assertSingleNativeOwnership(page);
-
-        const recovered = await sendMessageAndAwaitReply(page, 'R7B send after stop.');
-        expect(recovered.text).toContain('R7B recovery send succeeded');
-        await assertSingleNativeOwnership(page);
-    });
+test('Stop drops the draft and the same Native composer can send after navigation', async ({ page }) => {
+    await boot(page);
+    const composer = page.locator('[data-atria-composer="native"]');
+    await composer.getByRole('textbox', { name: 'Message', exact: true }).fill('Wait at the gate');
+    await composer.getByRole('button', { name: 'Send', exact: true }).click();
+    await expect(page.locator('[data-atria-draft]')).toContainText('Uncommitted harbour draft');
+    await composer.getByRole('button', { name: 'Stop', exact: true }).click();
+    await expect(page.locator('[data-atria-draft]')).toHaveCount(0);
+    expect(await page.evaluate(() => window.Atria.nativeSessionRuntime.snapshot.timeline.some(item => item.content.includes('Uncommitted harbour draft')))).toBe(false);
+    await page.evaluate(async () => { const host = window.Atria.shell.getWorkspaceHost(); await host.openUtility('settings'); await host.openPlay(); });
+    const before = reply;
+    await send(page, 'The gate is open now.');
+    await expect(page.locator('[data-atria-conversation="native"]')).toContainText(`Harbour reply ${before + 1}`);
+    await stable(page);
 });

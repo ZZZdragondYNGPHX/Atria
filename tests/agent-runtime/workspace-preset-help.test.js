@@ -19,7 +19,8 @@ const manager = {
     updateList: jest.fn((name, data, options) => { if (options?.select !== false) mainPreset = name; }),
 };
 jest.unstable_mockModule('../../public/scripts/popup.js', () => ({
-    POPUP_TYPE: { TEXT: 1, CONFIRM: 2 }, POPUP_RESULT: { CANCELLED: 0, AFFIRMATIVE: 1, NEGATIVE: 2 },
+    callGenericPopup: jest.fn(async () => 0),
+    POPUP_TYPE: { TEXT: 1, CONFIRM: 2, INPUT: 3 }, POPUP_RESULT: { CANCELLED: 0, AFFIRMATIVE: 1, NEGATIVE: 2 },
     Popup: class { constructor(body, type, value, options) { this.options = options; popups.push(this); } async show() { return 1; } },
 }));
 jest.unstable_mockModule('../../public/scripts/i18n.js', () => ({ translate: text => text, getCurrentLocale: () => 'en' }));
@@ -51,6 +52,7 @@ test('Agenda help imports into native draft fields without changing the main RP 
     const render = createPresetAuthoring({ getSettings: () => settings, save: jest.fn(), getScope: () => ({}), renderPresetHelp: renderPresetHelpButton });
     const { host, ui } = workspaceUi();
     render(host, ui);
+    host.querySelector('.workspace-agent-card').click();
     expect(document.querySelectorAll('.atria-preset-help')).toHaveLength(2); // workspace default + selected planner
     expect(document.querySelector('[aria-label="Default prompt preset"]').value).toBe('');
 
@@ -85,6 +87,7 @@ test('Director help retains its separate preset', () => {
     const settings = { agentWorkspace: updatePresetLibrary(emptyPresetLibrary(), { type: 'save', preset: createWorkspaceFactoryPreset('director', 'test-director') }) };
     const { host, ui } = workspaceUi();
     createPresetAuthoring({ getSettings: () => settings, save: jest.fn(), getScope: () => ({}), renderPresetHelp: renderPresetHelpButton })(host, ui);
+    host.querySelector('.workspace-agent-card').click();
     const help = ui.inspector.querySelector('.atria-preset-help');
     help.click();
     expect(popups.at(-1).options.customButtons[0].text).toBe('Import agent-director preset');

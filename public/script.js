@@ -293,7 +293,7 @@ import { initVariableOpLog, extractMessageById, pushFloorVarOp } from './scripts
 import { extractFromText as extractSideEffectMacrosFromText } from './scripts/variable-op-log/extractor.js';
 import { installFrontendLogCapture, setFrontendConsoleDebugLoggingEnabled } from './scripts/frontend-log-manager.js';
 import { initAndroidDebugTrail } from './scripts/atria-android-debug-trail.js';
-import { currentUser, getConfigValidationMessage, isAdmin, setUserControls } from './scripts/user.js';
+import { currentUser, setUserControls } from './scripts/user.js';
 import { POPUP_RESULT, POPUP_TYPE, Popup, callGenericPopup, fixToastrForDialogs } from './scripts/popup.js';
 import { renderTemplate, renderTemplateAsync } from './scripts/templates.js';
 import { initScrapers } from './scripts/scrapers.js';
@@ -407,7 +407,7 @@ await new Promise((resolve) => {
 // Configure toast library:
 toastr.options = {
     positionClass: 'toast-top-center',
-    closeButton: false,
+    closeButton: true,
     progressBar: false,
     showDuration: 250,
     hideDuration: 250,
@@ -440,6 +440,11 @@ toastr.subscribe(function (args) {
     const $toast = args.options.newestOnTop
         ? $container.children().first()
         : $container.children().last();
+
+    $toast.find('.toast-close-button').attr('aria-label', t`Dismiss notification`);
+    // A modal can resize under the pointer while a notice fades out. Once the
+    // user dismisses it, toastr's hover-to-resume handler must not revive it.
+    $toast.find('.toast-close-button').on('click', () => $toast.off('mouseenter mouseleave'));
 
     // Meaning of "clickable":
     // Interactable unless tapToDismiss was explicitly false
@@ -1016,6 +1021,14 @@ if (typeof window !== 'undefined') {
             return true;
         },
         dismissModalPopover: () => {
+            const gameDialog = document.querySelector('dialog.atria-game-host-surface[open]');
+            if (gameDialog) { gameDialog.close(); return true; }
+            const playMore = document.querySelector('.atria-play-more[open], .atria-game-recovery-panel[open]');
+            if (playMore) {
+                playMore.open = false;
+                playMore.querySelector('summary')?.focus();
+                return true;
+            }
             const jq = window.jQuery;
             if (typeof jq !== 'function') return false;
 
@@ -15473,9 +15486,33 @@ export function setUserName(value, { toastPersonaNameChange = true } = {}) {
 }
 
 async function doOnboarding(avatarId) {
-    const template = $('#onboarding_template .onboarding').clone();
-    bindOnboardingImportActions(template);
-    let userName = await callGenericPopup(template, POPUP_TYPE.INPUT, currentUser?.name || name1, { wider: true, cancelButton: false });
+    const template = $('#onboarding_template .onboarding').clone(true);
+    const popup = new Popup(template, POPUP_TYPE.INPUT, currentUser?.name || name1, {
+        cancelButton: false,
+        okButton: t`Get started`,
+        onClosing: (instance) => {
+            if (instance.result !== POPUP_RESULT.AFFIRMATIVE) return true;
+            if (instance.mainInput.value.trim()) return true;
+            instance.mainInput.setAttribute('aria-invalid', 'true');
+            template.find('.atri-persona-error').prop('hidden', false);
+            instance.mainInput.focus();
+            return false;
+        },
+    });
+    popup.dlg.classList.add('atri-onboarding-dialog');
+    popup.mainInput.id = `atri-persona-${popup.id}`;
+    popup.mainInput.setAttribute('aria-describedby', `atri-persona-help-${popup.id}`);
+    template.find('.atri-persona-help').attr('id', `atri-persona-help-${popup.id}`);
+    const languageSelect = template.find('#onboarding_ui_language_select');
+    languageSelect.attr('id', `atri-onboarding-language-${popup.id}`);
+    template.find('#onboarding-UI-language-block label').attr('for', languageSelect.attr('id'));
+    popup.mainInput.addEventListener('input', () => {
+        popup.mainInput.removeAttribute('aria-invalid');
+        template.find('.atri-persona-error').prop('hidden', true);
+    });
+    template.find('.atri-persona-label').attr('for', popup.mainInput.id);
+    template[0].querySelector('.atri-onboarding-persona').append(popup.mainInput);
+    let userName = await popup.show();
 
     if (userName) {
         userName = String(userName).replace('\n', ' ');
@@ -15487,131 +15524,6 @@ async function doOnboarding(avatarId) {
             position: persona_description_positions.IN_PROMPT,
         };
     }
-}
-
-async function uploadOnboardingImport(url, file, { onProgress = null } = {}) {
-    const formData = new FormData();
-    formData.append('avatar', file);
-
-    const response = await uploadWithProgress(url, formData, { onProgress });
-    const data = response.json();
-    if (!response.ok) {
-        const codes = Array.isArray(data?.codes) ? data.codes : [];
-        const localized = codes.map(getConfigValidationMessage).filter(Boolean).join('\n');
-        throw new Error(localized || data?.error || t`Import failed`);
-    }
-
-    return data;
-}
-
-function bindOnboardingImportActions(template) {
-    const status = template.find('.onboardingMigrationStatus');
-    const dataButton = template.find('.onboardingImportDataZipButton');
-    const configButton = template.find('.onboardingImportConfigButton');
-    const globalExtensionsButton = template.find('.onboardingImportGlobalExtensionsButton');
-    const dataInput = template.find('.onboardingImportDataZipInput');
-    const configInput = template.find('.onboardingImportConfigInput');
-    const globalExtensionsInput = template.find('.onboardingImportGlobalExtensionsInput');
-    let serverLevelLocked = false;
-
-    const setStatus = (text = '') => {
-        status.text(String(text || ''));
-    };
-
-    const setBusy = (busy) => {
-        dataButton.toggleClass('disabled', Boolean(busy));
-        if (!serverLevelLocked) {
-            configButton.toggleClass('disabled', Boolean(busy));
-            globalExtensionsButton.toggleClass('disabled', Boolean(busy));
-        }
-    };
-
-    const runImport = async (label, input, endpoint, successTextFactory) => {
-        const file = input[0] instanceof HTMLInputElement ? input[0].files?.[0] : null;
-        if (!file) {
-            return;
-        }
-
-        const formatUploadingStatus = (loaded, total) => {
-            const pct = total > 0 ? Math.round((loaded / total) * 100) : 0;
-            return t`Uploading ${label}: ${pct}% (${humanFileSize(loaded, true, 1)} / ${humanFileSize(total, true, 1)})`;
-        };
-
-        setBusy(true);
-        setStatus(formatUploadingStatus(0, file.size));
-        try {
-            const result = await uploadOnboardingImport(endpoint, file, {
-                onProgress: ({ loaded, total, done }) => {
-                    if (done) {
-                        setStatus(t`Processing ${label}...`);
-                        return;
-                    }
-                    setStatus(formatUploadingStatus(loaded, total));
-                },
-            });
-            const message = typeof successTextFactory === 'function' ? successTextFactory(result) : t`Import completed`;
-            setStatus(message);
-            toastr.success(message, t`Import completed`);
-        } catch (error) {
-            const message = String(error?.message || error || t`Import failed`);
-            setStatus(message);
-            toastr.error(message, t`Import failed`);
-        } finally {
-            if (input[0] instanceof HTMLInputElement) {
-                input[0].value = '';
-            }
-            setBusy(false);
-        }
-    };
-
-    dataButton.on('click', () => {
-        if (dataButton.hasClass('disabled')) {
-            return;
-        }
-        dataInput.trigger('click');
-    });
-    dataInput.on('change', () => runImport(
-        t`Data ZIP`,
-        dataInput,
-        '/api/users/import/data-zip',
-        (result) => t`Data ZIP imported: restored ${result?.restoredCount ?? 0}, skipped ${result?.skippedCount ?? 0}, rejected ${result?.rejectedCount ?? 0}.`,
-    ));
-
-    const canImportServerLevel = isAdmin();
-    if (!canImportServerLevel) {
-        serverLevelLocked = true;
-        const hint = t`Only administrators can import config.yaml and global extensions.`;
-        configButton.addClass('disabled').attr('title', hint);
-        globalExtensionsButton.addClass('disabled').attr('title', hint);
-        setStatus(hint);
-        return;
-    }
-
-    configButton.on('click', () => {
-        if (configButton.hasClass('disabled')) {
-            return;
-        }
-        configInput.trigger('click');
-    });
-    configInput.on('change', () => runImport(
-        t`config.yaml`,
-        configInput,
-        '/api/users/import/config',
-        () => t`config.yaml imported. Some settings may require backend restart to fully apply.`,
-    ));
-
-    globalExtensionsButton.on('click', () => {
-        if (globalExtensionsButton.hasClass('disabled')) {
-            return;
-        }
-        globalExtensionsInput.trigger('click');
-    });
-    globalExtensionsInput.on('change', () => runImport(
-        t`Global Extensions ZIP`,
-        globalExtensionsInput,
-        '/api/users/import/global-extensions',
-        (result) => t`Global extensions imported: ${result?.importedCount ?? 0} files.`,
-    ));
 }
 
 function reloadLoop() {
@@ -22522,7 +22434,14 @@ export async function reenterNativeTurn(index) {
     if (!composer) throw new Error('Native composer is unavailable');
     composer.value = draft.content;
     composer.dispatchEvent(new Event('input', { bubbles: true }));
-    composer.focus();
+    const productComposer = globalThis.Atria?.shell?.getPlayHost?.()?.product?.textarea;
+    if (productComposer?.isConnected) {
+        productComposer.value = draft.content;
+        productComposer.dispatchEvent(new Event('input', { bubbles: true }));
+        productComposer.focus();
+    } else {
+        composer.focus();
+    }
     return draft;
 }
 

@@ -1,990 +1,817 @@
-# Atria Native Product UX Gaps Audit
+# Atria Native Product UX / Capability Backlog
 
-> Status: problem inventory only. No implementation is authorized on this branch yet.
+> Status: re-audited and normalized after the Product Frontend Redesign was fully integrated.
 >
-> Branch: `fix/native-product-ux-audit`
+> Task branch: `fix/native-product-ux-audit`
 >
-> Baseline: `main@402b53a98a823573591db4e9fd015f98e6effbdb`
+> Verified baseline: `main@ad15c1e0c3e15e625ba163e284a300c00811f10d`
 >
-> Scope rule: this document intentionally excludes legacy-to-Native migration/conversion work. It records current Atria-native product, authoring, runtime, portability, and UX gaps that should still exist even if no legacy data is ever imported.
+> Frontend redesign integration: `Integrate Atria Product Frontend Redesign Phases 2–8`
+>
+> Scope: current Atria-native product capability, authoring, runtime, portability, lifecycle and recovery gaps.
+>
+> Explicit exclusion: legacy SillyTavern/Luker → Native import, conversion or migration work. This backlog assumes a Native-only product even if no legacy data is ever imported.
 
-## Purpose
+## 1. Purpose
 
-Atria's Native architecture is substantially ahead of its current product affordances. Prompt/Runtime and World/Knowledge both have explicit ownership, immutable revisions, dependency closure, Package integration, and Native runtime authority, but several user-facing workflows still expose only partial CRUD, raw JSON, compatibility-era configuration names, or a single generalized route where a specialized workflow needs multiple routes.
+The frontend redesign is complete and materially improves the presentation, responsive behavior, error states, navigation, accessibility, Studio shell and cross-product consistency. This document is no longer a visual-redesign punch list.
 
-This audit is a holding document. It should be re-verified and normalized after the active frontend redesign branch is fully integrated. Do not implement against screenshots or UI structure that may be replaced by that redesign without first rebasing/re-auditing.
+The remaining items are primarily **capability and workflow gaps**: Native authorities already exist in backend contracts, repositories or runtime, but the product cannot fully create, edit, route, validate, share, recover or manage them through first-class Atria workflows.
 
-## Current Native resource model
+This file is the formal problem backlog for the later implementation task. Do not implement it piecemeal from this audit branch. Before implementation, turn the confirmed items into a phased plan against the then-current `main`.
 
-### Model / Prompt / Runtime
+## 2. Audit result after frontend redesign
 
-- Connection Profile — player-owned provider endpoint / Secret reference.
-- Model Profile — player-owned model identity, limits and capabilities.
-- Generation Profile — immutable exact revision containing generation controls.
-- Prompt Module — immutable reusable prompt unit with semantic target, stages, conditions and parameters.
-- Prompt Program — immutable staged composition of exact Prompt Module revisions; supports derive operations.
-- Runtime Route — binds role + Model + Connection + exact Generation Profile + exact Prompt Program, including retry/fallback policy.
+### Resolved by the redesign and removed from the active backlog
 
-### World / Knowledge
+- **Build project creation dead end:** resolved. Build now exposes **New Project → Create Project** and uses the Native Studio client.
+- **Installed Work versions were invisible:** resolved at the visibility level. Work detail now shows **Installed versions**. A remaining capability gap is recorded below because those versions are not actionable for starting a new session.
+- **Studio was raw-JSON-only for generic structured values:** partially resolved. `studio-value-editor.js` now provides labelled nested fields with a lossless Source fallback. The remaining issue is semantic/domain-specific authoring, not “no structured editor at all”.
+- **Library visual hierarchy / state / confirmation / responsive issues:** substantially resolved by Phase 4 and should not be duplicated here.
+- **Runtime compact/dialog/error presentation:** substantially resolved by Phase 5. Remaining Runtime items below are configuration capabilities and workflow semantics.
+- **Play import/save presentation and general interaction hardening:** substantially resolved by Phase 3/8. Remaining Play items below are data/lifecycle capabilities.
 
-- World — stable Library identity.
-- WorldRevision — immutable world snapshot metadata, baseline/schema, exact KnowledgeBinding IDs and Asset IDs.
-- KnowledgeBase — stable Library identity.
-- KnowledgeRevision — immutable ordered set of KnowledgeEntry IDs.
-- KnowledgeEntry — content plus discovery, applicability, lifecycle, relations and delivery metadata.
-- KnowledgeBinding — exact Knowledge revision attachment with source ownership, augment/override mode, target, visibility and priority.
+### Still-valid architectural boundaries
 
-## Priority definitions
+- Exact immutable revisions remain authoritative for versioned resources.
+- Package originals remain read-only.
+- Connection / Model / Secret remain player-owned.
+- Studio writes remain ChangeSet / Review / Apply.
+- Native Session and exact PackageVersion remain durable runtime authorities.
+- Legacy preset / World Info paths must not regain Native authority.
 
-- **P0** — Native product capability is missing, materially regressed, misleading, or difficult to use without internal/raw APIs.
-- **P1** — Core flow exists but productization, portability, consistency or authoring UX is incomplete.
-- **P2** — Cleanup / convergence work that should follow the functional UX closure.
+## 3. Priority
+
+- **P0 — Native capability gap / regression:** a first-class Native workflow is incomplete, misleading, or functionally weaker than the model it replaced.
+- **P1 — Productization gap:** the core authority works, but authoring, lifecycle, portability, discoverability or recovery is incomplete.
+- **P2 — Convergence debt:** compatibility-era concepts remain after the Native replacement exists; remove only after the Native path has equivalent capability.
 
 ---
 
-# P0 — Functional product gaps
+# P0 — Native capability gaps
 
-## UX-001 — World / Knowledge Library can create identities but cannot author first-class revisions
+## NUX-001 — World / Knowledge Library cannot author immutable revisions
 
-**Observed**
+**Current evidence**
 
-The Native Product API exposes Library-level create/read/rename/delete for Worlds and Knowledge Bases:
+`public/scripts/native/library-workspaces.js` can create, rename and delete stable World / KnowledgeBase identities and display revision history.
 
-- `POST /worlds`
-- `PUT /worlds/:worldId`
-- `POST /knowledge`
-- `PUT /knowledge/:knowledgeBaseId`
-
-Creation produces stable identities whose `currentRevisionId` may be null.
-
-The actual content authorities already exist lower down:
+The actual revision authorities still live below the Product UI:
 
 - `WorldRepo.commitRevision()`
 - `KnowledgeRepo.commitRevision()`
 - `KnowledgeRepo.saveBinding()`
 
-But the normal Product API / Library workspace does not expose corresponding authoring operations.
+The normal Library surface has no first-revision / new-revision authoring workflow.
 
-**User impact**
+**Impact**
 
-A user can create an empty World or Knowledge Base in Library and then has no ordinary Library flow to create its first usable revision/content.
+A user can create a World or Knowledge Base whose `currentRevisionId` is empty, then cannot turn it into usable Native content from Library.
 
-**Required product outcome**
+**Acceptance**
 
-Library authoring must support creating a first revision and subsequent revisions without requiring repository internals, tests, raw storage calls, or manually constructing project source.
+- Create first WorldRevision / KnowledgeRevision from Library.
+- Create subsequent immutable revisions.
+- Validate before commit.
+- Show exact revision identity and references.
+- Never mutate an existing revision in place.
 
 ---
 
-## UX-002 — KnowledgeEntry lacks a first-class structured authoring experience
+## NUX-002 — KnowledgeEntry lacks a semantic first-class editor
 
-**Observed**
+**Current evidence**
 
-The Native Knowledge contract already distinguishes:
+The Native contract supports:
 
 - content;
-- discovery: keywords / aliases / regex / semantic hints / vector hints;
+- discovery: keywords / aliases / regex / semanticHints / vectorHints;
 - applicability;
 - lifecycle;
 - relations;
 - delivery.
 
-Library detail currently displays entries but does not provide a complete create/edit/delete/reorder workflow.
+Library mostly renders entries read-only. Studio now has a generic nested value editor, but it does not understand Knowledge semantics.
 
-Studio project-owned Knowledge is edited through a generic JSON textarea.
+**Impact**
 
-**User impact**
+Atria's richer Native Knowledge model is harder to author correctly than a simple lore editor.
 
-The richest Native replacement for a lore/world entry is harder to author than the old flat editor despite having a better model.
+**Acceptance**
 
-**Required product outcome**
-
-KnowledgeEntry needs a structured editor with safe controls for every supported field, entry creation/deletion/reorder, validation feedback, and revision-aware save/review.
+Provide a KnowledgeEntry editor that understands every supported Native field, including create/delete/reorder, safe defaults, validation, relation selection and exact revision review. Keep Source/JSON only as an Advanced escape hatch.
 
 ---
 
-## UX-003 — KnowledgeBinding is architecture-critical but not a first-class product object
+## NUX-003 — KnowledgeBinding is not a first-class management object
 
-**Observed**
+**Current evidence**
 
-KnowledgeBinding controls:
+KnowledgeBinding controls exact Knowledge revision, source kind, enabled state, augment/override mode, target, visibility and priority.
 
-- exact source revision;
-- source scope;
-- enabled state;
-- `augment` / `override`;
-- target;
-- visibility;
-- priority.
+Current Library surfaces display binding/reference data but do not provide a full Binding manager.
 
-Bindings also connect Worlds, EntryPoints, sessions and Library Knowledge.
+**Impact**
 
-Library currently mainly lists binding data/references. It does not expose a complete Binding manager.
+Users cannot comfortably answer or edit: “which exact Knowledge revision applies where, to whom, with what authority?”
 
-**User impact**
+**Acceptance**
 
-Users cannot easily answer or edit the most important runtime question: “where does this exact Knowledge revision apply, to whom, with what authority?”
-
-**Required product outcome**
-
-Provide first-class Binding create/edit/delete, Used By, exact revision selection, conflict/reference feedback, and attachment workflows.
+- Create/edit/delete bindings.
+- Pick an exact Knowledge revision.
+- Configure mode / target / visibility / priority.
+- Show Used By / reference blockers.
+- Support attach/detach/update without raw IDs.
 
 ---
 
-## UX-004 — WorldRevision lacks first-class composition UX
+## NUX-004 — WorldRevision composition is not productized
 
-**Observed**
+**Current evidence**
 
-A WorldRevision can carry:
+WorldRevision can contain schema, baseline, exact KnowledgeBinding IDs and Asset IDs. Library exposes history but not a semantic composition editor.
 
-- schema;
-- baseline;
-- KnowledgeBinding IDs;
-- Asset IDs;
-- metadata.
+**Impact**
 
-Library exposes revision history, but not a complete “create new revision” composition editor.
+The World abstraction exists architecturally but is not usable as a complete authoring object.
 
-**User impact**
+**Acceptance**
 
-The World abstraction exists architecturally but users cannot comfortably compose a World from Knowledge and assets.
-
-**Required product outcome**
-
-World editor should make exact Knowledge bindings/assets visible and editable, create immutable revisions explicitly, and preview the resulting dependency set.
+A World editor must compose baseline/schema, Knowledge bindings and assets into a reviewed immutable revision, with dependency preview and exact references.
 
 ---
 
-## UX-005 — Native Orchestrator collapses specialized agent routing into the generalized orchestrator role
+## NUX-005 — Native Knowledge applicability fields do not have complete runtime semantics
 
-**Observed**
+**Current evidence**
 
-Compatibility-era Orchestrator profiles still model per-agent routing with fields such as:
+`src/native/world-knowledge.js` accepts:
 
-- `apiPresetName`
-- `promptPresetName`
-- global/fallback prompt/API selections.
+- `stateConditions`
+- `stateEvents`
+- `stateActivation`
 
-Native execution funnels first-party orchestration through `executeFirstPartyGeneration(..., 'orchestrator')`.
+In `public/scripts/native/knowledge-runtime.js`:
 
-The current Native selection UI tells users to configure Runtime routes and does not expose equivalent per-agent exact Native route selection. No normal per-agent `nativeRouteRef` path is surfaced in the inspected runtime flow.
+- `stateConditions` are evaluated with hard-coded `all` logic;
+- no runtime consumer was found for `stateEvents`;
+- no runtime consumer was found for `stateActivation`.
 
-**User impact**
+**Impact**
 
-Multiple agents that previously could intentionally use different model/prompt/generation configurations can converge onto the same `role.orchestrator` primary route.
+Authors can persist fields that imply behavior the Native selector does not fully implement.
 
-**Required product outcome**
+**Acceptance**
 
-Preserve specialized routing in Native form. Per-agent/per-stage route selection must reference explicit Native Runtime routes or an equally strict Native routing abstraction rather than legacy preset names.
+Define one explicit Native applicability contract and implement all supported fields end-to-end. Unsupported fields must be rejected or hidden rather than silently inert.
 
 ---
 
-## UX-006 — Native Memory collapses distinct LLM jobs into the generalized memory role
+## NUX-006 — Native Knowledge validation is broader than runtime behavior
 
-**Observed**
-
-Memory currently distinguishes several tasks/settings, including recall, extraction, schema/request assistance, and RAG query rewrite. Compatibility settings still contain separate API/prompt selections.
-
-Native calls funnel through `executeFirstPartyGeneration(..., 'memory')`, while normal Native UI no longer offers the old selectors.
-
-**User impact**
-
-Workloads with different cost/capability needs can be forced through one `role.memory` route.
+**Current evidence**
 
 Examples:
 
-- cheap/fast query rewrite;
-- strong structured extraction;
-- recall planner with tool calling;
-- schema/authoring assistance.
+- `KnowledgeEntry.delivery.position` accepts arbitrary text; runtime effectively treats only `before` and `after`, defaulting unknown values to `before`.
+- `KnowledgeBinding.target` accepts generic JSON; runtime target matching recognizes a narrow narrator/actor/agent/user-style selector shape.
 
-**Required product outcome**
+**Impact**
 
-Native Memory must preserve task-specific routing, using exact Runtime route references or explicit subroles with clear product configuration.
+Invalid or unsupported values can pass authoring validation and silently change behavior later.
 
----
+**Acceptance**
 
-## UX-007 — Native Knowledge applicability contract/runtime semantics are incomplete
-
-**Observed**
-
-The Native contract includes `applicability.stateConditions`, `stateEvents`, and `stateActivation`.
-
-In `knowledge-runtime.js`, inspected selection logic evaluates `stateConditions` with a hard-coded `all` aggregation. The Native contract does not expose an explicit aggregation mode.
-
-The inspected Native KnowledgePlan compilation path does not visibly evaluate `stateEvents` as part of candidate eligibility.
-
-**User impact**
-
-Native authoring exposes concepts whose runtime semantics are either fixed, incomplete, or not expressible with enough precision.
-
-**Required product outcome**
-
-Define and validate complete Native applicability semantics. Authoring controls and runtime behavior must share one contract, including condition aggregation and event semantics.
+Contract, editor and runtime must share the same typed enum/selector definitions. Unsupported values fail before commit with field-level errors.
 
 ---
 
-## UX-008 — Contract validation permits values that runtime silently narrows
+## NUX-007 — Native Orchestrator loses per-agent / per-stage route selection
 
-**Observed examples**
+**Current evidence**
 
-- `KnowledgeEntry.delivery.position` accepts arbitrary text at contract level, while the runtime projection recognizes effectively `before` / `after` and defaults unknown values.
-- `KnowledgeBinding.target` accepts generic JSON while runtime matching expects narrator/actor/agent/user-style selectors.
+Orchestrator authoring still models agent-level `apiPresetName` / `promptPresetName`.
 
-**User impact**
+When Native generation is active, `generation-compat.js` supports an explicit `nativeRouteRef`, but inspected Orchestrator callers generally invoke:
 
-Invalid or unsupported authoring values can survive validation and then silently behave differently at runtime.
+`executeFirstPartyGeneration(context, 'orchestrator', ...)`
 
-**Required product outcome**
+without supplying a per-agent Native route.
 
-Fail early. Supported Native authoring values should be typed/validated by contracts and editor controls; unsupported values should not silently degrade.
+Native preset selectors collapse to a disabled “Native Runtime route — configure in Runtime” option.
 
----
+**Impact**
 
-# P1 — Productization and portability gaps
+Different agents/planners/judges that should intentionally use different model + prompt + generation configurations can collapse onto one primary `role.orchestrator` route.
 
-## UX-009 — Prompt Module / Prompt Program / Generation Profile lack lightweight Import / Export
+**Acceptance**
 
-**Observed**
-
-The resources are already JSON-serializable and have structured/advanced editors, exact revisions, Fork, and Program Derive.
-
-There is no normal per-resource portable Import/Export UX comparable to the maturity of `.atria` Package and `.atriasave`.
-
-**User impact**
-
-Sharing one Prompt system or Generation profile requires manual JSON handling or packaging a much larger Work.
-
-**Required product outcome**
-
-Support explicit portable resource sharing without weakening exact identity/revision guarantees.
+Provide explicit Native routing per relevant Orchestrator agent/stage, using exact Runtime route refs or a typed Native sub-routing model. Do not restore legacy preset-name authority.
 
 ---
 
-## UX-010 — World / Knowledge lack lightweight portable Import / Export
+## NUX-008 — Native Memory loses task-specific route selection
 
-**Observed**
+**Current evidence**
 
-`.atria` is an effective full Work/package distribution format, but Library Worlds and Knowledge Bases have no equivalent lightweight portable resource action.
+Memory distinguishes recall, extraction, request/schema assistance and RAG rewrite settings, but Native calls funnel through:
 
-**User impact**
+`executeFirstPartyGeneration(context, 'memory', ...)`
 
-Sharing a reusable setting, lore corpus, ruleset or World independently of a full game package is awkward.
+without task-specific `nativeRouteRef` in the inspected flow.
 
-**Required product outcome**
+**Impact**
 
-World/Knowledge portability should follow the same resource mechanism as Prompt/Generation rather than inventing an unrelated format.
+Cheap query rewrite, strong structured extraction and other memory jobs cannot intentionally use different Native model/prompt/generation routes.
 
----
+**Acceptance**
 
-## UX-011 — A unified Native Resource Bundle layer is missing
-
-**Observed**
-
-A single Prompt Program can depend on exact Prompt Modules. A World depends on exact KnowledgeBindings/assets. A useful Knowledge share may need an exact revision plus entries/bindings.
-
-Plain single-object JSON export is therefore insufficient because it can create broken references.
-
-**Required product outcome**
-
-Introduce one Native Resource Bundle concept capable of exporting a root resource plus its exact dependency closure, preflighting imports, reporting conflicts, and offering explicit conflict choices.
-
-Candidate use cases:
-
-- one Prompt Module;
-- Prompt Program + dependent Modules;
-- Generation Profile;
-- Knowledge Base revision + entries/bindings;
-- World revision + bindings/assets;
-- future plugin-defined resources.
-
-Do not include player Secrets in portable bundles.
+Memory tasks must select explicit Native routes/subroles while preserving one Native authority model. Legacy preset names remain compatibility-only.
 
 ---
 
-## UX-012 — Package-scoped resource browsing/forking is inconsistent across resource families
+## NUX-009 — Native generation provider support is materially incomplete
 
-**Observed**
+**Current evidence**
 
-Prompt resources loaded from installed Packages are visible as read-only package-scope resources and can be Forked to Library.
+Production Native generation currently registers:
 
-World/Knowledge package content is available to a Work/runtime, but the Library Worlds & Knowledge experience does not provide an equivalent obvious “browse package original → fork to my Library” flow.
+- `provider.openai-compatible`
+- `provider.raw-text`
 
-**User impact**
+Runtime UI explicitly states Anthropic and Gemini transports are unavailable.
 
-Users learn two different mental models for otherwise similar immutable package resources.
+The HTTP adapter rejects configured `reasoning`, `cache`, `providerExtensions`, connection options/network policy and model hints that it cannot consume.
 
-**Required product outcome**
+**Impact**
 
-Unify Package-origin treatment across Prompt, World, Knowledge, Skills/assets where appropriate: origin badge, read-only original, Used By, Fork/copy-to-Library, exact revision information.
+Mainstream provider-native capabilities and modern reasoning/cache controls cannot be represented/executed by the first-party Native Runtime even though the schema reserves those concepts.
 
----
+**Acceptance**
 
-## UX-013 — Studio World / Knowledge editing is raw-JSON-heavy
+Define and implement the intended provider matrix. At minimum:
 
-**Observed**
-
-Studio exposes Worlds and Knowledge as project resource views, but project-owned items use a generic JSON textarea through the collection editor.
-
-Attach/Fork/Update from Library is stronger and revision-aware, but content authoring itself remains low-level.
-
-**User impact**
-
-A user can build sophisticated Native resources only by understanding internal JSON shapes.
-
-**Required product outcome**
-
-Provide structured World, KnowledgeEntry and Binding authoring in Studio, with raw JSON retained only as an Advanced view.
+- provider-native protocol adapters required by the product;
+- capability discovery/validation;
+- explicit supported reasoning/cache/tool controls per adapter;
+- fail-closed behavior for unsupported controls;
+- no fallback to legacy preset/provider authority.
 
 ---
 
-## UX-014 — Revision UX is incomplete across World / Knowledge
+## NUX-010 — Native Skill scope model and the primary Skill Manager disagree
 
-**Observed**
+**Current evidence**
 
-Immutable revision repositories and revision history already exist. The product shows revision IDs/history but does not provide a coherent revision workflow such as:
-
-- create revision from current;
-- compare revisions;
-- inspect dependency changes;
-- explicitly promote/select a revision where allowed;
-- fork from historical revision;
-- understand Used By before destructive actions.
-
-**User impact**
-
-The architecture's strongest safety feature—exact immutable revisions—is exposed as IDs rather than a usable versioning workflow.
-
----
-
-## UX-015 — `semanticHints` / `vectorHints` are authorable contract fields without an obvious Native runtime consumer
-
-**Observed**
-
-These fields exist in the Native Knowledge contract and tests. Repository search did not identify a clear Native Knowledge runtime path consuming them for semantic/vector selection.
-
-**User impact**
-
-Authors may reasonably assume these settings affect retrieval when they may currently be inert metadata.
-
-**Required product outcome**
-
-Either wire them to a documented retrieval capability, or clearly mark them reserved/unsupported and prevent misleading authoring UI.
-
----
-
-## UX-016 — Native resource “Used By” and dependency visualization should be consistently actionable
-
-**Observed**
-
-The resource graph and reverse references exist, and several screens expose Used By/reference data. Presentation and follow-through differ between Prompt resources, World/Knowledge, Project dependencies and Package content.
-
-**User impact**
-
-Users can see that something is referenced but may not be able to navigate to, update, detach, fork, or resolve the reference from the same workflow.
-
-**Required product outcome**
-
-Standardize dependency cards: origin, exact revision, Used By, Open owner, Attach/Detach/Update/Fork where legal, and conflict explanation.
-
----
-
-# P2 — Native convergence / cleanup
-
-## UX-017 — Orchestrator and Memory product schemas still expose compatibility-era preset naming
-
-**Observed**
-
-Native runtime authority no longer relies on old prompt preset selection in mounted Native product flows, yet Orchestrator and Memory persistence/settings still contain names such as `apiPresetName`, `promptPresetName`, and `llmPresetName`.
-
-**User impact**
-
-The product model is harder to understand and future code can accidentally reintroduce name-based compatibility authority.
-
-**Required product outcome**
-
-Once task-specific Native routing is complete, Native-facing settings should use Runtime route/subrole concepts. Compatibility names should remain isolated to explicitly non-Native paths only.
-
----
-
-# Cross-cutting constraints for eventual implementation
-
-1. Do not reintroduce name/latest lookup where exact revisions are already authoritative.
-2. Package originals remain read-only; edits create an independent Library/Project resource.
-3. Connections, Models and Secrets remain player-owned and must not leak into portable authoring bundles.
-4. Project writes continue through ChangeSet / Review / Apply rather than bypassing Studio authority.
-5. Native Session state remains the authority for durable game state; Prompt/Knowledge metadata must not become a parallel state store.
-6. New UX must preserve desktop/mobile accessibility and the active frontend redesign's navigation/sheet/dock patterns.
-7. No implementation should begin from this baseline branch until the frontend redesign is integrated and this audit is rebased/re-verified.
-
-# Re-audit checkpoint
-
-Before implementation:
-
-- rebase or recreate this task from the then-current `main`;
-- inspect the fully integrated frontend redesign;
-- re-verify every item against current code and real UI;
-- merge duplicates with redesign follow-ups;
-- convert confirmed issues into a normalized implementation plan with explicit phases and acceptance tests.
-
-
----
-
-# Second-pass cross-product UX audit
-
-This pass intentionally focuses on interaction and capability gaps that are unlikely to disappear merely through visual restyling. Findings are against `main@402b53a98a823573591db4e9fd015f98e6effbdb`; the active frontend redesign branch is still in progress, so presentation-only findings must be rechecked after integration.
-
-## P0 — Setup and lifecycle dead ends
-
-### UX-018 — Runtime Connections require users to manually type an internal Secret ID
-
-**Observed**
-
-The Native Connection editor asks for an `Exact Secret ID` as a required free-text field and warns users not to paste the actual key.
-
-There is no picker for existing Secrets, no visible Secret inventory, and no direct action from the Connection editor to create/manage a Secret.
-
-**User impact**
-
-The primary “connect a model provider” flow assumes knowledge of an internal identifier that ordinary users should not need to discover manually. A user can know their API key and endpoint and still be unable to finish the Native Connection form.
-
-**Required product outcome**
-
-Connection setup should select an existing Secret or open a first-party Secret-management/create flow while preserving the existing rule that the credential value never enters the Connection document.
-
----
-
-### UX-019 — Runtime has no connection test or model discovery path
-
-**Observed**
-
-Native Connection/Model setup requires manual entry of:
-
-- endpoint URL;
-- remote model ID;
-- context/output limits;
-- tokenizer;
-- capability overrides.
-
-No `Test connection`, provider health check, or model-list discovery action is exposed in the inspected Native Runtime workspace.
-
-**User impact**
-
-Configuration errors are discovered late, often only when a Route preview/execute fails. Users must already know provider model IDs and capability details.
-
-**Required product outcome**
-
-Provide non-destructive connection validation and, where a provider supports it, model discovery/capability inspection. Manual entry must remain available for OpenAI-compatible/custom providers.
-
----
-
-### UX-020 — Runtime configuration lacks basic lifecycle management
-
-**Observed**
-
-The Native Runtime UI supports New/Edit for Routes, Models and Connections, but no Delete/Archive/Duplicate action is exposed. Corresponding Native persistence APIs inspected here also do not expose delete methods for those player-owned profiles.
-
-Prompt/Generation resources similarly have registry-level `delete` capability and delete-safety inspection infrastructure, but the user-facing Prompt Library does not surface cleanup/archive/delete actions.
-
-**User impact**
-
-Mistakes, obsolete models, dead connections, abandoned routes and old prompt resources accumulate indefinitely. Users can create replacements but cannot keep their inventory clean through normal product flows.
-
-**Required product outcome**
-
-Define reference-safe lifecycle semantics for mutable Runtime profiles and versioned Library resources: delete where safe, block with Used By details where referenced, and provide archive/hide when physical deletion is intentionally disallowed.
-
----
-
-### UX-021 — Build has an explicit project-creation dead end
-
-**Observed**
-
-The Build project list empty state says:
-
-> “Create a Native project to enter Atria Studio.”
-
-The backend and clients already expose project creation, but the inspected Build/Studio list UI provides no Create Project action.
-
-**User impact**
-
-A brand-new user can navigate to Build and reach a dead end despite the underlying create capability existing.
-
-**Required product outcome**
-
-Provide first-class project creation from Build, with sane Native defaults and optional template/blank choices. Creation must go through the existing ProjectStore/Studio authority.
-
----
-
-### UX-022 — Project deletion exists in backend APIs but is not exposed in normal Studio lifecycle UX
-
-**Observed**
-
-Product and Studio services expose project deletion, but the inspected Build project list/detail surface does not expose a corresponding delete/archive action.
-
-**User impact**
-
-Test projects and abandoned work cannot be cleaned up without calling internal APIs.
-
-**Required product outcome**
-
-Add safe project lifecycle management with destructive confirmation and revision/conflict protection.
-
----
-
-### UX-023 — Native Skill scope authority and the visible Skill Manager disagree
-
-**Observed**
-
-Native authoring explicitly defines Skill scopes as:
+Native Skill authority uses scopes such as:
 
 - `global`
 - `project`
 - `package`
 
-The Native Studio Agent can list/read project/package-scoped Skills.
+Studio Agent consumes project/package Skills.
 
-However, the Skill Manager embedded in Library still formats/groups only compatibility-era scopes:
+The primary `skill-manager-panel.js` still groups and formats compatibility-era scopes:
 
 - `global`
 - `preset`
 - `orch-preset`
 - `character`
 
-Unknown scope kinds produce empty/unknown keys and are not treated as first-class groups.
+Unknown Native scope kinds fall outside the first-class grouping model.
 
-**User impact**
+**Impact**
 
-Native project/package Skills can participate in Native behavior while being undiscoverable or unmanageable from the main Skills Library UI.
+Native project/package Skills can affect product behavior while being difficult or impossible to manage through the main Skill UI.
 
-**Required product outcome**
+**Acceptance**
 
-The primary Atria Skill surface must natively understand global/project/package scope, origin, read-only Package ownership, and project editing. Compatibility scopes may remain in an Advanced compatibility area but must not define the Native product model.
+The main Skill product surface must understand Native global/project/package scopes, origin, read-only Package ownership, project editing and movement rules. Compatibility scopes may remain under Advanced compatibility UI.
 
 ---
 
-## P1 — Runtime configuration usability
+## NUX-011 — Runtime Connection setup requires an opaque Secret ID
 
-### UX-024 — Generation Profiles have duplicate product homes and ambiguous ownership
+**Current evidence**
 
-**Observed**
+Runtime Connections require a free-text **Exact Secret ID** and warn users not to paste the secret value.
 
-Architecture documentation states that Library owns Prompt/Generation discovery/authoring while Runtime owns Connections/Models/Routes.
+No Native picker / Secret inventory / create-secret action is exposed from the Connection editor.
 
-The product currently exposes:
+**Impact**
 
-- Library → Generation Profiles; and
+A user can know their API key and endpoint and still be unable to finish Native Runtime setup without discovering an internal identifier elsewhere.
+
+**Acceptance**
+
+Provide a first-party Secret selection/create flow that returns an exact Secret reference without exposing secret material in the Connection document.
+
+---
+
+# P1 — Productization, lifecycle and portability
+
+## NUX-012 — Runtime lacks connection validation and model discovery
+
+**Current evidence**
+
+Users manually enter endpoint, remote model ID, limits, tokenizer/capabilities and Secret reference. No Native **Test connection** or provider model discovery action is exposed.
+
+**Acceptance**
+
+Add non-destructive connection validation and optional provider model discovery/capability inspection, while preserving manual configuration for custom/OpenAI-compatible endpoints.
+
+---
+
+## NUX-013 — Runtime profiles and routes lack lifecycle cleanup
+
+**Current evidence**
+
+Runtime supports New/Edit for Connection, Model and Route, but no first-class delete/archive/duplicate flow is exposed. Persistence endpoints are save/list oriented.
+
+Prompt/Generation Library resources similarly expose new revision/fork/derive but no normal cleanup/archive workflow.
+
+**Acceptance**
+
+Define reference-safe lifecycle semantics:
+
+- delete when unreferenced;
+- block with Used By when referenced;
+- archive/hide where permanent deletion is intentionally disallowed;
+- duplicate where useful.
+
+---
+
+## NUX-014 — Generation Profiles have two competing product homes
+
+**Current evidence**
+
+Generation Profiles appear in:
+
+- Library → Generation Profiles;
 - Runtime → Profiles.
 
-Runtime `profiles` writes the same `core.generation-profile` Library resource family.
+Runtime's Profiles section writes the same `core.generation-profile` Library resource family.
 
-**User impact**
+**Impact**
 
-Users can reasonably ask whether “Profiles” and “Generation Profiles” are different concepts, where a profile should be edited, and which screen owns revision history.
+Ownership and revision history are conceptually ambiguous.
 
-**Required product outcome**
+**Acceptance**
 
-Choose one canonical product home for Generation Profiles. Runtime Routes may link into the selected exact Library revision, but should not present a competing ownership surface unless the distinction is made explicit.
-
----
-
-### UX-025 — Runtime fallback-route authoring allows choices that are known to be invalid
-
-**Observed**
-
-A Runtime Route's fallback list must contain same-role routes. The editor notice explains this, but the “Add fallback route” selector is populated from all other routes rather than same-role routes only.
-
-The server later rejects mismatched fallback roles.
-
-**User impact**
-
-The UI invites a configuration that it already knows cannot be saved.
-
-**Required product outcome**
-
-Filter candidates by role and proactively revalidate/clear incompatible fallbacks when the route's role changes.
+Choose one canonical authoring home. Runtime Routes should link to exact Generation Profile revisions without creating a competing ownership model.
 
 ---
 
-### UX-026 — Runtime Diagnostics asks users to type raw Project ID and exact revision
+## NUX-015 — Runtime fallback editor offers invalid route choices
 
-**Observed**
+**Current evidence**
 
-When no Native game is open, Runtime Diagnostics asks for free-text:
+Fallbacks must use the same role. The editor explains this but populates “Add fallback route” from every other route.
 
-- Project ID
-- Project revision
+The backend rejects mismatched roles later.
 
-even though Build/Studio already has a project inventory and exact revision authority.
+**Acceptance**
 
-**User impact**
-
-A diagnostic tool intended to explain configuration instead requires users to copy opaque internal identifiers.
-
-**Required product outcome**
-
-Offer a project/revision picker using existing Build authorities, with raw ID entry reserved for Advanced/debug use.
+Only same-role routes are selectable. Changing a route's role must revalidate or clear incompatible fallback refs before save.
 
 ---
 
-### UX-027 — First-time Native Runtime setup has no guided readiness flow
+## NUX-016 — Runtime Diagnostics requires raw Project ID / revision
 
-**Observed**
+**Current evidence**
 
-To get from zero configuration to a working generation Route, a user may need to establish, in dependency order:
+When no Native Session owns context, Diagnostics asks users to type Project ID and Project revision manually.
+
+Build already owns a project/revision inventory.
+
+**Acceptance**
+
+Use a project + exact revision picker backed by Build authority. Keep raw IDs only in Advanced/debug mode.
+
+---
+
+## NUX-017 — First-time Native Runtime setup has no dependency-guided readiness flow
+
+**Current evidence**
+
+A usable Route may require, in dependency order:
 
 1. Secret;
 2. Connection;
 3. Model;
-4. Prompt Program/Modules;
+4. Prompt Program;
 5. Generation Profile;
 6. Runtime Route.
 
-Current empty states are individual (“Create a route”, “Manage models”, etc.) rather than a coherent readiness/checklist flow.
+Current empty states are section-local.
 
-**User impact**
+**Acceptance**
 
-Users can enter the setup graph in the wrong place and repeatedly encounter missing prerequisites.
-
-**Required product outcome**
-
-Provide a guided setup/readiness view that explains missing dependencies and deep-links to the next actionable step without creating a second configuration authority.
+Provide one readiness/checklist experience that identifies the next missing dependency and deep-links to its canonical owner, without introducing a second configuration authority.
 
 ---
 
-## P1 — Build / Studio authoring UX
+## NUX-018 — Prompt / Generation / World / Knowledge have no lightweight portable resource format
 
-### UX-028 — Studio Skills authoring is still raw package JSON rather than the Native Skill platform
+**Current evidence**
 
-**Observed**
+- Prompt Program / Module / Generation Profile are serializable exact resources.
+- World / Knowledge have immutable exact revisions.
+- Full `.atria` packages are self-contained but too heavy for sharing one reusable resource system.
+- Plain one-object JSON can break exact dependencies.
 
-Studio's `Skills` view edits `source.package.skills` through a generic JSON textarea, while the actual Native Skill platform has explicit project/package scopes and the Project Agent can consume those Skills through `/api/skills`.
+**Acceptance**
 
-**User impact**
+Introduce one Atria **Resource Bundle** mechanism:
 
-Human authors and the Project Agent interact with different-feeling Skill workflows. The most important project-scoped know-how cannot be managed through the same first-class editor used elsewhere.
+- root resource + exact dependency closure;
+- preflight;
+- conflict reporting;
+- import as new identity/revision where legal;
+- origin/provenance;
+- no player Secrets.
 
-**Required product outcome**
-
-Integrate project/package Skill inventory and editing directly into Studio using the existing Skill authority, with Package scope read-only where appropriate.
-
----
-
-### UX-029 — Asset authoring is functional but lacks basic asset-management affordances
-
-**Observed**
-
-Studio Assets supports importing and removing project-owned files. Rows are essentially `logicalName · path`.
-
-No normal preview, metadata edit, rename/repath, replacement, type-specific inspection, or filename-collision guidance is exposed in the inspected surface.
-
-**User impact**
-
-Once a project grows beyond a few files, identifying and maintaining media assets becomes unnecessarily low-level.
-
-**Required product outcome**
-
-Provide asset preview/details, safe replace/rename where supported, clear path/collision handling, and Used By/navigation before removal.
+It should cover Prompt, Generation, World, Knowledge and future plugin-defined resource types rather than inventing separate formats.
 
 ---
 
-### UX-030 — Source editor is an undifferentiated text fallback
+## NUX-019 — Package-scoped World / Knowledge reuse is weaker than Prompt reuse
 
-**Observed**
+**Current evidence**
 
-Studio Source lists files and provides a plain textarea with “Review Source Change”.
+Prompt resources from installed Packages appear as read-only package-scope resources and can be Forked to Library.
 
-There is no visible language/type detection, syntax diagnostics, structured diff before staging, or explicit binary/non-text affordance in the inspected editor.
+World/Knowledge Library primarily shows user Library identities. Package World/Knowledge content is usable by Work/runtime but lacks equivalent browse-original → fork-to-Library UX.
 
-**User impact**
+**Acceptance**
 
-Advanced users can edit source, but mistakes are caught only later by broader project validation and the experience does not scale to serious authoring.
-
-**Required product outcome**
-
-Keep Source as an advanced escape hatch, but add file type awareness, validation where available, and clear staged diff/review feedback.
+Unify package-origin behavior across reusable resource families: origin badge, exact revision, read-only original, Used By and Fork/copy-to-Library where supported.
 
 ---
 
-## P1 — Work / Package lifecycle UX
+## NUX-020 — Studio still lacks domain-specific World / Knowledge / Skill authoring
 
-### UX-031 — Installed Package version history exists but is effectively hidden
+**Current evidence**
 
-**Observed**
+Frontend redesign added a generic structured value editor with labelled fields and Source fallback.
 
-`NativeProductService.getWork()` returns all installed Package versions, and `startWork()` accepts an explicit `packageVersionId`.
+However:
 
-The Work detail UI shows only the current version and starts new sessions against it. The returned version history is not exposed as a normal user choice.
+- World/Knowledge require semantic editors;
+- Skills view edits package declarations through the generic value editor;
+- relationship selection and Knowledge-specific constraints are not first-class.
 
-**User impact**
+**Acceptance**
 
-Exact Package versioning is an important Native safety property, but users cannot inspect version history, compare installed versions, or intentionally start a new session on an older installed version.
-
-**Required product outcome**
-
-Expose installed version history and exact version identity, with clear current/default status and deliberate “start with this version” where safe.
+Build domain-aware editors on top of existing ChangeSet authority. Generic fields/Source remain the fallback for unknown/plugin fields.
 
 ---
 
-### UX-032 — Package update/install preflight lacks user-facing change impact
+## NUX-021 — Revision UX is incomplete for World / Knowledge
 
-**Observed**
+**Current evidence**
 
-Install preflight surfaces package metadata and required permission identifiers, then installs/updates the exact Package.
+Immutable revisions and history exist, but users do not get a complete workflow for:
 
-The inspected UI does not summarize changes relative to an already-installed current version: permissions added/removed, version transition, capabilities changed, or existing-session impact.
+- create revision from current;
+- inspect semantic diff;
+- fork from historical revision;
+- understand dependency changes;
+- safely select/promote exact versions where legal.
 
-**User impact**
+**Acceptance**
 
-“Install / Update” asks for trust without clearly explaining what changed.
-
-**Required product outcome**
-
-When updating an installed Package, show old → new version, permission delta, major capability/content changes when available, and clarify that existing sessions remain pinned to their exact PackageVersion.
-
----
-
-### UX-033 — Package permission grants are raw capability identifiers without explanations
-
-**Observed**
-
-The install surface renders checkboxes using raw permission strings such as:
-
-- `network`
-- `world-write`
-- `runtime-tools`
-- `clipboard`
-- `asset-access`
-
-No first-party explanation of what each permission allows or why the Package requests it is shown in the inspected flow.
-
-**User impact**
-
-Users must approve security-sensitive capabilities without meaningful context.
-
-**Required product outcome**
-
-Provide human-readable permission descriptions, risk/impact explanations, and package-declared rationale where supported. Keep explicit grant semantics.
+Expose revision actions without weakening exact pinning.
 
 ---
 
-### UX-034 — Save dependency recovery is informative but not actionable enough
+## NUX-022 — semanticHints / vectorHints are accepted but have no discovered Native retrieval consumer
 
-**Observed**
+**Current evidence**
 
-When importing a `.atriasave` whose exact Package dependency is missing/mismatched, the UI explains that the exact `.atria` Package must be installed first.
+The fields exist in the Native Knowledge contract and tests. Repository audit found no Native Knowledge selection path consuming them.
 
-The flow does not provide an integrated action to open Package installation or search installed versions from the same recovery card.
+**Impact**
 
-**User impact**
+Authors can reasonably assume a configured semantic/vector hint affects retrieval when it may currently be inert metadata.
 
-The user understands the problem but must manually leave the import workflow, find the install surface, then return and repeat the import.
+**Acceptance**
 
-**Required product outcome**
-
-Add direct recovery actions that navigate to/install the required exact Package while preserving hash/version verification.
+Either implement documented semantic/vector retrieval behavior or mark/reject these fields until supported.
 
 ---
 
-## P1 — Session and Play organization
+## NUX-023 — Used By / reference information is not consistently actionable
 
-### UX-035 — Native Sessions have a title field but no normal naming/rename workflow
+**Current evidence**
 
-**Observed**
+Resource Graph / reverse references exist. Studio Inspector and Prompt Library can display references, but rows generally become text rather than navigation/resolution actions.
 
-Native Session contracts support `displayTitle`, and `startWork()` accepts one.
+**Acceptance**
 
-The Work UI starts sessions without asking for a title, and there is no inspected update/rename endpoint or product action.
+Standardize reference rows with:
 
-Untitled sessions fall back to generic labels such as “Game progress”.
-
-**User impact**
-
-Users with multiple runs of the same Work cannot meaningfully distinguish them.
-
-**Required product outcome**
-
-Allow naming at start and renaming later without changing Session identity/history.
+- human-readable owner;
+- open/navigate;
+- exact revision;
+- detach/update/fork where legal;
+- blockers before destructive actions.
 
 ---
 
-### UX-036 — Embedded Knowledge promotion exposes internal Binding IDs and a browser prompt
+## NUX-024 — Build exposes project creation but not normal project deletion/archive
 
-**Observed**
+**Current evidence**
 
-Play's “Embedded Knowledge” list displays raw `knowledgeBindingId` values. “Save to my Library” asks for a Knowledge Base name through `globalThis.prompt()`.
+The redesign fixed project creation. Backend Product/Studio APIs support deletion, but the normal Build project list does not expose a delete/archive lifecycle action.
 
-**User impact**
+**Acceptance**
 
-A high-value workflow—turning session knowledge into reusable Library knowledge—is represented through internal IDs and a primitive modal with no preview of what will be saved.
-
-**Required product outcome**
-
-Show human-readable source/content summary, target Library result, and a structured confirmation/naming surface before promotion.
+Provide safe project deletion/archive with revision protection and confirmation.
 
 ---
 
-### UX-037 — Branch/revision history is exposed as raw JSON rather than a navigable history model
+## NUX-025 — Asset management remains minimal
 
-**Observed**
+**Current evidence**
 
-The Play Timeline drawer renders “Branches & revisions” as `JSON.stringify(...)` inside a `<pre>`.
+Studio Assets can import and remove files. Rows mainly show logical name/path.
 
-**User impact**
+No first-class preview, metadata edit, rename/repath, replace, collision handling or Used By flow is exposed.
 
-Users cannot understand branch lineage, current branch, fork points or revision relationships without reading internal data structures.
+**Acceptance**
 
-**Required product outcome**
-
-Provide a readable timeline/branch graph or hierarchical history view with clear current state and allowed actions. Raw JSON may remain under Diagnostics.
+Add type-aware preview/details, safe replace/rename, collision feedback and dependency inspection before removal.
 
 ---
 
-## P1 — Plugins and security UX
+## NUX-026 — Source editor remains an advanced plain-text escape hatch without file-aware validation
 
-### UX-038 — Native Plugins are shown as a read-only projection with no actionable management path
+**Current evidence**
 
-**Observed**
+Studio Source supports file selection, textarea editing, review and reload. It does not expose language/type diagnostics, staged textual diff before review or clear binary handling.
 
-Plugins utility lists Native Package Runtime plugins, their capabilities and contribution counts, then explicitly says activation/permissions are owned by the A5 Plugin Platform.
+**Acceptance**
 
-The inspected Native Plugins surface provides no action to open that owning permission/activation context.
-
-**User impact**
-
-The screen tells users that important controls exist elsewhere but does not let them reach or understand them.
-
-**Required product outcome**
-
-Either make Plugins the first-class management surface or provide explicit navigation to the actual owner for permission state, activation status, dependencies and contribution details.
+Keep Source as an advanced escape hatch, but add file-type awareness, read-only/binary protection, validation where available and clearer staged diff feedback.
 
 ---
 
-### UX-039 — Native Plugin cards expose identifiers more readily than user-facing identity
+## NUX-027 — Installed Work versions are visible but not actionable
 
-**Observed**
+**Current evidence**
 
-Native Plugin cards title themselves with `pluginId` and summarize version/package/capability identifiers. No richer display name/description/dependency state is exposed in the inspected projection.
+Frontend redesign now displays **Installed versions**.
 
-**User impact**
+Backend `startWork()` accepts an explicit `packageVersionId`.
 
-Package plugin inspection feels like developer diagnostics rather than a product surface.
+The Work UI's **Start New** still starts against the current version and does not expose “start from this installed version”.
 
-**Required product outcome**
+**Acceptance**
 
-Show human-facing metadata where available, origin Package, status, permissions, dependencies and contribution categories; keep opaque IDs in details.
-
----
-
-## P1 — Search and discoverability
-
-### UX-040 — Global “Search Atria” does not search several major user-owned entities
-
-**Observed**
-
-Product Search currently indexes:
-
-- Works;
-- Worlds;
-- Knowledge Bases;
-- Build Projects;
-- Runtime Routes/Models/Connections;
-- Prompt Programs/Modules/Generation Profiles.
-
-It does not currently index major user-owned entities such as:
-
-- Native Sessions / game progress;
-- SavePoints;
-- Skills;
-- individual Knowledge entries;
-- Agent/orchestration configurations.
-
-**User impact**
-
-A global product search can locate technical configuration resources but not some of the things users are most likely to remember by name/content.
-
-**Required product outcome**
-
-Define the intended global search coverage and include major navigable user entities, with sensible grouping and privacy/performance bounds.
+Allow intentional session creation from an installed exact PackageVersion, clearly marking current/default and preventing accidental downgrade semantics.
 
 ---
 
-### UX-041 — Product Search can silently become incomplete
+## NUX-028 — Package update / permission review lacks change impact and post-install management
 
-**Observed**
+**Current evidence**
 
-Search refresh uses `Promise.allSettled`. Failed resource sources are omitted while other results continue to render. Failures are primarily logged to console.
+Install/update preflight shows required permission identifiers and capabilities.
 
-**User impact**
+The UI does not present:
 
-The user can receive a plausible-looking but incomplete search result set without any indication that one domain failed to load.
+- old → new version delta;
+- newly added/removed permissions;
+- existing-session pinning impact;
+- human-readable permission explanations/rationale;
+- a first-class post-install permission/grant management surface.
 
-**Required product outcome**
+**Acceptance**
 
-Surface a lightweight “some results unavailable” state with retry/details when one or more authorities fail.
-
----
-
-## P1 — Error and validation UX
-
-### UX-042 — Native Product client discards useful human-readable error context
-
-**Observed**
-
-Native Product endpoints return an error code and optional details, while the browser client constructs a generic message:
-
-> `Native Product request failed (<status>)`
-
-Many UI surfaces then show `error.message`, not a mapped product explanation.
-
-Native Generation configuration endpoints also collapse broad validation failures into generic codes such as `native_generation_configuration_invalid`.
-
-**User impact**
-
-Users often learn that an operation failed without learning which field/reference/permission caused it or how to fix it.
-
-**Required product outcome**
-
-Preserve sanitized structured validation information end-to-end and map known codes to actionable field-level messages/remediation links.
+Update preflight must explain deltas and security impact. Work detail should show effective permission state and the supported revocation/update model. Existing Sessions remain pinned to their exact PackageVersion.
 
 ---
 
-### UX-043 — Destructive/reference conflicts are not consistently converted into resolution flows
+## NUX-029 — Save dependency recovery explains the problem but does not complete the recovery path
 
-**Observed**
+**Current evidence**
 
-World/Knowledge/Work deletion can fail because resources are referenced. Backend services often know blockers or reference details, and the Resource Graph can inspect reverse references.
+When a `.atriasave` requires a missing/mismatched exact Package, Play/Library explains that the matching Work must be installed first.
 
-Product UI generally reports a failure panel rather than turning the blocker set into navigable “Used By / open / detach or update” actions.
+There is no direct “install/open matching Work” recovery action from the same flow.
 
-**User impact**
+**Acceptance**
 
-Reference safety works technically but leaves users stuck when they try to clean up resources.
-
-**Required product outcome**
-
-Standardize conflict resolution UI across resource families using the existing graph/reference evidence.
+Provide a direct recovery path into Package install/version resolution while preserving exact hash/version verification.
 
 ---
 
-# Audit areas checked in this pass
+## NUX-030 — Native Sessions support displayTitle but cannot be named/renamed normally
 
-This second pass inspected current-main behavior across:
+**Current evidence**
 
-- Native Runtime workspace and generation configuration API;
-- Native Product Library / Work / Session / Save controls;
-- Native World / Knowledge contracts and repositories;
-- Prompt/Generation Library authoring;
-- Build / Studio project list, resource editing, assets, source and Library relations;
-- Native Skill scope contracts, Studio Agent Skill consumption and current Skill Manager;
-- Native/compatibility Plugins utility;
-- Product Search / Command projection;
-- Native Product client/error propagation.
+Session contracts and `startWork()` support `displayTitle`.
 
-## Items intentionally not logged here
+Work/Play **Start New** does not ask for a title, and no normal rename/update endpoint/product action was found.
 
-- visual styling, spacing, typography, layout polish or responsive presentation already inside the active frontend redesign;
-- login/onboarding visual redesign already in that project scope;
-- legacy-format import/conversion/migration requirements;
-- removal of compatibility ABI solely for architectural purity;
-- speculative features with no current product authority or user workflow.
+**Acceptance**
 
+Allow optional naming at creation and rename later without changing Session identity, history or PackageVersion pin.
+
+---
+
+## NUX-031 — Embedded Knowledge promotion still exposes internal identity instead of content intent
+
+**Current evidence**
+
+Play Timeline lists session-scoped Knowledge using raw `knowledgeBindingId` text.
+
+“Save to my Library” asks only for a Knowledge Base name, then promotes the binding.
+
+**Acceptance**
+
+Show human-readable content/source summary, destination preview and structured naming/confirmation before promotion. Keep raw IDs behind Details.
+
+---
+
+## NUX-032 — Play branch/revision history is still raw JSON
+
+**Current evidence**
+
+Timeline renders “Branches & revisions” by `JSON.stringify` into a `<pre>`.
+
+**Acceptance**
+
+Provide a readable branch/history model showing current branch, fork points and revision relationships. Raw payload stays under Details/Diagnostics.
+
+---
+
+## NUX-033 — Native Plugin surface is mainly diagnostic, not management
+
+**Current evidence**
+
+Native Plugin cards display pluginId, Package, capability strings and contribution payload details.
+
+The page states that each Work manages plugin permissions, but no first-class activation/permission/dependency management action is exposed from the Native Plugin surface.
+
+**Acceptance**
+
+Either make Plugins the management owner or deep-link to the actual permission/activation owner. Show human-facing name/description/origin/status/dependencies before internal IDs.
+
+---
+
+## NUX-034 — Global Search coverage and completeness signaling are incomplete
+
+**Current evidence**
+
+Product Search indexes Works, Worlds, Knowledge Bases, Build Projects, Runtime configuration and Prompt/Generation resources.
+
+It does not index several major user entities, including Sessions, SavePoints, Skills, individual Knowledge entries and orchestration configurations.
+
+Search refresh uses `Promise.allSettled`; failed authorities can disappear from the result set while the UI still looks complete.
+
+**Acceptance**
+
+Define supported global-search domains, include major navigable user entities, and show a lightweight “some results unavailable” state with retry/details when a source fails.
+
+---
+
+## NUX-035 — Native Product errors lose actionable context at the UI boundary
+
+**Current evidence**
+
+`product-client.js` preserves `error.code` and `error.details` but constructs a generic message such as:
+
+`Native Product request failed (409)`
+
+Many UI callers show `error.message`.
+
+Library maps a few cases to generic conflict/reference strings, but field/blocker details are not consistently surfaced.
+
+**Acceptance**
+
+Map known error codes to actionable product messages and preserve sanitized field/reference details end-to-end.
+
+---
+
+## NUX-036 — Reference-safe failures do not consistently become resolution flows
+
+**Current evidence**
+
+Backend deletion/authoring guards can know exact blockers and the Resource Graph can resolve reverse references.
+
+Product surfaces usually stop at “still referenced” / conflict text.
+
+**Acceptance**
+
+Convert blockers into navigable Used By rows and legal remediation actions instead of leaving the user at a dead end.
+
+---
+
+# P2 — Native convergence debt
+
+## NUX-037 — Orchestrator and Memory still persist compatibility-era preset names
+
+**Current evidence**
+
+Native execution no longer needs legacy preset authority, but settings/persistence still contain fields such as:
+
+- `apiPresetName`
+- `promptPresetName`
+- `llmPresetName`
+
+The Orchestrator workspace continues to author/display these compatibility concepts even while Native generation collapses their selector into Runtime authority.
+
+**Acceptance**
+
+After NUX-007/008 provide equivalent Native routing, Native-facing schemas/UI should store Runtime route/subrole concepts. Keep legacy preset fields only in explicit non-Native compatibility islands.
+
+---
+
+## NUX-038 — Native Knowledge still projects through the old World Info ABI
+
+**Current evidence**
+
+`knowledgePlanToWorldInfoEntries()` converts Native KnowledgePlan entries into World Info-shaped records for the remaining downstream path.
+
+Native Knowledge is already the authority; this is an adapter, not migration support.
+
+**Impact**
+
+New Native Knowledge semantics remain constrained by an old ABI and some fields are flattened/defaulted during projection.
+
+**Acceptance**
+
+Only after Native Knowledge feature parity is complete, replace downstream World Info-shaped consumption with a Native Knowledge interface and shrink the compatibility adapter. Do not make this cleanup block NUX-001–006.
+
+---
+
+# 4. Suggested implementation workstreams
+
+This backlog should not be implemented as 38 unrelated fixes. Normalize it into these workstreams when development starts:
+
+1. **World / Knowledge Authoring**
+   - NUX-001–006
+   - NUX-019–023
+   - NUX-031
+   - NUX-038 last
+
+2. **Native Runtime / Provider**
+   - NUX-009
+   - NUX-011–017
+   - NUX-035
+
+3. **Agent / Memory Native Routing**
+   - NUX-007–008
+   - NUX-037 after route parity
+
+4. **Portable Native Resources**
+   - NUX-018–019
+   - shared conflict/preflight infrastructure with NUX-036
+
+5. **Studio / Build Lifecycle**
+   - NUX-020
+   - NUX-024–026
+   - NUX-035–036
+
+6. **Work / Session / Plugin Product Lifecycle**
+   - NUX-027–033
+   - NUX-035–036
+
+7. **Skills / Search**
+   - NUX-010
+   - NUX-034
+
+## 5. Implementation order constraints
+
+- Fix Native routing before removing compatibility preset fields.
+- Complete Native Knowledge semantics before removing the World Info projection adapter.
+- Build one Resource Bundle infrastructure rather than separate Prompt/World/Knowledge import formats.
+- Do not bundle player Connections, Models or Secrets with portable authoring resources.
+- Preserve exact revisions and immutable PackageVersion / Session pins.
+- Keep Studio ChangeSet/Review/Apply as the only human/project write authority.
+- Do not reintroduce “latest by name” lookups.
+- Provider expansion must remain capability-driven and fail closed.
+
+## 6. Validation expectations for the future implementation task
+
+Each workstream should include:
+
+- focused unit tests for contracts/services;
+- browser tests for the real user workflow;
+- reference/conflict tests;
+- compact/medium/expanded UI acceptance where the workflow is interactive;
+- keyboard/focus/error recovery;
+- existing P0–P8 / A0–A9 / N0–N10 architecture guards as applicable;
+- full root lint and frontend build before final integration.
+
+Android/Termux physical validation is required only where a changed workflow materially depends on WebView/IME/device behavior.
+
+## 7. Re-audit notes
+
+This document was re-verified after the frontend redesign integrated into:
+
+`main@ad15c1e0c3e15e625ba163e284a300c00811f10d`
+
+The redesign intentionally did not change routing, persistence or runtime authority, so many pre-redesign capability findings remained valid. Items whose product behavior materially changed were removed or rewritten rather than mechanically carried forward.

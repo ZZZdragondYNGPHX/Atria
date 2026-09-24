@@ -23,7 +23,7 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
                 <section id="user-settings-block" class="drawer-content closedDrawer" aria-hidden="true">
                     <div id="account_controls"></div>
                     <div id="UI-language-block"><select id="ui_language_select"><option>English</option></select></div>
-                    <div id="UI-Theme-Block"><select id="themes"><option>Default</option></select><label><input type="checkbox" id="reduced_motion">Reduced Motion</label><label><input id="enableLabMode">Sampling</label></div>
+                    <div id="color-picker-block">Colors</div><div id="UI-Theme-Block"><select id="themes"><option>Default</option></select><label><input type="checkbox" id="reduced_motion">Reduced Motion</label><label><input id="enableLabMode">Sampling</label></div>
                     <div id="movingUIModeCheckBlock"></div>
                     <div id="power-user-options-block"></div>
                 </section>
@@ -69,6 +69,10 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         const settingsOne = document.getElementById('extensions_settings');
         const settingsTwo = document.getElementById('extensions_settings2');
         const originalParent = settingsOne.parentNode;
+        settingsOne.innerHTML = '<div class="inline-drawer-header inline-drawer-toggle"><i class="inline-drawer-icon down"></i>Fixture settings</div>';
+        const drawerHeader = settingsOne.firstElementChild;
+        const originalClick = jest.fn();
+        drawerHeader.addEventListener('click', originalClick);
         const disableExtension = jest.fn(async () => {});
         const enableExtension = jest.fn(async () => {});
         const extensionAuthority = {
@@ -135,7 +139,14 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         slot.querySelector('[data-atria-plugin="third-party/example"] .atria-utility-action').click();
         expect(slot.querySelector('[data-atria-plugin-compatibility="true"]').open).toBe(true);
 
+        expect(drawerHeader.getAttribute('role')).toBe('button');
+        drawerHeader.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        expect(originalClick).toHaveBeenCalledTimes(1);
         controller.dispose();
+        expect(drawerHeader.hasAttribute('role')).toBe(false);
+        expect(drawerHeader.hasAttribute('tabindex')).toBe(false);
+        drawerHeader.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        expect(originalClick).toHaveBeenCalledTimes(1);
         expect(settingsOne.parentNode).toBe(originalParent);
         expect(settingsTwo.parentNode).toBe(originalParent);
         expect(settingsOne.dataset.atriaWorkspaceEmbedded).toBeUndefined();
@@ -179,7 +190,7 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         expect(document.getElementById('ui_language_select')).toBe(language);
     });
 
-    test('Account is Atria-native first and lazily mounts the existing authority only under Advanced', async () => {
+    test('Account mounts the existing controller as the primary surface without duplicating identity', async () => {
         const slot = document.getElementById('slot');
         const profile = document.createElement('section');
         profile.id = 'existing-account-profile';
@@ -198,19 +209,58 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
             },
         });
 
-        expect(slot.querySelector('[data-atria-account-primary="true"]').textContent).toContain('alice');
-        expect(openUserProfile).not.toHaveBeenCalled();
-        const advanced = slot.querySelector('[data-atria-account-advanced="true"]');
-        advanced.open = true;
-        advanced.dispatchEvent(new Event('toggle'));
         await Promise.resolve();
-        await Promise.resolve();
+        expect(slot.querySelector('[data-atria-account-primary="true"]')).not.toBeNull();
         expect(openUserProfile).toHaveBeenCalledTimes(1);
         expect(slot.contains(profile)).toBe(true);
-        expect(profile.dataset.atriaAccountEmbedded).toBe('advanced');
+        expect(profile.dataset.atriaAccountEmbedded).toBe('true');
         expect(document.querySelectorAll('#existing-account-profile')).toHaveLength(1);
 
         controller.dispose();
         expect(document.getElementById('existing-account-profile')).toBeNull();
     });
+    test('Account retains a retry path and ignores a response after disposal', async () => {
+        const slot = document.getElementById('slot');
+        let resolveProfile;
+        const authority = { openUserProfile: jest.fn()
+            .mockRejectedValueOnce(new Error('Profile unavailable'))
+            .mockImplementationOnce(({ container }) => new Promise(resolve => { resolveProfile = () => { container.append(document.createElement('section')); resolve(container.firstChild); }; })) };
+        const controller = await mountAccountUtility({ document, slot, accountAuthority: authority });
+        await Promise.resolve();
+        expect(slot.textContent).toContain('Profile unavailable');
+        slot.querySelector('button').click();
+        expect(authority.openUserProfile).toHaveBeenCalledTimes(2);
+        controller.dispose();
+        resolveProfile();
+        await Promise.resolve();
+        expect(slot.childElementCount).toBe(0);
+    });
+
+    test('Plugin persistence failure restores the switch and exposes recovery feedback', async () => {
+        const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {});
+        const controller = await mountPluginsUtility({ document, slot: document.getElementById('slot'),
+            productClient: { listWorks: async () => [] }, extensionAuthority: {
+                extensionNames: ['third-party/test'], extensionTypes: {}, extension_settings: { disabledExtensions: [] },
+                disableExtension: jest.fn(async () => { throw new Error('offline'); }),
+            } });
+        const toggle = controller.root.querySelector('[role="switch"]');
+        toggle.checked = false; toggle.dispatchEvent(new Event('change'));
+        await Promise.resolve(); await Promise.resolve();
+        expect(toggle.checked).toBe(true);
+        expect(toggle.disabled).toBe(false);
+        expect(controller.root.querySelector('.atria-plugin-feedback').textContent).toContain('Try again');
+        controller.dispose(); errorLog.mockRestore();
+    });
+
+    test('a superseded async Plugins mount cannot replace the next workspace', async () => {
+        const slot = document.getElementById('slot');
+        const pending = mountPluginsUtility({ document, slot, extensionAuthority: {}, productClient: { listWorks: async () => [] } });
+        const settings = mountSettingsUtility({ document, slot });
+        const old = await pending;
+        old.dispose();
+        expect(slot.firstChild).toBe(settings.root);
+        expect(slot.querySelector('#reduced_motion')).not.toBeNull();
+        settings.dispose();
+    });
+
 });

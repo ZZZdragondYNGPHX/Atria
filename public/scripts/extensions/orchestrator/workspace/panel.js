@@ -1,3 +1,4 @@
+import { createAtriaShellEnvironment } from '../../../atria-shell/environment.js';
 import { subscribe, getCurrentRun, requestRunStop, inspectEngineNode } from '../run-state/store.js';
 import { workspaceRunView } from '../../../lib/agent-workspace/projection.js';
 import { CAPABILITIES } from '../../../lib/orchestration-engine/capabilities.js';
@@ -387,7 +388,8 @@ function bindNavigationKeyboard(nav, vertical) {
             : event.key === 'End' ? items.length - 1
                 : (current + (event.key === keys[1] ? 1 : -1) + items.length) % items.length;
         const target = items[next];
-        setSection(target.dataset.section, { focus: false });
+        if (hostMount?.onNavigate) hostMount.onNavigate(target.dataset.section);
+        else setSection(target.dataset.section, { focus: false });
         target.focus();
     });
 }
@@ -427,21 +429,33 @@ function mount(options = {}) {
             render();
         },
     });
-    bindNavigationKeyboard(shell.nav, true);
+    bindNavigationKeyboard(shell.nav, !embedded);
+    shell.environment = createAtriaShellEnvironment(shell.root);
+    let inspectorTrigger = null;
+    let wasInspecting = false;
+    const syncInspector = () => {
+        const inspecting = !shell.inspector.hidden;
+        shell.root.dataset.inspecting = String(inspecting);
+        shell.main.inert = inspecting && shell.environment.get().mode !== 'expanded';
+        if (inspecting && !wasInspecting) {
+            const active = document.activeElement;
+            const disclosure = active?.closest('details');
+            inspectorTrigger = disclosure && !disclosure.open ? disclosure.querySelector('summary') : active;
+            shell.inspector.querySelector('button')?.focus({ preventScroll: true });
+        } else if (!inspecting && wasInspecting) {
+            if (inspectorTrigger?.isConnected) inspectorTrigger.focus({ preventScroll: true });
+            else shell.main.focus({ preventScroll: true });
+        }
+        wasInspecting = inspecting;
+    };
+    shell.inspectorObserver = new MutationObserver(syncInspector);
+    shell.inspectorObserver.observe(shell.inspector, { attributes: true, attributeFilter: ['hidden'] });
+    shell.environment.subscribe(syncInspector);
     bindNavigationKeyboard(shell.mobileNav, false);
     shell.root.addEventListener('keydown', event => {
         if (event.key !== 'Escape') return;
-        if (!shell.inspector.hidden) {
-            event.preventDefault();
-            const close = shell.inspector.querySelector('.workspace-inspector-close');
-            if (close) {
-                close.click();
-            } else {
-                selection = {};
-                render();
-            }
-            return;
-        }
+        if (hostMount?.embedded) return; // Shell owns embedded Escape / Back ordering.
+        if (dismissWorkspaceTransient()) { event.preventDefault(); return; }
         closeWorkspace();
     });
 
@@ -490,6 +504,14 @@ export function setWorkspaceSection(next, { focus = false } = {}) {
     return true;
 }
 
+export function dismissWorkspaceTransient() {
+    if (!shell || shell.inspector.hidden) return false;
+    const close = shell.inspector.querySelector('.workspace-inspector-close');
+    if (close) close.click();
+    else { selection = {}; render(); }
+    return true;
+}
+
 export function closeWorkspace() {
     if (!shell) return;
     disposePage?.();
@@ -527,6 +549,8 @@ export function destroyWorkspace() {
     frame = null;
     clearInterval(timer);
     timer = null;
+    shell?.inspectorObserver?.disconnect();
+    shell?.environment?.dispose();
     shell?.root.remove();
     shell?.pill?.remove();
     shell = null;

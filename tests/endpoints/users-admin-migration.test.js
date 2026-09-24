@@ -372,6 +372,13 @@ describe('POST /storage/migrate — lock contention', () => {
     });
 });
 
+describe('retired SillyTavern onboarding imports', () => {
+    test.each(['/import/config', '/import/global-extensions'])('%s is no longer routed', async route => {
+        const response = await request(makeApp()).post(route).send({});
+        expect(response.status).toBe(404);
+    });
+});
+
 describe('POST /storage/status — staleSeconds', () => {
     beforeEach(() => {
         mockState.handles = ['a'];

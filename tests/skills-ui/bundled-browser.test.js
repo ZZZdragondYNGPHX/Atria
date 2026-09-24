@@ -4,12 +4,12 @@
  * The bundled-browser component lists every skill in `default/skills/global/`
  * (returned by `context.skills.listBundledManifest()`), tags each row with one
  * of three install states based on whether/how the user has installed it
- * locally, and surfaces per-row + bulk install actions.
+ * locally, and surfaces the explicit collection install action.
  *
  * Pure helpers (computeInstallStates, buildBundledTableHtml,
  * sortBundledRows) are unit-tested without any DOM. The interactive
  * renderBundledBrowser entry point is exercised against the same StubDocument
- * pattern as skill-manager-panel.test.js so we cover the "Install this" and
+ * pattern as skill-manager-panel.test.js so we cover the
  * "Install all" wiring without pulling in jsdom.
  *
  * Mirrors the Jest config (testEnvironment: node) — no jsdom required.
@@ -114,8 +114,9 @@ describe('bundled-browser — pure helpers', () => {
         // Toolbar actions
         expect(html).toContain('Install all bundled');
         expect(html).toContain('Refresh');
-        // Per-row install/reinstall action
-        expect(html).toMatch(/data-bundled-action="install"[^>]*data-bundled-name="gamma"/);
+        // No misleading per-row action for a whole-collection endpoint.
+        expect(html).not.toContain('data-bundled-action="install"');
+        expect(html).toContain('Differing local copies will be replaced');
         // installed_match rows should NOT show an install button (already-installed).
         const alphaRowMatch = /data-bundled-name="alpha"[\s\S]*?<\/tr>/.exec(html);
         expect(alphaRowMatch).toBeTruthy();
@@ -401,25 +402,6 @@ describe('renderBundledBrowser — integration scenarios', () => {
         expect(global.toastr.success).toHaveBeenCalled();
     });
 
-    test('Install this on a not_installed row calls install with bundled payload', async () => {
-        const bundled = [
-            { name: 'solo', installedHash: 'H1', fileCount: 1, totalBytes: 50, description: '' },
-        ];
-        const { ctx, mount } = await bootstrap({ bundled, installed: [] });
-        const btn = mount.querySelector('[data-bundled-action="install"][data-bundled-name="solo"]');
-        expect(btn).toBeTruthy();
-        btn.click();
-        for (let i = 0; i < 8; i++) await Promise.resolve();
-        // The component invokes context.skills.importBundled (which installs
-        // ALL of the default skills) — the per-row "Install this" button reuses
-        // the same endpoint because installBundledSkills is idempotent via
-        // 'replace' strategy and the server has no install-one-bundled route.
-        // The toast should appear and list should re-fetch.
-        expect(ctx.__skillsApi.importBundled).toHaveBeenCalledTimes(1);
-        // After per-row install, list() runs again for refresh.
-        expect(ctx.__skillsApi.list.mock.calls.length).toBeGreaterThanOrEqual(2);
-    });
-
     test('Refresh button re-fetches bundled + installed', async () => {
         const { ctx, mount } = await bootstrap({ bundled: [], installed: [] });
         const before = ctx.__skillsApi.listBundledManifest.mock.calls.length;
@@ -480,8 +462,9 @@ describe('renderBundledBrowser — integration scenarios', () => {
         await renderBundledBrowser({ context: ctx, mount, t: (s) => s });
         await Promise.resolve();
         await Promise.resolve();
-        // Error toast surfaces; the panel renders an empty state, not a crash.
-        expect(global.toastr.error).toHaveBeenCalled();
-        expect(mount.innerHTML).toContain('No bundled skills');
+        // A load failure remains an error with retry, never a false empty state.
+        expect(mount.innerHTML).toContain('role="alert"');
+        expect(mount.innerHTML).toContain('Try again');
+        expect(mount.innerHTML).not.toContain('No bundled skills');
     });
 });

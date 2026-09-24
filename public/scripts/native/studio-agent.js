@@ -1,3 +1,4 @@
+import { translateShellText as t } from '../atria-shell/localization.js';
 import { executeNativeGeneration } from './generation-client.js';
 import { nativeStudioClient } from './studio-client.js';
 
@@ -281,7 +282,7 @@ function node(documentRef, tag, className = '') {
 function actionButton(documentRef, label, handler, { primary = false, disabled = false } = {}) {
     const button = node(documentRef, 'button', 'menu_button');
     button.type = 'button';
-    button.textContent = label;
+    button.textContent = t(label);
     button.disabled = disabled;
     if (primary) button.dataset.variant = 'primary';
     button.addEventListener('click', handler);
@@ -296,11 +297,11 @@ function formatTaskStatus(task) {
 function renderPlan(documentRef, task) {
     const section = node(documentRef, 'section', 'atria-project-agent-plan');
     const heading = node(documentRef, 'h4');
-    heading.textContent = 'Plan';
+    heading.textContent = t('Plan');
     section.append(heading);
     if (!task?.plan?.steps?.length) {
         const empty = node(documentRef, 'p');
-        empty.textContent = 'No plan yet.';
+        empty.textContent = t('No plan yet.');
         section.append(empty);
         return section;
     }
@@ -335,6 +336,7 @@ export function mountNativeStudioAgent({
     getRevision,
     onProjectCommitted = async () => {},
     onTaskState = () => {},
+    onReviewRequested = () => {},
     onLog = () => {},
 }) {
     let disposed = false;
@@ -343,6 +345,13 @@ export function mountNativeStudioAgent({
     let messages = [];
     let running = false;
     let controller = null;
+    let intentDraft = '';
+    let errorMessage = '';
+    let takingOver = false;
+    const showError = error => {
+        errorMessage = error?.message || String(error);
+        onLog(error.status === 409 ? 'conflict' : 'error', errorMessage, error?.details);
+    };
 
     const notifyTask = () => {
         if (activeTask) onTaskState(clone(activeTask));
@@ -353,21 +362,32 @@ export function mountNativeStudioAgent({
 
     const render = () => {
         if (disposed) return;
+        const focused = slot.contains(documentRef.activeElement) ? documentRef.activeElement : null;
+        const focusLabel = focused?.getAttribute('aria-label');
+        const focusText = focused?.tagName === 'BUTTON' ? focused.textContent : null;
+        const selection = focused?.tagName === 'TEXTAREA' ? [focused.selectionStart, focused.selectionEnd] : null;
+        const restoreFocus = () => {
+            const target = [...slot.querySelectorAll('button,select,textarea')].find(item => !item.disabled && (focusLabel ? item.getAttribute('aria-label') === focusLabel : focusText && item.textContent === focusText));
+            target?.focus({ preventScroll: true });
+            if (selection && target?.tagName === 'TEXTAREA') target.setSelectionRange(...selection);
+        };
         slot.replaceChildren();
+        slot.setAttribute('aria-busy', String(running));
         const header = node(documentRef, 'header', 'atria-project-agent-header');
         const title = node(documentRef, 'div');
         const h3 = node(documentRef, 'h3');
-        h3.textContent = 'Project Agent';
+        h3.textContent = t('Project Agent');
         const status = node(documentRef, 'span');
         status.textContent = formatTaskStatus(activeTask);
         title.append(h3, status);
         header.append(title);
 
         const taskSelect = node(documentRef, 'select');
-        taskSelect.setAttribute('aria-label', 'Project Tasks');
+        taskSelect.setAttribute('aria-label', t('Project Tasks'));
+        taskSelect.disabled = running || takingOver;
         const blank = node(documentRef, 'option');
         blank.value = '';
-        blank.textContent = 'Project Tasks';
+        blank.textContent = t('Project Tasks');
         taskSelect.append(blank);
         for (const task of tasks) {
             const option = node(documentRef, 'option');
@@ -377,24 +397,33 @@ export function mountNativeStudioAgent({
             taskSelect.append(option);
         }
         taskSelect.addEventListener('change', async () => {
-            if (!taskSelect.value) return;
-            activeTask = await nativeStudioClient.getAgentTask(projectId, taskSelect.value);
-            messages = [{ role: 'user', content: activeTask.intent }];
-            notifyTask();
-            render();
+            if (!taskSelect.value || running || takingOver) return;
+            running = true; errorMessage = ''; taskSelect.disabled = true;
+            try {
+                activeTask = await nativeStudioClient.getAgentTask(projectId, taskSelect.value);
+                messages = [{ role: 'user', content: activeTask.intent }];
+                notifyTask();
+            } catch (error) { showError(error); } finally { running = false; render(); slot.querySelector('select')?.focus(); }
         });
         header.append(taskSelect);
         slot.append(header);
+        if (errorMessage) {
+            const error = node(documentRef, 'p'); error.setAttribute('role', 'alert');
+            error.textContent = errorMessage; slot.append(error);
+        }
 
         if (!activeTask) {
             const form = node(documentRef, 'div', 'atria-project-agent-new-task');
             const input = node(documentRef, 'textarea');
-            input.placeholder = 'Describe the project change you want…';
-            input.setAttribute('aria-label', 'Project Agent intent');
+            input.placeholder = t('Describe the project change you want…');
+            input.setAttribute('aria-label', t('Project Agent intent'));
+            input.value = intentDraft;
+            input.disabled = running;
+            input.addEventListener('input', () => { intentDraft = input.value; });
             const create = actionButton(documentRef, 'Create Task', async () => {
                 const intent = input.value.trim();
                 if (!intent || running) return;
-                running = true;
+                running = true; errorMessage = ''; intentDraft = input.value;
                 render();
                 try {
                     const revision = getRevision();
@@ -409,7 +438,7 @@ export function mountNativeStudioAgent({
                     running = false;
                     await continueTask();
                 } catch (error) {
-                    onLog('error', error?.message || String(error), error?.details);
+                    showError(error);
                 } finally {
                     running = false;
                     render();
@@ -417,17 +446,19 @@ export function mountNativeStudioAgent({
             }, { primary: true, disabled: running });
             form.append(input, create);
             const note = node(documentRef, 'p');
-            note.textContent = 'AI is optional. Human Studio editing remains fully available when Project Agent is unused or unavailable.';
+            note.textContent = t('AI is optional. Human Studio editing remains fully available when Project Agent is unused or unavailable.');
             form.append(note);
             slot.append(form);
+            restoreFocus();
             return;
         }
 
         slot.append(renderPlan(documentRef, activeTask));
+        const intent = node(documentRef, 'p'); intent.textContent = activeTask.intent; slot.append(intent);
 
         const progress = node(documentRef, 'section', 'atria-project-agent-progress');
         const progressTitle = node(documentRef, 'h4');
-        progressTitle.textContent = 'Progress';
+        progressTitle.textContent = t('Progress');
         const pre = node(documentRef, 'pre');
         pre.textContent = JSON.stringify({
             taskId: activeTask.taskId,
@@ -446,8 +477,21 @@ export function mountNativeStudioAgent({
                 at: item.at,
             })),
         }, null, 2);
-        progress.append(progressTitle, pre);
-        slot.append(progress, renderConversation(documentRef, messages));
+        const summary = node(documentRef, 'p');
+        summary.textContent = `${activeTask.operations?.length || 0} proposed operations · ${activeTask.validation?.status || 'Not validated'}`;
+        const details = node(documentRef, 'details', 'atri-studio-details');
+        const detailsTitle = node(documentRef, 'summary'); detailsTitle.textContent = t('Task evidence and exact revision');
+        details.append(detailsTitle, pre);
+        progress.append(progressTitle, summary, details);
+        if (activeTask.status === 'review') {
+            const notice = node(documentRef, 'p');
+            notice.textContent = activeTask.review?.highImpact ? 'High-impact changes require your review. Inspect Changes before committing.' : 'Ready for your review. No project changes are committed until you choose Review & Commit.';
+            progress.append(notice);
+        }
+        const conversation = node(documentRef, 'details', 'atri-studio-details');
+        const conversationTitle = node(documentRef, 'summary'); conversationTitle.textContent = t('Task conversation');
+        conversation.append(conversationTitle, renderConversation(documentRef, messages));
+        slot.append(progress, conversation);
 
         const actions = node(documentRef, 'div', 'atria-project-agent-actions');
         if (!STOP_STATES.has(activeTask.status) || activeTask.status === 'review') {
@@ -456,9 +500,10 @@ export function mountNativeStudioAgent({
             }));
         }
         if (activeTask.status === 'review') {
+            actions.append(actionButton(documentRef, 'Inspect changes', onReviewRequested));
             actions.append(actionButton(documentRef, activeTask.review?.highImpact ? 'Review & Commit High-impact Changes' : 'Review & Commit', async () => {
-                if (running) return;
-                running = true;
+                if (running || takingOver) return;
+                running = true; errorMessage = '';
                 render();
                 try {
                     activeTask = await nativeStudioClient.commitAgentTask(projectId, activeTask.taskId);
@@ -467,7 +512,7 @@ export function mountNativeStudioAgent({
                     onLog('agent', 'Committed Project Agent ChangeSet', activeTask.changeSets?.at(-1));
                     await onProjectCommitted(activeTask);
                 } catch (error) {
-                    onLog(error.status === 409 ? 'conflict' : 'error', error?.message || String(error), error?.details);
+                    showError(error);
                     activeTask = await nativeStudioClient.getAgentTask(projectId, activeTask.taskId).catch(() => activeTask);
                 } finally {
                     running = false;
@@ -477,51 +522,58 @@ export function mountNativeStudioAgent({
         }
         if (!['completed', 'taken_over'].includes(activeTask.status)) {
             actions.append(actionButton(documentRef, 'Human Takeover', async () => {
-                if (running) controller?.abort();
-                activeTask = await nativeStudioClient.takeOverAgentTask(projectId, activeTask.taskId);
-                tasks = await nativeStudioClient.listAgentTasks(projectId);
-                notifyTask();
-                onLog('agent', 'Human takeover activated', activeTask);
-                render();
-            }));
+                if (takingOver) return;
+                takingOver = true; errorMessage = ''; controller?.abort(); render();
+                try {
+                    activeTask = await nativeStudioClient.takeOverAgentTask(projectId, activeTask.taskId);
+                    tasks = await nativeStudioClient.listAgentTasks(projectId);
+                    notifyTask();
+                    onLog('agent', 'Human takeover activated', activeTask);
+                } catch (error) { showError(error); } finally { takingOver = false; render(); }
+            }, { disabled: takingOver || (running && !controller) }));
         }
         actions.append(actionButton(documentRef, 'New Task', () => {
-            activeTask = null;
+            if (running || takingOver) return;
+            activeTask = null; intentDraft = ''; errorMessage = '';
             messages = [];
             render();
-        }));
+            slot.querySelector('textarea')?.focus();
+        }, { disabled: running || takingOver }));
         slot.append(actions);
+        restoreFocus();
     };
 
     async function continueTask() {
-        if (!activeTask || running) return;
-        running = true;
+        if (!activeTask || running || takingOver) return;
+        running = true; errorMessage = '';
         controller = new AbortController();
+        const runController = controller;
         render();
         try {
             const result = await runNativeStudioAgentTask({
                 projectId,
                 taskId: activeTask.taskId,
                 messages,
-                abortSignal: controller.signal,
+                abortSignal: runController.signal,
                 onUpdate(update) {
-                    if (disposed) return;
+                    if (disposed || takingOver || runController.signal.aborted) return;
                     if (update.task) activeTask = clone(update.task);
                     if (update.messages) messages = clone(update.messages);
                     notifyTask();
                     render();
                 },
             });
+            if (disposed || takingOver || runController.signal.aborted) return;
             activeTask = result.task;
             messages = result.messages;
             tasks = await nativeStudioClient.listAgentTasks(projectId);
             notifyTask();
             onLog('agent', `Project Agent stopped at ${activeTask.status}`, activeTask);
         } catch (error) {
-            if (!controller.signal.aborted) {
-                onLog(error.status === 409 ? 'conflict' : 'error', error?.message || String(error), error?.details);
+            if (!runController.signal.aborted) {
+                showError(error);
             }
-            activeTask = await nativeStudioClient.getAgentTask(projectId, activeTask.taskId).catch(() => activeTask);
+            if (!runController.signal.aborted && !disposed) activeTask = await nativeStudioClient.getAgentTask(projectId, activeTask.taskId).catch(() => activeTask);
             notifyTask();
         } finally {
             controller = null;
@@ -537,7 +589,7 @@ export function mountNativeStudioAgent({
             render();
         })
         .catch(error => {
-            onLog('error', error?.message || String(error));
+            showError(error);
             render();
         });
     render();

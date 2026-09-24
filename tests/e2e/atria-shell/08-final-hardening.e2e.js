@@ -53,8 +53,10 @@ test.describe('R7H Legacy Shell Retirement & Final Hardening', () => {
         await root.locator('[data-atria-utility="settings"]').click();
         await expect(root.locator('[data-atria-utility-workspace="settings"]')).toBeVisible();
         await expect(root.locator('[data-atria-settings-section="moving-ui"]')).toHaveCount(0);
-        await root.locator('[data-atria-settings-section="interface"]').click();
-        await expect(root.locator('#movingUIModeCheckBlock')).toHaveCount(1);
+        await expect(root.locator('#send_on_enter')).toBeVisible();
+        await expect(root.locator('#movingUIModeCheckBlock')).toHaveCount(0);
+        await expect(page.locator('#movingUIModeCheckBlock')).toHaveCount(1);
+        await expect(page.locator('#movingUIModeCheckBlock')).toBeHidden();
     });
 
     test('MovingUI persisted geometry cannot override Shell-owned native Play layout', async ({ page }) => {

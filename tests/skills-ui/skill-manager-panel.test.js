@@ -223,6 +223,10 @@ describe('skill-manager-panel — pure helpers', () => {
  */
 
 class StubElement {
+    contains(node) { return node === this || this._children.some(child => child.contains(node)); }
+    get isConnected() { return true; }
+    get childElementCount() { return this._children.length; }
+    removeAttribute(name) { this._attrs.delete(name); }
     constructor(tagName = 'div') {
         this.tagName = String(tagName || 'div').toUpperCase();
         this._children = [];
@@ -344,6 +348,7 @@ class StubElement {
         for (const h of list) h(event);
     }
     click() {
+        if (this.disabled) return;
         this.dispatchEvent({ type: 'click', preventDefault() {}, stopPropagation() {} });
     }
 }

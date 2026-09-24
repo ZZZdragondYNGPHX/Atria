@@ -2019,54 +2019,437 @@
 }
 
 
-/* R7E: when the existing Agents / Memory controller is hosted by AppShell,
-   the outer AppShell owns product chrome and viewport placement. */
-#agent-memory-workspace[data-atria-workspace-embedded="true"] {
-    position: relative;
-    inset: auto;
-    z-index: auto;
-    width: 100%;
-    height: 100%;
-    min-width: 0;
-    min-height: 0;
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
-    backdrop-filter: none;
+/* Embedded Agents use the product frame and its Environment breakpoints. */
+#agent-memory-workspace[data-atria-workspace-embedded=true] {
+    --atri-workspace-bg:var(--atri-canvas);
+    --atri-workspace-surface-1:var(--atri-surface-1);
+    --atri-workspace-surface-2:var(--atri-surface-2);
+    --atri-workspace-surface-3:var(--atri-surface-3);
+    --atri-workspace-border:var(--atri-separator);
+    --atri-workspace-border-strong:var(--atri-separator-strong);
+    --atri-workspace-accent:var(--atri-accent-text);
+    --atri-workspace-success:var(--atri-success);
+    --atri-workspace-warning:var(--atri-warning);
+    --atri-workspace-danger:var(--atri-danger);
+    position:relative;
+    inset:auto;
+    z-index:auto;
+    width:100%;
+    height:100%;
+    min-height:0;
+    min-width:0;
+    border:0;
+    border-radius:0;
+    box-shadow:none;
+    backdrop-filter:none;
+    display:grid;
+    grid-template-rows:auto auto minmax(0,1fr);
+    color:var(--atri-text-primary);
+    font:var(--atri-text-body)/1.55 var(--atri-font-sans);
 }
 
-#agent-memory-workspace[data-atria-workspace-embedded="true"] .atria-workspace-close {
-    display: none !important;
+#agent-memory-workspace[data-atria-workspace-embedded=true] .atria-workspace-brand,
+#agent-memory-workspace[data-atria-workspace-embedded=true] .atria-workspace-close,
+#agent-memory-workspace[data-atria-workspace-embedded=true] .atria-workspace-mobile-nav {
+    display:none;
 }
 
-#agent-memory-workspace[data-atria-workspace-embedded="true"] .atria-workspace-frame {
-    min-height: 0;
+#agent-memory-workspace[data-atria-workspace-embedded=true] .atria-workspace-header {
+    display:flex;
+    flex-wrap:wrap;
+    min-height:52px;
+    padding:8px 24px;
+    gap:12px;
+    background:transparent;
+    border:0;
 }
 
-@media (max-width: 760px) {
-    #agent-memory-workspace[data-atria-workspace-embedded="true"] {
-        inset: auto;
-        border-radius: 0;
-    }
+#agent-memory-workspace[data-atria-workspace-embedded=true] .atria-workspace-header-meta {
+    margin-right:auto;
+    flex-wrap:wrap;
+    justify-content:flex-start;
 }
 
-/* Embedded width, not the browser viewport, determines inspector capacity. */
-#agent-memory-workspace[data-atria-workspace-embedded="true"] {
-    container: atri-agent-workspace / inline-size;
+#agent-memory-workspace[data-atria-workspace-embedded=true] .atria-workspace-preset-chip {
+    padding:0;
+    border:0;
+    background:none;
+    font-size:var(--atri-text-footnote);
 }
-@media (min-width: 761px) {
-    @container atri-agent-workspace (max-width: 1100px) {
-        #agent-memory-workspace .atria-workspace-frame:has(> .atria-workspace-inspector:not([hidden])) {
-            position: relative;
-            grid-template-columns: var(--atri-workspace-nav-width) minmax(0, 1fr);
-        }
-        #agent-memory-workspace .atria-workspace-inspector:not([hidden]) {
-            position: absolute;
-            inset: 0 0 0 auto;
-            width: min(380px, calc(100% - var(--atri-workspace-nav-width)));
-            z-index: 7;
-            background: var(--atri-workspace-bg);
-            box-shadow: -12px 0 30px #0004;
-        }
-    }
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .atria-workspace-nav {
+    display:flex;
+    gap:4px;
+    padding:0 24px 12px;
+    border:0;
+    border-bottom:1px solid var(--atri-separator);
+    overflow:auto;
+    background:none;
 }
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .atria-workspace-nav-item {
+    display:flex;
+    flex-direction:row;
+    min-width:0;
+    gap:8px;
+    padding:8px 12px;
+    min-height:36px;
+    border:0;
+    background:none;
+    font-size:var(--atri-text-callout);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .atria-workspace-nav-item.is-active {
+    background:var(--atri-accent-soft);
+    color:var(--atri-accent-text);
+    box-shadow:none;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport] .atria-workspace-frame {
+    position:relative;
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    min-height:0;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-inspecting=true][data-atria-viewport=expanded] .atria-workspace-frame {
+    grid-template-columns:minmax(0,1fr) 340px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .atria-workspace-main {
+    min-width:0;
+    padding:24px;
+    overflow:auto;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport] .atria-workspace-inspector:not([hidden]) {
+    position:relative;
+    inset:auto;
+    width:auto;
+    min-width:0;
+    max-width:none;
+    height:100%;
+    z-index:7;
+    padding:20px;
+    background:var(--atri-surface-1);
+    border:0;
+    border-left:1px solid var(--atri-separator);
+    border-radius:0;
+    box-shadow:none;
+    overflow:auto;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=medium] .atria-workspace-inspector:not([hidden]) {
+    position:absolute;
+    inset:0 0 0 auto;
+    width:min(380px,100%);
+    box-shadow:var(--atri-shadow-2);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] .atria-workspace-inspector:not([hidden]) {
+    position:absolute;
+    inset:0;
+    width:100%;
+    padding:16px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-authoring-layout {
+    display:grid;
+    grid-template-columns:220px minmax(0,1fr);
+    gap:28px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-preset-list {
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-preset-list button {
+    border:0;
+    border-radius:var(--atri-radius-sm);
+    background:transparent;
+    padding:12px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-preset-list button[aria-pressed=true] {
+    background:var(--atri-accent-soft);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-eyebrow {
+    text-transform:none;
+    letter-spacing:normal;
+    color:var(--atri-text-secondary);
+    font-size:var(--atri-text-footnote);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] :is(.workspace-effective-preset,.workspace-binding-bar,.workspace-authoring-plan,.workspace-run-summary,.workspace-run-graph,.workspace-memory-overview-hero,.workspace-memory-overview-section,.workspace-memory-maintenance-hero,.workspace-memory-maintenance-section) {
+    border:0;
+    border-radius:0;
+    background:transparent;
+    box-shadow:none;
+    padding:12px 0;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-metrics {
+    gap:0;
+    border-block:1px solid var(--atri-separator);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-metric {
+    background:none;
+    border:0;
+    border-radius:0;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] details {
+    border:0;
+    border-top:1px solid var(--atri-separator);
+    border-radius:0;
+    background:transparent;
+    padding:12px 0;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-more-menu {
+    padding:0;
+    border:0;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-more-menu[open] {
+    background:var(--atri-elevated);
+    padding:8px;
+    border-radius:var(--atri-radius-md);
+    box-shadow:var(--atri-shadow-2);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] :is(input,select,textarea) {
+    background:var(--atri-surface-2);
+    border:1px solid transparent;
+    color:var(--atri-text-primary);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] button {
+    border-color:transparent;
+    background:var(--atri-fill);
+    transition:background var(--atri-motion-fast),transform var(--atri-motion-fast);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] button:active {
+    transform:scale(.98);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-inspector-heading {
+    position:relative;
+    top:auto;
+    background:transparent;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-inspector-save {
+    bottom:0;
+    background:var(--atri-surface-1);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-empty-state {
+    border:0;
+    background:transparent;
+    padding:64px 24px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-status:empty {
+    display:none;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] .atria-workspace-header {
+    padding:8px 16px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] .atria-workspace-nav {
+    padding:0 12px 8px;
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:2px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] .atria-workspace-nav-item {
+    flex-direction:column;
+    padding:6px 2px;
+    font-size:var(--atri-text-caption);
+    overflow-wrap:anywhere;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] .atria-workspace-main {
+    padding:16px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] .workspace-authoring-layout {
+    grid-template-columns:minmax(0,1fr);
+    gap:24px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] .workspace-preset-list {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] :is(button,select,summary) {
+    min-height:44px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] :is(input,textarea,select) {
+    font-size:16px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-reduced-motion=true] * {
+    transition:none!important;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .atria-workspace-nav {
+    flex-direction:row;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .atria-workspace-nav-item {
+    width:auto;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-authoring-library {
+    position:static;
+    max-height:none;
+    border:0;
+    padding:0;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-authoring-library > summary {
+    font-size:var(--atri-text-title-3);
+    margin-bottom:16px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-library-heading {
+    display:none;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] :is(.workspace-authoring-graph,.workspace-plan-summary > div,.workspace-memory-metric) {
+    background:transparent;
+    border:0;
+    border-radius:0;
+    padding:12px 0;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-plan-summary {
+    border-block:1px solid var(--atri-separator);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-memory-control-grid {
+    display:flex;
+    flex-direction:column;
+    gap:0;
+    background:var(--atri-surface-1);
+    border-radius:var(--atri-radius-lg);
+    overflow:hidden;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-memory-toggle-card {
+    display:flex;
+    justify-content:space-between;
+    gap:24px;
+    padding:16px;
+    border:0;
+    border-bottom:1px solid var(--atri-separator);
+    border-radius:0;
+    background:transparent;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-memory-select-card select {
+    max-width:180px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-memory-metrics {
+    border-block:1px solid var(--atri-separator);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-subnav {
+    flex-wrap:wrap;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] .atria-workspace-nav {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] .atria-workspace-nav-item {
+    flex-direction:row;
+    justify-content:flex-start;
+    padding:8px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] .workspace-authoring-library {
+    border-bottom:1px solid var(--atri-separator);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] .workspace-authoring-library > summary {
+    margin:0;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] .workspace-memory-select-card {
+    flex-wrap:wrap;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport] .workspace-memory-toggle-card {
+    background:transparent;
+    border:0;
+    border-bottom:1px solid var(--atri-separator);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] input[type=checkbox] {
+    appearance:none;
+    filter:none;
+    position:relative;
+    flex:0 0 36px;
+    width:36px;
+    height:22px;
+    padding:0;
+    border:0;
+    border-radius:20px;
+    background:var(--atri-fill-pressed);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] input[type=checkbox]::before {
+    content:'';
+    position:absolute;
+    width:16px;
+    height:16px;
+    top:3px;
+    left:3px;
+    border-radius:50%;
+    background:var(--atri-text-primary);
+    clip-path:none;
+    box-shadow:none;
+    transform:translateX(0);
+    transition:transform var(--atri-motion-fast);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] input[type=checkbox]:checked {
+    background:var(--atri-accent);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] input[type=checkbox]:checked::before {
+    background:#fff;
+    transform:translateX(14px);
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-plan-canvas {
+    min-height:180px;
+    height:240px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-more-menu > summary {
+    min-width:56px;
+    font-size:var(--atri-text-callout);
+    padding:8px;
+}
+
+#agent-memory-workspace[data-atria-workspace-embedded=true][data-atria-viewport=compact] .workspace-plan-canvas {
+    min-height:140px;
+    height:180px;
+}
+
+
+#agent-memory-workspace[data-atria-workspace-embedded=true] .workspace-preset-list button { flex-shrink:0; }

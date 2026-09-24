@@ -29,7 +29,6 @@ const listSelectors = [
     '.secretKeyManagerList',
     '.recentChatList',
     '.dataMaidCategoryContent',
-    '#userList',
     '.bg_list',
 ].join(', ');
 
@@ -43,7 +42,6 @@ const listItemSelectors = [
     '.secretKeyManagerList .secretKeyManagerItem',
     '.recentChatList .recentChat',
     '.dataMaidCategoryContent .dataMaidItem',
-    '#userList .userSelect',
     '.bg_list .bg_example',
 ].join(', ');
 

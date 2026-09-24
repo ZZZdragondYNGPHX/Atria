@@ -1,3 +1,4 @@
+import { translateShellText as t } from '../atria-shell/localization.js';
 import {
     compileExperienceComponentModel,
     renderExperienceComponentModel,
@@ -17,10 +18,20 @@ function clone(value) {
 function button(documentRef, label, onClick, { active = false, disabled = false } = {}) {
     const node = documentRef.createElement('button');
     node.type = 'button';
-    node.textContent = label;
+    node.textContent = t(label);
     node.disabled = disabled;
     node.dataset.active = active ? 'true' : 'false';
-    node.addEventListener('click', onClick);
+    node.addEventListener('click', async () => {
+        if (node.disabled) return;
+        try {
+            const result = onClick();
+            if (result?.then) { node.disabled = true; node.setAttribute('aria-busy', 'true'); await result; }
+        } catch (error) {
+            const host = node.closest('.atria-studio-ui-editor');
+            const status = host?.querySelector('.atria-studio-editor-footer span');
+            if (status) { status.textContent = error.message; status.setAttribute('role', 'alert'); status.tabIndex = -1; status.focus(); }
+        } finally { node.disabled = disabled; node.removeAttribute('aria-busy'); }
+    });
     return node;
 }
 
@@ -28,7 +39,7 @@ function textarea(documentRef, value, label) {
     const node = documentRef.createElement('textarea');
     node.className = 'text_pole atria-studio-editor__textarea';
     node.value = value;
-    node.setAttribute('aria-label', label);
+    node.setAttribute('aria-label', t(label));
     return node;
 }
 
@@ -36,14 +47,14 @@ function input(documentRef, value, label) {
     const node = documentRef.createElement('input');
     node.className = 'text_pole';
     node.value = value ?? '';
-    node.setAttribute('aria-label', label);
+    node.setAttribute('aria-label', t(label));
     return node;
 }
 
 function select(documentRef, value, options, label) {
     const node = documentRef.createElement('select');
     node.className = 'text_pole';
-    node.setAttribute('aria-label', label);
+    node.setAttribute('aria-label', t(label));
     for (const item of options) {
         const option = documentRef.createElement('option');
         option.value = item;
@@ -58,7 +69,7 @@ function field(documentRef, label, control) {
     const wrapper = documentRef.createElement('label');
     wrapper.className = 'atria-studio-field';
     const caption = documentRef.createElement('span');
-    caption.textContent = label;
+    caption.textContent = t(label);
     wrapper.append(caption, control);
     return wrapper;
 }
@@ -134,6 +145,11 @@ export function mountStructuredUiEditor({
     let selectedId = model?.id || null;
     let activeTab = 'design';
     let statusMessage = '';
+    let sourceDraft = null;
+    const bindingDrafts = new Map();
+    const propertyDrafts = new Map();
+    const pendingDrafts = new Set();
+    let invalidDraft = false;
 
     const shell = documentRef.createElement('section');
     shell.className = 'atria-studio-ui-editor';
@@ -147,9 +163,28 @@ export function mountStructuredUiEditor({
     function updateModel(nextModel, nextSelectedId = selectedId) {
         validate(nextModel);
         model = clone(nextModel);
+        const currentIds = new Set(flattenComponentTree(model).map(record => record.id));
+        for (const id of propertyDrafts.keys()) if (!currentIds.has(id)) { propertyDrafts.delete(id); pendingDrafts.delete('properties:' + id); }
+        for (const id of bindingDrafts.keys()) if (!currentIds.has(id)) { bindingDrafts.delete(id); pendingDrafts.delete(id); }
+        if (!pendingDrafts.has('source')) sourceDraft = null;
+        invalidDraft = false;
         selectedId = nextSelectedId;
         statusMessage = 'Structured UI changes are local until staged for ChangeSet review.';
         render();
+    }
+
+    function showError(error) {
+        invalidDraft = true;
+        const status = shell.querySelector('.atria-studio-editor-footer span');
+        status.textContent = error?.message || String(error);
+        status.setAttribute('role', 'alert'); status.tabIndex = -1; status.focus();
+        shell.querySelector('.atria-studio-editor-footer button').disabled = true;
+    }
+
+    function markDraft(key) {
+        pendingDrafts.add(key);
+        shell.querySelector('.atria-studio-editor-footer span').textContent = t('Apply the edited fields locally before staging the UI for review.');
+        shell.querySelector('.atria-studio-editor-footer button').disabled = true;
     }
 
     function renderTabs(container) {
@@ -185,10 +220,15 @@ export function mountStructuredUiEditor({
         const properties = documentRef.createElement('div');
         properties.className = 'atria-studio-design__properties';
         if (record) {
-            const typeControl = select(documentRef, record.node.type, TYPES, 'Component type');
-            const textControl = input(documentRef, record.node.props?.text || '', 'Component text');
-            const classControl = input(documentRef, record.node.props?.className || '', 'Component class');
-            const ariaControl = input(documentRef, record.node.props?.ariaLabel || '', 'Component aria label');
+            const draft = propertyDrafts.get(record.id) || { type: record.node.type, text: record.node.props?.text || '', className: record.node.props?.className || '', ariaLabel: record.node.props?.ariaLabel || '' };
+            const typeControl = select(documentRef, draft.type, TYPES, 'Component type');
+            const textControl = input(documentRef, draft.text, 'Component text');
+            const classControl = input(documentRef, draft.className, 'Component class');
+            const ariaControl = input(documentRef, draft.ariaLabel, 'Component aria label');
+            for (const control of [typeControl, textControl, classControl, ariaControl]) control.addEventListener('input', () => {
+                propertyDrafts.set(record.id, { type: typeControl.value, text: textControl.value, className: classControl.value, ariaLabel: ariaControl.value });
+                markDraft('properties:' + record.id);
+            });
             properties.append(
                 field(documentRef, 'Type', typeControl),
                 field(documentRef, 'Text', textControl),
@@ -196,7 +236,7 @@ export function mountStructuredUiEditor({
                 field(documentRef, 'ARIA label', ariaControl),
             );
             properties.append(button(documentRef, 'Apply Properties', () => {
-                updateModel(updateComponentNode(model, record.id, node => {
+                const nextModel = updateComponentNode(model, record.id, node => {
                     const props = { ...(node.props || {}) };
                     for (const [key, value] of [
                         ['text', textControl.value],
@@ -212,7 +252,10 @@ export function mountStructuredUiEditor({
                         type: typeControl.value,
                         props,
                     };
-                }));
+                });
+                validate(nextModel);
+                pendingDrafts.delete('properties:' + record.id); propertyDrafts.delete(record.id);
+                updateModel(nextModel);
             }));
         }
 
@@ -253,6 +296,10 @@ export function mountStructuredUiEditor({
                     updateModel(removeComponent(model, record.id), record.parentId || model.id);
                 }, { disabled: record.parentId == null }),
             );
+            for (const [index, control] of [...controls.children].entries()) {
+                control.setAttribute('aria-label', `${['Move up', 'Move down', 'Add child to', 'Remove'][index]} ${record.id}`);
+                control.title = control.getAttribute('aria-label');
+            }
             row.append(choose, controls);
             tree.append(row);
         }
@@ -268,11 +315,14 @@ export function mountStructuredUiEditor({
             visibility: record.node.visibility || null,
             responsive: record.node.responsive || null,
         };
-        const editor = textarea(documentRef, JSON.stringify(value, null, 2), 'Component bindings JSON');
+        const editor = textarea(documentRef, bindingDrafts.get(record.id) ?? JSON.stringify(value, null, 2), 'Component bindings JSON');
+        editor.addEventListener('input', () => { bindingDrafts.set(record.id, editor.value); markDraft(record.id); });
         body.append(editor);
         body.append(button(documentRef, 'Apply Bindings', () => {
             try {
                 const parsed = parseObject(editor.value, 'Bindings');
+                bindingDrafts.set(record.id, editor.value);
+                pendingDrafts.delete(record.id);
                 updateModel(updateComponentNode(model, record.id, node => {
                     const next = { ...node };
                     for (const key of ['bindings', 'actions']) {
@@ -286,31 +336,36 @@ export function mountStructuredUiEditor({
                     return next;
                 }));
             } catch (error) {
-                statusMessage = error?.message || String(error);
-                render();
+                bindingDrafts.set(record.id, editor.value); pendingDrafts.add(record.id); showError(error);
             }
         }));
     }
 
     function renderSource(body) {
-        const editor = textarea(documentRef, JSON.stringify(model, null, 2), 'Structured UI source JSON');
+        const editor = textarea(documentRef, sourceDraft ?? JSON.stringify(model, null, 2), 'Structured UI source JSON');
+        editor.addEventListener('input', () => { sourceDraft = editor.value; markDraft('source'); });
         body.append(editor);
         body.append(button(documentRef, 'Apply Source', () => {
             try {
                 const parsed = JSON.parse(editor.value);
                 validate(parsed);
                 model = clone(parsed);
+                sourceDraft = null; bindingDrafts.clear(); invalidDraft = false;
+                propertyDrafts.clear();
+                pendingDrafts.clear();
                 selectedId = model.id;
                 statusMessage = 'Structured source parsed and validated.';
                 render();
             } catch (error) {
-                statusMessage = error?.message || String(error);
-                render();
+                sourceDraft = editor.value; showError(error);
             }
         }));
     }
 
     function render() {
+        const focused = shell.contains(documentRef.activeElement) ? documentRef.activeElement : null;
+        const focusLabel = focused?.getAttribute('aria-label');
+        const focusText = focused?.tagName === 'BUTTON' ? focused.textContent : null;
         shell.replaceChildren();
         renderTabs(shell);
 
@@ -327,11 +382,14 @@ export function mountStructuredUiEditor({
         footer.className = 'atria-studio-editor-footer';
         const status = documentRef.createElement('span');
         status.textContent = statusMessage || 'Atria Structured UI · lossless shared Component Model';
+        status.setAttribute('role', 'status');
         footer.append(status, button(documentRef, 'Stage UI Change', () => {
             const compiled = validate();
-            onStage(clone(model), compiled);
-        }));
+            return onStage(clone(model), compiled);
+        }, { disabled: invalidDraft || pendingDrafts.size > 0 }));
         shell.append(footer);
+        const nextFocus = [...shell.querySelectorAll('button,input,select,textarea')].find(item => focusLabel ? item.getAttribute('aria-label') === focusLabel : focusText && item.textContent === focusText);
+        nextFocus?.focus({ preventScroll: true });
     }
 
     render();

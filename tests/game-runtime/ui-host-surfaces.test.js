@@ -86,6 +86,9 @@ describe('Atria Game UI host surface adapter', () => {
         expect(header.parentElement).toBe(playHost.native.sheld);
         expect(right.parentElement).toBe(shell.slots.dock);
         expect(modal.parentElement).toBe(shell.slots.transient);
+        expect(adapter.resolveSurface('sidebar.left').parentElement).toBe(shell.slots.dock);
+        expect(modal.tagName).toBe('DIALOG');
+        expect(modal.getAttribute('aria-label')).toBe('Game dialog');
         expect(document.querySelectorAll('[data-atria-game-host-surface="app.root"]')).toHaveLength(1);
 
         adapter.destroy();

@@ -79,6 +79,25 @@ function buildDomainFrame(documentRef, {
     const body = documentRef.createElement('div');
     body.className = 'atria-domain-workspace__body';
 
+    let compactSection;
+    if (domain === 'library' || domain === 'runtime') {
+        const label = documentRef.createElement('label');
+        label.className = domain === 'library' ? 'atri-library-section-picker' : 'atri-runtime-section-picker';
+        const caption = documentRef.createElement('span');
+        caption.className = 'atri-library-section-label'; caption.textContent = translateShellText(domain === 'library' ? 'Library section' : 'Runtime section');
+        label.append(caption);
+        compactSection = documentRef.createElement('select');
+        compactSection.setAttribute('aria-label', translateShellText(domain === 'library' ? 'Library section' : 'Runtime section'));
+        for (const item of sections) {
+            const option = documentRef.createElement('option');
+            option.value = item.id; option.textContent = translateShellText(item.label);
+            compactSection.append(option);
+        }
+        compactSection.value = activeSection;
+        compactSection.addEventListener('change', () => onNavigate(compactSection.value));
+        label.append(compactSection); root.append(label);
+    }
+
     for (const item of sections) {
         const button = documentRef.createElement('button');
         button.type = 'button';
@@ -92,10 +111,11 @@ function buildDomainFrame(documentRef, {
     }
 
     root.append(nav, body);
-    return { root, nav, body };
+    return { root, nav, body, compactSection };
 }
 
 function updateDomainTabs(frame, activeSection) {
+    if (frame.compactSection) frame.compactSection.value = activeSection;
     for (const button of frame.nav.querySelectorAll('[data-atria-domain-section]')) {
         const selected = button.dataset.atriaDomainSection === activeSection;
         button.classList.toggle('is-selected', selected);
