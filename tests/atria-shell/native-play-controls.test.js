@@ -157,9 +157,22 @@ describe('N9 Native Play product controls', () => {
             expect(findButton(controls.root, label)).toBeTruthy();
         }
 
+        const more = controls.root.querySelector('.atria-play-more');
+        more.open = true;
+        more.querySelector('summary').dispatchEvent(new window.FocusEvent('focusout', {
+            bubbles: true, relatedTarget: findButton(controls.root, 'Re-enter Turn'),
+        }));
+        await flush();
+        expect(more.open).toBe(true);
         findButton(controls.root, 'Re-enter Turn').click();
         await flush();
         expect(globalThis.Atria.reenterNativeTurn).toHaveBeenCalledWith(1);
+        expect(more.open).toBe(false);
+        more.open = true;
+        more.querySelector('summary').dispatchEvent(new window.FocusEvent('focusout', {
+            bubbles: true, relatedTarget: document.body,
+        }));
+        expect(more.open).toBe(false);
 
         findButton(controls.root, 'Quick Save').click();
         await flush();

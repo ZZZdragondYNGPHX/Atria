@@ -551,9 +551,12 @@ export function mountNativePlayControls({
         if (more.open && !more.contains(event.target)) more.open = false;
     };
     documentRef.addEventListener('pointerdown', dismissMore);
-    more.addEventListener('focusout', () => queueMicrotask(() => {
-        if (!more.contains(documentRef.activeElement)) more.open = false;
-    }));
+    more.addEventListener('focusout', event => {
+        // During blur, activeElement may temporarily be body before the next
+        // control receives focus. Keep internal pointer/Tab transitions open
+        // so the destination button can receive its click.
+        if (!more.contains(event.relatedTarget)) more.open = false;
+    });
     toolbar.append(timeline, context, save, more, status);
     root.prepend(landing);
     const sessionHeader = root.querySelector('[data-atria-play-session-header]');

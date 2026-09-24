@@ -22434,7 +22434,14 @@ export async function reenterNativeTurn(index) {
     if (!composer) throw new Error('Native composer is unavailable');
     composer.value = draft.content;
     composer.dispatchEvent(new Event('input', { bubbles: true }));
-    composer.focus();
+    const productComposer = globalThis.Atria?.shell?.getPlayHost?.()?.product?.textarea;
+    if (productComposer?.isConnected) {
+        productComposer.value = draft.content;
+        productComposer.dispatchEvent(new Event('input', { bubbles: true }));
+        productComposer.focus();
+    } else {
+        composer.focus();
+    }
     return draft;
 }
 
