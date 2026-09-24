@@ -6593,5 +6593,13 @@
     "Version": "版本",
     "UI mode": "UI 模式",
     "This preview describes the current project. Use Play to run the real conversation/game surface.": "此處顯示目前專案的預覽資訊。請進入「遊玩」執行真正的對話／遊戲介面。",
-    "This preview describes the current CardApp project. Use Play to run the live surface.": "此處顯示目前 CardApp 專案的預覽資訊。請進入「遊玩」執行即時介面。"
+    "This preview describes the current CardApp project. Use Play to run the live surface.": "此處顯示目前 CardApp 專案的預覽資訊。請進入「遊玩」執行即時介面。",
+    "Welcome to Atria": "歡迎來到 Atria",
+    "A place to play, keep and create interactive stories.": "體驗、收藏與創作互動故事。",
+    "Choose the name you’ll use in stories. You can change it later in your persona settings.": "為故事中的自己取個名字。之後可在人設設定中更改。",
+    "Enter a persona name to get started.": "請輸入人設名稱以開始使用。",
+    "New to Atria?": "初次使用 Atria？",
+    "Explore works in Library, continue your stories in Play, or create your own in Build. Configure your AI connection in Runtime when you’re ready.": "在書庫中探索作品，在遊玩中繼續故事，或在構建中創作自己的作品。準備好後，可在執行階段設定 AI 連線。",
+    "Get started": "開始使用",
+    "Dismiss notification": "關閉通知"
 }

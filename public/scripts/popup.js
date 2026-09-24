@@ -1,3 +1,4 @@
+import { createAtriaShellEnvironment } from './atria-shell/environment.js';
 import dialogPolyfill from '../lib/dialog-polyfill.esm.js';
 import { shouldSendOnEnter } from './RossAscends-mods.js';
 import { t } from './i18n.js';
@@ -342,7 +343,8 @@ export class Popup {
             /** @type {CustomPopupButton} */
             const button = typeof x === 'string' ? { text: x, result: index + 2 } : x;
 
-            const buttonElement = document.createElement('div');
+            const buttonElement = document.createElement('button');
+            buttonElement.type = 'button';
             buttonElement.classList.add('menu_button', 'popup-button-custom', 'result-control');
             buttonElement.classList.add(...(button.classes ?? []));
             buttonElement.dataset.result = String(button.result); // This is expected to also write 'null' or 'staging', to indicate cancel and no action respectively
@@ -680,6 +682,8 @@ export class Popup {
         const keyListener = async (evt) => {
             switch (evt.key) {
                 case 'Enter': {
+                    // Native buttons own Enter/Space and custom action callbacks.
+                    if (evt.target instanceof HTMLButtonElement) { evt.stopPropagation(); return; }
                     // CTRL+Enter counts as a closing action, but all other modifiers (ALT, SHIFT) should not trigger this
                     if (evt.altKey || evt.shiftKey)
                         return;
@@ -745,6 +749,20 @@ export class Popup {
         }
 
         document.body.append(this.dlg);
+        this.entryEnvironment?.dispose();
+        this.entryEnvironment = createAtriaShellEnvironment(this.dlg);
+        const heading = this.content.querySelector('h1, h2, h3, h4');
+        if (!this.dlg.hasAttribute('aria-label') && !this.dlg.hasAttribute('aria-labelledby')) {
+            if (heading) {
+                if (!heading.id) heading.id = `atri-popup-title-${this.id}`;
+                this.dlg.setAttribute('aria-labelledby', heading.id);
+            } else {
+                this.dlg.setAttribute('aria-label', 'Atria dialog');
+            }
+        }
+        if (this.type === POPUP_TYPE.INPUT && !this.mainInput.labels?.length && !this.mainInput.hasAttribute('aria-label')) {
+            this.mainInput.setAttribute('aria-label', heading?.textContent || 'Your response');
+        }
 
         // Run opening animation
         this.dlg.setAttribute('opening', '');
@@ -899,6 +917,7 @@ export class Popup {
             }
 
             // Remove it from the dom
+            this.entryEnvironment?.dispose();
             this.dlg.remove();
 
             // Remove it from the popup references

@@ -6937,5 +6937,13 @@
     "atria.product.no.profiles.yet.create.one.to.get.started": "尚无生成配置。请先创建。",
     "atria.product.stageIndex": "阶段 ${0}",
     "atria.product.stageIdIndex": "阶段 ID ${0}",
-    "atria.product.stageModuleIndex": "阶段 ${0} 的模块"
+    "atria.product.stageModuleIndex": "阶段 ${0} 的模块",
+    "Welcome to Atria": "欢迎来到 Atria",
+    "A place to play, keep and create interactive stories.": "体验、收藏与创作互动故事。",
+    "Choose the name you’ll use in stories. You can change it later in your persona settings.": "为故事中的自己取个名字。之后可在人设设置中更改。",
+    "Enter a persona name to get started.": "请输入人设名称以开始使用。",
+    "New to Atria?": "初次使用 Atria？",
+    "Explore works in Library, continue your stories in Play, or create your own in Build. Configure your AI connection in Runtime when you’re ready.": "在书库中探索作品，在游玩中继续故事，或在构建中创作自己的作品。准备好后，可在运行时配置 AI 连接。",
+    "Get started": "开始使用",
+    "Dismiss notification": "关闭通知"
 }

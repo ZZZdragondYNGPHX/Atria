@@ -1,12 +1,9 @@
-import fs, { promises as fsPromises } from 'node:fs';
+import { promises as fsPromises } from 'node:fs';
 import path from 'node:path';
-import { pipeline } from 'node:stream/promises';
 
 import storage from 'node-persist';
 import express from 'express';
 import lodash from 'lodash';
-import yaml from 'yaml';
-import yauzl from 'yauzl';
 import {
     getAdminSettings,
 } from '../admin-settings.js';
@@ -22,7 +19,7 @@ import {
     getUserDirectories,
     ensurePublicDirectoriesExist,
 } from '../users.js';
-import { DEFAULT_USER, PUBLIC_DIRECTORIES } from '../constants.js';
+import { DEFAULT_USER } from '../constants.js';
 import {
     fetchLatestApkReleaseInfo,
     getGitUpdateStatus,
@@ -35,7 +32,7 @@ import {
     updateAnnouncement,
     ValidationError as AnnouncementValidationError,
 } from '../announcements.js';
-import { ensureDirectory, getConfigFilePath, getConfigValue, normalizeZipEntryPath, reloadConfigCache } from '../util.js';
+import { getConfigFilePath, getConfigValue, reloadConfigCache } from '../util.js';
 import {
     getStorageEngine,
     initStorage,
@@ -70,136 +67,6 @@ import {
 } from '../storage/migration/state.js';
 
 export const router = express.Router();
-
-function sanitizeDefaultExtensionFolderName(name) {
-    const base = String(name || '')
-        .trim()
-        .replace(/[^a-zA-Z0-9._-]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 96);
-    return base || 'imported-extension';
-}
-
-function toGlobalExtensionRelativePath(normalizedEntryPath, defaultFolderName = '') {
-    const normalized = String(normalizedEntryPath || '').replace(/^\/+/, '');
-    if (!normalized) {
-        return '';
-    }
-
-    const trimmed = normalized.replace(/^data\/[^/]+\/extensions\/third-party\//, '')
-        .replace(/^public\/scripts\/extensions\/third-party\//, '')
-        .replace(/^scripts\/extensions\/third-party\//, '')
-        .replace(/^extensions\/third-party\//, '')
-        .replace(/^third-party\//, '');
-
-    const candidate = trimmed || normalized;
-    if (!candidate || candidate.startsWith('.') || candidate.startsWith('..')) {
-        return '';
-    }
-
-    if (!candidate.includes('/')) {
-        const safeFolder = sanitizeDefaultExtensionFolderName(defaultFolderName);
-        return `${safeFolder}/${candidate}`;
-    }
-
-    return candidate;
-}
-
-async function importGlobalExtensionsZip(uploadPath, originalName = '') {
-    const targetRoot = path.resolve(PUBLIC_DIRECTORIES.globalExtensions);
-    ensureDirectory(targetRoot);
-    const defaultFolderName = sanitizeDefaultExtensionFolderName(path.parse(String(originalName || '')).name);
-
-    const result = {
-        importedCount: 0,
-        skippedCount: 0,
-        rejectedCount: 0,
-    };
-
-    await new Promise((resolve, reject) => {
-        yauzl.open(uploadPath, { lazyEntries: true, decodeStrings: true }, (openError, zipfile) => {
-            if (openError) {
-                reject(openError);
-                return;
-            }
-
-            let finished = false;
-            const finish = (error) => {
-                if (finished) {
-                    return;
-                }
-                finished = true;
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve();
-                }
-            };
-
-            zipfile.readEntry();
-
-            zipfile.on('entry', (entry) => {
-                (async () => {
-                    const normalized = normalizeZipEntryPath(entry.fileName);
-                    if (!normalized) {
-                        result.rejectedCount += 1;
-                        zipfile.readEntry();
-                        return;
-                    }
-
-                    if (entry.fileName.endsWith('/')) {
-                        zipfile.readEntry();
-                        return;
-                    }
-
-                    const unixFileType = (entry.externalFileAttributes >> 16) & 0o170000;
-                    if (unixFileType === 0o120000) {
-                        result.rejectedCount += 1;
-                        zipfile.readEntry();
-                        return;
-                    }
-
-                    const relativeTargetPath = toGlobalExtensionRelativePath(normalized, defaultFolderName);
-                    if (!relativeTargetPath) {
-                        result.skippedCount += 1;
-                        zipfile.readEntry();
-                        return;
-                    }
-
-                    const targetPath = path.resolve(path.join(targetRoot, relativeTargetPath));
-                    if (!(targetPath === targetRoot || targetPath.startsWith(targetRoot + path.sep))) {
-                        result.rejectedCount += 1;
-                        zipfile.readEntry();
-                        return;
-                    }
-
-                    ensureDirectory(path.dirname(targetPath));
-
-                    zipfile.openReadStream(entry, async (streamError, readStream) => {
-                        if (streamError) {
-                            finish(streamError);
-                            return;
-                        }
-
-                        try {
-                            await pipeline(readStream, fs.createWriteStream(targetPath, { mode: 0o644 }));
-                            result.importedCount += 1;
-                            zipfile.readEntry();
-                        } catch (error) {
-                            finish(error);
-                        }
-                    });
-                })().catch(finish);
-            });
-
-            zipfile.on('end', () => finish());
-            zipfile.on('close', () => finish());
-            zipfile.on('error', finish);
-        });
-    });
-
-    return result;
-}
 
 router.post('/update/status', requireAdminMiddleware, async (request, response) => {
     try {
@@ -301,80 +168,6 @@ function validateConfigSafety(parsed) {
 
     return { codes, errors };
 }
-
-router.post('/import/config', requireAdminMiddleware, async (request, response) => {
-    let uploadPath = '';
-
-    try {
-        if (!request.file) {
-            return response.status(400).json({ error: 'No config file uploaded' });
-        }
-        uploadPath = request.file.path;
-
-        const content = await fsPromises.readFile(uploadPath, 'utf8');
-        const parsedConfig = yaml.parse(content);
-        const { codes: safetyCodes, errors: safetyErrors } = validateConfigSafety(parsedConfig);
-        if (safetyCodes.length > 0) {
-            return response.status(400).json({ error: safetyErrors.join(' '), codes: safetyCodes });
-        }
-
-        const configPath = getConfigFilePath();
-        if (!configPath) {
-            return response.status(500).json({ error: 'Config path not initialized' });
-        }
-
-        await fsPromises.writeFile(configPath, content, 'utf8');
-        reloadConfigCache();
-
-        return response.json({
-            ok: true,
-            path: configPath,
-            hotReloadApplied: true,
-            restartRecommended: true,
-        });
-    } catch (error) {
-        if (error instanceof Error && error.name.startsWith('YAML')) {
-            return response.status(400).json({ error: error.message });
-        }
-        console.error('Config import failed:', error);
-        return response.status(500).json({ error: String(error?.message || error) });
-    } finally {
-        if (uploadPath) {
-            await fsPromises.rm(uploadPath, { force: true });
-        }
-    }
-});
-
-router.post('/import/global-extensions', requireAdminMiddleware, async (request, response) => {
-    let uploadPath = '';
-
-    try {
-        if (!request.file) {
-            return response.status(400).json({ error: 'No extensions ZIP uploaded' });
-        }
-
-        const originalName = String(request.file.originalname || '').trim();
-        const lowerName = originalName.toLowerCase();
-        if (lowerName.includes('.') && !lowerName.endsWith('.zip')) {
-            return response.status(400).json({ error: 'Extensions file must be a .zip archive' });
-        }
-
-        uploadPath = request.file.path;
-        const result = await importGlobalExtensionsZip(uploadPath, originalName);
-
-        return response.json({
-            ok: true,
-            ...result,
-        });
-    } catch (error) {
-        console.error('Global extensions import failed:', error);
-        return response.status(500).json({ error: String(error?.message || error) });
-    } finally {
-        if (uploadPath) {
-            await fsPromises.rm(uploadPath, { force: true });
-        }
-    }
-});
 
 /**
  * Slugifies a given text string.

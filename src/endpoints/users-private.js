@@ -1926,68 +1926,6 @@ router.post('/lan-migration/import', async (request, response) => {
     }
 });
 
-router.post('/import/data-zip', async (request, response) => {
-    let uploadPath = '';
-    let stagedArchive = null;
-
-    try {
-        if (!request.file) {
-            return response.status(400).json({ error: 'No backup file uploaded' });
-        }
-
-        const originalName = String(request.file.originalname || '');
-        if (!originalName.toLowerCase().endsWith('.zip')) {
-            return response.status(400).json({ error: 'Backup file must be a .zip archive' });
-        }
-
-        uploadPath = request.file.path;
-        const mode = String(request.body.mode || 'merge').toLowerCase() === 'overwrite' ? 'overwrite' : 'merge';
-        const scratchCreds = parseScratchCreds(request.body);
-        stagedArchive = await stageRestoreArchiveForRandomAccess(uploadPath);
-        const restoreResult = await restoreUserBackupArchive(
-            stagedArchive.path, request.user.directories, FULL_IMPORT_SELECTION, mode,
-            { includeGlobalExtensions: false, scratchCreds },
-        );
-        await invalidateRecentChatIndex(request);
-
-        return response.json({
-            mode,
-            ...restoreResult,
-        });
-    } catch (error) {
-        console.error('Data ZIP import failed', error);
-        const message = error?.message || 'Data ZIP import failed';
-        if (error instanceof CrossModeScratchCredsRequiredError) {
-            return response.status(400).json({ error: message, crossModeScratchRequired: { kind: error.kind } });
-        }
-        if (error instanceof CrossModeScratchConnectionError) {
-            return response.status(400).json({ error: message, crossModeScratchConnection: { kind: error.kind } });
-        }
-        if (error?.code === 'MIGRATION_LOCKED') {
-            return response.status(409).json({ error: message });
-        }
-        if (error instanceof CrossModeConversionFailedError) {
-            return response.status(500).json({
-                error: message,
-                crossModeFailure: { rollback: error.rollback, snapshotPath: error.snapshotPath },
-            });
-        }
-        // Mirror /restore-backup and /lan-migration/import: typed errors for
-        // engine-kind mismatch and legacy-fs-on-db (spec §5.2) plus the
-        // legacy preflight string surface as 400 — operator-correctable.
-        const isValidationError = error instanceof RestoreEngineKindMismatchError
-            || error instanceof RestoreLegacyFsOnDbModeError
-            || message.includes('Archive does not match selected restore categories');
-        const statusCode = isValidationError ? 400 : 500;
-        return response.status(statusCode).json({ error: message });
-    } finally {
-        await stagedArchive?.cleanup?.().catch(() => {});
-        if (uploadPath) {
-            await fsPromises.rm(uploadPath, { force: true });
-        }
-    }
-});
-
 router.post('/reset-settings', async (request, response) => {
     try {
         const password = request.body.password;
