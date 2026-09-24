@@ -69,9 +69,11 @@ for (const width of [1440, 390]) {
         await expect(root.locator('#rm_api_block')).toHaveCount(0);
         await open('models'); await root.getByRole('button', { name: 'Edit P4 model', exact: true }).click(); await expect(root).toContainText('Capabilities'); await shot('model');
         await root.getByRole('button', { name: 'Back to models', exact: true }).click();
-        await open('profiles'); await root.getByRole('button', { name: 'Edit P4 generation', exact: true }).click();
-        await root.getByLabel('Maximum output tokens').fill('256'); await root.getByRole('button', { name: 'Save', exact: true }).click();
-        await expect(root.getByRole('button', { name: 'Edit P4 generation', exact: true })).toBeVisible();
+        await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('generation-profiles'));
+        const library = page.locator('.atri-prompt-library');
+        await library.getByRole('button', { name: 'New revision', exact: true }).first().click();
+        await library.getByLabel('Maximum output tokens').fill('256'); await library.getByRole('button', { name: 'Save revision', exact: true }).click();
+        await expect(library.getByRole('status')).toContainText('Saved immutable Library revision.');
         await open('diagnostics'); await root.getByLabel('Route to preview').selectOption(resources.routes[0].runtimeRouteId);
         const before = await page.evaluate(() => window.Atria.nativeSessionRuntime.snapshot.revision.revisionId);
         await root.getByRole('button', { name: 'Compile preview', exact: true }).click(); await expect(root).toContainText('Compiled preview — no request sent');

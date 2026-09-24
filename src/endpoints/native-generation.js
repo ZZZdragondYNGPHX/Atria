@@ -201,7 +201,6 @@ export function createNativeGenerationRouter(getHost = services) {
                 await visit(candidate);
             }
             if (method) return response.json(await host.persistence[method](handle, request.body));
-            if (request.params.kind === 'profiles') return response.json(await host.library.commit(handle, 'core.generation-profile', request.body));
             return response.sendStatus(404);
         } catch { response.status(400).json({ error: 'native_generation_configuration_invalid' }); }
     });

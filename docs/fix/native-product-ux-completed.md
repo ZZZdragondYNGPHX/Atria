@@ -168,4 +168,25 @@ and neighboring generation/authoring regressions. One real Edge 320px scenario
 passed: blocked deletion, duplicate/delete, Library Used By, archive and restore.
 Both screenshots inspected. Changed-file ESLint and diff check passed.
 
-Next: NUX-007, following the active backlog order.
+### NUX-007
+
+Library → Generation Profiles is the canonical authoring home. Runtime's Profiles
+navigation and editor are removed, as is PUT configuration/profiles. Runtime
+Routes link to Library while retaining exact selected revisions. Existing
+programmatic profile navigation redirects to that same Library owner.
+
+Before removing the Runtime editor, all sampling/output/streaming/stop/tool and
+provider reasoning/cache controls were moved into the existing Library/Studio
+Generation editor. Simple/Advanced round trips preserve settings, unsupported
+retained values remain visible, numeric/JSON validation keeps drafts, and omitted
+streaming remains omitted. Studio continues its Review/Apply write path; Library
+uses the immutable resource endpoint. Archive and exact revision behavior remain.
+
+Validation: four suites / 45 tests passed, followed by eight passing editor cases
+including the new control round trip. One real Edge light 320px Library scenario
+passed: invalid JSON recovery, provider controls, immutable save, unchanged route
+revision and canonical owner link. Screenshot inspected. ESLint passed with only
+three pre-existing conditional-test warnings in the older Runtime E2E file;
+diff check passed.
+
+Next: NUX-008, following the active backlog order.

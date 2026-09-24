@@ -148,29 +148,32 @@ test('Model capability overrides save through Native configuration and retain ex
     await expect(root(page).getByRole('button', { name: 'Edit P4 model', exact: true })).toBeVisible();
 });
 
-test('Profile validation retains draft and an immutable save does not repin routes', async ({ page }, info) => {
-    await boot(page, 320); await light(page); await open(page, 'profiles');
-    await root(page).getByRole('button', { name: 'Edit P4 generation', exact: true }).click();
-    await root(page).getByLabel('Stop sequences (JSON array)').fill('not json');
-    await root(page).getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(root(page).getByLabel('Stop sequences (JSON array)')).toBeFocused();
-    await shot(page, info, 'profile-validation-light-320');
-    await root(page).getByLabel('Stop sequences (JSON array)').fill('["END"]');
-    await root(page).getByLabel('Reasoning effort (OpenAI / Anthropic adaptive)', { exact: true }).selectOption('high');
-    await root(page).getByLabel('Cache key (OpenAI)', { exact: true }).fill('native-ux-profile');
-    await root(page).getByLabel('Cache retention (OpenAI)', { exact: true }).selectOption('24h');
-    await root(page).getByLabel('Cache retention (OpenAI)', { exact: true }).scrollIntoViewIfNeeded();
-    await shot(page, info, 'profile-provider-controls-320');
-    await root(page).getByLabel('New exact revision').fill('phase5-review');
-    const savedProfile = page.waitForRequest(req => req.url().endsWith('/configuration/profiles') && req.method() === 'PUT');
-    await root(page).getByRole('button', { name: 'Save', exact: true }).click();
-    expect((await savedProfile).postDataJSON()).toMatchObject({ reasoning: { effort: 'high' }, cache: { key: 'native-ux-profile', retention: '24h' } });
-    await expect(root(page).getByRole('button', { name: 'Edit P4 generation', exact: true })).toBeVisible();
+test('Profile validation retains draft in Library and an immutable save does not repin routes', async ({ page }, info) => {
+    await boot(page, 320); await light(page);
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('generation-profiles'));
+    const library = page.locator('.atri-prompt-library');
+    await library.getByRole('button', { name: 'New revision', exact: true }).first().click();
+    await library.getByLabel('Stop sequences (JSON array)').fill('not json');
+    await library.getByRole('button', { name: 'Save revision', exact: true }).click();
+    await expect(library.getByRole('alert')).toContainText('JSON array');
+    await expect(library.getByLabel('Stop sequences (JSON array)')).toHaveValue('not json');
+    await library.getByLabel('Stop sequences (JSON array)').fill('["END"]');
+    await library.getByLabel('Reasoning effort (OpenAI / Anthropic adaptive)', { exact: true }).selectOption('high');
+    await library.getByLabel('Cache key (OpenAI)', { exact: true }).fill('native-ux-profile');
+    await library.getByLabel('Cache retention (OpenAI)', { exact: true }).selectOption('24h');
+    await library.getByLabel('Cache retention (OpenAI)', { exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: info.outputPath('library-provider-controls-320.png') });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await library.getByLabel('Exact revision', { exact: true }).fill('phase5-review');
+    const savedProfile = page.waitForRequest(req => req.url().endsWith('/generation/resources') && req.method() === 'POST');
+    await library.getByRole('button', { name: 'Save revision', exact: true }).click();
+    expect((await savedProfile).postDataJSON().resource).toMatchObject({ reasoning: { effort: 'high' }, cache: { key: 'native-ux-profile', retention: '24h' } });
+    await expect(library.getByRole('status')).toContainText('Saved immutable Library revision.');
     await open(page, 'routes');
     await root(page).getByRole('button', { name: 'Edit narrator', exact: true }).click();
     expect(JSON.parse(await root(page).getByLabel('Generation — exact revision').inputValue()).revision).toBe('r1');
-    await root(page).getByLabel('Generation — exact revision').scrollIntoViewIfNeeded();
-    await shot(page, info, 'route-exact-light-320');
+    await root(page).getByRole('button', { name: 'Open Generation Profiles', exact: true }).click();
+    await expect(page.locator('.atri-prompt-library')).toBeVisible();
 });
 
 test('Fallback edits preserve role validation, ordering, failed draft and the same route identity', async ({ page }, info) => {

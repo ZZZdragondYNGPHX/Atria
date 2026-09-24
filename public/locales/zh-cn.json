@@ -7335,5 +7335,10 @@
     "Archiving hides all revisions from active lists. Existing exact references remain available.": "归档后，活跃列表将隐藏全部版本。现有精确引用仍可使用。",
     "This item is still in use. Update its references before deleting it.": "此资源仍在使用中，请先更新引用再删除。",
     "Could not delete this item. Reload and try again.": "无法删除此资源，请重新加载后重试。",
-    "Could not change the archive state. Reload and try again.": "无法更改归档状态，请重新加载后重试。"
+    "Could not change the archive state. Reload and try again.": "无法更改归档状态，请重新加载后重试。",
+    "Named tool": "指定工具",
+    "Tool name": "工具名称",
+    "Check the numeric limits.": "请检查数值范围。",
+    "Choose a supported streaming option.": "请选择支持的流式输出选项。",
+    "retained": "已保留"
 }

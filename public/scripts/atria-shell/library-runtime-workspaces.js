@@ -31,7 +31,6 @@ export const RUNTIME_SECTIONS = Object.freeze([
     Object.freeze({ id: 'routes', label: 'Routes' }),
     Object.freeze({ id: 'models', label: 'Models' }),
     Object.freeze({ id: 'connections', label: 'Connections' }),
-    Object.freeze({ id: 'profiles', label: 'Profiles' }),
     Object.freeze({ id: 'diagnostics', label: 'Diagnostics' }),
 ]);
 

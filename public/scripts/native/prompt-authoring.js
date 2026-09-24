@@ -40,9 +40,54 @@ function select(doc, parent, label, options, value = '') {
     const wrapper = element(doc, 'label', label, parent); const node = element(doc, 'select', undefined, wrapper);
     node.setAttribute('aria-label', translateShellText(label));
     for (const [key, name] of options) { const option = element(doc, 'option', name, node); option.value = key; }
+    if (value && !options.some(([key]) => key === value)) { const option = element(doc, 'option', undefined, node); option.textContent = String(value) + ' (' + translateShellText('retained') + ')'; option.value = value; }
     node.value = value; return node;
 }
 function error(doc, parent, value) { const node = element(doc, 'p', value?.message || String(value), parent); node.setAttribute('role', 'alert'); node.tabIndex = -1; node.focus(); }
+
+function generationFields(doc, fields, draft) {
+    const numeric = (label, value, min, max, integer = false) => {
+        const field = input(doc, fields, label, value); field.type = 'number'; field.min = min; field.step = integer ? '1' : 'any';
+        if (max !== undefined) field.max = max;
+        return field;
+    };
+    const max = numeric('Maximum output tokens', draft.output?.maxTokens || 512, 1, undefined, true); max.required = true;
+    const temperature = numeric('Temperature', draft.sampling?.temperature ?? '', 0);
+    const topP = numeric('Top P (optional)', draft.sampling?.topP ?? '', 0, 1);
+    const stream = select(doc, fields, 'Streaming', [['', 'Default'], ['true', 'Enabled'], ['false', 'Disabled']], draft.streaming?.enabled === undefined ? '' : String(draft.streaming.enabled));
+    const stop = input(doc, fields, 'Stop sequences (JSON array)', JSON.stringify(draft.stop?.sequences || []));
+    const tools = select(doc, fields, 'Tool choice', [['', 'Host default'], ['auto', 'Auto'], ['none', 'None'], ['required', 'Required'], ['tool', 'Named tool']], draft.toolChoice?.value || '');
+    const toolName = input(doc, fields, 'Tool name', draft.toolChoice?.name || '');
+    const updateTool = () => { toolName.parentElement.hidden = tools.value !== 'tool'; }; tools.addEventListener('change', updateTool); updateTool();
+    element(doc, 'p', 'Use only controls supported by the selected route. OpenAI uses effort and cache key; Anthropic uses thinking mode and ephemeral cache; Gemini uses thinking budget or level. Unsupported combinations fail preview.', fields);
+    const definitions = [
+        ['reasoning', 'mode', 'Thinking mode (Anthropic)', [['adaptive', 'Adaptive'], ['enabled', 'Token budget'], ['disabled', 'Disabled']]],
+        ['reasoning', 'effort', 'Reasoning effort (OpenAI / Anthropic adaptive)', ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].map(item => [item, item])],
+        ['reasoning', 'level', 'Thinking level (Gemini)', ['minimal', 'low', 'medium', 'high'].map(item => [item, item])],
+        ['cache', 'key', 'Cache key (OpenAI)'],
+        ['cache', 'retention', 'Cache retention (OpenAI)', [['in_memory', 'In memory'], ['24h', '24 hours']]],
+        ['cache', 'mode', 'Cache mode (Anthropic)', [['ephemeral', 'Ephemeral']]],
+        ['cache', 'ttl', 'Cache lifetime (Anthropic)', [['5m', '5 minutes'], ['1h', '1 hour']]],
+    ];
+    const controls = definitions.map(([section, key, label, choices]) => ({ section, key,
+        field: choices ? select(doc, fields, label, [['', 'Default'], ...choices], draft[section]?.[key] || '') : input(doc, fields, label, draft[section]?.[key] || '') }));
+    const budget = numeric('Thinking budget tokens (Anthropic / Gemini)', draft.reasoning?.budgetTokens ?? '', -1, undefined, true);
+    return () => {
+        for (const field of [max, temperature, topP, budget]) if (!field.checkValidity()) { field.reportValidity(); field.focus(); throw new Error(translateShellText('Check the numeric limits.')); }
+        let sequences;
+        try { sequences = JSON.parse(stop.value); if (!Array.isArray(sequences) || sequences.some(item => typeof item !== 'string')) throw new Error(); } catch { stop.focus(); throw new Error(translateShellText('Enter a JSON array of text strings.')); }
+        const result = { output: { ...draft.output, maxTokens: Number(max.value) }, sampling: { ...draft.sampling }, streaming: { ...draft.streaming },
+            stop: { ...draft.stop, sequences }, reasoning: { ...draft.reasoning }, cache: { ...draft.cache }, toolChoice: tools.value ? { ...draft.toolChoice, value: tools.value } : {} };
+        if (stream.value === '') delete result.streaming.enabled;
+        else if (['true', 'false'].includes(stream.value)) result.streaming.enabled = stream.value === 'true';
+        else throw new Error(translateShellText('Choose a supported streaming option.'));
+        if (tools.value === 'tool') result.toolChoice.name = toolName.value; else delete result.toolChoice.name;
+        for (const [key, field] of [['temperature', temperature], ['topP', topP]]) { if (field.value === '') delete result.sampling[key]; else result.sampling[key] = Number(field.value); }
+        if (budget.value === '') delete result.reasoning.budgetTokens; else result.reasoning.budgetTokens = Number(budget.value);
+        for (const { section, key, field } of controls) { if (field.value) result[section][key] = field.value; else delete result[section][key]; }
+        return result;
+    };
+}
 
 // Copies the exact dependency closure. Package originals never receive writes.
 export function forkPromptClosure(entries, selected, { derive = false, scope = { scope: 'library' } } = {}) {
@@ -158,11 +203,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 action(doc, fields, 'Add stage', () => { let index = stages.length + 1; while (stages.some(stage => stage.stageId === 'stage.step' + index)) index++; stages.push({ stageId: 'stage.step' + index, moduleRefs: [] }); renderStages(); }); renderStages();
                 const directive = input(doc, fields, 'Response Directive', draft.responseDirective?.body || '', true);
                 specific = () => ({ stages, responseDirective: { ...draft.responseDirective, body: directive.value } });
-            } else {
-                const max = input(doc, fields, 'Maximum output tokens', draft.output?.maxTokens || 512); max.type = 'number';
-                const temperature = input(doc, fields, 'Temperature', draft.sampling?.temperature ?? ''); temperature.type = 'number'; temperature.step = 'any';
-                specific = () => { const sampling = { ...draft.sampling }; delete sampling.temperature; return { output: { ...draft.output, maxTokens: Number(max.value) }, sampling: { ...sampling, ...(temperature.value === '' ? {} : { temperature: Number(temperature.value) }) } }; };
-            }
+            } else specific = generationFields(doc, fields, draft);
             read = () => ({ ...draft, displayName: name.value, revision: revision.value, ...specific() });
             const provenance = element(doc, 'details', undefined, root); element(doc, 'summary', 'Conditions / parameters / provenance', provenance);
             element(doc, 'pre', JSON.stringify({ condition: draft.condition, parameters: draft.parameters, parentRef: draft.parentRef, derive: draft.derive, provenance: draft.provenance }, null, 2), provenance);

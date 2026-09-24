@@ -6890,5 +6890,10 @@
     "Archiving hides all revisions from active lists. Existing exact references remain available.": "封存後，啟用清單將隱藏全部版本。現有精確參照仍可使用。",
     "This item is still in use. Update its references before deleting it.": "此資源仍在使用中，請先更新參照再刪除。",
     "Could not delete this item. Reload and try again.": "無法刪除此資源，請重新載入後重試。",
-    "Could not change the archive state. Reload and try again.": "無法變更封存狀態，請重新載入後重試。"
+    "Could not change the archive state. Reload and try again.": "無法變更封存狀態，請重新載入後重試。",
+    "Named tool": "指定工具",
+    "Tool name": "工具名稱",
+    "Check the numeric limits.": "請檢查數值範圍。",
+    "Choose a supported streaming option.": "請選擇支援的串流輸出選項。",
+    "retained": "已保留"
 }

@@ -26,6 +26,22 @@ test('clearing Generation temperature removes the old control instead of retaini
     button(root, 'Simple editor').click(); root.querySelector('[aria-label="Temperature"]').value = ''; button(root, 'Review / save revision').click(); await flush();
     expect(onSave.mock.calls[0][0].sampling).not.toHaveProperty('temperature');
 });
+
+test('canonical Generation editor retains provider controls across modes and validates stop sequences', async () => {
+    const { root, onSave } = editor('core.generation-profile');
+    root.querySelector('[aria-label="Reasoning effort (OpenAI / Anthropic adaptive)"]').value = 'high';
+    root.querySelector('[aria-label="Cache key (OpenAI)"]').value = 'exact-cache';
+    root.querySelector('[aria-label="Cache retention (OpenAI)"]').value = '24h';
+    button(root, 'Advanced editor').click();
+    expect(JSON.parse(root.querySelector('textarea').value)).toMatchObject({ reasoning: { effort: 'high' }, cache: { key: 'exact-cache', retention: '24h' } });
+    button(root, 'Simple editor').click();
+    const stop = root.querySelector('[aria-label="Stop sequences (JSON array)"]'); stop.value = 'invalid';
+    button(root, 'Review / save revision').click(); await flush();
+    expect(onSave).not.toHaveBeenCalled(); expect(stop.value).toBe('invalid');
+    stop.value = '["END"]'; button(root, 'Review / save revision').click(); await flush();
+    expect(onSave.mock.calls[0][0]).toMatchObject({ reasoning: { effort: 'high' }, cache: { key: 'exact-cache', retention: '24h' }, stop: { sequences: ['END'] } });
+    expect(onSave.mock.calls[0][0].streaming).not.toHaveProperty('enabled');
+});
 test('Library loading/error/retry and Package original exposes Fork but never an editor', async () => {
     const resource = newPromptResource('core.prompt-program'); const ref = resourceRef('core.prompt-program', resource, { scope: 'package', packageId: 'pkg', packageVersionId: 'pkgv' });
     globalThis.fetch = jest.fn().mockResolvedValueOnce(response({ error: 'Unavailable' }, false)).mockResolvedValueOnce(response([{ ref, resource }]));

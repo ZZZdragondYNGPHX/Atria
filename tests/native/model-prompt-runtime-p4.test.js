@@ -172,8 +172,9 @@ describe('P5 configuration and compile-only preview', () => {
         const put = (kind, body) => supertest(app).put(base + '/configuration/' + kind).set('x-test-user', 'yes').send(body);
         await put('connections', { ...f.connection, displayName: 'Updated connection' }).expect(200);
         await put('connections', { ...f.connection, endpoint: 'https://user:password@example.com' }).expect(400);
-        await put('profiles', { ...f.generation, revision: 'r2', output: { maxTokens: 128 } }).expect(200);
-        await put('profiles', { ...f.generation, output: { maxTokens: 3 } }).expect(400);
+        await put('profiles', { ...f.generation, revision: 'r2' }).expect(404);
+        await supertest(app).post(base + '/resources').set('x-test-user', 'yes').send({ resourceType: 'core.generation-profile', resource: { ...f.generation, revision: 'r2', output: { maxTokens: 128 } } }).expect(200);
+        await supertest(app).post(base + '/resources').set('x-test-user', 'yes').send({ resourceType: 'core.generation-profile', resource: { ...f.generation, output: { maxTokens: 3 } } }).expect(400);
         const config = await supertest(app).get(base + '/configuration').set('x-test-user', 'yes').expect(200);
         expect(config.body.profiles[0].revision).toBe('r2');
         expect(config.body.routes[0].generationProfileRef.revision).toBe('r1');

@@ -69,29 +69,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 闭合 Secret → Connection → Model → Generation Profile → Runtime Route 的第一方 Native 配置链。
 
-## NUX-007 — Generation Profiles have two competing product homes
-
-**Current evidence**
-
-Generation Profiles appear in:
-
-- Library → Generation Profiles;
-- Runtime → Profiles.
-
-Runtime's Profiles section writes the same `core.generation-profile` Library resource family.
-
-**Impact**
-
-Ownership and revision history are conceptually ambiguous.
-
-**Acceptance**
-
-Choose one canonical authoring home. Runtime Routes should link to exact Generation Profile revisions without creating a competing ownership model.
-
----
-
----
-
 ## NUX-008 — Runtime fallback editor offers invalid route choices
 
 **Current evidence**

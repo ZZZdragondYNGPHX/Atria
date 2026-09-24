@@ -6,8 +6,8 @@ import { createAtriaStatePanel } from '../atria-shell/primitives.js';
 import { confirmLibraryAction } from './library-ui.js';
 import { createStudioNativeId } from './studio-authoring.js';
 
-const ids = { connections: 'connectionProfileId', models: 'modelProfileId', routes: 'runtimeRouteId', profiles: 'generationProfileId' };
-const prefixes = { connections: 'conn', models: 'model', routes: 'route', profiles: 'genprof' };
+const ids = { connections: 'connectionProfileId', models: 'modelProfileId', routes: 'runtimeRouteId' };
+const prefixes = { connections: 'conn', models: 'model', routes: 'route' };
 const roles = ['narrator', 'intent_resolver', 'event_interpreter', 'orchestrator', 'studio', 'memory', 'search'];
 const clone = value => JSON.parse(JSON.stringify(value));
 const exact = item => ({ scope: 'library', resourceType: item.resourceType, resourceId: item.resourceId, revision: item.currentRevision });
@@ -89,7 +89,6 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     function summary(item) {
         if (section === 'connections') return item.providerAdapter.replace('provider.', '') + ' · ' + item.endpoint;
         if (section === 'models') return item.remoteModelId + ' · ' + item.limits.contextTokens + ' context tokens';
-        if (section === 'profiles') return 'Library · exact revision ' + item.revision + ' · ' + (item.output.maxTokens || 'Model limit') + ' output tokens';
         return item.role.replace('role.', '') + ' · ' + item.fallbackRouteRefs.length + ' fallback route(s)';
     }
     function renderList() {
@@ -100,7 +99,6 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             routes: 'Choose how each role runs. Every route binds a model, connection and exact Generation and Prompt resources.',
             connections: 'Provider endpoints and exact Secret references. Credentials stay in the existing Secret store.',
             models: 'Remote model identity, context limits and capability provenance.',
-            profiles: 'Generation resources in your Library. Saving creates a new immutable revision; existing routes stay pinned.',
         }[section]);
         if (section === 'routes') {
             const fallbackIds = new Set(data.routes.flatMap(item => item.fallbackRouteRefs.map(ref => ref.runtimeRouteId)));
@@ -115,13 +113,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         }
         const toolbar = node('div'); toolbar.className = 'atri-runtime-toolbar';
         const search = field(toolbar, 'Filter ' + section); search.type = 'search';
-        const visibility = section === 'profiles' ? field(toolbar, 'Visibility', 'active', [['active', 'Active'], ['archived', 'Archived']]) : null;
-        button('New ' + ({ routes: 'route', models: 'model', connections: 'connection', profiles: 'profile' }[section]), () => edit(), toolbar);
+        button('New ' + ({ routes: 'route', models: 'model', connections: 'connection' }[section]), () => edit(), toolbar);
         const list = node('div'); list.className = 'atri-runtime-list';
         function fill() {
             list.replaceChildren();
-            const items = data[section].filter(item => (item.displayName + ' ' + summary(item)).toLowerCase().includes(search.value.toLowerCase())
-                && (!visibility || Boolean(data.resources.find(resource => resource.resourceId === item.generationProfileId)?.archived) === (visibility.value === 'archived')));
+            const items = data[section].filter(item => (item.displayName + ' ' + summary(item)).toLowerCase().includes(search.value.toLowerCase()));
             if (!items.length) list.append(createAtriaStatePanel(doc, 'empty', {
                 title: translateShellText(data[section].length ? 'No matching results.' : 'No ' + section + ' yet. Create one to get started.'),
             }));
@@ -132,7 +128,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 editButton.setAttribute('aria-label', translateShellText('Edit') + ' ' + item.displayName);
             }
         }
-        search.addEventListener('input', fill); visibility?.addEventListener('change', fill); fill();
+        search.addEventListener('input', fill); fill();
     }
     function edit(original, fresh = false) {
         const editorToken = ++editorSequence;
@@ -300,45 +296,6 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 limits: { contextTokens: Number(context.value), outputTokens: Number(output.value) }, tokenizer: { encoding: encoding.value, source: 'user' },
                 limitProvenance: { contextTokens: budgetSources.contextTokens || [{ kind: 'user-override', source: 'Runtime Models' }], outputTokens: budgetSources.outputTokens || [{ kind: 'user-override', source: 'Runtime Models' }] },
                 capabilities: [...(value.capabilities || []).filter(item => !capabilities.some(entry => entry.capability === item.capability)), ...capabilities.filter(item => item.input.value).map(item => !item.dirty && item.existing?.state === item.input.value ? item.existing : { capability: item.capability, state: item.input.value, provenance: [{ kind: 'user-override', source: 'Runtime Models' }] })] });
-        } else if (section === 'profiles') {
-            let fields = group(form, 'Revision', 'Saving creates a new immutable revision. Existing routes keep their selected revision.');
-            const revision = field(fields, 'New exact revision', 'r-' + Date.now()); revision.required = true;
-            fields = group(form, 'Sampling');
-            const temperature = number(fields, 'Temperature (optional)', value.sampling?.temperature ?? '', 0);
-            const topP = number(fields, 'Top P (optional)', value.sampling?.topP ?? '', 0, 1);
-            fields = group(form, 'Output');
-            const max = number(fields, 'Maximum output tokens', value.output?.maxTokens || 512, 1);
-            const stream = field(fields, 'Streaming', String(value.streaming?.enabled ?? true), [['true', 'Enabled'], ['false', 'Disabled']]);
-            const stop = field(fields, 'Stop sequences (JSON array)', JSON.stringify(value.stop?.sequences || []));
-            const validateStop = () => {
-                try {
-                    const values = JSON.parse(stop.value);
-                    stop.setCustomValidity(Array.isArray(values) && values.every(item => typeof item === 'string') ? '' : translateShellText('Enter a JSON array of text strings.'));
-                } catch { stop.setCustomValidity(translateShellText('Enter a JSON array of text strings.')); }
-            };
-            stop.addEventListener('input', validateStop); validateStop();
-            const tools = field(fields, 'Tool choice', value.toolChoice?.value || '', [['', 'Host default'], ['auto', 'Auto'], ['none', 'None'], ['required', 'Required']]);
-            fields = group(form, 'Provider controls');
-            notice('Use only controls supported by the selected route. OpenAI uses effort and cache key; Anthropic uses thinking mode and ephemeral cache; Gemini uses thinking budget or level. Unsupported combinations fail preview.', fields);
-            const thinkingMode = field(fields, 'Thinking mode (Anthropic)', value.reasoning?.mode || '', [['', 'Default'], ['adaptive', 'Adaptive'], ['enabled', 'Token budget'], ['disabled', 'Disabled']]);
-            const effort = field(fields, 'Reasoning effort (OpenAI / Anthropic adaptive)', value.reasoning?.effort || '', [['', 'Default'], ...['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].map(item => [item, item])]);
-            const thinkingBudget = number(fields, 'Thinking budget tokens (Anthropic / Gemini)', value.reasoning?.budgetTokens ?? '', -1);
-            const thinkingLevel = field(fields, 'Thinking level (Gemini)', value.reasoning?.level || '', [['', 'Default'], ...['minimal', 'low', 'medium', 'high'].map(item => [item, item])]);
-            const cacheKey = field(fields, 'Cache key (OpenAI)', value.cache?.key || '');
-            const cacheRetention = field(fields, 'Cache retention (OpenAI)', value.cache?.retention || '', [['', 'Default'], ['in_memory', 'In memory'], ['24h', '24 hours']]);
-            const cacheMode = field(fields, 'Cache mode (Anthropic)', value.cache?.mode || '', [['', 'Default'], ['ephemeral', 'Ephemeral']]);
-            const cacheTtl = field(fields, 'Cache lifetime (Anthropic)', value.cache?.ttl || '', [['', 'Default'], ['5m', '5 minutes'], ['1h', '1 hour']]);
-            serialize = () => {
-                const result = { ...value, revision: revision.value, sampling: { ...value.sampling }, output: { ...value.output, maxTokens: Number(max.value) }, streaming: { ...value.streaming, enabled: stream.value === 'true' }, stop: { ...value.stop, sequences: JSON.parse(stop.value) }, toolChoice: tools.value ? { ...value.toolChoice, value: tools.value } : {} };
-                delete result.scope;
-                result.reasoning = { ...value.reasoning }; result.cache = { ...value.cache };
-                for (const [section, key, input] of [['reasoning', 'mode', thinkingMode], ['reasoning', 'effort', effort], ['reasoning', 'level', thinkingLevel], ['cache', 'key', cacheKey], ['cache', 'retention', cacheRetention], ['cache', 'mode', cacheMode], ['cache', 'ttl', cacheTtl]]) {
-                    if (input.value) result[section][key] = input.value; else delete result[section][key];
-                }
-                if (thinkingBudget.value === '') delete result.reasoning.budgetTokens; else result.reasoning.budgetTokens = Number(thinkingBudget.value);
-                for (const [key, input] of [['temperature', temperature], ['topP', topP]]) { if (input.value === '') delete result.sampling[key]; else result.sampling[key] = Number(input.value); }
-                return result;
-            };
         } else {
             let fields = group(form, 'Routing');
             const role = field(fields, 'Role', value.role || 'role.narrator', roles.map(item => ['role.' + item, item.replaceAll('_', ' ')]));
@@ -351,7 +308,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const prompt = field(fields, 'Prompt — exact revision', value.promptProgramRef ? refKey(value.promptProgramRef) : '', resourceOptions('core.prompt-program')); prompt.required = true;
             notice('Choose an exact resource revision. Existing Package and Project references are retained. Create or edit Prompt Programs in Library.', fields);
             button('Manage models', () => host.openRuntimeSection('models'), fields);
-            button('Manage profiles', () => host.openRuntimeSection('profiles'), fields);
+            button('Open Generation Profiles', () => host.openLibrarySection('generation-profiles'), fields);
             button('Open Prompt Programs', () => host.openLibrarySection('prompt-programs'), fields);
             fields = group(form, 'Fallback order');
             let fallbackIds = (value.fallbackRouteRefs || []).map(item => item.runtimeRouteId);
@@ -382,15 +339,12 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         if (original && !fresh) {
             const lifecycle = group(form, 'Manage this resource');
             button('Duplicate', () => edit({ ...clone(value), [ids[section]]: createStudioNativeId(prefixes[section]), displayName: value.displayName + ' Copy' }, true), lifecycle);
-            const archived = data.resources.find(item => item.resourceId === value.generationProfileId)?.archived;
-            const remove = button(section === 'profiles' ? archived ? 'Restore from archive' : 'Archive' : 'Delete', async () => {
+            const remove = button('Delete', async () => {
                 if (remove.disabled) return;
                 remove.disabled = true;
                 try {
-                    if (section !== 'profiles' && !await confirmLibraryAction('Delete this Runtime resource? Referenced items cannot be deleted.')) return;
-                    if (section === 'profiles') await runtimeRequest('/resources/archive', { method: 'POST', signal: controller.signal,
-                        body: { ref: { scope: 'library', resourceType: 'core.generation-profile', resourceId: value.generationProfileId, revision: value.revision }, archived: !archived } });
-                    else await runtimeRequest('/configuration/' + section + '/' + encodeURIComponent(value[ids[section]]), { method: 'DELETE', signal: controller.signal });
+                    if (!await confirmLibraryAction('Delete this Runtime resource? Referenced items cannot be deleted.')) return;
+                    await runtimeRequest('/configuration/' + section + '/' + encodeURIComponent(value[ids[section]]), { method: 'DELETE', signal: controller.signal });
                     if (disposed || editorToken !== editorSequence) return;
                     selectedRoute = { ...selectedRoute, child: { id: section } };
                     await load();
@@ -403,8 +357,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     }
                 } finally { remove.disabled = false; }
             }, lifecycle);
-            if (section !== 'profiles') remove.className = 'atri-runtime-danger';
-            else notice('Archiving hides this resource from active lists. Exact revisions and existing routes remain available.', lifecycle);
+            remove.className = 'atri-runtime-danger';
         }
         form.append(actions);
         const save = node('button', 'Save', actions); save.type = 'submit';
