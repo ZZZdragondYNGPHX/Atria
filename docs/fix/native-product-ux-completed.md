@@ -369,4 +369,13 @@ at 390px and independent Agent routes at 320px. Screenshot inspected. The first
 advanced-settings assertion targeted a collapsed section; corrected browser checks
 passed. Changed-file ESLint and diff check passed.
 
+
+Group 3 final regression: 163 Orchestrator/Agent Runtime/Memory/Schema suites
+passed (1925 cases); 10 Native Runtime/retrieval suites passed (166 cases);
+six adjacent Shell/route picker/backup/local-model/authoring/projection suites
+passed (32 cases). Seven real Edge scenarios passed across the Group 3 and
+shared Runtime suites, including 320/390px routing, exact retrieval revisions,
+Secret creation, pending-save lock, focus containment, responsive editor, fallback
+roles and Chinese layout. No live cloud inference or physical device claimed.
+
 Next: NUX-016, following the active backlog order.
