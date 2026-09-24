@@ -425,3 +425,566 @@ Before implementation:
 - re-verify every item against current code and real UI;
 - merge duplicates with redesign follow-ups;
 - convert confirmed issues into a normalized implementation plan with explicit phases and acceptance tests.
+
+
+---
+
+# Second-pass cross-product UX audit
+
+This pass intentionally focuses on interaction and capability gaps that are unlikely to disappear merely through visual restyling. Findings are against `main@402b53a98a823573591db4e9fd015f98e6effbdb`; the active frontend redesign branch is still in progress, so presentation-only findings must be rechecked after integration.
+
+## P0 — Setup and lifecycle dead ends
+
+### UX-018 — Runtime Connections require users to manually type an internal Secret ID
+
+**Observed**
+
+The Native Connection editor asks for an `Exact Secret ID` as a required free-text field and warns users not to paste the actual key.
+
+There is no picker for existing Secrets, no visible Secret inventory, and no direct action from the Connection editor to create/manage a Secret.
+
+**User impact**
+
+The primary “connect a model provider” flow assumes knowledge of an internal identifier that ordinary users should not need to discover manually. A user can know their API key and endpoint and still be unable to finish the Native Connection form.
+
+**Required product outcome**
+
+Connection setup should select an existing Secret or open a first-party Secret-management/create flow while preserving the existing rule that the credential value never enters the Connection document.
+
+---
+
+### UX-019 — Runtime has no connection test or model discovery path
+
+**Observed**
+
+Native Connection/Model setup requires manual entry of:
+
+- endpoint URL;
+- remote model ID;
+- context/output limits;
+- tokenizer;
+- capability overrides.
+
+No `Test connection`, provider health check, or model-list discovery action is exposed in the inspected Native Runtime workspace.
+
+**User impact**
+
+Configuration errors are discovered late, often only when a Route preview/execute fails. Users must already know provider model IDs and capability details.
+
+**Required product outcome**
+
+Provide non-destructive connection validation and, where a provider supports it, model discovery/capability inspection. Manual entry must remain available for OpenAI-compatible/custom providers.
+
+---
+
+### UX-020 — Runtime configuration lacks basic lifecycle management
+
+**Observed**
+
+The Native Runtime UI supports New/Edit for Routes, Models and Connections, but no Delete/Archive/Duplicate action is exposed. Corresponding Native persistence APIs inspected here also do not expose delete methods for those player-owned profiles.
+
+Prompt/Generation resources similarly have registry-level `delete` capability and delete-safety inspection infrastructure, but the user-facing Prompt Library does not surface cleanup/archive/delete actions.
+
+**User impact**
+
+Mistakes, obsolete models, dead connections, abandoned routes and old prompt resources accumulate indefinitely. Users can create replacements but cannot keep their inventory clean through normal product flows.
+
+**Required product outcome**
+
+Define reference-safe lifecycle semantics for mutable Runtime profiles and versioned Library resources: delete where safe, block with Used By details where referenced, and provide archive/hide when physical deletion is intentionally disallowed.
+
+---
+
+### UX-021 — Build has an explicit project-creation dead end
+
+**Observed**
+
+The Build project list empty state says:
+
+> “Create a Native project to enter Atria Studio.”
+
+The backend and clients already expose project creation, but the inspected Build/Studio list UI provides no Create Project action.
+
+**User impact**
+
+A brand-new user can navigate to Build and reach a dead end despite the underlying create capability existing.
+
+**Required product outcome**
+
+Provide first-class project creation from Build, with sane Native defaults and optional template/blank choices. Creation must go through the existing ProjectStore/Studio authority.
+
+---
+
+### UX-022 — Project deletion exists in backend APIs but is not exposed in normal Studio lifecycle UX
+
+**Observed**
+
+Product and Studio services expose project deletion, but the inspected Build project list/detail surface does not expose a corresponding delete/archive action.
+
+**User impact**
+
+Test projects and abandoned work cannot be cleaned up without calling internal APIs.
+
+**Required product outcome**
+
+Add safe project lifecycle management with destructive confirmation and revision/conflict protection.
+
+---
+
+### UX-023 — Native Skill scope authority and the visible Skill Manager disagree
+
+**Observed**
+
+Native authoring explicitly defines Skill scopes as:
+
+- `global`
+- `project`
+- `package`
+
+The Native Studio Agent can list/read project/package-scoped Skills.
+
+However, the Skill Manager embedded in Library still formats/groups only compatibility-era scopes:
+
+- `global`
+- `preset`
+- `orch-preset`
+- `character`
+
+Unknown scope kinds produce empty/unknown keys and are not treated as first-class groups.
+
+**User impact**
+
+Native project/package Skills can participate in Native behavior while being undiscoverable or unmanageable from the main Skills Library UI.
+
+**Required product outcome**
+
+The primary Atria Skill surface must natively understand global/project/package scope, origin, read-only Package ownership, and project editing. Compatibility scopes may remain in an Advanced compatibility area but must not define the Native product model.
+
+---
+
+## P1 — Runtime configuration usability
+
+### UX-024 — Generation Profiles have duplicate product homes and ambiguous ownership
+
+**Observed**
+
+Architecture documentation states that Library owns Prompt/Generation discovery/authoring while Runtime owns Connections/Models/Routes.
+
+The product currently exposes:
+
+- Library → Generation Profiles; and
+- Runtime → Profiles.
+
+Runtime `profiles` writes the same `core.generation-profile` Library resource family.
+
+**User impact**
+
+Users can reasonably ask whether “Profiles” and “Generation Profiles” are different concepts, where a profile should be edited, and which screen owns revision history.
+
+**Required product outcome**
+
+Choose one canonical product home for Generation Profiles. Runtime Routes may link into the selected exact Library revision, but should not present a competing ownership surface unless the distinction is made explicit.
+
+---
+
+### UX-025 — Runtime fallback-route authoring allows choices that are known to be invalid
+
+**Observed**
+
+A Runtime Route's fallback list must contain same-role routes. The editor notice explains this, but the “Add fallback route” selector is populated from all other routes rather than same-role routes only.
+
+The server later rejects mismatched fallback roles.
+
+**User impact**
+
+The UI invites a configuration that it already knows cannot be saved.
+
+**Required product outcome**
+
+Filter candidates by role and proactively revalidate/clear incompatible fallbacks when the route's role changes.
+
+---
+
+### UX-026 — Runtime Diagnostics asks users to type raw Project ID and exact revision
+
+**Observed**
+
+When no Native game is open, Runtime Diagnostics asks for free-text:
+
+- Project ID
+- Project revision
+
+even though Build/Studio already has a project inventory and exact revision authority.
+
+**User impact**
+
+A diagnostic tool intended to explain configuration instead requires users to copy opaque internal identifiers.
+
+**Required product outcome**
+
+Offer a project/revision picker using existing Build authorities, with raw ID entry reserved for Advanced/debug use.
+
+---
+
+### UX-027 — First-time Native Runtime setup has no guided readiness flow
+
+**Observed**
+
+To get from zero configuration to a working generation Route, a user may need to establish, in dependency order:
+
+1. Secret;
+2. Connection;
+3. Model;
+4. Prompt Program/Modules;
+5. Generation Profile;
+6. Runtime Route.
+
+Current empty states are individual (“Create a route”, “Manage models”, etc.) rather than a coherent readiness/checklist flow.
+
+**User impact**
+
+Users can enter the setup graph in the wrong place and repeatedly encounter missing prerequisites.
+
+**Required product outcome**
+
+Provide a guided setup/readiness view that explains missing dependencies and deep-links to the next actionable step without creating a second configuration authority.
+
+---
+
+## P1 — Build / Studio authoring UX
+
+### UX-028 — Studio Skills authoring is still raw package JSON rather than the Native Skill platform
+
+**Observed**
+
+Studio's `Skills` view edits `source.package.skills` through a generic JSON textarea, while the actual Native Skill platform has explicit project/package scopes and the Project Agent can consume those Skills through `/api/skills`.
+
+**User impact**
+
+Human authors and the Project Agent interact with different-feeling Skill workflows. The most important project-scoped know-how cannot be managed through the same first-class editor used elsewhere.
+
+**Required product outcome**
+
+Integrate project/package Skill inventory and editing directly into Studio using the existing Skill authority, with Package scope read-only where appropriate.
+
+---
+
+### UX-029 — Asset authoring is functional but lacks basic asset-management affordances
+
+**Observed**
+
+Studio Assets supports importing and removing project-owned files. Rows are essentially `logicalName · path`.
+
+No normal preview, metadata edit, rename/repath, replacement, type-specific inspection, or filename-collision guidance is exposed in the inspected surface.
+
+**User impact**
+
+Once a project grows beyond a few files, identifying and maintaining media assets becomes unnecessarily low-level.
+
+**Required product outcome**
+
+Provide asset preview/details, safe replace/rename where supported, clear path/collision handling, and Used By/navigation before removal.
+
+---
+
+### UX-030 — Source editor is an undifferentiated text fallback
+
+**Observed**
+
+Studio Source lists files and provides a plain textarea with “Review Source Change”.
+
+There is no visible language/type detection, syntax diagnostics, structured diff before staging, or explicit binary/non-text affordance in the inspected editor.
+
+**User impact**
+
+Advanced users can edit source, but mistakes are caught only later by broader project validation and the experience does not scale to serious authoring.
+
+**Required product outcome**
+
+Keep Source as an advanced escape hatch, but add file type awareness, validation where available, and clear staged diff/review feedback.
+
+---
+
+## P1 — Work / Package lifecycle UX
+
+### UX-031 — Installed Package version history exists but is effectively hidden
+
+**Observed**
+
+`NativeProductService.getWork()` returns all installed Package versions, and `startWork()` accepts an explicit `packageVersionId`.
+
+The Work detail UI shows only the current version and starts new sessions against it. The returned version history is not exposed as a normal user choice.
+
+**User impact**
+
+Exact Package versioning is an important Native safety property, but users cannot inspect version history, compare installed versions, or intentionally start a new session on an older installed version.
+
+**Required product outcome**
+
+Expose installed version history and exact version identity, with clear current/default status and deliberate “start with this version” where safe.
+
+---
+
+### UX-032 — Package update/install preflight lacks user-facing change impact
+
+**Observed**
+
+Install preflight surfaces package metadata and required permission identifiers, then installs/updates the exact Package.
+
+The inspected UI does not summarize changes relative to an already-installed current version: permissions added/removed, version transition, capabilities changed, or existing-session impact.
+
+**User impact**
+
+“Install / Update” asks for trust without clearly explaining what changed.
+
+**Required product outcome**
+
+When updating an installed Package, show old → new version, permission delta, major capability/content changes when available, and clarify that existing sessions remain pinned to their exact PackageVersion.
+
+---
+
+### UX-033 — Package permission grants are raw capability identifiers without explanations
+
+**Observed**
+
+The install surface renders checkboxes using raw permission strings such as:
+
+- `network`
+- `world-write`
+- `runtime-tools`
+- `clipboard`
+- `asset-access`
+
+No first-party explanation of what each permission allows or why the Package requests it is shown in the inspected flow.
+
+**User impact**
+
+Users must approve security-sensitive capabilities without meaningful context.
+
+**Required product outcome**
+
+Provide human-readable permission descriptions, risk/impact explanations, and package-declared rationale where supported. Keep explicit grant semantics.
+
+---
+
+### UX-034 — Save dependency recovery is informative but not actionable enough
+
+**Observed**
+
+When importing a `.atriasave` whose exact Package dependency is missing/mismatched, the UI explains that the exact `.atria` Package must be installed first.
+
+The flow does not provide an integrated action to open Package installation or search installed versions from the same recovery card.
+
+**User impact**
+
+The user understands the problem but must manually leave the import workflow, find the install surface, then return and repeat the import.
+
+**Required product outcome**
+
+Add direct recovery actions that navigate to/install the required exact Package while preserving hash/version verification.
+
+---
+
+## P1 — Session and Play organization
+
+### UX-035 — Native Sessions have a title field but no normal naming/rename workflow
+
+**Observed**
+
+Native Session contracts support `displayTitle`, and `startWork()` accepts one.
+
+The Work UI starts sessions without asking for a title, and there is no inspected update/rename endpoint or product action.
+
+Untitled sessions fall back to generic labels such as “Game progress”.
+
+**User impact**
+
+Users with multiple runs of the same Work cannot meaningfully distinguish them.
+
+**Required product outcome**
+
+Allow naming at start and renaming later without changing Session identity/history.
+
+---
+
+### UX-036 — Embedded Knowledge promotion exposes internal Binding IDs and a browser prompt
+
+**Observed**
+
+Play's “Embedded Knowledge” list displays raw `knowledgeBindingId` values. “Save to my Library” asks for a Knowledge Base name through `globalThis.prompt()`.
+
+**User impact**
+
+A high-value workflow—turning session knowledge into reusable Library knowledge—is represented through internal IDs and a primitive modal with no preview of what will be saved.
+
+**Required product outcome**
+
+Show human-readable source/content summary, target Library result, and a structured confirmation/naming surface before promotion.
+
+---
+
+### UX-037 — Branch/revision history is exposed as raw JSON rather than a navigable history model
+
+**Observed**
+
+The Play Timeline drawer renders “Branches & revisions” as `JSON.stringify(...)` inside a `<pre>`.
+
+**User impact**
+
+Users cannot understand branch lineage, current branch, fork points or revision relationships without reading internal data structures.
+
+**Required product outcome**
+
+Provide a readable timeline/branch graph or hierarchical history view with clear current state and allowed actions. Raw JSON may remain under Diagnostics.
+
+---
+
+## P1 — Plugins and security UX
+
+### UX-038 — Native Plugins are shown as a read-only projection with no actionable management path
+
+**Observed**
+
+Plugins utility lists Native Package Runtime plugins, their capabilities and contribution counts, then explicitly says activation/permissions are owned by the A5 Plugin Platform.
+
+The inspected Native Plugins surface provides no action to open that owning permission/activation context.
+
+**User impact**
+
+The screen tells users that important controls exist elsewhere but does not let them reach or understand them.
+
+**Required product outcome**
+
+Either make Plugins the first-class management surface or provide explicit navigation to the actual owner for permission state, activation status, dependencies and contribution details.
+
+---
+
+### UX-039 — Native Plugin cards expose identifiers more readily than user-facing identity
+
+**Observed**
+
+Native Plugin cards title themselves with `pluginId` and summarize version/package/capability identifiers. No richer display name/description/dependency state is exposed in the inspected projection.
+
+**User impact**
+
+Package plugin inspection feels like developer diagnostics rather than a product surface.
+
+**Required product outcome**
+
+Show human-facing metadata where available, origin Package, status, permissions, dependencies and contribution categories; keep opaque IDs in details.
+
+---
+
+## P1 — Search and discoverability
+
+### UX-040 — Global “Search Atria” does not search several major user-owned entities
+
+**Observed**
+
+Product Search currently indexes:
+
+- Works;
+- Worlds;
+- Knowledge Bases;
+- Build Projects;
+- Runtime Routes/Models/Connections;
+- Prompt Programs/Modules/Generation Profiles.
+
+It does not currently index major user-owned entities such as:
+
+- Native Sessions / game progress;
+- SavePoints;
+- Skills;
+- individual Knowledge entries;
+- Agent/orchestration configurations.
+
+**User impact**
+
+A global product search can locate technical configuration resources but not some of the things users are most likely to remember by name/content.
+
+**Required product outcome**
+
+Define the intended global search coverage and include major navigable user entities, with sensible grouping and privacy/performance bounds.
+
+---
+
+### UX-041 — Product Search can silently become incomplete
+
+**Observed**
+
+Search refresh uses `Promise.allSettled`. Failed resource sources are omitted while other results continue to render. Failures are primarily logged to console.
+
+**User impact**
+
+The user can receive a plausible-looking but incomplete search result set without any indication that one domain failed to load.
+
+**Required product outcome**
+
+Surface a lightweight “some results unavailable” state with retry/details when one or more authorities fail.
+
+---
+
+## P1 — Error and validation UX
+
+### UX-042 — Native Product client discards useful human-readable error context
+
+**Observed**
+
+Native Product endpoints return an error code and optional details, while the browser client constructs a generic message:
+
+> `Native Product request failed (<status>)`
+
+Many UI surfaces then show `error.message`, not a mapped product explanation.
+
+Native Generation configuration endpoints also collapse broad validation failures into generic codes such as `native_generation_configuration_invalid`.
+
+**User impact**
+
+Users often learn that an operation failed without learning which field/reference/permission caused it or how to fix it.
+
+**Required product outcome**
+
+Preserve sanitized structured validation information end-to-end and map known codes to actionable field-level messages/remediation links.
+
+---
+
+### UX-043 — Destructive/reference conflicts are not consistently converted into resolution flows
+
+**Observed**
+
+World/Knowledge/Work deletion can fail because resources are referenced. Backend services often know blockers or reference details, and the Resource Graph can inspect reverse references.
+
+Product UI generally reports a failure panel rather than turning the blocker set into navigable “Used By / open / detach or update” actions.
+
+**User impact**
+
+Reference safety works technically but leaves users stuck when they try to clean up resources.
+
+**Required product outcome**
+
+Standardize conflict resolution UI across resource families using the existing graph/reference evidence.
+
+---
+
+# Audit areas checked in this pass
+
+This second pass inspected current-main behavior across:
+
+- Native Runtime workspace and generation configuration API;
+- Native Product Library / Work / Session / Save controls;
+- Native World / Knowledge contracts and repositories;
+- Prompt/Generation Library authoring;
+- Build / Studio project list, resource editing, assets, source and Library relations;
+- Native Skill scope contracts, Studio Agent Skill consumption and current Skill Manager;
+- Native/compatibility Plugins utility;
+- Product Search / Command projection;
+- Native Product client/error propagation.
+
+## Items intentionally not logged here
+
+- visual styling, spacing, typography, layout polish or responsive presentation already inside the active frontend redesign;
+- login/onboarding visual redesign already in that project scope;
+- legacy-format import/conversion/migration requirements;
+- removal of compatibility ABI solely for architectural purity;
+- speculative features with no current product authority or user workflow.
+
