@@ -909,6 +909,10 @@ export function createAtriaAppShell({
     }
 
     function dismissChildRouteForBack(kind) {
+        // Give the active Workspace controller its transient panels before
+        // consuming the existing Navigation Authority child route (Escape/Back).
+        const transient = new documentRef.defaultView.CustomEvent('atria-workspace-back', { cancelable: true });
+        if (!workspace.dispatchEvent(transient)) return true;
         const route = navigationAuthority.getRoute();
         if (!route.child || route.child.kind !== kind) return false;
         if (navigationAuthority.canGoBackWithinAtria()) {

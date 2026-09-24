@@ -112,7 +112,7 @@ if (!/data\.atriaNativePlayAbi|atria-native-play-abi/.test(playHost)) {
 }
 
 const studio = read('public/scripts/native/studio-workspace.js');
-if (!/mountNativeStudioAgent[\s\S]*Native Preview[\s\S]*Authoring Operation/.test(studio)) {
+if (!/mountNativeStudioAgent[\s\S]*nativeStudioClient\.executeWorkspace[\s\S]*nativeStudioClient\.preview/.test(studio)) {
     throw new Error('A9 must retain A7/A8 Native Studio replacement coverage');
 }
 

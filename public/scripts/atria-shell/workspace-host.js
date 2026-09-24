@@ -245,6 +245,10 @@ export function createAtriaWorkspaceHost({
     }
 
     const slot = shell.slots.workspace;
+    const dismissTransient = event => {
+        if (active?.controller?.dismissTransient?.() === true) event.preventDefault();
+    };
+    slot.addEventListener('atria-workspace-back', dismissTransient);
     let disposed = false;
     let sequence = 0;
     let active = null;
@@ -703,6 +707,7 @@ export function createAtriaWorkspaceHost({
         dispose() {
             if (disposed) return;
             disposed = true;
+            slot.removeEventListener('atria-workspace-back', dismissTransient);
             sequence += 1;
             documentRef.removeEventListener('click', onLegacyClick, true);
             documentRef.removeEventListener('atria-command-open', refreshSearchOnOpen);

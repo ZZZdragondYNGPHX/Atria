@@ -1,6 +1,7 @@
+import { mountStudioValueEditor } from './studio-value-editor.js';
+import { createAtriaShellEnvironment } from '../atria-shell/environment.js';
 import { mountStudioPromptTools } from './prompt-authoring.js';
 import {
-    createAtriaRuntimeCard,
     createAtriaStatePanel,
 } from '../atria-shell/primitives.js';
 import { translateShellText } from '../atria-shell/localization.js';
@@ -56,6 +57,8 @@ const MOBILE_VIEWS = Object.freeze([
 ]);
 
 function t(value) {
+    // The compact AI destination names Project Agent, not the legacy chat surface.
+    if (value === 'AI') return 'AI';
     return translateShellText(value);
 }
 
@@ -73,7 +76,18 @@ function button(documentRef, label, handler, options = {}) {
     node.disabled = Boolean(options.disabled);
     if (options.primary) node.dataset.variant = 'primary';
     if (options.active) node.dataset.active = 'true';
-    node.addEventListener('click', handler);
+    node.addEventListener('click', async event => {
+        if (node.disabled) return;
+        let pending;
+        try {
+            pending = handler(event);
+            if (pending?.then) { node.disabled = true; node.setAttribute('aria-busy', 'true'); await pending; }
+        } catch (error) {
+            const alert = documentRef.createElement('p'); alert.className = 'atri-studio-inline-error'; alert.setAttribute('role', 'alert'); alert.tabIndex = -1;
+            alert.textContent = t('The action could not complete. Your edits are still here.') + ' ' + (error.message || error);
+            node.parentElement?.append(alert); alert.focus();
+        } finally { if (pending?.then) { node.disabled = false; node.removeAttribute('aria-busy'); } }
+    });
     return node;
 }
 
@@ -111,7 +125,7 @@ function textInput(documentRef, value, label) {
     const input = documentRef.createElement('input');
     input.className = 'text_pole';
     input.value = value ?? '';
-    input.setAttribute('aria-label', t(label));
+    input.setAttribute('aria-label', t(label)); input.name = label; input.autocomplete = 'off';
     return input;
 }
 
@@ -119,7 +133,7 @@ function textArea(documentRef, value, label) {
     const input = documentRef.createElement('textarea');
     input.className = 'text_pole atria-studio-editor__textarea';
     input.value = value ?? '';
-    input.setAttribute('aria-label', t(label));
+    input.setAttribute('aria-label', t(label)); input.name = label; input.autocomplete = 'off';
     return input;
 }
 
@@ -225,42 +239,62 @@ function normalizeCollectionPatch(source, view, index, value) {
 
 function projectListCard(documentRef, record, host) {
     const project = record.project || record;
-    const card = createAtriaRuntimeCard(documentRef, {
-        title: project.displayName,
-        description: `Package source ${project.packageId}`,
-        status: record.revision?.revision
-            ? `Revision ${record.revision.revision.slice(0, 10)}`
-            : `Updated ${formatTime(project.updatedAt || project.createdAt)}`,
-    });
-    card.dataset.atriaBuildProjectId = project.projectId;
-    card.append(actionRow(
-        documentRef,
-        button(documentRef, 'Open Project', () => host.openBuild(project.projectId, project.displayName), { primary: true }),
-    ));
-    return card;
+    const row = documentRef.createElement('article'); row.className = 'atri-studio-project-row';
+    row.dataset.atriaBuildProjectId = project.projectId;
+    const info = documentRef.createElement('div');
+    const title = documentRef.createElement('h3'); title.textContent = project.displayName;
+    const meta = documentRef.createElement('p'); meta.textContent = t('Updated') + ' ' + formatTime(project.updatedAt || project.createdAt);
+    info.append(title, meta);
+    row.append(info, button(documentRef, 'Open Project', () => host.openBuild(project.projectId, project.displayName), { primary: true }));
+    return row;
 }
 
 async function renderProjectList(documentRef, root, host) {
     const projects = await nativeStudioClient.listProjects();
     root.dataset.atriaBuildProjects = 'true';
-    root.append(heading(documentRef, 'Build Projects', 'Open a Native ProjectStore project in Atria Studio.'));
-    if (!projects.length) {
-        root.append(panel(documentRef, 'empty', 'No Native Build Projects', 'Create a Native project to enter Atria Studio.'));
-        return;
-    }
-    const grid = documentRef.createElement('div');
-    grid.className = 'atria-library-games__grid';
-    for (const record of projects) grid.append(projectListCard(documentRef, record, host));
-    root.append(grid);
+    root.append(heading(documentRef, 'Build Projects', 'Create and refine your interactive works.'));
+    const creation = documentRef.createElement('details'); creation.className = 'atri-studio-details';
+    const newProject = documentRef.createElement('summary'); newProject.textContent = t('New Project');
+    const name = textInput(documentRef, '', 'Project name'); name.required = true; name.maxLength = 160;
+    creation.append(newProject, field(documentRef, 'Project name', name), button(documentRef, 'Create Project', async () => {
+        if (!name.value.trim()) { name.focus(); name.reportValidity(); return; }
+        const projectId = createStudioNativeId('project');
+        const source = {
+            format: 'atria-project-source', schemaVersion: 1,
+            project: { projectId, packageId: createStudioNativeId('pkg'), displayName: name.value.trim(), createdAt: Date.now(), updatedAt: Date.now() },
+            package: { name: name.value.trim(), version: '1.0.0', actors: [], capabilities: ['narrative'], permissions: [], entryPoints: [{ entryPointId: createStudioNativeId('entry'), displayName: 'Main', actorIds: [], worldIds: [], knowledgeBindingIds: [] }] },
+            resources: [], worlds: [], knowledge: [], knowledgeBindings: [], assetFiles: [], dependencies: { worlds: [], knowledge: [], knowledgeBindings: [], assets: [], resources: [] },
+        };
+        await nativeStudioClient.createProject(source);
+        host.openBuild(projectId, source.project.displayName);
+    }, { primary: true }));
+    root.append(creation);
+    const search = textInput(documentRef, '', 'Search projects'); search.type = 'search';
+    root.append(field(documentRef, 'Search projects', search));
+    const list = documentRef.createElement('div'); list.className = 'atri-studio-project-list'; root.append(list);
+    const fill = () => {
+        list.replaceChildren();
+        const found = projects.filter(record => (record.project || record).displayName.toLowerCase().includes(search.value.trim().toLowerCase()));
+        for (const record of found) list.append(projectListCard(documentRef, record, host));
+        if (!found.length) list.append(panel(documentRef, 'empty', projects.length ? 'No matching projects' : 'Your first project starts here', projects.length ? 'Try a different project name.' : 'Choose New Project to begin. Your edits are reviewed before they become a project revision.'));
+    };
+    search.addEventListener('input', fill); fill();
+}
+
+function technicalDetails(documentRef, value, label = 'Details') {
+    const details = documentRef.createElement('details'); details.className = 'atri-studio-details';
+    const summary = documentRef.createElement('summary'); summary.textContent = t(label);
+    const pre = documentRef.createElement('pre'); pre.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+    details.append(summary, pre); return details;
 }
 
 function createResourceTree(documentRef, state, selectView) {
     const aside = documentRef.createElement('aside');
     aside.className = 'atria-studio-resource-tree';
-    aside.dataset.atriaStudioResourceTree = 'true';
+    aside.dataset.atriaStudioResourceTree = 'true'; aside.setAttribute('aria-label', t('Project resources'));
 
     const filter = textInput(documentRef, '', 'Filter project resources');
-    filter.placeholder = t('Filter resources');
+    filter.placeholder = t('Filter resources…'); filter.type = 'search';
     aside.append(filter);
 
     const list = documentRef.createElement('div');
@@ -271,21 +305,24 @@ function createResourceTree(documentRef, state, selectView) {
         list.replaceChildren();
         const needle = filterValue.trim().toLowerCase();
         for (const [id, label] of STUDIO_VIEWS) {
-            if (needle && !label.toLowerCase().includes(needle)) continue;
+            const items = sourceSection(state.source, id);
+            const sectionMatch = t(label).toLowerCase().includes(needle);
+            if (needle && !sectionMatch && !(items || []).some(item => displayNameFor(item, id).toLowerCase().includes(needle))) continue;
             const row = button(documentRef, label, () => selectView(id), { active: state.activeView === id });
             row.className = 'atria-studio-resource-tree__item';
             row.dataset.atriaStudioResource = id;
             list.append(row);
 
-            const items = sourceSection(state.source, id);
+            row.setAttribute('aria-current', state.activeView === id ? 'page' : 'false');
             if (!Array.isArray(items)) continue;
             items.forEach((item, index) => {
                 const name = displayNameFor(item, id);
-                if (needle && !name.toLowerCase().includes(needle)) return;
+                if (needle && !sectionMatch && !name.toLowerCase().includes(needle)) return;
                 const child = button(documentRef, name || `${label} ${index + 1}`, () => {
                     state.collectionSelection[id] = index;
                     selectView(id);
                 }, { active: state.activeView === id && state.collectionSelection[id] === index });
+                child.textContent = name || `${label} ${index + 1}`;
                 child.className = 'atria-studio-resource-tree__item atria-studio-resource-tree__item--child';
                 child.dataset.atriaStudioResourceItem = id + ':' + index;
                 list.append(child);
@@ -304,11 +341,12 @@ function createResourceTree(documentRef, state, selectView) {
             row.dataset.atriaStudioPluginResource = descriptor.resourceType;
             list.append(row);
         }
+        if (!list.childElementCount) list.append(panel(documentRef, 'empty', 'No matching resources', 'Try another name.'));
     }
 
     filter.addEventListener('input', () => render(filter.value));
     render();
-    return { root: aside, render };
+    return { root: aside, render: () => render(filter.value) };
 }
 
 function createMobileNav(documentRef, state, onChange) {
@@ -318,6 +356,7 @@ function createMobileNav(documentRef, state, onChange) {
     for (const [id, label] of MOBILE_VIEWS) {
         nav.append(button(documentRef, label, () => {
             state.mobileView = id;
+            state.inspectorOpen = false; state.aiOpen = id === 'ai';
             onChange();
         }, { active: state.mobileView === id }));
     }
@@ -331,14 +370,7 @@ function renderJsonSection(documentRef, body, {
     onStage,
 }) {
     body.append(heading(documentRef, title, description));
-    const editor = textArea(documentRef, JSON.stringify(value, null, 2), title + ' JSON');
-    body.append(editor, actionRow(
-        documentRef,
-        button(documentRef, 'Review Changes', () => {
-            const parsed = JSON.parse(editor.value);
-            onStage(parsed);
-        }, { primary: true }),
-    ));
+    mountStudioValueEditor({ document: documentRef, root: body, value, label: title + ' JSON', onReview: onStage });
 }
 
 function renderCollectionEditor(documentRef, body, state, view, stageProject) {
@@ -346,9 +378,17 @@ function renderCollectionEditor(documentRef, body, state, view, stageProject) {
     const index = Math.min(state.collectionSelection[view] || 0, Math.max(0, items.length - 1));
     state.collectionSelection[view] = index;
     const title = STUDIO_VIEWS.find(item => item[0] === view)?.[1] || view;
-    body.append(heading(documentRef, title, 'Structured project resources are edited through project.save Authoring Operations.'));
+    body.append(heading(documentRef, title, 'Edit the selected resource, then review your changes before applying.'));
     if (!items.length) {
-        body.append(panel(documentRef, 'empty', 'No project-owned resources', 'Attach from Library, fork an exact revision, or edit project source to create one.'));
+        body.append(panel(documentRef, 'empty', 'No project-owned resources', 'Use Source below to define this collection, or attach an available Library resource.'));
+        mountStudioValueEditor({ document: documentRef, root: body, value: [], label: title + ' collection JSON', onReview: parsed => {
+            if (!Array.isArray(parsed)) throw new TypeError('A resource collection must be an array.');
+            const next = clone(state.source);
+            if (view === 'actors') next.package.actors = parsed;
+            else if (view === 'entrypoints') next.package.entryPoints = parsed;
+            else next[view] = parsed;
+            return stageProject(next, `Update ${title} collection`);
+        } });
         return;
     }
 
@@ -358,16 +398,15 @@ function renderCollectionEditor(documentRef, body, state, view, stageProject) {
     });
     chooser.addEventListener('change', () => {
         state.collectionSelection[view] = Number(chooser.value);
+        state.selectedGraphNode = null;
         state.renderEditor();
+        void state.renderInspector();
     });
     body.append(field(documentRef, title, chooser));
 
-    const editor = textArea(documentRef, JSON.stringify(items[index], null, 2), title + ' resource JSON');
-    body.append(editor, actionRow(documentRef, button(documentRef, 'Review Changes', () => {
-        const parsed = JSON.parse(editor.value);
-        const next = normalizeCollectionPatch(state.source, view, index, parsed);
-        stageProject(next, `Update ${title} resource`);
-    }, { primary: true })));
+    mountStudioValueEditor({ document: documentRef, root: body, value: items[index], label: title + ' resource JSON',
+        onReview: parsed => stageProject(normalizeCollectionPatch(state.source, view, index, parsed), `Update ${title} resource`),
+    });
 }
 
 async function loadProjectState(projectId) {
@@ -409,13 +448,15 @@ async function mountProjectStudio(documentRef, root, projectId) {
         activityTab: 'problems',
         disposed: false,
         renderEditor: () => {},
-        aiOpen: false,
+        aiOpen: false, inspectorOpen: false, activityOpen: false, inspecting: false, applying: false,
     };
 
     const shell = documentRef.createElement('section');
     shell.className = 'atria-studio-workspace';
     shell.dataset.atriaStudioWorkspace = projectId;
     root.replaceChildren(shell);
+    const environment = createAtriaShellEnvironment(shell);
+    let inspectorSequence = 0;
 
     const topbar = documentRef.createElement('header');
     topbar.className = 'atria-studio-topbar';
@@ -433,24 +474,21 @@ async function mountProjectStudio(documentRef, root, projectId) {
 
     const main = documentRef.createElement('div');
     main.className = 'atria-studio-layout';
-    const center = documentRef.createElement('main');
+    const center = documentRef.createElement('section');
     center.className = 'atria-studio-center';
     center.dataset.atriaStudioEditor = 'true';
     const inspector = documentRef.createElement('aside');
     inspector.className = 'atria-studio-inspector';
-    inspector.dataset.atriaStudioInspector = 'true';
+    inspector.dataset.atriaStudioInspector = 'true'; inspector.id = 'atri-studio-inspector';
     const activity = documentRef.createElement('section');
     activity.className = 'atria-studio-activity';
     activity.dataset.atriaStudioActivity = 'true';
     const ai = documentRef.createElement('aside');
     ai.className = 'atria-studio-ai-placeholder';
-    ai.dataset.atriaStudioAi = 'placeholder';
-    ai.append(
-        heading(documentRef, 'AI', 'Project Agent arrives in A8. A7 reserves this product position without creating an AI write path.'),
-        panel(documentRef, 'empty', 'Project Agent not active', 'Human Studio authoring remains fully functional without AI.'),
-    );
+    ai.dataset.atriaStudioAi = 'agent';
 
     function resourceTreeSelect(view) {
+        state.selectedGraphNode = null;
         state.activeView = view;
         if (view !== 'preview') state.lastEditorView = view;
         state.mobileView = view === 'preview' ? 'preview' : 'editor';
@@ -458,22 +496,25 @@ async function mountProjectStudio(documentRef, root, projectId) {
         renderEditor();
         void renderInspector();
         updateMobile();
+        const h = center.querySelector('h3'); if (h) { h.tabIndex = -1; h.focus(); }
     }
     const tree = createResourceTree(documentRef, state, resourceTreeSelect);
-    main.append(tree.root, center, inspector);
-    shell.append(main, activity, ai);
+    main.append(tree.root, center, inspector, ai);
+    shell.append(main, activity);
 
     const mobileNav = createMobileNav(documentRef, state, updateMobile);
     shell.append(mobileNav);
 
     function log(kind, message, detail = null) {
+        if (state.disposed) return;
+        if (['error', 'conflict'].includes(kind)) { state.activityTab = kind === 'conflict' && state.pending ? 'changes' : 'output'; state.activityOpen = true; if (environment.get().mode === 'compact') state.mobileView = 'more'; }
         state.output.unshift({
             kind,
             message,
             detail,
             at: Date.now(),
         });
-        renderActivity();
+        renderActivity(); updateMobile();
     }
 
     async function refreshProject() {
@@ -483,12 +524,14 @@ async function mountProjectStudio(documentRef, root, projectId) {
             nativeStudioClient.getResourceGraph(),
             nativeStudioClient.history(projectId, 40),
         ]);
+        if (state.disposed) return;
         state.source = clone(detail.source);
         state.files = detail.files || [];
         state.revision = detail.revision;
         state.resources = resources || [];
         state.graph = graph;
         state.history = history || [];
+        title.textContent = state.source.project.displayName;
         revision.textContent = `Revision ${state.revision.revision.slice(0, 12)}`;
         tree.render();
     }
@@ -498,6 +541,12 @@ async function mountProjectStudio(documentRef, root, projectId) {
         slot: ai,
         projectId,
         getRevision: () => state.revision,
+        onReviewRequested: () => {
+            state.activityTab = 'changes'; state.activityOpen = true;
+            if (environment.get().mode === 'compact') state.mobileView = 'more';
+            renderActivity(); updateMobile();
+            const title = activity.querySelector('h4'); if (title) { title.tabIndex = -1; title.focus(); }
+        },
         onLog: log,
         onTaskState: task => {
             state.agentReview = task.status === 'review' ? task : null;
@@ -529,11 +578,15 @@ async function mountProjectStudio(documentRef, root, projectId) {
     }
 
     async function stageOperations(operations, label) {
+        if (state.inspecting || state.applying) return false;
+        state.inspecting = true;
         const workspace = workspaceFor(operations);
         let accepted = false;
         try {
             const inspected = await nativeStudioClient.inspectWorkspace(projectId, workspace);
+            if (state.disposed) return false;
             state.pending = { label, workspace, inspected };
+            state.activityOpen = true; if (environment.get().mode === 'compact') state.mobileView = 'more';
             accepted = true;
             state.activityTab = 'changes';
             log('review', `ChangeSet review ready: ${label}`, inspected.changes);
@@ -546,7 +599,8 @@ async function mountProjectStudio(documentRef, root, projectId) {
                 log('error', error?.message || String(error));
             }
         }
-        renderActivity();
+        state.inspecting = false; renderActivity(); updateMobile();
+        const focus = activity.querySelector('h4, [role=alert]'); if (focus) { focus.tabIndex = -1; focus.focus(); }
         return accepted;
     }
 
@@ -557,20 +611,25 @@ async function mountProjectStudio(documentRef, root, projectId) {
     }
 
     async function applyPending() {
-        if (!state.pending?.workspace || state.pending.conflict) return;
+        if (!state.pending?.workspace || state.pending.conflict || state.applying) return;
+        state.applying = true;
         try {
             const result = await nativeStudioClient.executeWorkspace(projectId, state.pending.workspace);
             state.validation = result.changeSet?.validation || null;
             const applied = result.changeSet?.resultingRevision;
             if (applied) {
                 log('success', `ChangeSet ${result.changeSet.changeSetId} committed at ${applied.slice(0, 12)}`, result.changes);
+                state.activityOpen = false;
+                if (environment.get().mode === 'compact') state.mobileView = 'editor';
             } else {
                 log('error', `ChangeSet ${result.changeSet?.changeSetId || ''} failed validation and was rolled back.`, state.validation);
+                return;
             }
             state.pending = null;
             await refreshProject();
             renderEditor();
             renderInspector();
+            const heading = center.querySelector('h3'); if (heading) { heading.tabIndex = -1; heading.focus(); }
         } catch (error) {
             if (error.status === 409) {
                 state.pending = { ...state.pending, conflict: error };
@@ -578,14 +637,14 @@ async function mountProjectStudio(documentRef, root, projectId) {
             } else {
                 log('error', error?.message || String(error));
             }
-        }
-        renderActivity();
+        } finally { state.applying = false; renderActivity(); updateMobile(); }
     }
 
     async function runValidation() {
         try {
             state.validation = await nativeStudioClient.validateProject(projectId);
-            state.activityTab = 'problems';
+            state.activityTab = 'problems'; state.activityOpen = true;
+            if (environment.get().mode === 'compact') state.mobileView = 'more';
             log(state.validation.status === 'passed' ? 'success' : 'error', `Validation ${state.validation.status}.`, state.validation.diagnostics);
         } catch (error) {
             log('error', error?.message || String(error));
@@ -615,7 +674,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
             state.simulation = await nativeStudioClient.simulate(projectId, {
                 baseRevision: state.revision.revision,
             });
-            state.activeView = 'simulation';
+            state.activeView = 'simulation'; state.mobileView = 'editor'; updateMobile();
             log(state.simulation.status === 'completed' ? 'success' : 'info', `Simulation ${state.simulation.status}.`, state.simulation);
             renderEditor();
         } catch (error) {
@@ -639,7 +698,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
                 URL.revokeObjectURL(url);
                 log('success', `Built ${link.download} from exact revision ${state.revision.revision.slice(0, 12)}.`);
             }
-            state.activeView = 'build';
+            state.activeView = 'build'; state.mobileView = 'editor'; updateMobile();
             renderEditor();
         } catch (error) {
             log('error', error?.message || String(error));
@@ -647,10 +706,12 @@ async function mountProjectStudio(documentRef, root, projectId) {
     }
 
     async function renderInspector() {
-        inspector.replaceChildren(heading(documentRef, 'Inspector', 'Derived Resource Graph references are read-only projections.'));
+        const inspectorToken = ++inspectorSequence;
+        inspector.replaceChildren(heading(documentRef, 'Inspector', 'Explore references and the resources that use this item.'));
+        inspector.append(button(documentRef, 'Close Inspector', () => { state.inspectorOpen = false; updateMobile(); topActions.querySelector('[aria-controls="atri-studio-inspector"]')?.focus(); }));
         let node = state.selectedGraphNode;
         if (!node) {
-            const type = viewResourceType(state.activeView);
+            const type = state.activeView === 'plugin-resource' ? state.selectedPluginResourceType : (viewResourceType(state.activeView) || 'core.project');
             const items = sourceSection(state.source, state.activeView);
             const index = state.collectionSelection[state.activeView] || 0;
             const resourceId = viewResourceId(items?.[index], state.activeView);
@@ -673,7 +734,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
             authority: node.authority,
             metadata: node.metadata,
         }, null, 2);
-        inspector.append(pre);
+        inspector.append(technicalDetails(documentRef, pre.textContent, 'Resource identity'));
 
         const ref = resourceReferenceForNode(node);
         if (!ref) return;
@@ -682,16 +743,16 @@ async function mountProjectStudio(documentRef, root, projectId) {
                 nativeStudioClient.getResourceReferences(ref),
                 nativeStudioClient.getResourceReferences(ref, { reverse: true }),
             ]);
+            if (state.disposed || inspectorToken !== inspectorSequence) return;
             const refs = documentRef.createElement('div');
             refs.className = 'atria-studio-reference-list';
             const refsTitle = documentRef.createElement('h4');
             refsTitle.textContent = t('References');
             refs.append(refsTitle);
+            if (!references?.length) { const note = documentRef.createElement('p'); note.textContent = t('No references'); refs.append(note); }
             for (const item of references || []) {
                 const row = documentRef.createElement('div');
-                row.textContent = item.kind
-                    ? `${item.kind} · ${item.to || item.resourceId || ''}`
-                    : JSON.stringify(item);
+                row.textContent = item.node?.displayName || item.node?.resourceId || item.to || item.resourceId || item.edge?.to || t('Resource');
                 refs.append(row);
             }
             const used = documentRef.createElement('div');
@@ -699,23 +760,24 @@ async function mountProjectStudio(documentRef, root, projectId) {
             const usedTitle = documentRef.createElement('h4');
             usedTitle.textContent = t('Used By');
             used.append(usedTitle);
+            if (!usedBy?.length) { const note = documentRef.createElement('p'); note.textContent = t('No resources use this item'); used.append(note); }
             for (const item of usedBy || []) {
                 const row = documentRef.createElement('div');
-                row.textContent = item.kind
-                    ? `${item.kind} · ${item.from || item.resourceId || ''}`
-                    : JSON.stringify(item);
+                row.textContent = item.node?.displayName || item.node?.resourceId || item.from || item.resourceId || item.edge?.from || t('Resource');
                 used.append(row);
             }
             inspector.append(refs, used);
         } catch (error) {
+            if (state.disposed || inspectorToken !== inspectorSequence) return;
             const note = documentRef.createElement('p');
             note.textContent = error?.message || String(error);
             inspector.append(note);
         }
     }
+    state.renderInspector = renderInspector;
 
     function renderOverview(body) {
-        body.append(heading(documentRef, 'Project Overview', 'Project metadata and package identity remain ProjectStore authority.'));
+        body.append(heading(documentRef, 'Project Overview', 'Give the project a name and set the identity of the work you will publish.'));
         const projectName = textInput(documentRef, state.source.project.displayName, 'Project display name');
         const packageName = textInput(documentRef, state.source.package.name, 'Package name');
         const versionInput = textInput(documentRef, state.source.package.version, 'Package version');
@@ -729,14 +791,14 @@ async function mountProjectStudio(documentRef, root, projectId) {
                     source.package.name = packageName.value;
                     source.package.version = versionInput.value;
                 });
-                stageProject(next, 'Update project overview');
+                return stageProject(next, 'Update project overview');
             }, { primary: true })),
         );
     }
 
     function renderExperience(body) {
         const current = experienceFromProject(state.source);
-        body.append(heading(documentRef, 'Experience', 'Text / Component / Hybrid / Full is explicit Native project state.'));
+        body.append(heading(documentRef, 'Experience', 'Choose how readers experience this work. Component, hybrid and full modes use your project interface.'));
         const mode = selectInput(documentRef, current.mode || 'text', ['text', 'component', 'hybrid', 'full'], 'Experience mode');
         const component = textInput(documentRef, current.component || 'ui/main.json', 'Component source path');
         const selectors = textInput(documentRef, current.selectors || 'ui/selectors.json', 'Selector source path');
@@ -760,7 +822,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
                             surface: surface.value,
                         };
                 });
-                stageProject(next, 'Update Native Experience');
+                return stageProject(next, 'Update Native Experience');
             }, { primary: true })),
         );
     }
@@ -775,7 +837,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
                 const next = patchProjectSource(state.source, source => {
                     source.package[key] = parsed;
                 });
-                stageProject(next, `Update ${title}`);
+                return stageProject(next, `Update ${title}`);
             },
         });
     }
@@ -790,7 +852,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
                 const next = patchProjectSource(state.source, source => {
                     source.package.runtime = { ...(source.package.runtime || {}), [key]: parsed };
                 });
-                stageProject(next, `Update ${title}`);
+                return stageProject(next, `Update ${title}`);
             },
         });
     }
@@ -798,7 +860,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
     async function renderUi(body) {
         const experience = experienceFromProject(state.source);
         const componentPath = experienceComponentPath(state.source);
-        body.append(heading(documentRef, 'UI Components', 'Design / Structure / Bindings / Source share the A4 Component Model.'));
+        body.append(heading(documentRef, 'UI Components', 'Compose the interface, adjust its structure and bindings, then review your changes.'));
         if (experience.mode === 'text' || !componentPath) {
             body.append(panel(documentRef, 'empty', 'Text Experience', 'Switch Experience to Component, Hybrid or Full before authoring Structured UI.'));
             return;
@@ -964,33 +1026,42 @@ async function mountProjectStudio(documentRef, root, projectId) {
     }
 
     async function renderSource(body) {
-        body.append(heading(documentRef, 'Source', 'Low-level source editing is a fallback Authoring Operation, not a second project authority.'));
-        const sources = await nativeStudioClient.listSources(projectId);
-        if (!sources.length) {
-            body.append(panel(documentRef, 'empty', 'No project sources', 'This project currently contains only structured manifest resources.'));
-            return;
+        body.append(heading(documentRef, 'Source', 'Edit project files directly, then review the proposed changes before applying.'));
+        const loading = panel(documentRef, 'loading', 'Loading files', 'Reading project sources…'); body.append(loading);
+        try {
+            const sources = await nativeStudioClient.listSources(projectId);
+            loading.remove();
+            if (!sources.length) { body.append(panel(documentRef, 'empty', 'No project sources', 'This project currently contains only structured manifest resources.')); return; }
+            const chooser = selectInput(documentRef, sources[0].path, sources.map(item => item.path), 'Source file');
+            const editor = textArea(documentRef, '', 'Source editor');
+            const errorPanel = documentRef.createElement('p'); errorPanel.hidden = true; errorPanel.setAttribute('role', 'alert');
+            let sequence = 0;
+            let loadedPath = '';
+            const review = button(documentRef, 'Review Source Change', () => stageOperations([
+                sourceWriteOperation(loadedPath, editor.value),
+            ], `Write ${loadedPath}`), { primary: true, disabled: true });
+            async function load() {
+                const token = ++sequence; const path = chooser.value;
+                editor.disabled = true; review.disabled = true; errorPanel.hidden = true;
+                try {
+                    const file = await nativeStudioClient.readSource(projectId, path);
+                    if (state.disposed || token !== sequence) return;
+                    editor.value = decodeUtf8(file.content); loadedPath = path; editor.disabled = false; review.disabled = false;
+                } catch (error) {
+                    if (state.disposed || token !== sequence) return;
+                    errorPanel.hidden = false; errorPanel.textContent = error.message;
+                }
+            }
+            chooser.addEventListener('change', () => void load());
+            body.append(field(documentRef, 'File', chooser), editor, errorPanel, actionRow(documentRef, review, button(documentRef, 'Reload file', load)));
+            await load();
+        } catch (error) {
+            loading.remove(); body.append(panel(documentRef, 'error', 'Could not load sources', error.message), button(documentRef, 'Retry', () => { renderEditor(); }));
         }
-        const chooser = selectInput(documentRef, sources[0].path, sources.map(item => item.path), 'Source file');
-        const editor = textArea(documentRef, '', 'Source editor');
-        async function load() {
-            const file = await nativeStudioClient.readSource(projectId, chooser.value);
-            editor.value = decodeUtf8(file.content);
-        }
-        chooser.addEventListener('change', () => void load());
-        await load();
-        body.append(
-            field(documentRef, 'File', chooser),
-            editor,
-            actionRow(documentRef, button(documentRef, 'Review Source Change', () => (
-                stageOperations([
-                    sourceWriteOperation(chooser.value, editor.value),
-                ], `Write ${chooser.value}`)
-            ), { primary: true })),
-        );
     }
 
     async function renderPreview(body) {
-        body.append(heading(documentRef, 'Native Preview', 'Preview derives the A4 Runtime Descriptor and never creates Session or Branch persistence.'));
+        body.append(heading(documentRef, 'Native Preview', 'Explore the committed project interface without creating a play session.'));
         if (!state.preview) {
             body.append(panel(documentRef, 'empty', 'No active preview', 'Run Preview from the Studio toolbar.'));
             return;
@@ -1002,7 +1073,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
             packageVersionId: state.preview.packageVersionId,
             persisted: state.preview.persisted,
         }, null, 2);
-        body.append(meta);
+        body.append(technicalDetails(documentRef, meta.textContent, 'Preview details'));
 
         const experience = experienceFromProject(state.source);
         const componentPath = experienceComponentPath(state.source);
@@ -1019,17 +1090,18 @@ async function mountProjectStudio(documentRef, root, projectId) {
                 body.append(panel(documentRef, 'error', 'Preview render failed', error?.message || String(error)));
             }
         } else {
-            body.append(panel(documentRef, 'empty', 'Text Preview', 'Text Experience reuses the Atria-native Conversation / Composer at runtime.'));
+            body.append(panel(documentRef, 'empty', 'Text Preview', 'This project uses the conversation interface during Play.'));
         }
     }
 
     function renderSimulation(body) {
-        body.append(heading(documentRef, 'Test / Simulation', 'Simulation uses the existing A1 seam and remains separate from persistent runtime authority.'));
+        body.append(heading(documentRef, 'Test / Simulation', 'Check the committed project without changing your play sessions.'));
         body.append(actionRow(documentRef, button(documentRef, 'Run Simulation', runSimulation, { primary: true })));
         if (state.simulation) {
             const pre = documentRef.createElement('pre');
             pre.textContent = JSON.stringify(state.simulation, null, 2);
-            body.append(pre);
+            const status = documentRef.createElement('p'); status.setAttribute('role', 'status'); status.textContent = t('Simulation') + ': ' + state.simulation.status;
+            body.append(status, technicalDetails(documentRef, pre.textContent, 'Simulation details'));
         }
     }
 
@@ -1047,7 +1119,8 @@ async function mountProjectStudio(documentRef, root, projectId) {
                 manifest: state.buildReport.manifest,
                 preflight: state.buildReport.preflight,
             }, null, 2);
-            body.append(pre);
+            const status = documentRef.createElement('p'); status.setAttribute('role', 'status'); status.textContent = t('Preflight complete. The package is ready to build from this exact revision.');
+            body.append(status, technicalDetails(documentRef, pre.textContent, 'Build details'));
         }
     }
 
@@ -1069,13 +1142,13 @@ async function mountProjectStudio(documentRef, root, projectId) {
         else if (state.activeView === 'ui') void renderUi(body);
         else if (state.activeView === 'assets') renderAssets(body);
         else if (state.activeView === 'memory') renderPackageJson(body, 'Memory', 'memory', 'Project memory configuration is structured package source.');
-        else if (state.activeView === 'agents') renderPackageJson(body, 'Agents / Orchestration', 'orchestration', 'Project orchestration configuration is edited without invoking A8 Project Agent.');
-        else if (state.activeView === 'skills') renderPackageJson(body, 'Skills', 'skills', 'Native project/package Skill declarations use the A5 scope authority.');
+        else if (state.activeView === 'agents') renderPackageJson(body, 'Agents / Orchestration', 'orchestration', 'Configure orchestration for this project. These settings do not run the Project Agent.');
+        else if (state.activeView === 'skills') renderPackageJson(body, 'Skills', 'skills', 'Manage the Skills declared by this project.');
         else if (state.activeView === 'plugins') renderNestedRuntimeJson(body, 'Plugins', 'plugins', 'Package-runtime plugins remain declarative and capability-defined.');
         else if (state.activeView === 'metadata') {
             renderJsonSection(documentRef, body, {
                 title: 'Processors / Localization / Permissions',
-                description: 'Advanced structured project metadata remains inside the same Project source authority.',
+                description: 'Edit processors, localization and permissions, then review the proposed changes.',
                 value: {
                     processors: state.source.package.processors || {},
                     localization: state.source.package.localization || {},
@@ -1087,7 +1160,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
                         source.package.localization = parsed.localization || {};
                         source.package.permissions = parsed.permissions || [];
                     });
-                    stageProject(next, 'Update package advanced settings');
+                    return stageProject(next, 'Update package advanced settings');
                 },
             });
         } else if (state.activeView === 'simulation') renderSimulation(body);
@@ -1100,7 +1173,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
             body.append(heading(
                 documentRef,
                 descriptor?.displayName || 'Plugin Resource',
-                'Plugin-defined authoring resource types reuse the A2 Resource Registry and A5 contribution authority.',
+                'Inspect resources provided by this plugin and their exact identity.',
             ));
             const matching = state.resources.filter(item => item.resourceType === state.selectedPluginResourceType);
             const pre = documentRef.createElement('pre');
@@ -1108,12 +1181,13 @@ async function mountProjectStudio(documentRef, root, projectId) {
                 descriptor,
                 resources: matching,
             }, null, 2);
-            body.append(pre);
+            body.append(technicalDetails(documentRef, pre.textContent));
         }
     }
     state.renderEditor = renderEditor;
 
     function renderActivity() {
+        if (state.disposed) return;
         activity.replaceChildren();
         const tabs = documentRef.createElement('nav');
         tabs.className = 'atria-studio-activity-tabs';
@@ -1124,10 +1198,12 @@ async function mountProjectStudio(documentRef, root, projectId) {
             ['changes', 'Changes'],
         ]) {
             tabs.append(button(documentRef, label, () => {
-                state.activityTab = id;
-                renderActivity();
+                state.activityTab = id; state.activityOpen = true;
+                renderActivity(); updateMobile();
+                [...activity.querySelectorAll('button')].find(node => node.textContent === t(label))?.focus();
             }, { active: state.activityTab === id }));
         }
+        tabs.append(button(documentRef, state.activityOpen ? 'Hide activity' : 'Show activity', () => { state.activityOpen = !state.activityOpen; renderActivity(); updateMobile(); }));
         activity.append(tabs);
 
         const body = documentRef.createElement('div');
@@ -1183,7 +1259,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
             title.textContent = state.pending.label;
             body.append(title);
             if (state.pending.conflict) {
-                body.append(panel(documentRef, 'error', 'Revision conflict', 'The project advanced. A7 never silently rebases authoring changes.'));
+                body.append(panel(documentRef, 'error', 'Revision conflict', 'The project advanced. Studio never silently rebases authoring changes. Reload the latest revision and review your edits again.'));
                 body.append(actionRow(documentRef, button(documentRef, 'Reload Latest', async () => {
                     state.pending = null;
                     await refreshProject();
@@ -1198,13 +1274,20 @@ async function mountProjectStudio(documentRef, root, projectId) {
                     operations: state.pending.workspace.operations,
                     changes: state.pending.inspected?.changes || [],
                 }, null, 2);
-                body.append(pre, actionRow(
+                const summary = documentRef.createElement('p'); summary.textContent = t('Review the proposed operations before applying.') + ' ' + state.pending.workspace.operations.length;
+                const changes = documentRef.createElement('ul'); changes.className = 'atri-studio-change-summary';
+                for (const operation of state.pending.workspace.operations) {
+                    const item = documentRef.createElement('li');
+                    const label = { 'project.save': 'Update project resources', 'source.write': 'Write file', 'source.delete': 'Remove file', 'source.move': 'Move file' }[operation.operationType] || operation.operationType;
+                    item.textContent = t(label) + (operation.target?.path ? ' · ' + operation.target.path : ''); changes.append(item);
+                }
+                body.append(summary, changes, technicalDetails(documentRef, pre.textContent, 'ChangeSet details'), actionRow(
                     documentRef,
                     button(documentRef, 'Cancel', () => {
                         state.pending = null;
                         renderActivity();
                     }),
-                    button(documentRef, 'Apply ChangeSet', applyPending, { primary: true }),
+                    button(documentRef, 'Apply ChangeSet', applyPending, { primary: true, disabled: state.applying }),
                 ));
             }
         } else if (state.agentReview) {
@@ -1230,7 +1313,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
                     'Review required',
                     'Inspect the Agent ChangeSet here; Commit remains an explicit action in the Project Agent panel.',
                 ),
-                pre,
+                technicalDetails(documentRef, pre.textContent, 'Agent ChangeSet details'),
             );
         } else {
             body.append(panel(documentRef, 'empty', 'No pending ChangeSet', 'Structured edits first enter review; applying runs validation and commits only on success.'));
@@ -1238,6 +1321,10 @@ async function mountProjectStudio(documentRef, root, projectId) {
     }
 
     function updateMobile() {
+        center.inert = environment.get().mode === 'medium' && (state.inspectorOpen || state.aiOpen);
+        for (const item of topActions.children) { if (item.textContent === t('Inspector')) item.setAttribute('aria-expanded', String(state.inspectorOpen)); if (item.textContent === t('AI')) item.setAttribute('aria-expanded', String(state.aiOpen)); }
+        shell.dataset.activityOpen = String(state.activityOpen); shell.dataset.inspectorOpen = String(state.inspectorOpen); shell.dataset.aiOpen = String(state.aiOpen);
+        for (const [index, control] of [...mobileNav.querySelectorAll('button')].entries()) { control.dataset.active = String(MOBILE_VIEWS[index][0] === state.mobileView); control.setAttribute('aria-current', MOBILE_VIEWS[index][0] === state.mobileView ? 'page' : 'false'); }
         shell.dataset.atriaStudioMobileView = state.mobileView;
         if (state.mobileView === 'preview' && state.activeView !== 'preview') {
             state.lastEditorView = state.activeView;
@@ -1257,13 +1344,25 @@ async function mountProjectStudio(documentRef, root, projectId) {
         button(documentRef, 'Validate', runValidation),
         button(documentRef, 'Preview', runPreview),
         button(documentRef, 'Simulate', runSimulation),
+        button(documentRef, 'Inspector', () => { state.inspectorOpen = !state.inspectorOpen; state.aiOpen = false; if (environment.get().mode === 'compact') state.mobileView = 'editor'; updateMobile(); if (state.inspectorOpen) inspector.querySelector('button')?.focus(); }),
         button(documentRef, 'Build', () => runBuild({ download: false })),
         button(documentRef, 'AI', () => {
             state.aiOpen = !state.aiOpen;
-            ai.classList.toggle('atria-studio-ai-placeholder--open', state.aiOpen);
+            state.inspectorOpen = false; state.mobileView = state.aiOpen ? 'ai' : 'editor'; updateMobile(); if (state.aiOpen) ai.querySelector('select,textarea')?.focus();
         }, { active: state.aiOpen }),
     );
 
+    const inspectorToggle = [...topActions.children].find(item => item.textContent === t('Inspector'));
+    inspectorToggle.setAttribute('aria-controls', inspector.id);
+    environment.subscribe(() => { updateMobile(); });
+    function dismissTransient() {
+        if (!state.aiOpen && !state.inspectorOpen && state.mobileView !== 'ai') return false;
+        const label = state.inspectorOpen ? 'Inspector' : 'AI';
+        state.aiOpen = false; state.inspectorOpen = false;
+        if (state.mobileView === 'ai') state.mobileView = 'editor';
+        updateMobile(); [...topActions.children].find(item => item.textContent === t(label))?.focus();
+        return true;
+    }
     renderEditor();
     renderActivity();
     void renderInspector();
@@ -1271,9 +1370,10 @@ async function mountProjectStudio(documentRef, root, projectId) {
 
     return {
         updateRoute() {},
+        dismissTransient,
         dispose() {
             state.disposed = true;
-            aiController.dispose();
+            environment.dispose(); aiController.dispose();
         },
     };
 }
@@ -1300,20 +1400,25 @@ export function mountNativeStudioWorkspace({
             const childId = String(nextRoute?.child?.id || '');
             if (childId.startsWith('project:')) {
                 const projectId = childId.slice('project:'.length);
-                projectController = await mountProjectStudio(documentRef, root, projectId);
+                const mounted = await mountProjectStudio(documentRef, root, projectId);
+                if (disposed || token !== sequence) { mounted.dispose(); return; }
+                projectController = mounted;
             } else {
                 await renderProjectList(documentRef, root, host);
             }
             if (!disposed && token === sequence) slot.replaceChildren(root);
         } catch (error) {
             if (!disposed && token === sequence) {
-                slot.replaceChildren(panel(documentRef, 'error', 'Build Projects', error?.message || String(error)));
+                const errorPanel = panel(documentRef, 'error', 'Build Projects', error?.message || String(error));
+                errorPanel.append(button(documentRef, 'Try again', () => render(nextRoute)));
+                root.dataset.atriaBuildError = 'true'; root.replaceChildren(errorPanel); slot.replaceChildren(root);
             }
         }
     }
 
     void render(route);
     return {
+        dismissTransient: () => projectController?.dismissTransient?.() === true,
         updateRoute(nextRoute) {
             void render(nextRoute);
         },
