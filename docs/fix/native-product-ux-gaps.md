@@ -695,15 +695,28 @@ Standardize reference rows with:
 
 ---
 
-## NUX-024 — Build exposes project creation but not normal project deletion/archive
+## NUX-024 — Build can create/open projects but has no user-facing project deletion
 
 **Current evidence**
 
-The redesign fixed project creation. Backend Product/Studio APIs support deletion, but the normal Build project list does not expose a delete/archive lifecycle action.
+The redesign fixed project creation: Build now exposes New Project / Create Project and project cards can be opened normally.
+
+Backend Product/Studio APIs already support project deletion, but neither the normal Build project list nor the project workspace exposes a first-class Delete Project action.
+
+**Impact**
+
+Users can create an unlimited number of test/abandoned projects but cannot remove them through the product UI.
 
 **Acceptance**
 
-Provide safe project deletion/archive with revision protection and confirmation.
+- Expose a visible project lifecycle action from Build and/or project detail.
+- Delete must use the existing project authority rather than direct filesystem removal.
+- Require destructive confirmation.
+- Respect current revision/conflict protection.
+- Explain whether deletion removes project source only or any derived build artifacts.
+- After deletion, return to the Build project list and refresh search/navigation state.
+
+Archiving may be added later if useful, but it must not substitute for a real deletion path when deletion is safe.
 
 ---
 
@@ -823,17 +836,76 @@ Provide a readable branch/history model showing current branch, fork points and 
 
 ---
 
-## NUX-033 — Native Plugin surface is mainly diagnostic, not management
+## NUX-033 — Plugins still use the wrong product taxonomy
 
 **Current evidence**
 
-Native Plugin cards display pluginId, Package, capability strings and contribution payload details.
+The current Plugins utility mixes two different systems:
 
-The page states that each Work manages plugin permissions, but no first-class activation/permission/dependency management action is exposed from the Native Plugin surface.
+1. **Native Plugins** projected from installed Work/Package manifests.
+2. An **Advanced · Legacy extensions** area that embeds SillyTavern extension settings and exposes the Legacy Extension Manager / install flow.
+
+The codebase also still contains many upstream-style built-in extensions under `public/scripts/extensions/`.
+
+At the same time, Orchestrator and Memory are already first-class product capabilities under **Agents**:
+
+- Agents → Orchestration
+- Agents → Run
+- Agents → Memory
+- Agents → Diagnostics
+
+They should not remain conceptually duplicated as plugins.
+
+**Target product taxonomy**
+
+### Work Plugins
+
+Plugins shipped as part of an Atria Work / `.atria` Package.
+
+Ownership and lifetime are tied to:
+
+- Package;
+- exact PackageVersion;
+- declared capabilities;
+- explicit permissions;
+- Package Runtime.
+
+These are not globally installed SillyTavern extensions.
+
+### Global Plugins
+
+User-level Atria capabilities independent of a Work.
+
+For the current product direction, retain only:
+
+- **Regex**
+- **Search Tools**
+
+as first-class Global Plugins.
+
+### Not Plugins
+
+The following are first-class Atria product domains/capabilities and must not appear as plugin products:
+
+- Orchestrator / agent orchestration;
+- Memory / Memory Graph.
+
+They belong exclusively under **Agents**.
+
+**Impact**
+
+Keeping the old extension model makes Atria look like a themed SillyTavern extension host instead of an independent product. It also creates duplicate ownership and settings surfaces.
 
 **Acceptance**
 
-Either make Plugins the management owner or deep-link to the actual permission/activation owner. Show human-facing name/description/origin/status/dependencies before internal IDs.
+- Replace the current Native + Legacy extension product model with **Work Plugins / Global Plugins**.
+- Work Plugins come only from installed Work/Package runtime declarations.
+- Global Plugins initially contain only Regex and Search Tools.
+- Remove Orchestrator and Memory from all plugin/extension management presentation; Agents is their sole product home.
+- Remove the Legacy Extension Manager and embedded SillyTavern extension settings from the normal Atria Plugins domain.
+- Do not allow legacy extension installation to remain a normal Atria product workflow.
+- Plugin permissions/status/dependencies must be managed according to the new Work/Global ownership model.
+- Keep opaque IDs and technical contribution payloads behind Details rather than as the primary identity.
 
 ---
 
@@ -973,6 +1045,89 @@ At minimum, Project and Native storage/blob roots must be represented explicitly
 
 ---
 
+## NUX-044 — Retire the remaining SillyTavern extension/plugin inventory from the Atria product line
+
+**New user-directed hard-cut requirement**
+
+**Current evidence**
+
+`public/scripts/extensions/` still contains a broad upstream-style extension inventory, including examples such as:
+
+- assets / attachments;
+- caption;
+- expressions;
+- gallery;
+- quick-reply;
+- stable-diffusion;
+- token-counter;
+- translate;
+- tts;
+- vectors;
+- connection-manager;
+- completion/character assistant extensions;
+- Orchestrator / Memory implementation modules;
+- Regex;
+- Search Tools;
+- shared extension infrastructure.
+
+Not every directory is safe to delete immediately: some are currently implementation dependencies for retained Atria capabilities. For example, Memory embedding/rerank still relies on Connection Manager today, and Orchestrator/Memory source currently lives under the historical `extensions/` tree even though their product ownership has moved to Agents.
+
+**Required end state**
+
+The Atria product should no longer carry a general SillyTavern built-in-extension catalog.
+
+Retained plugin products are only:
+
+- **Global Plugin: Regex**
+- **Global Plugin: Search Tools**
+- **Work Plugins:** Package-declared Native runtime plugins
+
+Orchestrator and Memory remain retained functionality, but as Agents-owned Atria modules rather than plugin products.
+
+All other extension products are to be retired from Atria.
+
+**Implementation constraint**
+
+“Delete all other plugins” is a **physical cleanup target**, not permission to blindly remove directories before dependency replacement.
+
+For every candidate extension:
+
+1. build an import/runtime dependency graph;
+2. decide whether the functionality is:
+   - obsolete and removable;
+   - still required by an Atria core/domain and therefore must be migrated into that domain;
+   - shared infrastructure that must be renamed/relocated before the old extension shell is removed;
+3. remove its UI/settings/registration/product surface;
+4. migrate any still-required data/config authority;
+5. delete dead source, styles, templates, tests, docs and settings keys;
+6. add residual guards so deleted extensions cannot silently return through upstream merges.
+
+Examples of required dependency-first handling:
+
+- Memory embedding/rerank must stop depending on Connection Manager before Connection Manager can be removed.
+- Orchestrator/Memory implementation may be relocated out of the legacy extension hierarchy only after imports/tests are updated; their functionality is retained under Agents.
+- Game/runtime/shared support code that happens to live under `extensions/` must not be deleted merely because of its directory name; migrate retained core functionality to Atria-owned modules first.
+
+**Acceptance**
+
+- Normal Atria has no Legacy Extension Manager.
+- No general third-party SillyTavern extension install flow is exposed.
+- Regex and Search Tools are the only first-party Global Plugins.
+- Package-declared Work Plugins are isolated from Global Plugins.
+- Orchestrator and Memory appear only under Agents.
+- Every other retired extension has no active registration, settings UI, persisted authority or reachable product route.
+- Dead extension code is physically removed after dependency migration.
+- Architecture/residual tests enforce the retained-plugin allowlist.
+
+**Evidence**
+
+- `public/scripts/atria-shell/utility-workspaces.js`
+- `public/scripts/extensions/`
+- `public/scripts/atria-shell/workspace-host.js`
+- `tests/e2e/atria-shell/07-plugins-settings.e2e.js`
+
+---
+
 # P2 — Native convergence debt
 
 ## NUX-037 — Orchestrator and Memory still persist compatibility-era preset names
@@ -1044,6 +1199,7 @@ This backlog should not be implemented as 38 unrelated fixes. Normalize it into 
 6. **Work / Session / Plugin Product Lifecycle**
    - NUX-027–033
    - NUX-035–036
+   - NUX-044
 
 7. **Skills / Search / Localization**
    - NUX-010
@@ -1063,6 +1219,8 @@ This backlog should not be implemented as 38 unrelated fixes. Normalize it into 
 - Keep Studio ChangeSet/Review/Apply as the only human/project write authority.
 - Do not reintroduce “latest by name” lookups.
 - Provider expansion must remain capability-driven and fail closed.
+- Plugin hard-cut must follow a dependency graph: migrate retained Atria functionality out of legacy extension ownership before physical deletion.
+- The post-cleanup first-party plugin allowlist is Global Regex + Global Search Tools; all Work plugins come from Package declarations.
 
 ## 6. Validation expectations for the future implementation task
 
