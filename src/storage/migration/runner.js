@@ -3,6 +3,8 @@ import { PRESET_FOLDER_BY_API_ID } from '../repositories/preset-repo.js';
 import { BUCKET_TO_DIR } from '../repositories/named-doc-repo.js';
 import { snapshotUser, restoreFromSnapshot, removeSnapshot } from './backup.js';
 import { recordsEqual } from './equality.js';
+import { isDeepStrictEqual } from 'node:util';
+import { NATIVE_STORAGE_KINDS } from '../engines/native-resource-key.js';
 
 // Canonical category shape — every section the runner can copy. Callers
 // supplying `categories` opt in/out of sections via this set of keys; unknown
@@ -10,6 +12,7 @@ import { recordsEqual } from './equality.js';
 // DEFAULT_MIGRATION_CATEGORIES so cross-mode-restore can reference the same
 // shape when translating UI selections into runner-level toggles.
 const DEFAULT_CATEGORIES = Object.freeze({
+    native: true,
     settings: true,
     presets: true,
     namedDocs: true,
@@ -26,6 +29,7 @@ export const DEFAULT_MIGRATION_CATEGORIES = DEFAULT_CATEGORIES;
 // at the end of migrateUser, so they're excluded.
 function snapshotCounts(stats) {
     return {
+        native: stats.native,
         settings: stats.settings,
         presets: stats.presets,
         preset_states: stats.preset_states,
@@ -101,7 +105,7 @@ export class MigrationRunner {
      *     after the fact. Failed migrations always preserve their snapshot
      *     regardless of this flag, so a rollback can always be redone manually.
      */
-    constructor({ sourceRepos, sourceEngine = null, destRepos, snapshotPaths, dryRun = false, keepSnapshot = false, categories = null, skipInternalSnapshot = false }) {
+    constructor({ sourceRepos, sourceEngine = null, destRepos, destEngine = null, snapshotPaths, dryRun = false, keepSnapshot = false, categories = null, skipInternalSnapshot = false }) {
         if (!sourceRepos) throw new Error('MigrationRunner: sourceRepos required');
         if (!destRepos) throw new Error('MigrationRunner: destRepos required');
         if (!snapshotPaths || typeof snapshotPaths.getUserRoot !== 'function') {
@@ -111,7 +115,8 @@ export class MigrationRunner {
             throw new Error('MigrationRunner: snapshotPaths.backupRoot required');
         }
         this._src = sourceRepos;
-        this._srcEngine = sourceEngine;
+        this._srcEngine = sourceEngine || sourceRepos.settings?._engine;
+        this._dstEngine = destEngine || destRepos.settings?._engine;
         this._dst = destRepos;
         this._snapshotPaths = snapshotPaths;
         this._dryRun = !!dryRun;
@@ -168,6 +173,7 @@ export class MigrationRunner {
     async migrateUser(srcHandle, { onProgress = () => {}, destHandle = null } = {}) {
         const effectiveDestHandle = destHandle != null ? destHandle : srcHandle;
         const stats = {
+            native: 0,
             handle: srcHandle,
             settings: 0,
             presets: 0,
@@ -229,7 +235,7 @@ export class MigrationRunner {
             //    markers (with the total record count) so existing
             //    onProgress consumers keep working without a contract change.
             if (!this._dryRun) {
-                const totalRecords = stats.settings
+                const totalRecords = stats.native + stats.settings
                     + stats.presets + stats.preset_states
                     + stats.worlds
                     + stats.chats + stats.chat_states
@@ -320,6 +326,29 @@ export class MigrationRunner {
     // --------------------------------------------------------------------
 
     async _copyAll(srcHandle, dstHandle, stats, onProgress) {
+        if (this._categories.native) {
+            if (!this._srcEngine || !this._dstEngine) throw new Error('Native migration requires source and destination engines');
+            for (const kind of NATIVE_STORAGE_KINDS) {
+                const records = await this._srcEngine.withTransaction(srcHandle, tx => tx.listResources({ kind, handle: srcHandle }));
+                for (const record of records) {
+                    const key = { ...record.key, handle: dstHandle };
+                    if (!this._dryRun) {
+                        await this._dstEngine.withTransaction(dstHandle, async tx => {
+                            await tx.putResource(key, record);
+                            const restored = await tx.getResource(key);
+                            if (!isDeepStrictEqual(restored?.doc, record.doc)
+                                || restored?.integrity !== record.integrity
+                                || restored?.createdAt !== record.createdAt
+                                || restored?.updatedAt !== record.updatedAt) {
+                                throw new Error(`Native migration verify mismatch: ${kind}`);
+                            }
+                        });
+                    }
+                    stats.native++;
+                }
+            }
+            onProgress({ stage: 'native-copied', handle: srcHandle, counts: snapshotCounts(stats) });
+        }
         // Settings
         if (this._categories.settings) {
             const settings = await this._src.settings.get(srcHandle);

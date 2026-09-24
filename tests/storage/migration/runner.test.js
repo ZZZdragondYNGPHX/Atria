@@ -376,6 +376,7 @@ describe('MigrationRunner: FS to SQLite', () => {
         const runner = new MigrationRunner({
             sourceRepos: src.repos,
             destRepos: tamperedDest,
+            destEngine: dst.engine,
             snapshotPaths: {
                 dataRoot: tmpRoot, backupRoot, getUserRoot: () => src.userDir,
             },
@@ -555,6 +556,7 @@ describe('MigrationRunner: constructor validation', () => {
                 snapshotPaths: { backupRoot: harness.backupRoot, getUserRoot: () => harness.dirs.root },
             });
             expect(runner._categories).toEqual({
+                native: true,
                 settings: true, presets: true, namedDocs: true,
                 worlds: true, chats: true, groups: true, stats: true,
             });

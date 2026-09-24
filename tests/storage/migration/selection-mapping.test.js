@@ -1,8 +1,9 @@
 import { FS_TREE_CATEGORIES, selectionToRunnerCategories } from '../../../src/storage/migration/selection-mapping.js';
 
 describe('FS_TREE_CATEGORIES', () => {
-    test('lists exactly the 6 pure fs-tree categories', () => {
+    test('lists the filesystem categories including the Native closure', () => {
         expect([...FS_TREE_CATEGORIES]).toEqual([
+            'native',
             'secrets',
             'characters',
             'assets',
@@ -20,12 +21,12 @@ describe('FS_TREE_CATEGORIES', () => {
 describe('selectionToRunnerCategories', () => {
     test('all-true selection enables every runner category', () => {
         const out = selectionToRunnerCategories({
-            settings: true, secrets: true, characters: true, chats: true,
+            native: true, settings: true, secrets: true, characters: true, chats: true,
             lorebooks: true, presets: true, assets: true, extensions: true,
             globalExtensions: true, vectors: true,
         });
         expect(out).toEqual({
-            settings: true, presets: true, namedDocs: true,
+            native: true, settings: true, presets: true, namedDocs: true,
             worlds: true, chats: true, groups: true, stats: true,
         });
     });
@@ -79,7 +80,7 @@ describe('selectionToRunnerCategories', () => {
 
     test('null / undefined / empty selection produces all-false', () => {
         const allFalse = {
-            settings: false, presets: false, namedDocs: false,
+            native: false, settings: false, presets: false, namedDocs: false,
             worlds: false, chats: false, groups: false, stats: false,
         };
         expect(selectionToRunnerCategories(null)).toEqual(allFalse);
@@ -93,7 +94,7 @@ describe('selectionToRunnerCategories', () => {
             extensions: true, globalExtensions: true, vectors: true,
         });
         expect(out).toEqual({
-            settings: false, presets: false, namedDocs: false,
+            native: false, settings: false, presets: false, namedDocs: false,
             worlds: false, chats: false, groups: false, stats: false,
         });
     });

@@ -6823,5 +6823,7 @@
     "atria.utilities.declared.contributions": "已宣告的擴充項目",
     "atria.utilities.contributions": "${0} 個擴充項目",
     "No log entries match these filters.": "沒有符合篩選條件的日誌。",
-    "atria.utilities.plugins.loading": "正在載入已安裝作品的外掛…"
+    "atria.utilities.plugins.loading": "正在載入已安裝作品的外掛…",
+    "Native data and projects": "Native 資料與專案",
+    "Native backup includes Works, Sessions, Library, Runtime, project sources and required asset blobs. Select Secrets separately to restore API keys.": "Native 備份包括作品、工作階段、資源庫、執行階段、專案原始檔及必要的資源檔案。還原 API 金鑰需另外選擇 Secrets。"
 }

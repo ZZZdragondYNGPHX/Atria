@@ -15,7 +15,10 @@ import _ from 'lodash';
 import { sync as writeFileAtomicSync } from 'write-file-atomic';
 import ipMatching from 'ip-matching';
 
-import { USER_DIRECTORY_TEMPLATE, DEFAULT_USER, PUBLIC_DIRECTORIES, SETTINGS_FILE, UPLOADS_DIRECTORY } from './constants.js';
+import { USER_DIRECTORY_TEMPLATE, resolveUserDirectory, DEFAULT_USER, PUBLIC_DIRECTORIES, SETTINGS_FILE, UPLOADS_DIRECTORY } from './constants.js';
+import { selectionToDumpTables } from './storage/migration/selection-mapping.js';
+import { acquireMigrationLock, releaseMigrationLock, makeHolderId, startHeartbeat, stopHeartbeat } from './storage/migration/lock.js';
+import { isReadOnly, setReadOnly } from './storage/read-only-mode.js';
 import { getConfigValue, color, delay, generateTimestamp, invalidateFirefoxCache, Cache, formatBytes, resolvePathWithinParent, isPathUnderParent, setPermissionsSync } from './util.js';
 import { readSecret, writeSecret, SECRETS_FILE } from './endpoints/secrets.js';
 import { getContentOfType } from './endpoints/content-manager.js';
@@ -81,6 +84,7 @@ const STORAGE_KEYS = {
 };
 
 export const USER_BACKUP_SELECTION_DEFAULTS = Object.freeze({
+    native: true,
     settings: true,
     secrets: true,
     characters: true,
@@ -1370,6 +1374,14 @@ export function getUserBackupTargets(directories, selection, options = {}) {
     const selectedFiles = new Set();
     const selectedDirectories = new Set();
 
+    // Native metadata, source projects and content-addressed blobs form one
+    // backup closure. Splitting them leaves exact references unrecoverable.
+    if (selection.native) {
+        for (const key of ['native', 'projects', 'nativeBlobs']) {
+            selectedDirectories.add(resolveUserDirectory(directories, key));
+        }
+    }
+
     if (selection.settings) {
         selectedFiles.add(path.join(directories.root, SETTINGS_FILE));
         selectedDirectories.add(directories.backups);
@@ -1430,7 +1442,11 @@ export function getUserBackupTargets(directories, selection, options = {}) {
 
     return {
         files: [...selectedFiles],
-        directories: [...selectedDirectories],
+        directories: [...selectedDirectories].filter(directory => ![...selectedDirectories].some(parent => {
+            if (parent === directory) return false;
+            const relative = path.relative(parent, directory);
+            return relative && !relative.startsWith('..') && !path.isAbsolute(relative);
+        })),
     };
 }
 
@@ -1468,6 +1484,21 @@ function getBackupArchivePath(rootPath, targetPath) {
  * @returns {Promise<void>} Promise that resolves when the archive is created
  */
 export async function createBackupArchive(handle, response, selectionInput = undefined, options = {}) {
+    const holderId = makeHolderId();
+    await acquireMigrationLock({ dataRoot: globalThis.DATA_ROOT, holderId });
+    const heartbeat = startHeartbeat({ dataRoot: globalThis.DATA_ROOT, holderId });
+    const previousReadOnly = isReadOnly();
+    setReadOnly(true);
+    try {
+        await writeBackupArchive(handle, response, selectionInput, options);
+    } finally {
+        setReadOnly(previousReadOnly);
+        stopHeartbeat(heartbeat);
+        await releaseMigrationLock({ dataRoot: globalThis.DATA_ROOT, holderId });
+    }
+}
+
+async function writeBackupArchive(handle, response, selectionInput, options) {
     const directories = getUserDirectories(handle);
     const selection = normalizeUserBackupSelection(selectionInput);
     const targets = getUserBackupTargets(directories, selection, options);
@@ -1516,7 +1547,7 @@ export async function createBackupArchive(handle, response, selectionInput = und
     // shape unchanged.
     const engine = getStorageEngine();
     if (engine.kind !== 'fs') {
-        const dumpStream = await engine.dumpUser(handle);
+        const dumpStream = await engine.dumpUser(handle, { tables: selectionToDumpTables(selection) });
         if (dumpStream != null) {
             const engineMeta = {
                 engineKind: engine.kind,
@@ -1547,10 +1578,29 @@ export async function createBackupArchive(handle, response, selectionInput = und
         }
 
         const archivePath = getBackupArchivePath(directories.root, directoryPath);
-        archive.directory(directoryPath, archivePath);
+        if (!selection.native && path.resolve(directoryPath) === path.resolve(directories.assets)) {
+            archive.glob('**/*', { cwd: directoryPath, dot: true, ignore: ['atria-native', 'atria-native/**'] }, { prefix: archivePath });
+        } else {
+            archive.directory(directoryPath, archivePath);
+        }
     }
 
-    archive.finalize();
+    let onClose;
+    try {
+        await Promise.race([
+            archive.finalize(),
+            new Promise((_, reject) => {
+                onClose = () => {
+                    if (response.writableFinished) return;
+                    archive.abort();
+                    reject(new Error('Backup download was disconnected'));
+                };
+                response.once('close', onClose);
+            }),
+        ]);
+    } finally {
+        if (onClose) response.off('close', onClose);
+    }
 }
 
 /**

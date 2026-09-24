@@ -7269,5 +7269,7 @@
     "atria.utilities.declared.contributions": "已声明的扩展项",
     "atria.utilities.contributions": "${0} 个扩展项",
     "No log entries match these filters.": "没有符合筛选条件的日志。",
-    "atria.utilities.plugins.loading": "正在加载已安装作品的插件…"
+    "atria.utilities.plugins.loading": "正在加载已安装作品的插件…",
+    "Native data and projects": "Native 数据与项目",
+    "Native backup includes Works, Sessions, Library, Runtime, project sources and required asset blobs. Select Secrets separately to restore API keys.": "Native 备份包括作品、会话、资源库、运行时、项目源文件及必需的资源文件。恢复 API 密钥需另外选择 Secrets。"
 }

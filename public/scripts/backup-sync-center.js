@@ -298,6 +298,7 @@ async function readRestoreResponse(response, onProgress = () => {}) {
 }
 
 const BACKUP_CATEGORY_KEYS = Object.freeze([
+    'native',
     'settings',
     'secrets',
     'characters',
@@ -310,6 +311,7 @@ const BACKUP_CATEGORY_KEYS = Object.freeze([
     'vectors',
 ]);
 const BACKUP_DEFAULT_SELECTION = Object.freeze({
+    native: true,
     settings: true,
     secrets: true,
     characters: true,

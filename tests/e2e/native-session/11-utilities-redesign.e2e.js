@@ -178,6 +178,15 @@ test('Utilities loading, service failures and recovery on a narrow screen', asyn
     await expect(page.locator('.userName')).not.toBeEmpty();
     await page.locator('.userBackupSyncButton').click();
     await expect(page.locator('dialog[open]')).toBeVisible();
+    await page.locator('.backupSyncTab[data-tab="archive"]').click();
+    const nativeBackup = page.getByRole('checkbox', { name: 'Native data and projects' });
+    await expect(nativeBackup).toBeChecked();
+    await nativeBackup.focus();
+    await page.keyboard.press('Space');
+    await expect(nativeBackup).not.toBeChecked();
+    await page.locator('.backupSelectRecommended').click();
+    await expect(nativeBackup).toBeChecked();
+    expect(await page.locator('.backupSyncCenter').evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
     await page.screenshot({ path: info.outputPath('backup-320.png'), animations: 'disabled' });
     await page.keyboard.press('Escape');
     await page.locator('.userStorageManagementButton').click();

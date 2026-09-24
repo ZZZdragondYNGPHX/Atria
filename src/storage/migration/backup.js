@@ -139,6 +139,18 @@ export async function restoreFromSnapshot({ handle, userRoot, backupPath, engine
     if (!fs.existsSync(backupPath)) {
         throw new Error(`restoreFromSnapshot: backupPath does not exist: ${backupPath}`);
     }
+    const dumpPath = path.join(backupPath, ENGINE_DUMP_ENTRY);
+    const metaPath = path.join(backupPath, ENGINE_META_ENTRY);
+    if (engine && engine.kind !== 'fs' && fs.existsSync(dumpPath) && fs.existsSync(metaPath)) {
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        if (meta.engineKind !== engine.kind) {
+            throw new Error(`restoreFromSnapshot: engineKind mismatch (snapshot=${meta.engineKind}, current=${engine.kind})`);
+        }
+    }
+    // SQLite holds the file open. Close/evict this user's connection before
+    // replacing the directory, especially on Windows where a partial removal
+    // could otherwise delete blobs before failing on the database file.
+    if (engine?.kind === 'sqlite') engine.closeHandle(handle);
     if (fs.existsSync(userRoot)) {
         await fs.promises.rm(userRoot, { recursive: true, force: true });
     }
@@ -165,16 +177,7 @@ export async function restoreFromSnapshot({ handle, userRoot, backupPath, engine
     // engine) have neither, and there's nothing to replay. The meta file's
     // engineKind is the source of truth for what engine wrote the dump.
     if (engine && engine.kind !== 'fs') {
-        const dumpPath = path.join(backupPath, ENGINE_DUMP_ENTRY);
-        const metaPath = path.join(backupPath, ENGINE_META_ENTRY);
         if (fs.existsSync(dumpPath) && fs.existsSync(metaPath)) {
-            const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-            if (meta.engineKind !== engine.kind) {
-                throw new Error(
-                    'restoreFromSnapshot: engineKind mismatch '
-                    + `(snapshot=${meta.engineKind}, current=${engine.kind})`,
-                );
-            }
             const readStream = fs.createReadStream(dumpPath);
             await engine.restoreUser(handle, readStream);
         }

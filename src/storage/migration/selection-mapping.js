@@ -1,12 +1,14 @@
 /**
  * Selection mapping helpers for cross-mode restore.
  *
- * The user-facing backup selection has 10 categories:
+ * The user-facing backup selection has 11 categories:
  *   settings, secrets, characters, chats, lorebooks, presets,
- *   assets, extensions, globalExtensions, vectors.
+ *   assets, extensions, globalExtensions, vectors, native.
  *
- * MigrationRunner only knows about 7 repo-level categories:
+ * MigrationRunner copies Native resources plus 7 repo-level categories:
  *   settings, presets, namedDocs, worlds, chats, groups, stats.
+ * Native also carries project sources and asset blobs through the filesystem
+ * extractor. These travel as one closure with Native engine records.
  *
  * The 4 categories that overlap have a non-trivial mapping (see §5.3 of
  * the design doc):
@@ -28,6 +30,7 @@
 
 /** @type {ReadonlyArray<string>} */
 export const FS_TREE_CATEGORIES = Object.freeze([
+    'native',
     'secrets',
     'characters',
     'assets',
@@ -37,18 +40,19 @@ export const FS_TREE_CATEGORIES = Object.freeze([
 ]);
 
 /**
- * Map a 10-key backup selection to the 7-key MigrationRunner categories
- * shape. All-true defaults are NOT applied here — missing or falsy
+ * Map backup selection to MigrationRunner categories.
+ * All-true defaults are NOT applied here — missing or falsy
  * selection keys map to `false`, so the resulting object never enables a
  * category the user did not explicitly select.
  *
  * @param {Record<string, boolean>|null|undefined} selection
  * @returns {{ settings: boolean, presets: boolean, namedDocs: boolean,
- *            worlds: boolean, chats: boolean, groups: boolean, stats: boolean }}
+ *            worlds: boolean, chats: boolean, groups: boolean, stats: boolean, native: boolean }}
  */
 export function selectionToRunnerCategories(selection) {
     const sel = selection || {};
     return {
+        native: !!sel.native,
         settings: !!sel.settings,
         presets: !!sel.presets,
         // themes / movingUI / quickReplies travel with presets — no
@@ -63,4 +67,15 @@ export function selectionToRunnerCategories(selection) {
         // Stats are derived from chats — selecting chats brings stats.
         stats: !!sel.chats,
     };
+}
+
+/** Tables included in a selected downloadable backup; snapshots omit this filter. */
+export function selectionToDumpTables(selection) {
+    const categories = selectionToRunnerCategories(selection);
+    const mapping = {
+        native: ['native_resources'], settings: ['settings'], presets: ['presets', 'preset_states'],
+        namedDocs: ['named_docs'], worlds: ['worlds'], chats: ['chats', 'chat_states'],
+        groups: ['groups_table'], stats: ['stats'],
+    };
+    return Object.entries(mapping).flatMap(([key, tables]) => categories[key] ? tables : []);
 }

@@ -38,6 +38,7 @@ import { PgEngine } from '../engines/postgres-engine.js';
 import { ENGINE_DUMP_ENTRY, ENGINE_META_ENTRY, SCRATCH_HANDLE_PREFIX } from '../engine-backup-entries.js';
 import { USER_DIRECTORY_TEMPLATE } from '../../constants.js';
 import { CrossModeScratchConnectionError } from './cross-mode-errors.js';
+import { NATIVE_STORAGE_KINDS, normalizeNativeResourceKey, nativeResourceFileId } from '../engines/native-resource-key.js';
 
 /**
  * @typedef {object} TransientSource
@@ -125,6 +126,22 @@ async function buildFsTransient({ scratchRoot, scratchHandle, zipPath }) {
     // Extract everything except the engine sentinels (fs source ZIPs don't
     // carry them anyway, but be defensive against malformed ZIPs).
     await extractZipTreeToScratch(zipPath, scratchRoot);
+
+    // FS envelopes include the owning handle. Rebind only that storage key;
+    // resource IDs, exact revisions and document contents remain unchanged.
+    for (const kind of NATIVE_STORAGE_KINDS) {
+        const root = path.join(scratchDirs.nativeResources, kind);
+        if (!fs.existsSync(root)) continue;
+        for (const file of fs.readdirSync(root)) {
+            if (!file.endsWith('.json')) continue;
+            const target = path.join(root, file);
+            const envelope = JSON.parse(fs.readFileSync(target, 'utf8'));
+            const key = normalizeNativeResourceKey(envelope.key);
+            if (key.kind !== kind || file !== nativeResourceFileId(key) + '.json') throw new Error('Invalid Native backup resource identity');
+            envelope.key = { ...key, handle: scratchHandle };
+            fs.writeFileSync(target, JSON.stringify(envelope));
+        }
+    }
 
     const engine = new FsEngine({
         directoriesByHandle: (h) => {
@@ -216,6 +233,9 @@ function rewriteSqliteHandleInPlace(sqlitePath, scratchHandle) {
         db.pragma('journal_mode = WAL');
         db.pragma('foreign_keys = OFF');
         const tx = db.transaction(() => {
+            if (db.prepare('SELECT name FROM sqlite_master WHERE type = ? AND name = ?').get('table', 'native_resources')) {
+                db.prepare('UPDATE native_resources SET handle = ?').run(scratchHandle);
+            }
             for (const tbl of TABLES_WITH_HANDLE) {
                 db.prepare(`UPDATE ${tbl} SET handle = ?`).run(scratchHandle);
             }

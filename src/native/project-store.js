@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { sync as writeFileAtomic } from 'write-file-atomic';
 import { resolveUserDirectory } from '../constants.js';
+import { assertWritable } from '../storage/read-only-mode.js';
 
 import { assertNativeId } from './identity.js';
 import {
@@ -79,6 +80,7 @@ export class ProjectStore {
     }
 
     async create(handle, value, { files = new Map() } = {}) {
+        assertWritable();
         const source = assertAtriaProjectSource(value);
         const projectDir = this._projectDir(handle, source.project.projectId);
         if (fs.existsSync(projectDir)) {
@@ -137,8 +139,10 @@ export class ProjectStore {
     }
 
     async save(handle, value) {
+        assertWritable();
         const source = assertAtriaProjectSource(value);
         const existing = await this.get(handle, source.project.projectId);
+        assertWritable();
         if (!existing) throw new Error('Studio Project does not exist: ' + source.project.projectId);
         if (existing.project.packageId !== source.project.packageId) {
             throw new Error('Studio Project packageId is immutable');
@@ -159,6 +163,7 @@ export class ProjectStore {
     }
 
     async writeFile(handle, projectId, relativePath, value) {
+        assertWritable();
         const safePath = normalizeRelativePath(relativePath);
         const projectDir = this._projectDir(handle, projectId);
         if (!fs.existsSync(this._manifestPath(handle, projectId))) {
@@ -171,6 +176,7 @@ export class ProjectStore {
     }
 
     async moveFile(handle, projectId, fromRelativePath, toRelativePath) {
+        assertWritable();
         const fromPath = normalizeRelativePath(fromRelativePath);
         const toPath = normalizeRelativePath(toRelativePath);
         if (fromPath === toPath) return toPath;
@@ -195,6 +201,7 @@ export class ProjectStore {
     }
 
     async deleteFile(handle, projectId, relativePath) {
+        assertWritable();
         const safePath = normalizeRelativePath(relativePath);
         const filePath = path.join(this._projectDir(handle, projectId), ...safePath.split('/'));
         if (!fs.existsSync(filePath)) return false;
@@ -243,6 +250,7 @@ export class ProjectStore {
     }
 
     async delete(handle, projectId) {
+        assertWritable();
         const projectDir = this._projectDir(handle, projectId);
         if (!fs.existsSync(projectDir)) return false;
         fs.rmSync(projectDir, { recursive: true, force: true });

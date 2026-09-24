@@ -1,7 +1,8 @@
 import { StorageReadOnlyError } from './errors.js';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 let _readOnly = false;
-let _bypassDepth = 0;
+const bypassContext = new AsyncLocalStorage();
 
 export function setReadOnly(value) { _readOnly = !!value; }
 export function isReadOnly() { return _readOnly; }
@@ -12,7 +13,7 @@ export function isReadOnly() { return _readOnly; }
  * to the destination engine while the source is frozen).
  */
 export function assertWritable() {
-    if (_readOnly && _bypassDepth === 0) throw new StorageReadOnlyError();
+    if (_readOnly && bypassContext.getStore() !== true) throw new StorageReadOnlyError();
 }
 
 /**
@@ -20,19 +21,13 @@ export function assertWritable() {
  * MigrationRunner so its destination writes go through while the global flag
  * keeps HTTP request handlers locked out.
  *
- * Reentrant via depth counter so nested scopes (e.g. migrateAllUsers calling
- * migrateUser within its READ_ONLY scope) don't accidentally pop the bypass
- * before the inner call finishes.
+ * Async-local so a suspended migration cannot authorize unrelated HTTP writes.
+ * Nested migration scopes inherit the bypass without a process-global window.
  *
  * @template T
  * @param {() => Promise<T> | T} fn
  * @returns {Promise<T>}
  */
 export async function withReadOnlyBypass(fn) {
-    _bypassDepth++;
-    try {
-        return await fn();
-    } finally {
-        _bypassDepth--;
-    }
+    return bypassContext.run(true, fn);
 }

@@ -61,47 +61,9 @@ Do not stop for routine failures. Stop only for required human device/UI validat
 ## 4. Ordered work groups
 
 
-# Group 1 — P0 — User Data Safety
+# Group 1 — Completed
 
-**Group goal:** 先保证当前 Atria Native 数据不会在目录管理、备份、恢复或 Storage Engine 迁移中丢失。
-
-## NUX-002 — User backup / restore is not Native-data complete
-
-**New finding from the post-redesign data-integrity audit**
-
-**Current evidence**
-
-The downloadable user backup selection still uses the legacy category model:
-
-- settings;
-- secrets;
-- characters;
-- chats;
-- lorebooks;
-- presets;
-- assets;
-- extensions;
-- globalExtensions;
-- vectors.
-
-Atria Native data now lives in additional authorities/paths that are not represented by those backup targets.
-
-### FS storage mode
-
-Native Storage Engine documents are written under:
-
-`<user-root>/atria-native/resources/<native-kind>/...`
-
-Studio Projects are stored under:
-
-`<user-root>/projects/<project-id>/...`
-
-Neither `atria-native/` nor `projects/` is included by `getUserBackupTargets()`.
-
-Therefore a normal downloadable
-
----
-
+Implementation and validation: [completed work](native-product-ux-completed.md).
 
 # Group 2 — P0 — Native Runtime / Provider Foundation
 

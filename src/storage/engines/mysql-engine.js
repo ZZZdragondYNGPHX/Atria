@@ -258,7 +258,7 @@ export class MysqlEngine {
      * @param {string} handle
      * @returns {Promise<import('node:stream').Readable>}
      */
-    async dumpUser(handle) {
+    async dumpUser(handle, { tables = null } = {}) {
         await this._ensureSchema();
         const self = this;
 
@@ -266,6 +266,7 @@ export class MysqlEngine {
             const conn = await acquireWithTimeout(self._pool, self._acquireTimeoutMs);
             try {
                 for (const t of DUMP_TABLES) {
+                    if (tables && !tables.includes(t.name)) continue;
                     const colsCsv = t.cols.join(', ');
                     const placeholders = t.cols.map(() => '?').join(', ');
                     const sqlText = `INSERT INTO ${t.name} (${colsCsv}) VALUES (${placeholders})`;

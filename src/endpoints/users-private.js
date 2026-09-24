@@ -458,6 +458,7 @@ async function analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, target
     };
     /** @type {object|null} Parsed contents of `_engine_meta.json`, or null if the archive has no engine dump. */
     let engineMeta = null;
+    let backupSelection = null;
     const directoryAliases = buildRestoreDirectoryAliases(targetRoot, targetDirectories);
     const reportAnalyzeProgress = typeof onProgress === 'function'
         ? (entryCount) => {
@@ -504,7 +505,7 @@ async function analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, target
                     // the engine-kind check can happen before any snapshot
                     // is taken; _engine_dump.bin is left for the extract
                     // pass to pipe into engine.restoreUser.
-                    if (entry.fileName === ENGINE_META_ENTRY) {
+                    if (entry.fileName === ENGINE_META_ENTRY || entry.fileName === 'manifest.json') {
                         zipfile.openReadStream(entry, (streamErr, readStream) => {
                             if (streamErr) {
                                 finish(streamErr);
@@ -516,7 +517,8 @@ async function analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, target
                             readStream.on('end', () => {
                                 try {
                                     const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-                                    engineMeta = parsed;
+                                    if (entry.fileName === ENGINE_META_ENTRY) engineMeta = parsed;
+                                    else backupSelection = parsed.selection || null;
                                     zipfile.readEntry();
                                 } catch (parseErr) {
                                     finish(new Error(`Invalid ${ENGINE_META_ENTRY} in backup: ${parseErr.message}`));
@@ -588,7 +590,7 @@ async function analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, target
         });
     });
 
-    return { targetByNormalizedEntry, report, engineMeta };
+    return { targetByNormalizedEntry, report, engineMeta, backupSelection };
 }
 
 const RESTORE_RECOVERY_DIR = '_restore-recovery';
@@ -713,7 +715,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
     // transient FsEngine from the ZIP and run MigrationRunner into the live
     // db engine. This subsumes the legacy 400 "run storage-migrate" error.
     const currentEngine = getStorageEngine();
-    const effectiveMeta = analysis.engineMeta || (currentEngine.kind !== 'fs' ? { engineKind: 'fs' } : null);
+    const effectiveMeta = analysis.engineMeta || (currentEngine.kind !== 'fs' || selection.native || selection.assets ? { engineKind: 'fs' } : null);
     if (effectiveMeta) {
         // Database-backed archives are always staged, even when source and
         // destination engine kinds match. This prevents a selected-category
@@ -735,6 +737,7 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                 scratchCreds: options.scratchCreds || null,
                 includeGlobalExtensions: !!options.includeGlobalExtensions,
                 signal,
+                nativeBackupDeclared: analysis.backupSelection?.native === true,
             },
         );
         const totalMs = Date.now() - restoreStart;
@@ -1569,7 +1572,7 @@ router.post('/restore-backup/probe', async (request, response) => {
         // engine. Same-kind MySQL/PostgreSQL staging reuses the live engine
         // under an isolated scratch handle; extra scratch credentials are
         // needed only for a true cross-engine MySQL/PostgreSQL source.
-        const stagedEngineRestore = Boolean(analysis.engineMeta) || crossModeRequired;
+        const stagedEngineRestore = Boolean(analysis.engineMeta) || crossModeRequired || selection.native || selection.assets;
         const scratchCredsNeeded = crossModeRequired && (sourceKind === 'mysql' || sourceKind === 'postgres')
             ? sourceKind
             : null;
@@ -1579,6 +1582,9 @@ router.post('/restore-backup/probe', async (request, response) => {
         if (!supportedKinds.has(sourceKind)) {
             compatible = false;
             reason = `Unsupported backup engine kind: ${sourceKind || '(missing)'}`;
+        } else if (selection.native && isReplacingRestoreMode(mode) && analysis.backupSelection?.native !== true) {
+            compatible = false;
+            reason = 'Archive does not declare a complete Native backup. Deselect Native data to preserve existing Native resources and projects.';
         } else if (analysis.report.targetableEntries === 0 && analysis.report.engineDumpEntries === 0) {
             compatible = false;
             reason = 'Archive contains no entries matching the selected restore categories.';

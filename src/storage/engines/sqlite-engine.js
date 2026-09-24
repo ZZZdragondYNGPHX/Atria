@@ -83,10 +83,24 @@ export class SqliteEngine {
      * @param {string} handle
      * @returns {Promise<import('node:stream').Readable>}
      */
-    async dumpUser(handle) {
+    async dumpUser(handle, { tables = null } = {}) {
         const db = this._dbFor(handle);
         const tmpPath = path.join(os.tmpdir(), `atria-dump-${randomBytes(8).toString('hex')}.sqlite`);
         await db.backup(tmpPath);
+        if (tables) {
+            const snapshot = new Database(tmpPath);
+            try {
+                snapshot.pragma('foreign_keys = OFF');
+                snapshot.transaction(() => {
+                    for (const name of ['chats', 'chat_states', 'settings', 'presets', 'preset_states', 'worlds', 'named_docs', 'groups_table', 'stats', 'native_resources']) {
+                        if (!tables.includes(name)) snapshot.prepare(`DELETE FROM ${name}`).run();
+                    }
+                })();
+                snapshot.exec('VACUUM');
+            } finally {
+                snapshot.close();
+            }
+        }
         const stream = fs.createReadStream(tmpPath);
         const cleanup = () => {
             fsPromises.rm(tmpPath, { force: true }).catch(() => { /* best-effort */ });

@@ -37,6 +37,10 @@ import { acquireMigrationLock, releaseMigrationLock, makeHolderId, startHeartbea
 import { materializeTransientSource } from './transient-source.js';
 import { pruneRestoreRecoveryPoints } from '../../backup-sync/restore-recovery-retention.js';
 import { selectionToRunnerCategories, FS_TREE_CATEGORIES } from './selection-mapping.js';
+import { USER_DIRECTORY_TEMPLATE, resolveUserDirectory } from '../../constants.js';
+import { NATIVE_STORAGE_KINDS } from '../engines/native-resource-key.js';
+import { AssetStore } from '../../native/repositories/asset-store.js';
+import { NATIVE_RESOURCE_KINDS } from '../../native/contracts.js';
 import {
     CrossModeScratchCredsRequiredError,
     CrossModeScratchConnectionError,
@@ -69,6 +73,13 @@ async function clearSelectedEngineCategories(engine, handle, selection) {
     const repos = buildRepos(engine);
 
     await withReadOnlyBypass(async () => {
+        if (categories.native) {
+            await engine.withTransaction(handle, async tx => {
+                for (const kind of NATIVE_STORAGE_KINDS) {
+                    for (const record of await tx.listResources({ kind, handle })) await tx.deleteResource(record.key);
+                }
+            });
+        }
         if (categories.settings) {
             await engine.withTransaction(handle, (tx) =>
                 tx.deleteResource({ kind: 'settings', handle }));
@@ -148,6 +159,15 @@ async function clearSelectedFsTreeCategories(dirs, selection, includeGlobalExten
         if (rule.exact) {
             await fsPromises.rm(target, { force: true });
         } else {
+            if (!selection.native && path.resolve(target) === path.resolve(dirs.assets)) {
+                for (const entry of await fsPromises.readdir(target).catch(err => {
+                    if (err.code === 'ENOENT') return [];
+                    throw err;
+                })) {
+                    if (entry !== 'atria-native') await fsPromises.rm(path.join(target, entry), { recursive: true, force: true });
+                }
+                continue;
+            }
             await fsPromises.rm(target, { recursive: true, force: true });
             await fsPromises.mkdir(target, { recursive: true });
         }
@@ -170,6 +190,9 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
     if (!dirs?.root) throw new Error('crossModeRestore: dirs.root is required');
     if (!currentEngine?.kind) throw new Error('crossModeRestore: currentEngine is required');
     if (!dataRoot) throw new Error('crossModeRestore: dataRoot is required');
+    if (selection.native && (mode === 'overwrite' || mode === 'full') && opts.nativeBackupDeclared === false) {
+        throw new Error('Archive does not declare a complete Native backup. Deselect Native data to preserve existing Native resources and projects.');
+    }
 
     const handle = path.basename(dirs.root);
     const backupRoot = path.join(dataRoot, '_restore-recovery');
@@ -261,6 +284,21 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             scratchCreds,
             reuseEngine: sameEngineKind ? currentEngine : null,
         });
+        if (selection.native) {
+            const assets = new AssetStore({ engine: transient.engine, directoriesByHandle: () => transient.scratchDirs });
+            const references = await transient.engine.withTransaction(scratchHandle, async tx => [
+                ...await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.assetRef, handle: scratchHandle }),
+                ...await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.packageVersion, handle: scratchHandle }),
+            ]);
+            for (const record of references) {
+                const hash = record.doc?.contentHash || record.doc?.packageContentHash;
+                if (!hash) continue;
+                const bytes = await assets.readBlob(scratchHandle, hash);
+                if (!bytes || (record.key.kind === NATIVE_RESOURCE_KINDS.assetRef && bytes.length !== record.doc.size)) {
+                    throw new Error('Native backup has a missing or invalid asset blob');
+                }
+            }
+        }
 
         // Replacement modes remove only the selected logical categories.
         // Merge leaves unrelated and unmatched destination records intact.
@@ -281,6 +319,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             sourceRepos,
             sourceEngine: transient.engine,
             destRepos,
+            destEngine: currentEngine,
             snapshotPaths: {
                 dataRoot,
                 backupRoot,
@@ -326,6 +365,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             scratchHandle,
             durationMs: Date.now() - startedAt,
             converted: {
+                native: migrationStats.native,
                 settings: migrationStats.settings,
                 presets: migrationStats.presets,
                 preset_states: migrationStats.preset_states,
@@ -552,6 +592,10 @@ export async function extractFsTreeCategories(zipPath, dirs, selection, opts = {
                 (async () => {
                     throwIfRestoreCancelled(signal);
                     const name = entry.fileName;
+                    if (!selection.native && name.startsWith(USER_DIRECTORY_TEMPLATE.nativeBlobs + '/')) {
+                        zipfile.readEntry();
+                        return;
+                    }
                     // Skip sentinels + manifest + directory entries; engine dump
                     // is consumed by transient source, not extracted here.
                     if (name === ENGINE_META_ENTRY || name === ENGINE_DUMP_ENTRY || name === 'manifest.json') {
@@ -611,6 +655,13 @@ export async function extractFsTreeCategories(zipPath, dirs, selection, opts = {
  */
 function buildFsTreeRules(enabled, dirs) {
     const rules = [];
+    if (enabled.has('native')) {
+        // Resource envelopes are copied by MigrationRunner, never as raw files
+        // over a live database. Only the filesystem half of the closure is here.
+        for (const key of ['projects', 'nativeBlobs']) {
+            rules.push({ prefix: USER_DIRECTORY_TEMPLATE[key] + '/', targetDir: path.resolve(resolveUserDirectory(dirs, key)), exact: false });
+        }
+    }
     if (enabled.has('secrets')) {
         rules.push({ prefix: 'secrets.json', targetPath: path.resolve(dirs.root, 'secrets.json'), exact: true });
     }

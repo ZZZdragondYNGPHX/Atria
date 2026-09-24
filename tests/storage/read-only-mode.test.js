@@ -12,6 +12,21 @@ import { StatsRepo } from '../../src/storage/repositories/stats-repo.js';
 describe('read-only mode flag', () => {
     afterEach(() => setReadOnly(false));  // always release
 
+    test('a suspended migration bypass never permits unrelated concurrent writes', async () => {
+        setReadOnly(true);
+        let resume;
+        const waiting = new Promise(resolve => { resume = resolve; });
+        const migration = withReadOnlyBypass(async () => {
+            assertWritable();
+            await waiting;
+            assertWritable();
+        });
+        expect(() => assertWritable()).toThrow(StorageReadOnlyError);
+        resume();
+        await migration;
+        expect(() => assertWritable()).toThrow(StorageReadOnlyError);
+    });
+
     test('default state is not read-only', () => {
         expect(isReadOnly()).toBe(false);
     });

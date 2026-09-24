@@ -690,6 +690,7 @@ router.post('/storage/migrate', requireAdminMiddleware, async (request, response
             sourceRepos: buildRepos(sourceEngine),
             sourceEngine,
             destRepos: buildRepos(destEngine),
+            destEngine,
             snapshotPaths: {
                 dataRoot,
                 backupRoot,

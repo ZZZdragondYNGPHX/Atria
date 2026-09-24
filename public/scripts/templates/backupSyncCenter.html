@@ -56,6 +56,7 @@
     <section class="backupSyncPanel displayNone" data-panel="archive">
         <h4>数据范围</h4>
         <div class="backupCategoryGrid flex-container flexGap10 flexWrap marginBot10">
+            <label class="checkbox_label"><input type="checkbox" name="backupCategory" value="native" checked><span data-i18n="Native data and projects">Native data and projects</span></label>
             <label class="checkbox_label"><input type="checkbox" name="backupCategory" value="settings" checked><span>设置</span></label>
             <label class="checkbox_label"><input type="checkbox" name="backupCategory" value="secrets" checked><span>API Keys / Secrets</span></label>
             <label class="checkbox_label"><input type="checkbox" name="backupCategory" value="characters" checked><span>角色 / 头像</span></label>
@@ -67,6 +68,7 @@
             <label class="checkbox_label backupCategoryGlobalExtensions"><input type="checkbox" name="backupCategory" value="globalExtensions"><span>全局扩展（管理员）</span></label>
             <label class="checkbox_label"><input type="checkbox" name="backupCategory" value="vectors"><span>向量索引</span></label>
         </div>
+        <p data-i18n="Native backup includes Works, Sessions, Library, Runtime, project sources and required asset blobs. Select Secrets separately to restore API keys.">Native backup includes Works, Sessions, Library, Runtime, project sources and required asset blobs. Select Secrets separately to restore API keys.</p>
         <div class="flex-container flexGap10 flexWrap marginBot10">
             <button type="button" class="menu_button backupSelectAll">全选</button>
             <button type="button" class="menu_button backupSelectRecommended">推荐</button>
