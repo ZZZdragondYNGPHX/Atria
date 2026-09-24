@@ -150,3 +150,27 @@ Promotion checks a captured Library head, compares entry content as well as revi
 metadata when exact identity already exists, and accepts a stable target Binding ID
 for retry. New Knowledge roots and revisions publish through the existing repository
 transaction. Repeating an already-completed request reuses its Library Binding.
+
+## Native selection and prompt delivery
+
+`NativeSessionRuntime.evaluateKnowledge()` consumes `KnowledgePlan` directly.
+Stable exact identities and structured discovery, lifecycle, relations, delivery,
+priority and provenance remain Native throughout selection. Literal keywords and
+aliases, typed regex, recursive discovery and related-entry activation are supported;
+required dependency bundles are atomic and may use compact content to fit the Native
+Knowledge lane budget. Exact fits are accepted. ContextPlan-selected identities and
+caps remain authoritative; legacy World Info settings cannot alter Native selection.
+
+Evaluation is detached. `commitKnowledge()` verifies Session/Branch/Revision and
+runtime-state identity, then stages `atri_knowledge_runtime` with the active generation
+Draft (or uses an ordinary Native state revision outside a Draft). Stop discards the
+staged state. Sticky, subsequent cooldown and initial delay use Native Timeline
+length, with independent target-specific buckets and exact entry identities. Restore
+and Branch history therefore restore lifecycle state without legacy chat metadata.
+
+The shared prompt assembler temporarily retains its before/after channel names.
+`knowledge-prompt-channels.js` adapts only final text channels and exact provenance;
+it does not create World Info entries, use book names/UIDs or run the old selector.
+Native state condition evaluation lives in `native/state-conditions.js`; legacy callers
+retain only re-exported compatibility names. The obsolete N4 entry projection and
+`knowledgePlanToWorldInfoEntries()` have been removed.

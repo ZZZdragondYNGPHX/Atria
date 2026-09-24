@@ -1,3 +1,4 @@
+import { nativeKnowledgePromptChannels } from './native/knowledge-prompt-channels.js';
 import { nativeSessionRuntime } from './native/session-runtime.js';
 import { buildWorldInfoPromptEntries } from './atri-world-info-prompt.js';
 import { evaluateWorldInfoStateConditions, shouldActivateWorldInfoFromStateConditions, WORLD_INFO_CONDITION_OPERATORS, WORLD_INFO_CONDITION_RESULT } from './atri-world-info-state-conditions.js';
@@ -1898,6 +1899,15 @@ function invalidateWorldInfoRequestCache(names = []) {
  * @returns {Promise<WIPromptResult>} The world info string and depth.
  */
 export async function getWorldInfoPrompt(chat, maxContext, isDryRun, globalScanData, entryFilter = null) {
+    if (nativeSessionRuntime.active) {
+        if (entryFilter) throw new TypeError('Native Knowledge requires a typed target, not a World Info entry filter');
+        const evaluation = await nativeSessionRuntime.evaluateKnowledge({
+            messages: chat, budget: maxContext, countTokens: getTokenCountAsync,
+            render: content => getRegexedString(String(substituteParams(content) ?? ''),
+                regex_placement.WORLD_INFO, { isMarkdown: false, isPrompt: true }),
+        });
+        return nativeKnowledgePromptChannels(evaluation);
+    }
     let worldInfoBeforeEntries = [], worldInfoAfterEntries = [];
 
     const activatedWorldInfo = await checkWorldInfo(chat, maxContext, isDryRun, globalScanData, entryFilter);
@@ -1967,6 +1977,7 @@ function rememberCommittedWorldInfoEvaluationId(id) {
  * @returns {Promise<{committed:boolean, reason?:string, activatedEntries?:number}>}
  */
 export async function commitWorldInfoEvaluation(evaluation) {
+    if (evaluation?.nativeKnowledge) return nativeSessionRuntime.commitKnowledge(evaluation.nativeKnowledge);
     if (!evaluation || typeof evaluation !== 'object') {
         return { committed: false, reason: 'invalid_evaluation' };
     }
@@ -10050,16 +10061,8 @@ async function getPersonaLore() {
 }
 
 export async function getSortedEntries(options = {}) {
-    if (nativeSessionRuntime.active) {
-        // N6 compiles exact pinned Native Knowledge for the requested target,
-        // then hands candidates to the mature selector without reading a World
-        // Info book or reconstructing identity from rendered text.
-        const target = options?.target ?? 'narrator';
-        return nativeSessionRuntime.knowledgeEntries({ target }).map(entry => {
-            const [decorators, content] = parseDecorators(entry.content || '');
-            return { ...entry, decorators, content, hash: getStringHash(JSON.stringify(entry)) };
-        });
-    }
+    // Native consumers evaluate KnowledgePlan directly; no book-shaped entries.
+    if (nativeSessionRuntime.active) return [];
     try {
         const [
             globalLore,
@@ -10289,16 +10292,6 @@ export async function checkWorldInfo(chat, maxContext, isDryRun, globalScanData 
     if (world_info_budget_cap > 0 && budget > world_info_budget_cap) {
         console.debug(`[WI] Budget ${budget} exceeds cap ${world_info_budget_cap}, using cap`);
         budget = world_info_budget_cap;
-    }
-    if (nativeSessionRuntime.active) {
-        const contextBudget = nativeSessionRuntime.contextLaneBudget('knowledge');
-        if (contextBudget) {
-            // ContextPlan already restricts Native candidates to selected
-            // Knowledge identities. Use the lane cap here rather than exact
-            // selected-content usage because WI's mature overflow check is
-            // `>= budget`; an exact-fit entry must remain admissible.
-            budget = Math.min(budget, Math.max(0, Number(contextBudget.cap) || 0));
-        }
     }
 
     console.debug(`[WI] Context size: ${maxContext}; WI budget: ${budget} (max% = ${world_info_budget}%, cap = ${world_info_budget_cap})`);

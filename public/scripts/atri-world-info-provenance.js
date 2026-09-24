@@ -61,7 +61,7 @@ export function filterWorldInfoByProvenance(payload, provenance, reject) {
     for (const key of Object.keys(outlets)) add(outlets[key], provenance.outletEntries[key]);
 
     // Compute all decisions before applying them, including user supplied tests.
-    const decisions = pairs.map(pair => pair.sources.map(source => reject(source.world, source.comment)));
+    const decisions = pairs.map(pair => pair.sources.map(source => source.knowledge ? false : reject(source.world, source.comment)));
     pairs.forEach(({ values, records, sources }, pairIndex) => {
         const drops = decisions[pairIndex];
         const keptSources = sources.filter((_, index) => !drops[index]);
@@ -92,6 +92,7 @@ function pushSourceSnapshot(target, channel, record, extra = {}) {
         uid: record.uid ?? null,
         sourceVersion: record.sourceVersion ?? null,
         comment: String(record.comment ?? ''),
+        ...(record.knowledge ? { knowledge: structuredClone(record.knowledge) } : {}),
         ...extra,
     });
 }

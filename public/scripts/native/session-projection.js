@@ -195,30 +195,3 @@ export function timelineIntents(snapshot, messages) {
     }
     return commands;
 }
-
-/** N4 compatibility candidates only, not N6 authority ranking/KnowledgePlan compilation. */
-export function projectKnowledgeEntries(snapshot) {
-    const sources = [...snapshot.manifest.knowledge.map(value => ({ kind: 'package', snapshot: value })), ...snapshot.knowledge.snapshots];
-    const entries = [];
-    for (const binding of snapshot.knowledge.bindings.filter(item => item.enabled)) {
-        const source = sources.find(item => item.kind === binding.source.kind
-            && item.snapshot.revision.knowledgeRevisionId === binding.source.knowledgeRevisionId
-            && item.snapshot.knowledgeBase.knowledgeBaseId === binding.source.knowledgeBaseId);
-        if (!source) throw new Error('Missing pinned Native Knowledge snapshot');
-        // Target/override policy needs N6; fail closed instead of leaking scoped content into a global context.
-        if (binding.mode !== 'augment' || binding.target || binding.visibility?.length) continue;
-        for (const item of source.snapshot.entries) {
-            if (item.delivery?.target || item.delivery?.visibility?.length) continue;
-            const key = [...(item.discovery?.keywords ?? []), ...(item.discovery?.aliases ?? []), ...(item.discovery?.regex ?? [])];
-            entries.push({ uid: entries.length, world: binding.knowledgeBindingId, key, keysecondary: [],
-                content: item.content, comment: '', constant: key.length === 0, selective: false, disable: false,
-                order: item.delivery?.priority ?? binding.priority ?? 100, position: item.delivery?.position === 'after' ? 1 : 0,
-                excludeRecursion: false, preventRecursion: false, delayUntilRecursion: false,
-                probability: item.lifecycle?.probability ?? 100, useProbability: true,
-                sticky: item.lifecycle?.sticky ?? 0, cooldown: item.lifecycle?.cooldown ?? 0, delay: item.lifecycle?.delay ?? 0,
-                ...(item.applicability ?? {}),
-                atri_native: { ...binding.source, knowledgeBindingId: binding.knowledgeBindingId, knowledgeEntryId: item.knowledgeEntryId } });
-        }
-    }
-    return entries;
-}

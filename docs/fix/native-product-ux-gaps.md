@@ -77,30 +77,9 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 Implementation and validation: [completed work](native-product-ux-completed.md).
 
-# Group 5 — P0 → P2 — World / Knowledge Authoring
+# Group 5 — Completed
 
-**Group goal:** 补齐 World / Knowledge 的完整作者工作流；兼容 ABI 清理必须最后执行。
-
-## NUX-026 — Native Knowledge still projects through the old World Info ABI
-
-**Current evidence**
-
-`knowledgePlanToWorldInfoEntries()` converts Native KnowledgePlan entries into World Info-shaped records for the remaining downstream path.
-
-Native Knowledge is already the authority; this is an adapter, not migration support.
-
-**Impact**
-
-New Native Knowledge semantics remain constrained by an old ABI and some fields are flattened/defaulted during projection.
-
-**Acceptance**
-
-Only after Native Knowledge feature parity is complete, replace downstream World Info-shaped consumption with a Native Knowledge interface and shrink the compatibility adapter. Do not make this cleanup block NUX-019–006.
-
----
-
----
-
+Implementation and validation: [completed work](native-product-ux-completed.md).
 
 # Group 6 — P1 — Studio / Skills / Prompt Authoring
 

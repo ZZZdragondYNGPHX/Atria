@@ -15,6 +15,50 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
+test('Native Knowledge prompt evaluation bypasses book settings and commits lifecycle only with the Session Draft', async ({ page }) => {
+    test.setTimeout(120000);
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const snapshot = knowledgeSnapshot('The lantern reveals the harbor.');
+    snapshot.entries[0].discovery = { aliases: ['lantern'] };
+    snapshot.entries[0].lifecycle = { sticky: 2, cooldown: 1 };
+    snapshot.entries[0].delivery = { position: 'after' };
+    const binding = bindingFor(snapshot, 'session');
+    const result = await page.evaluate(async ({ snapshot, binding }) => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        const { nativeSessionRuntime: runtime } = await import('/scripts/native/session-runtime.js');
+        const wi = await import('/scripts/world-info.js');
+        const works = await client.listWorks();
+        const created = await client.startWork(works[0].package.packageId, { displayTitle: 'Knowledge evaluation', sessionBindings: [binding], sessionKnowledge: [snapshot] });
+        await window.Atria.openNativeSession(created.session.sessionId);
+        const old = wi.getWorldInfoSettings();
+        wi.updateWorldInfoSettings({ ...old, world_info_budget: 0, world_info_budget_cap: 1 });
+        try {
+            const head = runtime.snapshot.revision.revisionId;
+            const evaluation = await wi.getWorldInfoPrompt(['light the lantern'], 2048, true, { trigger: 'normal' });
+            const detached = runtime.readState('atri_knowledge_runtime') === null;
+            const native = evaluation.nativeKnowledge.entries.find(item => item.knowledgeBindingId === binding.knowledgeBindingId);
+            runtime.lastContextPlan = { revisionId: head, target: { kind: 'narrator' }, sourceSelection: { selectedKnowledgeIdentities: [] } };
+            const excluded = await runtime.evaluateKnowledge({ messages: ['lantern'] });
+            runtime.lastContextPlan = null;
+            await runtime.prepareGeneration('normal');
+            const committed = await wi.commitWorldInfoEvaluation(evaluation);
+            const staged = runtime.readState('atri_knowledge_runtime');
+            await runtime.finalizeStoppedGeneration();
+            return { after: evaluation.worldInfoAfterEntries, native, detached, committed, staged,
+                excluded: excluded.entries.length, oldCandidates: await wi.getSortedEntries(),
+                restored: runtime.readState('atri_knowledge_runtime'), sameHead: runtime.snapshot.revision.revisionId === head };
+        } finally { wi.updateWorldInfoSettings(old); }
+    }, { snapshot, binding });
+    expect(result.after).toContain('The lantern reveals the harbor.');
+    expect(result.native.knowledgeEntryId).toBe(snapshot.entries[0].knowledgeEntryId);
+    expect(result.native).not.toHaveProperty('world'); expect(result.native).not.toHaveProperty('uid');
+    expect(result.detached).toBe(true); expect(result.excluded).toBe(0); expect(result.oldCandidates).toEqual([]);
+    expect(result.committed.committed).toBe(true); expect(result.staged).toBeTruthy();
+    expect(result.restored).toBeNull(); expect(result.sameHead).toBe(true);
+});
+
 test('Play previews and names embedded Knowledge before confirmed Library promotion at 390px', async ({ page }, info) => {
     test.setTimeout(180000);
     await page.setViewportSize({ width: 390, height: 900 });

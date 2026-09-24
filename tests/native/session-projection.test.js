@@ -3,7 +3,6 @@ import { installFixture, sessionFixture } from './helpers/session-fixture.js';
 import {
     projectNativeSession,
     timelineIntents,
-    projectKnowledgeEntries,
 } from '../../public/scripts/native/session-projection.js';
 import { NativeSessionRuntime } from '../../public/scripts/native/session-runtime.js';
 import {
@@ -115,6 +114,32 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         });
         expect(stale).toMatchObject({ ok: false, published: false, reason: 'stale_revision' });
         expect(runtime.failed).toBe(false);
+    });
+
+    test('Native Knowledge previews are detached, accepted effects are Draft-local and stale evaluations fail closed', async () => {
+        await appendUser('Harbor');
+        const head = runtime.snapshot.revision.revisionId;
+        const preview = await runtime.evaluateKnowledge({ messages: ['Harbor'], budget: 1000 });
+        expect(preview.entries).toHaveLength(1);
+        expect(runtime.readState('atri_knowledge_runtime')).toBeNull();
+        expect(runtime.snapshot.revision.revisionId).toBe(head);
+        await runtime.prepareGeneration('normal');
+        expect(await runtime.commitKnowledge(preview)).toMatchObject({ committed: true });
+        expect(await runtime.commitKnowledge(preview)).toMatchObject({ reason: 'already_committed' });
+        expect(runtime.snapshot.states.atri_knowledge_runtime).toBeUndefined();
+        expect(runtime.readState('atri_knowledge_runtime')).not.toBeNull();
+        await runtime.finalizeStoppedGeneration();
+        expect(runtime.readState('atri_knowledge_runtime')).toBeNull();
+        const stale = await runtime.evaluateKnowledge({ messages: ['Harbor'] });
+        await appendUser('Another turn');
+        expect(await runtime.commitKnowledge(stale)).toMatchObject({ reason: 'scope_changed' });
+        await runtime.prepareGeneration('normal');
+        const accepted = await runtime.evaluateKnowledge({ messages: ['Harbor'] });
+        expect(await runtime.commitKnowledge(accepted)).toMatchObject({ committed: true });
+        messages.push({ name: 'Actor', is_user: false, is_system: false, mes: 'Knowledge response', extra: {} });
+        await runtime.persist();
+        expect(runtime.snapshot.states.atri_knowledge_runtime).toEqual(accepted.pendingState);
+        expect(runtime.snapshot.metadata?.timedWorldInfo).toBeUndefined();
     });
 
     test('Draft-local staged SessionState commits with accepted assistant and is discarded on Stop', async () => {
@@ -521,22 +546,14 @@ describe('N4 pure projection authority', () => {
     beforeEach(async () => { h = await makeTempFsEngineHarness(); });
     afterEach(async () => { await h.cleanup(); });
 
-    test('Actor prompt fields, exact Knowledge candidates and Regex derive only from installed content', async () => {
+    test('Actor prompt fields and Regex derive only from installed content', async () => {
         const fixture = sessionFixture();
         fixture.manifest.actors[0].profile = { description: 'Harbor guide', personality: 'Calm', scenario: 'Moonlit pier' };
         fixture.manifest.processors = { regex: [{ scriptName: 'Display', findRegex: 'pier', replaceString: 'dock' }] };
         const f = await installFixture(h, fixture);
         const view = await f.core.create(h.handle, f.start);
         expect(projectNativeSession(view).character.data).toMatchObject({ description: 'Harbor guide', scenario: 'Moonlit pier' });
-        const entries = projectKnowledgeEntries(view);
-        expect(entries[0].content).toBe('Exact knowledge');
-        expect(entries[0].atri_native).toMatchObject({
-            knowledgeRevisionId: fixture.knowledge.revision.knowledgeRevisionId,
-            knowledgeEntryId: fixture.knowledge.entries[0].knowledgeEntryId,
-        });
-        expect(entries[0].uid).toBe(0);
-        view.knowledge.bindings[0].visibility = ['private-actor'];
-        expect(projectKnowledgeEntries(view)).toEqual([]);
+
     });
 
     test('presentation-only display_text overlay is outside committed Timeline authority', async () => {

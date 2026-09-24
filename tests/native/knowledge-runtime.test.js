@@ -1,7 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 import {
     buildNativeKnowledgeStateProviders,
-    compileNativeKnowledgeEntries,
     compileNativeKnowledgePlan,
 } from '../../public/scripts/native/knowledge-runtime.js';
 import { createNativeId } from '../../src/native/index.js';
@@ -60,9 +59,10 @@ function addExternal(snapshot, kind, knowledge, binding) {
 }
 
 describe('N6 Native KnowledgeCompiler / KnowledgePlan', () => {
-    test('Package canonical Knowledge reaches the narrator World Info adapter with stable identity', () => {
+    test('Package canonical Knowledge reaches the narrator Native selector with stable identity', () => {
         const snapshot = snapshotFromFixture();
-        const { plan, entries } = compileNativeKnowledgeEntries(snapshot, { target: 'narrator' });
+        const plan = compileNativeKnowledgePlan(snapshot, { target: 'narrator' });
+        const entries = plan.included;
 
         expect(plan.included).toHaveLength(1);
         expect(plan.included[0]).toMatchObject({
@@ -71,7 +71,7 @@ describe('N6 Native KnowledgeCompiler / KnowledgePlan', () => {
             knowledgeEntryId: snapshot.manifest.knowledge[0].entries[0].knowledgeEntryId,
         });
         expect(entries).toHaveLength(1);
-        expect(entries[0].atri_native).toMatchObject({
+        expect(entries[0]).toMatchObject({
             identity: plan.included[0].identity,
             knowledgeBaseId: plan.included[0].knowledgeBaseId,
             knowledgeRevisionId: plan.included[0].knowledgeRevisionId,
@@ -203,7 +203,7 @@ describe('N6 Native KnowledgeCompiler / KnowledgePlan', () => {
         ]);
     });
 
-    test('equal entry bodies with different Knowledge identities stay distinct through prompt adaptation', () => {
+    test('equal entry bodies with different Knowledge identities stay distinct through selection', () => {
         const snapshot = snapshotFromFixture();
         const first = snapshot.manifest.knowledge[0].entries[0];
         const second = {
@@ -213,12 +213,13 @@ describe('N6 Native KnowledgeCompiler / KnowledgePlan', () => {
         };
         addPackageEntry(snapshot, second);
 
-        const { plan, entries } = compileNativeKnowledgeEntries(snapshot, { target: 'narrator' });
+        const plan = compileNativeKnowledgePlan(snapshot, { target: 'narrator' });
+        const entries = plan.included;
         expect(plan.included).toHaveLength(2);
         expect(new Set(plan.included.map(item => item.identity)).size).toBe(2);
-        expect(entries[0].content).toBe(entries[1].content);
-        expect(entries[0].atri_native.identity).not.toBe(entries[1].atri_native.identity);
-        expect(entries[0].atri_native.knowledgeEntryId).not.toBe(entries[1].atri_native.knowledgeEntryId);
+        expect(entries[0].entry.content).toBe(entries[1].entry.content);
+        expect(entries[0].identity).not.toBe(entries[1].identity);
+        expect(entries[0].knowledgeEntryId).not.toBe(entries[1].knowledgeEntryId);
     });
 
     test('visibility produces different Narrator, Actor and Agent KnowledgePlan views', () => {
@@ -256,7 +257,7 @@ describe('N6 Native KnowledgeCompiler / KnowledgePlan', () => {
         expect(narrator.rejected.filter(item => item.reason === 'visibility_mismatch')).toHaveLength(2);
     });
 
-    test('required dependencies map by stable identity and related/exclusive metadata reaches the existing WI selector', () => {
+    test('required dependencies retain stable Native identity and related/exclusive metadata', () => {
         const snapshot = snapshotFromFixture();
         const dependency = snapshot.manifest.knowledge[0].entries[0];
         dependency.content = 'Required basis';
@@ -272,15 +273,15 @@ describe('N6 Native KnowledgeCompiler / KnowledgePlan', () => {
         };
         addPackageEntry(snapshot, root);
 
-        const { entries } = compileNativeKnowledgeEntries(snapshot, { target: 'narrator' });
-        const adaptedRoot = entries.find(entry => entry.atri_native.knowledgeEntryId === root.knowledgeEntryId);
-        expect(adaptedRoot.requiredEntries).toEqual([
-            snapshot.manifest.knowledgeBindings[0].knowledgeBindingId + '#0',
+        const entries = compileNativeKnowledgePlan(snapshot, { target: 'narrator' }).included;
+        const adaptedRoot = entries.find(entry => entry.knowledgeEntryId === root.knowledgeEntryId);
+        expect(adaptedRoot.entry.relations.requiredEntryIds).toEqual([
+            dependency.knowledgeEntryId,
         ]);
-        expect(adaptedRoot.relatedEntries).toEqual([
-            snapshot.manifest.knowledgeBindings[0].knowledgeBindingId + '#0',
+        expect(adaptedRoot.entry.relations.relatedEntryIds).toEqual([
+            dependency.knowledgeEntryId,
         ]);
-        expect(adaptedRoot.mutualExclusionGroup).toBe('rule-group');
+        expect(adaptedRoot.entry.relations.exclusiveGroup).toBe('rule-group');
     });
 
     test('Native providers expose current state and committed Event Journal without floor/swipe identity', () => {
@@ -314,12 +315,12 @@ test('Native all/any conditions and direct activation use only the committed sna
     entry.applicability = { stateConditions: [unknown, match], stateConditionsLogic: 'all', stateActivation: true };
     expect(compileNativeKnowledgePlan(snapshot).rejected[0].reason).toBe('state_condition_unknown');
     entry.applicability.stateConditionsLogic = 'any';
-    const active = compileNativeKnowledgeEntries(snapshot);
-    expect(active.plan.included[0]).toMatchObject({ stateActivated: true, stateEvidence: { status: 'true', logic: 'any' } });
-    expect(active.entries[0].constant).toBe(true);
-    expect(active.entries[0]).not.toHaveProperty('stateConditions');
+    const active = compileNativeKnowledgePlan(snapshot);
+    expect(active.included[0]).toMatchObject({ stateActivated: true, stateEvidence: { status: 'true', logic: 'any' } });
+    expect(active.included[0].stateActivated).toBe(true);
+    expect(active.included[0]).not.toHaveProperty('stateConditions');
     entry.applicability.stateActivation = false;
-    expect(compileNativeKnowledgeEntries(snapshot).entries[0].constant).toBe(false);
+    expect(compileNativeKnowledgePlan(snapshot).included[0].stateActivated).toBe(false);
     snapshot.states.atri_game_runtime.events[0].type = 'depart';
     expect(compileNativeKnowledgePlan(snapshot).included).toHaveLength(0);
 });
@@ -339,7 +340,7 @@ test('typed targets match exact kinds and IDs; delivery positions never silently
     snapshot.knowledge.bindings[0].target = [{ kind: 'actor', id: 'actor-a' }, 'agent'];
     entry.delivery = { position: 'after', target: 'actor' };
     expect(compileNativeKnowledgePlan(snapshot, { target: { kind: 'actor', id: 'actor-b' } }).included).toHaveLength(0);
-    expect(compileNativeKnowledgeEntries(snapshot, { target: { kind: 'actor', id: 'actor-a' } }).entries[0].position).toBe(1);
+    expect(compileNativeKnowledgePlan(snapshot, { target: { kind: 'actor', id: 'actor-a' } }).included[0].entry.delivery.position).toBe('after');
     expect(compileNativeKnowledgePlan(snapshot, { target: 'agent' }).included).toHaveLength(0);
     entry.delivery.position = 'before-chat';
     expect(() => compileNativeKnowledgePlan(snapshot)).toThrow('delivery.position');

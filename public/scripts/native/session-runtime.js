@@ -10,7 +10,8 @@ import {
     NATIVE_SESSION_LIFECYCLE,
     emitNativeSessionLifecycle,
 } from './session-lifecycle.js';
-import { compileNativeKnowledgeEntries, compileNativeKnowledgePlan } from './knowledge-runtime.js';
+import { compileNativeKnowledgePlan } from './knowledge-runtime.js';
+import { evaluateNativeKnowledge, KNOWLEDGE_RUNTIME_NAMESPACE } from './knowledge-selection.js';
 import {
     CONTEXT_DERIVED_NAMESPACE,
     appendNarrativeArtifact,
@@ -762,17 +763,50 @@ export class NativeSessionRuntime {
         return this.active ? compileNativeKnowledgePlan(this.snapshot, options) : null;
     }
 
-    knowledgeEntries(options = {}) {
-        if (!this.active) return null;
-        const compiled = compileNativeKnowledgeEntries(this.snapshot, options);
-        const plan = this.lastContextPlan;
-        const sameContext = plan
-            && plan.revisionId === this.snapshot.revision.revisionId
-            && plan.target?.kind === compiled.plan.target?.kind
-            && String(plan.target?.id || '') === String(compiled.plan.target?.id || '');
-        if (!sameContext) return compiled.entries;
-        const allowed = new Set(plan.sourceSelection?.selectedKnowledgeIdentities ?? []);
-        return compiled.entries.filter(entry => allowed.has(entry.atri_native?.identity));
+    async evaluateKnowledge(options = {}) {
+        if (!this.active) throw new Error('No active Native Session');
+        let knowledge = this.knowledgePlan(options);
+        const sessionId = this.snapshot.session.sessionId;
+        const context = this.lastContextPlan;
+        const sameContext = context && context.revisionId === knowledge.revisionId
+            && context.target?.kind === knowledge.target?.kind
+            && String(context.target?.id || '') === String(knowledge.target?.id || '');
+        if (sameContext) {
+            const allowed = new Set(context.sourceSelection?.selectedKnowledgeIdentities ?? []);
+            knowledge = { ...knowledge, included: knowledge.included.filter(item => allowed.has(item.identity)) };
+        }
+        const state = this.readState(KNOWLEDGE_RUNTIME_NAMESPACE);
+        const targetKey = JSON.stringify([knowledge.target.kind, knowledge.target.id ?? '']);
+        const evaluation = await evaluateNativeKnowledge(knowledge, {
+            ...options, state: state?.targets?.[targetKey], turn: this.snapshot.timeline?.length ?? 0,
+            budget: sameContext ? Math.min(options.budget ?? Infinity,
+                this.contextLaneBudget('knowledge')?.cap ?? Infinity) : options.budget,
+        });
+        return { ...evaluation, sessionId,
+            pendingState: { schemaVersion: 1, targets: { ...state?.targets, [targetKey]: evaluation.pendingState } },
+            stateFingerprint: JSON.stringify(state), committed: false };
+    }
+
+    async commitKnowledge(evaluation) {
+        if (evaluation?.committed) return { committed: false, reason: 'already_committed' };
+        if (!evaluation || !this.active || evaluation.sessionId !== this.snapshot.session.sessionId
+            || evaluation.revisionId !== this.snapshot.revision.revisionId
+            || evaluation.branchId !== this.snapshot.revision.branchId) {
+            return { committed: false, reason: 'scope_changed' };
+        }
+        if (evaluation.stateFingerprint !== JSON.stringify(this.readState(KNOWLEDGE_RUNTIME_NAMESPACE))) {
+            return { committed: false, reason: 'state_changed' };
+        }
+        try {
+            const result = this.generation
+                ? this.stageState(KNOWLEDGE_RUNTIME_NAMESPACE, evaluation.pendingState)
+                : await this.updateState(KNOWLEDGE_RUNTIME_NAMESPACE, () => evaluation.pendingState);
+            if (!result?.ok) return { committed: false, reason: 'state_commit_failed' };
+            evaluation.committed = true;
+            return { committed: true, activatedEntries: evaluation.entries.length };
+        } catch {
+            return { committed: false, reason: 'state_commit_failed' };
+        }
     }
 
     contextDerivedState() {

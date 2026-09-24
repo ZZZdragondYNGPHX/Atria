@@ -587,4 +587,24 @@ destination preview, naming, confirmed promotion and Library navigation. Screens
 inspected; one UI case reran after removing the duplicate review action and fixing
 singular count text. Changed-file lint and diff checks passed.
 
-Next: NUX-026, following the active backlog order.
+### NUX-026
+
+Native Knowledge now selects directly from KnowledgePlan, preserving exact identity,
+discovery/regex, recursive and related activation, atomic required dependencies,
+priority tiers, compact budget variants, typed delivery and provenance. Native lane
+caps replace legacy World Info settings. The old entry adapter and unused N4
+projection are removed; only final before/after text-channel adaptation remains at
+the shared generation boundary. Pure state condition evaluation is Native-owned,
+with compatibility re-exports for old callers.
+
+Sticky/cooldown/delay state is Native Session state, scoped by target and exact entry
+identity. Preview is detached; accepted generation stages lifecycle state with its
+Draft. Stop clears it, and stale Session/Branch/Revision/state evaluations fail closed.
+
+Validation: four focused Native suites passed 71 cases (36 optional external DB cases
+skipped); three adjacent World Info suites passed 41 cases. A real Edge scenario
+passed prompt-channel delivery with legacy budget disabled, exact ContextPlan filtering,
+absence of book-shaped candidates, Draft-local commit and Stop rollback. Changed-file
+lint and diff checks passed.
+
+Next: Group 5 regression, then NUX-027 in active backlog order.

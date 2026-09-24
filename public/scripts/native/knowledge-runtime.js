@@ -1,8 +1,8 @@
-import { parseKnowledgeRegex, normalizeKnowledgeLifecycle, normalizeKnowledgeRelations, normalizeKnowledgeDiscovery, normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector } from './knowledge-contracts.js';
+import { normalizeKnowledgeLifecycle, normalizeKnowledgeRelations, normalizeKnowledgeDiscovery, normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector } from './knowledge-contracts.js';
 import {
-    WORLD_INFO_CONDITION_RESULT,
-    evaluateWorldInfoStateConditions,
-} from '../atri-world-info-state-conditions.js';
+    STATE_CONDITION_RESULT,
+    evaluateStateConditions,
+} from './state-conditions.js';
 
 export const KNOWLEDGE_AUTHORITY = Object.freeze({
     runtimeMechanics: Object.freeze({ id: 'runtime_mechanics', rank: 900 }),
@@ -171,7 +171,7 @@ function compareCandidates(a, b) {
 function conditionEvaluation(entry, providers) {
     const applicability = normalizeKnowledgeApplicability(entry?.applicability);
     if (!applicability?.stateConditions?.length) return null;
-    return evaluateWorldInfoStateConditions(applicability.stateConditions, providers, applicability.stateConditionsLogic ?? 'all');
+    return evaluateStateConditions(applicability.stateConditions, providers, applicability.stateConditionsLogic ?? 'all');
 }
 
 function normalizeMemoryEvidence(memoryEvidence, providers) {
@@ -263,10 +263,10 @@ export function compileNativeKnowledgePlan(snapshot, options = {}) {
             const evaluated = conditionEvaluation(entry, providers);
             if (evaluated) {
                 candidate.stateEvidence = clone(evaluated);
-                if (evaluated.status !== WORLD_INFO_CONDITION_RESULT.TRUE) {
+                if (evaluated.status !== STATE_CONDITION_RESULT.TRUE) {
                     rejected.push(rejection(
                         candidate,
-                        evaluated.status === WORLD_INFO_CONDITION_RESULT.UNKNOWN
+                        evaluated.status === STATE_CONDITION_RESULT.UNKNOWN
                             ? 'state_condition_unknown'
                             : 'current_state_conflict',
                         { stateEvidence: evaluated },
@@ -341,7 +341,7 @@ export function compileNativeKnowledgePlan(snapshot, options = {}) {
             mode: candidate.mode,
             target: clone(target),
             selectionReason: 'eligible_' + candidate.authority.id,
-            stateActivated: candidate.entry?.applicability?.stateActivation === true && candidate.stateEvidence?.status === WORLD_INFO_CONDITION_RESULT.TRUE,
+            stateActivated: candidate.entry?.applicability?.stateActivation === true && candidate.stateEvidence?.status === STATE_CONDITION_RESULT.TRUE,
             stateEvidence: clone(candidate.stateEvidence),
             sourceEntryIndex: candidate.sourceEntryIndex,
             entry: clone(candidate.entry),
@@ -366,79 +366,6 @@ export function compileNativeKnowledgePlan(snapshot, options = {}) {
             memory,
         },
     });
-}
-
-function relationRefs(plan, item, relationIds) {
-    const byEntryId = new Map(plan.included
-        .filter(other => other.knowledgeBindingId === item.knowledgeBindingId)
-        .map(other => [other.knowledgeEntryId, other]));
-    return (Array.isArray(relationIds) ? relationIds : [])
-        .map(id => byEntryId.get(id))
-        .filter(Boolean)
-        .map(other => item.knowledgeBindingId + '#' + other.sourceEntryIndex);
-}
-
-export function knowledgePlanToWorldInfoEntries(plan) {
-    if (!plan || plan.schemaVersion !== 1 || !Array.isArray(plan.included)) {
-        throw new TypeError('Invalid KnowledgePlan');
-    }
-    return plan.included.map(item => {
-        const entry = item.entry ?? {};
-        const discovery = normalizeKnowledgeDiscovery(entry.discovery) ?? {};
-        const keys = [
-            ...(discovery.keywords ?? []),
-            ...(discovery.aliases ?? []),
-            ...(discovery.regex ?? []).map(pattern => parseKnowledgeRegex(pattern).toString()),
-        ].map(String).filter(Boolean);
-        const relations = entry.relations ?? {};
-        return {
-            uid: item.sourceEntryIndex,
-            world: item.knowledgeBindingId,
-            key: keys,
-            keysecondary: [],
-            content: String(entry.content ?? ''),
-            comment: String(entry.metadata?.label ?? entry.metadata?.title ?? ''),
-            constant: item.stateActivated === true || keys.length === 0,
-            selective: false,
-            disable: false,
-            order: item.priority,
-            position: normalizeKnowledgeDelivery(entry.delivery)?.position === 'after' ? 1 : 0,
-            excludeRecursion: false,
-            preventRecursion: false,
-            delayUntilRecursion: false,
-            probability: entry.lifecycle?.probability ?? 100,
-            useProbability: true,
-            sticky: entry.lifecycle?.sticky ?? 0,
-            cooldown: entry.lifecycle?.cooldown ?? 0,
-            delay: entry.lifecycle?.delay ?? 0,
-            requiredEntries: relationRefs(plan, item, relations.requiredEntryIds),
-            relatedEntries: relationRefs(plan, item, relations.relatedEntryIds),
-            mutualExclusionGroup: asText(relations.exclusiveGroup),
-            budgetTier: asText(entry.metadata?.budgetTier) || 'normal',
-            compactContent: typeof entry.metadata?.compactContent === 'string' ? entry.metadata.compactContent : '',
-            atri_native: {
-                identity: item.identity,
-                knowledgeBindingId: item.knowledgeBindingId,
-                knowledgeBaseId: item.knowledgeBaseId,
-                knowledgeRevisionId: item.knowledgeRevisionId,
-                knowledgeEntryId: item.knowledgeEntryId,
-                source: clone(item.source),
-                authority: item.authority,
-                priority: item.priority,
-                target: clone(item.target),
-                selectionReason: item.selectionReason,
-                stateEvidence: clone(item.stateEvidence),
-            },
-        };
-    });
-}
-
-export function compileNativeKnowledgeEntries(snapshot, options = {}) {
-    const plan = compileNativeKnowledgePlan(snapshot, options);
-    return {
-        plan,
-        entries: knowledgePlanToWorldInfoEntries(plan),
-    };
 }
 
 export function getNativeKnowledgeCandidateIdentity(candidate) {
