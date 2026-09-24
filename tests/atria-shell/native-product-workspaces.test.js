@@ -259,16 +259,12 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
             if (path === '/api/native/studio/projects/project_11111111111111111111111111111111/history?limit=40') {
                 return response([]);
             }
-            if (
-                path === '/api/native/studio/projects/project_11111111111111111111111111111111/resources/update'
-                && method === 'POST'
-            ) {
-                return response({
-                    changeSet: {
-                        changeSetId: 'changeset_update',
-                        resultingRevision: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
-                    },
-                });
+            if (path.endsWith('/operations/prepare') && method === 'POST') return response(JSON.parse(options.body));
+            if (path.endsWith('/workspaces/inspect') && method === 'POST') {
+                return response({ workspace: JSON.parse(options.body), changes: [{ kind: 'resource-update' }] });
+            }
+            if (path.endsWith('/workspaces/execute') && method === 'POST') {
+                return response({ changeSet: { changeSetId: 'changeset_update', resultingRevision: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' } });
             }
             if (path === '/api/native/product/projects') {
                 return response([{
@@ -376,7 +372,7 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
             .toBe('Renamed Knowledge');
         expect(body.querySelector('[data-atria-knowledge-entry-id="entry_1"]').textContent).toContain('Native entry');
         expect(body.querySelector('[data-atria-knowledge-bindings="true"]').textContent)
-            .toContain('world-revision');
+            .toContain('Manage binding');
         expect(body.querySelectorAll('[data-atria-revision-id]')).toHaveLength(2);
 
         controller.dispose();
@@ -423,17 +419,23 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
         updateButton.click();
         await flush();
 
-        const update = requests.find(item => (
-            item.path.endsWith('/resources/update') && item.method === 'POST'
-        ));
-        expect(JSON.parse(update.body)).toEqual(expect.objectContaining({
-            resourceType: 'core.world',
-            resourceId: 'world_11111111111111111111111111111111',
-            fromRevision: 'worldrev_11111111111111111111111111111111',
-            toRevision: 'worldrev_22222222222222222222222222222222',
+        const prepared = requests.find(item => item.path.endsWith('/operations/prepare'));
+        expect(JSON.parse(prepared.body)).toEqual(expect.objectContaining({
+            target: { resourceType: 'core.world', resourceId: 'world_11111111111111111111111111111111' },
+            input: expect.objectContaining({
+                fromRevision: 'worldrev_11111111111111111111111111111111',
+                toRevision: 'worldrev_22222222222222222222222222222222',
+            }),
+        }));
+        const inspected = requests.find(item => item.path.endsWith('/workspaces/inspect'));
+        expect(JSON.parse(inspected.body)).toMatchObject({
             baseRevision: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
             origin: { kind: 'human', id: 'atria.studio' },
-        }));
+        });
+        expect(requests.some(item => item.path.endsWith('/workspaces/execute'))).toBe(false);
+        const apply = [...slot.querySelectorAll('button')].find(node => node.textContent === 'Apply ChangeSet');
+        expect(apply).toBeTruthy(); apply.click(); await flush();
+        expect(requests.some(item => item.path.endsWith('/workspaces/execute'))).toBe(true);
 
         controller.dispose();
     });
