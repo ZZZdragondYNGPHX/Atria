@@ -707,4 +707,12 @@ compiler and resource contracts. Source/localization regression passed nine case
 immutable revision save. The final control screenshot was inspected after correcting inherited
 checkbox styling. Lint/diff checks passed.
 
-Next: Group 6 regression, then NUX-033 in Group 7.
+Group 6 regression: 125 Native/Shell/Skills/Skills UI/Skills endpoint suites passed
+1210 cases with 68 optional external DB skips. All 11 real Edge Studio/authoring
+scenarios passed, covering 1440/900/320px, Chinese/large-text/safe-area/reduced-motion/
+virtual-keyboard simulation, errors/retry, Project Agent, Skills, deletion, Assets,
+Source and Prompt semantics. Current narrow-screen screenshots were inspected.
+All Group 6 changed JavaScript passed ESLint; diff checks and frontend cache compilation
+passed. No live cloud provider or physical-device validation is claimed.
+
+Next: NUX-033 in Group 7.
