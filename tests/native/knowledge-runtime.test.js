@@ -303,3 +303,31 @@ describe('N6 Native KnowledgeCompiler / KnowledgePlan', () => {
         expect(JSON.stringify(providers)).not.toMatch(/swipeId|playableFloor/);
     });
 });
+
+
+test('Native all/any conditions and direct activation use only the committed snapshot', () => {
+    const snapshot = snapshotFromFixture();
+    const entry = snapshot.manifest.knowledge[0].entries[0];
+    entry.discovery = { keywords: ['unmentioned'] };
+    const match = { providerId: 'atri_event_journal', path: ['latestEvent', 'type'], operator: 'eq', value: 'arrive' };
+    const unknown = { ...match, providerId: 'atri_absent' };
+    entry.applicability = { stateConditions: [unknown, match], stateConditionsLogic: 'all', stateActivation: true };
+    expect(compileNativeKnowledgePlan(snapshot).rejected[0].reason).toBe('state_condition_unknown');
+    entry.applicability.stateConditionsLogic = 'any';
+    const active = compileNativeKnowledgeEntries(snapshot);
+    expect(active.plan.included[0]).toMatchObject({ stateActivated: true, stateEvidence: { status: 'true', logic: 'any' } });
+    expect(active.entries[0].constant).toBe(true);
+    expect(active.entries[0]).not.toHaveProperty('stateConditions');
+    entry.applicability.stateActivation = false;
+    expect(compileNativeKnowledgeEntries(snapshot).entries[0].constant).toBe(false);
+    snapshot.states.atri_game_runtime.events[0].type = 'depart';
+    expect(compileNativeKnowledgePlan(snapshot).included).toHaveLength(0);
+});
+
+test('unsupported event triggers and malformed activation fail instead of becoming unconditional Knowledge', () => {
+    const snapshot = snapshotFromFixture();
+    snapshot.manifest.knowledge[0].entries[0].applicability = { stateEvents: ['arrive'] };
+    expect(() => compileNativeKnowledgePlan(snapshot)).toThrow('applicability.stateEvents');
+    snapshot.manifest.knowledge[0].entries[0].applicability = { stateActivation: true };
+    expect(() => compileNativeKnowledgePlan(snapshot)).toThrow('non-empty');
+});

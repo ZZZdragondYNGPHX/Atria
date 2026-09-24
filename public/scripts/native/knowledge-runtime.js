@@ -1,3 +1,4 @@
+import { normalizeKnowledgeApplicability } from './knowledge-contracts.js';
 import {
     WORLD_INFO_CONDITION_RESULT,
     evaluateWorldInfoStateConditions,
@@ -190,17 +191,9 @@ function compareCandidates(a, b) {
 }
 
 function conditionEvaluation(entry, providers) {
-    const conditions = entry?.applicability?.stateConditions;
-    if (conditions === undefined) return null;
-    if (!Array.isArray(conditions)) {
-        return {
-            status: WORLD_INFO_CONDITION_RESULT.UNKNOWN,
-            reason: 'invalid_condition',
-            logic: 'all',
-            results: [],
-        };
-    }
-    return evaluateWorldInfoStateConditions(conditions, providers, 'all');
+    const applicability = normalizeKnowledgeApplicability(entry?.applicability);
+    if (!applicability?.stateConditions?.length) return null;
+    return evaluateWorldInfoStateConditions(applicability.stateConditions, providers, applicability.stateConditionsLogic ?? 'all');
 }
 
 function normalizeMemoryEvidence(memoryEvidence, providers) {
@@ -366,6 +359,7 @@ export function compileNativeKnowledgePlan(snapshot, options = {}) {
             mode: candidate.mode,
             target: clone(target),
             selectionReason: 'eligible_' + candidate.authority.id,
+            stateActivated: candidate.entry?.applicability?.stateActivation === true && candidate.stateEvidence?.status === WORLD_INFO_CONDITION_RESULT.TRUE,
             stateEvidence: clone(candidate.stateEvidence),
             sourceEntryIndex: candidate.sourceEntryIndex,
             entry: clone(candidate.entry),
@@ -430,7 +424,7 @@ export function knowledgePlanToWorldInfoEntries(plan) {
             keysecondary: [],
             content: String(entry.content ?? ''),
             comment: String(entry.metadata?.label ?? entry.metadata?.title ?? ''),
-            constant: keys.length === 0,
+            constant: item.stateActivated === true || keys.length === 0,
             selective: false,
             disable: false,
             order: item.priority,
@@ -443,7 +437,6 @@ export function knowledgePlanToWorldInfoEntries(plan) {
             sticky: entry.lifecycle?.sticky ?? 0,
             cooldown: entry.lifecycle?.cooldown ?? 0,
             delay: entry.lifecycle?.delay ?? 0,
-            ...(entry.applicability ?? {}),
             requiredEntries: relationRefs(plan, item, relations.requiredEntryIds),
             relatedEntries: relationRefs(plan, item, relations.relatedEntryIds),
             mutualExclusionGroup: asText(relations.exclusiveGroup),

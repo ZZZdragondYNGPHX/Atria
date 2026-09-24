@@ -77,34 +77,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 先保证所有可作者配置的 Knowledge 字段都有明确 contract、validation 与 runtime 行为。
 
-## NUX-016 — Native Knowledge applicability fields do not have complete runtime semantics
-
-**Current evidence**
-
-`src/native/world-knowledge.js` accepts:
-
-- `stateConditions`
-- `stateEvents`
-- `stateActivation`
-
-In `public/scripts/native/knowledge-runtime.js`:
-
-- `stateConditions` are evaluated with hard-coded `all` logic;
-- no runtime consumer was found for `stateEvents`;
-- no runtime consumer was found for `stateActivation`.
-
-**Impact**
-
-Authors can persist fields that imply behavior the Native selector does not fully implement.
-
-**Acceptance**
-
-Define one explicit Native applicability contract and implement all supported fields end-to-end. Unsupported fields must be rejected or hidden rather than silently inert.
-
----
-
----
-
 ## NUX-017 — Native Knowledge validation is broader than runtime behavior
 
 **Current evidence**

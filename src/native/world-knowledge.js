@@ -1,3 +1,4 @@
+import { normalizeKnowledgeApplicability } from '../../public/scripts/native/knowledge-contracts.js';
 import { assertNativeId } from './identity.js';
 
 export const KNOWLEDGE_BINDING_MODES = Object.freeze(['augment', 'override']);
@@ -124,21 +125,6 @@ function assertDiscovery(value) {
         ...(value.regex === undefined ? {} : { regex: uniqueStrings(value.regex, 'KnowledgeEntry.discovery.regex') }),
         ...(value.semanticHints === undefined ? {} : { semanticHints: cloneJson(value.semanticHints, 'KnowledgeEntry.discovery.semanticHints') }),
         ...(value.vectorHints === undefined ? {} : { vectorHints: cloneJson(value.vectorHints, 'KnowledgeEntry.discovery.vectorHints') }),
-    });
-}
-
-function assertApplicability(value) {
-    if (value === undefined) return undefined;
-    plain(value, 'KnowledgeEntry.applicability');
-    assertOnlyKeys(
-        value,
-        new Set(['stateConditions', 'stateEvents', 'stateActivation']),
-        'KnowledgeEntry.applicability',
-    );
-    return Object.freeze({
-        ...(value.stateConditions === undefined ? {} : { stateConditions: cloneJson(value.stateConditions, 'KnowledgeEntry.applicability.stateConditions') }),
-        ...(value.stateEvents === undefined ? {} : { stateEvents: cloneJson(value.stateEvents, 'KnowledgeEntry.applicability.stateEvents') }),
-        ...(value.stateActivation === undefined ? {} : { stateActivation: cloneJson(value.stateActivation, 'KnowledgeEntry.applicability.stateActivation') }),
     });
 }
 
@@ -316,7 +302,7 @@ export function assertKnowledgeEntry(value) {
         knowledgeEntryId: assertNativeId(value.knowledgeEntryId, 'knowledgeEntry', 'KnowledgeEntry.knowledgeEntryId'),
         content: text(value.content, 'KnowledgeEntry.content', { allowEmpty: true, maxLength: 4 * 1024 * 1024 }),
         ...(value.discovery === undefined ? {} : { discovery: assertDiscovery(value.discovery) }),
-        ...(value.applicability === undefined ? {} : { applicability: assertApplicability(value.applicability) }),
+        ...(value.applicability === undefined ? {} : { applicability: normalizeKnowledgeApplicability(value.applicability) }),
         ...(value.lifecycle === undefined ? {} : { lifecycle: assertLifecycle(value.lifecycle) }),
         ...(value.relations === undefined ? {} : { relations: assertRelations(value.relations) }),
         ...(value.delivery === undefined ? {} : { delivery: assertDelivery(value.delivery) }),

@@ -97,9 +97,9 @@ function knowledgeSnapshot() {
                     semanticHints: ['city gate opening time'],
                 },
                 applicability: {
-                    stateConditions: [{ path: 'time.phase', equals: 'night' }],
-                    stateEvents: ['sunset'],
-                    stateActivation: { mode: 'all' },
+                    stateConditions: [{ providerId: 'atri_world_state', path: ['time', 'phase'], operator: 'eq', value: 'night' }],
+                    stateConditionsLogic: 'all',
+                    stateActivation: true,
                 },
                 lifecycle: {
                     probability: 100,

@@ -378,4 +378,25 @@ shared Runtime suites, including 320/390px routing, exact retrieval revisions,
 Secret creation, pending-save lock, focus containment, responsive editor, fallback
 roles and Chinese layout. No live cloud inference or physical device claimed.
 
-Next: NUX-016, following the active backlog order.
+## Group 4 — Native Knowledge Semantics
+
+### NUX-016
+
+Native Knowledge now shares a typed applicability contract between persistence and
+compilation: bounded safe state predicates, all/any tri-state logic, and explicit
+boolean direct activation. Successful direct activation bypasses keyword discovery,
+while retaining target/authority/lifecycle controls. Compiled delivery no longer
+re-evaluates applicability through compatibility providers. Unsupported stateEvents
+fail with the field path before writes instead of remaining inert metadata; current
+Native Event Journal facts remain available through state predicates. Semantics and
+limits are documented in `docs/features/native-knowledge.md`.
+
+Validation: four focused suites passed 64 cases, covering invalid fields and Native
+Session/Package compilation. Three adjacent Library/Package/Studio suites passed 11
+cases. FS/SQLite storage foundation passed two cases. MySQL/Postgres contract cases
+could not run against the unavailable local services and were excluded from the
+offline rerun; no external database validation claimed. Changed-file lint and diff
+check passed. An initial test used the wrong entry-ID prefix; corrected fixture
+passed. No UI surface was added in this contract/runtime issue.
+
+Next: NUX-017, following the active backlog order.
