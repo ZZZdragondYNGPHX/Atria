@@ -81,6 +81,7 @@ export async function requestToolCallWithRetry(context, settings, {
     apiPresetName = '',
     llmPresetName = '',
     nativeRouteRef = undefined,
+    nativeRole = 'orchestrator',
     functionName = '',
     functionDescription = '',
     parameters = {},
@@ -133,7 +134,7 @@ export async function requestToolCallWithRetry(context, settings, {
                 },
                 abortSignal: attemptSignal,
             };
-            const result = await executeFirstPartyGeneration(context, 'orchestrator', generateTaskOpts);
+            const result = await executeFirstPartyGeneration(context, nativeRole, generateTaskOpts);
             throwIfAborted(abortSignal, 'Orchestration aborted.');
             const calls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];
             const validationError = validateParsedToolCalls(calls, tools);
@@ -182,6 +183,7 @@ export async function requestToolCallsWithRetry(context, settings, {
     apiPresetName = '',
     llmPresetName = '',
     nativeRouteRef = undefined,
+    nativeRole = 'orchestrator',
     tools = [],
     allowedNames = null,
     retriesOverride = null,
@@ -266,7 +268,7 @@ export async function requestToolCallsWithRetry(context, settings, {
                 && firstPartyStreamingEnabled(context, generateTaskOpts.llmPresetName || '');
             let result;
             if (streamEnabled) {
-                const { stream, result: resultPromise } = streamFirstPartyGeneration(context, 'orchestrator', generateTaskOpts);
+                const { stream, result: resultPromise } = streamFirstPartyGeneration(context, nativeRole, generateTaskOpts);
                 let firstChunkFired = false;
                 for await (const chunk of stream) {
                     // Any chunk (text or reasoning) means upstream has
@@ -291,7 +293,7 @@ export async function requestToolCallsWithRetry(context, settings, {
                 }
                 result = await resultPromise;
             } else {
-                result = await executeFirstPartyGeneration(context, 'orchestrator', generateTaskOpts);
+                result = await executeFirstPartyGeneration(context, nativeRole, generateTaskOpts);
             }
             throwIfAborted(abortSignal, 'Orchestration aborted.');
             const rawCalls = Array.isArray(result?.toolCalls) ? result.toolCalls : [];

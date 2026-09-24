@@ -7396,5 +7396,14 @@
     "Loading Runtime Routes…": "正在加载 Runtime 路由…",
     "Select a route configured for this role. Manage routes in Runtime.": "请选择此角色的路由。路由在 Runtime 中管理。",
     "Could not load Runtime Routes. Refresh to try again.": "无法加载 Runtime 路由。请刷新重试。",
-    "Select an exact player Runtime Route.": "请选择精确的玩家 Runtime 路由。"
+    "Select an exact player Runtime Route.": "请选择精确的玩家 Runtime 路由。",
+    "Recall route": "召回路由",
+    "Extraction route": "提取路由",
+    "Schema assistance route": "Schema 辅助路由",
+    "RAG rewrite route": "RAG 改写路由",
+    "Memory Runtime Routes": "Memory Runtime 路由",
+    "Choose an independent route for each Memory task. Empty selections use the memory role’s primary route.": "为各项 Memory 任务选择独立路由。留空时使用 memory 角色的主路由。",
+    "Save Memory routes": "保存 Memory 路由",
+    "Memory routes saved. New requests use these selections.": "Memory 路由已保存。新请求将使用这些选择。",
+    "Could not save Memory routes. Your selections are still here; retry to save them.": "无法保存 Memory 路由。已保留选择，请重试保存。"
 }

@@ -1,3 +1,4 @@
+import { memoryRouteOptions } from '../native-routing.js';
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups
 
@@ -1838,6 +1839,7 @@ export async function openSchemaIterationStudio(deps) {
             {
                 taskMessages,
                 runtimeWorldInfo: null,
+                ...memoryRouteOptions(settings, 'schema'),
                 apiPresetName,
                 llmPresetName,
                 tools: buildCatalogForScope(turnSnapshot),

@@ -289,4 +289,26 @@ refs preserved. Screenshot inspected. The initial browser attempt needed to clos
 the compact Inspector before selecting the second Agent; the corrected scenario
 passed. Changed-file ESLint and diff check passed.
 
-Next: NUX-013, following the active backlog order.
+### NUX-013
+
+Memory maintains separate exact player routes for recall, extraction (including
+compression/repair), Schema assistance and RAG rewrite in its existing settings.
+The existing Memory Maintenance page uses the shared compatible-route picker and
+explicit save with retained drafts on failure. Invalid refs are rejected; absent
+selections deliberately use role.memory's primary route. Settings writes reuse
+the existing persistence and do not copy Secrets or provider state.
+
+All Memory request wrappers preserve nativeRouteRef. Schema assistance now passes
+nativeRole=memory through the shared iteration runner instead of accidentally
+using its orchestrator default. Native query rewrite no longer requires a legacy
+API preset name to enter either the normal or debug path.
+
+Validation: 50 Memory/Schema suites covered 660 tests. Two source-regex checks
+initially failed on Windows line endings; restoring the repository's LF source
+made their 48-case suites pass. Eight client tests passed for task identity,
+role, exact refs, fallback isolation and failed-save retry. Real Edge 390px
+Memory Maintenance save passed, including all four task selections; after removing
+the browser-default fieldset border, the scenario passed again and its screenshot
+was inspected. Changed-file ESLint and diff check passed.
+
+Next: NUX-014, following the active backlog order.

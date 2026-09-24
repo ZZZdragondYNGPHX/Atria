@@ -1,4 +1,6 @@
 import { i18n, i18nFormat } from '../../i18n.js';
+import { nativePromptUiActive } from '../../../../native/generation-compat.js';
+import { mountMemoryRouting } from '../../../memory-graph/native-routing-ui.js';
 
 const MEMORY_VIEWS = Object.freeze([
     ['overview', 'Overview'],
@@ -440,6 +442,9 @@ export function createMemoryWorkspace({ getContext }) {
         };
 
         const renderMaintenance = () => {
+            if (nativePromptUiActive() && service.getNativeRoutes) {
+                try { mountMemoryRouting(content, service); } catch (error) { status.textContent = error.message; }
+            }
             const hero = el('section', undefined, content);
             hero.className = 'workspace-memory-maintenance-hero';
             el('h3', 'Build and maintenance', hero);

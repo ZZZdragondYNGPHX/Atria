@@ -73,28 +73,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 先补齐 Orchestrator / Memory 的 Native route 与 provider ownership，再清理兼容 preset vocabulary。
 
-## NUX-013 — Native Memory loses task-specific route selection
-
-**Current evidence**
-
-Memory distinguishes recall, extraction, request/schema assistance and RAG rewrite settings, but Native calls funnel through:
-
-`executeFirstPartyGeneration(context, 'memory', ...)`
-
-without task-specific `nativeRouteRef` in the inspected flow.
-
-**Impact**
-
-Cheap query rewrite, strong structured extraction and other memory jobs cannot intentionally use different Native model/prompt/generation routes.
-
-**Acceptance**
-
-Memory tasks must select explicit Native routes/subroles while preserving one Native authority model. Legacy preset names remain compatibility-only.
-
----
-
----
-
 ## NUX-014 — Memory embedding / rerank provider ownership remains outside Native Runtime
 
 **New finding in the post-redesign re-audit**

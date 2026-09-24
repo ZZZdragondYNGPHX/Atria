@@ -13,7 +13,7 @@ test.beforeAll(async () => {
     const seeded = await seedNativeSessionDataRoot({ suffix: 'native-agent-routes' });
     const root = resolve(seeded.dataRoot, seeded.handle);
     const engine = new FsEngine({ directoriesByHandle: () => ({ root, assets: resolve(root, 'assets') }) });
-    const resources = await seedGenerationProfiles({ engine, handle: seeded.handle, endpoint: 'https://example.invalid/completions', roles: ['orchestrator', 'orchestrator', 'memory'] });
+    const resources = await seedGenerationProfiles({ engine, handle: seeded.handle, endpoint: 'https://example.invalid/completions', roles: ['orchestrator', 'orchestrator', 'memory', 'memory'] });
     routes = resources.routes;
     routes[0].displayName = 'Writer'; routes[1].displayName = 'Reviewer';
     await resources.persistence.saveRuntimeRoute(seeded.handle, routes[0]);
@@ -24,6 +24,31 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => { await tearDownServer(server); });
+
+test('Memory saves task-specific Native routes from its existing workspace', async ({ page }, info) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openAgentSection('memory'));
+    const workspace = page.locator('#agent-memory-workspace');
+    await workspace.getByRole('button', { name: 'Maintenance', exact: true }).click();
+    const form = workspace.locator('form').filter({ has: page.getByRole('heading', { name: 'Memory Runtime Routes', exact: true }) });
+    const tasks = ['Recall route', 'Extraction route', 'Schema assistance route', 'RAG rewrite route'];
+    for (const [index, task] of tasks.entries()) {
+        const select = form.getByLabel(task, { exact: true }); await expect(select).toBeEnabled();
+        await expect(select.locator('option', { hasText: 'Writer' })).toHaveCount(0);
+        await select.selectOption(routes[2 + index % 2].runtimeRouteId);
+    }
+    await form.getByRole('button', { name: 'Save Memory routes', exact: true }).click();
+    await expect(form).toContainText('Memory routes saved');
+    const selected = await page.evaluate(() => window.Atria.getContext().extensionSettings.memory_graph.nativeRoutes);
+    expect(Object.values(selected)).toEqual([2, 3, 2, 3].map(index => ({ scope: 'player', runtimeRouteId: routes[index].runtimeRouteId })));
+    await page.screenshot({ path: info.outputPath('memory-native-routes-390.png') });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 
 test('Agents saves distinct exact role routes at 320px', async ({ page }, info) => {
     test.setTimeout(180000);

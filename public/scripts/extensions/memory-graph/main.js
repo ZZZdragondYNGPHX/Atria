@@ -1,3 +1,4 @@
+import { memoryRouteOptions, normalizeMemoryRoutes } from './native-routing.js';
 import { legacyPromptNames, nativePromptUiActive, nativeRouteOptions } from '../../native/generation-compat.js';
 import { isNativeGenerationFailure, executeFirstPartyGeneration, firstPartyGenerationAvailable } from '../../native/generation-compat.js';
 import { nativeGenerationActive } from '../../native/generation-client.js';
@@ -3036,6 +3037,7 @@ async function summarizeTextWithLLM(context, settings, instruction, lines, abort
         const result = await runFunctionCallTask(context, settings, {
             systemPrompt: instruction,
             userPrompt: joined,
+            ...memoryRouteOptions(settings, 'extraction'),
             apiPresetName: settings.extractApiPresetName || '',
             promptPresetName: settings.extractPresetName || '',
             functionName: 'atria_rpg_summary',
@@ -3088,6 +3090,7 @@ async function summarizeRollupFieldsWithLLM(context, settings, spec, instruction
                 'Do not continue story.',
             ].join('\n'),
             userPrompt,
+            ...memoryRouteOptions(settings, 'extraction'),
             apiPresetName: settings.extractApiPresetName || '',
             promptPresetName: settings.extractPresetName || '',
             functionName: 'atria_rpg_summary_fields',
@@ -3314,6 +3317,7 @@ async function requestSingleFunctionCallWithRetry(context, settings, {
     runtimeWorldInfo = null,
     apiPresetName = '',
     llmPresetName = '',
+    nativeRouteRef = undefined,
     functionName = '',
     functionDescription = '',
     parameters = {},
@@ -3365,6 +3369,7 @@ async function requestSingleFunctionCallWithRetry(context, settings, {
                 runtimeWorldInfo,
                 apiPresetName: String(apiPresetName || '').trim(),
                 llmPresetName: String(llmPresetName || '').trim(),
+                nativeRouteRef,
                 tools,
                 toolChoice,
                 functionCallMode: 'auto',
@@ -3413,6 +3418,7 @@ async function requestToolCallsWithRetry(context, settings, {
     runtimeWorldInfo = null,
     apiPresetName = '',
     llmPresetName = '',
+    nativeRouteRef = undefined,
     tools = [],
     allowedNames = null,
     retriesOverride = null,
@@ -3456,6 +3462,7 @@ async function requestToolCallsWithRetry(context, settings, {
                 runtimeWorldInfo,
                 apiPresetName: String(apiPresetName || '').trim(),
                 llmPresetName: String(llmPresetName || '').trim(),
+                nativeRouteRef,
                 tools,
                 toolChoice: extractionControl ? extractionToolChoice : 'auto',
                 functionCallMode: 'auto',
@@ -3535,6 +3542,7 @@ async function runFunctionCallTask(context, settings, {
     taskMessages: taskMessagesOverride = null,
     promptPresetName = '',
     apiPresetName = '',
+    nativeRouteRef = undefined,
     worldInfoMessages = null,
     runtimeWorldInfo = null,
     forceWorldInfoResimulate = false,
@@ -3574,6 +3582,7 @@ async function runFunctionCallTask(context, settings, {
         runtimeWorldInfo: resolvedWorldInfo,
         apiPresetName: String(apiPresetName || '').trim(),
         llmPresetName: String(promptPresetName || '').trim(),
+        nativeRouteRef,
         functionName: fnName,
         functionDescription,
         parameters,
@@ -4604,6 +4613,13 @@ async function resetMemoryGraphForWorkspace(context) {
 
 export function getMemoryWorkspacePorts(context) {
     return {
+        getNativeRoutes: () => normalizeMemoryRoutes(getSettings().nativeRoutes),
+        setNativeRoutes: async input => {
+            const settings = getSettings(); const previous = settings.nativeRoutes;
+            const next = normalizeMemoryRoutes(input); settings.nativeRoutes = next;
+            try { await saveSettings(); } catch (error) { if (settings.nativeRoutes === next) settings.nativeRoutes = previous; throw error; }
+            return normalizeMemoryRoutes(next);
+        },
         getStatus: () => getMemoryWorkspaceStatus(),
         setControl: (name, value) => setMemoryWorkspaceControl(name, value),
         load: () => sourceLifecycle.retrievalSnapshot(context),
@@ -4794,6 +4810,7 @@ async function extractNodesWithLLM(context, store, settings, schema, messageBatc
             maxRepairs: Math.max(1, semanticRetries), signal: options.abortSignal,
             send: request => requestToolCallsWithRetry(context, settings, {
                 ...request, extractionControl: true, runtimeWorldInfo: {},
+                ...memoryRouteOptions(settings, 'extraction'),
                 apiPresetName, llmPresetName: promptPresetName,
                 allowedNames, retriesOverride: 0, abortSignal: options.abortSignal,
             }),
@@ -5942,6 +5959,7 @@ async function buildExtractionCrawlGraph(context, store, settings, schema, messa
         ].filter(Boolean).join('\n\n');
         const calls = await requestToolCallsWithRetry(context, settings, {
             taskMessages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }],
+            ...memoryRouteOptions(settings, 'extraction'),
             apiPresetName: settings.extractApiPresetName || '',
             llmPresetName: settings.extractPresetName || '',
             tools,
@@ -6791,7 +6809,7 @@ function getRecallQueryBundle(payload, context, settings = null) {
 // — caller falls back to the raw query.
 async function runQueryRewrite(context, settings, queryBundle, opts = {}) {
     const apiPresetName = String(settings?.ragRewriteApiPresetName || '').trim();
-    if (!apiPresetName && !nativeGenerationActive()) {
+    if (!apiPresetName && !nativePromptUiActive()) {
         return null;
     }
     const llmPresetName = String(settings?.ragRewriteLlmPresetName || '').trim();
@@ -6823,6 +6841,7 @@ async function runQueryRewrite(context, settings, queryBundle, opts = {}) {
                 ...roleSplitChatMessages,
                 { role: 'user', content: rewriteInputTail },
             ],
+            ...memoryRouteOptions(settings, 'rewrite'),
             apiPresetName,
             llmPresetName,
             functionName: 'rewrite_recall_query',
@@ -7242,6 +7261,7 @@ async function chooseRecallRoute(context, settings, recallState) {
                 ...roleSplitChatMessages,
                 { role: 'user', content: routeInputTail },
             ],
+            ...memoryRouteOptions(settings, 'recall'),
             apiPresetName: settings.recallApiPresetName || '',
             promptPresetName: String(settings.recallPresetName || '').trim(),
             worldInfoMessages: Array.isArray(recallState?.worldInfoMessages) ? recallState.worldInfoMessages : null,
@@ -7453,6 +7473,7 @@ async function chooseFocusNodes(context, settings, recallState) {
                 ...roleSplitChatMessages,
                 { role: 'user', content: finalizeInputTail },
             ],
+            ...memoryRouteOptions(settings, 'recall'),
             apiPresetName: settings.recallApiPresetName || '',
             promptPresetName: String(settings.recallPresetName || '').trim(),
             worldInfoMessages: Array.isArray(recallState?.worldInfoMessages) ? recallState.worldInfoMessages : null,
@@ -8894,7 +8915,7 @@ async function injectMemoryPrompts(context, payload) {
         }
 
         let rewrittenQuery = null;
-        if (settings.ragUseQueryRewrite && String(settings.ragRewriteApiPresetName || '').trim()) {
+        if (settings.ragUseQueryRewrite && (nativePromptUiActive() || String(settings.ragRewriteApiPresetName || '').trim())) {
             rewrittenQuery = await runQueryRewrite(context, settings, queryBundle, {
                 abortSignal: payload?.signal || null,
                 recallRunToken,
@@ -15514,7 +15535,7 @@ function bindUi() {
             const queryText = normalizeText(queryBundle.fullText || '');
 
             let rewrittenQuery = null;
-            if (effectiveSettings.ragUseQueryRewrite && String(effectiveSettings.ragRewriteApiPresetName || '').trim()) {
+            if (effectiveSettings.ragUseQueryRewrite && (nativePromptUiActive() || String(effectiveSettings.ragRewriteApiPresetName || '').trim())) {
                 rewrittenQuery = await runQueryRewrite(context, effectiveSettings, queryBundle, {
                     abortSignal: null,
                     recallRunToken: null,

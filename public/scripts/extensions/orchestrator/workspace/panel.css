@@ -627,6 +627,12 @@
     margin: 16px 0 0;
 }
 
+#agent-memory-workspace fieldset.workspace-inspector-section {
+    min-width: 0;
+    padding: 0;
+    border: 0;
+}
+
 #agent-memory-workspace section.workspace-inspector-section {
     padding: 0 0 16px;
     border-bottom: 1px solid var(--atri-workspace-border);
