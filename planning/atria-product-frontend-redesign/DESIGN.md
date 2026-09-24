@@ -238,8 +238,10 @@ migrated with the new design and recorded in the phase log.
 
 ## 8. Delivery phases
 
-The current user checkpoint is Phase 1 only. Keep the same task branch;
-do not start Phase 2 or merge main until authorized.
+Phase 1 is integrated into main. Phase 2 is implemented and pushed on
+`refactor/atria-product-frontend-redesign`; stop at this checkpoint. Continue
+Phase 3 only after the user says continue. Keep this branch for Phases 2–8;
+do not merge main or delete the branch at individual phase checkpoints.
 
 1. **Foundations and frame:** tokens, appearance, icon set, shared component
    stylesheet/builders, responsive Shell, search, inspector, menu, state panels,
@@ -256,3 +258,43 @@ do not start Phase 2 or merge main until authorized.
 Phase 1 does not claim redesigned domain content or entry surfaces. Existing
 domain controllers remain inside the new frame; their remaining mixed language
 and old page layouts are addressed in their owning phases above.
+
+## 9. Phase 2 entry specification and decisions — 2026-09-24
+
+The approved foundation is unchanged. Entry surfaces use the existing Atria
+palette, system typography, focus treatment and appearance resolver.
+
+- **Startup:** centered Atria mark, wordmark and indeterminate progress. No
+  invented percentage. After 20 seconds, offer Reload without declaring an
+  operation failed. First-paint containment ends when the existing startup
+  authority removes the preloader; no second readiness state is introduced.
+- **Login:** centered identity surface on expanded/medium screens; a single
+  unboxed column on compact screens. Native account buttons, labeled forms,
+  visible request feedback, a retryable connection failure and an empty-account
+  state. Registration, password recovery, OAuth and redirect semantics retain
+  the existing controllers/endpoints. Appearance uses the same resolver with
+  the default dark palette before an authenticated preference is available.
+- **Onboarding:** welcome, language, persona name, optional product orientation,
+  then Get started. The existing persona/settings path persists completion.
+  Language controls retain their existing locale handlers. Blank names receive
+  inline feedback. New onboarding text includes Simplified/Traditional Chinese.
+- **Migration retirement (explicit user decision):** SillyTavern migration is
+  no longer a supported product entry path. Remove the migration UI, handlers,
+  styles and dedicated `/api/users/import/data-zip`, `/import/config`, and
+  `/import/global-extensions` routes. Atria backup restore, storage-engine
+  migration, Native ABI and the upstream code foundation remain intact.
+- **Global dialogs:** preserve Popup types/results, custom actions/inputs,
+  nested modal ownership and Escape semantics. Native action buttons, associated
+  titles/labels, scrollable content and separate action area share Atria tokens.
+  Dialogs consume the existing Environment visual-viewport measurement and
+  dispose that subscription with their lifecycle.
+- **Loading:** default blocking feedback is content-sized; custom overlay
+  content retains its sizing options. The action-loader registry still owns
+  handles and stop callbacks. A closing overlay can only clean up its own nodes.
+- **Notices:** elevated tonal feedback with semantic color accents and an
+  accessible dismiss control. Inside a modal, notices occupy space below the
+  action area rather than floating over fields. Action-loader notices keep their
+  explicit stop control and cannot be dismissed independently of the operation.
+
+Evidence: `PHASE-2.md`. This does not redesign Play, Library, Runtime, Studio,
+Agents, Settings, Plugins or Account content.
