@@ -85,26 +85,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 让 Build / Studio 能通过当前 Atria authoring authority 完成核心资源制作，而不是依赖内部 JSON。
 
-## NUX-028 — Studio still lacks domain-specific World / Knowledge / Skill authoring
-
-**Current evidence**
-
-Frontend redesign added a generic structured value editor with labelled fields and Source fallback.
-
-However:
-
-- World/Knowledge require semantic editors;
-- Skills view edits package declarations through the generic value editor;
-- relationship selection and Knowledge-specific constraints are not first-class.
-
-**Acceptance**
-
-Build domain-aware editors on top of existing ChangeSet authority. Generic fields/Source remain the fallback for unknown/plugin fields.
-
----
-
----
-
 ## NUX-029 — Build can create/open projects but has no user-facing project deletion
 
 **Current evidence**

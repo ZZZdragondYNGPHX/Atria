@@ -1,3 +1,4 @@
+import { mountSkillDeclarationsEditor } from './skill-declarations-editor.js';
 import { renderResourceReferenceRows } from './resource-reference-rows.js';
 import { mountKnowledgeEditor } from './knowledge-editor.js';
 import { mountWorldEditor } from './world-editor.js';
@@ -1131,8 +1132,12 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         else if (state.activeView === 'assets') renderAssets(body);
         else if (state.activeView === 'memory') renderPackageJson(body, 'Memory', 'memory', 'Project memory configuration is structured package source.');
         else if (state.activeView === 'agents') renderPackageJson(body, 'Agents / Orchestration', 'orchestration', 'Configure orchestration for this project. These settings do not run the Project Agent.');
-        else if (state.activeView === 'skills') renderPackageJson(body, 'Skills', 'skills', 'Manage the Skills declared by this project.');
-        else if (state.activeView === 'plugins') renderNestedRuntimeJson(body, 'Plugins', 'plugins', 'Package-runtime plugins remain declarative and capability-defined.');
+        else if (state.activeView === 'skills') {
+            body.append(heading(documentRef, 'Skills', 'Manage the Skills declared by this project.'));
+            mountSkillDeclarationsEditor({ document: documentRef, root: body, value: state.source.package.skills ?? [], projectId,
+                onReview: declarations => stageProject(patchProjectSource(state.source, source => { source.package.skills = declarations; }), 'Update Skills'),
+            });
+        } else if (state.activeView === 'plugins') renderNestedRuntimeJson(body, 'Plugins', 'plugins', 'Package-runtime plugins remain declarative and capability-defined.');
         else if (state.activeView === 'metadata') {
             renderJsonSection(documentRef, body, {
                 title: 'Processors / Localization / Permissions',

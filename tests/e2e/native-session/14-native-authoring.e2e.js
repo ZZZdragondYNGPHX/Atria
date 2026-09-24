@@ -25,6 +25,47 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
+test('Studio authors Skill declarations through semantic fields and Review Apply at 390px', async ({ page }, info) => {
+    test.setTimeout(120000);
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const id = createNativeId('project');
+    const source = { format: 'atria-project-source', schemaVersion: 1,
+        project: { projectId: id, packageId: createNativeId('package'), displayName: 'Skill authoring', createdAt: 1, updatedAt: 1 },
+        package: { name: 'Skill authoring', version: '1.0.0', actors: [], capabilities: ['narrative'], permissions: [],
+            skills: [{ skillId: 'custom-declaration', pluginOptions: { tone: 'quiet' } }],
+            entryPoints: [{ entryPointId: createNativeId('entryPoint'), displayName: 'Main', actorIds: [], worldIds: [], knowledgeBindingIds: [] }] },
+        resources: [], worlds: [], knowledge: [], knowledgeBindings: [], assetFiles: [],
+        dependencies: { worlds: [], knowledge: [], knowledgeBindings: [], assets: [], resources: [] } };
+    await page.evaluate(async ({ source, text }) => {
+        const { nativeStudioClient } = await import('/scripts/native/studio-client.js');
+        await nativeStudioClient.createProject(source);
+        await window.Atria.getContext().skills.install({ scope: { kind: 'project', projectId: source.project.projectId },
+            payload: { files: [{ path: 'SKILL.md', encoding: 'utf8', content: text }] } });
+        window.Atria.shell.getWorkspaceHost().openBuild(source.project.projectId, source.project.displayName);
+    }, { source, text: skillText('author-guide', 'Guide from this project') });
+    const studio = page.locator('[data-atria-studio-workspace]');
+    await studio.locator('.atria-studio-mobile-nav').getByRole('button', { name: 'Project', exact: true }).click();
+    await studio.locator('[data-atria-studio-resource="skills"]').click();
+    const editor = studio.locator('[data-atria-skill-declarations]');
+    await editor.getByLabel('Available Skills', { exact: true }).selectOption('author-guide');
+    await editor.getByRole('button', { name: 'Add selected Skill', exact: true }).click();
+    await expect(editor.getByLabel('Skill ID 2', { exact: true })).toHaveValue('author-guide');
+    await page.screenshot({ path: info.outputPath('skill-declarations-390.png') });
+    const read = () => page.evaluate(async id => {
+        const { nativeStudioClient } = await import('/scripts/native/studio-client.js');
+        return (await nativeStudioClient.getProject(id)).source.package.skills;
+    }, id);
+    await editor.getByRole('button', { name: 'Review Changes', exact: true }).click();
+    expect(await read()).toEqual(source.package.skills);
+    await studio.getByRole('button', { name: 'Apply ChangeSet', exact: true }).click();
+    await expect.poll(read).toEqual([...source.package.skills, 'author-guide']);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test('Skill Manager edits and moves project Skills while exact Package originals stay read-only at 390px', async ({ page }, info) => {
     test.setTimeout(180000);
     await page.setViewportSize({ width: 390, height: 900 });

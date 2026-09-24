@@ -7146,5 +7146,22 @@
     "Back to naming": "返回命名",
     "Confirm save to Library": "確認儲存至 Library",
     "Open in Library": "在 Library 中開啟",
-    "This exact session Knowledge snapshot is unavailable.": "此工作階段的精確知識快照無法使用。"
+    "This exact session Knowledge snapshot is unavailable.": "此工作階段的精確知識快照無法使用。",
+    "Declare the Skills used by this work. Removing a declaration does not delete the Skill.": "宣告本作品使用的 Skill。移除宣告不會刪除 Skill。",
+    "Loading Skills…": "正在載入 Skill…",
+    "Could not load available Skills. Your declarations are kept.": "無法載入可用 Skill。宣告草稿已保留。",
+    "Available Skills": "可用 Skill",
+    "Choose a Skill": "選擇 Skill",
+    "Add selected Skill": "新增所選 Skill",
+    "No Skill declarations yet.": "尚無 Skill 宣告。",
+    "Skill ID": "Skill ID",
+    "Not installed in this project or global scope. The declaration is retained.": "目前專案或全域尚未安裝此 Skill。宣告仍會保留。",
+    "Declaration details": "宣告詳情",
+    "Remove declaration": "移除宣告",
+    "Add Skill ID": "新增 Skill ID",
+    "Skill declarations JSON": "Skill 宣告 JSON",
+    "Each Skill declaration needs a valid Skill ID.": "每筆宣告都需要有效的 Skill ID。",
+    "Skill declaration IDs must agree.": "同一宣告中的 Skill ID 必須一致。",
+    "Skill declarations must be a list.": "Skill 宣告必須是清單。",
+    "Skill declarations must not repeat a Skill ID.": "Skill 宣告不能包含重複 ID。"
 }

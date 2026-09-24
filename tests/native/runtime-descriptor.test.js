@@ -51,6 +51,16 @@ function fixture(overrides = {}) {
 }
 
 describe('A3 Native Runtime Descriptor compiler', () => {
+    test('Skill declarations use shared validation and preserve extension data in the source', () => {
+        const f = fixture({ manifest: { skills: [{ skillId: 'guide', custom: { tone: 'quiet' } }, 'global-helper'] } });
+        expect(compileNativeRuntimeDescriptor(f, { entryPointId: f.entryPointId }).descriptor.skills).toEqual(['guide', 'global-helper']);
+        expect(f.manifest.skills[0].custom).toEqual({ tone: 'quiet' });
+        f.manifest.skills.push({ id: 'guide' });
+        expect(() => compileNativeRuntimeDescriptor(f, { entryPointId: f.entryPointId })).toThrow('repeat');
+        f.manifest.skills = [{ skillId: 'guide', id: 'other' }];
+        expect(() => compileNativeRuntimeDescriptor(f, { entryPointId: f.entryPointId })).toThrow('agree');
+    });
+
     test('compiles exact PackageVersion + EntryPoint identity without creating package authority', () => {
         const f = fixture();
         const result = compileNativeRuntimeDescriptor({

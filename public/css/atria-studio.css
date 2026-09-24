@@ -2030,6 +2030,8 @@ so the
 
 :is(.popup, .atria-skill-workspace-host) .atria_skill_scope_badge {
     display: inline-flex;
+    min-width: 0;
+    max-width: 100%;
     align-items: baseline;
     gap: 6px;
     padding: 3px 10px;
@@ -2041,6 +2043,8 @@ so the
     user-select: none;
 }
 :is(.popup, .atria-skill-workspace-host) .atria_skill_scope_badge_kind {
+    flex-shrink: 0;
+    white-space: nowrap;
     text-transform: uppercase;
     font-size: 0.7rem;
     letter-spacing: 0.04em;
@@ -2051,6 +2055,8 @@ so the
     opacity: 0.4;
 }
 :is(.popup, .atria-skill-workspace-host) .atria_skill_scope_badge_id {
+    min-width: 0;
+    overflow-wrap: anywhere;
     font-family: var(--monoFontFamily, monospace);
     font-size: 0.78rem;
     opacity: var(--ls-text-default);

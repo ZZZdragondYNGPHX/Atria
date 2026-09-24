@@ -1,3 +1,4 @@
+import { validateSkillDeclarations } from '../../public/scripts/native/skill-declarations.js';
 import { assertNativeId } from './identity.js';
 import { assertPackageModelPromptRuntimeMetadata } from './model-prompt-runtime/contracts.js';
 import {
@@ -653,6 +654,7 @@ export function assertAtriaPackageManifest(value) {
     ]) {
         if (value[key] !== undefined) out[key] = cloneJson(value[key], 'AtriaPackage.' + key);
     }
+    if (out.skills !== undefined) validateSkillDeclarations(out.skills);
     return Object.freeze(out);
 }
 

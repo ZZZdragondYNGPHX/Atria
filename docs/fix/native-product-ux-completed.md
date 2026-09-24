@@ -634,4 +634,20 @@ scope-picker suite passed on rerun. A real Edge 390px scenario passed project na
 Package read-only controls, compatibility disclosure, project edit/save and confirmed
 move to global. Current Skills UI screenshot inspected; lint/diff checks passed.
 
-Next: NUX-028, following the active backlog order.
+### NUX-028
+
+Studio uses domain editors for World composition, Knowledge semantics and now Skill
+declarations. The Skill editor selects from the current project/global catalog,
+explains unavailable declarations, adds/removes/edits IDs and preserves extension
+fields through Source. Edits remain detached until existing ChangeSet Review/Apply.
+Shared declaration validation rejects malformed, duplicate and conflicting IDs both
+in authoring and Native Package/Runtime compilation. Loading failure retains the draft
+and offers Retry. Native scope badges now preserve the kind label at narrow widths.
+
+Validation: seven focused/adjacent suites passed 51 cases. The extended Runtime
+Descriptor and localization suites passed 12 cases. Two real Edge 390px scenarios
+passed semantic Skill declaration Review/Apply and adjacent Skill Manager ownership,
+editing and movement. Both rendered screens were inspected. Lint and diff checks
+passed; Source preserves unknown fields and Package originals remain unchanged.
+
+Next: NUX-029, following the active backlog order.

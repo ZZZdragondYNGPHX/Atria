@@ -1,3 +1,4 @@
+import { skillDeclarationId, validateSkillDeclarations } from '../../public/scripts/native/skill-declarations.js';
 import {
     ATRIA_RUNTIME_DESCRIPTOR_FORMAT,
     ATRIA_RUNTIME_DESCRIPTOR_SCHEMA_VERSION,
@@ -116,17 +117,7 @@ function runtimeSource(manifest, entryPoint) {
 
 function packageSkillIds(manifest) {
     if (manifest?.skills === undefined) return [];
-    if (!Array.isArray(manifest.skills)) {
-        throw new TypeError('AtriaPackage.skills must be an array for Native Runtime');
-    }
-    return manifest.skills.map((item, index) => {
-        if (typeof item === 'string' && item.trim()) return item.trim();
-        if (plain(item)) {
-            const value = String(item.skillId ?? item.id ?? '').trim();
-            if (value) return value;
-        }
-        throw new TypeError('AtriaPackage.skills[' + index + '] must identify a skill');
-    });
+    return validateSkillDeclarations(manifest.skills).map(skillDeclarationId);
 }
 
 function pushUnique(resources, seen, item) {
