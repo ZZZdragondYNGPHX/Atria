@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { resolveUserDirectory } from '../../constants.js';
 
 import _ from 'lodash';
 import sanitizeFilename from 'sanitize-filename';
@@ -757,9 +758,7 @@ function registerStatsHandler(tx) {
 
 function registerNativeResourceHandlers(tx) {
     const rootFor = (key) => path.join(
-        tx._directoriesByHandle(key.handle).root,
-        'atria-native',
-        'resources',
+        resolveUserDirectory(tx._directoriesByHandle(key.handle), 'nativeResources'),
         key.kind,
     );
     const filePath = (key) => path.join(rootFor(key), `${nativeResourceFileId(key)}.json`);
@@ -828,12 +827,7 @@ function registerNativeResourceHandlers(tx) {
                 throw new Error('FsTransaction native list requires a Native resource kind');
             }
             const normalizedFilter = { ...filter, handle: String(filter.handle || '') };
-            const dir = path.join(
-                tx._directoriesByHandle(normalizedFilter.handle).root,
-                'atria-native',
-                'resources',
-                normalizedFilter.kind,
-            );
+            const dir = rootFor(normalizedFilter);
             if (!fs.existsSync(dir)) return [];
             const records = [];
             for (const entry of fs.readdirSync(dir)) {

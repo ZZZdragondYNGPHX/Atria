@@ -65,58 +65,6 @@ Do not stop for routine failures. Stop only for required human device/UI validat
 
 **Group goal:** 先保证当前 Atria Native 数据不会在目录管理、备份、恢复或 Storage Engine 迁移中丢失。
 
-## NUX-001 — Per-user filesystem layout was not normalized for the Native product model
-
-**New finding from the post-redesign data-layout audit**
-
-**Current evidence**
-
-`USER_DIRECTORY_TEMPLATE` still describes the older SillyTavern-oriented physical layout, including directories such as:
-
-- `worlds`;
-- `characters`;
-- `chats`;
-- provider-specific settings directories;
-- `sysprompt`;
-- compatibility extensions.
-
-Major Native-owned data paths are created outside that template:
-
-- Native FS engine resources: `<user-root>/atria-native/resources/...`;
-- Studio projects: `<user-root>/projects/...`;
-- Native/package asset blobs: `<user-root>/assets/atria-native/blobs/...`.
-
-These paths work because their owning services create them lazily, but they are not represented as first-class entries in the central user-directory contract.
-
-**Impact**
-
-The data layout is operational but fragmented:
-
-- directory initialization/introspection does not describe the complete Atria-owned layout;
-- backup category code can miss Native paths;
-- storage tooling must know ad-hoc paths independently;
-- future cleanup/migration can drift between services.
-
-**Acceptance**
-
-Define a canonical Atria per-user data layout/registry for all durable filesystem-owned product data.
-
-This does **not** require moving legacy-compatible directories merely for cosmetic purity. The goal is to centralize authoritative Native paths and make backup/storage/inspection tooling derive from the same contract.
-
-At minimum, Project and Native storage/blob roots must be represented explicitly rather than reconstructed independently by each service.
-
-**Evidence**
-
-- `src/constants.js`
-- `src/users.js`
-- `src/native/project-store.js`
-- `src/native/repositories/asset-store.js`
-- `src/storage/engines/fs-engine-transaction.js`
-
----
-
----
-
 ## NUX-002 — User backup / restore is not Native-data complete
 
 **New finding from the post-redesign data-integrity audit**

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { sync as writeFileAtomic } from 'write-file-atomic';
+import { resolveUserDirectory } from '../constants.js';
 
 import { assertNativeId } from './identity.js';
 import {
@@ -65,9 +66,7 @@ export class ProjectStore {
     }
 
     _root(handle) {
-        const dirs = this._directoriesByHandle(handle);
-        if (!dirs?.root) throw new TypeError('ProjectStore requires user directories with root');
-        return path.join(dirs.root, 'projects');
+        return resolveUserDirectory(this._directoriesByHandle(handle), 'projects');
     }
 
     _projectDir(handle, projectId) {

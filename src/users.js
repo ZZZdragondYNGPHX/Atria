@@ -119,6 +119,10 @@ export const USER_BACKUP_SELECTION_DEFAULTS = Object.freeze({
 /**
  * @typedef {Object} UserDirectoryList
  * @property {string} root - The root directory for the user
+ * @property {string} native - Native filesystem storage root
+ * @property {string} nativeResources - Native Storage Engine resource documents
+ * @property {string} projects - Studio project source and authoring history
+ * @property {string} nativeBlobs - Content-addressed Native and Package asset blobs
  * @property {string} thumbnails - The directory where the thumbnails are stored
  * @property {string} thumbnailsBg - The directory where the background thumbnails are stored
  * @property {string} thumbnailsAvatar - The directory where the avatar thumbnails are stored

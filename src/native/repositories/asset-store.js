@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { sync as writeFileAtomic } from 'write-file-atomic';
+import { resolveUserDirectory } from '../../constants.js';
 
 import { NATIVE_RESOURCE_KINDS, assertAssetRef } from '../contracts.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
@@ -33,7 +34,7 @@ export class AssetStore {
     }
 
     _blobRoot(handle) {
-        return path.join(this._directoriesByHandle(handle).assets, 'atria-native', 'blobs');
+        return resolveUserDirectory(this._directoriesByHandle(handle), 'nativeBlobs');
     }
 
     _blobPath(handle, contentHash) {

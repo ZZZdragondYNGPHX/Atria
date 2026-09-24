@@ -29,6 +29,10 @@ export const SETTINGS_FILE = 'settings.json';
  */
 export const USER_DIRECTORY_TEMPLATE = Object.freeze({
     root: '',
+    native: 'atria-native',
+    nativeResources: 'atria-native/resources',
+    projects: 'projects',
+    nativeBlobs: 'assets/atria-native/blobs',
     thumbnails: 'thumbnails',
     thumbnailsBg: 'thumbnails/bg',
     thumbnailsAvatar: 'thumbnails/avatar',
@@ -60,6 +64,20 @@ export const USER_DIRECTORY_TEMPLATE = Object.freeze({
     sysprompt: 'sysprompt',
     reasoning: 'reasoning',
 });
+
+/**
+ * Resolve a registered directory for full user listings and root-only service
+ * contexts. Physical paths belong to this contract, not individual stores.
+ * @param {Partial<import('./users.js').UserDirectoryList>} directories
+ * @param {keyof typeof USER_DIRECTORY_TEMPLATE} key
+ * @returns {string}
+ */
+export function resolveUserDirectory(directories, key) {
+    if (!Object.hasOwn(USER_DIRECTORY_TEMPLATE, key)) throw new TypeError(`Unknown user directory: ${key}`);
+    if (directories?.[key]) return directories[key];
+    if (!directories?.root) throw new TypeError('User directories require a root');
+    return path.join(directories.root, USER_DIRECTORY_TEMPLATE[key]);
+}
 
 /**
  * @type {import('./users.js').User}
