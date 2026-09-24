@@ -123,4 +123,60 @@ describe('A6 Atria-native Play product', () => {
 
         product.dispose();
     });
+
+    test('streaming preserves committed nodes and a reader scrolling earlier in the story', async () => {
+        const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
+            sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
+        } });
+        await flush();
+        const first = product.conversation.firstElementChild;
+        Object.defineProperties(product.conversation, { scrollHeight: { value: 1000 }, clientHeight: { value: 200 } });
+        product.conversation.scrollTop = 40;
+        product.conversation.dispatchEvent(new Event('scroll'));
+        document.body.dataset.generating = 'true';
+        document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: 'An unfinished reply' } }));
+        await flush();
+        expect(product.conversation.firstElementChild).toBe(first);
+        expect(product.conversation.scrollTop).toBe(40);
+        expect(product.conversation.querySelector('[data-atria-draft]').textContent).toContain('An unfinished reply');
+        expect(runtime.snapshot.timeline).toHaveLength(2);
+        document.body.dataset.generating = 'false';
+        await flush();
+        expect(product.conversation.querySelector('[data-atria-draft]')).toBeNull();
+        delete document.body.dataset.generating;
+        product.dispose();
+    });
+
+    test('composer preserves Enter/IME and supports modifier send without altering the generation ABI', () => {
+        const clicked = jest.fn(); document.getElementById('send_but').addEventListener('click', clicked);
+        const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
+            sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
+        } });
+        product.textarea.value = 'A choice';
+        product.textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, isComposing: true, bubbles: true }));
+        expect(clicked).not.toHaveBeenCalled();
+        product.textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        expect(clicked).not.toHaveBeenCalled();
+        product.textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }));
+        expect(clicked).toHaveBeenCalledTimes(1);
+        expect(document.getElementById('send_textarea').value).toBe('A choice');
+        product.dispose();
+    });
+
+    test('failed sessions recover through the existing runtime reload authority', async () => {
+        runtime.failed = true;
+        runtime.reload = jest.fn(async () => { runtime.failed = false; });
+        const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
+            sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
+        } });
+        expect(product.textarea.disabled).toBe(true);
+        const recover = product.root.querySelector('.atria-play-session-recover');
+        expect(recover.hidden).toBe(false);
+        recover.click();
+        await flush();
+        expect(runtime.reload).toHaveBeenCalledTimes(1);
+        expect(product.textarea.disabled).toBe(false);
+        expect(recover.hidden).toBe(true);
+        product.dispose();
+    });
 });

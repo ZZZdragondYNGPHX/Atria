@@ -342,16 +342,16 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
                 </div>
                 <div class="atria_skill_row_actions">
                     <div class="atria_skill_row_actions_group">
-                        <div class="menu_button menu_button_small atria_skill_row_btn" data-skill-action="view" title="${esc(t('View'))}">${esc(t('View'))}</div>
-                        <div class="menu_button menu_button_small atria_skill_row_btn atria_skill_row_btn_primary" data-skill-action="edit" title="${esc(t('Edit'))}">${esc(t('Edit'))}</div>
+                        <button type="button" class="menu_button menu_button_small atria_skill_row_btn" data-skill-action="view" title="${esc(t('View'))}">${esc(t('View'))}</button>
+                        <button type="button" class="menu_button menu_button_small atria_skill_row_btn atria_skill_row_btn_primary" data-skill-action="edit" title="${esc(t('Edit'))}">${esc(t('Edit'))}</button>
+                    </div>
+                    <details class="atri-skill-more"><summary>${esc(t('More'))}</summary><div class="atria_skill_row_actions_group">
+                        <button type="button" class="menu_button menu_button_small atria_skill_row_btn" data-skill-action="move" title="${esc(t('Move to...'))}">${esc(t('Move to...'))}</button>
+                        <button type="button" class="menu_button menu_button_small atria_skill_row_btn" data-skill-action="rename" title="${esc(t('Rename'))}">${esc(t('Rename'))}</button>
                     </div>
                     <div class="atria_skill_row_actions_group">
-                        <div class="menu_button menu_button_small atria_skill_row_btn" data-skill-action="move" title="${esc(t('Move to...'))}">${esc(t('Move to...'))}</div>
-                        <div class="menu_button menu_button_small atria_skill_row_btn" data-skill-action="rename" title="${esc(t('Rename'))}">${esc(t('Rename'))}</div>
-                    </div>
-                    <div class="atria_skill_row_actions_group">
-                        <div class="menu_button menu_button_small atria_skill_row_btn atria_skill_row_btn_danger atria_skill_row_delete" data-skill-action="delete" title="${esc(t('Delete'))}">${esc(t('Delete'))}</div>
-                    </div>
+                        <button type="button" class="menu_button menu_button_small atria_skill_row_btn atria_skill_row_btn_danger atria_skill_row_delete" data-skill-action="delete" title="${esc(t('Delete'))}">${esc(t('Delete'))}</button>
+                    </div></details>
                 </div>
             </div>
         `;
@@ -381,8 +381,8 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
     const installedActive = activeTab !== 'bundled';
     const tabStrip = `
         <div class="atria_skill_manager_tabs" role="tablist">
-            <div class="atria_skill_tab${installedActive ? ' atria_skill_tab_active' : ''}" data-skill-tab="installed" role="tab">${esc(t('Installed'))}</div>
-            <div class="atria_skill_tab${installedActive ? '' : ' atria_skill_tab_active'}" data-skill-tab="bundled" role="tab">${esc(t('Browse bundled'))}</div>
+            <button type="button" class="atria_skill_tab${installedActive ? ' atria_skill_tab_active' : ''}" data-skill-tab="installed" role="tab" aria-selected="${installedActive}" tabindex="${installedActive ? 0 : -1}">${esc(t('Installed'))}</button>
+            <button type="button" class="atria_skill_tab${installedActive ? '' : ' atria_skill_tab_active'}" data-skill-tab="bundled" role="tab" aria-selected="${!installedActive}" tabindex="${installedActive ? -1 : 0}">${esc(t('Browse bundled'))}</button>
         </div>
     `;
 
@@ -399,14 +399,14 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
             <select class="text_pole atria_skill_filter_select" data-skill-filter>${filterOptions}</select>
         </label>
         <div class="atria_skill_manager_toolbar_actions">
+            <details class="atri-skill-import"><summary>${esc(t('Import'))}</summary><div class="atria_skill_toolbar_group">
+                <button type="button" class="menu_button menu_button_small atria_skill_toolbar_btn" data-skill-toolbar="import-bundled" title="${esc(t('Import bundled'))}">${esc(t('Import bundled'))}</button>
+                <button type="button" class="menu_button menu_button_small atria_skill_toolbar_btn" data-skill-toolbar="import-file" title="${esc(t('Import from file...'))}">${esc(t('Import from file...'))}</button>
+                <button type="button" class="menu_button menu_button_small atria_skill_toolbar_btn" data-skill-toolbar="import-url" title="${esc(t('Import from URL...'))}">${esc(t('Import from URL...'))}</button>
+            </div></details>
             <div class="atria_skill_toolbar_group">
-                <div class="menu_button menu_button_small atria_skill_toolbar_btn" data-skill-toolbar="import-bundled" title="${esc(t('Import bundled'))}">${esc(t('Import bundled'))}</div>
-                <div class="menu_button menu_button_small atria_skill_toolbar_btn" data-skill-toolbar="import-file" title="${esc(t('Import from file...'))}">${esc(t('Import from file...'))}</div>
-                <div class="menu_button menu_button_small atria_skill_toolbar_btn" data-skill-toolbar="import-url" title="${esc(t('Import from URL...'))}">${esc(t('Import from URL...'))}</div>
-            </div>
-            <div class="atria_skill_toolbar_group">
-                <div class="menu_button menu_button_small atria_skill_toolbar_btn atria_skill_toolbar_btn_primary" data-skill-toolbar="create" title="${esc(t('Create new'))}">${esc(t('Create new'))}</div>
-                <div class="menu_button menu_button_small atria_skill_toolbar_btn" data-skill-toolbar="refresh" title="${esc(t('Refresh'))}">${esc(t('Refresh'))}</div>
+                <button type="button" class="menu_button menu_button_small atria_skill_toolbar_btn atria_skill_toolbar_btn_primary" data-skill-toolbar="create" title="${esc(t('Create new'))}">${esc(t('Create new'))}</button>
+                <button type="button" class="menu_button menu_button_small atria_skill_toolbar_btn" data-skill-toolbar="refresh" title="${esc(t('Refresh'))}">${esc(t('Refresh'))}</button>
             </div>
         </div>
     </div>
@@ -415,7 +415,7 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
         : bundledMount;
 
     return `
-<div class="atria_skill_manager atria-studio">
+<div class="atria_skill_manager atria-studio"><header class="atri-library-heading"><h2>${esc(t('Skills'))}</h2></header>
     ${tabStrip}
     ${tabBody}
 </div>
@@ -473,10 +473,12 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
         large: true,
         allowVerticalScrolling: true,
     });
+    let refreshSequence = 0;
+    let closed = false;
 
     /**
      * Re-fetch the inventory and re-render the panel body. Errors surface as
-     * a toast — the panel stays open so the user can retry.
+     * an inline alert — the panel stays open so the user can retry.
      *
      * When `state.tab === 'bundled'`, the body is handed off to
      * `renderBundledBrowser` which manages its own data fetches; we still
@@ -486,14 +488,23 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
      */
     async function refresh() {
         const mount = document.getElementById(state.mountId);
-        if (!mount) return;
+        if (!mount || closed) return;
+        const token = ++refreshSequence;
+        const focused = mount.contains(document.activeElement) ? document.activeElement : null;
+        const focusAttribute = ['data-skill-tab', 'data-skill-filter', 'data-skill-toolbar', 'data-skill-action'].find(key => focused?.hasAttribute(key));
+        const focusValue = focusAttribute ? focused.getAttribute(focusAttribute) : null;
+        const focusName = focused?.closest('[data-skill-name]')?.dataset.skillName;
+        mount.setAttribute('aria-busy', 'true');
+        if (!mount.childElementCount) mount.textContent = t('Loading…');
+        let loadError; let loadedSkills = [];
         try {
             const skills = await context.skills.list({ scope: 'all' });
-            state.skills = Array.isArray(skills) ? skills : [];
+            loadedSkills = Array.isArray(skills) ? skills : [];
         } catch (e) {
-            state.skills = [];
-            toast(t('Failed to load skills: ${0}').replace('${0}', e?.message || String(e)), 'error');
+            loadError = t('Failed to load skills: ${0}').replace('${0}', e?.message || String(e));
         }
+        if (closed || token !== refreshSequence || !mount.isConnected) return;
+        state.skills = loadedSkills;
         const grouped = groupSkillsByScope(state.skills);
         const allScopes = dedupeScopes(state.skills.map(s => s.scope));
         // If filterKey points at a scope that's currently empty (e.g. CPA
@@ -505,7 +516,18 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
         }
         const filtered = filterGroups(grouped, state.filterKey);
         mount.innerHTML = buildPanelHtml(filtered, allScopes, state.filterKey, state.tab, t, esc);
+        mount.removeAttribute('aria-busy');
         bindEvents(mount);
+        if (loadError) {
+            const message = document.createElement('p'); message.setAttribute('role', 'alert'); message.textContent = loadError;
+            const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = t('Refresh');
+            retry.addEventListener('click', () => { void refresh(); });
+            message.append(retry); mount.querySelector('.atria_skill_manager_body')?.replaceChildren(message);
+        }
+        if (focusAttribute) {
+            const target = [...mount.querySelectorAll(`[${focusAttribute}]`)].find(node => node.getAttribute(focusAttribute) === focusValue && (!focusName || node.closest('[data-skill-name]')?.dataset.skillName === focusName));
+            (target || mount.querySelector('[data-skill-toolbar="refresh"]'))?.focus({ preventScroll: true });
+        }
         if (state.tab === 'bundled') {
             const bundledMount = mount.querySelector('.atria_skill_manager_bundled_mount');
             if (bundledMount) {
@@ -519,9 +541,25 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
     }
 
     function bindEvents(root) {
+        const bindAction = (node, handler) => node.addEventListener('click', async event => {
+            if (node.disabled) return;
+            const hadFocus = document.activeElement === node;
+            node.disabled = true;
+            try { await handler(event); } catch (error) { toast(error?.message || String(error), 'error'); } finally {
+                node.disabled = false;
+                if (hadFocus && node.isConnected && document.activeElement === document.body) node.focus();
+            }
+        });
         // Tab switching always available; the per-tab toolbar bindings below
         // are no-ops when their elements aren't in the current DOM.
         root.querySelectorAll('[data-skill-tab]').forEach((el) => {
+            el.addEventListener('keydown', event => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                const tabs = [...root.querySelectorAll('[data-skill-tab]')];
+                const target = event.key === 'Home' ? tabs[0] : event.key === 'End' ? tabs.at(-1) : tabs.find(node => node !== el);
+                target?.focus(); target?.click();
+            });
             el.addEventListener('click', (ev) => {
                 ev.preventDefault();
                 const next = el.getAttribute('data-skill-tab');
@@ -541,7 +579,7 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
         }
 
         root.querySelectorAll('[data-skill-toolbar]').forEach((el) => {
-            el.addEventListener('click', async (ev) => {
+            bindAction(el, async (ev) => {
                 ev.preventDefault();
                 const action = el.getAttribute('data-skill-toolbar');
                 if (action === 'import-bundled') {
@@ -567,7 +605,7 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
         });
 
         root.querySelectorAll('[data-skill-action]').forEach((el) => {
-            el.addEventListener('click', async (ev) => {
+            bindAction(el, async (ev) => {
                 ev.preventDefault();
                 const row = el.closest('[data-skill-name]');
                 if (!row) return;
@@ -885,4 +923,6 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
     Promise.resolve().then(() => { void refresh(); });
 
     await popupPromise;
+    closed = true;
+    refreshSequence++;
 }

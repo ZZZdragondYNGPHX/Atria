@@ -111,8 +111,8 @@ requirePattern(
 );
 requirePattern(
     'public/scripts/native/studio-workspace.js',
-    /Project Agent arrives in A8[\s\S]*dataset\.atriaStudioAi\s*=\s*['"]placeholder['"]|dataset\.atriaStudioAi\s*=\s*['"]placeholder['"][\s\S]*Project Agent arrives in A8/,
-    'A8 must preserve the frozen A7 AI product-position marker while upgrading it at runtime',
+    /dataset\.atriaStudioAi\s*=\s*['"]agent['"]/,
+    'Studio must expose the integrated Project Agent panel, not a deferred placeholder',
 );
 requirePattern(
     'src/native/authoring/studio-service.js',

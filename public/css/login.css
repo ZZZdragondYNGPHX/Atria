@@ -1,60 +1,221 @@
-body.login #shadow_popup {
-    opacity: 1;
+/* Entry uses the same tokens as the authenticated frame, without its layout. */
+html[data-atria-entry="login"] {
+    overflow: auto;
+}
+body.login {
     display: flex;
+    min-height: 100dvh;
+    height: auto;
+    overflow: auto;
+    margin: 0;
+    padding: max(32px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(32px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+    background: var(--atri-canvas);
+    color: var(--atri-text-primary);
+    font-family: var(--atri-font-sans);
+    font-size: 15px;
+    text-shadow: none;
+    transform: none;
+    perspective: none;
 }
-
-body.login .logo {
-    max-width: 30px;
+.atri-login {
+    width: min(100%, 420px);
+    margin: auto;
+    padding: 40px;
+    background: var(--atri-surface-1);
+    border-radius: var(--atri-radius-xl);
+    box-sizing: border-box;
 }
-
-body.login #logoBlock {
-    align-items: center;
-    margin: 0 auto;
-    gap: 10px;
+.atri-login * {
+    box-sizing: border-box;
+    min-width: 0;
+    text-shadow: none;
 }
-
-body.login .userSelect {
-    display: flex;
-    flex-direction: column;
-    color: var(--SmartThemeBodyColor);
-    border: 1px solid var(--SmartThemeBorderColor);
-    border-radius: 5px;
-    padding: 3px 5px;
-    width: 30%;
-    cursor: pointer;
-    margin: 5px 0;
-    transition: background-color var(--animation-duration) ease-in-out;
+.atri-login-heading {
+    margin-bottom: 32px;
+}
+.atri-entry-mark {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    margin-bottom: 24px;
+    border-radius: 12px;
+    background: var(--atri-accent);
+    color: white;
+    font-size: 26px;
+    font-weight: 700;
+}
+.atri-login h1 {
+    font-size: 28px;
+    letter-spacing: -.02em;
+    margin: 0 0 8px;
+}
+.atri-login h2 {
+    font-size: 18px;
+    margin: 0 0 20px;
+}
+.atri-login p {
+    color: var(--atri-text-secondary);
+    line-height: 1.55;
+    margin: 8px 0 20px;
+    overflow-wrap: anywhere;
+}
+.atri-login label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 16px 0 8px;
+}
+.atri-login input {
+    display: block;
+    width: 100%;
+    height: 44px;
+    border: 1px solid var(--atri-separator-strong);
+    border-radius: var(--atri-radius-md);
+    background: var(--atri-surface-2);
+    color: var(--atri-text-primary);
+    padding: 10px 12px;
+    font: inherit;
+    font-size: 16px;
+}
+.atri-login button, .atri-login-actions a {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    text-align: center;
-    overflow: hidden;
+    gap: 8px;
+    min-height: 44px;
+    border: 0;
+    border-radius: var(--atri-radius-md);
+    padding: 10px 16px;
+    font: inherit;
+    font-weight: 600;
+    color: var(--atri-text-primary);
+    background: var(--atri-fill);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 140ms ease;
+    overflow-wrap: anywhere;
 }
-
-body.login .userSelect .userName,
-body.login .userSelect .userHandle {
+.atri-login button:active, .atri-login-actions a:active {
+    background: var(--atri-fill-pressed);
+}
+.atri-login :focus-visible {
+    outline: 2px solid var(--atri-accent-text);
+    outline-offset: 3px;
+}
+.atri-login button:disabled {
+    opacity: .5;
+    cursor: wait;
+}
+.atri-login button.atri-login-primary {
+    color: var(--atri-text-on-accent);
+    background: var(--atri-accent);
+}
+.atri-login button.atri-login-link {
+    background: none;
+    color: var(--atri-accent-text);
+    padding-inline: 0;
+    font-size: 14px;
+}
+.atri-login-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 24px;
+}
+.atri-login-actions > * {
+    flex: 1;
+}
+.atri-login #loginButton {
     width: 100%;
+    margin-top: 24px;
+}
+.atri-login #userList {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 20px;
+    max-height: 260px;
+    overflow: auto;
+    padding: 4px;
+}
+.atri-login .userSelect {
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    gap: 2px 12px;
+    text-align: left;
+    justify-content: start;
+    padding: 12px;
+    background: none;
+}
+.atri-login .userSelect[aria-pressed="true"] {
+    background: var(--atri-accent-soft);
+}
+.atri-login .avatar {
+    grid-row: span 2;
+    width: 40px;
+    height: 40px;
+}
+.atri-login .avatar img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+.atri-login .userName, .atri-login .userHandle {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-
-body.login .userSelect:hover {
-    background-color: var(--black30a);
+.atri-login .userHandle, .atri-login small {
+    color: var(--atri-text-secondary);
+    font-size: 13px;
+    font-weight: 400;
 }
-
-body.login #handleEntryBlock,
-body.login #passwordEntryBlock,
-body.login #passwordRecoveryBlock,
-body.login #oauthLoginBlock {
-    margin: 2px;
+.atri-login #oauthLoginBlock {
+    border-top: 1px solid var(--atri-separator);
+    padding-top: 20px;
+    margin-top: 20px;
 }
-
-body.login .oauthLoginTitle {
-    margin: 10px 0 6px;
-    opacity: 0.85;
+.atri-login #oauthLoginBlock p {
+    font-size: 13px;
+    margin: 0;
 }
-
-body.login #oauthLoginBlock .menu_button {
-    min-width: 140px;
-    justify-content: center;
+.atri-login #oauthLoginBlock .atri-login-actions {
+    margin-top: 12px;
+}
+.atri-login #registerEntryBlock {
+    margin-top: 16px;
+}
+.atri-login #errorMessage {
+    color: var(--atri-danger);
+    margin: 20px 0 0;
+}
+.atri-login #errorMessage:empty {
+    display: none;
+}
+.atri-login [hidden] {
+    display: none !important;
+}
+@media (max-width: 719px) {
+    body.login {
+        padding-top: max(40px, env(safe-area-inset-top));
+        background: var(--atri-surface-1);
+    }
+    .atri-login {
+        padding: 0;
+        max-width: 380px;
+        border-radius: 0;
+    }
+}
+@media (hover: hover) {
+    .atri-login button:hover, .atri-login-actions a:hover {
+        background: var(--atri-fill-hover);
+    }
+    .atri-login button.atri-login-primary:hover {
+        background: var(--atri-accent-hover);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .atri-login button {
+        transition: none;
+    }
 }

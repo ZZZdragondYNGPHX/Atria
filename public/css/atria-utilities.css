@@ -1,0 +1,806 @@
+/* Agents and utilities: product presentation over existing controllers. */
+.atria-utility-workspace {
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    overflow: auto;
+    padding: 32px clamp(20px,4vw,56px) max(32px,var(--atri-safe-area-bottom));
+    color: var(--atri-text-primary);
+    font: var(--atri-text-body)/1.55 var(--atri-font-sans);
+}
+
+.atria-utility-workspace > * {
+    max-width: 880px;
+    margin-inline: auto;
+}
+
+.atria-utility-workspace__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 32px;
+}
+
+.atria-utility-workspace__header h2 {
+    margin: 0;
+    font-size: var(--atri-text-large-title);
+    letter-spacing: -.025em;
+}
+
+.atria-utility-workspace__header p {
+    margin: 8px 0 0;
+    max-width: 60ch;
+    color: var(--atri-text-secondary);
+}
+
+.atria-utility-workspace__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.atria-utility-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 36px;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: var(--atri-radius-md);
+    background: var(--atri-fill);
+    color: var(--atri-text-primary);
+    font: inherit;
+    cursor: pointer;
+    transition: background var(--atri-motion-fast),transform var(--atri-motion-fast);
+}
+
+.atria-utility-action svg {
+    width: 18px;
+    height: 18px;
+}
+
+.atria-utility-action:active {
+    transform: scale(.98);
+}
+
+.atria-utility-action:disabled {
+    opacity: .5;
+    cursor: default;
+}
+
+.atria-utility-workspace :focus-visible {
+    outline: 2px solid var(--atri-accent);
+    outline-offset: 3px;
+}
+
+.atria-utility-workspace__body {
+    min-width: 0;
+}
+
+.atria-utility-workspace :is(h3,p,strong,summary) {
+    overflow-wrap: anywhere;
+}
+
+.atria-utility-workspace h3 {
+    margin: 0 0 12px;
+    font-size: var(--atri-text-title-3);
+}
+
+.atria-utility-workspace summary {
+    min-height: 44px;
+    padding-block: 10px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.atria-preference-groups {
+    display: grid;
+    gap: 32px;
+}
+
+.atria-preference-rows,.atria-account-rows,.atria-account-facts {
+    overflow: hidden;
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-surface-1);
+}
+
+.atria-preference-row {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--atri-separator);
+}
+
+.atria-preference-row:last-child {
+    border-bottom: 0;
+}
+
+.atria-preference-row > label,.atria-preference-row > #UI-language-block {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin: 0;
+}
+
+.atria-preference-row label > :is(small,span) {
+    color: var(--atri-text-primary);
+    font-size: inherit;
+}
+
+.atria-preference-row .checkbox_label {
+    flex-direction: row-reverse;
+}
+
+.atria-preference-row select {
+    width: 48%;
+    max-width: 360px;
+    min-width: 0;
+}
+
+.atria-preference-row input[type=range] {
+    width: 48%;
+    max-width: 360px;
+}
+
+.atria-preference-row #color-picker-block {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.atria-preference-row :is(select,input:not([type=checkbox]):not([type=range])) {
+    background: var(--atri-surface-2);
+    border: 0;
+    color: var(--atri-text-primary);
+    border-radius: var(--atri-radius-sm);
+    min-height: 36px;
+    font: inherit;
+}
+
+.atria-utility-workspace input[type=checkbox] {
+    appearance: none;
+    position: relative;
+    flex: 0 0 36px;
+    width: 36px;
+    height: 22px;
+    margin: 0;
+    border: 0;
+    border-radius: 20px;
+    background: var(--atri-fill-pressed);
+    cursor: pointer;
+}
+
+.atria-utility-workspace input[type=checkbox]::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    top: 3px;
+    left: 3px;
+    border-radius: 50%;
+    background: var(--atri-text-primary);
+    transition: transform var(--atri-motion-fast);
+}
+
+.atria-utility-workspace input[type=checkbox]:checked {
+    background: var(--atri-accent);
+}
+
+.atria-utility-workspace input[type=checkbox]:checked::before {
+    background: #fff;
+    transform: translateX(14px);
+}
+
+.atria-utility-workspace input[type=checkbox]:disabled {
+    opacity: .5;
+}
+
+.atria-utility-related {
+    margin-top: 32px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-top: 1px solid var(--atri-separator);
+    padding-top: 24px;
+}
+
+.atria-utility-related button {
+    color: var(--atri-accent-text);
+    background: transparent;
+}
+
+.atria-plugin-list {
+    display: grid;
+    grid-template-columns: minmax(0,1fr);
+}
+
+.atria-plugin-card {
+    display: grid;
+    min-width: 0;
+    gap: 6px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--atri-separator);
+}
+
+.atria-plugin-card__title-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.atria-plugin-card__scope,.atria-plugin-card__metadata {
+    color: var(--atri-text-secondary);
+    font-size: var(--atri-text-footnote);
+}
+
+.atria-plugin-card p {
+    margin: 0;
+    color: var(--atri-text-secondary);
+}
+
+.atria-plugin-card__controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding-top: 8px;
+}
+
+.atria-plugin-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+}
+
+.atria-plugin-feedback:empty {
+    display: none;
+}
+
+.atria-plugin-card[data-save-state=error] .atria-plugin-feedback {
+    color: var(--atri-danger);
+}
+
+.atria-plugin-server-surface {
+    padding-block: 24px;
+}
+
+.atria-plugin-compatibility {
+    margin-top: 24px;
+    border-top: 1px solid var(--atri-separator);
+}
+
+.atria-plugin-compatibility p,.atria-native-plugin-surface > p {
+    color: var(--atri-text-secondary);
+}
+
+.atria-plugin-compatibility__body {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 24px;
+}
+
+.atria-plugin-compatibility__body > :is(#extensions_settings,#extensions_settings2) {
+    min-width: 0;
+    width: auto!important;
+}
+
+.atria-account-profile {
+    display: grid;
+    gap: 28px;
+    text-align: start;
+    min-width: 0;
+}
+
+.atria-account-identity {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+}
+
+.atria-account-avatar .avatar {
+    width: 80px;
+    height: 80px;
+}
+
+.atria-account-avatar .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.atria-account-avatar-actions {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.atria-account-avatar-actions button {
+    min-width: 36px;
+    min-height: 36px;
+}
+
+.atria-account-identity-copy {
+    min-width: 0;
+}
+
+.atria-account-identity-copy h2 {
+    margin: 0;
+    font-size: var(--atri-text-title-1);
+}
+
+.atria-account-identity-copy p {
+    margin: 4px 0;
+    color: var(--atri-text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.atria-account-identity-copy .userRole {
+    display: block;
+    font-size: var(--atri-text-footnote);
+    color: var(--atri-text-secondary);
+}
+
+.atria-account-facts {
+    margin: 0 0 8px;
+}
+
+.atria-account-facts > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 16px;
+    border-bottom: 1px solid var(--atri-separator);
+}
+
+.atria-account-facts dd {
+    margin: 0;
+    color: var(--atri-text-secondary);
+    text-align: end;
+}
+
+.atria-account-profile .atria-account-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: center;
+    width: 100%;
+    min-height: 52px;
+    padding: 14px 18px;
+    margin: 0;
+    border: 0;
+    border-bottom: 1px solid var(--atri-separator);
+    border-radius: 0;
+    background: var(--atri-surface-1);
+    text-align: start;
+    font: inherit;
+}
+
+.atria-account-row i {
+    font-size: 12px;
+    color: var(--atri-text-tertiary);
+}
+
+.atria-account-profile .atria-account-advanced {
+    background: transparent;
+    border: 0;
+    border-top: 1px solid var(--atri-separator);
+    border-radius: 0;
+    padding: 0;
+}
+
+.atria-account-advanced .atria-account-row {
+    color: var(--atri-danger);
+}
+
+.atria-account-advanced p,.accountsDisabledHint {
+    color: var(--atri-text-secondary);
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atria-utility-workspace {
+    padding: 24px 16px max(24px,var(--atri-safe-area-bottom));
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atria-utility-workspace__header {
+    gap: 12px;
+    padding-bottom: 24px;
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atria-preference-row {
+    padding: 12px;
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atria-preference-row label:not(.checkbox_label),.atria-app-shell[data-atria-viewport=compact] #UI-language-block {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atria-preference-row :is(select,input[type=range]) {
+    width: 100%;
+    max-width: none;
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atria-plugin-compatibility__body {
+    grid-template-columns: minmax(0,1fr);
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atria-account-facts > div {
+    flex-direction: column;
+    gap: 4px;
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atria-account-facts dd {
+    text-align: start;
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atria-utility-workspace :is(button,select,summary) {
+    min-height: 44px;
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atria-preference-row select {
+    font-size: 16px;
+}
+
+@media (pointer:coarse) {
+    .atria-utility-workspace :is(button,select,summary) {
+        min-height: 44px;
+    }
+
+}
+
+@media (hover:hover) {
+    .atria-utility-action:hover,.atria-account-profile .atria-account-row:hover {
+        background: var(--atri-fill-hover);
+    }
+
+}
+
+@media (prefers-reduced-motion:reduce) {
+    .atria-utility-workspace * {
+        transition: none!important;
+    }
+
+}
+
+/* Diagnostics: a list, optional evidence pane, and an expert log console. */
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    padding: 24px;
+    gap: 16px;
+    font: var(--atri-text-body)/1.5 var(--atri-font-sans);
+    background: var(--atri-canvas);
+    color: var(--atri-text-primary);
+    overflow: auto;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsHeader {
+    flex-wrap: wrap;
+    border: 0;
+    padding: 0;
+    gap: 16px;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsHeader h3 {
+    font-size: var(--atri-text-title-1);
+    margin: 0 0 8px;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsHeader h3 i {
+    display: none;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsHeaderActions {
+    width: 100%;
+    align-items: center;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsModeSwitch {
+    margin-right: auto;
+    padding: 3px;
+    border-radius: var(--atri-radius-md);
+    background: var(--atri-fill);
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .menu_button {
+    border: 0;
+    background: var(--atri-fill);
+    color: var(--atri-text-primary);
+    font: inherit;
+    min-height: 36px;
+    padding: 8px 12px;
+    margin: 0;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsModeButton {
+    background: transparent;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsModeButton.is-active {
+    background: var(--atri-surface-3);
+    outline: 0;
+    box-shadow: none;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] :focus-visible {
+    outline: 2px solid var(--atri-accent);
+    outline-offset: 2px;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsGrid {
+    grid-template-columns: minmax(0,1fr);
+    grid-template-rows: auto minmax(200px,1fr);
+    gap: 16px;
+    min-height: 300px;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true].is-detailing .atriaLogsGrid {
+    grid-template-columns: minmax(280px,1fr) minmax(300px,1fr);
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsNavPane {
+    grid-column: 1/-1;
+    display: block;
+    border: 0;
+    border-bottom: 1px solid var(--atri-separator);
+    background: none;
+    border-radius: 0;
+    max-height: 200px;
+    overflow: auto;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsNavPane > summary {
+    cursor: pointer;
+    display: list-item;
+    list-style: disclosure-closed inside;
+    min-height: 44px;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsNavPane[open] > summary {
+    list-style-type: disclosure-open;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsHealthList {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(200px,1fr));
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] :is(.atriaLogsListPane,.atriaLogsDetailPane,.atriaLogsRawDetail,.atriaLogsVirtualViewport) {
+    border: 0;
+    border-radius: 0;
+    background: var(--atri-surface-1);
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true]:not(.is-detailing) :is(.atriaLogsDetailPane,.atriaLogsRawDetail) {
+    display: none;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true].is-detailing .atriaLogsDetailPane {
+    display: flex;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsExpertGrid {
+    grid-template-columns: minmax(0,1fr);
+    min-height: 260px;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true].is-detailing .atriaLogsExpertGrid {
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsMobileBack {
+    display: inline-flex;
+    align-self: flex-start;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsFeedback {
+    margin: 0;
+    padding: 12px 16px;
+    background: var(--atri-surface-2);
+    border-radius: var(--atri-radius-sm);
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsFeedback[data-error=true] {
+    color: var(--atri-danger);
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true].is-loading {
+    opacity: 1;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] :is(pre,.atriaLogsIncidentMain,.atriaLogsOwnerBadge) {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsIncidentRow {
+    border-radius: 0;
+    border: 0;
+    border-bottom: 1px solid var(--atri-separator);
+    background: transparent;
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atriaLogsWorkspace[data-atria-workspace-embedded=true] {
+    padding: 16px;
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsHeaderActions {
+    display: grid;
+    grid-template-columns: 1fr auto;
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsModeSwitch {
+    grid-column: 1/-1;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atriaLogsWorkspace[data-atria-workspace-embedded=true] :is(.atriaLogsGrid,.atriaLogsExpertGrid) {
+    grid-template-columns: minmax(0,1fr);
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atriaLogsWorkspace[data-atria-workspace-embedded=true].is-detailing :is(.atriaLogsNavPane,.atriaLogsListPane,.atriaLogsVirtualViewport) {
+    display: none;
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atriaLogsWorkspace[data-atria-workspace-embedded=true].is-detailing :is(.atriaLogsDetailPane,.atriaLogsRawDetail) {
+    display: flex;
+    grid-row: 1/-1;
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atriaLogsWorkspace[data-atria-workspace-embedded=true] :is(button,select) {
+    min-height: 44px;
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atriaLogsWorkspace[data-atria-workspace-embedded=true] :is(input,select) {
+    font-size: 16px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.atria-utility-workspace input[type=checkbox]::before {
+    clip-path: none;
+    box-shadow: none;
+    transform: translateX(0);
+    transform-origin: center;
+}
+
+.atria-utility-workspace input[type=checkbox] {
+    filter: none;
+}
+
+.atria-preference-row select.flex1 {
+    flex: 0 1 48%;
+}
+
+.atria-preference-row small {
+    opacity: 1;
+}
+
+.atria-preference-row #UI-language-block > select {
+    flex: 0 1 48%;
+}
+
+.atria-account-profile .right_menu_button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: var(--atri-radius-sm);
+    background: var(--atri-fill);
+    color: var(--atri-text-primary);
+    opacity: 1;
+    cursor: pointer;
+}
+
+.atria-app-shell[data-atria-viewport=compact] .atria-preference-row select.flex1,.atria-app-shell[data-atria-viewport=compact] .atria-preference-row #UI-language-block > select {
+    flex: auto;
+    width: 100%;
+}
+
+
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsIncidentDetailHeader {
+    flex-wrap: wrap;
+}
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsIncidentDetailHeader > div {
+    min-width: 0;
+    flex: 1 1 200px;
+}
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsIncidentDetailHeader h4 {
+    overflow-wrap: anywhere;
+}
+.atriaLogsWorkspace[data-atria-workspace-embedded=true] .atriaLogsDetailFacts > div {
+    border: 0;
+    border-radius: 0;
+    border-bottom: 1px solid var(--atri-separator);
+}
+.atria-plugin-card pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: var(--atri-text-footnote)/1.6 var(--atri-font-mono);
+}
+/* Existing backup/storage controllers retain every field and permission check. */
+html[data-atria-appearance] :is(.backupSyncCenter,.storageManagementCenter) {
+    text-align: start;
+    min-width: 0;
+    max-width: 100%;
+    width: 100%;
+}
+html[data-atria-appearance] :is(.backupSyncCenter,.storageManagementCenter) h3 {
+    font-size: var(--atri-text-title-2);
+    margin-bottom: 12px;
+}
+html[data-atria-appearance] :is(.backupSyncTabs,.storageManagementTabs) {
+    gap: 4px;
+    background: var(--atri-surface-2);
+    border-radius: var(--atri-radius-md);
+    padding: 4px;
+}
+html[data-atria-appearance] :is(.backupSyncTab,.storageManagementTab).active {
+    outline: 0;
+    background: var(--atri-fill-pressed);
+}
+html[data-atria-appearance] :is(.backupRetentionCard,.backupManagedGroup,.backupProviderCard,.storageManagementSection) {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 16px 0;
+}
+html[data-atria-appearance] .backupRetentionCard {
+    border-top: 1px solid var(--atri-separator);
+    gap: 12px;
+}
+html[data-atria-appearance] .backupRetentionCard label {
+    min-width: 0;
+    white-space: normal;
+}
+html[data-atria-appearance] .backupRetentionCard input {
+    max-width: 100%;
+}
+html[data-atria-appearance] :is(.backupSyncCenter,.storageManagementCenter) .menu_button_note {
+    text-wrap: pretty;
+}
+@media (max-width:719px) {
+    html[data-atria-appearance] .backupRetentionGrid {
+        grid-template-columns: minmax(0,1fr);
+    }
+    html[data-atria-appearance] :is(.backupSyncTabs,.storageManagementTabs) {
+        display: grid;
+        grid-template-columns: repeat(2,minmax(0,1fr));
+    }
+    html[data-atria-appearance] :is(.backupSyncCenter,.storageManagementCenter) :is(input,select) {
+        font-size: 16px;
+    }
+}
+
+/* Only the compatibility frame is adapted; extension field ownership stays local. */
+.atria-plugin-compatibility__body :is(#extensions_settings, #extensions_settings2) .inline-drawer-toggle.inline-drawer-header {
+    min-height: 44px;
+    padding: 12px 0;
+    margin: 0;
+    border: 0;
+    border-bottom: 1px solid var(--atri-separator);
+    border-radius: 0;
+    background: transparent;
+    color: var(--atri-text-primary);
+    filter: none;
+    transition: color var(--atri-duration-fast);
+}
+.atria-plugin-compatibility__body .inline-drawer-content {
+    min-width: 0;
+    padding-block: 12px;
+}
+.atria-plugin-compatibility__body .inline-drawer-header .inline-drawer-icon {
+    color: var(--atri-text-tertiary);
+    font-size: 16px;
+}

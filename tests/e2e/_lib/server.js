@@ -13,8 +13,7 @@
 // reserves a fresh port + a fresh APFS-cloned dataRoot.
 
 import { spawn } from 'node:child_process';
-import { mkdirSync, existsSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { mkdirSync, existsSync, rmSync, readFileSync, writeFileSync, cpSync, constants } from 'node:fs';
 import { resolve } from 'node:path';
 import { reservePort } from './ports.js';
 
@@ -31,17 +30,13 @@ mkdirSync(SCRATCH_ROOT, { recursive: true });
 /**
  * Clone the seed `data/` directory using APFS copy-on-write so spec
  * isolation is effectively free (no real bytes copied on macOS APFS).
- * Falls back to `cp -R` on other filesystems.
+ * Node falls back to a regular copy where filesystem reflinks are unavailable.
  */
 function cloneDataDir(targetDir) {
     if (existsSync(targetDir)) {
         rmSync(targetDir, { recursive: true, force: true });
     }
-    try {
-        execSync(`cp -c -R "${SEED_DATA}" "${targetDir}"`, { stdio: 'ignore' });
-    } catch {
-        execSync(`cp -R "${SEED_DATA}" "${targetDir}"`, { stdio: 'ignore' });
-    }
+    cpSync(SEED_DATA, targetDir, { recursive: true, mode: constants.COPYFILE_FICLONE });
     // Drop any dev-time chat history under default-user/chats/ so specs
     // that load a character don't see leftover turns from the developer's
     // own runs (the integrity check rejects them anyway, but the noise

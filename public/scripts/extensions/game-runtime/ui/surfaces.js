@@ -58,6 +58,8 @@ export function createSurfaceHost(options = {}) {
         }
 
         host.appendChild(container);
+        // The host frame owns modal focus/Escape, while the package owns its content.
+        if (typeof host.showModal === 'function' && !host.open) host.showModal();
 
         let active = true;
         const handle = Object.freeze({
@@ -73,6 +75,7 @@ export function createSurfaceHost(options = {}) {
                 } else if (container.parentNode && typeof container.parentNode.removeChild === 'function') {
                     container.parentNode.removeChild(container);
                 }
+                if (typeof host.close === 'function' && !host.querySelector?.('[data-atria-game-mount]')) host.close();
                 return true;
             },
         });

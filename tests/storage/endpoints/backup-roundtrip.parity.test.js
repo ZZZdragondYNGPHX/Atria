@@ -98,17 +98,9 @@ function mountMulterShim(app, uploadsDir) {
     // Real multer is the production middleware (server-main.js mounts it
     // globally with `single('avatar')` against an uploads dir under the data
     // root). Re-creating it here keeps the request path identical to prod.
-    // /import/data-zip uses the same multer instance in prod (also keyed on
-    // 'avatar'); mount it on both routes so the kind-mismatch / legacy-fs
-    // 400 paths can be exercised end-to-end.
     fs.mkdirSync(uploadsDir, { recursive: true });
-    const upload = multer({
-        storage: multer.diskStorage({
-            destination: (_req, _file, cb) => cb(null, uploadsDir),
-        }),
-    }).single('avatar');
+    const upload = multer({ storage: multer.diskStorage({ destination: (_req, _file, cb) => cb(null, uploadsDir) }) }).single('avatar');
     app.use('/api/users/restore-backup', upload);
-    app.use('/api/users/import/data-zip', upload);
 }
 
 async function postBackup(harness, { handle = harness.handle, selection = ALL_SELECTION } = {}) {
@@ -358,40 +350,8 @@ describe.each(ENDPOINT_HARNESSES)('backup/restore roundtrip on $name', ({ mode }
         expect(restoreRes.body?.crossMode?.destKind).toBe(mode);
     });
 
-    test('REGRESSION: /import/data-zip demands scratch creds on db-engine mismatch', async () => {
-        // Parallel of the /restore-backup mismatch test under the new
-        // cross-mode semantics: a foreign-db ZIP without scratch creds
-        // returns 400 with crossModeScratchRequired payload.
-        if (mode === 'fs') return; // fs has no engine_meta-driven validation path
-
-        const otherKind = mode === 'postgres' ? 'mysql' : 'postgres';
-        const meta = {
-            engineKind: otherKind,
-            schemaVersion: 1,
-            createdAt: new Date().toISOString(),
-            handle: harness.handle,
-        };
-        const zipPath = path.join(harness.dataRoot, `bk-mismatch-import-${randomBytes(4).toString('hex')}.zip`);
-        await new Promise((resolve, reject) => {
-            const out = fs.createWriteStream(zipPath);
-            const arc = archiver('zip');
-            arc.on('error', reject);
-            out.on('close', resolve);
-            arc.pipe(out);
-            arc.append(JSON.stringify({ schemaVersion: 1, handle: harness.handle, selection: ALL_SELECTION }, null, 2),
-                { name: 'manifest.json' });
-            arc.append(JSON.stringify(meta, null, 2), { name: '_engine_meta.json' });
-            arc.append(Buffer.from('not a real dump'), { name: '_engine_dump.bin' });
-            arc.finalize();
-        });
-        const zipBytes = fs.readFileSync(zipPath);
-
-        const importRes = await request(harness.app)
-            .post('/api/users/import/data-zip')
-            .field('mode', 'merge')
-            .attach('avatar', zipBytes, 'backup.zip');
-        expect(importRes.status).toBe(400);
-        expect(importRes.body?.crossModeScratchRequired?.kind).toBe(otherKind);
-        expect(String(importRes.body?.error || '')).toMatch(new RegExp(`scratch ${otherKind}`, 'i'));
+    test('retired onboarding data import is not routed', async () => {
+        const result = await request(harness.app).post('/api/users/import/data-zip');
+        expect(result.status).toBe(404);
     });
 });

@@ -50,6 +50,25 @@ function makeAdapter(kind, records) {
 }
 
 describe('R7G WorkspaceHost', () => {
+    test('the active controller closes its transient before Escape or Back consumes a detail route', async () => {
+        const navigation = createAtriaNavigationAuthority({ window });
+        const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry(), navigation });
+        const dismissTransient = jest.fn().mockReturnValue(true);
+        const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters: { build: () => ({ dismissTransient, updateRoute() {} }) } });
+        host.openBuild('project_test'); await flushWorkspace();
+        const route = navigation.getRoute();
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        expect(dismissTransient).toHaveBeenCalledTimes(1);
+        expect(navigation.getRoute()).toEqual(route);
+        expect(shell.dismissDetailRouteForBack()).toBe(true);
+        expect(dismissTransient).toHaveBeenCalledTimes(2);
+        expect(navigation.getRoute()).toEqual(route);
+        dismissTransient.mockReturnValue(false);
+        shell.dismissDetailRouteForBack();
+        await new Promise(resolve => setTimeout(resolve, 30));
+        expect(navigation.getRoute().child).toBeNull();
+        host.dispose(); shell.destroy(); navigation.dispose();
+    });
     beforeEach(() => {
         window.history.replaceState(null, '', '/');
         setViewport();

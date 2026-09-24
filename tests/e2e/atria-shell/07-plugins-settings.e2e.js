@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { markOnboarded } from '../_lib/fixtures.js';
 import { awaitMainUI } from '../_lib/page.js';
@@ -11,7 +12,7 @@ test.describe.configure({ mode: 'serial' });
 let server;
 const PLUGIN_DIR = 'r7g-plugin-fixture';
 const PLUGIN_ID = `third-party/${PLUGIN_DIR}`;
-const REPO_ROOT = resolve(new URL('../../..', import.meta.url).pathname);
+const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 const GLOBAL_PLUGIN_ROOT = resolve(REPO_ROOT, 'public/scripts/extensions/third-party', PLUGIN_DIR);
 
 test.beforeAll(async () => {
@@ -81,6 +82,7 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
         await expect(root.locator('[data-atria-plugin="orchestrator"]')).toHaveCount(0);
         await expect(root.locator('[data-atria-plugin="memory-graph"]')).toHaveCount(0);
 
+        await root.locator('[data-atria-legacy-plugins] > summary').click();
         const pluginCard = root.locator(`[data-atria-plugin="${PLUGIN_ID}"]`);
         const toggle = pluginCard.locator('input[type="checkbox"]');
         await expect(toggle).toBeChecked();
@@ -105,23 +107,21 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
         await root.locator('[data-atria-utility="settings"]').click();
         await expect(page).toHaveURL(/atriaChild=utility.settings/);
         await expect(root.locator('[data-atria-utility-workspace="settings"]')).toBeVisible();
-        await expect(root.locator('[data-atria-settings-compatibility="true"]')).not.toHaveAttribute('open', '');
-        await root.locator('[data-atria-settings-section="language"]').click();
-        await expect(root.locator('[data-atria-settings-compatibility="true"]')).toHaveAttribute('open', '');
-        await expect(root.locator('#user-settings-block[data-atria-workspace-embedded="true"]')).toBeVisible();
+        await expect(root.locator('#ui_language_select')).toBeVisible();
+        await expect(root.locator('#themes')).toBeVisible();
+        await expect(root.locator('#user-settings-block[data-atria-workspace-embedded="true"]')).toHaveCount(0);
         expect(await page.evaluate(() => ({
             sameRoot: window.__r7gSettingsRoot === document.getElementById('user-settings-block'),
             sameLanguage: window.__r7gLanguage === document.getElementById('ui_language_select'),
             languageCount: document.querySelectorAll('#ui_language_select').length,
-            accountControlsHidden: document.getElementById('account_controls')?.hidden,
             connectionInSettings: Boolean(document.querySelector('#atria-workspace #atria-connection-manager-root')),
         }))).toEqual({
             sameRoot: true,
             sameLanguage: true,
             languageCount: 1,
-            accountControlsHidden: true,
             connectionInSettings: false,
         });
+        await expect(page.locator('#account_controls')).toBeHidden();
 
         await root.locator('[data-atria-utility="account"]').click();
         await expect(page).toHaveURL(/atriaChild=utility.account/);
@@ -206,7 +206,7 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
         await expect(root.locator('[data-atria-utility-workspace="account"]')).toBeVisible();
 
         await root.locator('[data-atria-primitive="BottomNavigation"] [data-atria-domain="play"]').click();
-        await expect(root.locator('#sheld')).toBeVisible();
+        await expect(root.locator('[data-atria-native-play-landing]')).toBeVisible();
 
         expect(await page.evaluate(() => ({
             chat: document.querySelectorAll('#chat').length,

@@ -9,6 +9,7 @@ import { awaitMainUI } from '../_lib/page.js';
 import { seedNativeSessionDataRoot } from './_helpers.js';
 let server; let seeded;
 test.describe.configure({ mode: 'serial' });
+test.use({ actionTimeout: 12000 });
 if (process.env.PW_NATIVE_CHANNEL) test.use({ channel: process.env.PW_NATIVE_CHANNEL });
 
 test.beforeAll(async () => {
@@ -54,11 +55,11 @@ for (const width of [1440, 390]) test(`Library and Studio authoring at ${width}p
     await library.getByRole('button', { name: 'Simple editor', exact: true }).click();
     await expect(library.getByLabel('Prompt body', { exact: true })).toHaveValue('Write clear dialogue.'); await shot('module-editor');
     await page.route('**/api/native/generation/resources', route => route.request().method() === 'POST' ? route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: 'synthetic-save-failure' }) }) : route.continue());
-    await library.getByRole('button', { name: 'Review / save revision' }).click();
+    await library.getByRole('button', { name: 'Save revision' }).click();
     await expect(library.getByRole('alert')).toContainText('synthetic-save-failure'); await shot('save-failure');
     await page.unroute('**/api/native/generation/resources');
-    await library.getByRole('button', { name: 'Review / save revision' }).click();
-    await expect(library).toContainText('Saved immutable Library revision'); await library.getByRole('button', { name: 'Reload resources' }).click();
+    await library.getByRole('button', { name: 'Save revision' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Saved immutable Library revision' })).toBeVisible(); await page.getByRole('button', { name: 'Back to resources', exact: true }).click();
     await expect(library).toContainText('Library module ' + width);
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('prompt-programs'));
     await library.getByRole('button', { name: 'New resource', exact: true }).click();
@@ -70,7 +71,7 @@ for (const width of [1440, 390]) test(`Library and Studio authoring at ${width}p
     await expect(library.getByLabel('Stage ID 1', { exact: true })).toHaveValue('stage.step2');
     await library.locator('fieldset').nth(0).getByRole('button', { name: 'Remove stage' }).click();
     await library.getByLabel('Response Directive', { exact: true }).fill('Respond concisely.'); await shot('program-editor');
-    await library.getByRole('button', { name: 'Review / save revision' }).click(); await library.getByRole('button', { name: 'Reload resources' }).click();
+    await library.getByRole('button', { name: 'Save revision' }).click(); await page.getByRole('button', { name: 'Back to resources', exact: true }).click();
     await library.locator('article').filter({ has: page.getByRole('heading', { name: 'Packaged Prompt', exact: true }) }).getByRole('button', { name: 'Fork to Library' }).click();
     await library.getByRole('button', { name: 'Reload resources' }).click(); await expect(library).toContainText('Packaged Prompt Fork');
     await library.locator('article').filter({ has: page.getByRole('heading', { name: 'P4 program', exact: true }) }).getByRole('button', { name: 'Derive to Library' }).click();
@@ -115,6 +116,6 @@ for (const width of [1440, 390]) test(`Library and Studio authoring at ${width}p
     await navigate('Runtime Design'); await expect(design.getByLabel('Recommended Prompt', { exact: true })).not.toHaveValue(''); await shot('runtime-design');
     await design.getByRole('button', { name: 'Inspect exact build closure' }).click(); await expect(design.locator('pre').first()).toContainText('core.prompt-program'); await shot('exact-closure');
     await navigate('Build'); await studio.getByRole('button', { name: 'Run Preflight', exact: true }).click();
-    await expect(page.locator('[data-atria-studio-view="build"] pre')).toBeVisible(); await shot('build');
+    await page.locator('[data-atria-studio-view="build"] summary').click(); await expect(page.locator('[data-atria-studio-view="build"] pre')).toBeVisible(); await shot('build');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true); expect(errors).toEqual([]);
 });

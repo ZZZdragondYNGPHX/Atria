@@ -49,6 +49,7 @@ function query(values) {
 
 export const nativeStudioClient = Object.freeze({
     listProjects: () => request('projects'),
+    createProject: source => request('projects', { method: 'POST', body: { source } }),
     getProject: projectId => request(`projects/${encode(projectId)}`),
     getRevision: projectId => request(`projects/${encode(projectId)}/revision`),
     listSources: projectId => request(`projects/${encode(projectId)}/sources`),

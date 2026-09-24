@@ -184,7 +184,9 @@ export class ActionLoaderHandle {
 
         // Add stop button if mode is STOPPABLE
         if (toastMode === ActionLoaderToastMode.STOPPABLE) {
-            const stopButton = document.createElement('i');
+            const stopButton = document.createElement('button');
+            stopButton.type = 'button';
+            stopButton.setAttribute('aria-label', stopTooltip);
             stopButton.className = 'fa-solid fa-stop-circle action-loader-stop interactable';
             stopButton.title = stopTooltip;
             stopButton.addEventListener('click', (e) => {
@@ -200,6 +202,7 @@ export class ActionLoaderHandle {
             timeOut: 0,
             extendedTimeOut: 0,
             tapToDismiss: false,
+            closeButton: false,
             escapeHtml: false,
         });
     }
@@ -490,9 +493,15 @@ export function createDefaultLoaderOverlay() {
 
     const spinnerElement = document.createElement('div');
     spinnerElement.id = 'load-spinner';
-    spinnerElement.className = 'fa-solid fa-gear fa-spin fa-3x';
+    spinnerElement.className = 'atri-entry-spinner';
+    spinnerElement.setAttribute('aria-hidden', 'true');
+    loaderElement.setAttribute('role', 'status');
+    loaderElement.setAttribute('aria-label', t`Loading`);
 
     loaderElement.appendChild(spinnerElement);
+    const label = document.createElement('p');
+    label.textContent = t`Please wait…`;
+    loaderElement.appendChild(label);
 
     return loaderElement;
 }
@@ -537,9 +546,11 @@ function showOverlay(customContent = null) {
         allowEscapeClose: false,
         transparent: true,
         animation: 'none',
-        wide: true,
-        large: true,
+        wide: Boolean(customContent),
+        large: Boolean(customContent),
     });
+
+    loaderPopup.dlg.classList.add(customContent ? 'atri-custom-loader' : 'atri-blocking-loader');
 
     // No close button, loaders are not closable
     loaderPopup.closeButton.style.display = 'none';
@@ -557,9 +568,14 @@ async function hideOverlay({ immediate = false } = {}) {
         return Promise.resolve();
     }
 
+    // Release ownership before the asynchronous fade. A new operation may
+    // open its own overlay while this one is closing.
+    const closingPopup = loaderPopup;
+    loaderPopup = null;
+
     return new Promise((resolve) => {
-        const loaderElement = $('#loader');
-        const spinner = $('#load-spinner');
+        const loaderElement = $(closingPopup.dlg).find('#loader');
+        const spinner = $(closingPopup.dlg).find('#load-spinner');
 
         if (!loaderElement.length) {
             console.warn('Loader element not found, skipping animation');
@@ -591,10 +607,9 @@ async function hideOverlay({ immediate = false } = {}) {
             // If it's present, we remove it once and then it's gone.
             yoinkPreloader();
 
-            loaderPopup.complete(POPUP_RESULT.AFFIRMATIVE)
+            closingPopup.complete(POPUP_RESULT.AFFIRMATIVE)
                 .catch((err) => console.error('Error completing loaderPopup:', err))
                 .finally(() => {
-                    loaderPopup = null;
                     resolve();
                 });
         }

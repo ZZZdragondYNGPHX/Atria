@@ -1,3 +1,4 @@
+import { callGenericPopup, POPUP_TYPE, POPUP_RESULT } from '../../../../popup.js';
 import { i18n, i18nFormat } from '../../i18n.js';
 import { createWorkspaceFactoryPreset, getWorkspaceLibrary, isNativeWorkspacePresetId, prepareImportedWorkspacePreset, restoreNativeWorkspacePresets, uniqueWorkspacePresetName, workspaceHostProfile } from '../host-presets.js';
 import { compileWorkspacePreset, updatePresetLibrary, importWorkspacePreset, exportWorkspacePreset, resolvePresetBinding } from '../../../../lib/agent-workspace/presets.js';
@@ -51,7 +52,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
                 selectedAgentId = draft.planTemplate.agents[0]?.id || null;
             }
             if (presetChanged || inspectorMode === null) {
-                inspectorMode = matchMedia('(min-width: 761px)').matches ? 'agent' : 'closed';
+                inspectorMode = 'closed';
             }
         }
 
@@ -70,12 +71,15 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
 
         const showError = error => {
             status.textContent = i18n(error.message || String(error));
+            status.tabIndex = -1;
+            status.focus();
             status.scrollIntoView({ block: 'nearest' });
         };
 
-        const askName = (label, initial = '') => {
-            const value = prompt(i18n(label), initial);
-            if (value === null) return null;
+        const askName = async (label, initial = '') => {
+            const value = await callGenericPopup(i18n(label), POPUP_TYPE.INPUT, initial);
+            if (!status.isConnected || getSettings() !== settings || JSON.stringify(getScope()) !== JSON.stringify(scope)) return null;
+            if (typeof value !== 'string') return null;
             if (!value.trim()) {
                 showError(new Error('Enter a non-empty name.'));
                 return null;
@@ -194,8 +198,8 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             presetId: null,
         }, i18nFormat('Cleared ${0} binding', i18n(kind)));
 
-        const addAgent = () => {
-            const name = askName('New agent name');
+        const addAgent = async () => {
+            const name = await askName('New agent name');
             if (!name) return;
             try {
                 const next = structuredClone(draft);
@@ -475,8 +479,9 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             const danger = el('details', undefined, inspector);
             danger.className = 'workspace-inspector-section workspace-danger-zone';
             el('summary', 'Danger zone', danger);
-            const remove = button(danger, 'Delete agent', () => {
-                if (!confirm(i18nFormat('Delete agent “${0}” and its execution node?', agent.name || agent.id))) return;
+            const remove = button(danger, 'Delete agent', async () => {
+                if (await callGenericPopup(i18nFormat('Delete agent “${0}” and its execution node?', agent.name || agent.id), POPUP_TYPE.CONFIRM) !== POPUP_RESULT.AFFIRMATIVE) return;
+                if (!status.isConnected || getSettings() !== settings || JSON.stringify(getScope()) !== JSON.stringify(scope)) return;
                 try {
                     const next = removeWorkspaceAgent(draft, agent.id);
                     draft = next;
@@ -497,7 +502,9 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
         const layout = el('div', undefined, parent);
         layout.className = 'workspace-authoring-layout';
 
-        const sidebar = el('aside', undefined, layout);
+        const sidebar = el('details', undefined, layout);
+        sidebar.open = parent.closest('[data-atria-viewport]')?.dataset.atriaViewport !== 'compact';
+        el('summary', draft.name, sidebar).className = 'workspace-library-disclosure';
         sidebar.className = 'workspace-library workspace-authoring-library';
         const libraryHead = el('div', undefined, sidebar);
         libraryHead.className = 'workspace-library-heading';
@@ -520,9 +527,12 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
 
         const list = el('div', undefined, sidebar);
         list.className = 'workspace-preset-list';
+        const noMatches = el('p', 'No matching presets', sidebar);
+        noMatches.setAttribute('role', 'status');
         const paintList = () => {
             const needle = search.value.trim().toLowerCase();
             for (const item of list.children) item.hidden = !item.dataset.name.includes(needle);
+            noMatches.hidden = [...list.children].some(item => !item.hidden);
         };
         for (const preset of library.presets) {
             const item = button(list, undefined, () => {
@@ -555,8 +565,8 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             const option = el('option', modeLabel(value), mode);
             option.value = value;
         }
-        button(create, 'New', () => {
-            const name = askName('New preset name');
+        button(create, 'New', async () => {
+            const name = await askName('New preset name');
             if (!name) return;
             const preset = createWorkspaceFactoryPreset(mode.value);
             preset.name = name;
@@ -577,8 +587,8 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             notice = i18n('Native presets restored.');
             refresh({ resetDraft: true });
         });
-        button(moreCreate, 'Single Agent template', () => {
-            const name = askName('New preset name');
+        button(moreCreate, 'Single Agent template', async () => {
+            const name = await askName('New preset name');
             if (!name) return;
             const preset = createWorkspaceFactoryPreset('single');
             preset.name = name;
@@ -641,15 +651,16 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
 
         const menu = el('details', undefined, actions);
         menu.className = 'workspace-more-menu';
-        el('summary', '⋯', menu);
+        el('summary', 'More', menu);
         button(menu, 'Preset settings', () => {
             menu.open = false;
             renderPresetInspector();
         });
         button(menu, 'Duplicate', duplicateDraft);
         button(menu, 'Export', exportDraft);
-        const removePreset = button(menu, 'Delete preset', () => {
-            if (confirm(i18nFormat('Delete “${0}” and clear all its bindings?', draft.name))) {
+        const removePreset = button(menu, 'Delete preset', async () => {
+            if (await callGenericPopup(i18nFormat('Delete “${0}” and clear all its bindings?', draft.name), POPUP_TYPE.CONFIRM) === POPUP_RESULT.AFFIRMATIVE) {
+                if (!status.isConnected || getSettings() !== settings || JSON.stringify(getScope()) !== JSON.stringify(scope)) return;
                 transact({ type: 'delete', id: draft.id, replacementId: null });
             }
         });

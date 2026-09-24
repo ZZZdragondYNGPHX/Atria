@@ -54,7 +54,7 @@ requirePattern(
     'A7 compact Studio must expose Project / Editor / Preview / AI / More views',
 );
 requirePattern(
-    'public/css/atria-studio.css',
+    'public/css/atria-build.css',
     /data-atria-studio-mobile-view="project"[\s\S]*data-atria-studio-mobile-view="editor"[\s\S]*data-atria-studio-mobile-view="preview"[\s\S]*data-atria-studio-mobile-view="ai"[\s\S]*data-atria-studio-mobile-view="more"/,
     'A7 mobile Studio views must be independent layouts rather than desktop compression',
 );
@@ -103,8 +103,8 @@ requirePattern(
 );
 requirePattern(
     'public/scripts/native/studio-workspace.js',
-    /Project Agent arrives in A8[\s\S]*dataset\.atriaStudioAi\s*=\s*['"]placeholder['"]|dataset\.atriaStudioAi\s*=\s*['"]placeholder['"][\s\S]*Project Agent arrives in A8/,
-    'A7 may reserve the AI product position but must keep Project Agent deferred to A8',
+    /mountNativeStudioAgent\([\s\S]*onProjectCommitted/,
+    'Studio must host the integrated A8 Agent through its dedicated controller',
 );
 rejectPattern(
     'public/scripts/native/studio-workspace.js',

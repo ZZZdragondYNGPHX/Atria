@@ -113,14 +113,14 @@ function buildWorkspaceMarkup({ canViewServerLogs }) {
         <section class="atriaLogsWorkspace" data-mode="guided">
             <header class="atriaLogsHeader">
                 <div>
-                    <h3><i class="fa-solid fa-stethoscope"></i> ${t`Diagnostics Workspace`}</h3>
+                    <h3><i class="fa-solid fa-stethoscope"></i> ${t`Diagnostics`}</h3>
                     <div class="menu_button_note">${t`Start with incidents. Raw logs are available in Expert mode when you need them.`}</div>
                 </div>
                 <div class="atriaLogsHeaderActions">
-                    <div class="atriaLogsModeSwitch" role="tablist">
-                        <button type="button" class="menu_button atriaLogsModeButton is-active" data-mode="guided">${t`Guided`}</button>
-                        <button type="button" class="menu_button atriaLogsModeButton" data-mode="startup">${t`Startup`}</button>
-                        <button type="button" class="menu_button atriaLogsModeButton" data-mode="expert">${t`Expert`}</button>
+                    <div class="atriaLogsModeSwitch" role="group" aria-label="${t`Diagnostics view`}">
+                        <button type="button" class="menu_button atriaLogsModeButton is-active" data-mode="guided" aria-pressed="true">${t`Guided`}</button>
+                        <button type="button" class="menu_button atriaLogsModeButton" data-mode="startup" aria-pressed="false">${t`Startup`}</button>
+                        <button type="button" class="menu_button atriaLogsModeButton" data-mode="expert" aria-pressed="false">${t`Expert`}</button>
                     </div>
                     <button type="button" class="menu_button menu_button_icon atriaLogsReportNow">
                         <i class="fa-solid fa-bolt"></i><span>${t`My problem just happened`}</span>
@@ -131,12 +131,13 @@ function buildWorkspaceMarkup({ canViewServerLogs }) {
                 </div>
             </header>
 
+            <p class="atriaLogsFeedback" role="status" hidden></p>
             <div class="atriaLogsGuidedView">
                 <div class="atriaLogsGrid">
-                    <aside class="atriaLogsNavPane">
-                        <div class="atriaLogsPaneTitle">${t`Module health`}</div>
+                    <details class="atriaLogsNavPane">
+                        <summary class="atriaLogsPaneTitle">${t`Module health`}</summary>
                         <div class="atriaLogsHealthList"></div>
-                    </aside>
+                    </details>
                     <main class="atriaLogsListPane">
                         <div class="atriaLogsPaneTitle">
                             <span>${t`Recent incidents`}</span>
@@ -199,6 +200,7 @@ function buildWorkspaceMarkup({ canViewServerLogs }) {
 
 function renderIncidentList(root, incidents, selectedId, onSelect) {
     const list = root.querySelector('.atriaLogsIncidentList');
+    const focusedId = list.contains(document.activeElement) ? document.activeElement.dataset.incidentId : null;
     const count = root.querySelector('.atriaLogsIncidentCount');
     const bounded = incidents.slice(0, MAX_RENDERED_INCIDENTS);
     count.textContent = String(incidents.length);
@@ -218,6 +220,7 @@ function renderIncidentList(root, incidents, selectedId, onSelect) {
     `).join('');
     list.querySelectorAll('.atriaLogsIncidentRow').forEach(button => {
         button.addEventListener('click', () => onSelect(button.dataset.incidentId));
+        if (focusedId === button.dataset.incidentId) button.focus({ preventScroll: true });
     });
 }
 
@@ -290,6 +293,7 @@ function renderVirtualLogs(root, entries, onSelect) {
     const viewport = root.querySelector('.atriaLogsVirtualViewport');
     const rows = root.querySelector('.atriaLogsVirtualRows');
     const render = () => {
+        const focusedIndex = rows.contains(document.activeElement) ? document.activeElement.dataset.logIndex : null;
         const windowState = buildVirtualWindow({
             total: entries.length,
             scrollTop: viewport.scrollTop,
@@ -304,8 +308,10 @@ function renderVirtualLogs(root, entries, onSelect) {
                 <span class="atriaLogsLogMessage">${htmlEscape(entry.message || entry.event)}</span>
             </button>
         `).join('');
+        if (!entries.length) rows.innerHTML = `<p class="atriaLogsEmptyList">${t`No log entries match these filters.`}</p>`;
         rows.querySelectorAll('.atriaLogsLogRow').forEach(button => {
             button.addEventListener('click', () => onSelect(entries[Number(button.dataset.logIndex)]));
+            if (focusedIndex === button.dataset.logIndex) button.focus({ preventScroll: true });
         });
     };
     viewport.onscroll = render;
@@ -356,8 +362,27 @@ export async function openLogsWorkspace({ canViewServerLogs = false, container =
 
     const selectedIncident = () => state.incidents.find(item => item.incidentId === state.selectedIncidentId) || null;
 
-    const enterMobileDetail = () => root.classList.add('is-detailing');
-    const leaveMobileDetail = () => root.classList.remove('is-detailing');
+    let detailTrigger = null;
+    const enterMobileDetail = () => {
+        detailTrigger = document.activeElement;
+        root.classList.add('is-detailing');
+        const pane = root.querySelector(state.mode === 'expert' ? '.atriaLogsRawDetail' : '.atriaLogsDetailPane');
+        pane.tabIndex = -1;
+        pane.focus({ preventScroll: true });
+    };
+    const leaveMobileDetail = () => {
+        root.classList.remove('is-detailing');
+        if (detailTrigger?.isConnected) detailTrigger.focus({ preventScroll: true });
+        else root.querySelector('.atriaLogsIncidentRow.is-selected, .atriaLogsVirtualViewport')?.focus({ preventScroll: true });
+    };
+    const feedback = root.querySelector('.atriaLogsFeedback');
+    const showFeedback = (text, error = false) => {
+        if (state.closed) return;
+        feedback.hidden = !text;
+        feedback.textContent = text;
+        feedback.dataset.error = String(error);
+    };
+    let expertSequence = 0;
 
     const renderDetail = async (incidentId) => {
         state.selectedIncidentId = incidentId;
@@ -369,12 +394,16 @@ export async function openLogsWorkspace({ canViewServerLogs = false, container =
         enterMobileDetail();
 
         detail.querySelector('.atriaLogsCopySummary')?.addEventListener('click', async () => {
-            const payload = await api(`/incidents/${encodeURIComponent(incidentId)}/export`, { method: 'POST', body: { mode: 'summary' } });
-            await copyText(exportAsClipboardText(payload, 'summary'), t`Diagnostic summary`);
+            try {
+                const payload = await api(`/incidents/${encodeURIComponent(incidentId)}/export`, { method: 'POST', body: { mode: 'summary' } });
+                await copyText(exportAsClipboardText(payload, 'summary'), t`Diagnostic summary`);
+            } catch (error) { showFeedback(error.message, true); }
         });
         detail.querySelector('.atriaLogsCopyFull')?.addEventListener('click', async () => {
-            const payload = await api(`/incidents/${encodeURIComponent(incidentId)}/export`, { method: 'POST', body: { mode: 'full' } });
-            await copyText(exportAsClipboardText(payload, 'full'), t`Full diagnostic context`);
+            try {
+                const payload = await api(`/incidents/${encodeURIComponent(incidentId)}/export`, { method: 'POST', body: { mode: 'full' } });
+                await copyText(exportAsClipboardText(payload, 'full'), t`Full diagnostic context`);
+            } catch (error) { showFeedback(error.message, true); }
         });
     };
 
@@ -430,6 +459,7 @@ export async function openLogsWorkspace({ canViewServerLogs = false, container =
     };
 
     const loadExpert = async ({ append = false } = {}) => {
+        const sequence = ++expertSequence;
         const query = expertQuery({ sinceId: append ? state.latestId : 0 });
         let payload;
         if (state.expertSource === 'backend') {
@@ -442,6 +472,7 @@ export async function openLogsWorkspace({ canViewServerLogs = false, container =
                 payload.entries = payload.entries.filter(entry => formatWorkspaceLogEntry(entry).toLowerCase().includes(needle));
             }
         }
+        if (state.closed || sequence !== expertSequence) return;
         const incoming = Array.isArray(payload?.entries) ? payload.entries : [];
         state.expertEntries = append
             ? [...state.expertEntries, ...incoming].slice(-DEFAULT_LOG_LIMIT)
@@ -469,15 +500,21 @@ export async function openLogsWorkspace({ canViewServerLogs = false, container =
         }
         state.busy = true;
         root.classList.add('is-loading');
+        root.setAttribute('aria-busy', 'true');
+        root.querySelector('.atriaLogsRefresh').disabled = true;
+        showFeedback(t`Loading diagnostics…`);
         try {
             if (state.mode === 'guided') await loadGuided();
             else if (state.mode === 'startup') await loadStartup();
             else await loadExpert();
+            showFeedback('');
         } catch (error) {
             console.error('[diagnostics-workspace] refresh failed', error);
-            toastr.error(String(error?.message || error), t`Diagnostics Workspace`);
+            showFeedback(String(error?.message || error), true);
         } finally {
             root.classList.remove('is-loading');
+            root.setAttribute('aria-busy', 'false');
+            root.querySelector('.atriaLogsRefresh').disabled = false;
             state.busy = false;
             if (state.reloadQueued && !state.closed) {
                 state.reloadQueued = false;
@@ -502,7 +539,10 @@ export async function openLogsWorkspace({ canViewServerLogs = false, container =
             const nextMode = String(button.dataset.mode || 'guided');
             state.mode = ['guided', 'startup', 'expert'].includes(nextMode) ? nextMode : 'guided';
             root.dataset.mode = state.mode;
-            root.querySelectorAll('.atriaLogsModeButton').forEach(item => item.classList.toggle('is-active', item === button));
+            root.querySelectorAll('.atriaLogsModeButton').forEach(item => {
+                item.classList.toggle('is-active', item === button);
+                item.setAttribute('aria-pressed', String(item === button));
+            });
             leaveMobileDetail();
             void refresh();
         });
@@ -513,19 +553,19 @@ export async function openLogsWorkspace({ canViewServerLogs = false, container =
         state.expertEntries = [];
         state.latestId = 0;
         populateModuleSelect();
-        void loadExpert();
+        void refresh();
     });
     for (const selector of ['.atriaLogsModule', '.atriaLogsLevel']) {
         root.querySelector(selector)?.addEventListener('change', () => {
             state.expertEntries = [];
             state.latestId = 0;
-            void loadExpert();
+            void refresh();
         });
     }
     root.querySelector('.atriaLogsSearch')?.addEventListener('input', () => {
         state.expertEntries = [];
         state.latestId = 0;
-        void loadExpert();
+        void refresh();
     });
 
     root.querySelector('.atriaLogsRefresh').addEventListener('click', refresh);
@@ -608,6 +648,11 @@ export async function openLogsWorkspace({ canViewServerLogs = false, container =
         return {
             root,
             refresh,
+            dismissTransient() {
+                if (!root.classList.contains('is-detailing')) return false;
+                leaveMobileDetail();
+                return true;
+            },
             destroy,
             dispose: destroy,
         };

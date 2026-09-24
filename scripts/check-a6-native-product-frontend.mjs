@@ -103,8 +103,8 @@ requirePattern(
 );
 requirePattern(
     'public/scripts/atria-shell/utility-workspaces.js',
-    /atriaAccountPrimary[\s\S]*atriaAccountAdvanced/,
-    'A6 Account must have an Atria-native primary surface',
+    /atriaAccountPrimary[\s\S]*authority\.openUserProfile/,
+    'A6 Account must mount the existing account authority in its native primary surface',
 );
 
 requirePattern(
