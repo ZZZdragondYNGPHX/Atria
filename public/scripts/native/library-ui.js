@@ -1,5 +1,6 @@
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { createAtriaIcon } from '../atria-shell/icons.js';
+import { createNativeProductError } from './product-errors.js';
 
 export function el(doc, tag, className = '', text, parent) {
     const node = doc.createElement(tag);
@@ -10,6 +11,8 @@ export function el(doc, tag, className = '', text, parent) {
 }
 
 export function libraryError(error) {
+    if (error?.isNativeProductError) return error.message;
+    if (error?.code?.startsWith('native_')) return createNativeProductError(error.code, error.status, error.details).message;
     if (String(error?.code || '').includes('referenced')) return tl('This item is still referenced by Native content or progress.');
     if (error?.status === 409) return tl('This item conflicts with existing data. Your current data has been kept.');
     return error?.message || String(error);

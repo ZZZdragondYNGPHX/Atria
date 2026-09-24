@@ -65,30 +65,9 @@ Do not stop for routine failures. Stop only for required human device/UI validat
 
 Implementation and validation: [completed work](native-product-ux-completed.md).
 
-# Group 2 — P0 — Native Runtime / Provider Foundation
+# Group 2 — Completed
 
-**Group goal:** 闭合 Secret → Connection → Model → Generation Profile → Runtime Route 的第一方 Native 配置链。
-
-## NUX-011 — Native Product errors lose actionable context at the UI boundary
-
-**Current evidence**
-
-`product-client.js` preserves `error.code` and `error.details` but constructs a generic message such as:
-
-`Native Product request failed (409)`
-
-Many UI callers show `error.message`.
-
-Library maps a few cases to generic conflict/reference strings, but field/blocker details are not consistently surfaced.
-
-**Acceptance**
-
-Map known error codes to actionable product messages and preserve sanitized field/reference details end-to-end.
-
----
-
----
-
+Implementation and validation: [completed work](native-product-ux-completed.md).
 
 # Group 3 — P0 — Agents / Memory Native Routing
 

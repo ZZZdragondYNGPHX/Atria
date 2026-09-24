@@ -68,7 +68,7 @@ test('Works retry, search, real install permission review and preserved failed i
     await install.getByRole('checkbox').check();
     await page.route('**/api/native/product/packages/install', route => route.fulfill({ status: 503, json: {} }));
     await submit.click();
-    await expect(install.getByRole('alert')).toContainText('503');
+    await expect(install.getByRole('alert')).toContainText('Refresh its current state');
     await expect(install.getByRole('checkbox')).toBeChecked();
     await shot(page, info, 'install-retry');
     await page.unroute('**/api/native/product/packages/install');
@@ -94,6 +94,8 @@ test('Work detail starts and resumes Native progress; referenced deletion remain
     await page.getByRole('button', { name: 'Delete Work', exact: true }).click();
     await popup(page).locator('.popup-button-ok').click();
     await expect(page.locator('.atri-library-feedback[role="alert"]')).toContainText('still referenced');
+    await expect(page.locator('.atri-library-feedback[role="alert"]')).toContainText('sessionId');
+    await shot(page, info, 'work-delete-reference-details');
     await expect(page.locator('[data-atria-work-detail]')).toBeVisible();
     await page.locator('[data-atria-work-detail]').getByRole('button', { name: 'Continue', exact: true }).click();
     await expect(page.locator('#atria-play-product')).toBeVisible();
@@ -253,4 +255,3 @@ test('Bundled load failure offers retry and Chinese Library stays usable at 320p
     await page.evaluate(() => { document.documentElement.style.fontSize = '20px'; });
     await shot(page, info, 'works-zh-large-text-320');
 });
-

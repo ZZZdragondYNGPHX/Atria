@@ -1,3 +1,5 @@
+import { createNativeProductError } from './product-errors.js';
+
 function requestHeaders() {
     const headers = globalThis.Atria?.getContext?.()?.getRequestHeaders?.() || {};
     return {
@@ -19,11 +21,7 @@ async function request(path, { method = 'GET', body = undefined } = {}) {
         payload = null;
     }
     if (!response.ok) {
-        const error = new Error(`Native Product request failed (${response.status})`);
-        error.status = response.status;
-        error.code = payload?.error || 'native_product_request_failed';
-        error.details = payload?.details;
-        throw error;
+        throw createNativeProductError(payload?.error, response.status, payload?.details);
     }
     return payload;
 }

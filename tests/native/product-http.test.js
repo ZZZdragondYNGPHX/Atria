@@ -57,6 +57,18 @@ function appFor(product, { authenticated = true } = {}) {
 }
 
 describe('N9 Native Product HTTP boundary', () => {
+    test('sanitizes exception details while retaining exact blockers and invalid field context', async () => {
+        const product = makeProduct();
+        product.deleteWork.mockRejectedValue(new ConflictError('native_package_referenced', {
+            packageId: 'pkg_test', password: 'hidden', stack: 'private trace',
+            references: [{ sessionId: 'session_test', secret: 'hidden' }],
+        }));
+        const result = await request(appFor(product)).delete('/works/pkg_test');
+        expect(result.body.details).toEqual({ packageId: 'pkg_test', references: [{ sessionId: 'session_test' }] });
+        const invalid = await request(appFor(product)).post('/packages/preflight').send({ data: '%' });
+        expect(invalid.status).toBe(400);
+        expect(invalid.body.details).toEqual({ field: 'data' });
+    });
     test('uses authenticated server handle and exposes Works / Sessions / Projects without repo dispatch', async () => {
         const product = makeProduct();
         const app = appFor(product);

@@ -1,4 +1,5 @@
 import express from 'express';
+import { sanitizeProductDetails } from '../../public/scripts/native/product-error-details.js';
 
 import { getUserDirectories } from '../users.js';
 import {
@@ -19,11 +20,11 @@ const MAX_ARCHIVE_BYTES = 128 * 1024 * 1024;
 
 function decodeArchive(value) {
     if (typeof value !== 'string' || !value || !/^[A-Za-z0-9+/]*={0,2}$/.test(value)) {
-        throw new TypeError('Native Product archive must be base64');
+        throw Object.assign(new TypeError('Native Product archive must be base64'), { details: { field: 'data' } });
     }
     const bytes = Buffer.from(value, 'base64');
     if (!bytes.length || bytes.length > MAX_ARCHIVE_BYTES) {
-        throw new TypeError('Native Product archive is empty or oversized');
+        throw Object.assign(new TypeError('Native Product archive is empty or oversized'), { details: { field: 'data' } });
     }
     return bytes;
 }
@@ -97,7 +98,7 @@ export function createNativeProductRouter(getServices = services) {
                             : status === 409 ? 'native_product_conflict'
                                 : 'native_product_failed'
                 ),
-                ...(error?.details === undefined ? {} : { details: error.details }),
+                ...(error?.details === undefined && !error?.permissions ? {} : { details: sanitizeProductDetails(error.details || { permissions: error.permissions }) }),
             });
         }
     };

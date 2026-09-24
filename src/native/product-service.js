@@ -5,6 +5,10 @@ function clone(value) {
     return value == null ? value : structuredClone(value);
 }
 
+function invalidField(field) {
+    return Object.assign(new TypeError('Invalid product field'), { code: 'native_product_invalid_request', details: { field } });
+}
+
 function byUpdatedAt(items) {
     return [...items].sort((left, right) => (
         Number(right?.updatedAt || right?.createdAt || 0)
@@ -184,7 +188,7 @@ export class NativeProductService {
 
     async createWorld(handle, { displayName }) {
         const name = String(displayName || '').trim();
-        if (!name) throw new TypeError('Native World displayName is required');
+        if (!name) throw invalidField('displayName');
         const now = Date.now();
         return this._worlds.create(handle, {
             worldId: createNativeId('world'),
@@ -199,7 +203,7 @@ export class NativeProductService {
         const world = await this._worlds.get(handle, worldId);
         if (!world) throw new NotFoundError('native world', { worldId });
         const name = String(displayName || '').trim();
-        if (!name) throw new TypeError('Native World displayName is required');
+        if (!name) throw invalidField('displayName');
         return this._worlds.save(handle, {
             ...world,
             displayName: name,
@@ -284,7 +288,7 @@ export class NativeProductService {
 
     async createKnowledgeBase(handle, { displayName }) {
         const name = String(displayName || '').trim();
-        if (!name) throw new TypeError('Native KnowledgeBase displayName is required');
+        if (!name) throw invalidField('displayName');
         const now = Date.now();
         return this._knowledge.create(handle, {
             knowledgeBaseId: createNativeId('knowledgeBase'),
@@ -299,7 +303,7 @@ export class NativeProductService {
         const knowledgeBase = await this._knowledge.get(handle, knowledgeBaseId);
         if (!knowledgeBase) throw new NotFoundError('native knowledge base', { knowledgeBaseId });
         const name = String(displayName || '').trim();
-        if (!name) throw new TypeError('Native KnowledgeBase displayName is required');
+        if (!name) throw invalidField('displayName');
         return this._knowledge.save(handle, {
             ...knowledgeBase,
             displayName: name,

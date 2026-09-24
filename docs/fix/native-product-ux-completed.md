@@ -233,4 +233,20 @@ passed. One real Edge 320px scenario verified the six-step checklist, missing
 Secret and canonical Connection navigation; screenshot inspected. ESLint and
 diff check passed.
 
-Next: NUX-011, following the active backlog order.
+### NUX-011
+
+Product HTTP and UI now share a bounded, allowlisted error-detail contract.
+Field and exact reference blockers survive client and Library boundaries; raw
+exception messages, arbitrary payloads and sensitive fields are excluded.
+Known dependency, permission, encrypted-save, immutable revision, write-conflict
+and read-only errors provide corrective action, with safe status-based fallbacks.
+World/Knowledge name validation and archive validation carry field context.
+All existing caller feedback uses text nodes and retains focus/error behavior.
+
+Validation: five focused/adjacent suites / 18 tests passed. All eight real Edge
+Library scenarios passed, covering installation retry with retained input,
+referenced Work deletion with the exact blocking Session, World/Knowledge editing,
+resource revision retry, Skills and compact Chinese layouts. Reference-error
+screenshot inspected. Changed-file ESLint and diff check passed.
+
+Group 2 regression in progress before push; next active item is NUX-012.
