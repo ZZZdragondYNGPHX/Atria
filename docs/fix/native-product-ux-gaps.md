@@ -85,33 +85,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 让 Build / Studio 能通过当前 Atria authoring authority 完成核心资源制作，而不是依赖内部 JSON。
 
-## NUX-029 — Build can create/open projects but has no user-facing project deletion
-
-**Current evidence**
-
-The redesign fixed project creation: Build now exposes New Project / Create Project and project cards can be opened normally.
-
-Backend Product/Studio APIs already support project deletion, but neither the normal Build project list nor the project workspace exposes a first-class Delete Project action.
-
-**Impact**
-
-Users can create an unlimited number of test/abandoned projects but cannot remove them through the product UI.
-
-**Acceptance**
-
-- Expose a visible project lifecycle action from Build and/or project detail.
-- Delete must use the existing project authority rather than direct filesystem removal.
-- Require destructive confirmation.
-- Respect current revision/conflict protection.
-- Explain whether deletion removes project source only or any derived build artifacts.
-- After deletion, return to the Build project list and refresh search/navigation state.
-
-Archiving may be added later if useful, but it must not substitute for a real deletion path when deletion is safe.
-
----
-
----
-
 ## NUX-030 — Asset management remains minimal
 
 **Current evidence**

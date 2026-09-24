@@ -7608,5 +7608,11 @@
     "Each Skill declaration needs a valid Skill ID.": "每条声明都需要有效的 Skill ID。",
     "Skill declaration IDs must agree.": "同一声明中的 Skill ID 必须一致。",
     "Skill declarations must be a list.": "Skill 声明必须是列表。",
-    "Skill declarations must not repeat a Skill ID.": "Skill 声明不能包含重复 ID。"
+    "Skill declarations must not repeat a Skill ID.": "Skill 声明不能包含重复 ID。",
+    "Delete Project": "删除项目",
+    "Delete project permanently": "永久删除项目",
+    "This permanently deletes project source files and edit history. Unsaved edits will be lost.": "这会永久删除项目源文件和编辑历史。未保存的编辑也会丢失。",
+    "Installed Works, Sessions, Saves, exported build files and separately installed Skills are kept.": "已安装作品、会话、存档、已导出的构建文件和独立安装的 Skills 会保留。",
+    "This project changed. Reload its revision and review deletion again.": "项目已发生变化。请重新加载版本并再次确认删除。",
+    "Reload project revision": "重新加载项目版本"
 }

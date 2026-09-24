@@ -1,3 +1,4 @@
+import { mountProjectDeletion } from './project-lifecycle.js';
 import { mountSkillDeclarationsEditor } from './skill-declarations-editor.js';
 import { renderResourceReferenceRows } from './resource-reference-rows.js';
 import { mountKnowledgeEditor } from './knowledge-editor.js';
@@ -243,7 +244,7 @@ function normalizeCollectionPatch(source, view, index, value) {
     return next;
 }
 
-function projectListCard(documentRef, record, host) {
+function projectListCard(documentRef, record, host, onDeleted) {
     const project = record.project || record;
     const row = documentRef.createElement('article'); row.className = 'atri-studio-project-row';
     row.dataset.atriaBuildProjectId = project.projectId;
@@ -252,11 +253,12 @@ function projectListCard(documentRef, record, host) {
     const meta = documentRef.createElement('p'); meta.textContent = t('Updated') + ' ' + formatTime(project.updatedAt || project.createdAt);
     info.append(title, meta);
     row.append(info, button(documentRef, 'Open Project', () => host.openBuild(project.projectId, project.displayName), { primary: true }));
+    mountProjectDeletion({ document: documentRef, root: row, project, revision: record.revision?.revision, onDeleted: () => onDeleted(project.projectId) });
     return row;
 }
 
 async function renderProjectList(documentRef, root, host) {
-    const projects = await nativeStudioClient.listProjects();
+    let projects = await nativeStudioClient.listProjects();
     root.dataset.atriaBuildProjects = 'true';
     root.append(heading(documentRef, 'Build Projects', 'Create and refine your interactive works.'));
     const creation = documentRef.createElement('details'); creation.className = 'atri-studio-details';
@@ -281,7 +283,11 @@ async function renderProjectList(documentRef, root, host) {
     const fill = () => {
         list.replaceChildren();
         const found = projects.filter(record => (record.project || record).displayName.toLowerCase().includes(search.value.trim().toLowerCase()));
-        for (const record of found) list.append(projectListCard(documentRef, record, host));
+        for (const record of found) list.append(projectListCard(documentRef, record, host, async projectId => {
+            projects = projects.filter(item => (item.project || item).projectId !== projectId); fill();
+            try { await host.refreshSearch?.(); } catch { /* Search retries when next opened. */ }
+            search.focus();
+        }));
         if (!found.length) list.append(panel(documentRef, 'empty', projects.length ? 'No matching projects' : 'Your first project starts here', projects.length ? 'Try a different project name.' : 'Choose New Project to begin. Your edits are reviewed before they become a project revision.'));
     };
     search.addEventListener('input', fill); fill();
@@ -804,6 +810,12 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 return stageProject(next, 'Update project overview');
             }, { primary: true })),
         );
+        mountProjectDeletion({ document: documentRef, root: body, project: state.source.project, revision: state.revision.revision,
+            onDeleted: async () => {
+                try { await host.refreshSearch?.(); } catch { /* Search retries when next opened. */ }
+                host.openBuild();
+            },
+        });
     }
 
     function renderExperience(body) {

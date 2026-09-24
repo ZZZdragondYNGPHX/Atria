@@ -72,6 +72,25 @@ function makeService(h, options = {}) {
 }
 
 describe('A1 Native StudioService authoring boundary', () => {
+    test('project deletion rejects stale revision and removes only the chosen project source', async () => {
+        const h = await makeTempFsEngine();
+        try {
+            const { service } = makeService(h);
+            const source = projectSource(); const other = projectSource();
+            const created = await service.createProject(h.handle, source);
+            await service.createProject(h.handle, other);
+            const changed = await service.writeSource(h.handle, source.project.projectId, {
+                path: 'notes.txt', content: 'new work', baseRevision: created.revision.revision,
+                origin: { kind: 'human', id: 'test' },
+            });
+            await expect(service.deleteProject(h.handle, source.project.projectId, created.revision.revision)).rejects.toThrow('project_revision_conflict');
+            expect((await service.getProject(h.handle, source.project.projectId)).source.project.projectId).toBe(source.project.projectId);
+            await expect(service.deleteProject(h.handle, source.project.projectId, changed.changeSet.resultingRevision)).resolves.toBe(true);
+            await expect(service.getProject(h.handle, source.project.projectId)).rejects.toThrow();
+            expect((await service.getProject(h.handle, other.project.projectId)).source.project.projectId).toBe(other.project.projectId);
+        } finally { await h.cleanup(); }
+    });
+
     test('routes human and agent source CRUD through Authoring Workspace/ChangeSet and rejects stale revisions', async () => {
         const h = await makeTempFsEngine();
         try {

@@ -100,6 +100,8 @@ describe('A1 Native Studio HTTP boundary', () => {
 
         expect((await request(app).get('/projects')).status).toBe(200);
         expect(studio.listProjects).toHaveBeenCalledWith('u');
+        await request(app).delete('/projects/project_test').send({ baseRevision: 'reviewed_revision', handle: 'other-user' }).expect(200);
+        expect(studio.deleteProject).toHaveBeenCalledWith('u', 'project_test', 'reviewed_revision');
 
         const write = await request(app)
             .put('/projects/project_test/source')

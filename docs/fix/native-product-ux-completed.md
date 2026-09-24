@@ -650,4 +650,17 @@ passed semantic Skill declaration Review/Apply and adjacent Skill Manager owners
 editing and movement. Both rendered screens were inspected. Lint and diff checks
 passed; Source preserves unknown fields and Package originals remain unchanged.
 
-Next: NUX-029, following the active backlog order.
+### NUX-029
+
+Build project cards and project detail now expose destructive deletion with explicit
+source/history versus retained artifact explanations. Deletion uses Studio's existing
+revision-protected authority. Concurrent edits remove the stale confirmation and require
+reload plus renewed confirmation. Success refreshes Build and search; cancellation and
+recoverable failure preserve the project and allow retry.
+
+Validation: five focused suites passed 16 cases; extended HTTP/localization checks passed
+nine cases. A real Edge 390px scenario passed concurrent edit rejection, revision reload,
+renewed confirmation, deletion and return to the project list while installed Works remain.
+The conflict screenshot was inspected. Changed-file lint and diff checks passed.
+
+Next: NUX-030, following the active backlog order.

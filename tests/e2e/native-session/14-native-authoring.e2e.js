@@ -25,6 +25,47 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
+test('Build deletion refuses a changed project and requires renewed confirmation before returning to the list', async ({ page }, info) => {
+    test.setTimeout(120000);
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openBuild());
+    const build = page.locator('[data-atria-build-projects]');
+    await build.getByText('New Project', { exact: true }).click();
+    await build.getByLabel('Project name', { exact: true }).fill('Disposable voyage');
+    await build.getByRole('button', { name: 'Create Project', exact: true }).click();
+    const studio = page.locator('[data-atria-studio-workspace]');
+    await expect(studio.getByRole('heading', { name: 'Disposable voyage', exact: true })).toBeVisible();
+    const id = await studio.getAttribute('data-atria-studio-workspace');
+    await studio.getByRole('button', { name: 'Delete Project', exact: true }).click();
+    await expect(studio).toContainText('Installed Works, Sessions, Saves');
+    await page.evaluate(async id => {
+        const { nativeStudioClient: client } = await import('/scripts/native/studio-client.js');
+        const detail = await client.getProject(id);
+        const response = await fetch('/api/native/studio/projects/' + id + '/source', {
+            method: 'PUT', headers: window.Atria.getContext().getRequestHeaders(),
+            body: JSON.stringify({ path: 'notes.txt', content: 'Concurrent authoring', baseRevision: detail.revision.revision, origin: { kind: 'human', id: 'other-editor' } }),
+        });
+        if (!response.ok) throw new Error(await response.text());
+    }, id);
+    await studio.getByRole('button', { name: 'Delete project permanently', exact: true }).click();
+    await expect(studio.getByRole('alert')).toContainText('This project changed');
+    await expect(studio.getByRole('button', { name: 'Delete project permanently', exact: true })).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath('project-deletion-conflict-390.png') });
+    await studio.getByRole('button', { name: 'Reload project revision', exact: true }).click();
+    await studio.getByRole('button', { name: 'Delete project permanently', exact: true }).click();
+    await expect(build).toBeVisible(); await expect(build.locator('[data-atria-build-project-id="' + id + '"]')).toHaveCount(0);
+    const result = await page.evaluate(async id => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        return { projects: await client.listProjects(), works: await client.listWorks(), deleted: id };
+    }, id);
+    expect(result.projects.some(item => item.projectId === id)).toBe(false); expect(result.works.length).toBeGreaterThan(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test('Studio authors Skill declarations through semantic fields and Review Apply at 390px', async ({ page }, info) => {
     test.setTimeout(120000);
     await page.setViewportSize({ width: 390, height: 900 });

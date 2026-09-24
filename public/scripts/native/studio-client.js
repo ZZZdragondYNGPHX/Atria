@@ -51,6 +51,7 @@ export const nativeStudioClient = Object.freeze({
     listProjects: () => request('projects'),
     createProject: source => request('projects', { method: 'POST', body: { source } }),
     getProject: projectId => request(`projects/${encode(projectId)}`),
+    deleteProject: (projectId, baseRevision) => request(`projects/${encode(projectId)}`, { method: 'DELETE', body: { baseRevision } }),
     getRevision: projectId => request(`projects/${encode(projectId)}/revision`),
     listSources: projectId => request(`projects/${encode(projectId)}/sources`),
     readSource: (projectId, path) => request(`projects/${encode(projectId)}/source${query({ path })}`),
