@@ -165,7 +165,12 @@ export class KnowledgeRepo {
 
         return withNativeResourceWrite(handle, revision.knowledgeBaseId, () => this._engine.withTransaction(handle, async (tx) => {
             const baseKey = this._baseKey(handle, revision.knowledgeBaseId);
-            const base = await getNativeDocument(tx, baseKey);
+            let base = await getNativeDocument(tx, baseKey);
+            if (options.createRoot) {
+                if (base) throw new ConflictError('native_write_conflict');
+                base = assertKnowledgeBase(options.createRoot);
+                if (base.knowledgeBaseId !== revision.knowledgeBaseId || base.currentRevisionId !== null) throw new TypeError('Fork root must match the new revision and have no current head');
+            }
             if (!base) throw new NotFoundError('native knowledge base', {
                 knowledgeBaseId: revision.knowledgeBaseId,
             });

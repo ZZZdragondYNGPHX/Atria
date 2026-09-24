@@ -530,4 +530,21 @@ Knowledge semantic authoring. World composition screenshot inspected. The initia
 combined run exposed the graph collision and was interrupted after diagnosis;
 its corrected complete rerun passed. Changed-file lint and diff checks passed.
 
-Next: NUX-023, following the active backlog order.
+### NUX-023
+
+World/Knowledge history now exposes semantic comparison, new revisions copied from
+historical content, explicit current-head selection and independent Library forks.
+Diffs follow stable Knowledge entry IDs and separate ordering/dependency changes.
+Head changes compare the captured head and retain existing exact pins. Forks publish
+new roots/revisions atomically, retain provenance and use stable destination IDs
+for safe retry. Knowledge forks remap entry identities and internal relationships.
+World revision deletion/GC now shares head-write serialization. Missing explicitly
+selected Knowledge revisions return not-found instead of an empty draft.
+
+Validation: seven focused/adjacent suites passed 24 cases, followed by five service
+cases after the explicit missing-revision guard. A real Edge 390px scenario passed
+historical diff, recreation, promotion and fork, verifying original history and
+independent fork identity/content. Screenshot inspected. Changed-file lint and
+diff checks passed.
+
+Next: NUX-024, following the active backlog order.

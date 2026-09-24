@@ -15,6 +15,52 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
+test('World history compares, recreates, promotes and forks exact historical content at 390px', async ({ page }, info) => {
+    test.setTimeout(180000);
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const seeded = await page.evaluate(async () => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        const world = await client.createWorld('History harbor');
+        const first = await client.commitWorldRevision(world.worldId, { baseRevisionId: null, content: { baseline: { weather: 'rain' } } });
+        const second = await client.commitWorldRevision(world.worldId, { baseRevisionId: first.worldRevisionId, content: { baseline: { weather: 'sun' } } });
+        window.Atria.shell.getWorkspaceHost().openLibraryWorld(world.worldId, world.displayName);
+        return { world, first, second };
+    });
+    const root = page.locator('[data-atria-native-library="worlds-knowledge"]');
+    const row = id => root.locator('[data-atria-revision-id="' + id + '"]');
+    await row(seeded.first.worldRevisionId).getByRole('button', { name: 'Inspect revision', exact: true }).click();
+    await expect(root).toContainText('Changed · baseline.weather');
+    await root.getByRole('button', { name: 'Create revision from this', exact: true }).click();
+    await expect(root.getByLabel('baseline.weather', { exact: true })).toHaveValue('rain');
+    await root.getByRole('button', { name: 'Review Changes', exact: true }).click();
+    await root.getByRole('button', { name: 'Save immutable revision', exact: true }).click();
+    await row(seeded.second.worldRevisionId).getByRole('button', { name: 'Inspect revision', exact: true }).click();
+    await root.locator('summary').filter({ hasText: /^Make current revision$/ }).click();
+    await root.getByRole('button', { name: 'Confirm current revision', exact: true }).click();
+    await expect(row(seeded.second.worldRevisionId)).toContainText('Current revision');
+    await row(seeded.first.worldRevisionId).getByRole('button', { name: 'Inspect revision', exact: true }).click();
+    await root.locator('summary').filter({ hasText: /^Fork into Library$/ }).click();
+    await root.getByLabel('New resource name', { exact: true }).fill('Independent history');
+    await root.getByRole('button', { name: 'Review fork', exact: true }).click();
+    await page.screenshot({ path: info.outputPath('historical-fork-review-390.png') });
+    await root.getByRole('button', { name: 'Create fork', exact: true }).click();
+    await expect(root.getByRole('heading', { name: 'Independent history', exact: true })).toBeVisible();
+    const forkId = await root.locator('[data-atria-world-detail]').getAttribute('data-atria-world-detail');
+    expect(forkId).not.toBe(seeded.world.worldId);
+    const result = await page.evaluate(async ({ worldId, forkId }) => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        return { original: await client.getWorld(worldId), fork: await client.getWorld(forkId) };
+    }, { worldId: seeded.world.worldId, forkId });
+    expect(result.original.currentRevision.worldRevisionId).toBe(seeded.second.worldRevisionId);
+    expect(result.original.revisions).toHaveLength(3);
+    expect(result.fork.currentRevision.baseline).toEqual({ weather: 'rain' });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test('Library binding management keeps exact revisions and protects historical references at 390px', async ({ page }, info) => {
     test.setTimeout(180000);
     await page.setViewportSize({ width: 390, height: 900 });

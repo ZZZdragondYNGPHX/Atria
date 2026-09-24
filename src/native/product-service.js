@@ -1,4 +1,4 @@
-import { hashNativeDocument } from './repositories/common.js';
+import { hashNativeDocument, withNativeResourceWrite } from './repositories/common.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { assertNativeId, createNativeId } from './identity.js';
 
@@ -226,6 +226,55 @@ export class NativeProductService {
         }, { expectedIntegrity: hashNativeDocument(world) });
     }
 
+    async promoteLibraryRevision(handle, kind, resourceId, input) {
+        if (!['world', 'knowledge'].includes(kind)) throw invalidField('kind');
+        const repo = kind === 'world' ? this._worlds : this._knowledge;
+        assertNativeId(input?.revisionId, kind === 'world' ? 'worldRevision' : 'knowledgeRevision');
+        const resource = await repo.get(handle, resourceId);
+        if (!resource) throw new NotFoundError('native Library resource', { resourceId });
+        if (input?.baseRevisionId !== resource.currentRevisionId) throw new ConflictError('native_write_conflict');
+        return repo.save(handle, { ...resource, currentRevisionId: input.revisionId, updatedAt: Math.max(Date.now(), resource.updatedAt || 0) }, { expectedIntegrity: hashNativeDocument(resource) });
+    }
+
+    async forkLibraryRevision(handle, kind, resourceId, input) {
+        if (!['world', 'knowledge'].includes(kind)) throw invalidField('kind');
+        const name = typeof input?.displayName === 'string' ? input.displayName.trim() : '';
+        if (!name) throw invalidField('displayName');
+        assertNativeId(input.revisionId, kind === 'world' ? 'worldRevision' : 'knowledgeRevision');
+        assertNativeId(input.forkResourceId, kind === 'world' ? 'world' : 'knowledgeBase', 'forkResourceId');
+        const repo = kind === 'world' ? this._worlds : this._knowledge;
+        const existing = await repo.get(handle, input.forkResourceId);
+        if (existing) {
+            const prior = existing.currentRevisionId && await repo.getRevision(handle, input.forkResourceId, existing.currentRevisionId);
+            const origin = prior?.metadata?.atriaLibraryOrigin;
+            if (existing.displayName === name && origin?.operation === 'fork' && origin.resourceId === resourceId && origin.revision === input.revisionId) return prior;
+            throw new ConflictError('native_write_conflict');
+        }
+        const { revision, entries: sourceEntries } = await withNativeResourceWrite(handle, resourceId, async () => {
+            const revision = await repo.getRevision(handle, resourceId, input.revisionId);
+            if (!revision) throw new NotFoundError('native Library revision', { resourceId, revisionId: input.revisionId });
+            const entries = kind === 'knowledge' ? await repo.listEntries(handle, resourceId, input.revisionId) : [];
+            if (kind === 'knowledge' && entries.length !== revision.entryIds.length) throw new ConflictError('native_knowledge_revision_incomplete');
+            return { revision, entries };
+        });
+        const now = Date.now();
+        const metadata = { ...clone(revision.metadata), atriaLibraryOrigin: { resourceType: kind === 'world' ? 'core.world' : 'core.knowledge', resourceId, revision: input.revisionId, operation: 'fork' } };
+        if (kind === 'world') {
+            const worldId = input.forkResourceId;
+            const createRoot = { worldId, displayName: name, currentRevisionId: null, createdAt: now, updatedAt: now };
+            return repo.commitRevision(handle, { ...clone(revision), worldId, worldRevisionId: createNativeId('worldRevision'), createdAt: now, metadata }, { createRoot, expectedCurrentRevisionId: null });
+        }
+        const entries = clone(sourceEntries);
+        const ids = new Map(entries.map(entry => [entry.knowledgeEntryId, createNativeId('knowledgeEntry')]));
+        for (const entry of entries) {
+            entry.knowledgeEntryId = ids.get(entry.knowledgeEntryId);
+            for (const key of ['requiredEntryIds', 'relatedEntryIds']) if (entry.relations?.[key]) entry.relations[key] = entry.relations[key].map(id => ids.get(id));
+        }
+        const knowledgeBaseId = input.forkResourceId;
+        const createRoot = { knowledgeBaseId, displayName: name, currentRevisionId: null, createdAt: now, updatedAt: now };
+        return repo.commitRevision(handle, { knowledgeBaseId, knowledgeRevisionId: createNativeId('knowledgeRevision'), entryIds: entries.map(entry => entry.knowledgeEntryId), createdAt: now, metadata }, entries, { createRoot, expectedCurrentRevisionId: null });
+    }
+
     async deleteWorld(handle, worldId) {
         const refs = [];
         for (const source of await this._projectSources(handle)) {
@@ -278,6 +327,7 @@ export class NativeProductService {
             ? revisions.find(item => item.knowledgeRevisionId === selectedRevisionId)
                 || await this._knowledge.getRevision(handle, knowledgeBaseId, selectedRevisionId)
             : null;
+        if (revisionId && !selectedRevision) throw new NotFoundError('native knowledge revision', { knowledgeBaseId, knowledgeRevisionId: revisionId });
         const entries = selectedRevision
             ? await this._knowledge.listEntries(handle, knowledgeBaseId, selectedRevision.knowledgeRevisionId)
             : [];

@@ -74,6 +74,17 @@ test('binding management HTTP preserves exact identities and concurrency tokens'
     expect(product.attachKnowledgeBinding).toHaveBeenCalledWith('u', 'binding', 'world', { baseRevisionId: 'old', attached: false });
 });
 
+test.each(['worlds', 'knowledge'])('%s historical revision actions use the authenticated owner', async path => {
+    const product = { promoteLibraryRevision: jest.fn(async () => ({})), forkLibraryRevision: jest.fn(async () => ({})) };
+    const app = appFor(product); const kind = path === 'worlds' ? 'world' : 'knowledge';
+    const promote = { revisionId: 'selected', baseRevisionId: 'current' };
+    await request(app).post(`/${path}/id/revision-actions/promote`).send(promote).expect(200);
+    expect(product.promoteLibraryRevision).toHaveBeenCalledWith('u', kind, 'id', promote);
+    const fork = { revisionId: 'selected', displayName: 'Fork', forkResourceId: 'new' };
+    await request(app).post(`/${path}/id/revision-actions/fork`).send(fork).expect(201);
+    expect(product.forkLibraryRevision).toHaveBeenCalledWith('u', kind, 'id', fork);
+});
+
 describe('N9 Native Product HTTP boundary', () => {
     test('sanitizes exception details while retaining exact blockers and invalid field context', async () => {
         const product = makeProduct();

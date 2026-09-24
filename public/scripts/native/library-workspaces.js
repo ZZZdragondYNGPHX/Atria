@@ -1,3 +1,4 @@
+import { mountLibraryRevisionHistory } from './library-revision-history.js';
 import { mountKnowledgeBindingManager } from './knowledge-binding-manager.js';
 import { mountLibraryRevisionEditor } from './library-revision-editor.js';
 import { createAtriaStatePanel } from '../atria-shell/primitives.js';
@@ -184,17 +185,6 @@ async function workDetail(doc, root, host, id, refresh) {
     }, { danger: true });
 }
 
-function revisions(doc, root, entries, current, marker) {
-    const history = section(doc, root, 'Revision history', marker);
-    for (const revision of [...entries].reverse()) {
-        const id = revision.worldRevisionId || revision.knowledgeRevisionId;
-        const row = el(doc, 'article', 'atri-library-version', undefined, history); row.dataset.atriaRevisionId = id;
-        el(doc, 'strong', '', id === current ? tl('Current revision') : tl('Earlier revision'), row);
-        el(doc, 'span', 'atri-library-meta', time(revision.createdAt), row);
-        disclosure(doc, row, 'Exact revision details', revision);
-    }
-}
-
 async function worldKnowledge(doc, root, route, host) {
     const child = String(route?.child?.id || '');
     const knowledge = child === 'knowledge' || child.startsWith('knowledge:');
@@ -246,7 +236,7 @@ async function worldKnowledge(doc, root, route, host) {
             const bindings = section(doc, root, 'Bindings & references', 'atriaKnowledgeBindings');
             mountKnowledgeBindingManager({ document: doc, root: bindings, detail, host });
         }
-        revisions(doc, root, detail.revisions, resource.currentRevisionId, knowledge ? 'atriaKnowledgeRevisionHistory' : 'atriaWorldRevisionHistory');
+        mountLibraryRevisionHistory({ document: doc, root, detail, knowledge, host, onReload: async () => { root.replaceChildren(); await worldKnowledge(doc, root, route, host); } });
         return;
     }
     const items = await (knowledge ? client.listKnowledge() : client.listWorlds());

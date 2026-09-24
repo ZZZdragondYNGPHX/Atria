@@ -109,3 +109,17 @@ Missing references remain visible and must be explicitly removed or resolved.
 Review includes dependency names and exact references. Library publishes a new
 immutable WorldRevision; project-owned Worlds continue through ChangeSet Review
 and Apply. Advanced Source preserves metadata and arbitrary structured fields.
+
+### Revision history actions
+
+World and Knowledge history compares authored content with the captured current
+revision. Knowledge changes follow stable entry identities and report order changes;
+World changes separate baseline/schema and added/removed dependency references.
+Authors may create a new revision from historical content, explicitly select an
+existing exact revision as Library current, or fork it into a new Library resource.
+Head selection compares the captured head and never repins existing dependants.
+Fork publishes the new root and revision in the same repository transaction; its
+stable destination ID prevents retry duplication. Knowledge forks remap entry IDs
+and internal relations. Exact source provenance is retained in revision metadata.
+World forks preserve shared dependency bindings rather than silently duplicating
+or upgrading them. Missing selected revisions fail explicitly.

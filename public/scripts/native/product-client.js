@@ -49,6 +49,8 @@ export const nativeProductClient = Object.freeze({
     }),
 
     listWorlds: () => request('worlds'),
+    promoteLibraryRevision: (kind, id, input) => request(`${kind === 'world' ? 'worlds' : 'knowledge'}/${encode(id)}/revision-actions/promote`, { method: 'POST', body: input }),
+    forkLibraryRevision: (kind, id, input) => request(`${kind === 'world' ? 'worlds' : 'knowledge'}/${encode(id)}/revision-actions/fork`, { method: 'POST', body: input }),
     createWorld: displayName => request('worlds', { method: 'POST', body: { displayName } }),
     getWorld: worldId => request(`worlds/${encode(worldId)}`),
     commitWorldRevision: (worldId, input) => request(`worlds/${encode(worldId)}/revisions`, { method: 'POST', body: input }),

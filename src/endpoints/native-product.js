@@ -128,6 +128,14 @@ export function createNativeProductRouter(getServices = services) {
     router.get('/worlds', route(async (_req, res, { product }, handle) => {
         res.json(await product.listWorlds(handle));
     }));
+    for (const [path, kind] of [['worlds', 'world'], ['knowledge', 'knowledge']]) {
+        router.post(`/${path}/:id/revision-actions/promote`, route(async (req, res, { product }, handle) => {
+            res.json(await product.promoteLibraryRevision(handle, kind, req.params.id, req.body));
+        }));
+        router.post(`/${path}/:id/revision-actions/fork`, route(async (req, res, { product }, handle) => {
+            res.status(201).json(await product.forkLibraryRevision(handle, kind, req.params.id, req.body));
+        }));
+    }
     router.post('/worlds', route(async (req, res, { product }, handle) => {
         res.json(await product.createWorld(handle, req.body || {}));
     }));

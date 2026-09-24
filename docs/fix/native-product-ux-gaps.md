@@ -81,26 +81,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 补齐 World / Knowledge 的完整作者工作流；兼容 ABI 清理必须最后执行。
 
-## NUX-023 — Revision UX is incomplete for World / Knowledge
-
-**Current evidence**
-
-Immutable revisions and history exist, but users do not get a complete workflow for:
-
-- create revision from current;
-- inspect semantic diff;
-- fork from historical revision;
-- understand dependency changes;
-- safely select/promote exact versions where legal.
-
-**Acceptance**
-
-Expose revision actions without weakening exact pinning.
-
----
-
----
-
 ## NUX-024 — Used By / reference information is not consistently actionable
 
 **Current evidence**

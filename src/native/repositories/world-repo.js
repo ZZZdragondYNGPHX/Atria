@@ -94,7 +94,12 @@ export class WorldRepo {
         const revision = assertWorldRevision(value);
         return withNativeResourceWrites(handle, [revision.worldId, ...revision.knowledgeBindingIds], () => this._engine.withTransaction(handle, async (tx) => {
             const worldKey = this._worldKey(handle, revision.worldId);
-            const world = await getNativeDocument(tx, worldKey);
+            let world = await getNativeDocument(tx, worldKey);
+            if (options.createRoot) {
+                if (world) throw new ConflictError('native_write_conflict');
+                world = assertWorld(options.createRoot);
+                if (world.worldId !== revision.worldId || world.currentRevisionId !== null) throw new TypeError('Fork root must match the new revision and have no current head');
+            }
             if (!world) throw new NotFoundError('native world', { worldId: revision.worldId });
             if (Object.hasOwn(options, 'expectedCurrentRevisionId') && world.currentRevisionId !== options.expectedCurrentRevisionId) {
                 throw new ConflictError('native_write_conflict', { expectedRevisionId: options.expectedCurrentRevisionId, actualRevisionId: world.currentRevisionId });
@@ -154,7 +159,7 @@ export class WorldRepo {
 
     async deleteRevision(handle, worldId, worldRevisionId) {
         assertWritable();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withNativeResourceWrite(handle, worldId, () => this._engine.withTransaction(handle, async (tx) => {
             const references = await this._revisionReferences(tx, handle, worldId, worldRevisionId);
             if (references.length) {
                 throw new ConflictError('native_world_revision_referenced', {
@@ -164,13 +169,13 @@ export class WorldRepo {
                 });
             }
             return tx.deleteResource(this._revisionKey(handle, worldId, worldRevisionId));
-        });
+        }));
     }
 
     async gcRevisions(handle, worldId, { retainRevisionIds = [] } = {}) {
         assertWritable();
         const retained = new Set(retainRevisionIds);
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withNativeResourceWrite(handle, worldId, () => this._engine.withTransaction(handle, async (tx) => {
             const world = await getNativeDocument(tx, this._worldKey(handle, worldId));
             if (world?.currentRevisionId) retained.add(world.currentRevisionId);
             const deleted = [];
@@ -184,7 +189,7 @@ export class WorldRepo {
                 if (await tx.deleteResource(record.key)) deleted.push(revisionId);
             }
             return deleted;
-        });
+        }));
     }
 
     async delete(handle, worldId) {
