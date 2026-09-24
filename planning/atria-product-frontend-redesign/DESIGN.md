@@ -1,6 +1,6 @@
 # Atria Product Frontend Redesign — Design Specification
 
-Status: active (task `refactor/atria-product-frontend-redesign`).
+Status: completed and integrated into main; acceptance recorded in `PHASE-8.md`.
 Input boundary map: `docs/plans/atria-product-frontend-redesign-audit.md`.
 This document is the visual and interaction authority for the redesign. It does
 not change product capability, routing, persistence or runtime authority.
@@ -238,10 +238,11 @@ migrated with the new design and recorded in the phase log.
 
 ## 8. Delivery phases
 
-Phase 1 is integrated into main. Phases 2–7 are implemented and pushed on
-`refactor/atria-product-frontend-redesign`. Continue Phase 8 only after the user
-says continue. Keep this branch through Phase 8; do not merge into main or delete
-the branch at individual phase checkpoints.
+Phases 1–8 are complete. Phases 2–8 used the retained
+`refactor/atria-product-frontend-redesign` branch through final acceptance.
+The user authorized final integration and push on 2026-09-24. Main integration
+is `ad15c1e0c3e15e625ba163e284a300c00811f10d`; see `PHASE-8.md` for validation,
+interaction corrections, visual evidence and explicit environment limitations.
 
 1. **Foundations and frame:** tokens, appearance, icon set, shared component
    stylesheet/builders, responsive Shell, search, inspector, menu, state panels,
