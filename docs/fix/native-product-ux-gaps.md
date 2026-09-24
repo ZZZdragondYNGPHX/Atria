@@ -69,30 +69,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 闭合 Secret → Connection → Model → Generation Profile → Runtime Route 的第一方 Native 配置链。
 
-## NUX-005 — Runtime cannot pull provider model choices and lacks connection validation
-
-**Current evidence**
-
-Runtime Model authoring exposes `Remote model ID` as a required free-text field. Users must know and type the provider's exact model identifier manually.
-
-No Native model-list discovery/picker is exposed, even when a provider can enumerate models. Connection setup also lacks a first-party **Test connection** / provider-health action.
-
-**Impact**
-
-Model setup is unnecessarily error-prone: endpoint/authentication/model-ID mistakes are usually discovered only at preview/execution time, and users cannot simply fetch and choose from available models.
-
-**Acceptance**
-
-- Add non-destructive connection validation.
-- When supported by the provider, fetch available models and present a selectable model list.
-- Preserve manual model-ID entry for custom/OpenAI-compatible endpoints.
-- Model discovery must not silently mutate the saved Model Profile.
-- Capability/limit metadata discovered from providers must keep provenance and explicit user override semantics.
-
----
-
----
-
 ## NUX-006 — Runtime profiles and routes lack lifecycle cleanup
 
 **Current evidence**

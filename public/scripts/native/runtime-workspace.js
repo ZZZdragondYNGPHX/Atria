@@ -208,14 +208,51 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 if (creating || !secret.value) throw Object.assign(new Error('Select a stored Secret'), { code: 'native_secret_selection_required' });
                 return { ...value, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value, secretRef: { scope: 'player', secretId: secret.value } };
             };
+            const probeStatus = node('div', undefined, fields);
+            const probe = button('Test connection', async () => {
+                if (probe.disabled) return;
+                probe.disabled = true; probe.setAttribute('aria-busy', 'true'); probeStatus.replaceChildren(); notice('Checking provider access…', probeStatus);
+                try {
+                    const candidate = { ...serialize(), displayName: name.value };
+                    await runtimeRequest('/connections/probe', { method: 'POST', body: candidate, signal: controller.signal });
+                    if (!disposed && editorToken === editorSequence) {
+                        probeStatus.replaceChildren();
+                        notice(JSON.stringify(candidate) === JSON.stringify({ ...serialize(), displayName: name.value })
+                            ? 'Provider model list is reachable. No generation was sent.' : 'Connection changed during the check. Test again.', probeStatus);
+                    }
+                } catch (error) { if (!disposed && editorToken === editorSequence) { probeStatus.replaceChildren(); failure(error, probeStatus); } } finally { probe.disabled = false; probe.removeAttribute('aria-busy'); }
+            }, fields);
         } else if (section === 'models') {
             let fields = group(form, 'Model connection');
             const connection = field(fields, 'Connection', value.connectionProfileRef?.connectionProfileId, options(data.connections, ids.connections)); connection.required = true;
             button('Manage connections', () => host.openRuntimeSection('connections'), fields);
             const remote = field(fields, 'Remote model ID', value.remoteModelId); remote.required = true;
+            const discovery = node('div', undefined, fields); discovery.className = 'atri-runtime-group';
+            const discoveryStatus = node('div', undefined, discovery);
+            const choices = field(discovery, 'Available provider models', '', [['', 'Fetch models to choose…']]); choices.disabled = true;
+            let discovered = []; let discoveryVersion = 0;
+            const fetchModels = button('Fetch models', async () => {
+                if (fetchModels.disabled) return;
+                const version = ++discoveryVersion; const selected = data.connections.find(item => item.connectionProfileId === connection.value);
+                if (!selected) { discoveryStatus.replaceChildren(); notice('Select a connection first.', discoveryStatus, true); connection.focus(); return; }
+                fetchModels.disabled = true; fetchModels.setAttribute('aria-busy', 'true'); discoveryStatus.replaceChildren(); notice('Fetching available models…', discoveryStatus);
+                try {
+                    const result = await runtimeRequest('/connections/probe', { method: 'POST', body: selected, signal: controller.signal });
+                    if (disposed || editorToken !== editorSequence || version !== discoveryVersion) return;
+                    discovered = result.models; choices.replaceChildren();
+                    for (const item of [{ remoteModelId: '', displayName: translateShellText('Choose…') }, ...discovered]) {
+                        const option = node('option', undefined, choices); option.value = item.remoteModelId; option.textContent = item.displayName + (item.remoteModelId ? ' · ' + item.remoteModelId : '');
+                    }
+                    choices.disabled = !discovered.length; discoveryStatus.replaceChildren();
+                    notice(discovered.length ? 'Choose a model. Fetching does not change saved configuration.' : 'No generation models returned. You can enter a model ID manually.', discoveryStatus);
+                } catch (error) { if (!disposed && editorToken === editorSequence && version === discoveryVersion) { discoveryStatus.replaceChildren(); failure(error, discoveryStatus); } } finally { fetchModels.disabled = false; fetchModels.removeAttribute('aria-busy'); }
+            }, discovery);
+            connection.addEventListener('change', () => { discoveryVersion += 1; discovered = []; choices.replaceChildren(); choices.disabled = true; discoveryStatus.replaceChildren(); });
             fields = group(form, 'Token budget');
             const context = number(fields, 'Context tokens', value.limits?.contextTokens || 16000, 1);
             const output = number(fields, 'Output token limit', value.limits?.outputTokens || 1024, 1);
+            const budgetSources = { ...value.limitProvenance };
+            for (const [key, input] of [['contextTokens', context], ['outputTokens', output]]) input.addEventListener('input', () => { budgetSources[key] = [{ kind: 'user-override', source: 'Runtime Models' }]; });
             const encoding = field(fields, 'Tokenizer encoding', value.tokenizer?.encoding || 'cl100k_base', [['cl100k_base', 'cl100k_base'], ['o200k_base', 'o200k_base']]);
             fields = group(form, 'Capabilities');
             notice('All transports support streaming. Message transports support tools, structured output and reasoning. OpenAI and Anthropic support explicit cache controls. Model restrictions still apply.', fields);
@@ -223,11 +260,42 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 const existing = value.capabilities?.find(item => item.capability === capability);
                 const input = field(fields, capability, existing?.state || '', [['', 'Use adapter metadata'], ['unknown', 'Unknown'], ['unsupported', 'Unsupported'], ['supported', 'Supported — explicit user override']]);
                 node('small', existing ? existing.provenance.map(item => item.kind + ': ' + item.source).join(' · ') : 'Provenance: built-in adapter metadata', fields);
-                return { capability, input, existing };
+                const entry = { capability, input, existing, dirty: false };
+                input.addEventListener('change', () => { entry.dirty = true; });
+                return entry;
             });
+            const metadata = node('div', undefined, discovery); metadata.className = 'atri-runtime-group';
+            choices.addEventListener('change', () => {
+                const selected = discovered.find(item => item.remoteModelId === choices.value); resetMetadata();
+                if (!selected) return;
+                remote.value = selected.remoteModelId;
+                details(metadata, 'Discovered metadata', JSON.stringify({ limits: selected.limits, capabilities: selected.capabilities, provenance: selected.provenance }, null, 2));
+                button('Use discovered metadata', () => {
+                    if (remote.value !== selected.remoteModelId) return;
+                    for (const [key, input] of [['contextTokens', context], ['outputTokens', output]]) {
+                        if (selected.limits[key] !== undefined) { input.value = selected.limits[key]; budgetSources[key] = selected.provenance; }
+                    }
+                    for (const item of capabilities) {
+                        const found = selected.capabilities.find(entry => entry.capability === item.capability);
+                        if (found && !item.dirty && !item.existing?.provenance.some(entry => entry.kind === 'user-override')) { item.existing = found; item.input.value = found.state; }
+                    }
+                    notice('Metadata applied to this draft. Explicit capability overrides are preserved. Save to keep changes.', metadata);
+                }, metadata);
+            });
+            const resetMetadata = () => {
+                metadata.replaceChildren();
+                for (const key of Object.keys(budgetSources)) if (budgetSources[key].some(item => item.kind === 'provider-discovery')) delete budgetSources[key];
+                for (const item of capabilities) if (item.existing?.provenance.some(entry => entry.kind === 'provider-discovery')) {
+                    if (!item.dirty) item.input.value = '';
+                    item.existing = null;
+                }
+            };
+            connection.addEventListener('change', resetMetadata);
+            remote.addEventListener('input', () => { choices.value = ''; resetMetadata(); });
             serialize = () => ({ ...value, connectionProfileRef: { scope: 'player', connectionProfileId: connection.value }, remoteModelId: remote.value,
                 limits: { contextTokens: Number(context.value), outputTokens: Number(output.value) }, tokenizer: { encoding: encoding.value, source: 'user' },
-                capabilities: [...(value.capabilities || []).filter(item => !capabilities.some(entry => entry.capability === item.capability)), ...capabilities.filter(item => item.input.value).map(item => item.existing?.state === item.input.value ? item.existing : { capability: item.capability, state: item.input.value, provenance: [{ kind: 'user-override', source: 'Runtime Models' }] })] });
+                limitProvenance: { contextTokens: budgetSources.contextTokens || [{ kind: 'user-override', source: 'Runtime Models' }], outputTokens: budgetSources.outputTokens || [{ kind: 'user-override', source: 'Runtime Models' }] },
+                capabilities: [...(value.capabilities || []).filter(item => !capabilities.some(entry => entry.capability === item.capability)), ...capabilities.filter(item => item.input.value).map(item => !item.dirty && item.existing?.state === item.input.value ? item.existing : { capability: item.capability, state: item.input.value, provenance: [{ kind: 'user-override', source: 'Runtime Models' }] })] });
         } else if (section === 'profiles') {
             let fields = group(form, 'Revision', 'Saving creates a new immutable revision. Existing routes keep their selected revision.');
             const revision = field(fields, 'New exact revision', 'r-' + Date.now()); revision.required = true;

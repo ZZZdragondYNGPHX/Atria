@@ -119,4 +119,30 @@ passed including Secret creation, connection save failure/retry and configuratio
 loading recovery. Inspected the connection screenshot. Changed-file ESLint and
 diff check passed. Only synthetic credentials were used.
 
-Next: NUX-005, following the active backlog order.
+### NUX-005
+
+Connection Test and Model Fetch use a non-generating authenticated model-list
+probe over the explicitly selected Native connection. Protocol endpoint mapping,
+authentication, bounded pagination, timeout, redirect rejection and response
+validation are explicit. Unsupported custom endpoints retain manual model entry.
+No probe saves configuration or silently selects a model.
+
+Model selection edits only the draft ID. Applying discovered metadata is separate
+and explicit. Anthropic/Gemini documented capabilities and limits retain provider
+discovery provenance; OpenAI model lists do not invent absent metadata. Optional
+ModelProfile.limitProvenance records each budget source in the existing resource.
+Manual budget edits become user overrides; capability overrides survive metadata
+application. Changing model/connection removes old discovery provenance.
+
+Validation: five focused/adjacent suites, 64 tests passed, then 21 changed tests
+passed including malformed/credential-echo/pagination-loop cases. One real Edge
+320px discovery scenario passed, repeated after reusing existing field-group
+spacing; final screenshot inspected. Changed-file ESLint and diff checks passed.
+HTTP protocol tests use local servers; browser discovery uses a controlled
+response and the real configuration persistence endpoint.
+
+Model-list references: [OpenAI](https://developers.openai.com/api/reference/resources/models/methods/list),
+[Anthropic](https://platform.claude.com/docs/en/api/models/list),
+[Gemini](https://ai.google.dev/api/models).
+
+Next: NUX-006, following the active backlog order.

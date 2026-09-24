@@ -11,6 +11,8 @@ import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../n
 import { NativeGenerationHost } from '../native/adapters/generation-host.js';
 import { createHttpGenerationProvider } from '../native/adapters/http-generation-provider.js';
 import { createNativeMessagesProvider } from '../native/adapters/native-messages-provider.js';
+import { assertConnectionProfile } from '../native/model-prompt-runtime/contracts.js';
+import { prepareProviderDiscovery, discoverProviderModels } from '../native/adapters/provider-discovery.js';
 
 function services() {
     const { core, packageInstaller } = getNativeSessionServices();
@@ -38,6 +40,24 @@ function services() {
 
 export function createNativeGenerationRouter(getHost = services) {
     const router = express.Router();
+    router.post('/connections/probe', async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        const controller = new AbortController();
+        const abort = () => { if (!response.writableEnded) controller.abort(); };
+        response.on('close', abort);
+        try {
+            const host = getHost();
+            const connection = assertConnectionProfile(request.body);
+            prepareProviderDiscovery(connection);
+            const secret = await host.secretPort.resolveSecret(connection.secretRef, { handle });
+            if (!secret) throw Object.assign(new Error('Missing Secret'), { code: 'generation_secret_unavailable' });
+            response.json(await discoverProviderModels(connection, { secret, signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) }));
+        } catch (error) {
+            const code = error.code;
+            response.status(400).json({ error: typeof code === 'string' && (code.startsWith('native_provider_') || code === 'generation_secret_unavailable') ? code : 'native_provider_probe_invalid' });
+        } finally { response.off('close', abort); }
+    });
     router.get('/secrets', (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);

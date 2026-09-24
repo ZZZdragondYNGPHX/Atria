@@ -16,6 +16,14 @@ export function getRuntimeEvidence() { return latestEvidence; }
 
 export function runtimeRemediation(code) {
     const actions = {
+        native_provider_probe_unsupported: ['This endpoint does not offer a supported model-list check. You can enter a model ID manually.', null],
+        native_provider_endpoint_invalid: ['Use an HTTP or HTTPS endpoint without embedded credentials, query parameters or fragments.', null],
+        native_provider_authentication_failed: ['The provider rejected this Secret. Select another Secret or check its access permissions.', null],
+        native_provider_unreachable: ['Could not reach the provider. Check the endpoint and network, then retry.', null],
+        native_provider_unavailable: ['The provider is temporarily unavailable. Try again.', null],
+        native_provider_probe_cancelled: ['The connection check timed out or was cancelled. Try again.', null],
+        native_provider_response_invalid: ['The provider returned an invalid model list. You can enter a model ID manually.', null],
+        native_provider_probe_invalid: ['Check the connection name, endpoint, transport and Secret selection.', null],
         native_secret_selection_required: ['Finish creating or select a stored Secret before saving the connection.', null],
         native_generation_context_ambiguous: ['Choose either a Session or a Project context, not both.', 'diagnostics'],
         native_generation_route_ref_invalid: ['Choose an exact player Runtime route. Session-scoped routes are not provisioned by this host.', 'routes'],

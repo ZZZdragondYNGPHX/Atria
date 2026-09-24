@@ -23,6 +23,30 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
+test('Provider model discovery is explicit and preserves metadata provenance on narrow screens', async ({ page }, info) => {
+    await boot(page, 320); await open(page, 'models');
+    await root(page).getByRole('button', { name: 'Edit P4 model', exact: true }).click();
+    const remote = root(page).getByLabel('Remote model ID', { exact: true }); const before = await remote.inputValue();
+    const provenance = [{ kind: 'provider-discovery', source: 'Browser provider fixture', observedAt: 1234 }];
+    await page.route('**/api/native/generation/connections/probe', route => route.fulfill({ json: { status: 'reachable', models: [{
+        remoteModelId: 'discovered-model', displayName: 'Discovered model', limits: { contextTokens: 64000, outputTokens: 4096 },
+        capabilities: [{ capability: 'generation.reasoning', state: 'supported', provenance }], provenance,
+    }] } }));
+    await root(page).getByRole('button', { name: 'Fetch models', exact: true }).click();
+    await expect(root(page).getByLabel('Available provider models', { exact: true })).toBeEnabled();
+    await expect(remote).toHaveValue(before);
+    await root(page).getByLabel('Available provider models', { exact: true }).selectOption('discovered-model');
+    await root(page).getByRole('button', { name: 'Use discovered metadata', exact: true }).click();
+    await expect(root(page).getByLabel('Context tokens', { exact: true })).toHaveValue('64000');
+    await root(page).getByLabel('Context tokens', { exact: true }).fill('32000');
+    await root(page).getByLabel('Context tokens', { exact: true }).scrollIntoViewIfNeeded();
+    await shot(page, info, 'discovery-metadata-320');
+    const saved = page.waitForRequest(req => req.url().endsWith('/configuration/models') && req.method() === 'PUT');
+    await root(page).getByRole('button', { name: 'Save', exact: true }).click();
+    expect((await saved).postDataJSON()).toMatchObject({ remoteModelId: 'discovered-model', limitProvenance: { contextTokens: [{ kind: 'user-override' }], outputTokens: provenance } });
+    await expect(root(page).getByRole('button', { name: 'Edit P4 model', exact: true })).toBeVisible();
+});
+
 async function boot(page, width = 1440, locale = 'en') {
     await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(locale => localStorage.setItem('language', locale), locale);

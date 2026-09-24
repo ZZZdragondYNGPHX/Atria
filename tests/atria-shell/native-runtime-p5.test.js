@@ -113,3 +113,26 @@ test('failed Secret creation retains the draft and cancel clears sensitive input
     click('Cancel'); expect(key.value).toBe(''); expect(key.disabled).toBe(true);
     view.dispose();
 });
+
+test('model discovery requires selection and explicit metadata apply, then preserves manual overrides', async () => {
+    const model = { schemaVersion: 1, scope: 'player', modelProfileId: 'model_' + '1'.repeat(32), displayName: 'Model',
+        remoteModelId: 'manual-model', connectionProfileRef: { scope: 'player', connectionProfileId: config.connections[0].connectionProfileId }, limits: { contextTokens: 1000, outputTokens: 100 }, capabilities: [] };
+    const provenance = [{ kind: 'provider-discovery', source: 'Test provider', observedAt: 100 }];
+    globalThis.fetch = jest.fn(async url => url.endsWith('/connections/probe') ? response({ models: [{ remoteModelId: 'found-model', displayName: 'Found', limits: { contextTokens: 8000, outputTokens: 2000 },
+        capabilities: [{ capability: 'generation.reasoning', state: 'unsupported', provenance }], provenance }] }) : response({ ...config, models: [model] }));
+    const body = document.createElement('div'); document.body.append(body);
+    const view = mountNativeRuntimeWorkspace({ document, body, section: 'models', route: { child: { id: 'models:' + model.modelProfileId } }, host: {} }); await flush();
+    const field = label => view.root.querySelector(`[aria-label="${label}"]`);
+    const click = label => [...view.root.querySelectorAll('button')].find(button => button.textContent === label).click();
+    click('Fetch models'); await flush();
+    expect(field('Remote model ID').value).toBe('manual-model'); expect(field('Context tokens').value).toBe('1000');
+    const choices = field('Available provider models'); choices.value = 'found-model'; choices.dispatchEvent(new Event('change'));
+    expect(field('Remote model ID').value).toBe('found-model'); expect(field('Context tokens').value).toBe('1000');
+    click('Use discovered metadata'); expect(field('Context tokens').value).toBe('8000');
+    field('Context tokens').value = '7000'; field('Context tokens').dispatchEvent(new Event('input'));
+    view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush();
+    const write = globalThis.fetch.mock.calls.find(([, options]) => options.method === 'PUT');
+    expect(JSON.parse(write[1].body)).toMatchObject({ remoteModelId: 'found-model', limits: { contextTokens: 7000, outputTokens: 2000 },
+        limitProvenance: { contextTokens: [{ kind: 'user-override' }], outputTokens: provenance }, capabilities: [{ capability: 'generation.reasoning', state: 'unsupported', provenance }] });
+    view.dispose();
+});

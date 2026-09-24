@@ -187,10 +187,14 @@ export function assertCapabilityDecision(value, field = 'CapabilityDecision') {
     if (!ATRIA_CAPABILITY_STATES.includes(value.state)) {
         throw new TypeError(field + '.state must be supported, unsupported, or unknown');
     }
-    if (!Array.isArray(value.provenance) || value.provenance.length === 0) {
+    return Object.freeze({ capability, state: value.state, provenance: assertDecisionProvenance(value.provenance, field) });
+}
+
+function assertDecisionProvenance(value, field) {
+    if (!Array.isArray(value) || value.length === 0) {
         throw new TypeError(field + '.provenance must contain at least one source');
     }
-    const provenance = value.provenance.map((entry, index) => {
+    const provenance = value.map((entry, index) => {
         const entryField = field + '.provenance[' + index + ']';
         object(entry, entryField);
         only(entry, ['kind', 'source', 'observedAt'], entryField);
@@ -205,11 +209,7 @@ export function assertCapabilityDecision(value, field = 'CapabilityDecision') {
                 : { observedAt: integer(entry.observedAt, entryField + '.observedAt') }),
         });
     });
-    return Object.freeze({
-        capability,
-        state: value.state,
-        provenance: freezeArray(provenance),
-    });
+    return freezeArray(provenance);
 }
 
 function assertCapabilityList(value, field) {
@@ -285,6 +285,7 @@ export function assertModelProfile(value) {
         'remoteModelId',
         'capabilities',
         'limits',
+        'limitProvenance',
         'tokenizer',
         'messageFormat',
         'providerHints',
@@ -293,6 +294,13 @@ export function assertModelProfile(value) {
     if (value.scope !== 'player') throw new TypeError('ModelProfile.scope must be \'player\'');
     object(value.limits, 'ModelProfile.limits');
     only(value.limits, ['contextTokens', 'outputTokens'], 'ModelProfile.limits');
+    let limitProvenance;
+    if (value.limitProvenance !== undefined) {
+        object(value.limitProvenance, 'ModelProfile.limitProvenance');
+        only(value.limitProvenance, ['contextTokens', 'outputTokens'], 'ModelProfile.limitProvenance');
+        limitProvenance = Object.freeze(Object.fromEntries(Object.entries(value.limitProvenance)
+            .map(([key, entries]) => [key, assertDecisionProvenance(entries, 'ModelProfile.limitProvenance.' + key)])));
+    }
     const tokenizer = value.tokenizer === undefined
         ? {}
         : clone(object(value.tokenizer, 'ModelProfile.tokenizer'), 'ModelProfile.tokenizer');
@@ -318,6 +326,7 @@ export function assertModelProfile(value) {
             contextTokens: integer(value.limits.contextTokens, 'ModelProfile.limits.contextTokens', { min: 1 }),
             outputTokens: integer(value.limits.outputTokens, 'ModelProfile.limits.outputTokens', { min: 1 }),
         }),
+        ...(limitProvenance === undefined ? {} : { limitProvenance }),
         tokenizer,
         messageFormat: value.messageFormat === undefined
             ? {}
