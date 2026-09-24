@@ -146,3 +146,7 @@
 .atri-source-editor { min-width: 0; }
 .atri-source-editor > textarea { display: block; width: 100%; min-height: 320px; font-family: var(--atri-font-mono); }
 .atri-source-diff pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; }
+
+.atri-prompt-condition, .atri-prompt-parameters, .atri-prompt-derive { min-width: 0; max-width: 100%; }
+.atri-prompt-condition fieldset { margin-inline: 0; }
+.atri-prompt-parameters fieldset, .atri-prompt-derive fieldset { min-width: 0; margin: 12px 0; }

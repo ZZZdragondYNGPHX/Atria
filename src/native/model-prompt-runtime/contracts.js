@@ -1,3 +1,4 @@
+import { validatePromptParameters } from '../../../public/scripts/native/prompt-parameter-contracts.js';
 import { assertNativeId } from '../identity.js';
 
 export const ATRIA_MODEL_PROMPT_SCHEMA_VERSION = 1;
@@ -408,6 +409,7 @@ function assertParameterDefinitions(value, field) {
             ...(definition.default === undefined ? {} : { default: clone(definition.default, field + '.' + name + '.default') }),
         });
     }
+    validatePromptParameters(out);
     return Object.freeze(out);
 }
 

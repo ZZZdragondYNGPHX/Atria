@@ -116,6 +116,12 @@
 [data-atria-domain-workspace="library"] .atri-prompt-stages legend { font-weight: 600; }
 .atria-app-shell[data-atria-viewport="compact"] [data-atri-library-editor="true"] .atri-prompt-identity { grid-template-columns: 1fr; }
 
+/* Semantic Prompt fields share the existing stage hierarchy and native check controls. */
+.atria-app-shell .atri-prompt-editor :is(.atri-prompt-condition, .atri-prompt-parameters fieldset, .atri-prompt-derive fieldset) { border: 0; border-inline-start: 2px solid var(--atri-separator-strong); padding: 8px 12px; margin-inline: 0; min-width: 0; }
+.atria-app-shell .atri-prompt-editor .atri-prompt-condition .atri-prompt-condition { padding-inline: 4px; }
+.atria-app-shell .atri-prompt-editor .atri-prompt-toggle { display: flex; align-items: center; min-height: 44px; gap: 8px; }
+.atria-app-shell .atri-prompt-editor .atri-prompt-toggle > input[type="checkbox"] { order: -1; appearance: auto; accent-color: var(--atri-accent); width: 20px; min-width: 20px; height: 20px; min-height: 20px; padding: 0; border: revert; background: revert; }
+
 /* Skills reuse their controllers, file hashes, conflict flow and scope authority. */
 :is(.atria-skill-workspace-host, .popup) .atria_skill_manager { display: grid; gap: 24px; min-width: 0; max-width: 1120px; margin-inline: auto; font-family: var(--atri-font-sans); color: var(--atri-text-primary); text-shadow: none; }
 :is(.atria-skill-workspace-host, .popup) .atria_skill_manager_tabs { display: flex; width: fit-content; max-width: 100%; gap: 4px; padding: 4px; border: 0; border-radius: var(--atri-radius-md); background: var(--atri-fill); }

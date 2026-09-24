@@ -1,3 +1,4 @@
+import { mountPromptCondition, mountPromptParameters, mountPromptDerive } from './prompt-semantics.js';
 import { renderResourceReferenceRows } from './resource-reference-rows.js';
 import { formatShellText, translateShellText } from '../atria-shell/localization.js';
 import { createStudioNativeId } from './studio-authoring.js';
@@ -164,7 +165,11 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
         });
         if (advanced) {
             const json = input(doc, root, 'Resource JSON — conditions, parameters, provenance', JSON.stringify(draft, null, 2), true);
-            json.className = 'atri-prompt-json'; read = () => JSON.parse(json.value);
+            json.className = 'atri-prompt-json'; read = () => {
+                const value = JSON.parse(json.value);
+                if (JSON.stringify(value.provenance || []) !== JSON.stringify(entry.resource.provenance || [])) throw new Error(translateShellText('System provenance is read-only.'));
+                return value;
+            };
         } else {
             const identity = librarySurface ? element(doc, 'div', undefined, root) : root;
             if (librarySurface) identity.className = 'atri-prompt-identity';
@@ -181,13 +186,17 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 const priority = input(doc, fields, 'Priority', draft.priority || 0); priority.type = 'number';
                 specific = () => ({ target: target.value, stages: stages.value.split(',').map(v => v.trim()).filter(Boolean), body: body.value, priority: Number(priority.value) });
             } else if (entry.ref.resourceType === 'core.prompt-program') {
-                const stages = clone(draft.stages); const tree = element(doc, 'section', undefined, fields); tree.className = 'atri-prompt-stages';
+                const stages = clone(draft.stages); const stageConditions = new Map();
+                const syncConditions = () => { for (const [stage, read] of stageConditions) if (stages.includes(stage)) stage.condition = read(); };
+                const tree = element(doc, 'section', undefined, fields); tree.className = 'atri-prompt-stages';
                 element(doc, 'h4', 'Stage / module tree', tree);
                 const renderStages = (focusIndex) => {
-                    tree.querySelectorAll('fieldset').forEach(node => node.remove());
+                    try { syncConditions(); } catch (e) { status.replaceChildren(); error(doc, status, e); return; }
+                    stageConditions.clear(); tree.querySelectorAll(':scope > fieldset').forEach(node => node.remove());
                     stages.forEach((stage, index) => {
                         const row = element(doc, 'fieldset', undefined, tree); element(doc, 'legend', formatShellText('Stage ${0}', [index + 1], undefined, 'atria.product.stageIndex'), row);
                         const id = input(doc, row, formatShellText('Stage ID ${0}', [index + 1], undefined, 'atria.product.stageIdIndex'), stage.stageId); id.addEventListener('input', () => { stage.stageId = id.value; });
+                        stageConditions.set(stage, mountPromptCondition(doc, row, stage.condition));
                         for (const ref of stage.moduleRefs) {
                             const line = element(doc, 'div', undefined, row); const module = entries.find(item => exactKey(item.ref) === exactKey(ref));
                             element(doc, 'span', (module?.resource.displayName || ref.resourceId) + ' · ' + ref.revision + ' · ' + ref.scope, line);
@@ -199,15 +208,21 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                         action(doc, row, 'Move stage up', () => { if (index) { [stages[index - 1], stages[index]] = [stages[index], stages[index - 1]]; renderStages(index - 1); } });
                         action(doc, row, 'Remove stage', () => { if (stages.length > 1) { stages.splice(index, 1); renderStages(Math.min(index, stages.length - 1)); } });
                     });
-                    if (librarySurface && focusIndex !== undefined) tree.querySelectorAll('fieldset')[focusIndex]?.querySelector('input')?.focus();
+                    if (librarySurface && focusIndex !== undefined) tree.querySelectorAll(':scope > fieldset')[focusIndex]?.querySelector('input')?.focus();
                 };
                 action(doc, fields, 'Add stage', () => { let index = stages.length + 1; while (stages.some(stage => stage.stageId === 'stage.step' + index)) index++; stages.push({ stageId: 'stage.step' + index, moduleRefs: [] }); renderStages(); }); renderStages();
                 const directive = input(doc, fields, 'Response Directive', draft.responseDirective?.body || '', true);
-                specific = () => ({ stages, responseDirective: { ...draft.responseDirective, body: directive.value } });
+                specific = () => { syncConditions(); return { stages, responseDirective: { ...draft.responseDirective, body: directive.value } }; };
             } else specific = generationFields(doc, fields, draft);
-            read = () => ({ ...draft, displayName: name.value, revision: revision.value, ...specific() });
-            const provenance = element(doc, 'details', undefined, root); element(doc, 'summary', 'Conditions / parameters / provenance', provenance);
-            element(doc, 'pre', JSON.stringify({ condition: draft.condition, parameters: draft.parameters, parentRef: draft.parentRef, derive: draft.derive, provenance: draft.provenance }, null, 2), provenance);
+            const prompt = ['core.prompt-module', 'core.prompt-program'].includes(entry.ref.resourceType);
+            const readParameters = prompt ? mountPromptParameters(doc, fields, draft.parameters) : null;
+            const readCondition = entry.ref.resourceType === 'core.prompt-module' ? mountPromptCondition(doc, fields, draft.condition) : null;
+            const readDerive = entry.ref.resourceType === 'core.prompt-program' ? mountPromptDerive(doc, fields, draft, entries, entry.ref, () => specific().stages) : null;
+            read = () => ({ ...draft, displayName: name.value, revision: revision.value, ...specific(),
+                ...(readParameters ? { parameters: readParameters() } : {}), ...(readCondition ? { condition: readCondition() } : {}), ...(readDerive ? readDerive() : {}),
+            });
+            const provenance = element(doc, 'details', undefined, root); element(doc, 'summary', 'System provenance (read-only)', provenance);
+            element(doc, 'pre', JSON.stringify(draft.provenance || [], null, 2), provenance);
         }
         const save = action(doc, root, librarySurface ? 'Save revision' : 'Review / save revision', async () => {
             if (save.disabled) return; save.disabled = true; save.setAttribute('aria-busy', 'true'); status.replaceChildren();

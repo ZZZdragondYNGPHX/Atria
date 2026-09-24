@@ -221,3 +221,40 @@ test('Studio Source validates JSON, previews text changes and protects binary fi
     await expect.poll(() => page.evaluate(async id => { const { nativeStudioClient: c } = await import('/scripts/native/studio-client.js'); return atob((await c.readSource(id, 'notes.json')).content); }, id)).toBe('{"name":"New harbor"}');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+
+test('Prompt semantic authoring saves typed parameters and exact derive configuration at 390px', async ({ page }, info) => {
+    test.setTimeout(120000); await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const refs = await page.evaluate(async () => {
+        const { runtimeRequest } = await import('/scripts/native/runtime-client.js');
+        const { newPromptResource, resourceRef } = await import('/scripts/native/prompt-authoring.js');
+        const module = newPromptResource('core.prompt-module'); module.displayName = 'Harbor voice'; module.parameters = { tone: { type: 'string', default: 'quiet' } }; module.body = '{{module.tone}}';
+        const moduleRef = resourceRef('core.prompt-module', module, { scope: 'library' });
+        const parent = newPromptResource('core.prompt-program'); parent.displayName = 'Harbor parent'; parent.stages[0].moduleRefs = [moduleRef];
+        const parentRef = resourceRef('core.prompt-program', parent, { scope: 'library' });
+        const child = newPromptResource('core.prompt-program'); child.displayName = 'Harbor derivative'; child.parentRef = parentRef; child.stages = [{ stageId: 'stage.extra', moduleRefs: [] }];
+        for (const [resourceType, resource] of [['core.prompt-module', module], ['core.prompt-program', parent], ['core.prompt-program', child]]) await runtimeRequest('/resources', { method: 'POST', body: { resourceType, resource } });
+        window.Atria.shell.getWorkspaceHost().openLibrarySection('prompt-programs');
+        return { childId: child.promptProgramId, childRevision: child.revision, parentRef, moduleRef };
+    });
+    const row = page.locator('.atri-prompt-resource').filter({ has: page.getByRole('heading', { name: 'Harbor derivative', exact: true }) });
+    await row.getByRole('button', { name: 'New revision', exact: true }).click();
+    const editor = page.locator('[data-atri-prompt-editor]');
+    await editor.getByRole('button', { name: 'Add parameter', exact: true }).click(); await editor.getByLabel('Parameter name', { exact: true }).fill('count');
+    await editor.getByLabel('Parameter type', { exact: true }).selectOption('number'); await editor.getByLabel('Use default value', { exact: true }).check(); await editor.getByLabel('Default value', { exact: true }).fill('3');
+    await editor.getByLabel('Condition kind', { exact: true }).selectOption('compare'); await editor.getByLabel('Variable path', { exact: true }).fill('param.count'); await editor.getByLabel('Comparison', { exact: true }).selectOption('gte'); await editor.getByLabel('Value type', { exact: true }).selectOption('number'); await editor.getByLabel('Comparison value', { exact: true }).fill('2');
+    await editor.getByRole('button', { name: 'Add derive operation', exact: true }).click(); await editor.getByLabel('Affected module', { exact: true }).selectOption(refs.moduleRef.resourceId); await editor.getByLabel('Derive action', { exact: true }).selectOption('configure');
+    await editor.getByLabel('Override parameter', { exact: true }).check(); await editor.getByLabel('Parameter value', { exact: true }).fill('warm');
+    await editor.getByLabel('Parameter value', { exact: true }).scrollIntoViewIfNeeded(); await page.screenshot({ path: info.outputPath('prompt-derive-390.png') });
+    await editor.getByRole('button', { name: 'Save revision', exact: true }).click(); await expect(page.getByText('Saved immutable Library revision.', { exact: true })).toBeVisible();
+    const result = await page.evaluate(async refs => { const { runtimeRequest } = await import('/scripts/native/runtime-client.js'); const entries = await runtimeRequest('/resources'); return entries.filter(item => item.ref.resourceId === refs.childId); }, refs);
+    expect(result).toHaveLength(2); const created = result.find(item => item.ref.revision !== refs.childRevision).resource;
+    expect(created.parameters.count.default).toBe(3); expect(created.stages[0].condition).toEqual({ op: 'gte', path: 'param.count', value: 2 }); expect(created.parentRef).toEqual(refs.parentRef);
+    expect(created.derive).toEqual([{ op: 'configure', moduleId: refs.moduleRef.resourceId, config: { tone: 'warm' } }]);
+    expect(result.find(item => item.ref.revision === refs.childRevision).resource.derive).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

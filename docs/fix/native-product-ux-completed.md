@@ -691,4 +691,20 @@ A real Edge 390px scenario passed invalid JSON retention, live textual diff, bin
 protection, restored draft and successful reviewed write. Screenshot inspected; lint and
 diff checks passed.
 
-Next: NUX-032, following the active backlog order.
+### NUX-032
+
+Prompt Module and Program stage conditions now use nested comparison/all/any/not controls.
+Typed parameter definitions distinguish absent defaults from explicit values; shared resource
+validation rejects default-type mismatches and names runtime binding cannot consume. Program
+parent and add/disable/replace/configure controls preserve exact references; configuration
+uses the selected module's typed declarations. Unknown overrides remain visible and require
+explicit correction. Advanced JSON remains available but cannot alter system provenance.
+Stage rerenders preserve condition drafts. Controls reuse existing Atria fields and hierarchy.
+
+Validation: five focused/adjacent suites covered 101 passing cases, including Native Prompt
+compiler and resource contracts. Source/localization regression passed nine cases. A real Edge
+390px scenario passed typed defaults, stage condition, exact parent/configure authoring and
+immutable revision save. The final control screenshot was inspected after correcting inherited
+checkbox styling. Lint/diff checks passed.
+
+Next: Group 6 regression, then NUX-033 in Group 7.

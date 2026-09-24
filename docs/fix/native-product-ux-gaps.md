@@ -81,43 +81,9 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 Implementation and validation: [completed work](native-product-ux-completed.md).
 
-# Group 6 — P1 — Studio / Skills / Prompt Authoring
+# Group 6 — Completed
 
-**Group goal:** 让 Build / Studio 能通过当前 Atria authoring authority 完成核心资源制作，而不是依赖内部 JSON。
-
-## NUX-032 — Prompt advanced semantics are still authorable only through Advanced Resource JSON
-
-**New finding in the post-redesign re-audit**
-
-**Current evidence**
-
-The redesigned Prompt editor productizes common authoring:
-
-- Prompt Module target / stages / body / priority;
-- Prompt Program stage/module composition;
-- common Generation Profile controls.
-
-However, Prompt condition/parameters and derived-program configuration are still surfaced mainly as read-only technical evidence in the simple editor. Editing those semantics requires switching to the full **Advanced editor** Resource JSON.
-
-System provenance should remain read-only, but user-authored condition/parameter/derive behavior is part of Atria's first-class Prompt model.
-
-**Impact**
-
-Some of the most Atria-specific Prompt capabilities are technically available but remain developer-only in practice.
-
-**Acceptance**
-
-Provide structured authoring for user-controlled Prompt conditions, typed parameters and derive operations while preserving immutable exact revision semantics. Keep raw Resource JSON as the Advanced escape hatch and keep system provenance read-only.
-
-**Evidence**
-
-- `public/scripts/native/prompt-authoring.js`
-- `src/native/model-prompt-runtime/contracts.js`
-
----
-
----
-
+Implementation and validation: [completed work](native-product-ux-completed.md).
 
 # Group 7 — P1 — Portable Resources / Work / Session Lifecycle
 

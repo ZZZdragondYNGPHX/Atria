@@ -374,3 +374,11 @@ describe('P0 port contracts', () => {
         expect(() => assertGenerationServicePort({})).toThrow(/execute/);
     });
 });
+
+
+test('typed Prompt defaults and variable names reject resources runtime binding cannot consume', () => {
+    const module = { schemaVersion: 1, promptModuleId: MODULE_ID, revision: 'r1', displayName: 'Typed', target: 'system.foundation', stages: ['stage.main'], body: '' };
+    expect(() => assertPromptModule({ ...module, parameters: { count: { type: 'number', default: '2' } } })).toThrow('does not match');
+    expect(() => assertPromptModule({ ...module, parameters: { 'bad-name': { type: 'string' } } })).toThrow('Invalid parameter name');
+    expect(assertPromptModule({ ...module, parameters: { count: { type: 'number', default: 2 }, enabled: { type: 'boolean', default: false }, options: { type: 'json', default: null } } }).parameters.count.default).toBe(2);
+});
