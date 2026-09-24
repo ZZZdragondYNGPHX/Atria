@@ -68,3 +68,14 @@ Phase 1 frame checkpoint, not a completed full-product redesign.
 No Android/Docker builds, physical-device/IME validation, live generation calls,
 full repository unit suite or final cross-product E2E acceptance were run.
 No data migration, new preference store or main integration is included.
+
+## Integration checkpoint — 2026-09-24
+
+The user subsequently authorized immediate integration before installing frontend
+skills and starting a new conversation. PR #86 merged as
+`402b53a98a823573591db4e9fd015f98e6effbdb`; its main tree matches validated Phase 1
+commit `f28615b5d5451f75e8abd959fa84cca0d942f56d`. Aggregate architecture guards passed
+again on main. The task branch was deleted locally/remotely. GitHub Actions were
+still pending when this integration handoff was written. Future work starts from
+live main with the newly installed relevant skills; the earlier no-merge/same-task-
+branch checkpoint above is superseded by this explicit user decision.
