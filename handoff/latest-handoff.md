@@ -6,7 +6,7 @@ Updated: 2026-09-25 (Asia/Shanghai).
 
 Repository: `ZZZdragondYNGPHX/Atria`.
 Working branch: `fix/native-product-ux-audit`.
-Pushed HEAD: `ddc91a8fc`.
+Pushed HEAD: `6041641a2`.
 Main remains `ad15c1e0c3e15e625ba163e284a300c00811f10d`.
 
 Use the existing workspace AGENTS.md and FORK_MAINTENANCE.md. Remote main copies
@@ -57,18 +57,31 @@ triggers and retrieval hints now reject explicitly. Studio validates typed field
 before Review. Regression covered 86 suites / 668 passed / 66 skipped; two stale
 Group 3 fixtures were fixed and their 27 cases passed. Real Edge 390px passed.
 
+Group 5 NUX-019 through NUX-026 is implemented, independently committed and pushed.
+Detailed implementation/validation: [Group 5](native-product-ux-group-5.md).
+Immutable Library revision authoring, semantic Knowledge and World composition,
+Binding management, history/fork, actionable references and reviewed Studio writes,
+Session Knowledge promotion and direct Native Knowledge selection are complete.
+Runtime lifecycle now uses `atri_knowledge_runtime` Session state; the old Knowledge
+entry projection is gone, with only a final prompt text-channel boundary retained.
+Regression: 96 Native/Shell suites, 707 passing cases / 68 optional DB skips, nine
+World Info suites / 70 cases, two orchestration suites / nine cases and eight real
+Edge scenarios passed. Two stale UI assertions were aligned and rerun successfully.
+
 ## Next
 
-Continue Group 5 with NUX-019, Library immutable World/Knowledge revision authoring.
-NUX-019 and all later issues remain active. Follow the existing backlog without
-replanning; retain capabilities under Native owners before deleting legacy code.
+Continue Group 6 with NUX-027, Native Skill scope management. NUX-027 and later
+issues remain active. Initial inspection found manager grouping and browser scope
+URL handling still omit project/package; Package mutation controls also need to
+respect read-only ownership. Follow the existing backlog without replanning.
+Retain capabilities under Native owners before deleting legacy code.
 
 ## Local work
 
 Pre-existing AGENTS.md/FORK_MAINTENANCE.md edits and Phase 6–8 test outputs remain
 untouched and excluded from commits. Current task has local untracked
 `tests/.native-ux-playwright.config.js` selecting installed Edge and
-`tests/test-results-native-ux-g1*` and `tests/test-results-native-ux-g2*` / `tests/test-results-native-ux-g3*` / `tests/test-results-native-ux-g4*` outputs. Bundled Chromium installation stalled;
+`tests/test-results-native-ux-g1*` and `tests/test-results-native-ux-g2*` / `tests/test-results-native-ux-g3*` / `tests/test-results-native-ux-g4*` / `tests/test-results-native-ux-g5*` outputs. Bundled Chromium installation stalled;
 Edge was used for actual browser validation. Remove task-only temporary outputs
 when no longer needed; do not touch prior-task artifacts.
 
