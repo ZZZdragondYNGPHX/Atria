@@ -342,17 +342,128 @@ If embedding/rerank remain a separate resource family, make that separation firs
 
 ---
 
-# P1 — Productization, lifecycle and portability
+## NUX-043 — User backup / restore is not Native-data complete
 
-## NUX-012 — Runtime lacks connection validation and model discovery
+**New finding from the post-redesign data-integrity audit**
 
 **Current evidence**
 
-Users manually enter endpoint, remote model ID, limits, tokenizer/capabilities and Secret reference. No Native **Test connection** or provider model discovery action is exposed.
+The downloadable user backup selection still uses the legacy category model:
+
+- settings;
+- secrets;
+- characters;
+- chats;
+- lorebooks;
+- presets;
+- assets;
+- extensions;
+- globalExtensions;
+- vectors.
+
+Atria Native data now lives in additional authorities/paths that are not represented by those backup targets.
+
+### FS storage mode
+
+Native Storage Engine documents are written under:
+
+`<user-root>/atria-native/resources/<native-kind>/...`
+
+Studio Projects are stored under:
+
+`<user-root>/projects/<project-id>/...`
+
+Neither `atria-native/` nor `projects/` is included by `getUserBackupTargets()`.
+
+Therefore a normal downloadable ZIP backup in FS mode can omit:
+
+- Native Packages / PackageVersions / Package state;
+- Native Sessions, branches, revisions, timelines, SavePoints and state;
+- Native Worlds / WorldRevisions;
+- Native Knowledge / KnowledgeEntries / KnowledgeBindings;
+- Native Prompt / Generation resources;
+- player Runtime Routes / Models / Connections;
+- other Native `native_resources`;
+- Studio Projects and their source files.
+
+Native asset/package blobs under `assets/atria-native/blobs` happen to travel with the old `assets` category, but their Native refs/metadata may not.
+
+### SQLite / MySQL / PostgreSQL modes
+
+Database backup dumps do contain `native_resources` (SQLite database bytes, or the SQL engines' `native_resources` table).
+
+However normal restore deliberately stages database-backed archives and copies selected data through `MigrationRunner`. That runner currently knows only legacy repo families:
+
+- settings;
+- presets;
+- namedDocs;
+- worlds (World Info);
+- chats;
+- groups;
+- stats.
+
+It does not migrate Native resource kinds.
+
+Studio `projects/` is also filesystem data and is absent from the current selectable backup target set in every storage mode.
+
+### Test coverage gap
+
+`tests/storage/endpoints/backup-roundtrip.parity.test.js` claims to round-trip “every Repo”, but its seeded/probed repos cover only the legacy Storage repos. It does not verify Native PackageRepo, SessionRepo, SavePointRepo, WorldRepo, KnowledgeRepo, Native Model/Prompt persistence, ProjectStore or Native asset/package blob integrity.
+
+**Impact**
+
+A user can create a backup that appears successful, wipe/lose data, restore it successfully, and still lose major Atria-native product state.
+
+This is a data-safety issue, not merely a missing convenience feature.
 
 **Acceptance**
 
-Add non-destructive connection validation and optional provider model discovery/capability inspection, while preserving manual configuration for custom/OpenAI-compatible endpoints.
+- Define first-class backup categories/closure for current Atria Native data.
+- Full backup must include every durable per-user Native authority and Studio Project source.
+- Selective backup/restore semantics must be explicit and consistent across FS/SQLite/MySQL/Postgres.
+- Engine dump restore/migration must preserve selected Native resources rather than discarding them.
+- Native asset/package blobs and their refs must restore atomically enough to avoid dangling metadata.
+- Add end-to-end backup -> wipe -> restore coverage for all major Native repositories plus ProjectStore and AssetStore.
+- Verify same-engine and cross-engine restore.
+- Keep pre-restore recovery snapshots/rollback safety; those currently snapshot the whole user root and are stronger than the downloadable category archive.
+
+**Evidence**
+
+- `src/users.js`
+- `src/constants.js`
+- `src/storage/engines/fs-engine-transaction.js`
+- `src/storage/engines/mysql-engine.js`
+- `src/storage/engines/postgres-engine.js`
+- `src/storage/migration/cross-mode-restore.js`
+- `src/storage/migration/runner.js`
+- `src/storage/migration/selection-mapping.js`
+- `src/native/project-store.js`
+- `src/native/repositories/asset-store.js`
+- `tests/storage/endpoints/backup-roundtrip.parity.test.js`
+
+---
+
+# P1 — Productization, lifecycle and portability
+
+## NUX-012 — Runtime cannot pull provider model choices and lacks connection validation
+
+**Current evidence**
+
+Runtime Model authoring exposes `Remote model ID` as a required free-text field. Users must know and type the provider's exact model identifier manually.
+
+No Native model-list discovery/picker is exposed, even when a provider can enumerate models. Connection setup also lacks a first-party **Test connection** / provider-health action.
+
+**Impact**
+
+Model setup is unnecessarily error-prone: endpoint/authentication/model-ID mistakes are usually discovered only at preview/execution time, and users cannot simply fetch and choose from available models.
+
+**Acceptance**
+
+- Add non-destructive connection validation.
+- When supported by the provider, fetch available models and present a selectable model list.
+- Preserve manual model-ID entry for custom/OpenAI-compatible endpoints.
+- Model discovery must not silently mutate the saved Model Profile.
+- Capability/limit metadata discovered from providers must keep provenance and explicit user override semantics.
 
 ---
 
@@ -774,6 +885,94 @@ Convert blockers into navigable Used By rows and legal remediation actions inste
 
 ---
 
+## NUX-041 — Atria product localization remains incomplete
+
+**New finding / user-confirmed after frontend redesign**
+
+**Current evidence**
+
+The redesign added substantial zh-CN / zh-TW coverage, but Native product controllers still contain user-facing English that is either:
+
+- not routed through localization at all;
+- constructed dynamically before `translateShellText()`, so no stable locale key can match it;
+- technical labels/diagnostics that remain English in normal product surfaces.
+
+Examples include dynamic Runtime readiness/fallback summaries and multiple Native authoring/help/error strings.
+
+**Impact**
+
+Switching Atria to Chinese still produces mixed Chinese/English interfaces across Runtime, Library, Studio, Play, Plugins and error/recovery states.
+
+**Acceptance**
+
+- Audit every current Atria-owned product surface for untranslated user-facing text.
+- Replace concatenated translation lookups with stable keyed/formatted localization.
+- Complete zh-CN and zh-TW coverage for normal, loading, empty, validation, error and recovery states.
+- Keep user-authored names, provider/model identifiers, paths and code literals untranslated.
+- Add automated coverage that catches newly introduced Atria-owned hard-coded UI strings where practical.
+
+**Evidence**
+
+- `public/scripts/atria-shell/localization.js`
+- `public/locales/zh-cn.json`
+- `public/locales/zh-tw.json`
+- `public/scripts/native/runtime-workspace.js`
+- `public/scripts/native/library-workspaces.js`
+- `public/scripts/native/studio-workspace.js`
+- `public/scripts/native/play-controls.js`
+
+---
+
+## NUX-042 — Per-user filesystem layout was not normalized for the Native product model
+
+**New finding from the post-redesign data-layout audit**
+
+**Current evidence**
+
+`USER_DIRECTORY_TEMPLATE` still describes the older SillyTavern-oriented physical layout, including directories such as:
+
+- `worlds`;
+- `characters`;
+- `chats`;
+- provider-specific settings directories;
+- `sysprompt`;
+- compatibility extensions.
+
+Major Native-owned data paths are created outside that template:
+
+- Native FS engine resources: `<user-root>/atria-native/resources/...`;
+- Studio projects: `<user-root>/projects/...`;
+- Native/package asset blobs: `<user-root>/assets/atria-native/blobs/...`.
+
+These paths work because their owning services create them lazily, but they are not represented as first-class entries in the central user-directory contract.
+
+**Impact**
+
+The data layout is operational but fragmented:
+
+- directory initialization/introspection does not describe the complete Atria-owned layout;
+- backup category code can miss Native paths;
+- storage tooling must know ad-hoc paths independently;
+- future cleanup/migration can drift between services.
+
+**Acceptance**
+
+Define a canonical Atria per-user data layout/registry for all durable filesystem-owned product data.
+
+This does **not** require moving legacy-compatible directories merely for cosmetic purity. The goal is to centralize authoritative Native paths and make backup/storage/inspection tooling derive from the same contract.
+
+At minimum, Project and Native storage/blob roots must be represented explicitly rather than reconstructed independently by each service.
+
+**Evidence**
+
+- `src/constants.js`
+- `src/users.js`
+- `src/native/project-store.js`
+- `src/native/repositories/asset-store.js`
+- `src/storage/engines/fs-engine-transaction.js`
+
+---
+
 # P2 — Native convergence debt
 
 ## NUX-037 — Orchestrator and Memory still persist compatibility-era preset names
@@ -846,9 +1045,13 @@ This backlog should not be implemented as 38 unrelated fixes. Normalize it into 
    - NUX-027–033
    - NUX-035–036
 
-7. **Skills / Search**
+7. **Skills / Search / Localization**
    - NUX-010
    - NUX-034
+   - NUX-041
+
+8. **User Data / Backup Integrity**
+   - NUX-042–043
 
 ## 5. Implementation order constraints
 
