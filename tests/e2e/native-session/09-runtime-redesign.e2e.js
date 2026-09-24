@@ -161,6 +161,6 @@ test('Chinese compact Runtime section picker, large text, filter empty and conne
     await search.fill(''); await shot(page, info, 'connections-zh-large-320');
     await root(page).locator('.atri-runtime-row button').first().click();
     await expect(root(page).getByText('身份验证', { exact: true })).toBeVisible();
-    await root(page).locator('input[name="Exact Secret ID"]').scrollIntoViewIfNeeded();
+    await root(page).locator('select[name="Stored Secret"]').scrollIntoViewIfNeeded();
     await shot(page, info, 'connection-zh-light-320');
 });

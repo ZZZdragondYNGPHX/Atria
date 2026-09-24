@@ -149,9 +149,65 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const adapter = field(fields, 'Provider transport', value.providerAdapter || 'provider.openai-compatible', [['provider.openai-compatible', 'OpenAI-compatible messages'], ['provider.raw-text', 'Raw text completions'], ['provider.anthropic', 'Anthropic Messages'], ['provider.gemini', 'Gemini GenerateContent']]);
             const endpoint = field(fields, 'Completions endpoint URL', value.endpoint); endpoint.type = 'url'; endpoint.required = true;
             fields = group(form, 'Authentication');
-            const secret = field(fields, 'Exact Secret ID', value.secretRef?.secretId); secret.required = true;
-            notice('Select a stored Secret ID, never the key value. Gemini uses the API base URL, such as https://generativelanguage.googleapis.com/v1beta. Other transports use the full generation endpoint.', fields);
-            serialize = () => ({ ...value, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value, secretRef: { scope: 'player', secretId: secret.value } });
+            const secret = field(fields, 'Stored Secret', value.secretRef?.secretId, [['', 'Choose…']]); secret.required = true;
+            const feedback = node('div', undefined, fields);
+            let inventoryVersion = 0;
+            const inventory = async () => {
+                const version = ++inventoryVersion;
+                feedback.replaceChildren(); notice('Loading stored Secrets…', feedback);
+                try {
+                    const entries = await runtimeRequest('/secrets', { signal: controller.signal });
+                    if (disposed || editorToken !== editorSequence || version !== inventoryVersion) return;
+                    if (!Array.isArray(entries)) throw new Error('native_secret_inventory_unavailable');
+                    const selected = secret.value; secret.replaceChildren();
+                    for (const item of [{ secretId: '', label: translateShellText('Choose…') }, ...entries]) {
+                        const option = node('option', undefined, secret); option.value = item.secretId;
+                        option.textContent = item.label + (item.secretId ? ' · ' + item.secretId.slice(-8) : '');
+                    }
+                    secret.value = selected;
+                    feedback.replaceChildren();
+                    if (!entries.length) notice('No stored Secrets. Create one to connect your provider.', feedback);
+                    else if (selected && !secret.value) notice('The previously selected Secret is unavailable. Select or create another.', feedback, true);
+                } catch {
+                    if (disposed || editorToken !== editorSequence || version !== inventoryVersion) return;
+                    feedback.replaceChildren(); notice('Could not load Secrets. Your connection edits are preserved.', feedback, true);
+                    button('Retry loading Secrets', inventory, feedback);
+                }
+            };
+            const createBox = node('div', undefined, fields); createBox.hidden = true;
+            const secretLabel = field(createBox, 'Secret label'); secretLabel.maxLength = 120; secretLabel.disabled = true;
+            const secretValue = field(createBox, 'API key'); secretValue.type = 'password'; secretValue.autocomplete = 'new-password'; secretValue.disabled = true;
+            const createFeedback = node('div', undefined, createBox);
+            let creating = false;
+            const create = button('Store Secret', async () => {
+                if (creating) return;
+                if (!secretLabel.value.trim() || !secretValue.value.trim()) {
+                    createFeedback.replaceChildren(); notice('Enter a label and API key.', createFeedback, true);
+                    (!secretLabel.value.trim() ? secretLabel : secretValue).focus(); return;
+                }
+                creating = true; create.disabled = cancel.disabled = true; create.setAttribute('aria-busy', 'true');
+                try {
+                    const item = await runtimeRequest('/secrets', { method: 'POST', body: { label: secretLabel.value, value: secretValue.value }, signal: controller.signal });
+                    secretValue.value = '';
+                    if (disposed || editorToken !== editorSequence) return;
+                    inventoryVersion += 1;
+                    const option = node('option', undefined, secret); option.value = item.secretId; option.textContent = item.label + ' · ' + item.secretId.slice(-8);
+                    secret.value = item.secretId; closeCreate(); secret.focus();
+                    feedback.replaceChildren(); notice('Secret stored. Save the connection to use it.', feedback);
+                } catch {
+                    if (!disposed && editorToken === editorSequence) { createFeedback.replaceChildren(); notice('Could not store the Secret. Try again.', createFeedback, true); secretValue.focus(); }
+                } finally { creating = false; create.disabled = cancel.disabled = false; create.removeAttribute('aria-busy'); }
+            }, createBox);
+            const closeCreate = () => { secretValue.value = ''; secretLabel.value = ''; secretValue.disabled = secretLabel.disabled = true; createBox.hidden = true; openCreate.hidden = false; };
+            const cancel = button('Cancel', () => { closeCreate(); openCreate.focus(); }, createBox);
+            const openCreate = button('Create Secret', () => { createBox.hidden = false; openCreate.hidden = true; secretValue.disabled = secretLabel.disabled = false; createFeedback.replaceChildren(); secretLabel.focus(); }, fields);
+            createBox.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); create.click(); } });
+            void inventory();
+            notice('Credentials stay in the Secret store. Gemini uses the API base URL; other transports use the full generation endpoint.', fields);
+            serialize = () => {
+                if (creating || !secret.value) throw Object.assign(new Error('Select a stored Secret'), { code: 'native_secret_selection_required' });
+                return { ...value, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value, secretRef: { scope: 'player', secretId: secret.value } };
+            };
         } else if (section === 'models') {
             let fields = group(form, 'Model connection');
             const connection = field(fields, 'Connection', value.connectionProfileRef?.connectionProfileId, options(data.connections, ids.connections)); connection.required = true;

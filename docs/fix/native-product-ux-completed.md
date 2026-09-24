@@ -98,4 +98,25 @@ Protocol references: [OpenAI Chat](https://developers.openai.com/api/reference/r
 [Gemini generation](https://ai.google.dev/api/generate-content),
 [Gemini thinking](https://ai.google.dev/gemini-api/docs/thinking).
 
-Next: NUX-004, following the active backlog order.
+### NUX-004
+
+Connection setup now selects labeled exact Secret references or creates a Secret
+inline. The authenticated Native inventory returns IDs/labels only, independent
+of secret exposure preferences. Creation reuses SecretManager and its atomic
+file store under an Atria key; it does not rotate active credentials. The Native
+backup write gate applies. Connections never receive the key value.
+
+The existing editor handles empty/loading/retry, failed creation, double clicks,
+stale inventory responses, cancellation and clearing sensitive inputs after
+success/cancel. Secret selection and create fields use existing form primitives
+and Chinese translations. Creating a Secret and saving a connection remain
+explicit separate actions.
+
+Validation: three suites / 35 tests passed, covering real authenticated Secret
+HTTP, metadata-only output, ownership rejection, write gate, exact selection,
+creation retry and existing generation contracts. Two real Edge 390px scenarios
+passed including Secret creation, connection save failure/retry and configuration
+loading recovery. Inspected the connection screenshot. Changed-file ESLint and
+diff check passed. Only synthetic credentials were used.
+
+Next: NUX-005, following the active backlog order.

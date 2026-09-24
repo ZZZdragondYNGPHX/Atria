@@ -55,8 +55,8 @@ test('pending saves deduplicate, focus failed feedback and retain exact Secret r
     expect(JSON.parse(writes[0][1].body).secretRef).toEqual(config.connections[0].secretRef);
     expect(view.root.querySelector('[type="submit"]').getAttribute('aria-busy')).toBe('true');
     finish(response({ error: 'native_generation_configuration_invalid' }, false)); await flush();
-    expect(document.activeElement).toBe(view.root.querySelector('[role="alert"]'));
-    expect(view.root.querySelector('[aria-label="Exact Secret ID"]').value).toBe('stored-id');
+    expect(document.activeElement).toBe(view.root.querySelector('.atri-runtime-status [role="alert"]'));
+    expect(view.root.querySelector('[aria-label="Stored Secret"]').value).toBe('stored-id');
     view.dispose();
 });
 
@@ -75,5 +75,41 @@ test('leaving a deep-linked editor through the same section restores the list an
     view.updateRoute({ child: { id: 'connections' } });
     expect(view.root.querySelector('form')).toBeNull();
     expect(document.activeElement).toBe(view.root.querySelector('[type="search"]'));
+    view.dispose();
+});
+
+test('Secret creation deduplicates, selects the exact ID and never puts the API key in a connection write', async () => {
+    let finish;
+    globalThis.fetch = jest.fn(async (url, options) => {
+        if (url.endsWith('/secrets')) return options.method === 'POST' ? new Promise(resolve => { finish = resolve; }) : response([]);
+        return response(config);
+    });
+    const view = mount(); await flush();
+    const click = label => [...view.root.querySelectorAll('button')].find(button => button.textContent === label).click();
+    click('Create Secret');
+    view.root.querySelector('[aria-label="Secret label"]').value = 'Provider';
+    const key = view.root.querySelector('[aria-label="API key"]'); key.value = 'private-test-key';
+    click('Store Secret'); click('Store Secret');
+    expect(globalThis.fetch.mock.calls.filter(([url, options]) => url.endsWith('/secrets') && options.method === 'POST')).toHaveLength(1);
+    finish(response({ secretId: 'new-exact-id', label: 'Provider' })); await flush();
+    expect(key.value).toBe('');
+    expect(view.root.querySelector('[aria-label="Stored Secret"]').value).toBe('new-exact-id');
+    view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush();
+    const write = globalThis.fetch.mock.calls.find(([url, options]) => url.endsWith('/configuration/connections') && options.method === 'PUT');
+    expect(JSON.parse(write[1].body).secretRef).toEqual({ scope: 'player', secretId: 'new-exact-id' });
+    expect(write[1].body).not.toContain('private-test-key');
+    view.dispose();
+});
+
+test('failed Secret creation retains the draft and cancel clears sensitive input', async () => {
+    globalThis.fetch = jest.fn(async (url, options) => url.endsWith('/secrets')
+        ? options.method === 'POST' ? response({ error: 'native_secret_create_failed' }, false) : response([]) : response(config));
+    const view = mount(); await flush();
+    const click = label => [...view.root.querySelectorAll('button')].find(button => button.textContent === label).click();
+    click('Create Secret'); view.root.querySelector('[aria-label="Secret label"]').value = 'Provider';
+    const key = view.root.querySelector('[aria-label="API key"]'); key.value = 'retry-key';
+    click('Store Secret'); await flush();
+    expect(document.activeElement).toBe(key); expect(key.value).toBe('retry-key');
+    click('Cancel'); expect(key.value).toBe(''); expect(key.disabled).toBe(true);
     view.dispose();
 });

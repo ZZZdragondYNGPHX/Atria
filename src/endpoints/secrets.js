@@ -7,6 +7,7 @@ import { color, getConfigValue, uuidv4 } from '../util.js';
 
 export const SECRETS_FILE = 'secrets.json';
 export const SECRET_KEYS = {
+    ATRIA_RUNTIME: 'atri_runtime',
     _MIGRATED: '_migrated',
     HORDE: 'api_key_horde',
     MANCER: 'api_key_mancer',
@@ -204,20 +205,20 @@ export class SecretManager {
      * @param {string} label Label for the secret
      * @returns {string} The ID of the newly created secret
      */
-    writeSecret(key, value, label = 'Unlabeled') {
+    writeSecret(key, value, label = 'Unlabeled', { activate = true } = {}) {
         const secrets = this._readSecretsFile();
 
         if (!Array.isArray(secrets[key])) {
             secrets[key] = [];
         }
 
-        this._deactivateAllSecrets(secrets[key]);
+        if (activate) this._deactivateAllSecrets(secrets[key]);
 
         const secret = {
             id: uuidv4(),
             value: value,
             label: label,
-            active: true,
+            active: activate,
         };
         secrets[key].push(secret);
 
@@ -368,6 +369,14 @@ export class SecretManager {
         }
 
         return state;
+    }
+
+    // Native inventory never uses masking/exposure preferences or active selection.
+    listReferences() {
+        if (!fs.existsSync(this.filePath)) return [];
+        const secrets = this._readSecretsFile();
+        return Object.values(SECRET_KEYS).flatMap(key => Array.isArray(secrets[key])
+            ? secrets[key].map(secret => ({ secretId: secret.id, label: secret.label })) : []);
     }
 
     /**

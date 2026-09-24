@@ -3,7 +3,8 @@ import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js'
 import express from 'express';
 import { getStorageEngine } from '../storage/index.js';
 import { getUserDirectories } from '../users.js';
-import { readSecret, SECRET_KEYS } from './secrets.js';
+import { readSecret, SECRET_KEYS, SecretManager } from './secrets.js';
+import { assertWritable } from '../storage/read-only-mode.js';
 import { getNativeSessionServices } from './native-session.js';
 import { getNativeStudioServices } from './native-studio.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../native/model-prompt-runtime/persistence.js';
@@ -37,6 +38,26 @@ function services() {
 
 export function createNativeGenerationRouter(getHost = services) {
     const router = express.Router();
+    router.get('/secrets', (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        try {
+            response.json(new SecretManager(getUserDirectories(handle)).listReferences());
+        } catch { response.status(500).json({ error: 'native_secret_inventory_unavailable' }); }
+    });
+    router.post('/secrets', (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        try {
+            assertWritable();
+            const { label, value } = request.body;
+            if (typeof label !== 'string' || !label.trim() || label.length > 120
+                || typeof value !== 'string' || !value.trim() || value.length > 16384
+                || Object.keys(request.body).some(key => !['label', 'value'].includes(key))) throw new Error('Invalid Secret');
+            const secretId = new SecretManager(getUserDirectories(handle)).writeSecret(SECRET_KEYS.ATRIA_RUNTIME, value, label.trim(), { activate: false });
+            response.status(201).json({ secretId, label: label.trim() });
+        } catch { response.status(400).json({ error: 'native_secret_create_failed' }); }
+    });
     router.get('/configuration', async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);

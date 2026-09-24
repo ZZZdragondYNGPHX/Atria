@@ -16,6 +16,7 @@ export function getRuntimeEvidence() { return latestEvidence; }
 
 export function runtimeRemediation(code) {
     const actions = {
+        native_secret_selection_required: ['Finish creating or select a stored Secret before saving the connection.', null],
         native_generation_context_ambiguous: ['Choose either a Session or a Project context, not both.', 'diagnostics'],
         native_generation_route_ref_invalid: ['Choose an exact player Runtime route. Session-scoped routes are not provisioned by this host.', 'routes'],
         native_generation_route_missing: ['No route is configured for this role. Create a route with an exact Model, Generation and Prompt.', 'routes'],

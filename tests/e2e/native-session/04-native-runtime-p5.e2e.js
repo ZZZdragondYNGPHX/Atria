@@ -56,7 +56,11 @@ for (const width of [1440, 390]) {
         await open('connections'); await root.getByRole('button', { name: 'New connection', exact: true }).click();
         await root.getByLabel('Display name', { exact: true }).fill('New connection ' + width);
         await root.getByLabel('Completions endpoint URL').fill('https://example.invalid/v1/chat/completions');
-        await root.getByLabel('Exact Secret ID').fill('synthetic-reference-only');
+        await root.getByRole('button', { name: 'Create Secret', exact: true }).click();
+        await root.getByLabel('Secret label', { exact: true }).fill('Test provider ' + width);
+        await root.getByLabel('API key', { exact: true }).fill('synthetic-native-test-key');
+        await root.getByRole('button', { name: 'Store Secret', exact: true }).click();
+        await expect(root.getByLabel('Stored Secret', { exact: true })).not.toHaveValue('');
         await page.route('**/api/native/generation/configuration/connections', route => route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: 'native_generation_configuration_invalid' }) }));
         await root.getByRole('button', { name: 'Save', exact: true }).click(); await expect(root.getByRole('alert')).toContainText('Save failed');
         await expect(root.getByLabel('Display name', { exact: true })).toHaveValue('New connection ' + width); await shot('save-error');

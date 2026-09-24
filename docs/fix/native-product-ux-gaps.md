@@ -69,26 +69,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 闭合 Secret → Connection → Model → Generation Profile → Runtime Route 的第一方 Native 配置链。
 
-## NUX-004 — Runtime Connection setup requires an opaque Secret ID
-
-**Current evidence**
-
-Runtime Connections require a free-text **Exact Secret ID** and warn users not to paste the secret value.
-
-No Native picker / Secret inventory / create-secret action is exposed from the Connection editor.
-
-**Impact**
-
-A user can know their API key and endpoint and still be unable to finish Native Runtime setup without discovering an internal identifier elsewhere.
-
-**Acceptance**
-
-Provide a first-party Secret selection/create flow that returns an exact Secret reference without exposing secret material in the Connection document.
-
----
-
----
-
 ## NUX-005 — Runtime cannot pull provider model choices and lacks connection validation
 
 **Current evidence**

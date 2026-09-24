@@ -6843,5 +6843,19 @@
     "1 hour": "1 小時",
     "All transports support streaming. Message transports support tools, structured output and reasoning. OpenAI and Anthropic support explicit cache controls. Model restrictions still apply.": "所有協定均支援串流輸出。訊息協定支援工具、結構化輸出與推理。OpenAI 與 Anthropic 支援明確快取控制，具體能力仍受模型限制。",
     "Use only controls supported by the selected route. OpenAI uses effort and cache key; Anthropic uses thinking mode and ephemeral cache; Gemini uses thinking budget or level. Unsupported combinations fail preview.": "僅設定所選路由支援的選項。OpenAI 使用推理強度與快取鍵；Anthropic 使用思考模式與暫時快取；Gemini 使用思考預算或級別。不支援的組合會在預覽時報錯。",
-    "Select a stored Secret ID, never the key value. Gemini uses the API base URL, such as https://generativelanguage.googleapis.com/v1beta. Other transports use the full generation endpoint.": "填寫已儲存的金鑰 ID，請勿填寫金鑰內容。Gemini 使用 API 基礎網址，例如 https://generativelanguage.googleapis.com/v1beta；其他協定使用完整生成端點。"
+    "Select a stored Secret ID, never the key value. Gemini uses the API base URL, such as https://generativelanguage.googleapis.com/v1beta. Other transports use the full generation endpoint.": "填寫已儲存的金鑰 ID，請勿填寫金鑰內容。Gemini 使用 API 基礎網址，例如 https://generativelanguage.googleapis.com/v1beta；其他協定使用完整生成端點。",
+    "Stored Secret": "已儲存的金鑰",
+    "Loading stored Secrets…": "正在載入金鑰…",
+    "No stored Secrets. Create one to connect your provider.": "尚無金鑰。建立金鑰後即可連接供應商。",
+    "The previously selected Secret is unavailable. Select or create another.": "原先選擇的金鑰已無法使用，請選擇或建立其他金鑰。",
+    "Could not load Secrets. Your connection edits are preserved.": "無法載入金鑰，連接編輯內容已保留。",
+    "Retry loading Secrets": "重新載入金鑰",
+    "Secret label": "金鑰名稱",
+    "Store Secret": "儲存金鑰",
+    "Create Secret": "建立金鑰",
+    "Enter a label and API key.": "請填寫名稱與 API 金鑰。",
+    "Secret stored. Save the connection to use it.": "金鑰已儲存。儲存連接後即可使用。",
+    "Could not store the Secret. Try again.": "無法儲存金鑰，請重試。",
+    "Credentials stay in the Secret store. Gemini uses the API base URL; other transports use the full generation endpoint.": "憑證保存在金鑰儲存中。Gemini 使用 API 基礎網址，其他協定使用完整生成端點。",
+    "Finish creating or select a stored Secret before saving the connection.": "請先完成金鑰建立或選擇已儲存的金鑰，再儲存連接。"
 }

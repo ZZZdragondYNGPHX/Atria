@@ -7289,5 +7289,19 @@
     "1 hour": "1 小时",
     "All transports support streaming. Message transports support tools, structured output and reasoning. OpenAI and Anthropic support explicit cache controls. Model restrictions still apply.": "所有协议均支持流式输出。消息协议支持工具、结构化输出和推理。OpenAI 与 Anthropic 支持显式缓存控制，具体能力仍受模型限制。",
     "Use only controls supported by the selected route. OpenAI uses effort and cache key; Anthropic uses thinking mode and ephemeral cache; Gemini uses thinking budget or level. Unsupported combinations fail preview.": "仅配置所选路由支持的选项。OpenAI 使用推理强度与缓存键；Anthropic 使用思考模式与临时缓存；Gemini 使用思考预算或级别。不支持的组合会在预览时报错。",
-    "Select a stored Secret ID, never the key value. Gemini uses the API base URL, such as https://generativelanguage.googleapis.com/v1beta. Other transports use the full generation endpoint.": "填写已存储的密钥 ID，请勿填写密钥内容。Gemini 使用 API 基础地址，例如 https://generativelanguage.googleapis.com/v1beta；其他协议使用完整生成端点。"
+    "Select a stored Secret ID, never the key value. Gemini uses the API base URL, such as https://generativelanguage.googleapis.com/v1beta. Other transports use the full generation endpoint.": "填写已存储的密钥 ID，请勿填写密钥内容。Gemini 使用 API 基础地址，例如 https://generativelanguage.googleapis.com/v1beta；其他协议使用完整生成端点。",
+    "Stored Secret": "已存储的密钥",
+    "Loading stored Secrets…": "正在加载密钥…",
+    "No stored Secrets. Create one to connect your provider.": "尚无密钥。创建密钥后即可连接提供商。",
+    "The previously selected Secret is unavailable. Select or create another.": "原先选择的密钥已不可用，请选择或创建其他密钥。",
+    "Could not load Secrets. Your connection edits are preserved.": "无法加载密钥，连接编辑内容已保留。",
+    "Retry loading Secrets": "重新加载密钥",
+    "Secret label": "密钥名称",
+    "Store Secret": "存储密钥",
+    "Create Secret": "创建密钥",
+    "Enter a label and API key.": "请填写名称与 API 密钥。",
+    "Secret stored. Save the connection to use it.": "密钥已存储。保存连接后即可使用。",
+    "Could not store the Secret. Try again.": "无法存储密钥，请重试。",
+    "Credentials stay in the Secret store. Gemini uses the API base URL; other transports use the full generation endpoint.": "凭据保存在密钥存储中。Gemini 使用 API 基础地址，其他协议使用完整生成端点。",
+    "Finish creating or select a stored Secret before saving the connection.": "请先完成密钥创建或选择已存储的密钥，再保存连接。"
 }
