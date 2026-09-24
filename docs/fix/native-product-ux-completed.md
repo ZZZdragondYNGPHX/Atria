@@ -663,4 +663,18 @@ nine cases. A real Edge 390px scenario passed concurrent edit rejection, revisio
 renewed confirmation, deletion and return to the project list while installed Works remain.
 The conflict screenshot was inspected. Changed-file lint and diff checks passed.
 
-Next: NUX-030, following the active backlog order.
+### NUX-030
+
+Studio Assets now provides safe image/audio/video and inert text previews, media details,
+name/path/metadata edits, explicit replacement and case-insensitive path collision feedback.
+Moves, replacement bytes and manifest updates remain one reviewed revision-pinned workspace;
+asset identity is retained. Used By resolves scoped Resource Graph consumers before removal,
+blocks referenced assets and fails closed when lookup fails. Deletion requires confirmation
+and rechecks dependencies before staging. Installed Package originals remain unchanged.
+
+Validation: five focused/adjacent suites passed 19 cases, followed by the extended six-case
+StudioService suite including atomic move/replace/manifest behavior. A real Edge 390px scenario
+passed import, text preview, collision refusal, rename plus replacement, stable identity,
+reference inspection and reviewed removal. Rendered editor inspected; lint/diff checks passed.
+
+Next: NUX-031, following the active backlog order.

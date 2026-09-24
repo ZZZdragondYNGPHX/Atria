@@ -1,3 +1,4 @@
+import { createStudioWorkspace, sourceWriteOperation, projectSaveOperation, createAuthoringOperation } from '../../public/scripts/native/studio-authoring.js';
 import { describe, expect, test } from '@jest/globals';
 
 import { createGitClient } from '../../src/git/client.js';
@@ -264,6 +265,28 @@ describe('A1 Native StudioService authoring boundary', () => {
         } finally {
             h.cleanup();
         }
+    });
+
+    test('asset move, replacement and manifest metadata commit atomically with stable asset identity', async () => {
+        const h = await makeTempFsEngine();
+        try {
+            const { service } = makeService(h); const source = projectSource(); const projectId = source.project.projectId;
+            const created = await service.createProject(h.handle, source);
+            source.assetFiles = [{ assetId: createNativeId('asset'), path: 'assets/old.txt', logicalName: 'Old', mediaType: 'text/plain' }];
+            const added = await service.executeWorkspace(h.handle, createStudioWorkspace({ projectId, baseRevision: created.revision.revision,
+                operations: [sourceWriteOperation('assets/old.txt', 'old'), projectSaveOperation(projectId, source)] }));
+            const next = JSON.parse(JSON.stringify(source)); next.assetFiles[0].path = 'assets/new.txt'; next.assetFiles[0].logicalName = 'New';
+            const workspace = createStudioWorkspace({ projectId, baseRevision: added.changeSet.resultingRevision, operations: [
+                createAuthoringOperation({ operationType: 'source.move', target: { path: 'assets/old.txt' }, input: { toPath: 'assets/new.txt' } }),
+                sourceWriteOperation('assets/new.txt', 'new'), projectSaveOperation(projectId, next),
+            ] });
+            await service.inspectWorkspace(h.handle, workspace);
+            expect((await service.getProject(h.handle, projectId)).source.assetFiles[0].path).toBe('assets/old.txt');
+            const result = await service.executeWorkspace(h.handle, workspace); expect(result.changeSet.resultingRevision).toBeTruthy();
+            expect((await service.getProject(h.handle, projectId)).source.assetFiles[0]).toEqual(next.assetFiles[0]);
+            expect(Buffer.from((await service.readSource(h.handle, projectId, 'assets/new.txt')).content, 'base64').toString()).toBe('new');
+            await expect(service.readSource(h.handle, projectId, 'assets/old.txt')).rejects.toThrow();
+        } finally { h.cleanup(); }
     });
 
     test('exposes build, preflight, preview and simulation seams without creating Session authority', async () => {

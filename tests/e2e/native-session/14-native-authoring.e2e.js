@@ -156,3 +156,36 @@ test('Skill Manager edits and moves project Skills while exact Package originals
     await expect(manager.locator('[data-scope-key="global"] [data-skill-name="project-guide"]')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+
+test('Studio assets preview, reject collisions, rename, replace and remove through Review Apply', async ({ page }, info) => {
+    test.setTimeout(150000); await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openBuild());
+    const build = page.locator('[data-atria-build-projects]'); await build.getByText('New Project', { exact: true }).click();
+    await build.getByLabel('Project name', { exact: true }).fill('Asset voyage'); await build.getByRole('button', { name: 'Create Project', exact: true }).click();
+    const studio = page.locator('[data-atria-studio-workspace]'); await expect(studio.getByRole('heading', { name: 'Asset voyage', exact: true })).toBeVisible();
+    const id = await studio.getAttribute('data-atria-studio-workspace');
+    await studio.locator('.atria-studio-mobile-nav').getByRole('button', { name: 'Project', exact: true }).click(); await studio.locator('[data-atria-studio-resource="assets"]').click();
+    const assets = studio.locator('[data-atria-asset-editor]');
+    const read = () => page.evaluate(async id => { const { nativeStudioClient: c } = await import('/scripts/native/studio-client.js'); return (await c.getProject(id)).source.assetFiles; }, id);
+    await assets.getByLabel('Import project asset', { exact: true }).setInputFiles({ name: 'note.txt', mimeType: 'text/plain', buffer: Buffer.from('Harbor note') });
+    await assets.getByRole('button', { name: 'Review asset changes', exact: true }).click(); expect(await read()).toEqual([]);
+    await studio.getByRole('button', { name: 'Apply ChangeSet', exact: true }).click(); await expect.poll(async () => (await read()).length).toBe(1);
+    const row = assets.locator('article'); await row.getByRole('button', { name: 'Preview asset', exact: true }).click(); await expect(row.locator('pre.atri-asset-text-preview')).toHaveText('Harbor note');
+    await assets.getByLabel('Import project asset', { exact: true }).setInputFiles({ name: 'note.txt', mimeType: 'text/plain', buffer: Buffer.from('Do not overwrite') });
+    await assets.getByRole('button', { name: 'Review asset changes', exact: true }).click(); await expect(assets.getByRole('alert')).toContainText('already exists');
+    const original = (await read())[0];
+    await row.getByRole('button', { name: 'Edit asset', exact: true }).click(); await row.getByLabel('Asset name', { exact: true }).fill('Harbor map'); await row.getByLabel('Asset path', { exact: true }).fill('assets/harbor.txt');
+    await row.getByLabel('Replace asset file', { exact: true }).setInputFiles({ name: 'new.txt', mimeType: 'text/plain', buffer: Buffer.from('Updated harbor') });
+    await page.screenshot({ path: info.outputPath('asset-editor-390.png') });
+    await row.getByRole('button', { name: 'Review asset changes', exact: true }).click(); await studio.getByRole('button', { name: 'Apply ChangeSet', exact: true }).click();
+    await expect.poll(async () => (await read())[0].path).toBe('assets/harbor.txt'); expect((await read())[0].assetId).toBe(original.assetId);
+    await row.getByRole('button', { name: 'Preview asset', exact: true }).click(); await expect(row.locator('pre.atri-asset-text-preview')).toHaveText('Updated harbor');
+    await row.getByRole('button', { name: 'Remove', exact: true }).click(); await expect(row).toContainText('No references');
+    await row.getByRole('button', { name: 'Review asset removal', exact: true }).click(); await studio.getByRole('button', { name: 'Apply ChangeSet', exact: true }).click(); await expect.poll(read).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

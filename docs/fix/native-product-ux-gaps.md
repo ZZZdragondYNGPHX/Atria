@@ -85,22 +85,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 让 Build / Studio 能通过当前 Atria authoring authority 完成核心资源制作，而不是依赖内部 JSON。
 
-## NUX-030 — Asset management remains minimal
-
-**Current evidence**
-
-Studio Assets can import and remove files. Rows mainly show logical name/path.
-
-No first-class preview, metadata edit, rename/repath, replace, collision handling or Used By flow is exposed.
-
-**Acceptance**
-
-Add type-aware preview/details, safe replace/rename, collision feedback and dependency inspection before removal.
-
----
-
----
-
 ## NUX-031 — Source editor remains an advanced plain-text escape hatch without file-aware validation
 
 **Current evidence**

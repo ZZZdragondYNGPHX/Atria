@@ -1,3 +1,4 @@
+import { mountAssetEditor } from './asset-editor.js';
 import { mountProjectDeletion } from './project-lifecycle.js';
 import { mountSkillDeclarationsEditor } from './skill-declarations-editor.js';
 import { renderResourceReferenceRows } from './resource-reference-rows.js';
@@ -25,7 +26,6 @@ import {
     patchProjectSource,
     projectSaveOperation,
     resourceReferenceForNode,
-    sourceDeleteOperation,
     sourceWriteOperation,
 } from './studio-authoring.js';
 import { nativeStudioClient } from './studio-client.js';
@@ -173,24 +173,6 @@ function decodeUtf8(base64) {
     return new TextDecoder().decode(bytes);
 }
 
-function encodeBase64(bytes) {
-    let binary = '';
-    const view = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-    const chunkSize = 0x8000;
-    for (let offset = 0; offset < view.length; offset += chunkSize) {
-        binary += String.fromCharCode(...view.subarray(offset, offset + chunkSize));
-    }
-    return globalThis.btoa(binary);
-}
-
-function safePathSegment(value) {
-    const normalized = String(value || 'asset')
-        .replaceAll('\\', '-')
-        .replaceAll('/', '-')
-        .replace(/[^A-Za-z0-9._-]+/g, '-')
-        .replace(/^-+|-+$/g, '');
-    return normalized || 'asset';
-}
 
 function entryPoint(source) {
     return source?.package?.entryPoints?.[0] || null;
@@ -979,50 +961,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
 
     function renderAssets(body) {
         body.append(heading(documentRef, 'Assets', 'Project-owned media files are written through one Workspace/ChangeSet with the manifest update.'));
-        const files = state.source.assetFiles || [];
-        const list = documentRef.createElement('div');
-        list.className = 'atria-studio-asset-list';
-        for (const asset of files) {
-            const row = documentRef.createElement('div');
-            row.className = 'atria-studio-asset-list__row';
-            row.textContent = `${asset.logicalName || asset.assetId} · ${asset.path}`;
-            const remove = button(documentRef, 'Remove', () => {
-                const next = patchProjectSource(state.source, source => {
-                    source.assetFiles = source.assetFiles.filter(item => item.assetId !== asset.assetId);
-                });
-                stageOperations([
-                    sourceDeleteOperation(asset.path),
-                    projectSaveOperation(projectId, next),
-                ], `Remove asset ${asset.logicalName || asset.assetId}`);
-            });
-            row.append(remove);
-            list.append(row);
-        }
-        body.append(list);
-
-        const picker = documentRef.createElement('input');
-        picker.type = 'file';
-        picker.setAttribute('aria-label', t('Import project asset'));
-        picker.addEventListener('change', async () => {
-            const file = picker.files?.[0];
-            if (!file) return;
-            const assetId = createStudioNativeId('asset');
-            const path = 'assets/' + safePathSegment(file.name);
-            const content = encodeBase64(await file.arrayBuffer());
-            const next = patchProjectSource(state.source, source => {
-                source.assetFiles = [...(source.assetFiles || []), {
-                    assetId,
-                    path,
-                    logicalName: file.name,
-                    ...(file.type ? { mediaType: file.type } : {}),
-                }];
-            });
-            await stageOperations([
-                sourceWriteOperation(path, content, { encoding: 'base64' }),
-                projectSaveOperation(projectId, next),
-            ], `Import asset ${file.name}`);
-        });
-        body.append(field(documentRef, 'Import asset', picker));
+        mountAssetEditor({ document: documentRef, root: body, source: state.source, projectId, stageOperations, host });
         renderLibraryRelations(body);
     }
 
