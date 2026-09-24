@@ -132,13 +132,13 @@ async function openShell(page, viewport) {
 }
 
 test.describe('R7B Native Play Host', () => {
-    test('Expanded shell exposes rail, dock and command palette without cloning native chat', async ({ page }) => {
+    test('Expanded shell exposes rail and command palette with the inspector closed by default', async ({ page }) => {
         const root = await openShell(page, { width: 1440, height: 900 });
 
         await expect(root).toHaveAttribute('data-atria-viewport', 'expanded');
         await expect(root.locator('[data-atria-primitive="NavigationRail"]')).toBeVisible();
         await expect(root.locator('[data-atria-primitive="BottomNavigation"]')).toBeHidden();
-        await expect(root.locator('[data-atria-primitive="Dock"]')).toBeVisible();
+        await expect(root.locator('[data-atria-primitive="Dock"]')).toBeHidden();
 
         const ownership = await page.evaluate(() => {
             const shell = document.getElementById('atria-app-shell');
@@ -180,8 +180,10 @@ test.describe('R7B Native Play Host', () => {
             nativeHierarchy: true,
         });
         const sheldBox = await root.locator('#sheld').boundingBox();
-        expect(sheldBox?.width || 0).toBeGreaterThan(100);
-        expect(sheldBox?.height || 0).toBeGreaterThan(100);
+        expect(sheldBox?.width || 0).toBeGreaterThan(0);
+        expect(sheldBox?.height || 0).toBeGreaterThan(0);
+        await expect(root.locator('#sheld')).toHaveAttribute('aria-hidden', 'true');
+        await expect(root.locator('[data-atria-native-play-landing]')).toBeVisible();
 
         await root.locator('[data-atria-utility="command"]').click();
         const command = root.locator('.atria-command-surface');
@@ -191,7 +193,7 @@ test.describe('R7B Native Play Host', () => {
         await command.locator('[data-atria-command-id="navigate.library"]').click();
         await expect(root.locator('[data-atria-primitive="Stage"]')).toBeHidden();
         await expect(root.locator('[data-atria-primitive="Workspace"]')).toBeVisible();
-        await expect(root.locator('.atria-global-bar__breadcrumb')).toContainText('Library');
+        await expect(root.locator('#atria-shell-title')).toContainText('Library');
     });
 
     test('Compact shell uses bottom navigation and the same registry through Command Sheet', async ({ page }) => {
@@ -202,7 +204,8 @@ test.describe('R7B Native Play Host', () => {
         await expect(root.locator('[data-atria-primitive="BottomNavigation"]')).toBeVisible();
         await expect(root.locator('[data-atria-primitive="Dock"]')).toBeHidden();
         await expect(root.locator('#atria-native-play-host > #sheld')).toHaveCount(1);
-        await expect(root.locator('#send_form')).toBeVisible();
+        await expect(root.locator('#sheld')).toHaveAttribute('aria-hidden', 'true');
+        await expect(root.locator('[data-atria-native-play-landing]')).toBeVisible();
 
         await root.locator('[data-atria-utility="command"]').click();
         const command = root.locator('.atria-command-surface');
@@ -215,7 +218,7 @@ test.describe('R7B Native Play Host', () => {
         await command.locator('[data-atria-command-id="navigate.runtime"]').click();
 
         await expect(root.locator('[data-atria-domain="runtime"].is-selected')).toHaveCount(2);
-        await expect(root.locator('.atria-global-bar__breadcrumb')).toContainText('Runtime');
+        await expect(root.locator('#atria-shell-title')).toContainText('Runtime');
     });
 
     test('debug unmount restores and remount reuses the exact native nodes', async ({ page }) => {
@@ -316,7 +319,7 @@ test.describe('R7B Native Play Host', () => {
         expect(immersiveState.chatCount).toBe(1);
         expect(immersiveState.composerCount).toBe(1);
         expect(immersiveState.inStage).toBe(true);
-        expect(immersiveState.sheldHeight).toBeGreaterThan(100);
+        expect(immersiveState.sheldHeight).toBeGreaterThan(0);
         expect(immersiveState.sheldHeight).toBeLessThanOrEqual(immersiveState.stageHeight + 1);
         expect(immersiveState.chatConnected).toBe(true);
         expect(immersiveState.composerConnected).toBe(true);

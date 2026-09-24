@@ -197,7 +197,7 @@ describe('R7A Atria AppShell foundation', () => {
 
         expect(shell.getRoute().domain).toBe('runtime');
         expect(window.history.state.atriaNavigation.domain).toBe('runtime');
-        expect(shell.root.querySelector('.atria-global-bar__breadcrumb').textContent)
+        expect(shell.root.querySelector('#atria-shell-title').textContent)
             .toContain('Runtime');
         shell.destroy();
     });

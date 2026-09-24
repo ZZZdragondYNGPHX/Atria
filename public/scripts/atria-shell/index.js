@@ -1,5 +1,6 @@
 import { ATRIA_SHELL_RECOVERY_QUERY_KEY } from './constants.js';
 import { createAtriaAppShell } from './app-shell.js';
+import { installAtriaAppearance } from './appearance.js';
 import { createCommandRegistry } from './command-registry.js';
 import { createAtriaNavigationAuthority } from './navigation-authority.js';
 import { mountNativePlayHost } from './native-play-host.js';
@@ -51,6 +52,7 @@ export function initializeAtriaShellFoundation({
     let shell = null;
     let playHost = null;
     let workspaceHost = null;
+    let appearance = null;
     let recoveryMode = forceRecovery === undefined
         ? readRecoveryPreference(windowRef)
         : Boolean(forceRecovery);
@@ -77,6 +79,10 @@ export function initializeAtriaShellFoundation({
                 account: utilities?.account || (() => workspaceHost?.openUtility('account')),
             },
         });
+        appearance ||= installAtriaAppearance({
+            document: documentRef,
+            window: windowRef,
+        });
         try {
             playHost = mountNativePlayHost({
                 document: documentRef,
@@ -95,6 +101,8 @@ export function initializeAtriaShellFoundation({
             playHost = null;
             shell.destroy();
             shell = null;
+            appearance?.dispose();
+            appearance = null;
             documentRef.body.dataset.atriaShellFailure = 'mount';
             console.error('[Atria Shell] mount failed; legacy recovery surface remains available', error);
             throw error;
@@ -113,6 +121,8 @@ export function initializeAtriaShellFoundation({
         playHost = null;
         shell.destroy();
         shell = null;
+        appearance?.dispose();
+        appearance = null;
         navigation?.dispose();
         navigation = null;
         delete documentRef.body.dataset.atriaShellMounted;
@@ -148,6 +158,7 @@ export function initializeAtriaShellFoundation({
         getPlayHost: () => playHost,
         getWorkspaceHost: () => workspaceHost,
         getRoot: () => shell?.root || null,
+        getAppearance: () => appearance?.get() || null,
         isRecoveryMode: () => recoveryMode,
     });
 }

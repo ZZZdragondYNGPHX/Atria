@@ -1,3 +1,5 @@
+import { createAtriaIcon } from './icons.js';
+
 export const ATRIA_PRIMITIVES = Object.freeze([
     'AppShell',
     'NavigationRail',
@@ -92,9 +94,22 @@ export function createAtriaRuntimeCard(documentRef, {
     return card;
 }
 
+const STATE_ICONS = Object.freeze({
+    empty: 'sparkles',
+    error: 'warning',
+});
+
+/**
+ * Designed state surface for empty / loading / error.
+ *
+ * `icon` overrides the default glyph, `action` adds one follow-up control
+ * ({ label, onClick }).
+ */
 export function createAtriaStatePanel(documentRef, kind, {
     title = '',
     message = '',
+    icon = '',
+    action = null,
 } = {}) {
     const name = kind === 'error'
         ? 'ErrorState'
@@ -102,12 +117,39 @@ export function createAtriaStatePanel(documentRef, kind, {
             ? 'LoadingState'
             : 'EmptyState';
     const panel = createAtriaPrimitive(documentRef, name, {
+        className: 'atria-state-panel',
         role: kind === 'error' ? 'alert' : 'status',
     });
+    panel.dataset.atriaState = kind === 'error' || kind === 'loading' ? kind : 'empty';
+
+    const visual = documentRef.createElement('span');
+    visual.className = 'atria-state-panel__visual';
+    visual.setAttribute('aria-hidden', 'true');
+    if (kind === 'loading') {
+        const spinner = documentRef.createElement('span');
+        spinner.className = 'atria-spinner';
+        visual.append(spinner);
+    } else {
+        visual.append(createAtriaIcon(documentRef, icon || STATE_ICONS[kind] || STATE_ICONS.empty, { size: 26 }));
+    }
+
     const heading = documentRef.createElement('strong');
+    heading.className = 'atria-state-panel__title';
     heading.textContent = String(title);
     const body = documentRef.createElement('span');
+    body.className = 'atria-state-panel__message';
     body.textContent = String(message);
-    panel.append(heading, body);
+    panel.append(visual, heading, body);
+
+    if (action?.label && typeof action.onClick === 'function') {
+        const button = documentRef.createElement('button');
+        button.type = 'button';
+        button.className = 'atria-button';
+        button.dataset.variant = action.variant || 'secondary';
+        button.dataset.size = 'md';
+        button.textContent = String(action.label);
+        button.addEventListener('click', action.onClick);
+        panel.append(button);
+    }
     return panel;
 }
