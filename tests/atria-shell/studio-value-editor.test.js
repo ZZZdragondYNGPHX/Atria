@@ -1,5 +1,6 @@
 /** @jest-environment jsdom */
 import { describe, expect, jest, test } from '@jest/globals';
+import { knowledgeEditorFieldOptions, validateKnowledgeEditorValue } from '../../public/scripts/native/knowledge-contracts.js';
 import { mountStudioValueEditor } from '../../public/scripts/native/studio-value-editor.js';
 
 function setup(value) {
@@ -41,4 +42,36 @@ describe('Studio local structured draft', () => {
         resolve(); await Promise.resolve();
         expect(button('Review Changes').disabled).toBe(false);
     });
+});
+
+
+test('Knowledge delivery uses typed options and invalid Source retains field-level feedback before Review', async () => {
+    const root = document.createElement('div'); document.body.replaceChildren(root);
+    const onReview = jest.fn();
+    mountStudioValueEditor({ document, root, label: 'Knowledge JSON', value: { entries: [{ delivery: { position: 'before', target: 'narrator' } }] }, onReview, fieldOptions: knowledgeEditorFieldOptions, validate: validateKnowledgeEditorValue });
+    const position = root.querySelector('[name="entries.0.delivery.position"]');
+    expect(position.tagName).toBe('SELECT');
+    expect([...position.options].map(option => option.value)).toEqual(['before', 'after']);
+    position.value = 'after'; position.dispatchEvent(new Event('input'));
+    const button = label => [...root.querySelectorAll('button')].find(item => item.textContent === label);
+    button('Source').click();
+    const source = root.querySelector('textarea');
+    source.value = JSON.stringify({ entries: [{ delivery: { position: 'unsupported', target: 'narrator' } }] }); source.dispatchEvent(new Event('input'));
+    button('Review Changes').click();
+    expect(onReview).not.toHaveBeenCalled();
+    expect(root.querySelector('[role="alert"]').textContent).toContain('entries.0.delivery.position');
+    button('Fields').click(); button('Review Changes').click();
+    const invalid = root.querySelector('[name="entries.0.delivery.position"]');
+    expect(document.activeElement).toBe(invalid); expect(invalid.getAttribute('aria-invalid')).toBe('true');
+    invalid.value = 'after'; invalid.dispatchEvent(new Event('input')); button('Review Changes').click();
+    expect(onReview).toHaveBeenCalledWith({ entries: [{ delivery: { position: 'after', target: 'narrator' } }] });
+});
+
+
+test.each([null, 1, false])('typed fields can repair invalid imported primitive %j', position => {
+    const root = document.createElement('div'); document.body.replaceChildren(root); const onReview = jest.fn();
+    mountStudioValueEditor({ document, root, label: 'Knowledge JSON', value: { entries: [{ delivery: { position } }] }, onReview, fieldOptions: knowledgeEditorFieldOptions, validate: validateKnowledgeEditorValue });
+    const input = root.querySelector('select'); input.value = 'after'; input.dispatchEvent(new Event('input'));
+    [...root.querySelectorAll('button')].find(button => button.textContent === 'Review Changes').click();
+    expect(onReview).toHaveBeenCalledWith({ entries: [{ delivery: { position: 'after' } }] });
 });

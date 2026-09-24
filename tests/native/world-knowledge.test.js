@@ -113,8 +113,8 @@ function knowledgeSnapshot() {
                     exclusiveGroup: 'gate-state',
                 },
                 delivery: {
-                    target: 'context',
-                    position: 'before-chat',
+                    target: 'narrator',
+                    position: 'before',
                     priority: 10,
                     visibility: ['narrator', 'actor', 'agent'],
                 },

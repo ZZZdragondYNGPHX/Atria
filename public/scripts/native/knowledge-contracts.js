@@ -38,3 +38,51 @@ export function normalizeKnowledgeApplicability(value) {
         ...(value.stateActivation === undefined ? {} : { stateActivation: value.stateActivation }),
     });
 }
+
+
+export const KNOWLEDGE_TARGET_KINDS = Object.freeze(['narrator', 'actor', 'agent', 'user']);
+export const KNOWLEDGE_DELIVERY_POSITIONS = Object.freeze(['before', 'after']);
+
+export function normalizeKnowledgeSelector(value, field = 'KnowledgeBinding.target') {
+    if (value === undefined) return undefined;
+    if (Array.isArray(value)) {
+        if (!value.length || value.length > 32 || value.some(item => item === undefined || Array.isArray(item))) throw new TypeError(field + ' must contain 1–32 selectors');
+        return value.map((item, index) => normalizeKnowledgeSelector(item, field + '[' + index + ']'));
+    }
+    if (typeof value === 'string') {
+        if (!KNOWLEDGE_TARGET_KINDS.includes(value)) throw new TypeError(field + ' must name a supported target kind');
+        return value;
+    }
+    object(value, field, ['kind', 'id']);
+    if (!KNOWLEDGE_TARGET_KINDS.includes(value.kind)) throw new TypeError(field + '.kind is unsupported');
+    if (value.id !== undefined && (typeof value.id !== 'string' || !value.id.trim() || value.id !== value.id.trim() || value.id.length > 256)) throw new TypeError(field + '.id must be a non-empty exact identity');
+    return { kind: value.kind, ...(value.id === undefined ? {} : { id: value.id }) };
+}
+
+export function normalizeKnowledgeDelivery(value, field = 'KnowledgeEntry.delivery') {
+    if (value === undefined) return undefined;
+    object(value, field, ['target', 'position', 'priority', 'visibility']);
+    if (value.position !== undefined && !KNOWLEDGE_DELIVERY_POSITIONS.includes(value.position)) throw new TypeError(field + '.position must be before or after');
+    if (value.priority !== undefined && (typeof value.priority !== 'number' || !Number.isFinite(value.priority))) throw new TypeError(field + '.priority must be a finite number');
+    if (value.visibility !== undefined && (!Array.isArray(value.visibility) || value.visibility.some(item => !KNOWLEDGE_TARGET_KINDS.includes(item)) || new Set(value.visibility).size !== value.visibility.length)) throw new TypeError(field + '.visibility must contain unique supported target kinds');
+    return Object.freeze({
+        ...(value.target === undefined ? {} : { target: normalizeKnowledgeSelector(value.target, field + '.target') }),
+        ...(value.position === undefined ? {} : { position: value.position }),
+        ...(value.priority === undefined ? {} : { priority: value.priority }),
+        ...(value.visibility === undefined ? {} : { visibility: [...value.visibility] }),
+    });
+}
+
+export function knowledgeEditorFieldOptions(path) {
+    if (/^entries\.\d+\.delivery\.position$/.test(path)) return KNOWLEDGE_DELIVERY_POSITIONS;
+    if (/^entries\.\d+\.delivery\.(target(\.\d+)?(\.kind)?|visibility\.\d+)$/.test(path)) return KNOWLEDGE_TARGET_KINDS;
+    if (/^entries\.\d+\.applicability\.stateConditionsLogic$/.test(path)) return KNOWLEDGE_CONDITION_LOGIC;
+    return undefined;
+}
+
+export function validateKnowledgeEditorValue(value) {
+    for (const [index, entry] of (value.entries || []).entries()) {
+        normalizeKnowledgeDelivery(entry.delivery, 'entries.' + index + '.delivery');
+        normalizeKnowledgeApplicability(entry.applicability);
+    }
+}

@@ -32,3 +32,20 @@ No legacy event state or user-data conversion is introduced.
 
 Client and server share `public/scripts/native/knowledge-contracts.js`; invalid
 fields identify their `KnowledgeEntry.applicability` path before revision writes.
+
+## Delivery and target selectors
+
+`delivery.position` is exactly `before` (default) or `after`. Unknown values and
+legacy aliases fail validation rather than falling back to before.
+
+`KnowledgeBinding.target` and `KnowledgeEntry.delivery.target` share one selector:
+a kind string (`narrator`, `actor`, `agent`, `user`), an object `{ kind, id? }`, or a
+non-empty array of up to 32 such selectors (OR). An omitted selector matches any
+target; an omitted id matches the whole kind. IDs match exactly, never by display
+name. Empty strings/arrays, null, unknown keys, type/actorId aliases and nested
+arrays are rejected. Runtime compilation takes exactly one target, using the same
+kind/id contract. Binding and entry selectors must both match.
+
+The current Studio Knowledge editor uses these same enums for existing fields.
+Source edits receive field-path errors before Review and retain their drafts.
+Server-side revision validation remains authoritative for every caller.

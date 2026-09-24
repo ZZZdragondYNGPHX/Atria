@@ -399,4 +399,23 @@ offline rerun; no external database validation claimed. Changed-file lint and di
 check passed. An initial test used the wrong entry-ID prefix; corrected fixture
 passed. No UI surface was added in this contract/runtime issue.
 
-Next: NUX-017, following the active backlog order.
+### NUX-017
+
+Knowledge delivery position and target selectors now share typed definitions across
+server contracts, Native compilation and the current Studio editor. Positions are
+before/after; targets are explicit kind strings or kind/id objects, optionally a
+bounded OR list. Unknown aliases, empty selectors and arbitrary fields fail instead
+of falling back or silently mismatching. Existing Studio fields use matching enums;
+Source validation retains drafts before Review. Field errors expand the containing
+section, focus the control and provide aria-invalid/describedby feedback. Package,
+Binding and revision writes use the same validation.
+
+Validation: five focused suites passed 90 cases, followed by 47 cases including the
+new Binding persistence assertion and eight final editor cases including recovery
+from invalid primitive types. Six adjacent Context/Library/Package/Studio suites
+passed 30 cases. Real Edge 390px Studio typed editing, invalid Source rejection,
+draft retention and corrected ChangeSet Review passed; screenshot inspected. The
+first browser fixture reused the category name for its resource; giving the fixture
+a distinct name removed the ambiguous test locator. Changed-file lint/diff passed.
+
+Next: NUX-018, following the active backlog order.

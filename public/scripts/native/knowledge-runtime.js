@@ -1,4 +1,4 @@
-import { normalizeKnowledgeApplicability } from './knowledge-contracts.js';
+import { normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector } from './knowledge-contracts.js';
 import {
     WORLD_INFO_CONDITION_RESULT,
     evaluateWorldInfoStateConditions,
@@ -15,7 +15,6 @@ export const KNOWLEDGE_AUTHORITY = Object.freeze({
     memoryEvidence: Object.freeze({ id: 'memory_history_evidence', rank: 200 }),
 });
 
-const VISIBILITY_KINDS = new Set(['narrator', 'actor', 'agent', 'user']);
 const BLOCKED_PATH_PARTS = new Set(['__proto__', 'constructor', 'prototype']);
 const DEFAULT_PRIORITY = 100;
 
@@ -55,38 +54,17 @@ function authorityFor(binding) {
 }
 
 export function normalizeKnowledgeTarget(value = 'narrator') {
-    if (typeof value === 'string') {
-        const kind = asText(value) || 'narrator';
-        if (!VISIBILITY_KINDS.has(kind)) throw new TypeError('Unknown Knowledge target kind');
-        return Object.freeze({ kind });
-    }
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-        throw new TypeError('Knowledge target must be a target kind or object');
-    }
-    const kind = asText(value.kind || value.type || 'narrator');
-    if (!VISIBILITY_KINDS.has(kind)) throw new TypeError('Unknown Knowledge target kind');
-    const id = asText(value.id || value.actorId || value.agentId || value.userId);
-    return Object.freeze({
-        kind,
-        ...(id ? { id } : {}),
-    });
+    const selector = normalizeKnowledgeSelector(value, 'Knowledge target');
+    if (Array.isArray(selector)) throw new TypeError('Knowledge target must be a single selector');
+    return Object.freeze(typeof selector === 'string' ? { kind: selector } : selector);
 }
 
 function targetMatches(scope, target) {
-    if (scope === undefined || scope === null || scope === '') return true;
-    if (Array.isArray(scope)) return scope.some(item => targetMatches(item, target));
-    if (typeof scope === 'string') {
-        const value = asText(scope);
-        return value === target.kind || (target.id && value === target.id);
-    }
-    if (!scope || typeof scope !== 'object') return false;
-    const kind = asText(scope.kind || scope.type);
-    const id = asText(scope.id || scope.actorId || scope.agentId || scope.userId);
-    const hasKnownSelector = Boolean(kind || id);
-    if (!hasKnownSelector) return false;
-    if (kind && kind !== target.kind) return false;
-    if (id && id !== target.id) return false;
-    return true;
+    if (scope === undefined) return true;
+    const selector = normalizeKnowledgeSelector(scope);
+    if (Array.isArray(selector)) return selector.some(item => targetMatches(item, target));
+    if (typeof selector === 'string') return selector === target.kind;
+    return selector.kind === target.kind && (selector.id === undefined || selector.id === target.id);
 }
 
 function visibleTo(value, target) {
@@ -243,6 +221,7 @@ export function compileNativeKnowledgePlan(snapshot, options = {}) {
         const authority = authorityFor(binding);
         if (!authority) continue;
         for (const [sourceEntryIndex, entry] of (source.entries ?? []).entries()) {
+            normalizeKnowledgeDelivery(entry.delivery);
             const candidate = {
                 identity: [
                     binding.knowledgeBindingId,
@@ -386,14 +365,6 @@ export function compileNativeKnowledgePlan(snapshot, options = {}) {
     });
 }
 
-function positionValue(value) {
-    switch (asText(value).toLowerCase()) {
-        case 'after': return 1;
-        case 'before':
-        default: return 0;
-    }
-}
-
 function relationRefs(plan, item, relationIds) {
     const byEntryId = new Map(plan.included
         .filter(other => other.knowledgeBindingId === item.knowledgeBindingId)
@@ -428,7 +399,7 @@ export function knowledgePlanToWorldInfoEntries(plan) {
             selective: false,
             disable: false,
             order: item.priority,
-            position: positionValue(entry.delivery?.position),
+            position: normalizeKnowledgeDelivery(entry.delivery)?.position === 'after' ? 1 : 0,
             excludeRecursion: false,
             preventRecursion: false,
             delayUntilRecursion: false,

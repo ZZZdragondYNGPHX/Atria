@@ -1,9 +1,9 @@
-import { normalizeKnowledgeApplicability } from '../../public/scripts/native/knowledge-contracts.js';
+import { normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector, KNOWLEDGE_TARGET_KINDS } from '../../public/scripts/native/knowledge-contracts.js';
 import { assertNativeId } from './identity.js';
 
 export const KNOWLEDGE_BINDING_MODES = Object.freeze(['augment', 'override']);
 export const KNOWLEDGE_SOURCE_KINDS = Object.freeze(['package', 'library', 'session', 'project']);
-export const KNOWLEDGE_VISIBILITY_TARGETS = Object.freeze(['narrator', 'actor', 'agent', 'user']);
+export const KNOWLEDGE_VISIBILITY_TARGETS = KNOWLEDGE_TARGET_KINDS;
 
 export const WORLD_KNOWLEDGE_FORBIDDEN_IDENTITY_FIELDS = Object.freeze([
     'uid',
@@ -172,27 +172,6 @@ function assertRelations(value) {
     });
 }
 
-function assertDelivery(value) {
-    if (value === undefined) return undefined;
-    plain(value, 'KnowledgeEntry.delivery');
-    assertOnlyKeys(value, new Set(['target', 'position', 'priority', 'visibility']), 'KnowledgeEntry.delivery');
-    if (value.priority !== undefined && (typeof value.priority !== 'number' || !Number.isFinite(value.priority))) {
-        throw new TypeError('KnowledgeEntry.delivery.priority must be a finite number');
-    }
-    return Object.freeze({
-        ...(value.target == null ? {} : { target: text(value.target, 'KnowledgeEntry.delivery.target', { maxLength: 256 }) }),
-        ...(value.position == null ? {} : { position: text(value.position, 'KnowledgeEntry.delivery.position', { maxLength: 256 }) }),
-        ...(value.priority === undefined ? {} : { priority: value.priority }),
-        ...(value.visibility === undefined ? {} : {
-            visibility: uniqueStrings(
-                value.visibility,
-                'KnowledgeEntry.delivery.visibility',
-                KNOWLEDGE_VISIBILITY_TARGETS,
-            ),
-        }),
-    });
-}
-
 export function assertWorld(value) {
     noLegacyWorldKnowledgeIdentity(value, 'World');
     assertOnlyKeys(
@@ -305,7 +284,7 @@ export function assertKnowledgeEntry(value) {
         ...(value.applicability === undefined ? {} : { applicability: normalizeKnowledgeApplicability(value.applicability) }),
         ...(value.lifecycle === undefined ? {} : { lifecycle: assertLifecycle(value.lifecycle) }),
         ...(value.relations === undefined ? {} : { relations: assertRelations(value.relations) }),
-        ...(value.delivery === undefined ? {} : { delivery: assertDelivery(value.delivery) }),
+        ...(value.delivery === undefined ? {} : { delivery: normalizeKnowledgeDelivery(value.delivery) }),
         metadata: value.metadata === undefined ? {} : optionalJsonObject(value.metadata, 'KnowledgeEntry.metadata'),
     });
 }
@@ -363,7 +342,7 @@ export function assertKnowledgeBinding(value) {
         }),
         enabled: value.enabled,
         mode: value.mode,
-        ...(value.target === undefined ? {} : { target: cloneJson(value.target, 'KnowledgeBinding.target') }),
+        ...(value.target === undefined ? {} : { target: normalizeKnowledgeSelector(value.target, 'KnowledgeBinding.target') }),
         ...(value.visibility === undefined ? {} : {
             visibility: uniqueStrings(
                 value.visibility,

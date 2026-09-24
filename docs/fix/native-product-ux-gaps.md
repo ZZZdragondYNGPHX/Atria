@@ -77,27 +77,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 先保证所有可作者配置的 Knowledge 字段都有明确 contract、validation 与 runtime 行为。
 
-## NUX-017 — Native Knowledge validation is broader than runtime behavior
-
-**Current evidence**
-
-Examples:
-
-- `KnowledgeEntry.delivery.position` accepts arbitrary text; runtime effectively treats only `before` and `after`, defaulting unknown values to `before`.
-- `KnowledgeBinding.target` accepts generic JSON; runtime target matching recognizes a narrow narrator/actor/agent/user-style selector shape.
-
-**Impact**
-
-Invalid or unsupported values can pass authoring validation and silently change behavior later.
-
-**Acceptance**
-
-Contract, editor and runtime must share the same typed enum/selector definitions. Unsupported values fail before commit with field-level errors.
-
----
-
----
-
 ## NUX-018 — semanticHints / vectorHints are accepted but have no discovered Native retrieval consumer
 
 **Current evidence**

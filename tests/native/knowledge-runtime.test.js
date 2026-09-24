@@ -331,3 +331,16 @@ test('unsupported event triggers and malformed activation fail instead of becomi
     snapshot.manifest.knowledge[0].entries[0].applicability = { stateActivation: true };
     expect(() => compileNativeKnowledgePlan(snapshot)).toThrow('non-empty');
 });
+
+
+test('typed targets match exact kinds and IDs; delivery positions never silently default', () => {
+    const snapshot = snapshotFromFixture();
+    const entry = snapshot.manifest.knowledge[0].entries[0];
+    snapshot.knowledge.bindings[0].target = [{ kind: 'actor', id: 'actor-a' }, 'agent'];
+    entry.delivery = { position: 'after', target: 'actor' };
+    expect(compileNativeKnowledgePlan(snapshot, { target: { kind: 'actor', id: 'actor-b' } }).included).toHaveLength(0);
+    expect(compileNativeKnowledgeEntries(snapshot, { target: { kind: 'actor', id: 'actor-a' } }).entries[0].position).toBe(1);
+    expect(compileNativeKnowledgePlan(snapshot, { target: 'agent' }).included).toHaveLength(0);
+    entry.delivery.position = 'before-chat';
+    expect(() => compileNativeKnowledgePlan(snapshot)).toThrow('delivery.position');
+});

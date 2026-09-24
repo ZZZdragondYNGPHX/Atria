@@ -1,3 +1,4 @@
+import { knowledgeEditorFieldOptions, validateKnowledgeEditorValue } from './knowledge-contracts.js';
 import { mountStudioValueEditor } from './studio-value-editor.js';
 import { createAtriaShellEnvironment } from '../atria-shell/environment.js';
 import { mountStudioPromptTools } from './prompt-authoring.js';
@@ -383,6 +384,7 @@ function renderCollectionEditor(documentRef, body, state, view, stageProject) {
         body.append(panel(documentRef, 'empty', 'No project-owned resources', 'Use Source below to define this collection, or attach an available Library resource.'));
         mountStudioValueEditor({ document: documentRef, root: body, value: [], label: title + ' collection JSON', onReview: parsed => {
             if (!Array.isArray(parsed)) throw new TypeError('A resource collection must be an array.');
+            if (view === 'knowledge') parsed.forEach(validateKnowledgeEditorValue);
             const next = clone(state.source);
             if (view === 'actors') next.package.actors = parsed;
             else if (view === 'entrypoints') next.package.entryPoints = parsed;
@@ -405,6 +407,7 @@ function renderCollectionEditor(documentRef, body, state, view, stageProject) {
     body.append(field(documentRef, title, chooser));
 
     mountStudioValueEditor({ document: documentRef, root: body, value: items[index], label: title + ' resource JSON',
+        ...(view === 'knowledge' ? { fieldOptions: knowledgeEditorFieldOptions, validate: validateKnowledgeEditorValue } : {}),
         onReview: parsed => stageProject(normalizeCollectionPatch(state.source, view, index, parsed), `Update ${title} resource`),
     });
 }

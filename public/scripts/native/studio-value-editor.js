@@ -1,7 +1,9 @@
 import { translateShellText as t } from '../atria-shell/localization.js';
 
+let editorSequence = 0;
+
 // A local projection of the existing resource value. Only onReview may stage it.
-export function mountStudioValueEditor({ document: doc, root, value, label, onReview }) {
+export function mountStudioValueEditor({ document: doc, root, value, label, onReview, fieldOptions = () => undefined, validate = () => {} }) {
     let draft = JSON.parse(JSON.stringify(value));
     let advanced = false;
     let sourceText = JSON.stringify(draft, null, 2);
@@ -10,13 +12,18 @@ export function mountStudioValueEditor({ document: doc, root, value, label, onRe
     const toolbar = doc.createElement('div'); toolbar.className = 'atria-studio-actions';
     const toggle = doc.createElement('button'); toggle.type = 'button';
     const content = doc.createElement('div'); content.className = 'atri-studio-value-fields';
-    const feedback = doc.createElement('p'); feedback.hidden = true; feedback.tabIndex = -1;
+    const feedback = doc.createElement('p'); feedback.hidden = true; feedback.tabIndex = -1; feedback.id = 'atria-studio-value-feedback-' + ++editorSequence;
     const review = doc.createElement('button'); review.type = 'button'; review.textContent = t('Review Changes'); review.dataset.variant = 'primary';
     toolbar.append(toggle); shell.append(toolbar, content, feedback, review);
     function fail(error) {
         feedback.hidden = false; feedback.setAttribute('role', 'alert');
         feedback.textContent = t('Check the value and try again. Your draft is still here.') + ' ' + error.message;
-        feedback.focus();
+        const invalid = [...content.querySelectorAll('[name]')].find(input => error.message.startsWith(input.name + ' '));
+        if (invalid) {
+            invalid.setAttribute('aria-invalid', 'true'); invalid.setAttribute('aria-describedby', feedback.id);
+            for (let parent = invalid.parentElement; parent && parent !== content; parent = parent.parentElement) if (parent.tagName === 'DETAILS') parent.open = true;
+            invalid.focus();
+        } else feedback.focus();
     }
     function renderValue(parent, current, path, set, depth = 0) {
         if (current !== null && typeof current === 'object') {
@@ -31,12 +38,19 @@ export function mountStudioValueEditor({ document: doc, root, value, label, onRe
                 } else {
                     const row = doc.createElement('label'); row.className = 'atria-studio-field';
                     const caption = doc.createElement('span'); caption.textContent = name;
-                    const input = doc.createElement(typeof child === 'string' && (child.includes('\n') || child.length > 120) ? 'textarea' : 'input');
+                    const options = fieldOptions(nextPath);
+                    const input = doc.createElement(options ? 'select' : typeof child === 'string' && (child.includes('\n') || child.length > 120) ? 'textarea' : 'input');
                     input.setAttribute('aria-label', nextPath); input.name = nextPath; input.autocomplete = 'off';
-                    if (typeof child === 'boolean') { input.type = 'checkbox'; input.checked = child; } else { input.value = child === null ? 'null' : String(child); if (typeof child === 'number') { input.type = 'number'; input.step = 'any'; input.required = true; } }
-                    if (child === null) input.readOnly = true;
+                    if (options) {
+                        for (const item of options) { const option = doc.createElement('option'); option.value = item; option.textContent = t(item); input.append(option); }
+                        if (!options.includes(child)) { const option = doc.createElement('option'); option.value = String(child); option.textContent = String(child); input.prepend(option); }
+                        input.value = String(child);
+                    } else if (typeof child === 'boolean') { input.type = 'checkbox'; input.checked = child; } else { input.value = child === null ? 'null' : String(child); if (typeof child === 'number') { input.type = 'number'; input.step = 'any'; input.required = true; } }
+                    if (child === null && !options) input.readOnly = true;
                     input.addEventListener('input', () => {
-                        if (typeof child === 'boolean') current[key] = input.checked;
+                        input.removeAttribute('aria-invalid'); input.removeAttribute('aria-describedby');
+                        if (options) current[key] = input.value;
+                        else if (typeof child === 'boolean') current[key] = input.checked;
                         else if (typeof child === 'number') { if (input.value !== '' && Number.isFinite(Number(input.value))) current[key] = Number(input.value); } else if (child !== null) current[key] = input.value;
                     });
                     row.append(caption, input); parent.append(row);
@@ -62,7 +76,7 @@ export function mountStudioValueEditor({ document: doc, root, value, label, onRe
     }
     toggle.addEventListener('click', () => {
         try {
-            const invalid = [...content.querySelectorAll('input,textarea')].find(input => !input.checkValidity());
+            const invalid = [...content.querySelectorAll('input,textarea,select')].find(input => !input.checkValidity());
             if (invalid) { invalid.reportValidity(); return; }
             if (advanced) draft = JSON.parse(sourceText); else sourceText = JSON.stringify(draft, null, 2);
             advanced = !advanced; render(); toggle.focus();
@@ -72,8 +86,9 @@ export function mountStudioValueEditor({ document: doc, root, value, label, onRe
         if (review.disabled) return;
         try {
             if (advanced) draft = JSON.parse(sourceText);
-            const invalid = [...content.querySelectorAll('input,textarea')].find(input => !input.checkValidity());
+            const invalid = [...content.querySelectorAll('input,textarea,select')].find(input => !input.checkValidity());
             if (invalid) { invalid.reportValidity(); return; }
+            validate(draft);
             feedback.hidden = true;
             review.disabled = true; review.setAttribute('aria-busy', 'true');
             await onReview(JSON.parse(JSON.stringify(draft)));
