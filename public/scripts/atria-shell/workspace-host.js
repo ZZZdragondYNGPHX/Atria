@@ -1,3 +1,4 @@
+import { createAtriaIcon } from './icons.js';
 import { createAtriaStatePanel } from './primitives.js';
 import {
     mountAccountUtility,
@@ -149,9 +150,9 @@ function mountAgentsHub({ document: documentRef, slot, host }) {
     const heading = documentRef.createElement('header');
     heading.className = 'atria-agents-hub__heading';
     const title = documentRef.createElement('h2');
-    title.textContent = translateShellText('Agent workspaces');
+    title.textContent = translateShellText('Agents');
     const hint = documentRef.createElement('p');
-    hint.textContent = translateShellText('Choose a workspace. Each option opens its own routed child view.');
+    hint.textContent = translateShellText('Shape how your agents work, then follow what they do.');
     heading.append(title, hint);
 
     const grid = documentRef.createElement('div');
@@ -166,7 +167,9 @@ function mountAgentsHub({ document: documentRef, slot, host }) {
         cardTitle.textContent = translateShellText(AGENT_SECTION_LABELS[section]);
         const description = documentRef.createElement('span');
         description.textContent = translateShellText(AGENT_SECTION_DESCRIPTIONS[section]);
-        card.append(cardTitle, description);
+        const symbol = createAtriaIcon(documentRef, { orchestration: 'agents', run: 'play', memory: 'library', diagnostics: 'diagnostics' }[section]);
+        symbol.classList.add('atria-agents-hub__card-icon');
+        card.append(symbol, cardTitle, description);
         card.addEventListener('click', () => host.openAgentSection(section));
         grid.append(card);
     }
@@ -181,12 +184,13 @@ function mountAgentsHub({ document: documentRef, slot, host }) {
     };
 }
 
-async function mountAgentsWorkspace({ document: documentRef, slot, descriptor, host }) {
+async function mountAgentsWorkspace({ document: documentRef, slot, descriptor, host, isCurrent = () => true }) {
     if (descriptor.section === 'home') {
         return mountAgentsHub({ document: documentRef, slot, host });
     }
 
     const panel = await import('../extensions/orchestrator/workspace/panel.js');
+    if (!isCurrent()) return {};
     const root = panel.openWorkspace(descriptor.section, {
         container: slot,
         embedded: true,
@@ -194,6 +198,7 @@ async function mountAgentsWorkspace({ document: documentRef, slot, descriptor, h
     });
     return {
         root,
+        dismissTransient: () => panel.dismissWorkspaceTransient(),
         updateRoute(route) {
             panel.setWorkspaceSection(normalizeAgentSection(route), { focus: false });
         },
@@ -208,11 +213,12 @@ async function mountBuildWorkspace(args) {
     return studio.mountNativeStudioWorkspace(args);
 }
 
-async function mountDiagnosticsWorkspace({ slot }) {
+async function mountDiagnosticsWorkspace({ slot, isCurrent = () => true }) {
     const [diagnostics, user] = await Promise.all([
         import('../logging/workspace.js'),
         import('../user.js'),
     ]);
+    if (!isCurrent()) return {};
     return await diagnostics.openLogsWorkspace({
         canViewServerLogs: !user.accountsEnabled || user.isAdmin(),
         container: slot,
@@ -358,6 +364,7 @@ export function createAtriaWorkspaceHost({
             controller = await adapter({
                 document: documentRef,
                 window: windowRef,
+                isCurrent: () => token === sequence && !disposed,
                 shell,
                 navigation,
                 slot,

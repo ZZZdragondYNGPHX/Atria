@@ -89,7 +89,7 @@ export function getConfigValidationMessage(code) {
  * Refresh the current account view model.
  * @returns {Promise<void>}
  */
-async function getCurrentUser() {
+async function getCurrentUser({ throwOnError = false } = {}) {
     try {
         const response = await fetch('/api/users/me', {
             headers: getRequestHeaders(),
@@ -101,6 +101,7 @@ async function getCurrentUser() {
         $('#server_logs_button').show();
     } catch (error) {
         console.error('Error getting current user:', error);
+        if (throwOnError) throw error;
     }
 }
 
@@ -140,7 +141,7 @@ async function changePassword(handle, callback) {
         });
         const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '', { okButton: 'Change', cancelButton: 'Cancel', wide: false, large: false });
         if (result === POPUP_RESULT.CANCELLED || result === POPUP_RESULT.NEGATIVE) {
-            throw new Error('Change password cancelled');
+            return;
         }
 
         if (newPassword !== confirmPassword) {
@@ -183,7 +184,7 @@ async function resetSettings(handle, callback) {
         const result = await callGenericPopup(template, POPUP_TYPE.CONFIRM, '', { okButton: 'Reset', cancelButton: 'Cancel', wide: false, large: false });
 
         if (result !== POPUP_RESULT.AFFIRMATIVE) {
-            throw new Error('Reset settings cancelled');
+            return;
         }
 
         const response = await fetch('/api/users/reset-settings', {
@@ -217,7 +218,7 @@ async function changeName(handle, name, callback) {
         const result = await callGenericPopup(template, POPUP_TYPE.INPUT, name, { okButton: 'Change', cancelButton: 'Cancel', wide: false, large: false });
 
         if (!result) {
-            throw new Error('Change name cancelled');
+            return;
         }
 
         name = String(result);
@@ -256,7 +257,7 @@ async function restoreSnapshot(name, callback) {
         );
 
         if (confirm !== POPUP_RESULT.AFFIRMATIVE) {
-            throw new Error('Restore snapshot cancelled');
+            return;
         }
 
         const response = await fetch('/api/settings/restore-snapshot', {
@@ -425,7 +426,7 @@ async function resetEverything(callback) {
         );
 
         if (confirm !== POPUP_RESULT.AFFIRMATIVE) {
-            throw new Error('Reset everything cancelled');
+            return;
         }
 
         const step2Response = await fetch('/api/users/reset-step2', {
@@ -448,7 +449,7 @@ async function resetEverything(callback) {
 }
 
 export async function openUserProfile({ container = null } = {}) {
-    await getCurrentUser();
+    await getCurrentUser({ throwOnError: true });
     const template = $(await renderTemplateAsync('userProfile'));
     template.find('.userName').text(currentUser.name);
     template.find('.userHandle').text(currentUser.handle);

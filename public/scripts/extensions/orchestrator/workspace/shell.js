@@ -86,6 +86,8 @@ export function createWorkspaceShell({ onNavigate, onClose, onStop, onToggleOrch
         label.textContent = i18n(section.label);
     }
 
+    if (embedded) root.insertBefore(nav, frame);
+
     const main = el('main', 'atria-workspace-main', frame);
     main.id = 'workspace-content';
     main.tabIndex = -1;
@@ -137,5 +139,5 @@ export function syncWorkspaceNavigation(shell, activeSection) {
 }
 
 export function focusWorkspaceSection(shell, section) {
-    shell.nav.querySelector(`[data-section="${CSS.escape(section)}"]`)?.focus({ preventScroll: true });
+    [...shell.nav.children].find(item => item.dataset.section === section)?.focus({ preventScroll: true });
 }
