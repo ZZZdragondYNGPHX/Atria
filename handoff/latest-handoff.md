@@ -6,7 +6,7 @@ Updated: 2026-09-25 (Asia/Shanghai).
 
 Repository: `ZZZdragondYNGPHX/Atria`.
 Working branch: `fix/native-product-ux-audit`.
-Pushed HEAD: `d00095d81`.
+Pushed HEAD: `ddc91a8fc`.
 Main remains `ad15c1e0c3e15e625ba163e284a300c00811f10d`.
 
 Use the existing workspace AGENTS.md and FORK_MAINTENANCE.md. Remote main copies
@@ -49,10 +49,18 @@ provider/Secret ownership and Native preset-name removal are complete. Final
 regression: 163 suites / 1925 cases, 10 Native suites / 166 cases, six adjacent
 suites / 32 cases and seven real Edge scenarios passed. No live cloud/GPU inference.
 
+Group 4 NUX-016 through NUX-018 is implemented, independently committed and pushed.
+Detailed implementation/validation: [Group 4](native-product-ux-group-4.md).
+Applicability, delivery and target selectors share typed Native contracts; state
+activation and all/any predicates execute on Native snapshots. Unsupported event
+triggers and retrieval hints now reject explicitly. Studio validates typed fields
+before Review. Regression covered 86 suites / 668 passed / 66 skipped; two stale
+Group 3 fixtures were fixed and their 27 cases passed. Real Edge 390px passed.
+
 ## Next
 
-Continue Group 4 with NUX-016, complete Native Knowledge applicability contracts.
-NUX-016 and all later issues remain active. Follow the existing backlog without
+Continue Group 5 with NUX-019, Library immutable World/Knowledge revision authoring.
+NUX-019 and all later issues remain active. Follow the existing backlog without
 replanning; retain capabilities under Native owners before deleting legacy code.
 
 ## Local work
@@ -60,7 +68,7 @@ replanning; retain capabilities under Native owners before deleting legacy code.
 Pre-existing AGENTS.md/FORK_MAINTENANCE.md edits and Phase 6–8 test outputs remain
 untouched and excluded from commits. Current task has local untracked
 `tests/.native-ux-playwright.config.js` selecting installed Edge and
-`tests/test-results-native-ux-g1*` and `tests/test-results-native-ux-g2*` / `tests/test-results-native-ux-g3*` outputs. Bundled Chromium installation stalled;
+`tests/test-results-native-ux-g1*` and `tests/test-results-native-ux-g2*` / `tests/test-results-native-ux-g3*` / `tests/test-results-native-ux-g4*` outputs. Bundled Chromium installation stalled;
 Edge was used for actual browser validation. Remove task-only temporary outputs
 when no longer needed; do not touch prior-task artifacts.
 
