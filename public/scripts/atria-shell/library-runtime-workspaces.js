@@ -80,14 +80,14 @@ function buildDomainFrame(documentRef, {
     body.className = 'atria-domain-workspace__body';
 
     let compactSection;
-    if (domain === 'library') {
+    if (domain === 'library' || domain === 'runtime') {
         const label = documentRef.createElement('label');
-        label.className = 'atri-library-section-picker';
+        label.className = domain === 'library' ? 'atri-library-section-picker' : 'atri-runtime-section-picker';
         const caption = documentRef.createElement('span');
-        caption.className = 'atri-library-section-label'; caption.textContent = translateShellText('Library section');
+        caption.className = 'atri-library-section-label'; caption.textContent = translateShellText(domain === 'library' ? 'Library section' : 'Runtime section');
         label.append(caption);
         compactSection = documentRef.createElement('select');
-        compactSection.setAttribute('aria-label', translateShellText('Library section'));
+        compactSection.setAttribute('aria-label', translateShellText(domain === 'library' ? 'Library section' : 'Runtime section'));
         for (const item of sections) {
             const option = documentRef.createElement('option');
             option.value = item.id; option.textContent = translateShellText(item.label);

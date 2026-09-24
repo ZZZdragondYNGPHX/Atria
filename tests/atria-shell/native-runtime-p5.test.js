@@ -41,3 +41,39 @@ test('missing route errors publish an actionable owning route without losing mac
     expect(observed.mock.calls[0][0].detail.target).toBe('routes');
     document.removeEventListener('atria-native-runtime-error', observed);
 });
+
+test('pending saves deduplicate, focus failed feedback and retain exact Secret references', async () => {
+    let finish;
+    globalThis.fetch = jest.fn(async (_url, options) => options.method === 'PUT'
+        ? new Promise(resolve => { finish = resolve; }) : response(config));
+    const view = mount(); await flush();
+    const form = view.root.querySelector('form');
+    form.dispatchEvent(new Event('submit', { cancelable: true }));
+    form.dispatchEvent(new Event('submit', { cancelable: true }));
+    const writes = globalThis.fetch.mock.calls.filter(([, options]) => options.method === 'PUT');
+    expect(writes).toHaveLength(1);
+    expect(JSON.parse(writes[0][1].body).secretRef).toEqual(config.connections[0].secretRef);
+    expect(view.root.querySelector('[type="submit"]').getAttribute('aria-busy')).toBe('true');
+    finish(response({ error: 'native_generation_configuration_invalid' }, false)); await flush();
+    expect(document.activeElement).toBe(view.root.querySelector('[role="alert"]'));
+    expect(view.root.querySelector('[aria-label="Exact Secret ID"]').value).toBe('stored-id');
+    view.dispose();
+});
+
+test('a disposed Runtime does not render late configuration or leave modal ownership behind', async () => {
+    let finish;
+    globalThis.fetch = jest.fn(() => new Promise(resolve => { finish = resolve; }));
+    const view = mount(); view.dispose(); finish(response(config)); await flush();
+    expect(document.querySelector('[data-atria-runtime-native]')).toBeNull();
+    expect(view.root.querySelector('form')).toBeNull();
+});
+
+test('leaving a deep-linked editor through the same section restores the list and focus', async () => {
+    globalThis.fetch = jest.fn(async () => response(config));
+    const view = mount(); await flush();
+    expect(view.root.querySelector('form')).not.toBeNull();
+    view.updateRoute({ child: { id: 'connections' } });
+    expect(view.root.querySelector('form')).toBeNull();
+    expect(document.activeElement).toBe(view.root.querySelector('[type="search"]'));
+    view.dispose();
+});
