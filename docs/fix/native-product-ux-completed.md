@@ -607,4 +607,12 @@ passed prompt-channel delivery with legacy budget disabled, exact ContextPlan fi
 absence of book-shaped candidates, Draft-local commit and Stop rollback. Changed-file
 lint and diff checks passed.
 
-Next: Group 5 regression, then NUX-027 in active backlog order.
+Group 5 regression: 96 Native/Shell suites covered 707 passing cases and 68 optional
+external database skips. Two obsolete UI assertions were updated for named Binding
+management and reviewed Library writes; their suite passed on rerun. Nine World Info
+suites passed 70 cases and two adjacent orchestration suites passed nine cases. All
+eight real Edge Knowledge/World/Studio/Play scenarios passed at 320/390px, including
+Native prompt evaluation, promotion, references, historical revisions, bindings,
+composition and semantic authoring. The current composition screenshot was inspected.
+
+Next: NUX-027, following the active backlog order.
