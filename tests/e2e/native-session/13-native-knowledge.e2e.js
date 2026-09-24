@@ -15,6 +15,60 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
+test('Library binding management keeps exact revisions and protects historical references at 390px', async ({ page }, info) => {
+    test.setTimeout(180000);
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const seeded = await page.evaluate(async () => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        const base = await client.createKnowledge('Binding canon');
+        const first = await client.commitKnowledgeRevision(base.knowledgeBaseId, { baseRevisionId: null, content: { entries: [] } });
+        await client.commitKnowledgeRevision(base.knowledgeBaseId, { baseRevisionId: first.knowledgeRevisionId, content: { entries: [] } });
+        const world = await client.createWorld('Binding harbor');
+        window.Atria.shell.getWorkspaceHost().openLibraryKnowledge(base.knowledgeBaseId, base.displayName);
+        return { base, first, world };
+    });
+    const root = page.locator('[data-atria-knowledge-bindings]');
+    await root.getByRole('button', { name: 'Create binding', exact: true }).click();
+    await root.getByLabel('Binding name', { exact: true }).fill('Navigator canon');
+    await root.getByLabel('Exact Knowledge revision', { exact: true }).selectOption(seeded.first.knowledgeRevisionId);
+    await root.getByLabel('Binding mode', { exact: true }).selectOption('override');
+    await root.getByLabel('Priority', { exact: true }).fill('-2');
+    await root.getByRole('button', { name: 'Add target rule', exact: true }).click();
+    await root.getByLabel('Target kind 1', { exact: true }).selectOption('actor');
+    await root.getByLabel('Exact target identity 1', { exact: true }).fill('navigator');
+    await root.getByLabel('Visible to actor', { exact: true }).check();
+    await root.getByRole('button', { name: 'Review binding', exact: true }).click();
+    await page.route('**/api/native/product/knowledge-bindings/*', route => route.request().method() === 'PUT' ? route.fulfill({ status: 503, json: { error: 'unavailable' } }) : route.continue());
+    await root.getByRole('button', { name: 'Save binding', exact: true }).click();
+    await expect(root.getByRole('alert')).toBeVisible();
+    await page.unroute('**/api/native/product/knowledge-bindings/*');
+    await root.getByRole('button', { name: 'Save binding', exact: true }).click();
+    await root.getByRole('button', { name: 'Manage binding', exact: true }).click();
+    await expect(root.getByLabel('Exact Knowledge revision', { exact: true })).toHaveValue(seeded.first.knowledgeRevisionId);
+    await root.locator('summary').filter({ hasText: /^Attach \/ detach Worlds$/ }).click();
+    let row = root.locator('.atri-library-version').filter({ has: page.getByRole('heading', { name: 'Binding harbor', exact: true }) });
+    await row.getByRole('button', { name: 'Attach binding', exact: true }).click();
+    await row.getByRole('button', { name: 'Save World revision', exact: true }).click();
+    await expect(root.getByRole('button', { name: 'Delete binding', exact: true })).toBeDisabled();
+    await root.locator('summary').filter({ hasText: /^Attach \/ detach Worlds$/ }).click();
+    row = root.locator('.atri-library-version').filter({ has: page.getByRole('heading', { name: 'Binding harbor', exact: true }) });
+    await row.getByRole('button', { name: 'Detach binding', exact: true }).click();
+    await row.getByRole('button', { name: 'Save World revision', exact: true }).click();
+    await expect(root).toContainText('Historical revision');
+    await expect(root.getByRole('button', { name: 'Delete binding', exact: true })).toBeDisabled();
+    await page.screenshot({ path: info.outputPath('binding-manager-390.png') });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const saved = await page.evaluate(async id => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        return (await client.getKnowledge(id)).bindings[0].binding;
+    }, seeded.base.knowledgeBaseId);
+    expect(saved).toMatchObject({ source: { knowledgeRevisionId: seeded.first.knowledgeRevisionId }, mode: 'override', priority: -2, target: { kind: 'actor', id: 'navigator' }, visibility: ['actor'] });
+});
+
 test('Knowledge typed delivery and invalid Source stay inside Studio Review at 390px', async ({ page }, info) => {
     test.setTimeout(180000);
     await page.setViewportSize({ width: 390, height: 900 });

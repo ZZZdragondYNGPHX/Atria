@@ -144,6 +144,18 @@ export function createNativeProductRouter(getServices = services) {
         res.json({ deleted: await product.deleteWorld(handle, req.params.worldId) });
     }));
 
+    router.get('/knowledge-bindings/:id', route(async (req, res, { product }, handle) => {
+        res.json(await product.getKnowledgeBinding(handle, req.params.id));
+    }));
+    router.put('/knowledge-bindings/:id', route(async (req, res, { product }, handle) => {
+        res.json(await product.saveKnowledgeBinding(handle, req.params.id, req.body));
+    }));
+    router.delete('/knowledge-bindings/:id', route(async (req, res, { product }, handle) => {
+        res.json({ deleted: await product.deleteKnowledgeBinding(handle, req.params.id, req.body) });
+    }));
+    router.post('/knowledge-bindings/:id/worlds/:worldId', route(async (req, res, { product }, handle) => {
+        res.json(await product.attachKnowledgeBinding(handle, req.params.id, req.params.worldId, req.body));
+    }));
     router.get('/knowledge', route(async (_req, res, { product }, handle) => {
         res.json(await product.listKnowledgeBases(handle));
     }));

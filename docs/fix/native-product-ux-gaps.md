@@ -81,30 +81,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 补齐 World / Knowledge 的完整作者工作流；兼容 ABI 清理必须最后执行。
 
-## NUX-021 — KnowledgeBinding is not a first-class management object
-
-**Current evidence**
-
-KnowledgeBinding controls exact Knowledge revision, source kind, enabled state, augment/override mode, target, visibility and priority.
-
-Current Library surfaces display binding/reference data but do not provide a full Binding manager.
-
-**Impact**
-
-Users cannot comfortably answer or edit: “which exact Knowledge revision applies where, to whom, with what authority?”
-
-**Acceptance**
-
-- Create/edit/delete bindings.
-- Pick an exact Knowledge revision.
-- Configure mode / target / visibility / priority.
-- Show Used By / reference blockers.
-- Support attach/detach/update without raw IDs.
-
----
-
----
-
 ## NUX-022 — WorldRevision composition is not productized
 
 **Current evidence**

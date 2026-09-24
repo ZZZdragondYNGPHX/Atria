@@ -56,6 +56,24 @@ function appFor(product, { authenticated = true } = {}) {
     return app;
 }
 
+test('binding management HTTP preserves exact identities and concurrency tokens', async () => {
+    const product = {
+        getKnowledgeBinding: jest.fn(async () => ({ binding: {} })),
+        saveKnowledgeBinding: jest.fn(async () => ({ integrity: 'saved' })),
+        deleteKnowledgeBinding: jest.fn(async () => true),
+        attachKnowledgeBinding: jest.fn(async () => ({ worldRevisionId: 'next' })),
+    };
+    const app = appFor(product);
+    await request(app).get('/knowledge-bindings/binding').expect(200);
+    const input = { binding: { knowledgeBindingId: 'binding' }, expectedIntegrity: 'exact' };
+    await request(app).put('/knowledge-bindings/binding').send(input).expect(200);
+    expect(product.saveKnowledgeBinding).toHaveBeenCalledWith('u', 'binding', input);
+    await request(app).delete('/knowledge-bindings/binding').send({ expectedIntegrity: 'exact' }).expect(200);
+    expect(product.deleteKnowledgeBinding).toHaveBeenCalledWith('u', 'binding', { expectedIntegrity: 'exact' });
+    await request(app).post('/knowledge-bindings/binding/worlds/world').send({ baseRevisionId: 'old', attached: false }).expect(200);
+    expect(product.attachKnowledgeBinding).toHaveBeenCalledWith('u', 'binding', 'world', { baseRevisionId: 'old', attached: false });
+});
+
 describe('N9 Native Product HTTP boundary', () => {
     test('sanitizes exception details while retaining exact blockers and invalid field context', async () => {
         const product = makeProduct();

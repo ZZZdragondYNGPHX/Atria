@@ -314,6 +314,49 @@ export class NativeProductService {
         });
     }
 
+    async getKnowledgeBinding(handle, knowledgeBindingId) {
+        const binding = await this._knowledge.getBinding(handle, knowledgeBindingId);
+        if (!binding) throw new NotFoundError('native knowledge binding', { knowledgeBindingId });
+        const references = await this._knowledge.getBindingReferences(handle, knowledgeBindingId);
+        for (const reference of references) {
+            const world = await this._worlds.get(handle, reference.worldId);
+            reference.displayName = world?.displayName || reference.worldId;
+            reference.current = world?.currentRevisionId === reference.worldRevisionId;
+        }
+        for (const source of await this._projectSources(handle)) {
+            if (source.dependencies.knowledgeBindings?.includes(knowledgeBindingId)) references.push({ kind: 'studio-project', projectId: source.project.projectId, displayName: source.project.displayName });
+        }
+        return { binding, integrity: hashNativeDocument(binding), references };
+    }
+
+    async saveKnowledgeBinding(handle, knowledgeBindingId, input) {
+        assertNativeId(knowledgeBindingId, 'knowledgeBinding');
+        if (!input || !Object.hasOwn(input, 'expectedIntegrity') || (input.expectedIntegrity !== null && (typeof input.expectedIntegrity !== 'string' || !/^[a-f0-9]{64}$/.test(input.expectedIntegrity)))) throw invalidField('expectedIntegrity');
+        if (!input.binding || input.binding.knowledgeBindingId !== knowledgeBindingId) throw invalidField('knowledgeBindingId');
+        await this._knowledge.saveBinding(handle, input.binding, { expectedIntegrity: input.expectedIntegrity });
+        return this.getKnowledgeBinding(handle, knowledgeBindingId);
+    }
+
+    async deleteKnowledgeBinding(handle, knowledgeBindingId, input) {
+        if (typeof input?.expectedIntegrity !== 'string' || !/^[a-f0-9]{64}$/.test(input.expectedIntegrity)) throw invalidField('expectedIntegrity');
+        const detail = await this.getKnowledgeBinding(handle, knowledgeBindingId);
+        if (detail.references.length) throw new ConflictError('native_knowledge_binding_referenced', { knowledgeBindingId, references: detail.references });
+        return this._knowledge.deleteBinding(handle, knowledgeBindingId, { expectedIntegrity: input.expectedIntegrity });
+    }
+
+    async attachKnowledgeBinding(handle, knowledgeBindingId, worldId, input) {
+        if (typeof input?.attached !== 'boolean') throw invalidField('attached');
+        await this.getKnowledgeBinding(handle, knowledgeBindingId);
+        const { world, currentRevision } = await this.getWorld(handle, worldId);
+        if (world.currentRevisionId !== input.baseRevisionId) throw new ConflictError('native_write_conflict');
+        const content = {};
+        for (const key of ['schema', 'baseline', 'knowledgeBindingIds', 'assetIds', 'metadata']) if (currentRevision?.[key] !== undefined) content[key] = clone(currentRevision[key]);
+        const bindings = new Set(content.knowledgeBindingIds || []);
+        if (input.attached) bindings.add(knowledgeBindingId); else bindings.delete(knowledgeBindingId);
+        content.knowledgeBindingIds = [...bindings];
+        return this.commitWorldRevision(handle, worldId, { baseRevisionId: input.baseRevisionId, content });
+    }
+
     async commitKnowledgeRevision(handle, knowledgeBaseId, input) {
         const { baseRevisionId, content } = revisionInput(input, 'knowledgeRevision', ['entries', 'metadata']);
         if (!Array.isArray(content.entries)) throw invalidField('content.entries');

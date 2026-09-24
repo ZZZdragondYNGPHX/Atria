@@ -4,7 +4,7 @@ import {
 import { assertWorld, assertWorldRevision } from '../world-knowledge.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
-import { withNativeResourceWrite, getNativeDocument, listNativeDocuments, putImmutable, putMutable } from './common.js';
+import { withNativeResourceWrites, withNativeResourceWrite, getNativeDocument, listNativeDocuments, putImmutable, putMutable } from './common.js';
 
 export class WorldRepo {
     constructor({ engine }) {
@@ -92,7 +92,7 @@ export class WorldRepo {
     async commitRevision(handle, value, options = {}) {
         assertWritable();
         const revision = assertWorldRevision(value);
-        return withNativeResourceWrite(handle, revision.worldId, () => this._engine.withTransaction(handle, async (tx) => {
+        return withNativeResourceWrites(handle, [revision.worldId, ...revision.knowledgeBindingIds], () => this._engine.withTransaction(handle, async (tx) => {
             const worldKey = this._worldKey(handle, revision.worldId);
             const world = await getNativeDocument(tx, worldKey);
             if (!world) throw new NotFoundError('native world', { worldId: revision.worldId });

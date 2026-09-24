@@ -79,3 +79,21 @@ existing defaults. Regex discovery accepts a JavaScript pattern or `/pattern/fla
 with `i`, `m`, `s`, `u`; malformed expressions and stateful flags fail validation.
 The temporary delivery adapter preserves these expressions as regexes, never
 silently demotes an authored pattern to a keyword.
+
+### Library Binding management
+
+Knowledge detail exposes a Binding manager with explicit exact revision selection,
+augment/override mode, target rules, visibility, priority and enabled state. Library
+Binding roots remain mutable under their existing authority; updates and deletion
+require a captured integrity token. Source kind is Library here: project, packaged
+and session-owned bindings remain with their respective owners.
+
+World attachment/detachment publishes a new immutable WorldRevision using the
+captured current revision as its compare-and-swap base. Historical World revisions
+continue to reference and protect their bindings. Used By lists current/historical
+World revisions and Studio dependency references, with navigation to their owners.
+Installed Package and Session snapshots are not rewritten by Library edits.
+
+Repository writes serialize related binding/base/world keys in a stable order so
+FS commit-last publication cannot race attachment against binding deletion or
+exact revision deletion against binding creation.

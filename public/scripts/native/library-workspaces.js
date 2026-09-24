@@ -1,3 +1,4 @@
+import { mountKnowledgeBindingManager } from './knowledge-binding-manager.js';
 import { mountLibraryRevisionEditor } from './library-revision-editor.js';
 import { createAtriaStatePanel } from '../atria-shell/primitives.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
@@ -243,12 +244,7 @@ async function worldKnowledge(doc, root, route, host) {
             }
             if (!detail.entries.length) state(doc, entries, 'empty', 'No entries', 'This revision contains no Knowledge entries.');
             const bindings = section(doc, root, 'Bindings & references', 'atriaKnowledgeBindings');
-            for (const item of detail.bindings) {
-                const row = el(doc, 'article', 'atri-library-version', undefined, bindings);
-                el(doc, 'p', '', `${tl(item.binding.enabled ? 'Enabled' : 'Disabled')} · ${item.binding.mode} · ${item.references.length} ${tl('references')}`, row);
-                disclosure(doc, row, 'Exact binding details', item);
-            }
-            if (!detail.bindings.length) el(doc, 'p', 'atri-library-meta', tl('No Library bindings'), bindings);
+            mountKnowledgeBindingManager({ document: doc, root: bindings, detail, host });
         }
         revisions(doc, root, detail.revisions, resource.currentRevisionId, knowledge ? 'atriaKnowledgeRevisionHistory' : 'atriaWorldRevisionHistory');
         return;

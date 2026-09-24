@@ -7,7 +7,7 @@ import {
 } from '../world-knowledge.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
-import { withNativeResourceWrite, getNativeDocument, listNativeDocuments, putImmutable, putMutable } from './common.js';
+import { withNativeResourceWrites, withNativeResourceWrite, getNativeDocument, listNativeDocuments, putImmutable, putMutable } from './common.js';
 
 export class KnowledgeRepo {
     constructor({ engine }) {
@@ -220,7 +220,7 @@ export class KnowledgeRepo {
         if (binding.source.kind !== 'library') {
             throw new TypeError('KnowledgeRepo only stores Library-owned KnowledgeBindings');
         }
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withNativeResourceWrites(handle, [binding.knowledgeBindingId, binding.source.knowledgeBaseId], () => this._engine.withTransaction(handle, async (tx) => {
             const revision = await getNativeDocument(
                 tx,
                 this._revisionKey(
@@ -231,7 +231,7 @@ export class KnowledgeRepo {
             );
             if (!revision) throw new NotFoundError('native knowledge revision', binding.source);
             return putMutable(tx, this._bindingKey(handle, binding.knowledgeBindingId), binding, options);
-        });
+        }));
     }
 
     async _revisionReferences(tx, handle, knowledgeBaseId, knowledgeRevisionId) {
@@ -271,7 +271,7 @@ export class KnowledgeRepo {
 
     async deleteRevision(handle, knowledgeBaseId, knowledgeRevisionId) {
         assertWritable();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withNativeResourceWrite(handle, knowledgeBaseId, () => this._engine.withTransaction(handle, async (tx) => {
             const references = await this._revisionReferences(
                 tx,
                 handle,
@@ -294,13 +294,13 @@ export class KnowledgeRepo {
                 await tx.deleteResource(record.key);
             }
             return tx.deleteResource(this._revisionKey(handle, knowledgeBaseId, knowledgeRevisionId));
-        });
+        }));
     }
 
     async gcRevisions(handle, knowledgeBaseId, { retainRevisionIds = [] } = {}) {
         assertWritable();
         const retained = new Set(retainRevisionIds);
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withNativeResourceWrite(handle, knowledgeBaseId, () => this._engine.withTransaction(handle, async (tx) => {
             const base = await getNativeDocument(tx, this._baseKey(handle, knowledgeBaseId));
             if (base?.currentRevisionId) retained.add(base.currentRevisionId);
             for (const binding of await tx.listResources({
@@ -331,7 +331,7 @@ export class KnowledgeRepo {
                 if (await tx.deleteResource(record.key)) deleted.push(revisionId);
             }
             return deleted;
-        });
+        }));
     }
 
     async getBindingReferences(handle, knowledgeBindingId) {
@@ -353,9 +353,11 @@ export class KnowledgeRepo {
         });
     }
 
-    async deleteBinding(handle, knowledgeBindingId) {
+    async deleteBinding(handle, knowledgeBindingId, options = {}) {
         assertWritable();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withNativeResourceWrite(handle, knowledgeBindingId, () => this._engine.withTransaction(handle, async (tx) => {
+            const current = await tx.getResource(this._bindingKey(handle, knowledgeBindingId));
+            if (Object.hasOwn(options, 'expectedIntegrity') && current?.integrity !== options.expectedIntegrity) throw new ConflictError('native_write_conflict', { knowledgeBindingId });
             const references = [];
             for (const record of await tx.listResources({
                 kind: NATIVE_RESOURCE_KINDS.worldRevision,
@@ -375,7 +377,7 @@ export class KnowledgeRepo {
                 });
             }
             return tx.deleteResource(this._bindingKey(handle, knowledgeBindingId));
-        });
+        }));
     }
 
     async delete(handle, knowledgeBaseId) {

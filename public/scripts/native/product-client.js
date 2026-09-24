@@ -58,6 +58,10 @@ export const nativeProductClient = Object.freeze({
     }),
     deleteWorld: worldId => request(`worlds/${encode(worldId)}`, { method: 'DELETE' }),
 
+    getKnowledgeBinding: id => request(`knowledge-bindings/${encode(id)}`),
+    saveKnowledgeBinding: (id, input) => request(`knowledge-bindings/${encode(id)}`, { method: 'PUT', body: input }),
+    deleteKnowledgeBinding: (id, expectedIntegrity) => request(`knowledge-bindings/${encode(id)}`, { method: 'DELETE', body: { expectedIntegrity } }),
+    attachKnowledgeBinding: (id, worldId, input) => request(`knowledge-bindings/${encode(id)}/worlds/${encode(worldId)}`, { method: 'POST', body: input }),
     listKnowledge: () => request('knowledge'),
     createKnowledge: displayName => request('knowledge', { method: 'POST', body: { displayName } }),
     getKnowledge: (knowledgeBaseId, revisionId = null) => request(
