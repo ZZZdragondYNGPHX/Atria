@@ -6,7 +6,7 @@ Updated: 2026-09-25 (Asia/Shanghai).
 
 Repository: `ZZZdragondYNGPHX/Atria`.
 Working branch: `fix/native-product-ux-audit`.
-Pushed HEAD: `fa447c2e8`.
+Pushed HEAD: `c863c0536`.
 Main remains `ad15c1e0c3e15e625ba163e284a300c00811f10d`.
 
 Use the existing workspace AGENTS.md and FORK_MAINTENANCE.md. Remote main copies
@@ -35,19 +35,25 @@ passed with 320px screenshot inspection. Changed-file lint and diff check passed
 MySQL/Postgres services at the test ports are unavailable; no live DB claim.
 No physical Android, Android build or Docker validation was performed.
 
+Group 2 NUX-003 through NUX-011 is implemented, independently committed and pushed.
+Detailed implementation/validation: [Group 2](native-product-ux-group-2.md).
+22 suites / 214 tests and 24 real Edge browser scenarios passed. Provider adapters,
+exact Secrets, model discovery, safe lifecycle/archive, canonical Library Generation
+Profiles, fallback roles, Build context picker, setup readiness and Product errors
+are complete. No live paid-provider calls or physical-device validation claimed.
+
 ## Next
 
-Continue Group 2 with NUX-003, Native provider adapters and supported controls.
-Group 2 has not been implemented. All remaining groups remain active.
-The original NUX-002 text was accidentally truncated in the reordered backlog;
-its full historical acceptance was recovered from `2d00df52e` (then NUX-043).
+Continue Group 3 with NUX-012, per-agent/per-stage Native Orchestrator routing.
+NUX-012 and all later issues remain active. Follow the existing backlog without
+replanning; retain capabilities under Native owners before deleting legacy code.
 
 ## Local work
 
 Pre-existing AGENTS.md/FORK_MAINTENANCE.md edits and Phase 6–8 test outputs remain
 untouched and excluded from commits. Current task has local untracked
 `tests/.native-ux-playwright.config.js` selecting installed Edge and
-`tests/test-results-native-ux-g1*` outputs. Bundled Chromium installation stalled;
+`tests/test-results-native-ux-g1*` and `tests/test-results-native-ux-g2*` outputs. Bundled Chromium installation stalled;
 Edge was used for actual browser validation. Remove task-only temporary outputs
 when no longer needed; do not touch prior-task artifacts.
 
