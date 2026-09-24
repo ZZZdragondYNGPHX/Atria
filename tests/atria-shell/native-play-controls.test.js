@@ -113,7 +113,7 @@ describe('N9 Native Play product controls', () => {
 
         expect(controls.landing.hidden).toBe(false);
         expect(controls.root.hidden).toBe(true);
-        expect(controls.landing.textContent).toContain('Continue a Native game');
+        expect(controls.landing.textContent).toContain('A story to return to');
         expect(requests.map(item => item.path)).toEqual(expect.arrayContaining([
             '/api/native/product/sessions',
             '/api/native/product/works',

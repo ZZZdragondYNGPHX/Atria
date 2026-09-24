@@ -442,6 +442,9 @@ toastr.subscribe(function (args) {
         : $container.children().last();
 
     $toast.find('.toast-close-button').attr('aria-label', t`Dismiss notification`);
+    // A modal can resize under the pointer while a notice fades out. Once the
+    // user dismisses it, toastr's hover-to-resume handler must not revive it.
+    $toast.find('.toast-close-button').on('click', () => $toast.off('mouseenter mouseleave'));
 
     // Meaning of "clickable":
     // Interactable unless tapToDismiss was explicitly false
@@ -1018,6 +1021,14 @@ if (typeof window !== 'undefined') {
             return true;
         },
         dismissModalPopover: () => {
+            const gameDialog = document.querySelector('dialog.atria-game-host-surface[open]');
+            if (gameDialog) { gameDialog.close(); return true; }
+            const playMore = document.querySelector('.atria-play-more[open], .atria-game-recovery-panel[open]');
+            if (playMore) {
+                playMore.open = false;
+                playMore.querySelector('summary')?.focus();
+                return true;
+            }
             const jq = window.jQuery;
             if (typeof jq !== 'function') return false;
 

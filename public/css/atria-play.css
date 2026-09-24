@@ -1,0 +1,196 @@
+/* Play presentation. Native Session owns content; Shell owns viewport and panels. */
+.atria-play-product,
+.atria-native-play-landing,
+.atria-native-play-drawer {
+    min-width: 0;
+    color: var(--atri-text-primary);
+    font-family: var(--atri-font-sans);
+    text-shadow: none;
+}
+.atria-app-shell[data-atria-viewport="compact"] .atria-stage[data-atria-native-play-mounted="true"],
+.atria-app-shell[data-atria-viewport="compact"] .atria-stage[data-atria-stage-owner] { padding: 0; }
+.atria-play-product[hidden],
+.atria-native-play-landing[hidden],
+.atria-native-play-actions[hidden],
+.atria-native-play-drawer[hidden],
+.atria-native-play-drawer__header[hidden],
+.atria-play-latest[hidden] { display: none !important; }
+
+.atria-native-play-landing {
+    overflow: auto;
+    padding: var(--atri-space-12) var(--atri-page-gutter);
+    width: 100%;
+    max-width: 1120px;
+    margin-inline: auto;
+    overscroll-behavior: contain;
+}
+.atria-play-landing-header { margin-bottom: var(--atri-space-12); }
+.atria-play-landing-header h1 { margin: 0; font-size: var(--atri-text-large-title); letter-spacing: var(--atri-tracking-display); text-align: left; text-wrap: balance; }
+.atria-play-landing-header p { color: var(--atri-text-secondary); margin: 12px 0 24px; }
+.atria-play-landing-content { display: grid; gap: 40px; }
+.atria-play-landing-content h2 { font-size: var(--atri-text-title-2); margin: 0 0 16px; }
+.atria-play-landing-content h3 { font-size: var(--atri-text-headline); margin: 0; }
+.atria-play-landing-content p { color: var(--atri-text-secondary); line-height: 1.6; }
+.atria-play-session-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+.atria-play-session-card { background: var(--atri-surface-1); padding: 24px; border-radius: var(--atri-radius-lg); min-width: 0; }
+.atria-play-session-card h3 { overflow-wrap: anywhere; }
+.atria-play-session-card p { font-size: var(--atri-text-footnote); margin: 8px 0 24px; }
+.atria-play-work-shelf { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 20px; }
+.atria-play-work { min-width: 0; }
+.atria-play-work h3 { margin-top: 12px; overflow-wrap: anywhere; }
+.atria-native-play-actions__button.atria-play-work-cover {
+    display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 5;
+    background: var(--atri-accent-soft); color: var(--atri-accent-text);
+    border-radius: var(--atri-radius-md); border-bottom: 4px solid var(--atri-separator-strong);
+}
+.atria-play-work-cover[data-cover="1"] { background: var(--atri-success-soft); color: var(--atri-success); }
+.atria-play-work-cover[data-cover="2"] { background: var(--atri-warning-soft); color: var(--atri-warning); }
+.atria-play-work-cover[data-cover="3"] { background: var(--atri-surface-3); color: var(--atri-text-secondary); }
+.atria-native-portable-save { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--atri-separator); }
+.atria-native-portable-save input { max-width: 100%; margin-block: 16px; }
+.atria-native-portable-save summary { cursor: pointer; color: var(--atri-text-secondary); padding-block: 8px; }
+.atria-native-portable-save__result { overflow-wrap: anywhere; }
+.atria-native-portable-save__result pre { white-space: pre-wrap; }
+
+.atria-play-product { width: 100%; flex: 1 1 auto; min-height: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; background: var(--atri-canvas); }
+.atria-play-session-header { grid-row: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 24px; border-bottom: 1px solid var(--atri-separator); }
+.atria-play-session-header__identity { min-width: 0; flex: 1 1 160px; }
+.atria-play-session-header h2 { margin: 0; font-size: var(--atri-text-headline); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+.atria-play-session-header p { margin: 4px 0 0; font-size: var(--atri-text-caption); color: var(--atri-text-secondary); }
+.atria-play-session-header__state { font-size: var(--atri-text-caption); color: var(--atri-text-secondary); }
+.atria-play-session-header__state::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 6px; }
+.atria-play-session-header__state[data-tone="success"]::before { background: var(--atri-success); }
+.atria-play-session-header__state[data-tone="danger"] { color: var(--atri-danger); }
+.atria-native-play-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.atria-native-play-actions__button,
+.atria-play-more summary {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 34px; padding: 7px 12px; margin: 0; border: 0; border-radius: var(--atri-radius-md);
+    background: var(--atri-fill); color: var(--atri-text-primary); font: inherit; font-size: var(--atri-text-callout);
+    cursor: pointer; text-shadow: none; transition: background var(--atri-duration-fast), transform var(--atri-duration-fast);
+}
+.atria-native-play-actions > .atria-native-play-actions__button { background: transparent; }
+.atria-native-play-actions__button.atria-play-primary { background: var(--atri-accent); color: var(--atri-text-on-accent); min-height: 44px; }
+.atria-native-play-actions__button:disabled { opacity: .45; cursor: default; }
+.atria-native-play-actions__status { flex-basis: 100%; font-size: var(--atri-text-caption); color: var(--atri-text-secondary); overflow-wrap: anywhere; }
+.atria-native-play-actions__status:empty { display: none; }
+.atria-play-more { position: relative; }
+.atria-play-more summary { list-style: none; }
+.atria-play-more summary::-webkit-details-marker { display: none; }
+.atria-play-more-actions { display: grid; gap: 4px; padding: 8px; position: absolute; right: 0; top: calc(100% + 4px); z-index: 5; width: 200px; background: var(--atri-elevated); box-shadow: var(--atri-shadow-2); border-radius: var(--atri-radius-lg); }
+.atria-play-more-actions button { justify-content: flex-start; background: transparent; }
+.atria-play-more-actions { max-height: max(100px, calc(var(--atri-viewport-height, 100dvh) - 220px)); overflow: auto; overscroll-behavior: contain; }
+
+.atria-play-product > [data-atria-product-surface="app.root"] { grid-row: 2; }
+.atria-play-product-surface:empty { display: none; }
+.atria-play-conversation-component { grid-row: 3; position: relative; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
+.atria-play-conversation { grid-row: 2; overflow: auto; min-width: 0; min-height: 0; overscroll-behavior: contain; padding: 40px max(24px, calc((100% - var(--atri-reading-max)) / 2)); scroll-padding-block: 24px; }
+.atria-play-message { padding: 0; margin: 0 0 32px; overflow-wrap: anywhere; }
+.atria-play-message__header { margin-bottom: 8px; color: var(--atri-text-secondary); font-size: var(--atri-text-footnote); }
+.atria-play-message__header strong { font-weight: 600; }
+.atria-play-message__body { white-space: pre-wrap; font-size: var(--atri-text-reading); line-height: var(--atri-leading-reading); overflow-wrap: anywhere; }
+.atria-play-message[data-role="user"] { background: var(--atri-accent-soft); border-radius: var(--atri-radius-lg); padding: 16px 20px; }
+.atria-play-message[data-role="user"] .atria-play-message__header { color: var(--atri-accent-text); }
+.atria-play-message[data-role="system"] { text-align: center; color: var(--atri-text-secondary); padding-block: 8px; }
+.atria-play-message[data-role="system"] .atria-play-message__header { display: none; }
+.atria-play-message[data-role="system"] .atria-play-message__body { font-size: var(--atri-text-footnote); }
+.atria-play-message[data-atria-draft] { opacity: .85; }
+.atria-play-conversation__empty { padding-block: 12vh; text-align: center; color: var(--atri-text-secondary); }
+.atria-play-conversation__empty h3 { color: var(--atri-text-primary); font-size: var(--atri-text-title-2); }
+.atria-play-latest { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); padding: 8px 16px; border: 1px solid var(--atri-separator); border-radius: var(--atri-radius-pill); background: var(--atri-elevated); box-shadow: var(--atri-shadow-1); color: var(--atri-text-primary); font: inherit; cursor: pointer; }
+.atria-play-composer-component { grid-row: 4; min-width: 0; padding: 8px max(24px, calc((100% - var(--atri-reading-max)) / 2)) 20px; background: var(--atri-canvas); }
+.atria-play-composer { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 8px; align-items: end; padding: 8px; background: var(--atri-surface-2); border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-xl); box-shadow: var(--atri-shadow-1); }
+.atria-play-composer:focus-within { border-color: var(--atri-accent-text); }
+.atria-play-composer .atria-play-composer__input { width: 100%; min-height: 44px; max-height: 160px; resize: none; border: 0; background: transparent; color: var(--atri-text-primary); font: inherit; font-size: max(16px, var(--atri-text-body)); line-height: 1.5; padding: 10px 8px; margin: 0; box-shadow: none; }
+.atria-play-composer__input:focus { outline: none; }
+.atria-play-composer .atria-play-composer__send { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--atri-accent); color: var(--atri-text-on-accent); cursor: pointer; transition: transform var(--atri-duration-fast); }
+.atria-play-composer__send:disabled, .atria-play-composer__input:disabled { opacity: .5; cursor: default; }
+.atria-play-composer__status { grid-column: 1 / -1; color: var(--atri-text-secondary); font-size: var(--atri-text-caption); padding: 0 8px 4px; }
+.atria-play-composer__status:empty { display: none; }
+.atria-play-session-recover { grid-column: 1 / -1; justify-self: start; padding: 8px 12px; border: 0; border-radius: var(--atri-radius-md); background: var(--atri-fill); color: var(--atri-accent-text); min-height: 44px; cursor: pointer; }
+.atria-play-session-recover[hidden] { display: none; }
+.atria-play-session-recover:focus-visible { outline: 2px solid var(--atri-accent-text); }
+.atria-play-composer-component > .atri-runtime-notice { margin-top: 8px; padding: 12px; border-radius: var(--atri-radius-md); }
+
+.atria-native-play-drawer { padding: 4px; }
+.atria-native-play-drawer__header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 20px; }
+.atria-native-play-drawer__header h3 { font-size: var(--atri-text-title-3); margin: 0; }
+.atria-native-play-drawer__body { display: grid; gap: 16px; }
+.atria-native-play-drawer__body h4 { margin: 12px 0 0; font-size: var(--atri-text-headline); }
+.atria-native-play-drawer__body p { margin: 0; line-height: 1.6; color: var(--atri-text-secondary); }
+.atria-native-play-drawer__row, .atria-native-play-timeline-row { display: grid; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid var(--atri-separator); }
+.atria-native-play-timeline-row__content { line-height: 1.6; overflow-wrap: anywhere; }
+.atria-native-play-timeline-row__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.atria-native-play-drawer pre { padding: 12px; background: var(--atri-surface-2); border-radius: var(--atri-radius-sm); font-size: var(--atri-text-caption); white-space: pre-wrap; overflow-wrap: anywhere; }
+.atria-native-play-drawer details summary { cursor: pointer; padding-block: 8px; }
+.atria-native-play-host > .atria-native-play-drawer { overflow: auto; max-height: 60%; }
+
+.atria-native-play-actions__button:focus-visible, .atria-play-more summary:focus-visible,
+.atria-play-composer__send:focus-visible, .atria-play-latest:focus-visible,
+.atria-native-portable-save summary:focus-visible, .atria-play-conversation:focus-visible {
+    outline: 2px solid var(--atri-accent-text); outline-offset: 3px;
+}
+@media (hover: hover) {
+    .atria-native-play-actions__button:not(:disabled):hover, .atria-play-more summary:hover { background: var(--atri-fill-hover); }
+    .atria-native-play-actions__button.atria-play-primary:hover { background: var(--atri-accent-hover); }
+}
+.atria-native-play-actions__button:not(:disabled):active, .atria-play-composer__send:not(:disabled):active { transform: scale(.97); }
+.atria-app-shell[data-atria-viewport="compact"] .atria-native-play-landing { padding: 28px 16px; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-play-landing-header { margin-bottom: 32px; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-play-work-shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 16px; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-play-session-header { padding: 12px 16px 8px; gap: 8px; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-native-play-actions { flex: 1 0 100%; justify-content: space-between; gap: 2px; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-native-play-actions > button,
+.atria-app-shell[data-atria-viewport="compact"] .atria-play-more summary { padding-inline: 8px; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-play-conversation { padding: 24px 16px; }
+.atria-app-shell[data-atria-viewport="compact"] .atria-play-composer-component { padding: 8px max(12px, var(--atri-safe-area-right)) max(12px, var(--atri-safe-area-bottom)) max(12px, var(--atri-safe-area-left)); }
+.atria-app-shell[data-atria-viewport="compact"] .atria-native-play-actions__button,
+.atria-app-shell[data-atria-viewport="compact"] .atria-play-more summary { min-height: 44px; }
+@media (pointer: coarse) {
+    .atria-native-play-actions__button, .atria-play-more summary, .atria-native-portable-save summary { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .atria-native-play-actions__button, .atria-play-composer__send { transition: none; }
+}
+
+/* Host-owned Game frames; package content and stage leases remain untouched. */
+dialog.atria-game-host-surface--transient {
+    position: fixed; inset: 0; margin: auto;
+    width: min(640px, calc(100% - 32px)); height: fit-content;
+    max-height: calc(var(--atri-viewport-height, 100dvh) - 48px - var(--atri-safe-area-top) - var(--atri-safe-area-bottom));
+    padding: 20px; overflow: auto; overscroll-behavior: contain;
+    border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-xl);
+    background: var(--atri-elevated); color: var(--atri-text-primary); box-shadow: var(--atri-shadow-3);
+    font: var(--atri-text-body) / 1.5 var(--atri-font-sans); text-shadow: none;
+}
+dialog.atria-game-host-surface--transient::backdrop { background: var(--atri-scrim); }
+/* Low-specificity defaults keep unstyled package form fields readable in both appearances. */
+:where(dialog.atria-game-host-surface--transient) :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]), textarea, select) {
+    max-width: 100%; box-sizing: border-box; min-height: 44px; padding: 8px;
+    background: var(--atri-surface-2); color: var(--atri-text-primary);
+    border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-sm); font: inherit;
+}
+.atria-game-surface-close { display: block; margin: 0 0 16px auto; min-height: 44px; padding: 8px 16px; border: 0; border-radius: var(--atri-radius-md); background: var(--atri-fill); color: var(--atri-text-primary); cursor: pointer; }
+.atria-game-host-surface--dock { padding-block: 16px; min-width: 0; overflow-wrap: anywhere; }
+.atria-game-host-surface--dock + .atria-game-host-surface--dock { border-top: 1px solid var(--atri-separator); }
+.atria-game-recovery-panel { color: var(--atri-text-primary); text-shadow: none; font-family: var(--atri-font-sans); background: var(--atri-elevated); border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-lg); box-shadow: var(--atri-shadow-2); max-width: 100%; }
+.atria-app-shell #atria-game-full-recovery[data-atria-game-host-scope="host-recovery"],
+.atria-app-shell[data-atria-viewport="compact"] #atria-game-full-recovery[data-atria-game-host-scope="host-recovery"] { top: calc(var(--atri-toolbar-height) + var(--atri-safe-area-top) + 8px) !important; }
+.atria-game-recovery-panel summary { padding: 12px 16px; min-height: 44px; font-size: var(--atri-text-callout); cursor: pointer; }
+.atria-game-recovery-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 4px 12px 12px; }
+.atria-game-recovery-actions .atria-game-recovery-action { border: 0; box-shadow: none; border-radius: var(--atri-radius-md); min-height: 44px; font: inherit; font-size: var(--atri-text-callout); background: var(--atri-fill); color: var(--atri-text-primary); }
+.atria-game-recovery-panel p { max-width: 260px; margin: 0; padding: 12px; color: var(--atri-danger); }
+.atria-game-recovery-panel p:empty { display: none; }
+.atria-game-recovery-panel summary:focus-visible,
+.atria-game-recovery-action:focus-visible,
+.atria-game-surface-close:focus-visible { outline: 2px solid var(--atri-accent-text); outline-offset: 2px; }
+.atria-app-shell[data-atria-viewport="compact"] dialog.atria-game-host-surface--transient {
+    width: calc(100% - 16px); padding: 16px; max-height: calc(var(--atri-viewport-height, 100dvh) - 24px - var(--atri-safe-area-top) - var(--atri-safe-area-bottom));
+}
+.atria-app-shell[data-atria-viewport="compact"] dialog[data-atria-game-host-surface="drawer"] {
+    margin-bottom: max(8px, var(--atri-safe-area-bottom));
+}
+.atria-app-shell[data-atria-keyboard="open"] dialog.atria-game-host-surface--transient {
+    inset: max(12px, var(--atri-safe-area-top)) 0 auto;
+    margin: 0 auto;
+}

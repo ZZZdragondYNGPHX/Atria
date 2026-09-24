@@ -1,7 +1,9 @@
+import { translateShellText as tl } from '../atria-shell/localization.js';
 import {
     NATIVE_SESSION_LIFECYCLE,
     onNativeSessionLifecycle,
 } from './session-lifecycle.js';
+import { createAtriaIcon } from '../atria-shell/icons.js';
 
 function text(value) {
     return String(value ?? '');
@@ -12,8 +14,8 @@ function activeRuntime() {
 }
 
 function actorName(snapshot, entry) {
-    if (entry?.role === 'user') return 'You';
-    if (entry?.role === 'system') return 'System';
+    if (entry?.role === 'user') return tl('You');
+    if (entry?.role === 'system') return tl('System');
     const actor = (snapshot?.manifest?.actors || []).find(item => item.actorId === entry?.actorId);
     return actor?.displayName || snapshot?.manifest?.name || 'Narrator';
 }
@@ -28,9 +30,7 @@ function messageNode(documentRef, snapshot, entry) {
     header.className = 'atria-play-message__header';
     const name = documentRef.createElement('strong');
     name.textContent = actorName(snapshot, entry);
-    const role = documentRef.createElement('span');
-    role.textContent = text(entry?.role || 'assistant');
-    header.append(name, role);
+    header.append(name);
 
     const body = documentRef.createElement('div');
     body.className = 'atria-play-message__body';
@@ -86,9 +86,15 @@ export function mountAtriaPlayProduct({
     conversation.dataset.atriaConversation = 'native';
     conversation.setAttribute('role', 'log');
     conversation.setAttribute('aria-live', 'polite');
-    conversation.setAttribute('aria-label', 'Conversation');
+    conversation.setAttribute('aria-label', tl('Conversation'));
+    conversation.tabIndex = 0;
+    const latest = documentRef.createElement('button');
+    latest.type = 'button';
+    latest.className = 'atria-play-latest';
+    latest.textContent = tl('Jump to latest');
+    latest.hidden = true;
     const chatFooterSurface = createSurface(documentRef, 'chat.footer');
-    conversationComponent.append(chatHeaderSurface, conversation, chatFooterSurface);
+    conversationComponent.append(chatHeaderSurface, conversation, latest, chatFooterSurface);
 
     const composerComponent = documentRef.createElement('section');
     composerComponent.className = 'atria-play-composer-component';
@@ -100,17 +106,35 @@ export function mountAtriaPlayProduct({
     composer.dataset.atriaComposer = 'native';
     const textarea = documentRef.createElement('textarea');
     textarea.className = 'atria-play-composer__input';
-    textarea.rows = 2;
-    textarea.placeholder = 'What do you do?';
-    textarea.setAttribute('aria-label', 'Message');
+    textarea.rows = 1;
+    textarea.name = 'message';
+    textarea.autocomplete = 'off';
+    textarea.placeholder = tl('What do you do?');
+    textarea.setAttribute('aria-label', tl('Message'));
     const send = documentRef.createElement('button');
     send.type = 'submit';
     send.className = 'atria-play-composer__send';
-    send.textContent = 'Send';
+    send.setAttribute('aria-label', tl('Send'));
+    send.append(createAtriaIcon(documentRef, 'send'));
     const composerStatus = documentRef.createElement('span');
     composerStatus.className = 'atria-play-composer__status';
     composerStatus.setAttribute('role', 'status');
-    composer.append(textarea, send, composerStatus);
+    const recover = documentRef.createElement('button');
+    recover.type = 'button';
+    recover.className = 'atria-play-session-recover';
+    recover.hidden = true;
+    recover.addEventListener('click', async () => {
+        const runtime = activeRuntime();
+        recover.disabled = true;
+        try {
+            if (runtime?.failed) await runtime.reload();
+            else await globalThis.Atria?.openNativeSession?.(runtime?.snapshot?.session?.sessionId);
+            render();
+        } catch (error) {
+            composerStatus.textContent = error?.message || String(error);
+        } finally { recover.disabled = false; }
+    });
+    composer.append(textarea, send, composerStatus, recover);
     const composerAfterSurface = createSurface(documentRef, 'composer.after');
     composerComponent.append(composerBeforeSurface, composer, composerAfterSurface);
 
@@ -122,6 +146,23 @@ export function mountAtriaPlayProduct({
     }
 
     let draftText = '';
+    let renderedSession = null;
+    let following = true;
+    const scrollToLatest = () => {
+        following = true;
+        conversation.scrollTop = conversation.scrollHeight;
+        latest.hidden = true;
+    };
+    latest.addEventListener('click', scrollToLatest);
+    conversation.addEventListener('scroll', () => {
+        following = conversation.scrollHeight - conversation.scrollTop - conversation.clientHeight < 64;
+        latest.hidden = following;
+    }, { passive: true });
+    const resizeInput = () => {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.min(textarea.scrollHeight, 160) + 'px';
+    };
+    textarea.addEventListener('input', resizeInput);
     const generating = () => documentRef.body.dataset.generating === 'true';
     const updateDraft = event => {
         draftText = String(event.detail?.text || '');
@@ -130,11 +171,13 @@ export function mountAtriaPlayProduct({
     documentRef.addEventListener('atria-native-play-draft', updateDraft);
     const runtimeError = documentRef.createElement('div');
     runtimeError.className = 'atri-runtime-notice'; runtimeError.hidden = true;
+    runtimeError.setAttribute('role', 'alert');
     const showRuntimeError = event => {
         runtimeError.replaceChildren(); runtimeError.hidden = false;
         const message = documentRef.createElement('p'); message.textContent = event.detail.message;
         const action = documentRef.createElement('button'); action.type = 'button';
-        action.textContent = 'Open Runtime ' + event.detail.target;
+        action.className = 'atria-native-play-actions__button';
+        action.textContent = tl('Open Runtime') + ' ' + event.detail.target;
         action.addEventListener('click', () => globalThis.Atria?.shell?.getWorkspaceHost?.()?.openRuntimeSection(event.detail.target));
         runtimeError.append(message, action);
     };
@@ -144,15 +187,20 @@ export function mountAtriaPlayProduct({
 
     function render() {
         const runtime = activeRuntime();
+        if (!generating()) draftText = '';
         const snapshot = runtime?.snapshot || null;
         const active = Boolean(snapshot && runtime?.active);
         product.hidden = !active;
         if (!active) {
+            renderedSession = null;
+            draftText = '';
+            runtimeError.hidden = true;
             conversation.replaceChildren();
             composerStatus.textContent = '';
             send.disabled = true;
             textarea.disabled = true;
-            title.textContent = 'Play';
+            recover.hidden = true;
+            title.textContent = tl('Play');
             subtitle.textContent = '';
             state.textContent = '';
             return;
@@ -163,35 +211,64 @@ export function mountAtriaPlayProduct({
             snapshot.manifest?.name,
             snapshot.manifest?.version,
         ].filter(Boolean).join(' · ');
-        state.textContent = runtime.history ? 'History' : runtime.failed ? 'Recovery required' : 'Live';
+        state.textContent = tl(runtime.history ? 'History' : runtime.failed ? 'Recovery required' : 'Live');
         state.dataset.tone = runtime.failed ? 'danger' : runtime.history ? 'neutral' : 'success';
 
-        const fragment = documentRef.createDocumentFragment();
-        for (const entry of snapshot.timeline || []) {
-            fragment.append(messageNode(documentRef, snapshot, entry));
+        const sessionId = snapshot.session?.sessionId;
+        if (renderedSession !== sessionId) {
+            conversation.replaceChildren();
+            renderedSession = sessionId;
+            following = true;
+            textarea.value = '';
+            resizeInput();
+            runtimeError.hidden = true;
         }
+        // Reconcile projection nodes; streaming must not replace committed prose,
+        // disrupt a text selection, or drag a reader away from an earlier turn.
+        const entries = [...(snapshot.timeline || [])];
         if (generating() && draftText) {
-            const draft = messageNode(documentRef, snapshot, { role: 'assistant', content: draftText });
-            draft.dataset.atriaDraft = 'true';
-            fragment.append(draft);
+            entries.push({ messageId: '__draft', role: 'assistant', content: draftText });
         }
-        if (!(snapshot.timeline || []).length) {
+        const existing = new Map([...conversation.querySelectorAll('[data-atria-message-id]')]
+            .map(node => [node.dataset.atriaMessageId, node]));
+        conversation.querySelector('.atria-play-conversation__empty')?.remove();
+        entries.forEach((entry, index) => {
+            const id = text(entry.messageId);
+            const node = existing.get(id) || messageNode(documentRef, snapshot, entry);
+            existing.delete(id);
+            if (id === '__draft') node.dataset.atriaDraft = 'true';
+            const body = node.querySelector('.atria-play-message__body');
+            if (body.textContent !== text(entry.content)) body.textContent = text(entry.content);
+            if (conversation.children[index] !== node) conversation.insertBefore(node, conversation.children[index] || null);
+        });
+        for (const node of existing.values()) node.remove();
+        if (!entries.length) {
             const empty = documentRef.createElement('div');
             empty.className = 'atria-play-conversation__empty';
-            empty.textContent = 'This session has no committed turns yet.';
-            fragment.append(empty);
+            const heading = documentRef.createElement('h3');
+            heading.textContent = tl('Your story starts here');
+            const hint = documentRef.createElement('p');
+            hint.textContent = tl('Write your first action to begin.');
+            empty.append(heading, hint);
+            conversation.append(empty);
         }
-        conversation.replaceChildren(fragment);
 
         const writable = runtimeWritable(runtime);
         textarea.disabled = !writable || generating();
         send.disabled = !writable;
-        send.textContent = generating() ? 'Stop' : 'Send';
-        composerStatus.textContent = runtime.failed
-            ? 'Native Session write barrier requires recovery.'
-            : runtime.history ? 'Historical revisions are read-only.' : generating() ? 'Generating…' : '';
+        const action = generating() ? 'Stop' : 'Send';
+        if (send.getAttribute('aria-label') !== tl(action)) {
+            send.setAttribute('aria-label', tl(action));
+            send.title = tl(action);
+            send.replaceChildren(createAtriaIcon(documentRef, action.toLowerCase()));
+        }
+        recover.hidden = !runtime.failed && !runtime.history;
+        recover.textContent = tl(runtime.failed ? 'Reload session' : 'Return to current story');
+        composerStatus.textContent = tl(runtime.failed
+            ? 'This session needs recovery before you can continue.'
+            : runtime.history ? 'Historical revisions are read-only.' : generating() ? 'Generating…' : '');
         queueMicrotask(() => {
-            conversation.scrollTop = conversation.scrollHeight;
+            if (following) scrollToLatest();
         });
     }
 
@@ -209,15 +286,25 @@ export function mountAtriaPlayProduct({
         native.sendTextarea.dispatchEvent(new Event('input', { bubbles: true }));
         const sendButton = native.sendForm.querySelector('#send_but');
         if (!sendButton) {
-            composerStatus.textContent = 'Native generation entrypoint is unavailable.';
+            composerStatus.textContent = tl('Native generation entrypoint is unavailable.');
             return;
         }
         textarea.value = '';
-        composerStatus.textContent = 'Generating…';
+        resizeInput();
+        following = true;
+        runtimeError.hidden = true;
+        composerStatus.textContent = tl('Generating…');
         sendButton.click();
     }
 
     composer.addEventListener('submit', submit);
+    textarea.addEventListener('keydown', event => {
+        // Keep Enter for paragraphs and IME composition; explicit modifier sends.
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.isComposing) {
+            event.preventDefault();
+            submit(event);
+        }
+    });
 
     const lifecycleTypes = Object.values(NATIVE_SESSION_LIFECYCLE);
     const unsubscribers = lifecycleTypes.map(type => onNativeSessionLifecycle(type, render));

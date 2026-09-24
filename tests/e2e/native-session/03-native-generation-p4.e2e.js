@@ -1,3 +1,4 @@
+import { disableExtensions } from '../_lib/fixtures.js';
 import { test, expect } from '@playwright/test';
 import { createServer } from 'node:http';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -33,6 +34,7 @@ test.beforeAll(async () => {
     await seedGenerationProfiles({ engine, handle: seeded.handle, endpoint: `http://127.0.0.1:${provider.address().port}/v1/chat/completions`, roles: ['narrator', 'studio'], streaming: true });
     await engine.close();
     writeFileSync(resolve(root, 'secrets.json'), JSON.stringify({ api_key_custom: [{ id: 'p4-synthetic-key', value: 'p4-test-only', active: true, label: 'P4 test' }], _migrated: true }));
+    disableExtensions({ dataRoot: seeded.dataRoot, names: ['stable-diffusion'] });
     server = await startServer({ batchKey: 'generation', scenarioId: 'p4-generation', useExistingDataRoot: seeded.dataRoot });
 });
 
@@ -46,6 +48,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
         await page.setViewportSize(viewport);
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
+        await page.addInitScript(() => localStorage.setItem('language', 'en'));
         await awaitMainUI(page, server.baseURL);
         await createAndOpenNativeSession(page, seeded.start);
         const composer = page.locator('[data-atria-composer="native"]');
@@ -61,7 +64,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
         await page.getByRole('button', { name: 'Timeline', exact: true }).click();
         await expect(page.locator('[data-atria-native-play-drawer="true"]')).toBeVisible();
         await page.screenshot({ path: resolve(directory, `timeline-${viewport.width}.png`), fullPage: true });
-        await page.locator('[data-atria-native-play-drawer="true"]').getByRole('button', { name: 'Close', exact: true }).click();
+        await page.locator('.atria-dock__close:visible, .atria-sheet-close:visible').click();
         await composer.getByRole('textbox', { name: 'Message', exact: true }).fill('Stop this request');
         await composer.getByRole('button', { name: 'Send', exact: true }).click();
         await expect(page.locator('[data-atria-draft="true"]')).toContainText('Uncommitted streaming draft');
@@ -76,6 +79,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
 
     test(`Studio Agent generates and yields to human takeover at ${viewport.width}px`, async ({ page }, info) => {
         await page.setViewportSize(viewport);
+        await page.addInitScript(() => localStorage.setItem('language', 'en'));
         await awaitMainUI(page, server.baseURL);
         const projectId = createNativeId('project');
         const packageId = createNativeId('package');

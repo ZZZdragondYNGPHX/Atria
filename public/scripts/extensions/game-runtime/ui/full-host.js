@@ -1,3 +1,4 @@
+import { translateShellText as tl } from '../../../atria-shell/localization.js';
 const HIDDEN_TARGET_IDS = Object.freeze([
     'sheld',
     'top-bar',
@@ -33,7 +34,7 @@ function makeButton(documentRef, action, label) {
     button.type = 'button';
     button.dataset.atriaGameRecoveryAction = action;
     button.className = 'atria-game-recovery-action';
-    button.textContent = label;
+    button.textContent = tl(label);
     return button;
 }
 
@@ -102,26 +103,41 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
         ['diagnostics', 'Diagnostics', options.onDiagnostics],
     ];
 
+    const recoveryPanel = documentRef.createElement('details');
+    recoveryPanel.className = 'atria-game-recovery-panel';
+    const recoveryTitle = documentRef.createElement('summary');
+    recoveryTitle.textContent = tl('Experience controls');
+    const recoveryActions = documentRef.createElement('div');
+    recoveryActions.className = 'atria-game-recovery-actions';
+    const recoveryStatus = documentRef.createElement('p');
+    recoveryStatus.setAttribute('role', 'status');
+    recoveryPanel.append(recoveryTitle, recoveryActions, recoveryStatus);
+    recovery.append(recoveryPanel);
     for (const [action, label, handler] of actions) {
         if (typeof handler !== 'function') continue;
         const button = makeButton(documentRef, action, label);
-        button.addEventListener('click', event => {
+        button.addEventListener('click', async event => {
             event.preventDefault();
             event.stopPropagation();
-            void Promise.resolve(handler()).catch(error => {
+            button.disabled = true;
+            try {
+                await handler();
+            } catch (error) {
+                recoveryStatus.textContent = error?.message || 'The action could not be completed. Try again.';
                 console.error('[game-runtime] Full UI recovery action failed', {
                     action,
                     error,
                 });
-            });
+            } finally { button.disabled = false; }
         });
-        recovery.appendChild(button);
+        recoveryActions.appendChild(button);
     }
 
     (shellScoped ? shellStage : documentRef.body).appendChild(root);
     (shellScoped ? shellRecovery : documentRef.body).appendChild(recovery);
 
     const hidden = [];
+    let returnFocus = null;
     let stageOwnership = null;
     let active = false;
     let disposed = false;
@@ -129,6 +145,14 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
     const onEscape = event => {
         if (!active || event.key !== 'Escape') return;
         if (event.defaultPrevented) return;
+        if (documentRef.querySelector('dialog[open]')) return;
+        if (recoveryPanel.open) {
+            recoveryPanel.open = false;
+            recoveryTitle.focus();
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return;
+        }
         event.preventDefault();
         event.stopImmediatePropagation();
         if (typeof options.onExit === 'function') {
@@ -141,6 +165,7 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
     function activate() {
         if (disposed) throw new Error('Full Game Host is disposed');
         if (active) return false;
+        returnFocus = documentRef.activeElement;
 
         if (shellScoped) {
             stageOwnership = nativePlayHost.acquireStageOwnership('game-runtime:full');
@@ -158,6 +183,7 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
         documentRef.addEventListener('keydown', onEscape, true);
         documentRef.body.dataset.atriaGameFullActive = 'true';
         active = true;
+        recoveryTitle.focus({ preventScroll: true });
         return true;
     }
 
@@ -174,8 +200,10 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
         stageOwnership = null;
 
         delete documentRef.body.dataset.atriaGameFullActive;
+        const restoreFocus = recovery.contains(documentRef.activeElement) || root.contains(documentRef.activeElement);
         recovery.remove();
         root.remove();
+        if (restoreFocus && returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
     }
 
     return Object.freeze({

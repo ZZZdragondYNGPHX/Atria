@@ -1,9 +1,20 @@
+import { translateShellText as tl } from '../../../atria-shell/localization.js';
 const SURFACE_ANCHOR_ATTRIBUTE = 'data-atria-game-host-surface';
 
 function createAnchor(documentRef, surfaceId) {
-    const anchor = documentRef.createElement('div');
+    const transient = surfaceId === 'modal' || surfaceId === 'drawer';
+    const anchor = documentRef.createElement(transient ? 'dialog' : 'div');
     anchor.setAttribute(SURFACE_ANCHOR_ATTRIBUTE, surfaceId);
     anchor.className = 'atria-game-host-surface';
+    if (transient) {
+        anchor.setAttribute('aria-label', surfaceId === 'modal' ? 'Game dialog' : 'Game panel');
+        const close = documentRef.createElement('button');
+        close.type = 'button';
+        close.className = 'atria-game-surface-close';
+        close.textContent = tl('Close');
+        close.addEventListener('click', () => anchor.close());
+        anchor.append(close);
+    }
     return anchor;
 }
 
@@ -87,7 +98,12 @@ export function createAtriaSurfaceAdapter(documentRef = globalThis.document, opt
         } else if (surfaceId === 'composer.after') {
             inserted = insertAfter(formSheld, anchor, sendForm);
         } else if (surfaceId === 'sidebar.left') {
-            if (leftPanel) {
+            if (shell?.slots?.dock) {
+                anchor.classList.add('atria-game-host-surface--dock');
+                shell.slots.dock.appendChild(anchor);
+                shell.setDockOpen?.(true);
+                inserted = true;
+            } else if (leftPanel) {
                 leftPanel.appendChild(anchor);
                 inserted = true;
             }

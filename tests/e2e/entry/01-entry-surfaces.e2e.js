@@ -237,6 +237,13 @@ test('compact dialog respects keyboard height, safe areas, reduced motion and to
     await shot(page, testInfo, 'keyboard-light-toast-compact');
     await dialog.locator('.toast-close-button').click();
     await expect(dialog.locator('.toast-error')).toHaveCount(0);
+    await page.evaluate(() => {
+        window.toastr.error('Dismissal must survive pointer re-entry.', '', { timeOut: 0 });
+        const toast = document.querySelector('dialog[open] .toast-error');
+        toast.querySelector('.toast-close-button').click();
+        window.jQuery(toast).trigger('mouseenter');
+    });
+    await expect(dialog.locator('.toast-error')).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
 });

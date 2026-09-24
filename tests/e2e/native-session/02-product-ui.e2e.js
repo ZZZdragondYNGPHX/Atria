@@ -1,3 +1,4 @@
+import { disableExtensions } from '../_lib/fixtures.js';
 import { test, expect } from '@playwright/test';
 
 import { startServer, tearDownServer } from '../_lib/server.js';
@@ -14,6 +15,7 @@ let legacyBaseline;
 test.describe.serial('N10 Native Product UI hard-cutover acceptance', () => {
     test.beforeAll(async () => {
         seeded = await seedNativeSessionDataRoot({ suffix: 'n9-product-ui' });
+        disableExtensions({ dataRoot: seeded.dataRoot, names: ['stable-diffusion'] });
         server = await startServer({
             batchKey: 'chat',
             scenarioId: 'native-session-n10-product-ui',
@@ -28,6 +30,7 @@ test.describe.serial('N10 Native Product UI hard-cutover acceptance', () => {
 
     test('R7 Library exposes Native Works and Play exposes only Native mutation actions', async ({ page }) => {
         test.setTimeout(120_000);
+        await page.addInitScript(() => localStorage.setItem('language', 'en'));
         await awaitMainUI(page, server.baseURL);
 
         await page.evaluate(() => {
@@ -49,6 +52,7 @@ test.describe.serial('N10 Native Product UI hard-cutover acceptance', () => {
 
         const toolbar = page.locator('[data-atria-native-play-actions="true"]');
         await expect(toolbar).toBeVisible();
+        await toolbar.locator('summary').click();
         for (const label of [
             'Retry Reply',
             'Re-enter Turn',
@@ -85,11 +89,13 @@ test.describe.serial('N10 Native Product UI hard-cutover acceptance', () => {
             await expect(page.locator(selector).first()).toBeHidden();
         }
 
+        await toolbar.locator('summary').click();
         await toolbar.getByRole('button', { name: 'Timeline', exact: true }).click();
         await expect(page.locator('[data-atria-native-play-drawer="true"]')).toBeVisible();
         await expect(page.locator('[data-atria-timeline-message-id]').first()).toBeVisible();
 
         await toolbar.getByRole('button', { name: 'Context', exact: true }).click();
+        await page.locator('[data-atria-native-play-drawer]').getByText('Details', { exact:true }).click();
         await expect(page.locator('[data-atria-context-plan="true"]')).toBeVisible();
 
         // N10 revalidates the still-current R7 Shell contract instead of the
@@ -122,8 +128,8 @@ test.describe.serial('N10 Native Product UI hard-cutover acceptance', () => {
         await navigate('openLibrarySection', 'worlds');
         await expect(page.locator('[data-atria-native-library="worlds-knowledge"]')).toBeVisible();
 
-        await navigate('openStudio');
-        await expect(page.locator('[data-atria-native-studio="true"]')).toBeVisible();
+        await navigate('openBuild');
+        await expect(page.locator('[data-atria-build-projects="true"]')).toBeVisible();
 
         await navigate('openRuntimeSection', 'overview');
         await expect(page.locator('[data-atria-domain-workspace="runtime"]')).toBeVisible();
