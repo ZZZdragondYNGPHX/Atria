@@ -1,3 +1,4 @@
+import { configuredNativeRoute } from '../../native/runtime-route-ref.js';
 import { runLegacyWorkflow, modelIntent, toolIntent } from './legacy-workflow-adapter.js';
 import { runLoopEngine } from './engine-v2/loop-adapter.js';
 /**
@@ -173,7 +174,7 @@ const NO_TOOL_CALL_STREAK_LIMIT = 3;
  *
  * Returns `{ toolCalls: Array<{id, name, args}>, assistantText: string }`.
  */
-async function defaultSendLlm({ context, settings, messages, tools, runtimeWorldInfo, apiPresetName, llmPresetName, abortSignal, onUsage, runtimeContext }) {
+async function defaultSendLlm({ context, settings, messages, tools, runtimeWorldInfo, apiPresetName, llmPresetName, abortSignal, onUsage, runtimeContext, nativeRouteRef }) {
     const [toolCallingMod, agentResolutionMod] = await Promise.all([
         import('./tool-calling.js'),
         import('./agent-resolution.js'),
@@ -193,6 +194,7 @@ async function defaultSendLlm({ context, settings, messages, tools, runtimeWorld
         taskMessages: messages,
         ...(runtimeContext ? { runtimeContext } : {}),
         runtimeWorldInfo: runtimeWorldInfo || {},
+        ...configuredNativeRoute({ nativeRouteRef }),
         apiPresetName: resolvedApiPresetName,
         fallbackApiPresetName: getOrchestrationFallbackApiPresetName(settings, resolvedApiPresetName),
         llmPresetName: resolvedLlmPresetName,
@@ -1041,6 +1043,7 @@ async function* runLoopOrchestrationPolicy(context, payload, profile, deps = {})
                 context,
                 settings: deps?.settings || null,
                 runtimeWorldInfo: deps?.runtimeWorldInfo || null,
+                ...configuredNativeRoute(profile),
                 apiPresetName: String(profile?.apiPresetName || ''),
                 llmPresetName: String(profile?.promptPresetName || ''),
                 messages,

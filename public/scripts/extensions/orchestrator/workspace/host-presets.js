@@ -1,3 +1,4 @@
+import { configuredNativeRoute } from '../../../native/runtime-route-ref.js';
 import { compilePreset } from '../engine-v2/preset-compiler.js';
 import { createFactoryPresetForMode, DEFAULT_SINGLE_AGENT_SYSTEM_PROMPT, DEFAULT_SINGLE_AGENT_USER_PROMPT_TEMPLATE } from '../defaults.js';
 import { compileWorkspacePreset, emptyPresetLibrary, normalizeWorkspacePreset, updatePresetLibrary, resolvePresetBinding } from '../../../lib/agent-workspace/presets.js';
@@ -137,7 +138,7 @@ export function getWorkspaceLibrary(settings) {
 export function workspaceHostProfile(preset, selectionSource = 'default') {
     const plan = structuredClone(compileWorkspacePreset(preset));
     const config = agent => ({ ...structuredClone(agent?.metadata?.hostAdapters?.atria || {}),
-        systemPrompt: agent?.instructions || '', ...agent?.modelProfile });
+        systemPrompt: agent?.instructions || '', ...agent?.modelProfile, ...configuredNativeRoute(agent?.modelProfile) });
     const forNode = id => config(plan.agents.find(agent => agent.id === plan.nodes.find(node => node.nodeId === id)?.agentId));
     const options = structuredClone(plan.metadata?.hostAdapters?.atria || {});
     const common = { source: selectionSource, key: preset.id, presetId: preset.id, name: preset.name, mode: preset.mode, orchestrationPlan: plan };

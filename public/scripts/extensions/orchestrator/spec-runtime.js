@@ -1,3 +1,4 @@
+import { configuredNativeRoute } from '../../native/runtime-route-ref.js';
 import { runLegacyParallel } from './legacy-parallel-adapter.js';
 import { runSpecEngine } from './engine-v2/spec-adapter.js';
 import { toolCapability } from '../../lib/orchestration-engine/capabilities.js';
@@ -820,6 +821,7 @@ async function* runWorkerNodePolicy(context, payload, nodeSpec, preset, messages
         return {
             taskMessages,
             runtimeWorldInfo,
+            ...configuredNativeRoute(preset),
             apiPresetName,
             fallbackApiPresetName: getOrchestrationFallbackApiPresetName(settings, apiPresetName),
             llmPresetName,
@@ -1239,6 +1241,7 @@ async function* runReviewNodePolicy(context, payload, profile, nodeSpec, preset,
             const reviewRequest = {
                 taskMessages,
                 runtimeWorldInfo,
+                ...configuredNativeRoute(preset),
                 apiPresetName,
                 fallbackApiPresetName: getOrchestrationFallbackApiPresetName(settings, apiPresetName),
                 llmPresetName,

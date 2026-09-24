@@ -71,13 +71,15 @@ describe('runLoopOrchestration minimal happy path (Task 5)', () => {
             assistantText: '',
         });
 
-        const result = await runLoopOrchestration(makeContext(), makePayload(), makeProfile(), {
+        const nativeRouteRef = { scope: 'player', runtimeRouteId: 'route_' + '3'.repeat(32) };
+        const result = await runLoopOrchestration(makeContext(), makePayload(), { ...makeProfile(), nativeRouteRef }, {
             sendLlm,
         });
 
         expect(result.status).toBe('completed');
         expect(result.capsule).toBe('Final guidance.');
         expect(result.total_rounds).toBe(1);
+        expect(sendLlm.mock.calls[0][0].nativeRouteRef).toEqual(nativeRouteRef);
         expect(sendLlm).toHaveBeenCalledTimes(1);
     });
 

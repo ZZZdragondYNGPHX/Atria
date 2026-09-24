@@ -1,3 +1,4 @@
+import { configuredNativeRoute } from '../../native/runtime-route-ref.js';
 /**
  * Editable spec / preset map transforms used by the orchestrator UI.
  *
@@ -69,6 +70,7 @@ export function sanitizeIdentifierToken(value, fallback = '') {
 
 export function createPresetDraft(seed = {}) {
     const out = {
+        ...configuredNativeRoute(seed),
         systemPrompt: String(seed.systemPrompt || '').trim(),
         userPromptTemplate: String(seed.userPromptTemplate || '').trim(),
         apiPresetName: getPresetApiPresetName(seed),

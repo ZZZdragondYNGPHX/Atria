@@ -7387,5 +7387,14 @@
     "Your session expired. Sign in again to continue.": "登录会话已过期。请重新登录以继续。",
     "This operation needs additional permission. Check your account access.": "此操作需要额外权限。请检查账户权限。",
     "Enter the password for this encrypted save, then try importing again.": "请输入此加密存档的密码，然后重新导入。",
-    "The save could not be unlocked. Check its password and file integrity, then retry.": "无法解锁存档。请检查密码和文件完整性后重试。"
+    "The save could not be unlocked. Check its password and file integrity, then retry.": "无法解锁存档。请检查密码和文件完整性后重试。",
+    "Native Runtime Route": "Native Runtime 路由",
+    "Refresh Runtime Routes": "刷新 Runtime 路由",
+    "Use the role’s primary route": "使用此角色的主路由",
+    "Unavailable route — retained": "路由不可用 — 已保留选择",
+    "The selected route is missing or has a different role. Choose a compatible route before running.": "所选路由已缺失或角色不符。请在运行前选择兼容路由。",
+    "Loading Runtime Routes…": "正在加载 Runtime 路由…",
+    "Select a route configured for this role. Manage routes in Runtime.": "请选择此角色的路由。路由在 Runtime 中管理。",
+    "Could not load Runtime Routes. Refresh to try again.": "无法加载 Runtime 路由。请刷新重试。",
+    "Select an exact player Runtime Route.": "请选择精确的玩家 Runtime 路由。"
 }

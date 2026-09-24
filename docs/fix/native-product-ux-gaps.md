@@ -73,32 +73,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 先补齐 Orchestrator / Memory 的 Native route 与 provider ownership，再清理兼容 preset vocabulary。
 
-## NUX-012 — Native Orchestrator loses per-agent / per-stage route selection
-
-**Current evidence**
-
-Orchestrator authoring still models agent-level `apiPresetName` / `promptPresetName`.
-
-When Native generation is active, `generation-compat.js` supports an explicit `nativeRouteRef`, but inspected Orchestrator callers generally invoke:
-
-`executeFirstPartyGeneration(context, 'orchestrator', ...)`
-
-without supplying a per-agent Native route.
-
-Native preset selectors collapse to a disabled “Native Runtime route — configure in Runtime” option.
-
-**Impact**
-
-Different agents/planners/judges that should intentionally use different model + prompt + generation configurations can collapse onto one primary `role.orchestrator` route.
-
-**Acceptance**
-
-Provide explicit Native routing per relevant Orchestrator agent/stage, using exact Runtime route refs or a typed Native sub-routing model. Do not restore legacy preset-name authority.
-
----
-
----
-
 ## NUX-013 — Native Memory loses task-specific route selection
 
 **Current evidence**

@@ -1,3 +1,4 @@
+import { configuredNativeRoute } from '../../native/runtime-route-ref.js';
 import { AgentRegistry } from '../../lib/agent-runtime/index.js';
 import { copy } from '../../lib/agent-runtime/contracts.js';
 import { runLegacyWorkflow, createLegacyWorkflowRunId } from './legacy-workflow-adapter.js';
@@ -9,7 +10,7 @@ export function createLegacyAgentGraph(mode, entries) {
     const entryId = `${mode}/controller`;
     const definitions = entries.map(({ id, preset = {}, handoffs = [] }) => ({
         id: agentKey(mode, id), name: String(id), instructions: String(preset?.systemPrompt || ''),
-        modelProfile: { apiPresetName: preset?.apiPresetName || '', promptPresetName: preset?.promptPresetName || '' },
+        modelProfile: { ...configuredNativeRoute(preset), apiPresetName: preset?.apiPresetName || '', promptPresetName: preset?.promptPresetName || '' },
         handoffs: handoffs.map(target => agentKey(mode, target)),
         policies: { handoffContextPolicies: ['task_only'] }, metadata: { legacyMode: mode },
     }));

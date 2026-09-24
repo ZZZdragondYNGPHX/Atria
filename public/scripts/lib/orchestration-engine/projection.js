@@ -3,6 +3,13 @@ import { CAPABILITIES } from './capabilities.js';
 
 const fields = (value, keys) => Object.fromEntries(keys.filter(key => value?.[key] !== undefined).map(key => [key, structuredClone(value[key])]));
 
+export function projectModelProfile(value) {
+    const result = Object.fromEntries(['apiPresetName', 'promptPresetName'].filter(key => typeof value?.[key] === 'string').map(key => [key, value[key]]));
+    const ref = value?.nativeRouteRef;
+    if (ref?.scope === 'player' && /^route_[a-f0-9]{32}$/.test(ref.runtimeRouteId || '')) result.nativeRouteRef = { scope: 'player', runtimeRouteId: ref.runtimeRouteId };
+    return result;
+}
+
 /** Reapply the allowlist at the untrusted event/replay boundary. */
 export function sanitizeEngineProjection(input) {
     const scalar = (value, keys) => Object.fromEntries(keys.filter(key => ['string', 'number', 'boolean'].includes(typeof value?.[key])).map(key => [key, value[key]]));
@@ -12,7 +19,7 @@ export function sanitizeEngineProjection(input) {
         ...scalar(input, ['planId', 'mode', 'presetId', 'presetName', 'graphRevision', 'resultsDelta']),
         nodes: list(input.nodes, node => ({ ...scalar(node, ['nodeId', 'agentId', 'kind', 'attempts', 'status']),
             capabilities: Object.fromEntries(CAPABILITIES.map(key => [key, node.capabilities?.[key] === true])),
-            modelProfile: scalar(node.modelProfile, ['apiPresetName', 'promptPresetName']), tools: strings(node.tools) })),
+            modelProfile: projectModelProfile(node.modelProfile), tools: strings(node.tools) })),
         edges: list(input.edges, edge => scalar(edge, ['edgeId', 'from', 'to', 'condition', 'maxVisits'])),
         tasks: list(input.tasks, task => ({ ...scalar(task, ['id', 'agentId', 'priority', 'status']), dependsOn: strings(task.dependsOn) })),
         results: list(input.results, result => ({ ...scalar(result, ['resultId', 'runId', 'nodeId', 'agentId', 'attempt', 'status', 'createdAt', 'hasValue', 'hasStructured']),
@@ -33,7 +40,7 @@ export function projectEngine(plan, state = {}) {
         planId: plan.planId, mode: plan.source.mode, presetId: plan.source.presetId || '', presetName: plan.source.presetName || '',
         nodes: plan.nodes.map(node => ({ ...fields(node, ['nodeId', 'agentId', 'kind']),
             capabilities: effectiveCapabilities(plan, node),
-            modelProfile: fields(plan.agents.find(agent => agent.id === node.agentId)?.modelProfile, ['apiPresetName', 'promptPresetName']),
+            modelProfile: projectModelProfile(plan.agents.find(agent => agent.id === node.agentId)?.modelProfile),
             tools: [...(plan.agents.find(agent => agent.id === node.agentId)?.tools || [])],
             attempts: state.attempts?.[node.nodeId] || 0,
             status: active.has(node.nodeId) ? 'running'

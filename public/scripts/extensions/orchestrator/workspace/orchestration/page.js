@@ -6,6 +6,8 @@ import { CAPABILITIES, effectiveCapabilities } from '../../../../lib/orchestrati
 import { renderGraph } from '../../../../lib/agent-workspace/graph-view.js';
 import { removeWorkspaceAgent } from '../agent-editing.js';
 import { renderCapabilityPanel, renderToolPermissionPanel } from './permissions.js';
+import { nativePromptUiActive } from '../../../../native/generation-compat.js';
+import { mountRuntimeRoutePicker } from '../../../../native/runtime-route-picker.js';
 
 const MODES = ['loop', 'spec', 'agenda', 'director'];
 
@@ -426,14 +428,22 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             const model = el('section', undefined, inspector);
             model.className = 'workspace-inspector-section';
             el('h4', 'Model', model);
-            profileSelect(model, 'Primary API profile', 'api', agent.modelProfile?.apiPresetName || '', value => {
-                (agent.modelProfile ||= {}).apiPresetName = value;
-            }, true);
-            const isAgendaPlanner = draft.mode === 'agenda'
+            if (nativePromptUiActive()) {
+                mountRuntimeRoutePicker({ parent: model, role: 'orchestrator', value: agent.modelProfile?.nativeRouteRef, change: value => {
+                    agent.modelProfile ||= {};
+                    if (value) agent.modelProfile.nativeRouteRef = value;
+                    else delete agent.modelProfile.nativeRouteRef;
+                } });
+            } else {
+                profileSelect(model, 'Primary API profile', 'api', agent.modelProfile?.apiPresetName || '', value => {
+                    (agent.modelProfile ||= {}).apiPresetName = value;
+                }, true);
+                const isAgendaPlanner = draft.mode === 'agenda'
                 && draft.planTemplate.nodes.some(node => node.nodeId === 'planner' && node.agentId === agent.id);
-            profileSelect(model, 'Prompt profile', 'prompt', agent.modelProfile?.promptPresetName || '', value => {
-                (agent.modelProfile ||= {}).promptPresetName = value;
-            }, true, isAgendaPlanner ? 'iteration' : 'agent');
+                profileSelect(model, 'Prompt profile', 'prompt', agent.modelProfile?.promptPresetName || '', value => {
+                    (agent.modelProfile ||= {}).promptPresetName = value;
+                }, true, isAgendaPlanner ? 'iteration' : 'agent');
+            }
 
             const toolsSection = el('details', undefined, inspector);
             toolsSection.className = 'workspace-inspector-section';

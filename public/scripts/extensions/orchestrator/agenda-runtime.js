@@ -1,3 +1,4 @@
+import { configuredNativeRoute } from '../../native/runtime-route-ref.js';
 import { runLegacyParallel } from './legacy-parallel-adapter.js';
 import { runLegacySingleRequest } from './legacy-runtime-adapter.js';
 import { runAgendaEngine } from './engine-v2/agenda-adapter.js';
@@ -660,6 +661,7 @@ async function* runAgendaPlannerStepPolicy(context, payload, messages, profile, 
             { role: 'user', content: userTextWithNotes },
         ],
         runtimeWorldInfo,
+        ...configuredNativeRoute(planner),
         apiPresetName,
         fallbackApiPresetName: getOrchestrationFallbackApiPresetName(settings, apiPresetName),
         llmPresetName,
@@ -899,6 +901,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
                 { role: 'user', content: userTextWithNotes },
             ],
             runtimeWorldInfo,
+            ...configuredNativeRoute(preset),
             apiPresetName,
             fallbackApiPresetName: getOrchestrationFallbackApiPresetName(settings, apiPresetName),
             llmPresetName,
@@ -1022,6 +1025,7 @@ async function* runAgendaTextAgentPolicy(context, payload, messages, profile, st
             stream: false,
             taskMessages,
             runtimeWorldInfo,
+            ...configuredNativeRoute(preset),
             apiPresetName,
             fallbackApiPresetName: getOrchestrationFallbackApiPresetName(settings, apiPresetName),
             llmPresetName,

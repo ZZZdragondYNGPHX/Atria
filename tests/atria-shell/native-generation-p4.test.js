@@ -3,9 +3,26 @@ import { afterEach, expect, jest, test } from '@jest/globals';
 import { nativeSessionRuntime } from '../../public/scripts/native/session-runtime.js';
 import { executeFirstPartyGeneration, streamFirstPartyGeneration } from '../../public/scripts/native/generation-compat.js';
 import { createRuntimeRoleRouter } from '../../public/scripts/extensions/game-runtime/llm/roles.js';
-import { requestToolCallsWithRetry } from '../../public/scripts/lib/iter-tool-calling.js';
+import { requestToolCallsWithRetry, requestToolCallWithRetry } from '../../public/scripts/lib/iter-tool-calling.js';
 
 afterEach(() => { nativeSessionRuntime.snapshot = null; delete globalThis.fetch; delete globalThis.Atria; });
+
+test('single-tool, multi-tool and streaming agent calls retain distinct exact Runtime Routes', async () => {
+    nativeSessionRuntime.snapshot = { session: { sessionId: 'session' }, revision: { revisionId: 'revision' } };
+    const context = { generateTask: () => { throw new Error('legacy sender'); } };
+    const requests = [];
+    globalThis.fetch = jest.fn(async (_url, options) => {
+        requests.push(JSON.parse(options.body));
+        return { ok: true, json: async () => ({ response: { assistantText: 'done', toolCalls: [{ id: 'call', name: 'inspect', args: {}, raw: { type: 'function', function: { name: 'inspect', arguments: '{}' } } }] }, snapshot: {}, routing: {} }) };
+    });
+    const routes = [1, 2, 3].map(index => ({ scope: 'player', runtimeRouteId: 'route_' + String(index).repeat(32) }));
+    await requestToolCallWithRetry(context, {}, { functionName: 'inspect', nativeRouteRef: routes[0] });
+    await requestToolCallsWithRetry(context, {}, { tools: [{ type: 'function', function: { name: 'inspect', parameters: { type: 'object' } } }], nativeRouteRef: routes[1] });
+    const streaming = streamFirstPartyGeneration(context, 'orchestrator', { nativeRouteRef: routes[2] });
+    for await (const _chunk of streaming.stream) { /* Drain. */ }
+    await streaming.result;
+    expect(requests.map(request => request.routeRef)).toEqual(routes);
+});
 
 test('Native role traffic cannot consult a poisoned legacy facade, preset or connection resolver', async () => {
     nativeSessionRuntime.snapshot = { session: { sessionId: 'session' }, revision: { revisionId: 'revision' } };

@@ -1,5 +1,5 @@
 import { copy } from './contracts.js';
-import { sanitizeEngineProjection } from '../orchestration-engine/projection.js';
+import { sanitizeEngineProjection, projectModelProfile } from '../orchestration-engine/projection.js';
 
 const terminal = new Set(['completed', 'failed', 'cancelled']);
 const reasons = new Set(['stage_dispatch', 'review_rerun', 'agenda_plan', 'agenda_dispatch', 'agenda_finalize', 'director_dispatch', 'director_inline_dispatch']);
@@ -22,8 +22,7 @@ export function sanitizeRuntimeEvent(raw) {
     if (Number.isFinite(raw.tokens)) event.tokens = raw.tokens;
     if (Number.isSafeInteger(raw.graphRevision) && raw.graphRevision >= 0) event.graphRevision = raw.graphRevision;
     if (raw.reason) event.reason = reasons.has(raw.reason) ? raw.reason : 'custom_handoff';
-    if (raw.modelProfile) event.modelProfile = Object.fromEntries(['apiPresetName', 'promptPresetName'].map(key =>
-        [key, typeof raw.modelProfile[key] === 'string' ? raw.modelProfile[key] : '']));
+    if (raw.modelProfile) event.modelProfile = { apiPresetName: '', promptPresetName: '', ...projectModelProfile(raw.modelProfile) };
     if (Array.isArray(raw.references)) event.references = raw.references.map(ref => ({ id: String(ref?.id || ''),
         ...(typeof ref?.revision === 'number' ? { revision: ref.revision } : {}) }));
     if (Array.isArray(raw.diagnostics)) event.diagnostics = raw.diagnostics.map(item => ({

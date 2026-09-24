@@ -1,3 +1,4 @@
+import { configuredNativeRoute } from '../../native/runtime-route-ref.js';
 /**
  * Floor-state adapter for the orchestrator extension.
  *
@@ -405,6 +406,7 @@ export function sanitizeLoopProfile(input) {
     const source = input && typeof input === 'object' ? input : {};
     const out = {
         mode: ORCH_EXECUTION_MODE_LOOP,
+        ...configuredNativeRoute(source),
         apiPresetName: source.apiPresetName == null ? '' : String(source.apiPresetName),
         promptPresetName: source.promptPresetName == null ? '' : String(source.promptPresetName),
         // Missing field (no `system_prompt` key at all) → ship the default RP

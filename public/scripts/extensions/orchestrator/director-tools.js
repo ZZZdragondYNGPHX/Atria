@@ -1,3 +1,4 @@
+import { configuredNativeRoute } from '../../native/runtime-route-ref.js';
 import { isNativeGenerationFailure } from '../../native/generation-compat.js';
 import { nativeGenerationActive } from '../../native/generation-client.js';
 import { runDirectorWorker, createDirectorDelegateExecutor } from './engine-v2/director-worker.js';
@@ -1073,6 +1074,7 @@ export function createSubagentDispatcher({
         const childSignal = childCtrl.signal;
 
         const baseOpts = {
+            ...configuredNativeRoute(agentConfig || directorProfile?.mainAgent),
             apiPresetName,
             llmPresetName: promptPresetName,
             includeCharacterCard: false,

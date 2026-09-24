@@ -1,3 +1,4 @@
+import { configuredNativeRoute } from '../../../native/runtime-route-ref.js';
 import { AgentRuntime, AgentRegistry } from '../../../lib/agent-runtime/index.js';
 import { copy } from '../../../lib/agent-runtime/contracts.js';
 import { createHostTokenCounter, createDelegatedMemoryPort, guardRequestCallbacks } from '../../../lib/agent-runtime/host-ports.js';
@@ -76,7 +77,7 @@ export async function runLoopEngine({ context, payload, profile, deps, toolConte
         ports: {
             memory: createDelegatedMemoryPort(assertFresh),
             model: { request: effect => sendLlm(withRuntimeContext(guardRequestCallbacks({ context, settings: deps.settings || null,
-                runtimeWorldInfo: deps.runtimeWorldInfo || null, apiPresetName: String(profile.apiPresetName || ''), llmPresetName: String(profile.promptPresetName || ''),
+                runtimeWorldInfo: deps.runtimeWorldInfo || null, ...configuredNativeRoute(profile), apiPresetName: String(profile.apiPresetName || ''), llmPresetName: String(profile.promptPresetName || ''),
                 messages: effect.messages, tools, round: effect.step, abortSignal: effect.signal,
                 onUsage: usage => addTokenUsage({ runId: panelRunId, usage }) }, effect.signal), context, assertFresh)) },
             tool: { async execute(effect) {

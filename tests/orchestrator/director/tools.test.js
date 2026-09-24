@@ -943,10 +943,15 @@ describe('subagent dispatcher', () => {
 });
 
 test('configured and inline Director children record distinct delegate branches before model execution', async () => {
-    const events = [], specs = [{ id: 'critic', systemPrompt: 'original' }];
+    const namedRoute = { scope: 'player', runtimeRouteId: 'route_' + '1'.repeat(32) };
+    const ownerRoute = { scope: 'player', runtimeRouteId: 'route_' + '2'.repeat(32) };
+    const calls = [];
+    const events = [], specs = [{ id: 'critic', systemPrompt: 'original', nativeRouteRef: namedRoute }];
     const dispatcher = createSubagentDispatcher({ subAgents: specs, limits: { maxTotalSubagentRuns: 3 }, runId: 'director-parent',
+        directorProfile: { mainAgent: { nativeRouteRef: ownerRoute } },
         onRuntimeEvent: event => events.push(event),
-        generateTask: async () => {
+        generateTask: async request => {
+            calls.push(request.nativeRouteRef);
             expect(events.some(e => e.type === 'parallel.branch.started')).toBe(true);
             return { assistantText: 'done', toolCalls: [] };
         }, abortSignal: new AbortController().signal,
@@ -955,6 +960,7 @@ test('configured and inline Director children record distinct delegate branches 
     const named = await dispatcher.dispatch({ subagentId: 'critic', task: 'review' });
     const inline = await dispatcher.dispatchInline({ systemPrompt: 'one-off role', task: 'inspect' });
     expect((await dispatcher.awaitAll([named, inline])).map(item => item.outputText)).toEqual(['done', 'done']);
+    expect(calls).toEqual([namedRoute, ownerRoute]);
     const handoffs = events.filter(e => e.type === 'parallel.branch.started');
     expect(events.some(e => e.type === 'agent.handoff.completed')).toBe(false);
     expect(handoffs).toHaveLength(2);

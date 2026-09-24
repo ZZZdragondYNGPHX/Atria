@@ -1,3 +1,4 @@
+import { configuredNativeRoute } from '../../native/runtime-route-ref.js';
 import { isNativeGenerationFailure } from '../../native/generation-compat.js';
 import { nativeGenerationActive } from '../../native/generation-client.js';
 import { AgentRegistry } from '../../lib/agent-runtime/index.js';
@@ -617,6 +618,7 @@ async function* runMainAgentLoopPolicy({ handle, profile, eventData, deps }) {
                         taskMessages: messages,
                         tools: toolSchemas,
                         toolChoice: 'auto',
+                        ...configuredNativeRoute(director.mainAgent),
                         apiPresetName: activeApiPresetName,
                         llmPresetName: resolveAgentPromptPresetName(deps?.settings, director.mainAgent),
                         includeCharacterCard: false,

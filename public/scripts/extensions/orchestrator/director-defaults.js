@@ -1,3 +1,4 @@
+import { configuredNativeRoute } from '../../native/runtime-route-ref.js';
 /**
  * Director-mode defaults + sanitizer helpers.
  *
@@ -700,6 +701,7 @@ export function sanitizeDirectorProfile(profile) {
             id,
             description: String(a.description ?? '').trim(),
             systemPrompt,
+            ...configuredNativeRoute(a),
             promptPresetName: String(a.promptPresetName ?? '').trim(),
             apiPresetName: String(a.apiPresetName ?? '').trim(),
             tools: sanitizeAgentOverride(a.tools),
@@ -730,6 +732,7 @@ export function sanitizeDirectorProfile(profile) {
     sanitizedTools.finalize = false;
 
     const mainAgentOut = {
+        ...configuredNativeRoute(mainAgent),
         promptPresetName: String(mainAgent.promptPresetName ?? '').trim(),
         apiPresetName: String(mainAgent.apiPresetName ?? '').trim(),
         systemPrompt: String(mainAgent.systemPrompt ?? ''),

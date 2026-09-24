@@ -1,3 +1,4 @@
+import { configuredNativeRoute } from '../../native/runtime-route-ref.js';
 import { openRuntimeCheckpointStore } from './runtime-checkpoints.js';
 import { createRuntimeObserver } from './run-state/runtime-observer.js';
 import { withRuntimeContext } from '../../lib/agent-runtime/prepared-context.js';
@@ -55,7 +56,7 @@ export async function runLegacyWorkflow(factory, { context = {}, signal, runId =
         contextInput: () => ({
             legacyMessages: pending.request.taskMessages ?? pending.request.messages ?? [],
             tools: pending.request.tools || [],
-            modelProfile: { apiPresetName: pending.request.apiPresetName || '', promptPresetName: pending.request.llmPresetName || '' },
+            modelProfile: { ...configuredNativeRoute(pending.request), apiPresetName: pending.request.apiPresetName || '', promptPresetName: pending.request.llmPresetName || '' },
             tokenCounting: typeof context.getTokenCountAsync === 'function' ? 'host-tokenizer' : 'utf8-bytes-estimate',
             budgetScope: 'task-messages-and-tools',
         }),

@@ -52,11 +52,13 @@ test('old generation, out-of-order and late completions cannot revive a cancelle
 });
 
 test('metadata allowlist excludes credentials and raw payloads at nested boundaries', () => {
+    const nativeRouteRef = { scope: 'player', runtimeRouteId: 'route_' + '1'.repeat(32) };
     const sanitized = sanitizeRuntimeEvent(event(1, 'context.compiled', { task: 'secret', apiKey: 'secret', args: { token: 'secret' },
-        modelProfile: { apiPresetName: 'selected', apiKey: 'secret' }, diagnostics: [{ source: 'memory', tokens: 5, content: 'secret' }],
+        modelProfile: { apiPresetName: 'selected', apiKey: 'secret', nativeRouteRef: { ...nativeRouteRef, secret: 'secret' } }, diagnostics: [{ source: 'memory', tokens: 5, content: 'secret' }],
         references: [{ id: 'source', revision: 2, text: 'secret' }], reason: 'secret' }));
     expect(JSON.stringify(sanitized)).not.toContain('secret');
     expect(sanitized.modelProfile.apiPresetName).toBe('selected');
+    expect(sanitized.modelProfile.nativeRouteRef).toEqual(nativeRouteRef);
     expect(sanitized.diagnostics[0].tokens).toBe(5);
 });
 

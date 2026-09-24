@@ -1,3 +1,4 @@
+import { configuredNativeRoute } from '../../native/runtime-route-ref.js';
 import { openRuntimeCheckpointStore } from './runtime-checkpoints.js';
 import { createRuntimeObserver } from './run-state/runtime-observer.js';
 import { createLegacyExecutionPorts } from './legacy-runtime-ports.js';
@@ -20,7 +21,7 @@ export async function runLegacySingleRequest({ runId, agentId = 'single_agent', 
     const toolResults = new Map();
     const memoryGuards = new Set();
     const tools = (request.tools || []).map(tool => String(tool?.function?.name || '').replace(/\./g, '_')).filter(Boolean);
-    const measurement = { modelProfile: { apiPresetName: request.apiPresetName || '', promptPresetName: request.llmPresetName || '' }, tokenCounting: typeof hostContext.getTokenCountAsync === 'function' ? 'host-tokenizer' : 'utf8-bytes-estimate', budgetScope: 'task-messages-and-tools' };
+    const measurement = { modelProfile: { ...configuredNativeRoute(request), apiPresetName: request.apiPresetName || '', promptPresetName: request.llmPresetName || '' }, tokenCounting: typeof hostContext.getTokenCountAsync === 'function' ? 'host-tokenizer' : 'utf8-bytes-estimate', budgetScope: 'task-messages-and-tools' };
     const runtime = new AgentRuntime({
         eventSink: createRuntimeObserver({ onEvent }),
         store,
@@ -35,7 +36,7 @@ export async function runLegacySingleRequest({ runId, agentId = 'single_agent', 
             });
             activeRequest = await worker.prepareRequest(state.step, history);
             throwIfAborted(signal, 'Orchestration aborted.');
-            return { ...measurement, legacyMessages: activeRequest.taskMessages, modelProfile: { apiPresetName: activeRequest.apiPresetName || '', promptPresetName: activeRequest.llmPresetName || '' }, tools: activeRequest.tools || request.tools };
+            return { ...measurement, legacyMessages: activeRequest.taskMessages, modelProfile: { ...configuredNativeRoute(activeRequest), apiPresetName: activeRequest.apiPresetName || '', promptPresetName: activeRequest.llmPresetName || '' }, tools: activeRequest.tools || request.tools };
         } : { ...measurement, legacyMessages: request.taskMessages, tools: request.tools },
         ports: {
             ...createLegacyExecutionPorts({ getMemoryGuard: () => memoryGuards.size ? () => { for (const guard of memoryGuards) guard(); } : null, registerMemoryGuard: guard => memoryGuards.add(guard), hostContext, send, getRequest: () => activeRequest, worker, toolResults, onError: error => { portError = error; } }),

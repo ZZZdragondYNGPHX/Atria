@@ -57,6 +57,7 @@ export async function requestAgendaPlannerStep(context, settings, request) {
                     ...(repaired ? { promptMode: 'task' } : {}),
                     worldInfoSource: 'none',
                     runtimeWorldInfo: repaired ? {} : request.runtimeWorldInfo,
+                    nativeRouteRef: request.nativeRouteRef,
                     apiPresetName: routeApiPresetName,
                     llmPresetName: request.llmPresetName,
                     tools, toolChoice, stream: false,

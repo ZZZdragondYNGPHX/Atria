@@ -261,3 +261,32 @@ authoring tests still passed with no page errors. No external paid-provider,
 physical-device, Docker or Android-build validation is claimed.
 
 Next: Group 3 / NUX-012, following the active backlog order.
+
+
+## Group 3 — Agents / Memory Native Routing
+
+### NUX-012
+
+Agent model profiles now hold optional exact player nativeRouteRef values. The
+existing Inspector selects compatible role.orchestrator routes from Runtime,
+retains unavailable references visibly and supports load failure/retry. Clearing
+selection deliberately uses the existing role primary; no alternate router or
+store was introduced. Native callers no longer author API/Prompt names in this
+Agent control; compatibility remains isolated for non-Native UI.
+
+References survive saved plan/host adaptation and Spec worker/reviewer, Agenda
+planner/worker/finalizer, Loop, Director owner/delegate and arbitration requests.
+Inline Director delegates inherit the owner's chosen route. Single/multi-tool
+and streaming paths carry the same reference. Runtime metadata projections retain
+safe route identity without credentials. Invalid scope/name/extra-field refs fail
+validation; authoritative role/exact resource checks remain in the Native host.
+
+Validation: all 113 Orchestrator/Agent Runtime suites passed (1,262 tests).
+Eight client/picker tests passed; nine projection cases passed after extending
+route metadata assertions. One real Edge 320px scenario passed: duplicate a fixed
+preset, independently select Writer/Reviewer routes, save and reopen with exact
+refs preserved. Screenshot inspected. The initial browser attempt needed to close
+the compact Inspector before selecting the second Agent; the corrected scenario
+passed. Changed-file ESLint and diff check passed.
+
+Next: NUX-013, following the active backlog order.

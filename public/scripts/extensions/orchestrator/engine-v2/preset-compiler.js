@@ -1,3 +1,4 @@
+import { configuredNativeRoute } from '../../../native/runtime-route-ref.js';
 import { copy } from '../../../lib/agent-runtime/contracts.js';
 import { CAPABILITIES, validateGraph } from '../../../lib/orchestration-engine/index.js';
 
@@ -28,7 +29,7 @@ export function compilePreset(profile, { mode = profile.mode || profile.source |
         }
         const agentId = `agent:${nodeId}`;
         plan.agents.push({ id: agentId, instructions: String(config?.systemPrompt || ''),
-            modelProfile: { apiPresetName: String(config?.apiPresetName || ''), promptPresetName: String(config?.promptPresetName || '') },
+            modelProfile: { ...configuredNativeRoute(config), apiPresetName: String(config?.apiPresetName || ''), promptPresetName: String(config?.promptPresetName || '') },
             tools: toolsByNode[nodeId] || [], handoffs: [], capabilities, policies: { maxConcurrency: plan.budgets.maxConcurrency }, metadata: { config: copy(config || {}) } });
         plan.nodes.push({ nodeId, agentId, kind: 'agent', capabilities, metadata });
         return nodeId;
