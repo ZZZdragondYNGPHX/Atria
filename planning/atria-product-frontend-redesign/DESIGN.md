@@ -400,3 +400,33 @@ reached through the already delivered Library. No new configuration authority.
 
 Runtime CSS is extracted into its own domain stylesheet using the Phase 1 tokens.
 See `PHASE-5.md` for acceptance, review corrections and screenshots.
+
+## 13. Phase 6 Build / Studio specification and decisions — 2026-09-24
+
+Build retains the approved calm IDE direction. Projects are searchable rows with
+an inline New Project disclosure. Inside a project, the resource tree and editor
+own the canvas; Inspector and Project Agent are optional side panels. Activity is
+a collapsed strip until validation, review or an error needs attention. Successful
+apply restores editor focus and space.
+
+Structured resources use labelled fields and nested disclosures with a lossless
+Source fallback over the same draft. Unknown/plugin fields are preserved. Advanced
+identity, operation payloads, build results and Agent evidence are disclosed on
+demand. Review has a visible operation summary; exact-revision conflicts require
+reload and renewed review. Source/Bindings errors retain the user's text and cannot
+silently stage a previously valid model.
+
+Compact uses separate Project / Editor / Preview / AI / More views, a three-column
+toolbar and scrollable authoring surfaces. The existing Environment owns the
+719px breakpoint and measured keyboard viewport. Medium Inspector/Agent panels
+float inside the workspace; covered editor controls are inert. The existing Shell
+Back/Escape path asks WorkspaceHost to dismiss the active controller's transient
+before navigating away. No extra route or persistence authority.
+
+Project Agent exposes task, plan, progress, review and explicit human Commit.
+Intent survives service errors; evidence/conversation are disclosures. UI
+Design/Structure/Bindings/Source continue the shared Component Model, and preview
+continues without Session persistence. Native creation, exact Library attachment,
+resource writes and build use the existing backend endpoints.
+
+See `PHASE-6.md` for validation, review corrections and screenshot evidence.
