@@ -287,9 +287,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const context = group(form, 'Pinned context', nativeSessionRuntime.active ? 'The current Native session supplies the exact context.' : 'Choose a Project and its exact revision, or open a Native game.');
         const project = field(context, 'Project ID (when no game is open)'); const revision = field(context, 'Project revision');
         project.disabled = revision.disabled = nativeSessionRuntime.active;
+        project.parentElement.hidden = revision.parentElement.hidden = nativeSessionRuntime.active;
         const message = field(group(form, 'Preview input'), 'Preview message', 'Preview this route.');
-        const submit = node('button', 'Compile preview', form); submit.type = 'submit';
-        const result = node('div');
+        const actions = node('footer', undefined, form); actions.className = 'atri-runtime-actions';
+        const submit = node('button', 'Compile preview', actions); submit.type = 'submit';
+        const result = node('div'); result.className = 'atri-runtime-evidence';
         form.addEventListener('submit', async event => {
             event.preventDefault(); if (submit.disabled) return; submit.disabled = true; submit.setAttribute('aria-busy', 'true'); result.replaceChildren(); notice('Compiling…', result);
             try {
