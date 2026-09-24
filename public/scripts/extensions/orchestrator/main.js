@@ -1,4 +1,5 @@
-import { executeFirstPartyGeneration, firstPartyStreamingEnabled, streamFirstPartyGeneration } from '../../native/generation-compat.js';
+import { clearNativePresetNames } from '../../native/agent-settings.js';
+import { executeFirstPartyGeneration, firstPartyStreamingEnabled, streamFirstPartyGeneration, nativePromptUiActive } from '../../native/generation-compat.js';
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 // Implementation source: Toolify: Empower any LLM with function calling capabilities. (https://github.com/funnycups/Toolify)
@@ -6,7 +7,7 @@ import { executeFirstPartyGeneration, firstPartyStreamingEnabled, streamFirstPar
 const __ctx = Atria.getContext();
 const extension_prompt_roles = __ctx.constants.promptRoles;
 
-const saveSettingsDebounced = __ctx.saveSettingsDebounced;
+const saveSettingsDebounced = (...args) => { if (nativePromptUiActive()) clearNativePresetNames(__ctx.extensionSettings?.orchestrator); return __ctx.saveSettingsDebounced(...args); };
 const extension_settings = __ctx.extensionSettings;
 const getContext = Atria.getContext;
 const registerExtensionApi = __ctx.registerExtensionApi;
@@ -52,13 +53,12 @@ import {
 } from './run-state/store.js';
 import { openWorkspace, configureWorkspace, destroyWorkspace, initWorkspace as initRunPanel } from './workspace/panel.js';
 import { resolveWorkspaceProfile, getWorkspaceLibrary } from './workspace/host-presets.js';
-import { renderPresetHelpButton } from '../preset-help.js';
 import { createPresetAuthoring } from './workspace/authoring.js';
 import { createMemoryWorkspace } from './workspace/memory.js';
 import { updatePresetLibrary } from '../../lib/agent-workspace/presets.js';
 
 import { canReuseLatestOrchestrationSnapshot, clearCacheForChatChange, getActiveSnapshot, getChatKey, getCurrentAvatar, getLatestOrchestrationEntry, loadOrchestratorChatState, refreshActiveSnapshotFromCache, refreshOrchestratorStateAfterStructuralEvent, storeCompletedOrchestrationSnapshot } from './snapshot-cache.js';
-import { sanitizeConnectionProfileName, renderConnectionProfileOptions, renderOpenAIPresetOptions } from './agent-resolution.js';
+import { sanitizeConnectionProfileName } from './agent-resolution.js';
 
 import { runAgendaOrchestration } from './agenda-runtime.js';
 import { runSpecOrchestration, buildNodeToolSet } from './spec-runtime.js';
@@ -179,25 +179,18 @@ export function ensureSettings() {
     delete extension_settings[MODULE_NAME].agentRuntimeV2;
     delete extension_settings[MODULE_NAME].plainTextFunctionCallMode;
     delete extension_settings[MODULE_NAME].agendaPlannerPrompt;
-    extension_settings[MODULE_NAME].llmNodeApiPresetName = sanitizeConnectionProfileName(extension_settings[MODULE_NAME].llmNodeApiPresetName || '');
-    if (!String(extension_settings[MODULE_NAME].llmNodePresetName || '').trim()) {
+    if (extension_settings[MODULE_NAME].llmNodeApiPresetName !== undefined) extension_settings[MODULE_NAME].llmNodeApiPresetName = sanitizeConnectionProfileName(extension_settings[MODULE_NAME].llmNodeApiPresetName || '');
+    if (extension_settings[MODULE_NAME].llmNodePresetName !== undefined && !String(extension_settings[MODULE_NAME].llmNodePresetName || '').trim()) {
         extension_settings[MODULE_NAME].llmNodePresetName = String(extension_settings[MODULE_NAME].llmNodePromptPresetName || '').trim();
     }
     extension_settings[MODULE_NAME].includeWorldInfoWithPreset = extension_settings[MODULE_NAME].includeWorldInfoWithPreset !== false;
-    if (extension_settings[MODULE_NAME].aiSuggestApiPresetName !== undefined) {
-        extension_settings[MODULE_NAME].requestApiPresetName ||= String(extension_settings[MODULE_NAME].aiSuggestApiPresetName || '');
-        delete extension_settings[MODULE_NAME].aiSuggestApiPresetName;
-    }
-    if (extension_settings[MODULE_NAME].aiSuggestPresetName !== undefined) {
-        extension_settings[MODULE_NAME].requestLlmPresetName ||= String(extension_settings[MODULE_NAME].aiSuggestPresetName || '');
-        delete extension_settings[MODULE_NAME].aiSuggestPresetName;
-    }
+
     if (extension_settings[MODULE_NAME].aiSuggestSystemPrompt !== undefined) {
         extension_settings[MODULE_NAME].requestSystemPrompt ||= String(extension_settings[MODULE_NAME].aiSuggestSystemPrompt || '');
         delete extension_settings[MODULE_NAME].aiSuggestSystemPrompt;
     }
-    extension_settings[MODULE_NAME].requestApiPresetName = sanitizeConnectionProfileName(extension_settings[MODULE_NAME].requestApiPresetName || '');
-    if (!String(extension_settings[MODULE_NAME].requestLlmPresetName || '').trim()) {
+    if (extension_settings[MODULE_NAME].requestApiPresetName !== undefined) extension_settings[MODULE_NAME].requestApiPresetName = sanitizeConnectionProfileName(extension_settings[MODULE_NAME].requestApiPresetName || '');
+    if (extension_settings[MODULE_NAME].requestLlmPresetName !== undefined && !String(extension_settings[MODULE_NAME].requestLlmPresetName || '').trim()) {
         extension_settings[MODULE_NAME].requestLlmPresetName = String(extension_settings[MODULE_NAME].aiSuggestPromptPresetName || '').trim();
     }
     // Drop legacy API selector fields. API routing now comes from connection profile only.
@@ -761,7 +754,8 @@ function notifyError(message) {
 }
 
 function getSettings() {
-    return extension_settings[MODULE_NAME];
+    const settings = extension_settings[MODULE_NAME];
+    return nativePromptUiActive() ? clearNativePresetNames(settings) : settings;
 }
 
 function updateUiStatus(text) {
@@ -857,10 +851,7 @@ jQuery(() => {
     const context = getContext();
     registerLocaleData();
     configureWorkspace({
-        renderPresets: createPresetAuthoring({ getSettings, save: saveSettingsDebounced, renderPresetHelp: renderPresetHelpButton,
-            renderProfileOptions: (kind, value, inherited) => kind === 'api'
-                ? renderConnectionProfileOptions(value, i18n(inherited ? 'Use workspace default' : '(Current API config)'))
-                : renderOpenAIPresetOptions(getContext(), value, i18n(inherited ? 'Use workspace default' : '(Current preset)')),
+        renderPresets: createPresetAuthoring({ getSettings, save: saveSettingsDebounced,
             getTools: (preset, agent) => {
                 const plan = preset.planTemplate;
                 const options = plan.metadata?.hostAdapters?.atria || {};
@@ -1007,7 +998,7 @@ jQuery(() => {
     if (context.eventTypes?.PRESET_DELETED) {
         context.eventSource.on(context.eventTypes.PRESET_DELETED, async ({ apiId, name } = {}) => {
             try {
-                if (apiId !== 'openai') return;
+                if (nativePromptUiActive() || apiId !== 'openai') return;
                 const deletedName = String(name || '');
                 if (!deletedName) return;
 

@@ -213,7 +213,11 @@ describe('normalizeLegacyRecallSettings', () => {
         expect(s.ragUseRerank).toBe(true);
         expect(s.ragUseQueryRewrite).toBe(false);
         expect(typeof s.ragRewriteApiPresetName).toBe('string');
-        expect(typeof s.ragRewriteLlmPresetName).toBe('string');
+        expect(s.ragRewriteLlmPresetName).toBeUndefined();
+        const clean = { recallMethod: 'rag' };
+        normalizeLegacyRecallSettings(clean);
+        expect(clean).not.toHaveProperty('ragRewriteApiPresetName');
+        expect(clean).not.toHaveProperty('ragRewriteLlmPresetName');
     });
 
     test('preserves a hybrid_rerank user who already had ragUseQueryRewrite=true', () => {

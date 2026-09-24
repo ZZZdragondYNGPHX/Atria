@@ -47,48 +47,33 @@ beforeEach(() => {
     globalThis.fetch = jest.fn(async url => ({ ok: true, json: async () => JSON.parse(fs.readFileSync(new URL(`../../public${url}`, import.meta.url), 'utf8')) }));
 });
 
-test('Agenda help imports into native draft fields without changing the main RP preset', async () => {
-    const settings = { agentWorkspace: updatePresetLibrary(emptyPresetLibrary(), { type: 'save', preset: createWorkspaceFactoryPreset('agenda', 'test-agenda') }) };
-    const render = createPresetAuthoring({ getSettings: () => settings, save: jest.fn(), getScope: () => ({}), renderPresetHelp: renderPresetHelpButton });
+for (const mode of ['spec', 'loop', 'agenda', 'director']) test(`${mode} Native authoring exposes exact Runtime routing without compatibility presets`, async () => {
+    const route = { runtimeRouteId: 'route_' + 'a'.repeat(32), role: 'role.orchestrator', displayName: 'Writer' };
+    globalThis.fetch = jest.fn(async () => ({ ok: true, json: async () => ({ routes: [route] }) }));
+    const settings = { agentWorkspace: updatePresetLibrary(emptyPresetLibrary(), { type: 'save', preset: createWorkspaceFactoryPreset(mode, 'test-' + mode) }) };
     const { host, ui } = workspaceUi();
-    render(host, ui);
+    createPresetAuthoring({ getSettings: () => settings, save: jest.fn(), getScope: () => ({}) })(host, ui);
     host.querySelector('.workspace-agent-card').click();
-    expect(document.querySelectorAll('.atria-preset-help')).toHaveLength(2); // workspace default + selected planner
-    expect(document.querySelector('[aria-label="Default prompt preset"]').value).toBe('');
-
-    let agentHelp = ui.inspector.querySelector('.atria-preset-help');
-    agentHelp.click();
-    let action = popups.at(-1).options.customButtons[0];
-    expect(action.text).toBe('Import Atri-plugin-only preset');
-    await action.action();
-    expect(fetch).toHaveBeenLastCalledWith('/presets/plugin-only.json');
-    expect(document.getElementById(agentHelp.dataset.atriaPresetHelpFor).value).toBe('Atri-plugin-only');
-
-    host.querySelectorAll('.workspace-agent-card')[1].click();
-    agentHelp = ui.inspector.querySelector('.atria-preset-help');
-    agentHelp.click();
-    action = popups.at(-1).options.customButtons[0];
-    expect(action.text).toBe('Import Atri-agenda-agent preset');
-    await action.action();
-    expect(fetch).toHaveBeenLastCalledWith('/presets/agent-non-director.json');
-    expect(manager.savePreset).toHaveBeenLastCalledWith('Atri-agenda-agent', expect.objectContaining({ name: 'Atri-agenda-agent' }), { skipUpdate: true });
-    expect(manager.updateList).toHaveBeenLastCalledWith('Atri-agenda-agent', expect.objectContaining({ name: 'Atri-agenda-agent' }), { select: false });
-    expect(document.getElementById(agentHelp.dataset.atriaPresetHelpFor).value).toBe('Atri-agenda-agent');
-
-    [...ui.inspector.querySelectorAll('button')].find(b => b.textContent === 'Save').click();
-    const agents = settings.agentWorkspace.presets[0].planTemplate.agents;
-    expect(agents[0].modelProfile.promptPresetName).toBe('Atri-plugin-only');
-    expect(agents[1].modelProfile.promptPresetName).toBe('Atri-agenda-agent');
-    expect(settings.llmNodePresetName).toBeUndefined();
-    expect(mainPreset).toBe('Daily RP');
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(ui.inspector.querySelector('.atria-preset-help')).toBeNull();
+    expect(host.textContent).not.toContain('Default API profile');
+    expect(host.textContent).not.toContain('Default prompt preset');
+    const select = ui.inspector.querySelector('select[aria-label="Native Runtime Route"]');
+    expect(select.disabled).toBe(false);
+    select.value = route.runtimeRouteId; select.dispatchEvent(new Event('change'));
+    [...ui.inspector.querySelectorAll('button')].find(button => button.textContent === 'Save').click();
+    expect(settings.agentWorkspace.presets.find(preset => preset.id === 'test-' + mode).planTemplate.agents[0].modelProfile).toEqual({ nativeRouteRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId } });
+    const obsolete = []; const visit = (value, path = '') => { if (!value || typeof value !== 'object') return; for (const [key, item] of Object.entries(value)) { if (/^(apiPresetName|promptPresetName|llmPresetName)$/.test(key)) obsolete.push(path + '.' + key); visit(item, path + '.' + key); } };
+    visit(settings.agentWorkspace); expect(obsolete).toEqual([]);
+    expect(manager.savePreset).not.toHaveBeenCalled();
 });
 
-test('Director help retains its separate preset', () => {
-    const settings = { agentWorkspace: updatePresetLibrary(emptyPresetLibrary(), { type: 'save', preset: createWorkspaceFactoryPreset('director', 'test-director') }) };
-    const { host, ui } = workspaceUi();
-    createPresetAuthoring({ getSettings: () => settings, save: jest.fn(), getScope: () => ({}), renderPresetHelp: renderPresetHelpButton })(host, ui);
-    host.querySelector('.workspace-agent-card').click();
-    const help = ui.inspector.querySelector('.atria-preset-help');
-    help.click();
-    expect(popups.at(-1).options.customButtons[0].text).toBe('Import agent-director preset');
+test('explicit non-Native preset help still imports without changing the active preset', async () => {
+    document.body.innerHTML = '<select id="legacy-target"><option value="">Current</option></select>' + renderPresetHelpButton({ kind: 'agent', agentMode: 'non-director', targetSelectId: 'legacy-target' });
+    document.querySelector('.atria-preset-help').click();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const action = popups.at(-1).options.customButtons[0];
+    await action.action();
+    expect(manager.savePreset).toHaveBeenCalledWith('Atri-agenda-agent', expect.any(Object), { skipUpdate: true });
+    expect(mainPreset).toBe('Daily RP');
 });

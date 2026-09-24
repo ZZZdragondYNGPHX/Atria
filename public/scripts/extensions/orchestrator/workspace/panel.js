@@ -1,3 +1,4 @@
+import { nativePromptUiActive } from '../../../native/generation-compat.js';
 import { createAtriaShellEnvironment } from '../../../atria-shell/environment.js';
 import { subscribe, getCurrentRun, requestRunStop, inspectEngineNode } from '../run-state/store.js';
 import { workspaceRunView } from '../../../lib/agent-workspace/projection.js';
@@ -125,7 +126,9 @@ function renderNodeInspector(run, view) {
 
     const definition = el('section', undefined, inspector, 'workspace-inspector-section');
     el('h4', 'Definition', definition);
-    if (node.modelProfile?.apiPresetName || node.modelProfile?.promptPresetName) {
+    if (nativePromptUiActive() || node.modelProfile?.nativeRouteRef) {
+        el('p', node.modelProfile?.nativeRouteRef ? i18n('Native Runtime Route') + ' · ' + node.modelProfile.nativeRouteRef.runtimeRouteId.slice(-8) : i18n('Use the role’s primary route'), definition);
+    } else if (node.modelProfile?.apiPresetName || node.modelProfile?.promptPresetName) {
         el('p', `${node.modelProfile?.apiPresetName || i18n('Inherited API')} · ${node.modelProfile?.promptPresetName || i18n('Inherited prompt')}`, definition);
     }
     if (node.tools?.length) el('p', i18nFormat('${0} tools available', node.tools.length), definition);

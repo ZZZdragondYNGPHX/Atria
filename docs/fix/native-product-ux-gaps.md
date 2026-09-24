@@ -69,30 +69,9 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 Implementation and validation: [completed work](native-product-ux-completed.md).
 
-# Group 3 — P0 — Agents / Memory Native Routing
+# Group 3 — Completed
 
-**Group goal:** 先补齐 Orchestrator / Memory 的 Native route 与 provider ownership，再清理兼容 preset vocabulary。
-
-## NUX-015 — Orchestrator and Memory still persist compatibility-era preset names
-
-**Current evidence**
-
-Native execution no longer needs legacy preset authority, but settings/persistence still contain fields such as:
-
-- `apiPresetName`
-- `promptPresetName`
-- `llmPresetName`
-
-The Orchestrator workspace continues to author/display these compatibility concepts even while Native generation collapses their selector into Runtime authority.
-
-**Acceptance**
-
-After NUX-012/008 provide equivalent Native routing, Native-facing schemas/UI should store Runtime route/subrole concepts. Keep legacy preset fields only in explicit non-Native compatibility islands.
-
----
-
----
-
+Implementation and validation: [completed work](native-product-ux-completed.md).
 
 # Group 4 — P0 — Native Knowledge Semantics
 

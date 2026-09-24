@@ -4,10 +4,10 @@ import { CAPABILITIES } from './capabilities.js';
 const fields = (value, keys) => Object.fromEntries(keys.filter(key => value?.[key] !== undefined).map(key => [key, structuredClone(value[key])]));
 
 export function projectModelProfile(value) {
-    const result = Object.fromEntries(['apiPresetName', 'promptPresetName'].filter(key => typeof value?.[key] === 'string').map(key => [key, value[key]]));
     const ref = value?.nativeRouteRef;
-    if (ref?.scope === 'player' && /^route_[a-f0-9]{32}$/.test(ref.runtimeRouteId || '')) result.nativeRouteRef = { scope: 'player', runtimeRouteId: ref.runtimeRouteId };
-    return result;
+    if (ref != null) return ref.scope === 'player' && /^route_[a-f0-9]{32}$/.test(ref.runtimeRouteId || '') ? { nativeRouteRef: { scope: 'player', runtimeRouteId: ref.runtimeRouteId } } : {};
+    // Non-Native compatibility evidence only; do not synthesize empty selectors.
+    return Object.fromEntries(['apiPresetName', 'promptPresetName'].filter(key => typeof value?.[key] === 'string' && value[key]).map(key => [key, value[key]]));
 }
 
 /** Reapply the allowlist at the untrusted event/replay boundary. */

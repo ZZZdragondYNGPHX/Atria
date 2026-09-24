@@ -6,12 +6,11 @@ import { CAPABILITIES, effectiveCapabilities } from '../../../../lib/orchestrati
 import { renderGraph } from '../../../../lib/agent-workspace/graph-view.js';
 import { removeWorkspaceAgent } from '../agent-editing.js';
 import { renderCapabilityPanel, renderToolPermissionPanel } from './permissions.js';
-import { nativePromptUiActive } from '../../../../native/generation-compat.js';
 import { mountRuntimeRoutePicker } from '../../../../native/runtime-route-picker.js';
 
 const MODES = ['loop', 'spec', 'agenda', 'director'];
 
-export function createPresetAuthoring({ getSettings, save, getScope, renderProfileOptions, renderPresetHelp = () => '', getTools = () => [] }) {
+export function createPresetAuthoring({ getSettings, save, getScope, getTools = () => [] }) {
     let selectedId = null;
     let searchText = '';
     let notice = '';
@@ -87,43 +86,6 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
                 return null;
             }
             return value.trim();
-        };
-
-        const profileSelect = (host, label, kind, value, change, inherited = false, helpKind = 'iteration') => {
-            const wrap = el('label', label, host);
-            wrap.classList.add('workspace-inspector-field');
-            const input = el('select', undefined, wrap);
-            input.setAttribute('aria-label', i18n(label));
-            if (kind === 'prompt') {
-                input.id = `workspace-prompt-${crypto.randomUUID()}`;
-                wrap.insertAdjacentHTML('beforeend', renderPresetHelp({
-                    kind: helpKind,
-                    agentMode: draft?.mode === 'director' ? 'director' : 'non-director',
-                    targetSelectId: input.id,
-                }));
-            }
-            const populate = () => {
-                const current = input.value || value;
-                if (renderProfileOptions) {
-                    input.innerHTML = renderProfileOptions(kind, current, inherited);
-                } else {
-                    input.replaceChildren();
-                    const empty = el('option', inherited ? 'Use workspace default' : 'Use current connection / preset', input);
-                    empty.value = '';
-                    if (current) {
-                        const option = el('option', current, input);
-                        option.value = current;
-                    }
-                }
-                input.value = current;
-            };
-            populate();
-            input.addEventListener('focus', populate);
-            input.addEventListener('change', () => {
-                value = input.value;
-                change(value);
-            });
-            return input;
         };
 
         const validatePreset = value => {
@@ -428,22 +390,9 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             const model = el('section', undefined, inspector);
             model.className = 'workspace-inspector-section';
             el('h4', 'Model', model);
-            if (nativePromptUiActive()) {
-                mountRuntimeRoutePicker({ parent: model, role: 'orchestrator', value: agent.modelProfile?.nativeRouteRef, change: value => {
-                    agent.modelProfile ||= {};
-                    if (value) agent.modelProfile.nativeRouteRef = value;
-                    else delete agent.modelProfile.nativeRouteRef;
-                } });
-            } else {
-                profileSelect(model, 'Primary API profile', 'api', agent.modelProfile?.apiPresetName || '', value => {
-                    (agent.modelProfile ||= {}).apiPresetName = value;
-                }, true);
-                const isAgendaPlanner = draft.mode === 'agenda'
-                && draft.planTemplate.nodes.some(node => node.nodeId === 'planner' && node.agentId === agent.id);
-                profileSelect(model, 'Prompt profile', 'prompt', agent.modelProfile?.promptPresetName || '', value => {
-                    (agent.modelProfile ||= {}).promptPresetName = value;
-                }, true, isAgendaPlanner ? 'iteration' : 'agent');
-            }
+            mountRuntimeRoutePicker({ parent: model, role: 'orchestrator', value: agent.modelProfile?.nativeRouteRef, change: value => {
+                agent.modelProfile = value ? { nativeRouteRef: value } : {};
+            } });
 
             const toolsSection = el('details', undefined, inspector);
             toolsSection.className = 'workspace-inspector-section';
@@ -690,16 +639,8 @@ export function createPresetAuthoring({ getSettings, save, getScope, renderProfi
             getSettings().enabled = enabled.checked;
             save();
         });
-        profileSelect(defaults, 'Default API profile · runtime fallback', 'api', settings.llmNodeApiPresetName || '', value => {
-            getSettings().llmNodeApiPresetName = value;
-            save();
-        });
-        const fallbackHint = el('p', 'Agents inherit this profile when no primary API is selected. If a different primary API fails with a provider or transport error, Atria retries through this profile.', defaults);
-        fallbackHint.className = 'workspace-hint';
-        profileSelect(defaults, 'Default prompt preset', 'prompt', settings.llmNodePresetName || '', value => {
-            getSettings().llmNodePresetName = value;
-            save();
-        });
+        el('p', 'Agents without an override use the orchestrator role’s primary Runtime Route. Prompt, generation and fallback policies are configured in Runtime.', defaults).className = 'workspace-hint';
+        button(defaults, 'Open Runtime Routes', () => globalThis.Atria?.shell?.getWorkspaceHost?.().openRuntimeSection('routes'));
 
         const bindingBar = el('div', undefined, canvasPane);
         bindingBar.className = 'workspace-binding-bar';

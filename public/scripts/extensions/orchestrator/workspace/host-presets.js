@@ -1,7 +1,8 @@
 import { configuredNativeRoute } from '../../../native/runtime-route-ref.js';
+import { normalizeNativeAgentPlan } from '../../../native/agent-settings.js';
 import { compilePreset } from '../engine-v2/preset-compiler.js';
 import { createFactoryPresetForMode, DEFAULT_SINGLE_AGENT_SYSTEM_PROMPT, DEFAULT_SINGLE_AGENT_USER_PROMPT_TEMPLATE } from '../defaults.js';
-import { compileWorkspacePreset, emptyPresetLibrary, normalizeWorkspacePreset, updatePresetLibrary, resolvePresetBinding } from '../../../lib/agent-workspace/presets.js';
+import { compileWorkspacePreset, validatePresetLibrary, emptyPresetLibrary, normalizeWorkspacePreset, updatePresetLibrary, resolvePresetBinding } from '../../../lib/agent-workspace/presets.js';
 import { AGENDA_BUILTIN_REVISION } from '../agenda-defaults.js';
 
 const WEB_TOOL_NAMES = Object.freeze(['search_search', 'search_visit']);
@@ -107,7 +108,7 @@ export function createWorkspaceFactoryPreset(mode, id = crypto.randomUUID()) {
         agent.metadata = { hostAdapters: { atria: settings } };
         agent.tools = mode === 'agenda' ? [] : ['*'];
     }
-    return { schemaVersion: 1, id, name: single ? 'Single Agent' : mode === 'agenda' ? profile.name : `${mode[0].toUpperCase()}${mode.slice(1)}`, mode, planTemplate: plan, editorMetadata: {} };
+    return { schemaVersion: 1, id, name: single ? 'Single Agent' : mode === 'agenda' ? profile.name : `${mode[0].toUpperCase()}${mode.slice(1)}`, mode, planTemplate: normalizeNativeAgentPlan(plan), editorMetadata: {} };
 }
 
 export function restoreNativeWorkspacePresets(library) {
@@ -126,7 +127,8 @@ export function restoreNativeWorkspacePresets(library) {
     if (!next.bindings.defaultPresetId) {
         next = updatePresetLibrary(next, { type: 'bind', scope: 'default', presetId: 'builtin-spec' });
     }
-    return next;
+    const normalized = validatePresetLibrary(next);
+    return JSON.stringify(normalized) === JSON.stringify(next) ? next : normalized;
 }
 
 export function getWorkspaceLibrary(settings) {

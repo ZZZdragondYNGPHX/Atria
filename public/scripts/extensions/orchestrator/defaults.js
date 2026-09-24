@@ -523,8 +523,6 @@ export const defaultLoopProfile = {
 
 export const defaultSettings = {
     enabled: false,
-    llmNodeApiPresetName: '',
-    llmNodePresetName: '',
     includeWorldInfoWithPreset: true,
     nodeIterationMaxRounds: 40,
     reviewRerunMaxRounds: 2,
@@ -534,8 +532,6 @@ export const defaultSettings = {
     capsuleInjectDepth: 0,
     capsuleInjectRole: extension_prompt_roles.SYSTEM,
     capsuleCustomInstruction: DEFAULT_CAPSULE_CUSTOM_INSTRUCTION,
-    requestApiPresetName: '',
-    requestLlmPresetName: '',
     requestSystemPrompt: getDefaultRequestSystemPrompt(),
     rpmLimit: 0,
 };

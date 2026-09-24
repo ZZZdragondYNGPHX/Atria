@@ -347,4 +347,26 @@ A newly introduced static script import broke Memory test mocks; removing that
 unnecessary dependency restored all 660 tests. No live cloud credentials or GPU
 model inference were required or claimed.
 
-Next: NUX-015, following the active backlog order.
+### NUX-015
+
+Native Agent authoring, save, restore and import normalize model configuration to
+an exact player Runtime Route or the role default. Workspace API/prompt selectors
+and their unused provider helpers are removed. Native settings reads/writes discard
+obsolete preset selector names without converting old resources or rewriting user
+prompt content. Execution projections no longer synthesize empty legacy fields.
+Explicit non-Native execution and preset-help islands retain their own contracts.
+Memory advanced settings direct users to the existing Maintenance route/retrieval
+pickers; task prompts, extraction policy and recall controls remain available.
+
+Validation: 113 Orchestrator/Agent Runtime suites covered 1265 cases and 50
+Memory/Schema suites covered 660 cases. Two obsolete assertions requiring empty
+legacy selectors were updated; their 18 cases passed. Six new contract cases cover
+exact routes, invalid authority, settings cleanup and all four preset modes through
+save/restore/import. Six adjacent suites passed 32 cases; three host suites passed
+16 cases after unused provider-helper removal. Native Runtime/retrieval regression
+passed 10 suites / 166 cases. Real Edge verified Memory routing and advanced controls
+at 390px and independent Agent routes at 320px. Screenshot inspected. The first
+advanced-settings assertion targeted a collapsed section; corrected browser checks
+passed. Changed-file ESLint and diff check passed.
+
+Next: NUX-016, following the active backlog order.

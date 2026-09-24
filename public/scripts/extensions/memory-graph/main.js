@@ -1,3 +1,4 @@
+import { clearNativePresetNames } from '../../native/agent-settings.js';
 import { normalizeMemoryRetrieval } from '../../native/retrieval-contracts.js';
 import { memoryRouteOptions, normalizeMemoryRoutes } from './native-routing.js';
 import { legacyPromptNames, nativePromptUiActive, nativeRouteOptions } from '../../native/generation-compat.js';
@@ -18,8 +19,8 @@ const eventSource = __ctx.eventSource;
 const extension_prompt_roles = __ctx.constants.promptRoles;
 const extension_prompt_types = __ctx.constants.promptTypes;
 const resolveChatStateTarget = __ctx.resolveChatStateTarget;
-const saveSettings = __ctx.saveSettings;
-const saveSettingsDebounced = __ctx.saveSettingsDebounced;
+const saveSettings = (...args) => { if (nativePromptUiActive()) clearNativePresetNames(__ctx.extensionSettings?.memory_graph); return __ctx.saveSettings(...args); };
+const saveSettingsDebounced = (...args) => { if (nativePromptUiActive()) clearNativePresetNames(__ctx.extensionSettings?.memory_graph); return __ctx.saveSettingsDebounced(...args); };
 const extension_settings = __ctx.extensionSettings;
 const getContext = Atria.getContext;
 const performFuzzySearch = __ctx.performFuzzySearch;
@@ -149,7 +150,6 @@ const RUNTIME_LOREBOOK_COMMENT_PREFIX = 'MEMORY_GRAPH_RUNTIME';
 const PERSISTENT_LOREBOOK_COMMENT_PREFIX = 'MEMORY_GRAPH_PERSISTENT';
 const RECALL_ALLOWED_GENERATION_TYPES = new Set(['normal', 'continue', 'regenerate', 'swipe', 'impersonate']);
 const RECALL_REUSE_GENERATION_TYPES = new Set(['continue', 'regenerate', 'swipe']);
-
 
 const MEMORY_GRAPH_SEARCH_ALL_TYPE = '__all__';
 const MEMORY_GRAPH_SEARCH_RESULT_PREVIEW_LIMIT = 10;
@@ -421,7 +421,6 @@ void ([
     'Internal edge prohibition: do not create contains or semantic_contains via extraction tools; hierarchy edges are managed by the graph system, not by semantic extraction.',
 ]);
 
-
 const defaultSettings = {
     memoryOsEnabled: MEMORY_OS_DEFAULT_ENABLED,
     memoryOsTokenBudget: 2400,
@@ -441,17 +440,11 @@ const defaultSettings = {
     recallInjectPosition: world_info_position.atDepth,
     recallInjectDepth: 9999,
     recallInjectRole: extension_prompt_roles.SYSTEM,
-    recallApiPresetName: '',
-    recallPresetName: '',
     includeWorldInfoWithPreset: true,
     toolCallRetryMax: 2,
     recallMaxIterations: 3,
     recallRouteSystemPrompt: DEFAULT_RECALL_ROUTE_SYSTEM_PROMPT,
     recallFinalizeSystemPrompt: DEFAULT_RECALL_FINALIZE_SYSTEM_PROMPT,
-    extractApiPresetName: '',
-    extractPresetName: '',
-    requestApiPresetName: '',
-    requestLlmPresetName: '',
     extractSystemPrompt: DEFAULT_EXTRACT_SYSTEM_PROMPT,
     extractCrawlSystemPrompt: DEFAULT_CRAWL_SYSTEM_PROMPT,
     schemaIterSystemPrompt: DEFAULT_SCHEMA_ITER_SYSTEM_PROMPT,
@@ -478,12 +471,9 @@ const defaultSettings = {
     ragDefaultPerTypeK: 3,
     ragUseRerank: false,
     ragUseQueryRewrite: false,
-    ragRewriteApiPresetName: '',
-    ragRewriteLlmPresetName: '',
     ragRewriteSystemPrompt: DEFAULT_RAG_REWRITE_SYSTEM_PROMPT,
     rpmLimit: 0,
 };
-
 
 const extractionTimers = new Map();
 const memoryStoreCache = new Map();
@@ -741,15 +731,6 @@ function ensureSettings() {
         }
     }
 
-    if (extension_settings[MODULE_NAME].schemaIterationApiPresetName !== undefined) {
-        extension_settings[MODULE_NAME].requestApiPresetName ||= String(extension_settings[MODULE_NAME].schemaIterationApiPresetName || '');
-        delete extension_settings[MODULE_NAME].schemaIterationApiPresetName;
-    }
-    if (extension_settings[MODULE_NAME].schemaIterationPresetName !== undefined) {
-        extension_settings[MODULE_NAME].requestLlmPresetName ||= String(extension_settings[MODULE_NAME].schemaIterationPresetName || '');
-        delete extension_settings[MODULE_NAME].schemaIterationPresetName;
-    }
-
     extension_settings[MODULE_NAME].toolCallRetryMax = Math.max(
         0,
         Math.min(10, Math.floor(Number(extension_settings[MODULE_NAME].toolCallRetryMax) || 0)),
@@ -864,8 +845,8 @@ export function normalizeLegacyRecallSettings(settings) {
     }
     settings.ragUseRerank = Boolean(settings.ragUseRerank);
     settings.ragUseQueryRewrite = Boolean(settings.ragUseQueryRewrite);
-    settings.ragRewriteApiPresetName = String(settings.ragRewriteApiPresetName || '');
-    settings.ragRewriteLlmPresetName = String(settings.ragRewriteLlmPresetName || '');
+    if (settings.ragRewriteApiPresetName !== undefined) settings.ragRewriteApiPresetName = String(settings.ragRewriteApiPresetName || '');
+    if (settings.ragRewriteLlmPresetName !== undefined) settings.ragRewriteLlmPresetName = String(settings.ragRewriteLlmPresetName || '');
     delete settings.diffusionSteps;
     delete settings.diffusionDecay;
     delete settings.diffusionTopK;
@@ -879,7 +860,8 @@ export function normalizeLegacyRecallSettings(settings) {
 }
 
 export function getSettings() {
-    return extension_settings[MODULE_NAME];
+    const settings = extension_settings[MODULE_NAME];
+    return nativePromptUiActive() ? clearNativePresetNames(settings) : settings;
 }
 
 function normalizeAdvancedSettings(source = null, fallbackSource = null) {
@@ -991,7 +973,6 @@ function applyAdvancedSettings(target, values) {
     target.ragRewriteSystemPrompt = normalized.ragRewriteSystemPrompt;
     target.includeWorldInfoWithPreset = normalized.includeWorldInfoWithPreset;
 }
-
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -4249,7 +4230,6 @@ function buildJsonXmlSection(tag, value) {
         `  </${safeTag}>`,
     ].join('\n');
 }
-
 
 function buildExtractInputHead() {
     return [
@@ -8600,7 +8580,6 @@ function buildPlayableFramesFromContext(context) {
     return frames;
 }
 
-
 function computeExtractionWindow(context, store, startSeq = null, settings = null) {
     const effectiveSettings = settings || getEffectiveSettings(context, getSettings());
     const frames = buildPlayableFramesFromContext(context);
@@ -9974,7 +9953,6 @@ function getLastRecallProjection(store) {
         ? store.lastRecallProjection
         : null;
 }
-
 
 function parseMarkdownTableToHtml(mdTable) {
     const lines = String(mdTable || '').split('\n').filter(l => l.trim());
@@ -14597,7 +14575,6 @@ async function openSchemaEditorPopup(context, settings, root) {
     }
 }
 
-
 // ---- Advanced tab (in-drawer) helpers -----------------------------------
 // The Advanced tab embeds all 14 advanced settings + Schema controls
 // directly in the drawer. Semantics: form changes take effect immediately
@@ -14671,7 +14648,6 @@ function applyAdvancedTabToLiveSettings(root, settings) {
     applyAdvancedSettings(settings, normalized);
     markAdvancedTabDirty(root, true);
 }
-
 
 function getCompressibleTypeSpecs(settings, context = null) {
     const schema = getEffectiveNodeTypeSchema(context, settings);
@@ -15761,6 +15737,7 @@ function bindUi() {
 
 function buildSettingsUiHtml() {
     return buildMemoryGraphSettingsHtml({
+        nativeRuntime: nativePromptUiActive(),
         escapeHtml,
         extension_prompt_roles,
         i18n,

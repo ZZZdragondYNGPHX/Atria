@@ -1,4 +1,5 @@
 import { validateGraph } from '../orchestration-engine/graph.js';
+import { normalizeNativeAgentPlan } from '../../native/agent-settings.js';
 
 const clone = value => structuredClone(value);
 const id = value => typeof value === 'string' && value.trim().length > 0;
@@ -16,7 +17,7 @@ export function compileWorkspacePreset(input) {
     if (['policyState', 'results', 'taskGraph', 'graphRevision', 'checkpoint', 'memory', 'outputState'].some(key => Object.hasOwn(template, key))) {
         throw new Error('Runtime state cannot be stored in a preset definition');
     }
-    return validateGraph({ ...template, planId: `preset:${input.id}`, source: { mode: input.mode, presetId: input.id, presetName: input.name } }).plan;
+    return validateGraph(normalizeNativeAgentPlan({ ...template, planId: `preset:${input.id}`, source: { mode: input.mode, presetId: input.id, presetName: input.name } })).plan;
 }
 
 export function normalizeWorkspacePreset(input) {

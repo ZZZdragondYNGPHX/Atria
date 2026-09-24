@@ -57,7 +57,7 @@ test('metadata allowlist excludes credentials and raw payloads at nested boundar
         modelProfile: { apiPresetName: 'selected', apiKey: 'secret', nativeRouteRef: { ...nativeRouteRef, secret: 'secret' } }, diagnostics: [{ source: 'memory', tokens: 5, content: 'secret' }],
         references: [{ id: 'source', revision: 2, text: 'secret' }], reason: 'secret' }));
     expect(JSON.stringify(sanitized)).not.toContain('secret');
-    expect(sanitized.modelProfile.apiPresetName).toBe('selected');
+    expect(sanitized.modelProfile).not.toHaveProperty('apiPresetName');
     expect(sanitized.modelProfile.nativeRouteRef).toEqual(nativeRouteRef);
     expect(sanitized.diagnostics[0].tokens).toBe(5);
 });

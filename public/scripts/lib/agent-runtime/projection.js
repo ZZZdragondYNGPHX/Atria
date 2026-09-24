@@ -22,7 +22,7 @@ export function sanitizeRuntimeEvent(raw) {
     if (Number.isFinite(raw.tokens)) event.tokens = raw.tokens;
     if (Number.isSafeInteger(raw.graphRevision) && raw.graphRevision >= 0) event.graphRevision = raw.graphRevision;
     if (raw.reason) event.reason = reasons.has(raw.reason) ? raw.reason : 'custom_handoff';
-    if (raw.modelProfile) event.modelProfile = { apiPresetName: '', promptPresetName: '', ...projectModelProfile(raw.modelProfile) };
+    if (raw.modelProfile) event.modelProfile = projectModelProfile(raw.modelProfile);
     if (Array.isArray(raw.references)) event.references = raw.references.map(ref => ({ id: String(ref?.id || ''),
         ...(typeof ref?.revision === 'number' ? { revision: ref.revision } : {}) }));
     if (Array.isArray(raw.diagnostics)) event.diagnostics = raw.diagnostics.map(item => ({

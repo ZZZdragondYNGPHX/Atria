@@ -5,20 +5,20 @@ import { emptyPresetLibrary, updatePresetLibrary, exportWorkspacePreset, importW
 
 const read = path => JSON.parse(fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8'));
 
-test('Atri factory keeps every prompt/API selection empty and exports a native Agenda', () => {
+test('Atri factory omits compatibility selections and exports a native Agenda', () => {
     const preset = createWorkspaceFactoryPreset('agenda', 'builtin-agenda');
     const host = workspaceHostProfile(importWorkspacePreset(exportWorkspacePreset(preset)));
     expect(preset.name).toBe('Atri-agenda');
     expect(host.finalAgentId).toBe('finalizer');
     expect(host.limits).toEqual({ plannerMaxRounds: 6, maxConcurrentAgents: 3, maxTotalRuns: 10 });
     expect(Object.keys(host.agents).sort()).toEqual(['character_analyst', 'critic', 'distiller', 'finalizer', 'lorebook_reader', 'progression']);
-    expect(host.planner.promptPresetName).toBe('');
+    expect(host.planner).not.toHaveProperty('promptPresetName');
     expect(host.defaultTools).toBeNull();
     for (const agent of preset.planTemplate.agents) {
-        expect(agent.modelProfile.promptPresetName).toBe('');
+        expect(agent.modelProfile).not.toHaveProperty('promptPresetName');
         expect(agent.name.startsWith('Atri-')).toBe(true);
         expect(agent.tools).toEqual([]);
-        expect(agent.modelProfile.apiPresetName).toBe('');
+        expect(agent.modelProfile).not.toHaveProperty('apiPresetName');
     }
 });
 

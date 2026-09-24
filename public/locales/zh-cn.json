@@ -7449,5 +7449,8 @@
     "No retrieval resources yet. Create one in Runtime → Retrieval.": "尚无检索资源，请在 Runtime → 检索中创建。",
     "Could not load retrieval resources. Your selections are retained; retry to continue.": "无法加载检索资源。已保留选择，请重试。",
     "Memory retrieval saved. New requests use these exact revisions.": "Memory 检索已保存，新请求将使用这些精确修订。",
-    "Could not save Memory retrieval. Your selections are retained; retry to save.": "无法保存 Memory 检索。已保留选择，请重试保存。"
+    "Could not save Memory retrieval. Your selections are retained; retry to save.": "无法保存 Memory 检索。已保留选择，请重试保存。",
+    "Configure this task’s Memory Runtime Route in Maintenance.": "在维护页配置此任务的 Memory Runtime Route。",
+    "Choose exact embedding and rerank revisions in Memory Maintenance.": "在 Memory 维护页选择嵌入和重排资源的精确修订。",
+    "Agents without an override use the orchestrator role’s primary Runtime Route. Prompt, generation and fallback policies are configured in Runtime.": "未单独指定路由的 Agent 使用 orchestrator 角色的主 Runtime Route。提示词、生成参数和回退策略均在 Runtime 中配置。"
 }

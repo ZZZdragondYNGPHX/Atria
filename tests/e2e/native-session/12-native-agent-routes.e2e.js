@@ -109,6 +109,7 @@ test('Memory saves task-specific Native routes from its existing workspace', asy
     await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
     await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
     await awaitMainUI(page, server.baseURL);
+    await page.evaluate(() => Object.assign(window.Atria.getContext().extensionSettings.memory_graph, { recallApiPresetName: 'obsolete', extractPresetName: 'obsolete', ragRewriteLlmPresetName: 'obsolete' }));
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openAgentSection('memory'));
     const workspace = page.locator('#agent-memory-workspace');
     await workspace.getByRole('button', { name: 'Maintenance', exact: true }).click();
@@ -123,6 +124,12 @@ test('Memory saves task-specific Native routes from its existing workspace', asy
     await expect(form).toContainText('Memory routes saved');
     const selected = await page.evaluate(() => window.Atria.getContext().extensionSettings.memory_graph.nativeRoutes);
     expect(Object.values(selected)).toEqual([2, 3, 2, 3].map(index => ({ scope: 'player', runtimeRouteId: routes[index].runtimeRouteId })));
+    const settings = await page.evaluate(() => window.Atria.getContext().extensionSettings.memory_graph);
+    for (const key of ['recallApiPresetName', 'extractPresetName', 'ragRewriteLlmPresetName']) expect(settings).not.toHaveProperty(key);
+    await workspace.getByText('Advanced memory settings and maintenance', { exact: true }).click();
+    await workspace.getByText('Extraction and organization', { exact: true }).click();
+    await expect(workspace.locator('.workspace-hint:visible').filter({ hasText: 'Configure this task’s Memory Runtime Route in Maintenance.' })).toBeVisible();
+    await expect(workspace.locator('select[id$="_api_preset"], select[id$="_llm_preset"], #atria_rpg_memory_embedding_profile, #atria_rpg_memory_rerank_profile')).toHaveCount(0);
     await page.screenshot({ path: info.outputPath('memory-native-routes-390.png') });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
