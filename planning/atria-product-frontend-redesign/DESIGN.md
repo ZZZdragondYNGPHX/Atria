@@ -339,3 +339,42 @@ ownership rules.
 
 Evidence: `PHASE-3.md`. This phase does not redesign Library, Runtime, Build,
 Agents or utilities. SillyTavern migration remains retired.
+
+## 11. Phase 4 Library specification and decisions — 2026-09-24
+
+The existing Library direction is implemented with the foundation palette,
+typography and WorkspaceHost. No visual direction is replaced.
+
+- **Works:** searchable poster grid using the same stable-id cover treatment as
+  Play. Installation/save import are explicit disclosures with review, permission
+  consent and recoverable failure. Detail uses a cover/title hero, Continue/Start
+  New, grouped sessions, installed versions and optional exact dependency data.
+  Destructive actions use the existing native Popup confirmation and retain
+  reference protection. Long technical identities belong in Details.
+- **Worlds & Knowledge:** grouped rows and named create/rename controls; detail
+  prioritizes readable Knowledge prose, binding references and revision history.
+  Revision payloads remain exact and optionally disclosed. Authored names and text
+  are literal content, not localization keys.
+- **Technical resources:** Prompt Programs/Modules/Generation Profiles share a
+  filterable origin-aware list and structured editor. Library saves immutable
+  revisions; Studio remains a separate Review/Apply authority. Package originals
+  stay read-only and support the existing exact-closure Fork/Derive operations.
+  Advanced data survives switching editor mode, validation failure and retry.
+- **Skills:** grouped inventory, keyboard tabs and native action buttons in the
+  same frame. Secondary/import actions are disclosed; file editing reuses existing
+  scope and expectedSha256 ownership. Conflicts remain visible in the editor and
+  preserve draft text. The bundled importer acts on the whole collection: only an
+  explicit collection action is shown, with a notice that differing local copies
+  are replaced. This corrects misleading UI without adding an install authority.
+- **Responsive navigation:** desktop uses the section strip; medium/compact use a
+  labelled native picker backed by the same routes. Compact gives the picker the
+  full row so long section names fit. Posters use four/three/two columns; action
+  rows stack and forms retain touch targets. Safe-area/keyboard bounds remain
+  owned by the Shell.
+- **Interaction:** local errors are focusable, pending writes deduplicate, native
+  dialog cancellation restores focus, stale reads cannot replace newer routes,
+  and editor mode/stage changes preserve data and keyboard position. Motion is
+  limited to brief pointer feedback, honoring reduced-motion preferences.
+
+Evidence: `PHASE-4.md`. This phase does not redesign Runtime, Build/Studio, Agents
+or utilities. SillyTavern migration remains retired.
