@@ -56,6 +56,28 @@ async function openShell(page, viewport) {
 }
 
 test.describe('R7D Desktop / Mobile Navigation', () => {
+    test('320px search and utility-menu focus preserve viewport alignment across theme changes', async ({ page }) => {
+        const root = await openShell(page, { width: 320, height: 844 });
+        await root.locator('[data-atria-primitive="BottomNavigation"] [data-atria-domain="library"]').click();
+        await root.locator('[data-atria-utility="command"]').click();
+        await root.locator('.atria-command-input').fill('runtime');
+        await page.keyboard.press('Enter');
+        await expect(page).toHaveURL(/atriaRoute=runtime/);
+        await root.locator('.atria-toolbar__menu').click();
+        await page.keyboard.press('Escape');
+        await expect(root.locator('.atria-toolbar__menu')).toBeFocused();
+
+        for (const [tint, appearance] of [['rgb(255,255,255)', 'light'], ['rgb(20,20,20)', 'dark']]) {
+            await page.evaluate(value => document.documentElement.style.setProperty('--SmartThemeBlurTintColor', value), tint);
+            await expect(page.locator('html')).toHaveAttribute('data-atria-appearance', appearance);
+            await expect.poll(() => page.evaluate(() => ({
+                documentWidth: document.documentElement.scrollWidth,
+                offset: window.scrollX,
+                shellLeft: document.getElementById('atria-app-shell').getBoundingClientRect().left,
+            }))).toEqual({ documentWidth: 320, offset: 0, shellLeft: 0 });
+        }
+    });
+
     test('Expanded Rail, Command navigation and browser Back/Forward share one authority', async ({ page }) => {
         let root = await openShell(page, { width: 1440, height: 900 });
 
@@ -64,7 +86,7 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
             .locator('[data-atria-primitive="NavigationRail"] [data-atria-domain="library"]')
             .click();
         await expect(root.locator('[data-atria-domain="library"].is-selected')).toHaveCount(2);
-        await expect(root.locator('.atria-global-bar__breadcrumb')).toContainText('Library');
+        await expect(root.locator('#atria-shell-title')).toContainText('Library');
         await expect(page).toHaveURL(/atriaRoute=library/);
 
         await root.locator('[data-atria-utility="command"]').click();
@@ -74,7 +96,7 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
 
         await page.goBack();
         await expect(root.locator('[data-atria-domain="library"].is-selected')).toHaveCount(2);
-        await expect(root.locator('.atria-global-bar__breadcrumb')).toContainText('Library');
+        await expect(root.locator('#atria-shell-title')).toContainText('Library');
 
         await page.goForward();
         await expect(root.locator('[data-atria-domain="runtime"].is-selected')).toHaveCount(2);
@@ -83,7 +105,7 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
         await page.waitForFunction(() => Boolean(window.Atria?.shell?.isMounted?.()));
         root = page.locator('#atria-app-shell');
         await expect(root.locator('[data-atria-domain="runtime"].is-selected')).toHaveCount(2);
-        await expect(root.locator('.atria-global-bar__breadcrumb')).toContainText('Runtime');
+        await expect(root.locator('#atria-shell-title')).toContainText('Runtime');
     });
 
     test('Medium keeps Rail authority and presents current Context as Dock', async ({ page }) => {
@@ -122,10 +144,10 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
         await expect(root.locator('[data-atria-primitive="BottomNavigation"]')).toBeVisible();
 
         await root
-            .locator('[data-atria-primitive="BottomNavigation"] [data-atria-domain="studio"]')
+            .locator('[data-atria-primitive="BottomNavigation"] [data-atria-domain="build"]')
             .click();
-        await expect(root.locator('[data-atria-domain="studio"].is-selected')).toHaveCount(2);
-        await expect(page).toHaveURL(/atriaRoute=studio/);
+        await expect(root.locator('[data-atria-domain="build"].is-selected')).toHaveCount(2);
+        await expect(page).toHaveURL(/atriaRoute=build/);
 
         await page.evaluate(() => {
             const shell = window.Atria.shell.getShell();
@@ -162,10 +184,10 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
 
     test('Compact keyboard shrink hides Bottom Navigation and uses visual viewport height', async ({ page }) => {
         const root = await openShell(page, { width: 390, height: 844 });
+        await root.locator('[data-atria-utility="command"]').click();
 
         const patched = await page.evaluate(() => {
-            const textarea = document.getElementById('send_textarea');
-            textarea.focus();
+            document.querySelector('.atria-command-input').focus();
             try {
                 Object.defineProperty(window, 'visualViewport', {
                     configurable: true,

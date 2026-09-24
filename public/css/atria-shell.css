@@ -1,3 +1,20 @@
+/*
+ * Atria Shell — frame and host contracts.
+ *
+ * Layout authority for the Atria frame (sidebar / toolbar / content /
+ * inspector / tab bar / transient layers) plus the host-level rules that keep
+ * legacy compatibility DOM and the Native Play generation ABI in place.
+ * Visual language: docs/plans/atria-product-frontend-redesign-design.md.
+ */
+
+:root[data-atria-appearance] {
+    /* The fixed shell owns scrolling. Focus in transient surfaces must not
+     * scroll the legacy document underneath it on narrow viewports. */
+    overflow: clip;
+    transform: none;
+    perspective: none;
+}
+
 body[data-atria-shell-mounted="true"] {
     overflow: hidden;
 }
@@ -19,6 +36,8 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     display: none !important;
 }
 
+/* ── Frame ─────────────────────────────────────────────────────────────── */
+
 .atria-app-shell {
     position: fixed;
     inset: 0;
@@ -30,18 +49,21 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     min-height: 0;
     z-index: 3800;
     display: grid;
-    grid-template-columns: 76px minmax(0, 1fr) minmax(280px, 320px);
-    grid-template-rows: calc(52px + var(--atri-safe-area-top)) minmax(0, 1fr);
+    grid-template-columns: var(--atri-sidebar-width) minmax(0, 1fr) auto;
+    grid-template-rows: calc(var(--atri-toolbar-height) + var(--atri-safe-area-top)) minmax(0, 1fr);
     grid-template-areas:
         "rail global global"
         "rail focus dock";
     overflow: hidden;
-    color: var(--atri-color-text);
-    background: var(--atri-color-canvas);
-    font-family: var(--atri-font-family-body);
-    font-size: var(--atri-font-size-body);
+    color: var(--atri-text-primary);
+    background: var(--atri-canvas);
+    font-family: var(--atri-font-sans);
+    font-size: var(--atri-text-body);
+    line-height: var(--atri-leading-normal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-shadow: none;
     padding-right: var(--atri-safe-area-right);
-    padding-bottom: var(--atri-safe-area-bottom);
     padding-left: var(--atri-safe-area-left);
 }
 
@@ -50,143 +72,433 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
 .atria-app-shell textarea,
 .atria-app-shell select {
     font: inherit;
+    color: inherit;
 }
 
 .atria-app-shell button {
-    color: inherit;
+    -webkit-tap-highlight-color: transparent;
 }
+
+.atria-app-shell ::selection {
+    background: var(--atri-accent-soft-strong);
+}
+
+.atria-app-shell :focus-visible {
+    outline: 2px solid var(--atri-accent-text);
+    outline-offset: 2px;
+}
+
+.atria-visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+}
+
+.atria-icon {
+    flex: none;
+    display: block;
+}
+
+/* ── Sidebar (Expanded) / Rail (Medium) ────────────────────────────────── */
 
 .atria-navigation-rail {
     grid-area: rail;
     min-width: 0;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    align-items: stretch;
-    gap: var(--atri-space-3);
-    padding: calc(var(--atri-safe-area-top) + var(--atri-space-3)) var(--atri-space-2) var(--atri-space-3);
-    border-right: 1px solid var(--atri-color-border);
-    background: var(--atri-color-surface);
+    gap: 2px;
+    padding: var(--atri-safe-area-top) var(--atri-space-3) var(--atri-space-3);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    border-right: 1px solid var(--atri-separator);
+    background: var(--atri-material-solid-sidebar);
 }
 
-.atria-shell-brand {
-    display: grid;
-    place-items: center;
-    width: 42px;
-    height: 42px;
-    margin: 0 auto;
-    border-radius: var(--atri-radius-lg);
-    background: var(--atri-color-accent);
-    color: var(--atri-color-accent-contrast);
-    font-weight: 800;
-    font-size: var(--atri-font-size-heading);
-    box-shadow: var(--atri-shadow-surface);
+.atria-navigation-rail::-webkit-scrollbar {
+    display: none;
 }
 
-.atria-shell-nav-items {
+.atria-sidebar__brand {
+    flex: none;
+    height: var(--atri-toolbar-height);
     display: flex;
-    flex: 1;
+    align-items: center;
+    gap: 10px;
+    padding: 0 var(--atri-space-2);
+    margin-bottom: var(--atri-space-2);
+    user-select: none;
+}
+
+/* The mark is a solid disc with the character cut out; it shows the surface
+ * behind it, so dark appearance only needs the disc inverted. */
+.atria-brand-mark {
+    width: 26px;
+    height: 26px;
+    flex: none;
+    overflow: hidden;
+    border-radius: 50%;
+}
+
+.atria-brand-mark__image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+:root[data-atria-appearance="dark"] .atria-brand-mark__image {
+    filter: invert(1);
+}
+
+.atria-brand-wordmark {
+    font-family: var(--atri-font-display);
+    font-size: calc(var(--atri-base) * 1.2);
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: var(--atri-text-primary);
+}
+
+.atria-sidebar__items {
+    display: flex;
     flex-direction: column;
-    gap: var(--atri-space-1);
+    gap: 2px;
+}
+
+.atria-sidebar__footer {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: var(--atri-space-3);
 }
 
 .atria-shell-nav-button,
 .atria-shell-utility-button,
 .atria-icon-button {
     appearance: none;
+    margin: 0;
     border: 0;
     background: transparent;
     cursor: pointer;
 }
 
-.atria-shell-nav-button {
-    min-height: 52px;
+.atria-sidebar .atria-shell-nav-button,
+.atria-sidebar .atria-shell-utility-button {
+    width: 100%;
+    min-height: 34px;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: var(--atri-space-1);
-    padding: var(--atri-space-2) var(--atri-space-1);
-    border-radius: var(--atri-radius-md);
-    color: var(--atri-color-text-muted);
+    gap: 10px;
+    padding: 0 var(--atri-space-2-5);
+    border-radius: var(--atri-radius-sm);
+    color: var(--atri-text-secondary);
+    font-size: var(--atri-text-callout);
+    font-weight: 500;
+    line-height: 1.2;
+    text-align: start;
     transition:
-        color var(--atri-motion-fast) var(--atri-ease-standard),
-        background var(--atri-motion-fast) var(--atri-ease-standard);
+        background-color var(--atri-duration-fast) var(--atri-ease-out),
+        color var(--atri-duration-fast) var(--atri-ease-out);
 }
 
-.atria-shell-nav-button:hover:not(:disabled),
-.atria-shell-nav-button.is-selected {
-    color: var(--atri-color-text);
-    background: color-mix(in srgb, var(--atri-color-accent) 16%, transparent);
-}
-
-.atria-shell-nav-button.is-selected {
-    box-shadow: inset 3px 0 0 var(--atri-color-accent);
-}
-
-.atria-shell-nav-label {
-    font-size: var(--atri-font-size-caption);
-    line-height: 1.1;
-}
-
-.atria-global-bar {
-    grid-area: global;
-    min-width: 0;
-    min-height: 52px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--atri-space-4);
-    padding: var(--atri-space-2) var(--atri-space-4);
-    padding-top: calc(var(--atri-space-2) + var(--atri-safe-area-top));
-    border-bottom: 1px solid var(--atri-color-border);
-    background: color-mix(in srgb, var(--atri-color-surface) 94%, transparent);
-}
-
-.atria-global-bar__context,
-.atria-global-bar__utilities {
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: var(--atri-space-2);
-}
-
-.atria-global-bar__context {
-    overflow: hidden;
-}
-
-.atria-global-bar__breadcrumb {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-weight: 650;
-}
-
-.atria-shell-utility-button {
-    min-width: 36px;
+.atria-sidebar .atria-shell-nav-button {
     min-height: 36px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--atri-space-1);
-    padding: 0 var(--atri-space-2);
-    border-radius: var(--atri-radius-md);
-    color: var(--atri-color-text-muted);
+    color: var(--atri-text-primary);
 }
 
-.atria-shell-utility-button:hover:not(:disabled) {
-    color: var(--atri-color-text);
-    background: var(--atri-color-raised);
+.atria-shell-nav-icon {
+    width: 22px;
+    height: 22px;
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    color: var(--atri-text-secondary);
+    transition: color var(--atri-duration-fast) var(--atri-ease-out);
+}
+
+.atria-sidebar .atria-shell-nav-button:hover:not(:disabled),
+.atria-sidebar .atria-shell-utility-button:hover:not(:disabled) {
+    background: var(--atri-fill);
+    color: var(--atri-text-primary);
+}
+
+.atria-sidebar .atria-shell-nav-button:active:not(:disabled),
+.atria-sidebar .atria-shell-utility-button:active:not(:disabled) {
+    background: var(--atri-fill-pressed);
+}
+
+.atria-sidebar .atria-shell-nav-button.is-selected,
+.atria-sidebar .atria-shell-utility-button.is-selected {
+    background: var(--atri-accent-soft);
+    color: var(--atri-text-primary);
+    font-weight: 600;
+}
+
+.atria-sidebar .is-selected .atria-shell-nav-icon {
+    color: var(--atri-accent-text);
 }
 
 .atria-shell-utility-button:disabled {
     cursor: default;
-    opacity: 0.42;
+    opacity: 0.4;
 }
 
-.atria-shell-utility-label {
-    display: none;
-    font-size: var(--atri-font-size-body-small);
+.atria-sidebar__account {
+    margin-top: var(--atri-space-2);
+    padding-top: var(--atri-space-2);
 }
+
+.atria-app-shell[data-atria-viewport="medium"] {
+    grid-template-columns: var(--atri-rail-width) minmax(0, 1fr);
+    grid-template-areas:
+        "rail global"
+        "rail focus";
+}
+
+.atria-app-shell[data-atria-viewport="medium"] .atria-navigation-rail {
+    padding-inline: var(--atri-space-2);
+}
+
+.atria-app-shell[data-atria-viewport="medium"] .atria-sidebar__brand {
+    justify-content: center;
+    padding: 0;
+}
+
+.atria-app-shell[data-atria-viewport="medium"] .atria-brand-wordmark {
+    display: none;
+}
+
+.atria-app-shell[data-atria-viewport="medium"] .atria-sidebar .atria-shell-nav-button,
+.atria-app-shell[data-atria-viewport="medium"] .atria-sidebar .atria-shell-utility-button {
+    min-height: 54px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: var(--atri-space-1-5) 2px;
+    border-radius: var(--atri-radius-md);
+    font-size: var(--atri-text-caption-2);
+    font-weight: 500;
+    text-align: center;
+}
+
+.atria-app-shell[data-atria-viewport="medium"] .atria-sidebar .atria-shell-nav-button {
+    color: var(--atri-text-secondary);
+}
+
+.atria-app-shell[data-atria-viewport="medium"] .atria-sidebar .is-selected {
+    color: var(--atri-accent-text);
+}
+
+.atria-app-shell[data-atria-viewport="medium"] .atria-shell-nav-label,
+.atria-app-shell[data-atria-viewport="medium"] .atria-shell-utility-label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Toolbar ───────────────────────────────────────────────────────────── */
+
+.atria-global-bar {
+    grid-area: global;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--atri-space-3);
+    padding: var(--atri-safe-area-top) var(--atri-space-4) 0 var(--atri-space-5);
+    border-bottom: 1px solid var(--atri-separator);
+    background: var(--atri-material-solid-bar);
+}
+
+.atria-toolbar__leading {
+    min-width: 0;
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: var(--atri-space-1);
+}
+
+.atria-toolbar__back {
+    flex: none;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    margin: 0 var(--atri-space-1) 0 calc(-1 * var(--atri-space-2));
+    padding: 0 var(--atri-space-2) 0 var(--atri-space-1);
+    border: 0;
+    border-radius: var(--atri-radius-sm);
+    background: transparent;
+    color: var(--atri-accent-text);
+    font-size: var(--atri-text-callout);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.atria-toolbar__back:hover {
+    background: var(--atri-fill);
+}
+
+.atria-toolbar__back-label:empty {
+    display: none;
+}
+
+.atria-toolbar__titles {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.atria-toolbar__title {
+    margin: 0;
+    overflow: hidden;
+    color: var(--atri-text-primary);
+    font-family: var(--atri-font-display);
+    font-size: calc(var(--atri-base) * 1.067);
+    font-weight: 650;
+    letter-spacing: var(--atri-tracking-headline);
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.atria-toolbar__trailing {
+    min-width: 0;
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: var(--atri-space-1-5);
+}
+
+.atria-context-bar__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--atri-space-1-5);
+}
+
+.atria-context-bar__actions:empty {
+    display: none;
+}
+
+.atria-toolbar-search {
+    height: 32px;
+    min-width: 200px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--atri-space-2);
+    padding: 0 var(--atri-space-1-5) 0 var(--atri-space-2-5);
+    border: 0;
+    border-radius: var(--atri-radius-sm);
+    background: var(--atri-fill);
+    color: var(--atri-text-tertiary);
+    font-size: var(--atri-text-callout);
+    cursor: pointer;
+    transition: background-color var(--atri-duration-fast) var(--atri-ease-out);
+}
+
+.atria-toolbar-search:hover {
+    background: var(--atri-fill-hover);
+    color: var(--atri-text-secondary);
+}
+
+.atria-toolbar-search__label {
+    flex: 1;
+    text-align: start;
+}
+
+.atria-toolbar-search__shortcut {
+    padding: 1px 6px;
+    border-radius: var(--atri-radius-xs);
+    background: var(--atri-fill);
+    color: var(--atri-text-tertiary);
+    font-family: var(--atri-font-sans);
+    font-size: var(--atri-text-caption-2);
+    font-weight: 500;
+    line-height: 18px;
+}
+
+.atria-icon-button {
+    width: 32px;
+    height: 32px;
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    padding: 0;
+    border-radius: var(--atri-radius-sm);
+    color: var(--atri-text-secondary);
+    transition:
+        background-color var(--atri-duration-fast) var(--atri-ease-out),
+        color var(--atri-duration-fast) var(--atri-ease-out);
+}
+
+.atria-icon-button:hover:not(:disabled) {
+    color: var(--atri-text-primary);
+    background: var(--atri-fill);
+}
+
+.atria-icon-button:active:not(:disabled) {
+    background: var(--atri-fill-pressed);
+}
+
+.atria-icon-button.is-selected,
+.atria-icon-button[aria-pressed="true"] {
+    color: var(--atri-accent-text);
+    background: var(--atri-accent-soft);
+}
+
+.atria-icon-button:disabled {
+    cursor: default;
+    opacity: 0.4;
+}
+
+.atria-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--atri-space-1-5);
+    min-height: 24px;
+    padding: 0 var(--atri-space-2-5);
+    border-radius: var(--atri-radius-pill);
+    background: var(--atri-fill);
+    color: var(--atri-text-secondary);
+    font-size: var(--atri-text-caption);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.atria-status-chip::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.9;
+}
+
+.atria-status-chip[data-tone="success"] {
+    color: var(--atri-success);
+    background: var(--atri-success-soft);
+}
+
+.atria-status-chip[data-tone="warning"] {
+    color: var(--atri-warning);
+    background: var(--atri-warning-soft);
+}
+
+.atria-status-chip[data-tone="danger"],
+.atria-status-chip[data-tone="error"] {
+    color: var(--atri-danger);
+    background: var(--atri-danger-soft);
+}
+
+/* ── Focus area ────────────────────────────────────────────────────────── */
 
 .atria-focus-area {
     grid-area: focus;
@@ -194,28 +506,7 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     min-height: 0;
     display: flex;
     flex-direction: column;
-    background: var(--atri-color-canvas);
-}
-
-.atria-context-bar {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--atri-space-3);
-    padding: var(--atri-space-2) var(--atri-space-4);
-    border-bottom: 1px solid color-mix(in srgb, var(--atri-color-border) 72%, transparent);
-    background: var(--atri-color-surface);
-}
-
-.atria-context-bar__title {
-    font-size: var(--atri-font-size-subheading);
-}
-
-.atria-context-bar__actions {
-    display: flex;
-    align-items: center;
-    gap: var(--atri-space-2);
+    background: var(--atri-canvas);
 }
 
 .atria-focus-area__body {
@@ -230,143 +521,216 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     min-width: 0;
     min-height: 0;
     overflow: auto;
-    padding: var(--atri-space-4);
 }
 
 .atria-stage {
     display: grid;
     place-items: center;
+    padding: var(--atri-space-6);
 }
+
+.atria-workspace {
+    padding: 0;
+}
+
+/* ── Inspector (Dock) ──────────────────────────────────────────────────── */
 
 .atria-dock {
     grid-area: dock;
+    width: var(--atri-inspector-width);
     min-width: 0;
     min-height: 0;
     display: flex;
     flex-direction: column;
-    border-left: 1px solid var(--atri-color-border);
-    background: var(--atri-color-surface);
+    border-left: 1px solid var(--atri-separator);
+    background: var(--atri-surface-1);
 }
 
 .atria-dock__header {
-    min-height: 44px;
+    flex: none;
+    min-height: 48px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--atri-space-2);
-    padding: var(--atri-space-2) var(--atri-space-3);
-    border-bottom: 1px solid color-mix(in srgb, var(--atri-color-border) 72%, transparent);
+    padding: var(--atri-space-2) var(--atri-space-2) var(--atri-space-2) var(--atri-space-4);
+}
+
+.atria-dock__title {
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--atri-text-headline);
+    font-weight: 650;
+    letter-spacing: var(--atri-tracking-headline);
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .atria-dock__body {
     min-height: 0;
     flex: 1;
     overflow: auto;
-    padding: var(--atri-space-3);
+    overscroll-behavior: contain;
+    padding: 0 var(--atri-space-4) var(--atri-space-5);
 }
 
-.atria-icon-button {
-    width: 32px;
-    height: 32px;
-    display: inline-grid;
-    place-items: center;
-    border-radius: var(--atri-radius-sm);
-    color: var(--atri-color-text-muted);
+.atria-app-shell[data-atria-viewport="medium"] .atria-dock:not([hidden]) {
+    position: absolute;
+    z-index: 10;
+    top: calc(var(--atri-toolbar-height) + var(--atri-safe-area-top) + var(--atri-space-2));
+    right: calc(var(--atri-safe-area-right) + var(--atri-space-2));
+    bottom: var(--atri-space-2);
+    width: min(360px, 46vw);
+    border: 0;
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-elevated);
+    box-shadow: var(--atri-highlight), var(--atri-shadow-2);
+    animation: atria-inspector-in var(--atri-duration-base) var(--atri-ease-out);
 }
 
-.atria-icon-button:hover {
-    color: var(--atri-color-text);
-    background: var(--atri-color-raised);
+.atria-workspace-context-summary {
+    display: grid;
+    gap: var(--atri-space-2);
+    padding: var(--atri-space-3) 0 0;
 }
+
+.atria-workspace-context-summary > strong {
+    font-size: var(--atri-text-title-3);
+    font-weight: 650;
+    letter-spacing: var(--atri-tracking-title);
+}
+
+.atria-workspace-context-summary > p {
+    margin: 0;
+    color: var(--atri-text-secondary);
+    font-size: var(--atri-text-footnote);
+    line-height: var(--atri-leading-normal);
+}
+
+/* ── Tab bar (Compact) ─────────────────────────────────────────────────── */
 
 .atria-bottom-navigation {
     display: none;
     grid-area: bottom;
     align-items: stretch;
     justify-content: space-around;
-    gap: 2px;
-    padding: var(--atri-space-1) var(--atri-space-1) calc(var(--atri-space-1) + var(--atri-safe-area-bottom));
-    border-top: 1px solid var(--atri-color-border);
-    background: var(--atri-color-surface);
+    padding: 0 var(--atri-space-1) var(--atri-safe-area-bottom);
+    border-top: 1px solid var(--atri-separator);
+    background: var(--atri-material-solid-bar);
 }
 
 .atria-bottom-navigation .atria-shell-nav-button {
-    flex: 1;
-    min-height: 52px;
+    flex: 1 1 0;
+    min-width: 0;
+    height: var(--atri-tabbar-height);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: var(--atri-space-1) 0 0;
+    color: var(--atri-text-tertiary);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.atria-bottom-navigation .atria-shell-nav-icon {
+    width: 26px;
+    height: 26px;
+    color: inherit;
 }
 
 .atria-bottom-navigation .atria-shell-nav-button.is-selected {
-    box-shadow: inset 0 3px 0 var(--atri-color-accent);
+    color: var(--atri-accent-text);
 }
 
-.atria-status-chip {
-    display: inline-flex;
-    align-items: center;
-    min-height: 24px;
-    padding: 0 var(--atri-space-2);
-    border-radius: var(--atri-radius-pill);
-    background: var(--atri-color-raised);
-    color: var(--atri-color-text-muted);
-    font-size: var(--atri-font-size-caption);
+.atria-bottom-navigation .atria-shell-nav-label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.atria-status-chip[data-tone="success"] {
-    color: var(--atri-color-success);
+/* ── Compact composition ───────────────────────────────────────────────── */
+
+.atria-app-shell[data-atria-viewport="compact"] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows:
+        calc(var(--atri-toolbar-height) + var(--atri-safe-area-top))
+        minmax(0, 1fr)
+        calc(var(--atri-tabbar-height) + var(--atri-safe-area-bottom));
+    grid-template-areas:
+        "global"
+        "focus"
+        "bottom";
 }
 
-.atria-status-chip[data-tone="warning"] {
-    color: var(--atri-color-warning);
+.atria-app-shell[data-atria-viewport="compact"] .atria-navigation-rail {
+    display: none;
 }
 
-.atria-status-chip[data-tone="danger"],
-.atria-status-chip[data-tone="error"] {
-    color: var(--atri-color-danger);
-}
-
-.atria-empty-state,
-.atria-error-state,
-.atria-loading-state {
-    max-width: 560px;
+.atria-app-shell[data-atria-viewport="compact"] .atria-bottom-navigation {
     display: flex;
-    flex-direction: column;
-    gap: var(--atri-space-2);
-    padding: var(--atri-space-5);
-    border: 1px solid var(--atri-color-border);
-    border-radius: var(--atri-radius-lg);
-    background: var(--atri-color-surface);
-    color: var(--atri-color-text-muted);
-    box-shadow: var(--atri-shadow-surface);
 }
 
-.atria-empty-state strong,
-.atria-error-state strong,
-.atria-loading-state strong {
-    color: var(--atri-color-text);
-    font-size: var(--atri-font-size-heading);
+.atria-app-shell[data-atria-viewport="compact"] .atria-global-bar {
+    padding-inline: var(--atri-space-4) var(--atri-space-2);
 }
 
-.atria-runtime-card {
-    display: grid;
-    gap: var(--atri-space-2);
-    padding: var(--atri-space-3);
-    border: 1px solid var(--atri-color-border);
-    border-radius: var(--atri-radius-md);
-    background: var(--atri-color-surface);
+.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar__title {
+    font-size: calc(var(--atri-base) * 1.133);
 }
 
-.atria-runtime-card__title,
-.atria-runtime-card__description {
-    margin: 0;
+.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar-search {
+    width: 36px;
+    min-width: 0;
+    height: 36px;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    color: var(--atri-text-primary);
 }
 
-.atria-runtime-card__title {
-    font-size: var(--atri-font-size-heading);
+.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar-search__label,
+.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar-search__shortcut,
+.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar__status {
+    display: none;
 }
 
-.atria-runtime-card__description {
-    color: var(--atri-color-text-muted);
+.atria-app-shell[data-atria-viewport="compact"] .atria-toolbar__trailing .atria-icon-button {
+    width: 36px;
+    height: 36px;
+    color: var(--atri-text-primary);
 }
+
+.atria-app-shell[data-atria-viewport="compact"] .atria-stage {
+    padding: var(--atri-space-4);
+}
+
+.atria-app-shell[data-atria-viewport="medium"] .atria-toolbar-search {
+    min-width: 150px;
+}
+
+.atria-app-shell[data-atria-keyboard="open"] .atria-bottom-navigation {
+    display: none;
+}
+
+.atria-app-shell[data-atria-keyboard="open"] {
+    grid-template-rows:
+        calc(var(--atri-toolbar-height) + var(--atri-safe-area-top))
+        minmax(0, 1fr);
+    grid-template-areas:
+        "global"
+        "focus";
+}
+
+.atria-app-shell[data-atria-keyboard="open"] .atria-sheet-panel,
+.atria-app-shell[data-atria-keyboard="open"] .atria-command-panel {
+    max-height: calc(var(--atri-viewport-height) - (2 * var(--atri-space-2)));
+}
+
+/* ── Transient layers ──────────────────────────────────────────────────── */
 
 .atria-transient-layer,
 .atria-host-recovery {
@@ -388,7 +752,8 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
 }
 
 .atria-sheet,
-.atria-command-surface {
+.atria-command-surface,
+.atria-shell-menu-layer {
     position: absolute;
     inset: 0;
     pointer-events: auto;
@@ -405,136 +770,447 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
 }
 
 .atria-sheet-scrim,
-.atria-command-scrim {
+.atria-command-scrim,
+.atria-shell-menu-scrim {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
+    margin: 0;
+    padding: 0;
     border: 0;
-    background: var(--atri-color-scrim);
+    background: var(--atri-scrim);
+    cursor: default;
+    animation: atria-fade-in var(--atri-duration-base) var(--atri-ease-out);
 }
 
+.atria-shell-menu-scrim {
+    background: transparent;
+}
+
+/* Context sheet */
 .atria-sheet-panel {
     position: absolute;
-    right: max(var(--atri-space-3), var(--atri-safe-area-right));
-    bottom: max(var(--atri-space-3), var(--atri-safe-area-bottom));
-    left: max(var(--atri-space-3), var(--atri-safe-area-left));
-    max-height: min(78vh, 760px);
-    overflow: auto;
-    border: 1px solid var(--atri-color-border);
-    border-radius: var(--atri-radius-lg);
-    background: var(--atri-color-overlay);
-    box-shadow: var(--atri-shadow-overlay);
-    transform-origin: bottom center;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    max-height: min(86vh, 820px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-right: var(--atri-safe-area-right);
+    padding-bottom: var(--atri-safe-area-bottom);
+    padding-left: var(--atri-safe-area-left);
+    border-radius: var(--atri-radius-xl) var(--atri-radius-xl) 0 0;
+    background: var(--atri-elevated);
+    box-shadow: var(--atri-highlight), var(--atri-shadow-3);
+    transition:
+        max-height var(--atri-duration-slow) var(--atri-ease-sheet),
+        transform var(--atri-duration-base) var(--atri-ease-sheet);
+    animation: atria-sheet-in var(--atri-duration-slow) var(--atri-ease-sheet);
+}
+
+.atria-sheet[data-atria-sheet-dragging="true"] .atria-sheet-panel {
+    transition: none;
 }
 
 .atria-sheet[data-atria-sheet-state="peek"] .atria-sheet-panel {
-    max-height: 20vh;
+    height: 30vh;
 }
 
 .atria-sheet[data-atria-sheet-state="half"] .atria-sheet-panel {
-    max-height: 50vh;
+    height: 56vh;
 }
 
 .atria-sheet[data-atria-sheet-state="full"] .atria-sheet-panel {
-    top: calc(var(--atri-safe-area-top) + var(--atri-space-2));
+    top: calc(var(--atri-safe-area-top) + var(--atri-space-3));
     max-height: none;
 }
 
+.atria-sheet-grip {
+    flex: none;
+    display: grid;
+    place-items: center;
+    height: 22px;
+    touch-action: none;
+    cursor: grab;
+}
+
 .atria-sheet-handle {
-    width: 42px;
-    height: 4px;
-    margin: var(--atri-space-2) auto;
+    width: 38px;
+    height: 5px;
     border-radius: var(--atri-radius-pill);
-    background: var(--atri-color-border);
+    background: var(--atri-fill-strong);
+}
+
+.atria-sheet-header {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--atri-space-2);
+    padding: 0 var(--atri-space-3) var(--atri-space-2) var(--atri-space-5);
+    touch-action: none;
+}
+
+.atria-sheet-title {
+    min-width: 0;
+    overflow: hidden;
+    font-size: var(--atri-text-headline);
+    font-weight: 650;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.atria-sheet-close {
+    background: var(--atri-fill);
 }
 
 .atria-sheet-body {
-    padding: var(--atri-space-3) var(--atri-space-4) var(--atri-space-5);
+    min-height: 0;
+    flex: 1;
+    overflow: auto;
+    overscroll-behavior: contain;
+    padding: 0 var(--atri-space-5) var(--atri-space-6);
 }
 
+.atria-sheet-body > .atria-dock__body {
+    overflow: visible;
+    padding: 0;
+}
+
+/* Search / Command */
 .atria-command-panel {
     position: absolute;
-    top: max(10vh, calc(var(--atri-safe-area-top) + var(--atri-space-5)));
+    top: max(13vh, calc(var(--atri-safe-area-top) + var(--atri-space-6)));
     left: 50%;
-    width: min(680px, calc(100vw - 48px));
-    max-height: min(72vh, 720px);
+    width: min(640px, calc(100vw - 48px));
+    max-height: min(66vh, 640px);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     transform: translateX(-50%);
-    border: 1px solid var(--atri-color-border);
-    border-radius: var(--atri-radius-lg);
-    background: var(--atri-color-overlay);
-    box-shadow: var(--atri-shadow-overlay);
+    border-radius: var(--atri-radius-xl);
+    background: var(--atri-elevated);
+    box-shadow: var(--atri-highlight), var(--atri-shadow-3);
+    animation: atria-palette-in var(--atri-duration-base) var(--atri-ease-out);
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    body:not(.no-blur) .atria-command-panel,
+    body:not(.no-blur) .atria-shell-menu {
+        background: color-mix(in srgb, var(--atri-elevated) 86%, transparent);
+        -webkit-backdrop-filter: var(--atri-material-filter);
+        backdrop-filter: var(--atri-material-filter);
+    }
+}
+
+.atria-command-field {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: var(--atri-space-3);
+    min-height: 58px;
+    padding: 0 var(--atri-space-5);
+    border-bottom: 1px solid var(--atri-separator);
+}
+
+.atria-command-field__icon {
+    color: var(--atri-text-tertiary);
 }
 
 .atria-command-input {
-    width: 100%;
-    min-height: 48px;
+    min-width: 0;
+    flex: 1;
+    height: 56px;
+    margin: 0;
+    padding: 0;
     border: 0;
-    border-bottom: 1px solid var(--atri-color-border);
     outline: 0;
-    padding: 0 var(--atri-space-4);
     background: transparent;
-    color: var(--atri-color-text);
+    color: var(--atri-text-primary);
+    font-size: calc(var(--atri-base) * 1.2);
+    font-weight: 400;
+    letter-spacing: -0.01em;
 }
 
-.atria-command-input:focus-visible {
-    box-shadow: inset 0 -2px 0 var(--atri-color-focus);
+.atria-command-input::placeholder {
+    color: var(--atri-text-tertiary);
+}
+
+.atria-command-input::-webkit-search-cancel-button {
+    display: none;
+}
+
+.atria-app-shell .atria-command-input:focus-visible {
+    outline: 0;
+}
+
+.atria-command-cancel {
+    display: none;
+    flex: none;
+    padding: var(--atri-space-2) 0 var(--atri-space-2) var(--atri-space-2);
+    border: 0;
+    background: transparent;
+    color: var(--atri-accent-text);
+    font-size: var(--atri-text-body);
+    cursor: pointer;
 }
 
 .atria-command-results {
     min-height: 0;
+    flex: 1;
     overflow: auto;
+    overscroll-behavior: contain;
     padding: var(--atri-space-2);
+}
+
+.atria-command-group + .atria-command-group {
+    margin-top: var(--atri-space-2);
+}
+
+.atria-command-group__title {
+    padding: var(--atri-space-2) var(--atri-space-3) var(--atri-space-1);
+    color: var(--atri-text-tertiary);
+    font-size: var(--atri-text-caption);
+    font-weight: 600;
+    letter-spacing: 0.01em;
 }
 
 .atria-command-result {
     width: 100%;
-    min-height: 48px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-        "title shortcut"
-        "subtitle shortcut";
-    gap: 2px var(--atri-space-3);
+    min-height: 44px;
+    display: flex;
     align-items: center;
+    gap: var(--atri-space-3);
+    margin: 0;
+    padding: var(--atri-space-1-5) var(--atri-space-3);
     border: 0;
     border-radius: var(--atri-radius-md);
-    padding: var(--atri-space-2) var(--atri-space-3);
     background: transparent;
-    color: var(--atri-color-text);
-    text-align: left;
+    color: var(--atri-text-primary);
+    text-align: start;
     cursor: pointer;
 }
 
-.atria-command-result:hover,
-.atria-command-result:focus-visible {
-    outline: 0;
-    background: var(--atri-color-raised);
+.atria-command-result.is-active {
+    background: var(--atri-accent);
+    color: var(--atri-text-on-accent);
+}
+
+.atria-command-result__icon {
+    width: 30px;
+    height: 30px;
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    border-radius: var(--atri-radius-sm);
+    background: var(--atri-fill);
+    color: var(--atri-text-secondary);
+}
+
+.atria-command-result.is-active .atria-command-result__icon {
+    background: rgb(255 255 255 / 0.18);
+    color: inherit;
+}
+
+.atria-command-result__text {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
 }
 
 .atria-command-result__title {
-    grid-area: title;
-    font-weight: 650;
+    overflow: hidden;
+    font-size: var(--atri-text-callout);
+    font-weight: 550;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .atria-command-result__subtitle {
-    grid-area: subtitle;
-    color: var(--atri-color-text-muted);
-    font-size: var(--atri-font-size-caption);
+    overflow: hidden;
+    color: var(--atri-text-secondary);
+    font-size: var(--atri-text-caption);
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.atria-command-result kbd {
-    grid-area: shortcut;
-    padding: 2px 6px;
-    border: 1px solid var(--atri-color-border);
-    border-radius: var(--atri-radius-sm);
-    color: var(--atri-color-text-muted);
-    font-family: var(--atri-font-family-mono);
-    font-size: var(--atri-font-size-caption);
+.atria-command-result.is-active .atria-command-result__subtitle {
+    color: rgb(255 255 255 / 0.78);
 }
+
+.atria-command-result__shortcut {
+    padding: 1px 6px;
+    border-radius: var(--atri-radius-xs);
+    background: var(--atri-fill);
+    color: inherit;
+    font-family: var(--atri-font-sans);
+    font-size: var(--atri-text-caption-2);
+}
+
+.atria-command-empty {
+    margin: var(--atri-space-6) auto;
+}
+
+.atria-command-footer {
+    flex: none;
+    display: flex;
+    gap: var(--atri-space-4);
+    padding: var(--atri-space-2) var(--atri-space-5);
+    border-top: 1px solid var(--atri-separator);
+    color: var(--atri-text-tertiary);
+    font-size: var(--atri-text-caption-2);
+}
+
+.atria-command-footer__hint {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--atri-space-1-5);
+}
+
+.atria-command-footer kbd {
+    min-width: 18px;
+    padding: 0 5px;
+    border-radius: var(--atri-radius-xs);
+    background: var(--atri-fill);
+    color: var(--atri-text-secondary);
+    font-family: var(--atri-font-sans);
+    font-size: var(--atri-text-caption-2);
+    line-height: 18px;
+    text-align: center;
+}
+
+.atria-command-surface[data-atria-command-presentation="sheet"] .atria-command-panel {
+    top: 0;
+    right: 0;
+    bottom: auto;
+    left: 0;
+    width: auto;
+    max-height: min(calc(var(--atri-viewport-height, 100dvh) - var(--atri-space-8)), 720px);
+    padding-top: var(--atri-safe-area-top);
+    padding-right: var(--atri-safe-area-right);
+    padding-left: var(--atri-safe-area-left);
+    transform: none;
+    border-radius: 0 0 var(--atri-radius-xl) var(--atri-radius-xl);
+    animation: atria-sheet-down var(--atri-duration-slow) var(--atri-ease-sheet);
+}
+
+.atria-command-surface[data-atria-command-presentation="sheet"] .atria-command-field {
+    min-height: 56px;
+    padding: 0 var(--atri-space-4);
+}
+
+.atria-command-surface[data-atria-command-presentation="sheet"] .atria-command-input {
+    font-size: 17px;
+}
+
+.atria-command-surface[data-atria-command-presentation="sheet"] .atria-command-cancel {
+    display: inline-flex;
+}
+
+.atria-command-surface[data-atria-command-presentation="sheet"] .atria-command-footer {
+    display: none;
+}
+
+/* Compact account & settings menu */
+.atria-shell-menu {
+    position: absolute;
+    top: calc(var(--atri-safe-area-top) + var(--atri-toolbar-height) - var(--atri-space-1));
+    right: calc(var(--atri-safe-area-right) + var(--atri-space-2));
+    width: min(260px, calc(100vw - 24px));
+    display: flex;
+    flex-direction: column;
+    padding: var(--atri-space-1-5);
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-elevated);
+    box-shadow: var(--atri-highlight), var(--atri-shadow-3);
+    transform-origin: top right;
+    animation: atria-menu-in var(--atri-duration-base) var(--atri-ease-out);
+}
+
+.atria-shell-menu__item {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: var(--atri-space-3);
+    margin: 0;
+    padding: 0 var(--atri-space-3);
+    border: 0;
+    border-radius: var(--atri-radius-md);
+    background: transparent;
+    color: var(--atri-text-primary);
+    font-size: var(--atri-text-body);
+    text-align: start;
+    cursor: pointer;
+}
+
+.atria-shell-menu__item:hover:not(:disabled),
+.atria-shell-menu__item:focus-visible {
+    outline: 0;
+    background: var(--atri-fill-hover);
+}
+
+.atria-shell-menu__item:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.atria-shell-menu__icon {
+    display: inline-grid;
+    place-items: center;
+    color: var(--atri-text-secondary);
+}
+
+/* ── Motion ────────────────────────────────────────────────────────────── */
+
+@keyframes atria-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes atria-sheet-in {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+@keyframes atria-sheet-down {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes atria-palette-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(-6px) scale(0.985); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+@keyframes atria-menu-in {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes atria-inspector-in {
+    from { opacity: 0; transform: translateX(12px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+body.reduced-motion .atria-app-shell *,
+.atria-app-shell[data-atria-reduced-motion="true"] * {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+}
+
+@media (hover: none) {
+    .atria-shell-nav-button,
+    .atria-shell-utility-button,
+    .atria-command-result {
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+/* ── Shared layout patterns ────────────────────────────────────────────── */
 
 [data-atria-pattern="list-detail"],
 [data-atria-pattern="master-detail"],
@@ -562,20 +1238,6 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
     min-height: 0;
 }
 
-.atria-toolbar {
-    display: flex;
-    align-items: center;
-    gap: var(--atri-space-2);
-}
-
-.atria-segmented-control {
-    display: inline-flex;
-    gap: 2px;
-    padding: 2px;
-    border-radius: var(--atri-radius-md);
-    background: var(--atri-color-raised);
-}
-
 .atria-split-pane {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -587,112 +1249,6 @@ body[data-atria-shell-mounted="true"] > #form_sheld {
 .atria-composer {
     min-width: 0;
     min-height: 0;
-}
-
-.atria-app-shell[data-atria-viewport="medium"] {
-    grid-template-columns: 68px minmax(0, 1fr);
-    grid-template-areas:
-        "rail global"
-        "rail focus";
-}
-
-.atria-app-shell[data-atria-viewport="medium"] .atria-dock:not([hidden]) {
-    position: absolute;
-    z-index: 10;
-    top: calc(52px + var(--atri-safe-area-top));
-    right: var(--atri-safe-area-right);
-    bottom: var(--atri-safe-area-bottom);
-    width: min(360px, 42vw);
-    box-shadow: var(--atri-shadow-raised);
-}
-
-.atria-app-shell[data-atria-viewport="compact"] {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows:
-        calc(48px + var(--atri-safe-area-top))
-        minmax(0, 1fr)
-        calc(60px + var(--atri-safe-area-bottom));
-    grid-template-areas:
-        "global"
-        "focus"
-        "bottom";
-}
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-navigation-rail {
-    display: none;
-}
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-bottom-navigation {
-    display: flex;
-}
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-global-bar {
-    min-height: 48px;
-    padding-inline: var(--atri-space-3);
-}
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-global-bar__breadcrumb {
-    font-size: var(--atri-font-size-body-small);
-}
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-status-chip {
-    display: none;
-}
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-shell-utility-button:not([data-atria-utility="command"]) {
-    display: none;
-}
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-context-bar {
-    min-height: 40px;
-    padding-inline: var(--atri-space-3);
-}
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-stage,
-.atria-app-shell[data-atria-viewport="compact"] .atria-workspace {
-    padding: var(--atri-space-3);
-}
-
-.atria-command-surface[data-atria-command-presentation="sheet"] .atria-command-panel {
-    top: auto;
-    right: var(--atri-space-2);
-    bottom: max(var(--atri-space-2), var(--atri-safe-area-bottom));
-    left: var(--atri-space-2);
-    width: auto;
-    max-height: min(72vh, 640px);
-    transform: none;
-    transform-origin: bottom center;
-}
-
-.atria-app-shell[data-atria-keyboard="open"] .atria-bottom-navigation {
-    display: none;
-}
-
-.atria-app-shell[data-atria-keyboard="open"] .atria-sheet-panel,
-.atria-app-shell[data-atria-keyboard="open"] .atria-command-panel {
-    max-height: calc(var(--atri-viewport-height) - (2 * var(--atri-space-2)));
-}
-
-.atria-app-shell[data-atria-keyboard="open"] {
-    grid-template-rows:
-        calc(48px + var(--atri-safe-area-top))
-        minmax(0, 1fr);
-    grid-template-areas:
-        "global"
-        "focus";
-}
-
-.atria-app-shell :focus-visible {
-    outline: 2px solid var(--atri-color-focus);
-    outline-offset: 2px;
-}
-
-@media (hover: none) {
-    .atria-shell-nav-button,
-    .atria-shell-utility-button,
-    .atria-command-result {
-        -webkit-tap-highlight-color: transparent;
-    }
 }
 
 /* R7B — Play / Native Conversation Host
@@ -850,23 +1406,6 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     min-height: 0;
 }
 
-.atria-workspace-context-summary {
-    display: grid;
-    gap: var(--atri-space-2);
-    padding: var(--atri-space-3);
-}
-
-.atria-workspace-context-summary > strong {
-    font-size: var(--atri-font-size-body);
-}
-
-.atria-workspace-context-summary > p {
-    margin: 0;
-    color: var(--atri-color-text-muted);
-    font-size: var(--atri-font-size-caption);
-    line-height: 1.5;
-}
-
 
 /* Agents landing hub — primary Agents route is a chooser, not a direct
  * alias for the orchestration editor. Child cards navigate through the same
@@ -878,126 +1417,202 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     overflow: auto;
     display: grid;
     align-content: start;
-    gap: var(--atri-space-4);
-    padding-block: var(--atri-space-2);
+    gap: var(--atri-space-6);
+    padding: var(--atri-space-7) var(--atri-page-gutter) var(--atri-space-12);
 }
 
 .atria-agents-hub__heading {
+    width: 100%;
+    max-width: var(--atri-content-max);
+    margin: 0 auto;
     display: grid;
     gap: var(--atri-space-2);
 }
 
-.atria-agents-hub__heading > h2,
-.atria-agents-hub__heading > p {
+.atria-agents-hub__heading > h2 {
     margin: 0;
+    font-family: var(--atri-font-display);
+    font-size: var(--atri-text-large-title);
+    font-weight: 700;
+    letter-spacing: var(--atri-tracking-display);
+    line-height: 1.12;
 }
 
 .atria-agents-hub__heading > p {
-    color: var(--atri-color-text-muted);
-    line-height: 1.5;
+    max-width: 62ch;
+    margin: 0;
+    color: var(--atri-text-secondary);
+    line-height: var(--atri-leading-normal);
 }
 
 .atria-agents-hub__grid {
+    width: 100%;
+    max-width: var(--atri-content-max);
+    margin: 0 auto;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: var(--atri-space-3);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+    gap: var(--atri-space-4);
 }
 
 .atria-agents-hub__card {
     appearance: none;
-    border: 1px solid var(--atri-color-border);
-    border-radius: var(--atri-radius-lg);
-    background: var(--atri-color-surface);
-    color: var(--atri-color-text);
-    padding: var(--atri-space-4);
-    min-height: 132px;
-    text-align: start;
-    cursor: pointer;
+    position: relative;
+    min-height: 148px;
     display: grid;
     align-content: start;
-    gap: var(--atri-space-2);
-    transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
+    gap: var(--atri-space-1-5);
+    margin: 0;
+    padding: var(--atri-space-5);
+    border: 0;
+    border-radius: var(--atri-radius-lg);
+    background: var(--atri-surface-1);
+    box-shadow: var(--atri-highlight);
+    color: var(--atri-text-primary);
+    text-align: start;
+    cursor: pointer;
+    transition:
+        background-color var(--atri-duration-fast) var(--atri-ease-out),
+        transform var(--atri-duration-base) var(--atri-ease-out);
 }
 
-.atria-agents-hub__card:hover,
+.atria-agents-hub__card:hover {
+    background: var(--atri-surface-2);
+}
+
+.atria-agents-hub__card:active {
+    transform: scale(0.99);
+}
+
 .atria-agents-hub__card:focus-visible {
-    background: var(--atri-color-raised);
-    border-color: color-mix(in srgb, var(--atri-color-accent) 58%, var(--atri-color-border));
-    transform: translateY(-1px);
+    outline: 2px solid var(--atri-accent-text);
+    outline-offset: 2px;
+}
+
+.atria-agents-hub__card-icon {
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    margin-bottom: var(--atri-space-3);
+    border-radius: var(--atri-radius-md);
+    background: var(--atri-accent-soft);
+    color: var(--atri-accent-text);
 }
 
 .atria-agents-hub__card > strong {
-    font-size: var(--atri-font-size-heading);
+    font-size: var(--atri-text-headline);
+    font-weight: 650;
+    letter-spacing: var(--atri-tracking-headline);
 }
 
-.atria-agents-hub__card > span {
-    color: var(--atri-color-text-muted);
-    line-height: 1.5;
+.atria-agents-hub__card > span:not(.atria-agents-hub__card-icon) {
+    color: var(--atri-text-secondary);
+    font-size: var(--atri-text-footnote);
+    line-height: var(--atri-leading-normal);
 }
 
-/* R7F Library / Runtime domain workspaces. */
+/* R7F Library / Runtime domain workspaces.
+ * One routed scope bar on top; the section body scrolls beneath it. */
 .atria-domain-workspace {
     min-width: 0;
     min-height: 0;
     height: 100%;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
+    gap: 0;
     overflow: hidden;
 }
 
 .atria-domain-workspace__nav {
+    min-width: 0;
     display: flex;
-    gap: var(--atri-space-1);
-    padding: 0 0 var(--atri-space-3);
+    align-items: center;
+    gap: var(--atri-space-1-5);
+    padding: var(--atri-space-2-5) var(--atri-page-gutter);
     overflow-x: auto;
-    border-bottom: 1px solid var(--atri-color-border);
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--atri-separator);
+    background: var(--atri-canvas);
 }
 
-.atria-domain-workspace__tab,
-.atria-domain-workspace__actions > button,
-.atria-runtime-presets > button {
-    appearance: none;
-    border: 1px solid var(--atri-color-border);
-    border-radius: var(--atri-radius-md);
-    background: var(--atri-color-surface);
-    color: var(--atri-color-text-muted);
-    cursor: pointer;
-    padding: var(--atri-space-2) var(--atri-space-3);
+.atria-domain-workspace__nav::-webkit-scrollbar {
+    display: none;
 }
 
 .atria-domain-workspace__tab {
-    flex: 0 0 auto;
+    appearance: none;
+    flex: none;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    padding: 0 var(--atri-space-3-5);
+    border: 0;
+    border-radius: var(--atri-radius-pill);
+    background: transparent;
+    color: var(--atri-text-secondary);
+    font-size: var(--atri-text-callout);
+    font-weight: 550;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        background-color var(--atri-duration-fast) var(--atri-ease-out),
+        color var(--atri-duration-fast) var(--atri-ease-out);
 }
 
-.atria-domain-workspace__tab:hover,
-.atria-domain-workspace__tab.is-selected,
-.atria-domain-workspace__actions > button:hover:not(:disabled),
-.atria-runtime-presets > button:hover {
-    color: var(--atri-color-text);
-    background: var(--atri-color-raised);
+.atria-domain-workspace__tab:hover {
+    background: var(--atri-fill);
+    color: var(--atri-text-primary);
 }
 
 .atria-domain-workspace__tab.is-selected {
-    border-color: color-mix(in srgb, var(--atri-color-accent) 62%, var(--atri-color-border));
+    background: var(--atri-fill-strong);
+    color: var(--atri-text-primary);
 }
 
 .atria-domain-workspace__body {
     min-width: 0;
     min-height: 0;
     overflow: auto;
-    padding-top: var(--atri-space-3);
+    overscroll-behavior: contain;
+    padding: var(--atri-space-6) var(--atri-page-gutter) var(--atri-space-12);
 }
 
-.atria-domain-workspace__actions {
+.atria-domain-workspace__actions,
+.atria-runtime-presets {
     display: flex;
     flex-wrap: wrap;
     gap: var(--atri-space-2);
     margin-top: var(--atri-space-3);
 }
 
+.atria-domain-workspace__actions > button,
+.atria-runtime-presets > button {
+    appearance: none;
+    min-height: var(--atri-control-md);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--atri-space-1-5);
+    margin: 0;
+    padding: 0 var(--atri-space-3-5);
+    border: 0;
+    border-radius: var(--atri-radius-sm);
+    background: var(--atri-fill-hover);
+    color: var(--atri-text-primary);
+    font-size: var(--atri-text-callout);
+    font-weight: 550;
+    cursor: pointer;
+}
+
+.atria-domain-workspace__actions > button:hover:not(:disabled),
+.atria-runtime-presets > button:hover {
+    background: var(--atri-fill-pressed);
+}
+
 .atria-domain-workspace__actions > button:disabled {
     cursor: default;
-    opacity: 0.45;
+    opacity: 0.4;
 }
 
 #atria-workspace #right-nav-panel[data-atria-workspace-embedded="true"] {
@@ -1192,11 +1807,6 @@ body[data-atria-shell-mounted="true"].atria-immersive-mode .atria-native-play-ho
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 0.4fr);
     gap: var(--atri-space-2);
-}
-
-.atria-app-shell[data-atria-viewport="compact"] .atria-domain-workspace__nav {
-    margin-inline: calc(-1 * var(--atri-space-1));
-    padding-inline: var(--atri-space-1);
 }
 
 .atria-app-shell[data-atria-viewport="compact"] .atria-agents-hub__grid,
@@ -1863,23 +2473,6 @@ body[data-atria-native-session-active="true"] #char_connections_button {
     font-size: var(--atri-font-size-caption);
 }
 
-.atria-domain-workspace[data-atria-domain-workspace="library"][data-atria-pattern="master-detail"] {
-    grid-template-columns: minmax(172px, 220px) minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr);
-    gap: var(--atri-space-4);
-}
-
-.atria-domain-workspace[data-atria-domain-workspace="library"] > .atria-domain-workspace__nav {
-    flex-direction: column;
-    border-bottom: 0;
-    border-right: 1px solid var(--atri-color-border);
-    padding: 0 var(--atri-space-3) 0 0;
-}
-
-.atria-domain-workspace[data-atria-domain-workspace="library"] > .atria-domain-workspace__body {
-    padding-top: 0;
-}
-
 .atria-runtime-capabilities {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -1904,23 +2497,6 @@ body[data-atria-native-session-active="true"] #char_connections_button {
 
     .atria-play-composer {
         padding: var(--atri-space-2) var(--atri-space-3);
-    }
-
-    .atria-domain-workspace[data-atria-domain-workspace="library"][data-atria-pattern="master-detail"] {
-        grid-template-columns: minmax(0, 1fr);
-        grid-template-rows: auto minmax(0, 1fr);
-        gap: 0;
-    }
-
-    .atria-domain-workspace[data-atria-domain-workspace="library"] > .atria-domain-workspace__nav {
-        flex-direction: row;
-        border-right: 0;
-        border-bottom: 1px solid var(--atri-color-border);
-        padding: 0 0 var(--atri-space-2);
-    }
-
-    .atria-domain-workspace[data-atria-domain-workspace="library"] > .atria-domain-workspace__body {
-        padding-top: var(--atri-space-3);
     }
 }
 
@@ -2117,16 +2693,4 @@ body[data-atria-native-session-active="true"] #char_connections_button {
     .atri-runtime button { min-height: 44px; }
     .atri-runtime[data-editor] { position: fixed; inset: 0; height: 100dvh; max-height: 100dvh; z-index: 3900; overflow-y: auto; background: var(--atri-color-surface, #20232b); padding: 20px 16px; padding-bottom: max(24px, env(safe-area-inset-bottom)); }
     .atri-runtime[data-editor] > button { position: sticky; top: 0; z-index: 1; }
-}
-
-.atria-domain-workspace[data-atria-domain-workspace="runtime"][data-atria-pattern="runtime-status"] {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
-    gap: 0;
-}
-.atria-domain-workspace[data-atria-domain-workspace="runtime"] > .atria-domain-workspace__nav {
-    align-items: start;
-    flex-wrap: wrap;
-    flex-shrink: 0;
-    padding-bottom: 12px;
 }

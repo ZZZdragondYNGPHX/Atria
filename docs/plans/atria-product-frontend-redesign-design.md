@@ -1,0 +1,258 @@
+# Atria Product Frontend Redesign — Design Specification
+
+Status: active (task `refactor/atria-product-frontend-redesign`).
+Input boundary map: `docs/plans/atria-product-frontend-redesign-audit.md`.
+This document is the visual and interaction authority for the redesign. It does
+not change product capability, routing, persistence or runtime authority.
+
+## 1. Product character
+
+Atria is a place to play, keep and make interactive works. The interface
+should feel calm, precise and expensive: content first, chrome quiet, one
+coherent frame everywhere. The reference is the discipline of Apple software
+(restraint, typography-led hierarchy, soft materials, exact spacing), not its
+literal widgets.
+
+Principles:
+
+1. **Content first.** The story (Play), the work (Library) and the project
+   (Build) own the canvas. Chrome recedes into materials and hairlines.
+2. **One frame.** Every domain lives inside the same sidebar / toolbar /
+   content / inspector structure. Domains never bring their own app shell.
+3. **Hierarchy through type, not boxes.** Large titles, clear weights and
+   secondary text replace nested borders and card-in-card layouts.
+4. **Quiet surfaces.** Tonal layering (canvas → surface → raised → elevated)
+   with hairline separators. Shadows only for things that float.
+5. **Honest state.** Loading, empty, error, read-only and recovery states are
+   designed surfaces with a next action, never raw JSON or bare text.
+6. **Technical depth on demand.** Revision ids, hashes and raw payloads live
+   behind "Details" disclosures in monospace, never as the primary view.
+7. **Adaptive, not squeezed.** Expanded, medium and compact are distinct
+   compositions of the same DOM, not a desktop layout shrunk down.
+
+## 2. Foundations
+
+### 2.1 Appearance
+
+- Atria owns two palettes: **dark** (default) and **light**.
+- The existing theme authority (SmartTheme, chosen in Settings → Appearance)
+  selects the appearance: `appearance.js` reads the computed root
+  `--SmartThemeBlurTintColor` / `--SmartThemeBodyColor`, derives luminance and
+  writes `data-atria-appearance="dark|light"` on `<html>`. It observes the root
+  `style` attribute so theme switches apply live. No new preference or storage
+  is introduced.
+- While the Shell is mounted, `atria-tokens.css` re-maps SmartTheme variables
+  and `--mainFontFamily` onto Atria tokens (the *legacy bridge*), so embedded
+  compatibility controllers, popups and toasts render in the Atria palette.
+  Recovery mode (`?atriaShellRecovery=legacy`) keeps the untouched legacy look.
+
+### 2.2 Color tokens (`--atri-*`)
+
+| Role | Dark | Light |
+| --- | --- | --- |
+| `canvas` (window) | `#0e0f12` | `#f6f6f8` |
+| `surface-1` (content) | `#16171b` | `#ffffff` |
+| `surface-2` (grouped rows, inputs) | `#1d1e23` | `#f1f1f4` |
+| `surface-3` (raised / hover) | `#25262c` | `#e8e8ed` |
+| `elevated` (menus, palette, sheets) | `#202127` | `#ffffff` |
+| `material-sidebar` | `rgb(22 23 27 / .86)` + blur | `rgb(238 238 242 / .86)` + blur |
+| `material-bar` | `rgb(14 15 18 / .78)` + blur | `rgb(246 246 248 / .82)` + blur |
+| `separator` / `-strong` | `rgb(255 255 255 / .075 / .13)` | `rgb(0 0 0 / .08 / .14)` |
+| `fill` / `-hover` / `-pressed` | white `.06 / .09 / .12` | black `.045 / .07 / .10` |
+| `text-primary` | `rgb(245 245 247 / .94)` | `#1c1c1f` |
+| `text-secondary` | `rgb(235 235 245 / .62)` | `rgb(60 60 67 / .72)` |
+| `text-tertiary` | `rgb(235 235 245 / .40)` | `rgb(60 60 67 / .48)` |
+| `accent` (fill) | `#5b68f0` | `#4a57e8` |
+| `accent-text` | `#8d98ff` | `#3d4ad8` |
+| `accent-soft` | accent 16% | accent 11% |
+| `success` / `warning` / `danger` | `#3ccf86` / `#f2b54a` / `#ff6b61` | `#1d9a57` / `#b7791f` / `#d93a2b` |
+
+Accent is Atria Indigo: a blue-violet that reads as "story / night" while
+staying a neutral system accent. It is used for primary actions, selection,
+focus and links only — never for large backgrounds.
+
+Legacy `--atri-color-*` names remain as aliases of the new roles so older
+Atria CSS (orchestrator panel, prompt editors, preset manager) inherits the
+new palette without per-file rewrites.
+
+### 2.3 Typography
+
+- Sans: `system-ui, -apple-system, "SF Pro Text", "Segoe UI Variable Text",
+  "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI",
+  "Microsoft YaHei", "Noto Sans SC", "Noto Sans", sans-serif`.
+- Mono: `ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo,
+  Consolas, "Noto Sans Mono", monospace`.
+- Scale multiplies `--mainFontSize` (15px × user font scale), so the existing
+  font-scale preference keeps working:
+
+| Token | × base | Weight | Use |
+| --- | --- | --- | --- |
+| `large-title` | 2.133 (32) | 700 | Domain landing titles |
+| `title-1` | 1.733 (26) | 700 | Page / detail titles |
+| `title-2` | 1.4 (21) | 650 | Section titles |
+| `title-3` | 1.2 (18) | 600 | Card / group titles |
+| `headline` | 1 (15) | 600 | Row titles, toolbar title |
+| `body` | 1 (15) | 400 | Text |
+| `callout` | 0.933 (14) | 400 | Controls, sidebar |
+| `footnote` | 0.867 (13) | 400 | Secondary text |
+| `caption` | 0.8 (12) | 500 | Labels, badges |
+| `reading` | 1.067 (16) | 400 | Play transcript, line-height 1.75 |
+
+Titles use `-0.012em` to `-0.02em` tracking; body uses default tracking.
+Numbers in revisions, counts and times use `tabular-nums`.
+
+### 2.4 Space, radius, elevation, motion
+
+- 4-point grid: 2, 4, 6, 8, 12, 16, 20, 24, 32, 40, 48, 64.
+- Radius: `xs 5`, `sm 7`, `md 10` (controls), `lg 14` (cards, groups),
+  `xl 20` (sheets, dialogs, composer), `pill`.
+- Elevation: `shadow-1` (resting lift, cards on hover), `shadow-2`
+  (popovers, inspector overlay), `shadow-3` (dialogs, palette). Dark mode adds
+  a 0.5px inner highlight ring instead of heavier shadows.
+- Motion: `fast 140ms`, `base 220ms`, `slow 360ms`; `ease-out
+  cubic-bezier(.2,.8,.2,1)`, `ease-sheet cubic-bezier(.32,.72,0,1)`.
+  Reduced motion (OS or Atria accessibility preference) collapses durations.
+- Materials use `backdrop-filter: blur(24px) saturate(1.6)` behind
+  `@supports`; `body.no-blur` (Fast UI) and Android-constrained cases fall back
+  to solid surfaces.
+
+### 2.5 Iconography
+
+A single Atria line icon set (`atria-shell/icons.js`): 24px grid, 1.75px
+stroke, round caps/joins, drawn with `createElementNS` (no HTML strings).
+Icons are decorative (`aria-hidden`) and always paired with a text label or an
+accessible name. Font Awesome remains only inside legacy compatibility islands.
+
+## 3. The frame
+
+```
+Expanded ≥1180                      Medium 720–1179        Compact ≤719
+┌────────┬──────────────────┬─────┐ ┌──┬──────────────┐    ┌──────────────┐
+│Sidebar │ Toolbar          │Insp.│ │R │ Toolbar      │    │ Nav bar      │
+│ 244px  ├──────────────────┤ 340 │ │a ├──────────────┤    ├──────────────┤
+│material│ Content          │(opt)│ │i │ Content      │    │ Content      │
+│        │                  │     │ │l │  Inspector ⇢ │    │              │
+│        │                  │     │ │76│  (overlay)   │    ├──────────────┤
+└────────┴──────────────────┴─────┘ └──┴──────────────┘    │ Tab bar      │
+                                                           └──────────────┘
+```
+
+- **Sidebar** (`NavigationRail` primitive): brand mark + wordmark, the five
+  domains (Play, Library, Build, Agents, Runtime), then utilities pinned at the
+  bottom (Plugins, Diagnostics, Settings) and the Account row. Selected row:
+  accent-soft fill, accent icon, primary text. Medium collapses the same
+  element into a 76px icon rail with small labels.
+- **Toolbar** (`GlobalBar` + `ContextBar` merged into one bar): leading back
+  chevron (child routes), title (route leaf) with the domain as eyebrow on
+  detail routes, trailing context actions slot, search button (`⌘K`), and the
+  inspector toggle (only when the inspector has content). The static "Runtime
+  ready" chip is removed; `setRuntimeStatus` shows a quiet status only when a
+  caller reports one.
+- **Inspector** (`Dock` primitive): closed by default. Expanded: a 340px
+  column with its own header. Medium: a floating right panel over content.
+  Compact: the same node moves into the bottom **Sheet** with grabber and
+  peek / half / full detents. Workspace summaries still mount there, but the
+  inspector no longer opens itself for them.
+- **Tab bar** (`BottomNavigation`): material bar, icon + label, selected in
+  accent; hidden while the software keyboard is open. Compact utilities are
+  reached from the toolbar's account button (menu) and from search.
+- **Search / Command** (`CommandPalette` / `CommandSheet`): Spotlight-style
+  floating panel (640px, 14vh from top) with a large field, grouped results,
+  icons, keyboard selection (↑/↓/Enter) and shortcut hints. Compact: a top
+  sheet filling the safe area.
+- **Recovery** keeps its layer but uses the designed state panel.
+
+## 4. Shared components
+
+- **Page header**: large title, one-line description, trailing actions; a
+  **scope bar** (capsule segmented control) for domain sections.
+- **Buttons**: `primary` (accent fill), `secondary` (fill), `plain` (text),
+  `destructive`; sizes `sm 28`, `md 34`, `lg 44` (touch). Icon buttons are
+  32/36px circles or rounded squares.
+- **Fields**: 34px (44px on coarse pointers), `surface-2` fill, no border
+  at rest, accent focus ring (3px soft + 1px solid).
+- **Grouped list** (inset grouped rows): the default presentation for
+  settings-like and resource lists; rows 44–56px with title, secondary text,
+  trailing value/accessory and chevron.
+- **Cards**: used for works/sessions only (content objects), not for text.
+- **Badges / status**: small capsules with tone dot.
+- **State panel**: icon, title, message, optional action; loading uses a
+  native-feeling spinner.
+- **Details disclosure**: "Details" rows revealing monospace metadata.
+- **Switches**: embedded legacy checkboxes inside Atria settings render as
+  switches (same `<input>`; presentation only).
+
+## 5. Domains
+
+- **Play**: landing with greeting title, "Continue" session cards, "Recent
+  works" poster row and primary actions (Browse Library, Import save). Active
+  session: slim session bar (title, work, state badge, control strip), story
+  transcript (narrator/actor prose without bubbles, player turns as soft
+  accent blocks, system notes centered), floating auto-growing composer with
+  circular send/stop, Timeline & Saves and Context as inspector-style panels.
+- **Native Game surfaces**: game sidebars use the inspector; drawers/modals
+  get the transient frame; full host and recovery use the stage and recovery
+  layers with the designed recovery panel.
+- **Library**: Works as poster grid (generated covers from stable ids),
+  Work detail hero (cover, title, meta, Play / Continue, sessions, versions,
+  dependencies, Details); Worlds & Knowledge as grouped lists with revision
+  timelines; Prompt Programs / Modules / Generation Profiles as a technical
+  resource list + structured editor; Skills hosted in the same frame.
+- **Runtime**: System-Settings-style grouped forms per section (Routes,
+  Models, Connections, Profiles, Diagnostics); compact editor stays a
+  full-screen dialog with focus trap and Escape.
+- **Build / Studio**: calm IDE — project header with revision badge and
+  primary actions, source-list resource tree, editor surface, property
+  inspector, bottom activity drawer (Problems / Output / History / Changes),
+  review / ChangeSet / conflict banners, Project Agent as a side panel.
+  Compact: Project / Editor / Preview / AI / More views.
+- **Agents**: hub of workspace tiles; embedded orchestrator adopts Atria
+  tokens and hides its duplicate chrome when embedded.
+- **Settings / Plugins / Account / Diagnostics**: grouped settings pages,
+  plugin rows with switches, account profile header, log viewer.
+- **Entry**: preloader (mark + progress), blocking loader (spinner on
+  material), login (centered identity card), onboarding (welcome sheet),
+  global popups and toasts (Atria dialog style).
+
+## 6. Responsive and platform rules
+
+- Breakpoints stay those of the Environment authority (compact ≤719,
+  medium ≤1179). Components adapt by `data-atria-viewport`, not ad-hoc widths.
+- Coarse pointers: 44px minimum targets, 16px input font (prevents iOS zoom).
+- Keyboard open (compact): tab bar hidden, composer and sheets respect the
+  measured visual viewport; no fixed elements behind the keyboard.
+- Safe areas: toolbar top, tab bar bottom, sheets and dialogs honor
+  `--atri-safe-area-*`.
+- Android WebView: no reliance on `:has()` for layout-critical rules, blur
+  behind `@supports`, no `position: fixed` inside transformed ancestors.
+- No horizontal overflow at any width ≥ 320px.
+
+## 7. Compatibility contract
+
+Preserved behavior hooks: all `id`s used by native ABI and tests, the
+`data-atria-*` state and routing attributes, accessible names of product
+actions, primitive names (`ATRIA_PRIMITIVES`), shell API and slot identity,
+Native Play ABI (1px non-empty host), Escape / Back ordering, focus traps.
+Presentation-only test pins (class names, geometry, region order) are
+migrated with the new design and recorded in the phase log.
+
+## 8. Delivery phases
+
+The current user checkpoint is Phase 1 only. Keep the same task branch;
+do not start Phase 2 or merge main until authorized.
+
+1. **Foundations and frame:** tokens, appearance, icon set, shared component
+   stylesheet/builders, responsive Shell, search, inspector, menu, state panels,
+   affected presentation tests and browser acceptance. Domain-specific CSS
+   extraction follows the phase that redesigns its owning domain.
+2. **Entry surfaces:** startup/loading, login, onboarding, global dialogs/toasts.
+3. **Play and Native Game:** landing, transcript, composer, controls, host surfaces.
+4. **Library:** Works/details, Sessions, Worlds, Knowledge, prompt resources, Skills.
+5. **Runtime:** grouped configuration surfaces and compact editor.
+6. **Build/Studio:** complete authoring workspace, review, preview and Project Agent.
+7. **Agents and utilities:** embedded orchestration, Settings, Plugins, Account, Diagnostics.
+8. **Final acceptance:** cross-domain regression, complete screenshots and integration.
+
+Phase 1 does not claim redesigned domain content or entry surfaces. Existing
+domain controllers remain inside the new frame; their remaining mixed language
+and old page layouts are addressed in their owning phases above.

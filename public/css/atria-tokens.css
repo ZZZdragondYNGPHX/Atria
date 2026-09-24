@@ -1,77 +1,289 @@
 /*
- * Atria Design System semantic tokens.
+ * Atria Design System — tokens.
  *
- * SmartTheme remains an input compatibility layer only. New Atria Host
- * components consume the --atri-* API below and never bind directly to
- * SmartTheme variables.
+ * Atria owns its light and dark palettes. SmartTheme is only an input here:
+ *   1. atria-shell/appearance.js reads the active theme and writes
+ *      data-atria-appearance="dark|light" on <html>;
+ *   2. the legacy bridge at the end of this file re-maps SmartTheme variables
+ *      onto Atria tokens while the Shell is mounted, so embedded compatibility
+ *      controllers, popups and toasts render in the Atria palette.
+ * Atria components consume the --atri-* API and never bind to SmartTheme.
  */
 
 :root {
-    --atri-color-canvas: var(--SmartThemeBlurTintColor, rgb(28 30 34));
-    --atri-color-surface: color-mix(in srgb, var(--SmartThemeBlurTintColor, rgb(28 30 34)) 90%, white 10%);
-    --atri-color-raised: color-mix(in srgb, var(--SmartThemeBlurTintColor, rgb(28 30 34)) 82%, white 18%);
-    --atri-color-overlay: color-mix(in srgb, var(--SmartThemeBlurTintColor, rgb(28 30 34)) 92%, black 8%);
-    --atri-color-text: var(--SmartThemeBodyColor, rgb(238 240 244));
-    --atri-color-text-muted: color-mix(in srgb, var(--SmartThemeBodyColor, rgb(238 240 244)) 68%, transparent);
-    --atri-color-border: var(--SmartThemeBorderColor, rgb(96 102 113));
-    --atri-color-accent: var(--SmartThemeQuoteColor, rgb(118 167 255));
-    --atri-color-accent-contrast: rgb(8 13 20);
-    --atri-color-success: rgb(78 190 129);
-    --atri-color-warning: rgb(232 179 78);
-    --atri-color-danger: rgb(231 100 105);
-    --atri-color-focus: color-mix(in srgb, var(--SmartThemeQuoteColor, rgb(118 167 255)) 78%, white 22%);
-    --atri-color-scrim: rgb(0 0 0 / 0.56);
+    /* Palette — dark (default appearance) */
+    --atri-canvas: #0e0f12;
+    --atri-surface-1: #16171b;
+    --atri-surface-2: #1d1e23;
+    --atri-surface-3: #25262c;
+    --atri-elevated: #202127;
+    --atri-material-sidebar: rgb(22 23 27 / 0.86);
+    --atri-material-bar: rgb(14 15 18 / 0.78);
+    --atri-material-solid-sidebar: #16171b;
+    --atri-material-solid-bar: #0e0f12;
+    --atri-separator: rgb(255 255 255 / 0.075);
+    --atri-separator-strong: rgb(255 255 255 / 0.13);
+    --atri-fill: rgb(255 255 255 / 0.06);
+    --atri-fill-hover: rgb(255 255 255 / 0.09);
+    --atri-fill-pressed: rgb(255 255 255 / 0.12);
+    --atri-fill-strong: rgb(255 255 255 / 0.15);
+    --atri-text-primary: rgb(245 245 247 / 0.94);
+    --atri-text-secondary: rgb(235 235 245 / 0.62);
+    --atri-text-tertiary: rgb(235 235 245 / 0.4);
+    --atri-text-quaternary: rgb(235 235 245 / 0.22);
+    --atri-text-on-accent: #ffffff;
+    --atri-accent: #5b68f0;
+    --atri-accent-hover: #6875f4;
+    --atri-accent-pressed: #4e5ae0;
+    --atri-accent-text: #8d98ff;
+    --atri-accent-soft: rgb(91 104 240 / 0.16);
+    --atri-accent-soft-strong: rgb(91 104 240 / 0.27);
+    --atri-focus-ring: rgb(141 152 255 / 0.5);
+    --atri-success: #3ccf86;
+    --atri-success-soft: rgb(60 207 134 / 0.14);
+    --atri-warning: #f2b54a;
+    --atri-warning-soft: rgb(242 181 74 / 0.14);
+    --atri-danger: #ff6b61;
+    --atri-danger-soft: rgb(255 107 97 / 0.14);
+    --atri-scrim: rgb(0 0 0 / 0.52);
+    --atri-highlight: inset 0 0 0 0.5px rgb(255 255 255 / 0.09);
+    --atri-shadow-1: 0 1px 2px rgb(0 0 0 / 0.32);
+    --atri-shadow-2: 0 12px 32px rgb(0 0 0 / 0.44), 0 2px 8px rgb(0 0 0 / 0.28);
+    --atri-shadow-3: 0 28px 72px rgb(0 0 0 / 0.58), 0 6px 18px rgb(0 0 0 / 0.34);
+    --atri-cover-ink: rgb(255 255 255 / 0.92);
 
-    --atri-font-family-body: var(--mainFontFamily, "Noto Sans", sans-serif);
-    --atri-font-family-mono: "Noto Sans Mono", ui-monospace, monospace;
-    --atri-font-size-display: calc(var(--mainFontSize, 16px) * 1.75);
-    --atri-font-size-title: calc(var(--mainFontSize, 16px) * 1.35);
-    --atri-font-size-heading: calc(var(--mainFontSize, 16px) * 1.12);
-    --atri-font-size-subheading: calc(var(--mainFontSize, 16px) * 1);
-    --atri-font-size-body: var(--mainFontSize, 16px);
-    --atri-font-size-body-small: calc(var(--mainFontSize, 16px) * 0.9);
-    --atri-font-size-caption: calc(var(--mainFontSize, 16px) * 0.78);
+    /* Typography */
+    --atri-font-sans: system-ui, -apple-system, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", "Noto Sans", sans-serif;
+    --atri-font-display: system-ui, -apple-system, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", "Noto Sans", sans-serif;
+    --atri-font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, "Noto Sans Mono", monospace;
+    --atri-base: var(--mainFontSize, 15px);
+    --atri-text-large-title: calc(var(--atri-base) * 2.133);
+    --atri-text-title-1: calc(var(--atri-base) * 1.733);
+    --atri-text-title-2: calc(var(--atri-base) * 1.4);
+    --atri-text-title-3: calc(var(--atri-base) * 1.2);
+    --atri-text-headline: var(--atri-base);
+    --atri-text-body: var(--atri-base);
+    --atri-text-callout: calc(var(--atri-base) * 0.933);
+    --atri-text-footnote: calc(var(--atri-base) * 0.867);
+    --atri-text-caption: calc(var(--atri-base) * 0.8);
+    --atri-text-caption-2: calc(var(--atri-base) * 0.733);
+    --atri-text-reading: calc(var(--atri-base) * 1.067);
+    --atri-leading-tight: 1.2;
+    --atri-leading-snug: 1.35;
+    --atri-leading-normal: 1.5;
+    --atri-leading-reading: 1.75;
+    --atri-tracking-display: -0.022em;
+    --atri-tracking-title: -0.015em;
+    --atri-tracking-headline: -0.006em;
+    --atri-tracking-caps: 0.04em;
 
+    /* Space — 4pt grid */
+    --atri-space-0-5: 2px;
     --atri-space-1: 4px;
+    --atri-space-1-5: 6px;
     --atri-space-2: 8px;
+    --atri-space-2-5: 10px;
     --atri-space-3: 12px;
+    --atri-space-3-5: 14px;
     --atri-space-4: 16px;
     --atri-space-5: 20px;
     --atri-space-6: 24px;
+    --atri-space-7: 28px;
     --atri-space-8: 32px;
+    --atri-space-10: 40px;
+    --atri-space-12: 48px;
+    --atri-space-16: 64px;
 
-    --atri-radius-sm: 6px;
+    /* Radius */
+    --atri-radius-xs: 5px;
+    --atri-radius-sm: 7px;
     --atri-radius-md: 10px;
-    --atri-radius-lg: 16px;
+    --atri-radius-lg: 14px;
+    --atri-radius-xl: 20px;
+    --atri-radius-2xl: 26px;
     --atri-radius-pill: 999px;
 
-    --atri-shadow-surface: 0 1px 2px rgb(0 0 0 / 0.14);
-    --atri-shadow-raised: 0 8px 28px rgb(0 0 0 / 0.22);
-    --atri-shadow-overlay: 0 18px 56px rgb(0 0 0 / 0.34);
+    /* Frame metrics */
+    --atri-control-sm: 28px;
+    --atri-control-md: 34px;
+    --atri-control-lg: 44px;
+    --atri-sidebar-width: 244px;
+    --atri-rail-width: 76px;
+    --atri-toolbar-height: 52px;
+    --atri-tabbar-height: 54px;
+    --atri-inspector-width: 340px;
+    --atri-content-max: 1180px;
+    --atri-reading-max: 700px;
+    --atri-page-gutter: clamp(16px, 3.2vw, 40px);
 
-    --atri-motion-fast: 120ms;
-    --atri-motion-normal: 200ms;
-    --atri-motion-slow: 320ms;
-    --atri-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    /* Motion */
+    --atri-duration-fast: 140ms;
+    --atri-duration-base: 220ms;
+    --atri-duration-slow: 360ms;
+    --atri-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --atri-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --atri-ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+    --atri-material-filter: saturate(1.7) blur(24px);
 
+    /* Platform */
     --atri-safe-area-top: env(safe-area-inset-top, 0px);
     --atri-safe-area-right: env(safe-area-inset-right, 0px);
     --atri-safe-area-bottom: env(safe-area-inset-bottom, 0px);
     --atri-safe-area-left: env(safe-area-inset-left, 0px);
-
-    --atri-density-control-height: 40px;
+    --atri-density-control-height: var(--atri-control-md);
     --atri-density-row-gap: var(--atri-space-3);
+
+    /* Compatibility aliases for earlier Atria surfaces. */
+    --atri-color-canvas: var(--atri-canvas);
+    --atri-color-surface: var(--atri-surface-1);
+    --atri-color-raised: var(--atri-surface-2);
+    --atri-color-surface-raised: var(--atri-surface-2);
+    --atri-color-surface-hover: var(--atri-fill-hover);
+    --atri-color-overlay: var(--atri-elevated);
+    --atri-color-text: var(--atri-text-primary);
+    --atri-color-text-muted: var(--atri-text-secondary);
+    --atri-color-border: var(--atri-separator-strong);
+    --atri-color-accent: var(--atri-accent);
+    --atri-color-accent-contrast: var(--atri-text-on-accent);
+    --atri-color-success: var(--atri-success);
+    --atri-color-warning: var(--atri-warning);
+    --atri-color-danger: var(--atri-danger);
+    --atri-color-focus: var(--atri-accent-text);
+    --atri-color-scrim: var(--atri-scrim);
+    --atri-font-family-body: var(--atri-font-sans);
+    --atri-font-family-mono: var(--atri-font-mono);
+    --atri-font-size-display: var(--atri-text-large-title);
+    --atri-font-size-title: var(--atri-text-title-2);
+    --atri-font-size-heading: var(--atri-text-title-3);
+    --atri-font-size-subheading: var(--atri-text-headline);
+    --atri-font-size-body: var(--atri-text-body);
+    --atri-font-size-body-small: var(--atri-text-footnote);
+    --atri-font-size-caption: var(--atri-text-caption);
+    --atri-radius-control: var(--atri-radius-md);
+    --atri-shadow-surface: var(--atri-shadow-1);
+    --atri-shadow-raised: var(--atri-shadow-2);
+    --atri-shadow-overlay: var(--atri-shadow-3);
+    --atri-motion-fast: var(--atri-duration-fast);
+    --atri-motion-normal: var(--atri-duration-base);
+    --atri-motion-slow: var(--atri-duration-slow);
+    --atri-ease-standard: var(--atri-ease-out);
+}
+
+:root[data-atria-appearance="dark"] {
+    color-scheme: dark;
+}
+
+:root[data-atria-appearance="light"] {
+    color-scheme: light;
+    --atri-canvas: #f6f6f8;
+    --atri-surface-1: #ffffff;
+    --atri-surface-2: #f1f1f4;
+    --atri-surface-3: #e8e8ed;
+    --atri-elevated: #ffffff;
+    --atri-material-sidebar: rgb(238 238 242 / 0.86);
+    --atri-material-bar: rgb(246 246 248 / 0.82);
+    --atri-material-solid-sidebar: #eeeef2;
+    --atri-material-solid-bar: #f6f6f8;
+    --atri-separator: rgb(0 0 0 / 0.08);
+    --atri-separator-strong: rgb(0 0 0 / 0.14);
+    --atri-fill: rgb(0 0 0 / 0.045);
+    --atri-fill-hover: rgb(0 0 0 / 0.07);
+    --atri-fill-pressed: rgb(0 0 0 / 0.1);
+    --atri-fill-strong: rgb(0 0 0 / 0.12);
+    --atri-text-primary: #1c1c1f;
+    --atri-text-secondary: rgb(60 60 67 / 0.72);
+    --atri-text-tertiary: rgb(60 60 67 / 0.48);
+    --atri-text-quaternary: rgb(60 60 67 / 0.26);
+    --atri-accent: #4a57e8;
+    --atri-accent-hover: #5561ee;
+    --atri-accent-pressed: #3f4bd6;
+    --atri-accent-text: #3d4ad8;
+    --atri-accent-soft: rgb(74 87 232 / 0.11);
+    --atri-accent-soft-strong: rgb(74 87 232 / 0.19);
+    --atri-focus-ring: rgb(74 87 232 / 0.38);
+    --atri-success: #1d9a57;
+    --atri-success-soft: rgb(29 154 87 / 0.12);
+    --atri-warning: #b7791f;
+    --atri-warning-soft: rgb(183 121 31 / 0.13);
+    --atri-danger: #d93a2b;
+    --atri-danger-soft: rgb(217 58 43 / 0.1);
+    --atri-scrim: rgb(24 24 32 / 0.26);
+    --atri-highlight: inset 0 0 0 0.5px rgb(0 0 0 / 0.07);
+    --atri-shadow-1: 0 1px 2px rgb(0 0 0 / 0.06), 0 0 0 0.5px rgb(0 0 0 / 0.05);
+    --atri-shadow-2: 0 10px 30px rgb(0 0 0 / 0.12), 0 1px 4px rgb(0 0 0 / 0.07);
+    --atri-shadow-3: 0 26px 64px rgb(0 0 0 / 0.18), 0 3px 12px rgb(0 0 0 / 0.08);
 }
 
 [data-atria-density="compact"] {
-    --atri-density-control-height: 32px;
+    --atri-density-control-height: var(--atri-control-sm);
     --atri-density-row-gap: var(--atri-space-2);
 }
 
 @media (prefers-reduced-motion: reduce) {
     :root {
-        --atri-motion-fast: 0ms;
-        --atri-motion-normal: 0ms;
-        --atri-motion-slow: 0ms;
+        --atri-duration-fast: 1ms;
+        --atri-duration-base: 1ms;
+        --atri-duration-slow: 1ms;
     }
+}
+
+body.reduced-motion,
+[data-atria-reduced-motion="true"] {
+    --atri-duration-fast: 1ms;
+    --atri-duration-base: 1ms;
+    --atri-duration-slow: 1ms;
+    --atri-motion-fast: 1ms;
+    --atri-motion-normal: 1ms;
+    --atri-motion-slow: 1ms;
+}
+
+/*
+ * Legacy bridge.
+ * While the Atria Shell is mounted, SmartTheme-driven compatibility surfaces
+ * (embedded controllers, extension panels, popups, toasts, pickers) inherit
+ * the Atria palette and type instead of the legacy theme. Recovery mode keeps
+ * the untouched legacy presentation because the Shell is not mounted there.
+ */
+body[data-atria-shell-mounted="true"] {
+    --SmartThemeBodyColor: var(--atri-text-primary);
+    --SmartThemeEmColor: var(--atri-text-secondary);
+    --SmartThemeUnderlineColor: var(--atri-accent-text);
+    --SmartThemeQuoteColor: var(--atri-accent-text);
+    --SmartThemeBlurTintColor: var(--atri-surface-1);
+    --SmartThemeChatTintColor: var(--atri-canvas);
+    --SmartThemeUserMesBlurTintColor: var(--atri-accent-soft);
+    --SmartThemeBotMesBlurTintColor: var(--atri-surface-2);
+    --SmartThemeShadowColor: rgb(0 0 0 / 0.28);
+    --SmartThemeBorderColor: var(--atri-separator-strong);
+    --SmartThemeCheckboxBgColorR: 245;
+    --SmartThemeCheckboxBgColorG: 245;
+    --SmartThemeCheckboxBgColorB: 247;
+    --mainFontFamily: var(--atri-font-sans);
+    --monoFontFamily: var(--atri-font-mono);
+    --shadowWidth: 0;
+    --interactable-outline-color: var(--atri-accent-text);
+    --interactable-outline-color-faint: var(--atri-focus-ring);
+    --black30a: var(--atri-fill);
+    --black50a: var(--atri-scrim);
+    --white20a: var(--atri-fill-strong);
+    --white30a: var(--atri-separator-strong);
+    --grey5020a: var(--atri-fill);
+    --grey30a: var(--atri-fill);
+    --golden: var(--atri-warning);
+    --active: var(--atri-success);
+    --warning: var(--atri-danger);
+    --preferred: var(--atri-danger);
+    --crimson70a: var(--atri-danger-soft);
+    --okGreen70a: var(--atri-success-soft);
+    --cobalt30a: var(--atri-accent-soft);
+    background-color: var(--atri-canvas);
+    color: var(--atri-text-primary);
+    font-family: var(--atri-font-sans);
+}
+
+:root[data-atria-appearance="light"] body[data-atria-shell-mounted="true"] {
+    --SmartThemeCheckboxBgColorR: 28;
+    --SmartThemeCheckboxBgColorG: 28;
+    --SmartThemeCheckboxBgColorB: 31;
+    --SmartThemeShadowColor: rgb(0 0 0 / 0.12);
 }
