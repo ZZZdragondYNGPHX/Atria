@@ -76,7 +76,7 @@ export function createNativeGenerationRouter(getHost = services) {
             const references = [...await host.studio.getResourceReferences(handle, ref, { reverse: true })];
             for (const route of await host.persistence.listRuntimeRoutes(handle)) {
                 if ([route.promptProgramRef, route.generationProfileRef].some(item => item.scope === 'library' && item.resourceType === ref.resourceType && item.resourceId === ref.resourceId && item.revision === ref.revision)) {
-                    references.push({ node: { displayName: route.displayName, resourceId: route.runtimeRouteId, scope: 'player' }, edge: { kind: 'runtime-route-exact', from: route.runtimeRouteId } });
+                    references.push({ node: { displayName: route.displayName, resourceType: 'core.runtime-route', resourceId: route.runtimeRouteId, scope: 'player', metadata: { exactRef: ref } }, owner: 'Runtime', edge: { kind: 'runtime-route-exact', from: route.runtimeRouteId } });
                 }
             }
             response.json(references);

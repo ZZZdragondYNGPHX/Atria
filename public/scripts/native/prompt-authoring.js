@@ -1,3 +1,4 @@
+import { renderResourceReferenceRows } from './resource-reference-rows.js';
 import { formatShellText, translateShellText } from '../atria-shell/localization.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { runtimeRequest } from './runtime-client.js';
@@ -266,7 +267,7 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
                     action(doc, row, 'Used By', async () => {
                         try {
                             const refs = entry.ref.scope === 'library' ? await runtimeRequest('/resources/used-by', { method: 'POST', body: entry.ref }) : await nativeStudioClient.getResourceReferences(entry.ref, { reverse: true });
-                            const result = element(doc, 'p', refs.length ? refs.map(v => v.node?.displayName || v.edge.from).join(', ') : 'No references in the Resource Graph.', row); result.setAttribute('role', 'status');
+                            row.querySelector('[data-atria-used-by]')?.remove(); const result = element(doc, 'div', undefined, row); result.dataset.atriaUsedBy = 'true'; renderResourceReferenceRows({ document: doc, root: result, references: refs, host });
                         } catch (e) { error(doc, row, e); }
                     });
                     if (entry.ref.scope === 'library') {
@@ -300,7 +301,7 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
     void render(); return { updateRoute(nextRoute) { selectRoute(nextRoute); void render(); }, dispose() { disposed = true; sequence++; } };
 }
 
-export async function mountStudioPromptTools({ document: doc, body, state, stageProject, runtimeDesign = false }) {
+export async function mountStudioPromptTools({ document: doc, body, state, stageProject, host, runtimeDesign = false }) {
     element(doc, 'h3', runtimeDesign ? 'Runtime Design' : 'Prompt Authoring', body);
     element(doc, 'p', 'Project edits enter an A1 ChangeSet. Review and Apply Changes to commit; exact references never follow latest.', body);
     const loading = element(doc, 'p', 'Loading exact resources…', body);
@@ -388,7 +389,7 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
                     });
                     const details = element(doc, 'details', undefined, row); element(doc, 'summary', 'Inspector — origin / derived from / provenance', details);
                     element(doc, 'pre', JSON.stringify({ origin: entry.ref, derivedFrom: entry.resource.parentRef, provenance: entry.resource.provenance, conditions: entry.resource.condition, parameters: entry.resource.parameters }, null, 2), details);
-                    action(doc, details, 'Used By', async () => { try { element(doc, 'pre', JSON.stringify(await nativeStudioClient.getResourceReferences(entry.ref, { reverse: true }), null, 2), details); } catch (e) { error(doc, status, e); } });
+                    action(doc, details, 'Used By', async () => { try { const rows = element(doc, 'div', undefined, details); renderResourceReferenceRows({ document: doc, root: rows, references: await nativeStudioClient.getResourceReferences(entry.ref, { reverse: true }), host }); } catch (e) { error(doc, status, e); } });
                 }
             }; type.addEventListener('change', renderList); renderList();
         }
@@ -407,5 +408,5 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
                 element(doc, 'p', 'Compiled — no request sent', result); element(doc, 'pre', JSON.stringify(output, null, 2), result);
             } catch (e) { error(doc, result, e); } finally { compile.disabled = false; }
         });
-    } catch (e) { loading.remove(); error(doc, body, e); action(doc, body, 'Retry resources', () => { body.replaceChildren(); void mountStudioPromptTools({ document: doc, body, state, stageProject, runtimeDesign }); }); }
+    } catch (e) { loading.remove(); error(doc, body, e); action(doc, body, 'Retry resources', () => { body.replaceChildren(); void mountStudioPromptTools({ document: doc, body, state, stageProject, host, runtimeDesign }); }); }
 }

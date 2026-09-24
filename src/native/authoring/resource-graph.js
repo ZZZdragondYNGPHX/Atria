@@ -139,7 +139,7 @@ export class ResourceGraph {
                 resourceId: entry.knowledgeEntryId,
                 revision,
                 contentIdentity: hash(entry),
-                displayName: entry.metadata?.displayName || entry.knowledgeEntryId,
+                displayName: entry.metadata?.title || entry.metadata?.displayName || entry.content?.slice(0, 60) || entry.knowledgeEntryId,
                 authority: ownership === 'project' ? 'project-source' : 'native-library',
                 ownership,
                 immutable: true,
@@ -305,6 +305,7 @@ export class ResourceGraph {
         }
 
         const binding = exact.snapshot;
+        const base = await this._knowledge.get(handle, binding.source.knowledgeBaseId);
         const bindingNode = this._addNode(nodes, {
             key,
             scope: 'library',
@@ -312,7 +313,7 @@ export class ResourceGraph {
             resourceId: ref.resourceId,
             revision: ref.revision,
             contentIdentity: exact.ref.contentIdentity,
-            displayName: ref.resourceId,
+            displayName: binding.metadata?.displayName || base?.displayName || ref.resourceId,
             authority: 'native-library',
             ownership: 'library',
             immutable: false,
@@ -657,32 +658,37 @@ export class ResourceGraph {
         const edges = graph.edges.filter(edge => (
             reverse ? keys.has(edge.to) : keys.has(edge.from)
         ));
-        return Object.freeze(edges.map(edge => Object.freeze({
-            edge,
-            node: graph.nodes.find(node => node.key === (reverse ? edge.from : edge.to)) || null,
-        })));
+        return Object.freeze(edges.map(edge => {
+            const node = graph.nodes.find(node => node.key === (reverse ? edge.from : edge.to)) || null;
+            const parts = String(node?.scope || '').split('/');
+            const projectId = node?.projectId || (parts[0] === 'project' ? parts[1] : null);
+            const project = projectId && graph.nodes.find(item => item.resourceType === 'core.project' && item.resourceId === projectId);
+            const work = parts[0] === 'package' && graph.nodes.find(item => item.resourceType === 'core.package' && item.resourceId === parts[1] && item.revision === parts[2]);
+            return Object.freeze({ edge, node, owner: project?.displayName || work?.displayName || (parts[0] === 'library' ? 'Library' : null) });
+        }));
     }
 
     async inspectDelete(handle, value) {
         const graphReferences = await this.references(handle, value, { reverse: true });
         const repositoryReferences = [];
-        if (value.resourceType === 'core.world' && value.revision) {
+        const repositoryType = !value.scope || value.scope === 'library' ? value.resourceType : null;
+        if (repositoryType === 'core.world' && value.revision) {
             repositoryReferences.push(...await this._worlds.getRevisionReferences(
                 handle,
                 value.resourceId,
                 value.revision,
             ));
-        } else if (value.resourceType === 'core.knowledge' && value.revision) {
+        } else if (repositoryType === 'core.knowledge' && value.revision) {
             repositoryReferences.push(...await this._knowledge.getRevisionReferences(
                 handle,
                 value.resourceId,
                 value.revision,
             ));
-        } else if (value.resourceType === 'core.knowledge-binding') {
+        } else if (repositoryType === 'core.knowledge-binding') {
             repositoryReferences.push(...await this._knowledge.getBindingReferences(handle, value.resourceId));
-        } else if (value.resourceType === 'core.asset') {
+        } else if (repositoryType === 'core.asset') {
             repositoryReferences.push(...await this._assets.getReferences(handle, value.resourceId));
-        } else if (value.resourceType === 'core.package' && value.revision && this._packages) {
+        } else if (repositoryType === 'core.package' && value.revision && this._packages) {
             repositoryReferences.push(...await this._packages.getVersionReferences(
                 handle,
                 value.resourceId,

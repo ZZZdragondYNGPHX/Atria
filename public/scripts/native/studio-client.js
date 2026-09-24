@@ -56,6 +56,7 @@ export const nativeStudioClient = Object.freeze({
     readSource: (projectId, path) => request(`projects/${encode(projectId)}/source${query({ path })}`),
 
     getResourceRegistry: () => request('resources/registry'),
+    prepareOperation: (projectId, operation) => request(`projects/${encode(projectId)}/operations/prepare`, { method: 'POST', body: operation }),
     listLibraryResources: options => request('library/resources' + query(options)),
     getResourceGraph: () => request('resources/graph'),
     queryResources: options => request('resources' + query(options)),

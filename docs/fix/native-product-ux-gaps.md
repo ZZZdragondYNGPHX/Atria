@@ -81,26 +81,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 补齐 World / Knowledge 的完整作者工作流；兼容 ABI 清理必须最后执行。
 
-## NUX-024 — Used By / reference information is not consistently actionable
-
-**Current evidence**
-
-Resource Graph / reverse references exist. Studio Inspector and Prompt Library can display references, but rows generally become text rather than navigation/resolution actions.
-
-**Acceptance**
-
-Standardize reference rows with:
-
-- human-readable owner;
-- open/navigate;
-- exact revision;
-- detach/update/fork where legal;
-- blockers before destructive actions.
-
----
-
----
-
 ## NUX-025 — Embedded Knowledge promotion still exposes internal identity instead of content intent
 
 **Current evidence**

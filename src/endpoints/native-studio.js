@@ -136,6 +136,7 @@ export function createNativeStudioRouter(getServices = services) {
             resourceType: body.resourceType,
             resourceId: body.resourceId,
             ...(body.revision == null ? {} : { revision: body.revision }),
+            ...Object.fromEntries(['scope', 'projectId', 'packageId', 'packageVersionId'].filter(key => body[key] != null).map(key => [key, body[key]])),
         }, { reverse: body.reverse === true }));
     }));
 
@@ -145,6 +146,7 @@ export function createNativeStudioRouter(getServices = services) {
             resourceType: body.resourceType,
             resourceId: body.resourceId,
             ...(body.revision == null ? {} : { revision: body.revision }),
+            ...Object.fromEntries(['scope', 'projectId', 'packageId', 'packageVersionId'].filter(key => body[key] != null).map(key => [key, body[key]])),
         }));
     }));
 
@@ -201,6 +203,9 @@ export function createNativeStudioRouter(getServices = services) {
         res.json(await studio.saveProjectSource(handle, req.params.projectId, req.body || {}));
     }));
 
+    router.post('/projects/:projectId/operations/prepare', route(async (req, res, { studio }, handle) => {
+        res.json(await studio.prepareAuthoringOperation(handle, req.params.projectId, req.body));
+    }));
     router.post('/projects/:projectId/workspaces/inspect', route(async (req, res, { studio }, handle) => {
         const workspace = workspaceFromBody(studio, req.params.projectId, req.body || {});
         res.json(await studio.inspectWorkspace(handle, workspace));

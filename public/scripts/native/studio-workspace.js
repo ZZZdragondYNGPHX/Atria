@@ -1,3 +1,4 @@
+import { renderResourceReferenceRows } from './resource-reference-rows.js';
 import { mountKnowledgeEditor } from './knowledge-editor.js';
 import { mountWorldEditor } from './world-editor.js';
 import { validateKnowledgeEditorValue } from './knowledge-contracts.js';
@@ -14,6 +15,7 @@ import {
 } from '../extensions/game-runtime/ui/component-model.js';
 import {
     createHumanOrigin,
+    createAuthoringOperation,
     createStudioNativeId,
     createStudioWorkspace,
     experienceComponentPath,
@@ -427,7 +429,7 @@ async function loadProjectState(projectId) {
     return { detail, registry, graph, resources, library, history };
 }
 
-async function mountProjectStudio(documentRef, root, projectId) {
+async function mountProjectStudio(documentRef, root, projectId, host) {
     const loaded = await loadProjectState(projectId);
     const state = {
         projectId,
@@ -755,23 +757,24 @@ async function mountProjectStudio(documentRef, root, projectId) {
             const refsTitle = documentRef.createElement('h4');
             refsTitle.textContent = t('References');
             refs.append(refsTitle);
-            if (!references?.length) { const note = documentRef.createElement('p'); note.textContent = t('No references'); refs.append(note); }
-            for (const item of references || []) {
-                const row = documentRef.createElement('div');
-                row.textContent = item.node?.displayName || item.node?.resourceId || item.to || item.resourceId || item.edge?.to || t('Resource');
-                refs.append(row);
-            }
+            const openNode = item => {
+                const owner = item.projectId || (String(item.scope).startsWith('project/') ? item.scope.split('/')[1] : null);
+                if (owner && owner !== projectId) return false;
+                const view = ({ 'core.project': 'overview', 'core.actor': 'actors', 'core.world': 'worlds', 'core.knowledge': 'knowledge', 'core.knowledge-entry': 'knowledge', 'core.knowledge-binding': 'knowledge', 'core.asset': 'assets' })[item.resourceType] || 'prompt-authoring';
+                state.activeView = view; state.selectedGraphNode = item; state.mobileView = 'editor';
+                const items = sourceSection(state.source, view) || [];
+                const index = items.findIndex(value => viewResourceId(value, view) === (item.metadata?.knowledgeBaseId || item.resourceId));
+                if (index >= 0) state.collectionSelection[view] = index;
+                renderEditor(); updateMobile(); return true;
+            };
+            const manageNode = item => { state.highlightLibraryReference = resourceReferenceForNode(item); state.activeView = item.resourceType === 'core.world' ? 'worlds' : item.resourceType === 'core.asset' ? 'assets' : 'knowledge'; state.mobileView = 'editor'; renderEditor(); updateMobile(); };
+            renderResourceReferenceRows({ document: documentRef, root: refs, references, host, onOpen: openNode, onManage: manageNode });
             const used = documentRef.createElement('div');
             used.className = 'atria-studio-reference-list';
             const usedTitle = documentRef.createElement('h4');
             usedTitle.textContent = t('Used By');
             used.append(usedTitle);
-            if (!usedBy?.length) { const note = documentRef.createElement('p'); note.textContent = t('No resources use this item'); used.append(note); }
-            for (const item of usedBy || []) {
-                const row = documentRef.createElement('div');
-                row.textContent = item.node?.displayName || item.node?.resourceId || item.from || item.resourceId || item.edge?.from || t('Resource');
-                used.append(row);
-            }
+            renderResourceReferenceRows({ document: documentRef, root: used, references: usedBy, host, onOpen: openNode });
             inspector.append(refs, used);
         } catch (error) {
             if (state.disposed || inspectorToken !== inspectorSequence) return;
@@ -917,66 +920,45 @@ async function mountProjectStudio(documentRef, root, projectId) {
             row.className = 'atria-studio-library-relations__row';
             const info = documentRef.createElement('div');
             info.textContent = `${item.displayName} · ${item.resourceType} · ${item.currentRevision}`;
-            const revisionSelect = selectInput(documentRef, item.currentRevision, item.revisions || [], 'Exact Library revision');
-            const attach = button(documentRef, 'Attach', async () => {
-                try {
-                    const result = await nativeStudioClient.attachResource(projectId, {
-                        resourceType: item.resourceType,
-                        resourceId: item.resourceId,
-                        revision: revisionSelect.value,
-                        baseRevision: state.revision.revision,
-                        origin: createHumanOrigin(),
-                    });
-                    log('success', `Attached exact ${item.resourceId}@${revisionSelect.value}.`, result.changeSet);
-                    await refreshProject();
-                    renderEditor();
-                } catch (error) {
-                    log(error.status === 409 ? 'conflict' : 'error', error?.message || String(error), error.details);
-                }
-            });
-            const fork = button(documentRef, 'Fork', async () => {
-                try {
-                    const result = await nativeStudioClient.forkResource(projectId, {
-                        resourceType: item.resourceType,
-                        resourceId: item.resourceId,
-                        revision: revisionSelect.value,
-                        baseRevision: state.revision.revision,
-                        origin: createHumanOrigin(),
-                    });
-                    log('success', `Forked ${item.resourceId}@${revisionSelect.value} into project ownership.`, result.changeSet);
-                    await refreshProject();
-                    renderEditor();
-                } catch (error) {
-                    log(error.status === 409 ? 'conflict' : 'error', error?.message || String(error), error.details);
-                }
-            });
+            const selected = state.highlightLibraryReference?.resourceId === item.resourceId ? state.highlightLibraryReference.revision : item.currentRevision;
+            const revisionSelect = selectInput(documentRef, selected, item.revisions || [], 'Exact Library revision');
+            if (selected && !item.revisions?.includes(selected)) { const note = documentRef.createElement('p'); note.textContent = t('The requested exact revision is unavailable. References never follow latest.'); row.append(note); }
+            const prepare = async (operationType, input, label) => {
+                const operation = createAuthoringOperation({ operationType, target: { resourceType: item.resourceType, resourceId: item.resourceId }, input });
+                const prepared = await nativeStudioClient.prepareOperation(projectId, operation);
+                return stageOperations([prepared], label);
+            };
+            const attach = button(documentRef, 'Attach', () => prepare('resource.attach', { revision: revisionSelect.value }, `Attach ${item.displayName}`));
+            const fork = button(documentRef, 'Fork', () => prepare('resource.fork', { revision: revisionSelect.value }, `Fork ${item.displayName}`));
             const fromRevision = attachedRevision(item);
             const update = ['core.world', 'core.knowledge'].includes(item.resourceType)
-                ? button(documentRef, 'Update', async () => {
-                    const current = attachedRevision(item);
-                    if (!current || current === revisionSelect.value) {
-                        log('info', current ? 'Selected revision is already attached.' : 'Attach this resource before updating it.');
-                        return;
-                    }
-                    try {
-                        const result = await nativeStudioClient.updateResource(projectId, {
-                            resourceType: item.resourceType,
-                            resourceId: item.resourceId,
-                            fromRevision: current,
-                            toRevision: revisionSelect.value,
-                            baseRevision: state.revision.revision,
-                            origin: createHumanOrigin(),
-                        });
-                        log('success', `Updated ${item.resourceId} from ${current} to ${revisionSelect.value}.`, result.changeSet);
-                        await refreshProject();
-                        renderEditor();
-                    } catch (error) {
-                        log(error.status === 409 ? 'conflict' : 'error', error?.message || String(error), error.details);
-                    }
-                }, { disabled: !fromRevision })
-                : null;
+                ? button(documentRef, 'Update', () => prepare('resource.update', { fromRevision, toRevision: revisionSelect.value }, `Update ${item.displayName}`), { disabled: !fromRevision }) : null;
+            const detach = button(documentRef, 'Review detach', async () => {
+                const consumers = item.resourceType === 'core.world'
+                    ? state.source.package.entryPoints.filter(entry => entry.worldIds.includes(item.resourceId)).map(entry => ({ node: { scope: 'project/' + projectId, projectId, resourceType: 'core.entrypoint', resourceId: entry.entryPointId, displayName: entry.displayName }, owner: state.source.project.displayName }))
+                    : item.resourceType === 'core.asset' ? state.source.worlds.filter(world => world.revision.assetIds.includes(item.resourceId)).map(world => ({ node: { scope: 'project/' + projectId, projectId, resourceType: 'core.world', resourceId: world.world.worldId, revision: world.revision.worldRevisionId, displayName: world.world.displayName }, owner: state.source.project.displayName })) : [];
+                if (consumers.length) {
+                    row.querySelector('[data-atria-detach-blockers]')?.remove();
+                    const blockers = documentRef.createElement('div'); blockers.dataset.atriaDetachBlockers = 'true'; row.append(blockers);
+                    renderResourceReferenceRows({ document: documentRef, root: blockers, references: consumers, host, onOpen: node => {
+                        state.activeView = node.resourceType === 'core.entrypoint' ? 'entrypoints' : 'worlds';
+                        state.collectionSelection[state.activeView] = (sourceSection(state.source, state.activeView) || []).findIndex(value => viewResourceId(value, state.activeView) === node.resourceId);
+                        state.mobileView = 'editor'; renderEditor(); updateMobile(); return true;
+                    } });
+                    return;
+                }
+                const next = clone(state.source);
+                const [collection, identity] = item.resourceType === 'core.world' ? ['worlds', 'worldId'] : item.resourceType === 'core.knowledge' ? ['knowledge', 'knowledgeBaseId'] : ['assets', 'assetId'];
+                next.dependencies[collection] = next.dependencies[collection].filter(ref => ref[identity] !== item.resourceId);
+                await stageProject(next, `Detach ${item.displayName}`);
+            }, { disabled: !fromRevision });
+            const references = button(documentRef, 'Used By', async () => {
+                const rows = documentRef.createElement('div'); row.querySelector('[data-atria-used-by]')?.remove(); rows.dataset.atriaUsedBy = 'true'; row.append(rows);
+                const refs = await nativeStudioClient.getResourceReferences({ scope: 'library', resourceType: item.resourceType, resourceId: item.resourceId, revision: revisionSelect.value }, { reverse: true });
+                renderResourceReferenceRows({ document: documentRef, root: rows, references: refs, host });
+            });
             if (fromRevision) info.textContent += ` · attached ${fromRevision}`;
-            row.append(info, revisionSelect, attach, fork, update);
+            row.append(info, revisionSelect, attach, fork, ...(update ? [update] : []), detach, references);
             list.append(row);
         }
         body.append(list);
@@ -1139,7 +1121,7 @@ async function mountProjectStudio(documentRef, root, projectId) {
         center.append(body);
 
         if (state.activeView === 'overview') renderOverview(body);
-        else if (['prompt-authoring', 'runtime-design'].includes(state.activeView)) void mountStudioPromptTools({ document: documentRef, body, state, stageProject, runtimeDesign: state.activeView === 'runtime-design' });
+        else if (['prompt-authoring', 'runtime-design'].includes(state.activeView)) void mountStudioPromptTools({ document: documentRef, body, state, stageProject, host, runtimeDesign: state.activeView === 'runtime-design' });
         else if (state.activeView === 'experience') renderExperience(body);
         else if (['actors', 'entrypoints', 'worlds', 'knowledge'].includes(state.activeView)) {
             renderCollectionEditor(documentRef, body, state, state.activeView, stageProject);
@@ -1406,7 +1388,7 @@ export function mountNativeStudioWorkspace({
             const childId = String(nextRoute?.child?.id || '');
             if (childId.startsWith('project:')) {
                 const projectId = childId.slice('project:'.length);
-                const mounted = await mountProjectStudio(documentRef, root, projectId);
+                const mounted = await mountProjectStudio(documentRef, root, projectId, host);
                 if (disposed || token !== sequence) { mounted.dispose(); return; }
                 projectController = mounted;
             } else {

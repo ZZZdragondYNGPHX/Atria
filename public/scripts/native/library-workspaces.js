@@ -1,4 +1,6 @@
 import { mountLibraryRevisionHistory } from './library-revision-history.js';
+import { renderResourceReferenceRows } from './resource-reference-rows.js';
+import { nativeStudioClient } from './studio-client.js';
 import { mountKnowledgeBindingManager } from './knowledge-binding-manager.js';
 import { mountLibraryRevisionEditor } from './library-revision-editor.js';
 import { createAtriaStatePanel } from '../atria-shell/primitives.js';
@@ -222,6 +224,13 @@ async function worldKnowledge(doc, root, route, host) {
         });
         name.addEventListener('input', () => name.setCustomValidity(''));
         action(doc, controls, knowledge ? 'Delete Knowledge Base' : 'Delete World', async () => {
+            controls.querySelector('[data-atria-delete-blockers]')?.remove();
+            const references = await nativeStudioClient.getResourceReferences({ scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId: id }, { reverse: true });
+            if (references.length) {
+                const blockers = el(doc, 'section', 'atri-library-section', undefined, controls); blockers.dataset.atriaDeleteBlockers = 'true';
+                el(doc, 'h4', '', tl('Resolve references before deleting'), blockers);
+                renderResourceReferenceRows({ document: doc, root: blockers, references, host }); return;
+            }
             if (!await confirmLibraryAction(knowledge ? 'Delete this Native Knowledge Base?' : 'Delete this Native World?')) return;
             await (knowledge ? client.deleteKnowledge(id) : client.deleteWorld(id)); host.openLibrarySection(knowledge ? 'knowledge' : 'worlds');
         }, { danger: true });

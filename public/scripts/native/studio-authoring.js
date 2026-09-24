@@ -140,9 +140,13 @@ export function updateComponentNode(root, componentId, updater) {
 
 export function resourceReferenceForNode(node) {
     if (!node?.resourceType || !node?.resourceId) return null;
+    const scope = String(node.scope || '').split('/');
     return {
         resourceType: node.resourceType,
         resourceId: node.resourceId,
         ...(node.revision == null ? {} : { revision: node.revision }),
+        ...(scope[0] === 'library' ? { scope: 'library' } : {}),
+        ...(scope[0] === 'project' ? { scope: 'project', projectId: node.projectId || scope[1] } : {}),
+        ...(scope[0] === 'package' ? { scope: 'package', packageId: node.packageId || scope[1], packageVersionId: node.packageVersionId || scope[2] } : {}),
     };
 }

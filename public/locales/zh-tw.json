@@ -7123,5 +7123,11 @@
     "Before": "修改前",
     "After": "修改後",
     "Changed": "已修改",
-    "Added": "已新增"
+    "Added": "已新增",
+    "Open owner": "開啟所屬內容",
+    "Review relationship": "審閱參照關係",
+    "Review detach": "審閱解除參照",
+    "Exact reference": "精確參照",
+    "Unavailable resource": "資源不可用",
+    "Resolve references before deleting": "刪除前請先處理參照"
 }

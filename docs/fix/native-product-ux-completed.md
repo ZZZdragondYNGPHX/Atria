@@ -547,4 +547,25 @@ historical diff, recreation, promotion and fork, verifying original history and
 independent fork identity/content. Screenshot inspected. Changed-file lint and
 diff checks passed.
 
-Next: NUX-024, following the active backlog order.
+### NUX-024
+
+Shared reference rows now serve Studio Inspector, Prompt Library and Library deletion
+blockers, showing readable owners, exact versions and existing Shell navigation.
+Reference HTTP requests now preserve Project/Library/Package ownership scope.
+Resource Graph supplies owner names and human Knowledge entry/Binding labels.
+Runtime Route references navigate to the player-owned Runtime authority.
+
+Studio Library Attach/Fork/Update prepares operations for ChangeSet Review/Apply;
+it no longer commits directly from the relationship button. Explicit dependency
+detach follows the same review path. EntryPoint/World consumers block illegal detach
+and navigate to the owner. World/Knowledge deletion shows reverse references before
+requesting destructive confirmation; backend write-time protections remain intact.
+
+Validation: nine focused/adjacent suites passed 56 cases across reference routing,
+scoped HTTP queries, read-only preparation, consumer blockers, graph consistency,
+Studio/Prompt ownership and Native Runtime generation/lifecycle. A real Edge 390px
+scenario passed deletion blockers, owner navigation and Update/Fork/Detach with
+assertions that no project mutation occurs before Apply. Screenshot inspected.
+Changed-file lint and diff checks passed.
+
+Next: NUX-025, following the active backlog order.

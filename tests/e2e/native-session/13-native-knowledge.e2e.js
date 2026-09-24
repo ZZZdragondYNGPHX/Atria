@@ -15,6 +15,60 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
+test('references navigate owners and Library relationship writes wait for Studio Apply at 390px', async ({ page }, info) => {
+    test.setTimeout(180000);
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const projectId = createNativeId('project');
+    const source = { format: 'atria-project-source', schemaVersion: 1, project: { projectId, packageId: createNativeId('package'), displayName: 'Reference adventure', createdAt: 1, updatedAt: 1 }, package: { name: 'Reference adventure', version: '1.0.0', actors: [], capabilities: ['narrative'], permissions: [], entryPoints: [{ entryPointId: createNativeId('entryPoint'), displayName: 'Main', actorIds: [], worldIds: [], knowledgeBindingIds: [] }] }, resources: [], worlds: [], knowledge: [], knowledgeBindings: [], assetFiles: [], dependencies: { worlds: [], knowledge: [], knowledgeBindings: [], assets: [], resources: [] } };
+    const seeded = await page.evaluate(async source => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        const { nativeStudioClient: studio } = await import('/scripts/native/studio-client.js');
+        const world = await client.createWorld('Reference harbor');
+        const first = await client.commitWorldRevision(world.worldId, { baseRevisionId: null, content: { baseline: { weather: 'rain' } } });
+        const second = await client.commitWorldRevision(world.worldId, { baseRevisionId: first.worldRevisionId, content: { baseline: { weather: 'sun' } } });
+        source.dependencies.worlds = [{ worldId: world.worldId, worldRevisionId: first.worldRevisionId }];
+        await studio.createProject(source);
+        window.Atria.shell.getWorkspaceHost().openLibraryWorld(world.worldId, world.displayName);
+        return { world, first, second };
+    }, source);
+    const library = page.locator('[data-atria-native-library="worlds-knowledge"]');
+    await library.locator('summary').filter({ hasText: /^Manage resource$/ }).click();
+    await library.getByRole('button', { name: 'Delete World', exact: true }).click();
+    const blockers = library.locator('[data-atria-delete-blockers]');
+    await expect(blockers).toContainText('Reference adventure');
+    await blockers.getByRole('button', { name: 'Open owner', exact: true }).click();
+    const studio = page.locator('[data-atria-studio-workspace]');
+    const openWorlds = async () => {
+        await studio.locator('.atria-studio-mobile-nav').getByRole('button', { name: 'Project', exact: true }).click();
+        await studio.locator('.atria-studio-resource-tree').getByRole('button', { name: 'Worlds', exact: true }).click();
+    };
+    await openWorlds();
+    const row = studio.locator('.atria-studio-library-relations__row').filter({ hasText: 'Reference harbor' });
+    await row.getByLabel('Exact Library revision', { exact: true }).selectOption(seeded.second.worldRevisionId);
+    await row.getByRole('button', { name: 'Update', exact: true }).click();
+    const read = () => page.evaluate(async id => {
+        const { nativeStudioClient } = await import('/scripts/native/studio-client.js'); return (await nativeStudioClient.getProject(id)).source;
+    }, projectId);
+    expect((await read()).dependencies.worlds[0].worldRevisionId).toBe(seeded.first.worldRevisionId);
+    await studio.getByRole('button', { name: 'Apply ChangeSet', exact: true }).click();
+    await expect.poll(async () => (await read()).dependencies.worlds[0].worldRevisionId).toBe(seeded.second.worldRevisionId);
+    await openWorlds(); await row.getByRole('button', { name: 'Fork', exact: true }).click();
+    expect((await read()).worlds).toHaveLength(0);
+    await studio.getByRole('button', { name: 'Apply ChangeSet', exact: true }).click();
+    await expect.poll(async () => (await read()).worlds.length).toBe(1);
+    await openWorlds(); await row.getByRole('button', { name: 'Review detach', exact: true }).click();
+    expect((await read()).dependencies.worlds).toHaveLength(1);
+    await page.screenshot({ path: info.outputPath('relationship-detach-review-390.png') });
+    await studio.getByRole('button', { name: 'Apply ChangeSet', exact: true }).click();
+    await expect.poll(async () => (await read()).dependencies.worlds.length).toBe(0);
+    expect((await read()).worlds[0].revision.baseline).toEqual({ weather: 'sun' });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test('World history compares, recreates, promotes and forks exact historical content at 390px', async ({ page }, info) => {
     test.setTimeout(180000);
     await page.setViewportSize({ width: 390, height: 900 });

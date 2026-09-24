@@ -78,6 +78,22 @@ function appFor(studio, { authenticated = true } = {}) {
 }
 
 describe('A1 Native Studio HTTP boundary', () => {
+    test('reference queries retain ownership scope and operation preparation cannot execute writes', async () => {
+        const studio = makeStudio();
+        studio.getResourceReferences = jest.fn(async () => []); studio.inspectResourceDelete = jest.fn(async () => ({ safe: false }));
+        studio.prepareAuthoringOperation = jest.fn(async (_handle, _projectId, operation) => ({ ...operation, input: { ...operation.input, derivativeResourceId: 'prepared' } }));
+        const app = appFor(studio);
+        const ref = { resourceType: 'core.world', resourceId: 'world', revision: 'exact', scope: 'package', packageId: 'package', packageVersionId: 'version' };
+        await request(app).post('/resources/references').send({ ...ref, reverse: true }).expect(200);
+        expect(studio.getResourceReferences).toHaveBeenCalledWith('u', ref, { reverse: true });
+        await request(app).post('/resources/delete-safety').send(ref).expect(200);
+        expect(studio.inspectResourceDelete).toHaveBeenCalledWith('u', ref);
+        const operation = { operationType: 'resource.fork', target: { resourceType: 'core.world', resourceId: 'world' }, input: { revision: 'exact' } };
+        const response = await request(app).post('/projects/project/operations/prepare').send(operation).expect(200);
+        expect(response.body.input.derivativeResourceId).toBe('prepared');
+        expect(studio.prepareAuthoringOperation).toHaveBeenCalledWith('u', 'project', operation);
+        expect(studio.executeWorkspace).not.toHaveBeenCalled();
+    });
     test('uses authenticated handle and keeps source mutation on StudioService operations', async () => {
         const studio = makeStudio();
         const app = appFor(studio);

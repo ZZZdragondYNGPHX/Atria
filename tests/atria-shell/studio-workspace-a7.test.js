@@ -130,6 +130,27 @@ describe('A7 Atria Studio workspace', () => {
         });
     });
 
+    test('relationship detach exposes consumers before review and navigates to the exact project owner', async () => {
+        const previous = globalThis.fetch;
+        const detail = projectDetail(); const worldId = 'world_' + 'b'.repeat(32), worldRevisionId = 'worldv_' + 'c'.repeat(32);
+        detail.source.dependencies.worlds = [{ worldId, worldRevisionId }];
+        detail.source.package.entryPoints[0].worldIds = [worldId];
+        globalThis.fetch = jest.fn(async (url, options) => {
+            if (url === `/api/native/studio/projects/${projectId}`) return response(detail);
+            if (url === '/api/native/studio/library/resources') return response([{ resourceType: 'core.world', resourceId: worldId, displayName: 'Harbor', currentRevision: worldRevisionId, revisions: [worldRevisionId] }]);
+            return previous(url, options);
+        });
+        const slot = document.querySelector('#slot');
+        const controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        [...slot.querySelectorAll('.atria-studio-resource-tree button')].find(node => node.textContent === 'Worlds').click(); await flush();
+        [...slot.querySelectorAll('button')].find(node => node.textContent === 'Review detach').click(); await flush();
+        const blockers = slot.querySelector('[data-atria-detach-blockers]'); expect(blockers.textContent).toContain('Start');
+        expect(requests.some(item => item.path.endsWith('/workspaces/inspect'))).toBe(false);
+        blockers.querySelector('button').click(); await flush();
+        expect(slot.querySelector('[data-atria-studio-view="entrypoints"]')).not.toBeNull();
+        controller.dispose();
+    });
+
     afterEach(() => {
         delete globalThis.Atria;
         delete globalThis.fetch;

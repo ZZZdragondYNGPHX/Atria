@@ -7568,5 +7568,11 @@
     "Before": "修改前",
     "After": "修改后",
     "Changed": "已修改",
-    "Added": "已新增"
+    "Added": "已新增",
+    "Open owner": "打开所属内容",
+    "Review relationship": "审阅引用关系",
+    "Review detach": "审阅解除引用",
+    "Exact reference": "精确引用",
+    "Unavailable resource": "资源不可用",
+    "Resolve references before deleting": "删除前请先处理引用"
 }

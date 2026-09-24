@@ -123,3 +123,17 @@ stable destination ID prevents retry duplication. Knowledge forks remap entry ID
 and internal relations. Exact source provenance is retained in revision metadata.
 World forks preserve shared dependency bindings rather than silently duplicating
 or upgrading them. Missing selected revisions fail explicitly.
+
+### Actionable references
+
+Studio Inspector, Prompt Library and Library deletion blockers share reference rows
+with readable owners, exact revisions and navigation through the existing Shell.
+Reference requests retain Library/Project/Package scope, including exact package
+version. Player Route references navigate to Runtime; packaged originals navigate
+to their installed work. Local project references select the corresponding editor.
+
+Studio Library Attach/Fork/Update now prepares operations and enters the same
+ChangeSet Review/Apply path as other human edits. Detach removes only the explicit
+project dependency, also via Review/Apply. EntryPoint/World consumers block illegal
+detach and link to their owning editor. World/Knowledge deletion first presents
+reverse-reference blockers; repository checks remain authoritative at write time.
