@@ -85,20 +85,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 让 Build / Studio 能通过当前 Atria authoring authority 完成核心资源制作，而不是依赖内部 JSON。
 
-## NUX-031 — Source editor remains an advanced plain-text escape hatch without file-aware validation
-
-**Current evidence**
-
-Studio Source supports file selection, textarea editing, review and reload. It does not expose language/type diagnostics, staged textual diff before review or clear binary handling.
-
-**Acceptance**
-
-Keep Source as an advanced escape hatch, but add file-type awareness, read-only/binary protection, validation where available and clearer staged diff feedback.
-
----
-
----
-
 ## NUX-032 — Prompt advanced semantics are still authorable only through Advanced Resource JSON
 
 **New finding in the post-redesign re-audit**

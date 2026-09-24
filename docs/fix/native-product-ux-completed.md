@@ -677,4 +677,18 @@ StudioService suite including atomic move/replace/manifest behavior. A real Edge
 passed import, text preview, collision refusal, rename plus replacement, stable identity,
 reference inspection and reviewed removal. Rendered editor inspected; lint/diff checks passed.
 
-Next: NUX-031, following the active backlog order.
+### NUX-031
+
+Source now identifies file types, validates JSON/JSON Lines/YAML/XML and invokes the
+existing component compiler for declared structured UI sources. Binary, non-UTF-8 and
+oversized files remain read-only. A bounded inert textual diff shows changed line ranges
+before review without truncating writes. Invalid drafts and per-file edits survive failures
+and file switching. Explicit reload returns to committed content. Writes retain Studio's
+revision-pinned Review/Apply boundary.
+
+Validation: three focused/adjacent suites passed 11 cases and localization passed four.
+A real Edge 390px scenario passed invalid JSON retention, live textual diff, binary write
+protection, restored draft and successful reviewed write. Screenshot inspected; lint and
+diff checks passed.
+
+Next: NUX-032, following the active backlog order.

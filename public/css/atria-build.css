@@ -142,3 +142,7 @@
 .atri-asset-text-preview { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto; }
 .atri-asset-form { flex-basis: 100%; min-width: 0; }
 .atri-asset-form textarea { width: 100%; min-height: 100px; }
+
+.atri-source-editor { min-width: 0; }
+.atri-source-editor > textarea { display: block; width: 100%; min-height: 320px; font-family: var(--atri-font-mono); }
+.atri-source-diff pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; }

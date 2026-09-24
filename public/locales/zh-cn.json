@@ -7636,5 +7636,16 @@
     "Remove the references before deleting this asset.": "删除此资产前，请先移除引用。",
     "Remove this asset and its project file? Installed Works are unchanged.": "移除此资产及其项目文件？已安装作品不受影响。",
     "Review asset removal": "审阅资产删除",
-    "Remove project asset": "移除项目资产"
+    "Remove project asset": "移除项目资产",
+    "This file is too large for the Source editor. Replace it from Assets.": "此文件超出源码编辑器的大小限制。请从资产页替换。",
+    "Binary": "二进制",
+    "Text": "文本",
+    "Binary or non-UTF-8 file. Source editing is disabled to preserve its bytes.": "二进制或非 UTF-8 文件。已禁用源码编辑以保护原始内容。",
+    "Enter valid XML.": "请输入有效的 XML。",
+    "Proposed text changes": "拟议文本变更",
+    "No text changes.": "没有文本变更。",
+    "Diff preview is truncated. The complete edited file will be reviewed.": "差异预览已截断，审阅将使用完整的编辑后文件。",
+    "Format validation runs before review.": "审阅前将校验文件格式。",
+    "Plain text editing. Project validation runs when changes are applied.": "纯文本编辑。应用变更时将执行项目校验。",
+    "Check the file format. Your draft is still here.": "请检查文件格式。草稿已保留。"
 }

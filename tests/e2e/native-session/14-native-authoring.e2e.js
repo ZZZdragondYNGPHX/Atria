@@ -189,3 +189,35 @@ test('Studio assets preview, reject collisions, rename, replace and remove throu
     await row.getByRole('button', { name: 'Review asset removal', exact: true }).click(); await studio.getByRole('button', { name: 'Apply ChangeSet', exact: true }).click(); await expect.poll(read).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+
+test('Studio Source validates JSON, previews text changes and protects binary files at 390px', async ({ page }, info) => {
+    test.setTimeout(120000); await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openBuild());
+    const build = page.locator('[data-atria-build-projects]'); await build.getByText('New Project', { exact: true }).click();
+    await build.getByLabel('Project name', { exact: true }).fill('Source voyage'); await build.getByRole('button', { name: 'Create Project', exact: true }).click();
+    const studio = page.locator('[data-atria-studio-workspace]'); await expect(studio.getByRole('heading', { name: 'Source voyage', exact: true })).toBeVisible();
+    const id = await studio.getAttribute('data-atria-studio-workspace');
+    await page.evaluate(async id => {
+        const { nativeStudioClient: c } = await import('/scripts/native/studio-client.js');
+        const { createStudioWorkspace, sourceWriteOperation } = await import('/scripts/native/studio-authoring.js');
+        const detail = await c.getProject(id); await c.executeWorkspace(id, createStudioWorkspace({ projectId: id, baseRevision: detail.revision.revision,
+            operations: [sourceWriteOperation('notes.json', '{"name":"Harbor"}'), sourceWriteOperation('sample.bin', 'AP8=', { encoding: 'base64' })] }));
+        await window.Atria.shell.getWorkspaceHost().openBuild(id);
+    }, id);
+    await studio.locator('.atria-studio-mobile-nav').getByRole('button', { name: 'Project', exact: true }).click(); await studio.locator('[data-atria-studio-resource="source"]').click();
+    const source = studio.locator('[data-atria-source-editor]'), editor = source.getByLabel('Source editor', { exact: true });
+    await expect(editor).toHaveValue('{"name":"Harbor"}'); await editor.fill('{broken'); await source.getByRole('button', { name: 'Review Source Change' }).click();
+    await expect(source.getByRole('alert')).toContainText('Your draft is still here'); await expect(editor).toHaveValue('{broken');
+    await editor.fill('{"name":"New harbor"}'); await expect(source.locator('.atri-source-diff')).toContainText('+ {"name":"New harbor"}');
+    await page.screenshot({ path: info.outputPath('source-diff-390.png') });
+    await source.getByLabel('Source file', { exact: true }).selectOption('sample.bin'); await expect(editor).toBeDisabled(); await expect(source.getByRole('button', { name: 'Review Source Change' })).toBeDisabled();
+    await source.getByLabel('Source file', { exact: true }).selectOption('notes.json'); await expect(editor).toHaveValue('{"name":"New harbor"}');
+    await source.getByRole('button', { name: 'Review Source Change' }).click(); await studio.getByRole('button', { name: 'Apply ChangeSet' }).click();
+    await expect.poll(() => page.evaluate(async id => { const { nativeStudioClient: c } = await import('/scripts/native/studio-client.js'); return atob((await c.readSource(id, 'notes.json')).content); }, id)).toBe('{"name":"New harbor"}');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

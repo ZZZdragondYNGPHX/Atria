@@ -1,3 +1,4 @@
+import { mountSourceEditor } from './source-editor.js';
 import { mountAssetEditor } from './asset-editor.js';
 import { mountProjectDeletion } from './project-lifecycle.js';
 import { mountSkillDeclarationsEditor } from './skill-declarations-editor.js';
@@ -131,14 +132,6 @@ function field(documentRef, label, control) {
 function textInput(documentRef, value, label) {
     const input = documentRef.createElement('input');
     input.className = 'text_pole';
-    input.value = value ?? '';
-    input.setAttribute('aria-label', t(label)); input.name = label; input.autocomplete = 'off';
-    return input;
-}
-
-function textArea(documentRef, value, label) {
-    const input = documentRef.createElement('textarea');
-    input.className = 'text_pole atria-studio-editor__textarea';
     input.value = value ?? '';
     input.setAttribute('aria-label', t(label)); input.name = label; input.autocomplete = 'off';
     return input;
@@ -967,37 +960,12 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
 
     async function renderSource(body) {
         body.append(heading(documentRef, 'Source', 'Edit project files directly, then review the proposed changes before applying.'));
-        const loading = panel(documentRef, 'loading', 'Loading files', 'Reading project sources…'); body.append(loading);
-        try {
-            const sources = await nativeStudioClient.listSources(projectId);
-            loading.remove();
-            if (!sources.length) { body.append(panel(documentRef, 'empty', 'No project sources', 'This project currently contains only structured manifest resources.')); return; }
-            const chooser = selectInput(documentRef, sources[0].path, sources.map(item => item.path), 'Source file');
-            const editor = textArea(documentRef, '', 'Source editor');
-            const errorPanel = documentRef.createElement('p'); errorPanel.hidden = true; errorPanel.setAttribute('role', 'alert');
-            let sequence = 0;
-            let loadedPath = '';
-            const review = button(documentRef, 'Review Source Change', () => stageOperations([
-                sourceWriteOperation(loadedPath, editor.value),
-            ], `Write ${loadedPath}`), { primary: true, disabled: true });
-            async function load() {
-                const token = ++sequence; const path = chooser.value;
-                editor.disabled = true; review.disabled = true; errorPanel.hidden = true;
-                try {
-                    const file = await nativeStudioClient.readSource(projectId, path);
-                    if (state.disposed || token !== sequence) return;
-                    editor.value = decodeUtf8(file.content); loadedPath = path; editor.disabled = false; review.disabled = false;
-                } catch (error) {
-                    if (state.disposed || token !== sequence) return;
-                    errorPanel.hidden = false; errorPanel.textContent = error.message;
-                }
-            }
-            chooser.addEventListener('change', () => void load());
-            body.append(field(documentRef, 'File', chooser), editor, errorPanel, actionRow(documentRef, review, button(documentRef, 'Reload file', load)));
-            await load();
-        } catch (error) {
-            loading.remove(); body.append(panel(documentRef, 'error', 'Could not load sources', error.message), button(documentRef, 'Retry', () => { renderEditor(); }));
-        }
+        await mountSourceEditor({ document: documentRef, root: body, projectId, stageOperations,
+            validateStructured: (path, value) => {
+                const experiences = [state.source.package.runtime?.experience, ...state.source.package.entryPoints.map(entry => entry.runtime?.experience)].filter(Boolean);
+                for (const experience of experiences) if (experience.mode !== 'text' && experience.component === path) compileExperienceComponentModel(value, { mode: experience.mode });
+            },
+        });
     }
 
     async function renderPreview(body) {
