@@ -7532,8 +7532,8 @@
     "Binding changes affect future resolutions. Installed works and sessions keep their snapshots.": "绑定修改影响后续解析。已安装作品和会话保留自己的快照。",
     "Each attachment change creates a World revision. Historical references remain protected.": "每次挂载变更都会创建 World 修订。历史引用仍受保护。",
     "Referenced bindings cannot be deleted. Historical World revisions also protect their bindings.": "仍被引用的绑定无法删除。历史 World 修订同样保护其绑定。",
-    "World baseline": "World 基线",
-    "World schema": "World 结构定义",
+    "World baseline": "世界初始状态",
+    "World schema": "世界结构定义",
     "World assets": "World 资产",
     "Knowledge bindings": "Knowledge 绑定",
     "Project-owned source": "项目自有源文件",
@@ -7725,5 +7725,14 @@
     "Import could not finish. Your originals are unchanged. Retry or select the file again to review.": "未能完成导入，原始资源保持不变。请重试或重新选择文件进行审阅。",
     "Retry import": "重试导入",
     "This Resource Bundle could not be reviewed. Check its format, exact dependencies and integrity.": "无法审阅此资源包。请检查格式、精确依赖和内容完整性。",
-    "Choose Resource Bundle": "选择资源包"
+    "Choose Resource Bundle": "选择资源包",
+    "Installed Work originals": "已安装作品原件",
+    "No installed Work resources of this type.": "已安装作品中没有此类资源。",
+    "Installed Work · Read-only original": "已安装作品 · 只读原件",
+    "Browse original": "浏览原件",
+    "Installed Work resources could not be loaded.": "无法加载已安装作品资源。",
+    "This exact Package revision is immutable. Create an independent Library copy to author changes.": "此精确安装包修订不可修改。请创建独立资源库副本后编辑。",
+    "Load references": "加载引用",
+    "The exact dependency closure will also become independent Library copies.": "全部精确依赖也会创建为独立资源库副本。",
+    "The fork destination conflicts with existing content. Review the fork again to choose fresh identities.": "Fork 目标与现有内容冲突。请重新审阅以生成新的身份。"
 }

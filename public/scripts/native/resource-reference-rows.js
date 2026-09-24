@@ -13,7 +13,7 @@ export function renderResourceReferenceRows({ document: doc, root, references, h
         let open;
         if (item.edge?.kind === 'runtime-route-exact') open = () => host?.openRuntimeSection('routes', node.resourceId);
         else if (scope[0] === 'project') open = () => onOpen?.(node) === true || host?.openBuild(node.projectId || scope[1], item.owner);
-        else if (scope[0] === 'package') open = () => host?.openLibraryWork(node.packageId || scope[1], item.owner);
+        else if (scope[0] === 'package') open = () => ['core.world', 'core.knowledge', 'core.prompt-program', 'core.prompt-module', 'core.generation-profile'].includes(node.resourceType) ? host?.openLibraryResource(ref, node.displayName) : host?.openLibraryWork(node.packageId || scope[1], item.owner);
         else if (node.resourceType === 'core.world') open = () => host?.openLibraryWorld(node.resourceId, node.displayName);
         else if (node.resourceType === 'core.knowledge') open = () => host?.openLibraryKnowledge(node.resourceId, node.displayName);
         else if (node.resourceType === 'core.knowledge-entry' || node.resourceType === 'core.knowledge-binding') open = node.metadata?.knowledgeBaseId ? () => host?.openLibraryKnowledge(node.metadata.knowledgeBaseId, node.displayName) : null;

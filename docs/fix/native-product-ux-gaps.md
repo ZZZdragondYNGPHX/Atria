@@ -89,22 +89,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 统一资源便携、PackageVersion、Session、Save 与引用冲突的产品闭环。
 
-## NUX-034 — Package-scoped World / Knowledge reuse is weaker than Prompt reuse
-
-**Current evidence**
-
-Prompt resources from installed Packages appear as read-only package-scope resources and can be Forked to Library.
-
-World/Knowledge Library primarily shows user Library identities. Package World/Knowledge content is usable by Work/runtime but lacks equivalent browse-original → fork-to-Library UX.
-
-**Acceptance**
-
-Unify package-origin behavior across reusable resource families: origin badge, exact revision, read-only original, Used By and Fork/copy-to-Library where supported.
-
----
-
----
-
 ## NUX-035 — Installed Work versions are visible but not actionable
 
 **Current evidence**

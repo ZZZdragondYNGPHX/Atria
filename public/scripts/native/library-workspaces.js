@@ -1,3 +1,4 @@
+import { mountPackageLibraryList, mountPackageLibraryOriginal } from './package-library-resources.js';
 import { resourceBundleExport, mountResourceBundleImport } from './resource-bundle-controls.js';
 import { mountLibraryRevisionHistory } from './library-revision-history.js';
 import { renderResourceReferenceRows } from './resource-reference-rows.js';
@@ -198,6 +199,10 @@ async function worldKnowledge(doc, root, route, host) {
     }
     const key = knowledge ? 'knowledgeBaseId' : 'worldId';
     const open = item => knowledge ? host.openLibraryKnowledge(item[key], item.displayName) : host.openLibraryWorld(item[key], item.displayName);
+    if (child.startsWith('world:package:') || child.startsWith('knowledge:package:')) {
+        const ref = JSON.parse(decodeURIComponent(child.split(':').slice(2).join(':')));
+        await mountPackageLibraryOriginal({ document: doc, root, ref, host }); return;
+    }
     if (child.startsWith('world:') || child.startsWith('knowledge:')) {
         const id = child.split(':').slice(1).join(':');
         const detail = await (knowledge ? client.getKnowledge(id) : client.getWorld(id));
@@ -278,6 +283,7 @@ async function worldKnowledge(doc, root, route, host) {
         }
     };
     search.addEventListener('input', render); render();
+    await mountPackageLibraryList({ document: doc, root, knowledge, host });
 }
 
 function mount({ document: doc, body, route, host }, mode) {

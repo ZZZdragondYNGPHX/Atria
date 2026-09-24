@@ -120,3 +120,10 @@ describe('A2 Native Studio resource HTTP surface', () => {
     const unauthenticated = express(); unauthenticated.use(createNativeStudioRouter(() => ({ studio })));
     expect((await request(unauthenticated).post('/resources/bundle/import').send({ bundle, token })).status).toBe(401);
  });
+
+test('Package original reads delegate exact identities under the authenticated owner', async () => {
+    const studio = { getPackageLibraryResource: jest.fn(async (_handle, ref) => ({ ref, snapshot: {} })) };
+    const ref = { scope: 'package', resourceType: 'core.world', resourceId: 'world_a', revision: 'worldv_a', packageId: 'pkg_a', packageVersionId: 'pkgv_a' };
+    expect((await request(appFor(studio)).post('/resources/package-original').send({ ref, handle: 'other' })).body.ref).toEqual(ref);
+    expect(studio.getPackageLibraryResource).toHaveBeenCalledWith('resource-user', ref);
+});

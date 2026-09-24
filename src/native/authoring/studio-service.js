@@ -12,7 +12,7 @@ import {
     assertProjectRevision,
     assertProjectRevisionConflict,
 } from '../authoring-contracts.js';
-import { buildProjectPackage } from '../package-composition.js';
+import { buildProjectPackage, PackageInstaller } from '../package-composition.js';
 import { validateAtriaProjectSource } from '../project-source.js';
 import { StudioPreviewHost } from '../studio-preview.js';
 import {
@@ -21,7 +21,7 @@ import {
 } from './library-authoring.js';
 import { NativeLibraryService } from './library-service.js';
 import { createCoreResourceRegistry } from './resource-registry.js';
-import { ResourceBundleService } from '../resource-bundle.js';
+import { ResourceBundleService, bundleRef } from '../resource-bundle.js';
 import { createCoreBundleAdapters } from '../resource-bundle-adapters.js';
 import { ResourceGraph } from './resource-graph.js';
 
@@ -309,6 +309,16 @@ export class StudioService {
         });
     }
 
+    async getPackageLibraryResource(handle, value) {
+        const ref = bundleRef(value);
+        if (ref.scope !== 'package' || !['core.world', 'core.knowledge'].includes(ref.resourceType)) throw new TypeError('Expected an exact Package World or Knowledge reference');
+        const opened = await new PackageInstaller({ packageRepo: this._packages, assetStore: this._assets }).open(handle, ref.packageId, ref.packageVersionId);
+        const snapshot = ref.resourceType === 'core.world'
+            ? opened?.manifest.worlds.find(item => item.world.worldId === ref.resourceId && item.revision.worldRevisionId === ref.revision)
+            : opened?.manifest.knowledge.find(item => item.knowledgeBase.knowledgeBaseId === ref.resourceId && item.revision.knowledgeRevisionId === ref.revision);
+        if (!snapshot) throw new NotFoundError('Package original exact resource', ref);
+        return { ref, snapshot, origin: { displayName: opened.manifest.name, version: opened.manifest.version, packageContentHash: opened.packageVersion.packageContentHash } };
+    }
     registerResourceBundleAdapter(type, adapter) { this._resourceBundles.registerAdapter(type, adapter); }
     exportResourceBundle(handle, ref) { return this._resourceBundles.export(handle, ref); }
     preflightResourceBundle(handle, bundle, token) { return this._resourceBundles.preflight(handle, bundle, token); }

@@ -55,3 +55,38 @@ test('Resource Bundle exports an exact World, reviews without writes and retries
     await expect(detail.getByRole('heading', { name: 'Portable harbor', exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('installed World and Knowledge originals browse exact content and fork independent closures', async ({ page }, info) => {
+    test.setTimeout(120000); await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('worlds'));
+    const list = page.locator('[data-atria-package-resources]');
+    await list.getByRole('button', { name: 'Browse original', exact: true }).first().click();
+    const original = page.locator('[data-atria-package-original]');
+    await expect(original).toContainText('N4 Native Live Package');
+    await expect(original).toContainText('harbor');
+    await expect(original.getByRole('button', { name: 'New revision', exact: true })).toHaveCount(0);
+    await original.getByText('Used By', { exact: true }).click();
+    await original.getByRole('button', { name: 'Load references', exact: true }).click();
+    await expect(original.locator('[data-atria-package-used-by]')).toContainText('N4 Native Live Package');
+    await original.getByText('Fork to Library', { exact: true }).click();
+    await original.getByRole('button', { name: 'Review fork', exact: true }).click();
+    await expect(original.locator('[data-atria-package-fork-review]')).toContainText('3 exact resources');
+    const oldId = await original.getAttribute('data-atria-package-original');
+    await page.screenshot({ path: info.outputPath('package-world-fork-390.png') });
+    await original.getByRole('button', { name: 'Create fork', exact: true }).click();
+    await original.getByRole('button', { name: 'Open imported resource', exact: true }).click();
+    await expect(page.locator('[data-atria-world-detail]')).not.toHaveAttribute('data-atria-world-detail', oldId);
+    await expect(page.getByRole('button', { name: 'New revision', exact: true })).toBeVisible();
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('knowledge'));
+    await list.getByRole('button', { name: 'Browse original', exact: true }).first().click();
+    await expect(original).toContainText('N4_NATIVE_KNOWLEDGE_PAYLOAD');
+    await expect(original.getByRole('button', { name: 'New revision', exact: true })).toHaveCount(0);
+    await original.getByText('Used By', { exact: true }).click();
+    await original.getByRole('button', { name: 'Load references', exact: true }).click();
+    await expect(original.locator('[data-atria-package-used-by]')).toContainText('Knowledge Binding');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

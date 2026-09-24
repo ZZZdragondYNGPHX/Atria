@@ -521,6 +521,9 @@ export function createAtriaWorkspaceHost({
     }
 
     function openLibraryResource(ref, label = '') {
+        if (ref?.scope === 'package' && ['core.world', 'core.knowledge'].includes(ref.resourceType) && ref.resourceId && ref.revision && ref.packageId && ref.packageVersionId) {
+            return openLibraryDetail((ref.resourceType === 'core.world' ? 'world' : 'knowledge') + ':package:' + encodeURIComponent(JSON.stringify(ref)), label || ref.resourceId, 'detail', 'workspace-library-package-original');
+        }
         const sections = { 'core.prompt-program': 'prompt-programs', 'core.prompt-module': 'prompt-modules', 'core.generation-profile': 'generation-profiles' };
         const section = sections[ref?.resourceType];
         if (!section || !ref.resourceId || !ref.revision) return false;

@@ -298,6 +298,32 @@ export class ResourceGraph {
                     this._addEdge(edges, from, resourceKey(dependency), 'references-exact');
                 }
             }
+            const packaged = new Map();
+            const addPackaged = (resourceType, resourceId, revision, displayName, content, metadata = {}) => {
+                const node = this._addNode(nodes, { key: nodeKey(scope, resourceType, resourceId, revision), scope,
+                    resourceType, resourceId, revision, displayName, contentIdentity: hash(content),
+                    authority: 'installed-package', ownership: 'package', immutable: true,
+                    metadata: { origin: 'package', packageId: ref.resourceId, packageVersionId: ref.revision, packageName: manifest.name, packageVersion: manifest.version, ...metadata } });
+                packaged.set(resourceType + ':' + resourceId, node); this._addEdge(edges, packageNode.key, node.key, 'contains'); return node;
+            };
+            for (const item of manifest.worlds || []) addPackaged('core.world', item.world.worldId, item.revision.worldRevisionId, item.world.displayName, item);
+            for (const item of manifest.knowledge || []) addPackaged('core.knowledge', item.knowledgeBase.knowledgeBaseId, item.revision.knowledgeRevisionId, item.knowledgeBase.displayName, item);
+            for (const item of manifest.knowledgeBindings || []) addPackaged('core.knowledge-binding', item.knowledgeBindingId, hash(item), item.metadata?.displayName || 'Knowledge Binding', item, { knowledgeBaseId: item.source.knowledgeBaseId });
+            for (const item of manifest.assets || []) addPackaged('core.asset', item.assetId, item.contentHash, item.logicalName || item.assetId, item);
+            const connectPackaged = (from, type, id, kind = 'references-exact') => {
+                const target = packaged.get(type + ':' + id); if (target) this._addEdge(edges, from.key, target.key, kind);
+            };
+            for (const item of manifest.worlds || []) {
+                const from = packaged.get('core.world:' + item.world.worldId);
+                for (const id of item.revision.knowledgeBindingIds) connectPackaged(from, 'core.knowledge-binding', id);
+                for (const id of item.revision.assetIds) connectPackaged(from, 'core.asset', id);
+            }
+            for (const item of manifest.knowledgeBindings || []) connectPackaged(packaged.get('core.knowledge-binding:' + item.knowledgeBindingId), 'core.knowledge', item.source.knowledgeBaseId);
+            for (const item of manifest.entryPoints || []) {
+                const from = packageNode;
+                for (const id of item.worldIds || []) connectPackaged(from, 'core.world', id, 'uses-world');
+                for (const id of item.knowledgeBindingIds || []) connectPackaged(from, 'core.knowledge-binding', id, 'uses-knowledge');
+            }
             for (const role of manifest.runtime?.modelPrompt?.roles || []) {
                 for (const dependency of [role.promptProgramRef, role.generationProfileRef].filter(Boolean)) this._addEdge(edges, packageNode.key, resourceKey(dependency), 'recommends-exact');
             }

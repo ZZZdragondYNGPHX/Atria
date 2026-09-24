@@ -735,4 +735,19 @@ export, read-only review, interruption, same-token retry, independent identity a
 navigation. The final screenshot was inspected after adding a keyboard-accessible
 file selection button. Changed product JavaScript passed ESLint and diff checks.
 
-Next: NUX-034 in Group 7.
+### NUX-034
+
+World and Knowledge Library lists now include exact originals from every installed
+PackageVersion. Read-only detail shows the owning Work/version, exact identity and
+content, Used By, export and reviewed Fork to Library. Fork copies the verified
+complete closure through Resource Bundle rather than retaining mutable shared bindings.
+The existing Resource Graph now represents Package Worlds, Knowledge, Bindings and
+Assets, including EntryPoint usage. Reference rows navigate directly to supported
+Package originals. Failed Package discovery has local retry and preserves Library content.
+
+Validation: six Native/Shell/localization suites passed 23 cases; two additional UI
+cases covered discovery retry and inert read-only content. Real Edge at 390px passed
+World/Knowledge original browsing, exact Used By and a three-resource independent
+Fork. Screenshot inspected; changed JavaScript ESLint and diff checks passed.
+
+Next: NUX-035 in Group 7.

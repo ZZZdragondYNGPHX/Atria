@@ -1,3 +1,4 @@
+import { StudioService } from '../../src/native/authoring/studio-service.js';
 import { expect, test, jest } from '@jest/globals';
 import { createHash } from 'node:crypto';
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
@@ -95,6 +96,16 @@ test('Project and installed Package resources use verified exact closures, inclu
         const built = await buildProjectPackage({ handle: h.handle, projectId, ...o });
         await new PackageInstaller({ packageRepo: target.options.packageRepo, assetStore: target.options.assetStore }).install(target.h.handle, built.archive);
         const packageRef = { ...world, scope: 'package', packageId, packageVersionId: built.manifest.packageVersionId };
+        const studio = new StudioService(target.options);
+        const original = await studio.getPackageLibraryResource(target.h.handle, packageRef);
+        expect(original.snapshot.revision.worldRevisionId).toBe(world.revision);
+        const originals = await studio.queryResources(target.h.handle, { resourceType: 'core.world', ownership: 'package' });
+        expect(originals).toHaveLength(1); expect(originals[0].immutable).toBe(true);
+        const refs = await studio.getResourceReferences(target.h.handle, packageRef, { reverse: true });
+        expect(refs.some(item => item.node.resourceType === 'core.package')).toBe(true);
+        const knowledgeRef = { ...packageRef, resourceType: 'core.knowledge', resourceId: built.manifest.knowledge[0].knowledgeBase.knowledgeBaseId, revision: built.manifest.knowledge[0].revision.knowledgeRevisionId };
+        expect((await studio.getResourceReferences(target.h.handle, knowledgeRef, { reverse: true })).some(item => item.node.resourceType === 'core.knowledge-binding')).toBe(true);
+        await expect(studio.getPackageLibraryResource(target.h.handle, { ...packageRef, scope: 'library' })).rejects.toThrow('Package');
         const portable = await target.service.export(target.h.handle, packageRef);
         expect(portable.resources.every(item => item.ref.scope === 'package')).toBe(true);
         const plan = await target.service.preflight(target.h.handle, portable);
