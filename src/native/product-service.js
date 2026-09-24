@@ -1,5 +1,6 @@
+import { hashNativeDocument } from './repositories/common.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
-import { createNativeId } from './identity.js';
+import { assertNativeId, createNativeId } from './identity.js';
 
 function clone(value) {
     return value == null ? value : structuredClone(value);
@@ -7,6 +8,15 @@ function clone(value) {
 
 function invalidField(field) {
     return Object.assign(new TypeError('Invalid product field'), { code: 'native_product_invalid_request', details: { field } });
+}
+
+
+function revisionInput(input, kind, allowed) {
+    if (!input || typeof input !== 'object' || Array.isArray(input) || Object.keys(input).some(key => !['baseRevisionId', 'content'].includes(key))) throw invalidField('revision');
+    if (input.baseRevisionId !== null) assertNativeId(input.baseRevisionId, kind, 'baseRevisionId');
+    if (!input.content || typeof input.content !== 'object' || Array.isArray(input.content)
+        || Object.keys(input.content).some(key => !allowed.includes(key))) throw invalidField('content');
+    return input;
 }
 
 function byUpdatedAt(items) {
@@ -199,6 +209,11 @@ export class NativeProductService {
         });
     }
 
+    async commitWorldRevision(handle, worldId, input) {
+        const { baseRevisionId, content } = revisionInput(input, 'worldRevision', ['schema', 'baseline', 'knowledgeBindingIds', 'assetIds', 'metadata']);
+        return this._worlds.commitRevision(handle, { ...content, worldId, worldRevisionId: createNativeId('worldRevision'), createdAt: Date.now() }, { expectedCurrentRevisionId: baseRevisionId });
+    }
+
     async updateWorld(handle, worldId, { displayName }) {
         const world = await this._worlds.get(handle, worldId);
         if (!world) throw new NotFoundError('native world', { worldId });
@@ -208,7 +223,7 @@ export class NativeProductService {
             ...world,
             displayName: name,
             updatedAt: Math.max(Date.now(), Number(world.updatedAt || 0)),
-        });
+        }, { expectedIntegrity: hashNativeDocument(world) });
     }
 
     async deleteWorld(handle, worldId) {
@@ -299,6 +314,13 @@ export class NativeProductService {
         });
     }
 
+    async commitKnowledgeRevision(handle, knowledgeBaseId, input) {
+        const { baseRevisionId, content } = revisionInput(input, 'knowledgeRevision', ['entries', 'metadata']);
+        if (!Array.isArray(content.entries)) throw invalidField('content.entries');
+        return this._knowledge.commitRevision(handle, { knowledgeBaseId, knowledgeRevisionId: createNativeId('knowledgeRevision'),
+            entryIds: content.entries.map(entry => entry?.knowledgeEntryId), metadata: content.metadata || {}, createdAt: Date.now() }, content.entries, { expectedCurrentRevisionId: baseRevisionId });
+    }
+
     async updateKnowledgeBase(handle, knowledgeBaseId, { displayName }) {
         const knowledgeBase = await this._knowledge.get(handle, knowledgeBaseId);
         if (!knowledgeBase) throw new NotFoundError('native knowledge base', { knowledgeBaseId });
@@ -308,7 +330,7 @@ export class NativeProductService {
             ...knowledgeBase,
             displayName: name,
             updatedAt: Math.max(Date.now(), Number(knowledgeBase.updatedAt || 0)),
-        });
+        }, { expectedIntegrity: hashNativeDocument(knowledgeBase) });
     }
 
     async deleteKnowledgeBase(handle, knowledgeBaseId) {

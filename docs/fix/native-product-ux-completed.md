@@ -440,4 +440,29 @@ Both were corrected; their two suites / 27 cases passed. The other 84 suites
 passed in the broad run. Real Edge 390px Knowledge editing, validation/draft
 recovery and ChangeSet Review passed. No live external database validation claimed.
 
-Next: NUX-019, following the active backlog order.
+## Group 5 — World / Knowledge Authoring
+
+### NUX-019
+
+Library World/Knowledge details now create first and subsequent immutable revisions
+through the existing Native Product client/service and WorldRepo/KnowledgeRepo.
+The current structured editor, Source escape hatch and review primitives are reused;
+saves show exact identity in history and preserve existing exact bindings. The server
+assigns new revision IDs and validates content before repository writes. An explicit
+editing base is compared inside ordered repository writes, including across service
+instances. FS has no transaction isolation, so repository resource writes now use the
+same per-resource serialization pattern as existing Native publication authorities.
+Rename integrity checks prevent stale names from restoring an obsolete head.
+
+Validation: eight focused/adjacent suites passed 29 cases, including FS/SQLite
+concurrent commits, immutable originals, pinned binding preservation, malformed
+content, missing owners, HTTP routes, Resource Graph, Project composition and
+Package build. Real Edge 390px created two revisions of both resource types,
+recovered from a failed Knowledge save, and verified the original content remained
+unchanged. Screenshot inspected. Changed-file ESLint has no errors (deterministic
+browser matrix branches retain Playwright conditional-style warnings); diff check
+passed. The initial FS concurrency test exposed missing isolation and passed after
+repository serialization. An HTTP test initially used the wrong router mount path;
+the corrected seven-case suite passed.
+
+Next: NUX-020, following the active backlog order.

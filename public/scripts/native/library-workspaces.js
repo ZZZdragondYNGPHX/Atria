@@ -1,3 +1,4 @@
+import { mountLibraryRevisionEditor } from './library-revision-editor.js';
 import { createAtriaStatePanel } from '../atria-shell/primitives.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { arrayBufferToBase64, nativeProductClient as client } from './product-client.js';
@@ -209,6 +210,15 @@ async function worldKnowledge(doc, root, route, host) {
         const resource = knowledge ? detail.knowledgeBase : detail.world;
         const hero = heading(doc, root, resource.displayName, tl(knowledge ? 'Knowledge available to your stories.' : 'A shared setting for your stories.'), true);
         hero.dataset[knowledge ? 'atriaKnowledgeDetail' : 'atriaWorldDetail'] = id;
+        const revisionActions = actions(doc, root);
+        action(doc, revisionActions, resource.currentRevisionId ? 'New revision' : 'Create first revision', () => {
+            const reload = async saved => {
+                root.replaceChildren(); await worldKnowledge(doc, root, route, host);
+                if (saved) feedback(doc, root, tl('Saved immutable Library revision.') + ' ' + (saved.worldRevisionId || saved.knowledgeRevisionId));
+            };
+            root.replaceChildren();
+            mountLibraryRevisionEditor({ document: doc, root, detail, knowledge, onClose: () => reload(), onSaved: reload });
+        }, { primary: true });
         const manage = disclosure(doc, root, 'Manage resource');
         const name = field(doc, manage, singular + ' name', resource.displayName); name.required = true;
         const controls = actions(doc, manage);

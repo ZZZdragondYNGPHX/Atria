@@ -97,3 +97,14 @@ export async function listNativeDocuments(tx, filter) {
     const records = await tx.listResources(filter);
     return records.map(record => record.doc);
 }
+
+
+// FS transactions publish commit-last but do not isolate concurrent operations.
+// Keep each Native resource's repository writes ordered across repository instances.
+const resourceWrites = new Map();
+export async function withNativeResourceWrite(handle, resourceId, operation) {
+    const key = JSON.stringify([handle, resourceId]);
+    const next = (resourceWrites.get(key) || Promise.resolve()).catch(() => {}).then(operation);
+    resourceWrites.set(key, next);
+    try { return await next; } finally { if (resourceWrites.get(key) === next) resourceWrites.delete(key); }
+}

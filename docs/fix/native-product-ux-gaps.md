@@ -81,36 +81,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 补齐 World / Knowledge 的完整作者工作流；兼容 ABI 清理必须最后执行。
 
-## NUX-019 — World / Knowledge Library cannot author immutable revisions
-
-**Current evidence**
-
-`public/scripts/native/library-workspaces.js` can create, rename and delete stable World / KnowledgeBase identities and display revision history.
-
-The actual revision authorities still live below the Product UI:
-
-- `WorldRepo.commitRevision()`
-- `KnowledgeRepo.commitRevision()`
-- `KnowledgeRepo.saveBinding()`
-
-The normal Library surface has no first-revision / new-revision authoring workflow.
-
-**Impact**
-
-A user can create a World or Knowledge Base whose `currentRevisionId` is empty, then cannot turn it into usable Native content from Library.
-
-**Acceptance**
-
-- Create first WorldRevision / KnowledgeRevision from Library.
-- Create subsequent immutable revisions.
-- Validate before commit.
-- Show exact revision identity and references.
-- Never mutate an existing revision in place.
-
----
-
----
-
 ## NUX-020 — KnowledgeEntry lacks a semantic first-class editor
 
 **Current evidence**

@@ -51,6 +51,7 @@ export const nativeProductClient = Object.freeze({
     listWorlds: () => request('worlds'),
     createWorld: displayName => request('worlds', { method: 'POST', body: { displayName } }),
     getWorld: worldId => request(`worlds/${encode(worldId)}`),
+    commitWorldRevision: (worldId, input) => request(`worlds/${encode(worldId)}/revisions`, { method: 'POST', body: input }),
     updateWorld: (worldId, displayName) => request(`worlds/${encode(worldId)}`, {
         method: 'PUT',
         body: { displayName },
@@ -62,6 +63,7 @@ export const nativeProductClient = Object.freeze({
     getKnowledge: (knowledgeBaseId, revisionId = null) => request(
         `knowledge/${encode(knowledgeBaseId)}${revisionId ? `?revisionId=${encode(revisionId)}` : ''}`,
     ),
+    commitKnowledgeRevision: (knowledgeBaseId, input) => request(`knowledge/${encode(knowledgeBaseId)}/revisions`, { method: 'POST', body: input }),
     updateKnowledge: (knowledgeBaseId, displayName) => request(`knowledge/${encode(knowledgeBaseId)}`, {
         method: 'PUT',
         body: { displayName },

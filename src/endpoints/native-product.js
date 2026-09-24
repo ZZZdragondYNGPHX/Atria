@@ -134,6 +134,9 @@ export function createNativeProductRouter(getServices = services) {
     router.get('/worlds/:worldId', route(async (req, res, { product }, handle) => {
         res.json(await product.getWorld(handle, req.params.worldId));
     }));
+    router.post('/worlds/:worldId/revisions', route(async (req, res, { product }, handle) => {
+        res.status(201).json(await product.commitWorldRevision(handle, req.params.worldId, req.body));
+    }));
     router.put('/worlds/:worldId', route(async (req, res, { product }, handle) => {
         res.json(await product.updateWorld(handle, req.params.worldId, req.body || {}));
     }));
@@ -151,6 +154,9 @@ export function createNativeProductRouter(getServices = services) {
         res.json(await product.getKnowledgeBase(handle, req.params.knowledgeBaseId, {
             revisionId: req.query.revisionId || null,
         }));
+    }));
+    router.post('/knowledge/:knowledgeBaseId/revisions', route(async (req, res, { product }, handle) => {
+        res.status(201).json(await product.commitKnowledgeRevision(handle, req.params.knowledgeBaseId, req.body));
     }));
     router.put('/knowledge/:knowledgeBaseId', route(async (req, res, { product }, handle) => {
         res.json(await product.updateKnowledgeBase(handle, req.params.knowledgeBaseId, req.body || {}));

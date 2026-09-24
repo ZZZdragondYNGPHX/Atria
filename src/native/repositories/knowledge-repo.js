@@ -7,7 +7,7 @@ import {
 } from '../world-knowledge.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
-import { getNativeDocument, listNativeDocuments, putImmutable, putMutable } from './common.js';
+import { withNativeResourceWrite, getNativeDocument, listNativeDocuments, putImmutable, putMutable } from './common.js';
 
 export class KnowledgeRepo {
     constructor({ engine }) {
@@ -83,7 +83,7 @@ export class KnowledgeRepo {
     async save(handle, value, options = {}) {
         assertWritable();
         const base = assertKnowledgeBase(value);
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withNativeResourceWrite(handle, base.knowledgeBaseId, () => this._engine.withTransaction(handle, async (tx) => {
             if (base.currentRevisionId) {
                 const revision = await getNativeDocument(
                     tx,
@@ -95,7 +95,7 @@ export class KnowledgeRepo {
                 });
             }
             return putMutable(tx, this._baseKey(handle, base.knowledgeBaseId), base, options);
-        });
+        }));
     }
 
     async getRevision(handle, knowledgeBaseId, knowledgeRevisionId) {
@@ -139,7 +139,7 @@ export class KnowledgeRepo {
         });
     }
 
-    async commitRevision(handle, revisionValue, entryValues) {
+    async commitRevision(handle, revisionValue, entryValues, options = {}) {
         assertWritable();
         const revision = assertKnowledgeRevision(revisionValue);
         if (!Array.isArray(entryValues)) throw new TypeError('KnowledgeRepo.commitRevision entries must be an array');
@@ -163,12 +163,15 @@ export class KnowledgeRepo {
             }
         }
 
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withNativeResourceWrite(handle, revision.knowledgeBaseId, () => this._engine.withTransaction(handle, async (tx) => {
             const baseKey = this._baseKey(handle, revision.knowledgeBaseId);
             const base = await getNativeDocument(tx, baseKey);
             if (!base) throw new NotFoundError('native knowledge base', {
                 knowledgeBaseId: revision.knowledgeBaseId,
             });
+            if (Object.hasOwn(options, 'expectedCurrentRevisionId') && base.currentRevisionId !== options.expectedCurrentRevisionId) {
+                throw new ConflictError('native_write_conflict', { expectedRevisionId: options.expectedCurrentRevisionId, actualRevisionId: base.currentRevisionId });
+            }
 
             for (const entry of entries) {
                 await putImmutable(
@@ -194,7 +197,7 @@ export class KnowledgeRepo {
             });
             await putMutable(tx, baseKey, next);
             return revision;
-        });
+        }));
     }
 
     async getBinding(handle, knowledgeBindingId) {
@@ -377,7 +380,7 @@ export class KnowledgeRepo {
 
     async delete(handle, knowledgeBaseId) {
         assertWritable();
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withNativeResourceWrite(handle, knowledgeBaseId, () => this._engine.withTransaction(handle, async (tx) => {
             const references = [];
             for (const binding of await tx.listResources({
                 kind: NATIVE_RESOURCE_KINDS.knowledgeBinding,
@@ -415,6 +418,6 @@ export class KnowledgeRepo {
                 await tx.deleteResource(revision.key);
             }
             return tx.deleteResource(this._baseKey(handle, knowledgeBaseId));
-        });
+        }));
     }
 }

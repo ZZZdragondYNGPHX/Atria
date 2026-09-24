@@ -157,3 +157,12 @@ describe('N9 Native Product HTTP boundary', () => {
         expect(unauthorized.status).toBe(401);
     });
 });
+
+
+test.each([['worlds', 'commitWorldRevision'], ['knowledge', 'commitKnowledgeRevision']])('Library %s revision HTTP delegates the exact base to its Native owner', async (path, method) => {
+    const product = makeProduct(); product[method] = jest.fn(async () => ({ revision: 'saved' }));
+    const body = { baseRevisionId: null, content: {} };
+    const response = await request(appFor(product)).post('/' + path + '/resource/revisions').send(body);
+    expect(response.status).toBe(201);
+    expect(product[method]).toHaveBeenCalledWith(expect.any(String), 'resource', body);
+});

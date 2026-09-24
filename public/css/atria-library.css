@@ -184,3 +184,6 @@
     :is(.atria-skill-workspace-host, .popup) .atria_skill_editor_tree { width: 100%; max-height: 180px; flex: 0 0 auto; overflow: auto; }
     :is(.atria-skill-workspace-host, .popup) .atria_skill_editor_pane { min-height: 300px; }
 }
+
+.atri-library-revision-editor { display: grid; gap: 20px; }
+.atri-library-revision-editor .atria-studio-field { grid-template-columns: minmax(0, 1fr); gap: 8px; }
