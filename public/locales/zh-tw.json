@@ -6909,5 +6909,20 @@
     "Refresh Projects": "重新整理專案",
     "Open Build": "開啟 Build",
     "Preview uses the selected current Build revision. Later edits require an explicit refresh and selection.": "預覽使用所選的目前 Build 版本。後續編輯需重新整理並選擇版本。",
-    "Open a Native game, or select a Build Project and its exact revision, then preview again.": "請開啟 Native 遊戲，或選擇 Build 專案及其精確版本，然後重新預覽。"
+    "Open a Native game, or select a Build Project and its exact revision, then preview again.": "請開啟 Native 遊戲，或選擇 Build 專案及其精確版本，然後重新預覽。",
+    "Runtime setup": "Runtime 設定清單",
+    "Checking configuration…": "正在檢查設定…",
+    "Complete the next missing dependency, then check again.": "請補齊下一項相依設定，然後重新檢查。",
+    "Configuration linked. Use Diagnostics to preview your exact context before generation.": "設定已關聯。生成前請使用 Diagnostics 預覽精確上下文。",
+    " — Configured": " — 已設定",
+    " — Needs setup": " — 待設定",
+    "Open Diagnostics": "開啟 Diagnostics",
+    "Could not check Runtime setup. Retry to read the current configuration.": "無法檢查 Runtime 設定。請重試以讀取目前設定。",
+    "Check setup again": "重新檢查設定",
+    "Set up Secret": "設定 Secret",
+    "Set up Connection": "設定 Connection",
+    "Set up Model": "設定 Model",
+    "Set up Prompt Program": "設定 Prompt Program",
+    "Set up Generation Profile": "設定 Generation Profile",
+    "Set up Runtime Route": "設定 Runtime Route"
 }

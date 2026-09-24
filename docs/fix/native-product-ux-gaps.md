@@ -69,29 +69,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 闭合 Secret → Connection → Model → Generation Profile → Runtime Route 的第一方 Native 配置链。
 
-## NUX-010 — First-time Native Runtime setup has no dependency-guided readiness flow
-
-**Current evidence**
-
-A usable Route may require, in dependency order:
-
-1. Secret;
-2. Connection;
-3. Model;
-4. Prompt Program;
-5. Generation Profile;
-6. Runtime Route.
-
-Current empty states are section-local.
-
-**Acceptance**
-
-Provide one readiness/checklist experience that identifies the next missing dependency and deep-links to its canonical owner, without introducing a second configuration authority.
-
----
-
----
-
 ## NUX-011 — Native Product errors lose actionable context at the UI boundary
 
 **Current evidence**

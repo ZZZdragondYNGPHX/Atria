@@ -24,6 +24,16 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
+test('Runtime setup identifies missing Secret and opens its owner at 320px', async ({ page }, info) => {
+    await boot(page, 320); await open(page, 'routes');
+    const setup = root(page).locator('details').filter({ has: page.getByText('Runtime setup', { exact: true }) });
+    await expect(setup.getByRole('button', { name: 'Set up Secret', exact: true })).toBeVisible();
+    await expect(setup.locator('li')).toHaveCount(6);
+    await shot(page, info, 'runtime-setup-missing-secret-320');
+    await setup.getByRole('button', { name: 'Set up Secret', exact: true }).click();
+    await expect(root(page).getByRole('button', { name: 'New connection', exact: true })).toBeVisible();
+});
+
 test('Runtime cleanup blocks references, duplicates safely and restores archived exact Library resources', async ({ page }, info) => {
     await boot(page, 320); await open(page, 'models');
     await root(page).getByRole('button', { name: 'Edit P4 model', exact: true }).click();

@@ -6,6 +6,7 @@ import { createAtriaStatePanel } from '../atria-shell/primitives.js';
 import { confirmLibraryAction } from './library-ui.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { nativeStudioClient } from './studio-client.js';
+import { runtimeReadiness } from './runtime-readiness.js';
 
 const ids = { connections: 'connectionProfileId', models: 'modelProfileId', routes: 'runtimeRouteId' };
 const prefixes = { connections: 'conn', models: 'model', routes: 'route' };
@@ -92,6 +93,40 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         if (section === 'models') return item.remoteModelId + ' · ' + item.limits.contextTokens + ' context tokens';
         return item.role.replace('role.', '') + ' · ' + item.fallbackRouteRefs.length + ' fallback route(s)';
     }
+    function readiness() {
+        const panel = node('details'); panel.className = 'atri-runtime-group';
+        node('summary', 'Runtime setup', panel);
+        const content = node('div', undefined, panel);
+        const refresh = async (initial = false) => {
+            content.replaceChildren(); notice('Checking configuration…', content);
+            try {
+                const [configuration, secrets, resources] = await Promise.all([
+                    initial ? data : runtimeRequest('/configuration', { signal: controller.signal }),
+                    runtimeRequest('/secrets', { signal: controller.signal }),
+                    runtimeRequest('/resources', { signal: controller.signal }),
+                ]);
+                if (disposed || !panel.isConnected) return;
+                const steps = runtimeReadiness(configuration, secrets, resources);
+                content.replaceChildren();
+                const next = steps.find(step => !step.ready); panel.open = !!next;
+                notice(next ? 'Complete the next missing dependency, then check again.' : 'Configuration linked. Use Diagnostics to preview your exact context before generation.', content);
+                const list = node('ol', undefined, content);
+                for (const step of steps) {
+                    const item = node('li', undefined, list);
+                    node('span', step.label, item);
+                    node('span', step.ready ? ' — Configured' : ' — Needs setup', item);
+                    if (step === next) button('Set up ' + step.label, () => step.owner === 'library' ? host.openLibrarySection(step.section) : host.openRuntimeSection(step.section), item);
+                }
+                if (!next) button('Open Diagnostics', () => host.openRuntimeSection('diagnostics'), content);
+            } catch {
+                if (disposed || !panel.isConnected) return;
+                panel.open = true;
+                content.replaceChildren(); notice('Could not check Runtime setup. Retry to read the current configuration.', content, true);
+            }
+            if (!disposed && panel.isConnected) button('Check setup again', () => refresh(), content);
+        };
+        void refresh(true);
+    }
     function renderList() {
         editorSequence += 1;
         activeEditor = null; root.onkeydown = null; restoreShell(); body.append(root); root.replaceChildren(); delete root.dataset.editor;
@@ -101,6 +136,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             connections: 'Provider endpoints and exact Secret references. Credentials stay in the existing Secret store.',
             models: 'Remote model identity, context limits and capability provenance.',
         }[section]);
+        readiness();
         if (section === 'routes') {
             const fallbackIds = new Set(data.routes.flatMap(item => item.fallbackRouteRefs.map(ref => ref.runtimeRouteId)));
             const missing = []; const ambiguous = [];

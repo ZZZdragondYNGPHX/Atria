@@ -217,4 +217,20 @@ exact request payload and failed/overlapping inventory recovery. Two real Edge
 Diagnostics scenarios passed, including creating a real Build Project and compiling
 its exact revision at 320px. Screenshot inspected; ESLint and diff check passed.
 
-Next: NUX-010, following the active backlog order.
+### NUX-010
+
+Runtime lists now share a dependency-ordered setup disclosure computed from the
+existing Secret metadata, Runtime configuration and exact resource catalogs.
+The next missing dependency links to its canonical Runtime or Library owner.
+Readiness verifies linked Connection/Model/Route references and exact resource
+revisions rather than just counting records. Archived resources continue to
+satisfy existing pins. Refresh and recoverable inventory errors are supported;
+no setup state or duplicate configuration authority is persisted. Linked status
+explicitly directs users to Diagnostics before generation.
+
+Validation: two adjacent suites / 15 tests and the new readiness suite / 3 tests
+passed. One real Edge 320px scenario verified the six-step checklist, missing
+Secret and canonical Connection navigation; screenshot inspected. ESLint and
+diff check passed.
+
+Next: NUX-011, following the active backlog order.

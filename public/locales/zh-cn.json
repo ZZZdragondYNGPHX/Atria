@@ -7354,5 +7354,20 @@
     "Refresh Projects": "刷新项目",
     "Open Build": "打开 Build",
     "Preview uses the selected current Build revision. Later edits require an explicit refresh and selection.": "预览使用所选的当前 Build 版本。后续编辑需刷新并重新选择版本。",
-    "Open a Native game, or select a Build Project and its exact revision, then preview again.": "请打开 Native 游戏，或选择 Build 项目及其精确版本，然后重新预览。"
+    "Open a Native game, or select a Build Project and its exact revision, then preview again.": "请打开 Native 游戏，或选择 Build 项目及其精确版本，然后重新预览。",
+    "Runtime setup": "Runtime 配置清单",
+    "Checking configuration…": "正在检查配置…",
+    "Complete the next missing dependency, then check again.": "请补齐下一项依赖，然后重新检查。",
+    "Configuration linked. Use Diagnostics to preview your exact context before generation.": "配置已关联。生成前请使用 Diagnostics 预览精确上下文。",
+    " — Configured": " — 已配置",
+    " — Needs setup": " — 待配置",
+    "Open Diagnostics": "打开 Diagnostics",
+    "Could not check Runtime setup. Retry to read the current configuration.": "无法检查 Runtime 配置。请重试以读取当前配置。",
+    "Check setup again": "重新检查配置",
+    "Set up Secret": "配置 Secret",
+    "Set up Connection": "配置 Connection",
+    "Set up Model": "配置 Model",
+    "Set up Prompt Program": "配置 Prompt Program",
+    "Set up Generation Profile": "配置 Generation Profile",
+    "Set up Runtime Route": "配置 Runtime Route"
 }
