@@ -69,27 +69,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 闭合 Secret → Connection → Model → Generation Profile → Runtime Route 的第一方 Native 配置链。
 
-## NUX-006 — Runtime profiles and routes lack lifecycle cleanup
-
-**Current evidence**
-
-Runtime supports New/Edit for Connection, Model and Route, but no first-class delete/archive/duplicate flow is exposed. Persistence endpoints are save/list oriented.
-
-Prompt/Generation Library resources similarly expose new revision/fork/derive but no normal cleanup/archive workflow.
-
-**Acceptance**
-
-Define reference-safe lifecycle semantics:
-
-- delete when unreferenced;
-- block with Used By when referenced;
-- archive/hide where permanent deletion is intentionally disallowed;
-- duplicate where useful.
-
----
-
----
-
 ## NUX-007 — Generation Profiles have two competing product homes
 
 **Current evidence**

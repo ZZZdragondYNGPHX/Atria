@@ -1,4 +1,4 @@
-import { NotFoundError } from '../../storage/errors.js';
+import { NotFoundError, ConflictError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import {
     NATIVE_RESOURCE_KINDS,
@@ -21,6 +21,15 @@ import {
     collectVersionedModelPromptResourceRefs,
     getVersionedModelPromptResourceIdentity,
 } from './resources.js';
+
+// The FS engine has no transaction isolation. Serialize this authority's writes
+// across persistence instances, as Native Session publication already does.
+const runtimeWrites = new Map();
+async function withRuntimeWrite(handle, operation) {
+    const next = (runtimeWrites.get(handle) || Promise.resolve()).catch(() => {}).then(operation);
+    runtimeWrites.set(handle, next);
+    try { return await next; } finally { if (runtimeWrites.get(handle) === next) runtimeWrites.delete(handle); }
+}
 
 function exactRef(identity, contentIdentity) {
     return Object.freeze({
@@ -66,22 +75,36 @@ export class VersionedJsonResourceHandler {
             }
         }
         const identity = getVersionedModelPromptResourceIdentity(resourceType, resource);
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withRuntimeWrite(handle, () => this._engine.withTransaction(handle, async (tx) => {
+            assertWritable();
             await putImmutable(
                 tx,
                 this._revisionKey(handle, resourceType, identity.resourceId, identity.revision),
                 resource,
             );
             if (setCurrent) {
+                const previous = await getNativeDocument(tx, this._rootKey(handle, resourceType, identity.resourceId));
                 await putMutable(tx, this._rootKey(handle, resourceType, identity.resourceId), {
                     resourceType,
                     resourceId: identity.resourceId,
                     displayName: identity.displayName,
                     currentRevision: identity.revision,
+                    ...(previous?.archived === undefined ? {} : { archived: previous.archived }),
                 });
             }
             return resource;
-        });
+        }));
+    }
+
+    async setArchived(handle, resourceType, resourceId, archived) {
+        if (!VERSIONED_MODEL_PROMPT_RESOURCE_TYPES.includes(resourceType) || typeof archived !== 'boolean') throw new TypeError('Invalid archive target');
+        return withRuntimeWrite(handle, () => this._engine.withTransaction(handle, async tx => {
+            assertWritable();
+            const key = this._rootKey(handle, resourceType, resourceId); const root = await getNativeDocument(tx, key);
+            if (!root) throw new NotFoundError('Library resource');
+            await putMutable(tx, key, { ...root, archived });
+            return { resourceType, resourceId, archived };
+        }));
     }
 
     async getExact(handle, { resourceType, resourceId, revision }) {
@@ -206,13 +229,13 @@ export class NativeModelPromptPersistence {
 
     async saveConnectionProfile(handle, value) {
         const profile = assertConnectionProfile(value);
-        return this._save(
+        return withRuntimeWrite(handle, () => this._save(
             handle,
             NATIVE_RESOURCE_KINDS.connectionProfile,
             'connectionProfileId',
             profile.connectionProfileId,
             profile,
-        );
+        ));
     }
 
     async getConnectionProfile(handle, connectionProfileId) {
@@ -231,20 +254,22 @@ export class NativeModelPromptPersistence {
     }
 
     async saveModelProfile(handle, value) {
-        const profile = assertModelProfile(value);
-        const connection = await this.getConnectionProfile(handle, profile.connectionProfileRef.connectionProfileId);
-        if (!connection) {
-            throw new NotFoundError('connection profile', {
-                connectionProfileId: profile.connectionProfileRef.connectionProfileId,
-            });
-        }
-        return this._save(
-            handle,
-            NATIVE_RESOURCE_KINDS.modelProfile,
-            'modelProfileId',
-            profile.modelProfileId,
-            profile,
-        );
+        return withRuntimeWrite(handle, async () => {
+            const profile = assertModelProfile(value);
+            const connection = await this.getConnectionProfile(handle, profile.connectionProfileRef.connectionProfileId);
+            if (!connection) {
+                throw new NotFoundError('connection profile', {
+                    connectionProfileId: profile.connectionProfileRef.connectionProfileId,
+                });
+            }
+            return this._save(
+                handle,
+                NATIVE_RESOURCE_KINDS.modelProfile,
+                'modelProfileId',
+                profile.modelProfileId,
+                profile,
+            );
+        });
     }
 
     async getModelProfile(handle, modelProfileId) {
@@ -263,27 +288,54 @@ export class NativeModelPromptPersistence {
     }
 
     async saveRuntimeRoute(handle, value) {
-        const route = assertRuntimeRoute(value);
-        if (route.scope !== 'player') throw new TypeError('P1 persistence accepts player Runtime Routes only');
-        const [model, connection] = await Promise.all([
-            this.getModelProfile(handle, route.modelProfileRef.modelProfileId),
-            this.getConnectionProfile(handle, route.connectionProfileRef.connectionProfileId),
-        ]);
-        if (!model) {
-            throw new NotFoundError('model profile', { modelProfileId: route.modelProfileRef.modelProfileId });
-        }
-        if (!connection) {
-            throw new NotFoundError('connection profile', {
-                connectionProfileId: route.connectionProfileRef.connectionProfileId,
-            });
-        }
-        return this._save(
-            handle,
-            NATIVE_RESOURCE_KINDS.runtimeRoute,
-            'runtimeRouteId',
-            route.runtimeRouteId,
-            route,
-        );
+        return withRuntimeWrite(handle, async () => {
+            const route = assertRuntimeRoute(value);
+            if (route.scope !== 'player') throw new TypeError('P1 persistence accepts player Runtime Routes only');
+            const [model, connection] = await Promise.all([
+                this.getModelProfile(handle, route.modelProfileRef.modelProfileId),
+                this.getConnectionProfile(handle, route.connectionProfileRef.connectionProfileId),
+            ]);
+            if (!model) {
+                throw new NotFoundError('model profile', { modelProfileId: route.modelProfileRef.modelProfileId });
+            }
+            if (!connection) {
+                throw new NotFoundError('connection profile', {
+                    connectionProfileId: route.connectionProfileRef.connectionProfileId,
+                });
+            }
+            for (const ref of route.fallbackRouteRefs) {
+                if (!await this.getRuntimeRoute(handle, ref.runtimeRouteId)) throw new NotFoundError('fallback route');
+            }
+            return this._save(
+                handle,
+                NATIVE_RESOURCE_KINDS.runtimeRoute,
+                'runtimeRouteId',
+                route.runtimeRouteId,
+                route,
+            );
+        });
+    }
+
+    async deleteProfile(handle, kind, id) {
+        const definitions = { connections: [NATIVE_RESOURCE_KINDS.connectionProfile, 'connectionProfileId'], models: [NATIVE_RESOURCE_KINDS.modelProfile, 'modelProfileId'], routes: [NATIVE_RESOURCE_KINDS.runtimeRoute, 'runtimeRouteId'] };
+        if (!definitions[kind]) throw new TypeError('Unsupported Runtime resource');
+        return withRuntimeWrite(handle, () => this._engine.withTransaction(handle, async tx => {
+            assertWritable();
+            const [resourceKind, idField] = definitions[kind]; const key = playerKey(resourceKind, handle, idField, id);
+            if (!await getNativeDocument(tx, key)) throw new NotFoundError('Runtime resource');
+            const models = await listNativeDocuments(tx, { kind: NATIVE_RESOURCE_KINDS.modelProfile, handle });
+            const routes = await listNativeDocuments(tx, { kind: NATIVE_RESOURCE_KINDS.runtimeRoute, handle });
+            const usedBy = [];
+            const add = (section, value, field) => usedBy.push({ section, id: value[field], displayName: value.displayName });
+            if (kind === 'connections') for (const model of models) if (model.connectionProfileRef.connectionProfileId === id) add('models', model, 'modelProfileId');
+            for (const route of routes) {
+                if ((kind === 'connections' && route.connectionProfileRef.connectionProfileId === id)
+                    || (kind === 'models' && route.modelProfileRef.modelProfileId === id)
+                    || (kind === 'routes' && route.fallbackRouteRefs.some(ref => ref.runtimeRouteId === id))) add('routes', route, 'runtimeRouteId');
+            }
+            if (usedBy.length) throw new ConflictError('native_runtime_referenced', { usedBy });
+            await tx.deleteResource(key); return { deleted: true };
+        }));
     }
 
     async getRuntimeRoute(handle, runtimeRouteId) {

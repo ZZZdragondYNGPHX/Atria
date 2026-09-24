@@ -6879,5 +6879,16 @@
     "The provider is temporarily unavailable. Try again.": "供應商暫時無法使用，請重試。",
     "The connection check timed out or was cancelled. Try again.": "連接檢查逾時或已取消，請重試。",
     "The provider returned an invalid model list. You can enter a model ID manually.": "供應商回傳的模型清單無效，可手動填寫模型 ID。",
-    "Check the connection name, endpoint, transport and Secret selection.": "請檢查連接名稱、端點、協定與所選金鑰。"
+    "Check the connection name, endpoint, transport and Secret selection.": "請檢查連接名稱、端點、協定與所選金鑰。",
+    "Active": "啟用中",
+    "Archived": "已封存",
+    "Manage this resource": "管理此資源",
+    "Archive": "封存",
+    "Restore from archive": "從封存還原",
+    "Delete this Runtime resource? Referenced items cannot be deleted.": "刪除此 Runtime 資源？仍被參照的資源無法刪除。",
+    "Archiving hides this resource from active lists. Exact revisions and existing routes remain available.": "封存後，啟用清單將隱藏此資源。精確版本與現有路由仍可使用。",
+    "Archiving hides all revisions from active lists. Existing exact references remain available.": "封存後，啟用清單將隱藏全部版本。現有精確參照仍可使用。",
+    "This item is still in use. Update its references before deleting it.": "此資源仍在使用中，請先更新參照再刪除。",
+    "Could not delete this item. Reload and try again.": "無法刪除此資源，請重新載入後重試。",
+    "Could not change the archive state. Reload and try again.": "無法變更封存狀態，請重新載入後重試。"
 }

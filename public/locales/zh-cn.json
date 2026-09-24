@@ -7325,5 +7325,15 @@
     "The provider is temporarily unavailable. Try again.": "提供商暂时不可用，请重试。",
     "The connection check timed out or was cancelled. Try again.": "连接检查超时或已取消，请重试。",
     "The provider returned an invalid model list. You can enter a model ID manually.": "提供商返回的模型列表无效，可手动填写模型 ID。",
-    "Check the connection name, endpoint, transport and Secret selection.": "请检查连接名称、端点、协议与所选密钥。"
+    "Check the connection name, endpoint, transport and Secret selection.": "请检查连接名称、端点、协议与所选密钥。",
+    "Archived": "已归档",
+    "Manage this resource": "管理此资源",
+    "Archive": "归档",
+    "Restore from archive": "从归档恢复",
+    "Delete this Runtime resource? Referenced items cannot be deleted.": "删除此 Runtime 资源？仍被引用的资源无法删除。",
+    "Archiving hides this resource from active lists. Exact revisions and existing routes remain available.": "归档后，活跃列表将隐藏此资源。精确版本与现有路由仍可使用。",
+    "Archiving hides all revisions from active lists. Existing exact references remain available.": "归档后，活跃列表将隐藏全部版本。现有精确引用仍可使用。",
+    "This item is still in use. Update its references before deleting it.": "此资源仍在使用中，请先更新引用再删除。",
+    "Could not delete this item. Reload and try again.": "无法删除此资源，请重新加载后重试。",
+    "Could not change the archive state. Reload and try again.": "无法更改归档状态，请重新加载后重试。"
 }

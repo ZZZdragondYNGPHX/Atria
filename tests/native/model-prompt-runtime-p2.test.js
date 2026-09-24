@@ -29,7 +29,7 @@ async function fixture({ format = 'openai-compatible', send, capabilities = [] }
         connections.push(connection); models.push(model); routes.push(route);
     }
     routes[0].fallbackRouteRefs = [{ runtimeRouteId: routes[1].runtimeRouteId, scope: 'player' }];
-    for (const route of routes) await persistence.saveRuntimeRoute(h.handle, route);
+    for (const route of [...routes].reverse()) await persistence.saveRuntimeRoute(h.handle, route);
     const sends = jest.fn(send || (async () => ({ choices: [{ message: { content: 'ok' }, text: 'ok' }] })));
     const provider = createGenerationProviderAdapter({ format, send: sends, countTokens: async () => 5, parseStream: async value => value, capabilities });
     const resolver = new RouteResolver({ persistence, library, providers: { 'provider.fixture': provider } });

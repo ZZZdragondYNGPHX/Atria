@@ -11,7 +11,7 @@ import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../n
 import { NativeGenerationHost } from '../native/adapters/generation-host.js';
 import { createHttpGenerationProvider } from '../native/adapters/http-generation-provider.js';
 import { createNativeMessagesProvider } from '../native/adapters/native-messages-provider.js';
-import { assertConnectionProfile } from '../native/model-prompt-runtime/contracts.js';
+import { assertConnectionProfile, assertExactResourceRef } from '../native/model-prompt-runtime/contracts.js';
 import { prepareProviderDiscovery, discoverProviderModels } from '../native/adapters/provider-discovery.js';
 
 function services() {
@@ -40,6 +40,39 @@ function services() {
 
 export function createNativeGenerationRouter(getHost = services) {
     const router = express.Router();
+    router.delete('/configuration/:kind/:id', async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        try { response.json(await getHost().persistence.deleteProfile(handle, request.params.kind, request.params.id)); } catch (error) {
+            if (error.code === 'native_runtime_referenced') return response.status(409).json({ error: error.code, details: error.details });
+            response.status(400).json({ error: 'native_runtime_delete_failed' });
+        }
+    });
+    router.post('/resources/archive', async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        try {
+            const { ref, archived } = request.body; const exact = assertExactResourceRef(ref);
+            if (exact.scope !== 'library') throw new TypeError('Library owner required');
+            const host = getHost(); await host.library.getExact(handle, exact);
+            response.json(await host.library.setArchived(handle, exact.resourceType, exact.resourceId, archived));
+        } catch { response.status(400).json({ error: 'native_resource_archive_failed' }); }
+    });
+    router.post('/resources/used-by', async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        try {
+            const ref = assertExactResourceRef(request.body); const host = getHost();
+            if (ref.scope !== 'library') throw new TypeError('Library owner required');
+            const references = [...await host.studio.getResourceReferences(handle, ref, { reverse: true })];
+            for (const route of await host.persistence.listRuntimeRoutes(handle)) {
+                if ([route.promptProgramRef, route.generationProfileRef].some(item => item.scope === 'library' && item.resourceType === ref.resourceType && item.resourceId === ref.resourceId && item.revision === ref.revision)) {
+                    references.push({ node: { displayName: route.displayName, resourceId: route.runtimeRouteId, scope: 'player' }, edge: { kind: 'runtime-route-exact', from: route.runtimeRouteId } });
+                }
+            }
+            response.json(references);
+        } catch { response.status(400).json({ error: 'native_resource_references_failed' }); }
+    });
     router.post('/connections/probe', async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
@@ -99,14 +132,14 @@ export function createNativeGenerationRouter(getHost = services) {
         try {
             const host = getHost();
             const entries = [];
-            const append = (resourceType, resource, scope) => {
+            const append = (resourceType, resource, scope, archived = false) => {
                 const identity = getVersionedModelPromptResourceIdentity(resourceType, resource);
-                entries.push({ ref: { resourceType, resourceId: identity.resourceId, revision: identity.revision, ...scope }, resource });
+                entries.push({ ref: { resourceType, resourceId: identity.resourceId, revision: identity.revision, ...scope }, resource, ...(archived ? { archived: true } : {}) });
             };
             for (const item of await host.library.listWithRevisions(handle)) {
                 for (const revision of item.revisions) {
                     const exact = await host.library.getExact(handle, { ...item, revision });
-                    append(item.resourceType, exact.snapshot, { scope: 'library' });
+                    append(item.resourceType, exact.snapshot, { scope: 'library' }, item.archived);
                 }
             }
             for (const item of await host.studio.listProjects(handle)) {

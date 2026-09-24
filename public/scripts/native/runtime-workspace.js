@@ -3,6 +3,8 @@ import { runtimeRequest, runtimeRemediation, getRuntimeEvidence } from './runtim
 import { nativeSessionRuntime } from './session-runtime.js';
 import { createAtriaShellEnvironment } from '../atria-shell/environment.js';
 import { createAtriaStatePanel } from '../atria-shell/primitives.js';
+import { confirmLibraryAction } from './library-ui.js';
+import { createStudioNativeId } from './studio-authoring.js';
 
 const ids = { connections: 'connectionProfileId', models: 'modelProfileId', routes: 'runtimeRouteId', profiles: 'generationProfileId' };
 const prefixes = { connections: 'conn', models: 'model', routes: 'route', profiles: 'genprof' };
@@ -113,11 +115,13 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         }
         const toolbar = node('div'); toolbar.className = 'atri-runtime-toolbar';
         const search = field(toolbar, 'Filter ' + section); search.type = 'search';
+        const visibility = section === 'profiles' ? field(toolbar, 'Visibility', 'active', [['active', 'Active'], ['archived', 'Archived']]) : null;
         button('New ' + ({ routes: 'route', models: 'model', connections: 'connection', profiles: 'profile' }[section]), () => edit(), toolbar);
         const list = node('div'); list.className = 'atri-runtime-list';
         function fill() {
             list.replaceChildren();
-            const items = data[section].filter(item => (item.displayName + ' ' + summary(item)).toLowerCase().includes(search.value.toLowerCase()));
+            const items = data[section].filter(item => (item.displayName + ' ' + summary(item)).toLowerCase().includes(search.value.toLowerCase())
+                && (!visibility || Boolean(data.resources.find(resource => resource.resourceId === item.generationProfileId)?.archived) === (visibility.value === 'archived')));
             if (!items.length) list.append(createAtriaStatePanel(doc, 'empty', {
                 title: translateShellText(data[section].length ? 'No matching results.' : 'No ' + section + ' yet. Create one to get started.'),
             }));
@@ -128,9 +132,9 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 editButton.setAttribute('aria-label', translateShellText('Edit') + ' ' + item.displayName);
             }
         }
-        search.addEventListener('input', fill); fill();
+        search.addEventListener('input', fill); visibility?.addEventListener('change', fill); fill();
     }
-    function edit(original) {
+    function edit(original, fresh = false) {
         const editorToken = ++editorSequence;
         activeEditor = original?.[ids[section]] || 'new';
         const value = original ? clone(original) : { schemaVersion: 1, scope: 'player', [ids[section]]: prefixes[section] + '_' + crypto.randomUUID().replaceAll('-', ''), displayName: '' };
@@ -138,7 +142,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         adaptEditor();
         const header = node('header'); header.className = 'atri-runtime-editor-header';
         const back = button('Back to ' + section, () => { renderList(); root.querySelector('input')?.focus(); }, header);
-        const title = node('h2', (original ? 'Edit ' : 'New ') + section.replace(/s$/, ''), header); title.tabIndex = -1;
+        const title = node('h2', (original && !fresh ? 'Edit ' : 'New ') + section.replace(/s$/, ''), header); title.tabIndex = -1;
         const form = node('form'); form.className = 'atri-runtime-form';
         const identity = group(form, 'Identity');
         const name = field(identity, 'Display name', value.displayName); name.required = true;
@@ -375,6 +379,34 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         }
         const status = node('div', undefined, form); status.className = 'atri-runtime-status';
         const actions = node('footer', undefined, form); actions.className = 'atri-runtime-actions';
+        if (original && !fresh) {
+            const lifecycle = group(form, 'Manage this resource');
+            button('Duplicate', () => edit({ ...clone(value), [ids[section]]: createStudioNativeId(prefixes[section]), displayName: value.displayName + ' Copy' }, true), lifecycle);
+            const archived = data.resources.find(item => item.resourceId === value.generationProfileId)?.archived;
+            const remove = button(section === 'profiles' ? archived ? 'Restore from archive' : 'Archive' : 'Delete', async () => {
+                if (remove.disabled) return;
+                remove.disabled = true;
+                try {
+                    if (section !== 'profiles' && !await confirmLibraryAction('Delete this Runtime resource? Referenced items cannot be deleted.')) return;
+                    if (section === 'profiles') await runtimeRequest('/resources/archive', { method: 'POST', signal: controller.signal,
+                        body: { ref: { scope: 'library', resourceType: 'core.generation-profile', resourceId: value.generationProfileId, revision: value.revision }, archived: !archived } });
+                    else await runtimeRequest('/configuration/' + section + '/' + encodeURIComponent(value[ids[section]]), { method: 'DELETE', signal: controller.signal });
+                    if (disposed || editorToken !== editorSequence) return;
+                    selectedRoute = { ...selectedRoute, child: { id: section } };
+                    await load();
+                } catch (error) {
+                    if (disposed || editorToken !== editorSequence) return;
+                    status.replaceChildren(); failure(error, status);
+                    if (error.details?.usedBy?.length) {
+                        node('h3', 'Used By', status); const list = node('ul', undefined, status);
+                        for (const item of error.details.usedBy) node('li', item.displayName + ' · ' + item.section, list);
+                    }
+                } finally { remove.disabled = false; }
+            }, lifecycle);
+            if (section !== 'profiles') remove.className = 'atri-runtime-danger';
+            else notice('Archiving hides this resource from active lists. Exact revisions and existing routes remain available.', lifecycle);
+        }
+        form.append(actions);
         const save = node('button', 'Save', actions); save.type = 'submit';
         form.addEventListener('submit', async event => {
             event.preventDefault(); if (save.disabled) return;

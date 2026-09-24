@@ -68,6 +68,20 @@ test('a disposed Runtime does not render late configuration or leave modal owner
     expect(view.root.querySelector('form')).toBeNull();
 });
 
+test('duplicating a connection creates a draft identity and retains only its exact Secret reference', async () => {
+    globalThis.fetch = jest.fn(async () => response(config));
+    const view = mount(); await flush();
+    [...view.root.querySelectorAll('button')].find(button => button.textContent === 'Duplicate').click();
+    expect(globalThis.fetch.mock.calls.some(([, options]) => options.method === 'PUT')).toBe(false);
+    expect(view.root.querySelector('[aria-label="Display name"]').value).toBe('Exact connection Copy');
+    view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush();
+    const write = globalThis.fetch.mock.calls.find(([, options]) => options.method === 'PUT');
+    const saved = JSON.parse(write[1].body);
+    expect(saved.connectionProfileId).not.toBe(config.connections[0].connectionProfileId);
+    expect(saved.secretRef).toEqual(config.connections[0].secretRef);
+    view.dispose();
+});
+
 test('leaving a deep-linked editor through the same section restores the list and focus', async () => {
     globalThis.fetch = jest.fn(async () => response(config));
     const view = mount(); await flush();

@@ -178,7 +178,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
 }
 
 export function mountPromptLibrary({ document: doc, body, route, host }) {
-    let disposed = false; let sequence = 0;
+    let disposed = false; let sequence = 0; let visibility = 'active';
     const type = { 'prompt-programs': 'core.prompt-program', 'prompt-modules': 'core.prompt-module', 'generation-profiles': 'core.generation-profile' }[route.child?.id?.split(':')[0]] || 'core.prompt-program';
     let selectedRef;
     function selectRoute(nextRoute) {
@@ -209,10 +209,12 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
             const tools = element(doc, 'div', undefined, root); tools.className = 'atri-prompt-library-tools';
             const filter = input(doc, tools, 'Filter resources', ''); filter.type = 'search';
             const scope = select(doc, tools, 'Resource origin', [['all', 'All origins'], ['library', 'Library'], ['project', 'Build'], ['package', 'Installed works']]); scope.value = 'all';
+            const lifecycle = select(doc, tools, 'Visibility', [['active', 'Active'], ['archived', 'Archived']], visibility);
             action(doc, tools, 'New resource', () => { const resource = newPromptResource(type); editor({ resource, ref: resourceRef(type, resource, { scope: 'library' }) }, true); });
             const list = element(doc, 'div', undefined, root); list.className = 'atri-prompt-library-list';
             const renderList = () => {
-                list.replaceChildren(); const matching = entries.filter(item => item.ref.resourceType === type && (scope.value === 'all' || item.ref.scope === scope.value) && (item.resource.displayName + item.ref.resourceId).toLowerCase().includes(filter.value.toLowerCase()));
+                list.replaceChildren(); const matching = entries.filter(item => item.ref.resourceType === type && (scope.value === 'all' || item.ref.scope === scope.value)
+                    && (Boolean(item.archived) === (visibility === 'archived') || (selectedRef && exactKey(selectedRef) === exactKey(item.ref))) && (item.resource.displayName + item.ref.resourceId).toLowerCase().includes(filter.value.toLowerCase()));
                 if (!matching.length) element(doc, 'p', entries.some(item => item.ref.resourceType === type) ? 'No matching resources' : 'No resources yet. Create one or open Build to author project assets.', list);
                 for (const entry of matching) {
                     const row = element(doc, 'article', undefined, list); row.className = 'atri-prompt-resource'; row.dataset.atriResourceKey = exactKey(entry.ref); row.tabIndex = -1;
@@ -222,11 +224,18 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
                     element(doc, 'pre', JSON.stringify({ origin: entry.ref, derivedFrom: entry.resource.parentRef || entry.resource.provenance || [], resource: entry.resource }, null, 2), details);
                     action(doc, row, 'Used By', async () => {
                         try {
-                            const refs = await nativeStudioClient.getResourceReferences(entry.ref, { reverse: true });
+                            const refs = entry.ref.scope === 'library' ? await runtimeRequest('/resources/used-by', { method: 'POST', body: entry.ref }) : await nativeStudioClient.getResourceReferences(entry.ref, { reverse: true });
                             const result = element(doc, 'p', refs.length ? refs.map(v => v.node?.displayName || v.edge.from).join(', ') : 'No references in the Resource Graph.', row); result.setAttribute('role', 'status');
                         } catch (e) { error(doc, row, e); }
                     });
-                    if (entry.ref.scope === 'library') action(doc, row, 'New revision', () => editor(entry));
+                    if (entry.ref.scope === 'library') {
+                        action(doc, row, 'New revision', () => editor(entry));
+                        const archive = action(doc, row, entry.archived ? 'Restore from archive' : 'Archive', async () => {
+                            if (archive.disabled) return; archive.disabled = true;
+                            try { await runtimeRequest('/resources/archive', { method: 'POST', body: { ref: entry.ref, archived: !entry.archived } }); await render(); } catch (cause) { if (!disposed) { error(doc, row, cause); archive.disabled = false; } }
+                        });
+                        element(doc, 'small', 'Archiving hides all revisions from active lists. Existing exact references remain available.', row);
+                    }
                     if (entry.ref.scope === 'project') action(doc, row, 'Open in Build', () => host.openBuild(entry.ref.projectId));
                     for (const derive of type === 'core.prompt-program' ? [false, true] : [false]) {
                         const fork = action(doc, row, derive ? 'Derive to Library' : 'Fork to Library', async () => {
@@ -239,7 +248,8 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
                         });
                     }
                 }
-            }; filter.addEventListener('input', renderList); scope.addEventListener('change', renderList); renderList();
+            }; filter.addEventListener('input', renderList); scope.addEventListener('change', renderList);
+            lifecycle.addEventListener('change', () => { visibility = lifecycle.value; selectedRef = null; renderList(); }); renderList();
             if (selectedRef) {
                 const match = [...list.children].find(node => node.dataset.atriResourceKey === exactKey(selectedRef));
                 if (match) { match.dataset.selected = 'true'; match.focus(); match.scrollIntoView?.({ block: 'start' }); } else error(doc, root, 'The requested exact revision is unavailable. References never follow latest.');

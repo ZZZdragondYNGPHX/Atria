@@ -31,6 +31,7 @@
 .atri-runtime-actions { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 0; border-top: 1px solid var(--atri-separator); }
 .atri-runtime button[type="submit"], .atri-runtime-toolbar > button { background: var(--atri-accent); color: var(--atri-text-on-accent); font-weight: 600; }
 .atri-runtime-status:empty { display: none; }
+.atri-runtime button.atri-runtime-danger { color: var(--atri-danger); }
 .atri-runtime-evidence:not(:empty) { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--atri-separator); }
 .atri-runtime-evidence > h3 { font-size: var(--atri-text-title-2); }
 .atri-runtime label[hidden] { display: none; }

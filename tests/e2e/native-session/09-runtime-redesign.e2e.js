@@ -23,6 +23,34 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
+test('Runtime cleanup blocks references, duplicates safely and restores archived exact Library resources', async ({ page }, info) => {
+    await boot(page, 320); await open(page, 'models');
+    await root(page).getByRole('button', { name: 'Edit P4 model', exact: true }).click();
+    await root(page).getByRole('button', { name: 'Delete', exact: true }).click();
+    await page.locator('dialog.popup[open] .popup-button-ok').click();
+    await expect(root(page).getByRole('heading', { name: 'Used By', exact: true })).toBeVisible();
+    await expect(root(page).locator('.atri-runtime-status')).toContainText('narrator');
+    await shot(page, info, 'runtime-delete-blocked-320');
+    await root(page).getByRole('button', { name: 'Duplicate', exact: true }).click();
+    await root(page).getByRole('button', { name: 'Save', exact: true }).click();
+    await root(page).getByRole('button', { name: 'Edit P4 model Copy', exact: true }).click();
+    await root(page).getByRole('button', { name: 'Delete', exact: true }).click();
+    await page.locator('dialog.popup[open] .popup-button-ok').click();
+    await expect(root(page).getByRole('button', { name: 'Edit P4 model Copy', exact: true })).toHaveCount(0);
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('generation-profiles'));
+    const library = page.locator('.atri-prompt-library');
+    await library.getByRole('button', { name: 'Used By', exact: true }).click();
+    await expect(library.getByRole('status')).toContainText('narrator');
+    await library.getByRole('button', { name: 'Archive', exact: true }).click();
+    await expect(library.locator('.atri-prompt-resource')).toHaveCount(0);
+    await library.getByLabel('Visibility', { exact: true }).selectOption('archived');
+    await expect(library.locator('.atri-prompt-resource')).toHaveCount(1);
+    await page.screenshot({ path: info.outputPath('library-archive-320.png') });
+    await library.getByRole('button', { name: 'Restore from archive', exact: true }).click();
+    await library.getByLabel('Visibility', { exact: true }).selectOption('active');
+    await expect(library.locator('.atri-prompt-resource')).toHaveCount(1);
+});
+
 test('Provider model discovery is explicit and preserves metadata provenance on narrow screens', async ({ page }, info) => {
     await boot(page, 320); await open(page, 'models');
     await root(page).getByRole('button', { name: 'Edit P4 model', exact: true }).click();

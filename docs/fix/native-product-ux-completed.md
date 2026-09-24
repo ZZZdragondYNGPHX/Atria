@@ -145,4 +145,27 @@ Model-list references: [OpenAI](https://developers.openai.com/api/reference/reso
 [Anthropic](https://platform.claude.com/docs/en/api/models/list),
 [Gemini](https://ai.google.dev/api/models).
 
-Next: NUX-006, following the active backlog order.
+### NUX-006
+
+Runtime Connections, Models and Routes can be duplicated into an unsaved new
+identity and deleted when unreferenced. Deletion reports Used By blockers for
+model/connection ownership and fallback routes. Persistence serializes writes
+and deletion checks across instances in the server process, following the Native
+Session pattern required by FS transaction semantics. Referencing saves recheck
+target existence; fallback fixtures now create dependencies before callers.
+
+Library Prompt/Generation resources intentionally retain immutable revisions.
+Archive/restore changes only root-list metadata, never exact content. Active and
+Archived filters expose recovery; a new revision does not silently unarchive.
+Existing Runtime routes and Resource Graph references still resolve archived
+content. Library Used By combines existing Graph results with exact Runtime route
+references. Package originals do not expose archive or revision writes.
+
+Validation: six relevant suites covering 84 cases; the final frontend changes
+were rechecked with 17 passing cases. Includes delete blockers, cross-instance
+concurrent delete/save, immutable archive/restore, backup gate, duplicate identity
+and neighboring generation/authoring regressions. One real Edge 320px scenario
+passed: blocked deletion, duplicate/delete, Library Used By, archive and restore.
+Both screenshots inspected. Changed-file ESLint and diff check passed.
+
+Next: NUX-007, following the active backlog order.
