@@ -1997,16 +1997,6 @@ so the
     border-radius: var(--ls-radius-sm);
     background: color-mix(in oklab, var(--SmartThemeBodyColor) 5%, transparent);
 }
-:is(.popup, .atria-skill-workspace-host) .atria_skill_toolbar_btn {
-    font-size: 0.84rem !important;
-}
-:is(.popup, .atria-skill-workspace-host) .atria_skill_toolbar_btn_primary {
-    background: color-mix(in oklab, var(--ls-accent-primary) 28%, transparent) !important;
-    border-color: color-mix(in oklab, var(--ls-accent-primary) 50%, transparent) !important;
-}
-:is(.popup, .atria-skill-workspace-host) .atria_skill_toolbar_btn_primary:hover {
-    background: color-mix(in oklab, var(--ls-accent-primary) 42%, transparent) !important;
-}
 /* Body + groups ───────────────────────────────────────────────────── */
 
 :is(.popup, .atria-skill-workspace-host) .atria_skill_manager_body {
@@ -2438,14 +2428,6 @@ editor
 :is(.popup, .atria-skill-workspace-host) .atria_skill_editor_pane_sha {
     /* Stash for the JS layer; not visible. */
     display: none;
-}
-:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_pane_header [data-editor-save] {
-    font-size: 0.85rem !important;
-    background: color-mix(in oklab, var(--ls-accent-primary) 24%, transparent) !important;
-    border-color: color-mix(in oklab, var(--ls-accent-primary) 44%, transparent) !important;
-}
-:is(.popup, .atria-skill-workspace-host) .atria_skill_editor_pane_header [data-editor-save]:hover {
-    background: color-mix(in oklab, var(--ls-accent-primary) 38%, transparent) !important;
 }
 .popup textarea.text_pole.atria_skill_editor_textarea {
     flex: 1;

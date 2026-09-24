@@ -153,18 +153,18 @@ export function buildFileTreeHtml({ files, activePath, t, esc }) {
         const editable = f.path !== 'SKILL.md';
         const actions = editable
             ? `<span class="atria_skill_editor_file_actions">
-                <span class="atria_skill_editor_file_action atria_skill_editor_file_rename"
+                <button type="button" class="atria_skill_editor_file_action atria_skill_editor_file_rename"
                       data-editor-action="rename-file"
                       data-file-path="${esc(f.path)}"
-                      title="${esc(t('Rename file'))}">✎</span>
-                <span class="atria_skill_editor_file_action atria_skill_editor_file_delete"
+                      title="${esc(t('Rename file'))}" aria-label="${esc(t('Rename file'))}">✎</button>
+                <button type="button" class="atria_skill_editor_file_action atria_skill_editor_file_delete"
                       data-editor-action="delete-file"
                       data-file-path="${esc(f.path)}"
-                      title="${esc(t('Delete file'))}">×</span>
+                      title="${esc(t('Delete file'))}" aria-label="${esc(t('Delete file'))}">×</button>
             </span>`
             : '';
         return `<div class="atria_skill_editor_file" data-file-path="${esc(f.path)}"${active}>
-            <span class="atria_skill_editor_file_name">${esc(f.path)}${binBadge}</span>
+            <button type="button" class="atria_skill_editor_file_name">${esc(f.path)}${binBadge}</button>
             ${actions}
         </div>`;
     }).join('');
@@ -175,7 +175,7 @@ export function buildFileTreeHtml({ files, activePath, t, esc }) {
 <div class="atria_skill_editor_tree">
     <div class="atria_skill_editor_tree_header">
         <span>${esc(t('Files'))}</span>
-        <span class="menu_button menu_button_small" data-editor-action="new-file">${esc(t('+ New file'))}</span>
+        <button type="button" class="menu_button menu_button_small" data-editor-action="new-file">${esc(t('+ New file'))}</button>
     </div>
     <div class="atria_skill_editor_tree_body">
         ${empty}${rows}
@@ -209,11 +209,13 @@ export function buildEditorHtml({ content, path, sha256, t, esc }) {
     <div class="atria_skill_editor_pane_header">
         <span class="atria_skill_editor_pane_path">${esc(path)}</span>
         <span class="atria_skill_editor_pane_sha" data-editor-sha="${esc(sha256 || '')}" data-editor-path="${esc(path)}"></span>
-        <span class="menu_button menu_button_small" data-editor-save>${esc(t('Save'))}</span>
+        <button type="button" class="menu_button menu_button_small" data-editor-save>${esc(t('Save'))}</button>
     </div>
+    <p class="atri-skill-editor-status" data-editor-status role="status" tabindex="-1" hidden></p>
     <textarea
         class="text_pole atria_skill_editor_textarea"
         data-editor-textarea
+        aria-label="${esc(path)}"
         spellcheck="false">${esc(body)}</textarea>
     <div class="atria_skill_editor_pane_footer">
         <span class="atria_skill_editor_hint">${esc(t('Ctrl/Cmd+S to save'))}</span>
@@ -295,6 +297,7 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
         // Two-pane layout — the atria-studio root class lets the design
         // tokens cascade in (sidebar tree + large editor pane).
         mount.innerHTML = `
+<h2 class="atri-skill-editor-title">${esc(name)}</h2>
 <div class="atria_skill_editor atria-studio">
     ${buildFileTreeHtml({ files: state.files, activePath: state.activePath, t, esc })}
     ${buildEditorHtml({ content: state.currentContent || '', path: state.activePath, sha256: state.sha256, t, esc })}
@@ -327,21 +330,31 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
     }
 
     async function saveActive(mount) {
-        if (!state.activePath) return;
+        if (!state.activePath || state.saving) return;
         const textarea = mount.querySelector('[data-editor-textarea]');
         if (!textarea) return;
         const content = String(textarea.value || '');
+        const status = mount.querySelector('[data-editor-status]');
+        const report = (message, failed = false) => {
+            if (!status) return;
+            status.textContent = message; status.hidden = false; status.setAttribute('role', failed ? 'alert' : 'status');
+            if (failed) status.focus?.();
+        };
 
         // Client-side frontmatter check for SKILL.md. The server validates
         // canonically; this is purely a fast-fail for the user.
         if (state.activePath === 'SKILL.md') {
             const check = parseFrontmatterShape(content);
             if (!check.ok) {
+                report(t('Cannot save: ${0}').replace('${0}', check.error), true);
                 toast(t('Cannot save: ${0}').replace('${0}', check.error), 'error');
                 return;
             }
         }
 
+        state.saving = true;
+        const saveButton = mount.querySelector('[data-editor-save]');
+        if (saveButton) { saveButton.disabled = true; saveButton.setAttribute('aria-busy', 'true'); }
         try {
             const r = await context.skills.writeFile({
                 scope,
@@ -352,6 +365,7 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
             });
             state.sha256 = r?.sha256 || state.sha256;
             state.currentContent = content;
+            report(t('Saved ${0}').replace('${0}', state.activePath));
             toast(t('Saved ${0}').replace('${0}', state.activePath), 'success');
             // Refresh the parent panel so updated description / new files
             // become visible without manual reload.
@@ -361,10 +375,15 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
         } catch (e) {
             const msg = e?.message || String(e);
             if (/sha256|mismatch/i.test(msg)) {
+                report(t('File changed on disk (sha256 mismatch). Close and reopen to reload.'), true);
                 toast(t('File changed on disk (sha256 mismatch). Close and reopen to reload.'), 'error');
             } else {
+                report(msg, true);
                 toast(t('Save failed: ${0}').replace('${0}', msg), 'error');
             }
+        } finally {
+            state.saving = false;
+            if (saveButton) { saveButton.disabled = false; saveButton.setAttribute('aria-busy', 'false'); }
         }
     }
 

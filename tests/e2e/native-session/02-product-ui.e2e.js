@@ -43,7 +43,7 @@ test.describe.serial('N10 Native Product UI hard-cutover acceptance', () => {
 
         // Product flow, not a test-only runtime shortcut: open the Native Work,
         // choose its EntryPoint, create the Session, and transition to Play.
-        await workCard.getByRole('button', { name: 'Open', exact: true }).click();
+        await workCard.getByRole('button', { name: /^Open / }).click();
         const detail = page.locator('[data-atria-work-detail]').first();
         await expect(detail).toBeVisible();
         await detail.getByRole('button', { name: 'Start New', exact: true }).click();

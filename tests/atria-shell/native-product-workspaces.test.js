@@ -359,7 +359,7 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
         worldName.value = 'Renamed World';
         [...body.querySelectorAll('button')].find(node => node.textContent === 'Rename World').click();
         await flush();
-        expect(body.querySelector('[data-atria-world-detail] .atria-runtime-card__title').textContent)
+        expect(body.querySelector('[data-atria-world-detail] h2').textContent)
             .toBe('Renamed World');
 
         controller.updateRoute({
@@ -372,7 +372,7 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
         knowledgeName.value = 'Renamed Knowledge';
         [...body.querySelectorAll('button')].find(node => node.textContent === 'Rename Knowledge Base').click();
         await flush();
-        expect(body.querySelector('[data-atria-knowledge-detail] .atria-runtime-card__title').textContent)
+        expect(body.querySelector('[data-atria-knowledge-detail] h2').textContent)
             .toBe('Renamed Knowledge');
         expect(body.querySelector('[data-atria-knowledge-entry-id="entry_1"]').textContent).toContain('Native entry');
         expect(body.querySelector('[data-atria-knowledge-bindings="true"]').textContent)

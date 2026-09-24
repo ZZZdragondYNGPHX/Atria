@@ -99,17 +99,19 @@ export function forkPromptClosure(entries, selected, { derive = false, scope = {
     return { entries: output, ref };
 }
 
-export function mountPromptEditor({ document: doc, parent, entry, entries, onSave, onBack }) {
+export function mountPromptEditor({ document: doc, parent, entry, entries, onSave, onBack, librarySurface = false }) {
     let draft = clone(entry.resource); let advanced = false; let submitted = false;
     const root = element(doc, 'section', undefined, parent); root.className = 'atri-prompt-editor';
     root.dataset.atriPromptEditor = 'true';
+    if (librarySurface) root.dataset.atriLibraryEditor = 'true';
     function render() {
         root.replaceChildren();
         const title = element(doc, 'h3', undefined, root); title.textContent = draft.displayName; title.tabIndex = -1;
-        element(doc, 'p', 'New exact revision · existing references stay pinned. Review changes before committing in Studio.', root);
+        element(doc, 'p', librarySurface ? 'Save a new revision. Existing references keep their exact version.' : 'New exact revision · existing references stay pinned. Review changes before committing in Studio.', root);
         const toolbar = element(doc, 'div', undefined, root); toolbar.className = 'atri-prompt-actions';
         action(doc, toolbar, 'Back to resources', onBack);
         const status = element(doc, 'div', undefined, root);
+        if (librarySurface) status.className = 'atri-prompt-editor-status';
         let read;
         action(doc, toolbar, advanced ? 'Simple editor' : 'Advanced editor', () => {
             try { draft = read(); advanced = !advanced; render(); } catch (e) { status.replaceChildren(); error(doc, status, e); }
@@ -118,9 +120,13 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
             const json = input(doc, root, 'Resource JSON — conditions, parameters, provenance', JSON.stringify(draft, null, 2), true);
             json.className = 'atri-prompt-json'; read = () => JSON.parse(json.value);
         } else {
-            const name = input(doc, root, 'Display name', draft.displayName);
-            const revision = input(doc, root, 'Exact revision', draft.revision);
+            const identity = librarySurface ? element(doc, 'div', undefined, root) : root;
+            if (librarySurface) identity.className = 'atri-prompt-identity';
+            const name = input(doc, identity, 'Display name', draft.displayName);
+            if (librarySurface) name.addEventListener('input', () => { title.textContent = name.value || translateShellText('Untitled'); });
+            const revision = input(doc, identity, 'Exact revision', draft.revision);
             const fields = element(doc, 'div', undefined, root);
+            if (librarySurface) fields.className = 'atri-prompt-fields';
             let specific = () => ({});
             if (entry.ref.resourceType === 'core.prompt-module') {
                 const target = select(doc, fields, 'Semantic target', ['system.foundation', 'system.character', 'system.world', 'system.style', 'system.response', 'context.before_history', 'context.after_history', 'context.before_input', 'context.after_input', 'response.prefill', 'response.post_history', 'agent.task', 'agent.evidence', 'agent.constraints'].map(v => [v, v]), draft.target);
@@ -131,7 +137,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
             } else if (entry.ref.resourceType === 'core.prompt-program') {
                 const stages = clone(draft.stages); const tree = element(doc, 'section', undefined, fields); tree.className = 'atri-prompt-stages';
                 element(doc, 'h4', 'Stage / module tree', tree);
-                const renderStages = () => {
+                const renderStages = (focusIndex) => {
                     tree.querySelectorAll('fieldset').forEach(node => node.remove());
                     stages.forEach((stage, index) => {
                         const row = element(doc, 'fieldset', undefined, tree); element(doc, 'legend', formatShellText('Stage ${0}', [index + 1], undefined, 'atria.product.stageIndex'), row);
@@ -139,14 +145,15 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                         for (const ref of stage.moduleRefs) {
                             const line = element(doc, 'div', undefined, row); const module = entries.find(item => exactKey(item.ref) === exactKey(ref));
                             element(doc, 'span', (module?.resource.displayName || ref.resourceId) + ' · ' + ref.revision + ' · ' + ref.scope, line);
-                            action(doc, line, 'Remove module', () => { stage.moduleRefs = stage.moduleRefs.filter(v => v !== ref); renderStages(); });
+                            action(doc, line, 'Remove module', () => { stage.moduleRefs = stage.moduleRefs.filter(v => v !== ref); renderStages(index); });
                         }
                         const choices = entries.filter(item => item.ref.resourceType === 'core.prompt-module' && (entry.ref.scope !== 'library' || item.ref.scope === 'library') && item.ref.scope !== 'package');
                         const picker = select(doc, row, formatShellText('Module for stage ${0}', [index + 1], undefined, 'atria.product.stageModuleIndex'), [['', 'Choose exact module…'], ...choices.map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope])]);
-                        action(doc, row, 'Add module', () => { if (picker.value && !stage.moduleRefs.some(v => exactKey(v) === picker.value)) stage.moduleRefs.push(JSON.parse(picker.value)); renderStages(); });
-                        action(doc, row, 'Move stage up', () => { if (index) { [stages[index - 1], stages[index]] = [stages[index], stages[index - 1]]; renderStages(); } });
-                        action(doc, row, 'Remove stage', () => { if (stages.length > 1) { stages.splice(index, 1); renderStages(); } });
+                        action(doc, row, 'Add module', () => { if (picker.value && !stage.moduleRefs.some(v => exactKey(v) === picker.value)) stage.moduleRefs.push(JSON.parse(picker.value)); renderStages(index); });
+                        action(doc, row, 'Move stage up', () => { if (index) { [stages[index - 1], stages[index]] = [stages[index], stages[index - 1]]; renderStages(index - 1); } });
+                        action(doc, row, 'Remove stage', () => { if (stages.length > 1) { stages.splice(index, 1); renderStages(Math.min(index, stages.length - 1)); } });
                     });
+                    if (librarySurface && focusIndex !== undefined) tree.querySelectorAll('fieldset')[focusIndex]?.querySelector('input')?.focus();
                 };
                 action(doc, fields, 'Add stage', () => { let index = stages.length + 1; while (stages.some(stage => stage.stageId === 'stage.step' + index)) index++; stages.push({ stageId: 'stage.step' + index, moduleRefs: [] }); renderStages(); }); renderStages();
                 const directive = input(doc, fields, 'Response Directive', draft.responseDirective?.body || '', true);
@@ -160,9 +167,9 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
             const provenance = element(doc, 'details', undefined, root); element(doc, 'summary', 'Conditions / parameters / provenance', provenance);
             element(doc, 'pre', JSON.stringify({ condition: draft.condition, parameters: draft.parameters, parentRef: draft.parentRef, derive: draft.derive, provenance: draft.provenance }, null, 2), provenance);
         }
-        const save = action(doc, root, 'Review / save revision', async () => {
-            if (save.disabled) return; save.disabled = true; status.replaceChildren();
-            try { const value = read(); await onSave(value); element(doc, 'p', 'Revision submitted. Studio changes require human Review / Apply.', status); submitted = true; } catch (e) { error(doc, status, e); } finally { save.disabled = submitted; }
+        const save = action(doc, root, librarySurface ? 'Save revision' : 'Review / save revision', async () => {
+            if (save.disabled) return; save.disabled = true; save.setAttribute('aria-busy', 'true'); status.replaceChildren();
+            try { const value = read(); await onSave(value); element(doc, 'p', librarySurface ? 'Saved immutable Library revision.' : 'Revision submitted. Studio changes require human Review / Apply.', status); submitted = true; } catch (e) { error(doc, status, e); } finally { save.disabled = submitted; save.removeAttribute('aria-busy'); }
         });
         save.disabled = submitted;
         title.focus();
@@ -184,21 +191,29 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
         try {
             const entries = await runtimeRequest('/resources'); if (disposed || token !== sequence) return;
             body.replaceChildren(); const root = element(doc, 'section', undefined, body); root.className = 'atri-prompt-library'; root.dataset.atriPromptLibrary = type;
-            element(doc, 'h2', PROMPT_TYPES[type][0], root);
-            element(doc, 'p', 'Exact revisions from Library, Projects and installed Packages. Package originals are read-only.', root);
+            const header = element(doc, 'header', undefined, root); header.className = 'atri-library-heading';
+            element(doc, 'h2', PROMPT_TYPES[type][0], header);
+            element(doc, 'p', 'Exact revisions from Library, Projects and installed Packages. Package originals are read-only.', header);
             const editor = (entry, fresh = false) => {
                 root.replaceChildren(); const next = clone(entry);
                 if (!fresh) next.resource.revision = createStudioNativeId('rev');
-                mountPromptEditor({ document: doc, parent: root, entry: next, entries, onBack: render, onSave: async resource => {
-                    await runtimeRequest('/resources', { method: 'POST', body: { resourceType: type, resource } });
-                    root.replaceChildren(); void host.refreshSearch?.(); element(doc, 'p', 'Saved immutable Library revision.', root); action(doc, root, 'Reload resources', render);
+                mountPromptEditor({ document: doc, parent: root, entry: next, entries, librarySurface: true, onBack: render, onSave: async resource => {
+                    try { await runtimeRequest('/resources', { method: 'POST', body: { resourceType: type, resource } }); } catch (cause) {
+                        throw new Error(translateShellText('Could not save this revision. Check its fields and use an unused revision ID. Your edits are still here.') + ' (' + cause.message + ')');
+                    }
+                    root.replaceChildren(); void host.refreshSearch?.();
+                    element(doc, 'p', 'Saved immutable Library revision.', root).setAttribute('role', 'status');
+                    action(doc, root, 'Back to resources', render).focus();
                 } });
             };
-            action(doc, root, 'New resource', () => { const resource = newPromptResource(type); editor({ resource, ref: resourceRef(type, resource, { scope: 'library' }) }, true); });
-            const filter = input(doc, root, 'Filter resources', ''); const list = element(doc, 'div', undefined, root);
+            const tools = element(doc, 'div', undefined, root); tools.className = 'atri-prompt-library-tools';
+            const filter = input(doc, tools, 'Filter resources', ''); filter.type = 'search';
+            const scope = select(doc, tools, 'Resource origin', [['all', 'All origins'], ['library', 'Library'], ['project', 'Build'], ['package', 'Installed works']]); scope.value = 'all';
+            action(doc, tools, 'New resource', () => { const resource = newPromptResource(type); editor({ resource, ref: resourceRef(type, resource, { scope: 'library' }) }, true); });
+            const list = element(doc, 'div', undefined, root); list.className = 'atri-prompt-library-list';
             const renderList = () => {
-                list.replaceChildren(); const matching = entries.filter(item => item.ref.resourceType === type && (item.resource.displayName + item.ref.resourceId).toLowerCase().includes(filter.value.toLowerCase()));
-                if (!matching.length) element(doc, 'p', 'No resources yet. Create one or open Build to author project assets.', list);
+                list.replaceChildren(); const matching = entries.filter(item => item.ref.resourceType === type && (scope.value === 'all' || item.ref.scope === scope.value) && (item.resource.displayName + item.ref.resourceId).toLowerCase().includes(filter.value.toLowerCase()));
+                if (!matching.length) element(doc, 'p', entries.some(item => item.ref.resourceType === type) ? 'No matching resources' : 'No resources yet. Create one or open Build to author project assets.', list);
                 for (const entry of matching) {
                     const row = element(doc, 'article', undefined, list); row.className = 'atri-prompt-resource'; row.dataset.atriResourceKey = exactKey(entry.ref); row.tabIndex = -1;
                     element(doc, 'h3', undefined, row).textContent = entry.resource.displayName;
@@ -224,7 +239,7 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
                         });
                     }
                 }
-            }; filter.addEventListener('input', renderList); renderList();
+            }; filter.addEventListener('input', renderList); scope.addEventListener('change', renderList); renderList();
             if (selectedRef) {
                 const match = [...list.children].find(node => node.dataset.atriResourceKey === exactKey(selectedRef));
                 if (match) { match.dataset.selected = 'true'; match.focus(); match.scrollIntoView?.({ block: 'start' }); } else error(doc, root, 'The requested exact revision is unavailable. References never follow latest.');

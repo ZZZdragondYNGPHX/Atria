@@ -18,14 +18,8 @@
  * `sortBundledRows`, `buildBundledTableHtml`, `describeBundledImportResult`)
  * are exported for tests without a DOM. The interactive `renderBundledBrowser`
  * entry point handles event wiring and invokes `context.skills.importBundled()`
- * for both bulk and per-row install. The bundled mirror runs with
- * `conflictStrategy: 'replace'` and is idempotent (same hash →
- * `already_installed`), so reusing it for the per-row "Install this" button is
- * functionally correct: clicking on a not_installed row will install all
- * bundled skills (which the toast wording surfaces), then re-render with the
- * row flipping to installed_match. A future iteration could add a server route
- * for install-one-bundled if users push back, but right now the simpler shared
- * route avoids divergence between two install paths.
+ * for the explicit whole-collection install action. The existing importer
+ * replaces differing bundled copies; the UI explains that scope before action.
  */
 
 import { ensureSkillI18n } from './i18n.js';
@@ -167,20 +161,12 @@ export function buildBundledTableHtml(rows, t, esc) {
     const renderRow = (row) => {
         const safeName = esc(row.name);
         const sizeKb = (row.totalBytes / 1024).toFixed(1);
-        // installed_match rows hide the per-row install button — the bundled
-        // copy is already on disk. The "Install all" toolbar action still
-        // re-runs the bundled mirror, which is the right escape hatch if the
-        // user truly wants to force a re-install.
-        const action = row.state === 'installed_match'
-            ? ''
-            : `<div class="menu_button menu_button_small" data-bundled-action="install" data-bundled-name="${safeName}">${esc(t('Install this'))}</div>`;
         return `
             <tr class="atria_bundled_row" data-bundled-row data-bundled-name="${safeName}" data-bundled-state="${esc(row.state)}">
                 <td class="atria_bundled_col_name">${safeName}</td>
                 <td class="atria_bundled_col_state">${stateBadge(row.state)}</td>
                 <td class="atria_bundled_col_desc">${esc(row.description || t('(no description)'))}</td>
                 <td class="atria_bundled_col_meta">${esc(t('${0} files, ${1} KB').replace('${0}', String(row.fileCount)).replace('${1}', sizeKb))}</td>
-                <td class="atria_bundled_col_action">${action}</td>
             </tr>
         `;
     };
@@ -194,7 +180,6 @@ export function buildBundledTableHtml(rows, t, esc) {
                     <th>${esc(t('State'))}</th>
                     <th>${esc(t('Description'))}</th>
                     <th>${esc(t('Size'))}</th>
-                    <th></th>
                 </tr>
             </thead>
             <tbody>${items.map(renderRow).join('')}</tbody>
@@ -203,10 +188,10 @@ export function buildBundledTableHtml(rows, t, esc) {
     return `
 <div class="atria_bundled_browser">
     <div class="atria_bundled_browser_toolbar">
-        <div class="atria_bundled_browser_hint">${esc(t('Skills shipped with the server. Install any to add them under the Global scope.'))}</div>
+        <div class="atria_bundled_browser_hint">${esc(t('Install the bundled collection into Global scope. Differing local copies will be replaced.'))}</div>
         <div class="atria_bundled_browser_actions">
-            <div class="menu_button menu_button_small" data-bundled-toolbar="install-all">${esc(t('Install all bundled'))}</div>
-            <div class="menu_button menu_button_small" data-bundled-toolbar="refresh">${esc(t('Refresh'))}</div>
+            <button type="button" class="menu_button menu_button_small" data-bundled-toolbar="install-all">${esc(t('Install all bundled'))}</button>
+            <button type="button" class="menu_button menu_button_small" data-bundled-toolbar="refresh">${esc(t('Refresh'))}</button>
         </div>
     </div>
     <div class="atria_bundled_browser_body">${body}</div>
@@ -247,20 +232,18 @@ export async function renderBundledBrowser({ context, mount, t = (s) => s } = {}
     })[c]);
 
     async function refresh() {
-        let bundled = [];
-        let installed = [];
+        let bundled; let installed;
+        mount.setAttribute('aria-busy', 'true');
         try {
-            bundled = await context.skills.listBundledManifest();
-        } catch (e) {
-            bundled = [];
-            toast(t('Failed to load bundled manifest: ${0}').replace('${0}', e?.message || String(e)), 'error');
+            [bundled, installed] = await Promise.all([
+                context.skills.listBundledManifest(), context.skills.list({ scope: { kind: 'global' } }),
+            ]);
+        } catch (error) {
+            mount.innerHTML = `<p role="alert">${esc(t('Failed to load bundled skills: ${0}').replace('${0}', error?.message || String(error)))}</p><button type="button" class="menu_button" data-bundled-toolbar="refresh">${esc(t('Try again'))}</button>`;
+            mount.setAttribute('aria-busy', 'false');
+            bindEvents(); return;
         }
-        try {
-            installed = await context.skills.list({ scope: { kind: 'global' } });
-        } catch (e) {
-            installed = [];
-            toast(t('Failed to list installed skills: ${0}').replace('${0}', e?.message || String(e)), 'error');
-        }
+        mount.setAttribute('aria-busy', 'false');
         const rows = sortBundledRows(computeInstallStates(bundled, installed));
         mount.innerHTML = buildBundledTableHtml(rows, t, esc);
         bindEvents();
@@ -270,19 +253,17 @@ export async function renderBundledBrowser({ context, mount, t = (s) => s } = {}
         mount.querySelectorAll('[data-bundled-toolbar]').forEach((el) => {
             el.addEventListener('click', async (ev) => {
                 ev.preventDefault();
+                if (el.disabled) return;
+                const hadFocus = document.activeElement === el;
+                el.disabled = true; el.setAttribute('aria-busy', 'true');
                 const action = el.getAttribute('data-bundled-toolbar');
                 if (action === 'install-all') {
                     await handleInstallAll();
                 } else if (action === 'refresh') {
                     await refresh();
                 }
-            });
-        });
-        mount.querySelectorAll('[data-bundled-action="install"]').forEach((el) => {
-            el.addEventListener('click', async (ev) => {
-                ev.preventDefault();
-                const name = el.getAttribute('data-bundled-name');
-                await handleInstallOne(name);
+                el.disabled = false; el.setAttribute('aria-busy', 'false');
+                if (hadFocus && mount.isConnected && document.activeElement === document.body) mount.querySelector(`[data-bundled-toolbar="${action}"]`)?.focus();
             });
         });
     }
@@ -299,25 +280,6 @@ export async function renderBundledBrowser({ context, mount, t = (s) => s } = {}
             await refresh();
         } catch (e) {
             toast(t('Install all failed: ${0}').replace('${0}', e?.message || String(e)), 'error');
-        }
-    }
-
-    async function handleInstallOne(name) {
-        // The bundled mirror is the only install path that knows how to read
-        // default/skills/global/<name>/. There's no server route to install
-        // just one bundled skill today; the bundled importer is idempotent
-        // (already-installed entries report `replaced=0,installed=0`), so
-        // reusing it for the per-row case keeps the install path single. The
-        // success toast surfaces totals so the user understands the side
-        // effect of the click.
-        try {
-            const result = await context.skills.importBundled();
-            const summary = describeImportResult(result);
-            const prefix = t('Install target: ${0}.').replace('${0}', String(name || '')) + ' ';
-            toast(prefix + summary.text, summary.level);
-            await refresh();
-        } catch (e) {
-            toast(t('Install failed: ${0}').replace('${0}', e?.message || String(e)), 'error');
         }
     }
 
