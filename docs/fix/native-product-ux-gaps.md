@@ -308,6 +308,40 @@ Provide a first-party Secret selection/create flow that returns an exact Secret 
 
 ---
 
+## NUX-039 — Memory embedding / rerank provider ownership remains outside Native Runtime
+
+**New finding in the post-redesign re-audit**
+
+**Current evidence**
+
+Memory Graph's vector embedding and rerank configuration still relies on Connection Manager embedding/rerank profiles and their provider/model/endpoint/secret ownership.
+
+At the same time, Memory's first-party LLM generation path now uses Native Runtime through `role.memory`.
+
+**Impact**
+
+One Native Memory feature is split across two provider/configuration authorities:
+
+- Native Runtime for generation;
+- compatibility-era Connection Manager profiles for embedding/rerank.
+
+Users must understand both models, and Native Memory cannot be fully configured from the Native Runtime/Library product model.
+
+**Acceptance**
+
+Define one deliberate Native ownership model for embedding/rerank configuration.
+
+If embedding/rerank remain a separate resource family, make that separation first-class in Atria and expose it through Native product UI rather than requiring compatibility-only management. Do not silently copy Secrets or provider state between authorities.
+
+**Evidence**
+
+- `public/scripts/extensions/memory-graph/main.js`
+- `public/scripts/embedding-service.js`
+- `public/scripts/extensions/connection-manager/embed-rerank.js`
+- `docs/features/memory-graph.md`
+
+---
+
 # P1 — Productization, lifecycle and portability
 
 ## NUX-012 — Runtime lacks connection validation and model discovery
@@ -464,6 +498,37 @@ However:
 **Acceptance**
 
 Build domain-aware editors on top of existing ChangeSet authority. Generic fields/Source remain the fallback for unknown/plugin fields.
+
+---
+
+## NUX-040 — Prompt advanced semantics are still authorable only through Advanced Resource JSON
+
+**New finding in the post-redesign re-audit**
+
+**Current evidence**
+
+The redesigned Prompt editor productizes common authoring:
+
+- Prompt Module target / stages / body / priority;
+- Prompt Program stage/module composition;
+- common Generation Profile controls.
+
+However, Prompt condition/parameters and derived-program configuration are still surfaced mainly as read-only technical evidence in the simple editor. Editing those semantics requires switching to the full **Advanced editor** Resource JSON.
+
+System provenance should remain read-only, but user-authored condition/parameter/derive behavior is part of Atria's first-class Prompt model.
+
+**Impact**
+
+Some of the most Atria-specific Prompt capabilities are technically available but remain developer-only in practice.
+
+**Acceptance**
+
+Provide structured authoring for user-controlled Prompt conditions, typed parameters and derive operations while preserving immutable exact revision semantics. Keep raw Resource JSON as the Advanced escape hatch and keep system provenance read-only.
+
+**Evidence**
+
+- `public/scripts/native/prompt-authoring.js`
+- `src/native/model-prompt-runtime/contracts.js`
 
 ---
 
@@ -764,10 +829,12 @@ This backlog should not be implemented as 38 unrelated fixes. Normalize it into 
 
 3. **Agent / Memory Native Routing**
    - NUX-007–008
-   - NUX-037 after route parity
+   - NUX-039
+   - NUX-037 after route/provider parity
 
-4. **Portable Native Resources**
+4. **Prompt / Portable Native Resources**
    - NUX-018–019
+   - NUX-040
    - shared conflict/preflight infrastructure with NUX-036
 
 5. **Studio / Build Lifecycle**
