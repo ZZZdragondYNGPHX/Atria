@@ -24,6 +24,15 @@ let registered = false;
 
 const TRANSLATIONS = {
     'zh-cn': {
+        'Project': '项目',
+        'Package': '作品包',
+        'Package original · Read-only': '作品包原件 · 只读',
+        'Advanced compatibility scopes': '高级兼容作用域',
+        'Package originals are read-only. Publish changes from the source project.': '作品包原件只读。请在源项目中修改并发布新版本。',
+        'No projects available. Create one in Build.': '暂无项目。请在 Build 中创建。',
+        'Could not load project scopes. Reopen the picker to retry.': '无法加载项目作用域。请重新打开选择器重试。',
+        'Choose an existing project.': '请选择已有项目。',
+        'Moving changes which projects or sessions can resolve this Skill. References to its name are not rewritten.': '移动会改变哪些项目或会话能使用此 Skill。已有名称引用不会自动改写。',
         // Top-level shell
         'Skills': 'Skills',
         'Skill': 'Skill',
@@ -208,6 +217,15 @@ const TRANSLATIONS = {
         'orch-preset:${0}/${1}': '编排预设:${0}/${1}',
     },
     'zh-tw': {
+        'Project': '專案',
+        'Package': '作品包',
+        'Package original · Read-only': '作品包原件 · 唯讀',
+        'Advanced compatibility scopes': '進階相容作用域',
+        'Package originals are read-only. Publish changes from the source project.': '作品包原件唯讀。請在來源專案中修改並發布新版本。',
+        'No projects available. Create one in Build.': '暫無專案。請在 Build 中建立。',
+        'Could not load project scopes. Reopen the picker to retry.': '無法載入專案作用域。請重新開啟選擇器重試。',
+        'Choose an existing project.': '請選擇已有專案。',
+        'Moving changes which projects or sessions can resolve this Skill. References to its name are not rewritten.': '移動會改變哪些專案或工作階段能使用此 Skill。既有名稱參照不會自動改寫。',
         'Skills': 'Skills',
         'Skill': 'Skill',
         'Skill Manager': 'Skill 管理器',

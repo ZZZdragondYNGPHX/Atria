@@ -61,6 +61,20 @@ import { importFromUrl } from '../skills/url-import.js';
 export function createSkillsRouter({ getRepository, getMemoryIndex }) {
     const router = express.Router();
 
+    // Installed PackageVersion originals are immutable at every public write
+    // entry point, including import destinations and cross-scope moves.
+    router.use((req, res, next) => {
+        if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+        if (['/pack-for-embed', '/extract-embed/preview'].includes(req.path)) return next();
+        const scopes = ['scope', 'targetScope', 'fromScope', 'toScope'].map(key => req.body?.[key]);
+        let routeScope = '';
+        try { routeScope = decodeURIComponent(req.path.split('/')[1] || ''); } catch { /* normal route validation follows */ }
+        if (routeScope.startsWith('package/') || scopes.some(scope => scope?.kind === 'package')) {
+            return res.status(403).json({ error: 'Package Skill originals are read-only. Edit the source project and build a new PackageVersion.', code: 'native_package_read_only' });
+        }
+        next();
+    });
+
     // Express auto-decodes %2F in path params, so req.params.scope arrives
     // as the original `preset/openai/foo` string. decodeScopePath does the
     // structural validation.

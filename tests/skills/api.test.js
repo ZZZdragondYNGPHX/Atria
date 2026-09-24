@@ -32,6 +32,15 @@ describe('public/scripts/skills/api.js — jsonFetch wrapper', () => {
         global.fetch = originalFetch;
     });
 
+    test('Native scope URLs preserve project and exact PackageVersion identity', async () => {
+        const { skillsApi } = await import('../../public/scripts/skills/api.js');
+        const urls = [];
+        global.fetch = async url => { urls.push(url); return { ok: true, json: async () => [] }; };
+        await skillsApi.listFiles({ scope: { kind: 'project', projectId: 'project_a' }, name: 'guide' });
+        await skillsApi.readFile({ scope: { kind: 'package', packageId: 'pkg_a', packageVersionId: 'pkgv_b' }, name: 'guide' });
+        expect(urls).toEqual(['/api/skills/project%2Fproject_a/guide/files', '/api/skills/package%2Fpkg_a%2Fpkgv_b/guide/file']);
+    });
+
     test('list() encodes scope into the query string', async () => {
         const { skillsApi } = await import('../../public/scripts/skills/api.js');
         let capturedUrl;

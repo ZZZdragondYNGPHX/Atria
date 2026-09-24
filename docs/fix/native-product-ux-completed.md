@@ -615,4 +615,23 @@ eight real Edge Knowledge/World/Studio/Play scenarios passed at 320/390px, inclu
 Native prompt evaluation, promotion, references, historical revisions, bindings,
 composition and semantic authoring. The current composition screenshot was inspected.
 
-Next: NUX-027, following the active backlog order.
+## Group 6 — Studio / Skills / Prompt Authoring
+
+### NUX-027
+
+Skill Manager now groups Native global/project/exact PackageVersion scopes, resolves
+human owner names, and preserves exact scope identity for filtering, collision checks
+and API URLs. Package rows identify read-only originals and offer View only; editor
+entry and all public mutation endpoints reject Package writes, including scope-level
+operations, moves and import destinations. Advanced compatibility scopes remain
+collapsed. Project editing keeps existing SkillRepository/file-hash concurrency;
+project destinations are picked from the current Native project catalog. Moves
+require confirmation explaining visibility changes and unchanged name references.
+
+Validation: ten focused/adjacent suites covered 211 passing cases after correcting
+an unnecessary async yield in the optional owner-catalog path; the 14-case interactive
+scope-picker suite passed on rerun. A real Edge 390px scenario passed project name,
+Package read-only controls, compatibility disclosure, project edit/save and confirmed
+move to global. Current Skills UI screenshot inspected; lint/diff checks passed.
+
+Next: NUX-028, following the active backlog order.

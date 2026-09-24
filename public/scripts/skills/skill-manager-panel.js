@@ -40,6 +40,8 @@ export function formatScopeLabel(scope, t = (s) => s) {
     if (!scope || typeof scope !== 'object') return t('unknown');
     switch (scope.kind) {
         case 'global': return t('global');
+        case 'project': return `${t('Project')}: ${scope.displayName || scope.projectId}`;
+        case 'package': return `${t('Package')}: ${scope.displayName || scope.packageId} @ ${scope.packageVersionId}`;
         case 'preset': return `${t('preset')}: ${scope.name}`;
         case 'orch-preset': return `${t('orchestrator preset')} (${scope.mode}): ${scope.name}`;
         case 'character': return `${t('character')}: ${scope.characterFile}`;
@@ -58,6 +60,8 @@ export function scopesEqual(a, b) {
     if (!a || !b) return false;
     if (a.kind !== b.kind) return false;
     if (a.kind === 'global') return true;
+    if (a.kind === 'project') return a.projectId === b.projectId;
+    if (a.kind === 'package') return a.packageId === b.packageId && a.packageVersionId === b.packageVersionId;
     if (a.kind === 'preset') return a.name === b.name;
     if (a.kind === 'orch-preset') return a.mode === b.mode && a.name === b.name;
     if (a.kind === 'character') return a.characterFile === b.characterFile;
@@ -74,6 +78,8 @@ export function scopeKey(scope) {
     if (!scope || typeof scope !== 'object') return '';
     switch (scope.kind) {
         case 'global': return 'global';
+        case 'project': return `project/${scope.projectId}`;
+        case 'package': return `package/${scope.packageId}/${scope.packageVersionId}`;
         case 'preset': return `preset/${scope.name}`;
         case 'orch-preset': return `orch-preset/${scope.mode}/${scope.name}`;
         case 'character': return `character/${scope.characterFile}`;
@@ -109,7 +115,7 @@ export function groupSkillsByScope(skills) {
     // resolver precedence (specialized last) reversed for reading order:
     // global (shared) → preset (chat-completion) → orch-preset
     // (orchestrator preset) → character (card-bound).
-    const kindOrder = { global: 0, preset: 1, 'orch-preset': 2, character: 3 };
+    const kindOrder = { global: 0, project: 1, package: 2, preset: 3, 'orch-preset': 4, character: 5 };
     return Array.from(groups.values()).sort((a, b) => {
         const ka = kindOrder[a.scope.kind] ?? 99;
         const kb = kindOrder[b.scope.kind] ?? 99;
@@ -298,23 +304,26 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
         const kindClass = `atria_skill_scope_badge_${esc(kind)}`;
         const kindName = esc(
             kind === 'global' ? t('Global')
-                : kind === 'preset' ? t('Preset')
-                    : kind === 'orch-preset' ? t('Orchestrator preset')
-                        : kind === 'character' ? t('Character')
-                            : t('unknown'),
+                : kind === 'project' ? t('Project') : kind === 'package' ? t('Package')
+                    : kind === 'preset' ? t('Preset')
+                        : kind === 'orch-preset' ? t('Orchestrator preset')
+                            : kind === 'character' ? t('Character')
+                                : t('unknown'),
         );
         // For preset / orch-preset / character scopes the second segment
         // carries the identifying detail (preset name, mode+name, or
         // character file). Global has no sub-identifier, so the badge
         // stops at the kind name — rendering "Global · Global" would just
         // be redundant noise.
-        const kindLabel = kind === 'preset'
-            ? esc(scope.name || '?')
-            : kind === 'orch-preset'
-                ? esc(`${scope.mode || '?'}/${scope.name || '?'}`)
-                : kind === 'character'
-                    ? esc(scope.characterFile || '?')
-                    : null;
+        const kindLabel = kind === 'project' ? esc(scope.displayName || scope.projectId)
+            : kind === 'package' ? esc((scope.displayName || scope.packageId) + ' @ ' + scope.packageVersionId)
+                : kind === 'preset'
+                    ? esc(scope.name || '?')
+                    : kind === 'orch-preset'
+                        ? esc(`${scope.mode || '?'}/${scope.name || '?'}`)
+                        : kind === 'character'
+                            ? esc(scope.characterFile || '?')
+                            : null;
         const tail = kindLabel
             ? `<span class="atria_skill_scope_badge_sep">·</span><span class="atria_skill_scope_badge_id">${kindLabel}</span>`
             : '';
@@ -326,6 +335,7 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
 
     const renderRow = (skill) => {
         const scopeStr = JSON.stringify(skill.scope);
+        const readOnly = skill.scope.kind === 'package';
         const fileLabel = t('${0} files').replace('${0}', String(skill.fileCount ?? 0));
         return `
             <div class="atria_skill_row" data-skill-name="${esc(skill.name)}" data-skill-scope="${esc(scopeStr)}">
@@ -334,6 +344,7 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
                         <div class="atria_skill_row_name" title="${esc(skill.name)}">${esc(skill.name)}</div>
                         <div class="atria_skill_row_meta">
                             <span class="atria_skill_meta_chip">${esc(fileLabel)}</span>
+                            ${readOnly ? `<span class="atria_skill_meta_chip">${esc(t('Package original · Read-only'))}</span>` : ''}
                             ${skill.hasScripts ? `<span class="atria_skill_meta_chip atria_skill_meta_chip_warn" title="${esc(t('has scripts'))}">${esc(t('has scripts'))}</span>` : ''}
                             ${skill.hasBinary ? `<span class="atria_skill_meta_chip" title="${esc(t('binary'))}">${esc(t('binary'))}</span>` : ''}
                         </div>
@@ -343,15 +354,15 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
                 <div class="atria_skill_row_actions">
                     <div class="atria_skill_row_actions_group">
                         <button type="button" class="menu_button menu_button_small atria_skill_row_btn" data-skill-action="view" title="${esc(t('View'))}">${esc(t('View'))}</button>
-                        <button type="button" class="menu_button menu_button_small atria_skill_row_btn atria_skill_row_btn_primary" data-skill-action="edit" title="${esc(t('Edit'))}">${esc(t('Edit'))}</button>
+                        ${readOnly ? '' : `<button type="button" class="menu_button menu_button_small atria_skill_row_btn atria_skill_row_btn_primary" data-skill-action="edit" title="${esc(t('Edit'))}">${esc(t('Edit'))}</button>`}
                     </div>
-                    <details class="atri-skill-more"><summary>${esc(t('More'))}</summary><div class="atria_skill_row_actions_group">
+                    ${readOnly ? '' : `<details class="atri-skill-more"><summary>${esc(t('More'))}</summary><div class="atria_skill_row_actions_group">
                         <button type="button" class="menu_button menu_button_small atria_skill_row_btn" data-skill-action="move" title="${esc(t('Move to...'))}">${esc(t('Move to...'))}</button>
                         <button type="button" class="menu_button menu_button_small atria_skill_row_btn" data-skill-action="rename" title="${esc(t('Rename'))}">${esc(t('Rename'))}</button>
                     </div>
                     <div class="atria_skill_row_actions_group">
                         <button type="button" class="menu_button menu_button_small atria_skill_row_btn atria_skill_row_btn_danger atria_skill_row_delete" data-skill-action="delete" title="${esc(t('Delete'))}">${esc(t('Delete'))}</button>
-                    </div></details>
+                    </div></details>`}
                 </div>
             </div>
         `;
@@ -376,7 +387,9 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
               <div class="atria_skill_empty_title">${esc(t('No skills installed yet.'))}</div>
               <div class="atria_skill_empty_hint">${esc(t('Use Import or Create to add some.'))}</div>
            </div>`
-        : groups.map(renderGroup).join('');
+        : groups.filter(g => ['global', 'project', 'package'].includes(g.scope.kind)).map(renderGroup).join('')
+            + (groups.some(g => !['global', 'project', 'package'].includes(g.scope.kind))
+                ? `<details class="atri-skill-compatibility"${selectedFilterKey !== 'all' ? ' open' : ''}><summary>${esc(t('Advanced compatibility scopes'))}</summary>${groups.filter(g => !['global', 'project', 'package'].includes(g.scope.kind)).map(renderGroup).join('')}</details>` : '');
 
     const installedActive = activeTab !== 'bundled';
     const tabStrip = `
@@ -500,6 +513,15 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
         try {
             const skills = await context.skills.list({ scope: 'all' });
             loadedSkills = Array.isArray(skills) ? skills : [];
+            if (context.skills.listOwners) {
+                const owners = await context.skills.listOwners().catch(() => null);
+                if (owners) loadedSkills = loadedSkills.map(skill => {
+                    const scope = { ...skill.scope };
+                    if (scope.kind === 'project') scope.displayName = owners.projects?.find(item => item.projectId === scope.projectId)?.displayName;
+                    if (scope.kind === 'package') scope.displayName = owners.works?.find(item => item.package?.packageId === scope.packageId)?.package?.displayName;
+                    return { ...skill, scope };
+                });
+            }
         } catch (e) {
             loadError = t('Failed to load skills: ${0}').replace('${0}', e?.message || String(e));
         }
@@ -612,6 +634,7 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
                 const name = row.getAttribute('data-skill-name');
                 const scope = parseScope(row.getAttribute('data-skill-scope'));
                 const action = el.getAttribute('data-skill-action');
+                if (scope?.kind === 'package' && action !== 'view') return;
                 if (action === 'view') {
                     await handleView(scope, name);
                 } else if (action === 'edit') {
@@ -792,6 +815,12 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
             );
             if (!isAffirmative(ok)) return;
         }
+        const confirmed = await context.callGenericPopup(
+            t('Moving changes which projects or sessions can resolve this Skill. References to its name are not rewritten.')
+                + '\n' + formatScopeLabel(fromScope, t) + ' → ' + formatScopeLabel(toScope, t),
+            context.POPUP_TYPE.CONFIRM, '', { okButton: t('Move'), cancelButton: t('Cancel') },
+        );
+        if (!isAffirmative(confirmed)) return;
         try {
             await context.skills.moveScope(name, fromScope, toScope);
             toast(t('Moved ${0}: ${1} -> ${2}')

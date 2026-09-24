@@ -53,6 +53,29 @@ describe('REST /api/skills', () => {
         await fs.rm(tmpRoot, { recursive: true, force: true });
     });
 
+    test('Native project scope stays editable while every Package public mutation is rejected', async () => {
+        const scope = { kind: 'package', packageId: 'pkg_a', packageVersionId: 'pkgv_a' };
+        const payload = { files: [{ path: 'SKILL.md', encoding: 'utf8', content: '---\nname: original\ndescription: exact\n---\nKeep original' }] };
+        await repo.install({ scope, payload });
+        const path = '/api/skills/' + encodeURIComponent('package/pkg_a/pkgv_a');
+        expect((await request(app).get(path + '/original/file')).status).toBe(200);
+        for (const suffix of ['', '/original/rename', '/original/move-scope', '/original/file/write', '/original/file/edit']) {
+            expect((await request(app).post(path + suffix).send({ payload, toScope: { kind: 'global' } })).status).toBe(403);
+        }
+        for (const suffix of ['', '/original', '/original/file?path=SKILL.md']) {
+            expect((await request(app).delete(path + suffix)).status).toBe(403);
+        }
+        for (const endpoint of ['extract-embed/execute', 'import-from-url', 'copy-scope', 'rename-scope']) {
+            expect((await request(app).post('/api/skills/' + endpoint).send({ targetScope: scope, toScope: scope, scope })).status).toBe(403);
+        }
+        expect((await installSimpleSkill(app, 'project/project_a', 'editable')).status).toBe(200);
+        const projectPath = '/api/skills/' + encodeURIComponent('project/project_a') + '/editable';
+        expect((await request(app).post(projectPath + '/move-scope').send({ toScope: scope })).status).toBe(403);
+        expect((await request(app).post(projectPath + '/move-scope').send({ toScope: { kind: 'global' } })).status).toBe(200);
+        expect((await repo.get('original', scope)).description).toBe('exact');
+        expect(await repo.get('editable', { kind: 'global' })).not.toBeNull();
+    });
+
     describe('list / read / install / delete', () => {
         test('GET /api/skills?scope=global returns empty', async () => {
             const res = await request(app).get('/api/skills?scope=global');

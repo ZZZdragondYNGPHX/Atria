@@ -70,6 +70,8 @@ async function jsonFetch(url, options = {}) {
 function scopeToUrl(scope) {
     if (scope === 'all' || !scope) return 'all';
     if (scope.kind === 'global') return 'global';
+    if (scope.kind === 'project') return `project/${scope.projectId}`;
+    if (scope.kind === 'package') return `package/${scope.packageId}/${scope.packageVersionId}`;
     if (scope.kind === 'preset') {
         return `preset/${scope.name}`;
     }
@@ -83,6 +85,12 @@ function scopeToUrl(scope) {
 }
 
 export const skillsApi = {
+    async listOwners() {
+        const [projects, works] = await Promise.all([
+            jsonFetch('/api/native/product/projects'), jsonFetch('/api/native/product/works'),
+        ]);
+        return { projects, works };
+    },
     // ==================== Inventory ====================
 
     /**

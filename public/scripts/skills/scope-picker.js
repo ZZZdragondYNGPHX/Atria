@@ -176,6 +176,7 @@ export function buildScopePickerHtml({
     presets,
     characters,
     orchPresetScopes,
+    projects = [], suggestProject = '',
 } = {}) {
     const kindRadio = (value, label) => {
         const checked = suggestKind === value ? ' checked' : '';
@@ -212,6 +213,9 @@ export function buildScopePickerHtml({
             return `<option value="${esc(value)}"${sel}>${esc(`${s.mode} / ${s.name}`)}</option>`;
         }).join('')
         : `<option value="" disabled selected>${esc(t('(no orchestrator presets)'))}</option>`;
+    const projectOptions = projects.length
+        ? projects.map(item => `<option value="${esc(item.projectId)}"${item.projectId === suggestProject ? ' selected' : ''}>${esc(item.displayName || item.projectId)}</option>`).join('')
+        : `<option value="" disabled selected>${esc(t('No projects available. Create one in Build.'))}</option>`;
     const presetHidden = suggestKind !== 'preset';
     const charHidden = suggestKind !== 'character';
     const orchPresetHidden = suggestKind !== 'orch-preset';
@@ -220,6 +224,16 @@ export function buildScopePickerHtml({
     <div class="atria_skill_scope_picker_title">${esc(title)}</div>
     <div class="atria_skill_scope_picker_kinds">
         ${kindRadio('global', 'Global')}
+        ${kindRadio('project', 'Project')}
+    </div>
+    <div data-skill-scope-row="project"${suggestKind !== 'project' ? ' hidden' : ''}>
+        <label class="atria_skill_scope_field"><span class="atria_skill_scope_field_label">${esc(t('Project'))}</span>
+        <select class="text_pole" data-skill-scope-project>${projectOptions}</select></label>
+    </div>
+    <p>${esc(t('Package originals are read-only. Publish changes from the source project.'))}</p>
+    <details class="atri-skill-compatibility"${['preset', 'orch-preset', 'character'].includes(suggestKind) ? ' open' : ''}>
+        <summary>${esc(t('Advanced compatibility scopes'))}</summary>
+        <div class="atria_skill_scope_picker_kinds">
         ${kindRadio('preset', 'Preset')}
         ${kindRadio('orch-preset', 'Orchestrator preset')}
         ${kindRadio('character', 'Character')}
@@ -242,6 +256,7 @@ export function buildScopePickerHtml({
             <select class="text_pole" data-skill-scope-character>${characterOptions}</select>
         </label>
     </div>
+    </details>
 </div>
     `;
 }
@@ -272,7 +287,10 @@ export async function pickTargetScope(context, t = (s) => s, title = '', suggest
 
     const presets = listAllPresets(context);
     const characters = listCharacters(context);
-    const suggestKind = suggestScope?.kind || 'global';
+    const suggestKind = suggestScope?.kind === 'package' ? 'global' : suggestScope?.kind || 'global';
+    let projects = [];
+    try { if (context.skills?.listOwners) projects = (await context.skills.listOwners())?.projects ?? []; } catch { if (typeof toastr !== 'undefined') toastr.error(t('Could not load project scopes. Reopen the picker to retry.')); }
+    const suggestProject = suggestScope?.projectId || projects[0]?.projectId || '';
     // Default preset: suggested → currently-active → first available.
     const suggestPreset = (suggestScope?.name && presets.some(p => p.name === suggestScope.name))
         ? suggestScope.name
@@ -297,7 +315,7 @@ export async function pickTargetScope(context, t = (s) => s, title = '', suggest
         suggestOrchPreset,
         presets,
         characters,
-        orchPresetScopes,
+        orchPresetScopes, projects, suggestProject,
     });
 
     let chosen = null;
@@ -312,6 +330,14 @@ export async function pickTargetScope(context, t = (s) => s, title = '', suggest
             if (kind === 'global') {
                 chosen = { kind: 'global' };
                 return true;
+            }
+            if (kind === 'project') {
+                const projectId = dlg.querySelector('[data-skill-scope-project]')?.value;
+                if (!projects.some(item => item.projectId === projectId)) {
+                    if (typeof toastr !== 'undefined') toastr.error(t('Choose an existing project.'));
+                    return false;
+                }
+                chosen = { kind: 'project', projectId }; return true;
             }
             if (kind === 'preset') {
                 const presetName = String(dlg.querySelector('[data-skill-scope-preset]')?.value || '').trim();
@@ -359,10 +385,12 @@ export async function pickTargetScope(context, t = (s) => s, title = '', suggest
     // After the popup renders, wire kind-radio show/hide.
     const dlg = popup.dlg;
     if (dlg) {
+        const projectRow = dlg.querySelector('[data-skill-scope-row="project"]');
         const presetRow = dlg.querySelector('[data-skill-scope-row="preset"]');
         const orchPresetRow = dlg.querySelector('[data-skill-scope-row="orch-preset"]');
         const charRow = dlg.querySelector('[data-skill-scope-row="character"]');
         const applyKindVisibility = (kind) => {
+            if (projectRow) projectRow.hidden = kind !== 'project';
             if (presetRow) presetRow.hidden = kind !== 'preset';
             if (orchPresetRow) orchPresetRow.hidden = kind !== 'orch-preset';
             if (charRow) charRow.hidden = kind !== 'character';

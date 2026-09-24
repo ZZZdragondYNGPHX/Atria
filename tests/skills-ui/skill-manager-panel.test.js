@@ -30,6 +30,26 @@ describe('skill-manager-panel — pure helpers', () => {
         mod = await import('../../public/scripts/skills/skill-manager-panel.js');
     });
 
+    test('Native scopes remain distinct by exact ownership and Package rows expose no mutation actions', () => {
+        const project = { kind: 'project', projectId: 'project_a', displayName: 'Harbor' };
+        const pkg = { kind: 'package', packageId: 'pkg_a', packageVersionId: 'pkgv_a', displayName: 'Voyage' };
+        const groups = mod.groupSkillsByScope([
+            { name: 'same', scope: pkg }, { name: 'same', scope: project },
+            { name: 'legacy', scope: { kind: 'preset', name: 'old' } }, { name: 'same', scope: { kind: 'global' } },
+        ]);
+        expect(groups.map(group => group.scope.kind)).toEqual(['global', 'project', 'package', 'preset']);
+        expect(mod.scopesEqual(pkg, { ...pkg, packageVersionId: 'pkgv_b' })).toBe(false);
+        expect(mod.scopesEqual(project, { ...project, displayName: 'Renamed' })).toBe(true);
+        expect(mod.formatScopeLabel(project)).toBe('Project: Harbor');
+        expect(mod.formatScopeLabel(pkg)).toContain('pkgv_a');
+        const html = mod.buildPanelHtml([groups[2]], [pkg], 'all', 'installed', s => s, s => String(s));
+        expect(html).toContain('Package original · Read-only'); expect(html).toContain('data-skill-action="view"');
+        for (const action of ['edit', 'move', 'rename', 'delete']) expect(html).not.toContain('data-skill-action="' + action + '"');
+        const full = mod.buildPanelHtml(groups, groups.map(group => group.scope), 'all', 'installed', s => s, s => String(s));
+        expect(full).toContain('<details class="atri-skill-compatibility"><summary>Advanced compatibility scopes');
+        expect(mod.hasMoveScopeCollision([{ name: 'same', scope: project }], 'same', pkg, project)).toBe(true);
+    });
+
     test('formatScopeLabel handles all scope kinds + unknowns', () => {
         expect(mod.formatScopeLabel({ kind: 'global' })).toBe('global');
         expect(mod.formatScopeLabel({ kind: 'preset', name: 'rp4' }))

@@ -85,39 +85,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 让 Build / Studio 能通过当前 Atria authoring authority 完成核心资源制作，而不是依赖内部 JSON。
 
-## NUX-027 — Native Skill scope model and the primary Skill Manager disagree
-
-**Current evidence**
-
-Native Skill authority uses scopes such as:
-
-- `global`
-- `project`
-- `package`
-
-Studio Agent consumes project/package Skills.
-
-The primary `skill-manager-panel.js` still groups and formats compatibility-era scopes:
-
-- `global`
-- `preset`
-- `orch-preset`
-- `character`
-
-Unknown Native scope kinds fall outside the first-class grouping model.
-
-**Impact**
-
-Native project/package Skills can affect product behavior while being difficult or impossible to manage through the main Skill UI.
-
-**Acceptance**
-
-The main Skill product surface must understand Native global/project/package scopes, origin, read-only Package ownership, project editing and movement rules. Compatibility scopes may remain under Advanced compatibility UI.
-
----
-
----
-
 ## NUX-028 — Studio still lacks domain-specific World / Knowledge / Skill authoring
 
 **Current evidence**

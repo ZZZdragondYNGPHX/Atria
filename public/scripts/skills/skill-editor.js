@@ -249,6 +249,8 @@ function formatScopeLabel(scope, t = (s) => s) {
     if (!scope || typeof scope !== 'object') return t('unknown');
     switch (scope.kind) {
         case 'global': return t('global');
+        case 'project': return `${t('Project')}: ${scope.displayName || scope.projectId}`;
+        case 'package': return `${t('Package')}: ${scope.displayName || scope.packageId} @ ${scope.packageVersionId}`;
         case 'preset': return `${t('preset')}: ${scope.name}`;
         case 'orch-preset': return `${t('orchestrator preset')} (${scope.mode}): ${scope.name}`;
         case 'character': return `${t('character')}: ${scope.characterFile}`;
@@ -269,6 +271,7 @@ function formatScopeLabel(scope, t = (s) => s) {
  * @returns {Promise<void>}
  */
 export async function openSkillEditor({ context, scope, name, t = (s) => s, onChange } = {}) {
+    if (scope?.kind === 'package') throw new Error(t('Package originals are read-only. Publish changes from the source project.'));
     if (!context || !context.skills) {
         throw new Error('openSkillEditor: context.skills missing');
     }
