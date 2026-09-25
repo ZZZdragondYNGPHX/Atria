@@ -17,7 +17,8 @@ test('Package Knowledge content is inert and read-only while the exact source re
     globalThis.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ ref, origin: { displayName: 'Work', version: '1.2.0' }, snapshot: { knowledgeBase: { displayName: '<b>Knowledge</b>' }, entries: [{ content: '<script>unsafe()</script>', metadata: {} }] } }) });
     await mountPackageLibraryOriginal({ document, root: document.body, ref, host: {} });
     expect(document.querySelector('h2').textContent).toBe('<b>Knowledge</b>'); expect(document.querySelector('script')).toBeNull();
-    expect(document.querySelectorAll('input, textarea, select')).toHaveLength(0);
+    expect(document.querySelectorAll('input[type=checkbox], textarea')).toHaveLength(0);
+    expect([...document.querySelectorAll('button')].some(item => item.textContent === 'Create editable copy')).toBe(true);
     expect([...document.querySelectorAll('button')].some(item => /New revision|Delete|Rename/.test(item.textContent))).toBe(false);
     expect(document.body.textContent).toContain('pkgv_a'); expect(document.body.textContent).toContain('1.2.0');
 });

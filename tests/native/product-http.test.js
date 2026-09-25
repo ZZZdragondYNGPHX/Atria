@@ -214,3 +214,13 @@ test('read-only history uses the authenticated Session owner', async () => {
     expect((await request(appFor(product)).get('/sessions/session_a/history')).status).toBe(200);
     expect(product.getSessionHistory).toHaveBeenCalledWith('u', 'session_a');
 });
+
+test('resource setup routes preserve authenticated ownership and concurrency tokens', async () => {
+    const product = { getResourceSetup: jest.fn(async () => ({ worldRefs: [] })), saveResourceSetup: jest.fn(async () => ({ saved: true })) };
+    await request(appFor(product, { authenticated: false })).put('/works/pkg_a/resource-setup').send({}).expect(401);
+    await request(appFor(product)).get('/works/pkg_a/resource-setup?sessionId=ses_a&entryPointId=ep_a').expect(200);
+    expect(product.getResourceSetup).toHaveBeenCalledWith('u', 'pkg_a', { sessionId: 'ses_a', entryPointId: 'ep_a' });
+    const body = { sessionId: 'ses_a', expectedRevisionId: 'rev_a', worldRefs: [], knowledgeRefs: [] };
+    await request(appFor(product)).put('/works/pkg_a/resource-setup').send(body).expect(200);
+    expect(product.saveResourceSetup).toHaveBeenCalledWith('u', 'pkg_a', body, 'ses_a');
+});

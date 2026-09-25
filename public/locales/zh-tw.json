@@ -1,4 +1,5 @@
 {
+    "atria.knowledge.workflow.stop_generation": "請先停止生成，再修改資源設定。",
     "atria.prompt.controls.validation.0": "互斥選擇需要作者預設值，或啟用必填參數。",
     "atria.prompt.controls.validation.1": "請使用類型相符且互不重複的選項值，並為每項填寫名稱。",
     "atria.prompt.controls.validation.2": "預設值必須屬於已宣告的選項。",
@@ -8189,5 +8190,17 @@
     "atria.npc.remaining.67": "使用工作階段控制項建立和載入存檔點。在「我的遊戲」的「管理」中匯出工作階段；透過「匯入存檔」復原 Atria 存檔。復原需要符合的精確作品版本。",
     "atria.npc.remaining.68": "設定與常駐說明",
     "atria.npc.remaining.69": "在此調整外觀、語言和無障礙設定。學習中心常駐於設定與帳戶選單。診斷用於查看故障；完成引導後仍可隨時開啟。",
-    "Read-only Plugin and Native Package rules.": "Plugin 與 Native Package 的唯讀規則。"
+    "Read-only Plugin and Native Package rules.": "Plugin 與 Native Package 的唯讀規則。",
+    "atria.knowledge.workflow.0": "設定世界與知識庫",
+    "atria.knowledge.workflow.1": "建立可編輯副本",
+    "atria.knowledge.workflow.2": "目前工作階段的世界與知識庫",
+    "atria.knowledge.workflow.3": "新工作階段預設設定",
+    "atria.knowledge.workflow.4": "未更換的世界修訂保留進度；更換的世界從初始狀態開始。對話和歷史修訂會保留。",
+    "atria.knowledge.workflow.5": "設定用於從此起點建立的新工作階段，現有工作階段保留各自設定。",
+    "atria.knowledge.workflow.6": "主要世界",
+    "atria.knowledge.workflow.7": "沒有可用資源，請先建立或複製資料庫資源。",
+    "atria.knowledge.workflow.8": "儲存資源設定",
+    "atria.knowledge.workflow.9": "資源設定已儲存。",
+    "atria.knowledge.workflow.10": "工作階段快照",
+    "atria.knowledge.workflow.all_targets": "所有目標"
 }

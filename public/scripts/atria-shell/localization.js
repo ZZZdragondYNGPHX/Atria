@@ -1,4 +1,18 @@
 export const SHELL_TEXT_KEYS = Object.freeze({
+    'Stop generation before changing resource choices.': 'atria.knowledge.workflow.stop_generation',
+    'All targets': 'atria.knowledge.workflow.all_targets',
+    'Configure Worlds & Knowledge': 'atria.knowledge.workflow.0',
+    'Create editable copy': 'atria.knowledge.workflow.1',
+    'Session Worlds & Knowledge': 'atria.knowledge.workflow.2',
+    'New session defaults': 'atria.knowledge.workflow.3',
+    'Unchanged World revisions keep their progress. Replaced Worlds start from their baseline. Timeline and previous revisions are kept.': 'atria.knowledge.workflow.4',
+    'These choices apply to new sessions from this starting point. Existing sessions keep their own choices.': 'atria.knowledge.workflow.5',
+    'Primary World': 'atria.knowledge.workflow.6',
+    'No resources available. Create or copy a Library resource first.': 'atria.knowledge.workflow.7',
+    'Save resource choices': 'atria.knowledge.workflow.8',
+    'Resource choices saved.': 'atria.knowledge.workflow.9',
+    'Session snapshot': 'atria.knowledge.workflow.10',
+
     'Knowledge entry enabled must be boolean.': 'atria.npc.remaining.0',
     'Edit entry': 'atria.npc.remaining.1',
     'Back to entries': 'atria.npc.remaining.2',

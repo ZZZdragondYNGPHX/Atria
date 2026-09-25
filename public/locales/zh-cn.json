@@ -1,4 +1,5 @@
 {
+    "atria.knowledge.workflow.stop_generation": "请先停止生成，再修改资源配置。",
     "atria.prompt.controls.validation.0": "互斥选择需要作者默认值，或启用必填参数。",
     "atria.prompt.controls.validation.1": "请使用类型匹配且互不重复的选项值，并为每项填写名称。",
     "atria.prompt.controls.validation.2": "默认值必须属于已声明的选项。",
@@ -8326,5 +8327,17 @@
     "atria.npc.remaining.67": "使用会话控件创建和加载存档点。在“我的游戏”的“管理”中导出会话；通过“导入存档”恢复 Atria 存档。恢复需要匹配的精确作品版本。",
     "atria.npc.remaining.68": "设置与常驻帮助",
     "atria.npc.remaining.69": "在此调整外观、语言和无障碍设置。学习中心常驻于设置和账户菜单。诊断用于查看故障；完成引导后仍可随时打开。",
-    "Read-only Plugin and Native Package rules.": "Plugin 与 Native Package 的只读规则。"
+    "Read-only Plugin and Native Package rules.": "Plugin 与 Native Package 的只读规则。",
+    "atria.knowledge.workflow.0": "配置世界与知识库",
+    "atria.knowledge.workflow.1": "创建可编辑副本",
+    "atria.knowledge.workflow.2": "当前会话的世界与知识库",
+    "atria.knowledge.workflow.3": "新会话默认配置",
+    "atria.knowledge.workflow.4": "未更换的世界修订保留进度；更换的世界从初始状态开始。对话和历史修订会保留。",
+    "atria.knowledge.workflow.5": "配置用于从此起点创建的新会话，已有会话保留各自配置。",
+    "atria.knowledge.workflow.6": "主要世界",
+    "atria.knowledge.workflow.7": "没有可用资源，请先创建或复制资料库资源。",
+    "atria.knowledge.workflow.8": "保存资源配置",
+    "atria.knowledge.workflow.9": "资源配置已保存。",
+    "atria.knowledge.workflow.10": "会话快照",
+    "atria.knowledge.workflow.all_targets": "所有目标"
 }

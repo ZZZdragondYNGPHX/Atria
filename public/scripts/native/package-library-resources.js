@@ -1,8 +1,8 @@
 import { nativeStudioClient as client } from './studio-client.js';
 import { resourceReferenceForNode } from './studio-authoring.js';
-import { resourceBundleExport } from './resource-bundle-controls.js';
+import { resourceBundleExport, resourceLibraryCopy } from './resource-bundle-controls.js';
 import { renderResourceReferenceRows } from './resource-reference-rows.js';
-import { el, action, disclosure, heading, feedback } from './library-ui.js';
+import { el, action, disclosure, heading, feedback, worldParameterSummary } from './library-ui.js';
 import { translateShellText as tl, formatShellText as fmt } from '../atria-shell/localization.js';
 import { mountKnowledgeEntryBrowser } from './knowledge-entry-browser.js';
 
@@ -39,14 +39,14 @@ export async function mountPackageLibraryOriginal({ document: doc, root, ref, ho
     el(doc, 'p', 'atri-library-meta', [origin?.displayName, origin?.version].filter(Boolean).join(' · '), root);
     disclosure(doc, root, 'Origin / exact revision', { ...ref, ...origin });
     action(doc, root, 'Open Work', () => host.openLibraryWork(ref.packageId));
+    resourceLibraryCopy(doc, root, ref, host);
     resourceBundleExport(doc, root, ref, resource.displayName);
     if (knowledge) {
         const entries = el(doc, 'section', 'atri-library-section', undefined, root);
         el(doc, 'h3', '', tl('Entries'), entries);
         mountKnowledgeEntryBrowser({ document: doc, root: entries, entries: snapshot.entries });
     } else {
-        const content = disclosure(doc, root, 'World baseline', snapshot.revision.baseline); content.open = true;
-        disclosure(doc, root, 'World schema', snapshot.revision.schema);
+        worldParameterSummary(doc, root, snapshot.revision);
     }
     const usedBy = disclosure(doc, root, 'Used By');
     action(doc, usedBy, 'Load references', async () => {

@@ -5,7 +5,7 @@ export const knowledgeEntryTitle = (entry, index) => entry.metadata?.title || en
     || entry.content?.split('\n')[0].slice(0, 60) || tl('Knowledge entry') + ' ' + (index + 1);
 
 // Presentation-only state is owned by the mounted workspace/draft, never persisted.
-export function mountKnowledgeEntryBrowser({ document: doc, root, entries, state = {}, onEdit, onToggle }) {
+export function mountKnowledgeEntryBrowser({ document: doc, root, entries, state = {}, onEdit, onToggle, onDelete }) {
     state.query ??= ''; state.filter ??= 'all'; state.sort ??= 'source'; state.page ??= 0; state.expanded ??= new Set();
     const panel = el(doc, 'section', 'atri-knowledge-browser', undefined, root);
     const controls = el(doc, 'div', 'atri-knowledge-browser-controls', undefined, panel);
@@ -53,7 +53,33 @@ export function mountKnowledgeEntryBrowser({ document: doc, root, entries, state
                 state.expanded.add(entry.knowledgeEntryId);
                 el(doc, 'p', '', entry.content, body);
                 disclosure(doc, body, 'Exact entry identity', { knowledgeEntryId: entry.knowledgeEntryId });
-                disclosure(doc, body, 'Details', { discovery: entry.discovery, applicability: entry.applicability, lifecycle: entry.lifecycle, relations: entry.relations, delivery: entry.delivery });
+                const parameters = el(doc, 'dl', 'atri-knowledge-parameters', undefined, body);
+                for (const [name, value] of [
+                    ['Keywords', (entry.discovery?.keywords || []).join(', ')],
+                    ['Aliases', (entry.discovery?.aliases || []).join(', ')],
+                    ['Regular expressions', (entry.discovery?.regex || []).join(', ')],
+                    ['Condition matching', tl(entry.applicability?.stateConditionsLogic || 'all')],
+                    ['Activation probability (%)', entry.lifecycle?.probability ?? 100],
+                    ['Sticky turns', entry.lifecycle?.sticky ?? 0],
+                    ['Cooldown turns', entry.lifecycle?.cooldown ?? 0],
+                    ['Delay turns', entry.lifecycle?.delay ?? 0],
+                    ['Delivery position', tl(entry.delivery?.position || 'before')],
+                    ['Delivery priority', entry.delivery?.priority ?? 100],
+                    ['Budget priority', tl(entry.metadata?.budgetTier || 'normal')],
+                    ['Target', [entry.delivery?.target || 'all'].flat().map(target => typeof target === 'string' ? tl(target) : tl(target.kind) + (target.id ? ' · ' + target.id : '')).join(', ')],
+                    ['Visibility', entry.delivery?.visibility?.map(value => tl(value)).join(', ') || tl('All targets')],
+                    ['Activate from matching state without keywords', tl(entry.applicability?.stateActivation ? 'Enabled' : 'Disabled')],
+                    ['Compact content', entry.metadata?.compactContent || '—'],
+                ]) { el(doc, 'dt', '', tl(name), parameters); el(doc, 'dd', '', String(value === '' ? '—' : value), parameters); }
+                for (const [index, condition] of (entry.applicability?.stateConditions || []).entries()) {
+                    el(doc, 'dt', '', tl('State condition') + ' ' + (index + 1), parameters);
+                    el(doc, 'dd', '', condition.providerId + ' · ' + (condition.path || []).join('.') + ' ' + tl(condition.operator) + ' ' + JSON.stringify(condition.value), parameters);
+                }
+                for (const [key, label] of [['requiredEntryIds', 'Required entries'], ['relatedEntryIds', 'Related entries'], ['exclusiveGroup', 'Exclusive group']]) {
+                    const values = entry.relations?.[key];
+                    el(doc, 'dt', '', tl(label), parameters);
+                    el(doc, 'dd', '', Array.isArray(values) ? values.map(id => { const index = entries.findIndex(item => item.knowledgeEntryId === id); return index < 0 ? id : knowledgeEntryTitle(entries[index], index); }).join(', ') || '—' : values || '—', parameters);
+                }
             };
             details.open = state.expanded.has(entry.knowledgeEntryId); expand();
             details.addEventListener('toggle', () => { if (details.isConnected) expand(); });
@@ -68,6 +94,7 @@ export function mountKnowledgeEntryBrowser({ document: doc, root, entries, state
                 });
             }
             if (onEdit) action(doc, actions, 'Edit entry', () => onEdit(entry, index));
+            if (onDelete) action(doc, actions, 'Delete entry', () => onDelete(entry, index), { danger: true });
         }
         if (matching.length > pageSize) {
             action(doc, pages, 'Previous entries', () => { state.page--; render(); list.querySelector('summary')?.focus(); }, { disabled: state.page === 0 });

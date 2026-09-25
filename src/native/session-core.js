@@ -1,3 +1,4 @@
+import { assertPackagedWorldSnapshot } from './world-knowledge.js';
 import {
     assertNativeResourceKey, assertSession, assertSessionRevision, assertTimelineEntry, assertVariant,
     NATIVE_RESOURCE_KINDS,
@@ -15,10 +16,19 @@ function timelineSelection(entry) {
         variantIds: entry.variantIds, activeVariantId: entry.activeVariantId };
 }
 
-function initialWorldState(manifest, entryPoint) {
-    const worlds = manifest.worlds.filter(item => entryPoint.worldIds.includes(item.world.worldId));
-    const overlay = cloneNativeDocument(entryPoint.initialStateOverlay ?? {});
-    const primaryWorldId = entryPoint.primaryWorldId ?? (worlds.length === 1 ? worlds[0].world.worldId : null);
+function selectedWorlds(states, manifest, entryPoint) {
+    const selection = states.atri_world_selection;
+    if (!selection) return manifest.worlds.filter(item => entryPoint.worldIds.includes(item.world.worldId));
+    if (selection.schemaVersion !== 1 || !Array.isArray(selection.worlds)) throw new TypeError('Invalid Session World selection');
+    const worlds = selection.worlds.map(assertPackagedWorldSnapshot);
+    if (new Set(worlds.map(item => item.world.worldId)).size !== worlds.length || (selection.primaryWorldId !== null && !worlds.some(item => item.world.worldId === selection.primaryWorldId))) throw new TypeError('Invalid primary World');
+    return worlds;
+}
+function initialWorldState(manifest, entryPoint, selection) {
+    const worlds = selectedWorlds({ atri_world_selection: selection }, manifest, entryPoint);
+    const originalPrimary = entryPoint.primaryWorldId ?? (entryPoint.worldIds.length === 1 ? entryPoint.worldIds[0] : null);
+    const overlay = cloneNativeDocument(selection && selection.primaryWorldId !== originalPrimary ? {} : entryPoint.initialStateOverlay ?? {});
+    const primaryWorldId = selection ? selection.primaryWorldId : entryPoint.primaryWorldId ?? (worlds.length === 1 ? worlds[0].world.worldId : null);
     if (Object.prototype.toString.call(overlay) !== '[object Object]') throw new TypeError('EntryPoint initialStateOverlay must be an object');
     if (worlds.length > 1 && !primaryWorldId && Object.keys(overlay).length) {
         throw new TypeError('A multi-World EntryPoint overlay requires primaryWorldId');
@@ -37,7 +47,7 @@ function initialWorldState(manifest, entryPoint) {
 }
 
 function validateWorldState(states, manifest, entryPoint) {
-    const expected = initialWorldState(manifest, entryPoint);
+    const expected = initialWorldState(manifest, entryPoint, states.atri_world_selection);
     const actual = states.atri_world_state;
     if (!actual || actual.primaryWorldId !== expected.primaryWorldId || !actual.worlds
         || Object.keys(actual.worlds).length !== Object.keys(expected.worlds).length) {
@@ -126,12 +136,12 @@ export class SessionCore {
             || installed.packageVersion.version !== session.packageVersion) throw new Error('Session PackageVersion dependency mismatch');
         validateWorldState(snapshot.states, installed.manifest, installed.entryPoint);
         const knowledge = validateKnowledgeBindingSet(snapshot.knowledge, installed.manifest, installed.entryPoint);
-        const worlds = installed.manifest.worlds.filter(item => installed.entryPoint.worldIds.includes(item.world.worldId));
+        const worlds = selectedWorlds(snapshot.states, installed.manifest, installed.entryPoint);
         return { ...snapshot, knowledge, manifest: installed.manifest, entryPoint: installed.entryPoint, worlds };
     }
 
     async create(handle, { packageId, packageVersionId, entryPointId, displayTitle,
-        libraryBindingIds = [], sessionBindings = [], sessionKnowledge = [] }) {
+        libraryBindingIds = [], sessionBindings = [], sessionKnowledge = [], packageBindingIds, worldSelection, resolvedKnowledge }) {
         const installed = await this._openPackage(handle, packageId, packageVersionId, entryPointId);
         const now = Date.now();
         const sessionId = createNativeId('session');
@@ -144,11 +154,11 @@ export class SessionCore {
         });
         const branch = { sessionId, branchId, parentBranchId: null, forkPoint: null, createdAt: now };
         const base = { session, revision: null, timeline: [], graph: [{ branchId, forkRevisionId: null, branch }],
-            states: { atri_world_state: initialWorldState(installed.manifest, installed.entryPoint) },
+            states: { atri_world_state: initialWorldState(installed.manifest, installed.entryPoint, worldSelection), ...(worldSelection ? { atri_world_selection: worldSelection } : {}) },
             manifest: installed.manifest, entryPoint: installed.entryPoint,
-            knowledge: await resolveSessionKnowledge({ handle, manifest: installed.manifest,
+            knowledge: resolvedKnowledge || await resolveSessionKnowledge({ handle, manifest: installed.manifest,
                 entryPoint: installed.entryPoint, knowledgeRepo: this._knowledge,
-                libraryBindingIds, sessionBindings, sessionKnowledge }),
+                libraryBindingIds, sessionBindings, sessionKnowledge, packageBindingIds }),
         };
         const initial = installed.entryPoint.initialTimeline ?? [];
         if (!Array.isArray(initial)) throw new TypeError('EntryPoint initialTimeline must be an array');
@@ -201,7 +211,7 @@ export class SessionCore {
         const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
             entries, variants, branches, expectedRevisionId: base.session.headRevisionId });
         return { ...snapshot, manifest: base.manifest, entryPoint: base.entryPoint,
-            worlds: base.manifest.worlds.filter(item => base.entryPoint.worldIds.includes(item.world.worldId)) };
+            worlds: selectedWorlds(states, base.manifest, base.entryPoint) };
     }
 
     async _current(handle, sessionId, expectedRevisionId) {
@@ -290,6 +300,20 @@ export class SessionCore {
         return this.applyRuntimeCommit(handle, sessionId, { statePatch: patch }, { expectedRevisionId });
     }
 
+
+    async updateResources(handle, sessionId, { worldSelection, knowledge }, { expectedRevisionId } = {}) {
+        if (!expectedRevisionId) throw new TypeError('Expected Session revision is required');
+        const base = await this._current(handle, sessionId, expectedRevisionId);
+        const worlds = selectedWorlds({ atri_world_selection: worldSelection }, base.manifest, base.entryPoint);
+        const nextWorldState = initialWorldState(base.manifest, { ...base.entryPoint, initialStateOverlay: {} }, worldSelection);
+        for (const world of worlds) {
+            const previous = base.states.atri_world_state.worlds[world.world.worldId];
+            if (previous?.worldRevisionId === world.revision.worldRevisionId) nextWorldState.worlds[world.world.worldId] = cloneNativeDocument(previous);
+        }
+        const states = { ...base.states, atri_world_selection: worldSelection, atri_world_state: nextWorldState };
+        delete states.atri_knowledge_runtime;
+        return this._publish(handle, base, { states, knowledge });
+    }
 
     // Explicit replacement of external bindings, not a follow-latest policy.
     async updateKnowledge(handle, sessionId, options, { expectedRevisionId } = {}) {

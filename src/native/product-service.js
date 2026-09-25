@@ -1,3 +1,5 @@
+import { resolveSessionKnowledge } from './session-knowledge.js';
+import { assertPackagedWorldSnapshot } from './world-knowledge.js';
 import { normalizeSessionTitle } from '../../public/scripts/native/session-title-contract.js';
 import { createHash } from 'node:crypto';
 import { hashNativeDocument, withNativeResourceWrite } from './repositories/common.js';
@@ -147,7 +149,9 @@ export class NativeProductService {
         if (!opened) throw new NotFoundError('native package version', { packageId, packageVersionId });
         const entryPointId = options.entryPointId || opened.manifest.entryPoints[0]?.entryPointId;
         if (!entryPointId) throw new TypeError('Work has no EntryPoint');
+        const defaults = await this._packages.getState(handle, packageId, 'atri_resource_setup_' + entryPointId);
         return this._core.create(handle, {
+            ...(defaults?.packageVersionId === packageVersionId ? { worldSelection: defaults.resolved.worldSelection, resolvedKnowledge: defaults.resolved.knowledge } : {}),
             packageId,
             packageVersionId,
             entryPointId,
@@ -156,6 +160,79 @@ export class NativeProductService {
             sessionBindings: options.sessionBindings || [],
             sessionKnowledge: options.sessionKnowledge || [],
         });
+    }
+
+    async getResourceSetup(handle, packageId, { sessionId, entryPointId } = {}) {
+        const snapshot = sessionId ? await this._core.load(handle, sessionId) : null;
+        const record = await this._packages.get(handle, packageId);
+        if (!record || (snapshot && snapshot.session.packageId !== packageId)) throw new NotFoundError('native package', { packageId });
+        const installed = await this._installer.open(handle, packageId, snapshot?.session.packageVersionId || record.currentVersionId);
+        const manifest = installed.manifest;
+        const entry = snapshot?.entryPoint || manifest.entryPoints.find(item => item.entryPointId === entryPointId) || manifest.entryPoints[0];
+        if (entryPointId && entry.entryPointId !== entryPointId) throw invalidField('entryPointId');
+        const stored = snapshot ? null : await this._packages.getState(handle, packageId, 'atri_resource_setup_' + entry.entryPointId);
+        const defaults = stored?.packageVersionId === installed.packageVersion.packageVersionId ? stored : null;
+        const worldOptions = manifest.worlds.map(item => ({ ref: { scope: 'package', resourceId: item.world.worldId, revision: item.revision.worldRevisionId }, name: item.world.displayName, origin: 'Installed Work originals' }));
+        for (const world of await this._worlds.list(handle)) for (const revision of await this._worlds.listRevisions(handle, world.worldId)) worldOptions.push({ ref: { scope: 'library', resourceId: world.worldId, revision: revision.worldRevisionId }, name: world.displayName, origin: 'Library', current: revision.worldRevisionId === world.currentRevisionId, createdAt: revision.createdAt });
+        const knowledgeOptions = manifest.knowledgeBindings.map(binding => ({ ref: { scope: 'package', bindingId: binding.knowledgeBindingId }, name: manifest.knowledge.find(item => item.knowledgeBase.knowledgeBaseId === binding.source.knowledgeBaseId)?.knowledgeBase.displayName || binding.knowledgeBindingId, origin: 'Installed Work originals' }));
+        for (const base of await this._knowledge.list(handle)) for (const revision of await this._knowledge.listRevisions(handle, base.knowledgeBaseId)) knowledgeOptions.push({ ref: { scope: 'library', resourceId: base.knowledgeBaseId, revision: revision.knowledgeRevisionId }, name: base.displayName, origin: 'Library', current: revision.knowledgeRevisionId === base.currentRevisionId, createdAt: revision.createdAt });
+        const knowledge = snapshot?.knowledge || defaults?.resolved.knowledge || await resolveSessionKnowledge({ handle, manifest, entryPoint: entry, knowledgeRepo: this._knowledge });
+        const worlds = snapshot?.worlds || defaults?.resolved.worldSelection.worlds || manifest.worlds.filter(item => entry.worldIds.includes(item.world.worldId));
+        const worldRefs = worlds.map(item => worldOptions.find(option => option.ref.resourceId === item.world.worldId && option.ref.revision === item.revision.worldRevisionId)?.ref || { scope: 'embedded', resourceId: item.world.worldId, revision: item.revision.worldRevisionId });
+        const knowledgeRefs = knowledge.bindings.map(binding => binding.source.kind === 'package' ? { scope: 'package', bindingId: binding.knowledgeBindingId } : { scope: 'embedded', bindingId: binding.knowledgeBindingId });
+        for (const [index, ref] of worldRefs.entries()) if (ref.scope === 'embedded') worldOptions.push({ ref, name: worlds[index].world.displayName, origin: 'Session snapshot' });
+        for (const ref of knowledgeRefs.filter(ref => ref.scope === 'embedded')) {
+            const binding = knowledge.bindings.find(item => item.knowledgeBindingId === ref.bindingId);
+            knowledgeOptions.push({ ref, name: knowledge.snapshots.find(item => item.snapshot.knowledgeBase.knowledgeBaseId === binding.source.knowledgeBaseId)?.snapshot.knowledgeBase.displayName || ref.bindingId, origin: 'Session snapshot' });
+        }
+        return { packageId, packageVersionId: installed.packageVersion.packageVersionId, entryPointId: entry.entryPointId,
+            expectedRevisionId: snapshot?.session.headRevisionId, expectedIntegrity: stored ? hashNativeDocument(stored) : null,
+            worldOptions, knowledgeOptions, worldRefs, knowledgeRefs,
+            primaryWorldId: snapshot ? snapshot.states.atri_world_state.primaryWorldId : defaults ? defaults.resolved.worldSelection.primaryWorldId : entry.primaryWorldId ?? (worlds.length === 1 ? worlds[0].world.worldId : null),
+            resolved: { worldSelection: { schemaVersion: 1, worlds, primaryWorldId: snapshot ? snapshot.states.atri_world_state.primaryWorldId : defaults ? defaults.resolved.worldSelection.primaryWorldId : entry.primaryWorldId ?? (worlds.length === 1 ? worlds[0].world.worldId : null) }, knowledge } };
+    }
+
+    async saveResourceSetup(handle, packageId, input, sessionId) {
+        if (!sessionId && !Object.hasOwn(input, 'expectedIntegrity')) throw invalidField('expectedIntegrity');
+        const current = await this.getResourceSetup(handle, packageId, { sessionId, entryPointId: input.entryPointId });
+        if (current.packageVersionId !== input.packageVersionId) throw new ConflictError('native_resource_setup_stale');
+        if (!Array.isArray(input.worldRefs) || !Array.isArray(input.knowledgeRefs)) throw invalidField('resources');
+        const valid = (ref, options) => options.some(option => hashNativeDocument(option.ref) === hashNativeDocument(ref));
+        if (input.worldRefs.some(ref => !valid(ref, current.worldOptions)) || input.knowledgeRefs.some(ref => !valid(ref, current.knowledgeOptions))) throw invalidField('resources');
+        const worlds = [];
+        for (const ref of input.worldRefs) {
+            let value;
+            if (ref.scope === 'library') {
+                const world = await this._worlds.get(handle, ref.resourceId), revision = await this._worlds.getRevision(handle, ref.resourceId, ref.revision);
+                value = { world: { ...world, currentRevisionId: ref.revision }, revision };
+            } else if (ref.scope === 'embedded') value = current.resolved.worldSelection.worlds.find(item => item.world.worldId === ref.resourceId);
+            else { const installed = await this._installer.open(handle, packageId, current.packageVersionId); value = installed.manifest.worlds.find(item => item.world.worldId === ref.resourceId); }
+            worlds.push(assertPackagedWorldSnapshot(value));
+        }
+        if (new Set(worlds.map(item => item.world.worldId)).size !== worlds.length || (input.primaryWorldId !== null && !worlds.some(item => item.world.worldId === input.primaryWorldId))) throw invalidField('primaryWorldId');
+        const sessionBindings = [], sessionKnowledge = [], seen = new Set();
+        for (const ref of input.knowledgeRefs.filter(ref => ref.scope !== 'package')) {
+            let binding, snapshot;
+            if (ref.scope === 'embedded') {
+                binding = clone(current.resolved.knowledge.bindings.find(item => item.knowledgeBindingId === ref.bindingId));
+                snapshot = current.resolved.knowledge.snapshots.find(item => item.snapshot.knowledgeBase.knowledgeBaseId === binding.source.knowledgeBaseId && item.snapshot.revision.knowledgeRevisionId === binding.source.knowledgeRevisionId)?.snapshot;
+                binding.source.kind = 'session';
+            } else {
+                const detail = await this.getKnowledgeBase(handle, ref.resourceId, { revisionId: ref.revision });
+                snapshot = { knowledgeBase: { ...detail.knowledgeBase, currentRevisionId: ref.revision }, revision: detail.selectedRevision, entries: detail.entries };
+                binding = { knowledgeBindingId: createNativeId('knowledgeBinding'), source: { kind: 'session', knowledgeBaseId: ref.resourceId, knowledgeRevisionId: ref.revision }, enabled: true, mode: 'augment' };
+            }
+            sessionBindings.push(binding);
+            const key = binding.source.knowledgeBaseId + '@' + binding.source.knowledgeRevisionId;
+            if (!seen.has(key)) { seen.add(key); sessionKnowledge.push(snapshot); }
+        }
+        const installed = await this._installer.open(handle, packageId, current.packageVersionId);
+        const entryPoint = installed.manifest.entryPoints.find(item => item.entryPointId === current.entryPointId);
+        const knowledge = await resolveSessionKnowledge({ handle, manifest: installed.manifest, entryPoint, knowledgeRepo: this._knowledge, sessionBindings, sessionKnowledge, packageBindingIds: input.knowledgeRefs.filter(ref => ref.scope === 'package').map(ref => ref.bindingId) });
+        const resolved = { worldSelection: { schemaVersion: 1, worlds, primaryWorldId: input.primaryWorldId }, knowledge };
+        if (sessionId) return this._core.updateResources(handle, sessionId, resolved, { expectedRevisionId: input.expectedRevisionId });
+        await this._packages.setState(handle, packageId, 'atri_resource_setup_' + current.entryPointId, { packageVersionId: current.packageVersionId, resolved }, { expectedIntegrity: input.expectedIntegrity });
+        return { saved: true };
     }
 
     async renameSession(handle, sessionId, input) {

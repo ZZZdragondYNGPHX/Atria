@@ -19,6 +19,19 @@ function digest(bytes) {
     return createHash('sha256').update(bytes).digest('hex');
 }
 
+async function resourceSetupAssetReferences(tx, handle, assetId) {
+    const references = [];
+    for (const kind of [NATIVE_RESOURCE_KINDS.sessionState, NATIVE_RESOURCE_KINDS.packageState]) {
+        for (const record of await tx.listResources({ kind, handle })) {
+            const worlds = kind === NATIVE_RESOURCE_KINDS.sessionState
+                ? record.key.namespace === 'atri_world_selection' ? record.doc?.worlds : []
+                : record.key.namespace?.startsWith('atri_resource_setup_') ? record.doc?.resolved?.worldSelection?.worlds : [];
+            if (worlds?.some(world => world.revision?.assetIds?.includes(assetId))) references.push({ ...record.key, kind: kind === NATIVE_RESOURCE_KINDS.sessionState ? 'session-world-snapshot' : 'work-resource-default' });
+        }
+    }
+    return references;
+}
+
 export class AssetStore {
     constructor({ engine, directoriesByHandle }) {
         if (!engine) throw new TypeError('AssetStore requires { engine }');
@@ -135,7 +148,7 @@ export class AssetStore {
     async deleteRef(handle, assetId) {
         assertWritable();
         return this._engine.withTransaction(handle, async (tx) => {
-            const references = [];
+            const references = await resourceSetupAssetReferences(tx, handle, assetId);
             for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.timelineVariant, handle })) {
                 if (record.doc?.metadata?.attachments?.some(item => item.assetId === assetId)) {
                     references.push({ kind: 'session-variant', sessionId: record.doc.sessionId,
@@ -165,7 +178,7 @@ export class AssetStore {
         const ref = await this.getRef(handle, assetId);
         if (!ref) return [];
         return this._engine.withTransaction(handle, async (tx) => {
-            const references = [];
+            const references = await resourceSetupAssetReferences(tx, handle, assetId);
             for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.timelineVariant, handle })) {
                 if (record.doc?.metadata?.attachments?.some(item => item.assetId === assetId)) {
                     references.push({ kind: 'session-variant', sessionId: record.doc.sessionId,
