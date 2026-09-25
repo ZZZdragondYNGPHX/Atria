@@ -1,4 +1,27 @@
-# Latest handoff — Native orchestration presets and retired asset cleanup
+# Latest handoff — Prompt module category navigation
+
+Updated: 2026-09-25 (Asia/Shanghai).
+Main: `e42bd5043939af90583b473c22b68c4b57ca0aaf` (local, not pushed).
+Implementation: `31f91f783e5183eab7d7ad5b4a7d950b957eb5d0`.
+Status: complete locally; verified task tree equals integrated main tree.
+Temporary branch deleted. Working trees clean after handoff commit.
+
+Prompt Modules now uses a hierarchical category filter including descendants.
+Top ellipsis creates categories/modules; category ellipsis renames/moves/deletes;
+module ellipsis edits/moves/deletes. Returning from an editor preserves category,
+scroll position and focus. New modules inherit the selected category. Existing
+persistence, export/import and deletion ownership rules remain unchanged.
+
+Validation: 13 Jest tests, 5 Edge scenarios (desktop 1440px and mobile 390px),
+plus final desktop regression rerun passed. Screenshots inspected. ESLint,
+localization coverage and whitespace checks passed. No Android/Docker/inference.
+Full record: `fix/prompt-module-category-navigation.md`.
+
+This UI task was not pushed. The prior preset cleanup below was successfully
+pushed to main and docs before this task began.
+
+---
+# Previous handoff — Native orchestration presets and retired asset cleanup
 
 Updated: 2026-09-25 (Asia/Shanghai).
 Main: `5fce29a6b64af519e7d89ee888acedee6de40ba7`.
