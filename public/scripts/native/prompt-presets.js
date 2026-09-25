@@ -3,6 +3,7 @@ import { runtimeRequest } from './runtime-client.js';
 import { newPromptResource, resourceRef, PROMPT_TYPES, mountPromptEditor } from './prompt-authoring.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { mountNativeRegexRules } from './regex-authoring.js';
+import { createAtriaIcon } from '../atria-shell/icons.js';
 
 const PROGRAM = 'core.prompt-program', MODULE = 'core.prompt-module', GENERATION = 'core.generation-profile';
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -27,6 +28,7 @@ export function removePresetCategory(preset, categoryId) {
 
 export function mountPromptPresets({ document: doc, body, host, route }) {
     let disposed = false, sequence = 0, preset = null, section = null;
+    let categoryFilter = 'all', listPosition = null, closeMenu = () => {};
     const node = (tag, text, parent = body) => { const el = doc.createElement(tag); if (text !== undefined) el.textContent = tl(text); parent.append(el); return el; };
     const literal = (tag, text, parent) => { const el = node(tag, undefined, parent); el.textContent = text; return el; };
     const fail = error => { if (!disposed) { const el = node('p', error.message); el.setAttribute('role', 'alert'); } };
@@ -38,9 +40,9 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
     const select = (parent, label, values, value) => { const wrap = node('label', label, parent); wrap.className = 'atri-library-field'; const el = node('select', undefined, wrap); el.setAttribute('aria-label', tl(label)); for (const [id, title] of values) { const opt = node('option', undefined, el); opt.textContent = title; opt.value = id; } el.value = value || ''; return el; };
     const save = async next => {
         const result = await runtimeRequest('/presets/' + preset.presetId, { method: 'PUT', body: { preset: next, expectedRevision: preset.revision } });
-        preset = await runtimeRequest('/presets/' + result.presetId); void host.refreshSearch?.(); renderDetail();
+        preset = await runtimeRequest('/presets/' + result.presetId); void host.refreshSearch?.(); renderDetail(); restoreListPosition();
     };
-    const open = async id => { const token = ++sequence; body.replaceChildren(); node('p', 'Loading exact resources…'); const value = await runtimeRequest('/presets/' + id); if (disposed || token !== sequence) return; preset = value; section = null; renderDetail(); };
+    const open = async id => { const token = ++sequence; closeMenu(); categoryFilter = 'all'; listPosition = null; body.replaceChildren(); node('p', 'Loading exact resources…'); const value = await runtimeRequest('/presets/' + id); if (disposed || token !== sequence) return; preset = value; section = null; renderDetail(); };
     const create = async (value, importing = false) => { const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId); };
     const exportPreset = value => {
         const data = { format: value.format, schemaVersion: 1, programId: value.programId, categories: value.categories, moduleCategories: value.moduleCategories, entries: value.entries, regexScripts: value.regexScripts || [] };
@@ -58,13 +60,103 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         if (await new Popup(content, POPUP_TYPE.CONFIRM).show()) await save(next);
     };
     const categoryPath = id => { const c = preset.categories.find(c => c.id === id); return c ? (c.parentId ? categoryPath(c.parentId) + ' / ' : '') + c.name : tl('Uncategorized'); };
+    const descendants = id => {
+        const ids = new Set([id]);
+        for (let size = 0; size !== ids.size;) { size = ids.size; for (const c of preset.categories) if (ids.has(c.parentId)) ids.add(c.id); }
+        return ids;
+    };
+    const categoryOptions = () => {
+        const result = [];
+        const visit = (parent, depth) => { for (const c of preset.categories.filter(c => (c.parentId || null) === parent)) { result.push([c.id, `${'　'.repeat(depth)}${depth ? '└ ' : ''}${c.name}`]); visit(c.id, depth + 1); } };
+        visit(null, 0); return result;
+    };
+    function rememberListPosition(moduleId = null) {
+        const scroll = [];
+        for (let el = body; el; el = el.parentElement) scroll.push([el, el.scrollTop, el.scrollLeft]);
+        listPosition = { scroll, moduleId };
+    }
+    function restoreListPosition() {
+        if (section !== MODULE || !listPosition) return;
+        const row = [...body.querySelectorAll('[data-module-id]')].find(el => el.dataset.moduleId === listPosition.moduleId);
+        (row?.querySelector('.atri-module-title') || body.querySelector('[data-category-filter]'))?.focus({ preventScroll: true });
+        for (const [el, top, left] of listPosition.scroll) { el.scrollTop = top; el.scrollLeft = left; }
+    }
+    function menu(parent, label, actions) {
+        const trigger = node('button', undefined, parent); trigger.type = 'button'; trigger.className = 'atri-library-button atri-preset-menu-trigger';
+        trigger.setAttribute('aria-label', tl(label)); trigger.title = tl(label); trigger.setAttribute('aria-haspopup', 'menu'); trigger.setAttribute('aria-expanded', 'false');
+        trigger.append(createAtriaIcon(doc, 'more', { size: 20 }));
+        trigger.addEventListener('click', () => {
+            const wasOpen = trigger.getAttribute('aria-expanded') === 'true'; closeMenu(); if (wasOpen) return;
+            const popup = node('div', undefined, body); popup.className = 'atri-preset-menu'; popup.setAttribute('role', 'menu'); popup.setAttribute('aria-label', tl(label));
+            popup.id = createStudioNativeId('menu'); trigger.setAttribute('aria-controls', popup.id);
+            trigger.setAttribute('aria-expanded', 'true');
+            const close = (focus = false) => {
+                popup.remove(); trigger.setAttribute('aria-expanded', 'false'); trigger.removeAttribute('aria-controls');
+                doc.removeEventListener('pointerdown', outside); doc.removeEventListener('keydown', keys); doc.removeEventListener('focusin', focusOutside);
+                doc.defaultView.removeEventListener('resize', dismiss); doc.removeEventListener('scroll', scroll, true);
+                if (focus && trigger.isConnected) trigger.focus({ preventScroll: true });
+                closeMenu = () => {};
+            };
+            const outside = event => { if (!popup.contains(event.target) && !trigger.contains(event.target)) close(); };
+            const focusOutside = event => { if (!popup.contains(event.target) && event.target !== trigger) close(); };
+            const dismiss = () => close();
+            const scroll = event => { if (!popup.contains(event.target)) close(); };
+            const items = actions.map(([text, run, danger]) => {
+                const item = button(popup, text, async () => { close(true); await run(); }); item.setAttribute('role', 'menuitem');
+                if (danger) item.classList.add('atri-library-button--danger'); return item;
+            });
+            const keys = event => {
+                if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(true); }
+                const index = items.indexOf(doc.activeElement);
+                if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+                    event.preventDefault(); const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (index + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length; items[next].focus();
+                }
+            };
+            const rect = trigger.getBoundingClientRect();
+            popup.style.left = Math.max(8, Math.min(rect.right - popup.offsetWidth, doc.defaultView.innerWidth - popup.offsetWidth - 8)) + 'px';
+            popup.style.top = Math.max(8, Math.min(rect.bottom + 4, doc.defaultView.innerHeight - popup.offsetHeight - 8)) + 'px';
+            closeMenu = close; doc.addEventListener('pointerdown', outside); doc.addEventListener('keydown', keys); doc.addEventListener('focusin', focusOutside);
+            doc.defaultView.addEventListener('resize', dismiss); doc.addEventListener('scroll', scroll, true); items[0]?.focus({ preventScroll: true });
+        });
+        return trigger;
+    }
+    async function categoryDialog(category = null, moving = false) {
+        rememberListPosition();
+        const content = node('div', undefined, doc.createDocumentFragment()); content.className = 'atri-preset-category-form';
+        node('h3', category ? moving ? 'Move category' : 'Rename category' : 'Create category', content);
+        const name = moving ? null : field(content, 'Category name', category?.name || '');
+        const excluded = category ? descendants(category.id) : new Set();
+        const parentId = category ? category.parentId || '' : preset.categories.some(c => c.id === categoryFilter) ? categoryFilter : '';
+        const parent = category && !moving ? null : select(content, 'Parent category', [['', tl('Top level')], ...categoryOptions().filter(([id]) => !excluded.has(id))], parentId);
+        if (name) { name.required = true; name.addEventListener('input', () => name.setCustomValidity('')); }
+        const { Popup, POPUP_TYPE, POPUP_RESULT } = await import('../popup.js');
+        const result = await new Popup(content, POPUP_TYPE.CONFIRM, '', { onClosing: popup => {
+            if (popup.result !== POPUP_RESULT.AFFIRMATIVE || !name || name.value.trim()) return true;
+            name.setCustomValidity(tl('Enter a category name.')); name.reportValidity(); name.focus(); return false;
+        } }).show();
+        if (result !== POPUP_RESULT.AFFIRMATIVE) return;
+        const next = clone(preset);
+        if (category) { const target = next.categories.find(c => c.id === category.id); if (name) target.name = name.value.trim(); if (parent) target.parentId = parent.value || null; } else next.categories.push({ id: createStudioNativeId('cat'), name: name.value.trim(), parentId: parent.value || null });
+        await save(next);
+    }
+    async function moveModule(entry) {
+        rememberListPosition(idOf(entry));
+        const content = node('div', undefined, doc.createDocumentFragment()); content.className = 'atri-preset-category-form';
+        node('h3', 'Move module', content); literal('p', entry.resource.displayName, content);
+        const target = select(content, 'Module category', [['', tl('Uncategorized')], ...categoryOptions()], preset.moduleCategories[idOf(entry)]);
+        const { Popup, POPUP_TYPE, POPUP_RESULT } = await import('../popup.js');
+        if (await new Popup(content, POPUP_TYPE.CONFIRM).show() !== POPUP_RESULT.AFFIRMATIVE) return;
+        const next = clone(preset); if (target.value) next.moduleCategories[idOf(entry)] = target.value; else delete next.moduleCategories[idOf(entry)]; await save(next);
+    }
     function edit(entry, fresh = false, parent = null) {
+        closeMenu(); if (!parent && section === MODULE) rememberListPosition(idOf(entry));
         if (!parent) body.replaceChildren(); const draft = clone(entry);
         const entries = preset.entries.map(e => ({ ...e, ref: entryRef(e) }));
-        mountPromptEditor({ document: doc, parent: parent || body, entry: { ...draft, ref: entryRef(draft) }, entries, librarySurface: true, presetSurface: true, onBack: () => { if (parent) section = null; renderDetail(); }, onSave: async resource => {
+        mountPromptEditor({ document: doc, parent: parent || body, entry: { ...draft, ref: entryRef(draft) }, entries, librarySurface: true, presetSurface: true, onBack: () => { if (parent) section = null; renderDetail(); restoreListPosition(); }, onSave: async resource => {
             if (resource[PROMPT_TYPES[entry.resourceType][1]] !== idOf(entry)) throw new Error(tl('Cannot change resource identity.'));
             const next = clone(preset); const item = { resourceType: entry.resourceType, resource };
             if (fresh) next.entries.push(item); else next.entries[next.entries.findIndex(e => idOf(e) === idOf(entry))] = item;
+            if (fresh && entry.resourceType === MODULE && next.categories.some(c => c.id === categoryFilter)) next.moduleCategories[idOf(entry)] = categoryFilter;
             // Exact references inside this editable preset follow the edited module.
             for (const program of next.entries.filter(e => e.resourceType === PROGRAM)) {
                 for (const stage of program.resource.stages) stage.moduleRefs = stage.moduleRefs.map(r => r.resourceId === idOf(entry) ? entryRef(item) : r);
@@ -76,6 +168,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
     }
     function renderDetail() {
         if (disposed) return;
+        closeMenu();
         body.replaceChildren(); const root = node('section'); root.className = 'atri-prompt-preset'; root.dataset.atriPromptPreset = preset.presetId;
         const nav = node('div', undefined, root); nav.className = 'atri-prompt-actions';
         button(nav, 'Back to presets', list);
@@ -104,46 +197,45 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             }
             return;
         }
-        const tools = node('div', undefined, root); tools.className = 'atri-prompt-actions';
-        button(tools, 'New module', () => edit({ resourceType: MODULE, resource: newPromptResource(MODULE) }, true));
-        const form = node('div', undefined, root); form.className = 'atri-preset-category-form';
-        const categoryName = field(form, 'Category name');
-        const parent = select(form, 'Parent category', [['', tl('Top level')], ...preset.categories.map(c => [c.id, categoryPath(c.id)])]);
-        button(form, 'Create category', async () => { if (!categoryName.value.trim()) { categoryName.focus(); return; } const next = clone(preset); next.categories.push({ id: createStudioNativeId('cat'), name: categoryName.value.trim(), parentId: parent.value || null }); await save(next); });
-        const moduleRow = (entry, parent) => {
-            const row = node('article', undefined, parent); row.className = 'atri-prompt-resource'; literal('h4', entry.resource.displayName, row);
-            button(row, 'View / edit parameters', () => edit(entry));
-            button(row, 'Delete module', async () => {
-                const staging = clone(preset), categoryId = createStudioNativeId('cat');
-                staging.categories.push({ id: categoryId, name: entry.resource.displayName, parentId: null }); staging.moduleCategories[idOf(entry)] = categoryId;
-                const { next, modules, affected } = removePresetCategory(staging, categoryId);
-                await confirmRemoval(next, modules, affected, entry.resource.displayName);
-            }).classList.add('atri-library-button--danger');
-            const target = select(row, 'Module category', [['', tl('Uncategorized')], ...preset.categories.map(c => [c.id, categoryPath(c.id)])], preset.moduleCategories[idOf(entry)]);
-            button(row, 'Move module', async () => { const next = clone(preset); if (target.value) next.moduleCategories[idOf(entry)] = target.value; else delete next.moduleCategories[idOf(entry)]; await save(next); });
-        };
-        const branch = (parentId, container) => {
-            for (const category of preset.categories.filter(c => (c.parentId || null) === parentId)) {
-                const box = node('details', undefined, container); box.open = true; box.className = 'atri-preset-category';
-                literal('summary', category.name, box);
-                const controls = node('div', undefined, box); controls.className = 'atri-preset-category-form';
-                const name = field(controls, 'Rename category', category.name);
-                button(controls, 'Save category name', async () => { if (!name.value.trim()) return; const next = clone(preset); next.categories.find(c => c.id === category.id).name = name.value.trim(); await save(next); });
-                button(controls, 'Delete category', async () => {
-                    const { next, modules, affected } = removePresetCategory(preset, category.id);
-                    await confirmRemoval(next, modules, affected, categoryPath(category.id));
-                }).classList.add('atri-library-button--danger');
-                preset.entries.filter(e => e.resourceType === MODULE && preset.moduleCategories[idOf(e)] === category.id).forEach(e => moduleRow(e, box));
-                branch(category.id, box);
-            }
-        };
-        branch(null, root);
-        const uncategorized = preset.entries.filter(e => e.resourceType === MODULE && !preset.moduleCategories[idOf(e)]);
-        if (uncategorized.length) { node('h4', 'Uncategorized', root); uncategorized.forEach(e => moduleRow(e, root)); }
-        if (!preset.entries.some(e => e.resourceType === MODULE)) node('p', 'No modules yet. Create a module, then add it to the program.', root);
+        const toolbar = node('div', undefined, root); toolbar.className = 'atri-module-toolbar';
+        if (!['all', 'uncategorized'].includes(categoryFilter) && !preset.categories.some(c => c.id === categoryFilter)) categoryFilter = 'all';
+        const filter = select(toolbar, 'Filter by category', [['all', tl('All modules')], ['uncategorized', tl('Uncategorized')], ...categoryOptions()], categoryFilter);
+        filter.dataset.categoryFilter = '';
+        filter.addEventListener('change', () => { categoryFilter = filter.value; listPosition = null; renderDetail(); body.querySelector('[data-category-filter]')?.focus({ preventScroll: true }); });
+        const category = preset.categories.find(c => c.id === categoryFilter);
+        const categoryMenu = menu(toolbar, 'Category actions', category ? [
+            ['Rename category', () => categoryDialog(category)],
+            ['Move category', () => categoryDialog(category, true)],
+            ['Delete category', async () => { rememberListPosition(); const { next, modules, affected } = removePresetCategory(preset, category.id); await confirmRemoval(next, modules, affected, categoryPath(category.id)); }, true],
+        ] : []);
+        categoryMenu.disabled = !category;
+        menu(nav, 'Module list actions', [
+            ['Create category', () => categoryDialog()],
+            ['New module', () => edit({ resourceType: MODULE, resource: newPromptResource(MODULE) }, true)],
+        ]).classList.add('atri-module-create');
+        const included = descendants(categoryFilter);
+        const modules = preset.entries.filter(e => e.resourceType === MODULE && (categoryFilter === 'all' || (categoryFilter === 'uncategorized' ? !preset.moduleCategories[idOf(e)] : included.has(preset.moduleCategories[idOf(e)]))));
+        for (const entry of modules) {
+            const row = node('article', undefined, root); row.className = 'atri-prompt-resource atri-module-row'; row.dataset.moduleId = idOf(entry);
+            const heading = node('h4', undefined, row);
+            const title = button(heading, '', () => edit(entry)); title.textContent = entry.resource.displayName; title.classList.add('atri-module-title');
+            menu(row, 'Module actions', [
+                ['View / edit parameters', () => edit(entry)],
+                ['Move module', () => moveModule(entry)],
+                ['Delete module', async () => {
+                    rememberListPosition();
+                    const staging = clone(preset), categoryId = createStudioNativeId('cat');
+                    staging.categories.push({ id: categoryId, name: entry.resource.displayName, parentId: null }); staging.moduleCategories[idOf(entry)] = categoryId;
+                    const { next, modules, affected } = removePresetCategory(staging, categoryId);
+                    await confirmRemoval(next, modules, affected, entry.resource.displayName);
+                }, true],
+            ]);
+            literal('p', categoryPath(preset.moduleCategories[idOf(entry)]), row);
+        }
+        if (!modules.length) node('p', preset.entries.some(e => e.resourceType === MODULE) ? 'No modules in this category.' : 'No modules yet. Create a module, then add it to the program.', root);
     }
     async function list() {
-        const token = ++sequence; preset = null; body.replaceChildren(); node('p', 'Loading exact resources…');
+        const token = ++sequence; closeMenu(); listPosition = null; preset = null; body.replaceChildren(); node('p', 'Loading exact resources…');
         try {
             const presets = await runtimeRequest('/presets'); if (disposed || token !== sequence) return;
             body.replaceChildren(); const root = node('section'); root.className = 'atri-prompt-preset'; node('h2', 'Prompt Presets', root);
@@ -195,5 +287,5 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         else void list();
     };
     updateRoute(route);
-    return { updateRoute, dispose() { disposed = true; sequence++; } };
+    return { updateRoute, dispose() { closeMenu(); disposed = true; sequence++; } };
 }
