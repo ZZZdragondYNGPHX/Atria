@@ -20,8 +20,8 @@ Current remote `main` at task creation:
 Formal plan:
 `docs:feat/native-prompt-controls.md`
 
-The plan is a living backlog. Confirmed items are NPC-001 through NPC-005. If the
-user adds more gaps, append NPC-006/NPC-007/etc. on the same task branch. Do not
+The plan is a living backlog. Confirmed items are NPC-001 through NPC-006. If the
+user adds more gaps, append NPC-007/NPC-008/etc. on the same task branch. Do not
 invent adjacent scope.
 
 ## Confirmed gaps
@@ -103,6 +103,24 @@ audit current main and record the concrete common-operation curriculum in the fo
 plan. The intent is a long-lived in-product learning/reference system, not a disposable
 first-run wizard.
 
+### NPC-006 — Regex preset/local scope Native cutover
+
+Regex is retained as a Global Plugin, but code audit confirms two persisted scopes
+still cross legacy SillyTavern authorities: PRESET scripts are written through the
+old preset manager into Chat Completion Preset `regex_scripts`, while SCOPED scripts
+still use `characters[this_chid]` / character extension `regex_scripts`. Capability
+settings also retain legacy `preset_allowed_regex` and `character_allowed_regex`.
+
+Required outcome: preserve the useful Regex text engine/editor/runtime-provider API,
+but replace those two ownership paths with Atria-native configuration/project/package
+(or other code-audited Native) owners and bindings. Scope/provenance must be visible,
+execution precedence deterministic, package/project lifecycle supported where
+applicable, and diagnostics must explain effective/disabled scripts.
+
+Hard cut: no dual-read/write/fallback to legacy preset/card Regex stores, and no
+default migration requirement. "Regex Presets" (saved groups of enabled scripts) is a
+separate feature from legacy "Preset Scripts" and should be audited independently.
+
 ## Architecture boundaries
 
 Preserve the current Native Model / Prompt / Runtime and Library / Knowledge authority,
@@ -134,6 +152,9 @@ from KnowledgeBinding.enabled and preserve immutable revision/dependency authori
 12. Relevant current Runtime/Play request UI and generation-host paths.
 13. Current first-run onboarding/persona/language implementation, Atria Shell navigation,
     workspace routing, overlay/back resolver and localization paths.
+14. Regex engine/editor persistence paths, legacy preset-manager/character-card scope
+    dependencies, capability settings keys, runtime provider API and project/package
+    composition/build/install paths relevant to a Native Regex scope replacement.
 
 Use the actual remote `feat/native-prompt-controls` HEAD if another session has
 advanced it. Preserve existing commits; never reset back to this creation HEAD.
@@ -143,7 +164,7 @@ advanced it. Preserve existing commits; never reset back to this creation HEAD.
 Task setup/documentation only:
 
 - `feat/native-prompt-controls` exists from the stated main baseline.
-- Formal plan now contains NPC-001 through NPC-005.
+- Formal plan now contains NPC-001 through NPC-006.
 - No product implementation has been made on the feature branch.
 - No implementation tests/CI are claimed.
 
