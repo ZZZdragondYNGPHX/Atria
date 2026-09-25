@@ -1,4 +1,4 @@
-# Latest handoff — Native Prompt Controls
+# Latest handoff — Native Prompt Controls and Resource UX
 
 Updated: 2026-09-25 (Asia/Shanghai).
 
@@ -6,7 +6,7 @@ Updated: 2026-09-25 (Asia/Shanghai).
 
 Repository: `ZZZdragondYNGPHX/Atria`
 
-Task: Atria Native Prompt Controls / runtime-selectable Prompt Program options.
+Task: Atria Native Prompt Controls and adjacent Native resource usability gaps discovered through real product use.
 
 Implementation branch:
 `feat/native-prompt-controls`
@@ -20,39 +20,62 @@ Current remote `main` at task creation:
 Formal plan:
 `docs:feat/native-prompt-controls.md`
 
-The plan is intentionally a living backlog. NPC-001 is the only confirmed gap so far.
-If the user adds more gaps, append NPC-002/NPC-003/etc. before or during implementation.
-Do not invent adjacent scope.
+The plan is a living backlog. Confirmed items are NPC-001 through NPC-003. If the
+user adds more gaps, append NPC-004/NPC-005/etc. on the same task branch. Do not
+invent adjacent scope.
 
-## Confirmed gap
+## Confirmed gaps
 
-NPC-001: Native Prompt Programs already have typed parameters and module conditions,
-but the player-facing runtime has no product-quality controls for selecting them.
+### NPC-001 — Player-facing Prompt runtime controls
 
-The required product behavior includes:
+Native Prompt Programs already have typed parameters and module conditions, but the
+player-facing runtime has no product-quality controls for selecting them.
 
-- boolean on/off controls;
-- mutually exclusive single-choice groups;
-- human-readable labels/options rather than raw enum text entry;
-- effective selections flowing through validated Native `prompt.parameters`;
-- runtime choices must not create immutable Prompt Program revisions;
-- preview and execute must agree;
-- safe stale/invalid-value handling;
-- desktop/mobile usability;
-- Native persistence/authority only.
+Required product behavior includes boolean toggles, mutually exclusive single-choice
+groups, human-readable labels/options, validated `prompt.parameters`, no immutable
+Prompt revision creation for ordinary runtime choices, preview/execute consistency,
+safe stale-value handling and desktop/mobile usability.
 
-TGbreak is only a motivating example. Core code must remain generic.
+TGbreak is a motivating example only. Core code must remain generic.
+
+### NPC-002 — Prompt Program / Module deletion lifecycle
+
+Imported/user-owned Prompt Programs and Prompt Modules can currently be archived but
+lack a real user-facing delete lifecycle.
+
+Required outcome: distinct Archive vs Delete actions, safe destructive removal for
+eligible user-owned resources, dependency/reference blocking with visible Used By
+information, protection of Package/read-only resources, reload-stable state, and no
+dangling exact refs.
+
+Do not assume the persistence implementation. Inspect current versioned-resource,
+Library and dependency-graph semantics first and preserve Native authority.
+
+### NPC-003 — Knowledge entry browsing clarity
+
+Current Knowledge entries are displayed as a long continuous sequence and become
+difficult to scan in larger Knowledge Bases.
+
+Required outcome: a compact, clearly segmented entry overview with high-value summary
+fields, progressive disclosure/collapse, fast entry editing and practical navigation
+for large sets. Search/filter and sorting/grouping should be evaluated against the
+actual Native Knowledge contract. Mobile must remain compact and navigable.
+
+SillyTavern World Info is a usability reference for clarity only. Do not restore its
+legacy storage/schema/DOM authority.
 
 ## Architecture boundaries
 
-Preserve the current Native Model / Prompt / Runtime authority and exact resource
-revision model. Do not restore SillyTavern preset authority, Tavern Helper DOM
-control, Regex state, `setvar/getvar/random`, MVU state, localStorage authority,
-or default legacy preset migration.
+Preserve the current Native Model / Prompt / Runtime and Library / Knowledge authority,
+exact resource revisions and dependency integrity.
 
-Authoring owns definitions/defaults. Runtime owns the player's effective selection.
-Reuse the current Native Prompt compiler condition path rather than creating a
-second prompt-condition engine.
+Do not restore SillyTavern preset/World Info authority, Tavern Helper DOM control,
+Regex state, `setvar/getvar/random`, MVU state, localStorage authority, or default
+legacy data migration.
+
+Authoring owns Prompt definitions/defaults. Runtime owns player Prompt selections.
+Deletion must respect dependency closure. Knowledge changes in NPC-003 are primarily
+product browsing/management UX unless current code proves a contract change is needed.
 
 ## Start by reading
 
@@ -65,30 +88,34 @@ second prompt-condition engine.
 7. `main:src/native/model-prompt-runtime/prompt-values.js`
 8. `main:public/scripts/native/prompt-authoring.js`
 9. `main:public/scripts/native/prompt-semantics.js`
-10. Relevant current Runtime/Play request UI and generation-host paths discovered from the code.
+10. Current Library/versioned-resource deletion/archive/dependency paths.
+11. Current Knowledge/Knowledge Entry Library and authoring UI paths.
+12. Relevant current Runtime/Play request UI and generation-host paths.
 
 Use the actual remote `feat/native-prompt-controls` HEAD if another session has
 advanced it. Preserve existing commits; never reset back to this creation HEAD.
 
 ## Completed / validation
 
-Task setup only:
+Task setup/documentation only:
 
-- `feat/native-prompt-controls` created from current `main`.
-- Formal plan created on `docs`.
+- `feat/native-prompt-controls` exists from the stated main baseline.
+- Formal plan now contains NPC-001 through NPC-003.
 - No product implementation has been made on the feature branch.
 - No implementation tests/CI are claimed.
 
 The previous Native Product UX audit is complete and integrated. Do not restart its
-Groups 1–9 or reopen its 44-item backlog as part of this task.
+Groups 1–9 or reopen its prior 44-item backlog as part of this task.
 
 ## Next
 
-When implementation begins, first reconcile the plan against the current code and
-record any substantive architecture decision in the formal plan. Then implement
-NPC-001 generically, test it offline, and continue according to the user's current
-Astra workflow. If the user has added more NPC items by then, include them in the
-same task branch rather than creating a branch per gap.
+When implementation begins, reconcile all confirmed NPC items against current code
+before editing and record substantive architecture decisions in the formal plan.
 
-Do not merge `main` until the full Native Prompt Controls task/backlog is complete
-and validated.
+Implement the backlog on the same feature branch. Group work sensibly rather than
+creating a branch per NPC item. Perform offline tests and any UI/browser validation
+that does not require the user. Only request user involvement for genuinely manual
+device/UI/permission dependencies.
+
+Do not merge `main` until the full current Native Prompt Controls / Resource UX
+backlog is complete and validated.
