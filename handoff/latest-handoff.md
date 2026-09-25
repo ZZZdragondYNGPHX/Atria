@@ -20,7 +20,7 @@ Current remote `main` at task creation:
 Formal plan:
 `docs:feat/native-prompt-controls.md`
 
-The plan is a living backlog. Confirmed items are NPC-001 through NPC-003. If the
+The plan is a living backlog. Confirmed items are NPC-001 through NPC-004. If the
 user adds more gaps, append NPC-004/NPC-005/etc. on the same task branch. Do not
 invent adjacent scope.
 
@@ -64,6 +64,19 @@ actual Native Knowledge contract. Mobile must remain compact and navigable.
 SillyTavern World Info is a usability reference for clarity only. Do not restore its
 legacy storage/schema/DOM authority.
 
+### NPC-004 — Per-entry Knowledge enable / disable
+
+Native Knowledge currently has Binding-level `enabled`, but no independent
+`KnowledgeEntry` enabled state. Users therefore cannot temporarily disable one entry
+while keeping the rest of the same Knowledge Base active.
+
+Required outcome: a first-class per-entry toggle, exposed in the compact NPC-003 list,
+with entry-disabled items excluded from all normal Native activation/selection/prompt
+delivery paths and diagnosed separately from `binding_disabled`. The state must live
+inside the proper immutable Native Knowledge authoring/revision model and survive
+Resource Bundle/Package/Project serialization paths. Do not reuse legacy World Info
+storage or its `disable` field.
+
 ## Architecture boundaries
 
 Preserve the current Native Model / Prompt / Runtime and Library / Knowledge authority,
@@ -76,6 +89,8 @@ legacy data migration.
 Authoring owns Prompt definitions/defaults. Runtime owns player Prompt selections.
 Deletion must respect dependency closure. Knowledge changes in NPC-003 are primarily
 product browsing/management UX unless current code proves a contract change is needed.
+NPC-004 is a real Knowledge contract/runtime semantic change: keep entry state distinct
+from KnowledgeBinding.enabled and preserve immutable revision/dependency authority.
 
 ## Start by reading
 
@@ -100,7 +115,7 @@ advanced it. Preserve existing commits; never reset back to this creation HEAD.
 Task setup/documentation only:
 
 - `feat/native-prompt-controls` exists from the stated main baseline.
-- Formal plan now contains NPC-001 through NPC-003.
+- Formal plan now contains NPC-001 through NPC-004.
 - No product implementation has been made on the feature branch.
 - No implementation tests/CI are claimed.
 
