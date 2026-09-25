@@ -1,7 +1,7 @@
 # Latest handoff — Collapsible prompt editors
 
 Updated: 2026-09-25 (Asia/Shanghai).
-Main: `4dab353ac639d42eae885c79e18245267abd6820` (local, not pushed).
+Main: `4dab353ac639d42eae885c79e18245267abd6820` (pushed).
 Implementation: `dc10712b791e0d9cc14e39b3b359d6d08e0d3aae`.
 Status: integrated tree matches task tree; temporary branch deleted.
 
@@ -14,7 +14,8 @@ disclosures. Prior stage ordering and insertion-position fixes are retained.
 Passed: 15 unit tests, four Edge desktop/mobile scenarios, localization and
 whitespace checks. ESLint: no errors, two pre-existing test warnings. Screenshots
 inspected. No Android/Docker or inference. Record: `feat/prompt-editor-folds.md`.
-This task and the preceding two tasks remain local; no push performed.
+User authorized publication. This task and the preceding two tasks were pushed
+to main and docs together; remote main HEAD was verified against local main.
 
 ---
 # Previous handoff — Prompt stage order and insertion position
