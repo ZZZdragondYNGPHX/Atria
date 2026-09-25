@@ -158,35 +158,42 @@ SillyTavern World Info's per-entry toggle is the usability reference. The implem
 - Desktop and narrow/mobile UI tests cover toggle state, revision/save flow and reload behavior.
 - Relevant Knowledge/Native guards, lint and build pass.
 
-### NPC-005 — First-run guided onboarding / interactive product tour
+### NPC-005 — Persistent guided learning / interactive product tour
 
-The current first-run experience is a blocking onboarding dialog centered on persona/name and UI language. After saving those fields, the onboarding ends. New users are then dropped into the full product without a guided path through the common Atria workflows.
+The current first-run experience is a blocking onboarding dialog centered on persona/name and UI language. The product needs a persistent, reusable guided-learning system rather than a tutorial that only exists during first launch.
+
+First launch is only the automatic entry point into the guide. The same guide must remain permanently accessible so users can review the full curriculum, revisit individual lessons, or resume unfinished learning at any time.
 
 Required behavior:
 
-- Upgrade the current first-run name/language dialog into the first step of a multi-step onboarding flow.
+- Upgrade the current first-run name/language dialog into Step 1 of a persistent multi-step guided-learning system.
 - Step 1 must retain the existing required identity/language setup and its persistence behavior.
-- After the user clicks Next, onboarding must be able to navigate to a specific real Atria workspace/surface for the next lesson.
+- On a fresh install, Atria should automatically enter the guide from Step 1.
+- After initial setup, the guide remains a permanent product feature and must be reopenable at any time from a clear, discoverable Help/Learning entry.
+- Users must be able to open the complete guide, jump to a specific lesson/chapter, restart a lesson, or resume unfinished progress without resetting account/product state.
+- Guide completion is learning progress only. Completing or skipping the tour must never remove the guide from the product.
+- After the user clicks Next, the guide must be able to navigate to a specific real Atria workspace/surface for the next lesson.
 - Each lesson must present clear instructions tied to the current real product surface while allowing the user to perform the actual operation in that surface.
 - The guide must provide Previous and Next controls so the user can move backward/forward between onboarding steps without restarting the whole flow.
 - Moving between steps must restore or navigate to the correct target surface deterministically; the guide must not assume the user stayed on the previous screen.
-- The onboarding layer must not replace the underlying feature UI with mock controls. Users should learn the real interface and real actions.
+- The guidance layer must not replace the underlying feature UI with mock controls. Users should learn the real interface and real actions.
 - A step may require an observable user action before it is considered complete where that is useful for learning. Completion conditions must be explicit and bounded; the guide must never trap the user because an optional/external dependency is unavailable.
-- Users need a clear Skip/Exit path and a clear Finish state.
-- Progress must survive ordinary reload/restart so a partially completed tour can resume safely.
-- Completed onboarding must not block normal startup on later launches.
-- Users must be able to reopen the guided tour (or specific lessons) later from an appropriate Help/Settings entry rather than making first-run onboarding permanently one-shot.
+- Users need a clear Close/Exit path. First-run flow may additionally provide Skip and Finish, but those actions only change progress/automatic prompting; they do not disable access to the guide.
+- Progress must survive ordinary reload/restart. The system should remember completed lessons and the last active lesson while still allowing free review of earlier lessons.
+- Completed users must not be forced through the guide again on startup, but can deliberately reopen any lesson later.
+- The persistent guide should expose a curriculum/index view or equivalent navigation so it functions as an in-product learning reference, not merely a linear wizard.
 - The experience must work across desktop and mobile layouts. Target highlighting/instructions must tolerate responsive navigation differences such as rail vs bottom navigation, dock vs sheet, and temporary overlays.
 - Guidance must coexist correctly with Android Back / overlay / sheet behavior and must not leave the product in a trapped modal state.
 - The guide must use Atria navigation/workspace APIs and product state. Do not implement cross-screen guidance by brittle DOM click scripts, fixed pixel coordinates, arbitrary timeouts, or legacy SillyTavern panel assumptions.
-- UI text must use the existing Atria localization system; changing the language during Step 1 must immediately update subsequent onboarding instructions.
-- Accessibility must be preserved: keyboard/focus order, screen-reader labels, reduced-motion behavior, and visible focus must remain usable during the tour.
+- UI text must use the existing Atria localization system; changing the language during Step 1 must immediately update subsequent guidance and the persistent curriculum/index.
+- Accessibility must be preserved: keyboard/focus order, screen-reader labels, reduced-motion behavior, and visible focus must remain usable during guided lessons.
+- The learning system should be extensible so future common operations can add lessons without rewriting one monolithic flow.
 
-#### Onboarding curriculum
+#### Guided-learning curriculum
 
-Before implementation, audit the current `main` product and write the concrete common-operation step list into this plan. The curriculum should teach the normal first-use path across Atria rather than every advanced/debug feature.
+Before implementation, audit the current `main` product and write the concrete common-operation lesson/chapter list into this plan. The curriculum should teach normal Atria usage and remain useful as a long-term in-product reference after onboarding is complete.
 
-At minimum, evaluate whether the guided path needs to cover:
+At minimum, evaluate whether the curriculum needs to cover:
 
 - identity/name and interface language;
 - the main navigation model and how to move between product domains;
@@ -199,42 +206,47 @@ At minimum, evaluate whether the guided path needs to cover:
 - save/load/recovery basics;
 - where common Settings, Help and Diagnostics live.
 
-This list is a scope floor for the audit, not permission to invent unnecessary tutorial steps. Use the current product IA and actual common workflows to decide the final sequence. Advanced Studio authoring, developer tooling, Agents internals, diagnostics internals and other specialist features should only be included if they are genuinely part of normal first-use operation.
+This list is a scope floor for the audit, not permission to invent unnecessary lessons. Use the current product IA and actual common workflows to decide the final curriculum. Advanced Studio authoring, developer tooling, Agents internals, diagnostics internals and other specialist features should only be included if they are genuinely useful enough to deserve an optional advanced lesson.
 
-#### Step model / product requirements
+#### Step / lesson model
 
-The onboarding implementation must have an explicit step/state model rather than one long hard-coded callback chain. Each step should be able to describe, using a Native/Atria-owned contract:
+The implementation must have an explicit lesson/state model rather than one long hard-coded callback chain. Each lesson/step should be able to describe, using an Atria-owned contract:
 
-- stable step ID and order;
+- stable lesson and step IDs;
+- curriculum section/category and ordering;
 - localized title/instruction content;
 - target product route/workspace;
 - optional target element/region using a stable product identifier rather than CSS position assumptions;
 - whether user interaction with the underlying surface is allowed/required;
 - optional completion predicate/event;
-- Previous/Next/Skip behavior;
+- Previous/Next/Close behavior;
+- whether the lesson is completed, resumable, replayable, or freely reviewable;
 - mobile/desktop target variants only where the product actually has different navigation surfaces.
 
-The exact schema is an implementation decision to be derived from current code. Avoid a second generic workflow/orchestration engine: this is a small onboarding state machine owned by the product shell.
+The exact schema is an implementation decision to be derived from current code. Avoid a second generic workflow/orchestration engine: this is a focused learning/tour state machine owned by the product shell.
 
 #### Acceptance criteria
 
-- Fresh install opens the guided onboarding at Step 1 with name/language.
-- Next from Step 1 navigates to the intended real product surface and shows the next instruction without losing onboarding state.
+- Fresh install automatically opens the persistent guide at Step 1 with name/language.
+- Next from Step 1 navigates to the intended real product surface and shows the next instruction without losing guide state.
 - Users can operate the real underlying interface during interactive lessons.
-- Previous/Next can traverse the tour and reliably restore the correct target surface.
+- Previous/Next can traverse a lesson and reliably restore the correct target surface.
 - Required-action lessons detect the real product event/state rather than treating a decorative click as success.
-- Skip/Exit and Finish leave Atria in a usable normal state.
+- Close/Exit leaves Atria in a usable normal state and preserves progress.
+- First-run Skip/Finish stops automatic onboarding without removing the persistent guide.
 - Partial progress survives reload/restart and resumes predictably.
-- Completed users are not shown the first-run guide again unless they deliberately reopen it.
-- The guide can be reopened later from a discoverable product entry.
+- Completed users are not forced through onboarding again on startup.
+- At any later time, users can reopen the learning center/guide, browse the curriculum, revisit completed lessons and jump directly to a selected lesson.
+- Replaying a lesson does not reset unrelated user data or destructive product state.
 - Language switching in Step 1 affects subsequent guide text immediately.
 - Desktop and narrow/mobile E2E cover cross-workspace navigation, overlays/sheets and Back behavior.
-- Tests cover first run, resume, back/forward navigation, completion, skip, unavailable optional dependencies and reopening the guide.
+- Tests cover first run, resume, back/forward navigation, completion, skip, close/reopen, direct lesson selection, replay, unavailable optional dependencies and persistent access after completion.
 - Existing onboarding persona/language persistence behavior remains correct.
 - Relevant Shell/navigation/localization guards, lint and frontend build pass.
 
 #### Explicit non-goals
 
+- Making the guide inaccessible after onboarding completion.
 - Replacing normal product screens with tutorial-only duplicates.
 - Teaching every advanced or developer feature during first run.
 - Restoring legacy SillyTavern onboarding/import UI.
@@ -264,7 +276,7 @@ Before editing, inspect the current contracts and product surfaces and resolve:
 6. What the current archive/delete/versioned-resource/dependency contracts already support for Prompt Program/Module removal, and which references must block destructive deletion.
 7. What current Knowledge Entry fields are most useful in the compact list and which current UI/state path should own search/filter/sort/expanded-entry state.
 8. Where per-entry enabled state belongs in the immutable Native Knowledge contract, and how every activation/selection/serialization path must honor it without conflating it with KnowledgeBinding.enabled.
-9. Which Shell/navigation APIs and stable target identifiers the onboarding tour should use, where onboarding progress belongs, and which current product workflows constitute the final common-operation curriculum.
+9. Which Shell/navigation APIs and stable target identifiers the persistent guide should use, where guide progress/history belongs, how users reopen/jump/replay lessons, and which current product workflows constitute the final common-operation curriculum.
 
 Record any substantive answer here before or with the implementation commit that depends on it.
 
