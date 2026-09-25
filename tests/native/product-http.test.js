@@ -11,7 +11,7 @@ function makeProduct() {
         getWork: jest.fn(async (_handle, packageId) => ({ package: { packageId } })),
         startWork: jest.fn(async (_handle, packageId) => ({ session: { packageId, sessionId: 'session_test' } })),
         deleteWork: jest.fn(async () => true),
-        preflightPackage: jest.fn(() => ({ packageId: 'pkg_preflight' })),
+        preflightPackageUpdate: jest.fn(async () => ({ packageId: 'pkg_preflight' })),
         installPackage: jest.fn(async () => ({ package: { packageId: 'pkg_installed' } })),
         listWorlds: jest.fn(async () => []),
         getWorld: jest.fn(async (_handle, worldId) => ({ world: { worldId } })),
@@ -151,8 +151,8 @@ describe('N9 Native Product HTTP boundary', () => {
         const data = Buffer.from('portable-binary').toString('base64');
 
         expect((await request(app).post('/packages/preflight').send({ data })).status).toBe(200);
-        expect(Buffer.isBuffer(product.preflightPackage.mock.calls[0][0])).toBe(true);
-        expect(product.preflightPackage.mock.calls[0][0].toString()).toBe('portable-binary');
+        expect(Buffer.isBuffer(product.preflightPackageUpdate.mock.calls[0][1])).toBe(true);
+        expect(product.preflightPackageUpdate.mock.calls[0][1].toString()).toBe('portable-binary');
 
         expect((await request(app).post('/saves/preflight').send({ data })).body.dependency.status).toBe('ready');
         expect(product.preflightSaveImport).toHaveBeenCalledWith('u', expect.any(Buffer));

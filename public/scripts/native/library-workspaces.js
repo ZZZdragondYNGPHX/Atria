@@ -1,3 +1,4 @@
+import { permissionRow, renderPackageUpdateReview, mountWorkPermissions } from './package-permissions.js';
 import { mountPackageLibraryList, mountPackageLibraryOriginal } from './package-library-resources.js';
 import { resourceBundleExport, mountResourceBundleImport } from './resource-bundle-controls.js';
 import { mountLibraryRevisionHistory } from './library-revision-history.js';
@@ -40,6 +41,7 @@ function importSurface(doc, parent, kind, host, refresh) {
     el(doc, 'p', '', tl(isPackage ? 'Choose a work to review its permissions before installing.' : 'Import an Atria save. Its matching work must already be installed.'), root);
     const input = field(doc, root, isPackage ? 'Choose an Atria work' : 'Choose an Atria save', '', 'file');
     input.accept = isPackage ? '.atria,application/octet-stream' : '.atriasave,application/octet-stream';
+    action(doc, root, isPackage ? 'Choose an Atria work' : 'Choose an Atria save', () => input.click());
     const result = el(doc, 'div', 'atri-library-import-result', undefined, root);
     result.setAttribute('aria-live', 'polite');
     let sequence = 0;
@@ -58,13 +60,13 @@ function importSurface(doc, parent, kind, host, refresh) {
             el(doc, 'h4', '', isPackage ? preflight.name : tl('Atria save'), review);
             el(doc, 'p', '', isPackage ? `${tl('Version')} ${preflight.version}` : tl(ready ? 'Ready to import this save.' : 'Install the matching work in Library before importing this save.'), review);
             const grants = new Map();
-            if (isPackage && preflight.requiredPermissions.length) {
+            if (isPackage) renderPackageUpdateReview(doc, review, preflight);
+            if (isPackage && (preflight.permissions?.length || preflight.requiredPermissions.length)) {
                 const permissions = el(doc, 'fieldset', 'atri-library-permissions', undefined, review);
-                el(doc, 'legend', '', tl('Required permissions'), permissions);
-                for (const permission of preflight.requiredPermissions) {
-                    const label = el(doc, 'label', '', undefined, permissions);
-                    const checkbox = el(doc, 'input', '', undefined, label); checkbox.type = 'checkbox'; checkbox.value = permission;
-                    label.append(doc.createTextNode(' ' + permission)); grants.set(permission, checkbox);
+                el(doc, 'legend', '', tl('Requested permissions'), permissions);
+                for (const permission of preflight.permissions || preflight.requiredPermissions.map(permission => ({ permission, required: true }))) {
+                    const checkbox = permissionRow(doc, permissions, permission, { checkbox: permission.required });
+                    if (checkbox) grants.set(permission.permission, checkbox);
                 }
             }
             disclosure(doc, review, 'Details', isPackage ? { capabilities: preflight.capabilities, packageId: preflight.packageId } : preflight.dependency?.required || preflight.package);
@@ -75,7 +77,7 @@ function importSurface(doc, parent, kind, host, refresh) {
                 if (isPackage) {
                     const missing = preflight.requiredPermissions.filter(permission => !grants.get(permission)?.checked);
                     if (missing.length) throw new Error(tl('Grant required permissions before installation:') + ' ' + missing.join(', '));
-                    await client.installPackage(data, preflight.requiredPermissions);
+                    await client.installPackage(data, preflight.requiredPermissions, preflight.update?.previous?.packageVersionId || null);
                     await refresh();
                 } else {
                     const password = await savePassword(); if (password === false || password === null) return;
@@ -164,7 +166,8 @@ async function workDetail(doc, root, host, id, refresh) {
     for (const [label, values] of [['Actors', manifest?.actors?.map(item => item.displayName)], ['Worlds', manifest?.worlds?.map(item => item.world?.displayName)], ['Knowledge Bases', manifest?.knowledge?.map(item => item.knowledgeBase?.displayName)]]) {
         el(doc, 'dt', '', tl(label), facts); el(doc, 'dd', '', values?.filter(Boolean).join(', ') || '—', facts);
     }
-    disclosure(doc, info, 'Permissions & capabilities', { permissions: manifest?.permissions || [], capabilities: manifest?.capabilities || [] });
+    mountWorkPermissions({ document: doc, root: info, work, onManage: () => { management.open = true; management.scrollIntoView?.({ block: 'start' }); } });
+    disclosure(doc, info, 'Capabilities', manifest?.capabilities || []);
     disclosure(doc, info, 'Exact dependencies', {
         worlds: manifest?.worlds?.map(item => ({ worldId: item.world.worldId, worldRevisionId: item.revision.worldRevisionId })),
         knowledge: manifest?.knowledge?.map(item => ({ knowledgeBaseId: item.knowledgeBase.knowledgeBaseId, knowledgeRevisionId: item.revision.knowledgeRevisionId })),
@@ -204,6 +207,8 @@ async function workDetail(doc, root, host, id, refresh) {
     if (!work.sessions?.length) state(doc, games, 'empty', 'No game progress yet', 'Start a new story from this work.');
     work.sessions?.forEach(item => sessionRow(doc, games, item, host, refresh, work.package.displayName));
     const management = disclosure(doc, root, 'Manage work');
+    el(doc, 'p', '', tl('Export any progress you want to keep, then remove dependent Sessions before uninstalling this Work.'), management);
+    action(doc, management, 'Review dependent Sessions', () => { games.scrollIntoView?.({ block: 'start' }); games.setAttribute('tabindex', '-1'); games.focus(); });
     action(doc, management, 'Delete Work', async () => {
         if (!await confirmLibraryAction('Delete this installed Work? Existing Native Sessions must be deleted first.')) return;
         await client.deleteWork(id); host.openLibrarySection('works');

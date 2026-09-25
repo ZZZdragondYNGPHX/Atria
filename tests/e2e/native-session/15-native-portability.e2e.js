@@ -116,3 +116,37 @@ test('Work starts an intentional Session from an installed exact version without
     const current = await page.evaluate(async id => (await (await import('/scripts/native/product-client.js')).nativeProductClient.getWork(id)).package.currentVersionId, original.packageId);
     expect(current).toBe(next.packageVersionId);
 });
+
+test('Package update reviews new permissions and preserves Session pins with post-install management', async ({ page }, info) => {
+    test.setTimeout(120000); await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const old = await page.evaluate(async () => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js'); const work = (await client.listWorks())[0];
+        const created = await client.startWork(work.package.packageId, { displayTitle: 'Pinned before update' });
+        window.Atria.shell.getWorkspaceHost().openLibrarySection('works'); return { manifest: work.manifest, session: created.session };
+    });
+    const next = structuredClone(old.manifest); next.packageVersionId = createNativeId('packageVersion'); next.version = '3.0.0';
+    next.permissions = [{ permission: 'network', required: true, reason: 'Fetch story content' }, { permission: 'clipboard', required: false, reason: 'Copy passages' }];
+    const archive = buildAtriaPackageContainer({ manifest: next, sourceFiles: new Map(), assetPayloads: new Map() }).archive;
+    const install = page.locator('[data-atria-native-install]'); await install.getByText('Install / Update .atria', { exact: true }).click();
+    await install.locator('input[type="file"]').setInputFiles({ name: 'update.atria', mimeType: 'application/octet-stream', buffer: archive });
+    await expect(install.locator('[data-atria-package-update-impact]')).toContainText('New permissions');
+    await expect(install).toContainText('existing Sessions stay pinned');
+    await install.getByRole('button', { name: 'Install / Update', exact: true }).click();
+    await expect(install.getByRole('alert')).toContainText('Grant required permissions');
+    await install.getByRole('checkbox', { name: 'Network access', exact: true }).check();
+    await page.screenshot({ path: info.outputPath('package-update-permissions-390.png') });
+    await install.getByRole('button', { name: 'Install / Update', exact: true }).click();
+    await expect(page.locator('[data-atria-native-works]')).toContainText('3.0.0');
+    await page.evaluate(id => window.Atria.shell.getWorkspaceHost().openLibraryWork(id), next.packageId);
+    const permissions = page.locator('[data-atria-work-permissions]'); await permissions.getByText('Work permissions', { exact: true }).click();
+    await permissions.getByRole('button', { name: 'Review permissions', exact: true }).click();
+    await expect(permissions).toContainText('Required · Accepted at installation'); await expect(permissions).toContainText('Optional declaration · No separate grant recorded');
+    await permissions.getByRole('button', { name: 'Manage uninstall and dependent Sessions', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Review dependent Sessions', exact: true })).toBeVisible();
+    const state = await page.evaluate(async id => (await (await import('/scripts/native/product-client.js')).nativeProductClient.getSession(id)).snapshot.session, old.session.sessionId);
+    expect(state.packageVersionId).toBe(old.manifest.packageVersionId);
+});

@@ -89,28 +89,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 统一资源便携、PackageVersion、Session、Save 与引用冲突的产品闭环。
 
-## NUX-036 — Package update / permission review lacks change impact and post-install management
-
-**Current evidence**
-
-Install/update preflight shows required permission identifiers and capabilities.
-
-The UI does not present:
-
-- old → new version delta;
-- newly added/removed permissions;
-- existing-session pinning impact;
-- human-readable permission explanations/rationale;
-- a first-class post-install permission/grant management surface.
-
-**Acceptance**
-
-Update preflight must explain deltas and security impact. Work detail should show effective permission state and the supported revocation/update model. Existing Sessions remain pinned to their exact PackageVersion.
-
----
-
----
-
 ## NUX-037 — Save dependency recovery explains the problem but does not complete the recovery path
 
 **Current evidence**

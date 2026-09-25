@@ -763,4 +763,27 @@ passed ten. Real Edge at 390px installed a second version with a different Entry
 started the original exact version and verified the newer default stayed unchanged.
 Screenshot inspected; changed JavaScript lint and diff checks passed.
 
-Next: NUX-036 in Group 7.
+### NUX-036
+
+Authenticated update preflight compares installed/default and incoming versions,
+added/removed/changed permission requirements, capability changes and pinned Sessions.
+A changed default invalidates the reviewed update; damaged installed content remains
+repairable with an explicit unavailable-comparison warning and full permission review.
+Permission names have readable descriptions and literal author rationale.
+
+Work detail now presents each exact installed version's permission state and supported
+management model. The established Package contract is installation-time consent, not a
+stored per-permission runtime grant service: required declarations were accepted during
+installation; optional declarations have no separately recorded grant. The UI states this
+explicitly. Revoking installation consent follows the existing guarded Work uninstall path,
+with links to dependent Sessions for export/removal. Updates do not revoke old versions or
+retarget existing Sessions. No ineffective runtime switches or second permission authority
+were introduced.
+
+Validation: five Native/Shell/localization suites passed 25 cases, including update deltas,
+required consent, stale-review rejection, immutable Session pins and guarded uninstall.
+Real Edge at 390px passed missing-consent refusal, explicit grant, installation, version
+permission inspection and navigation to dependent Sessions. Screenshot inspected; lint and
+diff checks passed.
+
+Next: NUX-037 in Group 7.

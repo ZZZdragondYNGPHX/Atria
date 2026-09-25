@@ -44,9 +44,9 @@ export const nativeProductClient = Object.freeze({
         method: 'POST',
         body: { data },
     }),
-    installPackage: (data, grantedPermissions = []) => request('packages/install', {
+    installPackage: (data, grantedPermissions = [], baseVersionId = undefined) => request('packages/install', {
         method: 'POST',
-        body: { data, grantedPermissions },
+        body: { data, grantedPermissions, ...(baseVersionId === undefined ? {} : { baseVersionId }) },
     }),
 
     listWorlds: () => request('worlds'),

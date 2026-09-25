@@ -119,12 +119,13 @@ export function createNativeProductRouter(getServices = services) {
         res.json({ deleted: await product.deleteWork(handle, req.params.packageId) });
     }));
 
-    router.post('/packages/preflight', route(async (req, res, { product }) => {
-        res.json(product.preflightPackage(decodeArchive(req.body?.data)));
+    router.post('/packages/preflight', route(async (req, res, { product }, handle) => {
+        res.json(await product.preflightPackageUpdate(handle, decodeArchive(req.body?.data)));
     }));
     router.post('/packages/install', route(async (req, res, { product }, handle) => {
         res.json(await product.installPackage(handle, decodeArchive(req.body?.data), {
             grantedPermissions: req.body?.grantedPermissions || [],
+            ...(Object.hasOwn(req.body || {}, 'baseVersionId') ? { baseVersionId: req.body.baseVersionId } : {}),
         }));
     }));
 

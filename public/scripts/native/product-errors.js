@@ -6,6 +6,7 @@ const messages = {
     native_product_not_found: 'This item is no longer available. Refresh the list and select an existing item.',
     native_product_conflict: 'This item conflicts with existing data. Refresh and review the current revision before retrying.',
     native_product_failed: 'The operation could not finish. Refresh its current state before trying again.',
+    native_package_update_conflict: 'The installed default changed after review. Select the file again to review the current update impact.',
     native_package_permission_required: 'Review the Package permissions and explicitly grant the required permissions before installing.',
     native_save_package_missing: 'Install the exact Package version required by this save, then import again.',
     native_save_package_mismatch: 'This save requires a different exact Package version. Install that version before importing.',

@@ -164,9 +164,34 @@ export class NativeProductService {
         return this._installer.preflight(archive);
     }
 
+    async preflightPackageUpdate(handle, archive) {
+        const preflight = this.preflightPackage(archive), record = await this._packages.get(handle, preflight.packageId);
+        let previous = null;
+        try { if (record?.currentVersionId) previous = await this._installer.open(handle, preflight.packageId, record.currentVersionId); } catch { /* A damaged installation can still be repaired after full review. */ }
+        const comparisonAvailable = !record?.currentVersionId || Boolean(previous);
+        const oldVersion = record?.currentVersionId && await this._packages.getVersion(handle, preflight.packageId, record.currentVersionId);
+        const before = previous?.manifest.permissions || [], after = preflight.permissions || [];
+        const old = new Map(before.map(item => [item.permission, item])), next = new Map(after.map(item => [item.permission, item]));
+        const sessions = (await this._sessions.list(handle)).filter(item => item.packageId === preflight.packageId);
+        return { ...preflight, update: {
+            previous: record?.currentVersionId ? { packageVersionId: record.currentVersionId, version: oldVersion?.version || null } : null, comparisonAvailable,
+            addedPermissions: (comparisonAvailable ? after : []).filter(item => !old.has(item.permission)), removedPermissions: before.filter(item => !next.has(item.permission)),
+            changedPermissions: after.filter(item => old.has(item.permission) && (old.get(item.permission).required !== item.required || old.get(item.permission).reason !== item.reason)),
+            addedCapabilities: (comparisonAvailable ? preflight.capabilities : []).filter(item => !previous?.manifest.capabilities.includes(item)),
+            removedCapabilities: (previous?.manifest.capabilities || []).filter(item => !preflight.capabilities.includes(item)),
+            pinnedSessions: sessions.map(item => ({ sessionId: item.sessionId, displayTitle: item.displayTitle, packageVersionId: item.packageVersionId, packageVersion: item.packageVersion })),
+            permissionModel: 'installation-consent',
+        } };
+    }
+
     async installPackage(handle, archive, options = {}) {
-        return this._installer.install(handle, archive, {
-            grantedPermissions: options.grantedPermissions || [],
+        const preflight = this.preflightPackage(archive);
+        return withNativeResourceWrite(handle, 'package:' + preflight.packageId, async () => {
+            if (Object.hasOwn(options, 'baseVersionId')) {
+                const current = await this._packages.get(handle, preflight.packageId);
+                if ((current?.currentVersionId || null) !== options.baseVersionId) throw new ConflictError('native_package_update_conflict', { packageId: preflight.packageId, expectedRevisionId: options.baseVersionId, actualRevisionId: current?.currentVersionId || null });
+            }
+            return this._installer.install(handle, archive, { grantedPermissions: options.grantedPermissions || [] });
         });
     }
 

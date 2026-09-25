@@ -327,3 +327,25 @@ test('starting an earlier installed exact version preserves the default and othe
         await expect(product.getWorkVersion(h.handle, next.packageId, createNativeId('packageVersion'))).rejects.toMatchObject({ name: 'NotFoundError' });
     } finally { await h.cleanup(); }
 });
+
+test('update preflight explains permission/capability deltas, pins and stale-review conflicts', async () => {
+    const h = await makeTempFsEngineHarness();
+    try {
+        const f = await installFixture(h), product = new NativeProductService({ ...f, worldRepo: new WorldRepo({ engine: h.engine }), sessionCore: f.core, projectStore: new ProjectStore({ directoriesByHandle: () => h.dirs }) });
+        const old = await product.startWork(h.handle, f.manifest.packageId);
+        const next = structuredClone(f.manifest); next.packageVersionId = createNativeId('packageVersion'); next.version = '2.0.0'; next.permissions = [{ permission: 'network', required: true, reason: 'Fetch story content' }, { permission: 'clipboard', required: false, reason: 'Copy passages' }]; next.capabilities.push('processors');
+        const archive = buildAtriaPackageContainer({ manifest: next, sourceFiles: new Map(), assetPayloads: new Map() }).archive;
+        const review = await product.preflightPackageUpdate(h.handle, archive);
+        expect(review.update.previous.packageVersionId).toBe(f.manifest.packageVersionId);
+        expect(review.update.addedPermissions.map(item => item.permission)).toEqual(['network', 'clipboard']); expect(review.update.addedCapabilities).toEqual(['processors']);
+        expect(review.update.pinnedSessions[0].sessionId).toBe(old.session.sessionId);
+        await expect(product.installPackage(h.handle, archive, { baseVersionId: f.manifest.packageVersionId, grantedPermissions: [] })).rejects.toMatchObject({ code: 'native_package_permission_required' });
+        await product.installPackage(h.handle, archive, { baseVersionId: f.manifest.packageVersionId, grantedPermissions: ['network'] });
+        await expect(product.installPackage(h.handle, archive, { baseVersionId: f.manifest.packageVersionId, grantedPermissions: ['network'] })).rejects.toMatchObject({ code: 'native_package_update_conflict' });
+        const third = structuredClone(next); third.packageVersionId = createNativeId('packageVersion'); third.version = '3.0.0'; third.permissions = [{ permission: 'network', required: false, reason: 'Optional lookup' }]; third.capabilities = f.manifest.capabilities;
+        const later = await product.preflightPackageUpdate(h.handle, buildAtriaPackageContainer({ manifest: third, sourceFiles: new Map(), assetPayloads: new Map() }).archive);
+        expect(later.update.removedPermissions.map(item => item.permission)).toEqual(['clipboard']); expect(later.update.changedPermissions.map(item => item.permission)).toEqual(['network']); expect(later.update.removedCapabilities).toEqual(['processors']);
+        expect((await f.sessionRepo.get(h.handle, old.session.sessionId)).packageVersionId).toBe(f.manifest.packageVersionId);
+        await expect(product.deleteWork(h.handle, next.packageId)).rejects.toMatchObject({ code: 'native_package_referenced' });
+    } finally { await h.cleanup(); }
+});
