@@ -6,7 +6,7 @@ import {
     isToolCallMandatory,
     resolveFunctionCallMode,
     TOOL_PROTOCOL_STYLE,
-} from '../public/scripts/extensions/function-call-runtime.js';
+} from '../public/scripts/lib/runtime-tools.js';
 
 describe('buildPlainTextToolProtocolMessage', () => {
     test('renders JSON_SCHEMA mode as human-readable parameter guidance', () => {

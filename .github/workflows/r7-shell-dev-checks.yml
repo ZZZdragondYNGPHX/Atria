@@ -85,17 +85,17 @@ jobs:
           public/scripts/user.js
           public/scripts/backgrounds.js
           "public/scripts/atria-shell/*.js"
-          public/scripts/extensions/orchestrator/main.js
-          public/scripts/extensions/orchestrator/workspace/panel.js
-          public/scripts/extensions/orchestrator/workspace/shell.js
+          public/scripts/agents/orchestrator/main.js
+          public/scripts/agents/orchestrator/workspace/panel.js
+          public/scripts/agents/orchestrator/workspace/shell.js
           public/scripts/extensions/character-editor-assistant/studio/studio.js
           public/scripts/world-info/workspace.js
           public/scripts/logging/workspace.js
-          public/scripts/extensions/game-runtime/ui/host-surfaces.js
-          public/scripts/extensions/game-runtime/ui/native-components.js
-          public/scripts/extensions/game-runtime/ui/full-host.js
-          public/scripts/extensions/game-runtime/ui/live.js
-          public/scripts/extensions/game-runtime/ui/package.js
+          public/scripts/native/experience/ui/host-surfaces.js
+          public/scripts/native/experience/ui/native-components.js
+          public/scripts/native/experience/ui/full-host.js
+          public/scripts/native/experience/ui/live.js
+          public/scripts/native/experience/ui/package.js
           public/scripts/extensions/card-app/loader.js
           public/scripts/extensions/card-app/index.js
       - name: Lint R7H tests

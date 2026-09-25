@@ -1,0 +1,12 @@
+/* Shared staging layout for the two Atria Global Plugin settings panels. */
+.extensions_block input[type="checkbox"],
+.extensions_block input[type="radio"] {
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+.extensions_block { clear: both; padding: 0.05px; }
+.extensions_info { text-align: left; }
+#extensions_settings,
+#extensions_settings2 { display: flex; flex-direction: column; }
+.extension_container { display: contents; }

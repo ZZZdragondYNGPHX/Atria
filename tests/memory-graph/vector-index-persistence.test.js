@@ -10,7 +10,7 @@ import {
     metaFieldsFromStore,
     buildRuntimeStoreFromGraphPayloadAndMeta,
     normalizeVectorIndexState,
-} from '../../public/scripts/extensions/memory-graph/persistence.js';
+} from '../../public/scripts/agents/memory/persistence.js';
 
 describe('vectorIndexState persistence', () => {
     function makeSampleVectorIndexState() {

@@ -11,7 +11,7 @@
 
 import { describe, test, expect } from '@jest/globals';
 
-import { augmentStudioPromptWithCustomTools } from '../../public/scripts/extensions/orchestrator/studio-prompt-augment.js';
+import { augmentStudioPromptWithCustomTools } from '../../public/scripts/agents/orchestrator/studio-prompt-augment.js';
 
 describe('augmentStudioPromptWithCustomTools', () => {
     test('appends profile + extension tools when present', () => {

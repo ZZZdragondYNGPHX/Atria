@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { createPackageRuntimeContributionRegistry } from '../../public/scripts/extensions/game-runtime/ui/plugin-contributions.js';
+import { createPackageRuntimeContributionRegistry } from '../../public/scripts/native/experience/ui/plugin-contributions.js';
 
 describe('A5 Play package contribution registry', () => {
     test('compiles declarative selector contributions without executable package code', () => {

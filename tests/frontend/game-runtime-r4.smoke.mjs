@@ -52,7 +52,7 @@ async function boot(page) {
             </main>
         `;
 
-        const runtime = await import('/scripts/extensions/game-runtime/ui/live.js');
+        const runtime = await import('/scripts/native/experience/ui/live.js');
         window.__activateGamePackageUi = runtime.activateGamePackageUi;
         window.__recovery = { exit: 0, stop: 0, disable: 0, diagnostics: 0 };
     });

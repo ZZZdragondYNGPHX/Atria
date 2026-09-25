@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
-import { activateNativeExperienceRuntime } from '../../public/scripts/extensions/game-runtime/ui/live.js';
+import { activateNativeExperienceRuntime } from '../../public/scripts/native/experience/ui/live.js';
 import { mountNativePlayHost } from '../../public/scripts/atria-shell/native-play-host.js';
 
 function state(mode, options = {}) {

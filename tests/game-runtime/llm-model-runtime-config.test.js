@@ -4,7 +4,7 @@ import {
     getModelRuntimeConfig,
     getRuntimeRoleConfig,
     setRuntimeRoleConfig,
-} from '../../public/scripts/extensions/game-runtime/llm/model-runtime-config.js';
+} from '../../public/scripts/native/experience/llm/model-runtime-config.js';
 
 describe('R5 Model & Runtime configuration surface', () => {
     test('initializes every workload role with functional defaults', () => {

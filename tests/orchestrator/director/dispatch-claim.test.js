@@ -1,5 +1,5 @@
 import { describe, expect, test, jest, beforeAll } from '@jest/globals';
-import { handleDirectorDispatch } from '../../../public/scripts/extensions/orchestrator/director-runtime.js';
+import { handleDirectorDispatch } from '../../../public/scripts/agents/orchestrator/director-runtime.js';
 import { createMessageEditorHandle } from '../../../public/scripts/message-takeover.js';
 
 // Replace the jest.setup.js Proxy stub with a context that returns the

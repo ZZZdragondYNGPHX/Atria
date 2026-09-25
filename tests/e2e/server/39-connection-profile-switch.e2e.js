@@ -26,7 +26,7 @@ let server, mockA, mockB;
 function seedTwoProfiles({ dataRoot, urlA, urlB }) {
     const settingsPath = resolve(dataRoot, 'default-user', 'settings.json');
     const s = JSON.parse(readFileSync(settingsPath, 'utf8'));
-    s.extension_settings = s.extension_settings || {};
+    s.capabilitySettings = s.capabilitySettings || {};
     const profileA = {
         id: 'pid-A',
         name: 'mock-A',
@@ -45,7 +45,7 @@ function seedTwoProfiles({ dataRoot, urlA, urlB }) {
         'api-url': urlA,
     };
     const profileB = { ...profileA, id: 'pid-B', name: 'mock-B', 'api-url': urlB };
-    s.extension_settings.connectionManager = {
+    s.capabilitySettings.connectionManager = {
         profiles: [profileA, profileB],
         selectedProfile: 'pid-A',
     };
@@ -113,7 +113,7 @@ async function selectConnectionProfile(page, profileName) {
     // /api custom + /api-url custom <url> + /model <model> + status probe.
     await page.waitForFunction((name) => {
         const ctx = window.Atria?.getContext?.();
-        const cm = ctx?.extensionSettings?.connectionManager;
+        const cm = ctx?.capabilitySettings?.connectionManager;
         if (!cm) return false;
         const sel = cm.profiles?.find(p => p.id === cm.selectedProfile);
         return sel?.name === name;
@@ -158,7 +158,7 @@ test.describe('#39 — connection profile switching routes per backend (real dro
         await reloadAndAwait(page, server.baseURL);
         const persisted = await page.evaluate(() => {
             const ctx = window.Atria.getContext();
-            const cm = ctx.extensionSettings?.connectionManager;
+            const cm = ctx.capabilitySettings?.connectionManager;
             return {
                 count: cm?.profiles?.length || 0,
                 names: (cm?.profiles || []).map(p => p.name).sort(),

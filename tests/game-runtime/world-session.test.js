@@ -3,7 +3,7 @@ import { describe, expect, jest, test } from '@jest/globals';
 import {
     GAME_RUNTIME_STATE_NAMESPACE,
     createGameWorldSession,
-} from '../../public/scripts/extensions/game-runtime/world/session.js';
+} from '../../public/scripts/native/experience/world/session.js';
 
 const worldId = 'world_0123456789abcdef0123456789abcdef';
 const worldRevisionId = 'worldRevision_0123456789abcdef0123456789abcdef';

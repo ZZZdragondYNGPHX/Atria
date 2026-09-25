@@ -20,11 +20,11 @@ import { describe, expect, test, jest } from '@jest/globals';
 import {
     createDefaultDirectorProfile,
     sanitizeDirectorProfile,
-} from '../../../public/scripts/extensions/orchestrator/director-defaults.js';
+} from '../../../public/scripts/agents/orchestrator/director-defaults.js';
 import {
     createSubagentDispatcher,
     SUB_AGENT_MAX_ROUNDS,
-} from '../../../public/scripts/extensions/orchestrator/director-tools.js';
+} from '../../../public/scripts/agents/orchestrator/director-tools.js';
 
 function makeSubAgent(overrides = {}) {
     return {

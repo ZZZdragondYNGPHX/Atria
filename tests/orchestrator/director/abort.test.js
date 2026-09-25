@@ -1,7 +1,7 @@
-import { buildPerRunCustomToolRegistry } from '../../../public/scripts/extensions/orchestrator/per-run-custom-tools.js';
+import { buildPerRunCustomToolRegistry } from '../../../public/scripts/agents/orchestrator/per-run-custom-tools.js';
 import { describe, expect, test, jest } from '@jest/globals';
-import { runMainAgentLoop } from '../../../public/scripts/extensions/orchestrator/director-runtime.js';
-import { createSubagentDispatcher } from '../../../public/scripts/extensions/orchestrator/director-tools.js';
+import { runMainAgentLoop } from '../../../public/scripts/agents/orchestrator/director-runtime.js';
+import { createSubagentDispatcher } from '../../../public/scripts/agents/orchestrator/director-tools.js';
 import { createMessageEditorHandle } from '../../../public/scripts/message-takeover.js';
 
 // Abort discipline tests. The main director loop must stop dispatching

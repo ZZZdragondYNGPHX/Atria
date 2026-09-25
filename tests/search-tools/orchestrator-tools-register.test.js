@@ -4,7 +4,7 @@ import {
     unregisterSearchToolsOrchestrationTools,
     SEARCH_TOOL_NAMES,
 } from '../../public/scripts/extensions/search-tools/orchestrator-tools.js';
-import { __getExtensionRegistryForTest } from '../../public/scripts/extensions/orchestrator/register-custom-tool.js';
+import { __getExtensionRegistryForTest } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
 
 describe('search-tools orchestrator tools', () => {
     beforeEach(async () => {

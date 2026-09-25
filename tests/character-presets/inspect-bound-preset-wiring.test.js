@@ -16,7 +16,7 @@
 // `inspect-bound-preset-tool.test.js`; this file only proves both consumer
 // surfaces see the tool.
 
-import { jest } from '@jest/globals';
+import { test, expect } from '@jest/globals';
 
 // -- 1. iteration-library/tools/index.js aggregation --
 
@@ -27,32 +27,4 @@ test('iteration-library/tools/index.js re-exports characterPresetsReads namespac
     expect(typeof mod.characterPresetsReads.isCharacterPresetReadTool).toBe('function');
     expect(typeof mod.characterPresetsReads.runCharacterPresetReadTool).toBe('function');
     expect(Array.isArray(mod.characterPresetsReads.CHARACTER_PRESET_READ_TOOL_DEFS)).toBe(true);
-});
-
-// -- 2. CEA editor-iteration tool catalog --
-
-// tools.js imports `runCharacterEditorHelperToolCall` from ../main.js, which
-// transitively hits the whole ST bootstrap graph. Mock ../main.js and the
-// shared preset-reads module before importing tools.js so we can drive the
-// catalog without loading production main.js.
-jest.unstable_mockModule('../../public/scripts/extensions/character-editor-assistant/main.js', () => ({
-    runCharacterEditorHelperToolCall: jest.fn(),
-}));
-
-const { buildCeaEditorToolSet, isCeaEditorReadTool } = await import(
-    '/scripts/extensions/character-editor-assistant/editor-iteration/tools.js'
-);
-
-test('CEA editor tool catalog advertises inspect_bound_preset', () => {
-    const tools = buildCeaEditorToolSet({}, {}, { hasSearchTools: false });
-    const names = tools.map(t => t?.function?.name).filter(Boolean);
-    expect(names).toContain('inspect_bound_preset');
-});
-
-test('CEA editor classifies inspect_bound_preset as a read tool', () => {
-    expect(isCeaEditorReadTool('inspect_bound_preset')).toBe(true);
-    // Sanity — obvious non-read names stay classified as non-read so the
-    // predicate isn't broadly true.
-    expect(isCeaEditorReadTool('cea_set_card_field')).toBe(false);
-    expect(isCeaEditorReadTool('nonsense_tool')).toBe(false);
 });

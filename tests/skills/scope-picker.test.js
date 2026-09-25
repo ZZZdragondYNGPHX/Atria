@@ -19,14 +19,14 @@ jest.unstable_mockModule('../../public/scripts/skills/i18n.js', () => ({
 describe('scope-picker: listAllOrchPresetScopes', () => {
     test('returns empty array when orchestrator plugin is not loaded', async () => {
         const { listAllOrchPresetScopes } = await import('../../public/scripts/skills/scope-picker.js');
-        const context = { extensionSettings: {} };
+        const context = { capabilitySettings: {} };
         expect(listAllOrchPresetScopes(context)).toEqual([]);
     });
 
     test('enumerates presets across all 4 modes', async () => {
         const { listAllOrchPresetScopes } = await import('../../public/scripts/skills/scope-picker.js');
         const context = {
-            extensionSettings: {
+            capabilitySettings: {
                 orchestrator: {
                     presetLibraries: {
                         spec: { s1: { name: 'Spec Default' } },
@@ -50,7 +50,7 @@ describe('scope-picker: listAllOrchPresetScopes', () => {
     test('skips entries without a name field', async () => {
         const { listAllOrchPresetScopes } = await import('../../public/scripts/skills/scope-picker.js');
         const context = {
-            extensionSettings: {
+            capabilitySettings: {
                 orchestrator: {
                     presetLibraries: {
                         spec: { s1: { name: 'Good' }, s2: {}, s3: { name: '' } },

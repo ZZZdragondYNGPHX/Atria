@@ -36,16 +36,16 @@ function normalizeSettings(dataRoot) {
     baseNormalize(dataRoot);
     const sp = settingsJsonPath(dataRoot);
     const s = JSON.parse(readFileSync(sp, 'utf8'));
-    s.extension_settings = s.extension_settings || {};
-    s.extension_settings.orchestrator = s.extension_settings.orchestrator || {};
-    s.extension_settings.orchestrator.enabled = true;
-    s.extension_settings.orchestrator.executionMode = 'director';
+    s.capabilitySettings = s.capabilitySettings || {};
+    s.capabilitySettings.orchestrator = s.capabilitySettings.orchestrator || {};
+    s.capabilitySettings.orchestrator.enabled = true;
+    s.capabilitySettings.orchestrator.executionMode = 'director';
     writeFileSync(sp, JSON.stringify(s, null, 4));
 }
 
 function readActiveDirectorPreset(dataRoot) {
     const s = JSON.parse(readFileSync(settingsJsonPath(dataRoot), 'utf8'));
-    const ext = s?.extension_settings?.orchestrator;
+    const ext = s?.capabilitySettings?.orchestrator;
     if (!ext) return null;
     const activeId = ext.activePresetIds?.director || '';
     const lib = ext.presetLibraries?.director || {};
@@ -96,7 +96,7 @@ test.describe('#81 — Orchestrator iter-studio Apply → director profile persi
         await expect.poll(async () => {
             return await page.evaluate(() => {
                 const ctx = window.Atria.getContext();
-                const s = ctx.extensionSettings.orchestrator;
+                const s = ctx.capabilitySettings.orchestrator;
                 const activeId = s?.activePresetIds?.director || '';
                 return s?.presetLibraries?.director?.[activeId]?.mainAgent?.systemPrompt || '';
             });
@@ -115,7 +115,7 @@ test.describe('#81 — Orchestrator iter-studio Apply → director profile persi
 
         const inMem = await page.evaluate(() => {
             const ctx = window.Atria.getContext();
-            const s = ctx.extensionSettings.orchestrator;
+            const s = ctx.capabilitySettings.orchestrator;
             const activeId = s?.activePresetIds?.director || '';
             return s?.presetLibraries?.director?.[activeId]?.mainAgent?.systemPrompt || '';
         });

@@ -29,7 +29,7 @@ describe('ownership attribution', () => {
     test('Atria implementation throw remains attributed to Atria', () => {
         const stack = [
             'Error: contract failed',
-            '    at validate (http://localhost:8000/scripts/extensions/orchestrator/runtime.js:12:4)',
+            '    at validate (http://localhost:8000/scripts/agents/orchestrator/runtime.js:12:4)',
             '    at pluginCall (http://localhost:8000/scripts/extensions/third-party/demo-plugin/main.js:42:8)',
         ].join('\n');
         const ownership = attributeOwnership({ stack });

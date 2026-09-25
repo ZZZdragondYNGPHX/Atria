@@ -15,7 +15,7 @@ import { autoSelectInstructPreset } from './instruct-mode.js';
 import { t } from './i18n.js';
 import { callGenericPopup, POPUP_TYPE } from './popup.js';
 import { kai_settings } from './kai-settings.js';
-import { withProfileRetry } from './extensions/connection-manager/profile-retry.js';
+import { withRetry } from './request-retry.js';
 
 export {
     MIN_LENGTH,
@@ -219,7 +219,7 @@ export async function generateHorde(prompt, params, signal, reportProgress, { on
         'models': horde_settings.models,
     };
 
-    const response = await withProfileRetry(async () => {
+    const response = await withRetry(async () => {
         if (typeof onRequestReady === 'function') {
             try {
                 onRequestReady();

@@ -109,7 +109,7 @@ async function enableMgViaCheckbox(page) {
         // of the dev's "Claude" connection profile which points at the
         // real Claude API.
         const ctx = window.Atria.getContext();
-        const s = ctx.extensionSettings?.memory_graph;
+        const s = ctx.capabilitySettings?.memory_graph;
         if (s) {
             s.requestApiPresetName = '';
             s.requestLlmPresetName = '';
@@ -166,7 +166,7 @@ test.describe('#54 — MG schema-iter Studio: 5 set-node-type rounds land every 
             // dispatching. The dev's settings has 3 profiles all pointing
             // at real APIs; with no selectedProfile, the studio falls
             // through to oai_settings directly (our mock).
-            const cm = ctx.extensionSettings?.connectionManager;
+            const cm = ctx.capabilitySettings?.connectionManager;
             if (cm) {
                 cm.selectedProfile = '';
             }
@@ -200,7 +200,7 @@ test.describe('#54 — MG schema-iter Studio: 5 set-node-type rounds land every 
             s.proxy_password = '';
             // Also clear the active connection profile so resolveProfile
             // doesn't pull from the (dev's polluted) Claude profile.
-            const cm = ctx.extensionSettings?.connectionManager;
+            const cm = ctx.capabilitySettings?.connectionManager;
             if (cm) cm.selectedProfile = null;
         }, mock.baseURL);
 
@@ -240,7 +240,7 @@ test.describe('#54 — MG schema-iter Studio: 5 set-node-type rounds land every 
             if (overrideEvent && Array.isArray(overrideEvent.tableColumns)) {
                 return overrideEvent.tableColumns.slice();
             }
-            const s = ctx.extensionSettings?.memory_graph;
+            const s = ctx.capabilitySettings?.memory_graph;
             const eventSpec = (s?.nodeTypeSchema || []).find(x => x?.id === 'event');
             return Array.isArray(eventSpec?.tableColumns) ? eventSpec.tableColumns.slice() : [];
         });

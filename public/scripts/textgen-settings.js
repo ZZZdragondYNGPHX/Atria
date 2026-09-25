@@ -18,7 +18,7 @@ import {
 import { deriveTemplatesFromChatTemplate } from './chat-templates.js';
 import { t } from './i18n.js';
 import { autoSelectInstructPreset, selectContextPreset, selectInstructPreset } from './instruct-mode.js';
-import { withProfileRetry } from './extensions/connection-manager/profile-retry.js';
+import { withRetry } from './request-retry.js';
 import { BIAS_CACHE, createNewLogitBiasEntry, displayLogitBias, getLogitBiasListResult } from './logit-bias.js';
 import { unescapeMacroBracesInRequestData } from './macros/util/escape.js';
 
@@ -1315,7 +1315,7 @@ function setSettingByName(setting, value, trigger) {
 export async function generateTextGenWithStreaming(generate_data, signal, { onAtriaMeta = null, onRequestReady = null } = {}) {
     generate_data.stream = true;
 
-    const response = await withProfileRetry(async () => {
+    const response = await withRetry(async () => {
         if (typeof onRequestReady === 'function') {
             try {
                 onRequestReady();

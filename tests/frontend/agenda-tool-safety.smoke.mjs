@@ -20,8 +20,8 @@ try {
     await page.waitForFunction(name => window.Atria.getContext().characters[window.Atria.getContext().characterId]?.name === name, name);
     const result = await page.evaluate(async () => {
         const ctx = window.Atria.getContext(), context = Object.create(ctx);
-        const { runAgendaOrchestration } = await import('/scripts/extensions/orchestrator/agenda-runtime.js');
-        const { getCurrentRun } = await import('/scripts/extensions/orchestrator/run-state/store.js');
+        const { runAgendaOrchestration } = await import('/scripts/agents/orchestrator/agenda-runtime.js');
+        const { getCurrentRun } = await import('/scripts/agents/orchestrator/run-state/store.js');
         const P = 'atri_orch_planner_step', W = 'atri_orch_submit_result';
         const profile = { mode: 'agenda', planner: { systemPrompt: 'Plan' }, agents: {
             worker: { purpose: 'Inspect facts', systemPrompt: 'PRIVATE WORKER atri_orch_submit_result', tools: {} },

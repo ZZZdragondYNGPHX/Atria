@@ -11,7 +11,7 @@ import { describe, it, expect } from '@jest/globals';
 
 import {
     exportRunTraceAsJsonl,
-} from '../../public/scripts/extensions/orchestrator/runtime-trace-export.js';
+} from '../../public/scripts/agents/orchestrator/runtime-trace-export.js';
 
 describe('exportRunTraceAsJsonl', () => {
     it('returns an empty string when given an empty array', () => {

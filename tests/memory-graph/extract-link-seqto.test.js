@@ -3,7 +3,7 @@
 // applyExtractedLinks and the op pipeline; this test is a regression
 // guard against the wiring being removed.
 import { describe, test, expect } from '@jest/globals';
-import { addEdge } from '../../public/scripts/extensions/memory-graph/graph-ops.js';
+import { addEdge } from '../../public/scripts/agents/memory/graph-ops.js';
 
 describe('extract link writes carry seqTo', () => {
     test('addEdge receives seqTo when extract pipeline writes a link', () => {

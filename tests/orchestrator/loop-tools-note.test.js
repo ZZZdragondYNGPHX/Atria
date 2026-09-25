@@ -36,15 +36,15 @@ import {
     execNoteOpen,
     execNoteClose,
     loadAllNotes,
-} from '../../public/scripts/extensions/orchestrator/loop-tools/note.js';
+} from '../../public/scripts/agents/orchestrator/loop-tools/note.js';
 import {
     executeLoopTool,
     getEnabledToolSchemas,
-} from '../../public/scripts/extensions/orchestrator/loop-tools.js';
+} from '../../public/scripts/agents/orchestrator/loop-tools.js';
 import {
     ToolError,
     __testBuildInitialMessages,
-} from '../../public/scripts/extensions/orchestrator/loop-runtime.js';
+} from '../../public/scripts/agents/orchestrator/loop-runtime.js';
 
 function makeFakeFloorState() {
     const stored = []; // { floor, id, text }
@@ -420,7 +420,7 @@ describe('makeNotesAdapter surfaces write failures as envelopes', () => {
     // default to the success envelope.
     async function mountAdapterWith({ updateResult, getResult } = {}) {
         const { attachNotesFloorState, resetNotesFloorStateInstanceForTesting } =
-            await import('../../public/scripts/extensions/orchestrator/loop-runtime.js');
+            await import('../../public/scripts/agents/orchestrator/loop-runtime.js');
         resetNotesFloorStateInstanceForTesting();
         const fakeFs = {
             ready: async () => undefined,
@@ -465,7 +465,7 @@ describe('makeNotesAdapter surfaces write failures as envelopes', () => {
         // Seed an entry the reducer can find, then make fs.update return the
         // failure envelope for the next call by toggling through a stateful fake.
         const { attachNotesFloorState, resetNotesFloorStateInstanceForTesting } =
-            await import('../../public/scripts/extensions/orchestrator/loop-runtime.js');
+            await import('../../public/scripts/agents/orchestrator/loop-runtime.js');
         resetNotesFloorStateInstanceForTesting();
         let nextUpdateResult = { ok: true, updated: true };
         let stored = { entries: [{ id: 'x', text: 't', status: 'open' }] };
@@ -500,7 +500,7 @@ describe('makeNotesAdapter surfaces write failures as envelopes', () => {
     test('updateStatusById passes through already_<status> no-op outcomes', async () => {
         // Same domain-vs-failure split for the already-at-target branch.
         const { attachNotesFloorState, resetNotesFloorStateInstanceForTesting } =
-            await import('../../public/scripts/extensions/orchestrator/loop-runtime.js');
+            await import('../../public/scripts/agents/orchestrator/loop-runtime.js');
         resetNotesFloorStateInstanceForTesting();
         const stored = { entries: [{ id: 'x', text: 't', status: 'closed' }] };
         const fakeFs = {
@@ -523,7 +523,7 @@ describe('makeNotesAdapter surfaces write failures as envelopes', () => {
 
     test('updateTextById returns ok:false envelope on patch rejection of a real edit', async () => {
         const { attachNotesFloorState, resetNotesFloorStateInstanceForTesting } =
-            await import('../../public/scripts/extensions/orchestrator/loop-runtime.js');
+            await import('../../public/scripts/agents/orchestrator/loop-runtime.js');
         resetNotesFloorStateInstanceForTesting();
         let nextUpdateResult = { ok: true, updated: true };
         let stored = { entries: [{ id: 'y', text: 'original', status: 'open' }] };
@@ -547,7 +547,7 @@ describe('makeNotesAdapter surfaces write failures as envelopes', () => {
 
     test('deleteByIds returns ok:false envelope only when an actual delete is rejected', async () => {
         const { attachNotesFloorState, resetNotesFloorStateInstanceForTesting } =
-            await import('../../public/scripts/extensions/orchestrator/loop-runtime.js');
+            await import('../../public/scripts/agents/orchestrator/loop-runtime.js');
         resetNotesFloorStateInstanceForTesting();
         let nextUpdateResult = { ok: true, updated: true };
         let stored = { entries: [{ id: 'a', text: 't', status: 'open' }] };

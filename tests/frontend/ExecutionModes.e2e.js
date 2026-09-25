@@ -28,7 +28,7 @@ test('legacy copy, explicit activation, simplified editing and reload preserve c
     await page.locator('#atri_orch_quick_system').fill('Check the letter before replying.');
     await page.locator('#atri_orch_quick_system').blur();
     await expect.poll(() => page.evaluate(() => {
-        const s = Atria.getContext().extensionSettings.orchestrator;
+        const s = Atria.getContext().capabilitySettings.orchestrator;
         return s.presetLibraries.spec[s.activePresetIds.spec].presets.single_agent.systemPrompt;
     })).toBe('Check the letter before replying.');
     await page.reload();

@@ -176,7 +176,7 @@ test.describe('#57 — MG import never produces ID collisions', () => {
         await importBindLatest(page, origPath);
         const afterOrig = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const mg = ctx.getExtensionApi?.('memory-graph');
+            const mg = ctx.getCapabilityApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             return session ? session.listVisibleCandidates({}).map(n => n.title).filter(t => /ORIG-/.test(t)).sort() : [];
         });
@@ -187,7 +187,7 @@ test.describe('#57 — MG import never produces ID collisions', () => {
         await importBindLatest(page, importedPath);
         const afterImport = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const mg = ctx.getExtensionApi?.('memory-graph');
+            const mg = ctx.getCapabilityApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             if (!session) return { importedTitles: [], originalsGone: false, maxNodeId: 0 };
             const cands = session.listVisibleCandidates({});
@@ -218,7 +218,7 @@ test.describe('#57 — MG import never produces ID collisions', () => {
         // session.createNode would generate n_4 — no collision.
         const runtimeNodeSeq = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const mod = await import('/scripts/extensions/memory-graph/main.js');
+            const mod = await import('/scripts/agents/memory/main.js');
             const store = await mod.ensureMemoryStoreLoaded(ctx);
             return Number(store?.nodeSeq || 0);
         });

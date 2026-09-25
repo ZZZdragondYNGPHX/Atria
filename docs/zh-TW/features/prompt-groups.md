@@ -77,4 +77,3 @@
 ## 相關功能
 
 - [預設分組](/zh-TW/features/preset-groups) — 預設選擇器中的分組展示
-- [補全預設助手](/zh-TW/features/preset-assistant) — AI 輔助理解和調整預設參數

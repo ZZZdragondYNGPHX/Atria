@@ -179,7 +179,7 @@ test.describe('#52 — Seed via real Import button → View Graph renders cytosc
         // Cross-check via Layer-1 read API: 3 nodes seeded → visible.
         const preRestartNodes = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const mg = ctx.getExtensionApi?.('memory-graph');
+            const mg = ctx.getCapabilityApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             return session ? session.listVisibleCandidates({}).map(n => ({ id: n.id, title: n.title })) : [];
         });
@@ -205,7 +205,7 @@ test.describe('#52 — Seed via real Import button → View Graph renders cytosc
 
         const postRestartNodes = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const mg = ctx.getExtensionApi?.('memory-graph');
+            const mg = ctx.getCapabilityApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             return session ? session.listVisibleCandidates({}).map(n => ({ id: n.id, title: n.title })) : [];
         });

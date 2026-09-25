@@ -1,5 +1,5 @@
 import { describe, test, expect, jest } from '@jest/globals';
-import { applyProfileWorldInfoFilter } from '../../public/scripts/extensions/orchestrator/lorebook-filter.js';
+import { applyProfileWorldInfoFilter } from '../../public/scripts/agents/orchestrator/lorebook-filter.js';
 import {
     createWorldInfoDispatchAttribution,
     filterWorldInfoByProvenance,

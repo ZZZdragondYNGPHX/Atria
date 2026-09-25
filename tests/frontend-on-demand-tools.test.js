@@ -10,7 +10,6 @@ describe('on-demand frontend tools', () => {
             './scripts/character/manage-bound-presets-dialog.js',
             './scripts/chat-backups.js',
             './scripts/macros/engine/MacroDiagnostics.js',
-            './scripts/extensions-slashcommands.js',
         ];
 
         for (const modulePath of modules) {
@@ -42,11 +41,4 @@ describe('on-demand frontend tools', () => {
         expect(source).toContain("failed to load macro diagnostics");
     });
 
-    test('registers extension slash commands during post-visible batch 2 via dynamic import', () => {
-        const source = readFileSync(SCRIPT_URL, 'utf8');
-        const batch2At = source.indexOf('startup tasks batch 2 start');
-        const importAt = source.indexOf("import('./scripts/extensions-slashcommands.js')", batch2At);
-        expect(batch2At).toBeGreaterThanOrEqual(0);
-        expect(importAt).toBeGreaterThan(batch2At);
-    });
 });

@@ -1,4 +1,4 @@
-import { sourceContent } from '../../../public/scripts/extensions/memory-graph/source-provenance.js';
+import { sourceContent } from '../../../public/scripts/agents/memory/source-provenance.js';
 
 export function largeMemory(size = 1000) {
     const chat = []; const state = { version: 1, scopeId: 'benchmark', sources: {}, episodes: {}, dependencies: [], facts: {}, entities: {}, relations: {} };

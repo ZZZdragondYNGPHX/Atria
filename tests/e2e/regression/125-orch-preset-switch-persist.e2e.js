@@ -17,7 +17,7 @@ test('plugin compatibility settings entry opens embedded Agents Workspace on mob
     test.setTimeout(90000);
     await page.setViewportSize({ width: 390, height: 844 });
     await awaitMainUI(page, server.baseURL);
-    await page.waitForFunction(() => window.Atria?.getContext?.().getExtensionApi?.('orchestrator')?.listWorkspacePresets);
+    await page.waitForFunction(() => window.Atria?.getContext?.().getCapabilityApi?.('orchestrator')?.listWorkspacePresets);
 
     await openExtensionsDrawer(page);
     const block = page.locator('#orchestrator_settings');
@@ -79,7 +79,7 @@ test('plugin compatibility settings entry opens embedded Agents Workspace on mob
 test('native definition and default binding survive page reload', async ({ page }, info) => {
     test.setTimeout(90000);
     await awaitMainUI(page,server.baseURL);
-    await page.evaluate(async () => { const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.openWorkspace('Orchestration'); });
+    await page.evaluate(async () => { const panel = await import('/scripts/agents/orchestrator/workspace/panel.js'); panel.openWorkspace('Orchestration'); });
     const root = page.locator('#agent-memory-workspace');
     const initialInspector = root.locator('.atria-workspace-inspector');
     await expect(root).toBeVisible();
@@ -101,11 +101,11 @@ test('native definition and default binding survive page reload', async ({ page 
     const id = await page.evaluate(async () => {
         const context = window.Atria.getContext();
         await context.saveSettings?.(0,{ directSave:true });
-        return context.extensionSettings.orchestrator.agentWorkspace.bindings.defaultPresetId;
+        return context.capabilitySettings.orchestrator.agentWorkspace.bindings.defaultPresetId;
     });
     await reloadAndAwait(page,server.baseURL);
-    expect(await page.evaluate(() => window.Atria.getContext().extensionSettings.orchestrator.agentWorkspace.bindings.defaultPresetId)).toBe(id);
-    await page.evaluate(async () => { const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.openWorkspace('Orchestration'); });
+    expect(await page.evaluate(() => window.Atria.getContext().capabilitySettings.orchestrator.agentWorkspace.bindings.defaultPresetId)).toBe(id);
+    await page.evaluate(async () => { const panel = await import('/scripts/agents/orchestrator/workspace/panel.js'); panel.openWorkspace('Orchestration'); });
     await expect(root.locator('.workspace-effective-preset strong')).toHaveText('Persistent native preset');
     await expect(root.locator('.workspace-effective-preset span')).toHaveText('default');
     expect(await root.locator('.atria-workspace-main').evaluate(node => node.getBoundingClientRect().width)).toBeGreaterThan(500);

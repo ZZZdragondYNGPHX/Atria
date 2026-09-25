@@ -19,11 +19,11 @@ jest.unstable_mockModule('../../public/script.js', () => ({
     substituteParams: (s) => s,
     substituteParamsExtended: (s) => s,
 }));
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
-    extension_settings: { variables: { global: {} } },
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
+    capabilitySettings: { variables: { global: {} } },
     saveMetadataDebounced: () => {},
     getContext: () => ({}),
-    registerExtensionApi: () => {},
+    registerCapabilityApi: () => {},
 }));
 jest.unstable_mockModule('../../public/scripts/slash-commands.js', () => ({ executeSlashCommandsWithOptions: async () => ({}) }));
 

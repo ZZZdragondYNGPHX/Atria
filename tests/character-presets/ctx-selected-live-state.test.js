@@ -174,7 +174,7 @@ jest.unstable_mockModule('../../public/script.js', () => ({
     buildObjectPatchOperationsAsync: () => Promise.resolve([]),
 }));
 
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
     writeExtensionField: jest.fn(async (id, ns, value) => {
         const c = charactersArray[id];
         if (!c) throw new Error(`test-writeExtensionField: no character at id=${id}`);
@@ -183,20 +183,20 @@ jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
         c.data.extensions[ns] = value;
     }),
     writeExtensionFieldBulk: async () => {},
-    extension_settings: {},
-    getExtensionManifest: () => null,
+    capabilitySettings: {},
+    getGlobalPluginManifest: () => null,
     ModuleWorkerWrapper: class {},
     openThirdPartyExtensionMenu: () => Promise.resolve(),
-    registerExtensionApi: () => {},
-    getExtensionApi: () => null,
+    registerCapabilityApi: () => {},
+    getCapabilityApi: () => null,
     getCharacterState: () => null,
     setCharacterState: () => Promise.resolve(),
     patchCharacterState: () => Promise.resolve(),
     updateCharacterState: () => Promise.resolve(),
     getCharacterStateBatch: () => ({}),
     deleteCharacterState: () => Promise.resolve(),
-    renderExtensionTemplate: () => '',
-    renderExtensionTemplateAsync: () => Promise.resolve(''),
+    renderPluginTemplate: () => '',
+    renderPluginTemplateAsync: () => Promise.resolve(''),
     saveMetadataDebounced: () => {},
     UNSET_VALUE: Symbol('UNSET_VALUE'),
 }));
@@ -252,8 +252,8 @@ function nsStub(extra = {}) {
 
 jest.unstable_mockModule('../../public/scripts/lib/edits/index.js', () => nsStub());
 jest.unstable_mockModule('../../public/scripts/iteration-library/index.js', () => nsStub());
-jest.unstable_mockModule('../../public/scripts/extensions/atria-tabs.js', () => nsStub());
-jest.unstable_mockModule('../../public/scripts/extensions/field-help.js', () => nsStub());
+jest.unstable_mockModule('../../public/scripts/lib/atria-tabs.js', () => nsStub());
+jest.unstable_mockModule('../../public/scripts/lib/field-help.js', () => nsStub());
 
 jest.unstable_mockModule('../../public/scripts/group-chats.js', () => ({
     groups: [], openGroupChat: () => Promise.resolve(), selected_group: null, unshallowGroupMembers: () => Promise.resolve(),
@@ -367,12 +367,8 @@ jest.unstable_mockModule('../../public/scripts/world-info.js', () => ({
 jest.unstable_mockModule('../../public/scripts/custom-request.js', () => ({
     ChatCompletionService: {}, TextCompletionService: {},
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/shared.js', () => ({
-    ConnectionManagerRequestService: {},
-}));
-jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/profile-resolver.js', () => ({
-    getChatCompletionConnectionProfiles: () => [], resolveChatCompletionRequestProfile: () => null,
-}));
+
+
 jest.unstable_mockModule('../../public/scripts/reasoning.js', () => ({
     updateReasoningUI: () => {}, parseReasoningFromString: () => ({ reasoning: '', content: '' }),
     getReasoningTemplateByName: () => null, removeReasoningFromString: (s) => String(s ?? ''),
@@ -415,9 +411,7 @@ jest.unstable_mockModule('../../public/scripts/skills/api.js', () => ({
 jest.unstable_mockModule('../../public/scripts/secrets.js', () => ({
     SECRET_KEYS: {}, secret_state: {}, canViewSecrets: () => false, updateSecretDisplay: () => {},
 }));
-jest.unstable_mockModule('../../public/scripts/embedding-service.js', () => ({
-    EmbeddingService: class {},
-}));
+
 
 jest.unstable_mockModule('../../public/scripts/user.js', () => ({ getCurrentUserHandle: () => 'test-user' }));
 

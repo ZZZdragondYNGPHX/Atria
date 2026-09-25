@@ -4,8 +4,8 @@
 
 仓库内有两份参考适配器：
 
-- `public/scripts/extensions/orchestrator/iteration-adapter.js` —— 编辑编排器 profile（spec / agenda / loop）
-- `public/scripts/extensions/memory-graph/schema-adapter.js` —— 编辑记忆图节点类型 schema
+- `public/scripts/agents/orchestrator/iteration-adapter.js` —— 编辑编排器 profile（spec / agenda / loop）
+- `public/scripts/agents/memory/schema-adapter.js` —— 编辑记忆图节点类型 schema
 
 本页是契约和构建自己适配器的 walkthrough。
 
@@ -249,8 +249,8 @@ Layer 3 表面重新导出与 Layer 1 相同的函数；`open` 是 `openIteratio
 
 阅读这些文件可以看到契约的端到端样例：
 
-- `public/scripts/extensions/orchestrator/iteration-adapter.js` —— 用 sandbox-diff 模式包裹编排器既有的变更器。布局 `split`、按 mode 分桶的会话、运行时 world-info 解析、自定义控制工具名。
-- `public/scripts/extensions/memory-graph/schema-adapter.js` —— 直接基于 v2 契约构建的节点类型 schema 编辑器。布局 `split`、仅全局会话、预览面板里有"应用到全局" /"应用到角色"动作按钮。
+- `public/scripts/agents/orchestrator/iteration-adapter.js` —— 用 sandbox-diff 模式包裹编排器既有的变更器。布局 `split`、按 mode 分桶的会话、运行时 world-info 解析、自定义控制工具名。
+- `public/scripts/agents/memory/schema-adapter.js` —— 直接基于 v2 契约构建的节点类型 schema 编辑器。布局 `split`、仅全局会话、预览面板里有"应用到全局" /"应用到角色"动作按钮。
 - **CEA 角色编辑器** —— `public/scripts/extensions/character-editor-assistant/character-editor-adapter.js`，布局 `split`、按角色范围 `char_<avatar>`。实时数据结构为 `{ card, lorebook: { bookName, entries: { [uid]: entry } } }`。通过 `mergeCharacterAttributes` 编辑角色卡字段，通过 `context.saveWorldInfo` 编辑世界书。注册 3 个以条目 uid 为键的自定义 op（`lorebook_entry_add / update / remove`）。
 - **CPA（补全预设助手）** —— `public/scripts/extensions/completion-preset-assistant/cpa-iteration/`（studio 通过 `openCpaIterationStudio` 自挂为 popup，独立于分层 `iterationStudio` open / defineAdapter 契约）。按预设范围 `preset_<name>`。实时目标是用户当前选中的 OpenAI 预设（通过 `context.presets.get`）；`commit()` 通过 `context.presets.save(..., { select: true })` 写回。工具集为 15 个可编辑预设操作 + 5 个只读检查工具 + 12 个 Skills 编写工具（清单 + 写入 + 逐字抽取，仅在会话模式为 `orchestrator-optimize` 时暴露，直接复用编排器侧 `skill-iter-studio-tools.js` 的注册表）。无预览面板——聊天中的每条消息编辑摘要即为差异展示。
 

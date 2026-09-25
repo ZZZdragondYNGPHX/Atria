@@ -1,6 +1,6 @@
 import { MacroRegistry, MacroCategory } from '../engine/MacroRegistry.js';
 import { eventSource, event_types } from '../../events.js';
-import { findExtension } from '../../extensions.js';
+import { globalPluginNames, capabilitySettings } from '../../capability-host.js';
 
 let lastGenerationTypeValue = '';
 let lastGenerationTypeTrackingInitialized = false;
@@ -39,19 +39,18 @@ export function registerStateMacros() {
         handler: () => lastGenerationTypeValue,
     });
 
-    // Macro that checks if an extension is enabled
-    MacroRegistry.registerMacro('hasExtension', {
+    // Macro that checks if an Global Plugin is enabled
+    MacroRegistry.registerMacro('hasGlobalPlugin', {
         category: MacroCategory.STATE,
         unnamedArgs: [{
             name: 'extensionName',
             type: 'string',
-            description: 'The name of the extension to check',
+            description: 'The name of the Global Plugin to check',
         }],
-        description: 'Checks if a specific extension is enabled. If the extension does not exist, returns false.',
-        returns: 'true if the extension is enabled, false otherwise.',
+        description: 'Checks if a specific Global Plugin is enabled. If the extension does not exist, returns false.',
+        returns: 'true if the Global Plugin is enabled, false otherwise.',
         handler: ({ unnamedArgs: [extensionName] }) => {
-            const extension = findExtension(extensionName);
-            return String(extension?.enabled ?? false);
+            return String(globalPluginNames.includes(extensionName) && !capabilitySettings.disabledPlugins.includes(extensionName));
         },
     });
 }

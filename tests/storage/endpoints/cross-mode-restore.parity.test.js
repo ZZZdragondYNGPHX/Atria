@@ -48,6 +48,7 @@ const MESSAGES = [
 ];
 
 const FULL_SELECTION = {
+    native: false, // These fixtures intentionally contain only the pre-Native repository categories.
     settings: true, secrets: true, characters: true, chats: true,
     lorebooks: true, presets: true, assets: true, extensions: true,
     globalExtensions: false, vectors: true,

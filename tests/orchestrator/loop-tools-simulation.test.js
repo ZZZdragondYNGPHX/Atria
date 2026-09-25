@@ -22,15 +22,15 @@ import {
     beginSimulation,
     endSimulation,
     isSimulationActive,
-} from '../../public/scripts/extensions/orchestrator/loop-tools.js';
+} from '../../public/scripts/agents/orchestrator/loop-tools.js';
 import {
     registerOrchestrationTool,
     __getExtensionRegistryForTest,
-} from '../../public/scripts/extensions/orchestrator/register-custom-tool.js';
+} from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
 import {
     isStructuredToolError,
     runLoopOrchestration,
-} from '../../public/scripts/extensions/orchestrator/loop-runtime.js';
+} from '../../public/scripts/agents/orchestrator/loop-runtime.js';
 
 describe('sim state (Task 2)', () => {
     afterEach(() => {

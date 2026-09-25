@@ -3,11 +3,11 @@ import { describe, expect, test } from '@jest/globals';
 import {
     createGameTurnController,
     createTurnTransaction,
-} from '../../public/scripts/extensions/game-runtime/llm/turn-controller.js';
+} from '../../public/scripts/native/experience/llm/turn-controller.js';
 import {
     advanceTurnContext,
     createTurnContext,
-} from '../../public/scripts/extensions/game-runtime/llm/turn-context.js';
+} from '../../public/scripts/native/experience/llm/turn-context.js';
 
 function baseTurn() {
     return createTurnContext({

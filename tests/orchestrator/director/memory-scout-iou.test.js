@@ -24,7 +24,7 @@
  */
 
 import { describe, test, expect } from '@jest/globals';
-import { createDefaultDirectorProfile } from '../../../public/scripts/extensions/orchestrator/director-defaults.js';
+import { createDefaultDirectorProfile } from '../../../public/scripts/agents/orchestrator/director-defaults.js';
 
 /**
  * Compute the Jaccard / IoU similarity between two id collections.

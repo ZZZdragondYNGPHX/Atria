@@ -179,7 +179,7 @@ test.describe('#52 — card-bound export → import roundtrip lands as new globa
 
         await page.waitForFunction(() => {
             const ctx = window.Atria?.getContext?.();
-            return !!ctx?.extensionSettings?.orchestrator;
+            return !!ctx?.capabilitySettings?.orchestrator;
         }, { timeout: 20_000 });
 
         await selectCharacterByName(page, CARD_NAME);

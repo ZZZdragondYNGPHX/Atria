@@ -1,5 +1,5 @@
 import { RETRIEVAL_PROVIDERS, assertRetrievalProfile } from './retrieval-contracts.js';
-import { listRetrievalProfiles, commitRetrievalProfile } from './retrieval-client.js';
+import { listRetrievalProfiles, commitRetrievalProfile, listBrowserEmbeddingModels } from './retrieval-client.js';
 import { runtimeRequest } from './runtime-client.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 
@@ -39,6 +39,22 @@ export async function renderRetrievalWorkspace(ui) {
         const provider = group(form, 'Provider connection');
         const source = field(provider, 'Provider', previous?.source || 'openai', []);
         const model = field(provider, 'Model', previous?.model); model.required = true;
+        const browserModels = node('div', undefined, provider);
+        const browserModelStatus = node('div', undefined, browserModels);
+        const browse = button('Browse browser models', async () => {
+            browse.disabled = true; browserModelStatus.replaceChildren();
+            notice('Loading browser models…', browserModelStatus);
+            try {
+                const models = await listBrowserEmbeddingModels();
+                if (!form.isConnected || signal.aborted) return;
+                browserModelStatus.replaceChildren();
+                const choices = field(browserModelStatus, 'Browser embedding model', model.value, [['', 'Choose a model'], ...models.map(item => [item.model_id, item.model_id])]);
+                choices.addEventListener('change', () => { if (choices.value) model.value = choices.value; });
+                notice('The model downloads when retrieval first runs. This browser must support WebGPU.', browserModelStatus);
+            } catch {
+                if (form.isConnected) notice('Could not load browser models. Retry to continue.', browserModelStatus, true);
+            } finally { browse.disabled = false; }
+        }, browserModels);
         const endpoint = field(provider, 'Endpoint URL', previous?.endpoint); endpoint.type = 'url';
         const help = notice('', provider);
         const auth = group(form, 'Authentication');
@@ -92,6 +108,7 @@ export async function renderRetrievalWorkspace(ui) {
             }
             advanced.hidden = !Object.keys(options).length;
             const local = ['transformers', 'webllm'].includes(source.value);
+            browserModels.hidden = source.value !== 'webllm';
             endpoint.parentElement.hidden = local; auth.hidden = local;
             endpoint.disabled = local; endpoint.required = !local; secret.required = !local && !['ollama', 'llamacpp', 'vllm', 'koboldcpp', 'extras', 'custom'].includes(source.value);
             help.textContent = tl(local ? 'Enter the exact local model ID. This provider uses no endpoint or Secret.' : source.value === 'nomicai' ? 'NomicAI uses the full embedding endpoint URL.' : ['palm', 'vertexai'].includes(source.value) ? 'Google endpoint must include the API version, for example /v1 or /v1beta.' : 'Enter the provider API base URL, including its version when required.');

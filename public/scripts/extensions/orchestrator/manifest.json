@@ -1,8 +1,0 @@
-{
-    "display_name": "Orchestrator",
-    "loading_order": 110,
-    "js": "index.js",
-    "author": "Atria",
-    "version": "0.1.0",
-    "homePage": "https://github.com/ZZZdragondYNGPHX/Atria"
-}

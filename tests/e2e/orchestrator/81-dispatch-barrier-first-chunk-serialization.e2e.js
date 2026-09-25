@@ -153,7 +153,7 @@ async function runFanOutTurn(page, { agentApiPresetName }) {
     // Clear any leftover run state from a prior sub-test.
     await page.evaluate(async () => {
         try {
-            const m = await import('/scripts/extensions/orchestrator/run-state/store.js');
+            const m = await import('/scripts/agents/orchestrator/run-state/store.js');
             m.clearCurrentRun?.();
         } catch { /* not loaded yet */ }
     });

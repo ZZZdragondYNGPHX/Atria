@@ -8,7 +8,7 @@ import {
     createDefaultDirectorProfile,
     sanitizeDirectorProfile,
     ORCH_EXECUTION_MODE_DIRECTOR,
-} from '../../../public/scripts/extensions/orchestrator/director-defaults.js';
+} from '../../../public/scripts/agents/orchestrator/director-defaults.js';
 
 describe('director profile flat-shape contract', () => {
     test('sanitizeDirectorProfile with flat input returns flat output', () => {

@@ -88,9 +88,9 @@ try {
     const evidence = await second.evaluate(boot, true);
     assert.deepEqual(evidence, { status: 'completed', output: 'joined', writes: 1, callsA: 2, results: ['a', 'b'], joins: 1 });
     const legacy = await second.evaluate(async () => {
-        const { configureRuntimeCheckpoints } = await import('/scripts/extensions/orchestrator/runtime-checkpoints.js');
-        const { runLegacyParallel } = await import('/scripts/extensions/orchestrator/legacy-parallel-adapter.js');
-        const { runLegacySingleRequest } = await import('/scripts/extensions/orchestrator/legacy-runtime-adapter.js');
+        const { configureRuntimeCheckpoints } = await import('/scripts/agents/orchestrator/runtime-checkpoints.js');
+        const { runLegacyParallel } = await import('/scripts/agents/orchestrator/legacy-parallel-adapter.js');
+        const { runLegacySingleRequest } = await import('/scripts/agents/orchestrator/legacy-runtime-adapter.js');
         configureRuntimeCheckpoints({ getScope: () => 'legacy-parallel' });
         const ids = [];
         const outputs = await runLegacyParallel(['one', 'two'], async (item, index, request) => {

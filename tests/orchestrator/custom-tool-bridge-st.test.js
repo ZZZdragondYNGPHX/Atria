@@ -47,8 +47,8 @@ const {
     listAvailableSillyTavernTools,
     rehydrateBridgedSillyTavernTools,
     __getExtensionRegistryForTest,
-} = await import('../../public/scripts/extensions/orchestrator/register-custom-tool.js');
-const { executeLoopTool } = await import('../../public/scripts/extensions/orchestrator/loop-tools.js');
+} = await import('../../public/scripts/agents/orchestrator/register-custom-tool.js');
+const { executeLoopTool } = await import('../../public/scripts/agents/orchestrator/loop-tools.js');
 
 describe('ST bridge', () => {
     beforeEach(() => {

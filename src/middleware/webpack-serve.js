@@ -7,7 +7,7 @@ import { markStartupMilestone } from '../startup-timing.js';
 // in-process Webpack compile entirely. The directory must contain the three
 // entry bundles listed below; any missing file falls back to the normal
 // compile path so a partial bundle ship never silently serves a stale lib.
-const PREBUILT_BUNDLE_FILES = ['lib.core.bundle.js', 'lib.optional.bundle.js', 'codemirror.bundle.js'];
+const PREBUILT_BUNDLE_FILES = ['lib.core.bundle.js', 'lib.optional.bundle.js', 'codemirror.bundle.js', 'lib.webllm.bundle.js'];
 
 /**
  * Returns true when every bundle expected by the current Webpack config

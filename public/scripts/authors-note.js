@@ -10,7 +10,7 @@ import {
     this_chid,
 } from '../script.js';
 import { selected_group } from './group-chats.js';
-import { extension_settings, getContext, saveMetadataDebounced } from './extensions.js';
+import { capabilitySettings, getContext, saveMetadataDebounced } from './capability-host.js';
 import { getCharaFilename, debounce, delay } from './utils.js';
 import { getTokenCountAsync } from './tokenizers.js';
 import { debounce_timeout } from './constants.js';
@@ -166,7 +166,7 @@ async function onExtensionFloatingPositionInput(e) {
 }
 
 async function onDefaultPositionInput(e) {
-    extension_settings.note.defaultPosition = Number(e.target.value);
+    capabilitySettings.note.defaultPosition = Number(e.target.value);
     saveSettingsDebounced();
 }
 
@@ -178,12 +178,12 @@ async function onDefaultDepthInput() {
         $(this).val(value);
     }
 
-    extension_settings.note.defaultDepth = value;
+    capabilitySettings.note.defaultDepth = value;
     saveSettingsDebounced();
 }
 
 async function onDefaultIntervalInput() {
-    extension_settings.note.defaultInterval = Number($(this).val());
+    capabilitySettings.note.defaultInterval = Number($(this).val());
     saveSettingsDebounced();
 }
 
@@ -193,13 +193,13 @@ function onExtensionFloatingRoleInput(e) {
 }
 
 function onExtensionDefaultRoleInput(e) {
-    extension_settings.note.defaultRole = Number(e.target.value);
+    capabilitySettings.note.defaultRole = Number(e.target.value);
     saveSettingsDebounced();
 }
 
 async function onExtensionFloatingCharPositionInput(e) {
     const value = e.target.value;
-    const charaNote = extension_settings.note.chara.find((e) => e.name === getCharaFilename());
+    const charaNote = capabilitySettings.note.chara.find((e) => e.name === getCharaFilename());
 
     if (charaNote) {
         charaNote.position = Number(value);
@@ -220,26 +220,26 @@ function onExtensionFloatingCharaPromptInput() {
     let existingCharaNoteIndex;
     let existingCharaNote;
 
-    if (extension_settings.note.chara) {
-        existingCharaNoteIndex = extension_settings.note.chara.findIndex((e) => e.name === avatarName);
-        existingCharaNote = extension_settings.note.chara[existingCharaNoteIndex];
+    if (capabilitySettings.note.chara) {
+        existingCharaNoteIndex = capabilitySettings.note.chara.findIndex((e) => e.name === avatarName);
+        existingCharaNote = capabilitySettings.note.chara[existingCharaNoteIndex];
     }
 
     if (tempPrompt.length === 0 &&
-        extension_settings.note.chara &&
+        capabilitySettings.note.chara &&
         existingCharaNote &&
         !existingCharaNote.useChara
     ) {
-        extension_settings.note.chara.splice(existingCharaNoteIndex, 1);
-    } else if (extension_settings.note.chara && existingCharaNote) {
+        capabilitySettings.note.chara.splice(existingCharaNoteIndex, 1);
+    } else if (capabilitySettings.note.chara && existingCharaNote) {
         Object.assign(existingCharaNote, tempCharaNote);
     } else if (avatarName && tempPrompt.length > 0) {
-        if (!extension_settings.note.chara) {
-            extension_settings.note.chara = [];
+        if (!capabilitySettings.note.chara) {
+            capabilitySettings.note.chara = [];
         }
         Object.assign(tempCharaNote, { useChara: false, position: chara_note_position.replace });
 
-        extension_settings.note.chara.push(tempCharaNote);
+        capabilitySettings.note.chara.push(tempCharaNote);
     } else {
         console.log('Character author\'s note error: No avatar name key could be found.');
         toastr.error(t`Something went wrong. Could not save character's author's note.`);
@@ -253,7 +253,7 @@ function onExtensionFloatingCharaPromptInput() {
 
 function onExtensionFloatingCharaCheckboxChanged() {
     const value = !!$(this).prop('checked');
-    const charaNote = extension_settings.note.chara.find((e) => e.name === getCharaFilename());
+    const charaNote = capabilitySettings.note.chara.find((e) => e.name === getCharaFilename());
 
     if (charaNote) {
         charaNote.useChara = value;
@@ -263,8 +263,8 @@ function onExtensionFloatingCharaCheckboxChanged() {
 }
 
 function onExtensionFloatingDefaultInput() {
-    extension_settings.note.default = $(this).val();
-    setDefaultPromptTokenCounterDebounced(extension_settings.note.default);
+    capabilitySettings.note.default = $(this).val();
+    setDefaultPromptTokenCounterDebounced(capabilitySettings.note.default);
     updateSettings();
 }
 
@@ -274,36 +274,36 @@ function loadSettings() {
     const DEFAULT_INTERVAL = 1;
     const DEFAULT_ROLE = extension_prompt_roles.SYSTEM;
 
-    if (extension_settings.note.defaultPosition === undefined) {
-        extension_settings.note.defaultPosition = DEFAULT_POSITION;
+    if (capabilitySettings.note.defaultPosition === undefined) {
+        capabilitySettings.note.defaultPosition = DEFAULT_POSITION;
     }
 
-    if (extension_settings.note.defaultDepth === undefined) {
-        extension_settings.note.defaultDepth = DEFAULT_DEPTH;
+    if (capabilitySettings.note.defaultDepth === undefined) {
+        capabilitySettings.note.defaultDepth = DEFAULT_DEPTH;
     }
 
-    if (extension_settings.note.defaultInterval === undefined) {
-        extension_settings.note.defaultInterval = DEFAULT_INTERVAL;
+    if (capabilitySettings.note.defaultInterval === undefined) {
+        capabilitySettings.note.defaultInterval = DEFAULT_INTERVAL;
     }
 
-    if (extension_settings.note.defaultRole === undefined) {
-        extension_settings.note.defaultRole = DEFAULT_ROLE;
+    if (capabilitySettings.note.defaultRole === undefined) {
+        capabilitySettings.note.defaultRole = DEFAULT_ROLE;
     }
 
-    chat_metadata[metadata_keys.prompt] = chat_metadata[metadata_keys.prompt] ?? extension_settings.note.default ?? '';
-    chat_metadata[metadata_keys.interval] = chat_metadata[metadata_keys.interval] ?? extension_settings.note.defaultInterval ?? DEFAULT_INTERVAL;
-    chat_metadata[metadata_keys.position] = chat_metadata[metadata_keys.position] ?? extension_settings.note.defaultPosition ?? DEFAULT_POSITION;
-    chat_metadata[metadata_keys.depth] = chat_metadata[metadata_keys.depth] ?? extension_settings.note.defaultDepth ?? DEFAULT_DEPTH;
-    chat_metadata[metadata_keys.role] = chat_metadata[metadata_keys.role] ?? extension_settings.note.defaultRole ?? DEFAULT_ROLE;
+    chat_metadata[metadata_keys.prompt] = chat_metadata[metadata_keys.prompt] ?? capabilitySettings.note.default ?? '';
+    chat_metadata[metadata_keys.interval] = chat_metadata[metadata_keys.interval] ?? capabilitySettings.note.defaultInterval ?? DEFAULT_INTERVAL;
+    chat_metadata[metadata_keys.position] = chat_metadata[metadata_keys.position] ?? capabilitySettings.note.defaultPosition ?? DEFAULT_POSITION;
+    chat_metadata[metadata_keys.depth] = chat_metadata[metadata_keys.depth] ?? capabilitySettings.note.defaultDepth ?? DEFAULT_DEPTH;
+    chat_metadata[metadata_keys.role] = chat_metadata[metadata_keys.role] ?? capabilitySettings.note.defaultRole ?? DEFAULT_ROLE;
     $('#extension_floating_prompt').val(chat_metadata[metadata_keys.prompt]);
     $('#extension_floating_interval').val(chat_metadata[metadata_keys.interval]);
-    $('#extension_floating_allow_wi_scan').prop('checked', extension_settings.note.allowWIScan ?? false);
+    $('#extension_floating_allow_wi_scan').prop('checked', capabilitySettings.note.allowWIScan ?? false);
     $('#extension_floating_depth').val(chat_metadata[metadata_keys.depth]);
     $('#extension_floating_role').val(chat_metadata[metadata_keys.role]);
     $(`input[name="extension_floating_position"][value="${chat_metadata[metadata_keys.position]}"]`).prop('checked', true);
 
-    if (extension_settings.note.chara && getContext().characterId !== undefined) {
-        const charaNote = extension_settings.note.chara.find((e) => e.name === getCharaFilename());
+    if (capabilitySettings.note.chara && getContext().characterId !== undefined) {
+        const charaNote = capabilitySettings.note.chara.find((e) => e.name === getCharaFilename());
 
         $('#extension_floating_chara').val(charaNote ? charaNote.prompt : '');
         $('#extension_use_floating_chara').prop('checked', charaNote ? charaNote.useChara : false);
@@ -314,11 +314,11 @@ function loadSettings() {
         $(`input[name="extension_floating_char_position"][value="${chara_note_position.replace}"]`).prop('checked', true);
     }
 
-    $('#extension_floating_default').val(extension_settings.note.default);
-    $('#extension_default_depth').val(extension_settings.note.defaultDepth);
-    $('#extension_default_interval').val(extension_settings.note.defaultInterval);
-    $('#extension_default_role').val(extension_settings.note.defaultRole);
-    $(`input[name="extension_default_position"][value="${extension_settings.note.defaultPosition}"]`).prop('checked', true);
+    $('#extension_floating_default').val(capabilitySettings.note.default);
+    $('#extension_default_depth').val(capabilitySettings.note.defaultDepth);
+    $('#extension_default_interval').val(capabilitySettings.note.defaultInterval);
+    $('#extension_default_role').val(capabilitySettings.note.defaultRole);
+    $(`input[name="extension_default_position"][value="${capabilitySettings.note.defaultPosition}"]`).prop('checked', true);
 }
 
 export function setFloatingPrompt() {
@@ -362,8 +362,8 @@ export function setFloatingPrompt() {
     shouldWIAddPrompt = shouldAddPrompt;
 
     let prompt = shouldAddPrompt ? $('#extension_floating_prompt').val() : '';
-    if (shouldAddPrompt && extension_settings.note.chara && getContext().characterId !== undefined) {
-        const charaNote = extension_settings.note.chara.find((e) => e.name === getCharaFilename());
+    if (shouldAddPrompt && capabilitySettings.note.chara && getContext().characterId !== undefined) {
+        const charaNote = capabilitySettings.note.chara.find((e) => e.name === getCharaFilename());
 
         // Only replace with the chara note if the user checked the box
         if (charaNote && charaNote.useChara) {
@@ -385,7 +385,7 @@ export function setFloatingPrompt() {
         String(prompt),
         chat_metadata[metadata_keys.position],
         chat_metadata[metadata_keys.depth],
-        extension_settings.note.allowWIScan,
+        capabilitySettings.note.allowWIScan,
         chat_metadata[metadata_keys.role],
     );
     $('#extension_floating_counter').text(shouldAddPrompt ? '0' : messagesTillInsertion);
@@ -450,8 +450,8 @@ async function onChatChanged() {
     $('#extension_floating_prompt_token_counter').text(tokenCounter1);
 
     let tokenCounter2;
-    if (extension_settings.note.chara && context.characterId !== undefined) {
-        const charaNote = extension_settings.note.chara.find((e) => e.name === getCharaFilename());
+    if (capabilitySettings.note.chara && context.characterId !== undefined) {
+        const charaNote = capabilitySettings.note.chara.find((e) => e.name === getCharaFilename());
 
         if (charaNote) {
             tokenCounter2 = await getTokenCountAsync(charaNote.prompt);
@@ -460,12 +460,12 @@ async function onChatChanged() {
 
     $('#extension_floating_chara_token_counter').text(tokenCounter2 || 0);
 
-    const tokenCounter3 = extension_settings.note.default ? await getTokenCountAsync(extension_settings.note.default) : 0;
+    const tokenCounter3 = capabilitySettings.note.default ? await getTokenCountAsync(capabilitySettings.note.default) : 0;
     $('#extension_floating_default_token_counter').text(tokenCounter3);
 }
 
 function onAllowWIScanCheckboxChanged() {
-    extension_settings.note.allowWIScan = !!$(this).prop('checked');
+    capabilitySettings.note.allowWIScan = !!$(this).prop('checked');
     updateSettings();
 }
 
@@ -594,12 +594,12 @@ function registerAuthorsNoteMacros() {
         macros.register('charAuthorsNote', {
             category: MacroCategory.PROMPTS,
             description: t`The contents of the Character Author's Note`,
-            handler: () => this_chid !== undefined ? (extension_settings.note.chara.find((e) => e.name === getCharaFilename())?.prompt ?? '') : '',
+            handler: () => this_chid !== undefined ? (capabilitySettings.note.chara.find((e) => e.name === getCharaFilename())?.prompt ?? '') : '',
         });
         macros.register('defaultAuthorsNote', {
             category: MacroCategory.PROMPTS,
             description: t`The contents of the Default Author's Note`,
-            handler: () => extension_settings.note.default ?? '',
+            handler: () => capabilitySettings.note.default ?? '',
         });
     } else {
         // TODO: Remove this when the experimental macro engine is replacing the old macro engine
@@ -608,11 +608,11 @@ function registerAuthorsNoteMacros() {
             t`The contents of the Author's Note`,
         );
         MacrosParser.registerMacro('charAuthorsNote',
-            () => this_chid !== undefined ? (extension_settings.note.chara.find((e) => e.name === getCharaFilename())?.prompt ?? '') : '',
+            () => this_chid !== undefined ? (capabilitySettings.note.chara.find((e) => e.name === getCharaFilename())?.prompt ?? '') : '',
             t`The contents of the Character Author's Note`,
         );
         MacrosParser.registerMacro('defaultAuthorsNote',
-            () => extension_settings.note.default ?? '',
+            () => capabilitySettings.note.default ?? '',
             t`The contents of the Default Author's Note`,
         );
     }

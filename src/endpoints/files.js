@@ -5,7 +5,7 @@ import express from 'express';
 import sanitize from 'sanitize-filename';
 import { sync as writeFileSyncAtomic } from 'write-file-atomic';
 
-import { validateAssetFileName } from './assets.js';
+import { validateAssetFileName } from '../file-name.js';
 import { clientRelativePath } from '../util.js';
 
 export const router = express.Router();

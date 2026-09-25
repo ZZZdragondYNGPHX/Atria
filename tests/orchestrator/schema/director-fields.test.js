@@ -9,9 +9,9 @@ import {
     createDefaultDirectorProfile,
     createMinimalDirectorProfile,
     sanitizeDirectorProfile,
-} from '../../../public/scripts/extensions/orchestrator/director-defaults.js';
-import { sanitizeAgentToolFlags } from '../../../public/scripts/extensions/orchestrator/persistence.js';
-import { getEnabledToolSchemas } from '../../../public/scripts/extensions/orchestrator/loop-tools.js';
+} from '../../../public/scripts/agents/orchestrator/director-defaults.js';
+import { sanitizeAgentToolFlags } from '../../../public/scripts/agents/orchestrator/persistence.js';
+import { getEnabledToolSchemas } from '../../../public/scripts/agents/orchestrator/loop-tools.js';
 
 describe('sanitizeAgentToolFlags: note namespace', () => {
     test('current note.open/close pass through unchanged', () => {

@@ -215,7 +215,7 @@ test.describe('#79 — Loop mode lorebookFilter blocks context injection and lor
         // entry whose comment starts with `secret_` (in any book).
         await page.evaluate(async ({ privateBook }) => {
             const ctx = window.Atria.getContext();
-            const settings = ctx.extensionSettings?.orchestrator;
+            const settings = ctx.capabilitySettings?.orchestrator;
             if (!settings) throw new Error('orchestrator settings missing — extension not loaded');
             settings.enabled = true;
             settings.executionMode = 'loop';
@@ -230,7 +230,7 @@ test.describe('#79 — Loop mode lorebookFilter blocks context injection and lor
             settings.requestApiPresetName = '';
             settings.requestLlmPresetName = '';
 
-            const { createWorkspaceFactoryPreset } = await import('/scripts/extensions/orchestrator/workspace/host-presets.js');
+            const { createWorkspaceFactoryPreset } = await import('/scripts/agents/orchestrator/workspace/host-presets.js');
             const { updatePresetLibrary, emptyPresetLibrary } = await import('/scripts/lib/agent-workspace/presets.js');
             const preset = createWorkspaceFactoryPreset('loop','e2e-loop');
             preset.planTemplate.agents[0].instructions = 'You are the test loop agent. Call finalize with a short capsule when you have enough context.';

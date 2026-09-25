@@ -22,11 +22,11 @@ try {
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     const evidence = await page.evaluate(async () => {
-        const store = await import('/scripts/extensions/orchestrator/run-state/store.js');
-        const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js');
+        const store = await import('/scripts/agents/orchestrator/run-state/store.js');
+        const panel = await import('/scripts/agents/orchestrator/workspace/panel.js');
         const { replayRuntimeEvents } = await import('/scripts/lib/agent-runtime/projection.js');
-        const { runRoutedLegacyWorkflow, createLegacyAgentGraph } = await import('/scripts/extensions/orchestrator/legacy-agent-routing.js');
-        const { modelIntent, toolIntent } = await import('/scripts/extensions/orchestrator/legacy-workflow-adapter.js');
+        const { runRoutedLegacyWorkflow, createLegacyAgentGraph } = await import('/scripts/agents/orchestrator/legacy-agent-routing.js');
+        const { modelIntent, toolIntent } = await import('/scripts/agents/orchestrator/legacy-workflow-adapter.js');
         panel.initWorkspace();
         const controller = new AbortController(); let release, ready, models = 0, writes = 0;
         const pending = new Promise(resolve => { release = resolve; });

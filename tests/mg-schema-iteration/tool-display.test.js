@@ -13,7 +13,7 @@ let MG_SCHEMA_TOOL_DISPLAY;
 
 beforeAll(async () => {
     ({ MG_SCHEMA_TOOL_DISPLAY } = await import(
-        '../../public/scripts/extensions/memory-graph/schema-iteration/tool-display.js'
+        '../../public/scripts/agents/memory/schema-iteration/tool-display.js'
     ));
 });
 
@@ -34,7 +34,7 @@ describe('MG schema tool-display map', () => {
 
     it('covers every MG schema tool name listed in schema-iteration/tools.js', async () => {
         const tools = await import(
-            '../../public/scripts/extensions/memory-graph/schema-iteration/tools.js'
+            '../../public/scripts/agents/memory/schema-iteration/tools.js'
         );
         // tools.TOOL_DISPLAY is the authoritative tool-name → label registry
         // the studio already uses. Every key in it must have a

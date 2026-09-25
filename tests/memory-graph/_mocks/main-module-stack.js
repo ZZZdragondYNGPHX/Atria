@@ -1,6 +1,6 @@
 /**
  * Shared mock stack for tests that import
- * `public/scripts/extensions/memory-graph/main.js` under jest.
+ * `public/scripts/agents/memory/main.js` under jest.
  *
  * main.js transitively pulls script.js / lib.js / popup.js etc. at module
  * load. Each consumer test would otherwise duplicate ~75 lines of identical
@@ -67,8 +67,8 @@ jest.unstable_mockModule('../../public/lib.js', async () => {
 jest.unstable_mockModule('../../public/scripts/request-compression.js', () => ({
     compressRequest: async (r) => r,
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/preset-help.js', () => ({
-    renderPresetHelpButton: () => '',
+jest.unstable_mockModule('../../public/scripts/lib/runtime-help.js', () => ({
+    renderRuntimeHelpButton: () => '',
 }));
 jest.unstable_mockModule('../../public/scripts/popup.js', () => ({
     Popup: class { constructor() {} show() { return Promise.resolve(); } },
@@ -89,13 +89,13 @@ jest.unstable_mockModule('../../public/script.js', () => ({
     saveSettings: () => Promise.resolve(),
     saveSettingsDebounced: () => {},
 }));
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
-    extension_settings: extensionSettingsMock,
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
+    capabilitySettings: extensionSettingsMock,
     getContext: () => ({}),
-    registerExtensionApi: () => {},
+    registerCapabilityApi: () => {},
     UNSET_VALUE: Symbol('UNSET_VALUE'),
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/memory-graph/schema-iteration/studio.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/memory/schema-iteration/studio.js', () => ({
     openSchemaIterationStudio: () => Promise.resolve(),
 }));
 jest.unstable_mockModule('../../public/scripts/power-user.js', () => ({
@@ -118,24 +118,12 @@ jest.unstable_mockModule('../../public/scripts/extensions/regex/engine.js', () =
     registerManagedRegexProvider: () => ({ dispose: () => {} }),
     regex_placement: {}, substitute_find_regex: () => '',
 }));
+
+
 jest.unstable_mockModule(
-    '../../public/scripts/extensions/connection-manager/profile-resolver.js',
-    () => ({ getChatCompletionConnectionProfiles: () => [] }),
-);
-jest.unstable_mockModule(
-    '../../public/scripts/extensions/connection-manager/embed-rerank.js',
-    () => ({
-        renderProfileSelect: () => '',
-        upsertEmbeddingProfile: () => {}, upsertRerankProfile: () => {},
-        getEmbeddingProfileById: () => null, getRerankProfileById: () => null,
-    }),
-);
-jest.unstable_mockModule(
-    '../../public/scripts/extensions/function-call-runtime.js',
+    '../../public/scripts/lib/runtime-tools.js',
     () => ({ TOOL_PROTOCOL_STYLE: {}, validateParsedToolCalls: () => true }),
 );
-jest.unstable_mockModule('../../public/scripts/embedding-service.js', () => ({
-    EmbeddingService: class {},
-}));
+
 
 export { extensionSettingsMock };

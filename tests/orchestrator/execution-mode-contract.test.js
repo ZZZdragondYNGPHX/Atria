@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test } from '@jest/globals';
 import { webcrypto } from 'node:crypto';
-import { executionConfigText, digestExecutionConfig, getOrchestrationOutcome, modeForOutput } from '../../public/scripts/extensions/orchestrator/execution-mode-contract.js';
-import { normalizeOrchestrationSnapshot } from '../../public/scripts/extensions/orchestrator/anchors.js';
-import { clearCacheForChatChange, setLatestOrchestrationSnapshotFromPick, canReuseLatestOrchestrationSnapshot } from '../../public/scripts/extensions/orchestrator/snapshot-cache.js';
+import { executionConfigText, digestExecutionConfig, getOrchestrationOutcome, modeForOutput } from '../../public/scripts/agents/orchestrator/execution-mode-contract.js';
+import { normalizeOrchestrationSnapshot } from '../../public/scripts/agents/orchestrator/anchors.js';
+import { clearCacheForChatChange, setLatestOrchestrationSnapshotFromPick, canReuseLatestOrchestrationSnapshot } from '../../public/scripts/agents/orchestrator/snapshot-cache.js';
 
 beforeEach(() => { clearCacheForChatChange(); });
 

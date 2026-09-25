@@ -5,7 +5,7 @@ import {
     compileLorebookFilter,
     applyLorebookFilterPatchArgs,
     applyProfileWorldInfoFilter,
-} from '../../public/scripts/extensions/orchestrator/lorebook-filter.js';
+} from '../../public/scripts/agents/orchestrator/lorebook-filter.js';
 
 describe('sanitizeLorebookFilter', () => {
     test('non-object input → empty', () => {

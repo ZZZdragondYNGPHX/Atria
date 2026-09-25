@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { createInterpretationMappingRegistry } from '../../public/scripts/extensions/game-runtime/logic/interpretations.js';
+import { createInterpretationMappingRegistry } from '../../public/scripts/native/experience/logic/interpretations.js';
 
 describe('R5 deterministic Interpretation Mapping Registry', () => {
     test('maps one accepted semantic event into one typed Command proposal', () => {

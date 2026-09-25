@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import { disableExtensions, markOnboarded } from '../_lib/fixtures.js';
+import { markOnboarded } from '../_lib/fixtures.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
 
 let server;
@@ -11,10 +11,7 @@ test.beforeAll(async () => {
         scenarioId: 'r7a-foundation',
     });
     markOnboarded({ dataRoot: server.dataRoot });
-    disableExtensions({
-        dataRoot: server.dataRoot,
-        names: ['stable-diffusion'],
-    });
+
 });
 
 test.afterAll(async () => {
@@ -333,7 +330,7 @@ test.describe('R7B Native Play Host', () => {
         await expect(page.locator('body')).not.toHaveClass(/atria-immersive-mode/);
 
         const fullState = await page.evaluate(async () => {
-            const module = await import('/scripts/extensions/game-runtime/ui/full-host.js');
+            const module = await import('/scripts/native/experience/ui/full-host.js');
             const sheld = document.getElementById('sheld');
             const playHost = document.getElementById('atria-native-play-host');
             sheld.style.display = 'flex';

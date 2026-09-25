@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { createSelectorRuntime } from '../../public/scripts/extensions/game-runtime/ui/selectors.js';
+import { createSelectorRuntime } from '../../public/scripts/native/experience/ui/selectors.js';
 
 describe('Game UI Selector Runtime', () => {
     test('projects read-only values and only notifies on actual changes', () => {

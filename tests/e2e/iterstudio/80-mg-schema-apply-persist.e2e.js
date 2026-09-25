@@ -8,7 +8,7 @@
 //   4. Click Apply via applyIterBatch.
 //   5. Close popup. Verify the new node-type id surfaces in:
 //      - the rendered schema editor (DOM-side ground truth)
-//      - extension_settings.memory_graph.nodeTypeSchema (in-memory)
+//      - capabilitySettings.memory_graph.nodeTypeSchema (in-memory)
 //   6. Restart, reload, re-open popup → new id still present in DOM.
 
 import { test, expect } from '@playwright/test';
@@ -61,8 +61,8 @@ test.describe('#80 — MG Schema iter-studio Apply → settings persists across 
         // Baseline: confirm the new node type is not present.
         const baseline = await page.evaluate(() => {
             const ctx = window.Atria.getContext();
-            const arr = Array.isArray(ctx.extensionSettings?.memory_graph?.nodeTypeSchema)
-                ? ctx.extensionSettings.memory_graph.nodeTypeSchema
+            const arr = Array.isArray(ctx.capabilitySettings?.memory_graph?.nodeTypeSchema)
+                ? ctx.capabilitySettings.memory_graph.nodeTypeSchema
                 : [];
             return arr.map(t => t?.id).filter(Boolean);
         });
@@ -90,7 +90,7 @@ test.describe('#80 — MG Schema iter-studio Apply → settings persists across 
         await expect.poll(async () => {
             return await page.evaluate(() => {
                 const ctx = window.Atria.getContext();
-                const arr = ctx.extensionSettings?.memory_graph?.nodeTypeSchema || [];
+                const arr = ctx.capabilitySettings?.memory_graph?.nodeTypeSchema || [];
                 return arr.map(t => t?.id);
             });
         }, { timeout: 10_000 }).toContain(NEW_NODE_TYPE.id);
@@ -102,7 +102,7 @@ test.describe('#80 — MG Schema iter-studio Apply → settings persists across 
         // After reload, the schema list still carries the new id.
         const afterRestart = await page.evaluate(() => {
             const ctx = window.Atria.getContext();
-            const arr = ctx.extensionSettings?.memory_graph?.nodeTypeSchema || [];
+            const arr = ctx.capabilitySettings?.memory_graph?.nodeTypeSchema || [];
             return arr.find(t => t?.id === 'ash_journal') || null;
         });
         expect(afterRestart).toBeTruthy();

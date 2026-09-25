@@ -27,7 +27,7 @@ import { describe, test, expect } from '@jest/globals';
 import {
     interpretSandboxOutcome,
     buildEditCallReply,
-} from '../../public/scripts/extensions/orchestrator/iter-studio/sandbox-result.js';
+} from '../../public/scripts/agents/orchestrator/iter-studio/sandbox-result.js';
 
 const sampleProfile = Object.freeze({
     system_prompt: 'You are a careful planner.\nFollow the user.',

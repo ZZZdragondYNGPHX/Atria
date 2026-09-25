@@ -2,9 +2,9 @@ import { describe, test, expect } from '@jest/globals';
 import {
     emptyProvenance, captureEpisodes, reconcileSources, episodesAreCurrent,
     bindDerivedChanges, descendants, projectCurrentSources, normalizeProvenance,
-} from '../../public/scripts/extensions/memory-graph/source-provenance.js';
-import { normalizeStoreForRuntime, graphPayloadFromStore, buildRuntimeStoreFromGraphPayloadAndMeta } from '../../public/scripts/extensions/memory-graph/persistence.js';
-import { cloneRollbackNodeSnapshot } from '../../public/scripts/extensions/memory-graph/graph-ops.js';
+} from '../../public/scripts/agents/memory/source-provenance.js';
+import { normalizeStoreForRuntime, graphPayloadFromStore, buildRuntimeStoreFromGraphPayloadAndMeta } from '../../public/scripts/agents/memory/persistence.js';
+import { cloneRollbackNodeSnapshot } from '../../public/scripts/agents/memory/graph-ops.js';
 
 function message(id, text) { return { memory_os_source_id: id, mes: text, is_user: false, swipe_id: 0 }; }
 function fixture() {

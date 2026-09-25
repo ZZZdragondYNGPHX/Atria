@@ -1,6 +1,6 @@
 import { describe, expect, test, jest } from '@jest/globals';
 import { createMessageEditorHandle } from '../../../public/scripts/message-takeover.js';
-import { applyPatch, patchBySemantic } from '../../../public/scripts/extensions/orchestrator/editor-ops.js';
+import { applyPatch, patchBySemantic } from '../../../public/scripts/agents/orchestrator/editor-ops.js';
 
 function setup(initialText = '') {
     const chat = [{ mes: initialText, extra: { reasoning: '' }, is_user: false }];

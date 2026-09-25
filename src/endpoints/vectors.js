@@ -18,7 +18,7 @@ import { getLlamaCppVector, getLlamaCppBatchVector } from '../vectors/llamacpp-v
 import { getVllmVector, getVllmBatchVector } from '../vectors/vllm-vectors.js';
 import { getOllamaVector, getOllamaBatchVector } from '../vectors/ollama-vectors.js';
 import { rerank } from '../vectors/rerank.js';
-import { getCommonCredentials, getSourceSettings } from '../vectors/source-settings.js';
+import { getSourceSettings } from '../vectors/source-settings.js';
 import {
     startEmbeddingInspection,
     completeEmbeddingInspection,
@@ -560,13 +560,7 @@ router.post('/rerank', async (req, res) => {
         const documents = req.body.documents;
         const topK = Number(req.body.topK) || 5;
         const source = String(req.body.source) || 'cohere';
-        const credentials = getCommonCredentials(req);
-        const rerankSettings = req.nativeRetrieval?.settings || {
-            model: String(req.body.model || ''),
-            apiUrl: String(req.body.apiUrl || ''),
-            apiKey: String(req.body.apiKey || ''),
-            ...credentials,
-        };
+        const rerankSettings = getSourceSettings(source, req);
 
         const results = await rerank(source, rerankSettings, query, documents, topK, req.user.directories, req);
         const hits = Array.isArray(results)

@@ -3,7 +3,7 @@ import { jest } from '@jest/globals';
 
 // New behavior (post cross-scope active-skills export):
 //   maybeAttachSkillsToOrchPresetExport asks the orchestrator plugin (via
-//   context.getExtensionApi('orchestrator').collectResolvedSkillsForOrchPreset)
+//   context.getCapabilityApi('orchestrator').collectResolvedSkillsForOrchPreset)
 //   for the union of skills any agent in the profile can see, groups by
 //   source scope, calls context.skills.packForEmbed({scope, names}) per
 //   group, merges items[] with orch-preset > preset > global precedence,
@@ -48,7 +48,7 @@ function makeContext({
         POPUP_TYPE: { CONFIRM: 1 },
     };
     if (resolverReturns instanceof Map) {
-        ctx.getExtensionApi = jest.fn((name) => {
+        ctx.getCapabilityApi = jest.fn((name) => {
             if (name !== 'orchestrator') return null;
             return { collectResolvedSkillsForOrchPreset: jest.fn(async () => resolverReturns) };
         });
@@ -183,7 +183,7 @@ describe('maybeAttachSkillsToOrchPresetExport', () => {
     // include any skill that happens to live in orch-preset scope.
     test('falls back to scope-local list when orchestrator plugin missing', async () => {
         const ctx = makeContext({ listReturns: [{ name: 'skillLocal' }] });
-        // No resolverReturns → no getExtensionApi wired.
+        // No resolverReturns → no getCapabilityApi wired.
         const payload = {
             format: 'PORTABLE_PROFILE_V3', mode: 'director', name: 'RP4',
             exportedAt: '', profile: { name: 'RP4' },

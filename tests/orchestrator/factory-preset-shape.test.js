@@ -4,8 +4,8 @@ import {
     ORCH_EXECUTION_MODE_LOOP,
     ORCH_EXECUTION_MODE_AGENDA,
     ORCH_EXECUTION_MODE_SPEC,
-} from '../../public/scripts/extensions/orchestrator/defaults.js';
-import { ORCH_EXECUTION_MODE_DIRECTOR } from '../../public/scripts/extensions/orchestrator/director-defaults.js';
+} from '../../public/scripts/agents/orchestrator/defaults.js';
+import { ORCH_EXECUTION_MODE_DIRECTOR } from '../../public/scripts/agents/orchestrator/director-defaults.js';
 
 describe('createFactoryPresetForMode', () => {
     test('director mode returns an array', () => {

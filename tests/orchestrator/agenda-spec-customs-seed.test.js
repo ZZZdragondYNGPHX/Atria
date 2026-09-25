@@ -39,8 +39,8 @@ jest.unstable_mockModule('../../public/lib.js', () => ({
     yaml: { dump: (v) => JSON.stringify(v), load: (s) => JSON.parse(s) },
     default: {},
 }));
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
-    extension_settings: { orchestrator: {} },
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
+    capabilitySettings: { orchestrator: {} },
     getContext: () => ({}),
     writeExtensionField: () => {},
     UNSET_VALUE: Symbol('unset'),
@@ -62,15 +62,13 @@ jest.unstable_mockModule('../../public/scripts/world-info.js', () => ({
 }));
 // Stub the connection-manager gate so the real agent-resolution.js can load
 // without pulling textgen-models.js → document.addEventListener under Node.
-jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/profile-resolver.js', () => ({
-    getChatCompletionConnectionProfiles: () => [],
-}));
+
 
 let sanitizeAgendaWorkingProfile;
 let sanitizeSpec;
 beforeAll(async () => {
-    ({ sanitizeAgendaWorkingProfile } = await import('../../public/scripts/extensions/orchestrator/agenda-profile.js'));
-    ({ sanitizeSpec } = await import('../../public/scripts/extensions/orchestrator/spec-schema.js'));
+    ({ sanitizeAgendaWorkingProfile } = await import('../../public/scripts/agents/orchestrator/agenda-profile.js'));
+    ({ sanitizeSpec } = await import('../../public/scripts/agents/orchestrator/spec-schema.js'));
 });
 
 const EXPECTED_CUSTOM_KEYS = [

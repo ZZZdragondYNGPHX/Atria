@@ -187,7 +187,7 @@ test.describe('#55 — Branch chat keeps source MG intact (real branch UI)', () 
 
         const sourceSnapshot = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const mg = ctx.getExtensionApi?.('memory-graph');
+            const mg = ctx.getCapabilityApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             const titles = session
                 ? session.listVisibleCandidates({}).map(n => n.title).filter(t => /SOURCE-S/.test(t)).sort()
@@ -225,7 +225,7 @@ test.describe('#55 — Branch chat keeps source MG intact (real branch UI)', () 
 
         const branchSnapshot = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const mg = ctx.getExtensionApi?.('memory-graph');
+            const mg = ctx.getCapabilityApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             const cands = session ? session.listVisibleCandidates({}) : [];
             return {

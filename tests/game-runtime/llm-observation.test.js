@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { createWorldObservationProjector } from '../../public/scripts/extensions/game-runtime/llm/observation.js';
+import { createWorldObservationProjector } from '../../public/scripts/native/experience/llm/observation.js';
 
 describe('R5 World Observation projection', () => {
     test('exposes explicit projections instead of raw World State', () => {

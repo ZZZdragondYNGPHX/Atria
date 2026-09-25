@@ -1,4 +1,13 @@
 const SHELL_TEXT_KEYS = Object.freeze({
+    'Browse browser models': 'atria.retrieval.browser.models.browse',
+    'Loading browser models…': 'atria.retrieval.browser.models.loading',
+    'Browser embedding model': 'atria.retrieval.browser.models.embedding',
+    'The model downloads when retrieval first runs. This browser must support WebGPU.': 'atria.retrieval.browser.models.download',
+    'Could not load browser models. Retry to continue.': 'atria.retrieval.browser.models.failed',
+    'This browser does not support WebGPU. Select another Native Retrieval provider.': 'atria.retrieval.browser.unavailable',
+    'Select a supported WebLLM embedding model in Runtime Retrieval.': 'atria.retrieval.browser.model.invalid',
+    'Runtime route help': 'atria.retrieval.route.help',
+
     'No Native plugins yet': 'atria.utilities.plugins.empty',
     'Loading plugins from your installed works…': 'atria.utilities.plugins.loading',
     '${0} contributions': 'atria.utilities.contributions',

@@ -5,9 +5,9 @@ import {
     unregisterOrchestrationTool,
     listExtensionTools,
     __getExtensionRegistryForTest,
-} from '../../public/scripts/extensions/orchestrator/register-custom-tool.js';
-import { executeLoopTool, beginSimulation, endSimulation } from '../../public/scripts/extensions/orchestrator/loop-tools.js';
-import { getEnabledToolSchemas } from '../../public/scripts/extensions/orchestrator/loop-tools.js';
+} from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
+import { executeLoopTool, beginSimulation, endSimulation } from '../../public/scripts/agents/orchestrator/loop-tools.js';
+import { getEnabledToolSchemas } from '../../public/scripts/agents/orchestrator/loop-tools.js';
 
 describe('registerOrchestrationTool basic registry', () => {
     beforeEach(() => {

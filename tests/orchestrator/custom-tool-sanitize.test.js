@@ -1,5 +1,5 @@
 import { describe, test, expect, jest, beforeAll } from '@jest/globals';
-import { sanitizeCustomTools } from '../../public/scripts/extensions/orchestrator/custom-tools-sanitize.js';
+import { sanitizeCustomTools } from '../../public/scripts/agents/orchestrator/custom-tools-sanitize.js';
 
 // defaults.js (transitively imported by the sanitizers) reads
 // `Atria.getContext().constants.{promptRoles,wiPosition}` at module
@@ -30,8 +30,8 @@ jest.unstable_mockModule('../../public/lib.js', () => ({
     default: {},
 }));
 
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
-    extension_settings: { orchestrator: {} },
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
+    capabilitySettings: { orchestrator: {} },
     getContext: () => ({}),
     writeExtensionField: () => {},
     UNSET_VALUE: Symbol('unset'),
@@ -65,19 +65,17 @@ jest.unstable_mockModule('../../public/scripts/world-info.js', () => ({
 
 // Stub the connection-manager gate so the real agent-resolution.js can load
 // without pulling textgen-models.js → document.addEventListener under Node.
-jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/profile-resolver.js', () => ({
-    getChatCompletionConnectionProfiles: () => [],
-}));
+
 
 let sanitizeLoopProfile;
 let sanitizeSpec;
 let sanitizeAgendaWorkingProfile;
 let sanitizeDirectorProfile;
 beforeAll(async () => {
-    ({ sanitizeLoopProfile } = await import('../../public/scripts/extensions/orchestrator/persistence.js'));
-    ({ sanitizeSpec } = await import('../../public/scripts/extensions/orchestrator/spec-schema.js'));
-    ({ sanitizeAgendaWorkingProfile } = await import('../../public/scripts/extensions/orchestrator/agenda-profile.js'));
-    ({ sanitizeDirectorProfile } = await import('../../public/scripts/extensions/orchestrator/director-defaults.js'));
+    ({ sanitizeLoopProfile } = await import('../../public/scripts/agents/orchestrator/persistence.js'));
+    ({ sanitizeSpec } = await import('../../public/scripts/agents/orchestrator/spec-schema.js'));
+    ({ sanitizeAgendaWorkingProfile } = await import('../../public/scripts/agents/orchestrator/agenda-profile.js'));
+    ({ sanitizeDirectorProfile } = await import('../../public/scripts/agents/orchestrator/director-defaults.js'));
 });
 
 describe('sanitizeCustomTools', () => {

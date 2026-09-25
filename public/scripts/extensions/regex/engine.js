@@ -14,7 +14,7 @@ import { nativeSessionRuntime } from '../../native/session-runtime.js';
  */
 
 import { characters, saveSettingsDebounced, substituteParams, substituteParamsExtended, this_chid } from '../../../script.js';
-import { extension_settings, writeExtensionField } from '../../extensions.js';
+import { capabilitySettings, writeExtensionField } from '../../capability-host.js';
 import { t } from '../../i18n.js';
 import { getPresetManager } from '../../preset-manager.js';
 import { regexFromString } from '../../utils.js';
@@ -115,7 +115,7 @@ function schedulePersistedRegexScriptCleanup(scriptType, scripts) {
             try {
                 switch (scriptType) {
                     case SCRIPT_TYPES.GLOBAL:
-                        extension_settings.regex = nextScripts;
+                        capabilitySettings.regex = nextScripts;
                         saveSettingsDebounced();
                         break;
                     case SCRIPT_TYPES.SCOPED: {
@@ -945,17 +945,17 @@ export function getScriptsByType(scriptType, { allowedOnly } = DEFAULT_GET_REGEX
         case SCRIPT_TYPE_UNKNOWN:
             return [];
         case SCRIPT_TYPES.GLOBAL:
-            return sanitizePersistedRegexScriptList(extension_settings.regex ?? [], SCRIPT_TYPES.GLOBAL);
+            return sanitizePersistedRegexScriptList(capabilitySettings.regex ?? [], SCRIPT_TYPES.GLOBAL);
         case SCRIPT_TYPES.SCOPED: {
             if (nativeSessionRuntime.active) return [];
-            if (allowedOnly && !extension_settings?.character_allowed_regex?.includes(characters?.[this_chid]?.avatar)) {
+            if (allowedOnly && !capabilitySettings?.character_allowed_regex?.includes(characters?.[this_chid]?.avatar)) {
                 return [];
             }
             const scopedScripts = characters[this_chid]?.data?.extensions?.regex_scripts;
             return sanitizePersistedRegexScriptList(scopedScripts, SCRIPT_TYPES.SCOPED);
         }
         case SCRIPT_TYPES.PRESET: {
-            if (allowedOnly && !extension_settings?.preset_allowed_regex?.[getCurrentPresetAPI()]?.includes(getCurrentPresetName())) {
+            if (allowedOnly && !capabilitySettings?.preset_allowed_regex?.[getCurrentPresetAPI()]?.includes(getCurrentPresetName())) {
                 return [];
             }
             const presetManager = getPresetManager();
@@ -992,7 +992,7 @@ export async function saveScriptsByType(scripts, scriptType) {
 
     switch (scriptType) {
         case SCRIPT_TYPES.GLOBAL:
-            extension_settings.regex = normalizedScripts;
+            capabilitySettings.regex = normalizedScripts;
             saveSettingsDebounced();
             console.info('[Regex] Global scripts staged in extension settings', context);
             break;
@@ -1018,7 +1018,7 @@ export async function saveScriptsByType(scripts, scriptType) {
  * @returns {boolean}
  */
 export function isScopedScriptsAllowed(character) {
-    return !!extension_settings?.character_allowed_regex?.includes(character?.avatar);
+    return !!capabilitySettings?.character_allowed_regex?.includes(character?.avatar);
 }
 
 /**
@@ -1031,11 +1031,11 @@ export function allowScopedScripts(character) {
     if (!avatar) {
         return;
     }
-    if (!Array.isArray(extension_settings?.character_allowed_regex)) {
-        extension_settings.character_allowed_regex = [];
+    if (!Array.isArray(capabilitySettings?.character_allowed_regex)) {
+        capabilitySettings.character_allowed_regex = [];
     }
-    if (!extension_settings.character_allowed_regex.includes(avatar)) {
-        extension_settings.character_allowed_regex.push(avatar);
+    if (!capabilitySettings.character_allowed_regex.includes(avatar)) {
+        capabilitySettings.character_allowed_regex.push(avatar);
         invalidateRegexExecutionPlans();
         saveSettingsDebounced();
         console.info('[Regex] Scoped scripts allowed for character', {
@@ -1055,12 +1055,12 @@ export function disallowScopedScripts(character) {
     if (!avatar) {
         return;
     }
-    if (!Array.isArray(extension_settings?.character_allowed_regex)) {
+    if (!Array.isArray(capabilitySettings?.character_allowed_regex)) {
         return;
     }
-    const index = extension_settings.character_allowed_regex.indexOf(avatar);
+    const index = capabilitySettings.character_allowed_regex.indexOf(avatar);
     if (index !== -1) {
-        extension_settings.character_allowed_regex.splice(index, 1);
+        capabilitySettings.character_allowed_regex.splice(index, 1);
         invalidateRegexExecutionPlans();
         saveSettingsDebounced();
         console.info('[Regex] Scoped scripts disallowed for character', {
@@ -1080,7 +1080,7 @@ export function isPresetScriptsAllowed(apiId, presetName) {
     if (!apiId || !presetName) {
         return false;
     }
-    return !!extension_settings?.preset_allowed_regex?.[apiId]?.includes(presetName);
+    return !!capabilitySettings?.preset_allowed_regex?.[apiId]?.includes(presetName);
 }
 
 /**
@@ -1093,11 +1093,11 @@ export function allowPresetScripts(apiId, presetName) {
     if (!apiId || !presetName) {
         return;
     }
-    if (!Array.isArray(extension_settings?.preset_allowed_regex?.[apiId])) {
-        lodash.set(extension_settings, ['preset_allowed_regex', apiId], []);
+    if (!Array.isArray(capabilitySettings?.preset_allowed_regex?.[apiId])) {
+        lodash.set(capabilitySettings, ['preset_allowed_regex', apiId], []);
     }
-    if (!extension_settings.preset_allowed_regex[apiId].includes(presetName)) {
-        extension_settings.preset_allowed_regex[apiId].push(presetName);
+    if (!capabilitySettings.preset_allowed_regex[apiId].includes(presetName)) {
+        capabilitySettings.preset_allowed_regex[apiId].push(presetName);
         invalidateRegexExecutionPlans();
         saveSettingsDebounced();
     }
@@ -1113,12 +1113,12 @@ export function disallowPresetScripts(apiId, presetName) {
     if (!apiId || !presetName) {
         return;
     }
-    if (!Array.isArray(extension_settings?.preset_allowed_regex?.[apiId])) {
+    if (!Array.isArray(capabilitySettings?.preset_allowed_regex?.[apiId])) {
         return;
     }
-    const index = extension_settings.preset_allowed_regex[apiId].indexOf(presetName);
+    const index = capabilitySettings.preset_allowed_regex[apiId].indexOf(presetName);
     if (index !== -1) {
-        extension_settings.preset_allowed_regex[apiId].splice(index, 1);
+        capabilitySettings.preset_allowed_regex[apiId].splice(index, 1);
         invalidateRegexExecutionPlans();
         saveSettingsDebounced();
     }
@@ -1205,7 +1205,7 @@ export function getRegexedString(rawString, placement, { characterOverride, isMa
     }
 
     let finalString = rawString;
-    if (extension_settings.disabledExtensions.includes('regex') || !rawString || placement === undefined) {
+    if (capabilitySettings.disabledPlugins.includes('regex') || !rawString || placement === undefined) {
         return finalString;
     }
 

@@ -59,7 +59,7 @@ if (typeof globalThis.Atria === 'undefined') {
     // their own stub before importing the module under test — Proxy access
     // patterns play nicely with normal object assignment.
     //
-    // `getExtensionApi(name)` is special-cased: when the orchestrator
+    // `getCapabilityApi(name)` is special-cased: when the orchestrator
     // extension is requested we hand back a tiny adapter that delegates
     // register / unregister to the real `register-custom-tool.js` module via
     // its globally exposed registry. This is what lets memory-graph /
@@ -94,7 +94,7 @@ if (typeof globalThis.Atria === 'undefined') {
     // synchronous for-loop, so an async adapter would defer the actual
     // mutation past `await register*OrchestrationTools()` and the test
     // would read an empty registry.
-    const orchestratorMod = await import('../public/scripts/extensions/orchestrator/register-custom-tool.js');
+    const orchestratorMod = await import('../public/scripts/agents/orchestrator/register-custom-tool.js');
     const extensionApis = {
         orchestrator: {
             registerOrchestrationTool: orchestratorMod.registerOrchestrationTool,
@@ -104,7 +104,7 @@ if (typeof globalThis.Atria === 'undefined') {
             unbridgeSillyTavernTool: orchestratorMod.unbridgeSillyTavernTool,
         },
     };
-    function getExtensionApi(name) {
+    function getCapabilityApi(name) {
         return extensionApis[name] || null;
     }
 
@@ -116,13 +116,13 @@ if (typeof globalThis.Atria === 'undefined') {
         // unexpected places (i18n strings, lib helpers, etc.). Override
         // any of these in a test by assigning a new globalThis.Atria.
         const base = {
-            getExtensionApi,
+            getCapabilityApi,
             // i18n helpers (e.g. orchestrator/i18n.js)
             translate: (s) => String(s ?? ''),
             addLocaleData: () => {},
             // capability detection sentinels
             createMessageEditorHandle: null,
-            registerExtensionApi: () => {},
+            registerCapabilityApi: () => {},
         };
         return new Proxy(base, {
             get(t, prop) {

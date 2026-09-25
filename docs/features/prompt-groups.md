@@ -77,4 +77,3 @@ Group information is saved and loaded with presets. When switching presets, the 
 ## Related Features
 
 - [Preset Groups](/features/preset-groups) — Group display in the preset selector
-- [Preset Completion Assistant](/features/preset-assistant) — AI-assisted understanding and adjustment of preset parameters

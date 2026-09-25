@@ -106,9 +106,9 @@ try {
     await host.goto(url);
     const hostEvidence = await host.evaluate(async () => {
         const { AgentRuntime, AgentRegistry, DurableCheckpointStore, openIndexedDBCheckpoints } = await import('/scripts/lib/agent-runtime/index.js');
-        const { configureRuntimeCheckpoints, listRuntimeCheckpoints, cancelRuntimeCheckpoint } = await import('/scripts/extensions/orchestrator/runtime-checkpoints.js');
-        const { runLegacySingleRequest } = await import('/scripts/extensions/orchestrator/legacy-runtime-adapter.js');
-        const { runLegacyWorkflow, modelIntent } = await import('/scripts/extensions/orchestrator/legacy-workflow-adapter.js');
+        const { configureRuntimeCheckpoints, listRuntimeCheckpoints, cancelRuntimeCheckpoint } = await import('/scripts/agents/orchestrator/runtime-checkpoints.js');
+        const { runLegacySingleRequest } = await import('/scripts/agents/orchestrator/legacy-runtime-adapter.js');
+        const { runLegacyWorkflow, modelIntent } = await import('/scripts/agents/orchestrator/legacy-workflow-adapter.js');
         configureRuntimeCheckpoints({ getScope: () => 'host-test' });
         let sends = 0;
         const options = { runId: 'single', request: { taskMessages: [] }, send: async () => { sends++; return { text: 'saved' }; } };

@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
-import { loadGameComponentDefinition } from '../../public/scripts/extensions/game-runtime/ui/package.js';
+import { loadGameComponentDefinition } from '../../public/scripts/native/experience/ui/package.js';
 
 function packageState(mode, options = {}) {
     return {

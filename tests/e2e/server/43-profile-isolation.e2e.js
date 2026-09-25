@@ -26,7 +26,7 @@ function snapshotSettings(dataRoot) {
 function seedTwoProfiles({ dataRoot, urlA, urlB }) {
     const settingsPath = resolve(dataRoot, 'default-user', 'settings.json');
     const s = JSON.parse(readFileSync(settingsPath, 'utf8'));
-    s.extension_settings = s.extension_settings || {};
+    s.capabilitySettings = s.capabilitySettings || {};
     const profileA = {
         id: 'pid-A',
         name: 'mock-A',
@@ -45,7 +45,7 @@ function seedTwoProfiles({ dataRoot, urlA, urlB }) {
         'api-url': urlA,
     };
     const profileB = { ...profileA, id: 'pid-B', name: 'mock-B', 'api-url': urlB };
-    s.extension_settings.connectionManager = {
+    s.capabilitySettings.connectionManager = {
         profiles: [profileA, profileB],
         selectedProfile: 'pid-A',
     };
@@ -122,7 +122,7 @@ async function selectProfileFromDropdown(page, profileName) {
     // settings-save debounce to flush.
     await page.waitForFunction((name) => {
         const ctx = window.Atria?.getContext?.();
-        const cm = ctx?.extensionSettings?.connectionManager;
+        const cm = ctx?.capabilitySettings?.connectionManager;
         if (!cm) return false;
         const sel = cm.profiles?.find(p => p.id === cm.selectedProfile);
         return sel?.name === name;
@@ -154,7 +154,7 @@ test.describe('#43 — switching profiles does not pollute settings on round-tri
         });
 
         expect(snapAfterReturnA.oai_settings?.custom_url, `custom_url should be mock A's after returning to profile A; saw ${snapAfterReturnA.oai_settings?.custom_url}`).toBe(mockA.baseURL);
-        expect(snapAfterReturnA.extension_settings?.connectionManager?.selectedProfile).toBe('pid-A');
+        expect(snapAfterReturnA.capabilitySettings?.connectionManager?.selectedProfile).toBe('pid-A');
 
         if (fail.length > 0) {
             console.warn('[#43] non-empty settings drift after A → B → A:', JSON.stringify(fail, null, 2));

@@ -20,9 +20,9 @@ try {
     await page.waitForFunction(name => window.Atria.getContext().characters[window.Atria.getContext().characterId]?.name === name, name);
     const result = await page.evaluate(async () => {
         const ctx = window.Atria.getContext();
-        const { _processPendingMessageBatchWithLLMForTest: processBatch, getDefaultNodeTypeSchema } = await import('/scripts/extensions/memory-graph/main.js');
-        const { createEmptyStore } = await import('/scripts/extensions/memory-graph/persistence.js');
-        Object.assign(ctx.extensionSettings.memory_graph, { memoryOsEnabled: true, autoExtractionEnabled: false });
+        const { _processPendingMessageBatchWithLLMForTest: processBatch, getDefaultNodeTypeSchema } = await import('/scripts/agents/memory/main.js');
+        const { createEmptyStore } = await import('/scripts/agents/memory/persistence.js');
+        Object.assign(ctx.capabilitySettings.memory_graph, { memoryOsEnabled: true, autoExtractionEnabled: false });
         ctx.chat.splice(0, ctx.chat.length, { mes: 'Roland keeps the sword.', is_user: false, name: 'Fixture' });
         await ctx.saveChat();
         const schema = getDefaultNodeTypeSchema().filter(type => type.id === 'event');

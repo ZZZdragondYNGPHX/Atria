@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, test } from '@jest/globals';
 import {
     bindNativeGameComponents,
     createNativeComponentRegistry,
-} from '../../public/scripts/extensions/game-runtime/ui/native-components.js';
+} from '../../public/scripts/native/experience/ui/native-components.js';
 
 describe('Game UI native component composition', () => {
     beforeEach(() => {

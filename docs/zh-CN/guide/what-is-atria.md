@@ -40,7 +40,7 @@ Atria 内置了多个面向角色扮演场景的专业工具——记忆图、�
 
 面向 SillyTavern 兼容角色卡和世界书的 AI 辅助编辑工具，提供自然语言修改、diff 审批和迭代历史。Native 游戏 / 项目制作已经统一迁移到 Build → Atria Studio。
 
-→ [角色卡编辑助手概览](/zh-CN/features/card-editor/)　·　[普通弹窗](/zh-CN/features/card-editor/popup)
+
 
 ### Native Build / Atria Studio / Project Agent
 

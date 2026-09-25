@@ -78,7 +78,7 @@ test.describe('#74 — Capsule injection', () => {
         //   `worldInfoBefore` string field. The string field is a legacy
         //   accumulator; the entries array is what the runtime reads.
         const results = await page.evaluate(async (capsuleText) => {
-            const mod = await import('/scripts/extensions/orchestrator/capsule-injection.js');
+            const mod = await import('/scripts/agents/orchestrator/capsule-injection.js');
             const inj = mod.injectCapsuleToPayload;
 
             const constants = Atria.getContext().constants;

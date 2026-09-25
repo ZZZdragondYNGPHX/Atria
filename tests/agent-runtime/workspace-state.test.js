@@ -1,14 +1,14 @@
 import { test, expect, jest } from '@jest/globals';
 import { RuntimeProjection, replayRuntimeEvents } from '../../public/scripts/lib/agent-runtime/projection.js';
-import { createWorkspaceFactoryPreset, workspaceHostProfile } from '../../public/scripts/extensions/orchestrator/workspace/host-presets.js';
+import { createWorkspaceFactoryPreset, workspaceHostProfile } from '../../public/scripts/agents/orchestrator/workspace/host-presets.js';
 import { projectEngine, workspaceRunView } from '../../public/scripts/lib/agent-workspace/projection.js';
 import { clearCurrentRun, startRun, finishRun, getCurrentRun, recordRuntimeEvent, recordMemoryRecall,
-    bindEngineInspector, inspectEngineNode } from '../../public/scripts/extensions/orchestrator/run-state/store.js';
-import { runLoopEngine } from '../../public/scripts/extensions/orchestrator/engine-v2/loop-adapter.js';
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/agent-resolution.js', () => ({
+    bindEngineInspector, inspectEngineNode } from '../../public/scripts/agents/orchestrator/run-state/store.js';
+import { runLoopEngine } from '../../public/scripts/agents/orchestrator/engine-v2/loop-adapter.js';
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/agent-resolution.js', () => ({
     resolveOrchestrationAgentApiPresetName: () => null, resolveOrchestrationAgentPromptPresetName: () => null,
 }));
-const { runSpecEngine } = await import('../../public/scripts/extensions/orchestrator/engine-v2/spec-adapter.js');
+const { runSpecEngine } = await import('../../public/scripts/agents/orchestrator/engine-v2/spec-adapter.js');
 
 test('result deltas replay without duplicating bodies or accepting an older generation', () => {
     const projection = new RuntimeProjection();

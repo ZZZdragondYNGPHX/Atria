@@ -9,7 +9,7 @@
 //      so the studio receives a pending edit.
 //   3. Click Send via sendIterPrompt; wait for the Apply button to render.
 //   4. Click Apply via applyIterBatch.
-//   5. Verify the active director preset slot in extension_settings.orchestrator.
+//   5. Verify the active director preset slot in capabilitySettings.orchestrator.
 //      presetLibraries.director.<activeId>.mainAgent.systemPrompt carries the
 //      mutated value AND that legacy flat fields (settings.directorProfile,
 //      etc.) remain untouched.
@@ -33,10 +33,10 @@ function normalizeSettings(dataRoot) {
     normalizeIterStudioSettings(dataRoot);
     const sp = resolve(dataRoot, 'default-user', 'settings.json');
     const s = JSON.parse(readFileSync(sp, 'utf8'));
-    s.extension_settings = s.extension_settings || {};
-    s.extension_settings.orchestrator = s.extension_settings.orchestrator || {};
-    s.extension_settings.orchestrator.enabled = true;
-    s.extension_settings.orchestrator.executionMode = 'director';
+    s.capabilitySettings = s.capabilitySettings || {};
+    s.capabilitySettings.orchestrator = s.capabilitySettings.orchestrator || {};
+    s.capabilitySettings.orchestrator.enabled = true;
+    s.capabilitySettings.orchestrator.executionMode = 'director';
     writeFileSync(sp, JSON.stringify(s, null, 4));
 }
 
@@ -84,7 +84,7 @@ test.describe('#37 — orchestrator iter-studio Apply → Global writes through 
         // legacy flat fields were NOT written by Apply.
         const after = await page.evaluate(() => {
             const ctx = window.Atria.getContext();
-            const s = ctx.extensionSettings.orchestrator;
+            const s = ctx.capabilitySettings.orchestrator;
             const activeId = s?.activePresetIds?.director || '';
             return {
                 activeId,
@@ -103,7 +103,7 @@ test.describe('#37 — orchestrator iter-studio Apply → Global writes through 
         await reloadAndAwait(page, server.baseURL);
         const afterRestart = await page.evaluate(() => {
             const ctx = window.Atria.getContext();
-            const s = ctx.extensionSettings.orchestrator;
+            const s = ctx.capabilitySettings.orchestrator;
             const activeId = s?.activePresetIds?.director || '';
             return s?.presetLibraries?.director?.[activeId]?.mainAgent?.systemPrompt || '';
         });

@@ -3,7 +3,7 @@
  *
  * Each plugin (orchestrator / memory-graph / CEA / CPA) used to inline the
  * same four-method storage pattern (listSessions / loadSession / saveSession
- * / deleteSession) against extension_settings. This factory captures the
+ * / deleteSession) against capabilitySettings. This factory captures the
  * shape so future plugin-owned popups can wire storage in three lines
  * instead of forty.
  *
@@ -17,7 +17,7 @@
  *   - return the SAME reference every call (mutations are persisted by
  *     `persistSettings()`, not by re-assigning the bucket)
  *
- * `persistSettings()` is whatever the plugin uses to flush extension_settings
+ * `persistSettings()` is whatever the plugin uses to flush capabilitySettings
  * (`saveSettingsDebounced` from the host, typically).
  *
  * `persistSettingsImmediate()` (optional) is the non-debounced sibling,

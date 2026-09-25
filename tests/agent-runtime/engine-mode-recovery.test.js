@@ -1,15 +1,15 @@
 import { test, expect, jest } from '@jest/globals';
 import { DurableCheckpointStore } from '../../public/scripts/lib/agent-runtime/index.js';
-import { runLoopEngine } from '../../public/scripts/extensions/orchestrator/engine-v2/loop-adapter.js';
-import { runDirectorEngine } from '../../public/scripts/extensions/orchestrator/engine-v2/director-adapter.js';
-import { modelIntent, toolIntent } from '../../public/scripts/extensions/orchestrator/legacy-workflow-adapter.js';
-import { clearCurrentRun, startRun } from '../../public/scripts/extensions/orchestrator/run-state/store.js';
+import { runLoopEngine } from '../../public/scripts/agents/orchestrator/engine-v2/loop-adapter.js';
+import { runDirectorEngine } from '../../public/scripts/agents/orchestrator/engine-v2/director-adapter.js';
+import { modelIntent, toolIntent } from '../../public/scripts/agents/orchestrator/legacy-workflow-adapter.js';
+import { clearCurrentRun, startRun } from '../../public/scripts/agents/orchestrator/run-state/store.js';
 
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/agent-resolution.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/agent-resolution.js', () => ({
     resolveOrchestrationAgentApiPresetName: () => null, resolveOrchestrationAgentPromptPresetName: () => null,
 }));
-const { runSpecEngine } = await import('../../public/scripts/extensions/orchestrator/engine-v2/spec-adapter.js');
-const { runAgendaEngine } = await import('../../public/scripts/extensions/orchestrator/engine-v2/agenda-adapter.js');
+const { runSpecEngine } = await import('../../public/scripts/agents/orchestrator/engine-v2/spec-adapter.js');
+const { runAgendaEngine } = await import('../../public/scripts/agents/orchestrator/engine-v2/agenda-adapter.js');
 
 const runId = 'mode-recovery';
 const no = () => {};

@@ -4,7 +4,7 @@ import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
 import { createNativeId } from '../../../src/native/identity.js';
 import { seedGenerationProfiles } from '../../native/helpers/generation-fixture.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
-import { disableExtensions } from '../_lib/fixtures.js';
+
 import { seedNativeSessionDataRoot } from './_helpers.js';
 
 let server; let resources;
@@ -18,7 +18,7 @@ test.beforeAll(async () => {
     resources.routes[1].displayName = 'Alternate narrator';
     await resources.persistence.saveRuntimeRoute(seeded.handle, resources.routes[1]);
     await engine.close();
-    disableExtensions({ dataRoot: seeded.dataRoot, names: ['stable-diffusion'] });
+
     server = await startServer({ batchKey: 'generation', scenarioId: 'runtime-redesign', useExistingDataRoot: seeded.dataRoot });
 });
 

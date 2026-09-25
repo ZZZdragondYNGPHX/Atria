@@ -1,8 +1,8 @@
 import { test, expect } from '@jest/globals';
 import { AgentRuntime, AgentRegistry, MemoryCheckpointStore } from '../../public/scripts/lib/agent-runtime/index.js';
 import { validateDecision } from '../../public/scripts/lib/agent-runtime/contracts.js';
-import { runLegacyWorkflow, modelIntent } from '../../public/scripts/extensions/orchestrator/legacy-workflow-adapter.js';
-import { createLegacyAgentGraph, agentKey, runRoutedLegacyWorkflow, selectHandoffInputs, createSpecAgentRoute } from '../../public/scripts/extensions/orchestrator/legacy-agent-routing.js';
+import { runLegacyWorkflow, modelIntent } from '../../public/scripts/agents/orchestrator/legacy-workflow-adapter.js';
+import { createLegacyAgentGraph, agentKey, runRoutedLegacyWorkflow, selectHandoffInputs, createSpecAgentRoute } from '../../public/scripts/agents/orchestrator/legacy-agent-routing.js';
 import { fakePorts } from './fakes.js';
 
 const graph = () => createLegacyAgentGraph('test', [{ id: 'worker', preset: { systemPrompt: 'private preset' } }]);
@@ -114,7 +114,7 @@ test('invalid definition context policies cannot weaken handoff validation', () 
 });
 
 test('Single uses the graph identity selected by its preceding handoff', async () => {
-    const { runLegacySingleRequest } = await import('../../public/scripts/extensions/orchestrator/legacy-runtime-adapter.js');
+    const { runLegacySingleRequest } = await import('../../public/scripts/agents/orchestrator/legacy-runtime-adapter.js');
     const store = new MemoryCheckpointStore();
     await runLegacySingleRequest({ runId: 'single-identity', agentId: 'spec/agent/0%3A0%3Asingle', store,
         request: { taskMessages: [] }, send: async () => ({ text: 'done' }) });

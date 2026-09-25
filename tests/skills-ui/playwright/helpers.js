@@ -194,7 +194,7 @@ export async function activateConnectionProfile(page) {
     // nothing. Probe the settings shape first (no DOM access).
     const hasAnyProfile = await page.evaluate(() => {
         const ctx = window.Atria?.getContext?.();
-        const profiles = ctx?.extensionSettings?.connectionManager?.profiles;
+        const profiles = ctx?.capabilitySettings?.connectionManager?.profiles;
         return Array.isArray(profiles) && profiles.length > 0;
     }).catch(() => false);
     if (!hasAnyProfile) return '';
@@ -214,7 +214,7 @@ export async function activateConnectionProfile(page) {
     return await page.evaluate(async () => {
         const ctx = window.Atria?.getContext?.();
         if (!ctx) return '';
-        const profiles = ctx.extensionSettings?.connectionManager?.profiles;
+        const profiles = ctx.capabilitySettings?.connectionManager?.profiles;
         if (!Array.isArray(profiles) || !profiles.length) return '';
         const pinned = (
             (typeof process !== 'undefined' && process.env?.ATRIA_PLAYWRIGHT_PROFILE)
@@ -291,15 +291,15 @@ export async function getActiveCharacterAvatar(page) {
 
 /**
  * Ensure the orchestrator extension's director profile is initialized.
- * Waits for `extension_settings.orchestrator` to exist (the extension's
+ * Waits for `capabilitySettings.orchestrator` to exist (the extension's
  * bootstrap creates it on init), then forces the lazy initialization
  * of `directorProfile` by reading the orchestrator status from the
  * context (any path that calls `getDirectorProfileFromSettings`
  * populates the default profile).
  *
- * The active extension namespace is `extension_settings.orchestrator`
+ * The active extension namespace is `capabilitySettings.orchestrator`
  * (MODULE_NAME = 'orchestrator' in main.js). The unrelated
- * `extension_settings.atria_orchestrator` is the iter-studio session
+ * `capabilitySettings.atria_orchestrator` is the iter-studio session
  * store bucket; specs should not write director state there.
  *
  * @param {import('@playwright/test').Page} page
@@ -308,7 +308,7 @@ export async function ensureDirectorProfileInitialized(page) {
     // Step 1: wait for the orchestrator settings bucket to exist.
     await page.waitForFunction(() => {
         const ctx = window.Atria?.getContext?.();
-        const settings = ctx?.extensionSettings?.orchestrator;
+        const settings = ctx?.capabilitySettings?.orchestrator;
         return Boolean(settings && typeof settings === 'object');
     }, null, { timeout: 30000 });
     // Step 2: force the lazy default to materialize. The director
@@ -317,10 +317,10 @@ export async function ensureDirectorProfileInitialized(page) {
     // and less brittle than driving a UI path that triggers the lazy.
     await page.evaluate(async () => {
         const ctx = window.Atria?.getContext?.();
-        const settings = ctx.extensionSettings.orchestrator;
+        const settings = ctx.capabilitySettings.orchestrator;
         if (settings.directorProfile && typeof settings.directorProfile === 'object') return;
         try {
-            const mod = await import('/scripts/extensions/orchestrator/director-defaults.js');
+            const mod = await import('/scripts/agents/orchestrator/director-defaults.js');
             settings.directorProfile = mod.createDefaultDirectorProfile();
             if (typeof ctx?.saveSettingsDebounced === 'function') {
                 ctx.saveSettingsDebounced();

@@ -53,6 +53,15 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
         });
 
         const root = await ensureShellMounted(page);
+        await expect.poll(() => page.evaluate(async () => {
+            const host = await import('/scripts/capability-host.js');
+            return ['orchestrator', 'memory-graph', 'game-runtime', 'regex', 'search-tools'].map(name => host.getCapabilityLoadState(name));
+        })).toEqual(['ready', 'ready', 'ready', 'ready', 'ready']);
+        await expect(page.locator('#third_party_extension_button, #extensions_details, #extensions_notify_updates')).toHaveCount(0);
+        for (const endpoint of ['/api/extensions/discover', '/api/extensions/install', '/api/sd/generate', '/api/quick-replies/save']) {
+            const status = await page.evaluate(async endpoint => (await fetch(endpoint, { method: 'POST', headers: Atria.getContext().getRequestHeaders(), body: '{}' })).status, endpoint);
+            expect(status).toBe(404);
+        }
 
         await root.locator('[data-atria-utility="plugins"]').click();
         await expect(page).toHaveURL(/atriaChild=utility.plugins/);
@@ -64,9 +73,9 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
         const pluginCard = root.locator('[data-atria-plugin="regex"]'), toggle = pluginCard.getByRole('switch');
         await expect(toggle).toBeChecked(); await toggle.click();
         await expect(pluginCard).toHaveAttribute('data-save-state', 'saved');
-        await expect.poll(async () => page.evaluate(async () => (await import('/scripts/extensions.js')).extension_settings.disabledExtensions.includes('regex'))).toBe(true);
+        await expect.poll(async () => page.evaluate(async () => (await import('/scripts/capability-host.js')).capabilitySettings.disabledPlugins.includes('regex'))).toBe(true);
         await toggle.click();
-        await expect.poll(async () => page.evaluate(async () => (await import('/scripts/extensions.js')).extension_settings.disabledExtensions.includes('regex'))).toBe(false);
+        await expect.poll(async () => page.evaluate(async () => (await import('/scripts/capability-host.js')).capabilitySettings.disabledPlugins.includes('regex'))).toBe(false);
         await pluginCard.getByText('Plugin settings', { exact: true }).click();
         await expect(pluginCard.locator('#regex_container')).toHaveCount(1);
         await expect(root.locator('#extensions_settings, #extensions_settings2')).toHaveCount(0);

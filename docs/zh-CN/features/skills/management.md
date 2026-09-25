@@ -112,7 +112,7 @@ Skill 在跟它所依赖的产物（角色卡、预设）一起分发时最有�
 
 ### 打包进预设
 
-在编排器面板里，[补全预设助手](/zh-CN/features/preset-assistant) 会派生出一份 `-orchestrator` 预设。派生紧接着，助手在工具栏给出一条**为该预设打包 Skills**链接，点开后会进入 Skill 管理并自动开启多选模式。挑你想要的 Skill，点**把所选打包进预设……**，再选目标预设。
+
 
 打包器把这些 Skill 写进预设的 `extensions.atria.embedded_skills_source` 字段。下一次保存预设时，嵌入随 JSON 一起被持久化。其他 Atria 用户导入这份预设时会看到上文描述的嵌入抽取对话框。
 
@@ -150,4 +150,3 @@ Skill 在跟它所依赖的产物（角色卡、预设）一起分发时最有�
 - [创作 Skill](/zh-CN/features/skills/authoring) —— 写自己的
 - [编排器集成](/zh-CN/features/skills/orchestrator-integration) —— 把 Skill 挂到 profile 上
 - [Skill 扩展 API](/zh-CN/development/extension-api/skills) —— 从扩展编程式管理
-- [补全预设助手](/zh-CN/features/preset-assistant) —— 派生 `-orchestrator` 预设并给出打包 Skills 链接

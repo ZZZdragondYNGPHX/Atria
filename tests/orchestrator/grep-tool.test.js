@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import { gatherGrepMatches } from '../../public/scripts/extensions/orchestrator/grep-tool.js';
+import { gatherGrepMatches } from '../../public/scripts/agents/orchestrator/grep-tool.js';
 
 function singleUnit(content, prefix = '') {
     return [{ prefix, content }];

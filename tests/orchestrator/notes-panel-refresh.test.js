@@ -27,7 +27,7 @@ import {
     onNotesChanged,
     resetNotesFloorStateInstanceForTesting,
     __resetNotesChangeListenersForTesting,
-} from '../../public/scripts/extensions/orchestrator/loop-runtime.js';
+} from '../../public/scripts/agents/orchestrator/loop-runtime.js';
 
 /**
  * Minimal `createFloorState` fake. Production floor-state is namespaced,

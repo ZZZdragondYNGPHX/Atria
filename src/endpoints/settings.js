@@ -12,8 +12,6 @@ import { getSettingsRepo, getPresetRepo, getNamedDocRepo, getWorldInfoRepo } fro
 import { applyJsonPatch } from '../storage/repositories/json-patch.js';
 import { NotFoundError, PatchTestFailedError, PatchMissingParentError, UnsupportedPatchOpError } from '../storage/errors.js';
 
-const ENABLE_EXTENSIONS = !!getConfigValue('extensions.enabled', true, 'boolean');
-const ENABLE_EXTENSIONS_AUTO_UPDATE = !!getConfigValue('extensions.autoUpdate', true, 'boolean');
 const ENABLE_ACCOUNTS = !!getConfigValue('enableUserAccounts', false, 'boolean');
 
 void (!!getConfigValue('performance.requestCompression.enabled', false, 'boolean'));
@@ -221,8 +219,6 @@ export async function buildSettingsResponse(request, { includePresetContents = t
         context,
         sysprompt,
         reasoning,
-        enable_extensions: ENABLE_EXTENSIONS,
-        enable_extensions_auto_update: ENABLE_EXTENSIONS_AUTO_UPDATE,
         enable_accounts: ENABLE_ACCOUNTS,
     };
 }

@@ -77,4 +77,3 @@
 ## 相关功能
 
 - [预设分组](/zh-CN/features/preset-groups) — 预设选择器中的分组展示
-- [补全预设助手](/zh-CN/features/preset-assistant) — AI 辅助理解和调整预设参数

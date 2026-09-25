@@ -1,15 +1,16 @@
 import { test, expect, jest } from '@jest/globals';
-import { configureSourceLifecycle } from '../../public/scripts/extensions/memory-graph/source-lifecycle.js';
+import { configureSourceLifecycle } from '../../public/scripts/agents/memory/source-lifecycle.js';
 
 const embeddingService = {
     query: jest.fn(), listHashes: jest.fn(), deleteByHashes: jest.fn(),
     purgeCollection: jest.fn(), insert: jest.fn(),
 };
+jest.unstable_mockModule('../../public/scripts/native/retrieval-client.js', () => ({
+    NativeRetrievalService: embeddingService, memoryRetrievalProfile: () => null,
+}));
 let context;
 global.Atria = { getContext: () => context };
-jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/embed-rerank.js', () => ({
-    getEmbeddingProfileById: () => null, getRerankProfileById: () => null,
-}));
+
 
 test('source edit during vector HTTP removes the hit; subsequent sync deletes its remote hash', async () => {
     let ledger = null;
@@ -31,7 +32,7 @@ test('source edit during vector HTTP removes the hit; subsequent sync deletes it
         vectorIndexState: { source: 'openai', model: 'test', collectionId: 'mg_chat', nodeToHash: { n_1: 123 }, hashToNodeId: { 123: 'n_1' } },
     };
     await lifecycle.bind(context, { nodes: {} }, store, ticket);
-    const { findSimilarNodes, syncVectorIndex } = await import('../../public/scripts/extensions/memory-graph/vector-index.js');
+    const { findSimilarNodes, syncVectorIndex } = await import('../../public/scripts/agents/memory/vector-index.js');
     let finish;
     embeddingService.query.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
     const profile = { source: 'openai', model: 'test' };

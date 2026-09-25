@@ -19,8 +19,8 @@ import { describe, test, expect } from '@jest/globals';
 import {
     ORCH_EXECUTION_MODE_LOOP,
     sanitizeLoopProfile,
-} from '../../public/scripts/extensions/orchestrator/persistence.js';
-import { DEFAULT_LOOP_SYSTEM_PROMPT } from '../../public/scripts/extensions/orchestrator/loop-default-prompt.js';
+} from '../../public/scripts/agents/orchestrator/persistence.js';
+import { DEFAULT_LOOP_SYSTEM_PROMPT } from '../../public/scripts/agents/orchestrator/loop-default-prompt.js';
 
 describe('ORCH_EXECUTION_MODE_LOOP', () => {
     test('exposes the loop mode literal', () => {

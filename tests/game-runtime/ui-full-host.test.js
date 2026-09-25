@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
-import { createFullGameHost } from '../../public/scripts/extensions/game-runtime/ui/full-host.js';
+import { createFullGameHost } from '../../public/scripts/native/experience/ui/full-host.js';
 import { mountNativePlayHost } from '../../public/scripts/atria-shell/native-play-host.js';
 
 describe('Full Game UI host recovery shell', () => {

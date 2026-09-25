@@ -4,18 +4,18 @@ const implementationFiles = [
     'src/native/runtime-descriptor.js',
     'src/endpoints/native-session.js',
     'public/scripts/native/session-runtime.js',
-    'public/scripts/extensions/game-runtime/index.js',
-    'public/scripts/extensions/game-runtime/package-loader.js',
-    'public/scripts/extensions/game-runtime/world/package.js',
-    'public/scripts/extensions/game-runtime/world/session.js',
-    'public/scripts/extensions/game-runtime/world/memory-source.js',
-    'public/scripts/extensions/game-runtime/logic/package.js',
-    'public/scripts/extensions/game-runtime/logic/runtime.js',
-    'public/scripts/extensions/game-runtime/llm/declarative-observations.js',
-    'public/scripts/extensions/game-runtime/llm/runtime.js',
-    'public/scripts/extensions/game-runtime/llm/turn-context.js',
-    'public/scripts/extensions/game-runtime/llm/turn-controller.js',
-    'public/scripts/extensions/game-runtime/llm/memory-bridge.js',
+    'public/scripts/native/experience/index.js',
+    'public/scripts/native/experience/package-loader.js',
+    'public/scripts/native/experience/world/package.js',
+    'public/scripts/native/experience/world/session.js',
+    'public/scripts/native/experience/world/memory-source.js',
+    'public/scripts/native/experience/logic/package.js',
+    'public/scripts/native/experience/logic/runtime.js',
+    'public/scripts/native/experience/llm/declarative-observations.js',
+    'public/scripts/native/experience/llm/runtime.js',
+    'public/scripts/native/experience/llm/turn-context.js',
+    'public/scripts/native/experience/llm/turn-controller.js',
+    'public/scripts/native/experience/llm/memory-bridge.js',
 ];
 
 for (const file of implementationFiles) {
@@ -53,7 +53,7 @@ if (/class\s+.*(?:Repo|Repository)|putMutable|putImmutable|writeFile/.test(descr
     throw new Error('A3 Runtime Descriptor must not become a persisted package authority');
 }
 
-const loader = source['public/scripts/extensions/game-runtime/package-loader.js'];
+const loader = source['public/scripts/native/experience/package-loader.js'];
 if (
     !loader.includes('/api/native/session/')
     || !loader.includes('runtime/resolve')
@@ -62,7 +62,7 @@ if (
     throw new Error('A3 game-runtime loader must use Native Session runtime APIs');
 }
 
-const world = source['public/scripts/extensions/game-runtime/world/session.js'];
+const world = source['public/scripts/native/experience/world/session.js'];
 if (
     !world.includes('atri_world_state')
     || !world.includes("'atri_game_runtime'")
@@ -72,22 +72,22 @@ if (
 }
 
 const turn = [
-    source['public/scripts/extensions/game-runtime/llm/turn-context.js'],
-    source['public/scripts/extensions/game-runtime/llm/runtime.js'],
-    source['public/scripts/extensions/game-runtime/llm/turn-controller.js'],
+    source['public/scripts/native/experience/llm/turn-context.js'],
+    source['public/scripts/native/experience/llm/runtime.js'],
+    source['public/scripts/native/experience/llm/turn-controller.js'],
 ].join('\n');
 if (!/sessionId[\s\S]*branchId[\s\S]*revisionId/.test(turn)) {
     throw new Error('A3 Turn runtime must anchor to Native Session/Branch/Revision identity');
 }
 
-const index = source['public/scripts/extensions/game-runtime/index.js'];
+const index = source['public/scripts/native/experience/index.js'];
 if (!index.includes('nativeSessionRuntime') || index.includes('activateGamePackageUi')) {
     throw new Error('A3 Text Runtime must activate from Native Session without starting A4 UI runtime');
 }
 
 const textHost = fs.readFileSync('public/script.js', 'utf8');
 if (
-    !textHost.includes("getExtensionApi?.('game-runtime')")
+    !textHost.includes("getCapabilityApi?.('game-runtime')")
     || !textHost.includes("gameState?.descriptor?.experience?.mode === 'text'")
     || !textHost.includes('gameApi.submitFreeText')
 ) {

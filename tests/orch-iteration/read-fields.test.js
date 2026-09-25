@@ -18,7 +18,7 @@
 // the real sanitizer imported directly.
 
 import { describe, test, expect } from '@jest/globals';
-import { dispatchReadFields } from '../../public/scripts/extensions/orchestrator/iter-studio/read-fields-dispatcher.js';
+import { dispatchReadFields } from '../../public/scripts/agents/orchestrator/iter-studio/read-fields-dispatcher.js';
 
 const sampleDirectorProfile = Object.freeze({
     mainAgent: {
@@ -178,7 +178,7 @@ describe('dispatchReadFields — spec profile shape', () => {
 // -------------------------------------------------------------
 describe('sanitization boundary — scratch fields never reach the LLM', () => {
     test('sanitizeLoopProfile strips _scratch before dispatchReadFields sees it', async () => {
-        const { sanitizeLoopProfile } = await import('../../public/scripts/extensions/orchestrator/persistence.js');
+        const { sanitizeLoopProfile } = await import('../../public/scripts/agents/orchestrator/persistence.js');
         // Build a live-shape profile with a scratch/debug slot the
         // sanitizer must strip.
         const liveProfile = {

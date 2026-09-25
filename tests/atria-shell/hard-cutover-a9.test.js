@@ -23,24 +23,24 @@ describe('A9 hard cutover acceptance', () => {
     });
 
     test('retired game.json/swipe/Chat-State authorities are physically absent', () => {
-        expect(exists('public/scripts/extensions/game-runtime/manifest.js')).toBe(false);
-        expect(exists('public/scripts/extensions/game-runtime/world/branch.js')).toBe(false);
-        expect(exists('public/scripts/extensions/game-runtime/world/persistence.js')).toBe(false);
-        expect(exists('public/scripts/extensions/game-runtime/world/runtime.js')).toBe(false);
-        expect(exists('public/scripts/extensions/game-runtime/world/journal.js')).toBe(false);
+        expect(exists('public/scripts/native/experience/manifest.js')).toBe(false);
+        expect(exists('public/scripts/native/experience/world/branch.js')).toBe(false);
+        expect(exists('public/scripts/native/experience/world/persistence.js')).toBe(false);
+        expect(exists('public/scripts/native/experience/world/runtime.js')).toBe(false);
+        expect(exists('public/scripts/native/experience/world/journal.js')).toBe(false);
     });
 
     test('retired Chat State game-world namespace is absent from active Native consumers', () => {
         expect(read('public/scripts/native/knowledge-runtime.js')).not.toContain('atri_game_world');
         expect(read('public/scripts/native/context-compiler.js')).not.toContain('atri_game_world');
-        expect(read('public/scripts/extensions/game-runtime/world/session.js')).toContain('atri_world_state');
-        expect(read('public/scripts/extensions/game-runtime/world/session.js')).toContain('atri_game_runtime');
+        expect(read('public/scripts/native/experience/world/session.js')).toContain('atri_world_state');
+        expect(read('public/scripts/native/experience/world/session.js')).toContain('atri_game_runtime');
     });
 
     test('current Native Session and Studio replacements remain mounted', () => {
         const startup = read('src/server-startup.js');
-        const runtime = read('public/scripts/extensions/game-runtime/package-loader.js');
-        const world = read('public/scripts/extensions/game-runtime/world/session.js');
+        const runtime = read('public/scripts/native/experience/package-loader.js');
+        const world = read('public/scripts/native/experience/world/session.js');
         const studio = read('public/scripts/native/studio-workspace.js');
         const agent = read('public/scripts/native/studio-agent.js');
 

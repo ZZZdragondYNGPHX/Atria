@@ -3,7 +3,7 @@ import {
     getOrchestrationFallbackApiPresetName,
     isOrchestrationApiFallbackEligible,
     runWithOrchestrationApiFallback,
-} from '../../public/scripts/extensions/orchestrator/api-fallback.js';
+} from '../../public/scripts/agents/orchestrator/api-fallback.js';
 
 function coded(code, message = code) {
     const error = new Error(message);

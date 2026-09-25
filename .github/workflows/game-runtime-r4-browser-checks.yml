@@ -5,9 +5,9 @@ on:
     branches:
       - refactor/game-runtime-architecture
     paths:
-      - "public/scripts/extensions/game-runtime/ui/**"
-      - "public/scripts/extensions/game-runtime/manifest.js"
-      - "public/scripts/extensions/game-runtime/package-loader.js"
+      - "public/scripts/native/experience/ui/**"
+      - "public/scripts/native/experience/manifest.js"
+      - "public/scripts/native/experience/package-loader.js"
       - "tests/frontend/game-runtime-r4.smoke.mjs"
       - ".github/workflows/game-runtime-r4-browser-checks.yml"
   workflow_dispatch:

@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { createCommandRegistry } from '../../public/scripts/extensions/game-runtime/logic/command-registry.js';
+import { createCommandRegistry } from '../../public/scripts/native/experience/logic/command-registry.js';
 
 function damageCommand() {
     return {

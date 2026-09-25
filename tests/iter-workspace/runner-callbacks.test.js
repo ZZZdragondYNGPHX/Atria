@@ -33,7 +33,7 @@
  */
 import { describe, test, expect, jest, beforeAll } from '@jest/globals';
 
-jest.unstable_mockModule('../../public/scripts/extensions/function-call-runtime.js', () => ({
+jest.unstable_mockModule('../../public/scripts/lib/runtime-tools.js', () => ({
     TOOL_PROTOCOL_STYLE: { JSON_SCHEMA: 'json_schema' },
     // Permissive validator: tests focus on callback firing, not schema validation.
     validateParsedToolCalls: () => null,

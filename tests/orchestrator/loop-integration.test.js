@@ -26,13 +26,13 @@ import { describe, test, expect, jest, beforeEach, afterEach } from '@jest/globa
 
 import {
     runLoopOrchestration,
-} from '../../public/scripts/extensions/orchestrator/loop-runtime.js';
+} from '../../public/scripts/agents/orchestrator/loop-runtime.js';
 import {
     registerMemoryGraphOrchestrationTools,
     unregisterMemoryGraphOrchestrationTools,
     __setSessionForTest,
-} from '../../public/scripts/extensions/memory-graph/orchestrator-tools.js';
-import { __getExtensionRegistryForTest } from '../../public/scripts/extensions/orchestrator/register-custom-tool.js';
+} from '../../public/scripts/agents/memory/orchestrator-tools.js';
+import { __getExtensionRegistryForTest } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
 
 function makeProfile(overrides = {}) {
     return {

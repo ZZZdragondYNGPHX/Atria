@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import { buildDirectorDefaultSystemPrompt } from '../../public/scripts/extensions/orchestrator/director-default-prompt.js';
+import { buildDirectorDefaultSystemPrompt } from '../../public/scripts/agents/orchestrator/director-default-prompt.js';
 
 /**
  * B2 follow-up: the main agent prompt must reflect the actual sub-agent set

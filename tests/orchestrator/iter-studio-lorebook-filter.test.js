@@ -1,6 +1,6 @@
 // tests/orchestrator/iter-studio-lorebook-filter.test.js
 import { describe, test, expect } from '@jest/globals';
-import { applyLorebookFilterPatchArgs } from '../../public/scripts/extensions/orchestrator/lorebook-filter.js';
+import { applyLorebookFilterPatchArgs } from '../../public/scripts/agents/orchestrator/lorebook-filter.js';
 
 /**
  * Iter-studio tools thin-wrap applyLorebookFilterPatchArgs.

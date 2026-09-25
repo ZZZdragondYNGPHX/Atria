@@ -1,4 +1,4 @@
-import { disableExtensions } from '../_lib/fixtures.js';
+
 import { test, expect } from '@playwright/test';
 
 import { startServer, tearDownServer } from '../_lib/server.js';
@@ -15,7 +15,7 @@ let legacyBaseline;
 test.describe.serial('N10 Native Product UI hard-cutover acceptance', () => {
     test.beforeAll(async () => {
         seeded = await seedNativeSessionDataRoot({ suffix: 'n9-product-ui' });
-        disableExtensions({ dataRoot: seeded.dataRoot, names: ['stable-diffusion'] });
+
         server = await startServer({
             batchKey: 'chat',
             scenarioId: 'native-session-n10-product-ui',

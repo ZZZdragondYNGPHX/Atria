@@ -22,7 +22,7 @@ import {
     renderOpenNotesBlock,
     loadOpenNotesBlock,
     buildOpenNotesRuntimeStateMessage,
-} from '../../public/scripts/extensions/orchestrator/open-notes-injection.js';
+} from '../../public/scripts/agents/orchestrator/open-notes-injection.js';
 
 describe('readOpenNotes', () => {
     test('returns [] when contextForNotes is null / undefined / bare', async () => {

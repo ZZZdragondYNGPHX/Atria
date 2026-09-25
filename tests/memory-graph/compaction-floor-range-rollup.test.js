@@ -23,9 +23,9 @@ let createRollupWithChildren;
 let getDefaultNodeTypeSchema;
 
 beforeAll(async () => {
-    const persistence = await import('../../public/scripts/extensions/memory-graph/persistence.js');
+    const persistence = await import('../../public/scripts/agents/memory/persistence.js');
     createEmptyStore = persistence.createEmptyStore;
-    const main = await import('../../public/scripts/extensions/memory-graph/main.js');
+    const main = await import('../../public/scripts/agents/memory/main.js');
     applyExtractionOpsImpl = main.applyExtractionOpsImpl;
     createRollupWithChildren = main._createRollupWithChildrenForTest;
     getDefaultNodeTypeSchema = main.getDefaultNodeTypeSchema;

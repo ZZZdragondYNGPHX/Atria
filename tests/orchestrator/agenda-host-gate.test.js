@@ -6,7 +6,7 @@ import { isAbortError, isAbortSignalLike, throwIfAborted, linkAbortSignals } fro
 // Execute the production event listener without booting unrelated DOM plugins.
 // Only host services/model completion are replaced. The core continuation check
 // is also loaded from source, so removing either half of the gate fails tests.
-const main = readFileSync(new URL('../../public/scripts/extensions/orchestrator/main.js', import.meta.url), 'utf8');
+const main = readFileSync(new URL('../../public/scripts/agents/orchestrator/main.js', import.meta.url), 'utf8');
 const hook = main.slice(main.indexOf('async function onWorldInfoFinalized('), main.indexOf('async function onMessageDeleted('));
 const core = readFileSync(new URL('../../public/script.js', import.meta.url), 'utf8');
 const coreStart = core.indexOf('    await eventSource.emit(event_types.GENERATION_WORLD_INFO_FINALIZED, wiFinalizedPayload);');
@@ -17,7 +17,7 @@ async function run({ enabled = true, stop = false, outcome = 'completed', error 
     const payload = { signal: abort.signal, coreChat: [{ role: 'user', content: 'test' }] };
     const sandbox = {
         AbortController, structuredClone, console: { warn() {} }, MODULE_NAME: 'orchestrator',
-        extension_settings: { orchestrator: settings }, ORCH_EXECUTION_MODE_AGENDA: 'agenda', ORCH_EXECUTION_MODE_DIRECTOR: 'director',
+        capabilitySettings: { orchestrator: settings }, ORCH_EXECUTION_MODE_AGENDA: 'agenda', ORCH_EXECUTION_MODE_DIRECTOR: 'director',
         isAbortError, isAbortSignalLike, throwIfAborted, linkAbortSignals,
         orchInFlight: false, activeOrchRunAbortController: null,
         getContext: () => ({}), getChatKey: () => 'chat', getSettings: () => settings,

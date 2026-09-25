@@ -51,7 +51,6 @@ export const CONTENT_TYPES = {
     INSTRUCT: 'instruct',
     CONTEXT: 'context',
     MOVING_UI: 'moving_ui',
-    QUICK_REPLIES: 'quick_replies',
     SYSPROMPT: 'sysprompt',
     REASONING: 'reasoning',
     ERROR_PAGE: 'error_page',
@@ -192,13 +191,6 @@ function resolveContentSink(type, basename, directories, handle) {
                 label: 'NamedDocRepo[movingUI]',
                 exists: async () => (await getNamedDocRepo().get(handle, 'movingUI', basename)) != null,
                 save: async (json, name) => getNamedDocRepo().save(handle, 'movingUI', name, json),
-            };
-        case CONTENT_TYPES.QUICK_REPLIES:
-            return {
-                kind: 'repo',
-                label: 'NamedDocRepo[quickReplies]',
-                exists: async () => (await getNamedDocRepo().get(handle, 'quickReplies', basename)) != null,
-                save: async (json, name) => getNamedDocRepo().save(handle, 'quickReplies', name, json),
             };
         case CONTENT_TYPES.KOBOLD_PRESET:
             return {
@@ -555,8 +547,6 @@ export function getUserTargetByType(type, directories) {
             return directories.context;
         case CONTENT_TYPES.MOVING_UI:
             return directories.movingUI;
-        case CONTENT_TYPES.QUICK_REPLIES:
-            return directories.quickreplies;
         case CONTENT_TYPES.SYSPROMPT:
             return directories.sysprompt;
         case CONTENT_TYPES.REASONING:

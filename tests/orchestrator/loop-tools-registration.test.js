@@ -11,7 +11,7 @@
 
 import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
 
-import { executeLoopTool, getEnabledToolSchemas } from '../../public/scripts/extensions/orchestrator/loop-tools.js';
+import { executeLoopTool, getEnabledToolSchemas } from '../../public/scripts/agents/orchestrator/loop-tools.js';
 
 describe('loop-tools registry (Task 1)', () => {
     let warnSpy;

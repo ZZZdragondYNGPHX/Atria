@@ -1,9 +1,9 @@
 import { describe, test, expect, jest } from '@jest/globals';
 import { largeMemory } from './fixtures/large-memory.js';
-import { projectTemporalGraph } from '../../public/scripts/extensions/memory-graph/temporal-graph.js';
-import { buildMemoryCorpus, rankMemory, retrieveMemory } from '../../public/scripts/extensions/memory-graph/hybrid-retrieval.js';
-import { computeInspector, inspectorPayload } from '../../public/scripts/extensions/memory-graph/inspector-compute.js';
-import { inspectMemory } from '../../public/scripts/extensions/memory-graph/diagnostics.js';
+import { projectTemporalGraph } from '../../public/scripts/agents/memory/temporal-graph.js';
+import { buildMemoryCorpus, rankMemory, retrieveMemory } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
+import { computeInspector, inspectorPayload } from '../../public/scripts/agents/memory/inspector-compute.js';
+import { inspectMemory } from '../../public/scripts/agents/memory/diagnostics.js';
 
 describe('Memory OS optimization invariants and retrieval replay', () => {
     test('compact worker payload preserves graph status and leaves source ledger unchanged', () => {

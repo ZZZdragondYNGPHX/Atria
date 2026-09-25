@@ -1,9 +1,9 @@
 import { describe, test, expect } from '@jest/globals';
-import { selectGraph } from '../../public/scripts/extensions/memory-graph/graph-inspector.js';
-import { applyManualCorrection } from '../../public/scripts/extensions/memory-graph/manual-corrections.js';
-import { emptyProvenance, normalizeProvenance } from '../../public/scripts/extensions/memory-graph/source-provenance.js';
-import { projectTemporalGraph, applyTemporalOperations } from '../../public/scripts/extensions/memory-graph/temporal-graph.js';
-import { buildMemoryCorpus } from '../../public/scripts/extensions/memory-graph/hybrid-retrieval.js';
+import { selectGraph } from '../../public/scripts/agents/memory/graph-inspector.js';
+import { applyManualCorrection } from '../../public/scripts/agents/memory/manual-corrections.js';
+import { emptyProvenance, normalizeProvenance } from '../../public/scripts/agents/memory/source-provenance.js';
+import { projectTemporalGraph, applyTemporalOperations } from '../../public/scripts/agents/memory/temporal-graph.js';
+import { buildMemoryCorpus } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
 
 function fixture() {
     let state = { ...emptyProvenance(), scopeId: 'chat:a' }; let serial = 0;

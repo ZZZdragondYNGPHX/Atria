@@ -16,7 +16,7 @@
 // numeric-index notation (`[0].id`, `[1].tableColumns[0]`, `length`).
 
 import { describe, test, expect } from '@jest/globals';
-import { dispatchMgSchemaReadFields } from '../../public/scripts/extensions/memory-graph/schema-iteration/read-fields-dispatcher.js';
+import { dispatchMgSchemaReadFields } from '../../public/scripts/agents/memory/schema-iteration/read-fields-dispatcher.js';
 
 const sampleSchema = Object.freeze([
     Object.freeze({

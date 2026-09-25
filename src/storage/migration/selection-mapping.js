@@ -34,8 +34,6 @@ export const FS_TREE_CATEGORIES = Object.freeze([
     'secrets',
     'characters',
     'assets',
-    'extensions',
-    'globalExtensions',
     'vectors',
 ]);
 

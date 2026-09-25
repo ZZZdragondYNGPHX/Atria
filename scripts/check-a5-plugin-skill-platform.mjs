@@ -43,12 +43,12 @@ requirePattern(
     'A5 Play Runtime Descriptor must project exact package plugins',
 );
 requirePattern(
-    'public/scripts/extensions/game-runtime/ui/live.js',
+    'public/scripts/native/experience/ui/live.js',
     /createPackageRuntimeContributionRegistry[\s\S]*selectorDefinitions/,
     'A5 Experience Runtime must consume host-validated package Play contributions',
 );
 rejectPattern(
-    'public/scripts/extensions/game-runtime/ui/plugin-contributions.js',
+    'public/scripts/native/experience/ui/plugin-contributions.js',
     /\b(?:eval|Function|Worker|import\s*\()\b/,
     'A5 package Play contribution consumer must not execute arbitrary code',
 );

@@ -30,7 +30,7 @@
  */
 
 import { describe, test, expect } from '@jest/globals';
-import { createFirstChunkBarrier } from '../../../public/scripts/extensions/orchestrator/dispatch-barrier.js';
+import { createFirstChunkBarrier } from '../../../public/scripts/agents/orchestrator/dispatch-barrier.js';
 
 describe('createFirstChunkBarrier', () => {
     test('first acquire on a fresh key returns role="lead"', () => {

@@ -26,12 +26,12 @@ try {
         const { AgentRuntime, AgentRegistry } = await import('/scripts/lib/agent-runtime/index.js');
         const { DurableCheckpointStore } = await import('/scripts/lib/agent-runtime/durable-checkpoint-store.js');
         const { openIndexedDBCheckpoints } = await import('/scripts/lib/agent-runtime/indexeddb-checkpoints.js');
-        const { runEnginePlan } = await import('/scripts/extensions/orchestrator/engine-v2/runtime-bridge.js');
+        const { runEnginePlan } = await import('/scripts/agents/orchestrator/engine-v2/runtime-bridge.js');
         const { CAPABILITIES } = await import('/scripts/lib/orchestration-engine/index.js');
-        const { assertOutputAuthorized } = await import('/scripts/extensions/orchestrator/engine-v2/output-adapter.js');
+        const { assertOutputAuthorized } = await import('/scripts/agents/orchestrator/engine-v2/output-adapter.js');
         const { replayRuntimeEvents } = await import('/scripts/lib/agent-runtime/projection.js');
-        const panelStore = await import('/scripts/extensions/orchestrator/run-state/store.js');
-        const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js');
+        const panelStore = await import('/scripts/agents/orchestrator/run-state/store.js');
+        const panel = await import('/scripts/agents/orchestrator/workspace/panel.js');
         const caps = Object.fromEntries(CAPABILITIES.map(key => [key, !key.startsWith('reply.')]));
         const plan = { schemaVersion: 1, planId: 'browser-plan', source: { mode: 'spec' }, entryNodeId: 'entry',
             agents: [{ id: 'worker', tools: [], capabilities: caps }],
@@ -102,7 +102,7 @@ try {
     assert.equal(await inspector.isHidden(), true);
     assert.equal(await workspace.isVisible(), true);
     await workspace.getByRole('button', { name: 'Close', exact: true }).click();
-    await page.evaluate(async () => { const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.openWorkspace('Run'); panel.destroyWorkspace(); panel.openWorkspace('Run'); });
+    await page.evaluate(async () => { const panel = await import('/scripts/agents/orchestrator/workspace/panel.js'); panel.openWorkspace('Run'); panel.destroyWorkspace(); panel.openWorkspace('Run'); });
     assert.equal(await page.locator('#agent-memory-workspace').count(), 1);
     await page.setViewportSize({ width: 1440, height: 900 });
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);

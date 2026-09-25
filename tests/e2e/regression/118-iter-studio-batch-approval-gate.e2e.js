@@ -75,12 +75,12 @@ function normalizeSettings(dataRoot) {
     normalizeIterStudioSettings(dataRoot);
     const sp = settingsPath(dataRoot);
     const s = JSON.parse(readFileSync(sp, 'utf8'));
-    s.extension_settings = s.extension_settings || {};
-    s.extension_settings.orchestrator = s.extension_settings.orchestrator || {};
-    s.extension_settings.orchestrator.enabled = true;
+    s.capabilitySettings = s.capabilitySettings || {};
+    s.capabilitySettings.orchestrator = s.capabilitySettings.orchestrator || {};
+    s.capabilitySettings.orchestrator.enabled = true;
     // Loop mode is the lightest orchestrator mode — no director/sub-agent
     // stack needed to open the iter-studio popup.
-    s.extension_settings.orchestrator.executionMode = 'loop';
+    s.capabilitySettings.orchestrator.executionMode = 'loop';
     writeFileSync(sp, JSON.stringify(s, null, 4));
 }
 
@@ -236,7 +236,7 @@ test.describe('#118 — iter-studio batch approval gate (orchestrator custom-too
         // list — pick whichever the runtime commits to).
         const stagedNames = await page.evaluate(() => {
             const ctx = window.Atria.getContext();
-            const orch = ctx.extensionSettings?.orchestrator || {};
+            const orch = ctx.capabilitySettings?.orchestrator || {};
             const names = new Set();
             const collectFrom = (obj) => {
                 if (!obj) return;
@@ -368,7 +368,7 @@ test.describe('#118 — iter-studio batch approval gate (orchestrator custom-too
         // Also assert every bulk tool made it to disk.
         const stagedNames = await page.evaluate(() => {
             const ctx = window.Atria.getContext();
-            const orch = ctx.extensionSettings?.orchestrator || {};
+            const orch = ctx.capabilitySettings?.orchestrator || {};
             const names = new Set();
             const collectFrom = (obj) => {
                 if (!obj) return;

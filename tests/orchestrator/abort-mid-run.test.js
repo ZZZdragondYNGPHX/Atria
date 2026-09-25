@@ -30,7 +30,7 @@ import {
     getCurrentRun,
     finishRun,
     clearCurrentRun,
-} from '../../public/scripts/extensions/orchestrator/run-state/store.js';
+} from '../../public/scripts/agents/orchestrator/run-state/store.js';
 
 describe('#75 — Abort mid-run (RunStateStore unit contracts)', () => {
     test('RunStateStore abort path: startRun → user stop → finishRun(aborted) → clearCurrentRun → next run starts', () => {

@@ -229,5 +229,4 @@ context.eventSource.on('atria.orchestrator.result', (evt) => {
 - [Skills 概覽](/zh-TW/features/skills/) — 所有模式共用的知識包底層素材
 - [便箋 — 作者側劇情線索](/zh-TW/features/orchestrator/notes) — agent-as-author 線索追蹤器，作用域為當前 chat
 - [Function Call Runtime](/zh-TW/improvements/function-call-runtime) — Agenda / Loop 模式都依賴此框架
-- [角色卡編輯器](/zh-TW/features/card-editor/) — 與迭代工作台共用 diff 引擎
 - [卡內綁定預設與人格](/zh-TW/improvements/card-bound-presets) — 編排設定如何隨角色卡走

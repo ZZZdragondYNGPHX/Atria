@@ -37,7 +37,7 @@ let resolveAgentVisibleSkills;
 let invalidateSkillInventory;
 
 beforeAll(async () => {
-    const mod = await import('../../public/scripts/extensions/orchestrator/skill-resolution.js');
+    const mod = await import('../../public/scripts/agents/orchestrator/skill-resolution.js');
     resolveAgentVisibleSkills = mod.resolveAgentVisibleSkills;
     invalidateSkillInventory = mod.invalidateSkillInventory;
 });
@@ -238,7 +238,7 @@ describe('#73 — Skill resolution: 4-scope precedence', () => {
 describe('buildSkillRuntimeContext — orch-preset carrier', () => {
     let buildSkillRuntimeContext;
     beforeAll(async () => {
-        const mod = await import('../../public/scripts/extensions/orchestrator/skill-resolution.js');
+        const mod = await import('../../public/scripts/agents/orchestrator/skill-resolution.js');
         buildSkillRuntimeContext = mod.buildSkillRuntimeContext;
     });
 

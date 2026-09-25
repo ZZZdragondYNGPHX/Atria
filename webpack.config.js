@@ -24,6 +24,7 @@ const WEBPACK_BUNDLE_INPUT_FILES = Object.freeze([
     path.join(serverDirectory, 'public/lib-bundle-core.js'),
     path.join(serverDirectory, 'public/lib-bundle-optional.js'),
     path.join(serverDirectory, 'public/lib-bundle-codemirror.js'),
+    path.join(serverDirectory, 'public/lib-bundle-webllm.js'),
 ]);
 
 export function getWebpackBundleInputFiles() {
@@ -178,6 +179,7 @@ export default function getPublicLibConfig({ forceDist = false, pruneCache = fal
         entry: {
             'lib.core.bundle': path.join(serverDirectory, 'public/lib-bundle-core.js'),
             'lib.optional.bundle': path.join(serverDirectory, 'public/lib-bundle-optional.js'),
+            'lib.webllm.bundle': path.join(serverDirectory, 'public/lib-bundle-webllm.js'),
             'codemirror.bundle': path.join(serverDirectory, 'public/lib-bundle-codemirror.js'),
         },
         cache: {

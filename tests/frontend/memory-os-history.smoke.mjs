@@ -17,12 +17,12 @@ async function selectCharacter() {
     if (await toggle.evaluate(el => el.classList.contains('closedIcon'))) await toggle.click();
     await page.locator('#rm_print_characters_block .character_select').filter({ hasText: name }).click();
     await page.waitForFunction(expected => window.Atria.getContext().characters[window.Atria.getContext().characterId]?.name === expected, name);
-    await page.waitForFunction(() => !!window.Atria.getContext().getExtensionApi('memory-graph'));
+    await page.waitForFunction(() => !!window.Atria.getContext().getCapabilityApi('memory-graph'));
 }
 async function openFixture() {
     await page.evaluate(async () => {
-        const { createMemoryHistoryBuilder } = await import('/scripts/extensions/memory-graph/main.js');
-        const { openHistoryBuildPopup } = await import('/scripts/extensions/memory-graph/history-build-ui.js');
+        const { createMemoryHistoryBuilder } = await import('/scripts/agents/memory/main.js');
+        const { openHistoryBuildPopup } = await import('/scripts/agents/memory/history-build-ui.js');
         const context = Object.create(window.Atria.getContext());
         context.generateTask = async request => {
             window.historyFixtureCalls++;
@@ -53,7 +53,7 @@ try {
     if (await page.locator('#firstRunDisclaimer').count()) await page.locator('dialog .menu_button').filter({ hasText: /^(好的|OK)$/ }).click();
     await createBlankCharacter(page, { name, firstmes: 'Alice visited Castle 0.' }); await selectCharacter();
     await page.evaluate(async () => {
-        const ctx = window.Atria.getContext(); Object.assign(ctx.extensionSettings.memory_graph, { memoryOsEnabled: true, includeWorldInfoWithPreset: false, toolCallRetryMax: 0 });
+        const ctx = window.Atria.getContext(); Object.assign(ctx.capabilitySettings.memory_graph, { memoryOsEnabled: true, includeWorldInfoWithPreset: false, toolCallRetryMax: 0 });
         ctx.saveSettingsDebounced();
         for (let i = 1; i < 7; i++) ctx.chat.push({ mes: `Alice visited Castle ${i}.`, is_user: false, name: 'History fixture' });
         await ctx.saveChat();

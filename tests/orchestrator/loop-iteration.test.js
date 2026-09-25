@@ -23,8 +23,8 @@ import { describe, test, expect } from '@jest/globals';
 import {
     LOOP_ITERATION_CONTRACT_LINES,
     applyLoopProfilePatchArgs,
-} from '../../public/scripts/extensions/orchestrator/loop-iteration.js';
-import { sanitizeLoopProfile } from '../../public/scripts/extensions/orchestrator/persistence.js';
+} from '../../public/scripts/agents/orchestrator/loop-iteration.js';
+import { sanitizeLoopProfile } from '../../public/scripts/agents/orchestrator/persistence.js';
 
 describe('LOOP_ITERATION_CONTRACT_LINES', () => {
     const text = LOOP_ITERATION_CONTRACT_LINES.join('\n');

@@ -10,7 +10,7 @@
  * Uses the shared `_mocks/main-module-stack.js` shim so the real `main.js`
  * loads under jest. vector-index and character-overrides keep small in-file
  * mocks (the former needs an embedder, the latter reads the global
- * `extension_settings`).
+ * `capabilitySettings`).
  */
 
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
@@ -34,7 +34,7 @@ const testHolder = {
 // namespace imports in main.js/retriever.js succeed.
 // ---------------------------------------------------------------------------
 jest.unstable_mockModule(
-    '../../public/scripts/extensions/memory-graph/vector-index.js',
+    '../../public/scripts/agents/memory/vector-index.js',
     () => ({
         findSimilarNodes: jest.fn(async () => testHolder.vectorHits || []),
         getVectorConfigFromSettings: jest.fn(() => testHolder.vectorProfile),
@@ -59,14 +59,14 @@ jest.unstable_mockModule(
 );
 
 // ---------------------------------------------------------------------------
-// Mock: ./character-overrides.js — bypass the global `extension_settings`
+// Mock: ./character-overrides.js — bypass the global `capabilitySettings`
 // dance. Tests inject settings via `testHolder.settings`; we return that
 // when set, otherwise fall through to the caller-supplied base settings.
 // main.js destructures more names than read-api.js does; the unused ones are
 // stubbed to identity / null so the namespace import succeeds.
 // ---------------------------------------------------------------------------
 jest.unstable_mockModule(
-    '../../public/scripts/extensions/memory-graph/character-overrides.js',
+    '../../public/scripts/agents/memory/character-overrides.js',
     () => ({
         configure: () => {},
         getCurrentAvatar: () => '',
@@ -80,7 +80,7 @@ jest.unstable_mockModule(
         getEffectiveSettings: (_context, baseSettings) => testHolder.settings || baseSettings || {},
         getEffectiveNodeTypeSchema: (_context, _settings) => {
             // Prefer the test holder; fall through to whatever settings the
-            // caller resolved (real getSettings() backing extension_settings).
+            // caller resolved (real getSettings() backing capabilitySettings).
             const s = testHolder.settings || _settings;
             return Array.isArray(s?.nodeTypeSchema) ? s.nodeTypeSchema : [];
         },
@@ -105,10 +105,10 @@ let getMemoryGraphInjectionStateReexport;
 
 beforeEach(async () => {
     if (!getMemoryGraphReadApi) {
-        const readApi = await import('../../public/scripts/extensions/memory-graph/read-api.js');
+        const readApi = await import('../../public/scripts/agents/memory/read-api.js');
         getMemoryGraphReadApi = readApi.getMemoryGraphReadApi;
         getMemoryGraphInjectionStateReexport = readApi.getMemoryGraphInjectionState;
-        const extApi = await import('../../public/scripts/extensions/memory-graph/external-api.js');
+        const extApi = await import('../../public/scripts/agents/memory/external-api.js');
         __setInjectedForTest = extApi.__setInjectedForTest;
         __resetInjectedForTest = extApi.__resetInjectedForTest;
         __recordInjectedNodeIds = extApi.__recordInjectedNodeIds;
@@ -668,7 +668,7 @@ describe('Layer C: recall primitives (spec §4.4)', () => {
     });
 
     test('listVisibleCandidates() matches collectRootCandidates id set (spec §8.2)', async () => {
-        const { collectRootCandidates } = await import('../../public/scripts/extensions/memory-graph/main.js');
+        const { collectRootCandidates } = await import('../../public/scripts/agents/memory/main.js');
         const settings = testHolder.settings;
         const direct = collectRootCandidates(store, settings, { fullText: '' }, [], ctx, {
             latestSeqIndex: -1, excludeMessages: 0,

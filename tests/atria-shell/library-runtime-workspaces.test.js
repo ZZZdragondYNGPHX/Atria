@@ -50,7 +50,7 @@ describe('N9 Library / Runtime domain adapters', () => {
         `;
 
         context = {
-            extensionSettings: {
+            capabilitySettings: {
                 connectionManager: {
                     profiles: [{
                         id: 'chat-main',
@@ -62,7 +62,7 @@ describe('N9 Library / Runtime domain adapters', () => {
                     selectedProfile: 'chat-main',
                 },
             },
-            getExtensionApi: jest.fn(() => null),
+            getCapabilityApi: jest.fn(() => null),
             getRequestHeaders: jest.fn(() => ({ 'X-CSRF-Token': 'test' })),
         };
         globalThis.Atria = { getContext: () => context };

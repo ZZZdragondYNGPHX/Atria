@@ -48,7 +48,7 @@ globalThis.Atria = {
         lib: {
             yaml: { dump: (v) => JSON.stringify(v), load: (s) => JSON.parse(s) },
         },
-        extensionSettings: __sillyTavernSettings,
+        capabilitySettings: __sillyTavernSettings,
     }),
 };
 
@@ -59,8 +59,8 @@ jest.unstable_mockModule('../../public/lib.js', () => ({
     default: {},
 }));
 
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
-    extension_settings: __sillyTavernSettings,
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
+    capabilitySettings: __sillyTavernSettings,
     getContext: () => ({}),
     writeExtensionField: () => {},
     UNSET_VALUE: Symbol('unset'),
@@ -83,9 +83,7 @@ jest.unstable_mockModule('../../public/scripts/world-info.js', () => ({
     wi_anchor_position: {},
 }));
 
-jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/profile-resolver.js', () => ({
-    getChatCompletionConnectionProfiles: () => [],
-}));
+
 
 // ─── LLM stub for agenda + spec runtimes ────────────────────────────────────
 // The only legitimate mock surface. Loop uses its own `sendLlm` deps
@@ -93,8 +91,8 @@ jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/pro
 const plannerResponses = [];
 const agentResponses = [];
 const specLlmResponses = [];
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/agenda-planner-tool.js', () => ({ requestAgendaPlannerStep: async () => { if (!plannerResponses.length) throw new Error('Planner fixture exhausted'); return plannerResponses.shift(); } }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/tool-calling.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/agenda-planner-tool.js', () => ({ requestAgendaPlannerStep: async () => { if (!plannerResponses.length) throw new Error('Planner fixture exhausted'); return plannerResponses.shift(); } }));
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/tool-calling.js', () => ({
     appendStandardToolRoundMessages: () => {},
     requestToolCallsWithRetry: async () => {
         // Spec runtime uses this exclusively; agenda's `runAgendaTextAgent`
@@ -120,7 +118,7 @@ const buildSkillRuntimeContextMock = jest.fn(() => ({}));
 const resolveAgentVisibleSkillsMock = jest.fn(async () => []);
 const buildAvailableSkillsBlockMock = jest.fn(() => '');
 
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/skill-resolution.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/skill-resolution.js', () => ({
     buildSkillRuntimeContext: buildSkillRuntimeContextMock,
     resolveAgentVisibleSkills: resolveAgentVisibleSkillsMock,
     buildAvailableSkillsBlock: buildAvailableSkillsBlockMock,
@@ -132,9 +130,9 @@ let runLoopOrchestration;
 let runSpecOrchestration;
 
 beforeAll(async () => {
-    ({ runAgendaOrchestration } = await import('../../public/scripts/extensions/orchestrator/agenda-runtime.js'));
-    ({ runLoopOrchestration } = await import('../../public/scripts/extensions/orchestrator/loop-runtime.js'));
-    ({ runSpecOrchestration } = await import('../../public/scripts/extensions/orchestrator/spec-runtime.js'));
+    ({ runAgendaOrchestration } = await import('../../public/scripts/agents/orchestrator/agenda-runtime.js'));
+    ({ runLoopOrchestration } = await import('../../public/scripts/agents/orchestrator/loop-runtime.js'));
+    ({ runSpecOrchestration } = await import('../../public/scripts/agents/orchestrator/spec-runtime.js'));
 });
 
 beforeEach(() => {

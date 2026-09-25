@@ -1,4 +1,4 @@
-import { buildPerRunCustomToolRegistry } from '../../../public/scripts/extensions/orchestrator/per-run-custom-tools.js';
+import { buildPerRunCustomToolRegistry } from '../../../public/scripts/agents/orchestrator/per-run-custom-tools.js';
 
 test.each([false, true])('worker write grant %s never grants finalize or recursive dispatch', async allowed => {
     const { handle } = setupHandle({ initialText: 'original' });
@@ -31,7 +31,7 @@ import {
     executeFinalizeTool,
     executeGetDraftTool,
     createSubagentDispatcher,
-} from '../../../public/scripts/extensions/orchestrator/director-tools.js';
+} from '../../../public/scripts/agents/orchestrator/director-tools.js';
 
 function setupHandle({ initialText = '', generationType = 'normal' } = {}) {
     const chat = [{ mes: initialText, extra: { reasoning: '' }, is_user: false }];

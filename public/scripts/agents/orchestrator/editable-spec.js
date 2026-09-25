@@ -1,0 +1,295 @@
+import { configuredNativeRoute } from '../../native/runtime-route-ref.js';
+/**
+ * Editable spec / preset map transforms used by the orchestrator UI.
+ *
+ * The orchestration spec is stored in two shapes:
+ *
+ *   - **Persistence shape** (`{ stages: [{ id, mode, nodes }] }`) — what
+ *     `capabilitySettings.orchestrator.orchestrationSpec` and per-character
+ *     overrides hold on disk. This shape is sanitized by `spec-schema.js`.
+ *
+ *   - **Editor shape** — the same data plus per-node UI affordances (a
+ *     stable `preset` id, a `userPromptTemplate` text always present even
+ *     if empty, and a fully-populated preset map keyed by `preset`).
+ *
+ * This module owns the bidirectional conversion plus the small helpers
+ * the editor leans on:
+ *
+ *   - `createPresetDraft(seed)` returns the editable preset object —
+ *     fields are always present (empty string vs missing) and pass
+ *     through `apiPresetName` / `promptPresetName` from `agent-resolution.js`.
+ *   - `createAgendaPlannerDraft(seed)` is the agenda planner equivalent,
+ *     pre-seeded with `defaultAgendaPlanner`.
+ *   - `sanitizePresetMap` / `mergePresetMaps` normalize an arbitrary
+ *     preset map before it lands either in storage or in an editor draft.
+ *   - `toEditablePresetMap` / `toEditableSpec` convert from persistence
+ *     shape to editor shape, ensuring at minimum a `distiller` preset and
+ *     one default stage with one node.
+ *   - `serializeEditorSpec` / `serializeEditorPresetMap` go the other
+ *     way for save / export.
+ *   - `sanitizeIdentifierToken(value, fallback)` is the shared id slug
+ *     helper — kebab-friendly characters only, replaces whitespace with
+ *     underscore, falls back to the supplied default when the value
+ *     normalizes to empty.
+ *
+ * All functions are pure and side-effect-free except for the in-place
+ * `presets[defaultPreset] = …` writes in `toEditableSpec`, which mutates
+ * the caller-supplied editor presets map by design.
+ */
+
+import {
+    ORCH_NODE_TYPE_WORKER,
+    defaultAgendaPlanner,
+} from './defaults.js';
+import {
+    getPresetApiPresetName,
+    getPresetPromptPresetName,
+} from './agent-resolution.js';
+import {
+    normalizeNodeSpec,
+    normalizeNodeType,
+    sanitizeSpec,
+} from './spec-schema.js';
+import { sanitizeOptionalAgentToolFlags } from './persistence.js';
+
+function cloneSkillsField(skills) {
+    if (!skills || typeof skills !== 'object') return undefined;
+    return {
+        visible: Array.isArray(skills.visible) ? skills.visible.slice() : [],
+        deny: Array.isArray(skills.deny) ? skills.deny.slice() : [],
+    };
+}
+
+export function sanitizeIdentifierToken(value, fallback = '') {
+    const normalized = String(value || '')
+        .trim()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-zA-Z0-9_-]/g, '_');
+    return normalized || String(fallback || '');
+}
+
+export function createPresetDraft(seed = {}) {
+    const out = {
+        ...configuredNativeRoute(seed),
+        systemPrompt: String(seed.systemPrompt || '').trim(),
+        userPromptTemplate: String(seed.userPromptTemplate || '').trim(),
+        apiPresetName: getPresetApiPresetName(seed),
+        promptPresetName: getPresetPromptPresetName(seed),
+        // null = inherit from profile.defaultTools at runtime; an object =
+        // per-preset override (spec node / agenda agent / loop). The
+        // sanitizer canonicalizes the shape (missing flags default OFF in
+        // this opt-in path; loop mode does its own all-on layering).
+        tools: sanitizeOptionalAgentToolFlags(seed.tools),
+    };
+    const purpose = seed.purpose || seed.name;
+    if (typeof purpose === 'string') out.purpose = purpose.trim().slice(0, 240);
+    // Per-preset skills (opt-in). Mirrors normalizeNodeSpec — left undefined
+    // when absent so the resolver inherits the mode default. Carries an
+    // explicit value through unchanged otherwise.
+    if (seed && typeof seed === 'object' && seed.skills && typeof seed.skills === 'object') {
+        out.skills = {
+            visible: Array.isArray(seed.skills.visible) ? seed.skills.visible.slice() : [],
+            deny: Array.isArray(seed.skills.deny) ? seed.skills.deny.slice() : [],
+        };
+    }
+    return out;
+}
+
+export function createAgendaPlannerDraft(seed = {}) {
+    const source = typeof seed === 'string'
+        ? { userPromptTemplate: seed }
+        : (seed && typeof seed === 'object' ? seed : {});
+    return createPresetDraft({
+        ...defaultAgendaPlanner,
+        ...source,
+        systemPrompt: String(source.systemPrompt || defaultAgendaPlanner.systemPrompt).trim(),
+        userPromptTemplate: String(source.userPromptTemplate || defaultAgendaPlanner.userPromptTemplate).trim(),
+    });
+}
+
+export function sanitizePresetMap(presets) {
+    if (!presets || typeof presets !== 'object') {
+        return {};
+    }
+
+    const normalized = {};
+    for (const [key, value] of Object.entries(presets)) {
+        if (!value || typeof value !== 'object') {
+            continue;
+        }
+        const presetId = sanitizeIdentifierToken(key, '');
+        if (!presetId) {
+            continue;
+        }
+        normalized[presetId] = createPresetDraft(value);
+    }
+
+    return normalized;
+}
+
+export function mergePresetMaps(basePresets, patchPresets) {
+    const base = sanitizePresetMap(basePresets);
+    const patchSource = patchPresets && typeof patchPresets === 'object' ? patchPresets : {};
+    const merged = { ...base };
+
+    for (const [key, rawValue] of Object.entries(patchSource)) {
+        if (!rawValue || typeof rawValue !== 'object') {
+            continue;
+        }
+        const presetId = sanitizeIdentifierToken(key, '');
+        if (!presetId) {
+            continue;
+        }
+        merged[presetId] = createPresetDraft({
+            ...(base[presetId] || {}),
+            ...rawValue,
+        });
+    }
+
+    return sanitizePresetMap(merged);
+}
+
+export function toEditablePresetMap(presets) {
+    const normalized = {};
+    const source = sanitizePresetMap(presets);
+    for (const [key, value] of Object.entries(source)) {
+        normalized[key] = createPresetDraft(value);
+    }
+    return normalized;
+}
+
+export function toEditableSpec(spec, presets) {
+    const sanitized = sanitizeSpec(spec);
+    const presetIds = Object.keys(presets);
+    const defaultPreset = presetIds[0] || 'distiller';
+    if (!presets[defaultPreset]) {
+        presets[defaultPreset] = createPresetDraft();
+    }
+
+    const stages = (Array.isArray(sanitized.stages) ? sanitized.stages : [])
+        .map((stage, stageIndex) => {
+            const stageId = sanitizeIdentifierToken(stage?.id, `stage_${stageIndex + 1}`);
+            const nodes = Array.isArray(stage?.nodes) ? stage.nodes : [];
+            const normalizedNodes = nodes.map((node, nodeIndex) => {
+                const normalizedNode = normalizeNodeSpec(node);
+                const preset = sanitizeIdentifierToken(normalizedNode.preset || normalizedNode.id, defaultPreset);
+                if (!presets[preset]) {
+                    presets[preset] = createPresetDraft();
+                }
+                const editableNode = {
+                    id: sanitizeIdentifierToken(normalizedNode.id || preset, `node_${nodeIndex + 1}`),
+                    preset,
+                    type: normalizeNodeType(normalizedNode.type),
+                    userPromptTemplate: String(normalizedNode.userPromptTemplate || ''),
+                    // null = inherit profile defaultTools; object = explicit override.
+                    tools: sanitizeOptionalAgentToolFlags(normalizedNode.tools),
+                };
+                const skills = cloneSkillsField(normalizedNode.skills);
+                if (skills) editableNode.skills = skills;
+                return editableNode;
+            });
+            return {
+                id: stageId,
+                mode: String(stage?.mode || 'serial').toLowerCase() === 'parallel' ? 'parallel' : 'serial',
+                nodes: normalizedNodes.length > 0
+                    ? normalizedNodes
+                    : [{
+                        id: defaultPreset,
+                        preset: defaultPreset,
+                        type: ORCH_NODE_TYPE_WORKER,
+                        userPromptTemplate: '',
+                        tools: null,
+                    }],
+            };
+        })
+        .filter(stage => stage.nodes.length > 0);
+
+    const rootExtras = {
+        // sanitizeSpec already canonicalized these — pass through verbatim
+        // so the editor renders the persisted state, including explicit
+        // null (no profile default) and the full custom-tool list.
+        defaultTools: sanitized.defaultTools === undefined ? null : sanitized.defaultTools,
+        customTools: Array.isArray(sanitized.customTools) ? sanitized.customTools : [],
+        skills: cloneSkillsField(sanitized.skills) || { visible: ['*'], deny: [] },
+        // Round-trip the per-preset lorebook filter: sanitizeSpec always
+        // emits a canonical `{ bookPattern, entryPattern }` shape, so the
+        // editor draft carries it verbatim for the popup textareas.
+        lorebookFilter: sanitized.lorebookFilter || { bookPattern: '', entryPattern: '' },
+    };
+
+    if (stages.length > 0) {
+        return { ...rootExtras, stages };
+    }
+
+    return {
+        ...rootExtras,
+        stages: [{
+            id: 'distill',
+            mode: 'serial',
+            nodes: [{
+                id: defaultPreset,
+                preset: defaultPreset,
+                type: ORCH_NODE_TYPE_WORKER,
+                userPromptTemplate: '',
+                tools: null,
+            }],
+        }],
+    };
+}
+
+export function serializeEditorSpec(editorSpec) {
+    const stages = Array.isArray(editorSpec?.stages) ? editorSpec.stages : [];
+    // defaultTools: explicit null = "no profile default" — preserve.
+    // Undefined / missing key = unset; pass through so sanitizeSpec's
+    // fresh-profile seeder reseeds Layer-2 customs once. Object = user
+    // edit; pass through for sanitization.
+    const hasDefaultToolsKey = editorSpec
+        && Object.prototype.hasOwnProperty.call(editorSpec, 'defaultTools');
+    const payload = {
+        stages: stages
+            .map((stage, stageIndex) => ({
+                id: sanitizeIdentifierToken(stage?.id, `stage_${stageIndex + 1}`),
+                mode: String(stage?.mode || 'serial').toLowerCase() === 'parallel' ? 'parallel' : 'serial',
+                nodes: (Array.isArray(stage?.nodes) ? stage.nodes : [])
+                    .map((node, nodeIndex) => {
+                        const id = sanitizeIdentifierToken(node?.id, `node_${nodeIndex + 1}`);
+                        const preset = sanitizeIdentifierToken(node?.preset, id);
+                        const userPromptTemplate = String(node?.userPromptTemplate || '').trim();
+
+                        const serialized = { id, preset, type: normalizeNodeType(node?.type) };
+                        if (userPromptTemplate) {
+                            serialized.userPromptTemplate = userPromptTemplate;
+                        }
+                        // Per-node tool override: null = inherit (omit so
+                        // sanitizer carries null through); object = explicit
+                        // override (let sanitizer canonicalize the shape).
+                        if (node?.tools !== undefined) {
+                            serialized.tools = node.tools;
+                        }
+                        const skills = cloneSkillsField(node?.skills);
+                        if (skills) serialized.skills = skills;
+                        return serialized;
+                    })
+                    .filter(Boolean),
+            }))
+            .filter(stage => Array.isArray(stage.nodes) && stage.nodes.length > 0),
+        customTools: Array.isArray(editorSpec?.customTools) ? editorSpec.customTools : [],
+    };
+    if (hasDefaultToolsKey) {
+        payload.defaultTools = editorSpec.defaultTools;
+    }
+    const skills = cloneSkillsField(editorSpec?.skills);
+    if (skills) payload.skills = skills;
+    // Round-trip the per-preset lorebook filter through the sanitizer
+    // so a bookPattern / entryPattern edited in the popup lands in
+    // sanitizeSpec's output rather than being replaced by the empty
+    // default when the payload is rebuilt here (Task 5).
+    if (editorSpec && editorSpec.lorebookFilter !== undefined) {
+        payload.lorebookFilter = editorSpec.lorebookFilter;
+    }
+    return sanitizeSpec(payload);
+}
+
+export function serializeEditorPresetMap(editorPresets) {
+    return sanitizePresetMap(editorPresets || {});
+}

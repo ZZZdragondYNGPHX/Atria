@@ -92,9 +92,9 @@ jobs:
           public/scripts/extensions/character-editor-assistant/main.js
           public/scripts/extensions/character-editor-assistant/editor-ui.js
           public/scripts/atria-shell/native-play-host.js
-          public/scripts/extensions/game-runtime/index.js
-          public/scripts/extensions/game-runtime/package-loader.js
-          public/scripts/extensions/game-runtime/world/session.js
+          public/scripts/native/experience/index.js
+          public/scripts/native/experience/package-loader.js
+          public/scripts/native/experience/world/session.js
           public/scripts/native/studio-workspace.js
           public/scripts/native/studio-agent.js
           public/scripts/native/knowledge-runtime.js

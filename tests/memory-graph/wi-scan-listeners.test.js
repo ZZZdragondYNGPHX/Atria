@@ -46,7 +46,7 @@ let setSafeInjectMemoryPromptsHookForTest;
 let setPersistentDrainHookForTest;
 
 beforeAll(async () => {
-    const main = await import('../../public/scripts/extensions/memory-graph/main.js');
+    const main = await import('../../public/scripts/agents/memory/main.js');
     handleWiAfterScan = main._handleWiAfterScanForTest;
     handleWiBeforeScan = main._handleWiBeforeScanForTest;
     getRecallRuntimeState = main._getRecallRuntimeStateForTest;

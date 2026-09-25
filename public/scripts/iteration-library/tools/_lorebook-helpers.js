@@ -8,7 +8,7 @@
  *
  * Originated in `character-editor-assistant/main.js`. Lifted here so any
  * iter popup (orchestrator, memory-graph schema, CEA editor, CPA — present
- * or future) can run lorebook tools without `getExtensionApi('character-
+ * or future) can run lorebook tools without `getCapabilityApi('character-
  * editor-assistant')` and without re-implementing the parse/match logic.
  */
 

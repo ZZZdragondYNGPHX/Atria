@@ -9,7 +9,7 @@ metadata:
 
 适用范围: 本规范**只**约束 event.summary 字段的最终字符串。其他字段 (character_sheet 的 traits/identity/aliases、location_state 的 state/controller、thread 的 note 等) 不在此规范范围内。
 
-本规范与 `public/scripts/extensions/memory-graph/default-prompts.js` 的 `EVENT_SUMMARY_RULES_BODY` 常量是同一份内容; 当二者出现差异时, 以 `default-prompts.js` 为准。
+本规范与 `public/scripts/agents/memory/default-prompts.js` 的 `EVENT_SUMMARY_RULES_BODY` 常量是同一份内容; 当二者出现差异时, 以 `default-prompts.js` 为准。
 
 ## 0. 核心定位
 

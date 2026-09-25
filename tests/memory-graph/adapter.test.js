@@ -2,7 +2,7 @@
  * Memory-graph ↔ FloorState adapter tests.
  *
  * Covers the adapter functions in
- * public/scripts/extensions/memory-graph/persistence.js, plus
+ * public/scripts/agents/memory/persistence.js, plus
  * scenarios that exercise the adapter together with FloorState's structural
  * event handling. The full memory-graph extension wiring (event handlers,
  * cache invalidation) is integration-tested at the harness level — these
@@ -23,7 +23,7 @@ import {
     persistMetaFields,
     resetFloorStateInstanceForTesting,
     constants as adapterConstants,
-} from '../../public/scripts/extensions/memory-graph/persistence.js';
+} from '../../public/scripts/agents/memory/persistence.js';
 
 // --- mocks (shape mirrors tests/floor-state/instance.test.js) ---
 

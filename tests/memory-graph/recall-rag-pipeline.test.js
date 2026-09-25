@@ -1,6 +1,6 @@
 /**
  * Pure tests for the RAG retriever. Targets `runRagRecall` in
- * public/scripts/extensions/memory-graph/retriever.js, which is intentionally
+ * public/scripts/agents/memory/retriever.js, which is intentionally
  * LLM-free: the caller computes any optional query rewrite and passes the
  * string in via options.rewrittenQuery. We mock only the vector-index
  * boundary (findSimilarNodes, rerankDocuments) so the test stays at the
@@ -15,7 +15,7 @@ const buildNodeVectorTextMock = jest.fn();
 const getVectorConfigFromSettingsMock = jest.fn();
 const validateVectorConfigMock = jest.fn();
 
-jest.unstable_mockModule('../../public/scripts/extensions/memory-graph/vector-index.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/memory/vector-index.js', () => ({
     findSimilarNodes: findSimilarNodesMock,
     rerankDocuments: rerankDocumentsMock,
     buildNodeVectorText: buildNodeVectorTextMock,
@@ -23,7 +23,7 @@ jest.unstable_mockModule('../../public/scripts/extensions/memory-graph/vector-in
     validateVectorConfig: validateVectorConfigMock,
 }));
 
-const retrieverModulePromise = import('../../public/scripts/extensions/memory-graph/retriever.js');
+const retrieverModulePromise = import('../../public/scripts/agents/memory/retriever.js');
 
 function makeStore() {
     return {

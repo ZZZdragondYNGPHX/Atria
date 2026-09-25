@@ -64,8 +64,8 @@ describe('frontend logging adapters', () => {
     });
 
     test('error adapter classifier maps known Atria surfaces without guessing ownership', () => {
-        expect(__frontendErrorAdapterTestUtils.inferModuleFromFilename('/scripts/extensions/orchestrator/main.js')).toBe('orchestrator');
-        expect(__frontendErrorAdapterTestUtils.inferModuleFromFilename('/scripts/extensions/memory-graph/main.js')).toBe('memory');
+        expect(__frontendErrorAdapterTestUtils.inferModuleFromFilename('/scripts/agents/orchestrator/main.js')).toBe('orchestrator');
+        expect(__frontendErrorAdapterTestUtils.inferModuleFromFilename('/scripts/agents/memory/main.js')).toBe('memory');
         expect(__frontendErrorAdapterTestUtils.inferModuleFromFilename('/scripts/extensions/third-party/demo/main.js')).toBe('extensions');
         expect(__frontendErrorAdapterTestUtils.inferModuleFromFilename('/scripts/script.js')).toBe('system');
     });

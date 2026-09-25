@@ -150,4 +150,3 @@ Loop mode iterates only through the Studio — there's no "generate a complete p
 - [Agenda mode](/features/orchestrator/agenda) — Planner-driven dynamic dispatch
 - [Loop mode](/features/orchestrator/loop) — single-agent tool loop
 - [Skills in the orchestrator](/features/orchestrator/skills) — making a skill visible to a particular agent
-- [Character Card Editor](/features/card-editor/) — shares the diff engine with Iteration Studio

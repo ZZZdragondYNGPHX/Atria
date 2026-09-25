@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { createSkillRepository } from '../../../src/skills/repository.js';
 import { createNativeId } from '../../../src/native/identity.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
-import { disableExtensions } from '../_lib/fixtures.js';
+
 import { awaitMainUI } from '../_lib/page.js';
 import { seedNativeSessionDataRoot } from './_helpers.js';
 
@@ -13,7 +13,7 @@ const skillText = (name, text) => `---\nname: ${name}\ndescription: Native scope
 
 test.beforeAll(async () => {
     const seed = await seedNativeSessionDataRoot({ suffix: 'native-authoring' });
-    disableExtensions({ dataRoot: seed.dataRoot, names: ['stable-diffusion'] });
+
     const repo = createSkillRepository(join(seed.dataRoot, seed.handle));
     for (const [name, scope] of [
         ['project-guide', { kind: 'project', projectId }],

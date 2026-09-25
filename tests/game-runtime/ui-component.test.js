@@ -1,9 +1,9 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { createGameLogicRuntime } from '../../public/scripts/extensions/game-runtime/logic/runtime.js';
-import { createComponentUiRuntime } from '../../public/scripts/extensions/game-runtime/ui/runtime.js';
-import { createSelectorRuntime } from '../../public/scripts/extensions/game-runtime/ui/selectors.js';
-import { createSurfaceHost } from '../../public/scripts/extensions/game-runtime/ui/surfaces.js';
+import { createGameLogicRuntime } from '../../public/scripts/native/experience/logic/runtime.js';
+import { createComponentUiRuntime } from '../../public/scripts/native/experience/ui/runtime.js';
+import { createSelectorRuntime } from '../../public/scripts/native/experience/ui/selectors.js';
+import { createSurfaceHost } from '../../public/scripts/native/experience/ui/surfaces.js';
 import { createSessionWorldTestAdapter } from './helpers/session-world-adapter.js';
 
 function makeElement(tagName = 'div') {

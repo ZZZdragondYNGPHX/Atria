@@ -20,13 +20,13 @@ import { describe, test, expect, jest, beforeAll } from '@jest/globals';
 // defaults.js (transitively imported by agent-resolution's siblings)
 // reads `Atria.getContext().constants.{promptRoles,wiPosition}` at
 // module load. `agent-resolution.js` itself also grabs
-// `Atria.getContext().extensionSettings` at import time. Provide a
+// `Atria.getContext().capabilitySettings` at import time. Provide a
 // mutable ctx so the test can install card presets by swapping the
 // characters array.
 const ctxState = {
     characters: [],
     characterId: 0,
-    extensionSettings: { orchestrator: {} },
+    capabilitySettings: { orchestrator: {} },
     character: {
         presets: {
             list: (character) => {
@@ -72,9 +72,7 @@ jest.unstable_mockModule('../../public/lib.js', () => ({
 
 // Sever the connection-manager gate — profile-resolver.js pulls textgen-models.js
 // → document.addEventListener under Node, which fails without JSDOM.
-jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/profile-resolver.js', () => ({
-    getChatCompletionConnectionProfiles: () => [],
-}));
+
 
 let buildAgentPromptPresetRoutingPromptData;
 let sanitizeOpenAIPresetNamesForAiPrompt;
@@ -83,7 +81,7 @@ beforeAll(async () => {
     ({
         buildAgentPromptPresetRoutingPromptData,
         sanitizeOpenAIPresetNamesForAiPrompt,
-    } = await import('../../public/scripts/extensions/orchestrator/agent-resolution.js'));
+    } = await import('../../public/scripts/agents/orchestrator/agent-resolution.js'));
 });
 
 function setCharacterWithPresets(names, defaultName = null) {

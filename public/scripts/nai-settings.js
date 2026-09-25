@@ -24,7 +24,7 @@ import {
 import { BIAS_CACHE, createNewLogitBiasEntry, displayLogitBias, getLogitBiasListResult } from './logit-bias.js';
 import { SECRET_KEYS, secret_state, writeSecret } from './secrets.js';
 import { t } from './i18n.js';
-import { withProfileRetry } from './extensions/connection-manager/profile-retry.js';
+import { withRetry } from './request-retry.js';
 
 const default_preamble = '[ Style: chat, complex, sensory, visceral ]';
 const default_order = [1, 5, 0, 2, 3, 4];
@@ -750,7 +750,7 @@ function tryParseStreamingError(response, decoded) {
 export async function generateNovelWithStreaming(generate_data, signal, { onAtriaMeta = null, onRequestReady = null } = {}) {
     generate_data.streaming = nai_settings.streaming_novel;
 
-    const response = await withProfileRetry(async () => {
+    const response = await withRetry(async () => {
         if (typeof onRequestReady === 'function') {
             try {
                 onRequestReady();

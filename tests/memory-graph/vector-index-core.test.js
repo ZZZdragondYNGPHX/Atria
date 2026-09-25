@@ -1,6 +1,6 @@
 /**
  * Pure-function tests for
- * public/scripts/extensions/memory-graph/vector-index-core.js.
+ * public/scripts/agents/memory/vector-index-core.js.
  *
  * Covers:
  *   - validateVectorConfig
@@ -25,7 +25,7 @@ import {
     ensureVectorIndexState,
     buildDesiredIndexEntries,
     diffAgainstRemote,
-} from '../../public/scripts/extensions/memory-graph/vector-index-core.js';
+} from '../../public/scripts/agents/memory/vector-index-core.js';
 
 describe('validateVectorConfig', () => {
     test('rejects null/undefined', () => {

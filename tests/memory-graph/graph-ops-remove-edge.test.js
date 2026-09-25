@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import { addEdge, removeEdge } from '../../public/scripts/extensions/memory-graph/graph-ops.js';
+import { addEdge, removeEdge } from '../../public/scripts/agents/memory/graph-ops.js';
 
 function makeStore() {
     return { nodes: { a: { id: 'a' }, b: { id: 'b' }, c: { id: 'c' } }, edges: [] };

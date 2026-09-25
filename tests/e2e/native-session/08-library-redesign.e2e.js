@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { buildAtriaPackageContainer, KnowledgeRepo, createNativeId } from '../../../src/native/index.js';
 import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
 import { sessionFixture, knowledgeSnapshot, publishKnowledge, bindingFor } from '../../native/helpers/session-fixture.js';
-import { disableExtensions } from '../_lib/fixtures.js';
+
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { seedNativeSessionDataRoot } from './_helpers.js';
 
@@ -17,7 +17,7 @@ test.beforeAll(async () => {
     const knowledge = knowledgeSnapshot('The harbour keeper lights the beacon at dusk.\n\nThe last ferry follows its light through the mist.');
     await publishKnowledge(seeded, new KnowledgeRepo({ engine }), knowledge, bindingFor(knowledge, 'library'));
     await engine.close();
-    disableExtensions({ dataRoot: seeded.dataRoot, names: ['stable-diffusion'] });
+
     server = await startServer({ batchKey: 'regression', scenarioId: 'library-redesign', useExistingDataRoot: seeded.dataRoot });
 });
 

@@ -163,7 +163,7 @@ test.describe('Skills: scope migration (global -> preset -> character)', () => {
         // user's director profile doesn't carry a dead reference.
         await page.evaluate(async (name) => {
             try {
-                const settings = window.extension_settings?.atria_orchestrator;
+                const settings = window.capabilitySettings?.atria_orchestrator;
                 if (!settings) return;
                 const dir = settings.directorProfile;
                 if (dir?.skills?.visible && Array.isArray(dir.skills.visible)) {
@@ -211,7 +211,7 @@ async function assertSkillScope(page, name, expectedKind) {
  */
 async function readDirectorVisibleList(page) {
     return await page.evaluate(() => {
-        const settings = window.extension_settings?.atria_orchestrator;
+        const settings = window.capabilitySettings?.atria_orchestrator;
         const visible = settings?.directorProfile?.skills?.visible;
         return Array.isArray(visible) ? [...visible] : [];
     });
@@ -227,7 +227,7 @@ async function readDirectorVisibleList(page) {
  */
 async function ensureSkillReferencedInDirectorProfile(page, name) {
     await page.evaluate((name) => {
-        const settings = window.extension_settings?.atria_orchestrator;
+        const settings = window.capabilitySettings?.atria_orchestrator;
         if (!settings) return;
         if (!settings.directorProfile) settings.directorProfile = {};
         if (!settings.directorProfile.skills) settings.directorProfile.skills = { visible: [], deny: [] };

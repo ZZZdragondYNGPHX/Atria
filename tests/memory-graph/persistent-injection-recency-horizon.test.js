@@ -316,7 +316,7 @@ describe('recall pipeline observes seqCutoffFrom (behavior)', () => {
     let getLatestSeqIndex;
 
     beforeAll(async () => {
-        const mainMod = await import('../../public/scripts/extensions/memory-graph/main.js');
+        const mainMod = await import('../../public/scripts/agents/memory/main.js');
         collectAlwaysInjectNodes = mainMod.collectAlwaysInjectNodes;
         computePersistentInjectionSeqCutoff = mainMod.computePersistentInjectionSeqCutoff;
         computeRecallAlwaysInjectOptions = mainMod.computeRecallAlwaysInjectOptions;
@@ -440,7 +440,7 @@ describe('recall pipeline observes seqCutoffFrom (behavior)', () => {
         const path = await import('node:path');
         const url = await import('node:url');
         const here = path.dirname(url.fileURLToPath(import.meta.url));
-        const mainPath = path.resolve(here, '../../public/scripts/extensions/memory-graph/main.js');
+        const mainPath = path.resolve(here, '../../public/scripts/agents/memory/main.js');
         const src = await fs.readFile(mainPath, 'utf8');
 
         const syncMatch = src.match(
@@ -468,7 +468,7 @@ describe('i18n coverage — new label + help entries present in zh-CN and zh-TW'
         const path = await import('node:path');
         const url = await import('node:url');
         const here = path.dirname(url.fileURLToPath(import.meta.url));
-        const i18nPath = path.resolve(here, '../../public/scripts/extensions/memory-graph/i18n.js');
+        const i18nPath = path.resolve(here, '../../public/scripts/agents/memory/i18n.js');
         const content = await fs.readFile(i18nPath, 'utf8');
         const zhCnIdx = content.indexOf('addLocaleData(\'zh-cn\'');
         const zhTwIdx = content.indexOf('addLocaleData(\'zh-tw\'');

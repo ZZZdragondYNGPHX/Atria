@@ -24,7 +24,7 @@
 import { describe, test, expect } from '@jest/globals';
 import {
     readIterationStringArg,
-} from '../../public/scripts/extensions/orchestrator/iter-arg-validator.js';
+} from '../../public/scripts/agents/orchestrator/iter-arg-validator.js';
 
 describe('readIterationStringArg — strict optional-string accessor', () => {
     test('returns undefined when the key is absent (caller inherits)', () => {

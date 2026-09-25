@@ -3,7 +3,7 @@ import { describe, expect, test } from '@jest/globals';
 import {
     GAME_SURFACES,
     createSurfaceHost,
-} from '../../public/scripts/extensions/game-runtime/ui/surfaces.js';
+} from '../../public/scripts/native/experience/ui/surfaces.js';
 
 function makeElement(tagName = 'div') {
     const element = {

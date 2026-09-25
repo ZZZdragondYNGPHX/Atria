@@ -15,11 +15,11 @@ test('Memory OS UI flag reaches live lifecycle and survives server restart', asy
     mkdirSync(userRoot, { recursive: true });
     const settings = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../default/content/settings.json'), 'utf8'));
     settings.firstRun = false;
-    settings.extension_settings ||= {};
+    settings.atri_capabilities ||= {};
     // Reproduce the reported state: both visible pre-fix switches are on,
     // but the development-only OS flag has never been written by a user.
-    settings.extension_settings.orchestrator = { enabled: true };
-    settings.extension_settings.memory_graph = { enabled: true };
+    settings.atri_capabilities.orchestrator = { enabled: true };
+    settings.atri_capabilities.memory_graph = { enabled: true };
     writeFileSync(resolve(userRoot, 'settings.json'), JSON.stringify(settings));
     const server = await startServer({ batchKey: 'memorygraph', useExistingDataRoot: dataRoot });
     const errors = [];
@@ -31,12 +31,12 @@ test('Memory OS UI flag reaches live lifecycle and survives server restart', asy
         const ctx = window.Atria.getContext();
         const response = await fetch('/api/settings/get', { method: 'POST', headers: ctx.getRequestHeaders(), body: '{}' });
         const payload = await response.json();
-        return JSON.parse(payload.settings).extension_settings.memory_graph.memoryOsEnabled;
+        return JSON.parse(payload.settings).capabilitySettings.memory_graph.memoryOsEnabled;
     });
-    const ready = () => page.waitForFunction(() => window.Atria?.getContext?.().getExtensionApi?.('memory-graph')
-        && window.Atria.getContext().getExtensionApi('orchestrator') && !document.getElementById('preloader'));
+    const ready = () => page.waitForFunction(() => window.Atria?.getContext?.().getCapabilityApi?.('memory-graph')
+        && window.Atria.getContext().getCapabilityApi('orchestrator') && !document.getElementById('preloader'));
     const openMemory = () => page.evaluate(async () => {
-        const { openWorkspace } = await import('/scripts/extensions/orchestrator/workspace/panel.js');
+        const { openWorkspace } = await import('/scripts/agents/orchestrator/workspace/panel.js');
         openWorkspace('Memory');
     });
     try {
@@ -54,11 +54,11 @@ test('Memory OS UI flag reaches live lifecycle and survives server restart', asy
         await expect(inspector.getByRole('status')).toContainText('显示');
         const live = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const ports = ctx.getExtensionApi('memory-graph').getWorkspacePorts(ctx);
+            const ports = ctx.getCapabilityApi('memory-graph').getWorkspacePorts(ctx);
             window.memoryOsSnapshot = await ports.load();
             window.memoryOsSnapshot.assertCurrent();
-            return { key: window.memoryOsSnapshot.key, orchestration: ctx.extensionSettings.orchestrator.enabled,
-                memory: ctx.extensionSettings.memory_graph.enabled };
+            return { key: window.memoryOsSnapshot.key, orchestration: ctx.capabilitySettings.orchestrator.enabled,
+                memory: ctx.capabilitySettings.memory_graph.enabled };
         });
         expect(live.key).toBeTruthy();
         expect(live.orchestration).toBe(true);
@@ -73,7 +73,7 @@ test('Memory OS UI flag reaches live lifecycle and survives server restart', asy
         await expect(inspector.getByRole('status')).toContainText('修正已保存');
         await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            window.memoryOsSnapshot = await ctx.getExtensionApi('memory-graph').getWorkspacePorts(ctx).load();
+            window.memoryOsSnapshot = await ctx.getCapabilityApi('memory-graph').getWorkspacePorts(ctx).load();
             window.memoryOsSnapshot.assertCurrent();
         });
         await expect.poll(persisted).toBe(true);
@@ -83,7 +83,7 @@ test('Memory OS UI flag reaches live lifecycle and survives server restart', asy
             const ctx = window.Atria.getContext();
             let stale;
             try { window.memoryOsSnapshot.assertCurrent(); } catch (error) { stale = error.name; }
-            try { await ctx.getExtensionApi('memory-graph').getWorkspacePorts(ctx).load(); }
+            try { await ctx.getCapabilityApi('memory-graph').getWorkspacePorts(ctx).load(); }
             catch (error) { return { stale, message: error.message }; }
         });
         expect(disabled).toEqual({ stale: 'AbortError', message: 'Memory OS is disabled' });

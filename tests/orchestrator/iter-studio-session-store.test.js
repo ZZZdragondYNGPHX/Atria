@@ -1,5 +1,5 @@
 import { describe, test, expect, jest } from '@jest/globals';
-import { createOrchestratorIterationSessionStore, makeMessageId, normalizeMessageShape, ORCH_SIDECAR_NAMESPACE, ORCH_GLOBAL_BUCKET_KEY } from '../../public/scripts/extensions/orchestrator/iter-studio/session-store.js';
+import { createOrchestratorIterationSessionStore, makeMessageId, normalizeMessageShape, ORCH_SIDECAR_NAMESPACE, ORCH_GLOBAL_BUCKET_KEY } from '../../public/scripts/agents/orchestrator/iter-studio/session-store.js';
 
 function makeStubs({ avatar = 'alice.png', getCharacterState, updateCharacterState } = {}) {
     const sidecarReads = [];
@@ -82,7 +82,7 @@ describe('createOrchestratorIterationSessionStore — per-character sessions go 
         expect(metas).toEqual([{ id: 's1', title: 'Director run', updatedAt: 1 }]);
     });
 
-    test('list() under global scope reads from extension_settings.orchestrator.atri_iter_studio_global_sessions[mode]', async () => {
+    test('list() under global scope reads from capabilitySettings.orchestrator.atri_iter_studio_global_sessions[mode]', async () => {
         const stubs = makeStubs({ avatar: null });
         stubs.settingsRoot[ORCH_GLOBAL_BUCKET_KEY] = {
             director: {

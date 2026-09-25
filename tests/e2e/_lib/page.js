@@ -51,6 +51,7 @@ export async function awaitMainUI(page, baseURL) {
     try {
         await page.waitForFunction(
             () => document.getElementById('preloader') === null && !!window.Atria?.getContext,
+            undefined,
             { timeout: 30_000 },
         );
     } catch (error) {
@@ -888,7 +889,7 @@ export async function installMinimalDirectorProfile(page, {
 } = {}) {
     await page.evaluate(async ({ mainSystemPrompt, subAgents, tools }) => {
         const ctx = window.Atria.getContext();
-        const settings = ctx.extensionSettings?.orchestrator;
+        const settings = ctx.capabilitySettings?.orchestrator;
         if (!settings) throw new Error('orchestrator settings missing — extension not loaded');
 
         settings.enabled = true;
@@ -910,8 +911,8 @@ export async function installMinimalDirectorProfile(page, {
         settings.requestLlmPresetName = '';
 
         const { updatePresetLibrary, emptyPresetLibrary } = await import('/scripts/lib/agent-workspace/presets.js');
-        const { compilePreset } = await import('/scripts/extensions/orchestrator/engine-v2/preset-compiler.js');
-        const dirDefaults = await import('/scripts/extensions/orchestrator/director-defaults.js');
+        const { compilePreset } = await import('/scripts/agents/orchestrator/engine-v2/preset-compiler.js');
+        const dirDefaults = await import('/scripts/agents/orchestrator/director-defaults.js');
 
         const minimalProfile = {
             mode: 'director',

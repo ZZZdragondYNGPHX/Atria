@@ -1,7 +1,7 @@
 import { performance } from 'node:perf_hooks';
 import { largeMemory } from './fixtures/large-memory.js';
-import { projectTemporalGraph } from '../../public/scripts/extensions/memory-graph/temporal-graph.js';
-import { buildMemoryCorpus, rankMemory } from '../../public/scripts/extensions/memory-graph/hybrid-retrieval.js';
+import { projectTemporalGraph } from '../../public/scripts/agents/memory/temporal-graph.js';
+import { buildMemoryCorpus, rankMemory } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
 
 const sizes = process.argv.slice(2).map(Number);
 const results = [];

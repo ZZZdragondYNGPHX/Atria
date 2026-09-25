@@ -1,8 +1,9 @@
 import { runtimeRequest } from './runtime-client.js';
 import { assertRetrievalRef, retrievalRef } from './retrieval-contracts.js';
-import { WebLlmVectorProvider } from '../extensions/vectors/webllm.js';
+import { WebLlmVectorProvider } from './retrieval/webllm.js';
 
 const webllm = new WebLlmVectorProvider();
+export const listBrowserEmbeddingModels = () => webllm.getModels();
 export const listRetrievalProfiles = () => runtimeRequest('/retrieval');
 export const commitRetrievalProfile = profile => runtimeRequest('/retrieval', { method: 'POST', body: profile });
 
@@ -16,7 +17,7 @@ async function request(operation, { profile, signal, ...body }) {
         if (!selected) throw new Error('Native retrieval revision unavailable');
         if (selected.source === 'webllm') {
             const texts = operation === 'insert' ? body.items.map(item => item.text) : [body.searchText];
-            const vectors = await webllm.embedTexts(texts, selected.model);
+            const vectors = await webllm.embedTexts(texts, selected.model, { signal });
             body.embeddings = Object.fromEntries(texts.map((text, index) => [text, vectors[index]]));
         }
     }

@@ -24,7 +24,7 @@ ctx.getExtensionApi('orchestrator')?.registerOrchestrationTool({ /* ... */ });
 
 // 3. Direct ES module import (only sensible inside the Atria tree)
 import { registerOrchestrationTool } from
-    '/scripts/extensions/orchestrator/register-custom-tool.js';
+    '/scripts/agents/orchestrator/register-custom-tool.js';
 ```
 
 Always guard against the orchestrator being absent so your extension remains useful standalone.

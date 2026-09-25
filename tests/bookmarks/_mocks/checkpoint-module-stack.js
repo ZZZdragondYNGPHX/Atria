@@ -192,9 +192,9 @@ jest.unstable_mockModule('../../public/scripts/i18n.js', () => ({
     addLocaleData: () => {},
 }));
 
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
     getContext: () => ({}),
-    extension_settings: {},
+    capabilitySettings: {},
 }));
 
 jest.unstable_mockModule('../../public/scripts/power-user.js', () => ({

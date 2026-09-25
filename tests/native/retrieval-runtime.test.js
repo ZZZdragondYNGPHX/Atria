@@ -58,7 +58,7 @@ test('real vector IO isolates exact revisions and Native purge from compatibilit
     expect((await f.request.post('/list').send({ ...body, nativeRetrievalRef: retrievalRef(next) }).expect(200)).body).toEqual([]);
     const queried = await f.request.post('/query').send({ ...body, searchText: 'Beta', embeddings: { Beta: [1, 0] }, topK: 1, threshold: 0, includeVectors: true }).expect(200);
     expect(queried.body.hashes).toEqual([1]);
-    await f.request.post('/purge').send({ collectionId: 'memory-1' }).expect(200);
+    await f.request.post('/purge').send({ collectionId: 'memory-1' }).expect(400);
     expect((await f.request.post('/list').send(body).expect(200)).body).toEqual([1]);
     await f.request.post('/purge').send({ ...body, nativeRetrievalRef: retrievalRef(next) }).expect(200);
     expect((await f.request.post('/list').send(body).expect(200)).body).toEqual([1]);
@@ -67,7 +67,7 @@ test('real vector IO isolates exact revisions and Native purge from compatibilit
 });
 test('Native boundary rejects configuration injection, wrong task, unknown refs and readonly mutations', async () => {
     const f = await fixture(); const body = { nativeRetrievalRef: retrievalRef(f.value), collectionId: 'memory' };
-    for (const injected of [{ source: 'openai' }, { model: 'other' }, { proxy_password: 'injected' }, { secret_id: 'other' }, { reverse_proxy: 'https://other.invalid' }]) await f.request.post('/list').send({ ...body, ...injected }).expect(400);
+    for (const injected of [{ extraBody: { reverse_proxy: 'https://other.invalid' } }, { source: 'openai' }, { model: 'other' }, { proxy_password: 'injected' }, { secret_id: 'other' }, { reverse_proxy: 'https://other.invalid' }]) await f.request.post('/list').send({ ...body, ...injected }).expect(400);
     await f.request.post('/rerank').send({ nativeRetrievalRef: body.nativeRetrievalRef, query: 'q', documents: [] }).expect(400);
     await f.request.post('/list').send({ ...body, nativeRetrievalRef: { ...body.nativeRetrievalRef, scope: 'library' } }).expect(400);
     setReadOnly(true); const blocked = await f.request.post('/purge').send(body).expect(503); expect(blocked.body.error).toBe('storage_read_only');
@@ -119,4 +119,12 @@ test('remote embedding and rerank execute Native models, options and exact Secre
     const anonymous = profile({ source: 'ollama', endpoint: base }); await f.store.commit(f.handle, anonymous);
     await f.request.post('/insert').send({ nativeRetrievalRef: retrievalRef(anonymous), collectionId: 'anonymous', items: [{ hash: 1, text: 'Text', index: 0 }] }).expect(200);
     expect(calls.at(-1).authorization).toBeUndefined();
+});
+
+test('retired raw vector configuration cannot bypass the Native reference boundary', async () => {
+    const f = await fixture();
+    for (const operation of ['insert', 'query', 'query-multi', 'query-by-vector', 'list', 'delete', 'purge', 'rerank']) {
+        const response = await f.request.post('/' + operation).send({ source: 'openai', model: 'raw', collectionId: 'old' }).expect(400);
+        expect(response.body.error).toBe('native_retrieval_invalid');
+    }
 });

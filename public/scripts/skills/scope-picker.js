@@ -121,7 +121,7 @@ export function listCharacters(context) {
 /**
  * Enumerate every orchestrator-preset scope currently defined across all
  * 4 orchestrator modes (spec / agenda / loop / director). Reads directly
- * from `context.extensionSettings.orchestrator.presetLibraries[mode]`,
+ * from `context.capabilitySettings.orchestrator.presetLibraries[mode]`,
  * which is populated by the orchestrator plugin at init time; null-safe
  * so the picker still works when orchestrator isn't loaded (empty array).
  *
@@ -132,7 +132,7 @@ export function listCharacters(context) {
  * @returns {Array<{mode:string, name:string}>}
  */
 export function listAllOrchPresetScopes(context) {
-    const libs = context?.extensionSettings?.orchestrator?.presetLibraries;
+    const libs = context?.capabilitySettings?.orchestrator?.presetLibraries;
     if (!libs || typeof libs !== 'object') return [];
     const MODES = ['spec', 'agenda', 'loop', 'director'];
     const out = [];

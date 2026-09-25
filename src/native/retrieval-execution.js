@@ -19,7 +19,7 @@ export function resolveRetrievalSecret(directories, ref) {
 // this server-resolved configuration without consulting compatibility settings.
 export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPersistence({ engine: getStorageEngine() }), resolveSecret = resolveRetrievalSecret) {
     return async (req, res, next) => {
-        if (req.nativeRetrieval || !Object.hasOwn(req.body || {}, 'nativeRetrievalRef')) return next();
+        if (req.nativeRetrieval) return next();
         try {
             const handle = req.user?.profile?.handle;
             if (!handle) return res.sendStatus(401);
@@ -29,7 +29,7 @@ export function createRetrievalMiddleware(getStore = () => new NativeRetrievalPe
                 '/list': ['collectionId'], '/delete': ['collectionId', 'hashes'], '/purge': ['collectionId'], '/rerank': ['query', 'documents', 'topK'],
             };
             const allowed = operations[req.path];
-            if (!allowed || Object.keys(req.body).some(key => key !== 'nativeRetrievalRef' && !allowed.includes(key))) throw new TypeError('Unsupported retrieval request');
+            if (!allowed || Object.keys(req.body || {}).some(key => key !== 'nativeRetrievalRef' && !allowed.includes(key))) throw new TypeError('Unsupported retrieval request');
             if (['/insert', '/delete', '/purge'].includes(req.path)) assertWritable();
             const ref = assertRetrievalRef(req.body.nativeRetrievalRef);
             const profile = await getStore().getExact(handle, ref);

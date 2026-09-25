@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import { addEdge, removeEdge } from '../../public/scripts/extensions/memory-graph/graph-ops.js';
+import { addEdge, removeEdge } from '../../public/scripts/agents/memory/graph-ops.js';
 
 describe('link_delete op semantics via removeEdge', () => {
     test('bidirectional delete removes both directions', () => {

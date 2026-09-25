@@ -314,15 +314,15 @@ try {
     const result = await page.evaluate(async () => {
         const wi = await import('/scripts/world-info.js');
         const core = await import('/script.js');
-        const { extension_settings } = await import('/scripts/extensions.js');
+        const { capabilitySettings } = await import('/scripts/capability-host.js');
         const { invalidateRegexExecutionPlans, regex_placement } = await import('/scripts/extensions/regex/engine.js');
-        const { applyProfileWorldInfoFilter } = await import('/scripts/extensions/orchestrator/lorebook-filter.js');
+        const { applyProfileWorldInfoFilter } = await import('/scripts/agents/orchestrator/lorebook-filter.js');
         const { createWorldInfoDispatchAttribution, markWorldInfoDispatch } = await import('/scripts/atri-world-info-provenance.js');
         wi.updateWorldInfoSettings(
             { world_info_budget: 100, world_info_recursive: false },
             ['atri-public-fixture', 'atri-private-fixture', 'atri-unknown-condition-fixture', 'atri-malformed-condition-fixture'],
         );
-        extension_settings.regex = [{
+        capabilitySettings.regex = [{
             id: 'atri-smoke-regex', scriptName: 'fixture only', findRegex: '/SHARED_FIXTURE_BODY/g',
             replaceString: 'RENDERED_FIXTURE_BODY', trimStrings: [], placement: [regex_placement.WORLD_INFO],
             disabled: false, markdownOnly: false, promptOnly: true, runOnEdit: false, substituteRegex: 0,

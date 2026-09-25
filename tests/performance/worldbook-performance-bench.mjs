@@ -7,10 +7,10 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { ChatSnapshotCache } from '../../public/scripts/atri-chat-snapshot-cache.js';
 import { getMessageDepthFromTail } from '../../public/scripts/atri-message-depth.js';
-import { buildMemoryCorpus, rankMemory } from '../../public/scripts/extensions/memory-graph/hybrid-retrieval.js';
+import { buildMemoryCorpus, rankMemory } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
 import { largeMemory } from '../memory-graph/fixtures/large-memory.js';
 import { WorldInfoSelectionIndex } from '../../public/scripts/atri-world-info-selection.js';
-import { applyProfileWorldInfoFilter } from '../../public/scripts/extensions/orchestrator/lorebook-filter.js';
+import { applyProfileWorldInfoFilter } from '../../public/scripts/agents/orchestrator/lorebook-filter.js';
 import { makeEntry, makePayload } from '../world-info/prompt-fixture.js';
 
 const samples = 7;
@@ -132,7 +132,7 @@ const paths = [
     'public/scripts/atri-world-info-prompt.js',
     'public/scripts/atri-world-info-provenance.js',
     'public/scripts/atri-world-info-selection.js',
-    'public/scripts/extensions/memory-graph/hybrid-retrieval.js',
+    'public/scripts/agents/memory/hybrid-retrieval.js',
 ];
 console.log(JSON.stringify({
     kind: 'synthetic-offline-only', createdAt: new Date().toISOString(),

@@ -104,7 +104,7 @@ AGENT: "预请求 Agent 模式" {
 
 ## 全局 API
 
-搜索插件通过全局 API 供其他插件集成使用。例如[角色卡编辑助手](/zh-CN/features/card-editor/)的[普通弹窗](/zh-CN/features/card-editor/popup)和 [CardApp Studio](/zh-CN/features/card-editor/studio) 都已集成搜索能力，可以在编辑过程中联网搜索资料辅助角色卡 / CardApp 编辑。
+
 
 ### 属性
 
@@ -174,10 +174,3 @@ if (api) {
 | Agent API 预设 | 预请求 Agent 使用的 API 连接预设（空值使用主连接） |
 | Agent 预设 | 预请求 Agent 使用的预设（空值使用主预设） |
 | Agent 最大轮次 | 预请求 Agent 的最大搜索轮次 |
-
-::: info 相关页面
-- [角色卡编辑助手](/zh-CN/features/card-editor/) — 编辑助手概览（公共能力与入口）
-- [普通弹窗模式](/zh-CN/features/card-editor/popup) — 弹窗中的联网搜索
-- [CardApp Studio](/zh-CN/features/card-editor/studio) — Studio 中的联网搜索能力
-- [CardApp](/zh-CN/features/cardapp) — 角色卡应用化概念
-:::

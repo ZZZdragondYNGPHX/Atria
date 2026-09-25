@@ -21,7 +21,7 @@
 import { describe, test, expect } from '@jest/globals';
 import './_mocks/main-module-stack.js';
 
-const { SCHEMAS } = await import('../../public/scripts/extensions/memory-graph/orchestrator-tools.js');
+const { SCHEMAS } = await import('../../public/scripts/agents/memory/orchestrator-tools.js');
 
 describe('memory_list_candidates schema: seq_window removed', () => {
     test('seq_window parameter is not declared in the input schema', () => {

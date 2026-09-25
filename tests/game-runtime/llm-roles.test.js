@@ -5,7 +5,7 @@ import {
     createRuntimeRoleRouter,
     getDefaultRuntimeRoleConfigs,
     normalizeRuntimeRoleConfig,
-} from '../../public/scripts/extensions/game-runtime/llm/roles.js';
+} from '../../public/scripts/native/experience/llm/roles.js';
 
 describe('R5 Runtime Role routing', () => {
     test('keeps workload roles separate from connection profiles', () => {

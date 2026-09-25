@@ -15,8 +15,8 @@
 // handle — there's no useful smaller unit boundary.
 
 import { describe, test, expect } from '@jest/globals';
-import { executeLoopTool } from '../../public/scripts/extensions/orchestrator/loop-tools.js';
-import { executeDraftSearchTool } from '../../public/scripts/extensions/orchestrator/director-tools.js';
+import { executeLoopTool } from '../../public/scripts/agents/orchestrator/loop-tools.js';
+import { executeDraftSearchTool } from '../../public/scripts/agents/orchestrator/director-tools.js';
 
 const ESTABLISHED_NAME = '张明远';
 const KNOWN_AGE = '二十';

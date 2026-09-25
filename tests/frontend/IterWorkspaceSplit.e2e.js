@@ -51,7 +51,7 @@ async function ensureInlineDrawerOpen(page, hostId) {
 async function ensureConnectionProfile(page) {
     const hasProfile = await page.evaluate(() => {
         const ctx = window.Atria?.getContext?.();
-        const profiles = ctx?.extensionSettings?.connectionManager?.profiles || [];
+        const profiles = ctx?.capabilitySettings?.connectionManager?.profiles || [];
         return Array.isArray(profiles) && profiles.length > 0;
     });
     expect(hasProfile, 'PW_INCLUDE_INTEGRATION run requires a connection profile in the integration data dir').toBe(true);
@@ -309,7 +309,7 @@ test.describe('Iter-studio workspace split — CEA Character Iteration', () => {
         // `event.detail.character.avatar`).
         await page.evaluate(async (avatarId) => {
             const ctx = window.Atria?.getContext?.();
-            const settings = ctx?.extensionSettings?.['character_editor_assistant'];
+            const settings = ctx?.capabilitySettings?.['character_editor_assistant'];
             if (settings && typeof settings === 'object') {
                 settings.replaceLorebookSyncEnabled = true;
             }
@@ -369,7 +369,7 @@ test.describe('Iter-studio workspace split — CEA Character Iteration', () => {
 
         await page.evaluate(async (avatarId) => {
             const ctx = window.Atria?.getContext?.();
-            const settings = ctx?.extensionSettings?.['character_editor_assistant'];
+            const settings = ctx?.capabilitySettings?.['character_editor_assistant'];
             if (settings && typeof settings === 'object') {
                 settings.replaceLorebookSyncEnabled = true;
             }

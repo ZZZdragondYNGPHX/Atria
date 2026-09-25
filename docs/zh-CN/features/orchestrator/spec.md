@@ -192,7 +192,6 @@ s5 -> out
 - [单 Agent 模式](/zh-CN/features/orchestrator/single) — 退化的 Spec，只跑一个节点
 - [Agenda 模式](/zh-CN/features/orchestrator/agenda) — Planner 动态调度版本
 - [Loop 模式](/zh-CN/features/orchestrator/loop) — 单 Agent 工具循环
-- [角色卡编辑器](/zh-CN/features/card-editor/) — 与迭代工作台共用 diff 引擎
 - [自定义工具](/zh-CN/features/orchestrator/custom-tools) — Spec Agent 可以调用的扩展 / SillyTavern 桥接 / 手写工具
 
 ## 预设

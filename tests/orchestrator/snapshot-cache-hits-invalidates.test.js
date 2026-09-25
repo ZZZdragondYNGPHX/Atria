@@ -18,7 +18,7 @@
 // `tests/orchestrator/persistence.test.js`.
 
 import { describe, test, expect, beforeEach } from '@jest/globals';
-import * as sc from '../../public/scripts/extensions/orchestrator/snapshot-cache.js';
+import * as sc from '../../public/scripts/agents/orchestrator/snapshot-cache.js';
 
 beforeEach(() => {
     // The cache is module-global; clear it before each test so prior

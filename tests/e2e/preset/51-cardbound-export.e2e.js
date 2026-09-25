@@ -169,7 +169,7 @@ test.describe('#51 — card-bound preset export uses slot body + slot name', () 
         // fails for the wrong reason.
         await page.waitForFunction(() => {
             const ctx = window.Atria?.getContext?.();
-            return !!ctx?.extensionSettings?.orchestrator;
+            return !!ctx?.capabilitySettings?.orchestrator;
         }, { timeout: 20_000 });
 
         await selectCharacterByName(page, CARD_NAME);

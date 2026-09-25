@@ -59,7 +59,7 @@ test.describe('#75 — Abort mid-run', () => {
             // Pre-clear any leftover run state from a prior test in this worker.
             await page.evaluate(async () => {
                 try {
-                    const m = await import('/scripts/extensions/orchestrator/run-state/store.js');
+                    const m = await import('/scripts/agents/orchestrator/run-state/store.js');
                     m.clearCurrentRun?.();
                 } catch { /* not loaded */ }
             });
@@ -101,7 +101,7 @@ test.describe('#75 — Abort mid-run', () => {
             // has dispatched into the store). We use the run-state store
             // as the truth source — DOM-level button state is less stable.
             await page.waitForFunction(async () => {
-                const m = await import('/scripts/extensions/orchestrator/run-state/store.js');
+                const m = await import('/scripts/agents/orchestrator/run-state/store.js');
                 const r = m.getCurrentRun();
                 return r && r.status === 'running';
             }, null, { timeout: 30_000 });
@@ -126,7 +126,7 @@ test.describe('#75 — Abort mid-run', () => {
             // accept "aborted seen at any point OR currently null" as
             // the win condition.
             const aborted = await page.evaluate(async () => {
-                const m = await import('/scripts/extensions/orchestrator/run-state/store.js');
+                const m = await import('/scripts/agents/orchestrator/run-state/store.js');
                 const deadline = 30_000;
                 const start = Date.now();
                 let sawAborted = false;
@@ -185,7 +185,7 @@ test.describe('#75 — Abort mid-run', () => {
             });
             // Clear leftover run state from the aborted turn before the next.
             await page.evaluate(async () => {
-                const m = await import('/scripts/extensions/orchestrator/run-state/store.js');
+                const m = await import('/scripts/agents/orchestrator/run-state/store.js');
                 m.clearCurrentRun?.();
             });
             const { text: bubble } = await sendMessageAndAwaitReply(

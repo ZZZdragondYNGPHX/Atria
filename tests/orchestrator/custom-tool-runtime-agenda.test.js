@@ -1,4 +1,4 @@
-import { getCurrentRun as getRuntimePanelState } from '../../public/scripts/extensions/orchestrator/run-state/store.js';
+import { getCurrentRun as getRuntimePanelState } from '../../public/scripts/agents/orchestrator/run-state/store.js';
 // tests/orchestrator/custom-tool-runtime-agenda.test.js
 //
 // Verifies agenda runtime constructs the per-run customToolRegistry at
@@ -14,7 +14,7 @@ import { describe, test, expect, jest, beforeAll, beforeEach } from '@jest/globa
 
 // agenda-runtime.js + defaults.js consume core symbols via
 // `Atria.getContext()` after upstream commit 571c529c2. Provide a
-// shim with the constants + the shared `extensionSettings` binding the
+// shim with the constants + the shared `capabilitySettings` binding the
 // runtime captures at module-load time. Mutating
 // `globalThis.Atria.__settings.orchestrator` in beforeEach
 // propagates because the runtime stores the live object reference.
@@ -36,7 +36,7 @@ globalThis.Atria = {
         lib: {
             yaml: { dump: (v) => JSON.stringify(v), load: (s) => JSON.parse(s) },
         },
-        extensionSettings: __sillyTavernSettings,
+        capabilitySettings: __sillyTavernSettings,
     }),
 };
 
@@ -47,8 +47,8 @@ jest.unstable_mockModule('../../public/lib.js', () => ({
     default: {},
 }));
 
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
-    extension_settings: {
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
+    capabilitySettings: {
         orchestrator: {
             agendaPlannerMaxRounds: 4,
             agendaMaxConcurrentAgents: 2,
@@ -80,9 +80,7 @@ jest.unstable_mockModule('../../public/scripts/world-info.js', () => ({
 
 // Stub the connection-manager gate so the real agent-resolution.js can load
 // without pulling textgen-models.js → document.addEventListener under Node.
-jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/profile-resolver.js', () => ({
-    getChatCompletionConnectionProfiles: () => [],
-}));
+
 
 // LLM stub — controlled per-test via `plannerResponses` / `agentResponses`.
 // The only legitimate mock surface (LLM is slow / non-deterministic).
@@ -90,9 +88,9 @@ jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/pro
 const plannerResponses = [];
 const agentResponses = [];
 const agentRequests = [];
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/agenda-planner-tool.js', () => ({ requestAgendaPlannerStep: async () => { if (!plannerResponses.length) throw new Error('Planner LLM stub exhausted'); return plannerResponses.shift(); } }));
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/agenda-planner-tool.js', () => ({ requestAgendaPlannerStep: async () => { if (!plannerResponses.length) throw new Error('Planner LLM stub exhausted'); return plannerResponses.shift(); } }));
 
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/tool-calling.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/tool-calling.js', () => ({
     appendStandardToolRoundMessages: () => {},
     requestToolCallsWithRetry: async (_context, _settings, request) => {
         agentRequests.push(request);
@@ -120,7 +118,7 @@ const customToolDispatches = [];
 globalThis.__customToolDispatchSink = customToolDispatches;
 
 beforeAll(async () => {
-    ({ runAgendaOrchestration, runAgendaTextAgent } = await import('../../public/scripts/extensions/orchestrator/agenda-runtime.js'));
+    ({ runAgendaOrchestration, runAgendaTextAgent } = await import('../../public/scripts/agents/orchestrator/agenda-runtime.js'));
 });
 
 beforeEach(() => {

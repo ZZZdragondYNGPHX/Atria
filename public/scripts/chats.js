@@ -52,7 +52,7 @@ import {
     isSameFile,
     clamp,
 } from './utils.js';
-import { extension_settings, renderExtensionTemplateAsync, saveMetadataDebounced } from './extensions.js';
+import { capabilitySettings, renderPluginTemplateAsync, saveMetadataDebounced } from './capability-host.js';
 import { POPUP_RESULT, POPUP_TYPE, Popup, callGenericPopup } from './popup.js';
 import { ScraperManager } from './scrapers.js';
 import { DragAndDropHandler } from './dragdrop.js';
@@ -1220,7 +1220,7 @@ async function openFilePopup(attachment) {
  */
 async function editAttachment(attachment, source, callback) {
     const originalFileText = attachment.text || (await getFileAttachment(attachment.url));
-    const template = $(await renderExtensionTemplateAsync('attachments', 'notepad'));
+    const template = $(await renderPluginTemplateAsync('attachments', 'notepad'));
 
     let editedFileText = originalFileText;
     template.find('[name="notepadFileContent"]').val(editedFileText).on('input', function () {
@@ -1272,7 +1272,7 @@ async function downloadAttachment(attachment) {
  */
 function enableAttachment(attachment, callback) {
     ensureAttachmentsExist();
-    extension_settings.disabled_attachments = extension_settings.disabled_attachments.filter(url => url !== attachment.url);
+    capabilitySettings.disabled_attachments = capabilitySettings.disabled_attachments.filter(url => url !== attachment.url);
     saveSettingsDebounced();
     callback();
 }
@@ -1284,7 +1284,7 @@ function enableAttachment(attachment, callback) {
  */
 function disableAttachment(attachment, callback) {
     ensureAttachmentsExist();
-    extension_settings.disabled_attachments.push(attachment.url);
+    capabilitySettings.disabled_attachments.push(attachment.url);
     saveSettingsDebounced();
     callback();
 }
@@ -1299,7 +1299,7 @@ function disableAttachment(attachment, callback) {
 async function moveAttachment(attachment, source, callback) {
     let selectedTarget = source;
     const targets = getAvailableTargets();
-    const template = $(await renderExtensionTemplateAsync('attachments', 'move-attachment', { name: attachment.name, targets }));
+    const template = $(await renderPluginTemplateAsync('attachments', 'move-attachment', { name: attachment.name, targets }));
     template.find('.moveAttachmentTarget').val(source).on('input', function () {
         selectedTarget = String($(this).val());
     });
@@ -1344,7 +1344,7 @@ export async function deleteAttachment(attachment, source, callback, confirm = t
 
     switch (source) {
         case 'global':
-            extension_settings.attachments = extension_settings.attachments.filter((a) => a.url !== attachment.url);
+            capabilitySettings.attachments = capabilitySettings.attachments.filter((a) => a.url !== attachment.url);
             saveSettingsDebounced();
             break;
         case 'chat':
@@ -1352,12 +1352,12 @@ export async function deleteAttachment(attachment, source, callback, confirm = t
             saveMetadataDebounced();
             break;
         case 'character':
-            extension_settings.character_attachments[characters[this_chid]?.avatar] = extension_settings.character_attachments[characters[this_chid]?.avatar].filter((a) => a.url !== attachment.url);
+            capabilitySettings.character_attachments[characters[this_chid]?.avatar] = capabilitySettings.character_attachments[characters[this_chid]?.avatar].filter((a) => a.url !== attachment.url);
             break;
     }
 
-    if (Array.isArray(extension_settings.disabled_attachments) && extension_settings.disabled_attachments.includes(attachment.url)) {
-        extension_settings.disabled_attachments = extension_settings.disabled_attachments.filter(url => url !== attachment.url);
+    if (Array.isArray(capabilitySettings.disabled_attachments) && capabilitySettings.disabled_attachments.includes(attachment.url)) {
+        capabilitySettings.disabled_attachments = capabilitySettings.disabled_attachments.filter(url => url !== attachment.url);
         saveSettingsDebounced();
     }
 
@@ -1372,7 +1372,7 @@ export async function deleteAttachment(attachment, source, callback, confirm = t
  * @returns {boolean} True if attachment is disabled, false otherwise.
  */
 function isAttachmentDisabled(attachment) {
-    return extension_settings.disabled_attachments.some(url => url === attachment?.url);
+    return capabilitySettings.disabled_attachments.some(url => url === attachment?.url);
 }
 
 /**
@@ -1532,11 +1532,11 @@ async function openAttachmentManager() {
 
     async function renderAttachments() {
         /** @type {FileAttachment[]} */
-        const globalAttachments = extension_settings.attachments ?? [];
+        const globalAttachments = capabilitySettings.attachments ?? [];
         /** @type {FileAttachment[]} */
         const chatAttachments = chat_metadata.attachments ?? [];
         /** @type {FileAttachment[]} */
-        const characterAttachments = extension_settings.character_attachments?.[characters[this_chid]?.avatar] ?? [];
+        const characterAttachments = capabilitySettings.character_attachments?.[characters[this_chid]?.avatar] ?? [];
 
         await renderList(globalAttachments, ATTACHMENT_SOURCE.GLOBAL);
         await renderList(chatAttachments, ATTACHMENT_SOURCE.CHAT);
@@ -1558,7 +1558,7 @@ async function openAttachmentManager() {
         let selectedTarget = ATTACHMENT_SOURCE.GLOBAL;
         const targets = getAvailableTargets();
 
-        const targetSelectTemplate = $(await renderExtensionTemplateAsync('attachments', 'files-dropped', { count: files.length, targets: targets }));
+        const targetSelectTemplate = $(await renderPluginTemplateAsync('attachments', 'files-dropped', { count: files.length, targets: targets }));
         targetSelectTemplate.find('.droppedFilesTarget').on('input', function () {
             selectedTarget = String($(this).val());
         });
@@ -1577,7 +1577,7 @@ async function openAttachmentManager() {
     let sortOrder = accountStorage.getItem('DataBank_sortOrder') || 'desc';
     let filterString = '';
 
-    const template = $(await renderExtensionTemplateAsync('attachments', 'manager', {}));
+    const template = $(await renderPluginTemplateAsync('attachments', 'manager', {}));
 
     template.find('.attachmentSearch').on('input', function () {
         filterString = String($(this).val());
@@ -1778,7 +1778,7 @@ export async function uploadFileAttachmentToServer(file, target) {
 
     switch (target) {
         case ATTACHMENT_SOURCE.GLOBAL:
-            extension_settings.attachments.push(attachment);
+            capabilitySettings.attachments.push(attachment);
             saveSettingsDebounced();
             break;
         case ATTACHMENT_SOURCE.CHAT:
@@ -1786,7 +1786,7 @@ export async function uploadFileAttachmentToServer(file, target) {
             saveMetadataDebounced();
             break;
         case ATTACHMENT_SOURCE.CHARACTER:
-            extension_settings.character_attachments[characters[this_chid]?.avatar].push(attachment);
+            capabilitySettings.character_attachments[characters[this_chid]?.avatar].push(attachment);
             saveSettingsDebounced();
             break;
     }
@@ -1795,12 +1795,12 @@ export async function uploadFileAttachmentToServer(file, target) {
 }
 
 function ensureAttachmentsExist() {
-    if (!Array.isArray(extension_settings.disabled_attachments)) {
-        extension_settings.disabled_attachments = [];
+    if (!Array.isArray(capabilitySettings.disabled_attachments)) {
+        capabilitySettings.disabled_attachments = [];
     }
 
-    if (!Array.isArray(extension_settings.attachments)) {
-        extension_settings.attachments = [];
+    if (!Array.isArray(capabilitySettings.attachments)) {
+        capabilitySettings.attachments = [];
     }
 
     if (!Array.isArray(chat_metadata.attachments)) {
@@ -1808,12 +1808,12 @@ function ensureAttachmentsExist() {
     }
 
     if (this_chid !== undefined && characters[this_chid]) {
-        if (!extension_settings.character_attachments) {
-            extension_settings.character_attachments = {};
+        if (!capabilitySettings.character_attachments) {
+            capabilitySettings.character_attachments = {};
         }
 
-        if (!Array.isArray(extension_settings.character_attachments[characters[this_chid].avatar])) {
-            extension_settings.character_attachments[characters[this_chid].avatar] = [];
+        if (!Array.isArray(capabilitySettings.character_attachments[characters[this_chid].avatar])) {
+            capabilitySettings.character_attachments[characters[this_chid].avatar] = [];
         }
     }
 }
@@ -1825,9 +1825,9 @@ function ensureAttachmentsExist() {
  */
 export function getDataBankAttachments(includeDisabled = false) {
     ensureAttachmentsExist();
-    const globalAttachments = extension_settings.attachments ?? [];
+    const globalAttachments = capabilitySettings.attachments ?? [];
     const chatAttachments = chat_metadata.attachments ?? [];
-    const characterAttachments = extension_settings.character_attachments?.[characters[this_chid]?.avatar] ?? [];
+    const characterAttachments = capabilitySettings.character_attachments?.[characters[this_chid]?.avatar] ?? [];
 
     return [...globalAttachments, ...chatAttachments, ...characterAttachments].filter(x => includeDisabled || !isAttachmentDisabled(x));
 }
@@ -1844,11 +1844,11 @@ export function getDataBankAttachmentsForSource(source, includeDisabled = true) 
     function getBySource() {
         switch (source) {
             case ATTACHMENT_SOURCE.GLOBAL:
-                return extension_settings.attachments ?? [];
+                return capabilitySettings.attachments ?? [];
             case ATTACHMENT_SOURCE.CHAT:
                 return chat_metadata.attachments ?? [];
             case ATTACHMENT_SOURCE.CHARACTER:
-                return extension_settings.character_attachments?.[characters[this_chid]?.avatar] ?? [];
+                return capabilitySettings.character_attachments?.[characters[this_chid]?.avatar] ?? [];
         }
 
         return [];

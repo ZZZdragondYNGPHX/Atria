@@ -23,7 +23,7 @@
 // invocation time, not pulled from disk/storage.
 
 import { describe, test, expect } from '@jest/globals';
-import { buildPerRunCustomToolRegistry } from '../../public/scripts/extensions/orchestrator/per-run-custom-tools.js';
+import { buildPerRunCustomToolRegistry } from '../../public/scripts/agents/orchestrator/per-run-custom-tools.js';
 
 describe('#72 — Per-run custom tools: registration isolation', () => {
     test('two different profiles produce two different per-run tool registries; tools do not leak across runs', async () => {

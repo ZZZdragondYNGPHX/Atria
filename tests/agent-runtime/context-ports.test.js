@@ -2,7 +2,7 @@ import { test, expect } from '@jest/globals';
 import { compileContext, compileContextAsync, AgentRuntime, AgentRegistry } from '../../public/scripts/lib/agent-runtime/index.js';
 import { createMemoryOSPort, createHostTokenCounter } from '../../public/scripts/lib/agent-runtime/host-ports.js';
 import { fakePorts, deferred } from './fakes.js';
-import { runLegacySingleRequest } from '../../public/scripts/extensions/orchestrator/legacy-runtime-adapter.js';
+import { runLegacySingleRequest } from '../../public/scripts/agents/orchestrator/legacy-runtime-adapter.js';
 
 const input = { agent: { instructions: 'agent' }, state: { task: 'task', scratch: [] }, memory: { content: 'memory' }, budget: 300 };
 const measure = message => JSON.stringify(message).length;

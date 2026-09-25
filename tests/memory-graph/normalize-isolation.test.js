@@ -22,7 +22,7 @@ import { describe, test, expect } from '@jest/globals';
 import {
     normalizeStoreForRuntime,
     createEmptyStore,
-} from '../../public/scripts/extensions/memory-graph/persistence.js';
+} from '../../public/scripts/agents/memory/persistence.js';
 
 describe('normalizeStoreForRuntime isolation invariants', () => {
     function makeStoreWithOneNode() {

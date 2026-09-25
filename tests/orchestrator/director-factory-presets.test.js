@@ -3,7 +3,7 @@ import {
     createDefaultDirectorProfile,
     createFullDirectorProfile,
     createMinimalDirectorProfile,
-} from '../../public/scripts/extensions/orchestrator/director-defaults.js';
+} from '../../public/scripts/agents/orchestrator/director-defaults.js';
 
 describe('director factory: Full preset', () => {
     test('createDefaultDirectorProfile is an alias for createFullDirectorProfile (back-compat)', () => {

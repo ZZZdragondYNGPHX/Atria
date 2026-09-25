@@ -35,6 +35,7 @@ import { SettingsRepo } from '../../../src/storage/repositories/settings-repo.js
 import { WorldInfoRepo } from '../../../src/storage/repositories/world-info-repo.js';
 
 const ALL_SELECTION = {
+    native: false, // This archive fixture tests repository categories without Native content.
     settings: true, secrets: true, characters: true, chats: true,
     lorebooks: true, presets: true, assets: true, extensions: true,
     globalExtensions: false, vectors: true,

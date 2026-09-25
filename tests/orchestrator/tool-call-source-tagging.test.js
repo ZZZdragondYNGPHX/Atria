@@ -6,12 +6,12 @@
 // trace and renders a layer chip; we lock in the runtime side here.
 
 import { describe, test, expect, beforeEach } from '@jest/globals';
-import { runLoopOrchestration } from '../../public/scripts/extensions/orchestrator/loop-runtime.js';
+import { runLoopOrchestration } from '../../public/scripts/agents/orchestrator/loop-runtime.js';
 import {
     registerOrchestrationTool,
     __getExtensionRegistryForTest,
-} from '../../public/scripts/extensions/orchestrator/register-custom-tool.js';
-import { exportLoopPayload } from '../../public/scripts/extensions/orchestrator/simulation-payload-adapter.js';
+} from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
+import { exportLoopPayload } from '../../public/scripts/agents/orchestrator/simulation-payload-adapter.js';
 
 function makeProfile(customTools = [], overrides = {}) {
     return {

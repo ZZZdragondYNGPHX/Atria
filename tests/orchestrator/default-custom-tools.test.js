@@ -44,8 +44,8 @@ globalThis.Atria = {
 jest.unstable_mockModule('../../public/lib.js', () => ({
     Popper: {}, lodash: {}, yaml: { dump: (v) => JSON.stringify(v), load: (s) => JSON.parse(s) }, default: {},
 }));
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
-    extension_settings: { orchestrator: {} }, getContext: () => ({}), writeExtensionField: () => {}, UNSET_VALUE: Symbol('unset'),
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
+    capabilitySettings: { orchestrator: {} }, getContext: () => ({}), writeExtensionField: () => {}, UNSET_VALUE: Symbol('unset'),
 }));
 jest.unstable_mockModule('../../public/script.js', () => ({
     saveSettingsDebounced: () => {}, saveSettings: async () => {},
@@ -60,9 +60,7 @@ jest.unstable_mockModule('../../public/script.js', () => ({
 jest.unstable_mockModule('../../public/scripts/world-info.js', () => ({
     world_info_position: { before: 0, after: 1 }, wi_anchor_position: {},
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/profile-resolver.js', () => ({
-    getChatCompletionConnectionProfiles: () => [],
-}));
+
 
 let DEFAULT_CUSTOM_TOOLS;
 let seedDefaultCustomToolsIfNeeded;
@@ -72,12 +70,12 @@ let sanitizeSpec;
 let sanitizeAgendaWorkingProfile;
 let sanitizeDirectorProfile;
 beforeAll(async () => {
-    ({ DEFAULT_CUSTOM_TOOLS } = await import('../../public/scripts/extensions/orchestrator/default-custom-tools.js'));
-    ({ seedDefaultCustomToolsIfNeeded, importDefaultCustomTools } = await import('../../public/scripts/extensions/orchestrator/seed-default-custom-tools.js'));
-    ({ sanitizeLoopProfile } = await import('../../public/scripts/extensions/orchestrator/persistence.js'));
-    ({ sanitizeSpec } = await import('../../public/scripts/extensions/orchestrator/spec-schema.js'));
-    ({ sanitizeAgendaWorkingProfile } = await import('../../public/scripts/extensions/orchestrator/agenda-profile.js'));
-    ({ sanitizeDirectorProfile } = await import('../../public/scripts/extensions/orchestrator/director-defaults.js'));
+    ({ DEFAULT_CUSTOM_TOOLS } = await import('../../public/scripts/agents/orchestrator/default-custom-tools.js'));
+    ({ seedDefaultCustomToolsIfNeeded, importDefaultCustomTools } = await import('../../public/scripts/agents/orchestrator/seed-default-custom-tools.js'));
+    ({ sanitizeLoopProfile } = await import('../../public/scripts/agents/orchestrator/persistence.js'));
+    ({ sanitizeSpec } = await import('../../public/scripts/agents/orchestrator/spec-schema.js'));
+    ({ sanitizeAgendaWorkingProfile } = await import('../../public/scripts/agents/orchestrator/agenda-profile.js'));
+    ({ sanitizeDirectorProfile } = await import('../../public/scripts/agents/orchestrator/director-defaults.js'));
 });
 
 describe('DEFAULT_CUSTOM_TOOLS shape', () => {

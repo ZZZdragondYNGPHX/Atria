@@ -23,8 +23,8 @@ jest.unstable_mockModule('../../public/script.js', () => ({
     this_chid: null,
 }));
 
-const extensionSettings = {
-    disabledExtensions: [],
+const capabilitySettings = {
+    disabledPlugins: [],
     regex: [
         {
             id: 'script-prompt-only',
@@ -76,8 +76,8 @@ const extensionSettings = {
     ],
 };
 
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
-    extension_settings: extensionSettings,
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
+    capabilitySettings: capabilitySettings,
     writeExtensionField: () => {},
 }));
 

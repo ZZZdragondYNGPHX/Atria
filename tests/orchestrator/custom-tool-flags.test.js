@@ -1,6 +1,6 @@
 // tests/orchestrator/custom-tool-flags.test.js
 import { describe, test, expect } from '@jest/globals';
-import { DEFAULT_LAYER2_CUSTOMS, sanitizeAgentToolFlags } from '../../public/scripts/extensions/orchestrator/persistence.js';
+import { DEFAULT_LAYER2_CUSTOMS, sanitizeAgentToolFlags } from '../../public/scripts/agents/orchestrator/persistence.js';
 
 // In override mode current Layer-2 built-ins receive explicit false defaults.
 // These tests isolate caller-supplied custom flags, so strip built-ins before

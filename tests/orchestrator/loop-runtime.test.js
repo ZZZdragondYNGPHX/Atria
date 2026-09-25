@@ -25,7 +25,7 @@ import { describe, test, expect, jest } from '@jest/globals';
 import {
     runLoopOrchestration,
     ToolError,
-} from '../../public/scripts/extensions/orchestrator/loop-runtime.js';
+} from '../../public/scripts/agents/orchestrator/loop-runtime.js';
 
 function makeProfile(overrides = {}) {
     return {

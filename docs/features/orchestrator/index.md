@@ -229,5 +229,4 @@ context.eventSource.on('atria.orchestrator.result', (evt) => {
 - [Skills overview](/features/skills/) — the knowledge-pack substrate shared across all modes
 - [Notes — author-side plot threads](/features/orchestrator/notes) — agent-as-author thread tracker, scoped to the current chat
 - [Function Call Runtime](/improvements/function-call-runtime) — Agenda and Loop both rely on it
-- [Character Card Editor](/features/card-editor/) — shares the diff engine with Iteration Studio
 - [Card-Bound Presets and Personas](/improvements/card-bound-presets) — how the orchestration config rides along with character cards

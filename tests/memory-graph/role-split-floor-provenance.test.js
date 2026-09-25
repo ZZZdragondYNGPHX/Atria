@@ -12,7 +12,7 @@ import './_mocks/main-module-stack.js';
 let buildRoleSplitChatMessages;
 
 beforeAll(async () => {
-    const main = await import('../../public/scripts/extensions/memory-graph/main.js');
+    const main = await import('../../public/scripts/agents/memory/main.js');
     buildRoleSplitChatMessages = main._buildRoleSplitChatMessagesForTest;
 });
 

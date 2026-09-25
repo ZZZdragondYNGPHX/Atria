@@ -5,7 +5,7 @@ import {
     computeActiveExtractionTypes,
     assembleExtractionSystemPrompt,
     buildPerTypeRulesBlock,
-} from '../../public/scripts/extensions/memory-graph/extraction-schedule.js';
+} from '../../public/scripts/agents/memory/extraction-schedule.js';
 
 describe('DEFAULT_PER_TYPE_INSTRUCTIONS', () => {
     test('seeds non-empty strings for stock types', () => {

@@ -1,6 +1,6 @@
 import { Fuse, localforage } from '../lib.js';
 import { characters, chat_metadata, eventSource, event_types, generateQuietPrompt, getCurrentChatId, getRequestHeaders, getThumbnailUrl, saveMetadata, saveSettingsDebounced, this_chid } from '../script.js';
-import { openThirdPartyExtensionMenu, saveMetadataDebounced } from './extensions.js';
+import { saveMetadataDebounced } from './capability-host.js';
 import { SlashCommand } from './slash-commands/SlashCommand.js';
 import { SlashCommandParser } from './slash-commands/SlashCommandParser.js';
 import { createThumbnail, flashHighlight, getBase64Async, stringFormat, debounce, setupScrollToTop, saveBase64AsFile, getFileExtension, sortIgnoreCaseAndAccents } from './utils.js';
@@ -1641,11 +1641,7 @@ async function convertFileIfVideo(formData) {
         return;
     }
     if (typeof globalThis.convertVideoToAnimatedWebp !== 'function') {
-        toastr.warning(t`Click here to install the Video Background Loader extension`, t`Video background uploads require a downloadable add-on`, {
-            timeOut: 0,
-            extendedTimeOut: 0,
-            onclick: () => openThirdPartyExtensionMenu('https://github.com/SillyTavern/Extension-VideoBackgroundLoader'),
-        });
+        toastr.warning(t`This video format is unavailable. Choose a supported image or animated image.`);
         return;
     }
 

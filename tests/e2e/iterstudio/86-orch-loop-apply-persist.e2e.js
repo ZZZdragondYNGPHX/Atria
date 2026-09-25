@@ -46,16 +46,16 @@ function normalizeSettings(dataRoot) {
     baseNormalize(dataRoot);
     const sp = settingsJsonPath(dataRoot);
     const s = JSON.parse(readFileSync(sp, 'utf8'));
-    s.extension_settings = s.extension_settings || {};
-    s.extension_settings.orchestrator = s.extension_settings.orchestrator || {};
-    s.extension_settings.orchestrator.enabled = true;
-    s.extension_settings.orchestrator.executionMode = 'loop';
+    s.capabilitySettings = s.capabilitySettings || {};
+    s.capabilitySettings.orchestrator = s.capabilitySettings.orchestrator || {};
+    s.capabilitySettings.orchestrator.enabled = true;
+    s.capabilitySettings.orchestrator.executionMode = 'loop';
     writeFileSync(sp, JSON.stringify(s, null, 4));
 }
 
 function readActiveLoopPreset(dataRoot) {
     const s = JSON.parse(readFileSync(settingsJsonPath(dataRoot), 'utf8'));
-    const ext = s?.extension_settings?.orchestrator;
+    const ext = s?.capabilitySettings?.orchestrator;
     if (!ext) return null;
     const activeId = ext.activePresetIds?.loop || '';
     const lib = ext.presetLibraries?.loop || {};
@@ -107,7 +107,7 @@ test.describe('#86 — Orchestrator iter-studio LOOP mode Apply persists across 
         await expect.poll(async () => {
             return await page.evaluate(() => {
                 const ctx = window.Atria.getContext();
-                const s = ctx.extensionSettings.orchestrator;
+                const s = ctx.capabilitySettings.orchestrator;
                 const activeId = s?.activePresetIds?.loop || '';
                 return s?.presetLibraries?.loop?.[activeId]?.system_prompt || '';
             });
@@ -126,7 +126,7 @@ test.describe('#86 — Orchestrator iter-studio LOOP mode Apply persists across 
 
         const inMem = await page.evaluate(() => {
             const ctx = window.Atria.getContext();
-            const s = ctx.extensionSettings.orchestrator;
+            const s = ctx.capabilitySettings.orchestrator;
             const activeId = s?.activePresetIds?.loop || '';
             return s?.presetLibraries?.loop?.[activeId]?.system_prompt || '';
         });

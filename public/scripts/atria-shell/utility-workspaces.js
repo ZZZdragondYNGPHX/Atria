@@ -82,13 +82,13 @@ function makeButton(documentRef, label, {
     return button;
 }
 
-export function classifyPluginEntries({ disabledExtensions = [] } = {}) {
-    return GLOBAL_PLUGINS.map(name => ({ name, displayName: name === 'regex' ? 'Regex' : 'Search Tools', enabled: !disabledExtensions.includes(name) }));
+export function classifyPluginEntries({ disabledPlugins = [] } = {}) {
+    return GLOBAL_PLUGINS.map(name => ({ name, displayName: name === 'regex' ? 'Regex' : 'Search Tools', enabled: !disabledPlugins.includes(name) }));
 }
 
 async function resolveExtensionAuthority(extensionAuthority) {
     if (extensionAuthority) return extensionAuthority;
-    return await import('../extensions.js');
+    return await import('../capability-host.js');
 }
 
 export async function mountPluginsUtility({
@@ -108,7 +108,7 @@ export async function mountPluginsUtility({
     el(doc, 'h3', '', translateShellText('Global Plugins'), globals);
     const authority = await resolveExtensionAuthority(extensionAuthority);
     if (!body.contains(frame.root)) return { root: frame.root, dispose() { frame.root.remove(); } };
-    for (const plugin of classifyPluginEntries({ disabledExtensions: authority.extension_settings?.disabledExtensions || [] })) {
+    for (const plugin of classifyPluginEntries({ disabledPlugins: authority.capabilitySettings?.disabledPlugins || [] })) {
         const card = el(doc, 'article', 'atria-plugin-card', undefined, globals); card.dataset.atriaPlugin = plugin.name;
         el(doc, 'h4', '', translateShellText(plugin.displayName), card);
         el(doc, 'p', '', translateShellText(plugin.name === 'regex' ? 'Transform text with your saved rules. Runs locally without a network permission.' : 'Search and visit external sources using your configured providers. Review provider access in its settings.'), card);
@@ -119,7 +119,7 @@ export async function mountPluginsUtility({
         toggle.addEventListener('change', async () => {
             const desired = toggle.checked; toggle.disabled = true; card.dataset.saveState = 'saving';
             try {
-                await (desired ? authority.enableExtension(plugin.name, false) : authority.disableExtension(plugin.name, false));
+                await (desired ? authority.enableGlobalPlugin(plugin.name, false) : authority.disableGlobalPlugin(plugin.name, false));
                 if (disposed) return;
                 state.textContent = translateShellText(desired ? 'Enabled' : 'Disabled'); card.dataset.saveState = 'saved';
                 status.textContent = translateShellText('Saved. Reload Atria to apply plugin changes.');

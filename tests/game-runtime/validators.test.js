@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { createCommandRegistry } from '../../public/scripts/extensions/game-runtime/logic/command-registry.js';
-import { runCommandValidators } from '../../public/scripts/extensions/game-runtime/logic/validators.js';
+import { createCommandRegistry } from '../../public/scripts/native/experience/logic/command-registry.js';
+import { runCommandValidators } from '../../public/scripts/native/experience/logic/validators.js';
 
 describe('Game Command Validators', () => {
     test('runs validators in order and collects deterministic rejection messages', async () => {

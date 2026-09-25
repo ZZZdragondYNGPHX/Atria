@@ -18,7 +18,7 @@ async function selectCharacter() {
     if (await toggle.evaluate(el => el.classList.contains('closedIcon'))) await toggle.click();
     await page.locator('#rm_print_characters_block .character_select').filter({ hasText: name }).click();
     await page.waitForFunction(expected => window.Atria.getContext().characters[window.Atria.getContext().characterId]?.name === expected, name);
-    await page.waitForFunction(() => !!window.Atria.getContext().getExtensionApi('memory-graph'));
+    await page.waitForFunction(() => !!window.Atria.getContext().getCapabilityApi('memory-graph'));
 }
 async function open() {
     // Dispatch the existing extension settings entry; all edits below use visible form controls.
@@ -46,7 +46,7 @@ try {
     await page.waitForFunction(() => !!window.Atria?.getContext && !document.getElementById('preloader'));
     if (await page.locator('#firstRunDisclaimer').count()) await page.locator('dialog .menu_button').filter({ hasText: /^(好的|OK)$/ }).click();
     await createBlankCharacter(page, { name, firstmes: 'Alice is at Castle.' }); await selectCharacter();
-    await page.evaluate(() => { const ctx = window.Atria.getContext(); ctx.extensionSettings.memory_graph.memoryOsEnabled = true; ctx.saveSettingsDebounced(); });
+    await page.evaluate(() => { const ctx = window.Atria.getContext(); ctx.capabilitySettings.memory_graph.memoryOsEnabled = true; ctx.saveSettingsDebounced(); });
     await open(); checks.push('existing graph entry opens Memory OS');
     await edit('entity', { name: 'Alice', type: 'Character' });
     await edit('entity', { name: 'Castle', type: 'Location' });

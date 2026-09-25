@@ -30,7 +30,7 @@ try {
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     const evidence = await page.evaluate(async () => {
         const { AgentRuntime, AgentRegistry } = await import('/scripts/lib/agent-runtime/index.js');
-        const { runLegacySingleRequest } = await import('/scripts/extensions/orchestrator/legacy-runtime-adapter.js');
+        const { runLegacySingleRequest } = await import('/scripts/agents/orchestrator/legacy-runtime-adapter.js');
         const { createMemoryOSPort } = await import('/scripts/lib/agent-runtime/host-ports.js');
         let requests = 0, tools = 0;
         const runtime = new AgentRuntime({
@@ -64,13 +64,13 @@ try {
                 execute: async effect => { workerTools.push(effect.args.n); return effect.args.n; },
             },
         });
-        const { runLegacyWorkflow, modelIntent, toolIntent } = await import('/scripts/extensions/orchestrator/legacy-workflow-adapter.js');
+        const { runLegacyWorkflow, modelIntent, toolIntent } = await import('/scripts/agents/orchestrator/legacy-workflow-adapter.js');
         const workflowOutput = await runLegacyWorkflow(async function* () {
             const first = yield modelIntent(async () => 'hello', { taskMessages: [] });
             const second = yield toolIntent('read', {}, {}, async () => 'world');
             return first + ' ' + second;
         }, { runId: 'browser-policy' });
-        const { createLegacyAgentGraph, runRoutedLegacyWorkflow } = await import('/scripts/extensions/orchestrator/legacy-agent-routing.js');
+        const { createLegacyAgentGraph, runRoutedLegacyWorkflow } = await import('/scripts/agents/orchestrator/legacy-agent-routing.js');
         const routeEvents = [];
         const routed = await runRoutedLegacyWorkflow(async function* (handoff) {
             return yield modelIntent(async () => handoff.toAgentId, { taskMessages: [] });

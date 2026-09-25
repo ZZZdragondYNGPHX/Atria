@@ -129,7 +129,7 @@ test.describe('Skills LLM: skill_edit_content changes one line; surrounding cont
 
         // ── 3. Switch to director mode + open iter-studio. ──────────────
         await page.evaluate(() => {
-            const settings = window.extension_settings.atria_orchestrator;
+            const settings = window.capabilitySettings.atria_orchestrator;
             settings.executionMode = 'director';
             if (typeof window.saveSettingsDebounced === 'function') {
                 window.saveSettingsDebounced();
@@ -220,7 +220,7 @@ test.describe('Skills LLM: skill_edit_content changes one line; surrounding cont
         // ── 6. Verify outcomes. ─────────────────────────────────────────
         // (Outcome 3 first — easier to fail fast): the tool was called.
         const persistedToolNames = await page.evaluate(() => {
-            const settings = window.extension_settings?.atria_orchestrator;
+            const settings = window.capabilitySettings?.atria_orchestrator;
             const all = settings?.iterStudioSessions || {};
             let newest = null;
             for (const modeBucket of Object.values(all)) {

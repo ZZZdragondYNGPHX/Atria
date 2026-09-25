@@ -14,7 +14,7 @@ globalThis.Atria = globalThis.Atria || {
 };
 
 const { sanitizeDirectorProfile } = await import(
-    '../../public/scripts/extensions/orchestrator/director-defaults.js'
+    '../../public/scripts/agents/orchestrator/director-defaults.js'
 );
 
 const INNER = {

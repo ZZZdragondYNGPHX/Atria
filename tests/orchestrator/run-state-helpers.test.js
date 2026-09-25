@@ -5,8 +5,8 @@ globalThis.Atria = globalThis.Atria || {
     getContext: () => ({ addLocaleData: () => {}, translate: (s) => s }),
 };
 
-const store = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
-const { withRound, withStreamingSection } = await import('../../public/scripts/extensions/orchestrator/run-state/helpers.js');
+const store = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
+const { withRound, withStreamingSection } = await import('../../public/scripts/agents/orchestrator/run-state/helpers.js');
 
 describe('helpers — withRound', () => {
     beforeEach(() => store.clearCurrentRun());

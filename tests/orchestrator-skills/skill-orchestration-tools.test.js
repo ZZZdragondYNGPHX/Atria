@@ -19,7 +19,7 @@ import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 const registered = {};
 
 jest.unstable_mockModule(
-    '../../public/scripts/extensions/orchestrator/register-custom-tool.js',
+    '../../public/scripts/agents/orchestrator/register-custom-tool.js',
     () => ({
         registerOrchestrationTool: jest.fn((spec) => {
             registered[spec.name] = spec;
@@ -41,7 +41,7 @@ globalThis.Atria = {
 };
 
 const { registerSkillOrchestrationTools, unregisterSkillOrchestrationTools } = await import(
-    '../../public/scripts/extensions/orchestrator/skill-orchestration-tools.js'
+    '../../public/scripts/agents/orchestrator/skill-orchestration-tools.js'
 );
 
 describe('skill-orchestration-tools', () => {

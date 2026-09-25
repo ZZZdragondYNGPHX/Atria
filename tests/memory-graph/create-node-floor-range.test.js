@@ -27,9 +27,9 @@ let createEmptyStore;
 let createNode;
 
 beforeAll(async () => {
-    const persistence = await import('../../public/scripts/extensions/memory-graph/persistence.js');
+    const persistence = await import('../../public/scripts/agents/memory/persistence.js');
     createEmptyStore = persistence.createEmptyStore;
-    const main = await import('../../public/scripts/extensions/memory-graph/main.js');
+    const main = await import('../../public/scripts/agents/memory/main.js');
     createNode = main._createNodeForTest;
 });
 

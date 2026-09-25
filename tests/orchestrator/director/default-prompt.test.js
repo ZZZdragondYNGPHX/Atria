@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { buildDirectorDefaultSystemPrompt } from '../../../public/scripts/extensions/orchestrator/director-default-prompt.js';
+import { buildDirectorDefaultSystemPrompt } from '../../../public/scripts/agents/orchestrator/director-default-prompt.js';
 
 /**
  * The default director-mode system prompt is STRONGLY COUPLED to the

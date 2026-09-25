@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { createGameLlmRuntime } from '../../public/scripts/extensions/game-runtime/llm/runtime.js';
+import { createGameLlmRuntime } from '../../public/scripts/native/experience/llm/runtime.js';
 
 function makeSession() {
     let state = {

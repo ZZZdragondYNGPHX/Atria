@@ -66,10 +66,10 @@ test.beforeAll(async () => {
 
     const settingsPath = resolve(server.dataRoot, 'default-user', 'settings.json');
     const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
-    settings.extension_settings = settings.extension_settings || {};
+    settings.atri_capabilities = settings.atri_capabilities || {};
     // Data preparation on the cloned settings.json: two sentinel rules,
     // one per lane, both covering user + AI placements at every depth.
-    settings.extension_settings.regex = [
+    settings.atri_capabilities.regex = [
         {
             id: 'e2e-sentinel-prompt-lane',
             scriptName: 'Sentinel prompt lane',
@@ -97,8 +97,8 @@ test.beforeAll(async () => {
     ];
     // Start with MG fully off so extraction fires only from the real
     // Fill Graph gesture after the short chat exists.
-    settings.extension_settings.memory_graph = {
-        ...(settings.extension_settings.memory_graph || {}),
+    settings.atri_capabilities.memory_graph = {
+        ...(settings.atri_capabilities.memory_graph || {}),
         enabled: false,
         auto_extraction_enabled: false,
     };

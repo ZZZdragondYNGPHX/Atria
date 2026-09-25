@@ -275,15 +275,15 @@ export class DataMaidService {
                 try {
                     const settingsContent = await fs.promises.readFile(pathToSettings, 'utf-8');
                     const settings = tryParse(settingsContent);
-                    if (Array.isArray(settings?.extension_settings?.attachments)) {
-                        for (const file of settings.extension_settings.attachments) {
+                    if (Array.isArray(settings?.atri_capabilities?.attachments)) {
+                        for (const file of settings.atri_capabilities.attachments) {
                             if (file?.url) {
                                 knownFiles.add(file.url);
                             }
                         }
                     }
-                    if (typeof settings?.extension_settings?.character_attachments === 'object') {
-                        for (const files of Object.values(settings.extension_settings.character_attachments)) {
+                    if (typeof settings?.atri_capabilities?.character_attachments === 'object') {
+                        for (const files of Object.values(settings.atri_capabilities.character_attachments)) {
                             if (!Array.isArray(files)) {
                                 continue;
                             }

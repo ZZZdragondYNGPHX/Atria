@@ -7,11 +7,11 @@
 // simulation-review popup then renders a layer chip.
 
 import { describe, test, expect, beforeEach } from '@jest/globals';
-import { resolveToolSource } from '../../public/scripts/extensions/orchestrator/loop-tools.js';
+import { resolveToolSource } from '../../public/scripts/agents/orchestrator/loop-tools.js';
 import {
     registerOrchestrationTool,
     __getExtensionRegistryForTest,
-} from '../../public/scripts/extensions/orchestrator/register-custom-tool.js';
+} from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
 
 describe('resolveToolSource', () => {
     beforeEach(() => {

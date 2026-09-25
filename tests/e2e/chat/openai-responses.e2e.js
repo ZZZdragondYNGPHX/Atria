@@ -87,8 +87,8 @@ test.beforeAll(async () => {
     // chat generation path.
     const sp = resolve(server.dataRoot, 'default-user', 'settings.json');
     const s = JSON.parse(readFileSync(sp, 'utf8'));
-    s.extension_settings = s.extension_settings || {};
-    s.extension_settings.memory_graph = { ...(s.extension_settings.memory_graph || {}), enabled: false };
+    s.capabilitySettings = s.capabilitySettings || {};
+    s.capabilitySettings.memory_graph = { ...(s.capabilitySettings.memory_graph || {}), enabled: false };
     // Dev settings may ship show_thoughts=false; this suite exercises the
     // reasoning pipeline, so bootstrap it on like a user who enabled the
     // "Show thoughts" toggle would have persisted.

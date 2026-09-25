@@ -315,7 +315,7 @@ export const SEARCH_TOOL_NAMES = Object.freeze(SCHEMAS.map(s => s.name));
  * can no-op without throwing.
  */
 function loadOrchestratorRegistrar() {
-    const orch = Atria.getContext().getExtensionApi('orchestrator');
+    const orch = Atria.getContext().getCapabilityApi('orchestrator');
     if (!orch || typeof orch.registerOrchestrationTool !== 'function') return null;
     return orch;
 }

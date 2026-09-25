@@ -5,7 +5,7 @@ import {
     appendToReasoningSection,
     markReasoningSectionStatus,
     EditorOpsError,
-} from '../../../public/scripts/extensions/orchestrator/editor-ops.js';
+} from '../../../public/scripts/agents/orchestrator/editor-ops.js';
 
 function setup(initialReasoning = '') {
     const chat = [{ mes: '', extra: { reasoning: initialReasoning }, is_user: false }];

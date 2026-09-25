@@ -2,10 +2,10 @@ import { test, expect, beforeEach } from '@jest/globals';
 import { AgentRuntime, AgentRegistry } from '../../public/scripts/lib/agent-runtime/index.js';
 import { RuntimeProjection, replayRuntimeEvents, sanitizeRuntimeEvent } from '../../public/scripts/lib/agent-runtime/projection.js';
 import { createEventBus } from '../../public/scripts/lib/agent-runtime/events.js';
-import { createRuntimeObserver } from '../../public/scripts/extensions/orchestrator/run-state/runtime-observer.js';
-import { startRun, getCurrentRun, clearCurrentRun, requestRunStop } from '../../public/scripts/extensions/orchestrator/run-state/store.js';
-import { runRoutedLegacyWorkflow, createLegacyAgentGraph } from '../../public/scripts/extensions/orchestrator/legacy-agent-routing.js';
-import { modelIntent, toolIntent } from '../../public/scripts/extensions/orchestrator/legacy-workflow-adapter.js';
+import { createRuntimeObserver } from '../../public/scripts/agents/orchestrator/run-state/runtime-observer.js';
+import { startRun, getCurrentRun, clearCurrentRun, requestRunStop } from '../../public/scripts/agents/orchestrator/run-state/store.js';
+import { runRoutedLegacyWorkflow, createLegacyAgentGraph } from '../../public/scripts/agents/orchestrator/legacy-agent-routing.js';
+import { modelIntent, toolIntent } from '../../public/scripts/agents/orchestrator/legacy-workflow-adapter.js';
 import { fakePorts, deferred } from './fakes.js';
 
 beforeEach(() => clearCurrentRun());

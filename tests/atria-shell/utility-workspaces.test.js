@@ -32,7 +32,7 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
     });
 
     test('Global Plugins are an explicit allowlist regardless of legacy inventory', () => {
-        const plugins = classifyPluginEntries({ extensionNames: ['orchestrator', 'memory-graph', 'third-party/example'], disabledExtensions: ['search-tools'] });
+        const plugins = classifyPluginEntries({ globalPluginNames: ['orchestrator', 'memory-graph', 'third-party/example'], disabledPlugins: ['search-tools'] });
         expect(plugins.map(item => item.name)).toEqual(['regex', 'search-tools']);
         expect(plugins[1].enabled).toBe(false);
     });
@@ -41,7 +41,7 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         const slot = document.getElementById('slot'), original = document.getElementById('extensions_settings');
         original.innerHTML = '<div id="regex_container"><div class="inline-drawer-header inline-drawer-toggle"><i class="inline-drawer-icon down"></i>Regex rules</div></div><div id="other">Other extension</div>';
         const regex = document.getElementById('regex_container'), header = regex.firstChild, click = jest.fn(); header.addEventListener('click', click);
-        const authority = { extension_settings: { disabledExtensions: [] }, disableExtension: jest.fn(async () => {}), enableExtension: jest.fn(async () => {}) };
+        const authority = { capabilitySettings: { disabledPlugins: [] }, disableGlobalPlugin: jest.fn(async () => {}), enableGlobalPlugin: jest.fn(async () => {}) };
         const host = { openLibraryWork: jest.fn() };
         const productClient = {
             listWorks: async () => [{ package: { packageId: 'pkg' } }],
@@ -57,7 +57,7 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         expect(settings.contains(regex)).toBe(true); expect(slot.querySelector('#other')).toBeNull();
         header.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); expect(click).toHaveBeenCalledTimes(1);
         const toggle = slot.querySelector('[role="switch"]'); toggle.checked = false; toggle.dispatchEvent(new Event('change'));
-        await Promise.resolve(); await Promise.resolve(); expect(authority.disableExtension).toHaveBeenCalledWith('regex', false);
+        await Promise.resolve(); await Promise.resolve(); expect(authority.disableGlobalPlugin).toHaveBeenCalledWith('regex', false);
         [...slot.querySelectorAll('button')].find(b => b.textContent === 'Manage owning Work').click(); expect(host.openLibraryWork).toHaveBeenCalledWith('pkg', 'Voyage');
         controller.dispose(); expect(regex.parentNode).toBe(original); expect(header.hasAttribute('role')).toBe(false);
     });
@@ -163,8 +163,8 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {});
         const controller = await mountPluginsUtility({ document, slot: document.getElementById('slot'),
             productClient: { listWorks: async () => [] }, extensionAuthority: {
-                extensionNames: ['regex'], extensionTypes: {}, extension_settings: { disabledExtensions: [] },
-                disableExtension: jest.fn(async () => { throw new Error('offline'); }),
+                globalPluginNames: ['regex'], globalPluginTypes: {}, capabilitySettings: { disabledPlugins: [] },
+                disableGlobalPlugin: jest.fn(async () => { throw new Error('offline'); }),
             } });
         const toggle = controller.root.querySelector('[role="switch"]');
         toggle.checked = false; toggle.dispatchEvent(new Event('change'));

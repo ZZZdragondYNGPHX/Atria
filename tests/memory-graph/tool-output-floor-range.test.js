@@ -18,7 +18,7 @@ const {
     _trimRankedPreviewForTest: trimRankedPreview,
     _trimExpandPreviewForTest: trimExpandPreview,
     _assistantSeqRangeToChatRangeForTest: assistantSeqRangeToChatRange,
-} = await import('../../public/scripts/extensions/memory-graph/orchestrator-tools.js');
+} = await import('../../public/scripts/agents/memory/orchestrator-tools.js');
 
 function makeContext(messages) {
     return { chat: messages };

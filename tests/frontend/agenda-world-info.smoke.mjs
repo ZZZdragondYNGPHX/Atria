@@ -22,8 +22,8 @@ try {
         const ctx = window.Atria.getContext(), context = Object.create(ctx);
         const wi = await import('/scripts/world-info.js');
         const { generateTask } = await import('/scripts/generate-task.js');
-        const { runAgendaOrchestration } = await import('/scripts/extensions/orchestrator/agenda-runtime.js');
-        const { createWorkspaceFactoryPreset, workspaceHostProfile } = await import('/scripts/extensions/orchestrator/workspace/host-presets.js');
+        const { runAgendaOrchestration } = await import('/scripts/agents/orchestrator/agenda-runtime.js');
+        const { createWorkspaceFactoryPreset, workspaceHostProfile } = await import('/scripts/agents/orchestrator/workspace/host-presets.js');
 
         const P = 'atri_orch_planner_step';
         const books = ['agenda_main', '__MEMORY_GRAPH__', 'agenda_extra', 'agenda_chat', 'agenda_global'];
@@ -38,9 +38,9 @@ try {
         ctx.chatWorldInfo.setSelection([books[3]]);
         await ctx.worldInfoEntry.setGlobalSelection(books[4], true, { save: false });
         await ctx.worldInfoEntry.setGlobalSelection(books[1], true, { save: false }); // duplicated global + character binding must survive
-        ctx.extensionSettings.orchestrator ||= {};
-        ctx.extensionSettings.orchestrator.toolCallRetryMax = 0;
-        ctx.extensionSettings.orchestrator.rpmLimit = 0;
+        ctx.capabilitySettings.orchestrator ||= {};
+        ctx.capabilitySettings.orchestrator.toolCallRetryMax = 0;
+        ctx.capabilitySettings.orchestrator.rpmLimit = 0;
         const profile = workspaceHostProfile(createWorkspaceFactoryPreset('agenda', 'builtin-agenda'));
         const messages = [{ role: 'user', content: 'Inspect this test scene.' }];
         const normal = await ctx.resolveWorldInfoForMessages(messages);

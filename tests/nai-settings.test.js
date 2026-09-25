@@ -57,9 +57,7 @@ jest.unstable_mockModule('../public/scripts/secrets.js', () => ({
     writeSecret: jest.fn(),
 }));
 
-jest.unstable_mockModule('../public/scripts/extensions/connection-manager/profile-retry.js', () => ({
-    withProfileRetry: async (operation) => operation(),
-}));
+
 
 jest.unstable_mockModule('../public/scripts/i18n.js', () => ({ t: strings => String(strings) }));
 

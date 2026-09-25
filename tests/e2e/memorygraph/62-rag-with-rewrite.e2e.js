@@ -151,7 +151,7 @@ async function configureRagWithRewrite(page, profileName) {
         // silently no-ops. The setting is the source of truth that ensureSettings
         // + runQueryRewrite read at recall time.
         const ctx = window.Atria.getContext();
-        const s = ctx.extensionSettings?.memory_graph;
+        const s = ctx.capabilitySettings?.memory_graph;
         if (s) {
             s.ragRewriteApiPresetName = profile;
             // Imported nodes land inside the default recentRawTurns (2)
@@ -190,9 +190,9 @@ test.describe('#62 — RAG recall with query rewrite hits the LLM and embeds the
         // Force vector index sync against the seeded store.
         await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const settings = ctx.extensionSettings?.memory_graph;
-            const main = await import('/scripts/extensions/memory-graph/main.js');
-            const vi = await import('/scripts/extensions/memory-graph/vector-index.js');
+            const settings = ctx.capabilitySettings?.memory_graph;
+            const main = await import('/scripts/agents/memory/main.js');
+            const vi = await import('/scripts/agents/memory/vector-index.js');
             const profile = vi.getVectorConfigFromSettings(settings);
             if (!profile) return;
             const chatKey = main.resolveChatKeyForSession(ctx);
@@ -241,13 +241,13 @@ test.describe('#62 — RAG recall with query rewrite hits the LLM and embeds the
         // And the trace must record rewriteApplied=true with the right string.
         const trace = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const main = await import('/scripts/extensions/memory-graph/main.js');
+            const main = await import('/scripts/agents/memory/main.js');
             const store = await main.ensureMemoryStoreLoaded(ctx);
             return store?.lastRecallTrace || [];
         });
         // Sanity check that the rewrite preset wiring stuck in the settings.
         const settingsDump = await page.evaluate(() => {
-            const s = window.Atria.getContext().extensionSettings?.memory_graph || {};
+            const s = window.Atria.getContext().capabilitySettings?.memory_graph || {};
             return {
                 recallMethod: s.recallMethod,
                 ragUseQueryRewrite: s.ragUseQueryRewrite,

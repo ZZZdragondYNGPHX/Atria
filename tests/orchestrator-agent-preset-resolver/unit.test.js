@@ -14,7 +14,7 @@
  */
 
 import { jest } from '@jest/globals';
-import { resolveCardFirstPresetName } from '../../public/scripts/extensions/orchestrator/agent-preset-resolver.js';
+import { resolveCardFirstPresetName } from '../../public/scripts/agents/orchestrator/agent-preset-resolver.js';
 
 function makeCharacter(avatar = 'alice.png') {
     return { avatar };

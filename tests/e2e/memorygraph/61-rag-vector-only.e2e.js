@@ -146,7 +146,7 @@ async function enableMgAndSelectRag(page) {
         // window off so the assertion exercises the RAG ranker itself, not
         // the post-filter.
         const ctx = window.Atria.getContext();
-        const s = ctx.extensionSettings?.memory_graph;
+        const s = ctx.capabilitySettings?.memory_graph;
         if (s) s.recentRawTurns = 0;
     });
 }
@@ -184,9 +184,9 @@ test.describe('#61 — RAG recall mode reaches the seeded graph via real chat se
         // listener → safeInjectMemoryPrompts → runRagRecall.
         await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const settings = ctx.extensionSettings?.memory_graph;
-            const main = await import('/scripts/extensions/memory-graph/main.js');
-            const vi = await import('/scripts/extensions/memory-graph/vector-index.js');
+            const settings = ctx.capabilitySettings?.memory_graph;
+            const main = await import('/scripts/agents/memory/main.js');
+            const vi = await import('/scripts/agents/memory/vector-index.js');
             const profile = vi.getVectorConfigFromSettings(settings);
             if (!profile) return;
             const chatKey = main.resolveChatKeyForSession(ctx);
@@ -214,7 +214,7 @@ test.describe('#61 — RAG recall mode reaches the seeded graph via real chat se
         // "View Last Injection" button.
         const trace = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const main = await import('/scripts/extensions/memory-graph/main.js');
+            const main = await import('/scripts/agents/memory/main.js');
             const store = await main.ensureMemoryStoreLoaded(ctx);
             return store?.lastRecallTrace || [];
         });

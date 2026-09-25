@@ -3,7 +3,7 @@ import {
     createSubagentDispatcher,
     renderSubSystemPromptWithNotes,
     loadSubAgentOpenNotesBlock,
-} from '../../../public/scripts/extensions/orchestrator/director-tools.js';
+} from '../../../public/scripts/agents/orchestrator/director-tools.js';
 
 /**
  * Sub-agent dispatch builds taskMessages in this shape:

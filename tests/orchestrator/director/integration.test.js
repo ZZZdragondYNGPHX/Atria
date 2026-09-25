@@ -8,13 +8,13 @@ test('owner cannot call disabled write tools even when the model invents their n
         eventData: { abortSignal: new AbortController().signal }, deps: { generateTaskStreamForMainAgent: async () => calls.shift(), chat } });
     expect(handle.getText()).toBe('original');
 });
-import { runMainAgentLoop } from '../../../public/scripts/extensions/orchestrator/director-runtime.js';
+import { runMainAgentLoop } from '../../../public/scripts/agents/orchestrator/director-runtime.js';
 import { createMessageEditorHandle } from '../../../public/scripts/message-takeover.js';
 import {
     clearCurrentRun,
     getCurrentRun,
     startRun,
-} from '../../../public/scripts/extensions/orchestrator/run-state/store.js';
+} from '../../../public/scripts/agents/orchestrator/run-state/store.js';
 
 function makeHandle() {
     const chat = [{ mes: '', extra: { reasoning: '' }, is_user: false }];

@@ -5,7 +5,7 @@ const INIT_URL = new URL('../public/init.js', import.meta.url);
 const SCRIPT_URL = new URL('../public/script.js', import.meta.url);
 const SERVER_URL = new URL('../src/server-main.js', import.meta.url);
 const STARTUP_STORE_URL = new URL('../src/logging/startup-store.js', import.meta.url);
-const EXTENSIONS_URL = new URL('../public/scripts/extensions.js', import.meta.url);
+const EXTENSIONS_URL = new URL('../public/scripts/capability-host.js', import.meta.url);
 
 describe('client startup telemetry', () => {
     test('captures module-import milestones before app bootstrap', () => {
@@ -42,27 +42,10 @@ describe('client startup telemetry', () => {
         expect(source).toContain("durations: { ...durations }");
     });
 
-    test('extension bootstrap exposes phase timings without changing phase order', () => {
+    test('capability activation retains startup timing without a discovered extension catalog', () => {
         const source = readFileSync(EXTENSIONS_URL, 'utf8');
-        const firstLoad = source.indexOf("measureExtensionStartupPhase('extensionsFirstLoadEvent'");
-        const discover = source.indexOf("measureExtensionStartupPhase('extensionsDiscover'");
-        const manifests = source.indexOf("measureExtensionStartupPhase('extensionsManifests'");
-        const prewarm = source.indexOf("measureExtensionStartupPhase('extensionsPrewarm'");
-        const activate = source.indexOf("measureExtensionStartupPhase('extensionsActivate'");
-        const settingsLoaded = source.indexOf("measureExtensionStartupPhase('extensionsSettingsLoadedEvent'");
-
-        expect(firstLoad).toBeGreaterThanOrEqual(0);
-        expect(discover).toBeGreaterThan(firstLoad);
-        expect(manifests).toBeGreaterThan(discover);
-        expect(prewarm).toBeGreaterThan(manifests);
-        expect(activate).toBeGreaterThan(prewarm);
-        expect(settingsLoaded).toBeGreaterThan(activate);
-        expect(source).toContain('prewarmDeferredExtensionModules');
-        expect(source).toContain('extensionActivate:');
-        expect(source).toContain('extensionLocale:');
-        expect(source).toContain('extensionScript:');
-        expect(source).toContain('extensionStyle:');
-        expect(source).toContain('extensionHook:');
+        expect(source).toContain('state.durations[`capability:${name}`]');
+        expect(source).not.toContain('extensionsDiscover');
     });
 
     test('backend stores startup timing summary and bounded slow-extension diagnostics', () => {

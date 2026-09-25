@@ -57,7 +57,7 @@ test.describe('#68 — Run Panel: stream → final commit 1:1', () => {
         // Pre-clear any stale RunStateStore from a prior run.
         await page.evaluate(async () => {
             try {
-                const m = await import('/scripts/extensions/orchestrator/run-state/store.js');
+                const m = await import('/scripts/agents/orchestrator/run-state/store.js');
                 m.clearCurrentRun?.();
             } catch { /* not loaded */ }
         });
@@ -107,7 +107,7 @@ test.describe('#68 — Run Panel: stream → final commit 1:1', () => {
 
         // Wait for the runner to settle into a terminal state.
         const finalState = await page.evaluate(async () => {
-            const m = await import('/scripts/extensions/orchestrator/run-state/store.js');
+            const m = await import('/scripts/agents/orchestrator/run-state/store.js');
             const settled = new Set(['committed', 'aborted', 'error']);
             const deadline = 60_000;
             const start = Date.now();

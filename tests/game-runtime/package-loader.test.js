@@ -4,7 +4,7 @@ import {
     GAME_PACKAGE_STATUS,
     loadGamePackageJsonResource,
     loadNativeGamePackage,
-} from '../../public/scripts/extensions/game-runtime/package-loader.js';
+} from '../../public/scripts/native/experience/package-loader.js';
 
 function response({ status = 200, body = null, text = null, jsonError = null } = {}) {
     return {

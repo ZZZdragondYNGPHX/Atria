@@ -17,9 +17,9 @@ describe('Regex/Native Game Runtime architecture boundary', () => {
 
     test('Native Game Runtime authority does not depend on Regex or retired CardApp transport', () => {
         for (const relative of [
-            'public/scripts/extensions/game-runtime/package-loader.js',
-            'public/scripts/extensions/game-runtime/world/session.js',
-            'public/scripts/extensions/game-runtime/index.js',
+            'public/scripts/native/experience/package-loader.js',
+            'public/scripts/native/experience/world/session.js',
+            'public/scripts/native/experience/index.js',
         ]) {
             const source = read(relative);
             expect(source).not.toMatch(/extensions\/regex|regex\/engine|getRegexedString|registerManagedRegexProvider/);
@@ -29,8 +29,8 @@ describe('Regex/Native Game Runtime architecture boundary', () => {
 
     test('Native state authority does not use Chat State or swipe-derived branches', () => {
         const source = [
-            read('public/scripts/extensions/game-runtime/package-loader.js'),
-            read('public/scripts/extensions/game-runtime/world/session.js'),
+            read('public/scripts/native/experience/package-loader.js'),
+            read('public/scripts/native/experience/world/session.js'),
         ].join('\n');
         expect(source).not.toMatch(/getChatState|updateChatState|deleteChatState|atri_game_world|buildGameBranchPath|swipe_id|swipeId/);
         expect(source).toContain('atri_world_state');

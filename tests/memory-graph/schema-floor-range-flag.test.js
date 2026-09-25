@@ -19,7 +19,7 @@ let getDefaultNodeTypeSchema;
 let normalizeNodeTypeSchema;
 
 beforeAll(async () => {
-    const mod = await import('../../public/scripts/extensions/memory-graph/main.js');
+    const mod = await import('../../public/scripts/agents/memory/main.js');
     getDefaultNodeTypeSchema = mod.getDefaultNodeTypeSchema;
     normalizeNodeTypeSchema = mod.normalizeNodeTypeSchema;
 });

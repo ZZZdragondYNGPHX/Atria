@@ -25,7 +25,7 @@ import {
     exportAgendaPayload,
     exportLoopPayload,
     exportDirectorPayload,
-} from '../../public/scripts/extensions/orchestrator/simulation-payload-adapter.js';
+} from '../../public/scripts/agents/orchestrator/simulation-payload-adapter.js';
 
 describe('exportSpecPayload', () => {
     it('builds stages and filters failed tool calls', () => {

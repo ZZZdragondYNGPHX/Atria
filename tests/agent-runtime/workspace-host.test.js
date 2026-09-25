@@ -1,8 +1,8 @@
 import { test, expect } from '@jest/globals';
-import { createWorkspaceFactoryPreset, workspaceHostProfile, getWorkspaceLibrary, resolveWorkspaceProfile } from '../../public/scripts/extensions/orchestrator/workspace/host-presets.js';
-import { compilePreset } from '../../public/scripts/extensions/orchestrator/engine-v2/preset-compiler.js';
+import { createWorkspaceFactoryPreset, workspaceHostProfile, getWorkspaceLibrary, resolveWorkspaceProfile } from '../../public/scripts/agents/orchestrator/workspace/host-presets.js';
+import { compilePreset } from '../../public/scripts/agents/orchestrator/engine-v2/preset-compiler.js';
 import { updatePresetLibrary, emptyPresetLibrary } from '../../public/scripts/lib/agent-workspace/presets.js';
-import { executionConfigText } from '../../public/scripts/extensions/orchestrator/execution-mode-contract.js';
+import { executionConfigText } from '../../public/scripts/agents/orchestrator/execution-mode-contract.js';
 
 test.each(['spec', 'loop', 'agenda', 'director'])('%s preserves distinct Native agent routes through the saved plan and host profile', mode => {
     const preset = createWorkspaceFactoryPreset(mode, `routes-${mode}`);

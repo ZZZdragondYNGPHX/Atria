@@ -32,8 +32,8 @@ jest.unstable_mockModule('../../public/lib.js', () => ({
     default: {},
 }));
 
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
-    extension_settings: { orchestrator: {} },
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
+    capabilitySettings: { orchestrator: {} },
     getContext: () => ({}),
     writeExtensionField: () => {},
     UNSET_VALUE: Symbol('unset'),
@@ -58,9 +58,7 @@ jest.unstable_mockModule('../../public/scripts/world-info.js', () => ({
 
 // The real agent-resolution.js loads if we sever the connection-manager
 // gate that pulls textgen-models.js → document.addEventListener under Node.
-jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/profile-resolver.js', () => ({
-    getChatCompletionConnectionProfiles: () => [],
-}));
+
 
 let sanitizeLoopProfile;
 let sanitizeAgentToolFlags;
@@ -69,10 +67,10 @@ let sanitizeAgendaWorkingProfile;
 let sanitizeDirectorProfile;
 
 beforeAll(async () => {
-    ({ sanitizeLoopProfile, sanitizeAgentToolFlags } = await import('../../public/scripts/extensions/orchestrator/persistence.js'));
-    ({ sanitizeSpec } = await import('../../public/scripts/extensions/orchestrator/spec-schema.js'));
-    ({ sanitizeAgendaWorkingProfile } = await import('../../public/scripts/extensions/orchestrator/agenda-profile.js'));
-    ({ sanitizeDirectorProfile } = await import('../../public/scripts/extensions/orchestrator/director-defaults.js'));
+    ({ sanitizeLoopProfile, sanitizeAgentToolFlags } = await import('../../public/scripts/agents/orchestrator/persistence.js'));
+    ({ sanitizeSpec } = await import('../../public/scripts/agents/orchestrator/spec-schema.js'));
+    ({ sanitizeAgendaWorkingProfile } = await import('../../public/scripts/agents/orchestrator/agenda-profile.js'));
+    ({ sanitizeDirectorProfile } = await import('../../public/scripts/agents/orchestrator/director-defaults.js'));
 });
 
 const sampleTool = {

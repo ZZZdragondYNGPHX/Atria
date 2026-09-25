@@ -1,6 +1,6 @@
 import { describe, test, expect } from '@jest/globals';
 
-import { isExtractableAssistantMessage } from '../../public/scripts/extensions/memory-graph/primitives.js';
+import { isExtractableAssistantMessage } from '../../public/scripts/agents/memory/primitives.js';
 
 describe('isExtractableAssistantMessage', () => {
     test('accepts a plain assistant turn', () => {

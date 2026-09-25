@@ -2,7 +2,7 @@
 // Copyright (C) 2026 FunnyCups
 //
 // Drives `createOrchestratorIterationSessionStore` through both backends the
-// product code actually routes to — `extension_settings.orchestrator` (the
+// product code actually routes to — `capabilitySettings.orchestrator` (the
 // `global` scope path) and the character sidecar (the `character_<avatar>`
 // path). Persistence runs through real `JSON.parse(JSON.stringify(...))`
 // clones; no fake clone helpers, no module-level mocks. The `persistSettings`
@@ -11,7 +11,7 @@
 // real ST contracts, used as test storage instead of touching disk.
 
 import { describe, test, expect, jest, beforeEach } from '@jest/globals';
-import { createOrchestratorIterationSessionStore } from '../../public/scripts/extensions/orchestrator/iter-studio/session-store.js';
+import { createOrchestratorIterationSessionStore } from '../../public/scripts/agents/orchestrator/iter-studio/session-store.js';
 
 function makeSidecarCtx() {
     const sidecars = Object.create(null);

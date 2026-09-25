@@ -4,7 +4,7 @@ import {
     readOpenNotesFromContextForNotes,
     renderMainAgentSystemPromptWithOpenNotes,
     runMainAgentLoop,
-} from '../../../public/scripts/extensions/orchestrator/director-runtime.js';
+} from '../../../public/scripts/agents/orchestrator/director-runtime.js';
 
 describe('buildAgentTaskMessages', () => {
     const agentProfile = {

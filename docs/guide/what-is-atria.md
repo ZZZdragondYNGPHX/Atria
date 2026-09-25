@@ -40,7 +40,7 @@ Before the creative LLM generates a response, multiple agents are automatically 
 
 An AI-assisted editor for SillyTavern-compatible character cards and World Info, with natural-language edits, diff review and iteration history. Native game/project authoring now lives in Build → Atria Studio.
 
-→ [CEA Overview](/features/card-editor/) · [Popup](/features/card-editor/popup)
+
 
 ### Native Build / Atria Studio / Project Agent
 

@@ -209,21 +209,21 @@ jobs:
           npx eslint
           public/scripts/native/*.js
           public/scripts/floor-state.js
-          public/scripts/extensions/memory-graph/main.js
-          public/scripts/extensions/memory-graph/persistence.js
-          public/scripts/extensions/memory-graph/source-provenance.js
-          public/scripts/extensions/memory-graph/source-lifecycle.js
-          public/scripts/extensions/memory-graph/inspector-compute.js
-          public/scripts/extensions/orchestrator/anchors.js
-          public/scripts/extensions/orchestrator/persistence.js
-          public/scripts/extensions/orchestrator/snapshot-cache.js
+          public/scripts/agents/memory/main.js
+          public/scripts/agents/memory/persistence.js
+          public/scripts/agents/memory/source-provenance.js
+          public/scripts/agents/memory/source-lifecycle.js
+          public/scripts/agents/memory/inspector-compute.js
+          public/scripts/agents/orchestrator/anchors.js
+          public/scripts/agents/orchestrator/persistence.js
+          public/scripts/agents/orchestrator/snapshot-cache.js
           public/scripts/extensions/search-tools/anchors.js
           public/scripts/extensions/search-tools/persistence.js
           public/scripts/extensions/search-tools/main.js
-          public/scripts/extensions/game-runtime/index.js
-          public/scripts/extensions/game-runtime/world/session.js
-          public/scripts/extensions/game-runtime/world/persistence.js
-          public/scripts/extensions/game-runtime/world/runtime.js
+          public/scripts/native/experience/index.js
+          public/scripts/native/experience/world/session.js
+          public/scripts/native/experience/world/persistence.js
+          public/scripts/native/experience/world/runtime.js
           public/scripts/variable-op-log/index.js
           public/scripts/variable-op-log/panel.js
           src/native/session-core.js
@@ -271,7 +271,7 @@ jobs:
           public/scripts/world-info.js
           public/scripts/atri-world-info-provenance.js
           public/scripts/atri-world-info-state-events.js
-          public/scripts/extensions/memory-graph/state-providers.js
+          public/scripts/agents/memory/state-providers.js
           tests/native/knowledge-runtime.test.js
 
   n7-context:
@@ -311,9 +311,9 @@ jobs:
         run: >-
           npx eslint
           public/scripts/native/*.js
-          public/scripts/extensions/memory-graph/main.js
-          public/scripts/extensions/memory-graph/hybrid-runtime.js
-          public/scripts/extensions/memory-graph/hybrid-retrieval.js
+          public/scripts/agents/memory/main.js
+          public/scripts/agents/memory/hybrid-runtime.js
+          public/scripts/agents/memory/hybrid-retrieval.js
           public/scripts/world-info.js
           public/script.js
           src/native/repositories/session-repo.js

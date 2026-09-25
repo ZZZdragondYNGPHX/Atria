@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 import { afterEach, expect, jest, test } from '@jest/globals';
-import { MEMORY_ROUTE_TASKS, memoryRouteOptions, normalizeMemoryRoutes } from '../../public/scripts/extensions/memory-graph/native-routing.js';
-import { mountMemoryRouting } from '../../public/scripts/extensions/memory-graph/native-routing-ui.js';
+import { MEMORY_ROUTE_TASKS, memoryRouteOptions, normalizeMemoryRoutes } from '../../public/scripts/agents/memory/native-routing.js';
+import { mountMemoryRouting } from '../../public/scripts/agents/memory/native-routing-ui.js';
 import { nativeSessionRuntime } from '../../public/scripts/native/session-runtime.js';
 import { requestToolCallsWithRetry } from '../../public/scripts/lib/iter-tool-calling.js';
 

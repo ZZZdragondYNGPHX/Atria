@@ -119,7 +119,7 @@ See [Preset-Associated World Info](/improvements/preset-world-info) for details.
 
 Atria includes a built-in AI-powered **Preset Completion Assistant**. It not only helps you understand what each preset parameter means and provides tuning suggestions, but can also directly modify prompt entries in your preset — for example, optimizing system prompt wording or adjusting prompt structure and content. You can describe your needs through conversation, and it will generate modification suggestions displayed as diffs for you to approve item by item.
 
-See [Preset Completion Assistant](/features/preset-assistant) for details.
+
 
 ## Next Steps
 

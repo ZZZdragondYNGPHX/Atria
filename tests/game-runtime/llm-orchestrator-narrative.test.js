@@ -3,14 +3,14 @@ import { describe, expect, jest, test } from '@jest/globals';
 import {
     buildOrchestratorTurnView,
     createGameOrchestratorBridge,
-} from '../../public/scripts/extensions/game-runtime/llm/orchestrator-bridge.js';
+} from '../../public/scripts/native/experience/llm/orchestrator-bridge.js';
 import {
     buildNarrativeContract,
     chooseNarrativeProducer,
     createNarrativeCoordinator,
-} from '../../public/scripts/extensions/game-runtime/llm/narrative.js';
-import { createTurnContext } from '../../public/scripts/extensions/game-runtime/llm/turn-context.js';
-import { createOrchestratorGameRuntimeApi } from '../../public/scripts/extensions/orchestrator/game-runtime-bridge.js';
+} from '../../public/scripts/native/experience/llm/narrative.js';
+import { createTurnContext } from '../../public/scripts/native/experience/llm/turn-context.js';
+import { createOrchestratorGameRuntimeApi } from '../../public/scripts/agents/orchestrator/game-runtime-bridge.js';
 
 function makeTurn() {
     return createTurnContext({

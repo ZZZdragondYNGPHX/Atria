@@ -8,8 +8,8 @@ function walk(path) {
     return readdirSync(path, { withFileTypes: true }).flatMap(entry => entry.isDirectory() ? walk(path + '/' + entry.name)
         : entry.name.endsWith('.js') ? [path + '/' + entry.name] : []);
 }
-const paths = ['public/scripts/native', 'public/scripts/extensions/game-runtime', 'public/scripts/extensions/orchestrator',
-    'public/scripts/extensions/memory-graph', 'public/scripts/extensions/search-tools'].flatMap(walk);
+const paths = ['public/scripts/native', 'public/scripts/native/experience', 'public/scripts/agents/orchestrator',
+    'public/scripts/agents/memory', 'public/scripts/extensions/search-tools'].flatMap(walk);
 paths.push('public/scripts/lib/iter-tool-calling.js');
 const compatibility = 'public/scripts/native/generation-compat.js';
 
@@ -23,7 +23,7 @@ for (const path of paths) {
 requirePattern(compatibility, /!nativePromptUiActive\(\) && !options\.nativeSource/);
 requirePattern(compatibility, /executeNativeGeneration\(/);
 requirePattern('public/scripts/native/studio-agent.js', /executeNativeGeneration\([\s\S]*context\.task\.baseRevision/);
-requirePattern('public/scripts/extensions/game-runtime/index.js', /executeGeneration:[^\n]*executeFirstPartyGeneration/);
+requirePattern('public/scripts/native/experience/index.js', /executeGeneration:[^\n]*executeFirstPartyGeneration/);
 requirePattern('public/script.js', /if \(nativeSessionRuntime\.active\)[\s\S]*runNativePlayGeneration/);
 requirePattern('src/native/adapters/generation-host.js', /new GenerationService[\s\S]*service\.execute/);
 requirePattern('src/native/adapters/generation-host.js', /new RouteResolver/);

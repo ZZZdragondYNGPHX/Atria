@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { disableExtensions } from '../_lib/fixtures.js';
+
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { seedNativeSessionDataRoot } from '../native-session/_helpers.js';
 
@@ -8,7 +8,7 @@ let server;
 
 test.beforeAll(async () => {
     const seeded = await seedNativeSessionDataRoot({ suffix: 'library-runtime-navigation' });
-    disableExtensions({ dataRoot: seeded.dataRoot, names: ['stable-diffusion'] });
+
     server = await startServer({ batchKey: 'regression', scenarioId: 'library-runtime-navigation', useExistingDataRoot: seeded.dataRoot });
 });
 

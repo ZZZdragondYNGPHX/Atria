@@ -130,10 +130,10 @@ test.describe('#89 — Regex pre+post process applied via real UI', () => {
             placements: [2], // AI_OUTPUT
         });
 
-        // Sanity: extensionSettings.regex now lists both entries.
+        // Sanity: capabilitySettings.regex now lists both entries.
         const regexCount = await page.evaluate(() => {
             const ctx = window.Atria.getContext();
-            const r = ctx.extensionSettings?.regex;
+            const r = ctx.capabilitySettings?.regex;
             return Array.isArray(r) ? r.length : 0;
         });
         expect(regexCount).toBeGreaterThanOrEqual(2);

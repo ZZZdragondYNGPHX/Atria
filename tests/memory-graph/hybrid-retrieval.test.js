@@ -1,10 +1,10 @@
 import { describe, test, expect, jest } from '@jest/globals';
 import { webcrypto } from 'node:crypto';
-import { emptyProvenance, captureEpisodes } from '../../public/scripts/extensions/memory-graph/source-provenance.js';
-import { applyFactOperations } from '../../public/scripts/extensions/memory-graph/atomic-facts.js';
-import { applyTemporalOperations } from '../../public/scripts/extensions/memory-graph/temporal-graph.js';
-import { buildMemoryCorpus, rankMemory, analyzeMemoryQuery, composeMemory, retrieveMemory, memoryTokenBudget, memoryTokenCounter } from '../../public/scripts/extensions/memory-graph/hybrid-retrieval.js';
-import { createSourceLifecycle } from '../../public/scripts/extensions/memory-graph/source-lifecycle.js';
+import { emptyProvenance, captureEpisodes } from '../../public/scripts/agents/memory/source-provenance.js';
+import { applyFactOperations } from '../../public/scripts/agents/memory/atomic-facts.js';
+import { applyTemporalOperations } from '../../public/scripts/agents/memory/temporal-graph.js';
+import { buildMemoryCorpus, rankMemory, analyzeMemoryQuery, composeMemory, retrieveMemory, memoryTokenBudget, memoryTokenCounter } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
+import { createSourceLifecycle } from '../../public/scripts/agents/memory/source-lifecycle.js';
 
 Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
 function fixture() {

@@ -24,13 +24,13 @@ import { describe, test, expect } from '@jest/globals';
 import {
     execChatReadRange,
     execChatSearch,
-} from '../../public/scripts/extensions/orchestrator/loop-tools/chat.js';
+} from '../../public/scripts/agents/orchestrator/loop-tools/chat.js';
 import {
     executeLoopTool,
     getEnabledToolSchemas,
     FINALIZE_TOOL_SCHEMA,
-} from '../../public/scripts/extensions/orchestrator/loop-tools.js';
-import { ToolError } from '../../public/scripts/extensions/orchestrator/loop-runtime.js';
+} from '../../public/scripts/agents/orchestrator/loop-tools.js';
+import { ToolError } from '../../public/scripts/agents/orchestrator/loop-runtime.js';
 
 function makeChatContext(messages) {
     return { chat: messages.slice() };

@@ -104,7 +104,7 @@ Search result entries can be set to `constant` (always active) or activated thro
 
 ## Global API
 
-The search plugin provides a global API for integration by other plugins. For example, the [Character Card Editor Assistant](/features/card-editor/)'s [popup](/features/card-editor/popup) and [CardApp Studio](/features/card-editor/studio) both integrate the search capability, enabling web searches for reference materials during card / CardApp editing.
+
 
 ### Properties
 
@@ -174,10 +174,3 @@ The search plugin monitors message deletion and editing events, automatically ma
 | Agent API Preset | API connection preset for the pre-request Agent (empty uses main connection) |
 | Agent Preset | Preset for the pre-request Agent (empty uses main preset) |
 | Agent Max Rounds | Maximum search rounds for the pre-request Agent |
-
-::: info Related Pages
-- [Character Card Editor Assistant](/features/card-editor/) — Editor assistant overview (shared capabilities and entry points)
-- [Popup Mode](/features/card-editor/popup) — Web search inside the popup
-- [CardApp Studio](/features/card-editor/studio) — Web search inside Studio
-- [CardApp](/features/cardapp) — Character card application concept
-:::

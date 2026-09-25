@@ -24,7 +24,7 @@ ctx.getExtensionApi('orchestrator')?.registerOrchestrationTool({ /* ... */ });
 
 // 3. 直接 ES module 匯入（只在 Atria 樹內合適）
 import { registerOrchestrationTool } from
-    '/scripts/extensions/orchestrator/register-custom-tool.js';
+    '/scripts/agents/orchestrator/register-custom-tool.js';
 ```
 
 任何時候都加一層「編排器是否在場」的保護，讓你的擴充在獨立裝的場景下仍然可用。

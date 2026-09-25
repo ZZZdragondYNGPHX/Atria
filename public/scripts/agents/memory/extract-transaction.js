@@ -1,0 +1,365 @@
+import { validateParsedToolCalls } from '../../lib/runtime-tools.js';
+import { FACT_TOOL_NAME } from './fact-extraction.js';
+import { createLogger } from '../../logging/logger.js';
+import { captureFrontendIncident } from '../../logging/incident-reporter.js';
+
+export const EXTRACT_DONE = 'atria_rpg_extract_done';
+
+const memoryExtractLogger = createLogger('memory');
+
+const RELATION_TARGET_SEMANTIC_TYPE = Object.freeze({
+    occurred_at: 'location_state',
+    involved_in: 'character_sheet',
+    advances: 'thread',
+    updates: 'thread',
+    partner_of: 'character_sheet',
+    family_of: 'character_sheet',
+    allied_with: 'character_sheet',
+    hostile_to: 'character_sheet',
+    mentor_of: 'character_sheet',
+    sworn_to: 'character_sheet',
+    debt_owed_to: 'character_sheet',
+    deceiving: 'character_sheet',
+});
+
+/**
+ * Recover a local semantic ref when the model created exactly one compatible
+ * semantic target without a ref, then referenced a single missing ref from a
+ * strongly typed relation such as occurred_at -> location_state.
+ *
+ * This never imports refs from Memory OS graphOperations. It only repairs the
+ * semantic transaction's own create calls and only when the mapping is
+ * unambiguous. Ambiguous cases are left to normal transaction validation.
+ */
+function repairUnambiguousMissingSemanticRefs(calls = [], toolTypes = {}) {
+    const declaredRefs = new Set();
+    const unreferencedCreates = new Map();
+
+    for (const call of calls) {
+        if (call.name === FACT_TOOL_NAME || call.name === EXTRACT_DONE) continue;
+        const ref = call.args?.ref;
+        if (ref) declaredRefs.add(ref);
+
+        const spec = toolTypes[call.name];
+        if (spec?.op !== 'create' || !spec.type || ref) continue;
+        const candidates = unreferencedCreates.get(spec.type) || [];
+        candidates.push(call);
+        unreferencedCreates.set(spec.type, candidates);
+    }
+
+    const missingRefsByType = new Map();
+    for (const call of calls) {
+        if (call.name === FACT_TOOL_NAME || call.name === EXTRACT_DONE) continue;
+        const links = Array.isArray(call.args?.links) ? call.args.links : [];
+        for (const link of links) {
+            const ref = link?.target_ref;
+            if (!ref || declaredRefs.has(ref)) continue;
+            const targetType = RELATION_TARGET_SEMANTIC_TYPE[link?.relation];
+            if (!targetType) continue;
+            const refs = missingRefsByType.get(targetType) || new Set();
+            refs.add(ref);
+            missingRefsByType.set(targetType, refs);
+        }
+    }
+
+    const repairs = [];
+    const assignedCalls = new Set();
+    const normalize = value => String(value || '').trim().toLowerCase();
+    const callNames = call => {
+        const values = [call?.args?.title];
+        const aliases = String(call?.args?.aliases || '')
+            .split(/[,，;；|]/g)
+            .map(value => value.trim())
+            .filter(Boolean);
+        return new Set([...values, ...aliases].map(normalize).filter(Boolean));
+    };
+
+    for (const [type, refs] of missingRefsByType.entries()) {
+        const candidates = (unreferencedCreates.get(type) || []).filter(call => !assignedCalls.has(call));
+        for (const ref of refs) {
+            if (declaredRefs.has(ref)) continue;
+            const refKey = normalize(ref);
+            const exactMatches = candidates.filter(call => !assignedCalls.has(call) && callNames(call).has(refKey));
+            let call = exactMatches.length === 1 ? exactMatches[0] : null;
+
+            // If the model invented an opaque ref (for example loc_axel) rather
+            // than reusing a title, recover it only when this target type has one
+            // missing ref and exactly one compatible unreferenced create.
+            if (!call && refs.size === 1) {
+                const remaining = candidates.filter(candidate => !assignedCalls.has(candidate));
+                if (remaining.length === 1) call = remaining[0];
+            }
+            if (!call) continue;
+
+            call.args = { ...(call.args || {}), ref };
+            assignedCalls.add(call);
+            declaredRefs.add(ref);
+            repairs.push({ name: call.name, type, ref });
+        }
+    }
+
+    return repairs;
+}
+
+function isRetryableExtractionRequestError(error) {
+    const code = String(error?.code || '').trim();
+    if (new Set(['tool_call_parse', 'tool_call_missing', 'no_response', 'timeout', 'network', 'rate_limit']).has(code)) {
+        return true;
+    }
+    const message = String(error?.message || error || '');
+    return /\b(?:500|502|503|504|520|521|522|523|524|525|526)\b|timeout|timed out|rate[ _-]?limit|no tool call|empty content/i.test(message);
+}
+
+/** Validate the whole staged batch, not just the most recent completion. */
+export function validateExtractTransaction({ calls = [], tools = [], requiredTypes = [], memoryOsEnabled = false, nodeIds = [], toolTypes = {} }) {
+    const missing = [], duplicate = [], orderingErrors = [], malformed = [];
+    const names = calls.map(call => call.name);
+    const count = name => names.filter(value => value === name).length;
+    const toolNames = (type, op) => {
+        const mapped = Object.entries(toolTypes).filter(([, spec]) => spec.type === type && spec.op === op).map(([name]) => name);
+        return mapped.length ? mapped : [`atria_rpg_extract_${type.replace(/[^a-z0-9_]/g, '_')}_${op}`];
+    };
+    const requiredWrites = requiredTypes.filter(type => !calls.some(call =>
+        toolNames(type, 'create').includes(call.name) || (type !== 'event' && toolNames(type, 'edit').includes(call.name))));
+    missing.push(...requiredWrites.flatMap(type => toolNames(type, 'create')));
+    if (count('atria_rpg_extract_event_create') > 1) duplicate.push('atria_rpg_extract_event_create');
+    for (const name of [EXTRACT_DONE, ...(memoryOsEnabled ? [FACT_TOOL_NAME] : [])]) {
+        if (!count(name)) missing.push(name);
+        if (count(name) > 1) duplicate.push(name);
+    }
+    if (names.includes(EXTRACT_DONE) && names.at(-1) !== EXTRACT_DONE) orderingErrors.push('done_must_be_last');
+    if (memoryOsEnabled && names.includes(EXTRACT_DONE) && !names.includes(FACT_TOOL_NAME)) orderingErrors.push('done_before_memory_facts');
+    if (names.includes(EXTRACT_DONE) && requiredWrites.length) orderingErrors.push('done_before_required_writes');
+    const refs = new Set(), ids = new Set(nodeIds);
+    // Semantic extraction refs are transaction-local and may be referenced
+    // before their create call appears in the same model response. Collect the
+    // whole semantic ref namespace first, then validate locators in a second
+    // pass. Memory OS graphOperations refs intentionally live in a separate
+    // namespace and are never admitted here.
+    for (const call of calls) {
+        if (call.name === FACT_TOOL_NAME || call.name === EXTRACT_DONE) continue;
+        const ref = call.args?.ref;
+        if (!ref) continue;
+        if (refs.has(ref)) duplicate.push(`ref:${ref}`);
+        refs.add(ref);
+    }
+    for (const [index, call] of calls.entries()) {
+        const error = validateParsedToolCalls([call], tools);
+        if (error) malformed.push({ index, reason: error });
+        const args = call.args || {};
+        if (call.name === FACT_TOOL_NAME || call.name === EXTRACT_DONE) continue;
+        for (const locator of [args, ...(Array.isArray(args.links) ? args.links : [])]) {
+            for (const key of ['source_ref', 'target_ref']) {
+                if (locator[key] && !refs.has(locator[key])) malformed.push({ index, reason: `undeclared ${key}: ${locator[key]}` });
+            }
+            for (const key of ['node_id', 'source_node_id', 'target_node_id']) {
+                if (locator[key] && !ids.has(locator[key])) malformed.push({ index, reason: `unknown ${key}: ${locator[key]}` });
+            }
+        }
+    }
+    const invalid = duplicate.length > 0 || orderingErrors.length > 0 || malformed.length > 0;
+    const phase = requiredWrites.length ? 'EXTRACTING'
+        : memoryOsEnabled && !count(FACT_TOOL_NAME) ? 'MEMORY_FACTS_PENDING'
+            : !count(EXTRACT_DONE) ? 'DONE_PENDING' : 'COMPLETE';
+    return { valid: !invalid && missing.length === 0, invalid, missing, requiredWrites, duplicate, orderingErrors, malformed, phase,
+        event_create: count('atria_rpg_extract_event_create'), memory_facts_count: count(FACT_TOOL_NAME),
+        done_count: count(EXTRACT_DONE), done_is_last: names.at(-1) === EXTRACT_DONE };
+}
+
+/** Calls are staged only. The caller validates semantic effects and commits once. */
+async function collectExtractTransactionInternal({ send, tools, requiredTypes, memoryOsEnabled, nodeIds, taskMessages, repairContext, maxRepairs = 1, signal, initialCalls = [], toolTypes = {} }) {
+    const calls = [...initialCalls];
+    repairUnambiguousMissingSemanticRefs(calls, toolTypes);
+    let state = validateExtractTransaction({ calls, tools, requiredTypes, memoryOsEnabled, nodeIds, toolTypes });
+    let transientRetries = 0;
+    let schemaRetries = 0;
+    let protocolRetries = 0;
+    let validationErrors = [];
+    let repairMode = initialCalls.length > 0;
+    const maxTransientRetries = Math.max(2, maxRepairs);
+    const maxRounds = requiredTypes.length + 3 + (maxRepairs * 2) + maxTransientRetries;
+    for (let round = 0; round < maxRounds; round++) {
+        if (signal?.aborted) throw new DOMException('Memory extraction aborted', 'AbortError');
+        const repair = repairMode;
+        const allowed = !repair ? tools : tools.filter(tool => {
+            const name = tool.function.name;
+            if (state.phase === 'MEMORY_FACTS_PENDING') return name === FACT_TOOL_NAME;
+            if (state.phase === 'DONE_PENDING') return name === EXTRACT_DONE;
+            const spec = toolTypes[name];
+            return state.missing.includes(name) || (spec?.op === 'edit' && spec.type !== 'event' && state.requiredWrites.includes(spec.type));
+        });
+        const messages = !repair ? taskMessages : [
+            { role: 'system', content: 'Complete only the missing extraction steps using the available tools. Completed calls are staged, not committed. Never recreate staged nodes. Calls rejected by schema or transaction validation are not staged: correct only those missing calls using the CURRENT exposed tool schema exactly. Semantic target_ref/source_ref values may reference any semantic ref created anywhere in the same staged transaction, including later calls, but refs declared inside atri_memory_facts.graphOperations are a separate namespace and must never be reused by atria_rpg_extract_* tools. If no semantic target exists, omit that link or use a known graph_data node_id. Do not reuse legacy argument keys or wrappers. Do not output analysis or ordinary text.' },
+            { role: 'user', content: JSON.stringify({ phase: state.phase,
+                completed: calls.map(call => ({ name: call.name, ref: call.args?.ref, node_id: call.args?.node_id })), missing: state.missing,
+                ...(validationErrors.length ? { validation_errors: validationErrors } : {}) })
+                + '\n' + (typeof repairContext === 'string' ? repairContext : repairContext?.[state.phase] || '') },
+        ];
+        let next;
+        try {
+            next = await send({ tools: allowed, taskMessages: messages, repair, phase: state.phase, round });
+        } catch (error) {
+            if (signal?.aborted || !isRetryableExtractionRequestError(error) || ++transientRetries > maxTransientRetries) throw error;
+            validationErrors = [{
+                name: null,
+                reason: `${String(error?.code || 'transient_request_error')}: ${String(error?.message || error || 'request failed')}`,
+            }];
+            console.warn('[Memory Extract Protocol] transient request failure; retrying current phase.', {
+                phase: state.phase,
+                attempt: transientRetries,
+                max: maxTransientRetries,
+                code: error?.code || null,
+            });
+            continue;
+        }
+        if (!Array.isArray(next) || next.length === 0) {
+            if (++transientRetries > maxTransientRetries) {
+                const error = new Error('Extraction returned no tool calls after retry. No new memory was written.');
+                error.code = 'memory_extract_protocol';
+                error.details = state;
+                throw error;
+            }
+            validationErrors = [{ name: null, reason: 'tool_call_missing: extraction returned no tool calls' }];
+            continue;
+        }
+        transientRetries = 0;
+        repairMode = true;
+
+        const accepted = [];
+        const rejected = [];
+        for (const call of next) {
+            const validationError = validateParsedToolCalls([call], tools);
+            if (validationError) {
+                rejected.push({ name: call?.name || null, reason: validationError });
+            } else {
+                accepted.push(call);
+            }
+        }
+
+        // A completion marker from the same response as a malformed call cannot be
+        // staged safely: the malformed step is still missing, so done would violate
+        // transaction ordering. Valid non-done calls are retained across the retry.
+        calls.push(...(rejected.length ? accepted.filter(call => call.name !== EXTRACT_DONE) : accepted));
+        const semanticRefRepairs = repairUnambiguousMissingSemanticRefs(calls, toolTypes);
+        state = validateExtractTransaction({ calls, tools, requiredTypes, memoryOsEnabled, nodeIds, toolTypes });
+        validationErrors = rejected;
+        console.debug('[Memory Extract Protocol]', {
+            round,
+            required_event: requiredTypes.includes('event'),
+            actual_calls: calls.map(call => call.name),
+            rejected_calls: rejected,
+            semantic_ref_repairs: semanticRefRepairs,
+            ...state,
+        });
+
+        if (state.invalid) {
+            // Duplicate writes and ordering violations are transaction-level
+            // contradictions and remain fatal. Locator errors are repairable:
+            // discard only the malformed semantic calls (plus done), repeatedly
+            // revalidate to remove dependants whose refs became undeclared, then
+            // ask the model for the now-missing required phase. This prevents one
+            // cross-namespace/unknown link from rolling back otherwise valid work.
+            if (state.duplicate.length || state.orderingErrors.length) {
+                const error = new Error('Invalid extraction transaction. No new memory was written.');
+                error.code = 'memory_extract_protocol';
+                error.details = { ...state, validation_errors: validationErrors };
+                throw error;
+            }
+            const protocolErrors = [];
+            let repairedCalls = [...calls];
+            let repairedState = state;
+            while (repairedState.malformed.length) {
+                const badIndexes = new Set(repairedState.malformed.map(item => item.index));
+                for (const issue of repairedState.malformed) {
+                    protocolErrors.push({
+                        name: repairedCalls[issue.index]?.name || null,
+                        reason: issue.reason,
+                    });
+                }
+                const nextCalls = repairedCalls.filter((call, index) => !badIndexes.has(index) && call.name !== EXTRACT_DONE);
+                if (nextCalls.length === repairedCalls.length) break;
+                repairedCalls = nextCalls;
+                repairedState = validateExtractTransaction({ calls: repairedCalls, tools, requiredTypes, memoryOsEnabled, nodeIds, toolTypes });
+                if (repairedState.duplicate.length || repairedState.orderingErrors.length) break;
+            }
+            calls.splice(0, calls.length, ...repairedCalls);
+            state = repairedState;
+            validationErrors = [...rejected, ...protocolErrors];
+            if (state.invalid || ++protocolRetries > maxRepairs) {
+                const error = new Error('Extraction references failed transaction validation after retry. No new memory was written.');
+                error.code = 'memory_extract_protocol';
+                error.details = { ...state, validation_errors: validationErrors };
+                throw error;
+            }
+            continue;
+        }
+        if (rejected.length) {
+            if (++schemaRetries > maxRepairs) {
+                const error = new Error('Extraction tool arguments failed schema validation after retry. No new memory was written.');
+                error.code = 'memory_extract_protocol';
+                error.details = { ...state, validation_errors: validationErrors };
+                throw error;
+            }
+            continue;
+        }
+        validationErrors = [];
+        if (state.valid) return calls;
+    }
+    const error = new Error('Incomplete extraction transaction. No new memory was written.');
+    error.code = 'memory_extract_protocol';
+    error.details = { ...state, ...(validationErrors.length ? { validation_errors: validationErrors } : {}) };
+    throw error;
+}
+
+export async function collectExtractTransaction(options = {}) {
+    try {
+        return await collectExtractTransactionInternal(options);
+    } catch (error) {
+        if (options?.signal?.aborted || error?.name === 'AbortError') throw error;
+        const protocolFailure = String(error?.code || '') === 'memory_extract_protocol';
+        const stage = protocolFailure ? 'extract.transaction.validation' : 'extract.transaction.request';
+        memoryExtractLogger.error('extract.failed', '[Memory] extraction transaction failed', {
+            stage,
+            code: String(error?.code || ''),
+            message: error?.message || String(error),
+            requiredTypes: Array.isArray(options?.requiredTypes) ? options.requiredTypes : [],
+            memoryOsEnabled: Boolean(options?.memoryOsEnabled),
+        }, { category: 'extraction' });
+        void captureFrontendIncident({
+            type: 'tool_failure',
+            severity: 'error',
+            primaryModule: 'memory',
+            stage,
+            summary: error?.message || String(error),
+            failure: error,
+            environment: {
+                code: String(error?.code || ''),
+                requiredTypes: Array.isArray(options?.requiredTypes) ? options.requiredTypes : [],
+                memoryOsEnabled: Boolean(options?.memoryOsEnabled),
+                validation: error?.details || null,
+            },
+            retryHistory: Array.isArray(error?.details?.validation_errors) ? error.details.validation_errors : [],
+        });
+        throw error;
+    }
+}
+
+export function logExtractResponse(result, request) {
+    const raw = result?.raw?.choices?.[0]?.message?.tool_calls;
+    const merged = result?.toolCalls || [];
+    const inspect = call => {
+        const args = call?.function?.arguments ?? call?.raw?.function?.arguments;
+        let parsed = args === undefined ? Boolean(call?.args && typeof call.args === 'object') : false;
+        if (typeof args === 'string') { try { JSON.parse(args); parsed = true; } catch { /* reported below */ } }
+        return { id: call.id || call.raw?.id || null, name: call.function?.name || call.name || null,
+            arguments_present: args !== undefined || call.args !== undefined, arguments_json_valid: parsed };
+    };
+    console.debug('[Memory Extract Response]', {
+        ...result?.requestInfo, model: result?.raw?.model || result?.requestInfo?.model || null,
+        stream: false, streaming_merge: false, tool_choice: request.toolChoice,
+        finish_reason: result?.finishReason || result?.raw?.choices?.[0]?.finish_reason || null,
+        content_present: Boolean(result?.assistantText || result?.raw?.choices?.[0]?.message?.content),
+        raw_calls: Array.isArray(raw) ? raw.map(inspect) : null, raw_count: Array.isArray(raw) ? raw.length : null,
+        merged_calls: merged.map(inspect), merged_count: merged.length,
+    });
+}

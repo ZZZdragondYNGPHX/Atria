@@ -47,7 +47,7 @@ let buildAvailableSkillsBlock;
 let invalidateSkillInventory;
 
 beforeAll(async () => {
-    const mod = await import('../../public/scripts/extensions/orchestrator/skill-resolution.js');
+    const mod = await import('../../public/scripts/agents/orchestrator/skill-resolution.js');
     resolveAgentVisibleSkills = mod.resolveAgentVisibleSkills;
     buildAvailableSkillsBlock = mod.buildAvailableSkillsBlock;
     invalidateSkillInventory = mod.invalidateSkillInventory;

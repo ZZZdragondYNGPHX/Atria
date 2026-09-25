@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 
-import { createResponsiveEnvironment } from '../../public/scripts/extensions/game-runtime/ui/environment.js';
+import { createResponsiveEnvironment } from '../../public/scripts/native/experience/ui/environment.js';
 
 function setViewport(width, height) {
     Object.defineProperty(window, 'innerWidth', {

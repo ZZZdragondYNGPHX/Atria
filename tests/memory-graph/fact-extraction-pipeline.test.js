@@ -1,9 +1,9 @@
 import { beforeAll, beforeEach, describe, expect, jest, test } from '@jest/globals';
-import { TOOL_PROTOCOL_STYLE, validateParsedToolCalls } from '../../public/scripts/extensions/function-call-runtime.js';
+import { TOOL_PROTOCOL_STYLE, validateParsedToolCalls } from '../../public/scripts/lib/runtime-tools.js';
 import './_mocks/main-module-stack.js';
-import { createEmptyStore } from '../../public/scripts/extensions/memory-graph/persistence.js';
+import { createEmptyStore } from '../../public/scripts/agents/memory/persistence.js';
 
-jest.unstable_mockModule('../../public/scripts/extensions/function-call-runtime.js', () => ({ TOOL_PROTOCOL_STYLE, validateParsedToolCalls }));
+jest.unstable_mockModule('../../public/scripts/lib/runtime-tools.js', () => ({ TOOL_PROTOCOL_STYLE, validateParsedToolCalls }));
 let context;
 let processBatch;
 let disk;
@@ -13,11 +13,11 @@ beforeAll(async () => {
     const base = global.Atria.getContext();
     context = Object.assign(Object.create(base), {
         characterId: null, groupId: null, characters: [], chatMetadata: {},
-        extensionSettings: { memory_graph: { memoryOsEnabled: true } },
+        capabilitySettings: { memory_graph: { memoryOsEnabled: true } },
         resolveChatStateTarget: () => ({ is_group: false, avatar_url: 'fact-test.png', file_name: 'facts' }),
     });
     global.Atria.getContext = () => context;
-    const main = await import('../../public/scripts/extensions/memory-graph/main.js');
+    const main = await import('../../public/scripts/agents/memory/main.js');
     processBatch = main._processPendingMessageBatchWithLLMForTest;
     createHistory = main.createMemoryHistoryBuilder;
     getDefaultSchema = main.getDefaultNodeTypeSchema;

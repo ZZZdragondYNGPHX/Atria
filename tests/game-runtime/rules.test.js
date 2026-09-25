@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { createRulesEngine } from '../../public/scripts/extensions/game-runtime/logic/rules.js';
+import { createRulesEngine } from '../../public/scripts/native/experience/logic/rules.js';
 
 function projectEvents(events) {
     const state = { hp: 10, dead: false, kills: 0 };

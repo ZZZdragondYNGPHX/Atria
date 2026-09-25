@@ -281,7 +281,7 @@ describe('spec §5.6 — i18n entries present in zh-CN and zh-TW', () => {
         const path = await import('node:path');
         const url = await import('node:url');
         const here = path.dirname(url.fileURLToPath(import.meta.url));
-        const i18nPath = path.resolve(here, '../../public/scripts/extensions/memory-graph/i18n.js');
+        const i18nPath = path.resolve(here, '../../public/scripts/agents/memory/i18n.js');
         const content = await fs.readFile(i18nPath, 'utf8');
         // Two blocks: addLocaleData('zh-cn', {...}) and addLocaleData('zh-tw', {...}).
         const zhCnIdx = content.indexOf('addLocaleData(\'zh-cn\'');
@@ -310,7 +310,7 @@ import { dirname, resolve as resolvePath } from 'node:path';
 
 const __mgInjectionTestDir = dirname(fileURLToPath(import.meta.url));
 const MG_MAIN_SOURCE = readFileSync(
-    resolvePath(__mgInjectionTestDir, '..', '..', 'public', 'scripts', 'extensions', 'memory-graph', 'main.js'),
+    resolvePath(__mgInjectionTestDir, '..', '..', 'public', 'scripts', 'agents', 'memory', 'main.js'),
     'utf8',
 );
 
@@ -330,7 +330,7 @@ describe('recall candidate pool unaffected by window (behavior)', () => {
     let collectAlwaysInjectNodes;
 
     beforeAll(async () => {
-        const mainMod = await import('../../public/scripts/extensions/memory-graph/main.js');
+        const mainMod = await import('../../public/scripts/agents/memory/main.js');
         collectAlwaysInjectNodes = mainMod.collectAlwaysInjectNodes;
     });
 

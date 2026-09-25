@@ -39,7 +39,7 @@ const resolveByName = jest.fn((c, name) => {
 });
 
 const { collectUnembeddedPresets } = await import(
-    '/scripts/extensions/orchestrator/collect-unembedded-presets.js'
+    '/scripts/agents/orchestrator/collect-unembedded-presets.js'
 );
 
 beforeEach(() => { resolveByName.mockClear(); });

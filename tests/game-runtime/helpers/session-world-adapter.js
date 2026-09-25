@@ -1,4 +1,4 @@
-import { assertValidWorldState } from '../../../public/scripts/extensions/game-runtime/world/schema.js';
+import { assertValidWorldState } from '../../../public/scripts/native/experience/world/schema.js';
 
 function clone(value) {
     return value === undefined ? undefined : structuredClone(value);

@@ -15,7 +15,6 @@ import { router as usersPrivateRouter } from './endpoints/users-private.js';
 import { router as usersAdminRouter } from './endpoints/users-admin.js';
 import { router as movingUIRouter } from './endpoints/moving-ui.js';
 import { router as imagesRouter } from './endpoints/images.js';
-import { router as quickRepliesRouter } from './endpoints/quick-replies.js';
 import { router as avatarsRouter } from './endpoints/avatars.js';
 import { router as themesRouter } from './endpoints/themes.js';
 import { router as openAiRouter } from './endpoints/openai.js';
@@ -26,8 +25,6 @@ import { router as presetsRouter } from './endpoints/presets.js';
 import { router as secretsRouter } from './endpoints/secrets.js';
 import { router as thumbnailRouter } from './endpoints/thumbnails.js';
 import { router as novelAiRouter } from './endpoints/novelai.js';
-import { router as extensionsRouter } from './endpoints/extensions.js';
-import { router as assetsRouter } from './endpoints/assets.js';
 import { router as filesRouter } from './endpoints/files.js';
 import { router as charactersRouter } from './endpoints/characters.js';
 import { router as chatsRouter } from './endpoints/chats.js';
@@ -40,21 +37,14 @@ import { router as settingsRouter } from './endpoints/settings.js';
 import { router as backgroundsRouter } from './endpoints/backgrounds.js';
 import { router as spritesRouter } from './endpoints/sprites.js';
 import { router as vectorsRouter } from './endpoints/vectors.js';
-import { router as translateRouter } from './endpoints/translate.js';
-import { router as classifyRouter } from './endpoints/classify.js';
-import { router as captionRouter } from './endpoints/caption.js';
 import { router as openRouterRouter } from './endpoints/openrouter.js';
 import { router as nanogptRouter } from './endpoints/nanogpt.js';
 import { router as chatCompletionsRouter } from './endpoints/backends/chat-completions.js';
 import { router as koboldRouter } from './endpoints/backends/kobold.js';
 import { router as textCompletionsRouter } from './endpoints/backends/text-completions.js';
-import { router as speechRouter } from './endpoints/speech.js';
-import { router as azureRouter } from './endpoints/azure.js';
-import { router as minimaxRouter } from './endpoints/minimax.js';
 import { router as dataMaidRouter } from './endpoints/data-maid.js';
 import { router as backupsRouter } from './endpoints/backups.js';
 import { router as imageMetadataRouter } from './endpoints/image-metadata.js';
-import { router as volcengineRouter } from './endpoints/volcengine.js';
 import { router as requestInspectorRouter } from './request-inspector.js';
 import { router as docsRouter } from './endpoints/docs.js';
 import { createSkillsRouter } from './endpoints/skills.js';
@@ -86,7 +76,6 @@ export function setupPrivateEndpoints(app) {
     app.use('/api/users', usersAdminRouter);
     app.use('/api/moving-ui', movingUIRouter);
     app.use('/api/images', imagesRouter);
-    app.use('/api/quick-replies', quickRepliesRouter);
     app.use('/api/avatars', avatarsRouter);
     app.use('/api/themes', themesRouter);
     app.use('/api/openai', openAiRouter);
@@ -97,8 +86,6 @@ export function setupPrivateEndpoints(app) {
     app.use('/api/secrets', secretsRouter);
     app.use('/thumbnail', thumbnailRouter);
     app.use('/api/novelai', novelAiRouter);
-    app.use('/api/extensions', extensionsRouter);
-    app.use('/api/assets', assetsRouter);
     app.use('/api/files', filesRouter);
     app.use('/api/characters', charactersRouter);
     app.use('/api/chats', chatsRouter);
@@ -114,18 +101,11 @@ export function setupPrivateEndpoints(app) {
     app.use('/api/content', contentManagerRouter);
     app.use('/api', bootstrapRouter);
     app.use('/api/settings', settingsRouter);
-    app.use('/api/sd', createLazyRouter(
-        () => import('./endpoints/stable-diffusion.js'),
-        { exportName: 'router', label: 'sd' },
-    ));
     app.use('/api/horde', createLazyRouter(
         () => import('./endpoints/horde.js'),
         { exportName: 'router', label: 'horde' },
     ));
     app.use('/api/vector', vectorsRouter);
-    app.use('/api/translate', translateRouter);
-    app.use('/api/extra/classify', classifyRouter);
-    app.use('/api/extra/caption', captionRouter);
     app.use('/api/search', createLazyRouter(
         () => import('./endpoints/search.js'),
         { exportName: 'router', label: 'search' },
@@ -135,10 +115,6 @@ export function setupPrivateEndpoints(app) {
     app.use('/api/nanogpt', nanogptRouter);
     app.use('/api/backends/kobold', koboldRouter);
     app.use('/api/backends/chat-completions', chatCompletionsRouter);
-    app.use('/api/speech', speechRouter);
-    app.use('/api/azure', azureRouter);
-    app.use('/api/volcengine', volcengineRouter);
-    app.use('/api/minimax', minimaxRouter);
     app.use('/api/data-maid', dataMaidRouter);
     app.use('/api/backups', backupsRouter);
     app.use('/api/image-metadata', imageMetadataRouter);

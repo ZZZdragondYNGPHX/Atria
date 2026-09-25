@@ -1,5 +1,5 @@
 import { test, expect } from '@jest/globals';
-import { runLegacySingleRequest } from '../../public/scripts/extensions/orchestrator/legacy-runtime-adapter.js';
+import { runLegacySingleRequest } from '../../public/scripts/agents/orchestrator/legacy-runtime-adapter.js';
 import { deferred } from './fakes.js';
 import { MemoryCheckpointStore } from '../../public/scripts/lib/agent-runtime/index.js';
 

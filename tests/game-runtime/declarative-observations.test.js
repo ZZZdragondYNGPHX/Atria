@@ -3,8 +3,8 @@ import { describe, expect, jest, test } from '@jest/globals';
 import {
     compileGameObservationDefinitions,
     loadGameObservationDefinitions,
-} from '../../public/scripts/extensions/game-runtime/llm/declarative-observations.js';
-import { createWorldObservationProjector } from '../../public/scripts/extensions/game-runtime/llm/observation.js';
+} from '../../public/scripts/native/experience/llm/declarative-observations.js';
+import { createWorldObservationProjector } from '../../public/scripts/native/experience/llm/observation.js';
 
 describe('Declarative Game Observations', () => {
     test('compiles safe Formula AST projectors into the existing R5 projector contract', () => {

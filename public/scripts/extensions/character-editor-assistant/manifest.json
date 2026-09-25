@@ -1,8 +1,0 @@
-{
-    "display_name": "Character Editor Assistant",
-    "loading_order": 112,
-    "js": "index.js",
-    "author": "Atria",
-    "version": "0.1.0",
-    "homePage": "https://github.com/ZZZdragondYNGPHX/Atria"
-}

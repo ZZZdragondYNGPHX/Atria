@@ -3,18 +3,18 @@ import fs from 'node:fs';
 const implementationFiles = [
     'src/native/runtime-descriptor.js',
     'src/native/studio-preview.js',
-    'public/scripts/extensions/game-runtime/index.js',
-    'public/scripts/extensions/game-runtime/package-loader.js',
-    'public/scripts/extensions/game-runtime/ui/component-model.js',
-    'public/scripts/extensions/game-runtime/ui/runtime.js',
-    'public/scripts/extensions/game-runtime/ui/declarative.js',
-    'public/scripts/extensions/game-runtime/ui/selectors.js',
-    'public/scripts/extensions/game-runtime/ui/surfaces.js',
-    'public/scripts/extensions/game-runtime/ui/host-surfaces.js',
-    'public/scripts/extensions/game-runtime/ui/native-components.js',
-    'public/scripts/extensions/game-runtime/ui/package.js',
-    'public/scripts/extensions/game-runtime/ui/live.js',
-    'public/scripts/extensions/game-runtime/ui/full-host.js',
+    'public/scripts/native/experience/index.js',
+    'public/scripts/native/experience/package-loader.js',
+    'public/scripts/native/experience/ui/component-model.js',
+    'public/scripts/native/experience/ui/runtime.js',
+    'public/scripts/native/experience/ui/declarative.js',
+    'public/scripts/native/experience/ui/selectors.js',
+    'public/scripts/native/experience/ui/surfaces.js',
+    'public/scripts/native/experience/ui/host-surfaces.js',
+    'public/scripts/native/experience/ui/native-components.js',
+    'public/scripts/native/experience/ui/package.js',
+    'public/scripts/native/experience/ui/live.js',
+    'public/scripts/native/experience/ui/full-host.js',
     'public/scripts/atria-shell/native-play-host.js',
 ];
 
@@ -27,11 +27,11 @@ const source = Object.fromEntries(
 );
 
 const experienceFiles = [
-    'public/scripts/extensions/game-runtime/ui/component-model.js',
-    'public/scripts/extensions/game-runtime/ui/declarative.js',
-    'public/scripts/extensions/game-runtime/ui/surfaces.js',
-    'public/scripts/extensions/game-runtime/ui/package.js',
-    'public/scripts/extensions/game-runtime/ui/live.js',
+    'public/scripts/native/experience/ui/component-model.js',
+    'public/scripts/native/experience/ui/declarative.js',
+    'public/scripts/native/experience/ui/surfaces.js',
+    'public/scripts/native/experience/ui/package.js',
+    'public/scripts/native/experience/ui/live.js',
 ].map(file => source[file]).join('\n');
 
 for (const [label, pattern] of [
@@ -56,7 +56,7 @@ if (
     throw new Error('A4 Runtime Descriptor must derive declarative Experience resources from exact PackageVersion + EntryPoint');
 }
 
-const model = source['public/scripts/extensions/game-runtime/ui/component-model.js'];
+const model = source['public/scripts/native/experience/ui/component-model.js'];
 for (const field of ['id', 'type', 'props', 'bindings', 'actions', 'visibility', 'responsive', 'children']) {
     if (!model.includes(`'${field}'`)) {
         throw new Error('A4 Component Model is missing required field: ' + field);
@@ -66,7 +66,7 @@ if (!model.includes("'native-slot'") || !model.includes('conversation') || !mode
     throw new Error('A4 shared Component Model must support Hybrid/Full Native slots');
 }
 
-const packageUi = source['public/scripts/extensions/game-runtime/ui/package.js'];
+const packageUi = source['public/scripts/native/experience/ui/package.js'];
 if (
     !packageUi.includes('loadGamePackageJsonResource')
     || !packageUi.includes('compileExperienceComponentModel')
@@ -75,7 +75,7 @@ if (
     throw new Error('A4 package UI must load only structured JSON through the Native Session resource path');
 }
 
-const live = source['public/scripts/extensions/game-runtime/ui/live.js'];
+const live = source['public/scripts/native/experience/ui/live.js'];
 if (
     !live.includes('activateNativeExperienceRuntime')
     || !live.includes("mode === 'text'")
@@ -85,7 +85,7 @@ if (
     throw new Error('A4 must route Text/Component/Hybrid/Full through one Experience dispatcher');
 }
 
-const surfaces = source['public/scripts/extensions/game-runtime/ui/host-surfaces.js'];
+const surfaces = source['public/scripts/native/experience/ui/host-surfaces.js'];
 for (const surface of [
     'app.root',
     'chat.header',
@@ -103,7 +103,7 @@ if (!surfaces.includes('acquireStageOwnership')) {
     throw new Error('A4 Hybrid must use Atria Play Stage ownership instead of creating a parallel host');
 }
 
-const full = source['public/scripts/extensions/game-runtime/ui/full-host.js'];
+const full = source['public/scripts/native/experience/ui/full-host.js'];
 if (
     !full.includes('acquireStageOwnership')
     || !full.includes("['exit'")
@@ -114,7 +114,7 @@ if (
     throw new Error('A4 Full Experience must preserve Host-owned recovery outside package visual ownership');
 }
 
-const index = source['public/scripts/extensions/game-runtime/index.js'];
+const index = source['public/scripts/native/experience/index.js'];
 if (
     !index.includes('activateNativeExperienceRuntime')
     || !index.includes('nativeSessionRuntime')
@@ -133,12 +133,12 @@ if (
 }
 
 const uiAuthority = [
-    source['public/scripts/extensions/game-runtime/ui/component-model.js'],
-    source['public/scripts/extensions/game-runtime/ui/runtime.js'],
-    source['public/scripts/extensions/game-runtime/ui/declarative.js'],
-    source['public/scripts/extensions/game-runtime/ui/selectors.js'],
-    source['public/scripts/extensions/game-runtime/ui/package.js'],
-    source['public/scripts/extensions/game-runtime/ui/live.js'],
+    source['public/scripts/native/experience/ui/component-model.js'],
+    source['public/scripts/native/experience/ui/runtime.js'],
+    source['public/scripts/native/experience/ui/declarative.js'],
+    source['public/scripts/native/experience/ui/selectors.js'],
+    source['public/scripts/native/experience/ui/package.js'],
+    source['public/scripts/native/experience/ui/live.js'],
 ].join('\n');
 if (/class\s+.*(?:Repo|Repository)|SessionCore|ProjectStore|PackageRepo|WorldRepo|localStorage|indexedDB/i.test(uiAuthority)) {
     throw new Error('A4 Experience UI must not create a second persistence/package/session/world authority');

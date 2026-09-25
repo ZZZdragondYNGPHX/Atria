@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { GAME_LOGIC_ERROR_CODES, GameLogicError } from '../../public/scripts/extensions/game-runtime/logic/errors.js';
-import { createGameLogicRuntime } from '../../public/scripts/extensions/game-runtime/logic/runtime.js';
+import { GAME_LOGIC_ERROR_CODES, GameLogicError } from '../../public/scripts/native/experience/logic/errors.js';
+import { createGameLogicRuntime } from '../../public/scripts/native/experience/logic/runtime.js';
 import { createSessionWorldTestAdapter } from './helpers/session-world-adapter.js';
 
 function makePersistence(seed = null) {

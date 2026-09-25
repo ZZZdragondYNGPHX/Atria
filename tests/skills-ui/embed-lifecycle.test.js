@@ -19,7 +19,7 @@ function makePayload(items) {
 
 function makeContext({
     skills = {},
-    extensionSettings = {},
+    capabilitySettings = {},
     characters = [],
     characterId = undefined,
 } = {}) {
@@ -33,7 +33,7 @@ function makeContext({
         },
         characters,
         characterId,
-        extensionSettings,
+        capabilitySettings,
         callGenericPopup: jest.fn(),
         POPUP_TYPE: { TEXT: 1, CONFIRM: 2 },
         POPUP_RESULT: { AFFIRMATIVE: 1, NEGATIVE: 0 },
@@ -350,7 +350,7 @@ describe('embed-lifecycle — preset handlers', () => {
             // Even if a connection profile is selected, the scope should not
             // pick up its name — preset-scope skills are decoupled from
             // connection profiles.
-            extensionSettings: {
+            capabilitySettings: {
                 connectionManager: {
                     selectedProfile: 'p1',
                     profiles: [{ id: 'p1', name: 'RP4-claude4' }],

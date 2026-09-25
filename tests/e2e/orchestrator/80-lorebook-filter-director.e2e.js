@@ -161,7 +161,7 @@ test.describe('#80 — Director mode lorebookFilter blocks context injection and
 
         await page.evaluate(async ({ privateBook }) => {
             const ctx = window.Atria.getContext();
-            const settings = ctx.extensionSettings.orchestrator;
+            const settings = ctx.capabilitySettings.orchestrator;
             const { updatePresetLibrary } = await import('/scripts/lib/agent-workspace/presets.js');
             const preset = structuredClone(settings.agentWorkspace.presets.find(p => p.id === settings.agentWorkspace.bindings.defaultPresetId));
             preset.planTemplate.metadata.hostAdapters.atria.lorebookFilter = { bookPattern:`^${privateBook}$`,entryPattern:'^secret_' };

@@ -2,14 +2,14 @@ import { test, expect } from '@playwright/test';
 import { createNativeId } from '../../../src/native/identity.js';
 import { bindingFor, knowledgeSnapshot } from '../../native/helpers/session-fixture.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
-import { disableExtensions } from '../_lib/fixtures.js';
+
 import { awaitMainUI } from '../_lib/page.js';
 import { seedNativeSessionDataRoot } from './_helpers.js';
 let server;
 
 test.beforeAll(async () => {
     const seed = await seedNativeSessionDataRoot({ suffix: 'native-knowledge' });
-    disableExtensions({ dataRoot: seed.dataRoot, names: ['stable-diffusion'] });
+
     server = await startServer({ batchKey: 'generation', scenarioId: 'native-knowledge', useExistingDataRoot: seed.dataRoot });
 });
 

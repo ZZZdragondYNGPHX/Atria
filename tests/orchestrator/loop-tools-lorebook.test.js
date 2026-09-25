@@ -30,12 +30,12 @@ import {
     execLorebookGet,
     execWorldBookList,
     execLorebookList,
-} from '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js';
+} from '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js';
 import {
     executeLoopTool,
     getEnabledToolSchemas,
-} from '../../public/scripts/extensions/orchestrator/loop-tools.js';
-import { ToolError } from '../../public/scripts/extensions/orchestrator/loop-runtime.js';
+} from '../../public/scripts/agents/orchestrator/loop-tools.js';
+import { ToolError } from '../../public/scripts/agents/orchestrator/loop-runtime.js';
 
 function makeFixture(entries, opts = {}) {
     return {
@@ -331,7 +331,7 @@ describe('execWorldBookList', () => {
             __getWorldScopesFn: async () => ({ global: 'global', character: 'character' }),
         };
         const { execWorldBookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const result = await execWorldBookList({}, ctx);
         expect(result.ok).toBe(true);
@@ -345,7 +345,7 @@ describe('execWorldBookList', () => {
             __getWorldScopesFn: async () => ({}),
         };
         const { execWorldBookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const result = await execWorldBookList({}, ctx);
         expect(result).toEqual({ ok: true, output: '' });
@@ -361,7 +361,7 @@ describe('execWorldBookList', () => {
             __getWorldScopesFn: async () => ({ real: 'chat' }),
         };
         const { execWorldBookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const result = await execWorldBookList({}, ctx);
         expect(result.output).toContain('[chat] real (1 entry)');
@@ -380,7 +380,7 @@ describe('execWorldBookList', () => {
             __getWorldScopesFn: async () => ({ global: 'global' }),
         };
         const { execWorldBookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const result = await execWorldBookList({}, ctx);
         expect(result.output).toContain('[unknown] orphan (2 entries)');
@@ -399,7 +399,7 @@ describe('execLorebookList', () => {
     test('emits grep-style index line per entry in the named book', async () => {
         const ctx = { __getSortedEntriesFn: async () => FIXTURE };
         const { execLorebookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const result = await execLorebookList({ book_name: 'global' }, ctx);
         expect(result.ok).toBe(true);
@@ -415,7 +415,7 @@ describe('execLorebookList', () => {
             __atriaRun: { activatedEntryKeys: new Set(['global.2']) },
         };
         const { execLorebookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const result = await execLorebookList({ book_name: 'global' }, ctx);
         expect(result.output).toContain('uid=1');
@@ -426,7 +426,7 @@ describe('execLorebookList', () => {
     test('range "0~5" narrows to inclusive uid window', async () => {
         const ctx = { __getSortedEntriesFn: async () => FIXTURE };
         const { execLorebookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const result = await execLorebookList({ book_name: 'global', range: '0~5' }, ctx);
         expect(result.output).toContain('uid=1');
@@ -437,7 +437,7 @@ describe('execLorebookList', () => {
     test('range "5~" includes entries with uid >= 5', async () => {
         const ctx = { __getSortedEntriesFn: async () => FIXTURE };
         const { execLorebookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const result = await execLorebookList({ book_name: 'global', range: '5~' }, ctx);
         expect(result.output).not.toContain('uid=1');
@@ -447,7 +447,7 @@ describe('execLorebookList', () => {
     test('range "~2" includes entries with uid <= 2', async () => {
         const ctx = { __getSortedEntriesFn: async () => FIXTURE };
         const { execLorebookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const result = await execLorebookList({ book_name: 'global', range: '~2' }, ctx);
         expect(result.output).toContain('uid=1');
@@ -458,7 +458,7 @@ describe('execLorebookList', () => {
     test('single-uid range "7" narrows to one entry', async () => {
         const ctx = { __getSortedEntriesFn: async () => FIXTURE };
         const { execLorebookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const result = await execLorebookList({ book_name: 'global', range: '7' }, ctx);
         expect(result.output).toContain('uid=7');
@@ -469,10 +469,10 @@ describe('execLorebookList', () => {
     test('throws ToolError when book_name missing', async () => {
         const ctx = { __getSortedEntriesFn: async () => FIXTURE };
         const { execLorebookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const { ToolError } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-runtime.js'
+            '../../public/scripts/agents/orchestrator/loop-runtime.js'
         );
         await expect(execLorebookList({}, ctx)).rejects.toBeInstanceOf(ToolError);
     });
@@ -480,7 +480,7 @@ describe('execLorebookList', () => {
     test('returns ok=true with empty output when book has no entries', async () => {
         const ctx = { __getSortedEntriesFn: async () => FIXTURE };
         const { execLorebookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const result = await execLorebookList({ book_name: 'no-such-book' }, ctx);
         expect(result).toEqual({ ok: true, output: '' });
@@ -490,7 +490,7 @@ describe('execLorebookList', () => {
         const entries = [{ world: 'global', uid: 1, comment: '', key: ['k'], content: 'c' }];
         const ctx = { __getSortedEntriesFn: async () => entries };
         const { execLorebookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const result = await execLorebookList({ book_name: 'global' }, ctx);
         expect(result.output).toContain('[global] uid=1 name= key=k');
@@ -499,10 +499,10 @@ describe('execLorebookList', () => {
     test('throws ToolError on malformed range "abc~5"', async () => {
         const ctx = { __getSortedEntriesFn: async () => FIXTURE };
         const { execLorebookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const { ToolError } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-runtime.js'
+            '../../public/scripts/agents/orchestrator/loop-runtime.js'
         );
         await expect(execLorebookList({ book_name: 'global', range: 'abc~5' }, ctx))
             .rejects.toBeInstanceOf(ToolError);
@@ -511,10 +511,10 @@ describe('execLorebookList', () => {
     test('throws ToolError on reversed range "5~3"', async () => {
         const ctx = { __getSortedEntriesFn: async () => FIXTURE };
         const { execLorebookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const { ToolError } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-runtime.js'
+            '../../public/scripts/agents/orchestrator/loop-runtime.js'
         );
         await expect(execLorebookList({ book_name: 'global', range: '5~3' }, ctx))
             .rejects.toBeInstanceOf(ToolError);
@@ -523,10 +523,10 @@ describe('execLorebookList', () => {
     test('throws ToolError on fractional range "2.5~7"', async () => {
         const ctx = { __getSortedEntriesFn: async () => FIXTURE };
         const { execLorebookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const { ToolError } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-runtime.js'
+            '../../public/scripts/agents/orchestrator/loop-runtime.js'
         );
         await expect(execLorebookList({ book_name: 'global', range: '2.5~7' }, ctx))
             .rejects.toBeInstanceOf(ToolError);
@@ -535,7 +535,7 @@ describe('execLorebookList', () => {
     test('accepts alternative separators "-" and ".."', async () => {
         const ctx = { __getSortedEntriesFn: async () => FIXTURE };
         const { execLorebookList } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-tools/lorebook.js'
+            '../../public/scripts/agents/orchestrator/loop-tools/lorebook.js'
         );
         const result1 = await execLorebookList({ book_name: 'global', range: '0-5' }, ctx);
         expect(result1.output).toContain('uid=1');
@@ -549,7 +549,7 @@ describe('execLorebookList', () => {
 describe('runLoopOrchestration propagates payload.__atriaRun into tool context (Task 9)', () => {
     test('lorebook_search invoked through the runtime sees activatedEntryKeys from payload', async () => {
         const { runLoopOrchestration } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-runtime.js'
+            '../../public/scripts/agents/orchestrator/loop-runtime.js'
         );
         const { jest } = await import('@jest/globals');
 
@@ -621,7 +621,7 @@ describe('runLoopOrchestration propagates payload.__atriaRun into tool context (
 describe('sanitizeAgentToolFlags lorebook shape', () => {
     test('defaultAllOn=true seeds all 5 lorebook flags on', async () => {
         const { sanitizeAgentToolFlags } = await import(
-            '../../public/scripts/extensions/orchestrator/persistence.js'
+            '../../public/scripts/agents/orchestrator/persistence.js'
         );
         const result = sanitizeAgentToolFlags({}, { defaultAllOn: true });
         expect(result.lorebook).toEqual({
@@ -635,7 +635,7 @@ describe('sanitizeAgentToolFlags lorebook shape', () => {
 
     test('defaultAllOn=false seeds all 5 lorebook flags off', async () => {
         const { sanitizeAgentToolFlags } = await import(
-            '../../public/scripts/extensions/orchestrator/persistence.js'
+            '../../public/scripts/agents/orchestrator/persistence.js'
         );
         const result = sanitizeAgentToolFlags({}, { defaultAllOn: false });
         expect(result.lorebook).toEqual({
@@ -649,7 +649,7 @@ describe('sanitizeAgentToolFlags lorebook shape', () => {
 
     test('explicit false on one flag overrides the default-on seed', async () => {
         const { sanitizeAgentToolFlags } = await import(
-            '../../public/scripts/extensions/orchestrator/persistence.js'
+            '../../public/scripts/agents/orchestrator/persistence.js'
         );
         const result = sanitizeAgentToolFlags(
             { lorebook: { list: false } },
@@ -666,7 +666,7 @@ describe('sanitizeAgentToolFlags lorebook shape', () => {
 
     test('explicit false on force_activate overrides the default-on seed', async () => {
         const { sanitizeAgentToolFlags } = await import(
-            '../../public/scripts/extensions/orchestrator/persistence.js'
+            '../../public/scripts/agents/orchestrator/persistence.js'
         );
         const result = sanitizeAgentToolFlags(
             { lorebook: { force_activate: false } },
@@ -677,7 +677,7 @@ describe('sanitizeAgentToolFlags lorebook shape', () => {
 
     test('sanitizeLoopProfile round-trips all 5 lorebook flags on', async () => {
         const { sanitizeLoopProfile } = await import(
-            '../../public/scripts/extensions/orchestrator/persistence.js'
+            '../../public/scripts/agents/orchestrator/persistence.js'
         );
         const profile = sanitizeLoopProfile({});
         expect(profile.tools.lorebook).toEqual({
@@ -691,7 +691,7 @@ describe('sanitizeAgentToolFlags lorebook shape', () => {
 
     test('sanitizer accepts explicit toggles on all 5 lorebook flags (iter-studio AI patch path)', async () => {
         const { sanitizeAgentToolFlags } = await import(
-            '../../public/scripts/extensions/orchestrator/persistence.js'
+            '../../public/scripts/agents/orchestrator/persistence.js'
         );
         const result = sanitizeAgentToolFlags(
             { lorebook: { world_book_list: false, list: false, search: false, get: false, force_activate: false } },
@@ -710,10 +710,10 @@ describe('sanitizeAgentToolFlags lorebook shape', () => {
 describe('applyLoopProfilePatchArgs lorebook merge', () => {
     test('merges world_book_list and list from partial patch', async () => {
         const { applyLoopProfilePatchArgs } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-iteration.js'
+            '../../public/scripts/agents/orchestrator/loop-iteration.js'
         );
         const { sanitizeLoopProfile } = await import(
-            '../../public/scripts/extensions/orchestrator/persistence.js'
+            '../../public/scripts/agents/orchestrator/persistence.js'
         );
         const current = sanitizeLoopProfile({});
         const patched = applyLoopProfilePatchArgs(current, {
@@ -730,10 +730,10 @@ describe('applyLoopProfilePatchArgs lorebook merge', () => {
 
     test('omitted lorebook flags inherit from current profile', async () => {
         const { applyLoopProfilePatchArgs } = await import(
-            '../../public/scripts/extensions/orchestrator/loop-iteration.js'
+            '../../public/scripts/agents/orchestrator/loop-iteration.js'
         );
         const { sanitizeLoopProfile } = await import(
-            '../../public/scripts/extensions/orchestrator/persistence.js'
+            '../../public/scripts/agents/orchestrator/persistence.js'
         );
         const current = sanitizeLoopProfile({
             tools: { lorebook: { list: false } },

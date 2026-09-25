@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { createDeterministicRng } from '../../public/scripts/extensions/game-runtime/logic/rng.js';
+import { createDeterministicRng } from '../../public/scripts/native/experience/logic/rng.js';
 
 describe('Deterministic Game RNG', () => {
     test('same seed and stream produce identical outcomes and trace', () => {

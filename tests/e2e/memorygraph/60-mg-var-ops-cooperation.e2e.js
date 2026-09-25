@@ -165,7 +165,7 @@ test.describe('#60 — MG + var_ops co-operation via macro expansion', () => {
         // the expanded value.
         const expansion = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const mg = ctx.getExtensionApi?.('memory-graph');
+            const mg = ctx.getCapabilityApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             const cands = session ? session.listVisibleCandidates({}) : [];
             const node = cands.find(n => n.title === 'Reef-shudder watch threshold tracker');

@@ -68,4 +68,3 @@ Atria 實作了自訂的 Select2 適配器，用於在下拉選擇器中渲染�
 ## 相關功能
 
 - [提示詞分組](/zh-TW/features/prompt-groups) — 提示詞管理器中的分組系統
-- [補全預設助手](/zh-TW/features/preset-assistant) — AI 輔助理解和調整預設參數

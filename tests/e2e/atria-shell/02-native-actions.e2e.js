@@ -4,7 +4,7 @@ import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
 import { seedGenerationProfiles } from '../../native/helpers/generation-fixture.js';
-import { disableExtensions } from '../_lib/fixtures.js';
+
 import { awaitMainUI } from '../_lib/page.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { seedNativeSessionDataRoot, createAndOpenNativeSession, snapshotLegacyPersistence } from '../native-session/_helpers.js';
@@ -36,7 +36,7 @@ test.beforeAll(async () => {
     await seedGenerationProfiles({ engine, handle: seeded.handle, endpoint: `http://127.0.0.1:${provider.address().port}/v1/chat/completions`, roles: ['narrator'], streaming: true });
     await engine.close();
     writeFileSync(resolve(root, 'secrets.json'), JSON.stringify({ api_key_custom: [{ id: 'p4-synthetic-key', value: 'phase8-test-only', active: true, label: 'Synthetic fixture' }], _migrated: true }));
-    disableExtensions({ dataRoot: seeded.dataRoot, names: ['stable-diffusion'] });
+
     server = await startServer({ batchKey: 'generation', scenarioId: 'phase8-actions', useExistingDataRoot: seeded.dataRoot });
     legacy = snapshotLegacyPersistence(seeded.dataRoot);
 });

@@ -6,8 +6,8 @@ import {
     restoreDirectorPresetSwap,
     __resetDirectorPresetSwapForTests,
     __getPendingDirectorPresetSnapshotForTests,
-} from '../../public/scripts/extensions/orchestrator/director-preset-swap.js';
-import { DIRECTOR_PURE_PRESET_NAME, DIRECTOR_PURE_PRESET_BODY } from '../../public/scripts/extensions/orchestrator/pure-preset-body.js';
+} from '../../public/scripts/agents/orchestrator/director-preset-swap.js';
+import { DIRECTOR_PURE_PRESET_NAME, DIRECTOR_PURE_PRESET_BODY } from '../../public/scripts/agents/orchestrator/pure-preset-body.js';
 
 // Tests run in the default node environment (no jsdom). The swap module
 // delegates the actual preset switch to `ctx.openai.applyByName`, so the

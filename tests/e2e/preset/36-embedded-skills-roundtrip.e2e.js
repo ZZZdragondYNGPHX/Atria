@@ -166,8 +166,8 @@ test.describe('#36 — preset with embedded skills round-trips (real UI)', () =>
             const ctx = window.Atria?.getContext?.();
             // The listener registration is guarded behind `eventTypes` and
             // mounted inside `jQuery(() => { ... })`. Once that block runs,
-            // `extension_settings.orchestrator` is hydrated by `ensureSettings`.
-            return !!ctx?.extensionSettings?.orchestrator;
+            // `capabilitySettings.orchestrator` is hydrated by `ensureSettings`.
+            return !!ctx?.capabilitySettings?.orchestrator;
         }, { timeout: 20_000 });
 
         // Step 1: Save the source preset via visible UI.

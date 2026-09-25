@@ -20,7 +20,7 @@
  *
  * Prerequisites:
  *   - Atria dev server running.
- *   - `extension_settings.atria_orchestrator.directorProfile` exists. The
+ *   - `capabilitySettings.atria_orchestrator.directorProfile` exists. The
  *     test populates it from scratch if missing (the same path the loader
  *     takes on fresh install), so a freshly-spun user dir is acceptable.
  *
@@ -73,7 +73,7 @@ test.describe('Skills: director-defaults refresh', () => {
 
         // ── 1. Snapshot the current profile so we can restore later ──────
         const snapshot = await page.evaluate(() => {
-            const settings = window.extension_settings?.atria_orchestrator;
+            const settings = window.capabilitySettings?.atria_orchestrator;
             if (!settings || !settings.directorProfile) return null;
             // structuredClone keeps nested arrays / objects detached so a
             // mutation in step 2 can't leak into the snapshot.
@@ -84,7 +84,7 @@ test.describe('Skills: director-defaults refresh', () => {
         // ── 2. Wipe the skills.visible fields to prove the refresh is what
         //      restores them (not a residual default already on disk). ────
         await page.evaluate(() => {
-            const settings = window.extension_settings.atria_orchestrator;
+            const settings = window.capabilitySettings.atria_orchestrator;
             const dir = settings.directorProfile;
             if (dir?.skills) dir.skills.visible = [];
             if (dir?.mainAgent?.skills) dir.mainAgent.skills.visible = [];
@@ -121,9 +121,9 @@ test.describe('Skills: director-defaults refresh', () => {
         //      inside the page, build the canonical default profile, then
         //      merge the skills.visible fields back onto the live settings. ─
         const refreshResult = await page.evaluate(async () => {
-            const mod = await import('/scripts/extensions/orchestrator/director-defaults.js');
+            const mod = await import('/scripts/agents/orchestrator/director-defaults.js');
             const fresh = mod.createDefaultDirectorProfile();
-            const settings = window.extension_settings.atria_orchestrator;
+            const settings = window.capabilitySettings.atria_orchestrator;
             const dir = settings.directorProfile;
 
             // Apply only the skill blocks — leave the rest of the user's
@@ -192,7 +192,7 @@ test.describe('Skills: director-defaults refresh', () => {
 
         // ── 5. Restore the original profile so the spec leaves no diff. ──
         await page.evaluate((original) => {
-            const settings = window.extension_settings.atria_orchestrator;
+            const settings = window.capabilitySettings.atria_orchestrator;
             settings.directorProfile = structuredClone(original);
             if (typeof window.saveSettingsDebounced === 'function') {
                 window.saveSettingsDebounced();
@@ -210,7 +210,7 @@ test.describe('Skills: director-defaults refresh', () => {
  */
 async function readDirectorVisibleShape(page) {
     return await page.evaluate(() => {
-        const settings = window.extension_settings?.atria_orchestrator;
+        const settings = window.capabilitySettings?.atria_orchestrator;
         const dir = settings?.directorProfile || {};
         const modeVisible = Array.isArray(dir?.skills?.visible) ? [...dir.skills.visible] : [];
         const mainVisible = Array.isArray(dir?.mainAgent?.skills?.visible)

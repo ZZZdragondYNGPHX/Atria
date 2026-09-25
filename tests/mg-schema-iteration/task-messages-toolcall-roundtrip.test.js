@@ -41,7 +41,7 @@ import { describe, test, expect } from '@jest/globals';
 import {
     buildEditToolResultPayload,
     buildPayloadForOutcome,
-} from '../../public/scripts/extensions/orchestrator/iter-studio/edit-tool-result-envelope.js';
+} from '../../public/scripts/agents/orchestrator/iter-studio/edit-tool-result-envelope.js';
 
 describe('MG schema edit-tool tool_result envelope — pending shape', () => {
     test('pending payload carries status="proposal_pending" and a non-empty message', () => {
@@ -187,7 +187,7 @@ describe('MG schema buildPayloadForOutcome — bus outcome → tool_result paylo
  * asserts" block below will diff.
  *
  * Contract (mirrored verbatim from
- * public/scripts/extensions/memory-graph/schema-iteration/studio.js
+ * public/scripts/agents/memory/schema-iteration/studio.js
  * `applyOutcomesToToolResults`):
  *   - Match by sourceCallId → toolResults[i].tool_call_id, update
  *     in place with buildPayloadForOutcome(outcome).

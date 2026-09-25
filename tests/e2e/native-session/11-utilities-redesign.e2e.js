@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { awaitMainUI } from '../_lib/page.js';
 /* eslint-disable playwright/no-conditional-in-test, playwright/no-conditional-expect -- Each named viewport case exercises its own responsive composition and existing controller states. */
-import { disableExtensions } from '../_lib/fixtures.js';
+
 import { seedNativeSessionDataRoot } from './_helpers.js';
 
 let server;
@@ -11,7 +11,7 @@ test.use({ actionTimeout: 12000 });
 
 test.beforeAll(async () => {
     const seeded = await seedNativeSessionDataRoot({ suffix: 'redesign-utilities' });
-    disableExtensions({ dataRoot: seeded.dataRoot, names: ['stable-diffusion'] });
+
     server = await startServer({ batchKey: 'generation', scenarioId: 'redesign-utilities', useExistingDataRoot: seeded.dataRoot });
 });
 

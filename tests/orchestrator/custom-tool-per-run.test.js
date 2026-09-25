@@ -1,6 +1,6 @@
 // tests/orchestrator/custom-tool-per-run.test.js
 import { describe, test, expect, jest } from '@jest/globals';
-import { buildPerRunCustomToolRegistry } from '../../public/scripts/extensions/orchestrator/per-run-custom-tools.js';
+import { buildPerRunCustomToolRegistry } from '../../public/scripts/agents/orchestrator/per-run-custom-tools.js';
 
 describe('buildPerRunCustomToolRegistry', () => {
     test('returns empty map when profile has no customTools', () => {

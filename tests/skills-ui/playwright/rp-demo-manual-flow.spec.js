@@ -364,7 +364,7 @@ test.describe('Skills RP demo (manual user path)', () => {
         // Sanity: the orchestrator mode is director.
         const executionMode = await page.evaluate(() => {
             const ctx = window.Atria?.getContext?.();
-            return String(ctx?.extensionSettings?.orchestrator?.executionMode || '');
+            return String(ctx?.capabilitySettings?.orchestrator?.executionMode || '');
         });
         expect(executionMode, 'orchestrator must be in director mode for the demo').toBe('director');
         await page.screenshot({ path: stepPath(12, 'chat-ready'), fullPage: false });
@@ -378,7 +378,7 @@ test.describe('Skills RP demo (manual user path)', () => {
         //   it's a "fresh REPL" gate.
         await page.evaluate(async () => {
             try {
-                const m = await import('/scripts/extensions/orchestrator/run-state/store.js');
+                const m = await import('/scripts/agents/orchestrator/run-state/store.js');
                 m.clearCurrentRun?.();
             } catch { /* store module not loaded yet — safe */ }
         });
@@ -409,7 +409,7 @@ test.describe('Skills RP demo (manual user path)', () => {
             const deadline = 600_000; // 10 minutes ceiling
             while (Date.now() - start < deadline) {
                 try {
-                    const mod = await import('/scripts/extensions/orchestrator/run-state/store.js');
+                    const mod = await import('/scripts/agents/orchestrator/run-state/store.js');
                     const state = mod.getCurrentRun();
                     if (state && settled.has(String(state.status || ''))) {
                         const safe = JSON.parse(JSON.stringify(state, (k, v) => (k === 'abortFn' ? undefined : v)));

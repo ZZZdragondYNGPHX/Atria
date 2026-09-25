@@ -17,15 +17,15 @@ jest.unstable_mockModule('../../public/script.js', () => ({
     this_chid: null,
 }));
 
-const extensionSettings = {
-    disabledExtensions: [],
+const capabilitySettings = {
+    disabledPlugins: [],
     regex: [],
     character_allowed_regex: [],
     preset_allowed_regex: {},
 };
 
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
-    extension_settings: extensionSettings,
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
+    capabilitySettings: capabilitySettings,
     writeExtensionField: jest.fn(),
 }));
 
@@ -77,9 +77,9 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-    extensionSettings.regex = [];
-    extensionSettings.character_allowed_regex = [];
-    extensionSettings.preset_allowed_regex = {};
+    capabilitySettings.regex = [];
+    capabilitySettings.character_allowed_regex = [];
+    capabilitySettings.preset_allowed_regex = {};
     regexFromStringMock.mockClear();
     engine.RegexProvider.instance.clear();
     engine.invalidateRegexExecutionPlans();
@@ -88,7 +88,7 @@ beforeEach(() => {
 
 describe('static regex execution plans', () => {
     test('builds once and reuses the static plan across repeated calls', () => {
-        extensionSettings.regex = [
+        capabilitySettings.regex = [
             ...Array.from({ length: 250 }, (_, index) => script({
                 id: `irrelevant-${index}`,
                 scriptName: `irrelevant-${index}`,
@@ -111,7 +111,7 @@ describe('static regex execution plans', () => {
     });
 
     test('grows compiled-regex capacity beyond the historical 1000-rule ceiling', () => {
-        extensionSettings.regex = Array.from({ length: 1200 }, (_, index) => script({
+        capabilitySettings.regex = Array.from({ length: 1200 }, (_, index) => script({
             id: `capacity-${index}`,
             scriptName: `capacity-${index}`,
             findRegex: `/P${index}/g`,
@@ -126,7 +126,7 @@ describe('static regex execution plans', () => {
     });
 
     test('persisted save invalidates the plan and the next execution rebuilds it', async () => {
-        extensionSettings.regex = [
+        capabilitySettings.regex = [
             script({ id: 'first', findRegex: '/A/g', replaceString: 'B' }),
         ];
         engine.invalidateRegexExecutionPlans();
@@ -185,7 +185,7 @@ describe('static regex execution plans', () => {
     });
 
     test('static rules still execute before runtime-provider rules', () => {
-        extensionSettings.regex = [
+        capabilitySettings.regex = [
             script({ id: 'static-a-b', findRegex: '/A/g', replaceString: 'B' }),
         ];
         engine.invalidateRegexExecutionPlans();
@@ -200,7 +200,7 @@ describe('static regex execution plans', () => {
     });
 
     test('exact duplicate transforms are not auto-deduplicated', () => {
-        extensionSettings.regex = [
+        capabilitySettings.regex = [
             script({ id: 'dup-1', findRegex: '/a/g', replaceString: 'aa' }),
             script({ id: 'dup-2', findRegex: '/a/g', replaceString: 'aa' }),
         ];

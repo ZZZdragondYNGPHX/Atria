@@ -4,11 +4,10 @@ import { nativeGenerationActive } from '../../native/generation-client.js';
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 FunnyCups (https://github.com/funnycups)
 
-import { getChatCompletionConnectionProfiles } from '../connection-manager/profile-resolver.js';
 import {
     TOOL_PROTOCOL_STYLE,
     validateParsedToolCalls,
-} from '../function-call-runtime.js';
+} from '../../lib/runtime-tools.js';
 import { createSearchToolsSettingsUi } from './settings-ui.js';
 import {
     buildLastUserAnchor,
@@ -37,7 +36,7 @@ const extension_prompt_roles = __ctx.constants.promptRoles;
 const getRequestHeaders = __ctx.getRequestHeaders;
 const saveSettings = __ctx.saveSettings;
 const saveSettingsDebounced = __ctx.saveSettingsDebounced;
-const extension_settings = __ctx.extensionSettings;
+const capabilitySettings = __ctx.capabilitySettings;
 const getContext = Atria.getContext;
 const addLocaleData = __ctx.addLocaleData;
 const translate = __ctx.translate;
@@ -546,10 +545,10 @@ function migrateLegacyPromptInjectionPosition(value) {
 }
 
 function ensureSettings() {
-    if (!extension_settings[MODULE_NAME] || typeof extension_settings[MODULE_NAME] !== 'object') {
-        extension_settings[MODULE_NAME] = {};
+    if (!capabilitySettings[MODULE_NAME] || typeof capabilitySettings[MODULE_NAME] !== 'object') {
+        capabilitySettings[MODULE_NAME] = {};
     }
-    const settings = extension_settings[MODULE_NAME];
+    const settings = capabilitySettings[MODULE_NAME];
     settings.enabled = Boolean(settings.enabled ?? DEFAULT_SETTINGS.enabled);
     settings.preRequestEnabled = Boolean(settings.preRequestEnabled ?? DEFAULT_SETTINGS.preRequestEnabled);
     settings.provider = normalizeProvider(settings.provider ?? DEFAULT_SETTINGS.provider);
@@ -611,7 +610,7 @@ function ensureSettings() {
 
 function getSettings() {
     ensureSettings();
-    return extension_settings[MODULE_NAME];
+    return capabilitySettings[MODULE_NAME];
 }
 
 function isToolEnabled() {
@@ -794,21 +793,7 @@ function renderOpenAIPresetOptions(context, selectedName = '') {
     return options.join('');
 }
 
-function renderConnectionProfileOptions(selectedName = '') {
-    if (nativePromptUiActive()) return nativeRouteOptions();
-    const selected = String(selectedName || '').trim();
-    const names = getChatCompletionConnectionProfiles()
-        .map(profile => String(profile?.name || '').trim())
-        .filter(Boolean);
-    const options = [`<option value="">${escapeHtml(i18n('(Current API config)'))}</option>`];
-    for (const name of names) {
-        options.push(`<option value="${escapeHtml(name)}"${name === selected ? ' selected' : ''}>${escapeHtml(name)}</option>`);
-    }
-    if (selected && !names.includes(selected)) {
-        options.push(`<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)} ${escapeHtml(i18n('(missing)'))}</option>`);
-    }
-    return options.join('');
-}
+function renderConnectionProfileOptions() { return nativeRouteOptions(); }
 
 function fallbackStripHtml(html) {
     return normalizeWhitespace(String(html || '').replace(/<[^>]*>/g, ' '));
@@ -2926,10 +2911,10 @@ jQuery(() => {
     // Layer-2 registry so any of the four orchestration modes can
     // dispatch them. Deferred to APP_READY because search-tools is
     // loaded at loading_order 109 — before orchestrator (110) — so the
-    // sync `getExtensionApi('orchestrator')` lookup inside
+    // sync `getCapabilityApi('orchestrator')` lookup inside
     // `registerSearchToolsOrchestrationTools` would see no API yet if
     // invoked from this jQuery ready handler. By APP_READY, every
-    // extension's top-level `registerExtensionApi` has already run.
+    // extension's top-level `registerCapabilityApi` has already run.
     // Silent no-op when orchestrator isn't installed.
     eventSource.on(event_types.APP_READY, () => {
         registerSearchToolsOrchestrationTools();

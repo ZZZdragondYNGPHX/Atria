@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { loadGameWorldDefinition } from '../../public/scripts/extensions/game-runtime/world/package.js';
+import { loadGameWorldDefinition } from '../../public/scripts/native/experience/world/package.js';
 
 const schema = {
     type: 'object',

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import { disableExtensions, markOnboarded } from '../_lib/fixtures.js';
+import { markOnboarded } from '../_lib/fixtures.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
 
 let server;
@@ -11,10 +11,7 @@ test.beforeAll(async () => {
         scenarioId: 'r7d-navigation',
     });
     markOnboarded({ dataRoot: server.dataRoot });
-    disableExtensions({
-        dataRoot: server.dataRoot,
-        names: ['stable-diffusion'],
-    });
+
 });
 
 test.afterAll(async () => {
@@ -228,7 +225,7 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
                 syncNative: false,
             });
 
-            const module = await import('/scripts/extensions/game-runtime/ui/full-host.js');
+            const module = await import('/scripts/native/experience/ui/full-host.js');
             let fullHost;
             window.__r7dFullExitCount = 0;
             fullHost = module.createFullGameHost(document, {
@@ -285,8 +282,8 @@ test.describe('R7D Desktop / Mobile Navigation', () => {
             const foundation = window.Atria.shell;
             const shell = foundation.getShell();
             const playHost = foundation.getPlayHost();
-            const surfaces = await import('/scripts/extensions/game-runtime/ui/host-surfaces.js');
-            const fullModule = await import('/scripts/extensions/game-runtime/ui/full-host.js');
+            const surfaces = await import('/scripts/native/experience/ui/host-surfaces.js');
+            const fullModule = await import('/scripts/native/experience/ui/full-host.js');
 
             const hybrid = surfaces.createAtriaSurfaceAdapter(document, {
                 mode: 'hybrid',

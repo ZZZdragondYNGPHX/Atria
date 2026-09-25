@@ -1,5 +1,5 @@
 import { test, expect } from '@jest/globals';
-import { runLegacyWorkflow, modelIntent, toolIntent, createLegacyWorkflowRunId } from '../../public/scripts/extensions/orchestrator/legacy-workflow-adapter.js';
+import { runLegacyWorkflow, modelIntent, toolIntent, createLegacyWorkflowRunId } from '../../public/scripts/agents/orchestrator/legacy-workflow-adapter.js';
 import { AgentRuntime, AgentRegistry, MemoryCheckpointStore } from '../../public/scripts/lib/agent-runtime/index.js';
 import { deferred, fakePorts } from './fakes.js';
 

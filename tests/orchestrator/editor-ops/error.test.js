@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { EditorOpsError } from '../../../public/scripts/extensions/orchestrator/editor-ops.js';
+import { EditorOpsError } from '../../../public/scripts/agents/orchestrator/editor-ops.js';
 
 describe('EditorOpsError', () => {
     test('stores code, message, details', () => {

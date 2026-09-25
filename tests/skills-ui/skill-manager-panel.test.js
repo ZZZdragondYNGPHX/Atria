@@ -481,7 +481,7 @@ function makeStubContext({ skills = [], bundled = [], characters = [], scenarios
         // The scope picker queries these to populate its dropdowns. Tests
         // that don't exercise the picker leave them empty.
         characters,
-        extensionSettings: { connectionManager: { profiles: [], selectedProfile: '' } },
+        capabilitySettings: { connectionManager: { profiles: [], selectedProfile: '' } },
         getPresetManager: () => null,
         Popup: class StubPopup {
             constructor(html, type, _val, opts) {

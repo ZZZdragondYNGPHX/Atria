@@ -15,7 +15,7 @@
  * flush hook, mirroring orchestrator/preset-library.js legacy-override migration.
  *
  * Writes go through `context.writeExtensionField(id, 'atria', value)`, which
- * has replace semantics — see the JSDoc at public/scripts/extensions.js above
+ * has replace semantics — see the JSDoc at public/scripts/capability-host.js above
  * `writeExtensionField`. Callers must read the current `data.extensions.atria`
  * object, spread it, and overlay the target field before calling; otherwise
  * sibling subkeys under the same namespace (e.g. `embedded_skills_source`) are

@@ -26,10 +26,10 @@ let CONTROL_TOOL_NAMES;
 
 beforeAll(async () => {
     ({ MG_SCHEMA_TOOL_DISPLAY } = await import(
-        '../../public/scripts/extensions/memory-graph/schema-iteration/tool-display.js'
+        '../../public/scripts/agents/memory/schema-iteration/tool-display.js'
     ));
     ({ CONTROL_TOOL_NAMES } = await import(
-        '../../public/scripts/extensions/memory-graph/schema-iteration/tools.js'
+        '../../public/scripts/agents/memory/schema-iteration/tools.js'
     ));
 });
 

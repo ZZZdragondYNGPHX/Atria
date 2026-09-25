@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
-import { collectExtractTransaction, EXTRACT_DONE, validateExtractTransaction } from '../../public/scripts/extensions/memory-graph/extract-transaction.js';
-import { factExtractionContext, factExtractionTool, FACT_TOOL_NAME } from '../../public/scripts/extensions/memory-graph/fact-extraction.js';
+import { collectExtractTransaction, EXTRACT_DONE, validateExtractTransaction } from '../../public/scripts/agents/memory/extract-transaction.js';
+import { factExtractionContext, factExtractionTool, FACT_TOOL_NAME } from '../../public/scripts/agents/memory/fact-extraction.js';
 
 const EVENT_TOOL = {
     type: 'function',

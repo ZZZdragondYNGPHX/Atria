@@ -156,7 +156,7 @@ export const BRYN_ENTRIES = [
 
 /**
  * Write a connection-manager profile pointing at the in-process mock LLM.
- * Stored under settings.json -> extensionSettings.connectionManager.profiles.
+ * Stored under settings.json -> capabilitySettings.connectionManager.profiles.
  */
 export function appendConnectionProfile({ dataRoot, handle = 'default-user', name = 'e2e-mock', baseURL, model = 'mock-gpt-4o', source = 'custom' }) {
     const settingsPath = resolve(userRoot(dataRoot, handle), 'settings.json');
@@ -164,8 +164,8 @@ export function appendConnectionProfile({ dataRoot, handle = 'default-user', nam
         throw new Error(`settings.json not found at ${settingsPath} — start the server once before adding profiles`);
     }
     const s = JSON.parse(readFileSync(settingsPath, 'utf8'));
-    s.extensionSettings = s.extensionSettings || {};
-    s.extensionSettings.connectionManager = s.extensionSettings.connectionManager || { profiles: [], selectedProfile: null };
+    s.capabilitySettings = s.capabilitySettings || {};
+    s.capabilitySettings.connectionManager = s.capabilitySettings.connectionManager || { profiles: [], selectedProfile: null };
     const profileId = `e2e-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
     const profile = {
         id: profileId,
@@ -189,8 +189,8 @@ export function appendConnectionProfile({ dataRoot, handle = 'default-user', nam
         'chat-completion-source': source,
         ...(source === 'openai_responses' ? { 'api-url': baseURL } : { 'custom-url': baseURL }),
     };
-    s.extensionSettings.connectionManager.profiles.push(profile);
-    s.extensionSettings.connectionManager.selectedProfile = profileId;
+    s.capabilitySettings.connectionManager.profiles.push(profile);
+    s.capabilitySettings.connectionManager.selectedProfile = profileId;
     writeFileSync(settingsPath, JSON.stringify(s, null, 4));
     return { profileId, name };
 }
@@ -220,9 +220,9 @@ export function bootstrapCustomBackend({ dataRoot, handle = 'default-user', base
     s.oai_settings.stream_openai = true;
     // Wipe legacy fields the dev's settings.json may have left behind that
     // would otherwise reroute orchestrator/CPA/MG/CEA LLM calls via a real
-    // provider URL. The mirrored values live under extension_settings
+    // provider URL. The mirrored values live under capabilitySettings
     // (snake_case) — the SPA reads from there at load.
-    const ext = (s.extension_settings = s.extension_settings || {});
+    const ext = (s.capabilitySettings = s.capabilitySettings || {});
     for (const slot of ['orchestrator', 'completion_preset_assistant', 'memory_graph', 'character_editor_assistant']) {
         const m = (ext[slot] = ext[slot] || {});
         for (const key of [
@@ -271,9 +271,9 @@ export function bootstrapResponsesBackend({ dataRoot, handle = 'default-user', b
     s.oai_settings.stream_openai = stream;
     // Wipe legacy fields the dev's settings.json may have left behind that
     // would otherwise reroute orchestrator/CPA/MG/CEA LLM calls via a real
-    // provider URL. The mirrored values live under extension_settings
+    // provider URL. The mirrored values live under capabilitySettings
     // (snake_case) — the SPA reads from there at load.
-    const ext = (s.extension_settings = s.extension_settings || {});
+    const ext = (s.capabilitySettings = s.capabilitySettings || {});
     for (const slot of ['orchestrator', 'completion_preset_assistant', 'memory_graph', 'character_editor_assistant']) {
         const m = (ext[slot] = ext[slot] || {});
         for (const key of [
@@ -331,7 +331,7 @@ export function bootstrapMoonshotBackend({ dataRoot, handle = 'default-user', ba
     s.oai_settings.base_url = baseURL;
     s.oai_settings.openai_max_context = 200000;
     // Same neutralize / clear-profile logic as the other bootstraps.
-    const ext = (s.extension_settings = s.extension_settings || {});
+    const ext = (s.capabilitySettings = s.capabilitySettings || {});
     for (const slot of ['orchestrator', 'completion_preset_assistant', 'memory_graph', 'character_editor_assistant']) {
         const m = (ext[slot] = ext[slot] || {});
         for (const key of [
@@ -368,14 +368,7 @@ export function bootstrapMoonshotBackend({ dataRoot, handle = 'default-user', ba
  * Intended for focused UI fixtures that must not wait on unrelated
  * external-service extensions during application bootstrap.
  */
-export function disableExtensions({ dataRoot, handle = 'default-user', names = [] }) {
-    const settingsPath = resolve(userRoot(dataRoot, handle), 'settings.json');
-    const s = existsSync(settingsPath) ? JSON.parse(readFileSync(settingsPath, 'utf8')) : {};
-    const ext = (s.extension_settings = s.extension_settings || {});
-    const current = Array.isArray(ext.disabledExtensions) ? ext.disabledExtensions : [];
-    ext.disabledExtensions = [...new Set([...current, ...names.map(name => String(name))])];
-    writeFileSync(settingsPath, JSON.stringify(s, null, 4));
-}
+
 
 /**
  * Mark the user as having completed onboarding so the welcome popup
@@ -394,15 +387,15 @@ export function markOnboarded({ dataRoot, handle = 'default-user' }) {
  * Adds a Connection-Manager embed profile (`source: 'openai'` with
  * `api-url` pointing at the mock) and patches the vectors / memory-graph
  * extension settings so:
- *   - `extension_settings.vectors.embeddingProfileId` selects that profile
- *   - `extension_settings.memory_graph.embeddingProfileId` selects the
+ *   - `capabilitySettings.vectors.embeddingProfileId` selects that profile
+ *   - `capabilitySettings.memory_graph.embeddingProfileId` selects the
  *     same profile (so MG's `vectorSearch` / `syncVectorIndex` resolve it)
  *
- * NB: Atria's settings.json uses `extension_settings` (snake_case) as the
- * persisted key — the client hydrates `extension_settings` from
- * `settings.extension_settings` on load and serializes back to the same
+ * NB: Atria's settings.json uses `capabilitySettings` (snake_case) as the
+ * persisted key — the client hydrates `capabilitySettings` from
+ * `settings.atri_capabilities` on load and serializes back to the same
  * key on save. Earlier fixtures (`appendConnectionProfile`) wrote to a
- * camelCase `extensionSettings` slot which the client silently ignores;
+ * camelCase `capabilitySettings` slot which the client silently ignores;
  * this helper writes under the snake_case key the client actually reads.
  *
  * `enabled_world_info` is NOT flipped here — the vectors WI semantic
@@ -437,12 +430,12 @@ export function bootstrapVectorsBackend({
     }
     const s = JSON.parse(readFileSync(settingsPath, 'utf8'));
     // Persisted shape (what the client hydrates from): snake_case.
-    s.extension_settings = s.extension_settings || {};
+    s.capabilitySettings = s.capabilitySettings || {};
 
     // Connection-manager profile shared between vectors + memory-graph.
-    s.extension_settings.connectionManager = s.extension_settings.connectionManager || { profiles: [], selectedProfile: null };
-    const profiles = Array.isArray(s.extension_settings.connectionManager.profiles)
-        ? s.extension_settings.connectionManager.profiles
+    s.capabilitySettings.connectionManager = s.capabilitySettings.connectionManager || { profiles: [], selectedProfile: null };
+    const profiles = Array.isArray(s.capabilitySettings.connectionManager.profiles)
+        ? s.capabilitySettings.connectionManager.profiles
         : [];
     const profileId = `e2e-embed-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
     profiles.push({
@@ -457,23 +450,23 @@ export function bootstrapVectorsBackend({
         'api-url': baseURL,
         'proxy-password': 'mock-embed-key',
     });
-    s.extension_settings.connectionManager.profiles = profiles;
+    s.capabilitySettings.connectionManager.profiles = profiles;
 
     // Vectors extension wiring: select the profile.
-    s.extension_settings.vectors = s.extension_settings.vectors || {};
-    s.extension_settings.vectors.embeddingProfileId = profileId;
+    s.capabilitySettings.vectors = s.capabilitySettings.vectors || {};
+    s.capabilitySettings.vectors.embeddingProfileId = profileId;
     // The mock embedder (cf. mockLLM.js — bag-of-tokens hash) produces
     // cosine similarities clustered in [0.0, 0.7] with a clear gap
     // around 0.2 between "topical match" and "unrelated". Setting the
     // threshold there keeps semantic-miss entries out of the prompt
     // without requiring a real semantic embedder. Tests that need a
     // different threshold can override via page.evaluate.
-    s.extension_settings.vectors.score_threshold = 0.2;
-    s.extension_settings.vectors.max_entries = 5;
+    s.capabilitySettings.vectors.score_threshold = 0.2;
+    s.capabilitySettings.vectors.max_entries = 5;
 
     // Memory-graph extension wiring: same profile, shared collection backend.
-    s.extension_settings.memory_graph = s.extension_settings.memory_graph || {};
-    s.extension_settings.memory_graph.embeddingProfileId = profileId;
+    s.capabilitySettings.memory_graph = s.capabilitySettings.memory_graph || {};
+    s.capabilitySettings.memory_graph.embeddingProfileId = profileId;
 
     writeFileSync(settingsPath, JSON.stringify(s, null, 4));
     return { profileId, profileName };

@@ -7861,5 +7861,13 @@
     "Some Work versions could not be loaded. Results may be incomplete.": "部分作品版本无法加载，结果可能不完整。",
     "Work plugins could not be loaded.": "无法加载作品插件。",
     "Manage Work Plugins and your Global Plugins.": "管理作品插件与全局插件。",
-    "Manage Work Plugins and Global Plugins": "管理作品插件与全局插件"
+    "Manage Work Plugins and Global Plugins": "管理作品插件与全局插件",
+    "atria.retrieval.browser.models.browse": "浏览浏览器模型",
+    "atria.retrieval.browser.models.loading": "正在加载浏览器模型…",
+    "atria.retrieval.browser.models.embedding": "浏览器嵌入模型",
+    "atria.retrieval.browser.models.download": "首次运行检索时会下载模型。浏览器必须支持 WebGPU。",
+    "atria.retrieval.browser.models.failed": "无法加载浏览器模型，请重试。",
+    "atria.retrieval.browser.unavailable": "此浏览器不支持 WebGPU，请选择其他 Native 检索提供商。",
+    "atria.retrieval.browser.model.invalid": "请在运行时检索中选择受支持的 WebLLM 嵌入模型。",
+    "atria.retrieval.route.help": "运行时路由帮助"
 }

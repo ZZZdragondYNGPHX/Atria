@@ -25,9 +25,10 @@ jest.unstable_mockModule('../../public/scripts/popup.js', () => ({
 }));
 jest.unstable_mockModule('../../public/scripts/i18n.js', () => ({ translate: text => text, getCurrentLocale: () => 'en' }));
 jest.unstable_mockModule('../../public/scripts/st-context.js', () => ({ getContext: () => ({ getPresetManager: () => manager }) }));
-const { renderPresetHelpButton } = await import('../../public/scripts/extensions/preset-help.js');
-const { createPresetAuthoring } = await import('../../public/scripts/extensions/orchestrator/workspace/authoring.js');
-const { createWorkspaceFactoryPreset } = await import('../../public/scripts/extensions/orchestrator/workspace/host-presets.js');
+jest.unstable_mockModule('../../public/scripts/utils.js', () => ({ escapeHtml: text => String(text) }));
+const { renderRuntimeHelpButton } = await import('../../public/scripts/lib/runtime-help.js');
+const { createPresetAuthoring } = await import('../../public/scripts/agents/orchestrator/workspace/authoring.js');
+const { createWorkspaceFactoryPreset } = await import('../../public/scripts/agents/orchestrator/workspace/host-presets.js');
 const { emptyPresetLibrary, updatePresetLibrary } = await import('../../public/scripts/lib/agent-workspace/presets.js');
 
 const baseUi = {
@@ -68,12 +69,11 @@ for (const mode of ['spec', 'loop', 'agenda', 'director']) test(`${mode} Native 
     expect(manager.savePreset).not.toHaveBeenCalled();
 });
 
-test('explicit non-Native preset help still imports without changing the active preset', async () => {
-    document.body.innerHTML = '<select id="legacy-target"><option value="">Current</option></select>' + renderPresetHelpButton({ kind: 'agent', agentMode: 'non-director', targetSelectId: 'legacy-target' });
-    document.querySelector('.atria-preset-help').click();
-    await new Promise(resolve => setTimeout(resolve, 0));
-    const action = popups.at(-1).options.customButtons[0];
-    await action.action();
-    expect(manager.savePreset).toHaveBeenCalledWith('Atri-agenda-agent', expect.any(Object), { skipUpdate: true });
-    expect(mainPreset).toBe('Daily RP');
+test('Runtime help opens the Native route owner without importing presets', () => {
+    const openRuntimeSection = jest.fn();
+    globalThis.Atria.shell = { getWorkspaceHost: () => ({ openRuntimeSection }) };
+    document.body.innerHTML = renderRuntimeHelpButton();
+    document.querySelector('[data-atria-runtime-route-help]').click();
+    expect(openRuntimeSection).toHaveBeenCalledWith('routes');
+    expect(manager.savePreset).not.toHaveBeenCalled();
 });

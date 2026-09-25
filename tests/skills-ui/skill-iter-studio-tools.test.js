@@ -12,7 +12,7 @@
  *     - runSkillIterStudioTool dispatcher
  *     - applyFrontmatterPatch (pure helper)
  *
- *   public/scripts/extensions/orchestrator/skill-iter-studio-prompt.js
+ *   public/scripts/agents/orchestrator/skill-iter-studio-prompt.js
  *     - augmentIterStudioPromptWithSkills
  *     - detectLongSystemPromptAgents + formatSkillsAugmentation
  *
@@ -54,7 +54,7 @@ globalThis.Atria = {
 
 // skill-resolution.js: prompt augmentation calls resolveAgentVisibleSkills.
 const mockResolve = jest.fn();
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/skill-resolution.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/skill-resolution.js', () => ({
     resolveAgentVisibleSkills: mockResolve,
     buildSkillRuntimeContext: () => ({}),
     ensureSkillsFieldShape: () => {},
@@ -77,7 +77,7 @@ const {
     detectLongSystemPromptAgents,
     formatSkillsAugmentation,
     LONG_PROMPT_HEURISTIC_CHARS,
-} = await import('../../public/scripts/extensions/orchestrator/skill-iter-studio-prompt.js');
+} = await import('../../public/scripts/agents/orchestrator/skill-iter-studio-prompt.js');
 
 beforeEach(() => {
     for (const fn of Object.values(mockSkillsApi)) fn.mockReset();

@@ -3,7 +3,7 @@
 让插件**直接产出助理消息正文**而非引导主 LLM 的 API。当插件为某个回合声明接管后，主 LLM 完全不被调用 —— 由插件把正文和 reasoning 写进一个纯 buffer 编辑器句柄，内核负责把结果落进 chat、做持久化、跑正则 / cleanup 后处理、触发生命周期事件，在插件 discard 时回滚。
 
 ::: warning 仅 buffer 内核
-句柄是一个纯文本 / reasoning buffer。它不直接操作 `chat`、不触发 ST 事件、不渲染任何东西 —— 这些都由内核根据句柄的生命周期来驱动。更高层的编辑辅助（增量追加、结构化补丁、流式管道）放在插件层实现。编排器扩展在 `public/scripts/extensions/orchestrator/editor-ops.js` 提供了参考实现 —— 按插件需要选择复制、依赖或替换它即可。
+句柄是一个纯文本 / reasoning buffer。它不直接操作 `chat`、不触发 ST 事件、不渲染任何东西 —— 这些都由内核根据句柄的生命周期来驱动。更高层的编辑辅助（增量追加、结构化补丁、流式管道）放在插件层实现。编排器扩展在 `public/scripts/agents/orchestrator/editor-ops.js` 提供了参考实现 —— 按插件需要选择复制、依赖或替换它即可。
 :::
 
 ## 钩子事件
@@ -176,7 +176,7 @@ interface MessageEditorHandle {
 
 ## 更高层的编辑模式
 
-内核刻意不提供增量追加、按字符偏移切片、结构化补丁应用或流式管道 —— 这些都是*策略*，不是状态管理。编排器扩展在 `public/scripts/extensions/orchestrator/editor-ops.js` 实现了这些能力：
+内核刻意不提供增量追加、按字符偏移切片、结构化补丁应用或流式管道 —— 这些都是*策略*，不是状态管理。编排器扩展在 `public/scripts/agents/orchestrator/editor-ops.js` 实现了这些能力：
 
 - `appendText(handle, text)` / `appendReasoning(handle, text)` —— 在当前值后面拼接。
 - `insertAt(handle, offset, text)` / `replaceRange(handle, start, end, text)` / `deleteRange(handle, start, end)` —— 按字符偏移切片。

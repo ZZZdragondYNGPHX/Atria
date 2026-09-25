@@ -4,27 +4,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { getAllUserHandles, getUserDirectories } from './users.js';
+import { getAllUserHandles } from './users.js';
 import { getSettingsRepo } from './storage/index.js';
-import { PUBLIC_DIRECTORIES } from './constants.js';
 
 const SENTINEL_FILE_NAME = '.atria-safe-mode.json';
 const APPLIED_LOG_FILE_NAME = '.atria-safe-mode-applied.log';
 
-/**
- * If the native layer (boot watchdog) decided the previous launch died before
- * the server became reachable, it drops a sentinel file at `<dataRoot>/.atria-safe-mode.json`.
- * On the next launch we expand `disabledExtensions` in every user's settings
- * to cover every third-party extension currently on disk, then remove the
- * sentinel. The user can re-enable extensions one by one from the UI to find
- * the offending one without losing their other state.
- *
- * The sentinel-and-extension dance happens in the Node server, not in
- * native, so it works regardless of storage mode (fs/sqlite/mysql/postgres) —
- * SettingsRepo abstracts the backend.
- *
- * @param {string} dataRoot Absolute path to the data root.
- * @returns {Promise<void>}
+/** Disable the two optional Global Plugins after a Native boot watchdog failure.
+ * Agents and Work capabilities keep their domain ownership and configuration.
+ * @param {string} dataRoot Absolute data root.
  */
 export async function applyPendingSafeMode(dataRoot) {
     const sentinel = path.join(dataRoot, SENTINEL_FILE_NAME);
@@ -43,31 +31,21 @@ export async function applyPendingSafeMode(dataRoot) {
         // Sentinel may be empty or malformed — treat as "applied with unknown reason".
     }
 
-    const globalExtensions = listExtensionDirs(PUBLIC_DIRECTORIES.globalExtensions, 'third-party/');
+    const globalPlugins = ['regex', 'search-tools'];
     const handles = await getAllUserHandles();
     const repo = getSettingsRepo();
 
     let disabledCount = 0;
     let userCount = 0;
     for (const handle of handles) {
-        const directories = getUserDirectories(handle);
-        const localExtensions = listExtensionDirs(directories.extensions, 'third-party/');
-        const allNames = [...new Set([...globalExtensions, ...localExtensions])];
-        if (allNames.length === 0) continue;
-
         const settings = (await repo.get(handle)) ?? {};
-        if (!settings.extension_settings || typeof settings.extension_settings !== 'object') {
-            settings.extension_settings = {};
-        }
-        const existing = Array.isArray(settings.extension_settings.disabledExtensions)
-            ? settings.extension_settings.disabledExtensions
-            : [];
-        const merged = [...new Set([...existing, ...allNames])];
-        if (merged.length === existing.length) continue;
-
-        settings.extension_settings.disabledExtensions = merged;
+        const retained = new Set(['disabledPlugins', 'regex', 'regex_presets', 'regex_section_collapsed', 'character_allowed_regex', 'preset_allowed_regex', 'note', 'variables', 'attachments', 'character_attachments', 'disabled_attachments', 'orchestrator', 'memory_graph', 'game-runtime', 'search_tools']);
+        const capabilities = Object.fromEntries(Object.entries(settings.atri_capabilities || settings.extension_settings || {}).filter(([key]) => retained.has(key)));
+        const existing = Array.isArray(capabilities.disabledPlugins) ? capabilities.disabledPlugins : [];
+        const merged = globalPlugins;
+        settings.atri_capabilities = { ...capabilities, disabledPlugins: merged };
         await repo.save(handle, settings);
-        disabledCount += (merged.length - existing.length);
+        disabledCount += (merged.filter(name => !existing.includes(name)).length);
         userCount += 1;
     }
 
@@ -76,7 +54,7 @@ export async function applyPendingSafeMode(dataRoot) {
         reason: sentinelReason,
         userCount,
         disabledCount,
-        globalExtensions,
+        globalPlugins,
     };
 
     try {
@@ -93,21 +71,7 @@ export async function applyPendingSafeMode(dataRoot) {
     }
 
     console.log(
-        `safe-mode: applied (reason=${sentinelReason}); disabled ${disabledCount} extension(s) ` +
+        `safe-mode: applied (reason=${sentinelReason}); disabled ${disabledCount} Global Plugin(s) ` +
         `across ${userCount} user(s).`,
     );
-}
-
-function listExtensionDirs(baseDir, prefix) {
-    if (!baseDir || !fs.existsSync(baseDir)) {
-        return [];
-    }
-    try {
-        return fs
-            .readdirSync(baseDir, { withFileTypes: true })
-            .filter((entry) => entry.isDirectory())
-            .map((entry) => `${prefix}${entry.name}`);
-    } catch {
-        return [];
-    }
 }

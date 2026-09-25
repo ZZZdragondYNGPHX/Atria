@@ -3,8 +3,8 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import { mountNativePlayHost } from '../../public/scripts/atria-shell/native-play-host.js';
-import { createAtriaSurfaceAdapter } from '../../public/scripts/extensions/game-runtime/ui/host-surfaces.js';
-import { createFullGameHost } from '../../public/scripts/extensions/game-runtime/ui/full-host.js';
+import { createAtriaSurfaceAdapter } from '../../public/scripts/native/experience/ui/host-surfaces.js';
+import { createFullGameHost } from '../../public/scripts/native/experience/ui/full-host.js';
 
 describe('A6 Native Play Product Host', () => {
     beforeEach(() => {

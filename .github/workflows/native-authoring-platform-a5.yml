@@ -76,9 +76,9 @@ jobs:
           src/native/index.js
           src/skills/scope.js
           src/skills/repository.js
-          public/scripts/extensions/orchestrator/skill-resolution.js
-          public/scripts/extensions/game-runtime/ui/plugin-contributions.js
-          public/scripts/extensions/game-runtime/ui/live.js
+          public/scripts/agents/orchestrator/skill-resolution.js
+          public/scripts/native/experience/ui/plugin-contributions.js
+          public/scripts/native/experience/ui/live.js
           tests/native/plugin-platform.test.js
           tests/native/plugin-build-play.test.js
           tests/native/native-skill-platform.test.js

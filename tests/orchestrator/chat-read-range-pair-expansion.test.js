@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import { execChatReadRange } from '../../public/scripts/extensions/orchestrator/loop-tools/chat.js';
+import { execChatReadRange } from '../../public/scripts/agents/orchestrator/loop-tools/chat.js';
 
 function ctx(...messages) {
     return { chat: messages };

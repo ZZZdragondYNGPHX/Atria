@@ -16,7 +16,7 @@ import {
 } from '../script.js';
 import { t } from './i18n.js';
 import { autoSelectInstructPreset } from './instruct-mode.js';
-import { withProfileRetry } from './extensions/connection-manager/profile-retry.js';
+import { withRetry } from './request-retry.js';
 
 import {
     power_user,
@@ -231,7 +231,7 @@ function tryParseStreamingError(response, decoded) {
 }
 
 export async function generateKoboldWithStreaming(generate_data, signal, { onAtriaMeta = null, onRequestReady = null } = {}) {
-    const response = await withProfileRetry(async () => {
+    const response = await withRetry(async () => {
         if (typeof onRequestReady === 'function') {
             try {
                 onRequestReady();

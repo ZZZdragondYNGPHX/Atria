@@ -1,10 +1,10 @@
 import { describe, test, expect, jest } from '@jest/globals';
-import { readStateProviders, resolveProviderFields } from '../../public/scripts/extensions/memory-graph/state-providers.js';
-import { reconcileProviders, projectProviders } from '../../public/scripts/extensions/memory-graph/provider-provenance.js';
-import { createSourceLifecycle } from '../../public/scripts/extensions/memory-graph/source-lifecycle.js';
-import { emptyProvenance } from '../../public/scripts/extensions/memory-graph/source-provenance.js';
-import { buildMemoryCorpus, rankMemory, retrieveMemory } from '../../public/scripts/extensions/memory-graph/hybrid-retrieval.js';
-import { existingStatePrompt, stateClaimAlreadyPresent } from '../../public/scripts/extensions/memory-graph/state-prompt.js';
+import { readStateProviders, resolveProviderFields } from '../../public/scripts/agents/memory/state-providers.js';
+import { reconcileProviders, projectProviders } from '../../public/scripts/agents/memory/provider-provenance.js';
+import { createSourceLifecycle } from '../../public/scripts/agents/memory/source-lifecycle.js';
+import { emptyProvenance } from '../../public/scripts/agents/memory/source-provenance.js';
+import { buildMemoryCorpus, rankMemory, retrieveMemory } from '../../public/scripts/agents/memory/hybrid-retrieval.js';
+import { existingStatePrompt, stateClaimAlreadyPresent } from '../../public/scripts/agents/memory/state-prompt.js';
 
 function fixture() {
     const ctx = { key: 'chat1', chat: [{ mes: 'At the harbor', variables: [{ stat_data: { pilot: { place: 'Harbor', score: 0, empty: null } }, schema: {} }] }],

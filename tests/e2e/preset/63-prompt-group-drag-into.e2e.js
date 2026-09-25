@@ -15,7 +15,7 @@
 // attributes, so we drive the mouse explicitly for determinism) and
 // asserts:
 //   1. The dropped prompt's identifier is added to the group's
-//      `identifiers` list in extension_settings-backed state.
+//      `identifiers` list in capabilitySettings-backed state.
 //   2. The DOM re-render places the prompt inside the group's visual
 //      span with `data-pm-group-id` matching the target group.
 //   3. Membership survives a full page reload.

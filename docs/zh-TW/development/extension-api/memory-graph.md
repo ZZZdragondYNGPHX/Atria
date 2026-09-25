@@ -4,8 +4,8 @@
 >
 > 入口：
 > - **推薦：** `getExtensionApi('memory-graph').openSession(context)`，來自 `public/scripts/extensions.js`（會話外觀）
-> - 底層：`getMemoryGraphReadApi(store, context)`，來自 `public/scripts/extensions/memory-graph/read-api.js`（讀工廠）
-> - 底層：`getMemoryGraphWriteApi(store, context, options?)`，來自 `public/scripts/extensions/memory-graph/write-api.js`（寫工廠；`options.onCommit` 把變更刷到 floor-state）
+> - 底層：`getMemoryGraphReadApi(store, context)`，來自 `public/scripts/agents/memory/read-api.js`（讀工廠）
+> - 底層：`getMemoryGraphWriteApi(store, context, options?)`，來自 `public/scripts/agents/memory/write-api.js`（寫工廠；`options.onCommit` 把變更刷到 floor-state）
 
 ## 會話 API（推薦入口）
 
@@ -228,7 +228,7 @@ const brief = session.getNodeBrief(candidates[0].id);
 如果你已經持有一個 store 參照（僅限內部呼叫端），可以直接建構讀工廠：
 
 ```js
-import { getMemoryGraphReadApi } from '/scripts/extensions/memory-graph/read-api.js';
+import { getMemoryGraphReadApi } from '/scripts/agents/memory/read-api.js';
 
 const api = getMemoryGraphReadApi(store, context);
 const candidates = api.listVisibleCandidates();
@@ -872,7 +872,7 @@ const candidateRows = candidates.map(view => api.getNodeBrief(view.id, {
 ### 工廠：getMemoryGraphWriteApi(store， context， options?)
 
 ```js
-import { getMemoryGraphWriteApi } from '/scripts/extensions/memory-graph/write-api.js';
+import { getMemoryGraphWriteApi } from '/scripts/agents/memory/write-api.js';
 
 const writeApi = getMemoryGraphWriteApi(store, context);
 // 可選：傳入 onCommit 鉤子，在每次寫成功後持久化 ——
@@ -1071,7 +1071,7 @@ if (groups.length > 0) {
 
 ## 參見
 
-- 原生召回路徑：`public/scripts/extensions/memory-graph/main.js`（`chooseRecallRoute`、`collectRootCandidates`、`expandRouteCandidates`）
+- 原生召回路徑：`public/scripts/agents/memory/main.js`（`chooseRecallRoute`、`collectRootCandidates`、`expandRouteCandidates`）
 - 搭配：orchestrator 透過 `getExtensionApi('memory-graph').openSession(context)` 開啟一個會話，並把它掛在 `__memoryGraphSession` 上供自身的 `memory_*` loop 工具消費 —— 見 [Director 執行期](/zh-TW/features/orchestrator/director)。
 - 相關擴充 API:[外掛整合](/zh-TW/development/extension-api/plugin-integration)，介紹了與其他擴充入口一併發布 `'memory-graph'` 的擴充 API 註冊表。
 - 要從你的擴充往編排器註冊自訂工具（memory-graph 自己就是這樣發布它的讀 / 寫工具的），參見 [編排器工具 API](./orchestrator-tools.md)。

@@ -193,9 +193,9 @@ test.describe('#58 — MG vector-index rebuild via real button → semantic reca
         // nothing new to extract.
         await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const settings = ctx.extensionSettings?.memory_graph;
-            const main = await import('/scripts/extensions/memory-graph/main.js');
-            const vi = await import('/scripts/extensions/memory-graph/vector-index.js');
+            const settings = ctx.capabilitySettings?.memory_graph;
+            const main = await import('/scripts/agents/memory/main.js');
+            const vi = await import('/scripts/agents/memory/vector-index.js');
             const profile = vi.getVectorConfigFromSettings(settings);
             if (!profile) return;
             const chatKey = main.resolveChatKeyForSession(ctx);
@@ -213,7 +213,7 @@ test.describe('#58 — MG vector-index rebuild via real button → semantic reca
         // Pre-snapshot seed ids by hint for ranking assertions.
         const idsByHint = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const mg = ctx.getExtensionApi?.('memory-graph');
+            const mg = ctx.getCapabilityApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             if (!session) return {};
             const cands = session.listVisibleCandidates({});
@@ -237,7 +237,7 @@ test.describe('#58 — MG vector-index rebuild via real button → semantic reca
             if (!expectedId) continue;
             const hits = await page.evaluate(async ({ query }) => {
                 const ctx = window.Atria.getContext();
-                const mg = ctx.getExtensionApi?.('memory-graph');
+                const mg = ctx.getCapabilityApi?.('memory-graph');
                 const session = await mg?.openSession?.(ctx);
                 if (!session) return [];
                 const results = await session.vectorSearch({ query, k: 5 });

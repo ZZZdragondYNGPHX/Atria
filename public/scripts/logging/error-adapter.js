@@ -7,8 +7,8 @@ let installedWindow = null;
 
 function inferModuleFromFilename(filename) {
     const path = String(filename || '').replaceAll('\\', '/').toLowerCase();
-    if (path.includes('/extensions/orchestrator/')) return 'orchestrator';
-    if (path.includes('/extensions/memory-graph/')) return 'memory';
+    if (path.includes('/agents/orchestrator/')) return 'orchestrator';
+    if (path.includes('/agents/memory/')) return 'memory';
     if (path.includes('/world-info/')) return 'worldbook';
     if (path.includes('/regex')) return 'regex';
     if (path.includes('/editor')) return 'editor';

@@ -30,7 +30,7 @@ beforeEach(() => {
         characters: chars,
         writeExtensionField: jest.fn(async (id, ns, value) => {
             // Replace semantics — matches production writeExtensionField (see
-            // public/scripts/extensions.js:2104-2114). The whole `data.extensions[ns]`
+            // public/scripts/capability-host.js:2104-2114). The whole `data.extensions[ns]`
             // is overwritten; callers must pre-spread siblings.
             const c = chars[id];
             c.data.extensions[ns] = value;

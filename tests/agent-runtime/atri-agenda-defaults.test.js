@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { test, expect } from '@jest/globals';
-import { createWorkspaceFactoryPreset, getWorkspaceLibrary, prepareImportedWorkspacePreset, restoreNativeWorkspacePresets, workspaceHostProfile } from '../../public/scripts/extensions/orchestrator/workspace/host-presets.js';
+import { createWorkspaceFactoryPreset, getWorkspaceLibrary, prepareImportedWorkspacePreset, restoreNativeWorkspacePresets, workspaceHostProfile } from '../../public/scripts/agents/orchestrator/workspace/host-presets.js';
 import { emptyPresetLibrary, updatePresetLibrary, exportWorkspacePreset, importWorkspacePreset } from '../../public/scripts/lib/agent-workspace/presets.js';
 
 const read = path => JSON.parse(fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8'));

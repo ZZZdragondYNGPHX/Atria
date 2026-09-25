@@ -18,13 +18,13 @@ import {
     loadAnchorMap,
     pickLatestValidSnapshot,
     resetFloorStateInstanceForTesting,
-} from '../../public/scripts/extensions/orchestrator/persistence.js';
+} from '../../public/scripts/agents/orchestrator/persistence.js';
 import {
     buildLastUserAnchor,
     buildLastUserAnchorFromMessages,
     compactStageOutputs,
     normalizeNodeOutputForSnapshot,
-} from '../../public/scripts/extensions/orchestrator/anchors.js';
+} from '../../public/scripts/agents/orchestrator/anchors.js';
 
 // --- mocks (shape mirrors tests/memory-graph/adapter.test.js) ---
 

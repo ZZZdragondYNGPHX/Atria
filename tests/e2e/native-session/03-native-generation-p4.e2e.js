@@ -1,4 +1,4 @@
-import { disableExtensions } from '../_lib/fixtures.js';
+
 import { test, expect } from '@playwright/test';
 import { createServer } from 'node:http';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -34,7 +34,7 @@ test.beforeAll(async () => {
     await seedGenerationProfiles({ engine, handle: seeded.handle, endpoint: `http://127.0.0.1:${provider.address().port}/v1/chat/completions`, roles: ['narrator', 'studio'], streaming: true });
     await engine.close();
     writeFileSync(resolve(root, 'secrets.json'), JSON.stringify({ api_key_custom: [{ id: 'p4-synthetic-key', value: 'p4-test-only', active: true, label: 'P4 test' }], _migrated: true }));
-    disableExtensions({ dataRoot: seeded.dataRoot, names: ['stable-diffusion'] });
+
     server = await startServer({ batchKey: 'generation', scenarioId: 'p4-generation', useExistingDataRoot: seeded.dataRoot });
 });
 

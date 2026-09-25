@@ -1,5 +1,5 @@
 import { describe, test, expect, jest } from '@jest/globals';
-import { requestToolCallWithRetry } from '../../public/scripts/extensions/orchestrator/tool-calling.js';
+import { requestToolCallWithRetry } from '../../public/scripts/agents/orchestrator/tool-calling.js';
 
 const schemaResult = (name, args = {}) => ({
     assistantText: '',

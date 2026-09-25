@@ -1,3 +1,4 @@
+import { NativeRetrievalService } from './native/retrieval-client.js';
 import { getCurrentUserHandle } from './user.js';
 import {
     activateSendButtons,
@@ -109,25 +110,24 @@ import {
     buildObjectPatchOperationsAsync,
 } from '../script.js';
 import {
-    extension_settings,
-    getExtensionManifest,
+    capabilitySettings,
+    getGlobalPluginManifest,
     ModuleWorkerWrapper,
-    openThirdPartyExtensionMenu,
-    registerExtensionApi,
-    getExtensionApi,
+    registerCapabilityApi,
+    getCapabilityApi,
     getCharacterState,
     setCharacterState,
     patchCharacterState,
     updateCharacterState,
     getCharacterStateBatch,
     deleteCharacterState,
-    renderExtensionTemplate,
-    renderExtensionTemplateAsync,
+    renderPluginTemplate,
+    renderPluginTemplateAsync,
     saveMetadataDebounced,
     UNSET_VALUE,
     writeExtensionField,
     writeExtensionFieldBulk,
-} from './extensions.js';
+} from './capability-host.js';
 import { groups, openGroupChat, selected_group, unshallowGroupMembers } from './group-chats.js';
 import { addLocaleData, getCurrentLocale, t, translate } from './i18n.js';
 import { hideLoader, showLoader } from './loader.js';
@@ -156,8 +156,6 @@ import { areLookupNamesEqual, findCanonicalNameInList, timestampToMoment, uuidv4
 import { addGlobalVariable, addLocalVariable, decrementGlobalVariable, decrementLocalVariable, deleteGlobalVariable, deleteLocalVariable, existsGlobalVariable, existsLocalVariable, getGlobalVariable, getLocalVariable, incrementGlobalVariable, incrementLocalVariable, popLocalVariable, pushLocalVariable, setGlobalVariable, setLocalVariable } from './variables.js';
 import { convertCharacterBook, getWorldInfoPrompt, loadWorldInfo, loadWorldInfoBatch, reloadEditor, saveWorldInfo, updateWorldInfoList, wi_anchor_position, world_info_position, world_names, getCharaAuxWorlds, createNewWorldInfo, importEmbeddedWorldInfo, charUpdatePrimaryWorld, getCharacterEmbeddedWorld, newWorldInfoEntryTemplate, createWorldInfoEntry, setWorldInfoButtonClass, setGlobalWorldInfoSelection, deleteWorldInfoEntry, deleteWorldInfo, selected_world_info, getChatWorldInfoNames, setChatWorldInfoSelection, getSortedEntries } from './world-info.js';
 import { ChatCompletionService, TextCompletionService } from './custom-request.js';
-import { ConnectionManagerRequestService } from './extensions/shared.js';
-import { getChatCompletionConnectionProfiles, resolveChatCompletionRequestProfile } from './extensions/connection-manager/profile-resolver.js';
 import { updateReasoningUI, parseReasoningFromString, getReasoningTemplateByName, removeReasoningFromString } from './reasoning.js';
 import { IGNORE_SYMBOL, inject_ids } from './constants.js';
 import { macros } from './macros/macro-system.js';
@@ -174,11 +172,10 @@ import * as EDITS_API from './lib/edits/index.js';
 import { applyPluginLaneRegex } from './lib/plugin-prompt-regex.js';
 import { readPluginFloors, floorRecordToTaskMessage } from './lib/plugin-floors.js';
 import * as ITERATION_LIBRARY_API_NS from './iteration-library/index.js';
-import * as ATRIA_TABS_API from './extensions/atria-tabs.js';
-import * as FIELD_HELP_API from './extensions/field-help.js';
+import * as ATRIA_TABS_API from './lib/atria-tabs.js';
+import * as FIELD_HELP_API from './lib/field-help.js';
 import { skillsApi } from './skills/api.js';
 import { SECRET_KEYS, secret_state } from './secrets.js';
-import { EmbeddingService } from './embedding-service.js';
 import * as LIB_BUNDLE from '../lib.js';
 
 /**
@@ -2597,11 +2594,6 @@ export function getContext() {
                 clearAll: characterPresets.clearAllCharacterBoundPresets,
             },
         },
-        connectionProfiles: {
-            list: getChatCompletionConnectionProfiles,
-            /** @deprecated Use generateTask({ apiPresetName }) instead. Will be removed in a future release. */
-            resolve: resolveChatCompletionRequestProfile,
-        },
         createRawPrompt,
         get generateTaskSenders() { return buildGenerateTaskSenders(); },
         openCharacterChat,
@@ -2637,9 +2629,9 @@ export function getContext() {
         canPerformToolCalls: ToolManager.canPerformToolCalls.bind(ToolManager),
         ToolManager,
         registerDebugFunction,
-        /** @deprecated Use renderExtensionTemplateAsync instead. */
-        renderExtensionTemplate,
-        renderExtensionTemplateAsync,
+        /** @deprecated Use renderPluginTemplateAsync instead. */
+        renderPluginTemplate,
+        renderPluginTemplateAsync,
         registerDataBankScraper: ScraperManager.registerDataBankScraper.bind(ScraperManager),
         /** @deprecated Use callGenericPopup or Popup instead. */
         callPopup,
@@ -2649,7 +2641,7 @@ export function getContext() {
         /** @deprecated Use loader.hide instead. */
         hideLoader,
         get mainApi() { return main_api; },
-        extensionSettings: extension_settings,
+        capabilitySettings: capabilitySettings,
         ModuleWorkerWrapper,
         getTokenizerModel,
         generateQuietPrompt,
@@ -2781,16 +2773,14 @@ export function getContext() {
         clearChat,
         ChatCompletionService,
         TextCompletionService,
-        ConnectionManagerRequestService,
         updateReasoningUI,
         parseReasoningFromString,
         getReasoningTemplateByName,
         unshallowCharacter,
         unshallowGroupMembers,
-        getExtensionManifest,
-        openThirdPartyExtensionMenu,
-        registerExtensionApi,
-        getExtensionApi,
+        getGlobalPluginManifest,
+        registerCapabilityApi,
+        getCapabilityApi,
         getCharacterState,
         setCharacterState,
         patchCharacterState,
@@ -2821,7 +2811,7 @@ export function getContext() {
             showdown: LIB_BUNDLE.showdown,
             yaml: LIB_BUNDLE.yaml,
         },
-        embeddingService: EmbeddingService,
+        retrievalService: NativeRetrievalService,
         get markdownConverter() { return converter; },
         sendTextareaMessage,
         buildObjectPatchOperationsAsync,

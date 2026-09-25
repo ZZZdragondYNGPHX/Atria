@@ -110,8 +110,8 @@ test.describe('Orchestrator: critic regex-search flow', () => {
         // array and an invalid regex (`[unclosed`) and assert on the
         // documented return shapes.
         const smoke = await page.evaluate(async ({ establishedName, knownAge }) => {
-            const loopMod = await import('/scripts/extensions/orchestrator/loop-tools.js');
-            const dirMod = await import('/scripts/extensions/orchestrator/director-tools.js');
+            const loopMod = await import('/scripts/agents/orchestrator/loop-tools.js');
+            const dirMod = await import('/scripts/agents/orchestrator/director-tools.js');
 
             // Synthetic chat. `is_user` / `is_system` shape matches what
             // chat.js's executor expects (see roleFromMessage there); the
@@ -210,7 +210,7 @@ test.describe('Orchestrator: critic regex-search flow', () => {
         // library. It loads asynchronously after the main bootstrap.
         await page.waitForFunction(
             () => {
-                const s = window.Atria?.getContext?.()?.extensionSettings?.orchestrator;
+                const s = window.Atria?.getContext?.()?.capabilitySettings?.orchestrator;
                 return Boolean(s?.presetLibraries?.director && s?.activePresetIds);
             },
             { timeout: 30000 },
@@ -220,7 +220,7 @@ test.describe('Orchestrator: critic regex-search flow', () => {
         // only; the new skill texts ask them to use `chat_search` /
         // `draft_search`, so we toggle the search flag on for both
         // critics for this spec. The director profile lives at
-        // `extension_settings.orchestrator.presetLibraries.director[activePresetIds.director]`
+        // `capabilitySettings.orchestrator.presetLibraries.director[activePresetIds.director]`
         // after the preset-library refactor (commit a4ce3b948); if the
         // active preset has no sub-agents (user-customized empty preset),
         // we temporarily switch to the `default` preset which ships with
@@ -228,7 +228,7 @@ test.describe('Orchestrator: critic regex-search flow', () => {
         const restoreState = await page.evaluate(({ criticIds }) => {
             const ctx = window.Atria?.getContext?.();
             if (!ctx) throw new Error('SillyTavern context missing');
-            const settings = ctx.extensionSettings?.orchestrator;
+            const settings = ctx.capabilitySettings?.orchestrator;
             if (!settings) throw new Error('orchestrator settings missing');
             const lib = settings.presetLibraries?.director;
             if (!lib || typeof lib !== 'object') {
@@ -300,7 +300,7 @@ test.describe('Orchestrator: critic regex-search flow', () => {
         // can't read a stale committed frame.
         await page.evaluate(async () => {
             try {
-                const m = await import('/scripts/extensions/orchestrator/run-state/store.js');
+                const m = await import('/scripts/agents/orchestrator/run-state/store.js');
                 m.clearCurrentRun?.();
             } catch { /* store module not loaded yet */ }
         });
@@ -340,7 +340,7 @@ test.describe('Orchestrator: critic regex-search flow', () => {
             const start = Date.now();
             while (Date.now() - start < deadline) {
                 try {
-                    const mod = await import('/scripts/extensions/orchestrator/run-state/store.js');
+                    const mod = await import('/scripts/agents/orchestrator/run-state/store.js');
                     const s = mod.getCurrentRun();
                     if (s && settled.has(String(s.status || ''))) {
                         const safe = JSON.parse(JSON.stringify(s, (k, v) => (k === 'abortFn' ? undefined : v)));
@@ -452,7 +452,7 @@ test.describe('Orchestrator: critic regex-search flow', () => {
             try {
                 await page.evaluate(({ criticSnapshot, prevExecutionMode, prevDirectorPresetId, mutatedPresetId }) => {
                     const ctx = window.Atria?.getContext?.();
-                    const settings = ctx?.extensionSettings?.orchestrator;
+                    const settings = ctx?.capabilitySettings?.orchestrator;
                     if (!settings) return;
                     const lib = settings.presetLibraries?.director;
                     if (lib && mutatedPresetId && Array.isArray(lib[mutatedPresetId]?.subAgents)) {
@@ -536,7 +536,7 @@ async function activateConnectionProfile(page) {
     return await page.evaluate(async () => {
         const ctx = window.Atria?.getContext?.();
         if (!ctx) return '';
-        const profiles = ctx.extensionSettings?.connectionManager?.profiles;
+        const profiles = ctx.capabilitySettings?.connectionManager?.profiles;
         if (!Array.isArray(profiles) || !profiles.length) return '';
         const pinned = (
             (typeof process !== 'undefined' && process.env?.ATRIA_PLAYWRIGHT_PROFILE)

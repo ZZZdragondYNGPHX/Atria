@@ -4,8 +4,8 @@ let service; let memoryProfile; const originalFetch = globalThis.fetch; const or
 const ref = { scope: 'player', retrievalProfileId: 'retr_' + 'a'.repeat(32), revision: 'rev_' + 'b'.repeat(32) };
 beforeAll(async () => {
     jest.unstable_mockModule('../../public/script.js', () => ({ getRequestHeaders: () => ({ 'X-CSRF-Token': 'test' }) }));
-    jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({ extension_settings: { get connectionManager() { throw new Error('Native must never read Connection Manager'); } } }));
-    service = (await import('../../public/scripts/embedding-service.js')).EmbeddingService;
+    jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({ capabilitySettings: { get connectionManager() { throw new Error('Native must never read Connection Manager'); } } }));
+    service = (await import('../../public/scripts/native/retrieval-client.js')).NativeRetrievalService;
     memoryProfile = (await import('../../public/scripts/native/retrieval-client.js')).memoryRetrievalProfile;
 });
 afterEach(() => { globalThis.fetch = originalFetch; globalThis.Atria = originalAtria; });
@@ -18,7 +18,7 @@ test('Memory and Hybrid shared service send only exact refs without resolving co
         return response(url.endsWith('/retrieval') ? [{ ...ref, mode: 'embed', source: 'openai' }] : { hashes: [1], metadata: [] });
     });
     const profile = memoryProfile({ nativeRetrieval: { embed: ref }, embeddingProfileId: 'legacy-ignored' }, 'embed');
-    await service.query({ profile, collectionId: 'memory', searchText: 'question', extraBody: { reverse_proxy: 'ignored-legacy-url' } });
+    await service.query({ profile, collectionId: 'memory', searchText: 'question' });
     const body = JSON.parse(calls.at(-1).options.body);
     expect(body).toMatchObject({ nativeRetrievalRef: ref, collectionId: 'memory', searchText: 'question' });
     expect(body).not.toHaveProperty('reverse_proxy'); expect(body).not.toHaveProperty('source');

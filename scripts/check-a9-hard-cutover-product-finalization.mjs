@@ -30,12 +30,12 @@ const retired = [
     'src/game-package/distribution.js',
     'public/scripts/extensions/card-app',
     'public/scripts/extensions/character-editor-assistant/studio',
-    'public/scripts/extensions/game-runtime/manifest.js',
-    'public/scripts/extensions/game-runtime/world/branch.js',
-    'public/scripts/extensions/game-runtime/world/persistence.js',
-    'public/scripts/extensions/game-runtime/world/runtime.js',
-    'public/scripts/extensions/game-runtime/world/journal.js',
-    'public/scripts/extensions/game-runtime/ui/immersive.js',
+    'public/scripts/native/experience/manifest.js',
+    'public/scripts/native/experience/world/branch.js',
+    'public/scripts/native/experience/world/persistence.js',
+    'public/scripts/native/experience/world/runtime.js',
+    'public/scripts/native/experience/world/journal.js',
+    'public/scripts/native/experience/ui/immersive.js',
 ];
 for (const target of retired) assertAbsent(target);
 
@@ -70,7 +70,7 @@ assertNoMatch(
     'A9 storage inspector must not retain CardApp storage',
 );
 
-const activeGameRuntime = walk('public/scripts/extensions/game-runtime');
+const activeGameRuntime = walk('public/scripts/native/experience');
 for (const file of activeGameRuntime) {
     assertNoMatch(
         file,

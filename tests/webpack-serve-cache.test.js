@@ -127,6 +127,7 @@ describe('Webpack warm-start output detection', () => {
                 'lib.core.bundle': '/dev/null',
                 'lib.optional.bundle': '/dev/null',
                 'codemirror.bundle': '/dev/null',
+                'lib.webllm.bundle': '/dev/null',
             },
             output: { path: root },
         };
@@ -138,6 +139,8 @@ describe('Webpack warm-start output detection', () => {
         expect(hasCompleteWebpackOutput(config)).toBe(false);
 
         fs.writeFileSync(path.join(root, 'codemirror.bundle.js'), 'codemirror');
+        expect(hasCompleteWebpackOutput(config)).toBe(false);
+        fs.writeFileSync(path.join(root, 'lib.webllm.bundle.js'), 'webllm');
         expect(hasCompleteWebpackOutput(config)).toBe(true);
 
         fs.writeFileSync(path.join(root, 'codemirror.bundle.js'), '');

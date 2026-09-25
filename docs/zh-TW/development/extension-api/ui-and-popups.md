@@ -302,7 +302,7 @@ renderAtriaTabs(options: {
 
 ```js
 // Layer 1 — ESM
-import { renderAtriaTabs } from '/scripts/extensions/atria-tabs.js';
+import { renderAtriaTabs } from '/scripts/lib/atria-tabs.js';
 
 // Layer 2 — atriaContext
 const { renderAtriaTabs } = atriaContext;
@@ -350,7 +350,7 @@ renderFieldHelpButton(options: {
 
 ```js
 // Layer 1 — ESM
-import { renderFieldHelpButton } from '/scripts/extensions/field-help.js';
+import { renderFieldHelpButton } from '/scripts/lib/field-help.js';
 
 // Layer 2 — atriaContext
 const { renderFieldHelpButton } = atriaContext;

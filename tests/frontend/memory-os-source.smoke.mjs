@@ -29,12 +29,12 @@ async function selectCharacter() {
         const ctx = window.Atria.getContext();
         return ctx.characters[ctx.characterId]?.name === expected && ctx.chat.length > 0;
     }, name);
-    await page.waitForFunction(() => !!window.Atria.getContext().getExtensionApi('memory-graph'));
+    await page.waitForFunction(() => !!window.Atria.getContext().getCapabilityApi('memory-graph'));
 }
 async function snapshot() {
     return page.evaluate(async () => {
         const ctx = window.Atria.getContext();
-        const main = await import('/scripts/extensions/memory-graph/main.js');
+        const main = await import('/scripts/agents/memory/main.js');
         const store = await main.ensureMemoryStoreLoaded(ctx);
         const ledger = await ctx.getChatState('memory_graph__provenance');
         return { store, ledger, sourceId: ctx.chat[0]?.memory_os_source_id };
@@ -52,9 +52,9 @@ try {
     await selectCharacter();
     const created = await page.evaluate(async () => {
         const ctx = window.Atria.getContext();
-        ctx.extensionSettings.memory_graph.memoryOsEnabled = true;
+        ctx.capabilitySettings.memory_graph.memoryOsEnabled = true;
         ctx.saveSettingsDebounced();
-        window.memorySourceSmokeSession = await ctx.getExtensionApi('memory-graph').openSession(ctx);
+        window.memorySourceSmokeSession = await ctx.getCapabilityApi('memory-graph').openSession(ctx);
         return window.memorySourceSmokeSession.createNode({ type: 'event', fields: { summary: 'The archive key is blue.' } });
     });
     const before = await snapshot();
@@ -86,7 +86,7 @@ try {
 
     const recalled = await page.evaluate(async () => {
         const ctx = window.Atria.getContext();
-        ctx.extensionSettings.memory_graph.memoryOsTokenBudget = 500;
+        ctx.capabilitySettings.memory_graph.memoryOsTokenBudget = 500;
         const result = await window.memorySourceSmokeSession.recallMemory('What color is the archive key?');
         return { text: result.text, tokenCount: result.tokenCount, selected: result.selected };
     });
@@ -95,12 +95,12 @@ try {
     assert(recalled.tokenCount <= 500);
     const injected = await page.evaluate(async () => {
         const ctx = window.Atria.getContext();
-        ctx.extensionSettings.memory_graph.enabled = true;
-        ctx.extensionSettings.memory_graph.recallEnabled = true;
-        const main = await import('/scripts/extensions/memory-graph/main.js');
+        ctx.capabilitySettings.memory_graph.enabled = true;
+        ctx.capabilitySettings.memory_graph.recallEnabled = true;
+        const main = await import('/scripts/agents/memory/main.js');
         const payload = { type: 'normal', coreChat: [...ctx.chat, { mes: 'What color is the archive key?', is_user: true }] };
         await main._handleWiAfterScanForTest(payload);
-        const projection = await ctx.getExtensionApi('memory-graph').getLastRecallProjection(ctx);
+        const projection = await ctx.getCapabilityApi('memory-graph').getLastRecallProjection(ctx);
         return { projection, rescan: payload.requestRescan };
     });
     assert(injected.projection.blocks.focusPacket.includes('sources'));
@@ -113,16 +113,16 @@ try {
         await page.route('**/__memory_os_ejs_fixture.js', route => route.fulfill({ contentType: 'text/javascript', body: bridge }));
         const providers = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const api = ctx.getExtensionApi('memory-graph');
+            const api = ctx.getCapabilityApi('memory-graph');
             const { installEjsBridge } = await import('/__memory_os_ejs_fixture.js');
             let loreState = { version: 3, shared: { place: 'Harbor' } };
             const dispose = installEjsBridge({ eventOn: (event, cb) => ctx.eventSource.on(event, cb),
                 eventRemoveListener: (event, cb) => ctx.eventSource.removeListener(event, cb), read: () => ({ state: loreState }) });
             ctx.chat[0].variables = [{ stat_data: { pilot: { place: 'Harbor' } }, schema: {} }];
             window.Mvu = { getMvuData: ({ message_id }) => structuredClone(ctx.chat[message_id].variables[0]), isDuringExtraAnalysis: () => false };
-            ctx.extensionSettings.memory_graph.memoryOsTokenBudget = 1800;
-            ctx.extensionSettings.memory_graph.memoryOsStateOwners = {};
-            ctx.extensionSettings.memory_graph.memoryOsStateMappings = [
+            ctx.capabilitySettings.memory_graph.memoryOsTokenBudget = 1800;
+            ctx.capabilitySettings.memory_graph.memoryOsStateOwners = {};
+            ctx.capabilitySettings.memory_graph.memoryOsStateMappings = [
                 { providerId: 'mvu', path: ['pilot', 'place'], key: 'location', label: 'Pilot location' },
                 { providerId: 'lorestate', path: ['shared', 'place'], key: 'location', label: 'Pilot location' },
             ];
@@ -131,7 +131,7 @@ try {
             let invalidated = false;
             try { agreed.assertCurrent(); } catch (error) { invalidated = error.name === 'AbortError'; }
             const conflict = await api.recallMemory(ctx, 'Pilot location');
-            ctx.extensionSettings.memory_graph.memoryOsStateOwners = { location: 'mvu' };
+            ctx.capabilitySettings.memory_graph.memoryOsStateOwners = { location: 'mvu' };
             const owned = await api.recallMemory(ctx, 'Pilot location');
             const sourceUnchanged = ctx.chat[0].variables[0].stat_data.pilot.place === 'Harbor';
             dispose(); delete window.Mvu;
@@ -186,7 +186,7 @@ try {
     assert.equal(reloaded.ledger.state.relations[graphBefore.relations[0].id].status, 'stale');
     const replacement = await page.evaluate(async () => {
         const ctx = window.Atria.getContext();
-        const session = await ctx.getExtensionApi('memory-graph').openSession(ctx);
+        const session = await ctx.getCapabilityApi('memory-graph').openSession(ctx);
         return session.createNode({ type: 'event', fields: { summary: 'The archive key is red.' } });
     });
     const revised = await snapshot();
@@ -194,7 +194,7 @@ try {
     assert.notEqual(revisedId, episodeId);
     assert.equal(revised.store.nodes[replacement.id].archived, false);
     assert.equal(revised.ledger.state.episodes[revisedId].content, 'The archive key is red.');
-    await page.evaluate(() => { window.Atria.getContext().extensionSettings.memory_graph.memoryOsEnabled = false; });
+    await page.evaluate(() => { window.Atria.getContext().capabilitySettings.memory_graph.memoryOsEnabled = false; });
     const disabled = await snapshot();
     assert.equal(disabled.store.nodes[created.id].archived, true);
     assert.equal(disabled.store.nodes[replacement.id].archived, false);

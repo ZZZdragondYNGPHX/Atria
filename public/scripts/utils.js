@@ -5,7 +5,7 @@ import {
     getReadability,
 } from '../lib.js';
 
-import { getContext } from './extensions.js';
+import { getContext } from './capability-host.js';
 import { animation_duration, characters, getRequestHeaders, processDroppedFiles, this_chid, user_avatar } from '../script.js';
 import { isMobile } from './RossAscends-mods.js';
 import { collapseNewlines, power_user } from './power-user.js';

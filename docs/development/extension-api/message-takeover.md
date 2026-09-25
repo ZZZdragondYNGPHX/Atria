@@ -3,7 +3,7 @@
 APIs for plugins to **produce the assistant message text directly** instead of guiding the main LLM. When a plugin claims takeover for a turn, the main LLM is not invoked at all — the plugin writes text and reasoning into a buffer-only editor handle, and the kernel takes care of placing the result into chat, persisting it, running regex / cleanup post-processing, emitting lifecycle events, and rolling back if the plugin discards.
 
 ::: warning Buffer-only kernel
-The handle is a pure text / reasoning buffer. It does not touch `chat`, emit ST events, or render anything — those are kernel responsibilities driven off the handle's lifecycle. Higher-level editing helpers (incremental append, structured patches, stream pipes) live in plugin code. The orchestrator extension ships a reference implementation at `public/scripts/extensions/orchestrator/editor-ops.js` — copy / depend / replace as fits your plugin.
+The handle is a pure text / reasoning buffer. It does not touch `chat`, emit ST events, or render anything — those are kernel responsibilities driven off the handle's lifecycle. Higher-level editing helpers (incremental append, structured patches, stream pipes) live in plugin code. The orchestrator extension ships a reference implementation at `public/scripts/agents/orchestrator/editor-ops.js` — copy / depend / replace as fits your plugin.
 :::
 
 ## The hook event
@@ -177,7 +177,7 @@ When `opts.generationType === 'continue'`, `setText(newText)` is rejected with `
 
 ## Higher-level editing patterns
 
-The kernel deliberately does not provide incremental append, character-offset slicing, structured patch application, or stream piping — those are *strategies*, not state management. The orchestrator extension implements them in `public/scripts/extensions/orchestrator/editor-ops.js`:
+The kernel deliberately does not provide incremental append, character-offset slicing, structured patch application, or stream piping — those are *strategies*, not state management. The orchestrator extension implements them in `public/scripts/agents/orchestrator/editor-ops.js`:
 
 - `appendText(handle, text)` / `appendReasoning(handle, text)` — concatenate onto the current value.
 - `insertAt(handle, offset, text)` / `replaceRange(handle, start, end, text)` / `deleteRange(handle, start, end)` — character-offset slicing.

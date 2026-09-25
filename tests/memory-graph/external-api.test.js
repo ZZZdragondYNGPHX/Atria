@@ -14,7 +14,7 @@ import {
     __recordInjectedNodeIds,
     __setInjectedForTest,
     __resetInjectedForTest,
-} from '../../public/scripts/extensions/memory-graph/external-api.js';
+} from '../../public/scripts/agents/memory/external-api.js';
 
 describe('getCurrentlyInjectedNodeIds', () => {
     beforeEach(() => {

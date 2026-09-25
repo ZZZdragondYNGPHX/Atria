@@ -4,8 +4,8 @@ A shared popup shell for **AI-driven iterative editing of an adapter-supplied ar
 
 Two reference adapters live in-tree:
 
-- `public/scripts/extensions/orchestrator/iteration-adapter.js` — edits orchestrator profiles (spec / agenda / loop)
-- `public/scripts/extensions/memory-graph/schema-adapter.js` — edits memory-graph node-type schema
+- `public/scripts/agents/orchestrator/iteration-adapter.js` — edits orchestrator profiles (spec / agenda / loop)
+- `public/scripts/agents/memory/schema-adapter.js` — edits memory-graph node-type schema
 
 This page is the contract and walkthrough for building your own adapter.
 
@@ -249,8 +249,8 @@ The Layer 3 surface re-exports the same functions as Layer 1; `open` is a short 
 
 Read these for working end-to-end examples of the contract:
 
-- `public/scripts/extensions/orchestrator/iteration-adapter.js` — wraps the orchestrator's pre-existing mutator with the sandbox-diff pattern. Layout `split`, per-mode session buckets, runtime world-info resolution, custom control tool names.
-- `public/scripts/extensions/memory-graph/schema-adapter.js` — node-type schema editor built directly on the v2 contract. Layout `split`, global-only sessions, apply-to-global / apply-to-character action buttons in the preview pane.
+- `public/scripts/agents/orchestrator/iteration-adapter.js` — wraps the orchestrator's pre-existing mutator with the sandbox-diff pattern. Layout `split`, per-mode session buckets, runtime world-info resolution, custom control tool names.
+- `public/scripts/agents/memory/schema-adapter.js` — node-type schema editor built directly on the v2 contract. Layout `split`, global-only sessions, apply-to-global / apply-to-character action buttons in the preview pane.
 - **CEA Character Editor** — `public/scripts/extensions/character-editor-assistant/character-editor-adapter.js`, layout `split`, per-character session scope `char_<avatar>`. Live shape is `{ card, lorebook: { bookName, entries: { [uid]: entry } } }`. Edits character card fields via `mergeCharacterAttributes` and lorebooks via `context.saveWorldInfo`. Registers 3 custom ops (`lorebook_entry_add / update / remove`) keyed by entry uid.
 - **CPA (Completion Preset Assistant)** — `public/scripts/extensions/completion-preset-assistant/cpa-iteration/` (the studio mounts itself as a popup via `openCpaIterationStudio`, separate from the layered `iterationStudio` open / defineAdapter contract). Per-preset session scope `preset_<name>`. The live target is the user's currently-selected OpenAI preset (via `context.presets.get`); `commit()` writes back via `context.presets.save(..., { select: true })`. Tool catalog has 15 editable preset-edit ops + 5 read-only inspection tools + 12 Skills authoring tools (inventory + write + verbatim extract, exposed when session mode is `orchestrator-optimize` and pulled directly from the orchestrator's `skill-iter-studio-tools.js` registry). No preview pane — the per-message edit summary in the chat is the diff.
 

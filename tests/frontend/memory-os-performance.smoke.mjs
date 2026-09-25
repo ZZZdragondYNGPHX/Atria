@@ -17,8 +17,8 @@ try {
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
     const result = await page.evaluate(async () => {
         const { largeMemory } = await import('/__memory_large_fixture.js');
-        const { computeInspector, openMemoryDiagnostics } = await import('/scripts/extensions/memory-graph/inspector-compute.js');
-        const { selectGraph } = await import('/scripts/extensions/memory-graph/graph-inspector.js');
+        const { computeInspector, openMemoryDiagnostics } = await import('/scripts/agents/memory/inspector-compute.js');
+        const { selectGraph } = await import('/scripts/agents/memory/graph-inspector.js');
         const snapshot = largeMemory(3000); let ticks = 0; const timer = setInterval(() => { ticks++; }, 10);
         const start = performance.now();
         const { graph } = await computeInspector(snapshot);

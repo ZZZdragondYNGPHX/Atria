@@ -7,7 +7,7 @@ globalThis.Atria = globalThis.Atria || {
 
 const {
     startRun, getCurrentRun, clearCurrentRun,
-} = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+} = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
 
 describe('RunStateStore — startRun / getCurrentRun', () => {
     beforeEach(() => clearCurrentRun());
@@ -49,13 +49,13 @@ describe('RunStateStore — startRun / getCurrentRun', () => {
     });
 });
 
-import * as evt from '../../public/scripts/extensions/orchestrator/run-state/events.js';
+import * as evt from '../../public/scripts/agents/orchestrator/run-state/events.js';
 
 describe('RunStateStore — subscribe / unsubscribe', () => {
     beforeEach(() => clearCurrentRun());
 
     test('subscribe receives RUN_STARTED with runId and mode', async () => {
-        const { subscribe } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { subscribe } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const events = [];
         const unsub = subscribe((e) => events.push(e));
         const runId = startRun({ mode: 'director', chatKey: 'chatA' });
@@ -64,7 +64,7 @@ describe('RunStateStore — subscribe / unsubscribe', () => {
     });
 
     test('RUN_STARTED carries quiet=true when the run was started with {quiet:true}', async () => {
-        const { subscribe, getCurrentRun: getRun } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { subscribe, getCurrentRun: getRun } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const events = [];
         const unsub = subscribe((e) => events.push(e));
         const runId = startRun({ mode: 'director', chatKey: 'chatA', quiet: true });
@@ -74,7 +74,7 @@ describe('RunStateStore — subscribe / unsubscribe', () => {
     });
 
     test('unsubscribe stops further events', async () => {
-        const { subscribe } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { subscribe } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const events = [];
         const unsub = subscribe((e) => events.push(e));
         unsub();
@@ -83,7 +83,7 @@ describe('RunStateStore — subscribe / unsubscribe', () => {
     });
 
     test('multiple subscribers all receive events', async () => {
-        const { subscribe } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { subscribe } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const a = [];
         const b = [];
         const unsubA = subscribe((e) => a.push(e));
@@ -95,7 +95,7 @@ describe('RunStateStore — subscribe / unsubscribe', () => {
     });
 
     test('clearCurrentRun emits RUN_CLEARED', async () => {
-        const { subscribe } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { subscribe } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const events = [];
         const unsub = subscribe((e) => events.push(e));
         startRun({ mode: 'director', chatKey: 'chatA' });
@@ -109,7 +109,7 @@ describe('RunStateStore — rounds', () => {
     beforeEach(() => clearCurrentRun());
 
     test('appendRound adds a round and emits ROUND_APPENDED', async () => {
-        const { appendRound, subscribe } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { appendRound, subscribe } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const events = [];
         const unsub = subscribe((e) => events.push(e));
         const runId = startRun({ mode: 'director', chatKey: 'c' });
@@ -129,7 +129,7 @@ describe('RunStateStore — rounds', () => {
     });
 
     test('setRoundStatus updates status, sets endedAt for terminal, emits ROUND_STATUS', async () => {
-        const { appendRound, setRoundStatus, subscribe } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { appendRound, setRoundStatus, subscribe } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const events = [];
         const unsub = subscribe((e) => events.push(e));
         const runId = startRun({ mode: 'director', chatKey: 'c' });
@@ -144,14 +144,14 @@ describe('RunStateStore — rounds', () => {
     });
 
     test('appendRound throws on runId mismatch', async () => {
-        const { appendRound } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { appendRound } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         startRun({ mode: 'director', chatKey: 'c' });
         expect(() => appendRound({ runId: 'bogus', round: { id: 'main-1', label: 'r1' } }))
             .toThrow(/runId mismatch/i);
     });
 
     test('appendRound throws on duplicate round id', async () => {
-        const { appendRound } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { appendRound } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const runId = startRun({ mode: 'director', chatKey: 'c' });
         appendRound({ runId, round: { id: 'main-1', label: 'r1' } });
         expect(() => appendRound({ runId, round: { id: 'main-1', label: 'r1-dup' } }))
@@ -163,7 +163,7 @@ describe('RunStateStore — sections', () => {
     beforeEach(() => clearCurrentRun());
 
     async function setup() {
-        const m = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const m = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const runId = startRun({ mode: 'director', chatKey: 'c' });
         m.appendRound({ runId, round: { id: 'main-1', label: 'r1' } });
         return { ...m, runId };
@@ -237,7 +237,7 @@ describe('RunStateStore — finish / meta', () => {
     beforeEach(() => clearCurrentRun());
 
     test('finishRun(committed) sets status, finalText, endedAt and emits', async () => {
-        const { finishRun, subscribe } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { finishRun, subscribe } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const events = [];
         const unsub = subscribe((e) => events.push(e));
         const runId = startRun({ mode: 'director', chatKey: 'c' });
@@ -253,7 +253,7 @@ describe('RunStateStore — finish / meta', () => {
     });
 
     test('finishRun(error) sets error and status', async () => {
-        const { finishRun } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { finishRun } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const runId = startRun({ mode: 'director', chatKey: 'c' });
         finishRun({ runId, status: 'error', error: 'boom' });
         const s = getCurrentRun();
@@ -263,7 +263,7 @@ describe('RunStateStore — finish / meta', () => {
     });
 
     test('setRunMeta updates tokensSpent and cost, emits RUN_META', async () => {
-        const { setRunMeta, subscribe } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { setRunMeta, subscribe } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const events = [];
         const unsub = subscribe((e) => events.push(e));
         const runId = startRun({ mode: 'director', chatKey: 'c' });
@@ -276,7 +276,7 @@ describe('RunStateStore — finish / meta', () => {
     });
 
     test('addTokenUsage folds camelCase usage into running totals and emits RUN_META', async () => {
-        const { addTokenUsage, subscribe } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { addTokenUsage, subscribe } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const events = [];
         const unsub = subscribe((e) => events.push(e));
         const runId = startRun({ mode: 'loop', chatKey: 'c' });
@@ -291,7 +291,7 @@ describe('RunStateStore — finish / meta', () => {
     });
 
     test('addTokenUsage is a no-op for null/empty usage', async () => {
-        const { addTokenUsage } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { addTokenUsage } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const runId = startRun({ mode: 'loop', chatKey: 'c' });
         addTokenUsage({ runId, usage: null });
         addTokenUsage({ runId, usage: undefined });
@@ -301,14 +301,14 @@ describe('RunStateStore — finish / meta', () => {
     });
 
     test('addTokenUsage derives total from prompt+completion when totalTokens is missing', async () => {
-        const { addTokenUsage } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { addTokenUsage } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const runId = startRun({ mode: 'loop', chatKey: 'c' });
         addTokenUsage({ runId, usage: { promptTokens: 7, completionTokens: 3 } });
         expect(getCurrentRun().tokensSpent).toEqual({ prompt: 7, completion: 3, total: 10 });
     });
 
     test('startRun overwrites a non-running prior run', async () => {
-        const { finishRun } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js');
+        const { finishRun } = await import('../../public/scripts/agents/orchestrator/run-state/store.js');
         const first = startRun({ mode: 'director', chatKey: 'c' });
         finishRun({ runId: first, status: 'committed', finalText: 'x' });
         const second = startRun({ mode: 'loop', chatKey: 'c' });

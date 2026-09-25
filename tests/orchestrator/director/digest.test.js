@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { renderMainAgentDigest } from '../../../public/scripts/extensions/orchestrator/director-tools.js';
+import { renderMainAgentDigest } from '../../../public/scripts/agents/orchestrator/director-tools.js';
 
 describe('renderMainAgentDigest', () => {
     test('returns null when parentMessages is empty or not an array', () => {

@@ -42,7 +42,7 @@ import { isNativeGenerationFailure, executeFirstPartyGeneration, firstPartyGener
 import {
     TOOL_PROTOCOL_STYLE,
     validateParsedToolCalls,
-} from '../extensions/function-call-runtime.js';
+} from './runtime-tools.js';
 import {
     isAbortError,
     isAbortSignalLike,

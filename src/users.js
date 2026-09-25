@@ -25,7 +25,6 @@ import { getContentOfType } from './endpoints/content-manager.js';
 import { serverDirectory } from './server-directory.js';
 import { getAdminSettings, getEffectiveUserQuotaBytes, getDirectorySizeBytes } from './admin-settings.js';
 import { filterValidIpPatterns, getIpFromRequest } from './express-common.js';
-import { extensionsEnabledFeatureGuard } from './endpoints/extensions.js';
 import { getStorageEngine } from './storage/index.js';
 import { ENGINE_META_ENTRY, ENGINE_DUMP_ENTRY } from './storage/engine-backup-entries.js';
 
@@ -92,8 +91,6 @@ export const USER_BACKUP_SELECTION_DEFAULTS = Object.freeze({
     lorebooks: true,
     presets: true,
     assets: true,
-    extensions: true,
-    globalExtensions: false,
     vectors: false,
 });
 
@@ -164,7 +161,8 @@ export const USER_BACKUP_SELECTION_DEFAULTS = Object.freeze({
  * @returns {Promise<import('./users.js').UserDirectoryList[]>} - The list of user directories
  */
 export async function ensurePublicDirectoriesExist() {
-    for (const dir of Object.values(PUBLIC_DIRECTORIES)) {
+    for (const [key, dir] of Object.entries(PUBLIC_DIRECTORIES)) {
+        if (key === 'globalExtensions') continue;
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
@@ -1254,41 +1252,6 @@ function createRouteHandler(directoryFn) {
 }
 
 /**
- * Creates a route handler for serving extensions.
- * @param {(req: import('express').Request) => string} directoryFn A function that returns the directory path to serve files from
- * @returns {import('express').RequestHandler}
- */
-function createExtensionsRouteHandler(directoryFn) {
-    return async (req, res) => {
-        try {
-            const directory = directoryFn(req);
-            const filePath = decodeURIComponent(req.params[0]);
-            const localPath = path.join(directory, filePath);
-            if (!isPathUnderParent(directory, path.resolve(localPath))) {
-                return res.sendStatus(403);
-            }
-            const existsLocal = fs.existsSync(localPath);
-            if (existsLocal) {
-                return res.sendFile(filePath, { root: directory });
-            }
-
-            const globalPath = path.join(PUBLIC_DIRECTORIES.globalExtensions, filePath);
-            if (!isPathUnderParent(PUBLIC_DIRECTORIES.globalExtensions, path.resolve(globalPath))) {
-                return res.sendStatus(403);
-            }
-            const existsGlobal = fs.existsSync(globalPath);
-            if (existsGlobal) {
-                return res.sendFile(filePath, { root: PUBLIC_DIRECTORIES.globalExtensions });
-            }
-
-            return res.sendStatus(404);
-        } catch (error) {
-            return res.sendStatus(500);
-        }
-    };
-}
-
-/**
  * Verifies that the current user is an admin.
  * @param {import('express').Request} request Request object
  * @param {import('express').Response} response Response object
@@ -1637,4 +1600,3 @@ router.use('/User%20Avatars/*', createRouteHandler(req => req.user.directories.a
 router.use('/assets/*', createRouteHandler(req => req.user.directories.assets));
 router.use('/user/images/*', createRouteHandler(req => req.user.directories.userImages));
 router.use('/user/files/*', createRouteHandler(req => req.user.directories.files));
-router.use('/scripts/extensions/third-party/*', extensionsEnabledFeatureGuard, createExtensionsRouteHandler(req => req.user.directories.extensions));

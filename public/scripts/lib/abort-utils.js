@@ -2,7 +2,7 @@
  * Abort signal helpers — shared infrastructure for any module that needs to
  * compose abort signals or recognize abort / no-tool-call errors.
  *
- * Pure utilities: no I/O, no module state, no `extension_settings` reads.
+ * Pure utilities: no I/O, no module state, no `capabilitySettings` reads.
  *
  * Originally extracted from the orchestrator runtime, where many concurrent
  * tool-call attempts (one per node × retries) each need to honor a caller-

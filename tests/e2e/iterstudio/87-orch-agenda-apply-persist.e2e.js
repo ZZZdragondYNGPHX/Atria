@@ -32,16 +32,16 @@ function normalizeSettings(dataRoot) {
     baseNormalize(dataRoot);
     const sp = settingsJsonPath(dataRoot);
     const s = JSON.parse(readFileSync(sp, 'utf8'));
-    s.extension_settings = s.extension_settings || {};
-    s.extension_settings.orchestrator = s.extension_settings.orchestrator || {};
-    s.extension_settings.orchestrator.enabled = true;
-    s.extension_settings.orchestrator.executionMode = 'agenda';
+    s.capabilitySettings = s.capabilitySettings || {};
+    s.capabilitySettings.orchestrator = s.capabilitySettings.orchestrator || {};
+    s.capabilitySettings.orchestrator.enabled = true;
+    s.capabilitySettings.orchestrator.executionMode = 'agenda';
     writeFileSync(sp, JSON.stringify(s, null, 4));
 }
 
 function readActiveAgendaPreset(dataRoot) {
     const s = JSON.parse(readFileSync(settingsJsonPath(dataRoot), 'utf8'));
-    const ext = s?.extension_settings?.orchestrator;
+    const ext = s?.capabilitySettings?.orchestrator;
     if (!ext) return null;
     const activeId = ext.activePresetIds?.agenda || '';
     const lib = ext.presetLibraries?.agenda || {};
@@ -83,7 +83,7 @@ test.describe('#87 — Orchestrator iter-studio AGENDA mode Apply persists acros
         await expect.poll(async () => {
             return await page.evaluate(() => {
                 const ctx = window.Atria.getContext();
-                const s = ctx.extensionSettings.orchestrator;
+                const s = ctx.capabilitySettings.orchestrator;
                 const activeId = s?.activePresetIds?.agenda || '';
                 return s?.presetLibraries?.agenda?.[activeId]?.planner?.systemPrompt || '';
             });
@@ -100,7 +100,7 @@ test.describe('#87 — Orchestrator iter-studio AGENDA mode Apply persists acros
 
         const inMem = await page.evaluate(() => {
             const ctx = window.Atria.getContext();
-            const s = ctx.extensionSettings.orchestrator;
+            const s = ctx.capabilitySettings.orchestrator;
             const activeId = s?.activePresetIds?.agenda || '';
             return s?.presetLibraries?.agenda?.[activeId]?.planner?.systemPrompt || '';
         });

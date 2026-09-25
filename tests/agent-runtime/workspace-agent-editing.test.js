@@ -1,6 +1,6 @@
 import { test, expect } from '@jest/globals';
-import { createWorkspaceFactoryPreset, workspaceHostProfile } from '../../public/scripts/extensions/orchestrator/workspace/host-presets.js';
-import { removeWorkspaceAgent } from '../../public/scripts/extensions/orchestrator/workspace/agent-editing.js';
+import { createWorkspaceFactoryPreset, workspaceHostProfile } from '../../public/scripts/agents/orchestrator/workspace/host-presets.js';
+import { removeWorkspaceAgent } from '../../public/scripts/agents/orchestrator/workspace/agent-editing.js';
 import { compileWorkspacePreset } from '../../public/scripts/lib/agent-workspace/presets.js';
 
 test.each(['spec', 'agenda', 'director'])('%s deletion cleans references without mutating the saved preset', mode => {

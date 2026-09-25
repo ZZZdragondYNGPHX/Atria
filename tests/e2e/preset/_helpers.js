@@ -26,9 +26,9 @@ export function normalizeIterStudioSettings(dataRoot) {
     s.oai_settings.preset_settings_openai = 'Default';
     s.oai_settings.stream_openai = false;
     for (const key of ['completion_preset_assistant', 'orchestrator', 'memory_graph', 'character_editor_assistant']) {
-        if (s.extension_settings?.[key]) {
-            s.extension_settings[key].requestLlmPresetName = '';
-            s.extension_settings[key].requestApiPresetName = '';
+        if (s.capabilitySettings?.[key]) {
+            s.capabilitySettings[key].requestLlmPresetName = '';
+            s.capabilitySettings[key].requestApiPresetName = '';
         }
     }
     writeFileSync(sp, JSON.stringify(s, null, 4));

@@ -2,7 +2,7 @@ import { translateShellText as t } from '../atria-shell/localization.js';
 import {
     compileExperienceComponentModel,
     renderExperienceComponentModel,
-} from '../extensions/game-runtime/ui/component-model.js';
+} from './experience/ui/component-model.js';
 import {
     flattenComponentTree,
     updateComponentNode,

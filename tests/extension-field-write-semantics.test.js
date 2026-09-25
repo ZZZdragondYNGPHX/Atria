@@ -33,7 +33,7 @@ describe('writeExtensionField request shape', () => {
     test('sends replacePaths matching data.extensions.<key>', async () => {
         // Inline mirror of the writeExtensionField implementation's
         // request-body construction. This isolates the contract from the
-        // side-effects of importing public/scripts/extensions.js into a
+        // side-effects of importing public/scripts/capability-host.js into a
         // Jest node env (UI globals, jQuery, etc.).
         const key = 'my_plugin_state';
         const value = { level: 5 };

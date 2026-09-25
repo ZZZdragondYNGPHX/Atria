@@ -92,95 +92,10 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 All issues in this group are implemented and group regression passed.
 Implementation and validation: [completed work](native-product-ux-completed.md).
 
-# Group 8 — P1 → P2 — Plugin Hard Cut
+# Group 8 — Completed
 
-**Group goal:** 形成 Work Plugins / Global Plugins 的 Atria 插件模型，并在依赖迁移后物理退役其余 SillyTavern extension 产品。
-
-## NUX-042 — Retire the remaining SillyTavern extension/plugin inventory from the Atria product line
-
-**New user-directed hard-cut requirement**
-
-**Current evidence**
-
-`public/scripts/extensions/` still contains a broad upstream-style extension inventory, including examples such as:
-
-- assets / attachments;
-- caption;
-- expressions;
-- gallery;
-- quick-reply;
-- stable-diffusion;
-- token-counter;
-- translate;
-- tts;
-- vectors;
-- connection-manager;
-- completion/character assistant extensions;
-- Orchestrator / Memory implementation modules;
-- Regex;
-- Search Tools;
-- shared extension infrastructure.
-
-Not every directory is safe to delete immediately: some are currently implementation dependencies for retained Atria capabilities. For example, Memory embedding/rerank still relies on Connection Manager today, and Orchestrator/Memory source currently lives under the historical `extensions/` tree even though their product ownership has moved to Agents.
-
-**Required end state**
-
-The Atria product should no longer carry a general SillyTavern built-in-extension catalog.
-
-Retained plugin products are only:
-
-- **Global Plugin: Regex**
-- **Global Plugin: Search Tools**
-- **Work Plugins:** Package-declared Native runtime plugins
-
-Orchestrator and Memory remain retained functionality, but as Agents-owned Atria modules rather than plugin products.
-
-All other extension products are to be retired from Atria.
-
-**Implementation constraint**
-
-“Delete all other plugins” is a **physical cleanup target**, not permission to blindly remove directories before dependency replacement.
-
-For every candidate extension:
-
-1. build an import/runtime dependency graph;
-2. decide whether the functionality is:
-   - obsolete and removable;
-   - still required by an Atria core/domain and therefore must be migrated into that domain;
-   - shared infrastructure that must be renamed/relocated before the old extension shell is removed;
-3. remove its UI/settings/registration/product surface;
-4. migrate any still-required data/config authority;
-5. delete dead source, styles, templates, tests, docs and settings keys;
-6. add residual guards so deleted extensions cannot silently return through upstream merges.
-
-Examples of required dependency-first handling:
-
-- Memory embedding/rerank must stop depending on Connection Manager before Connection Manager can be removed.
-- Orchestrator/Memory implementation may be relocated out of the legacy extension hierarchy only after imports/tests are updated; their functionality is retained under Agents.
-- Game/runtime/shared support code that happens to live under `extensions/` must not be deleted merely because of its directory name; migrate retained core functionality to Atria-owned modules first.
-
-**Acceptance**
-
-- Normal Atria has no Legacy Extension Manager.
-- No general third-party SillyTavern extension install flow is exposed.
-- Regex and Search Tools are the only first-party Global Plugins.
-- Package-declared Work Plugins are isolated from Global Plugins.
-- Orchestrator and Memory appear only under Agents.
-- Every other retired extension has no active registration, settings UI, persisted authority or reachable product route.
-- Dead extension code is physically removed after dependency migration.
-- Architecture/residual tests enforce the retained-plugin allowlist.
-
-**Evidence**
-
-- `public/scripts/atria-shell/utility-workspaces.js`
-- `public/scripts/extensions/`
-- `public/scripts/atria-shell/workspace-host.js`
-- `tests/e2e/atria-shell/07-plugins-settings.e2e.js`
-
----
-
----
-
+Implementation and validation: [completed work](native-product-ux-completed.md).
+Dependency-first retirement: [ownership inventory](native-extension-retirement.md).
 
 # Group 9 — P1 — Search / Localization / Final Closure
 

@@ -28,8 +28,8 @@ async function shell(page, firstRun = false) {
         const data = await response.json();
         const settings = JSON.parse(data.settings.settings);
         settings.firstRun = firstRun;
-        settings.extension_settings ||= {};
-        settings.extension_settings.disabledExtensions = ['stable-diffusion'];
+        settings.atri_capabilities ||= {};
+        settings.atri_capabilities.disabledPlugins = ['stable-diffusion'];
         data.settings.settings = JSON.stringify(settings);
         await route.fulfill({ response, json: data });
     });

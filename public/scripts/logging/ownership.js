@@ -1,7 +1,7 @@
 const ATRIA_MARKERS = Object.freeze([
     '/scripts/logging/',
-    '/scripts/extensions/orchestrator/',
-    '/scripts/extensions/memory-graph/',
+    '/scripts/agents/orchestrator/',
+    '/scripts/agents/memory/',
     '/scripts/world-info/',
     '/scripts/iteration-library/',
     '/scripts/variable-op-log/',

@@ -34,16 +34,16 @@ function normalizeSettings(dataRoot) {
     baseNormalize(dataRoot);
     const sp = settingsJsonPath(dataRoot);
     const s = JSON.parse(readFileSync(sp, 'utf8'));
-    s.extension_settings = s.extension_settings || {};
-    s.extension_settings.orchestrator = s.extension_settings.orchestrator || {};
-    s.extension_settings.orchestrator.enabled = true;
-    s.extension_settings.orchestrator.executionMode = 'spec';
+    s.capabilitySettings = s.capabilitySettings || {};
+    s.capabilitySettings.orchestrator = s.capabilitySettings.orchestrator || {};
+    s.capabilitySettings.orchestrator.enabled = true;
+    s.capabilitySettings.orchestrator.executionMode = 'spec';
     writeFileSync(sp, JSON.stringify(s, null, 4));
 }
 
 function readActiveSpecPreset(dataRoot) {
     const s = JSON.parse(readFileSync(settingsJsonPath(dataRoot), 'utf8'));
-    const ext = s?.extension_settings?.orchestrator;
+    const ext = s?.capabilitySettings?.orchestrator;
     if (!ext) return null;
     const activeId = ext.activePresetIds?.spec || '';
     const lib = ext.presetLibraries?.spec || {};
@@ -89,7 +89,7 @@ test.describe('#88 — Orchestrator iter-studio SPEC mode Apply persists across 
         await expect.poll(async () => {
             return await page.evaluate((presetId) => {
                 const ctx = window.Atria.getContext();
-                const s = ctx.extensionSettings.orchestrator;
+                const s = ctx.capabilitySettings.orchestrator;
                 const activeId = s?.activePresetIds?.spec || '';
                 return s?.presetLibraries?.spec?.[activeId]?.presets?.[presetId]?.systemPrompt || '';
             }, PRESET_ID);
@@ -106,7 +106,7 @@ test.describe('#88 — Orchestrator iter-studio SPEC mode Apply persists across 
 
         const inMem = await page.evaluate((presetId) => {
             const ctx = window.Atria.getContext();
-            const s = ctx.extensionSettings.orchestrator;
+            const s = ctx.capabilitySettings.orchestrator;
             const activeId = s?.activePresetIds?.spec || '';
             return s?.presetLibraries?.spec?.[activeId]?.presets?.[presetId]?.systemPrompt || '';
         }, PRESET_ID);

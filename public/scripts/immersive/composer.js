@@ -53,16 +53,6 @@ export function createImmersiveComposer({
     });
     toolsButton.setAttribute('data-i18n', '[title]More tools;[aria-label]More tools');
 
-    const extensionsButton = createButton(documentRef, {
-        id: 'atriaImmersiveExtensions',
-        title: translate('Extensions'),
-        icon: 'fa-solid fa-magic-wand-sparkles',
-    });
-    extensionsButton.setAttribute('data-i18n', '[title]Extensions;[aria-label]Extensions');
-    // The native extension runtime decides when this button is useful and
-    // binds it to the existing #extensionsMenu. Do not duplicate that menu.
-    extensionsButton.hidden = true;
-
     const status = documentRef.createElement('span');
     status.id = 'atriaImmersiveGenerationStatus';
     status.className = 'atria-immersive-generation-status';
@@ -82,7 +72,7 @@ export function createImmersiveComposer({
     });
     stopButton.setAttribute('data-i18n', '[title]Stop response;[aria-label]Stop response');
 
-    root.append(toolsButton, extensionsButton, status, sendButton, stopButton);
+    root.append(toolsButton, status, sendButton, stopButton);
     formItems.append(root);
 
     const interrupt = documentRef.createElement('div');

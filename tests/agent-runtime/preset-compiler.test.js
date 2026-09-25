@@ -1,5 +1,5 @@
 import { test, expect } from '@jest/globals';
-import { compilePreset } from '../../public/scripts/extensions/orchestrator/engine-v2/preset-compiler.js';
+import { compilePreset } from '../../public/scripts/agents/orchestrator/engine-v2/preset-compiler.js';
 import { createPolicyController, initialPolicyState } from '../../public/scripts/lib/orchestration-engine/index.js';
 
 test('legacy parallel stages compile without mutating preset and repeated IDs retain slots', () => {

@@ -189,7 +189,7 @@ async function mountAgentsWorkspace({ document: documentRef, slot, descriptor, h
         return mountAgentsHub({ document: documentRef, slot, host });
     }
 
-    const panel = await import('../extensions/orchestrator/workspace/panel.js');
+    const panel = await import('../agents/orchestrator/workspace/panel.js');
     if (!isCurrent()) return {};
     const root = panel.openWorkspace(descriptor.section, {
         container: slot,

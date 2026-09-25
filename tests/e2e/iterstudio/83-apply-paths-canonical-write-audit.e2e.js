@@ -29,10 +29,10 @@ function normalizeSettings(dataRoot) {
     baseNormalize(dataRoot);
     const sp = resolve(dataRoot, 'default-user', 'settings.json');
     const s = JSON.parse(readFileSync(sp, 'utf8'));
-    s.extension_settings = s.extension_settings || {};
-    s.extension_settings.orchestrator = s.extension_settings.orchestrator || {};
-    s.extension_settings.orchestrator.enabled = true;
-    s.extension_settings.orchestrator.executionMode = 'director';
+    s.capabilitySettings = s.capabilitySettings || {};
+    s.capabilitySettings.orchestrator = s.capabilitySettings.orchestrator || {};
+    s.capabilitySettings.orchestrator.enabled = true;
+    s.capabilitySettings.orchestrator.executionMode = 'director';
     writeFileSync(sp, JSON.stringify(s, null, 4));
 }
 
@@ -157,7 +157,7 @@ test.describe('#83 — All 4 iter-studio Apply paths route through canonical wri
         // settings.directorProfile is NOT a mirror of the new value.
         const after = await page.evaluate(() => {
             const ctx = window.Atria.getContext();
-            const s = ctx.extensionSettings.orchestrator;
+            const s = ctx.capabilitySettings.orchestrator;
             const activeId = s?.activePresetIds?.director || '';
             return {
                 directorActiveSlot: s?.presetLibraries?.director?.[activeId]?.mainAgent?.systemPrompt || '',

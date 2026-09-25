@@ -19,7 +19,7 @@ import {
     buildToolCatalog,
     isMgSchemaControlCall,
     normalizeToolCallToEdit,
-} from '../../public/scripts/extensions/memory-graph/schema-iteration/tools.js';
+} from '../../public/scripts/agents/memory/schema-iteration/tools.js';
 
 describe('MG schema — buildToolCatalog', () => {
     test('returns TOOL_DEFS plus the two reset control tools', () => {

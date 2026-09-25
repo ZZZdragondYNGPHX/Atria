@@ -1,8 +1,8 @@
-import { getCurrentRun as getRuntimePanelState } from '../../public/scripts/extensions/orchestrator/run-state/store.js';
+import { getCurrentRun as getRuntimePanelState } from '../../public/scripts/agents/orchestrator/run-state/store.js';
 // tests/orchestrator/custom-tool-runtime-loop.test.js
 import { describe, test, expect, beforeEach } from '@jest/globals';
-import { runLoopOrchestration } from '../../public/scripts/extensions/orchestrator/loop-runtime.js';
-import { __getExtensionRegistryForTest } from '../../public/scripts/extensions/orchestrator/register-custom-tool.js';
+import { runLoopOrchestration } from '../../public/scripts/agents/orchestrator/loop-runtime.js';
+import { __getExtensionRegistryForTest } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
 
 function makeProfile(customTools) {
     return {
@@ -59,7 +59,7 @@ describe('loop runtime Layer-3 dispatch', () => {
     test('Layer-3 tool name overrides Layer-2 when both registered', async () => {
         // Layer-2 entry that records via a shared object.
         const layer2Trace = { calls: [] };
-        const { registerOrchestrationTool } = await import('../../public/scripts/extensions/orchestrator/register-custom-tool.js');
+        const { registerOrchestrationTool } = await import('../../public/scripts/agents/orchestrator/register-custom-tool.js');
         registerOrchestrationTool({
             name: 'dup_tool', description: 'd', parameters: {}, mode: 'read',
             exec: async () => { layer2Trace.calls.push('layer2'); return { from: 'layer2' }; },

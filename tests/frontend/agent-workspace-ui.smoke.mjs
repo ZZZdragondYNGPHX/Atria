@@ -30,9 +30,9 @@ try {
     await page.evaluate(async () => {
         // Host constants only; persistence and Memory ports below are explicit fixtures.
         window.Atria = { getContext: () => ({ constants: { promptRoles: { SYSTEM: 0, USER: 1 }, wiPosition: {} } }) };
-        const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js');
-        const { createPresetAuthoring } = await import('/scripts/extensions/orchestrator/workspace/authoring.js');
-        const { createMemoryWorkspace } = await import('/scripts/extensions/orchestrator/workspace/memory.js');
+        const panel = await import('/scripts/agents/orchestrator/workspace/panel.js');
+        const { createPresetAuthoring } = await import('/scripts/agents/orchestrator/workspace/authoring.js');
+        const { createMemoryWorkspace } = await import('/scripts/agents/orchestrator/workspace/memory.js');
         window.settings = JSON.parse(localStorage.getItem('settings') || '{}');
         window.scope = { character: 'test-character', conversation: 'test-chat' };
         window.memoryLoads = 0;
@@ -62,7 +62,7 @@ try {
             },
             facts: [],
         };
-        const getContext = () => ({ getExtensionApi: () => ({ getWorkspacePorts: () => ({
+        const getContext = () => ({ getCapabilityApi: () => ({ getWorkspacePorts: () => ({
             getStatus: () => ({ ...window.memoryControls }),
             setControl: async (name, value) => ({ ...window.memoryControls, [name]: (window.memoryControls[name] = value) }),
             load: async () => { window.memoryLoads++; return memorySnapshot; },
@@ -187,7 +187,7 @@ try {
     await workspace.locator('.atria-workspace-mobile-nav').getByRole('button', { name: 'Orchestration', exact: true }).focus();
     await page.keyboard.press('End'); assert.equal(await workspace.locator('.atria-workspace-mobile-nav').getByRole('button', { name: 'Diagnostics', exact: true }).getAttribute('aria-current'), 'page');
     await page.evaluate(async () => {
-        const store = await import('/scripts/extensions/orchestrator/run-state/store.js');
+        const store = await import('/scripts/agents/orchestrator/run-state/store.js');
         window.stops = 0; window.runId = store.startRun({ mode: 'loop', chatKey: 'test-chat', stopFn: () => window.stops++ });
         const event = (type, version, extra = {}) => store.recordRuntimeEvent({ runId: window.runId, event: {
             eventId: `event-${version}`, runId: 'engine-live', type, version, generation: 0, agentId: 'agent:owner', ...extra,
@@ -233,7 +233,7 @@ try {
     await memoryInspector.getByRole('heading', { name: 'Memory One', exact: true }).waitFor();
     await expectText(memoryInspector, 'step-1');
     await page.evaluate(async () => {
-        const store = await import('/scripts/extensions/orchestrator/run-state/store.js');
+        const store = await import('/scripts/agents/orchestrator/run-state/store.js');
         store.recordRuntimeEvent({runId: window.runId, event:{eventId:'later-recall',runId:'engine-live',type:'memory.recall.completed',version:3,generation:0,agentId:'agent:owner',stepId:'step-2',references:[]}});
     });
     await memoryInspector.getByRole('button', { name: 'Close inspector', exact: true }).click();
@@ -242,11 +242,11 @@ try {
     assert((await page.evaluate(() => window.memoryLoads)) >= 1);
     await workspace.locator('.atria-workspace-mobile-nav').getByRole('button', { name: 'Diagnostics', exact: true }).click();
     await workspace.getByRole('button', { name: 'Stop Run', exact: true }).click();
-    await page.evaluate(async () => { const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.openWorkspace('Diagnostics'); });
+    await page.evaluate(async () => { const panel = await import('/scripts/agents/orchestrator/workspace/panel.js'); panel.openWorkspace('Diagnostics'); });
     assert.equal(await workspace.getByRole('button', { name: 'Stopping…', exact: true }).isDisabled(), true);
     assert.equal(await page.evaluate(() => window.stops), 1);
     const trace = await page.evaluate(async () => {
-        const store = await import('/scripts/extensions/orchestrator/run-state/store.js'); store.finishRun({runId:window.runId,status:'aborted'});
+        const store = await import('/scripts/agents/orchestrator/run-state/store.js'); store.finishRun({runId:window.runId,status:'aborted'});
         return store.getCurrentRun().runtime.events.map(event => JSON.stringify(event)).join('\n');
     });
     await workspace.getByLabel('Replay metadata trace').setInputFiles({name:'trace.jsonl',mimeType:'application/x-ndjson',buffer:Buffer.from(trace)});
@@ -258,7 +258,7 @@ try {
     await workspace.locator('.atria-workspace-mobile-nav').getByRole('button', { name: 'Memory', exact: true }).click();
     await workspace.getByRole('heading', { name: 'Memory is available', exact: true }).waitFor();
     await workspace.getByRole('button', {name:'Close',exact:true}).click();
-    await page.evaluate(async () => {const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js'); panel.destroyWorkspace(); panel.destroyWorkspace(); panel.openWorkspace('Orchestration');});
+    await page.evaluate(async () => {const panel = await import('/scripts/agents/orchestrator/workspace/panel.js'); panel.destroyWorkspace(); panel.destroyWorkspace(); panel.openWorkspace('Orchestration');});
     assert.equal(await page.locator('#agent-memory-workspace').count(), 1);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({path:resolve(root,`../.git/workspace-authoring-${channel}-mobile.png`)});
@@ -269,12 +269,12 @@ try {
     await page.evaluate(async () => {
         const { largeMemory } = await import('/__workspace_large.js');
         const { default: cytoscape } = await import('/__workspace_cytoscape.js');
-        const { computeInspector } = await import('/scripts/extensions/memory-graph/inspector-compute.js');
-        const { createMemoryWorkspace } = await import('/scripts/extensions/orchestrator/workspace/memory.js');
-        const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js');
+        const { computeInspector } = await import('/scripts/agents/memory/inspector-compute.js');
+        const { createMemoryWorkspace } = await import('/scripts/agents/orchestrator/workspace/memory.js');
+        const panel = await import('/scripts/agents/orchestrator/workspace/panel.js');
         const snapshot = largeMemory(1000); window.memoryValid = true;
         snapshot.assertCurrent = () => { if (!window.memoryValid) throw new Error('fixture scope changed'); };
-        const context = { getExtensionApi: () => ({ getWorkspacePorts: () => ({
+        const context = { getCapabilityApi: () => ({ getWorkspacePorts: () => ({
             getStatus: () => ({ memoryOsEnabled:true, enabled:true, recallEnabled:true, autoExtractionEnabled:true, autoCompressionEnabled:true, recallMethod:'llm', updateEvery:1 }),
             setControl: async () => {},
             load: async () => snapshot,
@@ -299,7 +299,7 @@ try {
     await page.waitForFunction(() => window.memoryGraph.destroyed());
     // Exercise the actual locale table: dynamic labels, attributes and responsive grids.
     await page.evaluate(async () => {
-        const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js');
+        const panel = await import('/scripts/agents/orchestrator/workspace/panel.js');
         panel.destroyWorkspace();
     });
     await page.reload();
@@ -310,9 +310,9 @@ try {
             addLocaleData: (locale, data) => { locales[locale] = { ...locales[locale], ...data }; },
             translate: text => locales['zh-cn']?.[text] || ({ Name: '名称', Duplicate: '复制', Close: '关闭' }[text]) || text,
         }) };
-        const { registerLocaleData } = await import('/scripts/extensions/orchestrator/i18n.js'); registerLocaleData();
-        const panel = await import('/scripts/extensions/orchestrator/workspace/panel.js');
-        const { createPresetAuthoring } = await import('/scripts/extensions/orchestrator/workspace/authoring.js');
+        const { registerLocaleData } = await import('/scripts/agents/orchestrator/i18n.js'); registerLocaleData();
+        const panel = await import('/scripts/agents/orchestrator/workspace/panel.js');
+        const { createPresetAuthoring } = await import('/scripts/agents/orchestrator/workspace/authoring.js');
         window.settings = {};
         panel.configureWorkspace({ renderPresets: createPresetAuthoring({ getSettings: () => window.settings, save: () => {}, getScope: () => ({}) }) });
         panel.openWorkspace('Orchestration');

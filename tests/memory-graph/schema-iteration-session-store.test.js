@@ -1,7 +1,7 @@
 // tests/memory-graph/schema-iteration-session-store.test.js
 //
 // Backend coverage for the scope-aware MG schema-iteration session store:
-//   - global scope → extension_settings.memory_graph.atri_mg_schema_iter_global_sessions
+//   - global scope → capabilitySettings.memory_graph.atri_mg_schema_iter_global_sessions
 //   - character scope → sidecar under MG_SIDECAR_NAMESPACE on the avatar
 //
 // Also round-trips the new message schema fields (id / at / toolCalls / edits /
@@ -18,7 +18,7 @@ import {
     normalizeMessageShape,
     MG_SIDECAR_NAMESPACE,
     MG_GLOBAL_BUCKET_KEY,
-} from '../../public/scripts/extensions/memory-graph/schema-iteration/session-store.js';
+} from '../../public/scripts/agents/memory/schema-iteration/session-store.js';
 
 function makeStubs({ scope = 'global', avatar = null, initialSidecar = null } = {}) {
     const sidecars = {};
@@ -50,7 +50,7 @@ function makeStubs({ scope = 'global', avatar = null, initialSidecar = null } = 
 }
 
 describe('createMgSchemaSessionStore — global scope uses settings, character scope uses sidecar', () => {
-    test('global scope save writes into extension_settings.memory_graph.atri_mg_schema_iter_global_sessions', async () => {
+    test('global scope save writes into capabilitySettings.memory_graph.atri_mg_schema_iter_global_sessions', async () => {
         const stubs = makeStubs({ scope: 'global' });
         const store = createMgSchemaSessionStore(stubs);
         await store.save({ id: 's1', title: 'Global', updatedAt: 1 });

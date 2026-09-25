@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals';
-import { createContentPayloadCache } from '../../../public/scripts/extensions/orchestrator/director-content-payload.js';
+import { createContentPayloadCache } from '../../../public/scripts/agents/orchestrator/director-content-payload.js';
 
 describe('content-payload cache', () => {
     test('starts empty; populate and read; clear', () => {

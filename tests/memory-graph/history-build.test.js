@@ -1,7 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
-import { createSourceLifecycle } from '../../public/scripts/extensions/memory-graph/source-lifecycle.js';
-import { createHistoryBuilder, historyFloors, historyHash, rebuildSeed } from '../../public/scripts/extensions/memory-graph/history-build.js';
-import { projectTemporalGraph } from '../../public/scripts/extensions/memory-graph/temporal-graph.js';
+import { createSourceLifecycle } from '../../public/scripts/agents/memory/source-lifecycle.js';
+import { createHistoryBuilder, historyFloors, historyHash, rebuildSeed } from '../../public/scripts/agents/memory/history-build.js';
+import { projectTemporalGraph } from '../../public/scripts/agents/memory/temporal-graph.js';
 
 function fixture(count = 8) {
     let state = null; let serial = 0; let calls = 0;

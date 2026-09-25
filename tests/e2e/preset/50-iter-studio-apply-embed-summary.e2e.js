@@ -59,10 +59,10 @@ function normalizeSettings(dataRoot) {
     normalizeIterStudioSettings(dataRoot);
     const sp = resolve(dataRoot, 'default-user', 'settings.json');
     const s = JSON.parse(readFileSync(sp, 'utf8'));
-    s.extension_settings = s.extension_settings || {};
-    s.extension_settings.orchestrator = s.extension_settings.orchestrator || {};
-    s.extension_settings.orchestrator.enabled = true;
-    s.extension_settings.orchestrator.executionMode = 'loop';
+    s.capabilitySettings = s.capabilitySettings || {};
+    s.capabilitySettings.orchestrator = s.capabilitySettings.orchestrator || {};
+    s.capabilitySettings.orchestrator.enabled = true;
+    s.capabilitySettings.orchestrator.executionMode = 'loop';
     writeFileSync(sp, JSON.stringify(s, null, 4));
 }
 

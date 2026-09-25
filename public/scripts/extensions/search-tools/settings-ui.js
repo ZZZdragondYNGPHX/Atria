@@ -1,4 +1,4 @@
-import { renderPresetHelpButton } from '../preset-help.js';
+import { renderRuntimeHelpButton } from '../../lib/runtime-help.js';
 
 export function createSearchToolsSettingsUi(deps) {
     const {
@@ -146,7 +146,7 @@ export function createSearchToolsSettingsUi(deps) {
             </label>
         <label for="search_tools_agent_api_preset_name">${escapeHtml(i18n('Agent API preset (Connection profile)'))}</label>
         <select id="search_tools_agent_api_preset_name" class="text_pole"></select>
-        <label for="search_tools_agent_preset_name">${escapeHtml(i18n('Agent preset (params + prompt)'))}${renderPresetHelpButton({ kind: 'agent' })}</label>
+        <label for="search_tools_agent_preset_name">${escapeHtml(i18n('Agent preset (params + prompt)'))}${renderRuntimeHelpButton({ kind: 'agent' })}</label>
         <select id="search_tools_agent_preset_name" class="text_pole"></select>
         <label class="checkbox_label">
             <input id="search_tools_include_world_info_with_preset" type="checkbox" />

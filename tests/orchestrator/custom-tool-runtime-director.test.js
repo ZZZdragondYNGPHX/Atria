@@ -1,4 +1,4 @@
-import { getCurrentRun as getRuntimePanelState, startRun as startRuntimePanel, clearCurrentRun as clearRuntimePanel } from '../../public/scripts/extensions/orchestrator/run-state/store.js';
+import { getCurrentRun as getRuntimePanelState, startRun as startRuntimePanel, clearCurrentRun as clearRuntimePanel } from '../../public/scripts/agents/orchestrator/run-state/store.js';
 // tests/orchestrator/custom-tool-runtime-director.test.js
 //
 // Verifies director runtime constructs the per-run customToolRegistry at
@@ -6,10 +6,10 @@ import { getCurrentRun as getRuntimePanelState, startRun as startRuntimePanel, c
 // executeLoopTool ctx and the sub-agent dispatcher's per-call ctx.
 
 import { describe, test, expect, jest } from '@jest/globals';
-import { runMainAgentLoop } from '../../public/scripts/extensions/orchestrator/director-runtime.js';
-import { createSubagentDispatcher } from '../../public/scripts/extensions/orchestrator/director-tools.js';
+import { runMainAgentLoop } from '../../public/scripts/agents/orchestrator/director-runtime.js';
+import { createSubagentDispatcher } from '../../public/scripts/agents/orchestrator/director-tools.js';
 import { createMessageEditorHandle } from '../../public/scripts/message-takeover.js';
-import { buildPerRunCustomToolRegistry } from '../../public/scripts/extensions/orchestrator/per-run-custom-tools.js';
+import { buildPerRunCustomToolRegistry } from '../../public/scripts/agents/orchestrator/per-run-custom-tools.js';
 
 function makeHandle() {
     const chat = [{ mes: '', extra: { reasoning: '' }, is_user: false }];

@@ -31,7 +31,7 @@ let ORCH_TOOL_DISPLAY;
 
 beforeAll(async () => {
     ({ ORCH_TOOL_DISPLAY } = await import(
-        '../../public/scripts/extensions/orchestrator/iter-studio/tool-display.js'
+        '../../public/scripts/agents/orchestrator/iter-studio/tool-display.js'
     ));
 });
 

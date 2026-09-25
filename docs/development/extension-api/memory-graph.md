@@ -4,8 +4,8 @@
 >
 > Entry points:
 > - **Recommended:** `getExtensionApi('memory-graph').openSession(context)` from `public/scripts/extensions.js` (session facade)
-> - Lower-level: `getMemoryGraphReadApi(store, context)` from `public/scripts/extensions/memory-graph/read-api.js` (read factory)
-> - Lower-level: `getMemoryGraphWriteApi(store, context, options?)` from `public/scripts/extensions/memory-graph/write-api.js` (write factory; `options.onCommit` flushes mutations to floor-state)
+> - Lower-level: `getMemoryGraphReadApi(store, context)` from `public/scripts/agents/memory/read-api.js` (read factory)
+> - Lower-level: `getMemoryGraphWriteApi(store, context, options?)` from `public/scripts/agents/memory/write-api.js` (write factory; `options.onCommit` flushes mutations to floor-state)
 
 ## Session API (recommended entry)
 
@@ -228,7 +228,7 @@ const brief = session.getNodeBrief(candidates[0].id);
 If you already hold a store reference (internal callers only), you can construct a read factory directly:
 
 ```js
-import { getMemoryGraphReadApi } from '/scripts/extensions/memory-graph/read-api.js';
+import { getMemoryGraphReadApi } from '/scripts/agents/memory/read-api.js';
 
 const api = getMemoryGraphReadApi(store, context);
 const candidates = api.listVisibleCandidates();
@@ -872,7 +872,7 @@ The write API is the Layer-1 entry for third-party agents that want to edit the 
 ### Factory: getMemoryGraphWriteApi(store, context, options?)
 
 ```js
-import { getMemoryGraphWriteApi } from '/scripts/extensions/memory-graph/write-api.js';
+import { getMemoryGraphWriteApi } from '/scripts/agents/memory/write-api.js';
 
 const writeApi = getMemoryGraphWriteApi(store, context);
 // Optional: pass an onCommit hook to persist after each successful mutation —
@@ -1071,7 +1071,7 @@ if (groups.length > 0) {
 
 ## See Also
 
-- Native recall path: `public/scripts/extensions/memory-graph/main.js` (`chooseRecallRoute`, `collectRootCandidates`, `expandRouteCandidates`)
+- Native recall path: `public/scripts/agents/memory/main.js` (`chooseRecallRoute`, `collectRootCandidates`, `expandRouteCandidates`)
 - Companion: the orchestrator opens a session via `getExtensionApi('memory-graph').openSession(context)` and stashes the resulting session on `__memoryGraphSession` for its `memory_*` loop tools — see [Director runtime](/features/orchestrator/director).
 - Related extension API: [Plugin Integration](/development/extension-api/plugin-integration) for the broader extension API registry that publishes `'memory-graph'` alongside other extension entry points.
 - To register custom orchestration tools (memory-graph itself does this for its read and write tools), see [Orchestrator Tools API](./orchestrator-tools.md).

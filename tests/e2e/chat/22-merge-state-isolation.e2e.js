@@ -73,7 +73,7 @@ test.describe('#22 — merge does not carry over the source memory-graph sidecar
         // Force the `memory_graph__floor_log` sidecar to exist on disk
         // for chat A. We go through the real `createFloorState` public
         // API — the same path the memory-graph extension uses (see
-        // public/scripts/extensions/memory-graph/persistence.js line
+        // public/scripts/agents/memory/persistence.js line
         // 98). Calling `.patch` with a single add-op writes a real
         // commit to the chat-state log namespace, which the server
         // persists as `<chatA>.atria-state.memory_graph__floor_log.json`.

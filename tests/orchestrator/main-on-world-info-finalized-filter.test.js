@@ -17,7 +17,7 @@ import { describe, test, expect } from '@jest/globals';
 import {
     applyProfileWorldInfoFilter,
     buildActivatedEntryKeysFromPayload,
-} from '../../public/scripts/extensions/orchestrator/lorebook-filter.js';
+} from '../../public/scripts/agents/orchestrator/lorebook-filter.js';
 
 describe('buildActivatedEntryKeysFromPayload (Task 3 bug fix)', () => {
     test('legacy path: payload.allActivatedEntries undefined → falls back to worldInfoResolution.activatedEntries', () => {

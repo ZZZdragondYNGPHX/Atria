@@ -3,13 +3,13 @@ import {
     registerMemoryGraphOrchestrationTools,
     unregisterMemoryGraphOrchestrationTools,
     MEMORY_TOOL_NAMES,
-} from '../../public/scripts/extensions/memory-graph/orchestrator-tools.js';
-import { __getExtensionRegistryForTest } from '../../public/scripts/extensions/orchestrator/register-custom-tool.js';
+} from '../../public/scripts/agents/memory/orchestrator-tools.js';
+import { __getExtensionRegistryForTest } from '../../public/scripts/agents/orchestrator/register-custom-tool.js';
 
 describe('memory-graph orchestrator tools', () => {
     test('shared recall reads guarded context and never consumes private scratch', async () => {
         await registerMemoryGraphOrchestrationTools();
-        const { __setSessionForTest } = await import('../../public/scripts/extensions/memory-graph/orchestrator-tools.js');
+        const { __setSessionForTest } = await import('../../public/scripts/agents/memory/orchestrator-tools.js');
         const ctx = { scratch: 'Private hypothesis, not evidence' };
         const assertCurrent = jest.fn();
         const recallMemory = jest.fn(async () => ({ text: 'Shared evidence', selected: ['state:location'], tokenCount: 20, budget: 100, assertCurrent }));
@@ -107,7 +107,7 @@ describe('memory-graph orchestrator tools', () => {
         expect(typeof entry?.exec).toBe('function');
         // Stub the session pre-cache via the WeakMap helper exported for tests.
         const ctx = {};
-        const { __setSessionForTest } = await import('../../public/scripts/extensions/memory-graph/orchestrator-tools.js');
+        const { __setSessionForTest } = await import('../../public/scripts/agents/memory/orchestrator-tools.js');
         __setSessionForTest(ctx, {
             listVisibleCandidates: () => [
                 { id: 'n1', type: 'event', level: 'episodic', title: 'hi', seqTo: 1, semanticDepth: 0 },

@@ -1,6 +1,6 @@
 import { test, expect } from '@jest/globals';
 import { clearNativePresetNames, normalizeNativeAgentModel } from '../../public/scripts/native/agent-settings.js';
-import { createWorkspaceFactoryPreset, restoreNativeWorkspacePresets } from '../../public/scripts/extensions/orchestrator/workspace/host-presets.js';
+import { createWorkspaceFactoryPreset, restoreNativeWorkspacePresets } from '../../public/scripts/agents/orchestrator/workspace/host-presets.js';
 import { emptyPresetLibrary, updatePresetLibrary, exportWorkspacePreset, importWorkspacePreset } from '../../public/scripts/lib/agent-workspace/presets.js';
 
 const ref = { scope: 'player', runtimeRouteId: 'route_' + 'a'.repeat(32) };

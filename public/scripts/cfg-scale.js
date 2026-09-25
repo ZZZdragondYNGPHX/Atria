@@ -7,7 +7,7 @@ import {
     saveSettingsDebounced,
     animation_duration,
 } from '../script.js';
-import { extension_settings, saveMetadataDebounced } from './extensions.js';
+import { capabilitySettings, saveMetadataDebounced } from './capability-host.js';
 import { selected_group } from './group-chats.js';
 import { getCharaFilename, delay } from './utils.js';
 import { power_user } from './power-user.js';
@@ -57,12 +57,12 @@ function setCharCfg(tempValue, setting) {
     let existingCharaCfgIndex;
     let existingCharaCfg;
 
-    if (extension_settings.cfg.chara) {
-        existingCharaCfgIndex = extension_settings.cfg.chara.findIndex((e) => e.name === avatarName);
-        existingCharaCfg = extension_settings.cfg.chara[existingCharaCfgIndex];
+    if (capabilitySettings.cfg.chara) {
+        existingCharaCfgIndex = capabilitySettings.cfg.chara.findIndex((e) => e.name === avatarName);
+        existingCharaCfg = capabilitySettings.cfg.chara[existingCharaCfgIndex];
     }
 
-    if (extension_settings.cfg.chara && existingCharaCfg) {
+    if (capabilitySettings.cfg.chara && existingCharaCfg) {
         const tempAssign = Object.assign(existingCharaCfg, tempCharaCfg);
 
         // If both values are default, remove the entry
@@ -70,14 +70,14 @@ function setCharCfg(tempValue, setting) {
             (tempAssign.guidance_scale ?? 1.00) === 1.00 &&
             (tempAssign.negative_prompt?.length ?? 0) === 0 &&
             (tempAssign.positive_prompt?.length ?? 0) === 0) {
-            extension_settings.cfg.chara.splice(existingCharaCfgIndex, 1);
+            capabilitySettings.cfg.chara.splice(existingCharaCfgIndex, 1);
         }
     } else if (avatarName && tempValue.length > 0) {
-        if (!extension_settings.cfg.chara) {
-            extension_settings.cfg.chara = [];
+        if (!capabilitySettings.cfg.chara) {
+            capabilitySettings.cfg.chara = [];
         }
 
-        extension_settings.cfg.chara.push(tempCharaCfg);
+        capabilitySettings.cfg.chara.push(tempCharaCfg);
     } else {
         console.debug('Character CFG error: No avatar name key could be found.');
 
@@ -208,7 +208,7 @@ function loadSettings() {
 
     // Set character CFG if it exists
     if (!selected_group) {
-        const charaCfg = extension_settings.cfg.chara.find((e) => e.name === getCharaFilename());
+        const charaCfg = capabilitySettings.cfg.chara.find((e) => e.name === getCharaFilename());
         $('#chara_cfg_guidance_scale').val(charaCfg?.guidance_scale ?? 1.00);
         $('#chara_cfg_guidance_scale_counter').val(charaCfg?.guidance_scale?.toFixed(2) ?? 1.0.toFixed(2));
         $('#chara_cfg_negative_prompt').val(charaCfg?.negative_prompt ?? '');
@@ -219,17 +219,17 @@ function loadSettings() {
 // Load initial extension settings
 async function initialLoadSettings() {
     // Create the settings if they don't exist
-    extension_settings[extensionName] = extension_settings[extensionName] || {};
-    if (Object.keys(extension_settings[extensionName]).length === 0) {
-        Object.assign(extension_settings[extensionName], defaultSettings);
+    capabilitySettings[extensionName] = capabilitySettings[extensionName] || {};
+    if (Object.keys(capabilitySettings[extensionName]).length === 0) {
+        Object.assign(capabilitySettings[extensionName], defaultSettings);
         saveSettingsDebounced();
     }
 
     // Set global CFG values on load
-    $('#global_cfg_guidance_scale').val(extension_settings.cfg.global.guidance_scale);
-    $('#global_cfg_guidance_scale_counter').val(extension_settings.cfg.global.guidance_scale.toFixed(2));
-    $('#global_cfg_negative_prompt').val(extension_settings.cfg.global.negative_prompt);
-    $('#global_cfg_positive_prompt').val(extension_settings.cfg.global.positive_prompt);
+    $('#global_cfg_guidance_scale').val(capabilitySettings.cfg.global.guidance_scale);
+    $('#global_cfg_guidance_scale_counter').val(capabilitySettings.cfg.global.guidance_scale.toFixed(2));
+    $('#global_cfg_negative_prompt').val(capabilitySettings.cfg.global.negative_prompt);
+    $('#global_cfg_positive_prompt').val(capabilitySettings.cfg.global.positive_prompt);
 }
 
 function migrateSettings() {
@@ -237,13 +237,13 @@ function migrateSettings() {
     let performMetaSave = false;
 
     if (power_user.guidance_scale) {
-        extension_settings.cfg.global.guidance_scale = power_user.guidance_scale;
+        capabilitySettings.cfg.global.guidance_scale = power_user.guidance_scale;
         delete power_user.guidance_scale;
         performSettingsSave = true;
     }
 
     if (power_user.negative_prompt) {
-        extension_settings.cfg.global.negative_prompt = power_user.negative_prompt;
+        capabilitySettings.cfg.global.negative_prompt = power_user.negative_prompt;
         delete power_user.negative_prompt;
         performSettingsSave = true;
     }
@@ -319,18 +319,18 @@ export function initCfg() {
     });
 
     $('#global_cfg_guidance_scale').on('input', function () {
-        extension_settings.cfg.global.guidance_scale = Number($(this).val());
-        $('#global_cfg_guidance_scale_counter').val(extension_settings.cfg.global.guidance_scale.toFixed(2));
+        capabilitySettings.cfg.global.guidance_scale = Number($(this).val());
+        $('#global_cfg_guidance_scale_counter').val(capabilitySettings.cfg.global.guidance_scale.toFixed(2));
         saveSettingsDebounced();
     });
 
     $('#global_cfg_negative_prompt').on('input', function () {
-        extension_settings.cfg.global.negative_prompt = $(this).val();
+        capabilitySettings.cfg.global.negative_prompt = $(this).val();
         saveSettingsDebounced();
     });
 
     $('#global_cfg_positive_prompt').on('input', function () {
-        extension_settings.cfg.global.positive_prompt = $(this).val();
+        capabilitySettings.cfg.global.positive_prompt = $(this).val();
         saveSettingsDebounced();
     });
 
@@ -368,7 +368,7 @@ export function initCfg() {
 
     initialLoadSettings();
 
-    if (extension_settings.cfg) {
+    if (capabilitySettings.cfg) {
         migrateSettings();
     }
 
@@ -399,12 +399,12 @@ export const metadataKeys = {
 // Gets the CFG guidance scale
 // If the guidance scale is 1, ignore the CFG prompt(s) since it won't be used anyways
 export function getGuidanceScale() {
-    if (!extension_settings.cfg) {
+    if (!capabilitySettings.cfg) {
         console.warn('CFG extension is not enabled. Skipping CFG guidance.');
         return;
     }
 
-    const charaCfg = extension_settings.cfg.chara?.find((e) => e.name === getCharaFilename(this_chid));
+    const charaCfg = capabilitySettings.cfg.chara?.find((e) => e.name === getCharaFilename(this_chid));
     const chatGuidanceScale = chat_metadata[metadataKeys.guidance_scale];
     const groupchatCharOverride = chat_metadata[metadataKeys.groupchat_individual_chars] ?? false;
 
@@ -422,10 +422,10 @@ export function getGuidanceScale() {
         };
     }
 
-    if (extension_settings.cfg.global && extension_settings.cfg.global?.guidance_scale !== 1) {
+    if (capabilitySettings.cfg.global && capabilitySettings.cfg.global?.guidance_scale !== 1) {
         return {
             type: cfgType.global,
-            value: extension_settings.cfg.global.guidance_scale,
+            value: capabilitySettings.cfg.global.guidance_scale,
         };
     }
 }
@@ -468,7 +468,7 @@ export function getCfgPrompt(guidanceScale, isNegative, quiet = false) {
         );
     }
 
-    const charaCfg = extension_settings.cfg.chara?.find((e) => e.name === getCharaFilename(this_chid));
+    const charaCfg = capabilitySettings.cfg.chara?.find((e) => e.name === getCharaFilename(this_chid));
     if (guidanceScale.type === cfgType.chara || cfgPromptCombine.includes(cfgType.chara)) {
         splitCfgPrompt.unshift(
             substituteParams(
@@ -480,7 +480,7 @@ export function getCfgPrompt(guidanceScale, isNegative, quiet = false) {
     if (guidanceScale.type === cfgType.global || cfgPromptCombine.includes(cfgType.global)) {
         splitCfgPrompt.unshift(
             substituteParams(
-                isNegative ? extension_settings.cfg.global.negative_prompt : extension_settings.cfg.global.positive_prompt,
+                isNegative ? capabilitySettings.cfg.global.negative_prompt : capabilitySettings.cfg.global.positive_prompt,
             ),
         );
     }

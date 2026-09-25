@@ -33,7 +33,7 @@
  * Pre-ProposalBus history:
  *   This spec originally called runSkillIterStudioTool /
  *   commitApprovedSkillProposal through
- *   `getContext().getExtensionApi('orchestrator')` — the orchestrator's
+ *   `getContext().getCapabilityApi('orchestrator')` — the orchestrator's
  *   extension-API surface re-exported those iter-library helpers so
  *   sibling plugins could splice the same tool catalog without crossing
  *   the plugin↔plugin boundary. The ProposalBus migration moved every

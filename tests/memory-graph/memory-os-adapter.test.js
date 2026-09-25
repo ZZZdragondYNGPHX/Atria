@@ -6,9 +6,9 @@ const legacy = {
     deleteVectorItems: jest.fn(),
     purgeVectorCollection: jest.fn(),
 };
-jest.unstable_mockModule('../../public/scripts/extensions/memory-graph/vector-index.js', () => legacy);
+jest.unstable_mockModule('../../public/scripts/agents/memory/vector-index.js', () => legacy);
 const { createMemoryVectorAdapter, getMemoryVectorStore, isMemoryOsEnabled, MEMORY_OS_DEFAULT_ENABLED } =
-    await import('../../public/scripts/extensions/memory-graph/memory-os.js');
+    await import('../../public/scripts/agents/memory/memory-os.js');
 
 describe('Memory OS Phase 1 vector boundary', () => {
     test('only explicit true opts in; missing and malformed legacy settings stay off', () => {

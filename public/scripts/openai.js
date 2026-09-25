@@ -55,11 +55,8 @@ import {
 
 import { forceCharacterEditorTokenize, getCustomStoppingStrings, persona_description_positions, power_user } from './power-user.js';
 import { SECRET_KEYS, secret_state, writeSecret } from './secrets.js';
-import { extension_settings } from './extensions.js';
-import { acquire as acquireRequestSlot } from './extensions/connection-manager/request-throttler.js';
-import { getMaxRequestRetries } from './extensions/connection-manager/max-retries.js';
-import { withProfileRetry } from './extensions/connection-manager/profile-retry.js';
-import { normalizeStreamingFinishReason } from './extensions/connection-manager/auto-continue-truncated.js';
+import { withRetry } from './request-retry.js';
+import { normalizeStreamingFinishReason } from './lib/finish-reason.js';
 
 import { getEventSourceStream } from './sse-stream.js';
 import {
@@ -104,7 +101,6 @@ import { t } from './i18n.js';
 import { ToolManager } from './tool-calling.js';
 import { accountStorage } from './util/AccountStorage.js';
 import { AbortReason } from './util/AbortReason.js';
-import { resolveChatCompletionRequestProfile } from './extensions/connection-manager/profile-resolver.js';
 import { COMETAPI_IGNORE_PATTERNS, IGNORE_SYMBOL, MEDIA_DISPLAY, MEDIA_TYPE } from './constants.js';
 import { maybeDeleteLinkedLorebookForPresetDeletion } from './world-info.js';
 import { showUndoToast } from './undo-toast.js';
@@ -124,7 +120,7 @@ import {
     normalizeToolMessagesForPlainTextFunctionCalling,
     resolveFunctionCallMode,
     validateParsedToolCalls,
-} from './extensions/function-call-runtime.js';
+} from './lib/runtime-tools.js';
 import { syncNanoGptProvidersForModel, syncOpenRouterProvidersForModel, updateNanoGptProvidersWarning, updateOpenRouterProvidersWarning } from './textgen-models.js';
 import { unescapeMacroBracesInRequestData } from './macros/util/escape.js';
 import { encodeCardBoundOptionValue, decodeCardBoundOptionValue } from './character/preset-ref-codec.js';
@@ -831,13 +827,7 @@ function getSettingsForRequest({ llmPresetName = '', apiPresetName = '', apiSett
         includeGenerationFields: true,
     });
 
-    if (apiPresetName) {
-        const resolved = resolveChatCompletionRequestProfile({
-            profileName: apiPresetName,
-            defaultSource: settings.chat_completion_source,
-        });
-        applyOpenAIConnectionSettingsOverride(settings, resolved?.apiSettingsOverride);
-    }
+    if (apiPresetName) throw new TypeError('Named connection profiles are retired. Select an exact Native Runtime route.');
 
     applyOpenAIConnectionSettingsOverride(settings, apiSettingsOverride);
     return settings;
@@ -4234,38 +4224,7 @@ function applyParsedPlainTextToolCallsToResponse(responseData, inspection) {
  * @param {any} data
  * @returns {boolean}
  */
-function isChatCompletionResponseEmpty(data) {
-    if (!data || typeof data !== 'object') return true;
-    if (data.error) return false;
 
-    // Claude native shape: { content: [{type:'text', text:'...'}, ...] }
-    if (Array.isArray(data.content) && data.content.length > 0) {
-        const hasText = data.content.some(p => p?.type === 'text' && typeof p.text === 'string' && p.text.length > 0);
-        const hasToolUse = data.content.some(p => p?.type === 'tool_use');
-        if (hasText || hasToolUse) return false;
-    }
-
-    const choices = Array.isArray(data.choices) ? data.choices : [];
-    if (choices.length === 0) {
-        // No choices AND no Claude-shape content → empty
-        return !(Array.isArray(data.content) && data.content.length > 0);
-    }
-
-    return choices.every(choice => {
-        const msg = choice?.message ?? {};
-        const rawContent = msg.content ?? choice?.text;
-        let contentEmpty;
-        if (typeof rawContent === 'string') {
-            contentEmpty = rawContent.length === 0;
-        } else if (Array.isArray(rawContent)) {
-            contentEmpty = !rawContent.some(p => (typeof p?.text === 'string' && p.text.length > 0));
-        } else {
-            contentEmpty = !rawContent;
-        }
-        const noToolCalls = !Array.isArray(msg.tool_calls) || msg.tool_calls.length === 0;
-        return contentEmpty && noToolCalls;
-    });
-}
 
 /**
  * @typedef {object} PostChatCompletionResult
@@ -4284,20 +4243,13 @@ function isChatCompletionResponseEmpty(data) {
  */
 async function postChatCompletionGenerateRequest(requestBody, signal, {
     quietErrors = false,
-    apiPresetName = '',
     onRequestReady = null,
     requestMeta = null,
 } = {}) {
     const isStreamRequest = Boolean(requestBody?.stream);
-    // Only peek body for empty-response detection when retries are enabled
-    // and this is a non-stream request. Streaming responses have their own
-    // consumer and must not have their body pre-read.
-    const shouldDetectEmpty = !isStreamRequest && getMaxRequestRetries(apiPresetName) > 0;
+    const cachedJson = null;
 
-    let cachedJson = null;
-
-    const response = await withProfileRetry(async () => {
-        cachedJson = null;
+    const response = await withRetry(async () => {
         if (typeof onRequestReady === 'function') {
             try {
                 onRequestReady({
@@ -4322,27 +4274,8 @@ async function postChatCompletionGenerateRequest(requestBody, signal, {
             headers: getRequestHeaders(),
             signal,
         });
-        if (!shouldDetectEmpty || !r.ok) return r;
-
-        // Clone before reading so the caller can still consume the original body.
-        let parsed;
-        try {
-            parsed = await r.clone().json();
-        } catch {
-            // Body not JSON (unlikely for chat-completions) — let caller handle.
-            return r;
-        }
-
-        if (isChatCompletionResponseEmpty(parsed)) {
-            const err = new Error('Empty response body (no content and no tool_calls)');
-            // No `err.status` and no `err.skipRetry` → withRetry treats this
-            // as a retriable network-class error.
-            throw err;
-        }
-        cachedJson = parsed;
         return r;
     }, {
-        profileName: apiPresetName,
         signal,
         label: 'chat-completion',
         onAttempt: (attempt, _err, _delay, maxRetries) => {
@@ -4496,36 +4429,6 @@ async function sendOpenAIRequest(type, messages, signal, {
     }
 
     setLastUsage(null);
-
-    // RPM throttle gate. When apiPresetName is provided (typical for
-    // generateTask callers), look the named profile up so plugin requests
-    // get throttled against their own profile's bucket rather than the
-    // main-chat profile's. Falls back to selectedProfile otherwise.
-    // Skipped when no profile is resolved or rpm-limit is unset/zero.
-    const cmSettings = extension_settings?.connectionManager;
-    const cmProfiles = cmSettings?.profiles;
-    let throttleProfile = null;
-    if (Array.isArray(cmProfiles) && cmProfiles.length > 0) {
-        const trimmedName = String(apiPresetName || '').trim();
-        if (trimmedName) {
-            throttleProfile = cmProfiles.find(p => p?.name === trimmedName) || null;
-        }
-        if (!throttleProfile) {
-            const activeProfileId = cmSettings?.selectedProfile;
-            if (activeProfileId) {
-                throttleProfile = cmProfiles.find(p => p.id === activeProfileId) || null;
-            }
-        }
-    }
-    if (throttleProfile) {
-        const activeRpm = Number(throttleProfile['rpm-limit']) || 0;
-        if (activeRpm > 0) {
-            await acquireRequestSlot(throttleProfile.id, activeRpm, {
-                signal,
-                label: throttleProfile.name || throttleProfile.id,
-            });
-        }
-    }
 
     const requestSettings = getSettingsForRequest({ llmPresetName, apiPresetName, apiSettingsOverride });
     if (typeof temperature === 'number' && Number.isFinite(temperature)) requestSettings.temp_openai = temperature;

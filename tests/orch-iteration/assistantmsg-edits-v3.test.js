@@ -10,7 +10,7 @@
 // skill-visibility blob (and only for skill policy-binding turns).
 // Pure profile edits don't write `m.edits` at all.
 import { describe, test, expect } from '@jest/globals';
-import { normalizeMessageShape } from '../../public/scripts/extensions/orchestrator/iter-studio/session-store.js';
+import { normalizeMessageShape } from '../../public/scripts/agents/orchestrator/iter-studio/session-store.js';
 
 describe('Orchestrator — assistantMsg.edits is v3-clean (no legacy v2 oldValue/newValue)', () => {
     test('normalizeMessageShape passes the slim skillVisibilityChange sidecar through unchanged', () => {

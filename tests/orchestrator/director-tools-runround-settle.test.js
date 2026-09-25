@@ -6,7 +6,7 @@ import { createMessageEditorHandle } from '../../public/scripts/message-takeover
 // defines runOneRound. We exercise it by spinning up a dispatcher with
 // a fake streaming generateTaskStream and a fake subagent.
 
-import { createSubagentDispatcher } from '../../public/scripts/extensions/orchestrator/director-tools.js';
+import { createSubagentDispatcher } from '../../public/scripts/agents/orchestrator/director-tools.js';
 
 function makeFakeStream(chunkCount, delayMs = 0) {
     return {

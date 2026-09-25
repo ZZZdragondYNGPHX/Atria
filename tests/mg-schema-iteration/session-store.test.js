@@ -2,7 +2,7 @@
 // Copyright (C) 2026 FunnyCups
 //
 // Drives `createMgSchemaSessionStore` through both backends product code
-// actually routes to — `extension_settings.memory_graph` (the `global` scope
+// actually routes to — `capabilitySettings.memory_graph` (the `global` scope
 // path keyed by `MG_GLOBAL_BUCKET_KEY`) and the character sidecar at
 // `MG_SIDECAR_NAMESPACE` (the `character_<avatar>` path). Persistence runs
 // through real `structuredClone`; no module-level mocks. `ctx.getCharacterState`
@@ -14,7 +14,7 @@ import {
     createMgSchemaSessionStore,
     MG_GLOBAL_BUCKET_KEY,
     MG_SIDECAR_NAMESPACE,
-} from '../../public/scripts/extensions/memory-graph/schema-iteration/session-store.js';
+} from '../../public/scripts/agents/memory/schema-iteration/session-store.js';
 
 function makeSidecarCtx() {
     const sidecars = Object.create(null);

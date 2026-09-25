@@ -44,7 +44,7 @@ const CUSTOM_INCLUDE_BODY_A = '{"reasoning": {"effort": "high"}}';
 function seedTwoProfiles({ dataRoot, urlA, urlB }) {
     const settingsPath = resolve(dataRoot, 'default-user', 'settings.json');
     const s = JSON.parse(readFileSync(settingsPath, 'utf8'));
-    s.extension_settings = s.extension_settings || {};
+    s.capabilitySettings = s.capabilitySettings || {};
     const baseProfile = {
         id: 'pid-A',
         name: 'mock-A',
@@ -73,7 +73,7 @@ function seedTwoProfiles({ dataRoot, urlA, urlB }) {
     };
     const profileA = { ...baseProfile };
     const profileB = { ...baseProfile, id: 'pid-B', name: 'mock-B', 'api-url': urlB };
-    s.extension_settings.connectionManager = {
+    s.capabilitySettings.connectionManager = {
         profiles: [profileA, profileB],
         selectedProfile: 'pid-A',
     };
@@ -145,7 +145,7 @@ async function selectProfileFromDropdown(page, profileName) {
     // Wait for the manager to register the selection.
     await page.waitForFunction((name) => {
         const ctx = window.Atria?.getContext?.();
-        const cm = ctx?.extensionSettings?.connectionManager;
+        const cm = ctx?.capabilitySettings?.connectionManager;
         if (!cm) return false;
         const sel = cm.profiles?.find(p => p.id === cm.selectedProfile);
         return sel?.name === name;
@@ -240,7 +240,7 @@ function readLiveIncludeBody(page) {
 function readProfileIncludeBody(page, profileName) {
     return page.evaluate((name) => {
         const ctx = window.Atria?.getContext?.();
-        const p = ctx?.extensionSettings?.connectionManager?.profiles?.find(x => x.name === name);
+        const p = ctx?.capabilitySettings?.connectionManager?.profiles?.find(x => x.name === name);
         return p ? String(p['custom-include-body'] ?? '') : null;
     }, profileName);
 }

@@ -5,8 +5,8 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 import {
     bindDeclarativeGameUi,
     loadGameSelectorDefinitions,
-} from '../../public/scripts/extensions/game-runtime/ui/declarative.js';
-import { createSelectorRuntime } from '../../public/scripts/extensions/game-runtime/ui/selectors.js';
+} from '../../public/scripts/native/experience/ui/declarative.js';
+import { createSelectorRuntime } from '../../public/scripts/native/experience/ui/selectors.js';
 
 function selectorPackage(path = 'ui/selectors.json') {
     return {

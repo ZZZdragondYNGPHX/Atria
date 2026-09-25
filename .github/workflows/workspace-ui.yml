@@ -4,13 +4,13 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
-      - "public/scripts/extensions/orchestrator/workspace/**"
-      - "public/scripts/extensions/orchestrator/main.js"
+      - "public/scripts/agents/orchestrator/workspace/**"
+      - "public/scripts/agents/orchestrator/main.js"
       - "public/scripts/lib/agent-workspace/**"
-      - "public/scripts/extensions/memory-graph/main.js"
-      - "public/scripts/extensions/memory-graph/inspector-compute.js"
-      - "public/scripts/extensions/memory-graph/graph-inspector.js"
-      - "public/scripts/extensions/orchestrator/i18n.js"
+      - "public/scripts/agents/memory/main.js"
+      - "public/scripts/agents/memory/inspector-compute.js"
+      - "public/scripts/agents/memory/graph-inspector.js"
+      - "public/scripts/agents/orchestrator/i18n.js"
       - "tests/frontend/agent-workspace*.mjs"
       - "tests/agent-runtime/workspace-*.test.js"
       - "tests/e2e/regression/125-orch-preset-switch-persist.e2e.js"

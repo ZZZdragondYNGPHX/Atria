@@ -306,8 +306,6 @@ const BACKUP_CATEGORY_KEYS = Object.freeze([
     'lorebooks',
     'presets',
     'assets',
-    'extensions',
-    'globalExtensions',
     'vectors',
 ]);
 const BACKUP_DEFAULT_SELECTION = Object.freeze({
@@ -319,8 +317,6 @@ const BACKUP_DEFAULT_SELECTION = Object.freeze({
     lorebooks: true,
     presets: true,
     assets: true,
-    extensions: true,
-    globalExtensions: false,
     vectors: false,
 });
 

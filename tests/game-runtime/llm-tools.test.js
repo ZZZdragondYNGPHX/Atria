@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { createCommandToolCatalog } from '../../public/scripts/extensions/game-runtime/llm/tools.js';
+import { createCommandToolCatalog } from '../../public/scripts/native/experience/llm/tools.js';
 
 const commands = [
     {

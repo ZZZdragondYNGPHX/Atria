@@ -3,8 +3,8 @@ import { describe, expect, jest, test } from '@jest/globals';
 import {
     buildAuthoritativeEventFactOperations,
     createPostTurnMemoryIngestion,
-} from '../../public/scripts/extensions/game-runtime/llm/memory-ingestion.js';
-import { createTurnContext } from '../../public/scripts/extensions/game-runtime/llm/turn-context.js';
+} from '../../public/scripts/native/experience/llm/memory-ingestion.js';
+import { createTurnContext } from '../../public/scripts/native/experience/llm/turn-context.js';
 
 function turn() {
     return createTurnContext({

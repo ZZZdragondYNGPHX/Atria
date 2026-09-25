@@ -42,7 +42,7 @@ import { describe, test, expect, jest, beforeAll } from '@jest/globals';
 // settings — those eagerly touch `document` at module load and fail under
 // node. Mock the resolver at the same shim we use elsewhere in this suite
 // (see `get-effective-profile-presets.test.js`).
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/agent-resolution.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/agent-resolution.js', () => ({
     buildAgentApiRoutingPromptData: () => ({}),
     buildAgentPromptPresetRoutingPromptData: () => ({}),
     getPresetApiPresetName: () => '',
@@ -74,12 +74,12 @@ beforeAll(async () => {
         ORCH_EXECUTION_MODE_LOOP,
         ORCH_EXECUTION_MODE_SPEC,
         defaultLoopProfile,
-    } = await import('../../public/scripts/extensions/orchestrator/defaults.js'));
-    ({ sanitizeAgendaWorkingProfile } = await import('../../public/scripts/extensions/orchestrator/agenda-profile.js'));
-    ({ sanitizeLoopProfile } = await import('../../public/scripts/extensions/orchestrator/persistence.js'));
-    ({ sanitizeSpec } = await import('../../public/scripts/extensions/orchestrator/spec-schema.js'));
-    ({ runLoopOrchestration } = await import('../../public/scripts/extensions/orchestrator/loop-runtime.js'));
-    ({ clearCurrentRun } = await import('../../public/scripts/extensions/orchestrator/run-state/store.js'));
+    } = await import('../../public/scripts/agents/orchestrator/defaults.js'));
+    ({ sanitizeAgendaWorkingProfile } = await import('../../public/scripts/agents/orchestrator/agenda-profile.js'));
+    ({ sanitizeLoopProfile } = await import('../../public/scripts/agents/orchestrator/persistence.js'));
+    ({ sanitizeSpec } = await import('../../public/scripts/agents/orchestrator/spec-schema.js'));
+    ({ runLoopOrchestration } = await import('../../public/scripts/agents/orchestrator/loop-runtime.js'));
+    ({ clearCurrentRun } = await import('../../public/scripts/agents/orchestrator/run-state/store.js'));
 });
 
 describe('#70 — Spec / agenda / loop are three independent executionMode values', () => {

@@ -39,6 +39,7 @@
         "@jimp/wasm-jpeg": "^1.6.0",
         "@jimp/wasm-png": "^1.6.0",
         "@jimp/wasm-webp": "^1.6.0",
+        "@mlc-ai/web-llm": "0.2.85",
         "@mozilla/readability": "^0.6.0",
         "@popperjs/core": "^2.11.8",
         "@zeldafan0225/ai_horde": "^5.2.0",
@@ -193,9 +194,9 @@
         "@types/yargs": "^17.0.33",
         "@types/yauzl": "^2.10.3",
         "eslint": "^8.57.1",
+        "eslint-plugin-atria": "file:./eslint-rules",
         "eslint-plugin-jest": "^27.9.0",
         "eslint-plugin-jsdoc": "^48.10.0",
-        "eslint-plugin-atria": "file:./eslint-rules",
         "eslint-plugin-playwright": "^2.3.0",
         "typescript": "^5.9.3"
     }

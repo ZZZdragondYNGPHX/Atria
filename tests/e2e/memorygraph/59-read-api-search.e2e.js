@@ -166,7 +166,7 @@ test.describe('#59 — MG seeded corpus surfaces in real recall flow (real send)
         // be visible.
         const visible = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const mg = ctx.getExtensionApi?.('memory-graph');
+            const mg = ctx.getCapabilityApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             if (!session) return [];
             return session.listVisibleCandidates({}).map(n => ({ title: n.title, type: n.type }));
@@ -189,7 +189,7 @@ test.describe('#59 — MG seeded corpus surfaces in real recall flow (real send)
         // Type filter — listVisibleCandidates({types}) should narrow.
         const characters = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const mg = ctx.getExtensionApi?.('memory-graph');
+            const mg = ctx.getCapabilityApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             const items = session ? session.listVisibleCandidates({ types: ['character_sheet'] }) : [];
             return items.map(n => n.title).sort();
@@ -199,7 +199,7 @@ test.describe('#59 — MG seeded corpus surfaces in real recall flow (real send)
         // Sanity check: keyword search hits an aliased character.
         const kwHits = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const mg = ctx.getExtensionApi?.('memory-graph');
+            const mg = ctx.getCapabilityApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             const results = session ? await session.keywordSearch({ query: 'drifter', k: 5 }) : [];
             return results.map(n => ({ title: n.title, type: n.type }));

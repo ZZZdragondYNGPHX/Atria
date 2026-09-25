@@ -4,7 +4,7 @@ import {
     compileFormula,
     evaluateFormula,
     evaluateFormulaAst,
-} from '../../public/scripts/extensions/game-runtime/logic/formula.js';
+} from '../../public/scripts/native/experience/logic/formula.js';
 
 describe('Game Formula AST', () => {
     test('compiles inspectable AST with arithmetic precedence', () => {

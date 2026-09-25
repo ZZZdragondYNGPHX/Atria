@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import { createDefaultDirectorProfile } from '../../../public/scripts/extensions/orchestrator/director-defaults.js';
+import { createDefaultDirectorProfile } from '../../../public/scripts/agents/orchestrator/director-defaults.js';
 
 describe('default director profile: notes sub-agents', () => {
     test('includes notes_pickup_scout', () => {

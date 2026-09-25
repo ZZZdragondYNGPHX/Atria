@@ -123,8 +123,8 @@ export async function maybeAttachSkillsToOrchPresetExport({ context, payload, t 
     // skills / orchestrator plugin unavailable.
     let byScope;
     try {
-        const orchApi = context.getExtensionApi
-            ? context.getExtensionApi('orchestrator')
+        const orchApi = context.getCapabilityApi
+            ? context.getCapabilityApi('orchestrator')
             : null;
         if (!orchApi || typeof orchApi.collectResolvedSkillsForOrchPreset !== 'function') {
             // Orchestrator plugin not loaded — fall back to the prior

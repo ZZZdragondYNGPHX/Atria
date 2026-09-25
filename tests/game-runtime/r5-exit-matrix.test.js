@@ -1,11 +1,11 @@
 import { describe, expect, jest, test } from '@jest/globals';
 
-import { advanceTurnContext } from '../../public/scripts/extensions/game-runtime/llm/turn-context.js';
-import { createGameLlmRuntime } from '../../public/scripts/extensions/game-runtime/llm/runtime.js';
-import { createCommandToolCatalog } from '../../public/scripts/extensions/game-runtime/llm/tools.js';
-import { createNarrativeCoordinator } from '../../public/scripts/extensions/game-runtime/llm/narrative.js';
-import { createGameTurnController } from '../../public/scripts/extensions/game-runtime/llm/turn-controller.js';
-import { createRuntimeRoleRouter } from '../../public/scripts/extensions/game-runtime/llm/roles.js';
+import { advanceTurnContext } from '../../public/scripts/native/experience/llm/turn-context.js';
+import { createGameLlmRuntime } from '../../public/scripts/native/experience/llm/runtime.js';
+import { createCommandToolCatalog } from '../../public/scripts/native/experience/llm/tools.js';
+import { createNarrativeCoordinator } from '../../public/scripts/native/experience/llm/narrative.js';
+import { createGameTurnController } from '../../public/scripts/native/experience/llm/turn-controller.js';
+import { createRuntimeRoleRouter } from '../../public/scripts/native/experience/llm/roles.js';
 
 function runtimeWorld() {
     let state = {

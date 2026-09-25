@@ -12,7 +12,7 @@
 //   3. Read the dropdown <select>: must show value="rag".
 //   4. Read the Enable rerank checkbox: must be checked.
 //   5. Read the Enable query rewrite checkbox: must be unchecked.
-//   6. Read settings via window.Atria.getContext().extensionSettings — must
+//   6. Read settings via window.Atria.getContext().capabilitySettings — must
 //      no longer contain diffusionSteps.
 
 import { test, expect } from '@playwright/test';
@@ -42,7 +42,7 @@ test.beforeAll(async () => {
     appendConnectionProfile({ dataRoot: server.dataRoot, baseURL: mock.baseURL });
     bootstrapVectorsBackend({ dataRoot: server.dataRoot, baseURL: mock.baseURL });
 
-    // Seed legacy values directly into settings.json under extension_settings.
+    // Seed legacy values directly into settings.json under capabilitySettings.
     // ensureSettings() runs `normalizeLegacyRecallSettings` on every load,
     // so this is the only knob we need to plant.
     const settingsPath = resolve(server.dataRoot, 'default-user', 'settings.json');
@@ -50,9 +50,9 @@ test.beforeAll(async () => {
         throw new Error(`settings.json missing at ${settingsPath}`);
     }
     const s = JSON.parse(readFileSync(settingsPath, 'utf8'));
-    s.extension_settings = s.extension_settings || {};
-    s.extension_settings.memory_graph = {
-        ...(s.extension_settings.memory_graph || {}),
+    s.capabilitySettings = s.capabilitySettings || {};
+    s.capabilitySettings.memory_graph = {
+        ...(s.capabilitySettings.memory_graph || {}),
         recallMethod: 'hybrid_rerank',
         // Pre-collapse fields the new normalizer must strip.
         diffusionSteps: 3,
@@ -117,7 +117,7 @@ test.describe('#64 — legacy hybrid_rerank settings migrate to RAG with rerank 
         // 6. In-memory settings reflect the normalized shape, and the legacy
         // diffusion / enableRerank fields are gone.
         const migrated = await page.evaluate(() => {
-            const s = window.Atria.getContext().extensionSettings?.memory_graph || {};
+            const s = window.Atria.getContext().capabilitySettings?.memory_graph || {};
             return {
                 recallMethod: s.recallMethod,
                 ragUseRerank: s.ragUseRerank,

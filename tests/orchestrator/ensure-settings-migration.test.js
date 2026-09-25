@@ -1,10 +1,10 @@
 import { jest } from '@jest/globals';
 
-// Shared, mutable extension settings — main.js binds `extension_settings`
-// from `Atria.getContext().extensionSettings` at module-load time
+// Shared, mutable extension settings — main.js binds `capabilitySettings`
+// from `Atria.getContext().capabilitySettings` at module-load time
 // (line 9 in main.js). Exposing the same reference here lets each test
-// mutate `extensionSettings.orchestrator` before invoking ensureSettings.
-const extensionSettings = { orchestrator: {} };
+// mutate `capabilitySettings.orchestrator` before invoking ensureSettings.
+const capabilitySettings = { orchestrator: {} };
 
 // main.js bottom-of-file IIFE registers UI handlers via `jQuery(() => …)`;
 // `toastr.error/info/success` may be reached from defensive branches. Provide
@@ -30,14 +30,14 @@ globalThis.Atria = {
         lib: {
             yaml: { dump: (v) => JSON.stringify(v), load: (s) => JSON.parse(s) },
         },
-        extensionSettings,
+        capabilitySettings,
         saveSettings: async () => {},
         saveSettingsDebounced: () => {},
-        registerExtensionApi: () => {},
+        registerCapabilityApi: () => {},
         chatCompletionSettings: {},
         createMessageEditorHandle: () => null,
         skills: { listSkills: () => [], getSkill: () => null },
-        getExtensionApi: () => null,
+        getCapabilityApi: () => null,
         eventSource: { on: () => {}, off: () => {}, emit: () => {} },
         event_types: {},
         callGenericPopup: async () => null,
@@ -57,15 +57,15 @@ jest.unstable_mockModule('../../public/lib.js', async () => {
 // Preset help registers browser UI handlers and imports st-context -> lib.js.
 // Keep that host-only chain out of settings/profile tests; their partial vendor
 // mock intentionally supplies only the libraries used by the real data modules.
-jest.unstable_mockModule('../../public/scripts/extensions/preset-help.js', () => ({
-    renderPresetHelpButton: () => '',
+jest.unstable_mockModule('../../public/scripts/lib/runtime-help.js', () => ({
+    renderRuntimeHelpButton: () => '',
 }));
 
 // agenda-profile → editable-spec → agent-resolution → connection-manager →
 // openai → group-chats → bookmarks → request-compression → '/lib.js'.
 // Sever the chain at agent-resolution to avoid pulling the entire ST
 // chat-completion stack into the test (mirrors editor-state-presets.test.js).
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/agent-resolution.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/agent-resolution.js', () => ({
     buildAgentApiRoutingPromptData: () => ({}),
     buildAgentPromptPresetRoutingPromptData: () => ({}),
     getPresetApiPresetName: () => '',
@@ -80,12 +80,12 @@ jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/agent-res
 }));
 
 // ST core modules main.js transitively pulls in.
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
-    extension_settings: extensionSettings,
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
+    capabilitySettings: capabilitySettings,
     getContext: () => globalThis.Atria.getContext(),
     writeExtensionField: async () => {},
     UNSET_VALUE: Symbol('unset'),
-    renderExtensionTemplateAsync: async () => '',
+    renderPluginTemplateAsync: async () => '',
 }));
 jest.unstable_mockModule('../../public/script.js', () => ({
     saveSettingsDebounced: () => {},
@@ -155,26 +155,26 @@ jest.unstable_mockModule('../../public/scripts/slash-commands.js', () => ({
 // so persistence.js (also real, transitively imported via the persistence
 // → anchors chain) finds its named exports.
 
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/abort-utils.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/abort-utils.js', () => ({
     isAbortError: () => false,
     isAbortSignalLike: () => false,
     linkAbortSignals: () => null,
     throwIfAborted: () => {},
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/tool-calling.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/tool-calling.js', () => ({
     makeRuntimeToolCallId: () => 'id',
     serializeToolResultContent: (v) => String(v ?? ''),
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/template-vars.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/template-vars.js', () => ({
     normalizeTemplateForAiPrompt: (v) => v,
     normalizeTemplateForRuntime: (v) => v,
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/output-formatting.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/output-formatting.js', () => ({
     toReadableYamlText: (v) => String(v ?? ''),
 }));
 // world-info.js (orchestrator-local, not the ST one) is leaf-pure and
 // re-exported elsewhere; load the real module.
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/pure-preset-body.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/pure-preset-body.js', () => ({
     // Only the large BODY blob is stubbed (this suite doesn't exercise its
     // contents). Keep every other export mirrored here — main.js and its
     // link graph reference DIRECTOR_PURE_PRESET_NAME by identifier and ESM
@@ -185,7 +185,7 @@ jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/pure-pres
     DIRECTOR_PURE_PRESET_BODY: {},
     DIRECTOR_PURE_PRESET_NAME: 'orchestrator:director-pure',
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/snapshot-cache.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/snapshot-cache.js', () => ({
     canReuseLatestOrchestrationSnapshot: () => false,
     clearCacheForChatChange: () => {},
     getActiveSnapshot: () => null,
@@ -200,50 +200,50 @@ jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/snapshot-
     setActiveSnapshot: () => {},
     storeCompletedOrchestrationSnapshot: () => {},
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/agenda-profile.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/agenda-profile.js', () => ({
     buildAgendaProfileForRuntime: (v) => v,
     cloneAgendaWorkingProfileFromEditor: (v) => v,
     ensureAgendaEditorIntegrity: (v) => v,
     sanitizeAgendaWorkingProfile: (v) => v,
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/agenda-runtime.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/agenda-runtime.js', () => ({
     runAgendaOrchestration: async () => ({}),
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/spec-runtime.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/spec-runtime.js', () => ({
     runSpecOrchestration: async () => ({}),
     buildNodeToolSet: () => [],
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/loop-runtime.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/loop-runtime.js', () => ({
     runLoopOrchestration: async () => ({}),
     attachNotesFloorState: () => {},
 }));
 // Director tool construction is a runtime boundary, not preset/settings logic.
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/director-tools.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/director-tools.js', () => ({
     buildMainAgentToolSchemas: () => [],
     buildSubAgentToolSchemas: () => [],
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/director-runtime.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/director-runtime.js', () => ({
     handleDirectorDispatch: async () => null,
     runMainAgentLoop: async () => null,
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/director-default-prompt.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/director-default-prompt.js', () => ({
     buildDirectorDefaultSystemPrompt: () => '',
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/director-content-payload.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/director-content-payload.js', () => ({
     createContentPayloadCache: () => ({
         capture: () => {},
         get: () => null,
         clear: () => {},
     }),
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/loop-tools.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/loop-tools.js', () => ({
     executeLoopTool: async () => null,
     getEnabledToolSchemas: () => [],
     beginSimulation: () => {},
     endSimulation: () => {},
     getBuiltinToolRegistry: () => ({}),
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/register-custom-tool.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/register-custom-tool.js', () => ({
     registerOrchestrationTool: () => {},
     unregisterOrchestrationTool: () => {},
     listExtensionTools: () => [],
@@ -252,7 +252,7 @@ jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/register-
     listAvailableSillyTavernTools: () => [],
     rehydrateBridgedSillyTavernTools: () => {},
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/skill-orchestration-tools.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/skill-orchestration-tools.js', () => ({
     registerSkillOrchestrationTools: () => {},
 }));
 jest.unstable_mockModule('../../public/scripts/iteration-library/tools/skill-iter-studio.js', () => ({
@@ -261,19 +261,19 @@ jest.unstable_mockModule('../../public/scripts/iteration-library/tools/skill-ite
     runSkillIterStudioTool: async () => null,
     commitApprovedSkillProposal: async () => null,
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/custom-tool-editor.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/custom-tool-editor.js', () => ({
     openCustomToolEditor: async () => null,
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/bridge-st-tool-picker.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/bridge-st-tool-picker.js', () => ({
     openBridgeStToolPicker: async () => null,
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/studio-prompt-augment.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/studio-prompt-augment.js', () => ({
     augmentStudioPromptWithCustomTools: (v) => v,
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/character-import-tools-review.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/character-import-tools-review.js', () => ({
     reviewIncomingCustomTools: async () => null,
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/notes-panel.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/notes-panel.js', () => ({
     mountNotesPanel: () => {},
 }));
 jest.unstable_mockModule('../../public/scripts/skills/skill-manager-panel.js', () => ({
@@ -289,7 +289,7 @@ jest.unstable_mockModule('../../public/scripts/skills/embed-export-hook.js', () 
     maybeAttachSkillsToPresetExport: () => {},
     maybeAttachSkillsToOrchPresetExport: () => {},
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/profile-projection.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/profile-projection.js', () => ({
     sanitizeProfileForAiPrompt: (v) => v,
 }));
 
@@ -305,7 +305,7 @@ jest.unstable_mockModule('../../public/scripts/iteration-library/simulation-revi
 jest.unstable_mockModule('../../public/scripts/iteration-library/simulation-review/dry-run-capture.js', () => ({
     captureDryRunPayload: () => null,
 }));
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/simulation-payload-adapter.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/simulation-payload-adapter.js', () => ({
     exportSpecPayload: () => null,
     exportAgendaPayload: () => null,
     exportLoopPayload: () => null,
@@ -314,29 +314,29 @@ jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/simulatio
 
 let main;
 beforeAll(async () => {
-    main = await import('../../public/scripts/extensions/orchestrator/main.js');
+    main = await import('../../public/scripts/agents/orchestrator/main.js');
 });
 
 beforeEach(() => {
     // Clear so each test starts with a fresh `orchestrator` slot.
-    delete extensionSettings.orchestrator;
+    delete capabilitySettings.orchestrator;
 });
 
 describe('ensureSettings — native Workspace initialization', () => {
     test('retires old definitions instead of migrating or dual-writing them', () => {
-        extensionSettings.orchestrator = { loopProfile: { system_prompt: 'LEGACY' }, presetLibraries: { loop: {} } };
+        capabilitySettings.orchestrator = { loopProfile: { system_prompt: 'LEGACY' }, presetLibraries: { loop: {} } };
         main.ensureSettings();
-        expect(extensionSettings.orchestrator.loopProfile).toBeUndefined();
-        expect(extensionSettings.orchestrator.presetLibraries).toBeUndefined();
-        expect(extensionSettings.orchestrator.agentWorkspace.presets).toHaveLength(4);
-        expect(JSON.stringify(extensionSettings.orchestrator.agentWorkspace)).not.toContain('LEGACY');
+        expect(capabilitySettings.orchestrator.loopProfile).toBeUndefined();
+        expect(capabilitySettings.orchestrator.presetLibraries).toBeUndefined();
+        expect(capabilitySettings.orchestrator.agentWorkspace.presets).toHaveLength(4);
+        expect(JSON.stringify(capabilitySettings.orchestrator.agentWorkspace)).not.toContain('LEGACY');
     });
     test('reinitialization retains native IDs and bindings', () => {
         main.ensureSettings();
-        const library = extensionSettings.orchestrator.agentWorkspace;
+        const library = capabilitySettings.orchestrator.agentWorkspace;
         library.bindings.defaultPresetId = 'builtin-loop';
         main.ensureSettings();
-        expect(extensionSettings.orchestrator.agentWorkspace).toBe(library);
+        expect(capabilitySettings.orchestrator.agentWorkspace).toBe(library);
         expect(library.bindings.defaultPresetId).toBe('builtin-loop');
     });
 });

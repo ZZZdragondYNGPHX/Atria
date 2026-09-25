@@ -49,7 +49,7 @@ requirePattern(
     'A6 must isolate the old conversation DOM as an internal generation ABI',
 );
 requirePattern(
-    'public/scripts/extensions/game-runtime/ui/native-components.js',
+    'public/scripts/native/experience/ui/native-components.js',
     /data-atria-native-product-component="conversation"[\s\S]*data-atria-native-product-component="composer"/,
     'A6 Native Component Registry must compose Atria product Conversation/Composer',
 );
@@ -72,7 +72,7 @@ requirePattern(
 );
 requirePattern(
     'public/scripts/native/runtime-workspace.js',
-    /section === 'connections'[\s\S]*Exact Secret ID/,
+    /section === 'connections'[\s\S]*Stored Secret[\s\S]*secretRef: \{ scope: 'player', secretId: secret\.value \}/,
     'P5 Native Connections must edit explicit profiles and exact Secret references',
 );
 rejectPattern(
@@ -88,8 +88,8 @@ rejectPattern(
 
 requirePattern(
     'public/scripts/atria-shell/utility-workspaces.js',
-    /atriaPluginSurface\s*=\s*['"]native['"][\s\S]*atriaLegacyPlugins/,
-    'A6 Plugins must be Native-first and isolate Legacy extensions',
+    /atriaPluginSurface\s*=\s*['"]work['"][\s\S]*atriaPluginSurface\s*=\s*['"]global['"]/,
+    'A6 Plugins must separate Work and Global ownership',
 );
 requirePattern(
     'public/scripts/atria-shell/utility-workspaces.js',

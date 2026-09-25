@@ -1,9 +1,8 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import process from 'node:process';
-import { Buffer } from 'node:buffer';
 
-import { pipeline, env, RawImage } from 'sillytavern-transformers';
+import { pipeline, env } from 'sillytavern-transformers';
 import { getConfigValue } from './util.js';
 import { serverDirectory } from './server-directory.js';
 
@@ -17,55 +16,11 @@ function configureTransformers() {
 }
 
 const tasks = {
-    'text-classification': {
-        defaultModel: 'Cohee/distilbert-base-uncased-go-emotions-onnx',
-        pipeline: null,
-        configField: 'extensions.models.classification',
-        quantized: true,
-    },
-    'image-to-text': {
-        defaultModel: 'Xenova/vit-gpt2-image-captioning',
-        pipeline: null,
-        configField: 'extensions.models.captioning',
-        quantized: true,
-    },
     'feature-extraction': {
-        defaultModel: 'Xenova/all-mpnet-base-v2',
-        pipeline: null,
-        configField: 'extensions.models.embedding',
-        quantized: true,
-    },
-    'automatic-speech-recognition': {
-        defaultModel: 'Xenova/whisper-small',
-        pipeline: null,
-        configField: 'extensions.models.speechToText',
-        quantized: true,
-    },
-    'text-to-speech': {
-        defaultModel: 'Xenova/speecht5_tts',
-        pipeline: null,
-        configField: 'extensions.models.textToSpeech',
-        quantized: false,
+        defaultModel: 'Cohee/jina-embeddings-v2-base-en', pipeline: null,
+        configField: 'native.retrieval.embeddingModel', quantized: true,
     },
 };
-
-/**
- * Gets a RawImage object from a base64-encoded image.
- * @param {string} image Base64-encoded image
- * @returns {Promise<RawImage|null>} Object representing the image
- */
-export async function getRawImage(image) {
-    try {
-        const buffer = Buffer.from(image, 'base64');
-        const byteArray = new Uint8Array(buffer);
-        const blob = new Blob([byteArray]);
-
-        const rawImage = await RawImage.fromBlob(blob);
-        return rawImage;
-    } catch {
-        return null;
-    }
-}
 
 /**
  * Gets the model to use for a given transformers.js task.
@@ -79,7 +34,7 @@ function getModelForTask(task) {
         const model = getConfigValue(tasks[task].configField, null);
         return model || defaultModel;
     } catch (error) {
-        console.warn('Failed to read config.yaml, using default classification model.');
+        console.warn('Failed to read config.yaml, using default embedding model.');
         return defaultModel;
     }
 }
@@ -133,7 +88,7 @@ export async function getPipeline(task, forceModel = '') {
 
     const cacheDir = path.join(globalThis.DATA_ROOT, '_cache');
     const model = forceModel || getModelForTask(task);
-    const localOnly = !getConfigValue('extensions.models.autoDownload', true, 'boolean');
+    const localOnly = !getConfigValue('native.retrieval.autoDownload', true, 'boolean');
     console.log('Initializing transformers.js pipeline for task', task, 'with model', model);
     const instance = await pipeline(task, model, { cache_dir: cacheDir, quantized: tasks[task].quantized ?? true, local_files_only: localOnly });
     tasks[task].pipeline = instance;
@@ -143,6 +98,5 @@ export async function getPipeline(task, forceModel = '') {
 }
 
 export default {
-    getRawImage,
     getPipeline,
 };

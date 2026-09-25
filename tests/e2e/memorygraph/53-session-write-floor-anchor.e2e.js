@@ -186,7 +186,7 @@ test.describe('#53 — session-write floor anchor: delete-floor truncates MG rec
         // Verify the sentinels are visible BEFORE the delete.
         const beforeDelete = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const mg = ctx.getExtensionApi?.('memory-graph');
+            const mg = ctx.getCapabilityApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             if (!session) return { titles: [], chatLen: ctx.chat.length };
             const titles = session.listVisibleCandidates({})
@@ -241,14 +241,14 @@ test.describe('#53 — session-write floor anchor: delete-floor truncates MG rec
         // floor-state log from disk.
         await page.evaluate(async () => {
             try {
-                const mod = await import('/scripts/extensions/memory-graph/main.js');
+                const mod = await import('/scripts/agents/memory/main.js');
                 if (mod.invalidateMemoryStoreCache) mod.invalidateMemoryStoreCache();
             } catch { /* best-effort */ }
         });
 
         const afterDelete = await page.evaluate(async () => {
             const ctx = window.Atria.getContext();
-            const mg = ctx.getExtensionApi?.('memory-graph');
+            const mg = ctx.getCapabilityApi?.('memory-graph');
             const session = await mg?.openSession?.(ctx);
             if (!session) return { titles: [] };
             const titles = session.listVisibleCandidates({})

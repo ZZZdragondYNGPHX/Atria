@@ -71,7 +71,7 @@ test.describe('#78 — Multi-skill visible: live director dispatch', () => {
         // explicitly opt into the 3-skill catalog here.
         await page.evaluate(async (names) => {
             const ctx = window.Atria.getContext();
-            const settings = ctx.extensionSettings.orchestrator;
+            const settings = ctx.capabilitySettings.orchestrator;
             const { updatePresetLibrary } = await import('/scripts/lib/agent-workspace/presets.js');
             const preset = structuredClone(settings.agentWorkspace.presets.find(p => p.id === settings.agentWorkspace.bindings.defaultPresetId));
             preset.planTemplate.metadata.hostAdapters.atria.skills = { visible:[...names],deny:[] };
@@ -86,7 +86,7 @@ test.describe('#78 — Multi-skill visible: live director dispatch', () => {
         // director's resolver picks up our test skills on this turn.
         await page.evaluate(async (names) => {
             const ctx = window.Atria.getContext();
-            const mod = await import('/scripts/extensions/orchestrator/skill-resolution.js');
+            const mod = await import('/scripts/agents/orchestrator/skill-resolution.js');
             mod.invalidateSkillInventory();
             window.__test78OrigSkillsList = ctx.skills.list;
             ctx.skills.list = async () => names.map(n => ({

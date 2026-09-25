@@ -150,4 +150,3 @@ Loop 模式只能透過迭代工作台逐步迭代——沒有「一次生成完
 - [Agenda 模式](/zh-TW/features/orchestrator/agenda) — Planner 動態調度
 - [Loop 模式](/zh-TW/features/orchestrator/loop) — 單 Agent 工具循環
 - [Skills 整合](/zh-TW/features/orchestrator/skills) — `skill_create` 寫入的物件
-- [角色卡編輯器](/zh-TW/features/card-editor/) — 與迭代工作台共用 diff 引擎

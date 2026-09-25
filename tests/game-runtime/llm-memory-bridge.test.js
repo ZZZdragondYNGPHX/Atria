@@ -4,8 +4,8 @@ import {
     buildMemoryRecallQuery,
     createMemoryRecallBridge,
     normalizeMemoryRecallPacket,
-} from '../../public/scripts/extensions/game-runtime/llm/memory-bridge.js';
-import { createTurnContext } from '../../public/scripts/extensions/game-runtime/llm/turn-context.js';
+} from '../../public/scripts/native/experience/llm/memory-bridge.js';
+import { createTurnContext } from '../../public/scripts/native/experience/llm/turn-context.js';
 
 function identity(overrides = {}) {
     return {

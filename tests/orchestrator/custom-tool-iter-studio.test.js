@@ -1,7 +1,7 @@
 /**
  * Unit tests for the orchestrator iter-studio's custom-tool authoring +
  * discovery + dry-run + commit module
- * (`public/scripts/extensions/orchestrator/custom-tool-iter-studio.js`).
+ * (`public/scripts/agents/orchestrator/custom-tool-iter-studio.js`).
  *
  * Covers:
  *   - read tools (list / get) surface profile state
@@ -37,7 +37,7 @@ globalThis.performance = globalThis.performance || { now: () => Date.now() };
 // loop-tools.js's getBuiltinToolRegistry is the source of truth for
 // "shadows a Layer-1 builtin" — mock it before importing the module
 // under test so we control which names collide.
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/loop-tools.js', () => {
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/loop-tools.js', () => {
     const builtins = new Set(['chat_search', 'lorebook_get', 'note_open']);
     return {
         getBuiltinToolRegistry: () => builtins,
@@ -50,7 +50,7 @@ jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/loop-tool
 
 let mod;
 beforeAll(async () => {
-    mod = await import('../../public/scripts/extensions/orchestrator/custom-tool-iter-studio.js');
+    mod = await import('../../public/scripts/agents/orchestrator/custom-tool-iter-studio.js');
 });
 
 const TOOL = (overrides = {}) => ({

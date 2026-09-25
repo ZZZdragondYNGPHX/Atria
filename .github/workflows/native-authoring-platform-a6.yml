@@ -79,8 +79,8 @@ jobs:
           public/scripts/atria-shell/product-search.js
           public/scripts/atria-shell/utility-workspaces.js
           public/scripts/atria-shell/workspace-host.js
-          public/scripts/extensions/game-runtime/ui/host-surfaces.js
-          public/scripts/extensions/game-runtime/ui/native-components.js
+          public/scripts/native/experience/ui/host-surfaces.js
+          public/scripts/native/experience/ui/native-components.js
           public/scripts/native/play-controls.js
           public/scripts/native/play-product.js
           public/scripts/native/studio-workspace.js

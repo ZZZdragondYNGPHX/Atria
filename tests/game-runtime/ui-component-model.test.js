@@ -7,7 +7,7 @@ import {
     compileExperienceComponentModel,
     renderExperienceComponentModel,
     setComponentHiddenReason,
-} from '../../public/scripts/extensions/game-runtime/ui/component-model.js';
+} from '../../public/scripts/native/experience/ui/component-model.js';
 
 describe('A4 shared Component Model', () => {
     test('compiles and renders the shared structured model', () => {

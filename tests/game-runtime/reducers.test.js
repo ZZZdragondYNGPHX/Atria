@@ -1,6 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 
-import { createReducerRegistry } from '../../public/scripts/extensions/game-runtime/logic/reducers.js';
+import { createReducerRegistry } from '../../public/scripts/native/experience/logic/reducers.js';
 
 describe('Game Reducer Registry', () => {
     test('validates typed event payloads before invoking reducers', () => {

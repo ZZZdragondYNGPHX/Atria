@@ -1,4 +1,4 @@
-import { disableExtensions } from '../_lib/fixtures.js';
+
 import { test, expect } from '@playwright/test';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { seedNativeSessionDataRoot, createAndOpenNativeSession } from '../native-session/_helpers.js';
@@ -8,7 +8,7 @@ test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(async () => {
     seeded = await seedNativeSessionDataRoot({ suffix: 'game-host-redesign' });
-    disableExtensions({ dataRoot: seeded.dataRoot, names: ['stable-diffusion'] });
+
     server = await startServer({ batchKey: 'regression', scenarioId: 'game-host-redesign', useExistingDataRoot: seeded.dataRoot });
 });
 
@@ -40,7 +40,7 @@ async function integrity(page) {
 }
 async function activate(page, mode, broken = false) {
     return page.evaluate(async ({ mode, broken }) => {
-        const { activateNativeExperienceRuntime } = await import('/scripts/extensions/game-runtime/ui/live.js');
+        const { activateNativeExperienceRuntime } = await import('/scripts/native/experience/ui/live.js');
         const native = window.Atria.nativeSessionRuntime.snapshot;
         const component = mode === 'component'
             ? { id: 'hud', type: 'text', props: { text: 'Harbour · Tide rising' } }

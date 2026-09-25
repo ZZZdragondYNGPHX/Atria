@@ -68,4 +68,3 @@ Atria implements a custom Select2 adapter for rendering group structures and act
 ## Related Features
 
 - [Prompt Groups](/features/prompt-groups) — Grouping system in the prompt manager
-- [Preset Completion Assistant](/features/preset-assistant) — AI-assisted understanding and adjustment of preset parameters

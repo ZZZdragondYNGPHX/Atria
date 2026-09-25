@@ -104,7 +104,7 @@ AGENT: "預請求 Agent 模式" {
 
 ## 全域 API
 
-搜尋外掛透過全域 API 供其他外掛整合使用。例如[角色卡編輯助手](/zh-TW/features/card-editor/)的[普通彈窗](/zh-TW/features/card-editor/popup)和 [CardApp Studio](/zh-TW/features/card-editor/studio) 都已整合搜尋能力，可以在編輯過程中聯網搜尋資料輔助角色卡 / CardApp 編輯。
+
 
 ### 屬性
 
@@ -174,10 +174,3 @@ if (api) {
 | Agent API 預設 | 預請求 Agent 使用的 API 連線預設（空值使用主連線） |
 | Agent 預設 | 預請求 Agent 使用的預設（空值使用主預設） |
 | Agent 最大輪次 | 預請求 Agent 的最大搜尋輪次 |
-
-::: info 相關頁面
-- [角色卡編輯助手](/zh-TW/features/card-editor/) — 編輯助手概覽（公共能力與入口）
-- [普通彈窗模式](/zh-TW/features/card-editor/popup) — 彈窗中的聯網搜尋
-- [CardApp Studio](/zh-TW/features/card-editor/studio) — Studio 中的聯網搜尋能力
-- [CardApp](/zh-TW/features/cardapp) — 角色卡應用化概念
-:::

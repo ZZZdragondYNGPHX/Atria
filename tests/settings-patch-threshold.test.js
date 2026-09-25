@@ -30,7 +30,7 @@ describe('shouldUseSettingsPatch', () => {
     test('accepts a small mixed-op patch', () => {
         const ops = [
             { op: 'replace', path: '/oai_settings/temperature', value: 0.7 },
-            { op: 'add', path: '/extension_settings/foo', value: { x: 1 } },
+            { op: 'add', path: '/capabilitySettings/foo', value: { x: 1 } },
             { op: 'remove', path: '/old_field' },
         ];
         expect(shouldUseSettingsPatch(ops)).toBe(true);

@@ -29,7 +29,7 @@ jest.unstable_mockModule('../../public/lib.js', async () => {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '../..');
-const ORCH_DIR = path.resolve(REPO_ROOT, 'public/scripts/extensions/orchestrator');
+const ORCH_DIR = path.resolve(REPO_ROOT, 'public/scripts/agents/orchestrator');
 
 async function readOrch(rel) {
     return fs.readFile(path.resolve(ORCH_DIR, rel), 'utf8');
@@ -40,10 +40,10 @@ let ORCH_TOOL_DISPLAY;
 
 beforeAll(async () => {
     ({ normalizeMessageShape } = await import(
-        '../../public/scripts/extensions/orchestrator/iter-studio/session-store.js'
+        '../../public/scripts/agents/orchestrator/iter-studio/session-store.js'
     ));
     ({ ORCH_TOOL_DISPLAY } = await import(
-        '../../public/scripts/extensions/orchestrator/iter-studio/tool-display.js'
+        '../../public/scripts/agents/orchestrator/iter-studio/tool-display.js'
     ));
 });
 

@@ -6,8 +6,8 @@ import {
     buildIntentResolverTools,
     createIntentResolver,
     validateIntentResolution,
-} from '../../public/scripts/extensions/game-runtime/llm/intent-resolver.js';
-import { createTurnContext } from '../../public/scripts/extensions/game-runtime/llm/turn-context.js';
+} from '../../public/scripts/native/experience/llm/intent-resolver.js';
+import { createTurnContext } from '../../public/scripts/native/experience/llm/turn-context.js';
 
 function makeTurn() {
     return createTurnContext({

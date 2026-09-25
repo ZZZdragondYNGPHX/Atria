@@ -1,6 +1,6 @@
 import { describe, test, expect } from '@jest/globals';
 
-import { resolveInFlightAnchor } from '../../public/scripts/extensions/memory-graph/persistence.js';
+import { resolveInFlightAnchor } from '../../public/scripts/agents/memory/persistence.js';
 
 describe('resolveInFlightAnchor', () => {
     test('returns null when chat is missing or empty', () => {

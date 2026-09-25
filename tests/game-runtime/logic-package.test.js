@@ -1,6 +1,6 @@
 import { describe, expect, jest, test } from '@jest/globals';
 
-import { loadGameLogicDefinition } from '../../public/scripts/extensions/game-runtime/logic/package.js';
+import { loadGameLogicDefinition } from '../../public/scripts/native/experience/logic/package.js';
 
 function response(body) {
     return {

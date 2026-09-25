@@ -2,7 +2,7 @@
 import { afterEach, expect, jest, test } from '@jest/globals';
 import { nativeSessionRuntime } from '../../public/scripts/native/session-runtime.js';
 import { executeFirstPartyGeneration, streamFirstPartyGeneration } from '../../public/scripts/native/generation-compat.js';
-import { createRuntimeRoleRouter } from '../../public/scripts/extensions/game-runtime/llm/roles.js';
+import { createRuntimeRoleRouter } from '../../public/scripts/native/experience/llm/roles.js';
 import { requestToolCallsWithRetry, requestToolCallWithRetry } from '../../public/scripts/lib/iter-tool-calling.js';
 
 afterEach(() => { nativeSessionRuntime.snapshot = null; delete globalThis.fetch; delete globalThis.Atria; });

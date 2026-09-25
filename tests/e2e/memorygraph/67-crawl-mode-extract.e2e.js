@@ -74,9 +74,9 @@ test.beforeAll(async () => {
     // MG disable, mirroring #65's fixture pattern.
     const mgSettingsPath = resolve(server.dataRoot, 'default-user', 'settings.json');
     const mgSettings = JSON.parse(readFileSync(mgSettingsPath, 'utf8'));
-    mgSettings.extension_settings = mgSettings.extension_settings || {};
-    mgSettings.extension_settings.memory_graph = {
-        ...(mgSettings.extension_settings.memory_graph || {}),
+    mgSettings.capabilitySettings = mgSettings.capabilitySettings || {};
+    mgSettings.capabilitySettings.memory_graph = {
+        ...(mgSettings.capabilitySettings.memory_graph || {}),
         enabled: false,
         auto_extraction_enabled: false,
     };

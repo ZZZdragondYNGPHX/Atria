@@ -62,10 +62,10 @@ function scrubPresetPrompts(dataRoot, handle = 'default-user') {
     s.oai_settings.new_group_chat_prompt = '';
     s.oai_settings.new_example_chat_prompt = '';
     s.oai_settings.continue_nudge_prompt = '';
-    s.extension_settings = s.extension_settings || {};
-    s.extension_settings.orchestrator = { ...(s.extension_settings.orchestrator || {}), enabled: false };
-    s.extensionSettings = s.extensionSettings || {};
-    s.extensionSettings.orchestrator = { ...(s.extensionSettings.orchestrator || {}), enabled: false };
+    s.capabilitySettings = s.capabilitySettings || {};
+    s.capabilitySettings.orchestrator = { ...(s.capabilitySettings.orchestrator || {}), enabled: false };
+    s.capabilitySettings = s.capabilitySettings || {};
+    s.capabilitySettings.orchestrator = { ...(s.capabilitySettings.orchestrator || {}), enabled: false };
     writeFileSync(path, JSON.stringify(s, null, 4));
 }
 

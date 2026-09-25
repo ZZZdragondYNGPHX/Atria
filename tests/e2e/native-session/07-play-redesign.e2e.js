@@ -24,8 +24,8 @@ async function boot(page, width = 1440, height = 900, locale = 'en') {
         const response = await route.fetch(); const data = await response.json();
         const settings = JSON.parse(data.settings.settings);
         settings.firstRun = false;
-        settings.extension_settings ||= {};
-        settings.extension_settings.disabledExtensions = ['stable-diffusion'];
+        settings.atri_capabilities ||= {};
+        settings.atri_capabilities.disabledPlugins = ['stable-diffusion'];
         data.settings.settings = JSON.stringify(settings);
         await route.fulfill({ response, json: data });
     });
@@ -179,8 +179,8 @@ test('Game sidebars and native modal frames preserve ownership, focus and Escape
     await story(page);
     await page.locator('.atria-play-composer__input').focus();
     await page.evaluate(async () => {
-        const { createAtriaSurfaceAdapter } = await import('/scripts/extensions/game-runtime/ui/host-surfaces.js');
-        const { createSurfaceHost } = await import('/scripts/extensions/game-runtime/ui/surfaces.js');
+        const { createAtriaSurfaceAdapter } = await import('/scripts/native/experience/ui/host-surfaces.js');
+        const { createSurfaceHost } = await import('/scripts/native/experience/ui/surfaces.js');
         window.gameAdapter = createAtriaSurfaceAdapter(document, { shell: window.Atria.shell, nativePlayHost: window.Atria.shell.getPlayHost() });
         window.gameSurfaces = createSurfaceHost({ resolveSurface: window.gameAdapter.resolveSurface });
         const sidebar = window.gameSurfaces.mount('sidebar.left', 'inventory');
@@ -217,7 +217,7 @@ test('Full Game recovery stays outside package content and restores the exact ho
     await boot(page, 900, 800);
     await story(page);
     await page.evaluate(async () => {
-        const { createFullGameHost } = await import('/scripts/extensions/game-runtime/ui/full-host.js');
+        const { createFullGameHost } = await import('/scripts/native/experience/ui/full-host.js');
         window.gameStopped = 0;
         window.gameHost = createFullGameHost(document, { shell: window.Atria.shell,
             onExit: () => window.gameHost.dispose(), onStopGeneration: () => { window.gameStopped++; },

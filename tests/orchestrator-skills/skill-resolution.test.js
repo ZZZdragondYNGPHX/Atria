@@ -23,7 +23,7 @@ const {
     resolveAgentVisibleSkills,
     buildAvailableSkillsBlock,
     invalidateSkillInventory,
-} = await import('../../public/scripts/extensions/orchestrator/skill-resolution.js');
+} = await import('../../public/scripts/agents/orchestrator/skill-resolution.js');
 
 describe('ensureSkillsFieldShape', () => {
     test('defaults mode-level skills to wildcard visible / empty deny', () => {

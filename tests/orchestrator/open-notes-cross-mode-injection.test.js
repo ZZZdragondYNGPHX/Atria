@@ -43,7 +43,7 @@ globalThis.Atria = {
         lib: {
             yaml: { dump: (v) => JSON.stringify(v), load: (s) => JSON.parse(s) },
         },
-        extensionSettings: __sillyTavernSettings,
+        capabilitySettings: __sillyTavernSettings,
     }),
 };
 
@@ -54,8 +54,8 @@ jest.unstable_mockModule('../../public/lib.js', () => ({
     default: {},
 }));
 
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
-    extension_settings: __sillyTavernSettings,
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
+    capabilitySettings: __sillyTavernSettings,
     getContext: () => ({}),
     writeExtensionField: () => {},
     UNSET_VALUE: Symbol('unset'),
@@ -78,17 +78,15 @@ jest.unstable_mockModule('../../public/scripts/world-info.js', () => ({
     wi_anchor_position: {},
 }));
 
-jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/profile-resolver.js', () => ({
-    getChatCompletionConnectionProfiles: () => [],
-}));
+
 
 // ─── LLM stub — captures taskMessages so we can assert the system
 //     prompt carries the Open Notes block ────────────────────────────────
 const capturedCalls = [];
 
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/agenda-planner-tool.js', () => ({ requestAgendaPlannerStep: async (_ctx, _settings, opts) => { capturedCalls.push({ path: 'single', taskMessages: opts.taskMessages }); if (!llmResponses.length) throw new Error('Planner LLM stub exhausted'); return llmResponses.shift(); } }));
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/agenda-planner-tool.js', () => ({ requestAgendaPlannerStep: async (_ctx, _settings, opts) => { capturedCalls.push({ path: 'single', taskMessages: opts.taskMessages }); if (!llmResponses.length) throw new Error('Planner LLM stub exhausted'); return llmResponses.shift(); } }));
 
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/tool-calling.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/tool-calling.js', () => ({
     appendStandardToolRoundMessages: () => {},
     requestToolCallsWithRetry: async (_ctx, _settings, opts) => {
         capturedCalls.push({ path: 'multi', taskMessages: opts?.taskMessages || [] });
@@ -107,7 +105,7 @@ jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/tool-call
 
 // Skip real skill resolution (irrelevant to this contract; loading it
 // pulls in more of the extensions surface than we need to stub).
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/skill-resolution.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/skill-resolution.js', () => ({
     buildSkillRuntimeContext: () => ({}),
     resolveAgentVisibleSkills: async () => [],
     buildAvailableSkillsBlock: () => '',
@@ -147,8 +145,8 @@ let runAgendaTextAgent;
 let runWorkerNode;
 
 beforeAll(async () => {
-    ({ runAgendaPlannerStep, runAgendaTextAgent } = await import('../../public/scripts/extensions/orchestrator/agenda-runtime.js'));
-    ({ runWorkerNode } = await import('../../public/scripts/extensions/orchestrator/spec-runtime.js'));
+    ({ runAgendaPlannerStep, runAgendaTextAgent } = await import('../../public/scripts/agents/orchestrator/agenda-runtime.js'));
+    ({ runWorkerNode } = await import('../../public/scripts/agents/orchestrator/spec-runtime.js'));
 });
 
 beforeEach(() => {

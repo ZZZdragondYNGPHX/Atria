@@ -112,7 +112,7 @@ Skills are most useful when they ship with the artifact that depends on them. A 
 
 ### Packing into a preset
 
-In the orchestrator panel, [Preset Assistant](/features/preset-assistant) derives an `-orchestrator` preset. Right after derivation, the assistant offers a **Bundle skills with this preset** link that opens the skill manager with multi-select mode pre-enabled. Pick the skills you want, click **Pack selected into preset…**, choose the target preset.
+
 
 The packer writes the skills into the preset's `extensions.atria.embedded_skills_source` field. On the next preset save the embed rides with the JSON. Other Atria users who import that preset see the embed extraction dialog described above.
 
@@ -150,4 +150,3 @@ This soft-fail discipline is deliberate. It means a missing skill never blocks a
 - [Authoring skills](/features/skills/authoring) — write your own
 - [Orchestrator integration](/features/skills/orchestrator-integration) — wire skills to a profile
 - [Skills extension API](/development/extension-api/skills) — programmatic management from extensions
-- [Preset Assistant](/features/preset-assistant) — derives `-orchestrator` presets and offers a skill-bundling link

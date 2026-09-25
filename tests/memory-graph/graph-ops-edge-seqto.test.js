@@ -1,5 +1,5 @@
 import { describe, test, expect } from '@jest/globals';
-import { addEdge } from '../../public/scripts/extensions/memory-graph/graph-ops.js';
+import { addEdge } from '../../public/scripts/agents/memory/graph-ops.js';
 
 describe('addEdge with seqTo option', () => {
     test('stores seqTo when provided', () => {

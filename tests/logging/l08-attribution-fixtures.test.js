@@ -2,7 +2,7 @@ import { describe, expect, test } from '@jest/globals';
 
 import { classifyOperationalFailure, sanitizeDiagnosticUrl } from '../../src/logging/failure-classifier.js';
 import { attributeFrontendOwnership } from '../../public/scripts/logging/ownership.js';
-import { buildOrchestrationFailureDiagnostic } from '../../public/scripts/extensions/orchestrator/diagnostics.js';
+import { buildOrchestrationFailureDiagnostic } from '../../public/scripts/agents/orchestrator/diagnostics.js';
 
 describe('L08 diagnostic attribution fixtures', () => {
     test('B: extension network failures distinguish DNS, TLS, connect and filesystem stages', () => {
@@ -25,7 +25,7 @@ describe('L08 diagnostic attribution fixtures', () => {
         expect(thirdParty.stack.firstAtriaFrame.raw).toContain('error-adapter.js');
 
         const atria = attributeFrontendOwnership({
-            stack: 'Error: boom\n    at api (https://host/scripts/extensions/orchestrator/main.js:1:2)\n    at plugin (https://host/scripts/extensions/third-party/foo/main.js:1:2)',
+            stack: 'Error: boom\n    at api (https://host/scripts/agents/orchestrator/main.js:1:2)\n    at plugin (https://host/scripts/extensions/third-party/foo/main.js:1:2)',
         });
         expect(atria).toMatchObject({ probableOwner: 'atria', ownerName: 'Atria' });
         expect(atria.stack.firstThirdPartyFrame.ownerName).toBe('foo');

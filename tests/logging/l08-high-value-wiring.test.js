@@ -10,7 +10,7 @@ describe('L08 high-value incident wiring', () => {
     });
 
     test('extension install/update carry operation id and staged incidents', () => {
-        const source = readFileSync(new URL('../../src/endpoints/extensions.js', import.meta.url), 'utf8');
+        const source = readFileSync(new URL('../../src/endpoints/capability-host.js', import.meta.url), 'utf8');
         expect(source).toContain("response.setHeader('x-atria-operation-id'");
         expect(source).toContain("diagnosticStage = 'clone'");
         expect(source).toContain("diagnosticStage = 'manifest'");

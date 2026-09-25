@@ -81,18 +81,18 @@ jobs:
           src/native/runtime-descriptor.js
           src/native/studio-preview.js
           src/native/authoring/studio-service.js
-          public/scripts/extensions/game-runtime/index.js
-          public/scripts/extensions/game-runtime/package-loader.js
-          public/scripts/extensions/game-runtime/ui/component-model.js
-          public/scripts/extensions/game-runtime/ui/runtime.js
-          public/scripts/extensions/game-runtime/ui/declarative.js
-          public/scripts/extensions/game-runtime/ui/selectors.js
-          public/scripts/extensions/game-runtime/ui/surfaces.js
-          public/scripts/extensions/game-runtime/ui/host-surfaces.js
-          public/scripts/extensions/game-runtime/ui/native-components.js
-          public/scripts/extensions/game-runtime/ui/package.js
-          public/scripts/extensions/game-runtime/ui/live.js
-          public/scripts/extensions/game-runtime/ui/full-host.js
+          public/scripts/native/experience/index.js
+          public/scripts/native/experience/package-loader.js
+          public/scripts/native/experience/ui/component-model.js
+          public/scripts/native/experience/ui/runtime.js
+          public/scripts/native/experience/ui/declarative.js
+          public/scripts/native/experience/ui/selectors.js
+          public/scripts/native/experience/ui/surfaces.js
+          public/scripts/native/experience/ui/host-surfaces.js
+          public/scripts/native/experience/ui/native-components.js
+          public/scripts/native/experience/ui/package.js
+          public/scripts/native/experience/ui/live.js
+          public/scripts/native/experience/ui/full-host.js
           public/scripts/atria-shell/native-play-host.js
           tests/game-runtime/ui-component-model.test.js
           tests/game-runtime/ui-declarative.test.js

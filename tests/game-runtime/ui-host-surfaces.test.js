@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, test } from '@jest/globals';
 
-import { createAtriaSurfaceAdapter } from '../../public/scripts/extensions/game-runtime/ui/host-surfaces.js';
+import { createAtriaSurfaceAdapter } from '../../public/scripts/native/experience/ui/host-surfaces.js';
 import { mountNativePlayHost } from '../../public/scripts/atria-shell/native-play-host.js';
 
 describe('Atria Game UI host surface adapter', () => {

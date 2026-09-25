@@ -3,8 +3,8 @@ import {
     createSourceLifecycle,
     PROVENANCE_NAMESPACE,
     NATIVE_PROVENANCE_NAMESPACE,
-} from '../../public/scripts/extensions/memory-graph/source-lifecycle.js';
-import { sourceContent } from '../../public/scripts/extensions/memory-graph/source-provenance.js';
+} from '../../public/scripts/agents/memory/source-lifecycle.js';
+import { sourceContent } from '../../public/scripts/agents/memory/source-provenance.js';
 
 function fixture() {
     const disk = new Map();

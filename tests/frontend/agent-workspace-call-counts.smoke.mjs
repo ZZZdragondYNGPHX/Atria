@@ -24,9 +24,9 @@ try {
         await page.evaluate(async () => {
             const table = {};
             window.Atria = { getContext: () => ({ addLocaleData: (locale, values) => { if (locale === 'zh-cn') Object.assign(table, values); }, translate: value => table[value] || value }) };
-            const locale = await import('/scripts/extensions/orchestrator/i18n.js'); locale.registerLocaleData();
-            window.store = await import('/scripts/extensions/orchestrator/run-state/store.js');
-            window.panel = await import('/scripts/extensions/orchestrator/workspace/panel.js');
+            const locale = await import('/scripts/agents/orchestrator/i18n.js'); locale.registerLocaleData();
+            window.store = await import('/scripts/agents/orchestrator/run-state/store.js');
+            window.panel = await import('/scripts/agents/orchestrator/workspace/panel.js');
             window.runId = window.store.startRun({ mode: 'agenda', quiet: true });
             let version = 0;
             window.add = (type, effectId) => window.store.recordRuntimeEvent({ runId: window.runId, event: {

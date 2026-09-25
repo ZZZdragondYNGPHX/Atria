@@ -4,8 +4,8 @@
 >
 > 入口：
 > - **推荐：** `getExtensionApi('memory-graph').openSession(context)`，来自 `public/scripts/extensions.js`（会话外观）
-> - 底层：`getMemoryGraphReadApi(store, context)`，来自 `public/scripts/extensions/memory-graph/read-api.js`（读工厂）
-> - 底层：`getMemoryGraphWriteApi(store, context, options?)`，来自 `public/scripts/extensions/memory-graph/write-api.js`（写工厂；`options.onCommit` 把变更刷到 floor-state）
+> - 底层：`getMemoryGraphReadApi(store, context)`，来自 `public/scripts/agents/memory/read-api.js`（读工厂）
+> - 底层：`getMemoryGraphWriteApi(store, context, options?)`，来自 `public/scripts/agents/memory/write-api.js`（写工厂；`options.onCommit` 把变更刷到 floor-state）
 
 ## 会话 API（推荐入口）
 
@@ -228,7 +228,7 @@ const brief = session.getNodeBrief(candidates[0].id);
 如果你已经持有一个 store 引用（仅限内部调用方），可以直接构造读工厂：
 
 ```js
-import { getMemoryGraphReadApi } from '/scripts/extensions/memory-graph/read-api.js';
+import { getMemoryGraphReadApi } from '/scripts/agents/memory/read-api.js';
 
 const api = getMemoryGraphReadApi(store, context);
 const candidates = api.listVisibleCandidates();
@@ -872,7 +872,7 @@ const candidateRows = candidates.map(view => api.getNodeBrief(view.id, {
 ### 工厂：getMemoryGraphWriteApi(store， context， options?)
 
 ```js
-import { getMemoryGraphWriteApi } from '/scripts/extensions/memory-graph/write-api.js';
+import { getMemoryGraphWriteApi } from '/scripts/agents/memory/write-api.js';
 
 const writeApi = getMemoryGraphWriteApi(store, context);
 // 可选：传入 onCommit 钩子，在每次写成功后持久化 ——
@@ -1071,7 +1071,7 @@ if (groups.length > 0) {
 
 ## 参见
 
-- 原生召回路径：`public/scripts/extensions/memory-graph/main.js`（`chooseRecallRoute`、`collectRootCandidates`、`expandRouteCandidates`）
+- 原生召回路径：`public/scripts/agents/memory/main.js`（`chooseRecallRoute`、`collectRootCandidates`、`expandRouteCandidates`）
 - 配套：orchestrator 通过 `getExtensionApi('memory-graph').openSession(context)` 打开一个会话，并把它挂在 `__memoryGraphSession` 上供自身的 `memory_*` loop 工具消费 —— 见 [Director 运行时](/zh-CN/features/orchestrator/director)。
 - 相关扩展 API:[插件集成](/zh-CN/development/extension-api/plugin-integration)，介绍了与其他扩展入口一并发布 `'memory-graph'` 的扩展 API 注册表。
 - 要从你的扩展往编排器注册自定义工具（memory-graph 自己就是这样发布它的读 / 写工具的），参见 [编排器工具 API](./orchestrator-tools.md)。

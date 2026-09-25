@@ -5,7 +5,7 @@ import {
     advanceTurnContext,
     createTurnContext,
     createTurnId,
-} from '../../public/scripts/extensions/game-runtime/llm/turn-context.js';
+} from '../../public/scripts/native/experience/llm/turn-context.js';
 
 function anchor(overrides = {}) {
     return {

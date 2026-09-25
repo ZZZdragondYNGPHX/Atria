@@ -1,7 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
-import { emptyProvenance, captureEpisodes, createMemorySupportChecker, normalizeProvenance } from '../../public/scripts/extensions/memory-graph/source-provenance.js';
-import { applyFactOperations, projectFacts } from '../../public/scripts/extensions/memory-graph/atomic-facts.js';
-import { applyTemporalOperations, projectTemporalGraph, resolveEntity } from '../../public/scripts/extensions/memory-graph/temporal-graph.js';
+import { emptyProvenance, captureEpisodes, createMemorySupportChecker, normalizeProvenance } from '../../public/scripts/agents/memory/source-provenance.js';
+import { applyFactOperations, projectFacts } from '../../public/scripts/agents/memory/atomic-facts.js';
+import { applyTemporalOperations, projectTemporalGraph, resolveEntity } from '../../public/scripts/agents/memory/temporal-graph.js';
 
 function fixture() {
     const chat = [{ memory_os_source_id: 'm1', mes: 'Alice, Roland, Castle, Harbor, Sword.' }, { memory_os_source_id: 'm2', mes: 'Alice moved from Castle to Harbor.' }];

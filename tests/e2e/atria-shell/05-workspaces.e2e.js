@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-import { disableExtensions, markOnboarded } from '../_lib/fixtures.js';
+import { markOnboarded } from '../_lib/fixtures.js';
 import { awaitMainUI } from '../_lib/page.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
 
@@ -14,10 +14,7 @@ test.beforeAll(async () => {
         scenarioId: 'r7e-workspaces',
     });
     markOnboarded({ dataRoot: server.dataRoot });
-    disableExtensions({
-        dataRoot: server.dataRoot,
-        names: ['stable-diffusion'],
-    });
+
 });
 
 test.afterAll(async () => {
@@ -134,7 +131,7 @@ test.describe('R7E First-class Workspaces', () => {
         // Workspace below it. Close it before interacting with the focused
         // Workspace, then verify navigation continues through the same route
         // authority rather than bypassing the overlay.
-        await root.locator('#atria-context-sheet .atria-sheet-scrim').click();
+        await page.keyboard.press('Escape');
         await expect(root.locator('#atria-context-sheet')).toBeHidden();
 
         await agents.locator('.atria-workspace-nav [data-section="memory"]').click();

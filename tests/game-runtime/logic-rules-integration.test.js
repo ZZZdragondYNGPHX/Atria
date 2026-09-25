@@ -1,6 +1,6 @@
 import { describe, expect, jest, test } from '@jest/globals';
 
-import { createGameLogicRuntime } from '../../public/scripts/extensions/game-runtime/logic/runtime.js';
+import { createGameLogicRuntime } from '../../public/scripts/native/experience/logic/runtime.js';
 import { createSessionWorldTestAdapter } from './helpers/session-world-adapter.js';
 
 function makePersistence() {

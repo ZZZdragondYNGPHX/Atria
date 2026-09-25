@@ -67,18 +67,18 @@ jobs:
           src/native/runtime-descriptor.js
           src/endpoints/native-session.js
           public/scripts/native/session-runtime.js
-          public/scripts/extensions/game-runtime/index.js
-          public/scripts/extensions/game-runtime/package-loader.js
-          public/scripts/extensions/game-runtime/world/package.js
-          public/scripts/extensions/game-runtime/world/session.js
-          public/scripts/extensions/game-runtime/world/memory-source.js
-          public/scripts/extensions/game-runtime/logic/package.js
-          public/scripts/extensions/game-runtime/logic/runtime.js
-          public/scripts/extensions/game-runtime/llm/declarative-observations.js
-          public/scripts/extensions/game-runtime/llm/runtime.js
-          public/scripts/extensions/game-runtime/llm/turn-context.js
-          public/scripts/extensions/game-runtime/llm/turn-controller.js
-          public/scripts/extensions/game-runtime/llm/memory-bridge.js
+          public/scripts/native/experience/index.js
+          public/scripts/native/experience/package-loader.js
+          public/scripts/native/experience/world/package.js
+          public/scripts/native/experience/world/session.js
+          public/scripts/native/experience/world/memory-source.js
+          public/scripts/native/experience/logic/package.js
+          public/scripts/native/experience/logic/runtime.js
+          public/scripts/native/experience/llm/declarative-observations.js
+          public/scripts/native/experience/llm/runtime.js
+          public/scripts/native/experience/llm/turn-context.js
+          public/scripts/native/experience/llm/turn-controller.js
+          public/scripts/native/experience/llm/memory-bridge.js
           tests/native/runtime-descriptor.test.js
           tests/native/runtime-http.test.js
           tests/game-runtime/package-loader.test.js

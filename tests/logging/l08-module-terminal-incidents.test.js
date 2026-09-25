@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 describe('L08 memory/worldbook/sync/storage terminal incidents', () => {
     test('memory extraction reports only terminal non-abort failures', () => {
-        const source = readFileSync(new URL('../../public/scripts/extensions/memory-graph/extract-transaction.js', import.meta.url), 'utf8');
+        const source = readFileSync(new URL('../../public/scripts/agents/memory/extract-transaction.js', import.meta.url), 'utf8');
         expect(source).toContain('collectExtractTransactionInternal');
         expect(source).toContain("type: 'tool_failure'");
         expect(source).toContain("primaryModule: 'memory'");

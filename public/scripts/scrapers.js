@@ -1,5 +1,5 @@
 import { getRequestHeaders } from '../script.js';
-import { renderExtensionTemplateAsync } from './extensions.js';
+import { renderPluginTemplateAsync } from './capability-host.js';
 import { POPUP_RESULT, POPUP_TYPE, callGenericPopup } from './popup.js';
 import { SlashCommand } from './slash-commands/SlashCommand.js';
 import { ARGUMENT_TYPE, SlashCommandArgument, SlashCommandNamedArgument } from './slash-commands/SlashCommandArgument.js';
@@ -113,7 +113,7 @@ class Notepad {
      * @returns {Promise<File[]>} File attachments scraped from the text
      */
     async scrape() {
-        const template = $(await renderExtensionTemplateAsync('attachments', 'notepad', {}));
+        const template = $(await renderPluginTemplateAsync('attachments', 'notepad', {}));
         let fileName = `Untitled - ${new Date().toLocaleString()}`;
         let text = '';
         template.find('input[name="notepadFileName"]').val(fileName).on('input', function () {
@@ -171,7 +171,7 @@ class WebScraper {
      * @returns {Promise<File[]>} File attachments scraped from the webpage
      */
     async scrape() {
-        const template = $(await renderExtensionTemplateAsync('attachments', 'web-scrape', {}));
+        const template = $(await renderPluginTemplateAsync('attachments', 'web-scrape', {}));
         const linksString = await callGenericPopup(template, POPUP_TYPE.INPUT, '', { wide: false, large: false, okButton: 'Scrape', cancelButton: 'Cancel', rows: 4 });
 
         if (!linksString) {
@@ -274,7 +274,7 @@ class MediaWikiScraper {
         let filter = '';
         let output = 'single';
 
-        const template = $(await renderExtensionTemplateAsync('attachments', 'mediawiki-scrape', {}));
+        const template = $(await renderPluginTemplateAsync('attachments', 'mediawiki-scrape', {}));
         template.find('input[name="scrapeInput"]').on('input', function () {
             url = String($(this).val()).trim();
         });
@@ -381,7 +381,7 @@ class FandomScraper {
         let filter = '';
         let output = 'single';
 
-        const template = $(await renderExtensionTemplateAsync('attachments', 'fandom-scrape', {}));
+        const template = $(await renderPluginTemplateAsync('attachments', 'fandom-scrape', {}));
         template.find('input[name="fandomScrapeInput"]').on('input', function () {
             fandom = String($(this).val()).trim();
         });
@@ -527,7 +527,7 @@ class YouTubeScraper {
      */
     async scrape() {
         let lang = '';
-        const template = $(await renderExtensionTemplateAsync('attachments', 'youtube-scrape', {}));
+        const template = $(await renderPluginTemplateAsync('attachments', 'youtube-scrape', {}));
         const videoUrl = await callGenericPopup(template, POPUP_TYPE.INPUT, '', { wide: false, large: false, okButton: 'Scrape', cancelButton: 'Cancel' });
 
         template.find('input[name="youtubeLanguageCode"]').on('input', function () {

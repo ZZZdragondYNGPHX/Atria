@@ -214,7 +214,7 @@ import {
 } from './scripts/utils.js';
 import { debounce_timeout, GENERATION_TYPE_TRIGGERS, IGNORE_SYMBOL, inject_ids, MEDIA_DISPLAY, MEDIA_SOURCE, MEDIA_TYPE, OVERSWIPE_BEHAVIOR, SCROLL_BEHAVIOR, SWIPE_DIRECTION, SWIPE_SOURCE, SWIPE_STATE } from './scripts/constants.js';
 
-import { bootstrapExtensions, cancelDebouncedMetadataSave, doDailyExtensionUpdatesCheck, extension_settings, initExtensions, primeExtensionSettings, runGenerationInterceptors, saveMetadataDebounced } from './scripts/extensions.js';
+import { bootstrapCapabilities, serializeCapabilitySettings, cancelDebouncedMetadataSave, capabilitySettings, primeCapabilitySettings, saveMetadataDebounced } from './scripts/capability-host.js';
 import { STATE_ERROR_REASONS, makeStateError, makeStateOk } from './scripts/state-errors.js';
 import {
     formatHttpErrorHint,
@@ -254,8 +254,7 @@ import { markdownUnderscoreExt } from './scripts/showdown-underscore.js';
 import { NOTE_MODULE_NAME, initAuthorsNote, metadata_keys, setFloatingPrompt, shouldWIAddPrompt } from './scripts/authors-note.js';
 import { registerPromptManagerMigration } from './scripts/PromptManager.js';
 import { getRegexedString, regex_placement } from './scripts/extensions/regex/engine.js';
-import { getAutoContinueOnTruncated, isTruncatedFinishReason } from './scripts/extensions/connection-manager/auto-continue-truncated.js';
-import { withProfileRetry } from './scripts/extensions/connection-manager/profile-retry.js';
+import { withRetry } from './scripts/request-retry.js';
 import { initLogprobs, saveLogprobsForActiveMessage } from './scripts/logprobs.js';
 import { FILTER_STATES, FILTER_TYPES, FilterHelper, isFilterState } from './scripts/filters.js';
 import { getCfgPrompt, getGuidanceScale, initCfg } from './scripts/cfg-scale.js';
@@ -2086,10 +2085,7 @@ async function firstLoadInit() {
         () => measureClientStartupTask('batch2TextGenModelSelects', () => initTextGenModelSelects()),
         () => measureClientStartupTask('batch2SystemMessages', () => initSystemMessages()),
         () => measureClientStartupTask('batch2Announcements', () => initAnnouncements()),
-        () => measureClientStartupTask('batch2InitExtensions', () => initExtensions()),
-        () => measureClientStartupTask('batch2BootstrapExtensions', () => bootstrapExtensions()),
-        () => measureClientStartupTask('batch2ExtensionSlashCommands', () => import('./scripts/extensions-slashcommands.js')
-            .then(({ registerExtensionSlashCommands }) => registerExtensionSlashCommands())),
+        () => measureClientStartupTask('batch2BootstrapExtensions', () => bootstrapCapabilities()),
         () => measureClientStartupTask('batch2ToolSlashCommands', () => ToolManager.initToolSlashCommands()),
         () => measureClientStartupTask('batch2Tokenizers', () => initTokenizers()),
         () => measureClientStartupTask('batch2Personas', () => initPersonas()),
@@ -2123,7 +2119,6 @@ async function firstLoadInit() {
         () => loadPostVisibleStartupModules().then(({ initAccessibility }) => initAccessibility()),
         () => initSwipePicker(),
         () => addDebugFunctions(),
-        () => doDailyExtensionUpdatesCheck(),
         () => import('./scripts/skills/embed-lifecycle.js')
             .then(({ registerSkillEmbedLifecycle }) => {
                 // Hook skills lifecycle (CHARACTER_DELETED / PRESET_DELETED
@@ -5966,7 +5961,7 @@ function addPersonaDescriptionExtensionPrompt() {
             ? `${power_user.persona_description}\n${originalAN}`
             : `${originalAN}\n${power_user.persona_description}`;
 
-        setExtensionPrompt(NOTE_MODULE_NAME, ANWithDesc, chat_metadata[metadata_keys.position], chat_metadata[metadata_keys.depth], extension_settings.note.allowWIScan, chat_metadata[metadata_keys.role]);
+        setExtensionPrompt(NOTE_MODULE_NAME, ANWithDesc, chat_metadata[metadata_keys.position], chat_metadata[metadata_keys.depth], capabilitySettings.note.allowWIScan, chat_metadata[metadata_keys.role]);
     }
 
     if (power_user.persona_description_position === persona_description_positions.AT_DEPTH) {
@@ -7441,7 +7436,7 @@ function applyFinalizedAuthorsNoteInjections(anBefore = [], anAfter = []) {
         mergedAuthorsNote,
         chat_metadata[metadata_keys.position],
         chat_metadata[metadata_keys.depth],
-        extension_settings.note.allowWIScan,
+        capabilitySettings.note.allowWIScan,
         chat_metadata[metadata_keys.role],
     );
 }
@@ -7474,8 +7469,8 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
                 },
                 commitAssistant: (generationType, text) => saveReply({ type: generationType, getMessage: text }),
                 impersonate: text => $('#send_textarea').val(text).trigger('input'),
-                gameApi: () => Atria.getContext()?.getExtensionApi?.('game-runtime'),
-                orchestratorApi: () => Atria.getContext()?.getExtensionApi?.('orchestrator'),
+                gameApi: () => Atria.getContext()?.getCapabilityApi?.('game-runtime'),
+                orchestratorApi: () => Atria.getContext()?.getCapabilityApi?.('orchestrator'),
                 context: () => Atria.getContext(),
                 onChunk: chunk => document.dispatchEvent(new CustomEvent('atria-native-play-draft', { detail: { text: chunk.text } })),
                 ended: generationType => {
@@ -7743,7 +7738,7 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
         && !automatic_trigger
         && [undefined, 'normal'].includes(nativeGenerationIntent)
     ) {
-        const gameApi = Atria.getContext()?.getExtensionApi?.('game-runtime');
+        const gameApi = Atria.getContext()?.getCapabilityApi?.('game-runtime');
         const gameState = gameApi?.getPackageState?.();
         if (
             gameApi?.isActive?.()
@@ -7787,13 +7782,13 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
     if (selected_group && Array.isArray(groupDepthPrompts) && groupDepthPrompts.length > 0) {
         groupDepthPrompts.forEach((value, index) => {
             const role = getExtensionPromptRoleByName(value.role);
-            setExtensionPrompt(inject_ids.DEPTH_PROMPT_INDEX(index), value.text, extension_prompt_types.IN_CHAT, value.depth, extension_settings.note.allowWIScan, role);
+            setExtensionPrompt(inject_ids.DEPTH_PROMPT_INDEX(index), value.text, extension_prompt_types.IN_CHAT, value.depth, capabilitySettings.note.allowWIScan, role);
         });
     } else {
         const depthPromptText = charDepthPrompt || '';
         const depthPromptDepth = characters[this_chid]?.data?.extensions?.depth_prompt?.depth ?? depth_prompt_depth_default;
         const depthPromptRole = getExtensionPromptRoleByName(characters[this_chid]?.data?.extensions?.depth_prompt?.role ?? depth_prompt_role_default);
-        setExtensionPrompt(inject_ids.DEPTH_PROMPT, depthPromptText, extension_prompt_types.IN_CHAT, depthPromptDepth, extension_settings.note.allowWIScan, depthPromptRole);
+        setExtensionPrompt(inject_ids.DEPTH_PROMPT, depthPromptText, extension_prompt_types.IN_CHAT, depthPromptDepth, capabilitySettings.note.allowWIScan, depthPromptRole);
     }
 
     // First message in fresh 1-on-1 chat reacts to user/character settings changes
@@ -7916,19 +7911,6 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
 
     // Determine token limit
     let this_max_context = getMaxPromptTokens();
-
-    if (!dryRun) {
-        console.debug('Running extension interceptors');
-        const aborted = await runGenerationInterceptors(coreChat, this_max_context, type);
-
-        if (aborted) {
-            console.debug('Generation aborted by extension interceptors');
-            unblockGeneration(type);
-            return Promise.resolve();
-        }
-    } else {
-        console.debug('Skipping extension interceptors for dry run');
-    }
 
     // Adjust token limit for Horde
     let adjustedParams;
@@ -9415,44 +9397,6 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
             }
 
             if (isStreamFinished) {
-                const streamFinishReason = streamingProcessor?.finishReason ?? null;
-                const willAutoContinue = shouldAutoContinueOnTruncated(streamFinishReason, isImpersonate);
-                if (willAutoContinue) {
-                    // Middle round of an auto-continue-on-truncated chain.
-                    // Finalize DOM / chat[i].mes state locally but do NOT
-                    // emit MESSAGE_RECEIVED / CHARACTER_MESSAGE_RENDERED,
-                    // do NOT persist to disk, do NOT release the send lock,
-                    // do NOT play the completion sound. Then recursively
-                    // invoke Generate('continue') so the next round appends
-                    // to the same chat[i] via the existing continue path.
-                    // Downstream extensions see one MESSAGE_RECEIVED for the
-                    // merged final reply after the chain terminates.
-                    await streamingProcessor.onFinishStreaming(streamingProcessor.messageId, getMessage, { suppress: true });
-                    streamingProcessor = null;
-                    // Re-check abort AFTER the suppress-finalize (which is
-                    // async and can await through several ticks: reasoning
-                    // finish, token count, DOM sync) and BEFORE the recursive
-                    // Generate() call. If the user clicked stop during that
-                    // window, entering Generate() would deactivateSendButtons
-                    // → showStopButton and flash the stop button on-screen
-                    // before the recursive Generate's own abort check kicks
-                    // in. Bail here to keep the stop click visually clean.
-                    if (abortController?.signal?.aborted) {
-                        console.debug('[auto-continue-on-truncated] aborted between middle-round finalize and recursive Generate; honoring stop');
-                        // Emit the events the suppressed path skipped so
-                        // extensions see the interrupted reply as a completed
-                        // message (matching the streaming-abort semantics of
-                        // the plain path where a stop mid-stream still fires
-                        // MESSAGE_RECEIVED for the partial).
-                        await eventSource.emit(event_types.MESSAGE_RECEIVED, chat.length - 1, type);
-                        await eventSource.emit(event_types.CHARACTER_MESSAGE_RENDERED, chat.length - 1, type);
-                        return Object.defineProperties(new String(getMessage), {
-                            'messageChunk': { value: messageChunk },
-                            'fromStream': { value: true },
-                        });
-                    }
-                    return Generate('continue', { automatic_trigger, force_name2, quiet_prompt, quietToLoud, skipWIAN, force_chid, signal, quietImage, quietName, depth: depth + 1 }, dryRun);
-                }
                 await streamingProcessor.onFinishStreaming(streamingProcessor.messageId, getMessage);
                 streamingProcessor = null;
                 triggerAutoContinue(messageChunk, isImpersonate);
@@ -9565,47 +9509,17 @@ export async function Generate(type, { automatic_trigger, force_name2, quiet_pro
             // shape as the streaming path — the goal is that extensions
             // observe one MESSAGE_RECEIVED / CHARACTER_MESSAGE_RENDERED for
             // the merged final message, not one per intermediate round.
-            const nonStreamFinishReason = data?.choices?.[0]?.finish_reason ?? null;
-            const willAutoContinue = shouldAutoContinueOnTruncated(nonStreamFinishReason, isImpersonate);
+
 
             // Without streaming we'll be having a full message on continuation. Treat it as a last chunk.
             if (originalType !== 'continue') {
-                ({ type, getMessage } = await saveReply({ type, getMessage, title, swipes, reasoning, imageUrls, reasoningSignature, reasoningBlocks, reasoningDetails, suppressEmit: willAutoContinue }));
+                ({ type, getMessage } = await saveReply({ type, getMessage, title, swipes, reasoning, imageUrls, reasoningSignature, reasoningBlocks, reasoningDetails, suppressEmit: false }));
             } else {
-                ({ type, getMessage } = await saveReply({ type: 'appendFinal', getMessage, title, swipes, reasoning, imageUrls, reasoningSignature, reasoningBlocks, reasoningDetails, suppressEmit: willAutoContinue }));
+                ({ type, getMessage } = await saveReply({ type: 'appendFinal', getMessage, title, swipes, reasoning, imageUrls, reasoningSignature, reasoningBlocks, reasoningDetails, suppressEmit: false }));
             }
 
             // This relies on `saveReply` having been called to add the message to the chat, so it must be last.
             parseAndSaveLogprobs(data, continue_mag);
-
-            if (willAutoContinue) {
-                // Chain-middle round complete: chat[i].mes has the accumulated
-                // text via saveReply's mutation, but no MESSAGE_RECEIVED was
-                // emitted and nothing has been persisted. Recursively invoke
-                // Generate('continue') for the next round. The chain-final
-                // round will hit the else branch below and run persistence +
-                // events normally on the fully merged reply.
-                //
-                // Recheck abort here: saveReply above is async and awaits
-                // through several ticks (token count, DOM addOneMessage, image
-                // attach). If the user clicked stop during that window,
-                // entering Generate() would deactivateSendButtons +
-                // showStopButton and flash the stop button on-screen before
-                // the recursive Generate's own abort check kicks in. Bail to
-                // keep the stop click visually clean and honor user intent.
-                if (abortController?.signal?.aborted) {
-                    console.debug('[auto-continue-on-truncated] aborted between middle-round saveReply and recursive Generate; honoring stop');
-                    // Emit the events the suppressed saveReply skipped so
-                    // extensions see the interrupted reply as a finished
-                    // message (matching non-streaming abort semantics where
-                    // the request-inflight abort still surfaces MESSAGE_RECEIVED).
-                    await eventSource.emit(event_types.MESSAGE_RECEIVED, chat.length - 1, type);
-                    await eventSource.emit(event_types.CHARACTER_MESSAGE_RENDERED, chat.length - 1, type);
-                    unblockGeneration(type);
-                    return;
-                }
-                return Generate('continue', { automatic_trigger, force_name2, quiet_prompt, quietToLoud, skipWIAN, force_chid, signal, quietImage, quietName, depth: depth + 1 }, dryRun);
-            }
         }
 
         if (canPerformToolCalls) {
@@ -9988,21 +9902,7 @@ export function triggerAutoContinue(messageChunk, isImpersonate) {
 //     `noteNormalFinishForAutoContinueOnTruncated`
 // Ceiling comes from the active connection profile; when the counter reaches
 // the ceiling further truncations do NOT auto-continue until reset.
-let autoContinueOnTruncatedCount = 0;
 
-export function resetAutoContinueOnTruncatedCounter() {
-    autoContinueOnTruncatedCount = 0;
-}
-
-export function noteNormalFinishForAutoContinueOnTruncated(finishReason) {
-    // Any known finish_reason that isn't a truncation signal counts as a
-    // clean landing and clears the streak. Unknown/null → don't touch it
-    // (backend didn't tell us; don't assume).
-    const v = String(finishReason || '');
-    if (v && !isTruncatedFinishReason(v)) {
-        autoContinueOnTruncatedCount = 0;
-    }
-}
 
 /**
  * Decide whether the just-finished generation round should trigger another
@@ -10018,45 +9918,7 @@ export function noteNormalFinishForAutoContinueOnTruncated(finishReason) {
  * @returns {boolean} true if the caller should recursively invoke
  *   Generate('continue', { continuationChain: true }); false otherwise.
  */
-export function shouldAutoContinueOnTruncated(finishReason, isImpersonate) {
-    if (selected_group) return false;
-    if (isImpersonate) return false;
 
-    if (!isTruncatedFinishReason(finishReason)) {
-        noteNormalFinishForAutoContinueOnTruncated(finishReason);
-        return false;
-    }
-
-    // User is composing another turn -> don't hijack their input.
-    const textareaText = String($('#send_textarea').val() || '');
-    if (textareaText.length > 0) {
-        console.debug('[auto-continue-on-truncated] user has pending input; not triggering');
-        return false;
-    }
-
-    // User clicked stop mid-generation.
-    if (abortController && abortController.signal.aborted) {
-        console.debug('[auto-continue-on-truncated] generation was aborted; not triggering');
-        return false;
-    }
-
-    const { enabled, maxAttempts } = getAutoContinueOnTruncated();
-    if (!enabled) return false;
-
-    if (autoContinueOnTruncatedCount >= maxAttempts) {
-        console.info(`[auto-continue-on-truncated] attempt cap reached (${autoContinueOnTruncatedCount}/${maxAttempts}); not triggering`);
-        autoContinueOnTruncatedCount = 0;
-        return false;
-    }
-
-    if (chat.length === 0) return false;
-    const lastMessage = chat[chat.length - 1];
-    if (!lastMessage || lastMessage.is_user) return false;
-
-    autoContinueOnTruncatedCount += 1;
-    console.info(`[auto-continue-on-truncated] finish_reason=${finishReason}; recursively continuing (${autoContinueOnTruncatedCount}/${maxAttempts})`);
-    return true;
-}
 
 export function getBiasStrings(textareaText, type) {
     if (type == 'impersonate' || type == 'continue') {
@@ -10444,7 +10306,7 @@ export async function sendGenerationRequest(type, data, options = {}) {
     // retry-wrapped transports; every other main-chat + auto-continue round
     // funnels through this fetch, so it must respect the same per-profile
     // retry policy (max-request-retries + retry-status-whitelist) as the rest.
-    const response = await withProfileRetry(async () => {
+    const response = await withRetry(async () => {
         notifyGenerationRequestReady(options, {
             boundary: 'provider_request',
             providerConfirmed: true,
@@ -11859,7 +11721,7 @@ export async function renameCharacter(name = null, { silent = false, renameChats
             }
 
             // Char-bound Author's Notes
-            const charNote = extension_settings.note.chara?.find(x => x.name == oldName);
+            const charNote = capabilitySettings.note.chara?.find(x => x.name == oldName);
             if (charNote) {
                 charNote.name = newName;
                 saveSettingsDebounced();
@@ -15813,21 +15675,8 @@ export async function getSettings(options = {}) {
         initMacros();
         initVariableOpLog();
 
-        if (data.enable_extensions) {
-            const enableAutoUpdate = Boolean(data.enable_extensions_auto_update);
-            const isVersionChanged = settings.currentVersion !== currentVersion;
-            primeExtensionSettings(settings, isVersionChanged, enableAutoUpdate);
-            await eventSource.emit(event_types.EXTENSION_SETTINGS_LOADED);
-        } else {
-            Object.assign(extension_settings, (settings.extension_settings ?? {}));
-            $('#third_party_extension_button').addClass('disabled');
-            $('#extensions_details').addClass('disabled');
-            $('#extensions_connect').addClass('disabled');
-            $('#extensions_notify_updates').attr('disabled', 'disabled');
-            $('#extensions_autoconnect').attr('disabled', 'disabled');
-            $('#extensions_url').attr('disabled', 'disabled');
-            $('#extensions_api_key').attr('disabled', 'disabled');
-        }
+        primeCapabilitySettings(settings);
+        await eventSource.emit(event_types.EXTENSION_SETTINGS_LOADED);
 
         firstRun = !!settings.firstRun;
 
@@ -15952,7 +15801,7 @@ function buildSettingsPayload() {
         swipes: swipes,
         horde_settings: horde_settings,
         power_user: power_user,
-        extension_settings: extension_settings,
+        atri_capabilities: serializeCapabilitySettings(),
         tags: tags,
         tag_map: tag_map,
         nai_settings: nai_settings,
@@ -21045,8 +20894,7 @@ jQuery(async function () {
 
     // Reset the auto-continue-on-truncated attempt counter on user-initiated
     // boundaries so a fresh conversational turn always gets full credit.
-    eventSource.on(event_types.CHAT_CHANGED, resetAutoContinueOnTruncatedCounter);
-    eventSource.on(event_types.MESSAGE_SENT, resetAutoContinueOnTruncatedCounter);
+
 
     updateCurrentChatToolsButtons();
 

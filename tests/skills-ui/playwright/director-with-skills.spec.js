@@ -104,7 +104,7 @@ test.describe('Skills LLM: director main agent reads visible skill mid-turn', ()
         // below could read a STALE finished run and report a false pass.
         await page.evaluate(async () => {
             try {
-                const m = await import('/scripts/extensions/orchestrator/run-state/store.js');
+                const m = await import('/scripts/agents/orchestrator/run-state/store.js');
                 m.clearCurrentRun?.();
             } catch { /* store module not loaded yet — safe to ignore */ }
         });
@@ -160,7 +160,7 @@ test.describe('Skills LLM: director main agent reads visible skill mid-turn', ()
         // block. We snapshot the previous shape for teardown.
         const previousVisibleSnapshot = await page.evaluate((name) => {
             const ctx = window.Atria?.getContext?.();
-            const settings = ctx?.extensionSettings?.orchestrator;
+            const settings = ctx?.capabilitySettings?.orchestrator;
             const dir = settings?.directorProfile;
             if (!dir) return null;
             if (!dir.skills) dir.skills = { visible: [], deny: [] };
@@ -214,7 +214,7 @@ test.describe('Skills LLM: director main agent reads visible skill mid-turn', ()
             const deadline = 540_000;
             while (Date.now() - start < deadline) {
                 try {
-                    const mod = await import('/scripts/extensions/orchestrator/run-state/store.js');
+                    const mod = await import('/scripts/agents/orchestrator/run-state/store.js');
                     const state = mod.getCurrentRun();
                     if (state && settled.has(String(state.status || ''))) {
                         // Strip non-serializable abortFn before passing back.
@@ -311,7 +311,7 @@ test.describe('Skills LLM: director main agent reads visible skill mid-turn', ()
         try {
             await page.evaluate((before) => {
                 const ctx = window.Atria?.getContext?.();
-                const settings = ctx?.extensionSettings?.orchestrator;
+                const settings = ctx?.capabilitySettings?.orchestrator;
                 if (settings?.directorProfile?.skills) {
                     settings.directorProfile.skills.visible = before;
                     if (typeof ctx?.saveSettingsDebounced === 'function') {
@@ -337,7 +337,7 @@ test.describe('Skills LLM: director main agent reads visible skill mid-turn', ()
 async function ensureDirectorMode(page) {
     await page.evaluate(() => {
         const ctx = window.Atria?.getContext?.();
-        const settings = ctx?.extensionSettings?.orchestrator;
+        const settings = ctx?.capabilitySettings?.orchestrator;
         if (!settings) throw new Error('orchestrator settings missing — extension not mounted');
         settings.enabled = true;
         settings.executionMode = 'director';

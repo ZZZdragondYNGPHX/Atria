@@ -3,7 +3,7 @@
 讓外掛**直接產出助理訊息本體**而非引導主 LLM 的 API。當外掛為某個回合宣告接管後，主 LLM 完全不會被呼叫 —— 由外掛把正文和 reasoning 寫進一個純緩衝編輯器控制代碼，核心負責把結果放進 chat、做持久化、跑正規表達式 / cleanup 後處理、觸發生命週期事件，在外掛 discard 時回滾。
 
 ::: warning 僅緩衝核心
-控制代碼是一個純文字 / reasoning 緩衝。它不直接操作 `chat`、不觸發 ST 事件、不渲染任何東西 —— 這些都由核心依控制代碼的生命週期來驅動。更高層的編輯輔助（增量追加、結構化補丁、串流管道）放在外掛層實作。編排器擴充在 `public/scripts/extensions/orchestrator/editor-ops.js` 提供了參考實作 —— 依外掛需要選擇複製、依賴或取代它即可。
+控制代碼是一個純文字 / reasoning 緩衝。它不直接操作 `chat`、不觸發 ST 事件、不渲染任何東西 —— 這些都由核心依控制代碼的生命週期來驅動。更高層的編輯輔助（增量追加、結構化補丁、串流管道）放在外掛層實作。編排器擴充在 `public/scripts/agents/orchestrator/editor-ops.js` 提供了參考實作 —— 依外掛需要選擇複製、依賴或取代它即可。
 :::
 
 ## 鉤子事件
@@ -176,7 +176,7 @@ interface MessageEditorHandle {
 
 ## 更高層的編輯模式
 
-核心刻意不提供增量追加、按字元位移切片、結構化補丁套用或串流管道 —— 這些都是*策略*，不是狀態管理。編排器擴充在 `public/scripts/extensions/orchestrator/editor-ops.js` 實作了這些能力：
+核心刻意不提供增量追加、按字元位移切片、結構化補丁套用或串流管道 —— 這些都是*策略*，不是狀態管理。編排器擴充在 `public/scripts/agents/orchestrator/editor-ops.js` 實作了這些能力：
 
 - `appendText(handle, text)` / `appendReasoning(handle, text)` —— 在目前值後面銜接。
 - `insertAt(handle, offset, text)` / `replaceRange(handle, start, end, text)` / `deleteRange(handle, start, end)` —— 按字元位移切片。

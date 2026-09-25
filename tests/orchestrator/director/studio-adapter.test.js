@@ -3,7 +3,7 @@ import {
     sanitizeDirectorProfile,
     createDefaultDirectorProfile,
     ORCH_EXECUTION_MODE_DIRECTOR,
-} from '../../../public/scripts/extensions/orchestrator/director-defaults.js';
+} from '../../../public/scripts/agents/orchestrator/director-defaults.js';
 
 /**
  * Director-mode studio data round-trip.

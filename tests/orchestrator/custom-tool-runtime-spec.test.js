@@ -1,4 +1,4 @@
-import { getCurrentRun as getRuntimePanelState } from '../../public/scripts/extensions/orchestrator/run-state/store.js';
+import { getCurrentRun as getRuntimePanelState } from '../../public/scripts/agents/orchestrator/run-state/store.js';
 // tests/orchestrator/custom-tool-runtime-spec.test.js
 //
 // Verifies spec runtime constructs the per-run customToolRegistry at
@@ -15,7 +15,7 @@ import { describe, test, expect, jest, beforeAll, beforeEach } from '@jest/globa
 
 // spec-runtime.js + defaults.js consume core symbols via
 // `Atria.getContext()` after upstream commit 571c529c2. Provide a
-// shim with the constants + the shared `extensionSettings` binding the
+// shim with the constants + the shared `capabilitySettings` binding the
 // runtime captures at module-load time.
 const __sillyTavernSettings = {
     orchestrator: { nodeIterationMaxRounds: 3, reviewRerunMaxRounds: 2 },
@@ -29,7 +29,7 @@ globalThis.Atria = {
         lib: {
             yaml: { dump: (v) => JSON.stringify(v), load: (s) => JSON.parse(s) },
         },
-        extensionSettings: __sillyTavernSettings,
+        capabilitySettings: __sillyTavernSettings,
     }),
 };
 
@@ -40,8 +40,8 @@ jest.unstable_mockModule('../../public/lib.js', () => ({
     default: {},
 }));
 
-jest.unstable_mockModule('../../public/scripts/extensions.js', () => ({
-    extension_settings: { orchestrator: { nodeIterationMaxRounds: 3, reviewRerunMaxRounds: 2 } },
+jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
+    capabilitySettings: { orchestrator: { nodeIterationMaxRounds: 3, reviewRerunMaxRounds: 2 } },
     getContext: () => ({}),
     writeExtensionField: () => {},
     UNSET_VALUE: Symbol('unset'),
@@ -66,16 +66,14 @@ jest.unstable_mockModule('../../public/scripts/world-info.js', () => ({
 
 // Stub the connection-manager gate so the real agent-resolution.js can load
 // without pulling textgen-models.js → document.addEventListener under Node.
-jest.unstable_mockModule('../../public/scripts/extensions/connection-manager/profile-resolver.js', () => ({
-    getChatCompletionConnectionProfiles: () => [],
-}));
+
 
 // LLM stub — controlled per-test via `llmResponses`. The only legitimate
 // mock surface (LLM is slow / non-deterministic). Everything else runs
 // the real product modules.
 const llmResponses = [];
 const llmRequests = [];
-jest.unstable_mockModule('../../public/scripts/extensions/orchestrator/tool-calling.js', () => ({
+jest.unstable_mockModule('../../public/scripts/agents/orchestrator/tool-calling.js', () => ({
     appendStandardToolRoundMessages: () => {},
     requestToolCallsWithRetry: async (_context, _settings, request) => {
         llmRequests.push({ ...request, taskMessages: structuredClone(request.taskMessages) });
@@ -100,7 +98,7 @@ const customToolDispatches = [];
 globalThis.__customToolDispatchSink = customToolDispatches;
 
 beforeAll(async () => {
-    ({ runSpecOrchestration } = await import('../../public/scripts/extensions/orchestrator/spec-runtime.js'));
+    ({ runSpecOrchestration } = await import('../../public/scripts/agents/orchestrator/spec-runtime.js'));
 });
 
 beforeEach(() => {

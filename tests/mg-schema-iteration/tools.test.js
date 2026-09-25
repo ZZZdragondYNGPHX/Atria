@@ -4,7 +4,7 @@ import { describe, test, expect, beforeAll } from '@jest/globals';
 let TOOL_DEFS, TOOL_DISPLAY, normalizeToolCallToEdit, SESSIONS_BUCKET_KEY;
 
 beforeAll(async () => {
-    const mod = await import('../../public/scripts/extensions/memory-graph/schema-iteration/tools.js');
+    const mod = await import('../../public/scripts/agents/memory/schema-iteration/tools.js');
     ({ TOOL_DEFS, TOOL_DISPLAY, normalizeToolCallToEdit, SESSIONS_BUCKET_KEY } = mod);
 });
 

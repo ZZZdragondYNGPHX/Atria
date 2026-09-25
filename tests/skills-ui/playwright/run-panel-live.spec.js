@@ -88,7 +88,7 @@ test.describe('Orchestrator Run Panel — live LLM', () => {
 
         // ── 4. Clear store so we don't observe a stale run from a prior test
         await page.evaluate(async () => {
-            const m = await import('/scripts/extensions/orchestrator/run-state/store.js');
+            const m = await import('/scripts/agents/orchestrator/run-state/store.js');
             m.clearCurrentRun?.();
         });
 
@@ -149,7 +149,7 @@ test.describe('Orchestrator Run Panel — live LLM', () => {
 
         // ── 8. Wait for run to finish ─────────────────────────────────
         const finalState = await page.evaluate(async () => {
-            const m = await import('/scripts/extensions/orchestrator/run-state/store.js');
+            const m = await import('/scripts/agents/orchestrator/run-state/store.js');
             const settled = new Set(['committed', 'aborted', 'error']);
             const start = Date.now();
             const deadline = 540_000;
@@ -256,7 +256,7 @@ test.describe('Orchestrator Run Panel — live LLM', () => {
             expect(avatar, 'no character available').toBeTruthy();
             await ensureOrchestratorEnabledDirectorMode(page);
             await page.evaluate(async () => {
-                const m = await import('/scripts/extensions/orchestrator/run-state/store.js');
+                const m = await import('/scripts/agents/orchestrator/run-state/store.js');
                 m.clearCurrentRun?.();
             });
             await page.evaluate(async (prompt) => {
@@ -354,7 +354,7 @@ async function activateConnectionProfile(page) {
     // 30s for nothing. Probe the settings shape first (no DOM access).
     const hasAnyProfile = await page.evaluate(() => {
         const ctx = window.Atria?.getContext?.();
-        const profiles = ctx?.extensionSettings?.connectionManager?.profiles;
+        const profiles = ctx?.capabilitySettings?.connectionManager?.profiles;
         return Array.isArray(profiles) && profiles.length > 0;
     }).catch(() => false);
     if (!hasAnyProfile) return '';
@@ -374,7 +374,7 @@ async function activateConnectionProfile(page) {
     return await page.evaluate(async () => {
         const ctx = window.Atria?.getContext?.();
         if (!ctx) return '';
-        const profiles = ctx.extensionSettings?.connectionManager?.profiles;
+        const profiles = ctx.capabilitySettings?.connectionManager?.profiles;
         if (!Array.isArray(profiles) || !profiles.length) return '';
         const pinned = (
             (typeof process !== 'undefined' && process.env?.ATRIA_PLAYWRIGHT_PROFILE)
@@ -430,8 +430,8 @@ async function ensureCharacterLoaded(page) {
 /**
  * Ensure the orchestrator extension is enabled AND its executionMode is
  * 'director'. The main settings live at
- * `extension_settings.orchestrator` (the iter-studio bucket at
- * `extension_settings.atria_orchestrator` is unrelated). Without
+ * `capabilitySettings.orchestrator` (the iter-studio bucket at
+ * `capabilitySettings.atria_orchestrator` is unrelated). Without
  * `enabled: true`, the dispatch hook at main.js's GENERATE_TAKEOVER_DISPATCH
  * early-returns; without executionMode === 'director', a different
  * runner branches off and the panel never mounts.
@@ -439,7 +439,7 @@ async function ensureCharacterLoaded(page) {
 async function ensureOrchestratorEnabledDirectorMode(page) {
     await page.evaluate(() => {
         const ctx = window.Atria?.getContext?.();
-        const settings = ctx?.extensionSettings?.orchestrator;
+        const settings = ctx?.capabilitySettings?.orchestrator;
         if (!settings) throw new Error('orchestrator settings missing — extension not mounted (check that the extension is enabled in this build)');
         settings.enabled = true;
         settings.executionMode = 'director';

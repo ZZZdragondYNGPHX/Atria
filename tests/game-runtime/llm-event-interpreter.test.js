@@ -6,8 +6,8 @@ import {
     createEventInterpreter,
     normalizeEventInterpretationRequest,
     validateEventInterpretation,
-} from '../../public/scripts/extensions/game-runtime/llm/event-interpreter.js';
-import { createTurnContext } from '../../public/scripts/extensions/game-runtime/llm/turn-context.js';
+} from '../../public/scripts/native/experience/llm/event-interpreter.js';
+import { createTurnContext } from '../../public/scripts/native/experience/llm/turn-context.js';
 
 function request(overrides = {}) {
     return {

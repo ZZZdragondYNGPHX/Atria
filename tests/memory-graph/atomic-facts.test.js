@@ -1,7 +1,7 @@
 import { describe, test, expect } from '@jest/globals';
-import { emptyProvenance, captureEpisodes, reconcileSources, normalizeProvenance } from '../../public/scripts/extensions/memory-graph/source-provenance.js';
-import { applyFactOperations, projectFacts } from '../../public/scripts/extensions/memory-graph/atomic-facts.js';
-import { factExtractionTool, factExtractionContext, readFactToolCalls, FACT_TOOL_NAME } from '../../public/scripts/extensions/memory-graph/fact-extraction.js';
+import { emptyProvenance, captureEpisodes, reconcileSources, normalizeProvenance } from '../../public/scripts/agents/memory/source-provenance.js';
+import { applyFactOperations, projectFacts } from '../../public/scripts/agents/memory/atomic-facts.js';
+import { factExtractionTool, factExtractionContext, readFactToolCalls, FACT_TOOL_NAME } from '../../public/scripts/agents/memory/fact-extraction.js';
 
 function fixture() {
     const chat = [{ memory_os_source_id: 'm1', mes: 'Alice gave Roland the sword.' }, { memory_os_source_id: 'm2', mes: 'Roland keeps the sword.' }];

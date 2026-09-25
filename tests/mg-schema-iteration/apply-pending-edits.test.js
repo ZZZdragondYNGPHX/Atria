@@ -58,16 +58,13 @@ jest.unstable_mockModule('../../public/scripts/lib/abort-utils.js', () => ({}));
 // which doesn't resolve in jest. MG studio.js imports CEA only for the
 // per-character lorebook helper-tool dispatcher (used by the lorebook read
 // tools). This unit test doesn't exercise reads, so a noop stub is enough.
-jest.unstable_mockModule('../../public/scripts/extensions/character-editor-assistant/main.js', () => ({
-    buildCharacterEditorHelperApis: jest.fn(() => []),
-    runCharacterEditorHelperToolCall: jest.fn(async () => ({ ok: true, result: {} })),
-}));
+
 
 let _testOnly_applyEmptyPathSet;
 let _testOnly_createNewSession;
 
 beforeAll(async () => {
-    const mod = await import('../../public/scripts/extensions/memory-graph/schema-iteration/studio.js');
+    const mod = await import('../../public/scripts/agents/memory/schema-iteration/studio.js');
     _testOnly_applyEmptyPathSet = mod._testOnly_applyEmptyPathSet;
     _testOnly_createNewSession = mod._testOnly_createNewSession;
 });
@@ -215,7 +212,7 @@ const __mgSchemaTestDir = dirname(fileURLToPath(import.meta.url));
 const STUDIO_JS = readFileSync(
     resolvePath(
         __mgSchemaTestDir, '..', '..',
-        'public', 'scripts', 'extensions', 'memory-graph', 'schema-iteration', 'studio.js',
+        'public', 'scripts', 'agents', 'memory', 'schema-iteration', 'studio.js',
     ),
     'utf8',
 );
