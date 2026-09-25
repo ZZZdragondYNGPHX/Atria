@@ -236,11 +236,24 @@ async function worldKnowledge(doc, root, route, host) {
         await mountPackageLibraryOriginal({ document: doc, root, ref, host }); return;
     }
     if (child.startsWith('world:') || child.startsWith('knowledge:')) {
-        const id = child.split(':').slice(1).join(':');
-        const detail = await (knowledge ? client.getKnowledge(id) : client.getWorld(id));
+        const target = child.startsWith('knowledge:entry:') ? JSON.parse(decodeURIComponent(child.slice(16))) : null;
+        const id = target?.knowledgeBaseId || child.split(':').slice(1).join(':');
+        const detail = await (knowledge ? client.getKnowledge(id, target?.revisionId) : client.getWorld(id));
         const resource = knowledge ? detail.knowledgeBase : detail.world;
         const hero = heading(doc, root, resource.displayName, tl(knowledge ? 'Knowledge available to your stories.' : 'A shared setting for your stories.'), true);
         hero.dataset[knowledge ? 'atriaKnowledgeDetail' : 'atriaWorldDetail'] = id;
+        if (target) {
+            const entry = detail.entries.find(item => item.knowledgeEntryId === target.entryId);
+            if (!entry) throw new Error(tl('Knowledge entry unavailable'));
+            const article = el(doc, 'article', 'atri-library-knowledge-entry', undefined, root);
+            article.dataset.atriaKnowledgeEntryId = entry.knowledgeEntryId;
+            el(doc, 'h4', '', entry.metadata?.title || tl('Knowledge entry'), article);
+            el(doc, 'p', '', entry.content, article);
+            disclosure(doc, article, 'Details', { knowledgeRevisionId: target.revisionId, knowledgeEntryId: target.entryId });
+            action(doc, actions(doc, root), 'Open Knowledge Base', () => host.openLibraryKnowledge(id, resource.displayName));
+            article.tabIndex = -1; queueMicrotask(() => article.focus());
+            return;
+        }
         const revisionActions = actions(doc, root);
         resourceBundleExport(doc, revisionActions, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId: id, revision: resource.currentRevisionId }, resource.displayName);
         action(doc, revisionActions, resource.currentRevisionId ? 'New revision' : 'Create first revision', () => {

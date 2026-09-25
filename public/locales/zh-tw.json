@@ -7424,5 +7424,14 @@
     "atria.retrieval.browser.models.failed": "無法載入瀏覽器模型，請重試。",
     "atria.retrieval.browser.unavailable": "此瀏覽器不支援 WebGPU，請選擇其他 Native 檢索供應商。",
     "atria.retrieval.browser.model.invalid": "請在執行階段檢索中選擇受支援的 WebLLM 嵌入模型。",
-    "atria.retrieval.route.help": "執行階段路由說明"
+    "atria.retrieval.route.help": "執行階段路由說明",
+    "atria.search.refreshing": "正在更新搜尋…",
+    "atria.search.partial": "部分結果暫不可用",
+    "atria.search.coverage": "搜尋範圍與狀態",
+    "atria.search.savePoints": "存檔點",
+    "atria.search.knowledgeEntries": "知識條目",
+    "atria.search.promptResources": "提示詞資源",
+    "atria.search.sessionPlay": "工作階段 · 遊玩",
+    "atria.search.knowledgeEntryUnavailable": "知識條目無法使用",
+    "atria.search.openKnowledgeBase": "開啟知識庫"
 }

@@ -12,6 +12,7 @@ import { renderDiagnosticsPage } from './diagnostics/page.js';
 let shell, unsubscribe, frame, previousFocus, timer;
 let ports = {}, open = false, disposePage;
 let hostMount = null;
+let requestedPresetId = null;
 let section = 'run', runView = 'graph', selection = {}, replay = null, updateMemory;
 let renderIdentity = '', pageSequence = 0;
 const pageOffsets = new Map();
@@ -351,7 +352,7 @@ function renderContent() {
     shell.inspector.hidden = true;
 
     if (section === 'orchestration') {
-        disposePage = ports.renderPresets?.(shell.main, { el, button, json, detail, inspector: shell.inspector }) || null;
+        disposePage = ports.renderPresets?.(shell.main, { el, button, json, detail, inspector: shell.inspector, presetId: requestedPresetId }) || null;
         return;
     }
     if (section === 'run') {
@@ -486,6 +487,7 @@ export function openWorkspace(initialSection, options = {}) {
         }
     }
 
+    requestedPresetId = options.presetId || null;
     initWorkspace();
     mount(options);
     if (!open) previousFocus = document.activeElement;
@@ -499,10 +501,11 @@ export function openWorkspace(initialSection, options = {}) {
     return shell.root;
 }
 
-export function setWorkspaceSection(next, { focus = false } = {}) {
+export function setWorkspaceSection(next, { focus = false, presetId = null } = {}) {
     if (!shell) return false;
     const normalized = normalizeSection(next);
     if (!['orchestration', 'run', 'memory', 'diagnostics'].includes(normalized)) return false;
+    requestedPresetId = presetId;
     setSection(normalized, { focus });
     return true;
 }

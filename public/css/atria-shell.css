@@ -1961,3 +1961,14 @@ body[data-atria-native-session-active="true"] #char_connections_button {
 /* Shared Native request feedback also appears in Play. */
 .atri-runtime-notice { padding: 12px 14px; margin: 8px 0; color: var(--atri-text-secondary); background: var(--atri-fill); line-height: 1.6; overflow-wrap: anywhere; }
 .atri-runtime-notice[role="alert"] { color: var(--atri-danger); }
+
+.atria-command-search-status {
+    padding: var(--atri-space-2) var(--atri-space-4);
+    color: var(--atri-text-secondary);
+    font-size: var(--atri-text-footnote);
+    overflow-wrap: anywhere;
+    max-height: 25vh;
+    overflow-y: auto;
+}
+.atria-command-search-status:empty { display: none; }
+.atria-command-search-status summary { cursor: pointer; }

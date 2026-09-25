@@ -925,3 +925,28 @@ The final related Group regression is the 354-suite run above. No Android/Docker
 build, physical-device evidence, paid provider request or real GPU inference is claimed.
 
 Next: Group 9, NUX-043.
+
+
+## Group 9
+
+### NUX-043
+
+Global Search now declares its supported domains and indexes Sessions, SavePoints,
+exact Knowledge entries, scoped Skills and Agents orchestration presets alongside
+existing Library/Build/Runtime resources (including Retrieval). Results navigate
+through WorkspaceHost. SavePoints open their committed revision for inspection;
+search does not restore progress. Knowledge entries use the indexed exact revision
+in a read-only detail. Skills retain their complete scope and PackageVersion.
+
+Refresh catches synchronous, authority-level and individual-owner failures,
+keeps successful domains searchable and exposes partial availability, affected
+sources/owners, error details and retry in the existing palette. Concurrent/stale
+refreshes cannot replace newer results or disposed state. Coverage disclosure is
+keyboard-accessible and preserves expansion while filtering.
+
+Validation: 80 Shell/Agent/Skills suites, 629 tests passed; expanded host deep-link
+suite 11 tests passed; immutable entry, Shell and localization suites 15 tests
+passed. Focused search coverage includes all new entities, source failure/retry,
+concurrent refresh and disposal. Real Edge at 390px verified SavePoint inspection,
+exact orchestration selection, successful results during a Worlds failure, and
+retry recovery. Changed JavaScript lint and git diff whitespace checks passed.

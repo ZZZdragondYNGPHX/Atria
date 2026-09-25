@@ -7869,5 +7869,14 @@
     "atria.retrieval.browser.models.failed": "无法加载浏览器模型，请重试。",
     "atria.retrieval.browser.unavailable": "此浏览器不支持 WebGPU，请选择其他 Native 检索提供商。",
     "atria.retrieval.browser.model.invalid": "请在运行时检索中选择受支持的 WebLLM 嵌入模型。",
-    "atria.retrieval.route.help": "运行时路由帮助"
+    "atria.retrieval.route.help": "运行时路由帮助",
+    "atria.search.refreshing": "正在更新搜索…",
+    "atria.search.partial": "部分结果暂不可用",
+    "atria.search.coverage": "搜索范围与状态",
+    "atria.search.savePoints": "存档点",
+    "atria.search.knowledgeEntries": "知识条目",
+    "atria.search.promptResources": "提示词资源",
+    "atria.search.sessionPlay": "会话 · 游玩",
+    "atria.search.knowledgeEntryUnavailable": "知识条目不可用",
+    "atria.search.openKnowledgeBase": "打开知识库"
 }

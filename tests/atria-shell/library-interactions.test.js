@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 import { afterEach, expect, jest, test } from '@jest/globals';
 import { action, heading } from '../../public/scripts/native/library-ui.js';
-import { mountNativeWorksWorkspace } from '../../public/scripts/native/library-workspaces.js';
+import { mountNativeWorksWorkspace, mountNativeWorldKnowledgeWorkspace } from '../../public/scripts/native/library-workspaces.js';
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 afterEach(() => { document.body.replaceChildren(); delete globalThis.fetch; delete globalThis.__i18n; });
 
@@ -46,4 +46,20 @@ test('authored resource names and prose are literal even when they match a UI tr
     heading(document, document.body, 'Works', 'Saved', true);
     expect(document.querySelector('h2').textContent).toBe('Works');
     expect(document.querySelector('p').textContent).toBe('Saved');
+});
+
+
+test('search Knowledge entry opens its exact immutable revision without editing current content', async () => {
+    globalThis.fetch = jest.fn(async () => ({ ok: true, json: async () => ({
+        knowledgeBase: { knowledgeBaseId: 'kb', displayName: 'Archive', currentRevisionId: 'new' },
+        entries: [{ knowledgeEntryId: 'entry', metadata: { title: 'Old entry' }, content: 'Original text' }],
+    }) }));
+    const target = { knowledgeBaseId: 'kb', revisionId: 'old', entryId: 'entry' };
+    const controller = mountNativeWorldKnowledgeWorkspace({ document, body: document.body,
+        route: { child: { id: 'knowledge:entry:' + encodeURIComponent(JSON.stringify(target)) } }, host: {} });
+    await flush();
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('/api/native/product/knowledge/kb?revisionId=old');
+    expect(document.querySelector('[data-atria-knowledge-entry-id="entry"]').textContent).toContain('Original text');
+    expect([...document.querySelectorAll('button')].some(button => button.textContent === 'New revision')).toBe(false);
+    controller.dispose();
 });

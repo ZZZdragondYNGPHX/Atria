@@ -1,4 +1,13 @@
 const SHELL_TEXT_KEYS = Object.freeze({
+    'Refreshing search…': 'atria.search.refreshing',
+    'Some results unavailable': 'atria.search.partial',
+    'Search coverage': 'atria.search.coverage',
+    'SavePoints': 'atria.search.savePoints',
+    'Knowledge entries': 'atria.search.knowledgeEntries',
+    'Prompt resources': 'atria.search.promptResources',
+    'Session · Play': 'atria.search.sessionPlay',
+    'Knowledge entry unavailable': 'atria.search.knowledgeEntryUnavailable',
+    'Open Knowledge Base': 'atria.search.openKnowledgeBase',
     'Browse browser models': 'atria.retrieval.browser.models.browse',
     'Loading browser models…': 'atria.retrieval.browser.models.loading',
     'Browser embedding model': 'atria.retrieval.browser.models.embedding',

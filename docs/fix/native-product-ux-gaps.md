@@ -101,24 +101,6 @@ Dependency-first retirement: [ownership inventory](native-extension-retirement.m
 
 **Group goal:** 最后统一补全全局发现能力与产品汉化，并清理此次任务留下的死入口/死文案。
 
-## NUX-043 — Global Search coverage and completeness signaling are incomplete
-
-**Current evidence**
-
-Product Search indexes Works, Worlds, Knowledge Bases, Build Projects, Runtime configuration and Prompt/Generation resources.
-
-It does not index several major user entities, including Sessions, SavePoints, Skills, individual Knowledge entries and orchestration configurations.
-
-Search refresh uses `Promise.allSettled`; failed authorities can disappear from the result set while the UI still looks complete.
-
-**Acceptance**
-
-Define supported global-search domains, include major navigable user entities, and show a lightweight “some results unavailable” state with retry/details when a source fails.
-
----
-
----
-
 ## NUX-044 — Atria product localization remains incomplete
 
 **New finding / user-confirmed after frontend redesign**

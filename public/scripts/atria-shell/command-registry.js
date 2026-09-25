@@ -58,6 +58,7 @@ function scoreCommand(command, query) {
 }
 
 export function createCommandRegistry() {
+    let searchStatus = null;
     const commands = new Map();
     const listeners = new Set();
 
@@ -146,6 +147,8 @@ export function createCommandRegistry() {
     }
 
     return Object.freeze({
+        setSearchStatus(value) { searchStatus = value; notify(); },
+        getSearchStatus: () => searchStatus,
         register,
         get,
         list,

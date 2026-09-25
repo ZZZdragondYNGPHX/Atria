@@ -123,7 +123,7 @@ function updateDomainTabs(frame, activeSection) {
     }
 }
 
-async function mountSkillsWorkspace({ document: documentRef, body }) {
+async function mountSkillsWorkspace({ document: documentRef, body, route }) {
     const context = globalThis.Atria?.getContext?.();
     const skills = await import('../skills/skill-manager-panel.js');
 
@@ -147,7 +147,10 @@ async function mountSkillsWorkspace({ document: documentRef, body }) {
         return lifecycle;
     };
 
+    const target = route?.child?.id?.startsWith('skills:') ? JSON.parse(decodeURIComponent(route.child.id.slice(7))) : null;
     const task = skills.openSkillManagerPanel({
+        initialScope: target?.scope,
+        initialName: target?.name,
         context: embeddedContext,
         t: context?.translate || (value => value),
     }).catch(error => {

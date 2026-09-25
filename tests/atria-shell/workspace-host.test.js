@@ -82,6 +82,21 @@ describe('R7G WorkspaceHost', () => {
         `;
     });
 
+    test('search deep links preserve entity identity and Native owners', async () => {
+        const navigation = createAtriaNavigationAuthority({ window });
+        const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry(), navigation });
+        const records = [];
+        const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters: { library: makeAdapter('library', records), agents: makeAdapter('agents', records) } });
+        host.openKnowledgeEntry('kb:a', 'r1', 'entry:b', 'Entry'); await flushWorkspace();
+        expect(navigation.getRoute().domain).toBe('library');
+        expect(JSON.parse(decodeURIComponent(navigation.getRoute().child.id.slice(16)))).toEqual({ knowledgeBaseId: 'kb:a', revisionId: 'r1', entryId: 'entry:b' });
+        host.openSkill({ kind: 'package', packageId: 'p', packageVersionId: 'v1' }, 'name/a'); await flushWorkspace();
+        expect(JSON.parse(decodeURIComponent(navigation.getRoute().child.id.slice(7)))).toEqual({ scope: { kind: 'package', packageId: 'p', packageVersionId: 'v1' }, name: 'name/a' });
+        host.openOrchestration('preset:1', 'Preset'); await flushWorkspace();
+        expect(routeDescriptor(navigation.getRoute())).toMatchObject({ kind: 'agents', section: 'orchestration', presetId: 'preset:1' });
+        host.dispose(); shell.destroy(); navigation.dispose();
+    });
+
     test('P8 append-style adapters remove only the completed activation loading placeholder', async () => {
         const navigation = createAtriaNavigationAuthority({ window });
         const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry(), navigation });

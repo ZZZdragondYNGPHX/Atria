@@ -348,7 +348,9 @@ export function createAtriaAppShell({
         hint.append(element(documentRef, 'kbd', '', keys), element(documentRef, 'span', '', tl(label)));
         commandFooter.append(hint);
     }
-    commandPanel.append(commandField, commandList, commandFooter);
+    const searchStatus = element(documentRef, 'div', 'atria-command-search-status');
+    searchStatus.setAttribute('role', 'status');
+    commandPanel.append(commandField, searchStatus, commandList, commandFooter);
     commandSurface.append(commandScrim, commandPanel);
     transientLayer.append(commandSurface);
 
@@ -640,6 +642,25 @@ export function createAtriaAppShell({
     }
 
     function renderCommands() {
+        const coverageOpen = Boolean(searchStatus.querySelector('details')?.open);
+        searchStatus.replaceChildren();
+        const status = registry.getSearchStatus?.();
+        if (status?.loading) searchStatus.append(element(documentRef, 'span', '', tl('Refreshing search…')));
+        if (status?.failures?.length) {
+            searchStatus.append(element(documentRef, 'span', '', tl('Some results unavailable')));
+            const retry = buttonElement(documentRef, 'atria-command-cancel', tl('Retry'));
+            retry.textContent = tl('Retry');
+            retry.addEventListener('click', () => { void status.retry(); });
+            searchStatus.append(retry);
+        }
+        if (status?.domains) {
+            const details = element(documentRef, 'details');
+            details.open = coverageOpen;
+            details.append(element(documentRef, 'summary', '', tl('Search coverage')));
+            details.append(element(documentRef, 'p', '', status.domains.map(tl).join(' · ')));
+            for (const failure of status.failures || []) details.append(element(documentRef, 'p', '', [tl(failure.domain), failure.owner, failure.message].filter(Boolean).join(' · ')));
+            searchStatus.append(details);
+        }
         commandList.replaceChildren();
         commandResults = [];
         const commands = registry.search(commandInput.value, commandContext());

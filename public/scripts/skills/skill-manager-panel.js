@@ -453,7 +453,7 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
  * @param {(s: string) => string} [opts.t] - i18n helper; defaults to identity.
  * @returns {Promise<void>}
  */
-export async function openSkillManagerPanel({ context, initialScope = null, initialTab = 'installed', t = (s) => s } = {}) {
+export async function openSkillManagerPanel({ context, initialScope = null, initialName = null, initialTab = 'installed', t = (s) => s } = {}) {
     if (!context || !context.skills) {
         throw new Error('openSkillManagerPanel: context.skills missing');
     }
@@ -949,7 +949,10 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
     // Kick off initial render. The mount node is painted into the popup
     // body synchronously after callGenericPopup returns the promise; we
     // refresh on the next microtask so the DOM is ready.
-    Promise.resolve().then(() => { void refresh(); });
+    Promise.resolve().then(async () => {
+        await refresh();
+        if (!closed && initialName && initialScope) await handleView(initialScope, initialName);
+    });
 
     await popupPromise;
     closed = true;

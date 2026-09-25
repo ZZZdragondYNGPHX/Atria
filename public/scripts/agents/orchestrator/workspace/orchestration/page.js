@@ -12,6 +12,7 @@ const MODES = ['loop', 'spec', 'agenda', 'director'];
 
 export function createPresetAuthoring({ getSettings, save, getScope, getTools = () => [] }) {
     let selectedId = null;
+    let lastRequestedId = null;
     let searchText = '';
     let notice = '';
     let draft = null;
@@ -28,6 +29,8 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
 
     return function renderPresets(parent, ui) {
         const { el, button, inspector } = ui;
+        if (ui.presetId && ui.presetId !== lastRequestedId) selectedId = ui.presetId;
+        lastRequestedId = ui.presetId || null;
         const settings = getSettings();
         const library = getWorkspaceLibrary(settings);
         const scope = getScope();

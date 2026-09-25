@@ -49,7 +49,7 @@ const UTILITY_LABELS = Object.freeze({
 function normalizeAgentSection(route) {
     const childId = String(route?.child?.id || '').trim();
     if (!childId) return 'home';
-    if (childId === 'orchestration') return 'orchestration';
+    if (childId.split(':')[0] === 'orchestration') return 'orchestration';
     if (childId === 'memory') return 'memory';
     if (childId === 'run') return 'run';
     if (childId === 'agent-diagnostics') return 'diagnostics';
@@ -75,6 +75,7 @@ function routeDescriptor(route) {
             key: section === 'home' ? 'agents:home' : 'agents:workspace',
             kind: 'agents',
             section,
+            presetId: childId.startsWith('orchestration:') ? decodeURIComponent(childId.slice(14)) : null,
             title: AGENT_SECTION_LABELS[section] || 'Agents',
         });
     }
@@ -194,13 +195,14 @@ async function mountAgentsWorkspace({ document: documentRef, slot, descriptor, h
     const root = panel.openWorkspace(descriptor.section, {
         container: slot,
         embedded: true,
+        presetId: descriptor.presetId,
         onNavigate: section => host.openAgentSection(section),
     });
     return {
         root,
         dismissTransient: () => panel.dismissWorkspaceTransient(),
         updateRoute(route) {
-            panel.setWorkspaceSection(normalizeAgentSection(route), { focus: false });
+            panel.setWorkspaceSection(normalizeAgentSection(route), { focus: false, presetId: route.child?.id?.startsWith('orchestration:') ? decodeURIComponent(route.child.id.slice(14)) : null });
         },
         dispose() {
             panel.destroyWorkspace();
@@ -520,6 +522,24 @@ export function createAtriaWorkspaceHost({
         );
     }
 
+    async function openSession(sessionId, options = {}) {
+        await globalThis.Atria.openNativeSession(sessionId, options);
+        return openPlay();
+    }
+
+    function openKnowledgeEntry(knowledgeBaseId, revisionId, entryId, label) {
+        return openLibraryDetail('knowledge:entry:' + encodeURIComponent(JSON.stringify({ knowledgeBaseId, revisionId, entryId })), label, 'detail', 'workspace-knowledge-entry');
+    }
+
+    function openSkill(scope, name) {
+        return openLibraryDetail('skills:' + encodeURIComponent(JSON.stringify({ scope, name })), name, 'detail', 'workspace-skill');
+    }
+
+    function openOrchestration(presetId, label) {
+        if (navigation.getRoute().domain !== 'agents') navigation.navigate('agents', { history: 'push', reason: 'workspace-orchestration-domain' });
+        return navigation.navigateChild({ id: 'orchestration:' + encodeURIComponent(presetId), label, kind: 'detail' }, { history: 'push', reason: 'workspace-orchestration-preset' });
+    }
+
     function openLibraryResource(ref, label = '') {
         if (ref?.scope === 'package' && ['core.world', 'core.knowledge'].includes(ref.resourceType) && ref.resourceId && ref.revision && ref.packageId && ref.packageVersionId) {
             return openLibraryDetail((ref.resourceType === 'core.world' ? 'world' : 'knowledge') + ':package:' + encodeURIComponent(JSON.stringify(ref)), label || ref.resourceId, 'detail', 'workspace-library-package-original');
@@ -701,6 +721,10 @@ export function createAtriaWorkspaceHost({
         openLibraryWork,
         openLibraryWorld,
         openLibraryKnowledge,
+        openSession,
+        openKnowledgeEntry,
+        openSkill,
+        openOrchestration,
         openLibraryResource,
         openRuntimeSection,
         openBuild,
