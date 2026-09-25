@@ -1,91 +1,46 @@
-# Latest handoff — Native Prompt Controls and Resource UX
+# Latest handoff — Native Prompt Controls complete
 
 Updated: 2026-09-25 (Asia/Shanghai).
 
-## Current status / stop gate
+## Current state
 
 Repository: ZZZdragondYNGPHX/Atria.
-Implementation branch: feat/native-prompt-controls.
-Remote code HEAD: 2958b9c2bacfebd876a69b12e2dcffb3a30d5779 (pushed).
-Remote main remains d29c2b3170798b136eb41249eaad902a23aab5bd.
-Formal plan: docs:feat/native-prompt-controls.md. That plan is authoritative.
+Main HEAD: `aa3a0b0dcfbfc451c696990794ccf16390e7fba3` (pushed and remote verified).
+NPC-001–006 and Final Integration are complete. No continuation gate remains.
+Remote and local `feat/native-prompt-controls` were deleted after main push.
+The permanent `docs` branch is retained.
+Formal plan and detailed decisions: `docs:feat/native-prompt-controls.md`.
 
-Group 1 (NPC-001) is complete. STOP and wait for the user's “继续”.
-On continuation, fetch first and use the latest remote feature HEAD. Do not create
-another feature branch, reset prior commits or merge main early.
+## Delivered
 
-## Completed Group 1 — NPC-001
+- NPC-001: boolean and exclusive Prompt runtime choices use existing mutable Runtime Route overrides, exact authored definitions and shared preview/execute compilation diagnostics.
+- NPC-002: real Library Prompt Program/Module deletion removes all revisions only when no resource/Runtime Route references remain. Used By blockers, destructive confirmation and protected Package/Project originals are enforced.
+- NPC-003/004: compact searchable/filterable/paginated Knowledge overview, explicit single-entry editing, revision-draft enable toggles and retained browsing context. Optional enabled preserves historical hashes; disabled entries cannot activate, retain lifecycle state, expand dependencies or consume output budget. Bundle/Session/save/promotion preserve it.
+- NPC-005: permanent nonmodal, localized twelve-lesson Learning center uses real Shell routes and existing AccountStorage. Fresh identity/language continues into learning; skip, close, resume, replay and Back leave product controls usable.
+- NPC-006: retired Preset/Scoped Regex ownership and allow flags removed throughout live UI/runtime/persistence. Account rules, read-only registered Plugin and existing Native Package contributions remain. Regex Presets contain valid account rule IDs only. Import cache invalidation, bulk toggles, group reapply/export/delete are verified.
 
-- Authored Prompt parameters support human labels/descriptions, boolean controls and
-  distinct finite string/number options. Exclusive choices require a default or an
-  explicit required selection. Existing typed binding/conditions remain authoritative.
-- Play Prompt choices inspector and Runtime Diagnostics share the same controls.
-  Existing Shell dock/sheet behavior is reused; desktop and narrow viewports verified.
-- Overrides persist in the existing player Runtime Route promptParameters map across
-  sessions/reloads. Saving choices does not create immutable Prompt revisions, write
-  Package originals, or introduce localStorage/preset/session state authority.
-- Defaults < resolved route overrides < explicit request parameters. Each fallback
-  uses its own route. Invalid/stale values fail closed; controls offer explicit reset.
-- Authenticated GET/PUT /api/native/generation/prompt-controls/:id reads exact inherited
-  Library/Project/Package definitions and updates only the selected mutable route.
-  Serialized compare-and-update rejects concurrent changes instead of overwriting them.
-- snapshot.promptIr.compilation exposes effective parameters, selected stages and
-  included/disabled/condition-false module decisions for preview and execution.
-- Shared validation is now a pure dual-host module; frontend localization stays in its
-  wrapper. The P0 guard also scans this shared boundary. P5/P6 stale textual assertions
-  were updated to match existing Native Library/authoring ownership.
+## Validation actually executed
 
-## Executed validation
+User superseded per-group push/stop and full validation requirements: only affected surfaces and direct dependencies were checked, with a single final integration/push. No CI wait.
 
-- Related Jest regression: 12 suites, 158 tests passed.
-- After additional finite-choice / Project / Package / inherited metadata coverage:
-  5 focused suites, 91 tests passed. Final UI save redraw: 3 focused tests passed.
-- Final real-host Playwright: 2/2 passed at 1440px and 390px. Actual user controls,
-  reset/save, reload/reopen, Runtime preview, Play generation, persisted typed values
-  and preview/execute consistency are covered with a local synthetic provider.
-  Screenshots were inspected for both widths. Scratch data is not committed.
-- Root npm run lint passed; touched test lint passed; final touched UI/shared lint
-  passed; modified guard scripts passed node --check; git diff --check passed.
-- npm run check:native-localization passed (zh-CN/zh-TW).
-- npm run frontend:prebuild-cache passed (actual webpack compilation initially,
-  subsequent run reused valid library cache; product JS is served as native modules).
-- P0–P7 guards passed. The P8 aggregate also passed A0–A6, then stopped at the baseline
-  A7 assertion requiring attachResource/forkResource/updateResource in
-  public/scripts/native/studio-workspace.js. Those calls were already absent at
-  d29c2b317. Do not claim the full P8 aggregate passed. Reconcile this broad baseline
-  guard against current Studio implementation during Final Integration, retaining
-  substantive authoring/ownership checks. Further aggregate gates may surface then.
-- No GitHub CI wait, paid model calls, Android build/device checks or Docker checks.
+- NPC-001: focused unit/integration and two real-host browser cases at 1440px/390px passed; lint, localization and frontend prebuild passed (details in plan).
+- Remaining NPCs: initial 12 Jest suites / 100 tests passed. Resource/Session/Prompt and shell direct-dependency checks passed; targeted HTTP deletion plus Knowledge snapshot/promotion checks passed.
+- Shell navigation/Back and Regex focused checks: 7 suites / 50 tests; AppShell/group normalization: 2 suites / 8 tests; final execution-plan check: 11 tests passed.
+- Browser: desktop and 390px Knowledge draft/toggle/save/reload, deletion blockers and successful deletion, account Regex editor/execution/reload, and usable learning panel passed. Screenshots inspected. Fresh identity + live language + account progress reload + Escape passed separately. Final Regex import/bulk/group/export/delete case passed after fixing omitted-disabled handling.
+- Changed-file ESLint, zh-CN/zh-TW coverage, frontend prebuild cache and diff whitespace checks passed.
+- Main merge had no conflicts, and its tree matched the verified feature tree exactly; no redundant full test rerun. Main push succeeded and remote refs confirmed feature removal.
 
-## Remaining groups, in the user-approved order
+## Limits and unrelated baseline findings
 
-1. NPC-001 — DONE, code/documentation pushed; awaiting user continuation.
-2. NPC-003 + NPC-004 — Knowledge entry browsing plus per-entry enabled contract.
-3. NPC-002 — true Prompt Program/Module deletion with dependency integrity.
-4. NPC-006 — complete Regex Native cutover; retire preset/card ownership end-to-end.
-5. NPC-005 — persistent learning center and guided lessons; audit/write curriculum
-   before implementing, per formal plan.
-6. Final Integration — reconcile remaining guards, verify full integrated result,
-   update final documents, merge feature into main, verify/push main, confirm no
-   omissions, delete remote/local feat/native-prompt-controls, finalize this handoff.
-   Keep docs permanently.
+An attempted save backend matrix hit six environment failures: unavailable Node 24 SQLite native binary and unconfigured MySQL/PostgreSQL test databases. Related file-backed save/snapshot/promotion paths passed; database matrix is not claimed as passing. No database code changed.
 
-Each group must complete implementation, targeted tests, automated UI/browser checks,
-lint/build, code commit/push and plan/handoff updates, then report HEAD/results and
-stop for “继续”. Do not restart the completed prior Native Product UX backlog.
-Only ask the user for genuinely necessary real-device/visual judgment, permissions,
-authentication or Secret dependencies. No such dependency exists for the next group.
+The earlier aggregate A7 Studio string guard already failed at the original main baseline. Per the user's later affected-surface-only instruction, unrelated A7 reconciliation was excluded. No Android device/build, Docker build or paid inference was required.
 
-## Authority reminders
+No automatic migration of retired Regex scope data was added. No new state/storage authority was introduced. Old Knowledge entries default to enabled; editing creates new immutable revisions and does not retarget existing bindings.
 
-Read local AGENTS.md and FORK_MAINTENANCE.md plus the formal plan before continuing.
-Preserve Native exact revisions, immutable authoring, dependency closure and existing
-storage/runtime authorities. Do not restore legacy presets, World Info storage, DOM
-control, Tavern Helper, MVU or default legacy migration. The two NPC-006 sections in
-the formal plan are historical confirmed requirements; the Complete Regex Native
-cutover section and the user's latest instructions govern removal of old authority.
+## Commits
 
-Environment: the empty workspace was populated by cloning
-the existing remote feature branch. An additional worktree checks out the existing
-docs branch. No new task branch was created. Use repository history and remote HEADs
-as authority, not machine paths. Test-only files, caches and screenshots stay untracked.
+- Baseline: `d29c2b3170798b136eb41249eaad902a23aab5bd`.
+- NPC-001: `2958b9c2bacfebd876a69b12e2dcffb3a30d5779`.
+- Remaining NPCs: `fd3dffeb59aff7bae4dc6c540011eef30b1b590c`.
+- Main integration: `aa3a0b0dcfbfc451c696990794ccf16390e7fba3`.

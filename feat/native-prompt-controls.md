@@ -1,6 +1,6 @@
 # Atria Native Prompt Controls
 
-Status: in progress — Group 1 implemented; Groups 2–6 pending
+Status: complete — NPC-001–006 verified and integrated; temporary branch deleted
 Implementation branch: `feat/native-prompt-controls`  
 Base: `main@d29c2b3170798b136eb41249eaad902a23aab5bd`
 
@@ -458,14 +458,52 @@ Baseline: d29c2b3170798b136eb41249eaad902a23aab5bd. Code HEAD: 2958b9c2bacfebd87
   and relevant P0–P7 guards pass (final command evidence recorded in handoff).
 - Broader P8 aggregate also passes A0–A6, then stops on an existing A7 Studio guard
   requiring attachResource/forkResource/updateResource strings in studio-workspace.js.
-  Those calls were already absent at the baseline. This unrelated guard reconciliation
-  is retained as a Final Integration follow-up, not claimed as passing.
+  Those calls were already absent at the baseline. This baseline guard failure is recorded, not claimed as passing. The later user instruction limits validation to changed surfaces; unrelated A7 reconciliation is outside this task.
 - No live paid model, Android device/build, Docker build or GitHub CI wait was needed.
 
-### Remaining sequence / stop gate
+### Revised execution policy
 
-Group 2: NPC-003 + NPC-004; Group 3: NPC-002; Group 4: NPC-006;
-Group 5: NPC-005; Group 6: Final Integration. Stop after Group 1 commit/push and
-wait for the user's “继续”. Do not merge main early. Final Integration must include
-remaining broad-guard reconciliation, verified main integration/push, feature branch
-removal and final handoff; docs remains permanent.
+The user superseded the original per-group stop/push gates: complete remaining work continuously, validate affected paths only, then integrate and push once. No unrelated full-suite reconciliation or CI wait is required.
+
+## Remaining implementation decisions (2026-09-25)
+
+User updated execution: continue all remaining items without per-group pauses/pushes. Validate only changed paths and direct dependents; integrate and push once at completion.
+
+NPC-003/004: compact 25-row paginated overview, content/title/trigger search, enabled filter, authored/title/priority ordering; transient browse state stays with mounted workspace. Optional entry.enabled defaults to enabled without materializing it in old immutable snapshots. Changes are revision drafts with explicit review/save and never retarget existing bindings. Filter disabled entries before applicability, exclusivity, dependency expansion, lifecycle and budgeting.
+
+NPC-002: Library Program/Module deletion removes root and all revisions; archive stays separate. Re-derive ResourceGraph reverse references across every revision plus player Runtime Routes before removal, excluding internal edges of the deleted resource. Package/Project originals remain protected.
+
+NPC-006: current engine already collects account rules, registered Plugin rules and Native Session manifest processor rules. Keep this deterministic order. Existing exact Package/Session processor lane remains read-only; no new scope or migration is needed. Remove all Preset/Card ownership paths and allow flags. Regex Presets remain account-rule enable/order groups only.
+
+NPC-005 curriculum audit: existing main Shell owns Play, Library, Build, Agents, Runtime and Account/Settings/Diagnostics utilities. Existing identity dialog persists account name/persona and language; AccountStorage persists account-level settings. Lessons will be: identity/language; navigation; Runtime Connections; Model profiles; Runtime Routes with exact Prompt/Generation references; Library Works/import; Sessions/start/open; Play/send and inspector; Worlds/Knowledge and immutable entry changes; Prompt runtime choices; Saves/import/recovery; Settings/Help/Diagnostics. Specialist Build/Agents authoring is optional context, not required onboarding. Each lesson has a stable id, category, route/navigation action and instruction. Identity is required only on fresh install; subsequent lessons use explicit user acknowledgement, with skip/close/resume/replay. No paid generation or external credential is a completion gate. A nonmodal panel in the Shell focus layout leaves actual controls usable, uses existing navigation and Back handling, and persists progress through AccountStorage.
+
+## NPC-002–006 completion record (2026-09-25)
+
+- NPC-002: authenticated Library Program/Module deletion removes all immutable revisions and root only after all-revision reverse-reference and Runtime Route checks. Referenced resources show Used By blockers. Archive remains distinct; Package/Project originals cannot be deleted through this endpoint. Library commits and Runtime Route saves validate exact Library refs inside the existing serialized runtime write path.
+- NPC-003: shared compact, paginated entry browser is used by Library revision authoring and read-only Package resources. Search/filter/order and expansion state survive draft/review/save; full editing is opened explicitly for one entry. Authored text is never interpreted as localization keys.
+- NPC-004: optional enabled preserves old immutable hashes when absent. Disabled entries are rejected before selection, lifecycle, related-entry expansion and budget/rendering; sticky state is cleared. Runtime distinguishes entry_disabled. Revision, bundle, Session, save snapshot and promotion retain the flag; existing bindings remain pinned until explicitly changed.
+- NPC-005: permanent nonmodal Learning center uses existing Shell navigation, Back handling and AccountStorage. Twelve audited lessons include real account, provider, model, route, work/session, Play, Knowledge, Prompt choices, save and settings surfaces. Next acknowledges review; Skip does not complete a lesson. Close/resume, curriculum jump, replay, fresh identity and live language switching work without requiring paid inference or credentials. Storage is injected from the existing app entry to avoid a Shell-to-script circular import.
+- NPC-006: removed live Preset/Scoped ownership, allow flags, editor/move/import paths and old scope UI/localization. Account rules, registered Plugin contributions and existing exact Native Package processor rules remain in deterministic execution order. Runtime rules are read-only and expose provenance. Regex Presets retain only existing account rule IDs; imports invalidate execution cache and deletion removes dangling group members. Bulk enable/disable treats an omitted disabled flag as enabled.
+
+### Executed affected-surface checks
+
+- Initial focused Jest: 12 suites / 100 tests passed (Knowledge contracts/runtime/selection/editing/browser, Prompt persistence, learning state, Regex engine).
+- Direct resource/Session/Prompt/shell regressions: 7 suites passed; file-backed save and snapshot checks passed. An attempted broader save matrix encountered six environment failures: missing Node 24 SQLite native binary and unconfigured MySQL/PostgreSQL test databases. These are not claimed as passing and were not expanded further.
+- Focused HTTP deletion and Knowledge snapshot/promotion selection: 3 tests passed, including authentication, all-revision Runtime/Project blockers, protected Package refs and complete deletion.
+- Shell navigation/Back and Regex focused run: 7 suites / 50 tests passed; after removing the circular dependency, AppShell and group normalization: 2 suites / 8 tests passed.
+- Real-host browser: Knowledge search/toggle/review/save/rename/reload, Prompt reference-blocked and successful deletion, account Regex creation/execution/reload, and usable learning panel passed at both 1440px and 390px. Screenshots inspected. Fresh onboarding language/name preservation, continuation, account progress reload and Escape passed separately.
+- Targeted changed-file ESLint, zh-CN/zh-TW localization guard, frontend prebuild cache and diff whitespace checks passed. Final Regex import/bulk/group/export/delete browser result and final commit references are recorded in latest handoff.
+- No Android/Docker build, paid provider call, unrelated full suite or GitHub CI wait. Existing A7 aggregate baseline string guard is outside the revised user-authorized validation scope.
+
+### Data impact
+
+No new storage authority or automatic legacy Regex migration. Old Knowledge entries remain enabled by default and preserve absent enabled fields. Entry toggles create explicit immutable revisions. Prompt deletion is permanent and dependency-blocked. Learning progress uses the current account settings persistence. Retired Regex scope data is neither executed nor promoted into Native resources.
+
+## Final Integration — complete
+
+- NPC-001 commit: `2958b9c2bacfebd876a69b12e2dcffb3a30d5779`.
+- NPC-002–006 commit: `fd3dffeb59aff7bae4dc6c540011eef30b1b590c`.
+- Integrated/pushed main: `aa3a0b0dcfbfc451c696990794ccf16390e7fba3`.
+- Fresh fetch confirmed main baseline unchanged. Merge completed without conflicts; `git diff --exit-code feat/native-prompt-controls HEAD` proved the integrated tree identical to the verified feature tree. Working tree clean.
+- Final Regex browser passed: import changes cached execution immediately; bulk disable, group reapply, export download, delete and dangling-group cleanup. Focused execution-plan tests: 11 passed. Changed-file lint and whitespace checks passed.
+- Remote and local `feat/native-prompt-controls` deleted after main push; remote main confirmed. `docs` remains permanent. No remaining NPC work or stop gate.
