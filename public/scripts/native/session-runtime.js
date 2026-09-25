@@ -91,6 +91,15 @@ export class NativeSessionRuntime {
 
     configure(host) { this.host = host; }
 
+    async applySessionMetadata(session) {
+        if (this.snapshot?.session.sessionId !== session.sessionId) return;
+        const previous = this.snapshot;
+        const nextSession = { ...previous.session };
+        if (session.displayTitle == null) delete nextSession.displayTitle; else nextSession.displayTitle = session.displayTitle;
+        this.snapshot = { ...previous, session: nextSession };
+        await this._emit(NATIVE_SESSION_LIFECYCLE.SESSION_METADATA_CHANGED, this.snapshot, previous);
+    }
+
     readState(namespace) {
         if (!this.active) return null;
         const key = normalizeNativeStateNamespace(namespace);

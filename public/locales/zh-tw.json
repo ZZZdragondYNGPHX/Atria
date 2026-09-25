@@ -6618,7 +6618,7 @@
     "Retry Reply": "重新生成回覆",
     "Re-enter Turn": "重新輸入此回合",
     "Restart From Here": "從這裡重新開始",
-    "Save name": "存檔名稱",
+    "Save name": "儲存名稱",
     "Story timeline": "故事時間線",
     "Saves": "存檔",
     "No saves yet. Save a moment to return to it later.": "尚無存檔。保存此刻的進度，方便之後返回。",
@@ -7348,5 +7348,13 @@
     "The Work file exceeds the supported size.": "作品檔案超出支援大小。",
     "This file is not the exact Work required by the save. Nothing was installed.": "此檔案不是存檔所需的精確作品，未安裝任何內容。",
     "Installing this dependency preserves any existing default Work version. Your save remains ready for the next import step.": "安裝此依賴會保留現有的作品預設版本，隨後可繼續匯入此存檔。",
-    "Install matching Work": "安裝相符作品"
+    "Install matching Work": "安裝相符作品",
+    "Session name (optional)": "工作階段名稱（選填）",
+    "Rename Session": "重新命名工作階段",
+    "Session name": "工作階段名稱",
+    "Session name saved.": "工作階段名稱已儲存。",
+    "Reload current name": "重新載入目前名稱",
+    "This Session is no longer available.": "此工作階段已無法使用。",
+    "Current name loaded. Edit it and save again.": "已載入目前名稱，請編輯後重新儲存。",
+    "This Session name changed elsewhere. Reload the current name before saving again. Your draft is still here.": "此工作階段名稱已於其他位置變更。請重新載入目前名稱後儲存，您的草稿仍保留。"
 }

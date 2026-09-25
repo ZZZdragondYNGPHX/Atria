@@ -6962,7 +6962,7 @@
     "Retry Reply": "重新生成回复",
     "Re-enter Turn": "重新输入此回合",
     "Restart From Here": "从这里重新开始",
-    "Save name": "存档名称",
+    "Save name": "保存名称",
     "Story timeline": "故事时间线",
     "Saves": "存档",
     "No saves yet. Save a moment to return to it later.": "尚无存档。保存此刻的进度，方便之后返回。",
@@ -7793,5 +7793,13 @@
     "The Work file exceeds the supported size.": "作品文件超出支持大小。",
     "This file is not the exact Work required by the save. Nothing was installed.": "此文件不是存档所需的精确作品，未安装任何内容。",
     "Installing this dependency preserves any existing default Work version. Your save remains ready for the next import step.": "安装此依赖会保留现有的作品默认版本，随后可继续导入此存档。",
-    "Install matching Work": "安装匹配作品"
+    "Install matching Work": "安装匹配作品",
+    "Session name (optional)": "会话名称（可选）",
+    "Rename Session": "重命名会话",
+    "Session name": "会话名称",
+    "Session name saved.": "会话名称已保存。",
+    "Reload current name": "重新加载当前名称",
+    "This Session is no longer available.": "此会话已不可用。",
+    "Current name loaded. Edit it and save again.": "已加载当前名称，请编辑后重新保存。",
+    "This Session name changed elsewhere. Reload the current name before saving again. Your draft is still here.": "此会话名称已在其他位置更改。请重新加载当前名称后保存，您的草稿仍保留。"
 }

@@ -89,22 +89,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 统一资源便携、PackageVersion、Session、Save 与引用冲突的产品闭环。
 
-## NUX-038 — Native Sessions support displayTitle but cannot be named/renamed normally
-
-**Current evidence**
-
-Session contracts and `startWork()` support `displayTitle`.
-
-Work/Play **Start New** does not ask for a title, and no normal rename/update endpoint/product action was found.
-
-**Acceptance**
-
-Allow optional naming at creation and rename later without changing Session identity, history or PackageVersion pin.
-
----
-
----
-
 ## NUX-039 — Play branch/revision history is still raw JSON
 
 **Current evidence**

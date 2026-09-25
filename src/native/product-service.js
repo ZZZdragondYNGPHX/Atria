@@ -1,3 +1,4 @@
+import { normalizeSessionTitle } from '../../public/scripts/native/session-title-contract.js';
 import { createHash } from 'node:crypto';
 import { hashNativeDocument, withNativeResourceWrite } from './repositories/common.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
@@ -150,11 +151,17 @@ export class NativeProductService {
             packageId,
             packageVersionId,
             entryPointId,
-            ...(options.displayTitle === undefined ? {} : { displayTitle: options.displayTitle }),
+            ...(options.displayTitle === undefined || normalizeSessionTitle(options.displayTitle) === null ? {} : { displayTitle: normalizeSessionTitle(options.displayTitle) }),
             libraryBindingIds: options.libraryBindingIds || [],
             sessionBindings: options.sessionBindings || [],
             sessionKnowledge: options.sessionKnowledge || [],
         });
+    }
+
+    async renameSession(handle, sessionId, input) {
+        assertNativeId(sessionId, 'session');
+        if (!input || Object.keys(input).some(key => !['displayTitle', 'expectedDisplayTitle'].includes(key))) throw invalidField('displayTitle');
+        return this._sessions.rename(handle, sessionId, input);
     }
 
     async deleteWork(handle, packageId) {

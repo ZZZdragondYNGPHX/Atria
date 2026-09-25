@@ -1,3 +1,4 @@
+import { sessionTitleField, mountSessionRename } from './session-naming.js';
 import { mountSaveDependencyRecovery } from './save-dependency-recovery.js';
 import { permissionRow, renderPackageUpdateReview, mountWorkPermissions } from './package-permissions.js';
 import { mountPackageLibraryList, mountPackageLibraryOriginal } from './package-library-resources.js';
@@ -107,6 +108,7 @@ function sessionRow(doc, parent, session, host, refresh, workName) {
     const controls = actions(doc, row);
     action(doc, controls, 'Continue', () => openSession(host, session.sessionId), { disabled: !ready, primary: true });
     const more = disclosure(doc, controls, 'Manage');
+    mountSessionRename({ document: doc, root: more, session, onSaved: refresh });
     const extra = actions(doc, more);
     action(doc, extra, 'Export .atriasave', async () => download(doc, await client.exportSession(session.sessionId), `${session.displayTitle || session.sessionId}.atriasave`), { disabled: !ready });
     action(doc, extra, 'Delete', async () => {
@@ -158,10 +160,11 @@ async function workDetail(doc, root, host, id, refresh) {
     const selector = el(doc, 'select', '', undefined, selectLabel); selector.dataset.atriaEntryPointSelect = 'true';
     for (const entry of entryPoints) { const option = el(doc, 'option', '', entry.displayName, selector); option.value = entry.entryPointId; }
     selectLabel.hidden = entryPoints.length <= 1;
+    const title = sessionTitleField(doc, content);
     const controls = actions(doc, content); const latest = work.sessions?.[0];
     if (latest) action(doc, controls, 'Continue', () => openSession(host, latest.sessionId), { disabled: latest.dependency?.status !== 'ready', primary: true });
     action(doc, controls, 'Start New', async () => {
-        const created = await client.startWork(id, { packageVersionId: work.packageVersion.packageVersionId, entryPointId: selector.value || entryPoints[0]?.entryPointId });
+        const created = await client.startWork(id, { displayTitle: title.value, packageVersionId: work.packageVersion.packageVersionId, entryPointId: selector.value || entryPoints[0]?.entryPointId });
         await openSession(host, created.session.sessionId);
     }, { disabled: work.status !== 'ready' || !entryPoints.length, primary: !latest });
     const info = section(doc, root, 'About this work', 'atriaWorkSummary');
@@ -195,11 +198,12 @@ async function workDetail(doc, root, host, id, refresh) {
             const label = el(doc, 'label', 'atri-library-field', tl('Starting point'), review);
             const entries = el(doc, 'select', '', undefined, label); entries.setAttribute('aria-label', tl('Starting point'));
             for (const entry of exact.manifest.entryPoints) { const option = el(doc, 'option', '', entry.displayName, entries); option.value = entry.entryPointId; }
+            const versionTitle = sessionTitleField(doc, review);
             let createdSessionId = null;
             action(doc, review, 'Create Session on this version', async () => {
                 if (!createdSessionId) {
-                    const created = await client.startWork(id, { packageVersionId: version.packageVersionId, entryPointId: entries.value });
-                    createdSessionId = created.session.sessionId; entries.disabled = true;
+                    const created = await client.startWork(id, { displayTitle: versionTitle.value, packageVersionId: version.packageVersionId, entryPointId: entries.value });
+                    createdSessionId = created.session.sessionId; entries.disabled = true; versionTitle.disabled = true;
                 }
                 await openSession(host, createdSessionId);
             }, { primary: true, disabled: !exact.manifest.entryPoints.length });

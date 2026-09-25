@@ -201,3 +201,10 @@ test('installed version resolution keeps both exact IDs and the authenticated ow
     expect((await request(appFor(product)).get('/works/pkg_a/versions/pkgv_b?handle=other')).status).toBe(200);
     expect(product.getWorkVersion).toHaveBeenCalledWith('u', 'pkg_a', 'pkgv_b');
 });
+
+test('Session naming uses the authenticated owner and carries the previous name for conflict checks', async () => {
+    const product = { renameSession: jest.fn(async () => ({ displayTitle: 'Voyage' })) }, body = { displayTitle: 'Voyage', expectedDisplayTitle: null };
+    expect((await request(appFor(product)).patch('/sessions/session_a').send(body)).status).toBe(200);
+    expect(product.renameSession).toHaveBeenCalledWith('u', 'session_a', body);
+    expect((await request(appFor(product, { authenticated: false })).patch('/sessions/session_a').send(body)).status).toBe(401);
+});

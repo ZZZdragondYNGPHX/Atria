@@ -802,4 +802,21 @@ Earlier recovery/localization checks passed nine cases. Both real Edge 390px Lib
 Play scenarios rejected a wrong-hash file, installed the exact Work and imported/opened the
 same Save identity. Screenshots inspected; changed JavaScript lint and diff checks passed.
 
-Next: NUX-038 in Group 7.
+### NUX-038
+
+Work creation (default and selected installed version) accepts an optional Session name.
+Library My Games and Play Timeline offer rename/clear with conflict-aware current-name
+reload. Names update only mutable Session presentation metadata under the existing
+Session write queue and integrity CAS; immutable history and exact Package pins remain.
+Snapshot publication preserves the latest name across a generation draft captured before
+renaming. A metadata lifecycle event refreshes active Play without disturbing a Draft.
+
+Validation: Native product/HTTP/Core checks passed 37 cases with 18 optional DB skips;
+additional filesystem/SQLite naming contract cases passed two. Four UI/durability/
+localization suites passed 26 after supplying the jsdom structuredClone test shim.
+The final real Edge 390px scenario passed naming at creation, concurrent-name conflict,
+draft retention, explicit reload and rename in both Play and Library while preserving
+identity/history. Test navigation now dismisses its modal before opening Library.
+Screenshot inspected; changed JavaScript lint and diff checks passed.
+
+Next: NUX-039 in Group 7.

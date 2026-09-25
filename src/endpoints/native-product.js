@@ -199,6 +199,9 @@ export function createNativeProductRouter(getServices = services) {
         }));
     }));
 
+    router.patch('/sessions/:sessionId', route(async (req, res, { product }, handle) => {
+        res.json(await product.renameSession(handle, req.params.sessionId, req.body));
+    }));
     router.get('/sessions', route(async (req, res, { product }, handle) => {
         res.json(await product.listSessions(handle, {
             packageId: req.query.packageId || null,

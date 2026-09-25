@@ -368,3 +368,20 @@ test('Save dependency recovery refuses wrong bytes and installs an exact older v
         expect((await product.getWorkVersion(h.handle, required.packageId, required.packageVersionId)).packageVersion.packageContentHash).toBe(required.packageContentHash);
     } finally { await h.cleanup(); }
 });
+
+test('Session rename changes only presentation metadata and survives a stale generation draft', async () => {
+    const h = await makeTempFsEngineHarness();
+    try {
+        const f = await installFixture(h), product = new NativeProductService({ ...f, worldRepo: new WorldRepo({ engine: h.engine }), sessionCore: f.core, projectStore: new ProjectStore({ directoriesByHandle: () => h.dirs }) });
+        const original = await product.startWork(h.handle, f.manifest.packageId, { displayTitle: '  First voyage  ' }); expect(original.session.displayTitle).toBe('First voyage');
+        const renamed = await product.renameSession(h.handle, original.session.sessionId, { displayTitle: 'New voyage', expectedDisplayTitle: 'First voyage' });
+        for (const key of ['sessionId', 'headRevisionId', 'activeBranchId', 'packageId', 'packageVersionId', 'packageContentHash']) expect(renamed[key]).toBe(original.session[key]);
+        expect(await f.sessionRepo.listRevisions(h.handle, original.session.sessionId)).toHaveLength(1);
+        await expect(product.renameSession(h.handle, original.session.sessionId, { displayTitle: 'Lost edit', expectedDisplayTitle: 'First voyage' })).rejects.toMatchObject({ code: 'native_session_title_conflict' });
+        const committed = await f.core._publish(h.handle, original, { states: { ...original.states, atri_test: { generated: true } } });
+        expect(committed.session.displayTitle).toBe('New voyage'); expect(committed.states.atri_test.generated).toBe(true);
+        const cleared = await product.renameSession(h.handle, original.session.sessionId, { displayTitle: '', expectedDisplayTitle: 'New voyage' }); expect(cleared.displayTitle).toBeUndefined();
+        await expect(product.renameSession(h.handle, original.session.sessionId, { displayTitle: 'x'.repeat(257), expectedDisplayTitle: null })).rejects.toThrow('256');
+        await expect(product.renameSession(h.handle, original.session.sessionId, { displayTitle: 'Allowed', expectedDisplayTitle: null, packageVersionId: 'changed' })).rejects.toThrow('Invalid product field');
+    } finally { await h.cleanup(); }
+});

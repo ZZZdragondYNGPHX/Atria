@@ -1,3 +1,4 @@
+import { normalizeSessionTitle } from '../../../public/scripts/native/session-title-contract.js';
 import {
     NATIVE_RESOURCE_KINDS,
     assertBranch,
@@ -106,6 +107,19 @@ export class SessionRepo {
             }
             return putMutable(tx, this._sessionKey(handle, session.sessionId), session, options);
         });
+    }
+
+    async rename(handle, sessionId, { displayTitle, expectedDisplayTitle }) {
+        assertWritable(); const title = normalizeSessionTitle(displayTitle);
+        if (expectedDisplayTitle !== null && typeof expectedDisplayTitle !== 'string') throw new TypeError('Expected Session title is required');
+        return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async tx => {
+            const key = this._sessionKey(handle, sessionId), existing = await tx.getResource(key);
+            if (!existing) throw new NotFoundError('native session', { sessionId });
+            if ((existing.doc.displayTitle ?? null) !== expectedDisplayTitle) throw new ConflictError('native_session_title_conflict', { sessionId });
+            const next = { ...existing.doc, updatedAt: Math.max(Date.now(), existing.doc.updatedAt || 0) };
+            if (title) next.displayTitle = title; else delete next.displayTitle;
+            return putMutable(tx, key, assertSession(next), { expectedIntegrity: existing.integrity });
+        }));
     }
 
     async getBranch(handle, sessionId, branchId) {
@@ -452,10 +466,14 @@ export class SessionRepo {
             for (const [namespace, value] of Object.entries(states)) {
                 await putImmutable(tx, this._stateKey(handle, session.sessionId, namespace, hashNativeDocument(value)), value);
             }
-            const snapshot = await readSessionSnapshot(tx, handle, session, revision);
+            // Mutable presentation metadata belongs to the current Session root,
+            // not the generation/restore draft captured before a concurrent rename.
+            const published = { ...session, updatedAt: Math.max(session.updatedAt, existing?.doc.updatedAt || 0) };
+            if (existing) { if (existing.doc.displayTitle == null) delete published.displayTitle; else published.displayTitle = existing.doc.displayTitle; }
+            const snapshot = await readSessionSnapshot(tx, handle, assertSession(published), revision);
             if (snapshot.core.parentRevisionId !== expectedRevisionId) throw new TypeError('Revision parent must match expected HEAD');
             await putImmutable(tx, this._revisionKey(handle, session.sessionId, revision.revisionId), revision);
-            await putMutable(tx, key, session, { expectedIntegrity: existing?.integrity ?? null });
+            await putMutable(tx, key, published, { expectedIntegrity: existing?.integrity ?? null });
             return snapshot;
         }));
     }

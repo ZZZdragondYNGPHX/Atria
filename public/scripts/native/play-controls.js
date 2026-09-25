@@ -1,3 +1,4 @@
+import { mountSessionRename } from './session-naming.js';
 import { mountSaveDependencyRecovery } from './save-dependency-recovery.js';
 import { mountEmbeddedKnowledgePromotion } from './embedded-knowledge-promotion.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
@@ -277,6 +278,7 @@ export function mountNativePlayControls({
                 ),
             )));
             drawerBody.append(portableActions);
+            mountSessionRename({ document: documentRef, root: drawerBody, session: detail.snapshot.session });
             appendPortableImport(drawerBody);
 
             const savesTitle = documentRef.createElement('h4');

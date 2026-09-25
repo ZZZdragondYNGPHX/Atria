@@ -184,3 +184,39 @@ for (const surface of ['Library', 'Play']) test(surface + ' Save recovery reject
     await expect.poll(() => page.evaluate(() => window.Atria.nativeSessionRuntime.snapshot?.session.sessionId)).toBe(saved.session.sessionId);
     expect(await page.evaluate(() => window.Atria.nativeSessionRuntime.snapshot.session.packageContentHash)).toBe(saved.session.packageContentHash);
 });
+
+test('Session creation and Play/Library rename preserve identity and history at 390px', async ({ page }, info) => {
+    test.setTimeout(120000); await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const packageId = await page.evaluate(async () => {
+        const work = (await (await import('/scripts/native/product-client.js')).nativeProductClient.listWorks())[0];
+        window.Atria.shell.getWorkspaceHost().openLibraryWork(work.package.packageId); return work.package.packageId;
+    });
+    const hero = page.locator('[data-atria-work-detail]'); await hero.getByLabel('Session name (optional)', { exact: true }).fill('Lantern voyage');
+    await hero.getByRole('button', { name: 'Start New', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.Atria.nativeSessionRuntime.snapshot?.session.displayTitle)).toBe('Lantern voyage');
+    const before = await page.evaluate(() => window.Atria.nativeSessionRuntime.snapshot.session);
+    await page.getByRole('button', { name: 'Timeline', exact: true }).click();
+    const rename = page.locator('[data-atria-native-play-drawer] [data-atria-session-rename]'); await rename.getByText('Rename Session', { exact: true }).click();
+    await rename.getByLabel('Session name', { exact: true }).fill('My pending name');
+    await page.evaluate(async session => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js'); await client.renameSession(session.sessionId, 'Concurrent name', session.displayTitle);
+    }, before);
+    await rename.getByRole('button', { name: 'Save name', exact: true }).click(); await expect(rename.getByRole('alert')).toContainText('changed elsewhere');
+    await expect(rename.getByLabel('Session name', { exact: true })).toHaveValue('My pending name');
+    await rename.getByRole('button', { name: 'Reload current name', exact: true }).click();
+    await rename.getByLabel('Session name', { exact: true }).fill('Renamed voyage'); await rename.getByRole('button', { name: 'Save name', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.Atria.nativeSessionRuntime.snapshot?.session.displayTitle)).toBe('Renamed voyage');
+    await page.screenshot({ path: info.outputPath('session-rename-390.png') });
+    await page.keyboard.press('Escape');
+    await page.evaluate(id => window.Atria.shell.getWorkspaceHost().openLibraryWork(id), packageId);
+    const row = page.locator('[data-atria-my-games] [data-atria-session-id="' + before.sessionId + '"]'); await row.getByText('Manage', { exact: true }).click();
+    const libraryRename = row.locator('[data-atria-session-rename]'); await libraryRename.getByText('Rename Session', { exact: true }).click();
+    await libraryRename.getByLabel('Session name', { exact: true }).fill('Library voyage'); await libraryRename.getByRole('button', { name: 'Save name', exact: true }).click();
+    await expect(row.getByRole('heading', { name: 'Library voyage', exact: true })).toBeVisible();
+    const after = await page.evaluate(async id => (await (await import('/scripts/native/product-client.js')).nativeProductClient.getSession(id)).snapshot.session, before.sessionId);
+    for (const key of ['sessionId', 'headRevisionId', 'activeBranchId', 'packageVersionId', 'packageContentHash']) expect(after[key]).toBe(before[key]);
+});

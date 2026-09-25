@@ -8,6 +8,15 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
     beforeEach(async () => { h = await make(); f = await installFixture(h); });
     afterEach(async () => { await h.cleanup(); });
 
+    test('Session naming preserves HEAD and survives publication from an earlier captured snapshot', async () => {
+        const before = await f.core.create(h.handle, { ...f.start, displayTitle: 'Before' });
+        const renamed = await f.sessionRepo.rename(h.handle, before.session.sessionId, { displayTitle: 'After', expectedDisplayTitle: 'Before' });
+        expect(renamed.headRevisionId).toBe(before.session.headRevisionId);
+        const published = await f.core._publish(h.handle, before);
+        expect(published.session.displayTitle).toBe('After');
+        expect((await f.core.load(h.handle, before.session.sessionId)).session.displayTitle).toBe('After');
+    });
+
     test('Checkpoint A: exact Package -> EntryPoint -> Timeline -> Branch -> Revision -> reload', async () => {
         const { core, start } = f;
         let view = await core.create(h.handle, start);
