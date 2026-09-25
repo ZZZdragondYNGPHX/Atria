@@ -1,4 +1,29 @@
-# Latest handoff — Native Regex scopes
+# Latest handoff — Native orchestration preset refresh
+
+Updated: 2026-09-25 (Asia/Shanghai).
+Implementation: `1a3e891230eb15b65af0772a1879f97cc77db8d7`.
+Local main: `3f5b001cd1ef16870816d6ee0ca0e4087bf6cc7a`.
+Status: complete locally. User explicitly requested NO PUSH.
+
+Four fixed orchestration presets now use Native World/Session authority and
+Runtime Route-aware prompts. Spec/Loop/Agenda remain advisory; Director produces
+prose. Fixed preset revision 2 restores automatically without rewriting user
+copies, routes or bindings. Director prompts no longer depend on named skills.
+
+37 targeted tests passed across six suites; changed-file ESLint and whitespace
+checks passed. Integrated main tree exactly matches the verified implementation.
+Temporary task branch deleted locally. No real model inference was performed.
+
+The three static prompt assets under public/presets remain: plugin-only.json,
+agent-non-director.json and agent-director.json. No plugin-in was found. Native
+Workspace no longer imports/selects these files; it uses Runtime Routes. Old
+import-button translations remain. Assets were audited, not removed.
+
+Full record: `docs:fix/native-orchestration-presets.md`.
+Both main and docs have local commits that have NOT been pushed.
+
+---
+# Previous handoff — Native Regex scopes
 
 Updated: 2026-09-25 (Asia/Shanghai).
 Repository: ZZZdragondYNGPHX/Atria.
