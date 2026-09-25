@@ -47,6 +47,20 @@ test('Simple/Advanced retains edits and parse failures; failed save stays editab
     expect(button(root, 'Review / save revision').disabled).toBe(false); button(root, 'Review / save revision').click(); await flush();
     expect(button(root, 'Review / save revision').disabled).toBe(true); expect(onSave).toHaveBeenCalledTimes(2);
 });
+
+test('module sections start collapsed, retain expansion across editor modes and reveal invalid conditions', async () => {
+    const { root, onSave } = editor();
+    expect(root.querySelectorAll('[data-prompt-fold][open]')).toHaveLength(0);
+    const module = root.querySelector('[data-prompt-fold="module"]'); module.open = true;
+    button(root, 'Advanced editor').click(); button(root, 'Simple editor').click();
+    expect(root.querySelector('[data-prompt-fold="module"]').open).toBe(true);
+    const condition = root.querySelector('[data-prompt-fold="condition"]');
+    const kind = condition.querySelector('select'); kind.value = 'compare'; kind.dispatchEvent(new Event('change'));
+    button(root, 'Review / save revision').click(); await flush();
+    expect(onSave).not.toHaveBeenCalled();
+    expect(condition.open).toBe(true);
+    expect(root.querySelector('[role="alert"]').textContent).toContain('declared variable');
+});
 test('clearing Generation temperature removes the old control instead of retaining it', async () => {
     const { root, onSave } = editor('core.generation-profile'); button(root, 'Advanced editor').click();
     const json = root.querySelector('textarea'), value = JSON.parse(json.value); value.sampling = { temperature: 0.5 }; json.value = JSON.stringify(value);

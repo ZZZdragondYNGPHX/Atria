@@ -1,3 +1,4 @@
+import { openPromptSections } from './_helpers.js';
 import { test, expect } from '@playwright/test';
 import { resolve } from 'node:path';
 import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
@@ -48,7 +49,9 @@ for (const width of [1440, 390]) test(`Library and Studio authoring at ${width}p
     await expect(original).toContainText('Read-only original'); await expect(original.getByRole('button', { name: 'New revision' })).toHaveCount(0);
     await original.getByRole('button', { name: 'Used By', exact: true }).click(); await expect(original.getByRole('status')).toContainText('Packaged Prompt'); await shot('library');
     await library.getByRole('button', { name: 'New resource', exact: true }).click();
+    await openPromptSections(page, 'identity');
     await library.getByLabel('Display name', { exact: true }).fill('Library module ' + width);
+    await openPromptSections(page, 'module');
     await library.getByLabel('Prompt body', { exact: true }).fill('Write clear dialogue.');
     await library.getByRole('button', { name: 'Advanced editor', exact: true }).click();
     await expect(library.getByLabel('Resource JSON — conditions, parameters, provenance')).toBeVisible();
@@ -63,13 +66,16 @@ for (const width of [1440, 390]) test(`Library and Studio authoring at ${width}p
     await expect(library).toContainText('Library module ' + width);
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('prompt-programs'));
     await library.getByRole('button', { name: 'New resource', exact: true }).click();
+    await openPromptSections(page, 'identity');
     await library.getByLabel('Display name', { exact: true }).fill('Authored Program ' + width);
+    await openPromptSections(page, 'stages', 'stage:stage.main');
     await library.getByLabel('Module for stage 1', { exact: true }).selectOption({ index: 1 });
     await library.getByRole('button', { name: 'Add module', exact: true }).click();
     await library.getByRole('button', { name: 'Add stage', exact: true }).click();
-    await library.locator('fieldset').nth(1).getByRole('button', { name: 'Move stage up' }).click();
+    await library.locator('.atri-prompt-stages > details > fieldset').nth(1).getByRole('button', { name: 'Move stage up' }).click();
     await expect(library.getByLabel('Stage ID 1', { exact: true })).toHaveValue('stage.step2');
-    await library.locator('fieldset').nth(0).getByRole('button', { name: 'Remove stage' }).click();
+    await library.locator('.atri-prompt-stages > details > fieldset').nth(0).getByRole('button', { name: 'Remove stage' }).click();
+    await openPromptSections(page, 'response');
     await library.getByLabel('Response Directive', { exact: true }).fill('Respond concisely.'); await shot('program-editor');
     await library.getByRole('button', { name: 'Save revision' }).click(); await page.getByRole('button', { name: 'Back to resources', exact: true }).click();
     await library.locator('article').filter({ has: page.getByRole('heading', { name: 'Packaged Prompt', exact: true }) }).getByRole('button', { name: 'Fork to Library' }).click();
@@ -99,7 +105,9 @@ for (const width of [1440, 390]) test(`Library and Studio authoring at ${width}p
     };
     await navigate('Prompt Authoring'); const view = page.locator('[data-atria-studio-view="prompt-authoring"]');
     await view.getByLabel('Resource kind').selectOption('core.prompt-module'); await view.getByRole('button', { name: 'New project resource' }).click();
+    await openPromptSections(page, 'identity');
     await view.getByLabel('Display name', { exact: true }).fill('Project module ' + width);
+    await openPromptSections(page, 'module');
     await view.getByLabel('Prompt body', { exact: true }).fill('Project-owned dialogue.'); await shot('studio-editor');
     await view.getByRole('button', { name: 'Review / save revision' }).click();
     const beforeApply = await page.evaluate(async projectId => {

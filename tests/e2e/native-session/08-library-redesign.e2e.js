@@ -1,3 +1,4 @@
+import { openPromptSections } from './_helpers.js';
 import { test, expect } from '@playwright/test';
 import { resolve } from 'node:path';
 import { buildAtriaPackageContainer, KnowledgeRepo, createNativeId } from '../../../src/native/index.js';
@@ -128,7 +129,9 @@ test('World and Knowledge authoring keeps names, revision history and exact bind
 test('Prompt module structured editor retains advanced data and immutable save retry', async ({ page }, info) => {
     await boot(page, 900); await open(page, 'prompt-modules');
     await page.getByRole('button', { name: 'New resource', exact: true }).click();
+    await openPromptSections(page, 'identity');
     await page.getByLabel('Display name', { exact: true }).fill('Harbour voice');
+    await openPromptSections(page, 'module');
     await page.getByLabel('Prompt body', { exact: true }).fill('Write with precise, quiet detail.');
     await page.getByRole('button', { name: 'Advanced editor', exact: true }).click();
     const json = page.getByLabel('Resource JSON — conditions, parameters, provenance');
@@ -165,16 +168,19 @@ test('Package originals remain read-only; Fork, Program stages and Generation sa
     await expect(page.getByText('Created independent Library resource.', { exact: true })).toBeVisible();
     await open(page, 'prompt-programs');
     await page.getByRole('button', { name: 'New resource', exact: true }).click();
+    await openPromptSections(page, 'identity');
     await page.getByLabel('Display name', { exact: true }).fill('Harbour narrator');
+    await openPromptSections(page, 'stages', 'stage:stage.main');
     await page.getByLabel('Module for stage 1', { exact: true }).selectOption({ index: 1 });
     await page.getByRole('button', { name: 'Add module', exact: true }).click();
     await page.getByRole('button', { name: 'Add stage', exact: true }).click();
-    await expect(page.locator('.atri-prompt-stages fieldset')).toHaveCount(2);
+    await expect(page.locator('.atri-prompt-stages > details > fieldset')).toHaveCount(2);
     await shot(page, info, 'program-editor-desktop');
     await page.getByRole('button', { name: 'Save revision', exact: true }).click();
     await expect(page.getByText('Saved immutable Library revision.', { exact: true })).toBeVisible();
     await open(page, 'generation-profiles');
     await page.getByRole('button', { name: 'New resource', exact: true }).click();
+    await openPromptSections(page, 'identity');
     await page.getByLabel('Display name', { exact: true }).fill('Quiet replies');
     await page.getByLabel('Maximum output tokens', { exact: true }).fill('1024');
     await page.getByLabel('Temperature', { exact: true }).fill('0.6');

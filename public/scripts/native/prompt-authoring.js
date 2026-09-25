@@ -49,7 +49,14 @@ function select(doc, parent, label, options, value = '') {
     if (value && !options.some(([key]) => key === value)) { const option = element(doc, 'option', undefined, node); option.textContent = String(value) + ' (' + translateShellText('retained') + ')'; option.value = value; }
     node.value = value; return node;
 }
-function error(doc, parent, value) { const node = element(doc, 'p', value?.message || String(value), parent); node.setAttribute('role', 'alert'); node.tabIndex = -1; node.focus(); void referenceRemediation(doc, parent, value); }
+function error(doc, parent, value) {
+    const node = element(doc, 'p', value?.message || String(value), parent); node.setAttribute('role', 'alert'); node.tabIndex = -1; node.focus();
+    if (value?.promptSection?.isConnected) {
+        for (let el = value.promptSection; el; el = el.parentElement) if (el.tagName === 'DETAILS') el.open = true;
+        (value.promptSection.querySelector(':invalid') || value.promptSection.querySelector('input, select, textarea, summary'))?.focus();
+    }
+    void referenceRemediation(doc, parent, value);
+}
 
 function generationFields(doc, fields, draft) {
     const numeric = (label, value, min, max, integer = false) => {
@@ -150,12 +157,25 @@ export function forkPromptClosure(entries, selected, { derive = false, scope = {
     return { entries: output, ref };
 }
 
-export function mountPromptEditor({ document: doc, parent, entry, entries, onSave, onBack, librarySurface = false, presetSurface = false }) {
+export function mountPromptEditor({ document: doc, parent, entry, entries, onSave, onBack, librarySurface = false, presetSurface = false, foldState = new Map() }) {
     let draft = clone(entry.resource); let advanced = false; let submitted = false;
     const root = element(doc, 'section', undefined, parent); root.className = 'atri-prompt-editor';
     root.dataset.atriPromptEditor = 'true';
     if (librarySurface) root.dataset.atriLibraryEditor = 'true';
+    const rememberFolds = () => { for (const node of root.querySelectorAll('[data-prompt-fold]')) foldState.set(node.dataset.promptFold, node.open); };
+    const guarded = (read, section) => () => { try { return read(); } catch (error) { error.promptSection ||= section; throw error; } };
+    function fold(parent, key, label, describe = () => '') {
+        const section = element(doc, 'details', undefined, parent); section.className = 'atri-prompt-fold'; section.dataset.promptFold = key;
+        section.open = foldState.get(key) || false;
+        const summary = element(doc, 'summary', undefined, section); element(doc, 'span', label, summary);
+        const hint = element(doc, 'small', undefined, summary);
+        const update = () => { hint.textContent = describe(); };
+        for (const event of ['input', 'change', 'click']) section.addEventListener(event, () => queueMicrotask(update));
+        queueMicrotask(update);
+        return section;
+    }
     function render() {
+        rememberFolds();
         root.replaceChildren();
         const title = element(doc, 'h3', undefined, root); title.textContent = draft.displayName; title.tabIndex = -1;
         element(doc, 'p', presetSurface ? 'Save changes to this preset. Other presets and pinned sessions stay unchanged.' : librarySurface ? 'Save a new revision. Existing references keep their exact version.' : 'New exact revision · existing references stay pinned. Review changes before committing in Studio.', root);
@@ -175,15 +195,19 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 return value;
             };
         } else {
-            const identity = librarySurface ? element(doc, 'div', undefined, root) : root;
+            const prompt = ['core.prompt-module', 'core.prompt-program'].includes(entry.ref.resourceType);
+            const identityBox = prompt ? fold(root, 'identity', 'Identity', () => name.value) : root;
+            const identity = librarySurface ? element(doc, 'div', undefined, identityBox) : identityBox;
             if (librarySurface) identity.className = 'atri-prompt-identity';
             const name = input(doc, identity, 'Display name', draft.displayName);
             if (librarySurface) name.addEventListener('input', () => { title.textContent = name.value || translateShellText('Untitled'); });
             const revision = input(doc, identity, 'Exact revision', draft.revision);
-            const fields = element(doc, 'div', undefined, root);
+            let fields = element(doc, 'div', undefined, root);
             if (librarySurface) fields.className = 'atri-prompt-fields';
             let specific = () => ({});
+            const sections = fields;
             if (entry.ref.resourceType === 'core.prompt-module') {
+                fields = fold(sections, 'module', 'Module settings', () => target.value);
                 const target = select(doc, fields, 'Semantic target', ['system.foundation', 'system.character', 'system.world', 'system.style', 'system.response', 'context.before_history', 'context.after_history', 'context.before_input', 'context.after_input', 'response.prefill', 'response.post_history', 'agent.task', 'agent.evidence', 'agent.constraints'].map(v => [v, v]), draft.target);
                 const stages = input(doc, fields, 'Stages (comma separated)', draft.stages.join(', '));
                 const body = input(doc, fields, 'Prompt body', draft.body, true);
@@ -197,19 +221,29 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                     { id: b.resourceId, module: modules.get(exactKey(b)) || {} },
                 );
                 const syncConditions = () => { for (const [stage, read] of stageConditions) if (stages.includes(stage)) stage.condition = read(); };
-                const tree = element(doc, 'section', undefined, fields); tree.className = 'atri-prompt-stages';
-                element(doc, 'h4', 'Stage / module tree', tree);
+                const treeBox = fold(fields, 'stages', 'Stage / module tree', () => formatShellText('${0} stages · ${1} modules', [stages.length, stages.reduce((count, stage) => count + stage.moduleRefs.length, 0)]));
+                const tree = element(doc, 'section', undefined, treeBox); tree.className = 'atri-prompt-stages';
+                const stageKeys = new WeakMap(stages.map(stage => [stage, 'stage:' + stage.stageId]));
                 const renderStages = (focusIndex, anchor = null) => {
                     try { syncConditions(); } catch (e) { status.replaceChildren(); error(doc, status, e); return; }
                     const anchorTop = anchor?.getBoundingClientRect().top;
                     const scroll = [];
                     if (anchor) for (let node = anchor.parentElement; node; node = node.parentElement) scroll.push([node, node.scrollTop, node.scrollLeft]);
-                    stageConditions.clear(); tree.querySelectorAll(':scope > fieldset').forEach(node => node.remove());
+                    rememberFolds();
+                    stageConditions.clear(); tree.replaceChildren();
                     stages.forEach((stage, index) => {
                         stage.moduleRefs.sort(compareRefs);
-                        const row = element(doc, 'fieldset', undefined, tree); element(doc, 'legend', formatShellText('Stage ${0}', [index + 1], undefined, 'atria.product.stageIndex'), row);
-                        const id = input(doc, row, formatShellText('Stage ID ${0}', [index + 1], undefined, 'atria.product.stageIdIndex'), stage.stageId); id.addEventListener('input', () => { stage.stageId = id.value; });
-                        stageConditions.set(stage, mountPromptCondition(doc, row, stage.condition));
+                        if (!stageKeys.has(stage)) stageKeys.set(stage, 'stage:' + stage.stageId);
+                        const stageBox = fold(tree, stageKeys.get(stage), formatShellText('Stage ${0}', [index + 1], undefined, 'atria.product.stageIndex'), () => stage.stageId + ' · ' + formatShellText('${0} modules', [stage.moduleRefs.length]));
+                        const row = element(doc, 'fieldset', undefined, stageBox);
+                        const id = input(doc, row, formatShellText('Stage ID ${0}', [index + 1], undefined, 'atria.product.stageIdIndex'), stage.stageId);
+                        id.addEventListener('input', () => {
+                            stage.stageId = id.value;
+                            const key = 'stage:' + stage.stageId; stageKeys.set(stage, key);
+                            stageBox.dataset.promptFold = key; conditionBox.dataset.promptFold = key + ':condition';
+                        });
+                        const conditionBox = fold(row, stageKeys.get(stage) + ':condition', 'Condition', () => conditionBox.querySelector('select')?.value ? translateShellText('Configured') : translateShellText('Always'));
+                        stageConditions.set(stage, guarded(mountPromptCondition(doc, conditionBox, stage.condition), conditionBox));
                         for (const ref of stage.moduleRefs) {
                             const line = element(doc, 'div', undefined, row); const module = entries.find(item => exactKey(item.ref) === exactKey(ref));
                             element(doc, 'span', (module?.resource.displayName || ref.resourceId) + ' · ' + ref.revision + ' · ' + ref.scope, line);
@@ -225,7 +259,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                         action(doc, row, 'Move stage up', () => { if (index) { [stages[index - 1], stages[index]] = [stages[index], stages[index - 1]]; renderStages(index - 1); } });
                         action(doc, row, 'Remove stage', () => { if (stages.length > 1) { stages.splice(index, 1); renderStages(Math.min(index, stages.length - 1)); } });
                     });
-                    const focusedStage = tree.querySelectorAll(':scope > fieldset')[focusIndex];
+                    const focusedStage = tree.querySelectorAll(':scope > details')[focusIndex];
                     if (anchor) {
                         const picker = focusedStage?.querySelector('[data-atri-stage-module-picker]');
                         picker?.focus({ preventScroll: true });
@@ -235,25 +269,30 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                         if (picker) for (const [node] of scroll) {
                             if (node.isConnected && node.scrollHeight > node.clientHeight) node.scrollTop += picker.getBoundingClientRect().top - anchorTop;
                         }
-                    } else if (librarySurface && focusIndex !== undefined) focusedStage?.querySelector('input')?.focus();
+                    } else if (focusIndex !== undefined && focusedStage) { treeBox.open = true; focusedStage.open = true; focusedStage.querySelector('input')?.focus(); }
                 };
-                action(doc, fields, 'Add stage', () => { let index = stages.length + 1; while (stages.some(stage => stage.stageId === 'stage.step' + index)) index++; stages.push({ stageId: 'stage.step' + index, moduleRefs: [] }); renderStages(); }); renderStages();
-                const directive = input(doc, fields, 'Response Directive', draft.responseDirective?.body || '', true);
+                action(doc, treeBox, 'Add stage', () => { let index = stages.length + 1; while (stages.some(stage => stage.stageId === 'stage.step' + index)) index++; stages.push({ stageId: 'stage.step' + index, moduleRefs: [] }); renderStages(stages.length - 1); }); renderStages();
+                const directiveBox = fold(fields, 'response', 'Response Directive', () => directive.value.trim() ? translateShellText('Configured') : translateShellText('Not configured'));
+                const directive = input(doc, directiveBox, 'Response Directive', draft.responseDirective?.body || '', true);
                 specific = () => { syncConditions(); return { stages, responseDirective: { ...draft.responseDirective, body: directive.value } }; };
             } else specific = generationFields(doc, fields, draft);
-            const prompt = ['core.prompt-module', 'core.prompt-program'].includes(entry.ref.resourceType);
-            const readParameters = prompt ? mountPromptParameters(doc, fields, draft.parameters) : null;
-            const readCondition = entry.ref.resourceType === 'core.prompt-module' ? mountPromptCondition(doc, fields, draft.condition) : null;
-            const readDerive = entry.ref.resourceType === 'core.prompt-program' ? mountPromptDerive(doc, fields, draft, entries, entry.ref, () => specific().stages) : null;
+            fields = sections;
+            const parameterBox = prompt ? fold(fields, 'parameters', 'Typed parameters', () => formatShellText('${0} parameters', [parameterBox.querySelectorAll('.atri-prompt-parameters > fieldset').length])) : null;
+            const readParameters = prompt ? guarded(mountPromptParameters(doc, parameterBox, draft.parameters), parameterBox) : null;
+            const conditionBox = entry.ref.resourceType === 'core.prompt-module' ? fold(fields, 'condition', 'Condition', () => conditionBox.querySelector('select')?.value ? translateShellText('Configured') : translateShellText('Always')) : null;
+            const readCondition = conditionBox ? guarded(mountPromptCondition(doc, conditionBox, draft.condition), conditionBox) : null;
+            const deriveBox = entry.ref.resourceType === 'core.prompt-program' ? fold(fields, 'derive', 'Derive operations', () => formatShellText('${0} operations', [deriveBox.querySelectorAll('.atri-prompt-derive > fieldset').length])) : null;
+            const readDerive = deriveBox ? guarded(mountPromptDerive(doc, deriveBox, draft, entries, entry.ref, () => specific().stages), deriveBox) : null;
+            for (const box of [parameterBox, conditionBox, deriveBox]) box?.querySelector('h4, legend')?.remove();
             read = () => ({ ...draft, displayName: name.value, revision: revision.value, ...specific(),
                 ...(readParameters ? { parameters: readParameters() } : {}), ...(readCondition ? { condition: readCondition() } : {}), ...(readDerive ? readDerive() : {}),
             });
-            const provenance = element(doc, 'details', undefined, root); element(doc, 'summary', 'System provenance (read-only)', provenance);
+            const provenance = fold(root, 'provenance', 'System provenance (read-only)');
             element(doc, 'pre', JSON.stringify(draft.provenance || [], null, 2), provenance);
         }
         const save = action(doc, root, librarySurface ? 'Save revision' : 'Review / save revision', async () => {
             if (save.disabled) return; save.disabled = true; save.setAttribute('aria-busy', 'true'); status.replaceChildren();
-            try { const value = read(); await onSave(value); element(doc, 'p', librarySurface ? 'Saved immutable Library revision.' : 'Revision submitted. Studio changes require human Review / Apply.', status); submitted = true; } catch (e) { error(doc, status, e); } finally { save.disabled = submitted; save.removeAttribute('aria-busy'); }
+            try { rememberFolds(); const value = read(); await onSave(value); element(doc, 'p', librarySurface ? 'Saved immutable Library revision.' : 'Revision submitted. Studio changes require human Review / Apply.', status); submitted = true; } catch (e) { error(doc, status, e); } finally { save.disabled = submitted; save.removeAttribute('aria-busy'); }
         });
         save.disabled = submitted;
         title.focus();

@@ -236,3 +236,11 @@ export async function assertR7NodesStable(page) {
         return result;
     });
 }
+
+// Open only the requested editor sections, preserving other disclosure state.
+export async function openPromptSections(page, ...keys) {
+    for (const key of keys) {
+        const summary = page.locator(`[data-prompt-fold="${key}"]:not([open]) > summary`);
+        if (await summary.count()) await summary.click();
+    }
+}
