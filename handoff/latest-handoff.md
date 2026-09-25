@@ -4,7 +4,9 @@ Updated: 2026-09-25 (Asia/Shanghai).
 Repository: ZZZdragondYNGPHX/Atria.
 Baseline main: `6cf383abad35456316ab60ec4925830c6f4053fb`.
 Implementation: `c053779e3e16f1953f8c1c4aa65d2d7a38183279` (pushed).
-Status: verified, ready to merge `feat/native-regex-scopes` into main.
+Main HEAD: `df03dedbd46243bdf71e61861b494c7a30a20bd1` (pushed).
+Status: complete. Integrated main tree exactly matches the verified implementation.
+`feat/native-regex-scopes` was pushed, merged, then deleted locally and remotely.
 
 ## Outcome and contracts
 
@@ -28,6 +30,10 @@ Formal design and full evidence: `docs:feat/native-regex-scopes.md`. Updated pre
 - Changed JavaScript ESLint, zh-CN/zh-TW localization and whitespace checks passed.
 
 No unrelated whole-repository suite, Android, Docker, paid inference or CI wait.
+
+Main was refetched immediately before merge and still matched the baseline. The
+merge had no conflicts; tree equality was checked before pushing main. Remote
+main HEAD and remote task-branch removal were verified. Working tree is clean.
 
 ## Previous completed work
 
