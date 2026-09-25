@@ -253,6 +253,69 @@ The exact schema is an implementation decision to be derived from current code. 
 - Automating user choices that should be made by the user.
 - Encoding the tutorial as fragile selectors and scripted DOM clicks instead of stable Atria product navigation/targets.
 
+### NPC-006 — Regex preset/local scope Native cutover
+
+The Regex Global Plugin has been retained, but two persisted script scopes still use SillyTavern-era ownership:
+
+- `PRESET` scripts are still read/written through the legacy preset manager and persisted as `regex_scripts` inside a Chat Completion Preset.
+- `SCOPED` scripts are still tied to `characters[this_chid]` / character extension data and persisted as card-local `regex_scripts`.
+- Legacy allow/deny state such as `preset_allowed_regex` and `character_allowed_regex` is still retained in capability settings.
+
+This is not only a labeling problem. Atria no longer treats a legacy Chat Completion Preset or character card as the correct owner for these product concepts, so the Regex plugin still crosses retired SillyTavern authority boundaries.
+
+Required behavior:
+
+- Keep Regex as an Atria Global Plugin and preserve the text-transformation engine, safe execution diagnostics, import/export/editor behavior and runtime provider API that remain product-relevant.
+- Replace the legacy `PRESET` and `SCOPED` persisted ownership paths with Atria-native ownership/binding semantics.
+- Do not keep writing regex scripts into legacy Chat Completion Preset extension fields.
+- Do not keep writing project/game-local regex scripts into legacy character-card extension fields or resolving their owner through `this_chid`.
+- Do not preserve `preset_allowed_regex` / `character_allowed_regex` as hidden legacy runtime authority after the Native replacement exists.
+- The replacement scopes must match Atria's current product model. Before implementation, inspect the current Runtime Route, Prompt/Generation, Project/Package, Library and Session boundaries and determine which Native owner(s) correctly represent:
+  - scripts that follow a reusable runtime/prompt configuration;
+  - scripts that belong to one game/project/package rather than the whole account;
+  - account-wide/global scripts.
+- Do not assume the Native replacement must be named "preset regex" or "local regex". Product labels must describe the real Atria owner.
+- A script's effective scope and provenance must be visible in the Regex UI so users can tell why a rule is active.
+- Scope-specific enable/disable must be owned by the new Native binding/selection model rather than legacy preset/character allow flags.
+- The Regex editor must support creating, editing, moving/copying, importing/exporting and deleting scripts in the supported Native scopes without falling back to SillyTavern preset/card persistence.
+- Runtime collection/execution order must remain deterministic. If Native scope ordering differs from the old Global/Scoped/Preset order, define and document the new precedence explicitly and cover it with tests.
+- Package/project-local Regex assets must travel through the correct Native package/build/install path when the current product architecture says they are part of the authored experience.
+- Read-only/package-owned assets must obey existing immutable/fork/update rules rather than being silently edited in place.
+- Diagnostics must report each effective Regex script with its Native source/provenance and whether it was skipped/disabled.
+- Desktop/mobile Regex management must expose the same Native scope model and must not retain disabled legacy sections as dead UI.
+
+Hard-cut requirement:
+
+- Do not add dual-read, dual-write, alias or fallback between the old SillyTavern `PRESET` / `SCOPED` stores and the new Native owners.
+- Old legacy preset/card regex data does not need automatic migration unless a separate explicit migration task is created later.
+- Remove active product/runtime dependencies on the old preset-manager and character-card regex persistence once the Native path is complete.
+- Compatibility-only code may remain only when an actually supported external Plugin API still requires it, and such compatibility must not become the product's source of truth.
+
+The existing "Regex Presets" feature (groups of enabled Regex scripts) is conceptually separate from "Preset Scripts" stored inside a Chat Completion Preset. Audit it independently: keep it if it is still an Atria-owned useful grouping feature, but do not confuse it with or use it to preserve the legacy Chat Completion Preset scope.
+
+#### Acceptance criteria
+
+- Creating a non-global Regex script never requires or mutates a legacy Chat Completion Preset or character card.
+- No active Native product flow resolves Regex ownership from `getPresetManager(...).writePresetExtensionField(...regex_scripts...)` or `characters[this_chid]` / character `regex_scripts`.
+- Legacy `preset_allowed_regex` / `character_allowed_regex` no longer control Native Regex execution.
+- Users can clearly distinguish account-wide scripts from Atria-native configuration/project/package-local scripts in the Regex UI.
+- The effective Regex set for a runtime/session is resolved only from the documented Atria-native owners/bindings plus registered runtime Plugin providers.
+- Project/package-associated scripts survive build/install/reopen according to the chosen Native ownership model.
+- Exact/read-only resources cannot be mutated outside their normal fork/revision/update lifecycle.
+- Import/export and Regex Presets continue to work where still applicable without reintroducing legacy preset/card authority.
+- Diagnostics identify Native scope/provenance and disabled/skipped state.
+- Tests cover persistence, scope precedence, runtime selection, project/package lifecycle, deletion, import/export and hard-cut residual guards.
+- Desktop and narrow/mobile Regex UI are verified.
+- A residual guard fails if product code reintroduces active legacy Chat Completion Preset or character-card Regex persistence.
+
+#### Explicit non-goals
+
+- Rewriting the Regex matching/replacement engine merely for naming consistency.
+- Restoring legacy SillyTavern Chat Completion Presets or character cards as first-class Atria product owners.
+- Automatically migrating historical SillyTavern preset/card Regex data.
+- Removing the managed runtime Regex provider API used by legitimate Plugins if it remains compatible with the Native ownership model.
+- Treating "Regex Presets" and "Preset Scripts" as the same feature.
+
 ## Product / architecture constraints
 
 - Preserve the Native Model / Prompt / Runtime and Native Library/Knowledge authority boundaries already on `main`.
@@ -277,9 +340,10 @@ Before editing, inspect the current contracts and product surfaces and resolve:
 7. What current Knowledge Entry fields are most useful in the compact list and which current UI/state path should own search/filter/sort/expanded-entry state.
 8. Where per-entry enabled state belongs in the immutable Native Knowledge contract, and how every activation/selection/serialization path must honor it without conflating it with KnowledgeBinding.enabled.
 9. Which Shell/navigation APIs and stable target identifiers the persistent guide should use, where guide progress/history belongs, how users reopen/jump/replay lessons, and which current product workflows constitute the final common-operation curriculum.
+10. Which current Atria Native owner/binding replaces legacy Regex PRESET and SCOPED persistence, what the resulting scope precedence is, and which compatibility-only Regex APIs can remain without retaining legacy authority.
 
 Record any substantive answer here before or with the implementation commit that depends on it.
 
 ## Future gaps
 
-Append newly confirmed gaps below as `NPC-006`, `NPC-007`, etc. Preserve their original intent and keep completed items in the document with status/evidence rather than silently deleting history.
+Append newly confirmed gaps below as `NPC-007`, `NPC-008`, etc. Preserve their original intent and keep completed items in the document with status/evidence rather than silently deleting history.
