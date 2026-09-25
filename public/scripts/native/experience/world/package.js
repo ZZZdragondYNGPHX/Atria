@@ -13,7 +13,8 @@ export function loadGameWorldDefinition(packageState, options = {}) {
         throw new Error('Native Session is missing atri_world_state');
     }
 
-    const requestedWorldId = packageState?.runtime?.primaryWorldId ?? stateRoot.primaryWorldId ?? null;
+    const requestedWorldId = snapshot.states?.atri_world_selection
+        ? stateRoot.primaryWorldId : packageState?.runtime?.primaryWorldId ?? stateRoot.primaryWorldId ?? null;
     if (!requestedWorldId) {
         const initialState = clone(stateRoot.initialState ?? {});
         const schema = { type: 'object' };

@@ -41,7 +41,9 @@ export function validateKnowledgeBindingSet(value, manifest, entryPoint) {
     ]));
     if (bySource.size !== snapshots.length) throw new TypeError('Duplicate Knowledge snapshot');
     const packageSources = new Map(manifest.knowledge.map(snapshot => [`package:${snapshotKey(snapshot)}`, snapshot]));
-    const required = packageSessionBindings(manifest, entryPoint);
+    const selected = value.packageBindingIds;
+    if (selected !== undefined && (!Array.isArray(selected) || new Set(selected).size !== selected.length || selected.some(id => !manifest.knowledgeBindings.some(binding => binding.knowledgeBindingId === id)))) throw new TypeError('Invalid Package binding selection');
+    const required = selected === undefined ? packageSessionBindings(manifest, entryPoint) : manifest.knowledgeBindings.filter(binding => selected.includes(binding.knowledgeBindingId));
     const actualPackage = bindings.filter(binding => binding.source.kind === 'package');
     if (hashNativeDocument(required) !== hashNativeDocument(actualPackage)) {
         throw new TypeError('Session must preserve exact Package Knowledge bindings');
@@ -54,16 +56,16 @@ export function validateKnowledgeBindingSet(value, manifest, entryPoint) {
     }
     const used = new Set(bindings.map(binding => sourceKey(binding.source)));
     if ([...bySource.keys()].some(key => !used.has(key))) throw new TypeError('Unbound Session Knowledge snapshot');
-    return { schemaVersion: 1, bindings, snapshots };
+    return { schemaVersion: 1, bindings, snapshots, ...(selected === undefined ? {} : { packageBindingIds: [...selected] }) };
 }
 
 // Copies of exact Library revisions belong to this immutable Session binding-set
 // snapshot. Reload never consults mutable Library policy/latest pointers.
 export async function resolveSessionKnowledge({
     handle, manifest, entryPoint, knowledgeRepo, libraryBindingIds = [],
-    sessionBindings = [], sessionKnowledge = [],
+    sessionBindings = [], sessionKnowledge = [], packageBindingIds,
 }) {
-    const bindings = [...packageSessionBindings(manifest, entryPoint)];
+    const bindings = packageBindingIds === undefined ? [...packageSessionBindings(manifest, entryPoint)] : manifest.knowledgeBindings.filter(binding => packageBindingIds.includes(binding.knowledgeBindingId));
     const snapshots = new Map();
     for (const bindingId of libraryBindingIds) {
         const value = await knowledgeRepo?.getBinding(handle, bindingId);
@@ -95,5 +97,5 @@ export async function resolveSessionKnowledge({
         if (snapshots.has(key)) throw new TypeError('Duplicate Session Knowledge snapshot');
         snapshots.set(key, { kind: 'session', snapshot });
     }
-    return validateKnowledgeBindingSet({ schemaVersion: 1, bindings, snapshots: [...snapshots.values()] }, manifest, entryPoint);
+    return validateKnowledgeBindingSet({ schemaVersion: 1, bindings, snapshots: [...snapshots.values()], ...(packageBindingIds === undefined ? {} : { packageBindingIds }) }, manifest, entryPoint);
 }

@@ -7,7 +7,7 @@ export const SESSION_CORE_NAMESPACE = 'atri_session_core';
 export const TIMELINE_NAMESPACE = 'atri_timeline';
 export const KNOWLEDGE_NAMESPACE = 'atri_knowledge';
 export const RESERVED_SESSION_NAMESPACES = Object.freeze([
-    SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE,
+    SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, 'atri_world_selection',
 ]);
 
 export async function readCheckedDocument(tx, key) {
@@ -125,6 +125,6 @@ export async function readSessionSnapshot(tx, handle, session, value) {
     const head = last ? { messageId: last.messageId, variantId: last.activeVariantId } : null;
     if (hashNativeDocument(head) !== hashNativeDocument(revision.timelineHead)) throw new TypeError('Timeline HEAD mismatch');
     const knowledge = states[KNOWLEDGE_NAMESPACE];
-    for (const namespace of RESERVED_SESSION_NAMESPACES) delete states[namespace];
+    for (const namespace of [SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE]) delete states[namespace];
     return { session, revision, graph, timeline: entries, variants, states, knowledge, core };
 }

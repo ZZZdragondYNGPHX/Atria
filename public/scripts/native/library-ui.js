@@ -90,3 +90,20 @@ export async function referenceRemediation(doc, parent, error, host) {
     const { renderReferenceRemediation } = await import('./reference-remediation.js');
     await renderReferenceRemediation({ document: doc, root: parent, error, host });
 }
+
+export function worldParameterSummary(doc, root, revision) {
+    if (!revision) return;
+    const section = el(doc, 'section', 'atri-library-section', undefined, root);
+    el(doc, 'h3', '', tl('World baseline'), section);
+    const list = el(doc, 'dl', 'atri-knowledge-parameters', undefined, section);
+    const visit = (value, path) => {
+        if (value && typeof value === 'object' && Object.keys(value).length) {
+            for (const [key, child] of Object.entries(value)) visit(child, path ? path + ' / ' + key : key);
+        } else {
+            el(doc, 'dt', '', path || '—', list);
+            el(doc, 'dd', '', value !== null && typeof value === 'object' ? JSON.stringify(value) : String(value ?? '—'), list);
+        }
+    };
+    visit(revision.baseline || {}, '');
+    disclosure(doc, section, 'World schema', revision.schema || {});
+}

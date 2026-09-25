@@ -1,8 +1,9 @@
+import { mountResourceSetup } from './resource-setup.js';
 import { sessionTitleField, mountSessionRename } from './session-naming.js';
 import { mountSaveDependencyRecovery } from './save-dependency-recovery.js';
 import { permissionRow, renderPackageUpdateReview, mountWorkPermissions } from './package-permissions.js';
 import { mountPackageLibraryList, mountPackageLibraryOriginal } from './package-library-resources.js';
-import { resourceBundleExport, mountResourceBundleImport } from './resource-bundle-controls.js';
+import { resourceBundleExport, resourceLibraryCopy, mountResourceBundleImport } from './resource-bundle-controls.js';
 import { mountLibraryRevisionHistory } from './library-revision-history.js';
 import { nativeStudioClient } from './studio-client.js';
 import { mountKnowledgeBindingManager } from './knowledge-binding-manager.js';
@@ -11,7 +12,7 @@ import { mountKnowledgeEntryBrowser } from './knowledge-entry-browser.js';
 import { createAtriaStatePanel } from '../atria-shell/primitives.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { arrayBufferToBase64, nativeProductClient as client } from './product-client.js';
-import { el, action, heading, disclosure, field, cover, feedback, libraryError, confirmLibraryAction, savePassword, referenceRemediation } from './library-ui.js';
+import { el, action, heading, disclosure, field, cover, feedback, libraryError, confirmLibraryAction, savePassword, referenceRemediation, worldParameterSummary } from './library-ui.js';
 
 const actions = (doc, parent) => el(doc, 'div', 'atri-library-actions', undefined, parent);
 const time = value => value ? new Date(value).toLocaleString() : '—';
@@ -109,6 +110,8 @@ function sessionRow(doc, parent, session, host, refresh, workName) {
     action(doc, controls, 'Continue', () => openSession(host, session.sessionId), { disabled: !ready, primary: true });
     const more = disclosure(doc, controls, 'Manage');
     mountSessionRename({ document: doc, root: more, session, onSaved: refresh });
+    const resourceSetup = el(doc, 'div', '', undefined, more);
+    action(doc, more, 'Worlds & Knowledge', () => mountResourceSetup({ document: doc, root: resourceSetup, packageId: session.packageId, sessionId: session.sessionId, host, onSaved: refresh }), { disabled: !ready });
     const extra = actions(doc, more);
     action(doc, extra, 'Export .atriasave', async () => download(doc, await client.exportSession(session.sessionId), `${session.displayTitle || session.sessionId}.atriasave`), { disabled: !ready });
     action(doc, extra, 'Delete', async () => {
@@ -167,6 +170,8 @@ async function workDetail(doc, root, host, id, refresh) {
         const created = await client.startWork(id, { displayTitle: title.value, packageVersionId: work.packageVersion.packageVersionId, entryPointId: selector.value || entryPoints[0]?.entryPointId });
         await openSession(host, created.session.sessionId);
     }, { disabled: work.status !== 'ready' || !entryPoints.length, primary: !latest });
+    const resourceSetup = el(doc, 'div', '', undefined, root);
+    action(doc, controls, 'Configure Worlds & Knowledge', () => mountResourceSetup({ document: doc, root: resourceSetup, packageId: id, entryPointId: selector.value || entryPoints[0]?.entryPointId, host }), { disabled: work.status !== 'ready' });
     const info = section(doc, root, 'About this work', 'atriaWorkSummary');
     const facts = el(doc, 'dl', 'atri-library-facts', undefined, info);
     for (const [label, values] of [['Actors', manifest?.actors?.map(item => item.displayName)], ['Worlds', manifest?.worlds?.map(item => item.world?.displayName)], ['Knowledge Bases', manifest?.knowledge?.map(item => item.knowledgeBase?.displayName)]]) {
@@ -255,16 +260,18 @@ async function worldKnowledge(doc, root, route, host, browseState = {}) {
             article.tabIndex = -1; queueMicrotask(() => article.focus());
             return;
         }
+        if (!knowledge) worldParameterSummary(doc, root, detail.currentRevision);
         const revisionActions = actions(doc, root);
         resourceBundleExport(doc, revisionActions, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId: id, revision: resource.currentRevisionId }, resource.displayName);
-        const editRevision = (initialEntryId, entryEnabled) => {
+        resourceLibraryCopy(doc, revisionActions, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId: id, revision: resource.currentRevisionId }, host);
+        const editRevision = (initialEntryId, entryEnabled, entryAction) => {
             const reload = async saved => {
                 root.replaceChildren(); await worldKnowledge(doc, root, route, host, browseState);
                 if (initialEntryId) [...root.querySelectorAll('[data-atria-knowledge-entry-id]')].find(row => row.dataset.atriaKnowledgeEntryId === initialEntryId)?.querySelector('summary')?.focus();
                 if (saved) feedback(doc, root, tl('Saved immutable Library revision.') + ' ' + (saved.worldRevisionId || saved.knowledgeRevisionId));
             };
             root.replaceChildren();
-            mountLibraryRevisionEditor({ document: doc, root, detail, knowledge, initialEntryId, entryEnabled, browseState, onClose: () => reload(), onSaved: reload });
+            mountLibraryRevisionEditor({ document: doc, root, detail, knowledge, initialEntryId, entryEnabled, entryAction, browseState, onClose: () => reload(), onSaved: reload });
         };
         action(doc, revisionActions, resource.currentRevisionId ? 'New revision' : 'Create first revision', () => editRevision(), { primary: true });
         const manage = disclosure(doc, root, 'Manage resource');
@@ -292,7 +299,8 @@ async function worldKnowledge(doc, root, route, host, browseState = {}) {
         if (knowledge) {
             const entries = section(doc, root, 'Entries', 'atriaKnowledgeEntries');
             el(doc, 'p', 'atri-library-meta', tl('Entry changes are drafts. Review and save a new immutable revision; existing bindings keep their exact revision.'), entries);
-            mountKnowledgeEntryBrowser({ document: doc, root: entries, entries: detail.entries, state: browseState, onEdit: entry => editRevision(entry.knowledgeEntryId), onToggle: (entry, enabled) => editRevision(entry.knowledgeEntryId, enabled) });
+            action(doc, entries, 'Add entry', () => editRevision(undefined, undefined, 'add'), { primary: true });
+            mountKnowledgeEntryBrowser({ document: doc, root: entries, entries: detail.entries, state: browseState, onDelete: entry => editRevision(entry.knowledgeEntryId, undefined, 'delete'), onEdit: entry => editRevision(entry.knowledgeEntryId), onToggle: (entry, enabled) => editRevision(entry.knowledgeEntryId, enabled) });
             if (!detail.entries.length) state(doc, entries, 'empty', 'No entries', 'This revision contains no Knowledge entries.');
             const bindings = section(doc, root, 'Bindings & references', 'atriaKnowledgeBindings');
             mountKnowledgeBindingManager({ document: doc, root: bindings, detail, host });

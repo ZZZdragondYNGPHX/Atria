@@ -83,3 +83,13 @@ describe('Native Game World definition', () => {
             .toThrow(/dependency does not match/);
     });
 });
+
+test('explicit Session World choice overrides the immutable Package runtime default, including no World', () => {
+    const value = packageState();
+    value.runtime.primaryWorldId = 'retired_package_world';
+    value.snapshot.states.atri_world_selection = { schemaVersion: 1 };
+    expect(loadGameWorldDefinition(value).worldId).toBe('world_native');
+    value.snapshot.states.atri_world_state = { primaryWorldId: null, worlds: {} };
+    value.snapshot.worlds = [];
+    expect(loadGameWorldDefinition(value).worldId).toBeNull();
+});

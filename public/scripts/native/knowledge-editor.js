@@ -11,10 +11,10 @@ const entryName = (entry, index) => entry.metadata?.title || entry.metadata?.lab
 const lines = value => value.split('\n').filter(item => item.length > 0);
 
 /** Edits one detached revision draft; only onReview can hand it to an owner. */
-export function mountKnowledgeEditor({ document: doc, root, value, initialEntryId, openEntry = true, browseState = {}, label = 'Knowledge revision JSON', onReview, confirmDelete = confirmLibraryAction }) {
+export function mountKnowledgeEditor({ document: doc, root, value, initialEntryId, initialAction, openEntry = true, browseState = {}, label = 'Knowledge revision JSON', onReview, confirmDelete = confirmLibraryAction }) {
     let draft = clone(value); draft.entries ||= [];
     let selected = Math.max(0, draft.entries.findIndex(entry => entry.knowledgeEntryId === initialEntryId)); let editing = Boolean(initialEntryId) && openEntry; let entryFields; let browser;
-    let advanced = false; let source = ''; let openSections = new Set();
+    let advanced = false; let source = ''; let openSections = new Set(['Discovery', 'Delivery', 'Lifecycle']);
     const shell = el(doc, 'section', 'atri-knowledge-editor', undefined, root);
     const controls = el(doc, 'div', 'atri-library-actions', undefined, shell);
     const fields = el(doc, 'div', 'atri-knowledge-fields', undefined, shell);
@@ -23,11 +23,19 @@ export function mountKnowledgeEditor({ document: doc, root, value, initialEntryI
     function rememberSections() { openSections = new Set([...fields.querySelectorAll('details[open][data-section]')].map(item => item.dataset.section)); }
     function changeView() { rememberSections(); render(); }
     function group(name) {
-        const node = disclosure(doc, entryFields, name); node.dataset.section = name; node.open = openSections.has(name); return node;
+        const node = disclosure(doc, entryFields, name); node.dataset.section = name; node.open = openSections.has(name);
+        return el(doc, 'div', 'atri-knowledge-parameter-fields', undefined, node);
     }
     const { input, checkbox, numeric, renderTargets: targets } = knowledgeFormControls(doc, changeView);
     const renderTargets = (parent, entry) => targets(parent, entry.delivery ||= {});
     function updateTitle(select, entry) { select.options[selected].textContent = entryName(entry, selected); browser.refresh(); }
+    async function deleteSelectedEntry() {
+        const entry = draft.entries[selected];
+        const owners = draft.entries.filter(other => other.knowledgeEntryId !== entry.knowledgeEntryId && ['requiredEntryIds', 'relatedEntryIds'].some(key => other.relations?.[key]?.includes(entry.knowledgeEntryId)));
+        if (owners.length) { showError(new Error(tl('Remove references from these entries before deleting:') + ' ' + owners.map(item => entryName(item, draft.entries.indexOf(item))).join(', '))); return; }
+        if (!await confirmDelete('Remove this entry from the draft revision?')) return;
+        draft.entries.splice(selected, 1); selected = Math.max(0, selected - 1); changeView();
+    }
     function renderConditions(parent, entry) {
         const applicability = entry.applicability ||= {};
         const conditions = applicability.stateConditions ||= [];
@@ -91,12 +99,8 @@ export function mountKnowledgeEditor({ document: doc, root, value, initialEntryI
                 const tools = el(doc, 'div', 'atri-library-actions', undefined, entryFields);
                 action(doc, tools, 'Back to entries', () => { editing = false; entryFields.open = false; browser.focus(entry.knowledgeEntryId); });
                 for (const [caption, offset] of [['Move entry up', -1], ['Move entry down', 1]]) action(doc, tools, caption, () => { const next = selected + offset; [draft.entries[selected], draft.entries[next]] = [draft.entries[next], draft.entries[selected]]; selected = next; changeView(); }, { disabled: selected + offset < 0 || selected + offset >= draft.entries.length });
-                action(doc, tools, 'Delete entry', async () => {
-                    const owners = draft.entries.filter(other => other.knowledgeEntryId !== entry.knowledgeEntryId && ['requiredEntryIds', 'relatedEntryIds'].some(key => other.relations?.[key]?.includes(entry.knowledgeEntryId)));
-                    if (owners.length) { showError(new Error(tl('Remove references from these entries before deleting:') + ' ' + owners.map(item => entryName(item, draft.entries.indexOf(item))).join(', '))); return; }
-                    if (!await confirmDelete('Remove this entry from the draft revision?')) return;
-                    draft.entries.splice(selected, 1); selected = Math.max(0, selected - 1); changeView();
-                }, { danger: true });
+                action(doc, tools, 'Delete entry', () => deleteSelectedEntry(), { danger: true });
+                checkbox(entryFields, 'Enabled', entry.enabled !== false, enabled => { entry.enabled = enabled; browser.refresh(); });
                 input(entryFields, 'Entry title', entry.metadata?.title || entry.metadata?.label || '', value => { (entry.metadata ||= {}).title = value; updateTitle(select, entry); });
                 input(entryFields, 'Entry content', entry.content, value => { entry.content = value; updateTitle(select, entry); }, 'textarea');
                 const discovery = group('Discovery'); const discoveryValue = entry.discovery ||= {};
@@ -128,5 +132,7 @@ export function mountKnowledgeEditor({ document: doc, root, value, initialEntryI
             } catch (error) { showError(error); } finally { fields.inert = false; }
         }, { primary: true });
     }
-    render(); return { getDraft: () => clone(draft) };
+    render();
+    if (initialAction === 'delete') queueMicrotask(() => { void deleteSelectedEntry().catch(showError); });
+    return { getDraft: () => clone(draft) };
 }

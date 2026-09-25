@@ -210,6 +210,12 @@ export function createNativeProductRouter(getServices = services) {
             packageId: req.query.packageId || null,
         }));
     }));
+    router.get('/works/:packageId/resource-setup', route(async (req, res, { product }, handle) => {
+        res.json(await product.getResourceSetup(handle, req.params.packageId, { sessionId: req.query.sessionId, entryPointId: req.query.entryPointId }));
+    }));
+    router.put('/works/:packageId/resource-setup', route(async (req, res, { product }, handle) => {
+        res.json(await product.saveResourceSetup(handle, req.params.packageId, req.body, req.body.sessionId));
+    }));
     router.get('/sessions/:sessionId', route(async (req, res, { product }, handle) => {
         res.json(await product.getSession(handle, req.params.sessionId));
     }));

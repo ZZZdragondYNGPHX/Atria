@@ -134,6 +134,9 @@ export class NativeSaveSystem {
                         });
                     }
                     states.set(stateKey, { namespace, head, data: clone(data) });
+                    if (namespace === 'atri_world_selection') for (const world of data.worlds || []) for (const assetId of world.revision.assetIds || []) {
+                        const attachment = { assetId }; attachments.set(attachmentKey(attachment), attachment);
+                    }
                 }
             }
 
