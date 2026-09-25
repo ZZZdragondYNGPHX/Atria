@@ -6,7 +6,7 @@ Updated: 2026-09-25 (Asia/Shanghai).
 
 Repository: `ZZZdragondYNGPHX/Atria`.
 Working branch: `fix/native-product-ux-audit`.
-Pushed HEAD: `a1125deb9`.
+Pushed HEAD: `42265308d`.
 Main remains `ad15c1e0c3e15e625ba163e284a300c00811f10d`.
 
 Use the existing workspace AGENTS.md and FORK_MAINTENANCE.md. Remote main copies
@@ -85,24 +85,32 @@ and actionable reference resolution are complete. Regression ran 133 suites with
 it passed all seven cases in three adjacent suites. Full lint, frontend compilation
 and nine real Edge 390px scenarios passed. No live external database claim.
 
+Group 8 NUX-041/042 is implemented, independently committed and pushed.
+Detailed implementation/validation: [Group 8](native-product-ux-group-8.md).
+Exact Work Plugin inventory and Regex/Search Tools Global Plugin ownership are
+complete. Retained Agents, Native Experience and shared helpers now have core
+owners; obsolete extension installation, profiles, source and routes are retired.
+354 related suites passed 3532 tests (72 optional DB skips). Six cross-domain Edge
+cases, strengthened retired-route/capability checks and actual WebLLM catalog loading
+passed. Full lint, frontend cache build and six residual scripts passed. See the
+Group 8 record for the exploratory full-repository run's optional DB and unchanged
+Windows-sensitive failures; that run was not all green. No real GPU inference claim.
+
 ## Next
 
-Continue Group 8 NUX-041, then NUX-042, followed by Group 9 NUX-043/044.
-Follow the existing backlog without replanning. Work Plugins must retain exact
-PackageVersion ownership and installation consent; Global Plugins are only Regex
-and Search Tools. Agents remains the sole home of Orchestrator/Memory. Before
-physical cleanup, move retained Agents, Studio UI editor, browser WebLLM retrieval
-and shared tool runtime dependencies out of the extension tree. Preserve Native
-state/configuration authorities and remove obsolete branches rather than retain
-legacy authority for user-data migration.
+Continue Group 9, starting with NUX-043 Global Search coverage and partial-source
+recovery, then NUX-044 localization. Follow the existing backlog without replanning.
+Preserve current Atria UI and Native ownership. Final closure also requires Native
+backup/restore/migration regression and an honest distinction between passing related
+checks and unavailable external/platform checks.
 
 ## Local work
 
 Pre-existing AGENTS.md/FORK_MAINTENANCE.md edits and Phase 6–8 test outputs remain
 untouched and excluded from commits. Current task has local untracked
 `tests/.native-ux-playwright.config.js` selecting installed Edge and
-`tests/test-results-native-ux-g1*` and `tests/test-results-native-ux-g2*` / `tests/test-results-native-ux-g3*` / `tests/test-results-native-ux-g4*` / `tests/test-results-native-ux-g5*` / `tests/test-results-native-ux-g6*` / `tests/test-results-native-ux-g7*` outputs, plus
-`tests/.e2e-scratch/native-ux-g6-build` / `native-ux-g7-build` frontend caches. Bundled Chromium installation stalled;
+`tests/test-results-native-ux-g1*` and `tests/test-results-native-ux-g2*` / `tests/test-results-native-ux-g3*` / `tests/test-results-native-ux-g4*` / `tests/test-results-native-ux-g5*` / `tests/test-results-native-ux-g6*` / `tests/test-results-native-ux-g7*` / `tests/test-results-native-ux-g8*` outputs, plus
+`tests/.e2e-scratch/native-ux-g6-build` / `native-ux-g7-build` / `native-ux-g8-build*` frontend caches. Bundled Chromium installation stalled;
 Edge was used for actual browser validation. Remove task-only temporary outputs
 when no longer needed; do not touch prior-task artifacts.
 
