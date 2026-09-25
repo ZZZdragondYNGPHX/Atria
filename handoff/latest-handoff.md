@@ -1,45 +1,45 @@
-# Latest handoff — World and Knowledge workflows repaired
+# Latest handoff — isolated Native Prompt presets complete
 
 Updated: 2026-09-25 (Asia/Shanghai).
 Repository: ZZZdragondYNGPHX/Atria.
-Main HEAD: `23bfdc608b5e5ee2b6b863f116d118d529b0bab9` (pushed).
-Implementation: `45f0fdbd56dac8dd46e80431b3cd094eb67a34ea`.
-Status: complete. Working tree clean; local fix branch removed; it was not pushed remotely. The permanent docs branch remains.
+Main HEAD: `7a7b96d898b2c8bc317bd5d3f4642dc291da2ec6` (pushed).
+Implementation: `416474080`.
+Status: complete. Integrated tree equals the verified task branch. Temporary `feat/prompt-presets` removed locally; it was not pushed remotely. Permanent `docs` remains.
 
 ## Current outcome
 
-The user reopened World/Knowledge acceptance after NPC-001–006 because installed Work originals remained hard to copy/edit and Works/Sessions had no resource selection. This follow-up covers existing Sessions as explicitly requested.
+The user approved one preset = one program suite + its own modules + one generation configuration, with per-preset nested categories and independent imports. Implemented Library → Prompt Presets → Prompt Programs / Prompt Modules / Generation Profiles; removed the three separate Library section entries. Program/generation areas show parameter editors directly.
 
-- World/Knowledge originals and Library details have a prominent Create editable copy action.
-- Library Knowledge offers direct add/edit/delete/enable actions, named parameter summaries and a compact list/detail editor. Changes publish explicit immutable revisions after review/save.
-- Work details: Configure Worlds & Knowledge sets defaults for new Sessions from that starting point.
-- My Games → Manage → Worlds & Knowledge changes an existing Session's selection, with exact revision selectors and primary World choice.
-- The currently open Session reloads immediately after saving. Stop generation before changing its resources.
-- Exact unchanged Worlds retain progress; replaced Worlds initialize from their baseline. Timeline/history remain recoverable. Library Knowledge snapshots and World attachments survive save export/import independently of the Library originals.
+Categories support create, rename, recursive delete, and module reassignment. Delete confirmation lists affected modules and programs; current program stage/derive references are removed together. Import/export preserves the full preset and taxonomy, creates independent resource identities, adds a program-named top category only when every module is unclassified, and preserves partial unclassified membership.
 
-Detailed record: `docs:fix/world-knowledge-workflows.md`.
-Original NPC plan and history: `docs:feat/native-prompt-controls.md`.
+Existing Native resources can be explicitly migrated into independent presets; unreferenced modules can also be copied in. Runtime offers a paired preset selector and rejects cross-preset program/generation pairs. Historical exact links remain inspectable and link to the owning preset.
 
-## Persistence contracts
+Detailed accepted contract, implementation, verification and migration: `docs:feat/prompt-presets.md`.
 
-No parallel repository or localStorage authority was introduced. Work defaults use existing PackageState plus an integrity token; Session choices use reserved revision-backed atri_world_selection and optional packageBindingIds in KnowledgeBindingSet. Absent fields preserve old behavior. Package originals stay immutable; edits never silently retarget pinned consumers.
+## Architecture and compatibility
 
-Explicit World selection takes precedence in Game World resolution. Resource changes require expected Session HEAD and reset derived Knowledge activation state. Work defaults are scoped to the exact PackageVersion and starting point. Asset deletion checks protect these World snapshots; portable save closure includes their asset bytes.
+Preset metadata lives on existing Native Library resource roots. Definitions still use the existing immutable revision/compile authority. Publication is serialized and transactional, with expected revision checks and ownership validation. Generic resource edits cannot bypass preset ownership.
+
+Removed modules leave active membership and are archived; historical definitions remain for exact pinned consumers. Existing Runtime/Project/Session references never silently follow latest. Select the preset in Runtime to adopt its current exact program/generation pair.
+
+Import/export uses Atria Native `atria.prompt-preset` JSON. No arbitrary SillyTavern legacy preset conversion was added. Existing standalone resources are preserved, and migration lets the user choose their matching Generation Profile instead of guessing.
 
 ## Verification
 
-Affected-path tests only; no CI wait or unrelated full suite.
+Affected-path checks only, per user instruction:
 
-- Knowledge/Product/UI focused tests passed.
-- FsEngine Session Core + runtime projection: 29 tests passed.
-- HTTP/Library/setup checkpoint: 5 suites / 22 tests passed; final HTTP/Game World: 2 suites / 19 passed.
-- Final setup integration passed default isolation, concurrency rejection, exact snapshot independence, state retention, historical reads, reserved-state protection and fresh-directory save restoration including protected World attachments.
-- Real-host browser: 1440px and 390px complete copy/entry CRUD/toggle, Work defaults and active Session configuration/reload flows passed. Final screenshots inspected.
-- Changed JavaScript lint, localization and whitespace checks passed. Frontend prebuild cache command succeeded.
-- Integration fetch found main unchanged; merge had no conflicts and its tree equalled the verified branch exactly. Remote main push succeeded.
+- New FsEngine isolation/closure/category and authenticated HTTP tests: 3 passed.
+- Existing Prompt persistence: 6 passed; Prompt editor: 8 passed; generation host/configuration HTTP suite: 29 passed.
+- Library adapter: 3 passed; Runtime workspace: 12 passed; WorkspaceHost: 11 passed.
+- Real Edge browser: desktop 1440px and phone 390px preset/category CRUD, import/export isolation, deletion impact/ref cleanup, exact history navigation and paired Runtime selection passed. Rendered screenshots inspected and theme/control fixes verified.
+- Separate existing-resource and standalone-module migration browser scenario passed.
+- Changed JavaScript lint, zh-CN/zh-TW localization and whitespace checks passed. Frontend prebuild cache command succeeded using its existing cache.
+- Fetched main remained at the task baseline. Merge had no conflicts, and the integrated tree equals the verified feature tree. Main push succeeded.
 
-## Remaining context
+No GitHub CI wait, unrelated full suite, Android, Docker or paid inference. No outstanding work in this task.
 
-No work remains in this fix. Entry edits still require review/save; use the resource selector to choose the new exact revision for a Work or Session. World replacement resets that replacement's state, rather than attempting schema migration.
+## Prior completed work
 
-Earlier unrelated A7 aggregate string-guard failure and unavailable local database matrix remain historical baseline/environment notes, not failures of this affected-path verification. Android/Docker/paid inference were not run.
+World/Knowledge editing, copying, Work defaults and existing Session resource changes were completed in `23bfdc608b5e5ee2b6b863f116d118d529b0bab9`; record: `docs:fix/world-knowledge-workflows.md`.
+
+NPC-001–006 and Final Integration were completed earlier; record: `docs:feat/native-prompt-controls.md`. Their feature branch was deleted. Earlier unrelated A7 aggregate guard and unavailable local database matrix remain historical baseline/environment notes, not failures of this task's targeted verification.
