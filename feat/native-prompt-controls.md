@@ -1,6 +1,6 @@
 # Atria Native Prompt Controls
 
-Status: planned / open  
+Status: in progress — Group 1 implemented; Groups 2–6 pending  
 Implementation branch: `feat/native-prompt-controls`  
 Base: `main@d29c2b3170798b136eb41249eaad902a23aab5bd`
 
@@ -406,3 +406,66 @@ Record any substantive answer here before or with the implementation commit that
 ## Future gaps
 
 Append newly confirmed gaps below as `NPC-007`, `NPC-008`, etc. Preserve their original intent and keep completed items in the document with status/evidence rather than silently deleting history.
+
+## Group 1 — NPC-001 implementation record (2026-09-25)
+
+Baseline: d29c2b3170798b136eb41249eaad902a23aab5bd. Code HEAD: 2958b9c2bacfebd876a69b12e2dcffb3a30d5779 (pushed).
+
+### Code-audited decisions
+
+- Existing typed parameter definitions gain optional label/description and finite
+  options ({ value, label }). Options are distinct, bounded to 128, and match the
+  string/number parameter type. A finite choice must have a default or be required.
+  Boolean parameters use ordinary checkboxes. Human display metadata stays authored
+  data; UI chrome uses existing zh-CN/zh-TW localization.
+- Player choices live in the existing mutable player Runtime Route's optional
+  promptParameters map. They persist across reloads and apply to all sessions using
+  that route. No Session, immutable Program/Module revision, Package original,
+  localStorage, preset authority or additional storage kind is written.
+- Precedence: authored defaults < resolved route overrides < explicit request
+  parameters. Fallback routes resolve their own choices against their own exact
+  Program. Existing compiler binding and module/stage conditions are authoritative.
+- Play exposes Prompt choices in its existing inspector/sheet. Runtime Diagnostics
+  exposes the same controls for its selected preview route. This selector edits a
+  route; it does not change the route used by a running session. Override default
+  enables editing; disabling it removes the override on Save. Restore defaults
+  persists an empty override map. Unsaved choices are explicitly described as drafts.
+- Authenticated prompt-controls GET reads inherited definitions using RouteResolver
+  and flattenPromptProgram over existing Library/Project/Package readers. PUT
+  validates typed partial overrides and serializes a compare-and-update against the
+  loaded route. Stale concurrent edits fail visibly without overwriting route config.
+- Changing Program refs does not silently migrate/drop stale selections. Unknown
+  parameters, wrong types and retired choices fail closed before send, with localized
+  remediation and explicit reset. Required parameters without defaults remain required
+  at compilation; users can save a partial setup without inventing defaults.
+- Preview/execute carry identical snapshot.promptIr.compilation evidence: effective
+  parameters, selected stages and included/disabled/condition-false module decisions.
+- Parameter validation now lives in a pure dual-host public/shared contract, with a
+  localized frontend wrapper. This fixes the baseline Core import of a browser
+  localization module; the P0 guard scans the shared module too.
+- P5/P6 guards were updated for existing Library Generation Profile ownership and
+  block-form Library authoring actions, preserving their substantive checks.
+
+### Validation and scope
+
+- Related unit/integration suite: 12 suites / 158 tests passed; subsequent focused
+  suite after added schema/Project/Package coverage: 5 suites / 91 tests passed.
+- Real-host Playwright: 1440px desktop and 390px narrow viewport, 2 cases passed.
+  Actual controls save/reopen, restore defaults, compile preview and generate through
+  the real Native HTTP host against a local synthetic provider. Effective values agree.
+  Narrow-screen sheet closure and inspector navigation use the existing Shell contract.
+- Root lint, focused test lint, zh-CN/zh-TW localization coverage, frontend prebuild,
+  and relevant P0–P7 guards pass (final command evidence recorded in handoff).
+- Broader P8 aggregate also passes A0–A6, then stops on an existing A7 Studio guard
+  requiring attachResource/forkResource/updateResource strings in studio-workspace.js.
+  Those calls were already absent at the baseline. This unrelated guard reconciliation
+  is retained as a Final Integration follow-up, not claimed as passing.
+- No live paid model, Android device/build, Docker build or GitHub CI wait was needed.
+
+### Remaining sequence / stop gate
+
+Group 2: NPC-003 + NPC-004; Group 3: NPC-002; Group 4: NPC-006;
+Group 5: NPC-005; Group 6: Final Integration. Stop after Group 1 commit/push and
+wait for the user's “继续”. Do not merge main early. Final Integration must include
+remaining broad-guard reconciliation, verified main integration/push, feature branch
+removal and final handoff; docs remains permanent.

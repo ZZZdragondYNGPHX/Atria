@@ -2,203 +2,90 @@
 
 Updated: 2026-09-25 (Asia/Shanghai).
 
-## Current task
+## Current status / stop gate
 
-Repository: `ZZZdragondYNGPHX/Atria`
+Repository: ZZZdragondYNGPHX/Atria.
+Implementation branch: feat/native-prompt-controls.
+Remote code HEAD: 2958b9c2bacfebd876a69b12e2dcffb3a30d5779 (pushed).
+Remote main remains d29c2b3170798b136eb41249eaad902a23aab5bd.
+Formal plan: docs:feat/native-prompt-controls.md. That plan is authoritative.
 
-Task: Atria Native Prompt Controls and adjacent Native resource usability gaps discovered through real product use.
+Group 1 (NPC-001) is complete. STOP and wait for the user's “继续”.
+On continuation, fetch first and use the latest remote feature HEAD. Do not create
+another feature branch, reset prior commits or merge main early.
 
-Implementation branch:
-`feat/native-prompt-controls`
+## Completed Group 1 — NPC-001
 
-Branch base and current HEAD:
-`d29c2b3170798b136eb41249eaad902a23aab5bd`
+- Authored Prompt parameters support human labels/descriptions, boolean controls and
+  distinct finite string/number options. Exclusive choices require a default or an
+  explicit required selection. Existing typed binding/conditions remain authoritative.
+- Play Prompt choices inspector and Runtime Diagnostics share the same controls.
+  Existing Shell dock/sheet behavior is reused; desktop and narrow viewports verified.
+- Overrides persist in the existing player Runtime Route promptParameters map across
+  sessions/reloads. Saving choices does not create immutable Prompt revisions, write
+  Package originals, or introduce localStorage/preset/session state authority.
+- Defaults < resolved route overrides < explicit request parameters. Each fallback
+  uses its own route. Invalid/stale values fail closed; controls offer explicit reset.
+- Authenticated GET/PUT /api/native/generation/prompt-controls/:id reads exact inherited
+  Library/Project/Package definitions and updates only the selected mutable route.
+  Serialized compare-and-update rejects concurrent changes instead of overwriting them.
+- snapshot.promptIr.compilation exposes effective parameters, selected stages and
+  included/disabled/condition-false module decisions for preview and execution.
+- Shared validation is now a pure dual-host module; frontend localization stays in its
+  wrapper. The P0 guard also scans this shared boundary. P5/P6 stale textual assertions
+  were updated to match existing Native Library/authoring ownership.
 
-Current remote `main` at task creation:
-`d29c2b3170798b136eb41249eaad902a23aab5bd`
+## Executed validation
 
-Formal plan:
-`docs:feat/native-prompt-controls.md`
+- Related Jest regression: 12 suites, 158 tests passed.
+- After additional finite-choice / Project / Package / inherited metadata coverage:
+  5 focused suites, 91 tests passed. Final UI save redraw: 3 focused tests passed.
+- Final real-host Playwright: 2/2 passed at 1440px and 390px. Actual user controls,
+  reset/save, reload/reopen, Runtime preview, Play generation, persisted typed values
+  and preview/execute consistency are covered with a local synthetic provider.
+  Screenshots were inspected for both widths. Scratch data is not committed.
+- Root npm run lint passed; touched test lint passed; final touched UI/shared lint
+  passed; modified guard scripts passed node --check; git diff --check passed.
+- npm run check:native-localization passed (zh-CN/zh-TW).
+- npm run frontend:prebuild-cache passed (actual webpack compilation initially,
+  subsequent run reused valid library cache; product JS is served as native modules).
+- P0–P7 guards passed. The P8 aggregate also passed A0–A6, then stopped at the baseline
+  A7 assertion requiring attachResource/forkResource/updateResource in
+  public/scripts/native/studio-workspace.js. Those calls were already absent at
+  d29c2b317. Do not claim the full P8 aggregate passed. Reconcile this broad baseline
+  guard against current Studio implementation during Final Integration, retaining
+  substantive authoring/ownership checks. Further aggregate gates may surface then.
+- No GitHub CI wait, paid model calls, Android build/device checks or Docker checks.
 
-The plan is a living backlog. Confirmed items are NPC-001 through NPC-006. If the
-user adds more gaps, append NPC-007/NPC-008/etc. on the same task branch. Do not
-invent adjacent scope.
+## Remaining groups, in the user-approved order
 
-## Confirmed gaps
+1. NPC-001 — DONE, code/documentation pushed; awaiting user continuation.
+2. NPC-003 + NPC-004 — Knowledge entry browsing plus per-entry enabled contract.
+3. NPC-002 — true Prompt Program/Module deletion with dependency integrity.
+4. NPC-006 — complete Regex Native cutover; retire preset/card ownership end-to-end.
+5. NPC-005 — persistent learning center and guided lessons; audit/write curriculum
+   before implementing, per formal plan.
+6. Final Integration — reconcile remaining guards, verify full integrated result,
+   update final documents, merge feature into main, verify/push main, confirm no
+   omissions, delete remote/local feat/native-prompt-controls, finalize this handoff.
+   Keep docs permanently.
 
-### NPC-001 — Player-facing Prompt runtime controls
+Each group must complete implementation, targeted tests, automated UI/browser checks,
+lint/build, code commit/push and plan/handoff updates, then report HEAD/results and
+stop for “继续”. Do not restart the completed prior Native Product UX backlog.
+Only ask the user for genuinely necessary real-device/visual judgment, permissions,
+authentication or Secret dependencies. No such dependency exists for the next group.
 
-Native Prompt Programs already have typed parameters and module conditions, but the
-player-facing runtime has no product-quality controls for selecting them.
+## Authority reminders
 
-Required product behavior includes boolean toggles, mutually exclusive single-choice
-groups, human-readable labels/options, validated `prompt.parameters`, no immutable
-Prompt revision creation for ordinary runtime choices, preview/execute consistency,
-safe stale-value handling and desktop/mobile usability.
+Read local AGENTS.md and FORK_MAINTENANCE.md plus the formal plan before continuing.
+Preserve Native exact revisions, immutable authoring, dependency closure and existing
+storage/runtime authorities. Do not restore legacy presets, World Info storage, DOM
+control, Tavern Helper, MVU or default legacy migration. The two NPC-006 sections in
+the formal plan are historical confirmed requirements; the Complete Regex Native
+cutover section and the user's latest instructions govern removal of old authority.
 
-TGbreak is a motivating example only. Core code must remain generic.
-
-### NPC-002 — Prompt Program / Module deletion lifecycle
-
-Imported/user-owned Prompt Programs and Prompt Modules can currently be archived but
-lack a real user-facing delete lifecycle.
-
-Required outcome: distinct Archive vs Delete actions, safe destructive removal for
-eligible user-owned resources, dependency/reference blocking with visible Used By
-information, protection of Package/read-only resources, reload-stable state, and no
-dangling exact refs.
-
-Do not assume the persistence implementation. Inspect current versioned-resource,
-Library and dependency-graph semantics first and preserve Native authority.
-
-### NPC-003 — Knowledge entry browsing clarity
-
-Current Knowledge entries are displayed as a long continuous sequence and become
-difficult to scan in larger Knowledge Bases.
-
-Required outcome: a compact, clearly segmented entry overview with high-value summary
-fields, progressive disclosure/collapse, fast entry editing and practical navigation
-for large sets. Search/filter and sorting/grouping should be evaluated against the
-actual Native Knowledge contract. Mobile must remain compact and navigable.
-
-SillyTavern World Info is a usability reference for clarity only. Do not restore its
-legacy storage/schema/DOM authority.
-
-### NPC-004 — Per-entry Knowledge enable / disable
-
-Native Knowledge currently has Binding-level `enabled`, but no independent
-`KnowledgeEntry` enabled state. Users therefore cannot temporarily disable one entry
-while keeping the rest of the same Knowledge Base active.
-
-Required outcome: a first-class per-entry toggle, exposed in the compact NPC-003 list,
-with entry-disabled items excluded from all normal Native activation/selection/prompt
-delivery paths and diagnosed separately from `binding_disabled`. The state must live
-inside the proper immutable Native Knowledge authoring/revision model and survive
-Resource Bundle/Package/Project serialization paths. Do not reuse legacy World Info
-storage or its `disable` field.
-
-### NPC-005 — Persistent guided learning / interactive product tour
-
-The current first-run flow is a blocking name/language onboarding dialog and ends
-after that setup. Replace this limitation with a persistent guided-learning system.
-
-Fresh install automatically starts at Step 1 (name/language), but first launch is only
-the entry point. The guide must remain permanently available from a discoverable
-Help/Learning entry so users can browse the curriculum, jump to a lesson, replay
-completed lessons, or resume unfinished progress at any time.
-
-Later steps navigate to real Atria workspaces and teach through instructions over the
-actual interface. The system needs stable Previous/Next/Close behavior, first-run
-Skip/Finish, resumable progress, curriculum/index navigation, direct lesson selection,
-desktop/mobile navigation awareness, immediate localization after language changes,
-and optional completion checks based on real product state/events.
-
-Completing or skipping onboarding must stop automatic startup prompting only; it must
-never remove access to the guide. Replaying lessons must not reset unrelated product
-data.
-
-The guide must use stable Atria Shell/navigation/target contracts, not brittle DOM
-click scripts, fixed coordinates or legacy SillyTavern panels. Before implementation,
-audit current main and record the concrete common-operation curriculum in the formal
-plan. The intent is a long-lived in-product learning/reference system, not a disposable
-first-run wizard.
-
-### NPC-006 — Regex preset/local scope Native cutover
-
-Regex is retained as a Global Plugin, but code audit confirms two persisted scopes
-still cross legacy SillyTavern authorities: PRESET scripts are written through the
-old preset manager into Chat Completion Preset `regex_scripts`, while SCOPED scripts
-still use `characters[this_chid]` / character extension `regex_scripts`. Capability
-settings also retain legacy `preset_allowed_regex` and `character_allowed_regex`.
-
-Required outcome: preserve the useful Regex text engine/editor/runtime-provider API,
-but replace those two ownership paths with Atria-native configuration/project/package
-(or other code-audited Native) owners and bindings. Scope/provenance must be visible,
-execution precedence deterministic, package/project lifecycle supported where
-applicable, and diagnostics must explain effective/disabled scripts.
-
-Hard cut: no dual-read/write/fallback to legacy preset/card Regex stores, and no
-default migration requirement. "Regex Presets" (saved groups of enabled scripts) is a
-separate feature from legacy "Preset Scripts" and should be audited independently.
-
-### NPC-006 — Complete Regex Native cutover
-
-Regex is now an explicit Atria Global Plugin, but current main still exposes and
-executes SillyTavern-era `PRESET` and `SCOPED` script ownership. The UI, engine and
-capability state still reference prompt presets/character cards through
-`SCRIPT_TYPES.PRESET`, `SCRIPT_TYPES.SCOPED`, `getPresetManager()`,
-`preset_allowed_regex` and `character_allowed_regex`.
-
-Required outcome: retire those two legacy ownership scopes end-to-end, not merely hide
-their UI. Global Atria-owned Regex rules and read-only plugin/runtime rules remain.
-If a real non-global Atria use case exists, it must receive a proper Native
-Project/Package/resource owner rather than aliasing the legacy scopes.
-
-Do not automatically remove the separate Regex Presets feature merely because of its
-name. Audit whether it can remain as a scope-neutral way to save/switch enabled Atria
-Regex rule sets after preset/card script ownership is gone.
-
-## Architecture boundaries
-
-Preserve the current Native Model / Prompt / Runtime and Library / Knowledge authority,
-exact resource revisions and dependency integrity.
-
-Do not restore SillyTavern preset/World Info authority, Tavern Helper DOM control,
-Regex state, `setvar/getvar/random`, MVU state, localStorage authority, or default
-legacy data migration.
-
-Authoring owns Prompt definitions/defaults. Runtime owns player Prompt selections.
-Deletion must respect dependency closure. Knowledge changes in NPC-003 are primarily
-product browsing/management UX unless current code proves a contract change is needed.
-NPC-004 is a real Knowledge contract/runtime semantic change: keep entry state distinct
-from KnowledgeBinding.enabled and preserve immutable revision/dependency authority.
-
-## Start by reading
-
-1. Local workspace `AGENTS.md`
-2. Local workspace `FORK_MAINTENANCE.md`
-3. `docs:feat/native-prompt-controls.md`
-4. `main:src/native/model-prompt-runtime/README.md`
-5. `main:src/native/model-prompt-runtime/contracts.js`
-6. `main:src/native/model-prompt-runtime/prompt-compiler.js`
-7. `main:src/native/model-prompt-runtime/prompt-values.js`
-8. `main:public/scripts/native/prompt-authoring.js`
-9. `main:public/scripts/native/prompt-semantics.js`
-10. Current Library/versioned-resource deletion/archive/dependency paths.
-11. Current Knowledge/Knowledge Entry Library and authoring UI paths.
-12. Relevant current Runtime/Play request UI and generation-host paths.
-13. Current first-run onboarding/persona/language implementation, Atria Shell navigation,
-    workspace routing, overlay/back resolver and localization paths.
-14. Current Regex UI/engine/capability persistence, legacy preset-manager coupling,
-    character/card Regex storage and plugin/runtime Regex provider paths.
-14. Regex engine/editor persistence paths, legacy preset-manager/character-card scope
-    dependencies, capability settings keys, runtime provider API and project/package
-    composition/build/install paths relevant to a Native Regex scope replacement.
-
-Use the actual remote `feat/native-prompt-controls` HEAD if another session has
-advanced it. Preserve existing commits; never reset back to this creation HEAD.
-
-## Completed / validation
-
-Task setup/documentation only:
-
-- `feat/native-prompt-controls` exists from the stated main baseline.
-- Formal plan now contains NPC-001 through NPC-006.
-- No product implementation has been made on the feature branch.
-- No implementation tests/CI are claimed.
-
-The previous Native Product UX audit is complete and integrated. Do not restart its
-Groups 1–9 or reopen its prior 44-item backlog as part of this task.
-
-## Next
-
-When implementation begins, reconcile all confirmed NPC items against current code
-before editing and record substantive architecture decisions in the formal plan.
-
-Implement the backlog on the same feature branch. Group work sensibly rather than
-creating a branch per NPC item. Perform offline tests and any UI/browser validation
-that does not require the user. Only request user involvement for genuinely manual
-device/UI/permission dependencies.
-
-Do not merge `main` until the full current Native Prompt Controls / Resource UX
-backlog is complete and validated.
+Environment: repository was absent from D:/Dev/Atria at takeover and was cloned from
+the existing remote feature branch. An additional worktree checks out the existing
+docs branch. No new task branch was created. Use repository history and remote HEADs
+as authority, not machine paths. Test-only files, caches and screenshots stay untracked.
