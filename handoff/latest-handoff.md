@@ -20,7 +20,7 @@ Current remote `main` at task creation:
 Formal plan:
 `docs:feat/native-prompt-controls.md`
 
-The plan is a living backlog. Confirmed items are NPC-001 through NPC-004. If the
+The plan is a living backlog. Confirmed items are NPC-001 through NPC-005. If the
 user adds more gaps, append NPC-004/NPC-005/etc. on the same task branch. Do not
 invent adjacent scope.
 
@@ -77,6 +77,22 @@ inside the proper immutable Native Knowledge authoring/revision model and surviv
 Resource Bundle/Package/Project serialization paths. Do not reuse legacy World Info
 storage or its `disable` field.
 
+### NPC-005 — First-run guided onboarding / interactive product tour
+
+The current first-run flow is a blocking name/language onboarding dialog and ends
+after that setup. Upgrade it into a multi-step guided onboarding system.
+
+Step 1 keeps name/language. Later steps navigate to real Atria workspaces and teach
+the user through instructions over the actual interface. The guide needs stable
+Previous/Next/Skip/Finish behavior, resumable progress, reopen-later support,
+desktop/mobile navigation awareness, immediate localization after language changes,
+and optional action-completion checks based on real product state/events.
+
+The guide must use stable Atria Shell/navigation/target contracts, not brittle DOM
+click scripts, fixed coordinates or legacy SillyTavern panels. Before implementation,
+audit current main and record the concrete common-operation curriculum in the formal
+plan. The intent is to teach normal Atria use, not every advanced/developer feature.
+
 ## Architecture boundaries
 
 Preserve the current Native Model / Prompt / Runtime and Library / Knowledge authority,
@@ -106,6 +122,8 @@ from KnowledgeBinding.enabled and preserve immutable revision/dependency authori
 10. Current Library/versioned-resource deletion/archive/dependency paths.
 11. Current Knowledge/Knowledge Entry Library and authoring UI paths.
 12. Relevant current Runtime/Play request UI and generation-host paths.
+13. Current first-run onboarding/persona/language implementation, Atria Shell navigation,
+    workspace routing, overlay/back resolver and localization paths.
 
 Use the actual remote `feat/native-prompt-controls` HEAD if another session has
 advanced it. Preserve existing commits; never reset back to this creation HEAD.
@@ -115,7 +133,7 @@ advanced it. Preserve existing commits; never reset back to this creation HEAD.
 Task setup/documentation only:
 
 - `feat/native-prompt-controls` exists from the stated main baseline.
-- Formal plan now contains NPC-001 through NPC-004.
+- Formal plan now contains NPC-001 through NPC-005.
 - No product implementation has been made on the feature branch.
 - No implementation tests/CI are claimed.
 
