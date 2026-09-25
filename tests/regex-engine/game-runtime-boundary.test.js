@@ -9,9 +9,9 @@ const repoRoot = path.resolve(testDir, '..', '..');
 const read = relative => fs.readFileSync(path.join(repoRoot, relative), 'utf8');
 
 describe('Regex/Native Game Runtime architecture boundary', () => {
-    test('live Regex ownership hard-cuts preset/card stores and retained allow flags', () => {
+    test('Native Regex scopes do not restore legacy preset/card stores or allow flags', () => {
         for (const file of ['engine.js', 'index.js', 'dropdown.html', 'scriptTemplate.html']) {
-            expect(read('public/scripts/extensions/regex/' + file)).not.toMatch(/SCRIPT_TYPES\.(?:SCOPED|PRESET)|getPresetManager|writeExtensionField|['"]regex_scripts['"]|Preset Scripts|Scoped Scripts/);
+            expect(read('public/scripts/extensions/regex/' + file)).not.toMatch(/SCRIPT_TYPES\.SCOPED|getPresetManager|writeExtensionField|['"]regex_scripts['"]|Preset Scripts|Scoped Scripts/);
         }
         expect(read('public/scripts/capability-host.js')).not.toMatch(/character_allowed_regex|preset_allowed_regex/);
     });

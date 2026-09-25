@@ -11,7 +11,7 @@ import { assertWritable } from '../storage/read-only-mode.js';
 import { getNativeSessionServices } from './native-session.js';
 import { getNativeStudioServices } from './native-studio.js';
 import { NativeModelPromptPersistence, VersionedJsonResourceHandler } from '../native/model-prompt-runtime/persistence.js';
-import { NativeGenerationHost } from '../native/adapters/generation-host.js';
+import { NativeGenerationHost, selectNativeRuntimeRoute } from '../native/adapters/generation-host.js';
 import { createHttpGenerationProvider } from '../native/adapters/http-generation-provider.js';
 import { createNativeMessagesProvider } from '../native/adapters/native-messages-provider.js';
 import { assertConnectionProfile, assertExactResourceRef } from '../native/model-prompt-runtime/contracts.js';
@@ -44,6 +44,23 @@ function services() {
 export function createNativeGenerationRouter(getHost = services) {
     const router = express.Router();
     const presets = host => new PromptPresetStore({ engine: host.library._engine });
+    router.get('/regex-scopes', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try {
+            if (req.query.routeId !== undefined && typeof req.query.routeId !== 'string') throw new TypeError('Invalid route');
+            const host = getHost();
+            const route = selectNativeRuntimeRoute(await host.persistence.listRuntimeRoutes(handle), 'role.narrator', req.query.routeId ? { runtimeRouteId: req.query.routeId } : undefined);
+            res.json({ preset: await presets(host).resolveRegex(handle, route.promptProgramRef) });
+        } catch (error) {
+            if (!req.query.routeId && error.code === 'native_generation_route_missing') return res.json({ preset: null });
+            res.status(400).json({ error: error.code || 'native_regex_scopes_unavailable' });
+        }
+    });
+    router.delete('/presets/:id', async (req, res) => {
+        if (!req.user?.profile?.handle) return res.sendStatus(401);
+        try { res.json(await presets(getHost()).delete(req.user.profile.handle, req.params.id, req.body.expectedRevision)); } catch (error) { res.status(error.code === 'native_prompt_preset_conflict' ? 409 : 400).json({ error: error.code || 'native_prompt_preset_delete_failed' }); }
+    });
     router.get('/presets', async (req, res) => {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         try { res.json(await presets(getHost()).list(req.user.profile.handle)); } catch { res.status(400).json({ error: 'native_prompt_presets_unavailable' }); }

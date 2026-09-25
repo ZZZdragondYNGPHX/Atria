@@ -205,6 +205,38 @@ third-party compatibility retain their existing behavior. `package.presets`, old
 names and compatibility UI never become Native runtime authority. Navigation-only
 old section redirects do not resolve resources and can remain host conveniences.
 
+## Native Regex ownership
+
+The shared Regex engine applies Global → Preset → Game; each layer receives the
+previous layer's result. Registered plugin providers run afterward. Placement,
+display/prompt/plugin lanes, depth, enablement and execution diagnostics still
+use the existing engine. Regex does not own World state or Game Runtime behavior.
+
+Global rules and account enabled-rule groups remain in capability settings.
+Prompt Preset `regexScripts` lives on its existing Library main-program root,
+beside membership and taxonomy. Preset import/export includes the full program,
+modules, generation profile and rules. The active chat preset is resolved through
+the existing primary narrator Runtime route; no extra selected-preset setting is
+stored. Exact Prompt references remain exact, while rules follow their owning
+preset's current metadata. Deleting a preset clears ownership and Regex, archives
+its roots, and retains immutable Prompt definitions for pinned consumers.
+
+Game rules live in Package `processors.regex`. Editing publishes a new immutable
+archive under the package write lock and expected-version guard. Existing related
+Sessions capture explicit edits in revisioned `atri_game_regex` state; effective
+`manifest.processors.regex` projects that snapshot. Historical Session revisions
+stay exact; portable saves carry effective rules, and package exports carry rules
+in the actual archive. Normal package upgrades do not silently upgrade Sessions.
+Package deletion retains the existing guard against live Session references.
+
+Rule IDs are local to their owner. Execution diagnostics and editor selection
+include scope/owner identity. Duplicate IDs inside one imported owner are rejected;
+standalone rule imports mint fresh IDs, while repeated preset imports mint new
+preset resource identities. Missing IDs in earlier Native Packages receive stable
+local IDs. No Character/Card storage, legacy Prompt Manager or DOM provider is
+restored. The complete design and verification record is maintained on `docs` in
+`feat/native-regex-scopes.md`.
+
 ## Validation / maintenance
 
 `node scripts/check-p8-model-prompt-integration.mjs` runs P0-P7, A0-A9, N9/N10 plus

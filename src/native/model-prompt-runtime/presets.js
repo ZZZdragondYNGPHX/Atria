@@ -1,4 +1,5 @@
 import { createNativeId } from '../identity.js';
+import { normalizeNativeRegexScripts } from '../../../public/shared/native-regex.js';
 import { NATIVE_RESOURCE_KINDS as K } from '../contracts.js';
 import { getNativeDocument, listNativeDocuments, putImmutable, putMutable } from '../repositories/common.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
@@ -28,8 +29,37 @@ export class PromptPresetStore {
             const root = await getNativeDocument(tx, key(handle, PROGRAM, id));
             if (!root?.preset) throw new NotFoundError('Prompt preset');
             const entries = await Promise.all(root.preset.refs.map(async r => ({ resourceType: r.resourceType, resource: await getNativeDocument(tx, key(handle, r.resourceType, r.resourceId, r.revision)) })));
-            return { format: 'atria.prompt-preset', schemaVersion: 1, presetId: id, revision: root.currentRevision, displayName: root.displayName, ...root.preset, entries };
+            return { format: 'atria.prompt-preset', schemaVersion: 1, presetId: id, revision: root.currentRevision, displayName: root.displayName, ...root.preset, regexScripts: root.preset.regexScripts || [], entries };
         });
+    }
+
+    async resolveRegex(handle, programRef) {
+        if (programRef?.scope !== 'library' || programRef.resourceType !== PROGRAM) return null;
+        return this.engine.withTransaction(handle, async tx => {
+            const program = await getNativeDocument(tx, key(handle, PROGRAM, programRef.resourceId));
+            if (!program?.presetOwner || !await getNativeDocument(tx, key(handle, PROGRAM, programRef.resourceId, programRef.revision))) return null;
+            const owner = await getNativeDocument(tx, key(handle, PROGRAM, program.presetOwner));
+            if (!owner?.preset) return null;
+            // Regex belongs to the current preset, independently of pinned program revisions.
+            return { presetId: owner.resourceId, revision: owner.currentRevision, displayName: owner.displayName, regexScripts: owner.preset.regexScripts || [] };
+        });
+    }
+
+    async delete(handle, id, expectedRevision) {
+        assertWritable();
+        return withRuntimeWrite(handle, () => this.engine.withTransaction(handle, async tx => {
+            assertWritable();
+            const root = await getNativeDocument(tx, key(handle, PROGRAM, id));
+            if (!root?.preset || root.currentRevision !== expectedRevision) throw new ConflictError('native_prompt_preset_conflict');
+            for (const type of [PROGRAM, MODULE, GENERATION]) {
+                for (const owned of await listNativeDocuments(tx, { kind: K.versionedJsonResource, handle, resourceType: type })) {
+                    if (owned.presetOwner !== id) continue;
+                    const { preset: _preset, presetOwner: _owner, ...retained } = owned;
+                    await putMutable(tx, key(handle, type, owned.resourceId), { ...retained, archived: true });
+                }
+            }
+            return { presetId: id, deleted: true };
+        }));
     }
 
     async assertPair(handle, programRef, generationRef) {
@@ -43,6 +73,7 @@ export class PromptPresetStore {
     async save(handle, input, { id = null, expectedRevision = null, importing = false } = {}) {
         assertWritable();
         if (input.format !== 'atria.prompt-preset' || input.schemaVersion !== 1 || !Array.isArray(input.entries) || !input.entries.length || input.entries.length > 5000) throw new TypeError('Invalid Prompt preset file');
+        const regexScripts = normalizeNativeRegexScripts(input.regexScripts);
         const entries = input.entries.map(e => ({ resourceType: e.resourceType, resource: structuredClone(assertVersionedModelPromptResource(e.resourceType, e.resource)) }));
         const byId = new Map(entries.map(e => [identity(e), e]));
         if (byId.size !== entries.length) throw new TypeError('Duplicate preset resource identity');
@@ -111,7 +142,7 @@ export class PromptPresetStore {
                 Object.assign(e.resource, { [definition.idField]: mapping.get(oldId).resourceId, revision: mapping.get(oldId).revision });
                 e.resource = assertVersionedModelPromptResource(e.resourceType, e.resource);
             }
-            const preset = { programId: owner, categories, moduleCategories: Object.fromEntries(Object.entries(assignments).map(([m, c]) => [mapping.get(m).resourceId, c])), refs: entries.map(ref) };
+            const preset = { programId: owner, categories, moduleCategories: Object.fromEntries(Object.entries(assignments).map(([m, c]) => [mapping.get(m).resourceId, c])), refs: entries.map(ref), regexScripts };
             // Validate everything before publication; retain historical definitions
             // for pinned consumers when removing membership or whole categories.
             for (const e of entries) await putImmutable(tx, key(handle, e.resourceType, identity(e), e.resource.revision), e.resource);

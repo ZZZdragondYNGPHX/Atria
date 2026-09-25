@@ -153,7 +153,7 @@ describe('static regex execution plans', () => {
         };
 
         expect(engine.getRegexedString('A', 1)).toBe('NATIVE');
-        expect(engine.getRegexScripts({ allowedOnly: true }).some(rule => rule.id === 'native-package-rule')).toBe(true);
+        expect(engine.getScriptsByType(engine.SCRIPT_TYPES.GAME).some(rule => rule.id === 'native-package-rule')).toBe(true);
     });
 
     test('plain runtime providers are evaluated on every call', () => {

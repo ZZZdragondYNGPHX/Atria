@@ -1,3 +1,4 @@
+import { normalizeNativeRegexScripts } from '../../public/shared/native-regex.js';
 import { validateSkillDeclarations } from '../../public/scripts/native/skill-declarations.js';
 import { assertNativeId } from './identity.js';
 import { assertPackageModelPromptRuntimeMetadata } from './model-prompt-runtime/contracts.js';
@@ -653,6 +654,20 @@ export function assertAtriaPackageManifest(value) {
         'metadata',
     ]) {
         if (value[key] !== undefined) out[key] = cloneJson(value[key], 'AtriaPackage.' + key);
+    }
+    if (out.processors?.regex !== undefined) {
+        if (!Array.isArray(out.processors.regex)) throw new TypeError('Invalid Package Regex scripts');
+        // Earlier native packages did not require IDs. Derive stable local IDs so
+        // their existing rules remain editable without changing their ownership.
+        const used = new Set(out.processors.regex.map(rule => rule?.id).filter(Boolean));
+        const scripts = out.processors.regex.map((rule, index) => {
+            if (!rule || typeof rule !== 'object' || Array.isArray(rule) || rule.id !== undefined) return rule;
+            let id = 'atri_game_regex_' + index;
+            while (used.has(id)) id += '_';
+            used.add(id);
+            return { ...rule, id };
+        });
+        out.processors.regex = normalizeNativeRegexScripts(scripts);
     }
     if (out.skills !== undefined) validateSkillDeclarations(out.skills);
     return Object.freeze(out);

@@ -29,6 +29,7 @@
                 </div>
             </div>
             <div id="regex_health_summary" class="regex-health-summary displayNone" role="status"></div>
+            <p class="workspace-hint" data-atri-regex-text="Execution order: Global → Preset → Game">Execution order: Global → Preset → Game</p>
             <hr class="regex_bulk_operations_hr">
             <div class="regex_bulk_operations flex-container">
                 <div id="bulk_select_all_toggle" class="menu_button menu_button_icon" title="Toggle Select All">
@@ -55,7 +56,7 @@
             <hr>
             <div id="regex_presets_block" class="inline-drawer regex-section" data-section="presets">
                 <div class="inline-drawer-toggle inline-drawer-header regex-section-header">
-                    <strong class="flex1" data-i18n="ext_regex_presets">Regex Presets</strong>
+                    <strong class="flex1" data-atri-regex-text="Global rule groups">Global rule groups</strong>
                     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
                 <div class="inline-drawer-content regex-section-content">
@@ -84,14 +85,44 @@
                 </div>
             </div>
 
+            <div id="preset_scripts_block" class="inline-drawer regex-section" data-section="preset">
+                <div class="inline-drawer-toggle inline-drawer-header regex-section-header">
+                    <strong class="flex1" data-atri-regex-text="Preset Regex">Preset Regex</strong>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content regex-section-content">
+                    <p id="preset_regex_owner" role="status"></p>
+                    <div class="flex-container">
+                        <button type="button" id="open_preset_regex_editor" class="menu_button" data-atri-regex-text="New Regex rule">New Regex rule</button>
+                        <button type="button" id="import_preset_regex" class="menu_button" data-atri-regex-text="Import Regex rules">Import Regex rules</button>
+                        <input type="file" id="import_preset_regex_file" hidden accept=".json,application/json" multiple>
+                    </div>
+                    <div id="saved_preset_scripts" no-scripts-text="No scripts found" data-i18n="[no-scripts-text]No scripts found" class="flex-container regex-script-container flexFlowColumn"></div>
+                </div>
+            </div>
+            <div id="game_scripts_block" class="inline-drawer regex-section" data-section="game">
+                <div class="inline-drawer-toggle inline-drawer-header regex-section-header">
+                    <strong class="flex1" data-atri-regex-text="Game Regex">Game Regex</strong>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content regex-section-content">
+                    <p id="game_regex_owner" role="status"></p>
+                    <div class="flex-container">
+                        <button type="button" id="open_game_regex_editor" class="menu_button" data-atri-regex-text="New Regex rule">New Regex rule</button>
+                        <button type="button" id="import_game_regex" class="menu_button" data-atri-regex-text="Import Regex rules">Import Regex rules</button>
+                        <input type="file" id="import_game_regex_file" hidden accept=".json,application/json" multiple>
+                    </div>
+                    <div id="saved_game_scripts" no-scripts-text="No scripts found" data-i18n="[no-scripts-text]No scripts found" class="flex-container regex-script-container flexFlowColumn"></div>
+                </div>
+            </div>
             <div id="plugin_scripts_block" class="inline-drawer regex-section" data-section="plugin">
                 <div class="inline-drawer-toggle inline-drawer-header regex-section-header">
                     <strong class="flex1" data-i18n="Plugin Scripts">Plugin Scripts</strong>
                     <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
                 </div>
                 <div class="inline-drawer-content regex-section-content">
-                    <small data-i18n="Read-only Plugin and Native Package rules.">
-                        Read-only Plugin and Native Package rules.
+                    <small data-atri-regex-text="Read-only plugin rules.">
+                        Read-only plugin rules.
                     </small>
                     <div id="saved_plugin_scripts" no-scripts-text="No plugin scripts found" data-i18n="[no-scripts-text]No plugin scripts found" class="flex-container regex-script-container flexFlowColumn"></div>
                 </div>

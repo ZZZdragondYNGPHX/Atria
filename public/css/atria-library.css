@@ -259,3 +259,7 @@
 .atria-app-shell .atri-prompt-preset button { min-height: 44px; margin: 4px; white-space: normal; }
 .atri-prompt-preset h2, .atri-prompt-preset h4 { overflow-wrap: anywhere; }
 .atri-preset-category-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 12px; align-items: end; }
+.atri-prompt-preset .atri-library-field > input[type="file"] { display: block; }
+.atri-regex-resource > label { display: inline-flex; gap: 12px; align-items: center; min-height: 44px; max-width: 100%; overflow-wrap: anywhere; cursor: pointer; }
+.atria-app-shell .atri-regex-resource input[type="checkbox"] { appearance: auto; accent-color: var(--atri-accent); width: 20px; min-width: 20px; height: 20px; min-height: 20px; padding: 0; border: revert; background: revert; }
+.atri-regex-rule-state { display: inline-block; margin-inline: 12px; color: var(--atri-text-secondary); font-size: var(--atri-text-footnote); }

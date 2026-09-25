@@ -1,5 +1,7 @@
 import { NATIVE_SESSION_LIFECYCLE, onNativeSessionLifecycle } from '../../native/session-lifecycle.js';
-import { getNativeRegexScripts } from './engine.js';
+import { getRegexScopeOwner, regexExecutionId } from './engine.js';
+import { initializeNativeRegexScopes, refreshNativeRegexScopes, getNativeRegexScopeStatus } from '../../native/regex-scopes.js';
+import { translateShellText as tl } from '../../atria-shell/localization.js';
 import { characters, chatElement, eventSource, event_types, getCurrentChatId, messageFormatting, redisplayChat, reloadCurrentChat, saveSettingsDebounced, this_chid } from '../../../script.js';
 import { capabilitySettings, renderPluginTemplateAsync } from '../../capability-host.js';
 import { callGenericPopup, Popup, POPUP_TYPE } from '../../popup.js';
@@ -19,6 +21,8 @@ export { getRegexScripts };
 const sanitizeFileName = name => name.replace(/[\s.<>:"/\\|?*\x00-\x1F\x7F]/g, '_').toLowerCase();
 const REGEX_SCRIPT_TYPE_LABELS = Object.freeze({
     [SCRIPT_TYPES.GLOBAL]: 'global',
+    [SCRIPT_TYPES.PRESET]: 'preset',
+    [SCRIPT_TYPES.GAME]: 'game',
     [SCRIPT_TYPE_UNKNOWN]: 'runtime',
 });
 const REGEX_EDITOR_RENDER_CHUNK_SIZE = 80;
@@ -139,6 +143,10 @@ function getRegexScriptSourceLabel(scriptType, { readOnly = false } = {}) {
     switch (scriptType) {
         case SCRIPT_TYPES.GLOBAL:
             return 'global';
+        case SCRIPT_TYPES.PRESET:
+            return 'preset';
+        case SCRIPT_TYPES.GAME:
+            return 'game';
 
         default:
             return String(scriptType);
@@ -539,7 +547,7 @@ class RegexPresetManager {
         }
 
         // Apply preset to all lists
-        for (const scriptType of Object.values(SCRIPT_TYPES)) {
+        for (const scriptType of [SCRIPT_TYPES.GLOBAL]) {
             await this.applyPresetList({
                 presetList: {
                     [SCRIPT_TYPES.GLOBAL]: preset.global,
@@ -742,7 +750,7 @@ function bindRegexReloadOnSettingsClose() {
     observer.observe(panel, { attributes: true, attributeFilter: ['class'] });
 }
 
-const REGEX_SECTION_IDS = ['regex_presets_block', 'global_scripts_block', 'plugin_scripts_block'];
+const REGEX_SECTION_IDS = ['regex_presets_block', 'global_scripts_block', 'preset_scripts_block', 'game_scripts_block', 'plugin_scripts_block'];
 
 function getCollapsedRegexSections() {
     if (!capabilitySettings.regex_section_collapsed || typeof capabilitySettings.regex_section_collapsed !== 'object') {
@@ -821,8 +829,7 @@ function setToggleAllIcon(allAreChecked) {
  * @param {boolean} [saveSettings=true] Whether to save the settings immediately
  * @returns {Promise<void>}
  */
-async function saveRegexScript(regexScript, existingScriptIndex, scriptType, saveSettings = true) {
-    if (scriptType !== SCRIPT_TYPES.GLOBAL) throw new TypeError('Only account Regex rules are writable');
+async function saveRegexScript(regexScript, existingScriptIndex, scriptType, saveSettings = true, owner = getRegexScopeOwner(scriptType)) {
     // If not editing
     const array = getScriptsByType(scriptType);
     const scriptTypeLabel = REGEX_SCRIPT_TYPE_LABELS[scriptType] || String(scriptType);
@@ -860,8 +867,8 @@ async function saveRegexScript(regexScript, existingScriptIndex, scriptType, sav
     // The script may have been auto-paused or user-allowed in a previous
     // session-state. Editing replaces the contract, so wipe its session state
     // and let it be evaluated freshly on the next execution.
-    resetRegexScriptState(regexScript.id);
-    await saveScriptsByType(array, scriptType);
+    resetRegexScriptState(regexExecutionId(regexScript, scriptType, owner));
+    await saveScriptsByType(array, scriptType, owner);
 
     console.info('[Regex] saveRegexScript prepared', {
         scriptType: scriptTypeLabel,
@@ -896,7 +903,8 @@ async function saveRegexScript(regexScript, existingScriptIndex, scriptType, sav
  * @param {boolean} saveSettings Whether to save the settings immediately
  * @returns {Promise<void>}
  */
-async function deleteRegexScript(id, scriptType, saveSettings = true) {
+async function deleteRegexScript(id, scriptType, saveSettings = true, owner = getRegexScopeOwner(scriptType)) {
+    if (owner !== getRegexScopeOwner(scriptType)) throw new Error(tl('Regex scope changed. Reopen the editor.'));
     const array = getScriptsByType(scriptType);
 
     const existingScriptIndex = array.findIndex(script => script.id === id);
@@ -905,8 +913,8 @@ async function deleteRegexScript(id, scriptType, saveSettings = true) {
 
         // Wipe any session-level state (paused / user-allowed / popup-shown / stats)
         // so an id reused later cannot inherit stale flags.
-        resetRegexScriptState(id);
-        await saveScriptsByType(array, scriptType);
+        resetRegexScriptState(regexExecutionId({ id }, scriptType, owner));
+        await saveScriptsByType(array, scriptType, owner);
 
         if (saveSettings) {
             saveSettingsDebounced();
@@ -933,11 +941,14 @@ async function loadRegexScripts() {
     }
 
     $('#saved_regex_scripts').empty();
+    $('#saved_preset_scripts, #saved_game_scripts').empty();
     $('#saved_plugin_scripts').empty();
     setToggleAllIcon(false);
 
     const renderFragments = {
         global: document.createDocumentFragment(),
+        preset: document.createDocumentFragment(),
+        game: document.createDocumentFragment(),
         runtime: document.createDocumentFragment(),
     };
 
@@ -949,6 +960,7 @@ async function loadRegexScripts() {
      * @param {number} index Index of the script in the array
      */
     function renderScript(container, script, scriptType, index, { readOnly = false } = {}) {
+        const owner = getRegexScopeOwner(scriptType);
         // Have to clone here
         const scriptHtml = scriptTemplate.clone();
         const save = () => saveRegexScript(script, index, scriptType);
@@ -958,6 +970,8 @@ async function loadRegexScripts() {
         }
 
         scriptHtml.attr('id', script.id);
+        scriptHtml.attr('data-regex-id', script.id).attr('data-regex-type', scriptType);
+        if (scriptType !== SCRIPT_TYPES.GLOBAL) scriptHtml.attr('id', `atri_regex_${scriptType}_${index}`);
         const runtimeOwner = String(script.__runtime_owner || '').trim();
         const displayName = readOnly && runtimeOwner
             ? `${script.scriptName} (${runtimeOwner})`
@@ -994,7 +1008,7 @@ async function loadRegexScripts() {
             scriptHtml.find('.disable_regex').prop('checked', false).trigger('input');
         });
         scriptHtml.find('.edit_existing_regex').on('click', async function () {
-            await onRegexEditorOpenClick(scriptHtml.attr('id'), scriptType);
+            await onRegexEditorOpenClick(script.id, scriptType);
         });
 
         scriptHtml.find('.export_regex').on('click', async function () {
@@ -1007,7 +1021,7 @@ async function loadRegexScripts() {
             if (!confirm) {
                 return;
             }
-            await deleteRegexScript(script.id, scriptType);
+            await deleteRegexScript(script.id, scriptType, true, owner);
             await requestRegexChatReload();
         });
         scriptHtml.find('.regex_bulk_checkbox').on('change', function () {
@@ -1045,10 +1059,19 @@ async function loadRegexScripts() {
 
     const renderIssues = new Set();
     const globalScripts = await sanitizeRegexScriptsForEditor(getScriptsByType(SCRIPT_TYPES.GLOBAL), SCRIPT_TYPES.GLOBAL, { issues: renderIssues });
-    const runtimeScripts = await sanitizeRegexScriptsForEditor([...getRuntimeRegexScripts(), ...getNativeRegexScripts()], SCRIPT_TYPE_UNKNOWN, { readOnly: true, issues: renderIssues });
+    const presetScripts = getScriptsByType(SCRIPT_TYPES.PRESET);
+    const gameScripts = getScriptsByType(SCRIPT_TYPES.GAME);
+    const runtimeScripts = await sanitizeRegexScriptsForEditor(getRuntimeRegexScripts(), SCRIPT_TYPE_UNKNOWN, { readOnly: true, issues: renderIssues });
+    const scopeStatus = getNativeRegexScopeStatus();
+    $('#preset_regex_owner').text(scopeStatus.errorMessage || scopeStatus.preset?.displayName || tl('Choose a Prompt Preset on the primary narrator route.'));
+    $('#game_regex_owner').text(scopeStatus.errorMessage || scopeStatus.game?.displayName || tl('Open a game Session to edit its Regex.'));
+    $('#open_preset_regex_editor, #import_preset_regex').prop('disabled', !scopeStatus.preset);
+    $('#open_game_regex_editor, #import_game_regex').prop('disabled', !scopeStatus.gameWritable);
 
     const diagnostics = getRegexScriptDiagnostics([
         ...globalScripts,
+        ...presetScripts,
+        ...gameScripts,
         ...runtimeScripts,
     ]);
     const duplicateCount = diagnostics.duplicates.reduce((count, group) => count + Math.max(0, group.scripts.length - 1), 0);
@@ -1089,10 +1112,14 @@ async function loadRegexScripts() {
     };
 
     if (!await renderBatch(globalScripts, renderFragments.global, SCRIPT_TYPES.GLOBAL)) return;
+    if (!await renderBatch(presetScripts, renderFragments.preset, SCRIPT_TYPES.PRESET)) return;
+    if (!await renderBatch(gameScripts, renderFragments.game, SCRIPT_TYPES.GAME, { readOnly: !scopeStatus.gameWritable })) return;
 
     if (!await renderBatch(runtimeScripts, renderFragments.runtime, SCRIPT_TYPE_UNKNOWN, { readOnly: true })) return;
 
     document.querySelector('#saved_regex_scripts')?.appendChild(renderFragments.global);
+    document.querySelector('#saved_preset_scripts')?.appendChild(renderFragments.preset);
+    document.querySelector('#saved_game_scripts')?.appendChild(renderFragments.game);
     document.querySelector('#saved_plugin_scripts')?.appendChild(renderFragments.runtime);
 
     // Re-init Sortable after the lists were rebuilt; without this, jQuery UI
@@ -1157,9 +1184,11 @@ async function onReadonlyRegexViewOpenClick(script, displayName = '') {
  * @param {SCRIPT_TYPES} scriptType Type of the script
  * @returns {Promise<void>}
  */
-async function onRegexEditorOpenClick(existingId, scriptType) {
+async function onRegexEditorOpenClick(existingId, scriptType, context = null) {
+    const owner = getRegexScopeOwner(scriptType);
     const editorHtml = $(await renderPluginTemplateAsync('regex', 'editor'));
-    const array = getScriptsByType(scriptType);
+    const array = context?.scripts || getScriptsByType(scriptType);
+    const originalScripts = JSON.stringify(array);
     const scriptTypeLabel = REGEX_SCRIPT_TYPE_LABELS[scriptType] || String(scriptType);
     const logEditorState = (event, extra = {}) => {
         console.info('[Regex] Editor interaction', {
@@ -1319,7 +1348,13 @@ async function onRegexEditorOpenClick(existingId, scriptType) {
             scriptSummary: summarizeRegexScriptForLog(newRegexScript),
         });
 
-        void saveRegexScript(newRegexScript, existingScriptIndex, scriptType).catch(error => {
+        if (context) { await context.save(newRegexScript); return; }
+        if (owner !== getRegexScopeOwner(scriptType) || originalScripts !== JSON.stringify(getScriptsByType(scriptType))) {
+            toastr.error(tl('Regex scope changed. Reopen the editor.'));
+            return;
+        }
+        await saveRegexScript(newRegexScript, existingScriptIndex, scriptType, true, owner).catch(error => {
+            toastr.error(tl(error.message));
             console.error('[Regex] saveRegexScript failed after editor confirm', {
                 scriptType: scriptTypeLabel,
                 existingId: existingId || null,
@@ -1915,7 +1950,7 @@ async function toggleRegexCallback(args, scriptName) {
     }
 
     const scriptType = getScriptType(script);
-    const index = getScriptsByType(scriptType).indexOf(script);
+    const index = getScriptsByType(scriptType).findIndex(item => item.id === script.id);
 
     await saveRegexScript(script, index, scriptType);
     if (script.disabled) {
@@ -1932,7 +1967,7 @@ async function toggleRegexCallback(args, scriptName) {
  * @param {RegexScript} regexScript Input object
  * @param {SCRIPT_TYPES} scriptType The type of script to import as
  */
-async function onRegexImportObjectChange(regexScript, scriptType) {
+async function onRegexImportObjectChange(regexScript, scriptType, owner = getRegexScopeOwner(scriptType)) {
     try {
         if (!regexScript.scriptName) {
             throw new Error('No script name provided.');
@@ -1949,7 +1984,7 @@ async function onRegexImportObjectChange(regexScript, scriptType) {
         const array = getScriptsByType(scriptType);
         array.push(regexScript);
 
-        await saveScriptsByType(array, scriptType);
+        await saveScriptsByType(array, scriptType, owner);
 
         saveSettingsDebounced();
         await loadRegexScripts();
@@ -1966,7 +2001,7 @@ async function onRegexImportObjectChange(regexScript, scriptType) {
  * @param {File} file Input file
  * @param {SCRIPT_TYPES} scriptType The type of script to import as
  */
-async function onRegexImportFileChange(file, scriptType) {
+async function onRegexImportFileChange(file, scriptType, owner = getRegexScopeOwner(scriptType)) {
     if (!file) {
         toastr.error(t`No file provided.`);
         return;
@@ -1976,10 +2011,10 @@ async function onRegexImportFileChange(file, scriptType) {
         const regexScripts = JSON.parse(await getFileText(file));
         if (Array.isArray(regexScripts)) {
             for (const regexScript of regexScripts) {
-                await onRegexImportObjectChange(regexScript, scriptType);
+                await onRegexImportObjectChange(regexScript, scriptType, owner);
             }
         } else {
-            await onRegexImportObjectChange(regexScripts, scriptType);
+            await onRegexImportObjectChange(regexScripts, scriptType, owner);
         }
     } catch (error) {
         console.log(error);
@@ -1994,6 +2029,7 @@ async function onRegexImportFileChange(file, scriptType) {
  * @returns {SCRIPT_TYPES} The script type.
  */
 function getScriptType(script) {
+    if (script.__regexScope) return script.__regexScope.type;
     for (const scriptType of Object.values(SCRIPT_TYPES)) {
         const scripts = getScriptsByType(scriptType);
         if (scripts.some(s => s.id === script.id)) {
@@ -2004,18 +2040,14 @@ function getScriptType(script) {
 }
 
 function getEditableRegexScripts() {
-    return [
-        ...getScriptsByType(SCRIPT_TYPES.GLOBAL),
-    ];
+    return Object.values(SCRIPT_TYPES).flatMap(type => getScriptsByType(type));
 }
 
 function getSelectedScripts() {
     const scripts = getEditableRegexScripts();
     const selector = '#regex_container .regex-script-label:has(.regex_bulk_checkbox:checked)';
-    const selectedIds = Array.from(document.querySelectorAll(selector))
-        .map(e => e.getAttribute('id'))
-        .filter(id => id);
-    return scripts.filter(script => selectedIds.includes(script.id));
+    const selected = Array.from(document.querySelectorAll(selector)).filter(e => e.dataset.readonly !== 'true');
+    return scripts.filter(script => selected.some(e => e.dataset.regexId === script.id && Number(e.dataset.regexType) === getScriptType(script)));
 }
 
 function setupRegexSortable() {
@@ -2025,6 +2057,9 @@ function setupRegexSortable() {
             setter: scripts => saveScriptsByType(scripts, SCRIPT_TYPES.GLOBAL),
             getter: () => getScriptsByType(SCRIPT_TYPES.GLOBAL),
         },
+        ...[[SCRIPT_TYPES.PRESET, '#saved_preset_scripts'], [SCRIPT_TYPES.GAME, '#saved_game_scripts']].map(([type, selector]) => ({
+            selector, setter: scripts => saveScriptsByType(scripts, type), getter: () => getScriptsByType(type),
+        })),
     ];
     for (const { selector, setter, getter } of sortableDatas) {
         const $el = $(selector);
@@ -2053,7 +2088,7 @@ function setupRegexSortable() {
                 const oldScripts = getter();
                 const newScripts = [];
                 $(selector).children().each(function () {
-                    const id = $(this).attr('id');
+                    const id = $(this).attr('data-regex-id');
                     const existingScript = oldScripts.find((e) => e.id === id);
                     if (existingScript) {
                         newScripts.push(existingScript);
@@ -2079,6 +2114,7 @@ function setupRegexSortable() {
 // Workaround for loading in sequence with other extensions
 // NOTE: Always puts extension at the top of the list, but this is fine since it's static
 export async function init() {
+    await initializeNativeRegexScopes();
     if (!Array.isArray(capabilitySettings.regex)) {
         capabilitySettings.regex = [];
     }
@@ -2115,6 +2151,14 @@ export async function init() {
         onRegexEditorOpenClick(false, SCRIPT_TYPES.GLOBAL);
     });
     $('#open_regex_debugger').on('click', onRegexDebuggerOpenClick);
+    for (const [name, type] of [['preset', SCRIPT_TYPES.PRESET], ['game', SCRIPT_TYPES.GAME]]) {
+        $(`#open_${name}_regex_editor`).on('click', () => onRegexEditorOpenClick(false, type));
+        $(`#import_${name}_regex`).on('click', () => $(`#import_${name}_regex_file`).trigger('click'));
+        $(`#import_${name}_regex_file`).on('change', async function () {
+            try { for (const file of this.files) await onRegexImportFileChange(file, type); } finally { this.value = ''; }
+        });
+    }
+    document.querySelectorAll('#regex_container [data-atri-regex-text]').forEach(el => { el.textContent = tl(el.dataset.atriRegexText); });
 
     $('#import_regex_file').on('change', async function () {
         const target = SCRIPT_TYPES.GLOBAL;
@@ -2171,7 +2215,8 @@ export async function init() {
             script.disabled = !newState;
         }
         for (const scriptType of scriptTypesToSave) {
-            const scriptsOfType = getScriptsByType(scriptType);
+            const changes = new Map(scripts.filter(script => getScriptType(script) === scriptType).map(script => [script.id, script]));
+            const scriptsOfType = getScriptsByType(scriptType).map(script => changes.get(script.id) || script);
             await saveScriptsByType(scriptsOfType, scriptType);
         }
 
@@ -2191,7 +2236,7 @@ export async function init() {
             return;
         }
         for (const script of scripts) {
-            await deleteRegexScript(script.id, getScriptType(script), false);
+            await deleteRegexScript(script.id, getScriptType(script), false, script.__regexScope?.owner || 'global');
         }
         saveSettingsDebounced();
         await loadRegexScripts();
@@ -2224,10 +2269,11 @@ export async function init() {
         const id = event?.detail?.id;
         if (!id) return;
         try {
-            for (const type of [SCRIPT_TYPES.GLOBAL]) {
+            for (const type of Object.values(SCRIPT_TYPES)) {
                 const scripts = getScriptsByType(type);
-                if (Array.isArray(scripts) && scripts.some(s => s && s.id === id)) {
-                    await onRegexEditorOpenClick(id, type);
+                const script = scripts.find(s => regexExecutionId(s, type) === id);
+                if (script) {
+                    await onRegexEditorOpenClick(script.id, type);
                     return;
                 }
             }
@@ -2400,5 +2446,13 @@ export async function init() {
     presetManager.setupEventListeners();
     presetManager.registerSlashCommands();
     eventSource.on(event_types.APP_READY, refreshRegexEditorUi);
-    onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, refreshRegexEditorUi);
+    for (const type of [NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED]) onNativeSessionLifecycle(type, async () => {
+        await refreshNativeRegexScopes();
+        await refreshRegexEditorUi();
+    });
+}
+
+// Resource authoring uses the same editor without changing the active scope.
+export async function editNativeRegexRule(script, save) {
+    await onRegexEditorOpenClick(script?.id || false, SCRIPT_TYPES.PRESET, { scripts: script ? [script] : [], save });
 }

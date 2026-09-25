@@ -2,6 +2,7 @@ import { translateShellText as tl } from '../atria-shell/localization.js';
 import { runtimeRequest } from './runtime-client.js';
 import { newPromptResource, resourceRef, PROMPT_TYPES, mountPromptEditor } from './prompt-authoring.js';
 import { createStudioNativeId } from './studio-authoring.js';
+import { mountNativeRegexRules } from './regex-authoring.js';
 
 const PROGRAM = 'core.prompt-program', MODULE = 'core.prompt-module', GENERATION = 'core.generation-profile';
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -42,7 +43,7 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
     const open = async id => { const token = ++sequence; body.replaceChildren(); node('p', 'Loading exact resources…'); const value = await runtimeRequest('/presets/' + id); if (disposed || token !== sequence) return; preset = value; section = null; renderDetail(); };
     const create = async (value, importing = false) => { const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId); };
     const exportPreset = value => {
-        const data = { format: value.format, schemaVersion: 1, programId: value.programId, categories: value.categories, moduleCategories: value.moduleCategories, entries: value.entries };
+        const data = { format: value.format, schemaVersion: 1, programId: value.programId, categories: value.categories, moduleCategories: value.moduleCategories, entries: value.entries, regexScripts: value.regexScripts || [] };
         const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
         const a = node('a'); a.href = url; a.download = value.displayName.replace(/[^\p{L}\p{N}_ -]/gu, '_').slice(0, 80) + '.prompt-preset.json'; a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     };
@@ -81,9 +82,19 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         if (section) button(nav, 'Back to preset', () => { section = null; renderDetail(); });
         literal('h2', preset.entries.find(e => idOf(e) === preset.programId).resource.displayName, root);
         if (!section) {
-            node('p', 'This preset owns its program, modules and generation settings. Changes affect only this preset.', root);
+            node('p', 'This preset owns its program, modules, generation settings and Regex rules. Changes affect only this preset.', root);
             const cards = node('div', undefined, root); cards.className = 'atri-preset-sections';
             for (const [type, label] of [[PROGRAM, 'Prompt Programs'], [MODULE, 'Prompt Modules'], [GENERATION, 'Generation Profiles']]) button(cards, label, () => { section = type; renderDetail(); });
+            button(cards, 'Preset Regex', () => { section = 'regex'; renderDetail(); });
+            return;
+        }
+        if (section === 'regex') {
+            node('h3', 'Preset Regex', root);
+            const owner = preset;
+            mountNativeRegexRules({ parent: root, scripts: owner.regexScripts || [], save: async regexScripts => {
+                if (preset !== owner) throw new Error(tl('Preset changed. Reopen the editor.'));
+                await save({ ...owner, regexScripts });
+            } });
             return;
         }
         node('h3', PROMPT_TYPES[section][0], root);
@@ -145,6 +156,13 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
                 const row = node('article', undefined, root); row.className = 'atri-prompt-resource'; row.dataset.atriPresetId = preset.presetId;
                 literal('h3', preset.displayName, row); button(row, 'Open preset', () => open(preset.presetId));
                 button(row, 'Export preset', async () => exportPreset(await runtimeRequest('/presets/' + preset.presetId)));
+                button(row, 'Delete preset', async () => {
+                    const { Popup, POPUP_TYPE } = await import('../popup.js');
+                    if (await new Popup(tl('Delete this preset and its Regex rules? Pinned Prompt history remains available.'), POPUP_TYPE.CONFIRM).show()) {
+                        await runtimeRequest('/presets/' + preset.presetId, { method: 'DELETE', body: { expectedRevision: preset.revision } });
+                        await list();
+                    }
+                }).classList.add('atri-library-button--danger');
             }
             const existing = node('details', undefined, root); node('summary', 'Existing resources — migrate into an independent preset', existing);
             button(existing, 'Choose existing resources', async () => {

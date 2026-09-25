@@ -44,6 +44,16 @@ const IDs = Object.freeze({
 const PACKAGE_HASH = 'f'.repeat(64);
 const ASSET_HASH = 'a'.repeat(64);
 
+test('Package Regex normalizes ID-less native rules and rejects duplicate IDs', () => {
+    const rule = { scriptName: 'Existing native rule', findRegex: '/hello/g', replaceString: 'world', placement: [1] };
+    const value = packageManifest({ processors: { regex: [rule, { ...rule, id: 'atri_game_regex_0' }] } });
+    const normalized = assertAtriaPackageManifest(value);
+    expect(normalized.processors.regex[0]).toMatchObject(rule);
+    expect(normalized.processors.regex[0].id).toBe('atri_game_regex_0_');
+    expect(assertAtriaPackageManifest(normalized).processors.regex).toEqual(normalized.processors.regex);
+    expect(() => assertAtriaPackageManifest(packageManifest({ processors: { regex: [{ ...rule, id: 'same' }, { ...rule, id: 'same' }] } }))).toThrow('duplicate Regex');
+});
+
 function packageManifest(overrides = {}) {
     return {
         format: ATRIA_PACKAGE_FORMAT,

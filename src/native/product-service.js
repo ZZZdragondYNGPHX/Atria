@@ -1,3 +1,4 @@
+import { normalizeNativeRegexScripts } from '../../public/shared/native-regex.js';
 import { resolveSessionKnowledge, packageKnowledgeManifest } from './session-knowledge.js';
 import { assertPackagedWorldSnapshot, assertPackagedKnowledgeSnapshot } from './world-knowledge.js';
 import { buildAtriaPackageContainer } from './package-container.js';
@@ -87,6 +88,38 @@ export class NativeProductService {
                 error: error?.code || error?.message || String(error),
             };
         }
+    }
+
+    async getPackageRegex(handle, packageId) {
+        const record = await this._packages.get(handle, packageId);
+        if (!record?.currentVersionId) throw new NotFoundError('native package');
+        const opened = await this._installer.open(handle, packageId, record.currentVersionId);
+        return { regexScripts: normalizeNativeRegexScripts(opened.manifest.processors?.regex || []), packageVersionId: record.currentVersionId };
+    }
+
+    async editPackageRegex(handle, packageId, input) {
+        if (!input || !Array.isArray(input.regexScripts)) throw invalidField('regexScripts');
+        const regexScripts = normalizeNativeRegexScripts(input.regexScripts);
+        return withNativeResourceWrite(handle, 'package:' + packageId, async () => {
+            const record = await this._packages.get(handle, packageId);
+            if (!record || record.currentVersionId !== input.packageVersionId) throw new ConflictError('native_package_regex_conflict');
+            const opened = await this._installer.open(handle, packageId, record.currentVersionId);
+            const manifest = clone(opened.manifest), previousVersion = manifest.packageVersionId;
+            manifest.packageVersionId = createNativeId('packageVersion');
+            manifest.processors = { ...manifest.processors, regex: regexScripts };
+            manifest.metadata ||= {};
+            manifest.metadata.atri_regex_edits = { ancestorVersions: [...new Set([...(manifest.metadata.atri_regex_edits?.ancestorVersions || []), previousVersion, manifest.packageVersionId])] };
+            const retarget = value => {
+                if (!value || typeof value !== 'object') return;
+                if (value.scope === 'package' && value.packageId === packageId && value.packageVersionId === previousVersion) value.packageVersionId = manifest.packageVersionId;
+                Object.values(value).forEach(retarget);
+            };
+            retarget(manifest);
+            const { archive } = buildAtriaPackageContainer({ manifest, sourceFiles: opened.sourceFiles, assetPayloads: opened.assets });
+            await this._installer.install(handle, archive, { grantedPermissions: opened.preflight.requiredPermissions, setCurrent: false });
+            await this._packages.publishRegexEdit(handle, packageId, manifest.packageVersionId, { expectedCurrentVersionId: previousVersion });
+            return this.getPackageRegex(handle, packageId);
+        });
     }
 
     async getPackageKnowledge(handle, packageId, knowledgeBaseId) {

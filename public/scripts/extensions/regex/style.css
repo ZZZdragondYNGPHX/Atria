@@ -11,6 +11,19 @@
     align-items: center;
 }
 
+.regex_settings button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.regex-script-label[data-readonly="true"] :is(.regex_bulk_checkbox, .regex-script-handle, .regex_script_expand, .delete_regex, .disable_regex, .regex-toggle-on, .regex-toggle-off, .export_regex) {
+    display: none !important;
+}
+
+#preset_regex_owner, #game_regex_owner {
+    overflow-wrap: anywhere;
+}
+
 .regex-script-container {
     margin-top: 10px;
     margin-bottom: 10px;

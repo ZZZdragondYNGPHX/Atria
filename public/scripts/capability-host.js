@@ -21,6 +21,8 @@ export function registerCapabilityApi(name, api) {
 export function getCapabilityApi(name) { return apis.get(name); }
 export function getCapabilityLoadState(name) { return loadStates.get(name) || 'pending'; }
 const defaultCapabilitySettings = () => ({
+    // Account rules and their enabled-rule groups only. Native Preset/Game rules
+    // belong to their resource documents, never this account settings payload.
     disabledPlugins: [], regex: [], regex_presets: [],
     note: { default: '', chara: [], wiAddition: [] }, variables: { global: {} }, attachments: [], character_attachments: {}, disabled_attachments: [],
 });

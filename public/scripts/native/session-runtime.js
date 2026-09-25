@@ -389,6 +389,7 @@ export class NativeSessionRuntime {
         this.lastContextPlan = null;
         this._clearStagedStates();
         await this.host.clear();
+        await this._emit(NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, null, null);
     }
 
     async prepareGeneration(type) {

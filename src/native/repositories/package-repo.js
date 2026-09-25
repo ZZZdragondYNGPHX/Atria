@@ -135,6 +135,20 @@ export class PackageRepo {
         ));
     }
 
+    async publishRegexEdit(handle, packageId, packageVersionId, { expectedCurrentVersionId }) {
+        assertWritable();
+        return this._engine.withTransaction(handle, async tx => {
+            const rootKey = this._packageKey(handle, packageId), root = await getNativeDocument(tx, rootKey);
+            if (root?.currentVersionId !== expectedCurrentVersionId) throw new ConflictError('native_package_regex_conflict');
+            if (!await getNativeDocument(tx, this._versionKey(handle, packageId, packageVersionId))) throw new NotFoundError('Package version');
+            const records = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.packageState, handle, packageId });
+            for (const record of records) if (record.key.namespace.startsWith('atri_resource_setup_') && record.doc.packageVersionId === expectedCurrentVersionId) {
+                await putMutable(tx, record.key, { ...record.doc, packageVersionId }, { expectedIntegrity: record.integrity });
+            }
+            await putMutable(tx, rootKey, { ...root, currentVersionId: packageVersionId, updatedAt: Math.max(Date.now(), root.updatedAt || 0) });
+        });
+    }
+
     async publishKnowledgeEdit(handle, packageId, packageVersionId, { expectedCurrentVersionId, knowledgeBaseId, knowledgeRevisionId }) {
         assertWritable();
         return this._engine.withTransaction(handle, async tx => {

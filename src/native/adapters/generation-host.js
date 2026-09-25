@@ -8,6 +8,18 @@ import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 const ROLES = new Set(['narrator', 'intent_resolver', 'event_interpreter', 'orchestrator', 'studio', 'memory', 'search']);
 
+export function selectNativeRuntimeRoute(routeList, role, routeRef) {
+    if (routeRef) {
+        const route = routeList.find(item => item.runtimeRouteId === routeRef.runtimeRouteId && item.role === role);
+        if (!route) fail('native_generation_route_missing');
+        return route;
+    }
+    const fallbacks = new Set(routeList.flatMap(item => item.fallbackRouteRefs.map(ref => ref.runtimeRouteId)));
+    const matches = routeList.filter(item => item.role === role && !fallbacks.has(item.runtimeRouteId));
+    if (matches.length !== 1) fail(matches.length ? 'native_generation_route_ambiguous' : 'native_generation_route_missing');
+    return matches[0];
+}
+
 // A host composition over existing P1 storage and Native Session/Studio authorities.
 export class NativeGenerationHost {
     constructor({ persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort }) {
@@ -43,14 +55,7 @@ export class NativeGenerationHost {
             }
         } else fail('native_generation_context_required');
         const routeList = await this.persistence.listRuntimeRoutes(handle);
-        let route = input.routeRef ? routeList.find(item => item.runtimeRouteId === input.routeRef.runtimeRouteId && item.role === role) : null;
-        if (!input.routeRef) {
-            const fallbacks = new Set(routeList.flatMap(item => item.fallbackRouteRefs.map(ref => ref.runtimeRouteId)));
-            const matches = routeList.filter(item => item.role === role && !fallbacks.has(item.runtimeRouteId));
-            if (matches.length !== 1) fail(matches.length ? 'native_generation_route_ambiguous' : 'native_generation_route_missing');
-            route = matches[0];
-        }
-        if (!route) fail('native_generation_route_missing');
+        let route = selectNativeRuntimeRoute(routeList, role, input.routeRef);
         if (input.previewRefs && !preview) fail('native_generation_preview_only');
         if (input.previewRefs && (typeof input.previewRefs !== 'object' || Array.isArray(input.previewRefs)
             || Object.keys(input.previewRefs).some(key => !['promptProgramRef', 'generationProfileRef'].includes(key)))) fail('native_generation_preview_refs_invalid');
