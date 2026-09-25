@@ -208,3 +208,9 @@ test('Session naming uses the authenticated owner and carries the previous name 
     expect(product.renameSession).toHaveBeenCalledWith('u', 'session_a', body);
     expect((await request(appFor(product, { authenticated: false })).patch('/sessions/session_a').send(body)).status).toBe(401);
 });
+
+test('read-only history uses the authenticated Session owner', async () => {
+    const product = { getSessionHistory: jest.fn(async () => ({ branches: [], revisions: [] })) };
+    expect((await request(appFor(product)).get('/sessions/session_a/history')).status).toBe(200);
+    expect(product.getSessionHistory).toHaveBeenCalledWith('u', 'session_a');
+});

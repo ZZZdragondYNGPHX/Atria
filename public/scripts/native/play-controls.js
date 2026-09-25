@@ -1,3 +1,4 @@
+import { mountSessionHistory } from './session-history.js';
 import { mountSessionRename } from './session-naming.js';
 import { mountSaveDependencyRecovery } from './save-dependency-recovery.js';
 import { mountEmbeddedKnowledgePromotion } from './embedded-knowledge-promotion.js';
@@ -349,16 +350,9 @@ export function mountNativePlayControls({
                 drawerBody.append(row);
             });
 
-            const branches = documentRef.createElement('details');
-            const branchesSummary = documentRef.createElement('summary');
-            branchesSummary.textContent = `Branches & revisions (${detail.branches.length} / ${detail.revisions.length})`;
-            const branchesPre = documentRef.createElement('pre');
-            branchesPre.textContent = JSON.stringify({
-                branches: detail.branches,
-                revisions: detail.revisions,
-            }, null, 2);
-            branches.append(branchesSummary, branchesPre);
-            drawerBody.append(branches);
+            mountSessionHistory({ document: documentRef, root: drawerBody, sessionId: detail.snapshot.session.sessionId, onInspect: async revisionId => {
+                await globalThis.Atria.openNativeSession(detail.snapshot.session.sessionId, { revisionId }); hideDrawer();
+            } });
         } catch (error) {
             if (disposed || request !== drawerRequest) return;
             drawerBody.textContent = error?.message || String(error);

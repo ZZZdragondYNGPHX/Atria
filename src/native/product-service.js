@@ -549,6 +549,10 @@ export class NativeProductService {
         );
     }
 
+    async getSessionHistory(handle, sessionId) {
+        assertNativeId(sessionId, 'session'); return this._sessions.getHistory(handle, sessionId);
+    }
+
     async getSession(handle, sessionId) {
         const session = await this._sessions.get(handle, sessionId);
         if (!session) throw new NotFoundError('native session', { sessionId });

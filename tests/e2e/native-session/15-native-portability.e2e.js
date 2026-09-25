@@ -220,3 +220,31 @@ test('Session creation and Play/Library rename preserve identity and history at 
     const after = await page.evaluate(async id => (await (await import('/scripts/native/product-client.js')).nativeProductClient.getSession(id)).snapshot.session, before.sessionId);
     for (const key of ['sessionId', 'headRevisionId', 'activeBranchId', 'packageVersionId', 'packageContentHash']) expect(after[key]).toBe(before[key]);
 });
+
+test('Play shows branch origins and revision ancestry with retry and read-only inspection', async ({ page }, info) => {
+    test.setTimeout(120000); await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const before = await page.evaluate(async () => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js'); const work = (await client.listWorks())[0];
+        const created = await client.startWork(work.package.packageId, { displayTitle: 'History voyage' }); await window.Atria.openNativeSession(created.session.sessionId);
+        const runtime = window.Atria.nativeSessionRuntime, first = runtime.snapshot.revision.revisionId;
+        await runtime.forkRevision(first, { displayName: 'Harbor path' });
+        return { first, session: runtime.snapshot.session };
+    });
+    let attempts = 0; await page.route('**/api/native/product/sessions/*/history', route => attempts++ ? route.continue() : route.fulfill({ status: 500, json: { error: 'native_product_failed' } }));
+    await page.getByRole('button', { name: 'Timeline', exact: true }).click();
+    const history = page.locator('[data-atria-session-history]'); await history.getByText('Branches & revisions', { exact: true }).click();
+    await expect(history.getByRole('alert')).toContainText('History could not be loaded'); await history.getByRole('button', { name: 'Try again', exact: true }).click();
+    await expect(history).toContainText('Forked from Main branch at Revision 1');
+    await expect(history.locator('[data-atria-history-branch="' + before.session.activeBranchId + '"]')).toContainText('Current branch');
+    await expect(history).toContainText('Harbor path'); await expect(history).toContainText('Previous revision: Revision 1');
+    await page.screenshot({ path: info.outputPath('session-history-390.png') });
+    await history.locator('[data-atria-history-revision="' + before.first + '"]').getByRole('button', { name: 'Inspect revision', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.Atria.nativeSessionRuntime.history)).toBe(true);
+    await expect(page.locator('.atria-play-composer__input')).toBeDisabled();
+    const current = await page.evaluate(async id => (await (await import('/scripts/native/product-client.js')).nativeProductClient.getSession(id)).session, before.session.sessionId);
+    expect(current.headRevisionId).toBe(before.session.headRevisionId); expect(current.activeBranchId).toBe(before.session.activeBranchId);
+});

@@ -89,20 +89,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 统一资源便携、PackageVersion、Session、Save 与引用冲突的产品闭环。
 
-## NUX-039 — Play branch/revision history is still raw JSON
-
-**Current evidence**
-
-Timeline renders “Branches & revisions” by `JSON.stringify` into a `<pre>`.
-
-**Acceptance**
-
-Provide a readable branch/history model showing current branch, fork points and revision relationships. Raw payload stays under Details/Diagnostics.
-
----
-
----
-
 ## NUX-040 — Reference-safe failures do not consistently become resolution flows
 
 **Current evidence**

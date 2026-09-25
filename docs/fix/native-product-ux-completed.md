@@ -819,4 +819,18 @@ draft retention, explicit reload and rename in both Play and Library while prese
 identity/history. Test navigation now dismisses its modal before opening Library.
 Screenshot inspected; changed JavaScript lint and diff checks passed.
 
-Next: NUX-039 in Group 7.
+### NUX-039
+
+Play Timeline now renders readable branch names/current markers, fork source/revision,
+branch heads and parent-linked revision ordinals. History reads only committed revisions
+reachable from Session HEAD or Saves and excludes unpublished orphan writes. Exact
+inspection uses existing read-only historical Session loading; it never changes the
+active branch. Rows render in batches of 50 and raw payloads stay in Details.
+
+Validation: filesystem and SQLite history contract cases passed, including orphan
+exclusion and exact parent/fork relationships. Four UI/HTTP/localization suites passed
+21 cases covering bounded rendering, ancestry validation and inspection. Real Edge at
+390px passed history failure/retry, branch origins and read-only inspection with unchanged
+active HEAD/branch. Screenshot inspected; changed JavaScript lint and diff checks passed.
+
+Next: NUX-040 in Group 7.

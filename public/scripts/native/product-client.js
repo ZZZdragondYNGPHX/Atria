@@ -86,6 +86,7 @@ export const nativeProductClient = Object.freeze({
         body: { data, ...(password === undefined ? {} : { password }) },
     }),
 
+    getSessionHistory: sessionId => request(`sessions/${encode(sessionId)}/history`),
     renameSession: (sessionId, displayTitle, expectedDisplayTitle) => request(`sessions/${encode(sessionId)}`, { method: 'PATCH', body: { displayTitle, expectedDisplayTitle } }),
     listSessions: packageId => request(`sessions${packageId ? `?packageId=${encode(packageId)}` : ''}`),
     getSession: sessionId => request(`sessions/${encode(sessionId)}`),

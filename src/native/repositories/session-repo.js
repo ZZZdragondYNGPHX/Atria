@@ -582,6 +582,27 @@ export class SessionRepo {
         return reachable;
     }
 
+    async getHistory(handle, sessionId) {
+        return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async tx => {
+            const session = assertSession(await readCheckedDocument(tx, this._sessionKey(handle, sessionId)));
+            const reachable = await this._reachableRevisions(tx, handle, sessionId), revisions = [], branchNodes = new Map();
+            for (const revisionId of reachable) {
+                const revision = assertSessionRevision(await readCheckedDocument(tx, this._revisionKey(handle, sessionId, revisionId)));
+                const coreHead = revision.stateHeads[SESSION_CORE_NAMESPACE];
+                const core = await readCheckedDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, coreHead));
+                if (hashNativeDocument(core) !== coreHead || !Array.isArray(core.branches)) throw new TypeError('Invalid committed Session history');
+                revisions.push({ ...revision, parentRevisionId: core.parentRevisionId });
+                for (const node of core.branches) if (!branchNodes.has(node.branchId) || revisionId === session.headRevisionId) branchNodes.set(node.branchId, node);
+            }
+            const branches = [];
+            for (const node of branchNodes.values()) {
+                const branch = assertBranch(await readCheckedDocument(tx, this._branchKey(handle, sessionId, node.branchId)));
+                branches.push({ ...branch, headRevisionId: node.headRevisionId, forkRevisionId: node.forkRevisionId });
+            }
+            return { sessionId, activeBranchId: session.activeBranchId, headRevisionId: session.headRevisionId, branches, revisions };
+        }));
+    }
+
     async isCommittedRevision(handle, sessionId, revisionId) {
         return this._engine.withTransaction(handle, async tx => {
             const target = await getNativeDocument(tx, this._revisionKey(handle, sessionId, revisionId));

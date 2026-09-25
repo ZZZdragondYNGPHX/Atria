@@ -17,6 +17,18 @@ describe.each(CONTRACT_HARNESSES)('N3 Native Session Core - $name', ({ make }) =
         expect((await f.core.load(h.handle, before.session.sessionId)).session.displayTitle).toBe('After');
     });
 
+    test('readable history exposes committed parent/fork relationships but excludes orphan revisions', async () => {
+        const first = await f.core.create(h.handle, f.start);
+        const second = await f.core.appendTimeline(h.handle, first.session.sessionId, { role: 'user', content: 'Branch here' });
+        const fork = await f.core.forkBranch(h.handle, first.session.sessionId, { displayName: 'Alternate' });
+        const orphanId = createNativeId('revision'); await f.sessionRepo.putRevision(h.handle, { ...first.revision, revisionId: orphanId });
+        const history = await f.sessionRepo.getHistory(h.handle, first.session.sessionId);
+        expect(history.headRevisionId).toBe(fork.revision.revisionId); expect(history.revisions).toHaveLength(3);
+        expect(history.revisions.find(item => item.revisionId === second.revision.revisionId).parentRevisionId).toBe(first.revision.revisionId);
+        expect(history.branches.find(item => item.branchId === fork.session.activeBranchId)).toMatchObject({ displayName: 'Alternate', parentBranchId: first.session.activeBranchId, forkRevisionId: second.revision.revisionId });
+        expect(history.revisions.some(item => item.revisionId === orphanId)).toBe(false);
+    });
+
     test('Checkpoint A: exact Package -> EntryPoint -> Timeline -> Branch -> Revision -> reload', async () => {
         const { core, start } = f;
         let view = await core.create(h.handle, start);
