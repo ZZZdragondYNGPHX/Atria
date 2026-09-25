@@ -4,10 +4,11 @@ import { compilePreset } from '../engine-v2/preset-compiler.js';
 import { createFactoryPresetForMode, DEFAULT_SINGLE_AGENT_SYSTEM_PROMPT, DEFAULT_SINGLE_AGENT_USER_PROMPT_TEMPLATE } from '../defaults.js';
 import { compileWorkspacePreset, validatePresetLibrary, emptyPresetLibrary, normalizeWorkspacePreset, updatePresetLibrary, resolvePresetBinding } from '../../../lib/agent-workspace/presets.js';
 import { AGENDA_BUILTIN_REVISION } from '../agenda-defaults.js';
+import { applyNativePresetPrompts } from './native-preset-prompts.js';
 
 const WEB_TOOL_NAMES = Object.freeze(['search_search', 'search_visit']);
 export const NATIVE_WORKSPACE_MODES = Object.freeze(['spec', 'loop', 'agenda', 'director']);
-export const NATIVE_WORKSPACE_PRESET_REVISION = 1;
+export const NATIVE_WORKSPACE_PRESET_REVISION = 2;
 
 export function getNativeWorkspacePresetId(mode) {
     if (!NATIVE_WORKSPACE_MODES.includes(mode)) return null;
@@ -85,6 +86,7 @@ export function createWorkspaceFactoryPreset(mode, id = crypto.randomUUID()) {
         structuredClone(Array.isArray(factory) ? factory.at(-1) : factory),
         mode,
     );
+    applyNativePresetPrompts(profile, mode);
     const plan = structuredClone(compilePreset(profile, { mode, presetId: id }));
     delete plan.compatibility;
     plan.source = { mode, presetId: id };
