@@ -106,6 +106,10 @@ export function createNativeStudioRouter(getServices = services) {
         }
     };
 
+    router.delete('/library/resources/revisions', route(async (req, res, { studio }, handle) => {
+        res.json(await studio.deleteLibraryRevision(handle, req.body?.ref));
+    }));
+
     router.post('/resources/package-original', route(async (req, res, { studio }, handle) => {
         res.json(await studio.getPackageLibraryResource(handle, req.body?.ref));
     }));

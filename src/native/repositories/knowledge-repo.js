@@ -371,6 +371,7 @@ export class KnowledgeRepo {
                 if (record.doc?.knowledgeBindingIds?.includes(knowledgeBindingId)) {
                     references.push({
                         kind: 'world-revision',
+                        worldId: record.doc.worldId,
                         worldRevisionId: record.doc.worldRevisionId,
                     });
                 }

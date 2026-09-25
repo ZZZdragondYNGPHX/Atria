@@ -35,7 +35,7 @@ export function action(doc, parent, label, handler, { disabled = false, primary 
         if (node.disabled) return;
         const hadFocus = doc.activeElement === node;
         node.disabled = true; node.setAttribute('aria-busy', 'true');
-        try { await handler(event); } catch (error) { feedback(doc, parent, libraryError(error), true); } finally {
+        try { await handler(event); } catch (error) { feedback(doc, parent, libraryError(error), true); await referenceRemediation(doc, parent, error); } finally {
             node.disabled = disabled; node.removeAttribute('aria-busy');
             if (hadFocus && node.isConnected && [doc.body, doc.documentElement].includes(doc.activeElement)) node.focus();
         }
@@ -83,4 +83,10 @@ export async function confirmLibraryAction(message) {
 export async function savePassword() {
     const { Popup, POPUP_TYPE } = await import('../popup.js');
     return new Popup(tl('Save password (leave blank if none)'), POPUP_TYPE.INPUT, '').show();
+}
+
+export async function referenceRemediation(doc, parent, error, host) {
+    if (!parent || !(String(error?.code || '').includes('referenced') || error?.details?.references?.length || error?.details?.usedBy?.length || error?.details?.blockers?.length)) return;
+    const { renderReferenceRemediation } = await import('./reference-remediation.js');
+    await renderReferenceRemediation({ document: doc, root: parent, error, host });
 }

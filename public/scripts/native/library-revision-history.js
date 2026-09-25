@@ -3,7 +3,7 @@ import { nativeProductClient as client } from './product-client.js';
 import { nativeStudioClient } from './studio-client.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { mountLibraryRevisionEditor } from './library-revision-editor.js';
-import { el, action, disclosure, field, feedback } from './library-ui.js';
+import { el, action, disclosure, field, feedback, confirmLibraryAction } from './library-ui.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -51,6 +51,11 @@ export function mountLibraryRevisionHistory({ document: doc, root, detail, knowl
         el(doc, 'span', 'atri-library-meta', revision.createdAt ? new Date(revision.createdAt).toLocaleString() : '—', row);
         disclosure(doc, row, 'Exact revision details', revision);
         resourceBundleExport(doc, row, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId, revision: id }, resource.displayName);
+        action(doc, row, 'Delete unused revision', async () => {
+            if (!await confirmLibraryAction('Delete this earlier revision? Only unreferenced revisions can be deleted.')) return;
+            await nativeStudioClient.deleteLibraryRevision({ scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId, revision: id });
+            await onReload();
+        }, { disabled: id === resource.currentRevisionId });
         action(doc, row, 'Inspect revision', async () => {
             const selected = knowledge ? await client.getKnowledge(resourceId, id) : { ...detail, currentRevision: revision };
             const current = knowledge ? await client.getKnowledge(resourceId, resource.currentRevisionId) : detail;

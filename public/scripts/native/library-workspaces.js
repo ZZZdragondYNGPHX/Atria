@@ -4,14 +4,13 @@ import { permissionRow, renderPackageUpdateReview, mountWorkPermissions } from '
 import { mountPackageLibraryList, mountPackageLibraryOriginal } from './package-library-resources.js';
 import { resourceBundleExport, mountResourceBundleImport } from './resource-bundle-controls.js';
 import { mountLibraryRevisionHistory } from './library-revision-history.js';
-import { renderResourceReferenceRows } from './resource-reference-rows.js';
 import { nativeStudioClient } from './studio-client.js';
 import { mountKnowledgeBindingManager } from './knowledge-binding-manager.js';
 import { mountLibraryRevisionEditor } from './library-revision-editor.js';
 import { createAtriaStatePanel } from '../atria-shell/primitives.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { arrayBufferToBase64, nativeProductClient as client } from './product-client.js';
-import { el, action, heading, disclosure, field, cover, feedback, libraryError, confirmLibraryAction, savePassword } from './library-ui.js';
+import { el, action, heading, disclosure, field, cover, feedback, libraryError, confirmLibraryAction, savePassword, referenceRemediation } from './library-ui.js';
 
 const actions = (doc, parent) => el(doc, 'div', 'atri-library-actions', undefined, parent);
 const time = value => value ? new Date(value).toLocaleString() : '—';
@@ -269,7 +268,7 @@ async function worldKnowledge(doc, root, route, host) {
             if (references.length) {
                 const blockers = el(doc, 'section', 'atri-library-section', undefined, controls); blockers.dataset.atriaDeleteBlockers = 'true';
                 el(doc, 'h4', '', tl('Resolve references before deleting'), blockers);
-                renderResourceReferenceRows({ document: doc, root: blockers, references, host }); return;
+                await referenceRemediation(doc, blockers, { details: { references } }, host); return;
             }
             if (!await confirmLibraryAction(knowledge ? 'Delete this Native Knowledge Base?' : 'Delete this Native World?')) return;
             await (knowledge ? client.deleteKnowledge(id) : client.deleteWorld(id)); host.openLibrarySection(knowledge ? 'knowledge' : 'worlds');

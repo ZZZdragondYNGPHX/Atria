@@ -1,3 +1,4 @@
+import { referenceRemediation } from './library-ui.js';
 import { resourceBundleExport, mountResourceBundleImport } from './resource-bundle-controls.js';
 import { mountPromptCondition, mountPromptParameters, mountPromptDerive } from './prompt-semantics.js';
 import { renderResourceReferenceRows } from './resource-reference-rows.js';
@@ -46,7 +47,7 @@ function select(doc, parent, label, options, value = '') {
     if (value && !options.some(([key]) => key === value)) { const option = element(doc, 'option', undefined, node); option.textContent = String(value) + ' (' + translateShellText('retained') + ')'; option.value = value; }
     node.value = value; return node;
 }
-function error(doc, parent, value) { const node = element(doc, 'p', value?.message || String(value), parent); node.setAttribute('role', 'alert'); node.tabIndex = -1; node.focus(); }
+function error(doc, parent, value) { const node = element(doc, 'p', value?.message || String(value), parent); node.setAttribute('role', 'alert'); node.tabIndex = -1; node.focus(); void referenceRemediation(doc, parent, value); }
 
 function generationFields(doc, fields, draft) {
     const numeric = (label, value, min, max, integer = false) => {

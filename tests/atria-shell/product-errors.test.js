@@ -13,7 +13,7 @@ test('Product client and Library preserve actionable deletion blockers without r
     expect(error.code).toBe('native_world_project_referenced');
     expect(error.details.references).toEqual([{ kind: 'studio-project', projectId: 'project_example', revisions: ['r1'] }]);
     expect(libraryError(error)).toContain('Review the listed references');
-    expect(libraryError(error)).toContain('project_example');
+    expect(libraryError(error)).not.toContain('project_example');
     expect(error.message).not.toMatch(/hidden|private/);
     const alert = feedback(document, document.body, libraryError(error), true);
     expect(document.activeElement).toBe(alert);

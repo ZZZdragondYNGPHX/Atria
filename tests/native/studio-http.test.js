@@ -78,6 +78,18 @@ function appFor(studio, { authenticated = true } = {}) {
 }
 
 describe('A1 Native Studio HTTP boundary', () => {
+    test('revision deletion uses the authenticated owner and returns actionable conflicts', async () => {
+        const studio = makeStudio(); studio.deleteLibraryRevision = jest.fn(async () => ({ deleted: true }));
+        const ref = { scope: 'library', resourceType: 'core.world', resourceId: 'world', revision: 'exact' };
+        await request(appFor(studio, { authenticated: false })).delete('/library/resources/revisions').send({ ref }).expect(401);
+        expect(studio.deleteLibraryRevision).not.toHaveBeenCalled();
+        await request(appFor(studio)).delete('/library/resources/revisions').send({ ref, handle: 'other' }).expect(200);
+        expect(studio.deleteLibraryRevision).toHaveBeenCalledWith('u', ref);
+        studio.deleteLibraryRevision.mockRejectedValueOnce(new ConflictError('native_library_revision_referenced', { references: [{ projectId: 'project' }] }));
+        const response = await request(appFor(studio)).delete('/library/resources/revisions').send({ ref }).expect(409);
+        expect(response.body.details.references).toEqual([{ projectId: 'project' }]);
+    });
+
     test('reference queries retain ownership scope and operation preparation cannot execute writes', async () => {
         const studio = makeStudio();
         studio.getResourceReferences = jest.fn(async () => []); studio.inspectResourceDelete = jest.fn(async () => ({ safe: false }));

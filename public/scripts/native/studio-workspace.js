@@ -1,3 +1,4 @@
+import { referenceRemediation } from './library-ui.js';
 import { mountSourceEditor } from './source-editor.js';
 import { mountAssetEditor } from './asset-editor.js';
 import { mountProjectDeletion } from './project-lifecycle.js';
@@ -93,7 +94,7 @@ function button(documentRef, label, handler, options = {}) {
         } catch (error) {
             const alert = documentRef.createElement('p'); alert.className = 'atri-studio-inline-error'; alert.setAttribute('role', 'alert'); alert.tabIndex = -1;
             alert.textContent = t('The action could not complete. Your edits are still here.') + ' ' + (error.message || error);
-            node.parentElement?.append(alert); alert.focus();
+            node.parentElement?.append(alert); alert.focus(); await referenceRemediation(documentRef, node.parentElement, error);
         } finally { if (pending?.then) { node.disabled = false; node.removeAttribute('aria-busy'); } }
     });
     return node;

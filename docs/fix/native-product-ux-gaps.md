@@ -89,22 +89,7 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 统一资源便携、PackageVersion、Session、Save 与引用冲突的产品闭环。
 
-## NUX-040 — Reference-safe failures do not consistently become resolution flows
-
-**Current evidence**
-
-Backend deletion/authoring guards can know exact blockers and the Resource Graph can resolve reverse references.
-
-Product surfaces usually stop at “still referenced” / conflict text.
-
-**Acceptance**
-
-Convert blockers into navigable Used By rows and legal remediation actions instead of leaving the user at a dead end.
-
----
-
----
-
+All issues in this group are implemented. Group regression is pending.
 
 # Group 8 — P1 → P2 — Plugin Hard Cut
 

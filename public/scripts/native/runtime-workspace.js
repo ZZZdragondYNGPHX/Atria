@@ -4,7 +4,7 @@ import { runtimeRequest, runtimeRemediation, getRuntimeEvidence } from './runtim
 import { nativeSessionRuntime } from './session-runtime.js';
 import { createAtriaShellEnvironment } from '../atria-shell/environment.js';
 import { createAtriaStatePanel } from '../atria-shell/primitives.js';
-import { confirmLibraryAction } from './library-ui.js';
+import { confirmLibraryAction, referenceRemediation } from './library-ui.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { nativeStudioClient } from './studio-client.js';
 import { runtimeReadiness } from './runtime-readiness.js';
@@ -56,6 +56,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const [message, target] = runtimeRemediation(error.code || error.message);
         const alert = notice(message, parent, true); alert.tabIndex = -1; alert.focus();
         if (target) button('Open ' + target, () => host.openRuntimeSection(target), parent);
+        void referenceRemediation(doc, parent, error, host);
     }
     function field(parent, label, value = '', options) {
         const wrap = node('label', label, parent);
@@ -417,10 +418,6 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 } catch (error) {
                     if (disposed || editorToken !== editorSequence) return;
                     status.replaceChildren(); failure(error, status);
-                    if (error.details?.usedBy?.length) {
-                        node('h3', 'Used By', status); const list = node('ul', undefined, status);
-                        for (const item of error.details.usedBy) node('li', item.displayName + ' · ' + item.section, list);
-                    }
                 } finally { remove.disabled = false; }
             }, lifecycle);
             remove.className = 'atri-runtime-danger';

@@ -33,7 +33,7 @@ export function createNativeProductError(code, status, details) {
                     : status === 400 ? messages.native_product_invalid_request : messages.native_product_failed;
     const safe = sanitizeProductDetails(details);
     const context = safe ? JSON.stringify(safe) : '';
-    const error = new Error(tl(message) + (context ? ' ' + tl('Details') + ': ' + context : ''));
+    const error = new Error(tl(message) + (context && !code.includes('referenced') ? ' ' + tl('Details') + ': ' + context : ''));
     error.code = code; error.status = status; error.details = safe; error.isNativeProductError = true;
     return error;
 }

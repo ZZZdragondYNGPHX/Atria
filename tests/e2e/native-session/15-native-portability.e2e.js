@@ -241,10 +241,37 @@ test('Play shows branch origins and revision ancestry with retry and read-only i
     await expect(history).toContainText('Forked from Main branch at Revision 1');
     await expect(history.locator('[data-atria-history-branch="' + before.session.activeBranchId + '"]')).toContainText('Current branch');
     await expect(history).toContainText('Harbor path'); await expect(history).toContainText('Previous revision: Revision 1');
+    await history.locator('[data-atria-history-branch]').first().scrollIntoViewIfNeeded();
     await page.screenshot({ path: info.outputPath('session-history-390.png') });
     await history.locator('[data-atria-history-revision="' + before.first + '"]').getByRole('button', { name: 'Inspect revision', exact: true }).click();
     await expect.poll(() => page.evaluate(() => window.Atria.nativeSessionRuntime.history)).toBe(true);
     await expect(page.locator('.atria-play-composer__input')).toBeDisabled();
     const current = await page.evaluate(async id => (await (await import('/scripts/native/product-client.js')).nativeProductClient.getSession(id)).session, before.session.sessionId);
     expect(current.headRevisionId).toBe(before.session.headRevisionId); expect(current.activeBranchId).toBe(before.session.activeBranchId);
+});
+
+
+test('Work deletion resolves named Session blockers without deleting progress at 390px', async ({ page }, info) => {
+    test.setTimeout(120000); await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const session = await page.evaluate(async () => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        const work = (await client.listWorks())[0], result = await client.startWork(work.package.packageId, { displayTitle: 'Protected voyage' });
+        window.Atria.shell.getWorkspaceHost().openLibraryWork(work.package.packageId); return result.session;
+    });
+    await page.getByText('Manage work', { exact: true }).click();
+    await page.getByRole('button', { name: 'Delete Work', exact: true }).click();
+    await page.locator('dialog.popup[open] .popup-button-ok').click();
+    const remediation = page.locator('[data-atria-reference-remediation]');
+    await expect(remediation).toContainText('Protected voyage');
+    await remediation.scrollIntoViewIfNeeded(); await page.screenshot({ path: info.outputPath('reference-remediation-390.png') });
+    const row = remediation.locator('article').filter({ hasText: 'Protected voyage' });
+    await row.getByRole('button', { name: 'Manage Session in Library', exact: true }).click();
+    const game = page.locator('[data-atria-my-games] [data-atria-session-id="' + session.sessionId + '"]');
+    await expect(game.locator('details').first()).toHaveAttribute('open', '');
+    const preserved = await page.evaluate(async id => (await (await import('/scripts/native/product-client.js')).nativeProductClient.getSession(id)).session, session.sessionId);
+    expect(preserved.headRevisionId).toBe(session.headRevisionId);
 });

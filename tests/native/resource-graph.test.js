@@ -1,3 +1,4 @@
+import { StudioService } from '../../src/native/authoring/studio-service.js';
 import { createHash } from 'node:crypto';
 
 import { describe, expect, test } from '@jest/globals';
@@ -263,4 +264,37 @@ describe('A2 derived Resource Graph', () => {
         }
     });
 
+});
+
+
+test('revision removal keeps current and Project exact guards, then releases obsolete dependencies', async () => {
+    const h = await makeTempFsEngine();
+    try {
+        const worldRepo = new WorldRepo({ engine: h.engine }), knowledgeRepo = new KnowledgeRepo({ engine: h.engine });
+        const projectStore = new ProjectStore({ directoriesByHandle: () => h.dirs });
+        const assetStore = new AssetStore({ engine: h.engine, directoriesByHandle: () => h.dirs });
+        const studio = new StudioService({ worldRepo, knowledgeRepo, projectStore, assetStore });
+        const worldId = createNativeId('world'), old = createNativeId('worldRevision'), current = createNativeId('worldRevision');
+        await worldRepo.create(h.handle, { worldId, displayName: 'Harbor', currentRevisionId: null });
+        for (const worldRevisionId of [old, current]) await worldRepo.commitRevision(h.handle, { worldId, worldRevisionId, baseline: {}, knowledgeBindingIds: [], assetIds: [] });
+        const ref = revision => ({ scope: 'library', resourceType: 'core.world', resourceId: worldId, revision });
+        await expect(studio.deleteLibraryRevision(h.handle, ref(current))).rejects.toMatchObject({ code: 'native_library_revision_referenced' });
+        const project = projectSource(worldId, old); await projectStore.create(h.handle, project);
+        await expect(studio.deleteLibraryRevision(h.handle, ref(old))).rejects.toMatchObject({ code: 'native_library_revision_referenced', details: { references: expect.arrayContaining([expect.objectContaining({ node: expect.objectContaining({ projectId: project.project.projectId }) })]) } });
+        expect(await worldRepo.getRevision(h.handle, worldId, old)).not.toBeNull();
+        await projectStore.delete(h.handle, project.project.projectId);
+        await expect(studio.deleteLibraryRevision(h.handle, ref(old))).resolves.toEqual({ deleted: true });
+        expect(await worldRepo.getRevision(h.handle, worldId, old)).toBeNull();
+        expect((await worldRepo.get(h.handle, worldId)).currentRevisionId).toBe(current);
+        const knowledgeBaseId = createNativeId('knowledgeBase'), kbOld = createNativeId('knowledgeRevision'), kbCurrent = createNativeId('knowledgeRevision'), knowledgeBindingId = createNativeId('knowledgeBinding');
+        await knowledgeRepo.create(h.handle, { knowledgeBaseId, displayName: 'Canon', currentRevisionId: null });
+        for (const knowledgeRevisionId of [kbOld, kbCurrent]) await knowledgeRepo.commitRevision(h.handle, { knowledgeBaseId, knowledgeRevisionId, entryIds: [] }, []);
+        await knowledgeRepo.saveBinding(h.handle, { knowledgeBindingId, source: { kind: 'library', knowledgeBaseId, knowledgeRevisionId: kbOld }, enabled: true, mode: 'augment' });
+        const kbRef = { scope: 'library', resourceType: 'core.knowledge', resourceId: knowledgeBaseId, revision: kbOld };
+        await expect(studio.deleteLibraryRevision(h.handle, kbRef)).rejects.toMatchObject({ code: 'native_library_revision_referenced' });
+        await knowledgeRepo.deleteBinding(h.handle, knowledgeBindingId);
+        await expect(studio.deleteLibraryRevision(h.handle, kbRef)).resolves.toEqual({ deleted: true });
+        expect((await knowledgeRepo.get(h.handle, knowledgeBaseId)).currentRevisionId).toBe(kbCurrent);
+        await expect(studio.deleteLibraryRevision(h.handle, { ...ref(current), scope: 'package', packageId: createNativeId('package'), packageVersionId: createNativeId('packageVersion') })).rejects.toThrow('Library');
+    } finally { await h.cleanup(); }
 });

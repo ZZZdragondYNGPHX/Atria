@@ -309,6 +309,18 @@ export class StudioService {
         });
     }
 
+    async deleteLibraryRevision(handle, value) {
+        const ref = bundleRef(value);
+        if (ref.scope !== 'library' || !['core.world', 'core.knowledge'].includes(ref.resourceType)) throw new TypeError('Expected an exact Library World or Knowledge revision');
+        await this._library.getExact(handle, ref);
+        const safety = await this._resourceGraph.inspectDelete(handle, ref);
+        if (!safety.safe) throw new ConflictError('native_library_revision_referenced', { ...safety, references: await this._resourceGraph.references(handle, ref, { reverse: true }) });
+        try {
+            const repo = ref.resourceType === 'core.world' ? this._worlds : this._knowledge;
+            return { deleted: await repo.deleteRevision(handle, ref.resourceId, ref.revision) };
+        } finally { this._resourceGraph.invalidate(handle); }
+    }
+
     async getPackageLibraryResource(handle, value) {
         const ref = bundleRef(value);
         if (ref.scope !== 'package' || !['core.world', 'core.knowledge'].includes(ref.resourceType)) throw new TypeError('Expected an exact Package World or Knowledge reference');

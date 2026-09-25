@@ -833,4 +833,22 @@ exclusion and exact parent/fork relationships. Four UI/HTTP/localization suites 
 390px passed history failure/retry, branch origins and read-only inspection with unchanged
 active HEAD/branch. Screenshot inspected; changed JavaScript lint and diff checks passed.
 
-Next: NUX-040 in Group 7.
+### NUX-040
+
+Reference failures across Library, Runtime, Prompt and Studio now resolve named owners
+and offer existing owner navigation with legal remediation guidance. Lookup failure has
+local retry; exact details stay collapsed. Session blockers locate My Games management
+without deleting progress. Library preflight uses the same flow. Earlier World/Knowledge
+revisions can be explicitly deleted only after Resource Graph and repository guards
+allow it; current revisions, Project references and Knowledge bindings remain protected.
+Package originals cannot use this operation. Existing authoring stays on Review/Apply.
+
+Validation: ten focused/adjacent suites passed 46 cases; the additional authenticated
+revision HTTP boundary suite passed six. Tests cover graph/Project/current/binding
+protection, safe removal, exact Runtime navigation, reference lookup retry and Session
+management. Real Edge at 390px passed Work deletion blockers and navigation with unchanged
+Session HEAD; screenshot inspected. Changed JavaScript lint and diff checks passed.
+An initial test command named a nonexistent Runtime test file; the corrected adjacent
+suite command passed. No user-owned workspace rules were staged.
+
+Next: Group 7 regression, then NUX-041.
