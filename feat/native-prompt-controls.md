@@ -316,6 +316,64 @@ The existing "Regex Presets" feature (groups of enabled Regex scripts) is concep
 - Removing the managed runtime Regex provider API used by legitimate Plugins if it remains compatible with the Native ownership model.
 - Treating "Regex Presets" and "Preset Scripts" as the same feature.
 
+### NPC-006 — Complete Regex Native cutover
+
+The Regex product was retained as an explicit Atria Global Plugin, but its internal authoring/ownership model still exposes SillyTavern-era prompt-preset and character-card scopes.
+
+Current main still contains and exposes:
+
+- `SCRIPT_TYPES.PRESET`;
+- `SCRIPT_TYPES.SCOPED`;
+- `getPresetManager()` coupling from Regex UI/runtime;
+- `preset_allowed_regex`;
+- `character_allowed_regex`;
+- "Preset Scripts" stored in preset data;
+- "Scoped Scripts" stored in character/card data;
+- create/move/import/editor paths that treat preset/scoped as first-class Regex script authorities.
+
+This is an incomplete Native cutover. Hiding the two UI sections alone is not sufficient if the old storage, execution or compatibility paths remain live.
+
+Required behavior:
+
+- Remove SillyTavern prompt-preset-owned Regex scripts as a live Atria authority.
+- Remove SillyTavern character/card-scoped Regex scripts as a live Atria authority.
+- Retire the corresponding create/edit/move/toggle/import/export paths and runtime execution branches that depend on those legacy scopes.
+- Remove live Regex dependency on the legacy preset manager and character-card storage for Regex ownership.
+- Remove obsolete retained capability keys and serialization/hydration paths such as `preset_allowed_regex` and `character_allowed_regex` once their callers are retired.
+- Keep Atria's explicit Global Regex Plugin ownership for genuinely global user-authored Regex rules.
+- Keep plugin/runtime-registered Regex rules as the read-only runtime contribution lane where still required.
+- If Atria still needs non-global Regex ownership for a Project/Package/Experience use case, design that ownership under the appropriate Native exact resource/project contract. Do not preserve `PRESET` or `SCOPED` merely as aliases.
+- Do not silently map SillyTavern preset/card Regex data into a new Native scope as a default migration requirement. The product's existing hard-cut policy remains authoritative unless a separately approved current-Atria data transition is necessary.
+- Audit all execution paths so retired preset/scoped scripts cannot still affect input, prompt, display, edit, orchestration, plugin floors, or post-processing through hidden compatibility code.
+- Remove or update stale localization, documentation, tests and diagnostics that still present prompt-preset/character-card Regex ownership as an Atria product concept.
+- Preserve the Regex engine's useful generic capabilities (find/replace, placements, safety/diagnostics, global rules and plugin-provided rules) independently of the retired ownership scopes.
+
+"Regex Presets" — the Regex plugin feature that saves/switches groups of enabled rules — must not automatically be conflated with SillyTavern "Preset Scripts". Audit it separately. It may remain if it is useful and can operate purely on valid Atria-owned Regex rules after preset/card scopes are removed.
+
+#### Acceptance criteria
+
+- Regex UI no longer exposes "Preset Scripts" or character/card "Scoped Scripts" as authoring sections.
+- Users cannot create, move, import or save Regex rules into SillyTavern prompt-preset or character-card ownership.
+- Runtime Regex execution no longer reads those retired authorities.
+- Regex no longer imports or calls legacy preset-manager APIs for script ownership.
+- `SCRIPT_TYPES.PRESET` and `SCRIPT_TYPES.SCOPED` are removed from the live product contract unless code audit proves a differently named Native scope is required and documented.
+- `preset_allowed_regex` / `character_allowed_regex` and equivalent obsolete state no longer hydrate/serialize as live Atria capability authority.
+- Global user Regex rules continue to work.
+- Plugin/runtime-registered read-only Regex rules continue to work where supported.
+- Regex Presets, if retained, reference only supported Atria-owned rule identities and no longer encode retired scope buckets.
+- No hidden legacy preset/card Regex path can change generation or display output.
+- Import/export/bulk edit/debugger UI reflects only supported Atria scopes.
+- Regression covers execution placement, display/prompt post-processing, import/export, Regex Presets if retained, plugin-provided rules and reload persistence.
+- Relevant Regex/Plugin/Shell guards, lint and frontend build pass.
+
+#### Explicit non-goals
+
+- Reintroducing legacy SillyTavern preset or character-card Regex compatibility under new labels.
+- Treating old preset/card Regex migration as a default product requirement.
+- Removing the entire Regex Global Plugin.
+- Removing plugin/runtime-provided Regex rules solely because the old preset/scoped authorities are retired.
+- Removing the separate Regex Presets grouping feature without first determining whether it remains useful after the Native cutover.
+
 ## Product / architecture constraints
 
 - Preserve the Native Model / Prompt / Runtime and Native Library/Knowledge authority boundaries already on `main`.
@@ -340,6 +398,7 @@ Before editing, inspect the current contracts and product surfaces and resolve:
 7. What current Knowledge Entry fields are most useful in the compact list and which current UI/state path should own search/filter/sort/expanded-entry state.
 8. Where per-entry enabled state belongs in the immutable Native Knowledge contract, and how every activation/selection/serialization path must honor it without conflating it with KnowledgeBinding.enabled.
 9. Which Shell/navigation APIs and stable target identifiers the persistent guide should use, where guide progress/history belongs, how users reopen/jump/replay lessons, and which current product workflows constitute the final common-operation curriculum.
+10. Which Regex paths still depend on SillyTavern prompt-preset/character-card ownership, whether Regex Presets can remain as a scope-neutral Atria feature, and whether any real non-global Regex use case requires a new Native-owned scope.
 10. Which current Atria Native owner/binding replaces legacy Regex PRESET and SCOPED persistence, what the resulting scope precedence is, and which compatibility-only Regex APIs can remain without retaining legacy authority.
 
 Record any substantive answer here before or with the implementation commit that depends on it.
