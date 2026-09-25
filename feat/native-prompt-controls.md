@@ -123,6 +123,41 @@ SillyTavern World Info is a usability reference for clarity and scanability only
 - Existing Knowledge semantics, exact identities and bindings remain unchanged unless a separately documented contract change is necessary.
 - Focused Knowledge UI/state tests and relevant Native guards/lint/build pass.
 
+### NPC-004 — Per-entry Knowledge enable / disable
+
+Native Knowledge currently exposes an `enabled` state on `KnowledgeBinding`, which can disable an entire bound Knowledge source, but individual `KnowledgeEntry` records do not have an equivalent independent enabled/disabled lifecycle. As a result, users cannot temporarily suppress one specific entry while keeping the rest of the Knowledge Base active.
+
+Required behavior:
+
+- Add a first-class per-entry enabled/disabled state for Native Knowledge entries.
+- The control must be available directly from the compact Knowledge entry browsing surface introduced by NPC-003, so users can toggle an entry without opening the full editor.
+- Entry enabled state and Binding enabled state must remain separate:
+  - disabling a Binding disables the whole bound Knowledge source;
+  - disabling one entry suppresses only that entry while other entries in the same Knowledge Base remain eligible.
+- A disabled entry must be excluded from Native Knowledge discovery, direct activation, related-entry activation, required-dependency expansion, recursive/secondary activation, and final prompt delivery unless the product explicitly defines and documents a narrow exception.
+- Disabled entries must not consume Knowledge lane budget or appear as selected/injected context.
+- Runtime diagnostics should distinguish at least `entry_disabled` from `binding_disabled` so the reason is observable.
+- Toggling an entry must use the correct Native authoring/revision authority. Do not add hidden mutable state outside the Knowledge resource model merely to imitate SillyTavern's switch.
+- Because Knowledge revisions are immutable, implementation must determine the correct product interaction for changing this authoring property and make the revision/update consequence clear to the user.
+- Existing Package/read-only Knowledge remains protected; changing an entry there requires the existing fork/project-authoring path rather than mutating the original.
+- Import/export, Resource Bundle, Package build/freeze, Session selection, Save/restore and Knowledge promotion must preserve the entry enabled state where those paths carry Knowledge resources.
+- Desktop and mobile must expose the state clearly and consistently.
+
+SillyTavern World Info's per-entry toggle is the usability reference. The implementation must remain Native and must not reuse the legacy World Info `disable` field, storage authority or DOM behavior.
+
+#### Acceptance criteria
+
+- A user can disable one Knowledge entry while leaving other entries in the same Knowledge Base active.
+- A disabled entry cannot be selected or injected through ordinary keyword/state/direct/related/required activation paths.
+- Re-enabling the entry restores normal eligibility without rebuilding unrelated entries.
+- Binding-level disable and entry-level disable are independently represented and diagnosed.
+- NPC-003's compact list shows and can operate the per-entry state.
+- Exact identities, immutable revision semantics and dependency closure remain valid.
+- Resource Bundle / Package / Project and other Native Knowledge serialization paths preserve the state.
+- Runtime tests prove disabled entries do not consume selection/budget or reach prompt channels.
+- Desktop and narrow/mobile UI tests cover toggle state, revision/save flow and reload behavior.
+- Relevant Knowledge/Native guards, lint and build pass.
+
 ## Product / architecture constraints
 
 - Preserve the Native Model / Prompt / Runtime and Native Library/Knowledge authority boundaries already on `main`.
@@ -145,9 +180,10 @@ Before editing, inspect the current contracts and product surfaces and resolve:
 5. How diagnostics/Request Inspector should show effective Prompt parameter values and included/skipped modules.
 6. What the current archive/delete/versioned-resource/dependency contracts already support for Prompt Program/Module removal, and which references must block destructive deletion.
 7. What current Knowledge Entry fields are most useful in the compact list and which current UI/state path should own search/filter/sort/expanded-entry state.
+8. Where per-entry enabled state belongs in the immutable Native Knowledge contract, and how every activation/selection/serialization path must honor it without conflating it with KnowledgeBinding.enabled.
 
 Record any substantive answer here before or with the implementation commit that depends on it.
 
 ## Future gaps
 
-Append newly confirmed gaps below as `NPC-004`, `NPC-005`, etc. Preserve their original intent and keep completed items in the document with status/evidence rather than silently deleting history.
+Append newly confirmed gaps below as `NPC-005`, `NPC-006`, etc. Preserve their original intent and keep completed items in the document with status/evidence rather than silently deleting history.
