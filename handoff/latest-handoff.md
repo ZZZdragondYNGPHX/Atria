@@ -1,4 +1,4 @@
-# Latest handoff — Native product UX repair in progress
+# Latest handoff — Native product UX repair completed
 
 Updated: 2026-09-25 (Asia/Shanghai).
 
@@ -6,7 +6,7 @@ Updated: 2026-09-25 (Asia/Shanghai).
 
 Repository: `ZZZdragondYNGPHX/Atria`.
 Working branch: `fix/native-product-ux-audit`.
-Pushed HEAD: `42265308d`.
+Pushed HEAD: `652bb6386f61e9c5fb983157c8852b1680736eb2`.
 Main remains `ad15c1e0c3e15e625ba163e284a300c00811f10d`.
 
 Use the existing workspace AGENTS.md and FORK_MAINTENANCE.md. Remote main copies
@@ -96,13 +96,27 @@ passed. Full lint, frontend cache build and six residual scripts passed. See the
 Group 8 record for the exploratory full-repository run's optional DB and unchanged
 Windows-sensitive failures; that run was not all green. No real GPU inference claim.
 
+## Group 9 / completion
+
+NUX-043 `9e66b5c81` completes Native Global Search domain coverage, exact routing,
+partial-source reporting and retry. NUX-044 `652bb6386` completes the audited product
+localization, literal-name preservation and automated locale regression guard.
+
+All Groups 1–9 and all 44 issues are complete; active backlog is empty.
+Final evidence: [Group 9 and closure](native-product-ux-group-9.md).
+355 related suites / 3541 tests passed, with 72 optional external-DB skips.
+Native backup/restore/migration integrity passed four suites / 40 tests, two skips.
+27 selected Edge scenarios have passing final evidence, including focused reruns
+for corrected test assertions/sequencing. Full lint, frontend compilation, locale
+guard and six Native authority guards passed. Existing E2E lint warnings are noted.
+
 ## Next
 
-Continue Group 9, starting with NUX-043 Global Search coverage and partial-source
-recovery, then NUX-044 localization. Follow the existing backlog without replanning.
-Preserve current Atria UI and Native ownership. Final closure also requires Native
-backup/restore/migration regression and an honest distinction between passing related
-checks and unavailable external/platform checks.
+No active implementation remains from this backlog. The user-requested task branch
+is retained and pushed; main was not merged or changed. Do not restart Group 1 or
+use obsolete remote rules to replace the user's current workspace rules.
+The unavailable external/platform checks and earlier exploratory whole-repository
+failures are documented honestly in Group 8 and the final closure record.
 
 ## Local work
 
@@ -111,8 +125,13 @@ untouched and excluded from commits. Current task has local untracked
 `tests/.native-ux-playwright.config.js` selecting installed Edge and
 `tests/test-results-native-ux-g1*` and `tests/test-results-native-ux-g2*` / `tests/test-results-native-ux-g3*` / `tests/test-results-native-ux-g4*` / `tests/test-results-native-ux-g5*` / `tests/test-results-native-ux-g6*` / `tests/test-results-native-ux-g7*` / `tests/test-results-native-ux-g8*` outputs, plus
 `tests/.e2e-scratch/native-ux-g6-build` / `native-ux-g7-build` / `native-ux-g8-build*` frontend caches. Bundled Chromium installation stalled;
-Edge was used for actual browser validation. Remove task-only temporary outputs
-when no longer needed; do not touch prior-task artifacts.
+Edge was used for actual browser validation. Cleanup of task-only output directories and temporary audit scripts was rejected
+by automatic approval review (blocked by policy). They remain local and uncommitted;
+no workaround deletion was attempted. Do not touch prior-task artifacts.
 
 Frontend redesign Phases 1–8 remain integrated on main. Its design authority and
 historical acceptance are under `planning/atria-product-frontend-redesign/`.
+
+Final Group 9 logs/screenshots, the temporary Edge configuration and localization
+audit scripts/data are also local-only. No generated artifacts or rule edits were
+included in the final product commit.
