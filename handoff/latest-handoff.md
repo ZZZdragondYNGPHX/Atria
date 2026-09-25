@@ -85,7 +85,7 @@ control, Tavern Helper, MVU or default legacy migration. The two NPC-006 section
 the formal plan are historical confirmed requirements; the Complete Regex Native
 cutover section and the user's latest instructions govern removal of old authority.
 
-Environment: repository was absent from D:/Dev/Atria at takeover and was cloned from
+Environment: the empty workspace was populated by cloning
 the existing remote feature branch. An additional worktree checks out the existing
 docs branch. No new task branch was created. Use repository history and remote HEADs
 as authority, not machine paths. Test-only files, caches and screenshots stay untracked.

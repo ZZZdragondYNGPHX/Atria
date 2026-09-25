@@ -1,6 +1,6 @@
 # Atria Native Prompt Controls
 
-Status: in progress — Group 1 implemented; Groups 2–6 pending  
+Status: in progress — Group 1 implemented; Groups 2–6 pending
 Implementation branch: `feat/native-prompt-controls`  
 Base: `main@d29c2b3170798b136eb41249eaad902a23aab5bd`
 
