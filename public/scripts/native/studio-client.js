@@ -1,3 +1,5 @@
+import { createNativeProductError } from './product-errors.js';
+
 function requestHeaders() {
     const headers = globalThis.Atria?.getContext?.()?.getRequestHeaders?.() || {};
     return {
@@ -25,7 +27,7 @@ async function request(path, { method = 'GET', body = undefined, responseType = 
     }
 
     if (!response.ok) {
-        const error = new Error(payload?.details?.message || payload?.message || `Native Studio request failed (${response.status})`);
+        const error = createNativeProductError(payload?.error || 'native_studio_request_failed', response.status, payload?.details);
         error.status = response.status;
         error.code = payload?.error || 'native_studio_request_failed';
         error.details = payload?.details;

@@ -97,49 +97,12 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 Implementation and validation: [completed work](native-product-ux-completed.md).
 Dependency-first retirement: [ownership inventory](native-extension-retirement.md).
 
-# Group 9 — P1 — Search / Localization / Final Closure
+# Group 9 — Completed
 
-**Group goal:** 最后统一补全全局发现能力与产品汉化，并清理此次任务留下的死入口/死文案。
+Implementation and validation: [completed work](native-product-ux-completed.md).
+Localization contract and guard: [localization](native-product-localization.md).
 
-## NUX-044 — Atria product localization remains incomplete
-
-**New finding / user-confirmed after frontend redesign**
-
-**Current evidence**
-
-The redesign added substantial zh-CN / zh-TW coverage, but Native product controllers still contain user-facing English that is either:
-
-- not routed through localization at all;
-- constructed dynamically before `translateShellText()`, so no stable locale key can match it;
-- technical labels/diagnostics that remain English in normal product surfaces.
-
-Examples include dynamic Runtime readiness/fallback summaries and multiple Native authoring/help/error strings.
-
-**Impact**
-
-Switching Atria to Chinese still produces mixed Chinese/English interfaces across Runtime, Library, Studio, Play, Plugins and error/recovery states.
-
-**Acceptance**
-
-- Audit every current Atria-owned product surface for untranslated user-facing text.
-- Replace concatenated translation lookups with stable keyed/formatted localization.
-- Complete zh-CN and zh-TW coverage for normal, loading, empty, validation, error and recovery states.
-- Keep user-authored names, provider/model identifiers, paths and code literals untranslated.
-- Add automated coverage that catches newly introduced Atria-owned hard-coded UI strings where practical.
-
-**Evidence**
-
-- `public/scripts/atria-shell/localization.js`
-- `public/locales/zh-cn.json`
-- `public/locales/zh-tw.json`
-- `public/scripts/native/runtime-workspace.js`
-- `public/scripts/native/library-workspaces.js`
-- `public/scripts/native/studio-workspace.js`
-- `public/scripts/native/play-controls.js`
-
----
-
----
+No active NUX issues remain. All 44 issues have independent implementation commits.
 
 # 5. Final completion criteria
 

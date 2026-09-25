@@ -29,6 +29,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
 
     return function renderPresets(parent, ui) {
         const { el, button, inspector } = ui;
+        const literal = (tag, text, parent) => { const node = el(tag, undefined, parent); node.textContent = text; return node; };
         if (ui.presetId && ui.presetId !== lastRequestedId) selectedId = ui.presetId;
         lastRequestedId = ui.presetId || null;
         const settings = getSettings();
@@ -360,7 +361,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
             const head = el('div', undefined, inspector);
             head.className = 'workspace-inspector-heading';
             el('span', 'Agent', head).className = 'workspace-eyebrow';
-            el('h3', agent.name || agent.id, head);
+            literal('h3', agent.name || agent.id, head);
             const nodes = draft.planTemplate.nodes.filter(node => node.agentId === agent.id);
             el('p', nodes.map(node => node.nodeId).join(' · '), head).className = 'workspace-hint';
             const close = button(head, 'Close inspector', () => {
@@ -466,7 +467,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
 
         const sidebar = el('details', undefined, layout);
         sidebar.open = parent.closest('[data-atria-viewport]')?.dataset.atriaViewport !== 'compact';
-        el('summary', draft.name, sidebar).className = 'workspace-library-disclosure';
+        literal('summary', draft.name, sidebar).className = 'workspace-library-disclosure';
         sidebar.className = 'workspace-library workspace-authoring-library';
         const libraryHead = el('div', undefined, sidebar);
         libraryHead.className = 'workspace-library-heading';
@@ -478,7 +479,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
         const effective = el('div', undefined, sidebar);
         effective.className = 'workspace-effective-preset';
         el('small', 'Effective preset', effective);
-        el('strong', effectivePreset?.name || i18n('None'), effective);
+        literal('strong', effectivePreset?.name || i18n('None'), effective);
         el('span', i18n(binding.selectionSource), effective);
 
         const search = el('input', undefined, sidebar);
@@ -505,7 +506,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
             });
             item.dataset.name = `${preset.name} ${modeLabel(preset.mode)}`.toLowerCase();
             item.setAttribute('aria-pressed', String(preset.id === selectedId));
-            const name = el('strong', preset.name, item);
+            const name = literal('strong', preset.name, item);
             name.className = 'workspace-preset-name';
             el('small', modeLabel(preset.mode), item);
             if (isNativeWorkspacePresetId(preset.id)) {
@@ -586,7 +587,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
         topbar.className = 'workspace-authoring-topbar';
         const heading = el('div', undefined, topbar);
         el('span', modeLabel(draft.mode), heading).className = 'workspace-eyebrow';
-        el('h3', draft.name, heading);
+        literal('h3', draft.name, heading);
         el('p', draft.editorMetadata?.description || modeDescription(draft.mode), heading).className = 'workspace-hint';
 
         if (nativePreset) {
@@ -720,7 +721,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
                 item.dataset.agentId = agent.id;
                 item.className = 'workspace-agent-card';
                 const copy = el('span', undefined, item);
-                el('strong', agent.name || agent.id, copy);
+                literal('strong', agent.name || agent.id, copy);
                 const nodes = draft.planTemplate.nodes.filter(node => node.agentId === agent.id);
                 el('small', nodes.map(node => node.kind).join(' · ') || 'agent', copy);
                 const badge = el('span', String(nodes.length), item);

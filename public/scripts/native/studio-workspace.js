@@ -1,3 +1,4 @@
+import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { referenceRemediation } from './library-ui.js';
 import { mountSourceEditor } from './source-editor.js';
 import { mountAssetEditor } from './asset-editor.js';
@@ -321,7 +322,7 @@ function createResourceTree(documentRef, state, selectView) {
         for (const descriptor of pluginDescriptors) {
             if (needle && !descriptor.displayName.toLowerCase().includes(needle)
                 && !descriptor.resourceType.toLowerCase().includes(needle)) continue;
-            const row = button(documentRef, `Plugin · ${descriptor.displayName}`, () => {
+            const row = button(documentRef, formatProductText('Plugin · ${0}', [descriptor.displayName]), () => {
                 state.selectedPluginResourceType = descriptor.resourceType;
                 selectView('plugin-resource');
             }, { active: state.activeView === 'plugin-resource' && state.selectedPluginResourceType === descriptor.resourceType });
@@ -376,12 +377,12 @@ function renderCollectionEditor(documentRef, body, state, view, stageProject) {
             if (view === 'actors') next.package.actors = parsed;
             else if (view === 'entrypoints') next.package.entryPoints = parsed;
             else next[view] = parsed;
-            return stageProject(next, `Update ${title} collection`);
+            return stageProject(next, formatProductText('Update ${0} collection', [title]));
         } });
         return;
     }
 
-    const chooser = selectInput(documentRef, String(index), items.map((_, itemIndex) => String(itemIndex)), title + ' resource');
+    const chooser = selectInput(documentRef, String(index), items.map((_, itemIndex) => String(itemIndex)), formatProductText('${0} resource', [title]));
     [...chooser.options].forEach((option, optionIndex) => {
         option.textContent = displayNameFor(items[optionIndex], view) || `${title} ${optionIndex + 1}`;
     });
@@ -396,7 +397,7 @@ function renderCollectionEditor(documentRef, body, state, view, stageProject) {
     const mountEditor = view === 'knowledge' ? mountKnowledgeEditor : view === 'worlds' ? mountWorldEditor : mountStudioValueEditor;
     mountEditor({ document: documentRef, root: body, value: items[index], label: title + ' resource JSON',
         projectSource: state.source, library: state.library,
-        onReview: parsed => stageProject(normalizeCollectionPatch(state.source, view, index, parsed), `Update ${title} resource`),
+        onReview: parsed => stageProject(normalizeCollectionPatch(state.source, view, index, parsed), formatProductText('Update ${0} resource', [title])),
     });
 }
 
@@ -456,7 +457,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     title.textContent = state.source.project.displayName;
     const revision = documentRef.createElement('span');
     revision.className = 'atria-studio-topbar__revision';
-    revision.textContent = `Revision ${state.revision.revision.slice(0, 12)}`;
+    revision.textContent = formatProductText('Revision ${0}', [state.revision.revision.slice(0, 12)]);
     identity.append(title, revision);
 
     const topActions = actionRow(documentRef);
@@ -523,7 +524,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         state.graph = graph;
         state.history = history || [];
         title.textContent = state.source.project.displayName;
-        revision.textContent = `Revision ${state.revision.revision.slice(0, 12)}`;
+        revision.textContent = formatProductText('Revision ${0}', [state.revision.revision.slice(0, 12)]);
         tree.render();
     }
 
@@ -580,7 +581,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             state.activityOpen = true; if (environment.get().mode === 'compact') state.mobileView = 'more';
             accepted = true;
             state.activityTab = 'changes';
-            log('review', `ChangeSet review ready: ${label}`, inspected.changes);
+            log('review', formatProductText('ChangeSet review ready: ${0}', [label]), inspected.changes);
         } catch (error) {
             if (error.status === 409) {
                 state.pending = { label, workspace, conflict: error };
@@ -609,11 +610,11 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             state.validation = result.changeSet?.validation || null;
             const applied = result.changeSet?.resultingRevision;
             if (applied) {
-                log('success', `ChangeSet ${result.changeSet.changeSetId} committed at ${applied.slice(0, 12)}`, result.changes);
+                log('success', formatProductText('ChangeSet ${0} committed at ${1}', [result.changeSet.changeSetId, applied.slice(0, 12)]), result.changes);
                 state.activityOpen = false;
                 if (environment.get().mode === 'compact') state.mobileView = 'editor';
             } else {
-                log('error', `ChangeSet ${result.changeSet?.changeSetId || ''} failed validation and was rolled back.`, state.validation);
+                log('error', formatProductText('ChangeSet ${0} failed validation and was rolled back.', [result.changeSet?.changeSetId || '']), state.validation);
                 return;
             }
             state.pending = null;
@@ -636,7 +637,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             state.validation = await nativeStudioClient.validateProject(projectId);
             state.activityTab = 'problems'; state.activityOpen = true;
             if (environment.get().mode === 'compact') state.mobileView = 'more';
-            log(state.validation.status === 'passed' ? 'success' : 'error', `Validation ${state.validation.status}.`, state.validation.diagnostics);
+            log(state.validation.status === 'passed' ? 'success' : 'error', formatProductText('Validation ${0}.', [t(state.validation.status)]), state.validation.diagnostics);
         } catch (error) {
             log('error', error?.message || String(error));
         }
@@ -652,7 +653,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             state.preview = result.preview;
             state.activeView = 'preview';
             state.mobileView = 'preview';
-            log('success', `Native Preview ${result.preview.previewId} created without Session/Branch persistence.`, result.preview.descriptor);
+            log('success', formatProductText('Native Preview ${0} created without Session/Branch persistence.', [result.preview.previewId]), result.preview.descriptor);
             renderEditor();
             updateMobile();
         } catch (error) {
@@ -666,7 +667,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 baseRevision: state.revision.revision,
             });
             state.activeView = 'simulation'; state.mobileView = 'editor'; updateMobile();
-            log(state.simulation.status === 'completed' ? 'success' : 'info', `Simulation ${state.simulation.status}.`, state.simulation);
+            log(state.simulation.status === 'completed' ? 'success' : 'info', formatProductText('Simulation ${0}.', [t(state.simulation.status)]), state.simulation);
             renderEditor();
         } catch (error) {
             log('error', error?.message || String(error));
@@ -687,7 +688,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 link.download = built.fileName || (projectId + '.atria');
                 link.click();
                 URL.revokeObjectURL(url);
-                log('success', `Built ${link.download} from exact revision ${state.revision.revision.slice(0, 12)}.`);
+                log('success', formatProductText('Built ${0} from exact revision ${1}.', [link.download, state.revision.revision.slice(0, 12)]));
             }
             state.activeView = 'build'; state.mobileView = 'editor'; updateMobile();
             renderEditor();
@@ -835,7 +836,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 const next = patchProjectSource(state.source, source => {
                     source.package[key] = parsed;
                 });
-                return stageProject(next, `Update ${title}`);
+                return stageProject(next, formatProductText('Update ${0}', [title]));
             },
         });
     }
@@ -850,7 +851,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 const next = patchProjectSource(state.source, source => {
                     source.package.runtime = { ...(source.package.runtime || {}), [key]: parsed };
                 });
-                return stageProject(next, `Update ${title}`);
+                return stageProject(next, formatProductText('Update ${0}', [title]));
             },
         });
     }
@@ -917,11 +918,11 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 const prepared = await nativeStudioClient.prepareOperation(projectId, operation);
                 return stageOperations([prepared], label);
             };
-            const attach = button(documentRef, 'Attach', () => prepare('resource.attach', { revision: revisionSelect.value }, `Attach ${item.displayName}`));
-            const fork = button(documentRef, 'Fork', () => prepare('resource.fork', { revision: revisionSelect.value }, `Fork ${item.displayName}`));
+            const attach = button(documentRef, 'Attach', () => prepare('resource.attach', { revision: revisionSelect.value }, formatProductText('Attach ${0}', [item.displayName])));
+            const fork = button(documentRef, 'Fork', () => prepare('resource.fork', { revision: revisionSelect.value }, formatProductText('Fork ${0}', [item.displayName])));
             const fromRevision = attachedRevision(item);
             const update = ['core.world', 'core.knowledge'].includes(item.resourceType)
-                ? button(documentRef, 'Update', () => prepare('resource.update', { fromRevision, toRevision: revisionSelect.value }, `Update ${item.displayName}`), { disabled: !fromRevision }) : null;
+                ? button(documentRef, 'Update', () => prepare('resource.update', { fromRevision, toRevision: revisionSelect.value }, formatProductText('Update ${0}', [item.displayName])), { disabled: !fromRevision }) : null;
             const detach = button(documentRef, 'Review detach', async () => {
                 const consumers = item.resourceType === 'core.world'
                     ? state.source.package.entryPoints.filter(entry => entry.worldIds.includes(item.resourceId)).map(entry => ({ node: { scope: 'project/' + projectId, projectId, resourceType: 'core.entrypoint', resourceId: entry.entryPointId, displayName: entry.displayName }, owner: state.source.project.displayName }))
@@ -939,14 +940,14 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 const next = clone(state.source);
                 const [collection, identity] = item.resourceType === 'core.world' ? ['worlds', 'worldId'] : item.resourceType === 'core.knowledge' ? ['knowledge', 'knowledgeBaseId'] : ['assets', 'assetId'];
                 next.dependencies[collection] = next.dependencies[collection].filter(ref => ref[identity] !== item.resourceId);
-                await stageProject(next, `Detach ${item.displayName}`);
+                await stageProject(next, formatProductText('Detach ${0}', [item.displayName]));
             }, { disabled: !fromRevision });
             const references = button(documentRef, 'Used By', async () => {
                 const rows = documentRef.createElement('div'); row.querySelector('[data-atria-used-by]')?.remove(); rows.dataset.atriaUsedBy = 'true'; row.append(rows);
                 const refs = await nativeStudioClient.getResourceReferences({ scope: 'library', resourceType: item.resourceType, resourceId: item.resourceId, revision: revisionSelect.value }, { reverse: true });
                 renderResourceReferenceRows({ document: documentRef, root: rows, references: refs, host });
             });
-            if (fromRevision) info.textContent += ` · attached ${fromRevision}`;
+            if (fromRevision) info.textContent += formatProductText(' · attached ${0}', [fromRevision]);
             row.append(info, revisionSelect, attach, fork, ...(update ? [update] : []), detach, references);
             list.append(row);
         }
@@ -1131,7 +1132,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 const row = documentRef.createElement('div');
                 row.className = 'atria-studio-diagnostic';
                 row.dataset.severity = diagnostic.severity;
-                row.textContent = `${diagnostic.severity} · ${diagnostic.code} · ${diagnostic.message}`;
+                row.textContent = `${t(diagnostic.severity)} · ${diagnostic.code} · ${t(diagnostic.message)}`;
                 body.append(row);
             }
         } else if (state.activityTab === 'output') {
@@ -1139,7 +1140,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             for (const item of state.output.slice(0, 100)) {
                 const row = documentRef.createElement('details');
                 const summary = documentRef.createElement('summary');
-                summary.textContent = `${formatTime(item.at)} · ${item.kind} · ${item.message}`;
+                summary.textContent = `${formatTime(item.at)} · ${t(item.kind)} · ${t(item.message)}`;
                 row.append(summary);
                 if (item.detail != null) {
                     const pre = documentRef.createElement('pre');
@@ -1158,7 +1159,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 row.addEventListener('click', async () => {
                     try {
                         const diff = await nativeStudioClient.diff(projectId, item.fullHash);
-                        log('diff', `Diff for ${item.fullHash.slice(0, 12)}`, diff.diff);
+                        log('diff', formatProductText('Diff for ${0}', [item.fullHash.slice(0, 12)]), diff.diff);
                         state.activityTab = 'output';
                         renderActivity();
                     } catch (error) {
@@ -1205,7 +1206,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             }
         } else if (state.agentReview) {
             const title = documentRef.createElement('h4');
-            title.textContent = 'Project Agent Review';
+            title.textContent = t('Project Agent Review');
             const pre = documentRef.createElement('pre');
             pre.textContent = JSON.stringify({
                 taskId: state.agentReview.taskId,

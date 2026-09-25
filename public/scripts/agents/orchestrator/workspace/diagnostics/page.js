@@ -128,7 +128,7 @@ export function renderDiagnosticsPage({
             row.className = 'workspace-diagnostic-row';
             const left = el('div', undefined, row);
             el('strong', checkpoint.runId, left);
-            el('small', `v${checkpoint.version} · generation ${checkpoint.generation}`, left);
+            el('small', i18nFormat('v${0} · generation ${1}', checkpoint.version, checkpoint.generation), left);
             const status = el('span', checkpoint.status, row);
             status.className = `workspace-status-chip is-${checkpoint.status}`;
         }

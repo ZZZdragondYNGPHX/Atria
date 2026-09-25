@@ -1,3 +1,4 @@
+import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 function cloneJson(value) {
     return value == null ? value : JSON.parse(JSON.stringify(value));
 }
@@ -48,9 +49,9 @@ export function createStudioWorkspace({
     origin = createHumanOrigin(),
     idFactory = defaultIdFactory,
 }) {
-    if (!projectId || !baseRevision) throw new TypeError('Studio workspace requires projectId and baseRevision');
+    if (!projectId || !baseRevision) throw new TypeError(formatProductText('Studio workspace requires projectId and baseRevision'));
     if (!Array.isArray(operations) || operations.length === 0) {
-        throw new TypeError('Studio workspace requires at least one operation');
+        throw new TypeError(formatProductText('Studio workspace requires at least one operation'));
     }
     return Object.freeze({
         workspaceId: createStudioToken('workspace', idFactory),
@@ -134,7 +135,7 @@ export function updateComponentNode(root, componentId, updater) {
         for (const child of Array.isArray(node.children) ? node.children : []) visit(child);
     }
     visit(next);
-    if (!found) throw new Error('Component not found: ' + componentId);
+    if (!found) throw new Error(formatProductText('Component not found: ${0}', [componentId]));
     return next;
 }
 

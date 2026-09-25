@@ -1,3 +1,4 @@
+import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { configuredNativeRoute } from './runtime-route-ref.js';
 
 const legacyNames = new Set([
@@ -18,7 +19,7 @@ export function clearNativePresetNames(settings) {
 /** Native authored Agent definitions only store routing, never provider presets. */
 export function normalizeNativeAgentModel(value = {}) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('Invalid Native Agent routing');
-    for (const key of Object.keys(value)) if (key !== 'nativeRouteRef' && !legacyNames.has(key)) throw new TypeError('Unsupported Native Agent model field: ' + key);
+    for (const key of Object.keys(value)) if (key !== 'nativeRouteRef' && !legacyNames.has(key)) throw new TypeError(formatProductText('Unsupported Native Agent model field: ${0}', [key]));
     return configuredNativeRoute(value);
 }
 

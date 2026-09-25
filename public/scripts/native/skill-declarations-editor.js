@@ -1,3 +1,4 @@
+import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { skillDeclarationId, validateSkillDeclarations } from './skill-declarations.js';
 import { knowledgeFormControls } from './knowledge-form-controls.js';
 import { el, action, feedback, disclosure } from './library-ui.js';
@@ -60,7 +61,7 @@ export function mountSkillDeclarationsEditor({ document: doc, root, value = [], 
             draft.forEach((entry, index) => {
                 const row = el(doc, 'section', 'atri-knowledge-rule', undefined, body);
                 const id = idOf(entry); const installed = inventory.find(value => value.name === id);
-                const control = input(row, 'Skill ID ' + (index + 1), id, next => {
+                const control = input(row, formatProductText('Skill ID ${0}', [index + 1]), id, next => {
                     if (typeof draft[index] === 'string') draft[index] = next;
                     else {
                         const item = draft[index]; const key = Object.hasOwn(item, 'skillId') ? 'skillId' : 'id';

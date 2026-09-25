@@ -224,7 +224,7 @@ async function workDetail(doc, root, host, id, refresh) {
 async function worldKnowledge(doc, root, route, host) {
     const child = String(route?.child?.id || '');
     const knowledge = child === 'knowledge' || child.startsWith('knowledge:');
-    const label = knowledge ? 'Knowledge Bases' : 'Worlds'; const singular = knowledge ? 'Knowledge Base' : 'World';
+    const label = knowledge ? 'Knowledge Bases' : 'Worlds';
     const nav = el(doc, 'nav', 'atri-library-segments', undefined, root); nav.dataset.atriaWorldKnowledgeNav = 'true'; nav.setAttribute('aria-label', tl('Resource type'));
     for (const [key, text] of [['worlds', 'Worlds'], ['knowledge', 'Knowledge Bases']]) {
         const button = action(doc, nav, text, () => host.openLibrarySection(key)); button.setAttribute('aria-current', (knowledge ? key === 'knowledge' : key === 'worlds') ? 'page' : 'false');
@@ -265,7 +265,7 @@ async function worldKnowledge(doc, root, route, host) {
             mountLibraryRevisionEditor({ document: doc, root, detail, knowledge, onClose: () => reload(), onSaved: reload });
         }, { primary: true });
         const manage = disclosure(doc, root, 'Manage resource');
-        const name = field(doc, manage, singular + ' name', resource.displayName); name.required = true;
+        const name = field(doc, manage, knowledge ? 'Knowledge Base name' : 'World name', resource.displayName); name.required = true;
         const controls = actions(doc, manage);
         action(doc, controls, knowledge ? 'Rename Knowledge Base' : 'Rename World', async () => {
             if (!name.value.trim()) { name.setCustomValidity(tl('Enter a name.')); name.reportValidity(); return; }
@@ -304,8 +304,8 @@ async function worldKnowledge(doc, root, route, host) {
     heading(doc, root, label, knowledge ? 'Keep reusable knowledge for your stories.' : 'The settings your stories share.');
     mountResourceBundleImport({ document: doc, root, host, onReload: async () => { root.replaceChildren(); await worldKnowledge(doc, root, route, host); } });
     const form = el(doc, 'form', 'atri-library-create', undefined, root);
-    const name = field(doc, form, 'New ' + singular + ' name'); name.required = true;
-    const create = action(doc, form, 'Create ' + singular, async () => {
+    const name = field(doc, form, knowledge ? 'New Knowledge Base name' : 'New World name'); name.required = true;
+    const create = action(doc, form, knowledge ? 'Create Knowledge Base' : 'Create World', async () => {
         if (!name.value.trim()) { name.setCustomValidity(tl('Enter a name.')); name.reportValidity(); return; }
         const item = await (knowledge ? client.createKnowledge(name.value.trim()) : client.createWorld(name.value.trim()));
         open(item);

@@ -1,3 +1,4 @@
+import { formatShellText as fmt, translateShellText as tl } from '../atria-shell/localization.js';
 export async function runtimeRequest(path = '/configuration', { method = 'GET', body, signal } = {}) {
     const headers = globalThis.Atria?.getContext?.()?.getRequestHeaders?.() || {};
     const response = await fetch('/api/native/generation' + path, {
@@ -46,7 +47,8 @@ export function runtimeRemediation(code) {
         generation_context_budget_exceeded: ['The full request exceeds the model budget. Review model limits and selected context.', 'models'],
         generation_adapter_control_unsupported: ['This transport does not support one of the configured controls. Review the profile and model.', 'profiles'],
     };
-    return actions[code] || ['Runtime could not complete this request (' + code + '). Review the route and its exact dependencies.', 'routes'];
+    const [message, target] = actions[code] || [fmt('Runtime could not complete this request (${0}). Review the route and its exact dependencies.', [code]), 'routes'];
+    return [tl(message), target];
 }
 
 export function runtimeGenerationError(code, status) {

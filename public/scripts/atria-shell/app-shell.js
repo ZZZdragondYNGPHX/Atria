@@ -432,7 +432,7 @@ export function createAtriaAppShell({
         const domainLabel = tl(domain?.label || route.domain);
         const utility = ATRIA_GLOBAL_UTILITIES.find(item => item.id === utilityId);
         const childLabel = route.child
-            ? tl(route.child.label || route.breadcrumb.at(-1) || route.child.id)
+            ? route.child.kind === 'detail' ? String(route.child.label || route.child.id) : tl(route.child.label || route.breadcrumb.at(-1) || route.child.id)
             : '';
         let titleText = domainLabel;
         let back = null;
@@ -704,8 +704,8 @@ export function createAtriaAppShell({
                 const icon = element(documentRef, 'span', 'atria-command-result__icon');
                 icon.append(createAtriaIcon(documentRef, commandIconName(command), { size: 18 }));
                 const text = element(documentRef, 'span', 'atria-command-result__text');
-                text.append(element(documentRef, 'span', 'atria-command-result__title', tl(command.title)));
-                const description = command.description ? tl(command.description) : '';
+                text.append(element(documentRef, 'span', 'atria-command-result__title', command.literalTitle ? command.title : tl(command.title)));
+                const description = command.description ? command.literalDescription ? command.description : tl(command.description) : '';
                 if (description) {
                     text.append(element(documentRef, 'span', 'atria-command-result__subtitle', description));
                 }

@@ -1,3 +1,5 @@
+import { translateShellText } from './localization.js';
+
 function normalizeText(value) {
     return String(value ?? '').trim().toLocaleLowerCase();
 }
@@ -23,6 +25,8 @@ function normalizeCommand(command) {
     return Object.freeze({
         id,
         title,
+        literalTitle: command.literalTitle === true,
+        literalDescription: command.literalDescription === true,
         description: String(command.description || '').trim(),
         group: String(command.group || 'General').trim() || 'General',
         keywords: Object.freeze(normalizeKeywords(command.keywords)),
@@ -36,6 +40,7 @@ function scoreCommand(command, query) {
     if (!query) return 1;
 
     const title = normalizeText(command.title);
+    const translated = normalizeText([command.literalTitle ? '' : translateShellText(command.title), command.literalDescription ? '' : translateShellText(command.description), translateShellText(command.group)].join(' '));
     const id = normalizeText(command.id);
     const description = normalizeText(command.description);
     const group = normalizeText(command.group);
@@ -50,7 +55,7 @@ function scoreCommand(command, query) {
         else if (id.includes(word)) score += 25;
         else if (command.keywords.some(keyword => keyword.startsWith(word))) score += 20;
         else if (command.keywords.some(keyword => keyword.includes(word))) score += 15;
-        else if (description.includes(word) || group.includes(word)) score += 8;
+        else if (description.includes(word) || group.includes(word) || translated.includes(word)) score += 8;
         else return 0;
     }
 

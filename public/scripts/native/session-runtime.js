@@ -1,3 +1,4 @@
+import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import {
     assertCommittedProjection,
     committedTimelineMutation,
@@ -292,7 +293,7 @@ export class NativeSessionRuntime {
         if (!response.ok) {
             let payload = null;
             try { payload = await response.json(); } catch { /* response body is optional */ }
-            const error = new Error(`Native Session ${path} failed (${response.status}); reload required`);
+            const error = new Error(formatProductText('Native Session ${0} failed (${1}); reload required', [path, response.status]));
             error.status = response.status;
             error.code = payload?.error || 'native_session_request_failed';
             throw error;
@@ -334,7 +335,7 @@ export class NativeSessionRuntime {
     denyCommittedAction(action, index = null) {
         if (!this.active) return false;
         if (index !== null && !this.isCommittedMessage(Number(index))) return false;
-        const error = committedTimelineMutation(`Native committed Timeline does not allow ${action}`);
+        const error = committedTimelineMutation(formatProductText('Native committed Timeline does not allow ${0}', [action]));
         error.nonFatal = true;
         this._report(error, { fatal: false });
         return true;

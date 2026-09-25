@@ -1,3 +1,4 @@
+import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { referenceRemediation } from './library-ui.js';
 import { resourceBundleExport, mountResourceBundleImport } from './resource-bundle-controls.js';
 import { mountPromptCondition, mountPromptParameters, mountPromptDerive } from './prompt-semantics.js';
@@ -43,7 +44,7 @@ function input(doc, parent, label, value, multiline = false) {
 function select(doc, parent, label, options, value = '') {
     const wrapper = element(doc, 'label', label, parent); const node = element(doc, 'select', undefined, wrapper);
     node.setAttribute('aria-label', translateShellText(label));
-    for (const [key, name] of options) { const option = element(doc, 'option', name, node); option.value = key; }
+    for (const [key, name, literal] of options) { const option = element(doc, 'option', undefined, node); option.textContent = literal ? name : translateShellText(name); option.value = key; }
     if (value && !options.some(([key]) => key === value)) { const option = element(doc, 'option', undefined, node); option.textContent = String(value) + ' (' + translateShellText('retained') + ')'; option.value = value; }
     node.value = value; return node;
 }
@@ -118,7 +119,7 @@ export function forkPromptClosure(entries, selected, { derive = false, scope = {
         const dependency = ref => {
             if (ref.scope === 'library') return clone(ref);
             const found = entries.find(item => exactKey(item.ref) === exactKey(ref));
-            if (!found) throw new Error('Missing exact dependency: ' + ref.resourceId + '@' + ref.revision);
+            if (!found) throw new Error(formatProductText('Missing exact dependency: ${0}@${1}', [ref.resourceId, ref.revision]));
             return visit(found);
         };
         if (type === 'core.prompt-program') {
@@ -205,7 +206,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                             action(doc, line, 'Remove module', () => { stage.moduleRefs = stage.moduleRefs.filter(v => v !== ref); renderStages(index); });
                         }
                         const choices = entries.filter(item => item.ref.resourceType === 'core.prompt-module' && (entry.ref.scope !== 'library' || item.ref.scope === 'library') && item.ref.scope !== 'package');
-                        const picker = select(doc, row, formatShellText('Module for stage ${0}', [index + 1], undefined, 'atria.product.stageModuleIndex'), [['', 'Choose exact module…'], ...choices.map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope])]);
+                        const picker = select(doc, row, formatShellText('Module for stage ${0}', [index + 1], undefined, 'atria.product.stageModuleIndex'), [['', 'Choose exact module…'], ...choices.map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope, true])]);
                         action(doc, row, 'Add module', () => { if (picker.value && !stage.moduleRefs.some(v => exactKey(v) === picker.value)) stage.moduleRefs.push(JSON.parse(picker.value)); renderStages(index); });
                         action(doc, row, 'Move stage up', () => { if (index) { [stages[index - 1], stages[index]] = [stages[index], stages[index - 1]]; renderStages(index - 1); } });
                         action(doc, row, 'Remove stage', () => { if (stages.length > 1) { stages.splice(index, 1); renderStages(Math.min(index, stages.length - 1)); } });
@@ -342,7 +343,7 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
             element(doc, 'p', 'Only author requirements and recommended exact Prompt / Generation references are packaged. Connections, Models and Secrets belong to the player.', body);
             const role = input(doc, body, 'Runtime role', 'role.narrator');
             const required = input(doc, body, 'Required capabilities (comma separated)', '');
-            const choices = type => [['', 'No recommendation'], ...entries.filter(item => item.ref.resourceType === type && item.ref.scope !== 'package').map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope])];
+            const choices = type => [['', 'No recommendation'], ...entries.filter(item => item.ref.resourceType === type && item.ref.scope !== 'package').map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope, true])];
             const prompt = select(doc, body, 'Recommended Prompt', choices('core.prompt-program'));
             const generation = select(doc, body, 'Recommended Generation', choices('core.generation-profile'));
             const loadRole = () => {
@@ -382,7 +383,7 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
                 if (!fresh) next.resource.revision = createStudioNativeId('rev');
                 mountPromptEditor({ document: doc, parent: workspace, entry: next, entries, onBack: () => workspace.replaceChildren(), onSave: resource => stage([
                     { resource, ref: resourceRef(next.ref.resourceType, resource, { scope: 'project', projectId: state.projectId }) },
-                ], 'Author ' + resource.displayName) });
+                ], formatProductText('Author ${0}', [resource.displayName])) });
             };
             action(doc, body, 'New project resource', () => { const resource = newPromptResource(type.value); edit({ resource, ref: resourceRef(type.value, resource, { scope: 'project', projectId: state.projectId }) }, true); });
             const list = element(doc, 'div', undefined, body);
@@ -397,7 +398,7 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
                         try {
                             const source = clone(state.source); source.dependencies ||= {}; source.dependencies.resources ||= [];
                             if (!source.dependencies.resources.some(ref => exactKey(ref) === exactKey(entry.ref))) source.dependencies.resources.push(entry.ref);
-                            if (!await stageProject(source, 'Attach ' + entry.resource.displayName + '@' + entry.ref.revision)) throw new Error('ChangeSet could not be prepared. Check Problems / Changes.');
+                            if (!await stageProject(source, formatProductText('Attach ${0}@${1}', [entry.resource.displayName, entry.ref.revision]))) throw new Error('ChangeSet could not be prepared. Check Problems / Changes.');
                         } catch (e) { error(doc, status, e); }
                     });
                     for (const derive of entry.ref.resourceType === 'core.prompt-program' ? [false, true] : [false]) action(doc, row, derive ? 'Review Derive' : 'Review Fork', async () => {
@@ -416,8 +417,8 @@ export async function mountStudioPromptTools({ document: doc, body, state, stage
         const preview = element(doc, 'details', undefined, body); element(doc, 'summary', 'Compile preview — committed exact resources', preview);
         element(doc, 'p', 'Apply your reviewed changes first. Preview uses this committed Project revision and sends no model request.', preview);
         const config = await runtimeRequest(); if (!body.isConnected) return;
-        const routes = select(doc, preview, 'Preview route', [['', 'Choose player route…'], ...config.routes.map(item => [item.runtimeRouteId, item.displayName])]);
-        const prompt = select(doc, preview, 'Preview Prompt exact revision', [['', 'Use route Prompt'], ...entries.filter(item => item.ref.resourceType === 'core.prompt-program' && item.ref.scope !== 'package').map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope])]);
+        const routes = select(doc, preview, 'Preview route', [['', 'Choose player route…'], ...config.routes.map(item => [item.runtimeRouteId, item.displayName, true])]);
+        const prompt = select(doc, preview, 'Preview Prompt exact revision', [['', 'Use route Prompt'], ...entries.filter(item => item.ref.resourceType === 'core.prompt-program' && item.ref.scope !== 'package').map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope, true])]);
         const result = element(doc, 'div', undefined, preview);
         const compile = action(doc, preview, 'Compile committed Prompt', async () => {
             compile.disabled = true; result.replaceChildren();

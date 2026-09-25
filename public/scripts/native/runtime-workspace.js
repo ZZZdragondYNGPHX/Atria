@@ -1,5 +1,5 @@
 import { renderRetrievalWorkspace } from './retrieval-workspace.js';
-import { translateShellText } from '../atria-shell/localization.js';
+import { formatShellText as fmt, translateShellText } from '../atria-shell/localization.js';
 import { runtimeRequest, runtimeRemediation, getRuntimeEvidence } from './runtime-client.js';
 import { nativeSessionRuntime } from './session-runtime.js';
 import { createAtriaShellEnvironment } from '../atria-shell/environment.js';
@@ -9,6 +9,9 @@ import { createStudioNativeId } from './studio-authoring.js';
 import { nativeStudioClient } from './studio-client.js';
 import { runtimeReadiness } from './runtime-readiness.js';
 
+const sectionLabels = { routes: 'Routes', models: 'Models', connections: 'Connections', retrieval: 'Retrieval', diagnostics: 'Diagnostics' };
+const resourceLabels = { routes: 'route', models: 'model', connections: 'connection' };
+const roleLabels = { intent_resolver: 'Intent resolver', event_interpreter: 'Event interpreter', orchestrator: 'Orchestrator', studio: 'Studio', memory: 'Memory', search: 'Search', narrator: 'Narrator', actor: 'Actor', summarizer: 'Summarizer', planner: 'Planner', critic: 'Critic', embedding: 'Embedding', reranker: 'Reranker', director: 'Director', authoring: 'Authoring' };
 const ids = { connections: 'connectionProfileId', models: 'modelProfileId', routes: 'runtimeRouteId' };
 const prefixes = { connections: 'conn', models: 'model', routes: 'route' };
 const roles = ['narrator', 'intent_resolver', 'event_interpreter', 'orchestrator', 'studio', 'memory', 'search'];
@@ -55,7 +58,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     function failure(error, parent) {
         const [message, target] = runtimeRemediation(error.code || error.message);
         const alert = notice(message, parent, true); alert.tabIndex = -1; alert.focus();
-        if (target) button('Open ' + target, () => host.openRuntimeSection(target), parent);
+        if (target) button(fmt('Open ${0}', [translateShellText(sectionLabels[target] || target)]), () => host.openRuntimeSection(target), parent);
         void referenceRemediation(doc, parent, error, host);
     }
     function field(parent, label, value = '', options) {
@@ -65,7 +68,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         input.setAttribute('aria-label', translateShellText(label));
         if (options) {
             for (const [key, title, literal] of options) { const opt = node('option', undefined, input); opt.textContent = literal ? title : translateShellText(title); opt.value = key; }
-            if (value && !options.some(([key]) => key === String(value))) { const opt = node('option', String(value) + ' (retained)', input); opt.value = value; }
+            if (value && !options.some(([key]) => key === String(value))) { const opt = node('option', fmt('${0} (retained)', [value]), input); opt.value = value; }
         }
         input.value = String(value ?? ''); return input;
     }
@@ -98,12 +101,12 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     const options = (items, key) => [['', 'Choose…'], ...items.map(item => [item[key], item.displayName + ' · ' + item[key].slice(-8), true])];
     function resourceOptions(type) {
         return [['', 'Choose an exact revision…'], ...scopedResources.filter(item => item.ref.resourceType === type && item.ref.scope !== 'library').map(item => [refKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope, true]), ...data.resources.filter(item => item.resourceType === type)
-            .flatMap(item => (item.revisions.length ? item.revisions : [item.currentRevision]).map(revision => [refKey({ ...exact(item), revision }), item.displayName + ' · ' + revision + ' · Library', true]))];
+            .flatMap(item => (item.revisions.length ? item.revisions : [item.currentRevision]).map(revision => [refKey({ ...exact(item), revision }), item.displayName + ' · ' + revision + ' · ' + translateShellText('Library'), true]))];
     }
     function summary(item) {
         if (section === 'connections') return item.providerAdapter.replace('provider.', '') + ' · ' + item.endpoint;
-        if (section === 'models') return item.remoteModelId + ' · ' + item.limits.contextTokens + ' context tokens';
-        return item.role.replace('role.', '') + ' · ' + item.fallbackRouteRefs.length + ' fallback route(s)';
+        if (section === 'models') return fmt('${0} · ${1} context tokens', [item.remoteModelId, item.limits.contextTokens]);
+        return fmt('${0} · ${1} fallback routes', [translateShellText(roleLabels[item.role.replace('role.', '')] || item.role), item.fallbackRouteRefs.length]);
     }
     function readiness() {
         const panel = node('details'); panel.className = 'atri-runtime-group';
@@ -127,7 +130,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     const item = node('li', undefined, list);
                     node('span', step.label, item);
                     node('span', step.ready ? ' — Configured' : ' — Needs setup', item);
-                    if (step === next) button('Set up ' + step.label, () => step.owner === 'library' ? host.openLibrarySection(step.section) : host.openRuntimeSection(step.section), item);
+                    if (step === next) button(fmt('Set up ${0}', [translateShellText(step.label)]), () => step.owner === 'library' ? host.openLibrarySection(step.section) : host.openRuntimeSection(step.section), item);
                 }
                 if (!next) button('Open Diagnostics', () => host.openRuntimeSection('diagnostics'), content);
             } catch {
@@ -143,7 +146,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         editorSequence += 1;
         activeEditor = null; root.onkeydown = null; restoreShell(); body.append(root); root.replaceChildren(); delete root.dataset.editor;
         root.removeAttribute('role'); root.removeAttribute('aria-modal'); root.removeAttribute('aria-label');
-        heading(translateShellText(section[0].toUpperCase() + section.slice(1)), {
+        heading(translateShellText(sectionLabels[section]), {
             routes: 'Choose how each role runs. Every route binds a model, connection and exact Generation and Prompt resources.',
             connections: 'Provider endpoints and exact Secret references. Credentials stay in the existing Secret store.',
             models: 'Remote model identity, context limits and capability provenance.',
@@ -154,21 +157,21 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const missing = []; const ambiguous = [];
             for (const role of roles) {
                 const matches = data.routes.filter(item => item.role === 'role.' + role && !fallbackIds.has(item.runtimeRouteId));
-                if (!matches.length) missing.push(role.replaceAll('_', ' '));
-                if (matches.length > 1) ambiguous.push(role.replaceAll('_', ' '));
+                if (!matches.length) missing.push(translateShellText(roleLabels[role] || role));
+                if (matches.length > 1) ambiguous.push(translateShellText(roleLabels[role] || role));
             }
-            if (missing.length) notice('Not configured: ' + missing.join(', ') + '. Create a route for each role you use.');
-            if (ambiguous.length) notice('Ambiguous primary routes: ' + ambiguous.join(', ') + '. Edit roles or fallback links.');
+            if (missing.length) notice(fmt('Not configured: ${0}. Create a route for each role you use.', [missing.join(', ')]));
+            if (ambiguous.length) notice(fmt('Ambiguous primary routes: ${0}. Edit roles or fallback links.', [ambiguous.join(', ')]));
         }
         const toolbar = node('div'); toolbar.className = 'atri-runtime-toolbar';
-        const search = field(toolbar, 'Filter ' + section); search.type = 'search';
-        button('New ' + ({ routes: 'route', models: 'model', connections: 'connection' }[section]), () => edit(), toolbar);
+        const search = field(toolbar, fmt('Filter ${0}', [translateShellText(section)])); search.type = 'search';
+        button(fmt('New ${0}', [translateShellText(resourceLabels[section])]), () => edit(), toolbar);
         const list = node('div'); list.className = 'atri-runtime-list';
         function fill() {
             list.replaceChildren();
             const items = data[section].filter(item => (item.displayName + ' ' + summary(item)).toLowerCase().includes(search.value.toLowerCase()));
             if (!items.length) list.append(createAtriaStatePanel(doc, 'empty', {
-                title: translateShellText(data[section].length ? 'No matching results.' : 'No ' + section + ' yet. Create one to get started.'),
+                title: data[section].length ? translateShellText('No matching results.') : fmt('No ${0} yet. Create one to get started.', [translateShellText(section)]),
             }));
             for (const item of items) {
                 const row = node('article', undefined, list); row.className = 'atri-runtime-row';
@@ -186,8 +189,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         root.replaceChildren(); root.dataset.editor = 'true';
         adaptEditor();
         const header = node('header'); header.className = 'atri-runtime-editor-header';
-        const back = button('Back to ' + section, () => { renderList(); root.querySelector('input')?.focus(); }, header);
-        const title = node('h2', (original && !fresh ? 'Edit ' : 'New ') + section.replace(/s$/, ''), header); title.tabIndex = -1;
+        const back = button(fmt('Back to ${0}', [translateShellText(section)]), () => { renderList(); root.querySelector('input')?.focus(); }, header);
+        const title = node('h2', fmt(original && !fresh ? 'Edit ${0}' : 'New ${0}', [translateShellText(resourceLabels[section])]), header); title.tabIndex = -1;
         const form = node('form'); form.className = 'atri-runtime-form';
         const identity = group(form, 'Identity');
         const name = field(identity, 'Display name', value.displayName); name.required = true;
@@ -347,7 +350,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 capabilities: [...(value.capabilities || []).filter(item => !capabilities.some(entry => entry.capability === item.capability)), ...capabilities.filter(item => item.input.value).map(item => !item.dirty && item.existing?.state === item.input.value ? item.existing : { capability: item.capability, state: item.input.value, provenance: [{ kind: 'user-override', source: 'Runtime Models' }] })] });
         } else {
             let fields = group(form, 'Routing');
-            const role = field(fields, 'Role', value.role || 'role.narrator', roles.map(item => ['role.' + item, item.replaceAll('_', ' ')]));
+            const role = field(fields, 'Role', value.role || 'role.narrator', roles.map(item => ['role.' + item, roleLabels[item] || item]));
             node('p', 'The model determines the connection. Generation and Prompt stay pinned to the selected revision.', fields).className = 'atri-runtime-help';
             const model = field(fields, 'Model', value.modelProfileRef?.modelProfileId, options(data.models, ids.models)); model.required = true;
             const connection = field(fields, 'Connection', value.connectionProfileRef?.connectionProfileId, options(data.connections, ids.connections)); connection.disabled = true;
@@ -451,7 +454,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     function evidence(result, parent) {
         const snapshot = result.snapshot;
         node('h3', result.preview ? 'Compiled preview — no request sent' : 'Latest effective request', parent);
-        notice('Input: ' + snapshot.diagnostics.inputTokens + ' / ' + snapshot.contextPlan.budget.maxTokens + ' tokens · reserved output: ' + snapshot.contextPlan.budget.reservedOutputTokens, parent);
+        notice(fmt('Input: ${0} / ${1} tokens · reserved output: ${2}', [snapshot.diagnostics.inputTokens, snapshot.contextPlan.budget.maxTokens, snapshot.contextPlan.budget.reservedOutputTokens]), parent);
         for (const [title, value] of [['Effective Request', snapshot.diagnostics.effectiveConfig], ['Capabilities and provenance', snapshot.capabilities], ['Prompt provenance', { ref: snapshot.promptProgramRef, ir: snapshot.promptIr }], ['Context selection', snapshot.contextPlan], ['Fallback attempts', result.routing]]) {
             const details = node('details', undefined, parent); node('summary', title, details); node('pre', JSON.stringify(value, null, 2), details);
         }

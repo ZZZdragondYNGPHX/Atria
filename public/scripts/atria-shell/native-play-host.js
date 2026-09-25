@@ -1,3 +1,4 @@
+import { translateShellText } from './localization.js';
 import { mountNativePlayControls } from '../native/play-controls.js';
 import { mountAtriaPlayProduct } from '../native/play-product.js';
 
@@ -89,7 +90,7 @@ export function mountNativePlayHost({
     root.dataset.atriaTimelineHost = 'native';
     root.dataset.atriaComposerHost = 'native';
     root.setAttribute('role', 'region');
-    root.setAttribute('aria-label', 'Play');
+    root.setAttribute('aria-label', translateShellText('Play'));
 
     stage.replaceChildren(root);
     native.sheld.classList.add('atria-native-play-abi');

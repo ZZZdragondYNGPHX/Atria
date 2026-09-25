@@ -15,12 +15,12 @@ export function libraryError(error) {
     if (error?.code?.startsWith('native_')) return createNativeProductError(error.code, error.status, error.details).message;
     if (String(error?.code || '').includes('referenced')) return tl('This item is still referenced by Native content or progress.');
     if (error?.status === 409) return tl('This item conflicts with existing data. Your current data has been kept.');
-    return error?.message || String(error);
+    return tl(error?.message || String(error));
 }
 
 export function feedback(doc, parent, text, danger = false) {
     parent.querySelector(':scope > .atri-library-feedback')?.remove();
-    const node = el(doc, 'p', 'atri-library-feedback', text, parent);
+    const node = el(doc, 'p', 'atri-library-feedback', tl(text), parent);
     node.setAttribute('role', danger ? 'alert' : 'status');
     if (danger) { node.tabIndex = -1; node.focus(); }
     return node;

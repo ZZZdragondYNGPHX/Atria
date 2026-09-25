@@ -1,3 +1,4 @@
+import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { translateShellText as t } from '../atria-shell/localization.js';
 import { executeNativeGeneration } from './generation-client.js';
 import { nativeStudioClient } from './studio-client.js';
@@ -291,8 +292,8 @@ function actionButton(documentRef, label, handler, { primary = false, disabled =
 }
 
 function formatTaskStatus(task) {
-    if (!task) return 'No active task';
-    return `${task.status} · repair ${task.repairRound}/${task.maxRepairRounds}`;
+    if (!task) return t('No active task');
+    return formatProductText('${0} · repair ${1}/${2}', [t(task.status), task.repairRound, task.maxRepairRounds]);
 }
 
 function renderPlan(documentRef, task) {
@@ -479,7 +480,7 @@ export function mountNativeStudioAgent({
             })),
         }, null, 2);
         const summary = node(documentRef, 'p');
-        summary.textContent = `${activeTask.operations?.length || 0} proposed operations · ${activeTask.validation?.status || 'Not validated'}`;
+        summary.textContent = formatProductText('${0} proposed operations · ${1}', [activeTask.operations?.length || 0, activeTask.validation?.status || 'Not validated']);
         const details = node(documentRef, 'details', 'atri-studio-details');
         const detailsTitle = node(documentRef, 'summary'); detailsTitle.textContent = t('Task evidence and exact revision');
         details.append(detailsTitle, pre);
@@ -569,7 +570,7 @@ export function mountNativeStudioAgent({
             messages = result.messages;
             tasks = await nativeStudioClient.listAgentTasks(projectId);
             notifyTask();
-            onLog('agent', `Project Agent stopped at ${activeTask.status}`, activeTask);
+            onLog('agent', formatProductText('Project Agent stopped at ${0}', [t(activeTask.status)]), activeTask);
         } catch (error) {
             if (!runController.signal.aborted) {
                 showError(error);

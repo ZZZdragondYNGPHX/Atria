@@ -1,3 +1,4 @@
+import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { resourceBundleExport } from './resource-bundle-controls.js';
 import { nativeProductClient as client } from './product-client.js';
 import { nativeStudioClient } from './studio-client.js';
@@ -29,7 +30,7 @@ export function compareLibraryContent(before, after, knowledge = false) {
         for (const key of ['knowledgeBindingIds', 'assetIds']) {
             const left = new Set(before[key] || []), right = new Set(after[key] || []);
             for (const id of new Set([...left, ...right])) if (left.has(id) !== right.has(id)) changes.push({ path: key, before: left.has(id) ? id : undefined, after: right.has(id) ? id : undefined, kind: right.has(id) ? 'Added dependency' : 'Removed dependency' });
-            if (left.size === right.size && [...left].every(id => right.has(id))) visit(before[key] || [], after[key] || [], key + ' order');
+            if (left.size === right.size && [...left].every(id => right.has(id))) visit(before[key] || [], after[key] || [], formatProductText('${0} order', [key]));
         }
     }
     return changes;

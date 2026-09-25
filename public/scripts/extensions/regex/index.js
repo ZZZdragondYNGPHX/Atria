@@ -505,7 +505,7 @@ class RegexPresetManager {
                         return foundId;
                     }
 
-                    !quiet && toastr.warning(`Regex preset "${name}" not found`);
+                    !quiet && toastr.warning(t`Regex preset "${name}" not found`);
                     return '';
                 }
 
@@ -1331,7 +1331,7 @@ function fillRegexEditorFields(editorHtml, script) {
 async function onReadonlyRegexViewOpenClick(script, displayName = '') {
     const editorHtml = $(await renderPluginTemplateAsync('regex', 'editor'));
     if (!fillRegexEditorFields(editorHtml, script)) {
-        toastr.error('This script doesn\'t have a name! Please delete it.');
+        toastr.error(t`This script doesn't have a name! Please delete it.`);
         return;
     }
     editorHtml.find('#regex_test_mode_toggle').remove();
@@ -1383,7 +1383,7 @@ async function onRegexEditorOpenClick(existingId, scriptType) {
         if (existingScriptIndex !== -1) {
             const existingScript = array[existingScriptIndex];
             if (!fillRegexEditorFields(editorHtml, existingScript)) {
-                toastr.error('This script doesn\'t have a name! Please delete it.');
+                toastr.error(t`This script doesn't have a name! Please delete it.`);
                 return;
             }
         }
@@ -2101,7 +2101,7 @@ function migrateSettings() {
  */
 function runRegexCallback(args, value) {
     if (!args.name) {
-        toastr.warning('No regex script name provided.');
+        toastr.warning(t`No regex script name provided.`);
         return value;
     }
 
@@ -2120,7 +2120,7 @@ function runRegexCallback(args, value) {
         }
     }
 
-    toastr.warning(`Regex script "${scriptName}" not found.`);
+    toastr.warning(t`Regex script "${scriptName}" not found.`);
     return value;
 }
 
@@ -2224,7 +2224,7 @@ async function onRegexImportObjectChange(regexScript, scriptType) {
  */
 async function onRegexImportFileChange(file, scriptType) {
     if (!file) {
-        toastr.error('No file provided.');
+        toastr.error(t`No file provided.`);
         return;
     }
 
@@ -2239,7 +2239,7 @@ async function onRegexImportFileChange(file, scriptType) {
         }
     } catch (error) {
         console.log(error);
-        toastr.error('Invalid JSON file.');
+        toastr.error(t`Invalid JSON file.`);
         return;
     }
 }
@@ -3199,7 +3199,7 @@ export async function init() {
         /** @param {object} _ @param {string} name */
         callback: (_, name) => {
             if (!name) {
-                toastr.warning('No regex script name provided.');
+                toastr.warning(t`No regex script name provided.`);
                 return '';
             }
 
@@ -3207,7 +3207,7 @@ export async function init() {
             const script = scripts.find(s => equalsIgnoreCaseAndAccents(s.scriptName, name));
 
             if (!script) {
-                toastr.warning(`Regex script "${name}" not found.`);
+                toastr.warning(t`Regex script "${name}" not found.`);
                 return '';
             }
 

@@ -1,3 +1,4 @@
+import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { knowledgeFormControls } from './knowledge-form-controls.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { KNOWLEDGE_DELIVERY_POSITIONS, KNOWLEDGE_CONDITION_LOGIC, KNOWLEDGE_CONDITION_OPERATORS, validateKnowledgeEditorValue } from './knowledge-contracts.js';
@@ -33,15 +34,15 @@ export function mountKnowledgeEditor({ document: doc, root, value, label = 'Know
         conditions.forEach((condition, index) => {
             const row = el(doc, 'div', 'atri-knowledge-rule', undefined, parent);
             el(doc, 'h4', '', tl('State condition') + ' ' + (index + 1), row);
-            input(row, 'State provider ' + (index + 1), condition.providerId, value => { condition.providerId = value; });
-            input(row, 'State path segments ' + (index + 1), Array.isArray(condition.path) ? condition.path.join('\n') : '', value => { condition.path = lines(value); }, 'textarea');
+            input(row, formatProductText('State provider ${0}', [index + 1]), condition.providerId, value => { condition.providerId = value; });
+            input(row, formatProductText('State path segments ${0}', [index + 1]), Array.isArray(condition.path) ? condition.path.join('\n') : '', value => { condition.path = lines(value); }, 'textarea');
             el(doc, 'p', 'atri-library-meta', tl('Enter one exact state path segment per line.'), row);
-            input(row, 'Comparison ' + (index + 1), condition.operator || 'eq', value => { condition.operator = value; }, 'text', KNOWLEDGE_CONDITION_OPERATORS);
+            input(row, formatProductText('Comparison ${0}', [index + 1]), condition.operator || 'eq', value => { condition.operator = value; }, 'text', KNOWLEDGE_CONDITION_OPERATORS);
             const type = condition.value === null ? 'null' : typeof condition.value;
-            input(row, 'Value type ' + (index + 1), type, value => { condition.value = ({ string: '', number: 0, boolean: false, null: null })[value]; changeView(); }, 'text', ['string', 'number', 'boolean', 'null']);
-            if (type === 'boolean') checkbox(row, 'Expected value ' + (index + 1), condition.value, value => { condition.value = value; });
+            input(row, formatProductText('Value type ${0}', [index + 1]), type, value => { condition.value = ({ string: '', number: 0, boolean: false, null: null })[value]; changeView(); }, 'text', ['string', 'number', 'boolean', 'null']);
+            if (type === 'boolean') checkbox(row, formatProductText('Expected value ${0}', [index + 1]), condition.value, value => { condition.value = value; });
             else if (type !== 'null') {
-                const node = input(row, 'Expected value ' + (index + 1), condition.value, value => { condition.value = type === 'number' ? (value === '' ? undefined : Number(value)) : value; }, type === 'number' ? 'number' : 'text');
+                const node = input(row, formatProductText('Expected value ${0}', [index + 1]), condition.value, value => { condition.value = type === 'number' ? (value === '' ? undefined : Number(value)) : value; }, type === 'number' ? 'number' : 'text');
                 if (type === 'number') { node.required = true; node.step = 'any'; }
             }
             action(doc, row, 'Remove condition', () => { conditions.splice(index, 1); if (!conditions.length) applicability.stateActivation = false; changeView(); });

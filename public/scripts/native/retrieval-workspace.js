@@ -21,7 +21,7 @@ export async function renderRetrievalWorkspace(ui) {
         for (const item of found) {
             const row = node('article', undefined, list); row.className = 'atri-runtime-row';
             const text = node('div', undefined, row); node('h3', undefined, text).textContent = item.displayName;
-            node('p', undefined, text).textContent = `${item.mode} · ${item.source} · ${item.model} · ${item.revision.slice(-8)}`;
+            node('p', undefined, text).textContent = `${tl(item.mode)} · ${item.source} · ${item.model} · ${item.revision.slice(-8)}`;
             button('Create revision', () => edit(item), row);
         }
     };

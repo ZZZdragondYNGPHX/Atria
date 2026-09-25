@@ -42,7 +42,7 @@ export function mountKnowledgeBindingManager({ document: doc, root, detail, host
             const baseSelect = input(form, 'Knowledge Base', draft.source.knowledgeBaseId, async value => {
                 draft.source.knowledgeBaseId = value; draft.source.knowledgeRevisionId = ''; baseSelect.disabled = true;
                 try { selectedBase = await client.getKnowledge(value); render(); } catch (error) { selectedBase = { revisions: [] }; render(); feedback(doc, status, error.message, true); }
-            }, 'text', bases.map(item => [item.knowledgeBase.knowledgeBaseId, item.knowledgeBase.displayName]));
+            }, 'text', bases.map(item => [item.knowledgeBase.knowledgeBaseId, item.knowledgeBase.displayName, true]));
             input(form, 'Exact Knowledge revision', draft.source.knowledgeRevisionId, value => { draft.source.knowledgeRevisionId = value; }, 'text', [['', 'Choose a revision'], ...selectedBase.revisions.map(revision => [revision.knowledgeRevisionId, new Date(revision.createdAt).toLocaleString() + ' · ' + revision.knowledgeRevisionId])]);
             checkbox(form, 'Enabled', draft.enabled, value => { draft.enabled = value; });
             input(form, 'Binding mode', draft.mode, value => { draft.mode = value; }, 'text', ['augment', 'override']);

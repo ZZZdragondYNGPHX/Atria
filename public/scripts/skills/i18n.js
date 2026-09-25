@@ -24,6 +24,8 @@ let registered = false;
 
 const TRANSLATIONS = {
     'zh-cn': {
+        '(no orchestrator presets)': '（没有编排预设）',
+        'Orchestrator preset scope requires picking a preset.': '使用编排预设范围时需要选择预设。',
         'Project': '项目',
         'Package': '作品包',
         'Package original · Read-only': '作品包原件 · 只读',
@@ -217,6 +219,8 @@ const TRANSLATIONS = {
         'orch-preset:${0}/${1}': '编排预设:${0}/${1}',
     },
     'zh-tw': {
+        '(no orchestrator presets)': '（沒有編排預設）',
+        'Orchestrator preset scope requires picking a preset.': '使用編排預設範圍時需要選擇預設。',
         'Project': '專案',
         'Package': '作品包',
         'Package original · Read-only': '作品包原件 · 唯讀',

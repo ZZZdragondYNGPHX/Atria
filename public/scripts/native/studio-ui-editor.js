@@ -1,3 +1,4 @@
+import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { translateShellText as t } from '../atria-shell/localization.js';
 import {
     compileExperienceComponentModel,
@@ -29,7 +30,7 @@ function button(documentRef, label, onClick, { active = false, disabled = false 
         } catch (error) {
             const host = node.closest('.atria-studio-ui-editor');
             const status = host?.querySelector('.atria-studio-editor-footer span');
-            if (status) { status.textContent = error.message; status.setAttribute('role', 'alert'); status.tabIndex = -1; status.focus(); }
+            if (status) { status.textContent = t(error.message); status.setAttribute('role', 'alert'); status.tabIndex = -1; status.focus(); }
         } finally { node.disabled = disabled; node.removeAttribute('aria-busy'); }
     });
     return node;
@@ -77,7 +78,7 @@ function field(documentRef, label, control) {
 function parseObject(value, label) {
     const parsed = value.trim() ? JSON.parse(value) : {};
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        throw new TypeError(label + ' must be a JSON object');
+        throw new TypeError(formatProductText('${0} must be a JSON object', [label]));
     }
     return parsed;
 }
@@ -101,7 +102,7 @@ function removeComponent(model, componentId) {
         for (const child of node.children) visit(child);
     }
     visit(next);
-    if (!removed) throw new Error('Component not found: ' + componentId);
+    if (!removed) throw new Error(formatProductText('Component not found: ${0}', [componentId]));
     return next;
 }
 
@@ -164,7 +165,7 @@ export function mountStructuredUiEditor({
         validate(nextModel);
         model = clone(nextModel);
         const currentIds = new Set(flattenComponentTree(model).map(record => record.id));
-        for (const id of propertyDrafts.keys()) if (!currentIds.has(id)) { propertyDrafts.delete(id); pendingDrafts.delete('properties:' + id); }
+        for (const id of propertyDrafts.keys()) if (!currentIds.has(id)) { propertyDrafts.delete(id); pendingDrafts.delete(`properties:${id}`); }
         for (const id of bindingDrafts.keys()) if (!currentIds.has(id)) { bindingDrafts.delete(id); pendingDrafts.delete(id); }
         if (!pendingDrafts.has('source')) sourceDraft = null;
         invalidDraft = false;
@@ -227,7 +228,7 @@ export function mountStructuredUiEditor({
             const ariaControl = input(documentRef, draft.ariaLabel, 'Component aria label');
             for (const control of [typeControl, textControl, classControl, ariaControl]) control.addEventListener('input', () => {
                 propertyDrafts.set(record.id, { type: typeControl.value, text: textControl.value, className: classControl.value, ariaLabel: ariaControl.value });
-                markDraft('properties:' + record.id);
+                markDraft(`properties:${record.id}`);
             });
             properties.append(
                 field(documentRef, 'Type', typeControl),
@@ -254,7 +255,7 @@ export function mountStructuredUiEditor({
                     };
                 });
                 validate(nextModel);
-                pendingDrafts.delete('properties:' + record.id); propertyDrafts.delete(record.id);
+                pendingDrafts.delete(`properties:${record.id}`); propertyDrafts.delete(record.id);
                 updateModel(nextModel);
             }));
         }

@@ -39,7 +39,7 @@ test('Runtime cleanup blocks references, duplicates safely and restores archived
     await root(page).getByRole('button', { name: 'Edit P4 model', exact: true }).click();
     await root(page).getByRole('button', { name: 'Delete', exact: true }).click();
     await page.locator('dialog.popup[open] .popup-button-ok').click();
-    await expect(root(page).getByRole('heading', { name: 'Used By', exact: true })).toBeVisible();
+    await expect(root(page).getByRole('heading', { name: 'Resolve references', exact: true })).toBeVisible();
     await expect(root(page).locator('.atri-runtime-status')).toContainText('narrator');
     await shot(page, info, 'runtime-delete-blocked-320');
     await root(page).getByRole('button', { name: 'Duplicate', exact: true }).click();
@@ -51,7 +51,7 @@ test('Runtime cleanup blocks references, duplicates safely and restores archived
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('generation-profiles'));
     const library = page.locator('.atri-prompt-library');
     await library.getByRole('button', { name: 'Used By', exact: true }).click();
-    await expect(library.getByRole('status')).toContainText('narrator');
+    await expect(library.getByRole('heading', { name: 'narrator', exact: true })).toBeVisible();
     await library.getByRole('button', { name: 'Archive', exact: true }).click();
     await expect(library.locator('.atri-prompt-resource')).toHaveCount(0);
     await library.getByLabel('Visibility', { exact: true }).selectOption('archived');

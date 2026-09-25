@@ -1,3 +1,4 @@
+import { translateShellText as tl } from './localization.js';
 import { runtimeRequest } from '../native/runtime-client.js';
 import { nativeProductClient } from '../native/product-client.js';
 
@@ -39,7 +40,7 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
     }
 
     function add(command) {
-        resultDisposers.push(registry.register(command));
+        resultDisposers.push(registry.register({ ...command, literalTitle: true }));
     }
 
     async function refresh() {
@@ -134,7 +135,7 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
             for (const item of runtime[section] || []) {
                 const id = item[key];
                 add({ id: 'runtime.' + section + '.' + safeId(id), title: item.displayName,
-                    description: section + ' · Runtime', group: 'Runtime', keywords: ['runtime', section, id, item.displayName],
+                    description: tl({ routes: 'Routes', models: 'Models', connections: 'Connections', retrieval: 'Retrieval' }[section]) + ' · ' + tl('Runtime'), group: 'Runtime', keywords: ['runtime', section, id, item.displayName],
                     run: () => host.openRuntimeSection(section, id) });
             }
         }
@@ -144,7 +145,7 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
             const title = clean(resource.displayName || ref.resourceId);
             const key = JSON.stringify(ref, Object.keys(ref).sort());
             add({ id: 'resource.prompt.' + encodeURIComponent(key), title,
-                description: ref.resourceType + ' · ' + ref.scope + ' · ' + ref.revision,
+                description: tl({ 'core.prompt-program': 'Prompt Program', 'core.prompt-module': 'Prompt Module', 'core.generation-profile': 'Generation Profile' }[ref.resourceType]) + ' · ' + tl({ library: 'Library', project: 'Project', package: 'Package' }[ref.scope] || ref.scope) + ' · ' + ref.revision,
                 group: 'Library', keywords: ['prompt', 'generation', ref.resourceId, ref.revision, ref.scope, title],
                 run: () => host.openLibraryResource(ref, title) });
         }
@@ -155,7 +156,7 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
         }
         for (const item of fulfilled(result[7])) {
             const title = clean(item.displayName || item.kind || item.saveId);
-            add({ id: 'save.' + encodeURIComponent(JSON.stringify([item.sessionId, item.saveId])), title, description: item.sessionTitle, group: 'Play', keywords: ['save', 'savepoint', item.saveId, item.sessionId],
+            add({ id: 'save.' + encodeURIComponent(JSON.stringify([item.sessionId, item.saveId])), title, description: item.sessionTitle, literalDescription: true, group: 'Play', keywords: ['save', 'savepoint', item.saveId, item.sessionId],
                 run: () => host.openSession(item.sessionId, { revisionId: item.revisionId }) });
         }
         for (const item of fulfilled(result[8])) {
@@ -164,7 +165,7 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
                 run: () => host.openKnowledgeEntry(item.knowledgeBaseId, item.revisionId, item.knowledgeEntryId, title) });
         }
         for (const item of fulfilled(result[9])) {
-            add({ id: 'skill.' + encodeURIComponent(JSON.stringify([item.scope, item.name])), title: item.name, description: item.description, group: 'Library', keywords: ['skill', item.name],
+            add({ id: 'skill.' + encodeURIComponent(JSON.stringify([item.scope, item.name])), title: item.name, description: item.description, literalDescription: true, group: 'Library', keywords: ['skill', item.name],
                 run: () => host.openSkill(item.scope, item.name) });
         }
         for (const item of fulfilled(result[10])) {

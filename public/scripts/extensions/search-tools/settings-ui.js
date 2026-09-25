@@ -1,3 +1,4 @@
+import { formatShellText as fmt } from '../../atria-shell/localization.js';
 import { renderRuntimeHelpButton } from '../../lib/runtime-help.js';
 
 export function createSearchToolsSettingsUi(deps) {
@@ -388,7 +389,7 @@ export function createSearchToolsSettingsUi(deps) {
                 updateUiStatus(i18n('No shared search lorebook yet.'));
                 return;
             }
-            updateUiStatus(i18n(`Shared lorebook: ${lorebook.bookName} | Managed search entries: ${entryCount}`));
+            updateUiStatus(fmt('Shared lorebook: ${0} | Managed search entries: ${1}', [lorebook.bookName, entryCount], i18n));
         } catch (error) {
             console.warn(`[${MODULE_NAME}] Failed to refresh UI status`, error);
             updateUiStatus(i18n('Failed to inspect shared search lorebook.'));

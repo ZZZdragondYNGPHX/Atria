@@ -1,3 +1,4 @@
+import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { el, action } from './library-ui.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { KNOWLEDGE_TARGET_KINDS } from './knowledge-contracts.js';
@@ -8,7 +9,7 @@ export function knowledgeFormControls(doc, rerender) {
         const wrap = el(doc, 'label', 'atri-library-field', undefined, parent); el(doc, 'span', '', captionText(caption), wrap);
         const node = el(doc, options ? 'select' : type === 'textarea' ? 'textarea' : 'input', '', undefined, wrap);
         node.setAttribute('aria-label', captionText(caption));
-        if (options) for (const [id, text] of options.map(item => Array.isArray(item) ? item : [item, item])) { const option = el(doc, 'option', '', tl(text), node); option.value = id; }
+        if (options) for (const [id, text, literal] of options.map(item => Array.isArray(item) ? item : [item, item])) { const option = el(doc, 'option', '', literal ? text : tl(text), node); option.value = id; }
         else if (type !== 'textarea') node.type = type;
         if (type === 'textarea') node.rows = caption === 'Entry content' ? 8 : 3;
         node.value = value ?? ''; node.addEventListener(options ? 'change' : 'input', () => change(node.value, node)); return node;
@@ -29,12 +30,12 @@ export function knowledgeFormControls(doc, rerender) {
         targets.forEach((target, index) => {
             const row = el(doc, 'div', 'atri-knowledge-rule', undefined, parent);
             const kind = typeof target === 'string' ? target : target.kind; const id = typeof target === 'object' ? target.id || '' : '';
-            input(row, 'Target kind ' + (index + 1), kind, next => { const currentId = typeof targets[index] === 'object' ? targets[index].id : undefined; targets[index] = { kind: next, ...(currentId ? { id: currentId } : {}) }; write(targets); }, 'text', KNOWLEDGE_TARGET_KINDS);
-            input(row, 'Exact target identity ' + (index + 1), id, next => { const current = targets[index]; targets[index] = { kind: typeof current === 'string' ? current : current.kind, ...(next ? { id: next } : {}) }; write(targets); });
+            input(row, formatProductText('Target kind ${0}', [index + 1]), kind, next => { const currentId = typeof targets[index] === 'object' ? targets[index].id : undefined; targets[index] = { kind: next, ...(currentId ? { id: currentId } : {}) }; write(targets); }, 'text', KNOWLEDGE_TARGET_KINDS);
+            input(row, formatProductText('Exact target identity ${0}', [index + 1]), id, next => { const current = targets[index]; targets[index] = { kind: typeof current === 'string' ? current : current.kind, ...(next ? { id: next } : {}) }; write(targets); });
             action(doc, row, 'Remove target rule', () => { targets.splice(index, 1); write(targets); rerender(); });
         });
         action(doc, parent, 'Add target rule', () => { targets.push('narrator'); write(targets); rerender(); }, { disabled: targets.length >= 32 });
-        for (const kind of KNOWLEDGE_TARGET_KINDS) checkbox(parent, 'Visible to ' + kind, delivery.visibility?.includes(kind) || false, checked => {
+        for (const kind of KNOWLEDGE_TARGET_KINDS) checkbox(parent, formatProductText('Visible to ${0}', [kind]), delivery.visibility?.includes(kind) || false, checked => {
             const values = new Set(delivery.visibility || []); if (checked) values.add(kind); else values.delete(kind); delivery.visibility = [...values];
         });
         el(doc, 'p', 'atri-library-meta', tl('No visibility restrictions means visible to every target kind.'), parent);

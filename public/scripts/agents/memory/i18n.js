@@ -23,6 +23,19 @@ export function i18nFormat(key, ...values) {
 
 export function registerLocaleData() {
     addLocaleData('zh-cn', {
+        'Extraction ${0}: begin=${1} latest=${2} covered=${3}': '提取 ${0}：起点=${1} 最新=${2} 已覆盖=${3}',
+        'Locate in Graph': '在图中定位',
+        'Edges': '连线',
+        'Turns': '轮次',
+        'Search nodes, summaries, IDs...': '搜索节点、摘要、标识…',
+        'JSON View': '查看 JSON',
+        'JSON Edit': '编辑 JSON',
+        'Click a node or edge to inspect.': '点击节点或连线以查看详情。',
+        'Toggle Inspector': '显示或隐藏详情',
+        'Seq': '序号',
+        'Failed to read schema from editor.': '无法从编辑器读取结构定义。',
+        'Failed to read advanced settings.': '无法读取高级设置。',
+        'Generation aborted. Skipped memory extraction.': '生成已中止，已跳过记忆提取。',
         'This memory extraction batch failed; no new memory was written. It can be retried.': '本轮记忆提取失败，未写入新记忆，可以重试。',
 
         'Memory overview': '记忆概览',
@@ -596,6 +609,19 @@ export function registerLocaleData() {
         'Query rewrite system prompt help body': 'RAG query rewrite 用的 system prompt——教模型把"最近对话上下文"改写成一个向量检索友好的单句 query。',
     });
     addLocaleData('zh-tw', {
+        'Extraction ${0}: begin=${1} latest=${2} covered=${3}': '提取 ${0}：起點=${1} 最新=${2} 已覆蓋=${3}',
+        'Locate in Graph': '在圖中定位',
+        'Edges': '連線',
+        'Turns': '輪次',
+        'Search nodes, summaries, IDs...': '搜尋節點、摘要、標識…',
+        'JSON View': '檢視 JSON',
+        'JSON Edit': '編輯 JSON',
+        'Click a node or edge to inspect.': '點選節點或連線以檢視詳情。',
+        'Toggle Inspector': '顯示或隱藏詳情',
+        'Seq': '序號',
+        'Failed to read schema from editor.': '無法從編輯器讀取結構定義。',
+        'Failed to read advanced settings.': '無法讀取高階設定。',
+        'Generation aborted. Skipped memory extraction.': '生成已中止，已跳過記憶提取。',
         'This memory extraction batch failed; no new memory was written. It can be retried.': '本輪記憶提取失敗，未寫入新記憶，可以重試。',
 
         'Memory overview': '記憶概覽',

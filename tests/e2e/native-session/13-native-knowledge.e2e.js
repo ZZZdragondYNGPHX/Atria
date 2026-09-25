@@ -138,10 +138,12 @@ test('references navigate owners and Library relationship writes wait for Studio
     expect((await read()).dependencies.worlds[0].worldRevisionId).toBe(seeded.first.worldRevisionId);
     await studio.getByRole('button', { name: 'Apply ChangeSet', exact: true }).click();
     await expect.poll(async () => (await read()).dependencies.worlds[0].worldRevisionId).toBe(seeded.second.worldRevisionId);
+    await expect(studio.getByRole('button', { name: 'Apply ChangeSet', exact: true })).toHaveCount(0);
     await openWorlds(); await row.getByRole('button', { name: 'Fork', exact: true }).click();
     expect((await read()).worlds).toHaveLength(0);
     await studio.getByRole('button', { name: 'Apply ChangeSet', exact: true }).click();
     await expect.poll(async () => (await read()).worlds.length).toBe(1);
+    await expect(studio.getByRole('button', { name: 'Apply ChangeSet', exact: true })).toHaveCount(0);
     await openWorlds(); await row.getByRole('button', { name: 'Review detach', exact: true }).click();
     expect((await read()).dependencies.worlds).toHaveLength(1);
     await page.screenshot({ path: info.outputPath('relationship-detach-review-390.png') });
@@ -185,8 +187,9 @@ test('World history compares, recreates, promotes and forks exact historical con
     await page.screenshot({ path: info.outputPath('historical-fork-review-390.png') });
     await root.getByRole('button', { name: 'Create fork', exact: true }).click();
     await expect(root.getByRole('heading', { name: 'Independent history', exact: true })).toBeVisible();
-    const forkId = await root.locator('[data-atria-world-detail]').getAttribute('data-atria-world-detail');
-    expect(forkId).not.toBe(seeded.world.worldId);
+    const forkDetail = root.locator('[data-atria-world-detail]');
+    await expect(forkDetail).not.toHaveAttribute('data-atria-world-detail', seeded.world.worldId);
+    const forkId = await forkDetail.getAttribute('data-atria-world-detail');
     const result = await page.evaluate(async ({ worldId, forkId }) => {
         const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
         return { original: await client.getWorld(worldId), fork: await client.getWorld(forkId) };

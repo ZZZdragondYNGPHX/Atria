@@ -1,3 +1,4 @@
+import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { mountSessionHistory } from './session-history.js';
 import { mountSessionRename } from './session-naming.js';
 import { mountSaveDependencyRecovery } from './save-dependency-recovery.js';
@@ -70,10 +71,10 @@ function dependencyMessage(preflight) {
         dependency.status === 'missing'
             ? 'Required Package is not installed.'
             : 'Installed Package does not match this Save.',
-        `packageId: ${required.packageId || 'unknown'}`,
-        `packageVersionId: ${required.packageVersionId || 'unknown'}`,
-        `version: ${required.packageVersion || 'unknown'}`,
-        `content hash: ${required.packageContentHash || 'unknown'}`,
+        formatProductText('packageId: ${0}', [required.packageId || 'unknown']),
+        formatProductText('packageVersionId: ${0}', [required.packageVersionId || 'unknown']),
+        formatProductText('version: ${0}', [required.packageVersion || 'unknown']),
+        formatProductText('content hash: ${0}', [required.packageContentHash || 'unknown']),
         'Install/update that exact .atria Package in Library before importing.',
     ].join('\n');
 }
@@ -103,7 +104,7 @@ export function mountNativePlayControls({
     drawer.className = 'atria-native-play-drawer';
     drawer.hidden = true;
     drawer.dataset.atriaNativePlayDrawer = 'true';
-    drawer.setAttribute('aria-label', 'Session inspector');
+    drawer.setAttribute('aria-label', tl('Session inspector'));
 
     const drawerHeader = documentRef.createElement('div');
     drawerHeader.className = 'atria-native-play-drawer__header';
@@ -168,7 +169,7 @@ export function mountNativePlayControls({
         if (busy) return;
         busy = true;
         sync();
-        status.textContent = tl(label + '…');
+        status.textContent = tl(label) + '…';
         try {
             const result = await operation();
             status.textContent = label.startsWith('Saving') || label === 'Quick saving' ? tl('Saved') : '';
@@ -367,7 +368,7 @@ export function mountNativePlayControls({
         const plan = runtime?.currentContextPlan?.();
         const summary = documentRef.createElement('p');
         summary.textContent = plan
-            ? `${plan.included?.length || 0} items included · ${plan.rejected?.length || 0} excluded`
+            ? formatProductText('${0} items included · ${1} excluded', [plan.included?.length || 0, plan.rejected?.length || 0])
             : tl('Send a message to see the context used for a reply.');
         const details = documentRef.createElement('details');
         const label = documentRef.createElement('summary'); label.textContent = tl('Details');

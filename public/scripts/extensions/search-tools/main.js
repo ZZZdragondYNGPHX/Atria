@@ -1,3 +1,4 @@
+import { formatShellText as fmt } from '../../atria-shell/localization.js';
 import { legacyPromptNames, nativePromptUiActive, nativeRouteOptions } from '../../native/generation-compat.js';
 import { isNativeGenerationFailure, executeFirstPartyGeneration } from '../../native/generation-compat.js';
 import { nativeGenerationActive } from '../../native/generation-client.js';
@@ -1958,13 +1959,13 @@ function buildSearchAgentStatusText(result, { reused = false } = {}) {
     const managedEntryCount = Math.max(0, Number(result?.managedEntryCount || 0));
     if (reused) {
         return mutationCount
-            ? i18n(`Search agent reused cached lorebook update (${mutationCount} changes, ${managedEntryCount} managed entries).${summary}`)
-            : i18n(`Search agent reused cached result with no lorebook changes (${managedEntryCount} managed entries).${summary}`);
+            ? fmt('Search agent reused cached lorebook update (${0} changes, ${1} managed entries).${2}', [mutationCount, managedEntryCount, summary], i18n)
+            : fmt('Search agent reused cached result with no lorebook changes (${0} managed entries).${1}', [managedEntryCount, summary], i18n);
     }
 
     return mutationCount
-        ? i18n(`Search agent updated lorebook (${mutationCount} changes, ${managedEntryCount} managed entries).${summary}`)
-        : i18n(`Search agent finished with no lorebook changes (${managedEntryCount} managed entries).${summary}`);
+        ? fmt('Search agent updated lorebook (${0} changes, ${1} managed entries).${2}', [mutationCount, managedEntryCount, summary], i18n)
+        : fmt('Search agent finished with no lorebook changes (${0} managed entries).${1}', [managedEntryCount, summary], i18n);
 }
 
 async function storeCompletedSearchAgentSnapshot(context, anchor, result) {
@@ -2703,6 +2704,17 @@ async function maybeRunPreRequestSearchAgent(payload) {
 
 function registerLocaleData() {
     addLocaleData('zh-cn', {
+        'Main model web access': '主模型联网访问',
+        'Expose Web Search to the main model': '向主模型提供网页搜索',
+        'Works without agent orchestration. Agent Web Access is controlled separately in the Atria Workspace.': '无需智能体编排即可使用。智能体的联网权限在 Atria 工作区中单独管理。',
+        'Advanced automatic pre-request research': '高级：请求前自动研究',
+        'Optional high-cost mode. Runs a dedicated research agent before every reply. The recommended Atria path is on-demand Web Access from the agents that need it.': '可选的高开销模式，每次回复前都会运行专用研究智能体。建议让需要联网的智能体按需访问。',
+        'Run automatic research before every reply': '每次回复前运行自动研究',
+        'Search agent reused cached lorebook update (${0} changes, ${1} managed entries).${2}': '搜索智能体已复用缓存的知识更新（${0} 项更改、${1} 个管理条目）。${2}',
+        'Search agent reused cached result with no lorebook changes (${0} managed entries).${1}': '搜索智能体已复用缓存结果，未更改知识（${0} 个管理条目）。${1}',
+        'Search agent updated lorebook (${0} changes, ${1} managed entries).${2}': '搜索智能体已更新知识（${0} 项更改、${1} 个管理条目）。${2}',
+        'Search agent finished with no lorebook changes (${0} managed entries).${1}': '搜索智能体已完成，未更改知识（${0} 个管理条目）。${1}',
+        'Shared lorebook: ${0} | Managed search entries: ${1}': '共享知识：${0} | 管理的搜索条目：${1}',
         'Search Tools': '搜索工具',
         'Expose tools to main model': '暴露工具给主模型',
         'Run pre-request search agent': '请求前运行搜索 Agent',
@@ -2780,6 +2792,17 @@ function registerLocaleData() {
     });
 
     addLocaleData('zh-tw', {
+        'Main model web access': '主模型聯網訪問',
+        'Expose Web Search to the main model': '向主模型提供網頁搜尋',
+        'Works without agent orchestration. Agent Web Access is controlled separately in the Atria Workspace.': '無需智慧體編排即可使用。智慧體的聯網許可權在 Atria 工作區中單獨管理。',
+        'Advanced automatic pre-request research': '高階：請求前自動研究',
+        'Optional high-cost mode. Runs a dedicated research agent before every reply. The recommended Atria path is on-demand Web Access from the agents that need it.': '可選的高開銷模式，每次回覆前都會執行專用研究智慧體。建議讓需要聯網的智慧體按需訪問。',
+        'Run automatic research before every reply': '每次回覆前執行自動研究',
+        'Search agent reused cached lorebook update (${0} changes, ${1} managed entries).${2}': '搜尋智慧體已複用快取的知識更新（${0} 項更改、${1} 個管理條目）。${2}',
+        'Search agent reused cached result with no lorebook changes (${0} managed entries).${1}': '搜尋智慧體已複用快取結果，未更改知識（${0} 個管理條目）。${1}',
+        'Search agent updated lorebook (${0} changes, ${1} managed entries).${2}': '搜尋智慧體已更新知識（${0} 項更改、${1} 個管理條目）。${2}',
+        'Search agent finished with no lorebook changes (${0} managed entries).${1}': '搜尋智慧體已完成，未更改知識（${0} 個管理條目）。${1}',
+        'Shared lorebook: ${0} | Managed search entries: ${1}': '共享知識：${0} | 管理的搜尋條目：${1}',
         'Search Tools': '搜尋工具',
         'Expose tools to main model': '將工具暴露給主模型',
         'Run pre-request search agent': '在請求前執行搜尋 Agent',

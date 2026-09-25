@@ -1,3 +1,4 @@
+import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { nativeStudioClient } from './studio-client.js';
 import { nativeProductClient } from './product-client.js';
 import { knowledgeFormControls } from './knowledge-form-controls.js';
@@ -35,14 +36,14 @@ export function mountWorldEditor({ document: doc, root, value, label = 'World re
         for (const [key, value] of Object.entries(object)) {
             const row = el(doc, 'div', 'atri-knowledge-rule', undefined, parent); const name = path + '.' + key;
             el(doc, 'h4', '', key, row);
-            input(row, name + ' type', typeOf(value), next => { object[key] = empty(next); render(); }, 'text', ['string', 'number', 'boolean', 'null', 'object', 'array']);
+            input(row, formatProductText('${0} type', [name]), typeOf(value), next => { object[key] = empty(next); render(); }, 'text', ['string', 'number', 'boolean', 'null', 'object', 'array']);
             if (value && typeof value === 'object') properties(row, value, name);
             else if (typeof value === 'boolean') checkbox(row, name, value, next => { object[key] = next; });
             else if (value !== null) input(row, name, value, next => { object[key] = typeof value === 'number' ? next === '' ? NaN : Number(next) : next; }, typeof value === 'number' ? 'number' : 'text');
             action(doc, row, 'Remove field', () => { if (Array.isArray(object)) object.splice(Number(key), 1); else delete object[key]; render(); });
         }
         const controls = el(doc, 'div', 'atri-library-actions', undefined, parent);
-        const name = Array.isArray(object) ? null : input(controls, path + ' new field', '', () => {});
+        const name = Array.isArray(object) ? null : input(controls, formatProductText('${0} new field', [path]), '', () => {});
         action(doc, controls, 'Add field', () => {
             const key = name ? name.value.trim() : String(object.length);
             if (!key || ['__proto__', 'constructor', 'prototype'].includes(key) || Object.hasOwn(object, key)) throw new TypeError(tl('Enter a new unique field name.'));
