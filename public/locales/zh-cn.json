@@ -8406,5 +8406,12 @@
     "atria.knowledge.workflow.8": "保存资源配置",
     "atria.knowledge.workflow.9": "资源配置已保存。",
     "atria.knowledge.workflow.10": "会话快照",
-    "atria.knowledge.workflow.all_targets": "所有目标"
+    "atria.knowledge.workflow.all_targets": "所有目标",
+    "Filter by category": "按分类筛选",
+    "Category actions": "分类操作",
+    "Module actions": "模块操作",
+    "Module list actions": "模块列表操作",
+    "Move category": "移动分类",
+    "Enter a category name.": "请输入分类名称。",
+    "No modules in this category.": "此分类下暂无模块。"
 }

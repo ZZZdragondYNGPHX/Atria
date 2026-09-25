@@ -8269,5 +8269,12 @@
     "atria.knowledge.workflow.8": "儲存資源設定",
     "atria.knowledge.workflow.9": "資源設定已儲存。",
     "atria.knowledge.workflow.10": "工作階段快照",
-    "atria.knowledge.workflow.all_targets": "所有目標"
+    "atria.knowledge.workflow.all_targets": "所有目標",
+    "Filter by category": "依分類篩選",
+    "Category actions": "分類操作",
+    "Module actions": "模組操作",
+    "Module list actions": "模組清單操作",
+    "Move category": "移動分類",
+    "Enter a category name.": "請輸入分類名稱。",
+    "No modules in this category.": "此分類下尚無模組。"
 }

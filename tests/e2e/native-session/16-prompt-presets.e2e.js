@@ -12,6 +12,101 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
+for (const width of [1440, 390]) test(`module filtering, action menus and return position at ${width}px`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await awaitMainUI(page, server.baseURL);
+    const presetId = await page.evaluate(async () => {
+        const { runtimeRequest } = await import('/scripts/native/runtime-client.js');
+        const { newPromptResource } = await import('/scripts/native/prompt-authoring.js');
+        const program = newPromptResource('core.prompt-program'), generation = newPromptResource('core.generation-profile');
+        const entries = [{ resourceType: 'core.prompt-program', resource: program }, { resourceType: 'core.generation-profile', resource: generation }];
+        const moduleCategories = {};
+        for (let i = 0; i < 36; i++) {
+            const resource = newPromptResource('core.prompt-module'); resource.displayName = 'Module ' + i;
+            entries.push({ resourceType: 'core.prompt-module', resource });
+            if (i < 34) moduleCategories[resource.promptModuleId] = i % 2 ? 'cat_child' : 'cat_deep';
+        }
+        return (await runtimeRequest('/presets', { method: 'POST', body: { preset: {
+            format: 'atria.prompt-preset', schemaVersion: 1, programId: program.promptProgramId, entries, moduleCategories,
+            categories: [{ id: 'cat_root', name: 'Root', parentId: null }, { id: 'cat_child', name: 'Child', parentId: 'cat_root' }, { id: 'cat_deep', name: 'Deep', parentId: 'cat_child' }, { id: 'cat_empty', name: 'Empty', parentId: null }],
+        } } })).presetId;
+    });
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('prompt-presets'));
+    await page.locator(`[data-atri-preset-id="${presetId}"]`).getByRole('button', { name: 'Open preset', exact: true }).click();
+    await page.getByRole('button', { name: 'Prompt Modules', exact: true }).click();
+    const filter = page.getByRole('combobox', { name: 'Filter by category', exact: true });
+    const rows = page.locator('.atri-module-row');
+    await expect(rows).toHaveCount(36);
+    await expect(page.getByRole('button', { name: 'Category actions', exact: true })).toBeDisabled();
+    await filter.selectOption('uncategorized'); await expect(rows).toHaveCount(2);
+    await filter.selectOption('cat_empty'); await expect(rows).toHaveCount(0);
+    await expect(page.getByText('No modules in this category.', { exact: true })).toBeVisible();
+    await filter.selectOption('cat_root'); await expect(rows).toHaveCount(34);
+    await filter.selectOption('cat_deep'); await expect(rows).toHaveCount(17);
+    await filter.selectOption('cat_child'); await expect(rows).toHaveCount(34);
+    const target = rows.filter({ has: page.getByRole('button', { name: 'Module 28', exact: true }) });
+    await target.scrollIntoViewIfNeeded();
+    const before = await target.boundingBox();
+    await target.getByRole('button', { name: 'Module 28', exact: true }).click();
+    await page.getByRole('button', { name: 'Back to resources', exact: true }).click();
+    await expect(filter).toHaveValue('cat_child');
+    await expect(target.getByRole('button', { name: 'Module 28', exact: true })).toBeFocused();
+    expect(Math.abs((await target.boundingBox()).y - before.y)).toBeLessThan(3);
+    await target.getByRole('button', { name: 'Module actions', exact: true }).click();
+    await expect(page.getByRole('menuitem', { name: 'View / edit parameters', exact: true })).toBeFocused();
+    await page.keyboard.press('End'); await expect(page.getByRole('menuitem', { name: 'Delete module', exact: true })).toBeFocused();
+    await page.keyboard.press('Escape'); await expect(page.getByRole('menu')).toHaveCount(0);
+    await expect(target.getByRole('button', { name: 'Module actions', exact: true })).toBeFocused();
+    await target.getByRole('button', { name: 'Module actions', exact: true }).click();
+    await page.screenshot({ path: info.outputPath('module-menu.png') });
+    const box = await page.getByRole('menu').boundingBox(); expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(width);
+    await page.getByRole('menuitem', { name: 'View / edit parameters', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Prompt body', exact: true }).fill('Updated body');
+    await page.getByRole('button', { name: 'Save revision', exact: true }).click();
+    await expect(filter).toHaveValue('cat_child'); await expect(target).toBeVisible();
+    expect(Math.abs((await target.boundingBox()).y - before.y)).toBeLessThan(3);
+    await filter.selectOption('cat_root');
+    await page.getByRole('button', { name: 'Category actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Move category', exact: true }).click();
+    const parent = page.getByRole('combobox', { name: 'Parent category', exact: true });
+    await expect(parent).toHaveValue('');
+    await expect(parent.locator('option')).toHaveCount(2); // Top level + Empty; descendants cannot become parents.
+    await page.locator('dialog[open] .popup-button-cancel').click();
+    await filter.selectOption('cat_child');
+    await page.getByRole('button', { name: 'Category actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Move category', exact: true }).click();
+    await parent.selectOption('cat_empty');
+    await page.locator('dialog[open] .popup-button-ok').click();
+    await expect(filter).toHaveValue('cat_child');
+    await expect(rows.first()).toContainText('Empty / Child');
+    await filter.selectOption('cat_root'); await expect(rows).toHaveCount(0);
+    await filter.selectOption('cat_empty'); await expect(rows).toHaveCount(34);
+    await page.screenshot({ path: info.outputPath('module-filter.png') });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.getByRole('button', { name: 'Module list actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Create category', exact: true }).click();
+    await page.locator('dialog[open] .popup-button-ok').click();
+    await expect(page.getByRole('textbox', { name: 'Category name', exact: true })).toBeFocused();
+    await page.locator('dialog[open] .popup-button-cancel').click();
+    await page.getByRole('button', { name: 'Module list actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'New module', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Display name', exact: true }).fill('Created in selected category');
+    await page.getByRole('button', { name: 'Save revision', exact: true }).click();
+    const created = rows.filter({ has: page.getByRole('button', { name: 'Created in selected category', exact: true }) });
+    await expect(created).toContainText('Empty');
+    await expect(rows).toHaveCount(35);
+    await created.getByRole('button', { name: 'Module actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Delete module', exact: true }).click();
+    await page.locator('dialog[open] .popup-button-cancel').click();
+    await expect(created).toHaveCount(1);
+    await created.getByRole('button', { name: 'Module actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Delete module', exact: true }).click();
+    await page.locator('dialog[open] .popup-button-ok').click();
+    await expect(rows).toHaveCount(34);
+    await expect(filter).toHaveValue('cat_empty');
+});
+
 for (const width of [1440, 390]) test(`Preset Regex editor, bulk controls and portable ownership at ${width}px`, async ({ page }, info) => {
     test.setTimeout(120000);
     await page.setViewportSize({ width, height: 960 });
@@ -94,7 +189,7 @@ test('migrates existing resources without exposing loose modules inside the pres
     await page.getByRole('combobox', { name: 'Generation Profiles', exact: true }).selectOption({ label: 'Legacy settings · library · ' + source.generation.revision });
     await page.getByRole('button', { name: 'Create independent preset', exact: true }).click();
     await page.getByRole('button', { name: 'Prompt Modules', exact: true }).click();
-    await expect(page.locator('.atri-preset-category summary')).toHaveText('Legacy suite');
+    await expect(page.getByRole('combobox', { name: 'Filter by category' })).toContainText('Legacy suite');
     await expect(page.getByRole('button', { name: 'Copy existing module', exact: true })).toHaveCount(0);
     await expect(page.locator('[data-atri-prompt-preset]')).not.toContainText('Loose module');
     const id = await page.locator('[data-atri-prompt-preset]').getAttribute('data-atri-prompt-preset');
@@ -115,24 +210,36 @@ for (const width of [1440, 390]) test(`preset ownership, nested categories and e
     await expect(page.getByRole('button', { name: 'Generation Profiles', exact: true })).toBeVisible();
     await page.screenshot({ path: info.outputPath('preset.png') });
     await page.getByRole('button', { name: 'Prompt Modules', exact: true }).click();
+    await page.getByRole('button', { name: 'Module list actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Create category', exact: true }).click();
     await page.getByRole('textbox', { name: 'Category name', exact: true }).fill('Root');
-    await page.getByRole('button', { name: 'Create category', exact: true }).click();
-    await expect(page.locator('.atri-preset-category')).toHaveCount(1);
+    await page.locator('dialog[open] .popup-button-ok').click();
+    await expect(page.getByRole('combobox', { name: 'Filter by category' })).toContainText('Root');
+    await page.getByRole('button', { name: 'Module list actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Create category', exact: true }).click();
     await page.getByRole('textbox', { name: 'Category name', exact: true }).fill('Child');
     await page.getByRole('combobox', { name: 'Parent category', exact: true }).selectOption({ label: 'Root' });
-    await page.getByRole('button', { name: 'Create category', exact: true }).click();
-    await expect(page.locator('.atri-preset-category')).toHaveCount(2);
-    await page.getByRole('button', { name: 'New module', exact: true }).click();
+    await page.locator('dialog[open] .popup-button-ok').click();
+    const filter = page.getByRole('combobox', { name: 'Filter by category' });
+    await expect(filter).toContainText('└ Child');
+    await page.getByRole('button', { name: 'Module list actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'New module', exact: true }).click();
     await page.getByRole('textbox', { name: 'Display name', exact: true }).fill('My module');
     await page.getByRole('textbox', { name: 'Prompt body', exact: true }).fill('Preset-owned content');
     await page.getByRole('button', { name: 'Save revision', exact: true }).click();
-    await page.getByRole('combobox', { name: 'Module category', exact: true }).selectOption({ label: 'Root / Child' });
-    await page.getByRole('button', { name: 'Move module', exact: true }).click();
-    await expect(page.locator('.atri-preset-category .atri-preset-category')).toContainText('My module');
-    const child = page.locator('.atri-preset-category .atri-preset-category');
-    await child.getByRole('textbox', { name: 'Rename category', exact: true }).fill('Renamed');
-    await child.getByRole('button', { name: 'Save category name', exact: true }).click();
-    await expect(child.locator('summary')).toHaveText('Renamed');
+    await page.getByRole('button', { name: 'Module actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Move module', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Module category', exact: true }).selectOption({ index: 2 });
+    await page.locator('dialog[open] .popup-button-ok').click();
+    await expect(page.locator('.atri-module-row')).toContainText('Root / Child');
+    await filter.selectOption({ label: 'Root' });
+    await expect(page.locator('.atri-module-row')).toContainText('My module');
+    await filter.selectOption({ index: 3 });
+    await page.getByRole('button', { name: 'Category actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Rename category', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Category name', exact: true }).fill('Renamed');
+    await page.locator('dialog[open] .popup-button-ok').click();
+    await expect(filter).toContainText('└ Renamed');
     await page.screenshot({ path: info.outputPath('categories.png') });
     await page.getByRole('button', { name: 'Back to preset', exact: true }).click();
     await page.getByRole('button', { name: 'Prompt Programs', exact: true }).click();
@@ -149,12 +256,14 @@ for (const width of [1440, 390]) test(`preset ownership, nested categories and e
     const importedId = await page.locator('[data-atri-prompt-preset]').getAttribute('data-atri-prompt-preset');
     await expect(page.locator('[data-atri-prompt-preset]')).not.toHaveAttribute('data-atri-prompt-preset', presetId);
     await page.getByRole('button', { name: 'Prompt Modules', exact: true }).click();
-    await expect(page.locator('.atri-preset-category .atri-preset-category')).toContainText('My module');
-    await page.locator('.atri-preset-category').first().getByRole('button', { name: 'Delete category', exact: true }).first().click();
+    await expect(page.locator('.atri-module-row')).toContainText('Root / Renamed');
+    await filter.selectOption({ label: 'Root' });
+    await page.getByRole('button', { name: 'Category actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Delete category', exact: true }).click();
     await expect(page.locator('dialog[open]')).toContainText('My module');
     await expect(page.locator('dialog[open]')).toContainText('Affected programs');
     await page.locator('dialog[open] .popup-button-ok').click();
-    await expect(page.locator('.atri-preset-category')).toHaveCount(0);
+    await expect(filter.locator('option')).toHaveCount(2);
     await expect(page.locator('.atri-prompt-preset')).toContainText('No modules yet');
     const data = await page.evaluate(async ({ presetId, importedId }) => {
         const { runtimeRequest: request } = await import('/scripts/native/runtime-client.js');
