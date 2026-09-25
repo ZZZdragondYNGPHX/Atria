@@ -693,3 +693,22 @@ Final FS/SQLite regression: 210 suites / 1837 tests; P4-P7 combined browser: 12
 passed, final P4/P7 follow-up: 6 passed (overlapping). Screenshots inspected.
 P0-P7/A0-A8/N9-N10 guards, lint/syntax/diff and prebuild-cache passed.
 Details/exclusions: P7-VALIDATION.md. No main merge; stop before P8.
+
+## 2026-09-25：Native Regex 作用域正式扩展
+
+当前方案恢复 **Global → Preset → Game** 的顺序转换链，复用已有 Regex engine。
+Global 仍属于账号 capability settings；Prompt Preset 的 `regexScripts` 属于其现有
+Library 主 Program root，与 Program / Modules / Generation Profile 一并导入导出；
+Game Regex 属于 Package archive 的 `processors.regex`，随游戏安装和导出。
+现有 Session 在 revisioned `atri_game_regex` 中捕获显式游戏规则编辑，保证历史与
+portable save 保真，不改变普通 Package 升级的 exact/pinned 语义。
+
+活动 Preset 由既有主 narrator Runtime Route 解析，切换 Route 的预设选择即切换规则；
+没有另建 active preset 配置。Prompt 引用保持 exact，Regex 使用所属 Preset 当前规则。
+不同作用域可使用相同规则 ID，执行诊断及 UI 操作通过 scope/owner identity 隔离。
+删除 Preset 清除其规则与归属、保留 immutable Prompt 历史；Game 删除沿用现有 Session
+引用保护。两者均不污染 Global。
+
+完整所有权、持久化、校验、删除、导入导出和验证记录见
+[Native Regex 三层作用域](../../feat/native-regex-scopes.md)。该扩展不恢复
+Character Card、ST Prompt Manager、Tavern Helper DOM 或其他 legacy authority。

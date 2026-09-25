@@ -1,47 +1,34 @@
-# Latest handoff — editable Knowledge originals and preset boundaries complete
+# Latest handoff — Native Regex scopes
 
 Updated: 2026-09-25 (Asia/Shanghai).
 Repository: ZZZdragondYNGPHX/Atria.
-Main HEAD: `6cf383abad35456316ab60ec4925830c6f4053fb` (pushed).
-Implementation: `17b443faa`.
-Status: complete. Integrated tree equals the verified task tree. Temporary `fix/knowledge-originals-preset-boundaries` removed locally; it was never pushed remotely. Permanent `docs` remains.
+Baseline main: `6cf383abad35456316ab60ec4925830c6f4053fb`.
+Implementation: `c053779e3e16f1953f8c1c4aa65d2d7a38183279` (pushed).
+Status: verified, ready to merge `feat/native-regex-scopes` into main.
 
-## Current outcome
+## Outcome and contracts
 
-Installed Work World originals stay read-only. Editing World parameters or changing its Knowledge bindings requires creating an editable World copy. World navigation/empty states now have Simplified and Traditional Chinese labels; authored names remain unchanged.
+Global → Preset → Game now uses the existing Regex engine with independent persistence ownership. Account settings retain only Global rules and account rule groups. Prompt Preset roots own regexScripts alongside program/module/generation membership; full preset import/export carries all resources and rules. Game rules remain in Package processors.regex and are edited by publishing an immutable archive. Existing related Sessions capture explicit edits in revisioned atri_game_regex snapshots; history and portable saves retain their effective rules without changing unrelated game state.
 
-Knowledge originals, including installed Work Knowledge, can be edited directly: add/edit/delete entries and enable/disable them. Saving updates the actual installed package archive via a new current package version, preserving previous immutable archives for history. It is not a personal override. Existing and new sessions use the edited Knowledge for subsequent generation while World snapshots, binding identities/policies and World progress remain unchanged.
+The primary narrator Runtime Route selects the active preset. Prompt references remain exact; Regex follows the owning preset's current metadata. Preset deletion clears Regex and ownership, archives roots and retains pinned Prompt history. Whole Game deletion retains the existing Session-reference guard. Scoped rules never enter Global settings.
 
-Preset interiors expose only their own program/modules/generation configuration. The global Copy existing module picker was removed. Whole-preset import/export is available on the preset list, with Export on each row. Existing-resource migration remains an explicit list-level action.
+The Regex UI exposes Global, Preset and Game regions. Preset details expose owned Regex editing, bulk toggles, ordering and import/export using the existing editor. Scope/owner identity isolates equal rule IDs, stale editors and imports. Legacy Character/Card/Prompt Manager/Tavern Helper DOM authorities remain absent.
 
-Accepted boundaries, architecture and full validation record: `docs:fix/knowledge-originals-preset-boundaries.md`. Updated preset plan: `docs:feat/prompt-presets.md`.
+Formal design and full evidence: `docs:feat/native-regex-scopes.md`. Updated preset plan: `docs:feat/prompt-presets.md`; authoritative design extension: `docs:planning/atria-model-prompt-settings/DESIGN.md`.
 
-## Architecture and compatibility
+## Focused verification actually run
 
-Package publication uses existing archive installation, package write lock, expected revision checks and storage transaction. Work defaults retain selected World/Knowledge identities. Explicit Knowledge edit ancestry distinguishes direct edits from ordinary author package upgrades.
+- Regex: 7 suites / 47 tests passed; final execution identity check rerun: 4 tests passed.
+- Preset persistence / HTTP: 5 passed.
+- Package contracts / container: 29 passed.
+- Game Regex / Package Knowledge: 2 passed.
+- Generation Route focused filter: 3 passed, 26 unrelated tests skipped.
+- Edge: three-scope execution/lifecycle/import/switch/bulk/delete scenario passed; existing Regex account import/group/bulk scenario passed.
+- Edge: Preset Regex ownership/export/import/delete at 1440px and 390px passed; final mobile file-picker visibility check passed. Desktop/mobile screenshots inspected; checkbox, file input and spacing fixed.
+- Changed JavaScript ESLint, zh-CN/zh-TW localization and whitespace checks passed.
 
-Existing sessions retain their original package identity and World state. Current load captures edited bound package Knowledge in the existing revision-backed KnowledgeBindingSet, invalidates derived Knowledge runtime state, and publishes a Session revision. Historical reads remain exact. Portable saves embed these snapshots and restore with the original package archive. Ordinary package upgrades and Library Knowledge pinning remain unchanged.
+No unrelated whole-repository suite, Android, Docker, paid inference or CI wait.
 
-No new persistence authority, generation engine or personal Knowledge overlay was introduced. Active same-package generation must stop before the UI saves Knowledge changes.
+## Previous completed work
 
-## Verification
-
-Affected paths only, per user instruction:
-
-- Package edit/session Knowledge/resource setup: 3 suites, 7 tests passed.
-- Package Library/revision history UI: 2 suites, 4 tests passed.
-- FsEngine session core/save contracts: 2 suites, 14 tests passed; 45 other-backend tests skipped by filter.
-- Real Edge browser: 6 scenarios passed, covering desktop/mobile Knowledge CRUD/toggle, World protection, active Session refresh, Chinese labels, preset workflows/export and absence of foreign preset data/global catalog requests. Rendered screenshots inspected.
-- Focused desktop browser rerun after the final empty-state translation: 1 passed.
-- Changed JavaScript lint, localization and whitespace checks passed. Frontend prebuild cache succeeded using cached bundles.
-- Refetched main matched baseline; merge had no conflicts. Integrated tree exactly matches the tested task tree. Main push succeeded and local task branch was deleted.
-
-No GitHub CI wait, unrelated full suite, Android, Docker or paid inference. No remaining work in this task.
-
-## Prior completed work
-
-Isolated presets: main `7a7b96d898b2c8bc317bd5d3f4642dc291da2ec6`, implementation `416474080`; record `docs:feat/prompt-presets.md`. Its original standalone-module copy UI is superseded by this follow-up.
-
-World/Knowledge workflows and Work/existing Session resource selection: `23bfdc608b5e5ee2b6b863f116d118d529b0bab9`; record `docs:fix/world-knowledge-workflows.md`. Original Knowledge read-only behavior is superseded by this follow-up.
-
-NPC-001–006 and Final Integration were completed earlier; record `docs:feat/native-prompt-controls.md`. Their feature branch was deleted. Earlier unrelated A7 aggregate guard and unavailable local database matrix remain historical baseline/environment notes.
+Knowledge originals and preset boundaries: main `6cf383abad35456316ab60ec4925830c6f4053fb`, record `docs:fix/knowledge-originals-preset-boundaries.md`. Its editable Knowledge originals, protected Work Worlds, and isolated preset interiors remain unchanged.

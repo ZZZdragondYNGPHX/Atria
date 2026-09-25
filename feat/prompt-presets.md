@@ -18,6 +18,23 @@ The user explicitly approved this discussion before implementation:
 - Import preserves authored category hierarchy and assigned membership. If every module is unclassified, create a top-level category named after the main program. If only some modules are unclassified, leave those modules unclassified.
 - Export includes the program suite, all modules, one generation configuration and taxonomy. Repeated imports receive independent identities.
 
+### 2026-09-25 Native Regex scope extension
+
+The accepted preset contract now also owns `regexScripts` on its existing Library
+main-program root. Preset import installs Program, Modules, Generation Profile
+and Regex together; export carries all of them. The interior adds a fourth
+Preset Regex section using the shared Regex editor. Account enabled-rule groups
+remain separate from Prompt Presets. Current Regex follows the preset selected
+on the primary narrator Runtime Route without changing pinned Prompt revisions.
+Deleting a preset clears its rules and ownership, archives roots, and preserves
+immutable Prompt history. Global rules are never mutated by these actions.
+
+Authoritative ownership, Game persistence, ordering, duplicate-ID and lifecycle
+rules: [Native Regex scopes](native-regex-scopes.md). This extension supersedes
+the earlier three-interior-areas description and adds `regexScripts` to the
+`atria.prompt-preset` interchange schema (schemaVersion remains 1; omission is
+an empty array for previously exported files).
+
 ## Implementation
 
 `PromptPresetStore` uses existing Native versioned JSON Library roots and immutable revision records. The main program root stores the preset membership manifest and taxonomy; owned roots carry `presetOwner`. There is no new database, localStorage authority, generation engine or legacy preset-manager dependency.
