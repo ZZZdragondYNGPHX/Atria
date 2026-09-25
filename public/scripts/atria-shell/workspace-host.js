@@ -446,7 +446,8 @@ export function createAtriaWorkspaceHost({
     }
 
     function openLibrarySection(section = 'works') {
-        const requested = String(section || 'works').trim().toLowerCase();
+        const raw = String(section || 'works').trim().toLowerCase();
+        const requested = ['prompt-programs', 'prompt-modules', 'generation-profiles'].includes(raw) ? 'prompt-presets' : raw;
         const child = requested === 'worlds' || requested === 'knowledge'
             ? requested
             : null;
@@ -548,6 +549,10 @@ export function createAtriaWorkspaceHost({
         const section = sections[ref?.resourceType];
         if (!section || !ref.resourceId || !ref.revision) return false;
         return openLibraryDetail(section + ':' + encodeURIComponent(JSON.stringify(ref)), label || ref.resourceId, 'detail', 'workspace-library-resource');
+    }
+
+    function openPromptPreset(presetId) {
+        return openLibraryDetail('prompt-presets:' + encodeURIComponent(presetId), translateShellText('Prompt Presets'), 'detail', 'workspace-prompt-preset');
     }
 
     function openRuntimeSection(section = 'routes', resourceId = '') {
@@ -718,6 +723,7 @@ export function createAtriaWorkspaceHost({
         openAgents: openAgentSection,
         openAgentSection,
         openLibrarySection,
+        openPromptPreset,
         openLibraryWork,
         openLibraryWorld,
         openLibraryKnowledge,
@@ -856,17 +862,13 @@ export function createAtriaWorkspaceHost({
             run: () => openRuntimeSection('connections'),
         }),
         shell.registry.register({
-            id: 'workspace.generation-profiles',
-            title: translateShellText('Open Generation Profiles'),
-            description: translateShellText('Edit Native Generation resources'),
+            id: 'workspace.prompt-presets',
+            title: translateShellText('Prompt Presets'),
+            description: translateShellText('Prompt Presets'),
             group: translateShellText('Workspaces'),
             keywords: ['library', 'generation', 'profiles'],
-            run: () => openLibrarySection('generation-profiles'),
+            run: () => openLibrarySection('prompt-presets'),
         }),
-        ...[['prompt-programs', 'Prompt Programs'], ['prompt-modules', 'Prompt Modules']].map(([id, title]) => shell.registry.register({
-            id: 'workspace.' + id, title: translateShellText(title), group: translateShellText('Library'),
-            keywords: ['library', 'prompt', id], run: () => openLibrarySection(id),
-        })),
         shell.registry.register({
             id: 'workspace.world-info',
             title: translateShellText('Open World Info Workspace'),

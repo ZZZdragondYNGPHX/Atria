@@ -101,7 +101,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     }
     const options = (items, key) => [['', 'Choose…'], ...items.map(item => [item[key], item.displayName + ' · ' + item[key].slice(-8), true])];
     function resourceOptions(type) {
-        return [['', 'Choose an exact revision…'], ...scopedResources.filter(item => item.ref.resourceType === type && item.ref.scope !== 'library').map(item => [refKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope, true]), ...data.resources.filter(item => item.resourceType === type)
+        return [['', 'Choose an exact revision…'], ...scopedResources.filter(item => item.ref.resourceType === type && item.ref.scope !== 'library').map(item => [refKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope, true]), ...data.resources.filter(item => item.resourceType === type && !item.archived)
             .flatMap(item => (item.revisions.length ? item.revisions : [item.currentRevision]).map(revision => [refKey({ ...exact(item), revision }), item.displayName + ' · ' + revision + ' · ' + translateShellText('Library'), true]))];
     }
     function summary(item) {
@@ -357,12 +357,24 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const connection = field(fields, 'Connection', value.connectionProfileRef?.connectionProfileId, options(data.connections, ids.connections)); connection.disabled = true;
             const sync = () => { connection.value = data.models.find(item => item.modelProfileId === model.value)?.connectionProfileRef.connectionProfileId || ''; }; model.addEventListener('change', sync); sync();
             fields = group(form, 'Exact resources');
+            const presets = data.resources.filter(item => item.preset);
+            const presetPicker = field(fields, 'Prompt Preset', '', [['', 'Keep exact resource selection'], ...presets.map(item => [item.resourceId, item.displayName, true])]);
             const generation = field(fields, 'Generation — exact revision', value.generationProfileRef ? refKey(value.generationProfileRef) : '', resourceOptions('core.generation-profile')); generation.required = true;
             const prompt = field(fields, 'Prompt — exact revision', value.promptProgramRef ? refKey(value.promptProgramRef) : '', resourceOptions('core.prompt-program')); prompt.required = true;
-            notice('Choose an exact resource revision. Existing Package and Project references are retained. Create or edit Prompt Programs in Library.', fields);
+            const syncPreset = () => {
+                const selected = presets.find(item => item.resourceId === presetPicker.value);
+                if (selected) {
+                    prompt.value = refKey({ scope: 'library', resourceType: 'core.prompt-program', resourceId: selected.resourceId, revision: selected.currentRevision });
+                    generation.value = refKey(selected.preset.refs.find(ref => ref.resourceType === 'core.generation-profile'));
+                }
+                prompt.disabled = generation.disabled = Boolean(selected);
+            };
+            presetPicker.addEventListener('change', syncPreset);
+            const currentPreset = presets.find(item => item.resourceId === value.promptProgramRef?.resourceId && item.currentRevision === value.promptProgramRef?.revision && refKey(item.preset.refs.find(ref => ref.resourceType === 'core.generation-profile')) === refKey(value.generationProfileRef));
+            if (currentPreset) { presetPicker.value = currentPreset.resourceId; syncPreset(); }
+            notice('Choose a preset to select its program and generation settings together. Existing exact references stay pinned.', fields);
             button('Manage models', () => host.openRuntimeSection('models'), fields);
-            button('Open Generation Profiles', () => host.openLibrarySection('generation-profiles'), fields);
-            button('Open Prompt Programs', () => host.openLibrarySection('prompt-programs'), fields);
+            button('Prompt Presets', () => host.openLibrarySection('prompt-presets'), fields);
             fields = group(form, 'Fallback order');
             let fallbackIds = (value.fallbackRouteRefs || []).map(item => item.runtimeRouteId);
             const fallbackList = node('div', undefined, fields);

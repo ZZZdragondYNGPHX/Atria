@@ -466,7 +466,7 @@ describe('R7G WorkspaceHost', () => {
         await flushWorkspace();
         expect(navigation.getRoute()).toMatchObject({
             domain: 'library',
-            child: { id: 'prompt-programs' },
+            child: { id: 'prompt-presets' },
         });
 
         const skills = document.createElement('button');

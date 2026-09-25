@@ -32,7 +32,7 @@ const COMMAND_ICON_RULES = Object.freeze([
     [/^workspace\.skills$/, 'wand'],
     [/^workspace\.runtime-overview$/, 'route'],
     [/^workspace\.connections$/, 'link'],
-    [/^workspace\.generation-profiles$/, 'gauge'],
+    [/^workspace\.prompt-presets$/, 'gauge'],
     [/^workspace\.prompt-programs$/, 'braces'],
     [/^workspace\.prompt-modules$/, 'stack'],
     [/^workspace\.diagnostics$/, 'diagnostics'],
