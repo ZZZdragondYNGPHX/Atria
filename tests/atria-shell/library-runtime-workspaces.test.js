@@ -107,7 +107,8 @@ describe('N9 Library / Runtime domain adapters', () => {
         expect(normalizeLibrarySection({ child: { id: 'world:world_1' } })).toBe('worlds-knowledge');
         expect(normalizeLibrarySection({ child: { id: 'knowledge' } })).toBe('worlds-knowledge');
         expect(normalizeLibrarySection({ child: { id: 'knowledge:kb_1' } })).toBe('worlds-knowledge');
-        expect(LIBRARY_SECTIONS.map(section => section.id)).toEqual(['works', 'worlds-knowledge', 'prompt-programs', 'prompt-modules', 'generation-profiles', 'skills']);
+        expect(LIBRARY_SECTIONS.map(section => section.id)).toEqual(['works', 'worlds-knowledge', 'prompt-presets', 'skills']);
+        expect(normalizeLibrarySection({ child: { id: 'prompt-modules' } })).toBe('prompt-presets');
 
         expect(normalizeRuntimeSection({ child: null })).toBe('routes');
         expect(normalizeRuntimeSection({ child: { id: 'retrieval' } })).toBe('retrieval');

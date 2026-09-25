@@ -1,6 +1,7 @@
 import { getVersionedModelPromptResourceIdentity, VERSIONED_MODEL_PROMPT_RESOURCE_TYPES } from '../native/model-prompt-runtime/resources.js';
 import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
 import { readPromptControls, validatePromptOverrides } from '../native/model-prompt-runtime/prompt-controls.js';
+import { PromptPresetStore } from '../native/model-prompt-runtime/presets.js';
 import express from 'express';
 import { NativeRetrievalPersistence } from '../native/retrieval-persistence.js';
 import { getStorageEngine } from '../storage/index.js';
@@ -42,6 +43,21 @@ function services() {
 
 export function createNativeGenerationRouter(getHost = services) {
     const router = express.Router();
+    const presets = host => new PromptPresetStore({ engine: host.library._engine });
+    router.get('/presets', async (req, res) => {
+        if (!req.user?.profile?.handle) return res.sendStatus(401);
+        try { res.json(await presets(getHost()).list(req.user.profile.handle)); } catch { res.status(400).json({ error: 'native_prompt_presets_unavailable' }); }
+    });
+    router.get('/presets/:id', async (req, res) => {
+        if (!req.user?.profile?.handle) return res.sendStatus(401);
+        try { res.json(await presets(getHost()).get(req.user.profile.handle, req.params.id)); } catch { res.status(404).json({ error: 'native_prompt_preset_unavailable' }); }
+    });
+    for (const method of ['post', 'put']) router[method](method === 'post' ? '/presets' : '/presets/:id', async (req, res) => {
+        if (!req.user?.profile?.handle) return res.sendStatus(401);
+        try {
+            res.json(await presets(getHost()).save(req.user.profile.handle, req.body.preset, { id: req.params.id || null, expectedRevision: req.body.expectedRevision, importing: req.body.importing === true }));
+        } catch (error) { res.status(error.code === 'native_prompt_preset_conflict' ? 409 : 400).json({ error: error.code || 'native_prompt_preset_invalid', message: error.message }); }
+    });
     const resourceReferences = async (host, handle, ref) => {
         const references = [...await host.studio.getResourceReferences(handle, ref, { reverse: true })].filter(item => !(item.node?.scope === 'library' && item.node.resourceType === ref.resourceType && item.node.resourceId === ref.resourceId));
         for (const route of await host.persistence.listRuntimeRoutes(handle)) {
@@ -180,14 +196,14 @@ export function createNativeGenerationRouter(getHost = services) {
         try {
             const host = getHost();
             const entries = [];
-            const append = (resourceType, resource, scope, archived = false) => {
+            const append = (resourceType, resource, scope, archived = false, presetOwner = null) => {
                 const identity = getVersionedModelPromptResourceIdentity(resourceType, resource);
-                entries.push({ ref: { resourceType, resourceId: identity.resourceId, revision: identity.revision, ...scope }, resource, ...(archived ? { archived: true } : {}) });
+                entries.push({ ref: { resourceType, resourceId: identity.resourceId, revision: identity.revision, ...scope }, resource, ...(archived ? { archived: true } : {}), ...(presetOwner ? { presetOwner } : {}) });
             };
             for (const item of await host.library.listWithRevisions(handle)) {
                 for (const revision of item.revisions) {
                     const exact = await host.library.getExact(handle, { ...item, revision });
-                    append(item.resourceType, exact.snapshot, { scope: 'library' }, item.archived);
+                    append(item.resourceType, exact.snapshot, { scope: 'library' }, item.archived, item.presetOwner);
                 }
             }
             for (const item of await host.studio.listProjects(handle)) {
@@ -251,6 +267,7 @@ export function createNativeGenerationRouter(getHost = services) {
             if (method) return response.json(await host.persistence[method](handle, request.body, {
                 validate: async route => {
                     for (const ref of [route.promptProgramRef, route.generationProfileRef]) if (ref.scope === 'library') await host.library.getExact(handle, ref);
+                    await presets(host).assertPair(handle, route.promptProgramRef, route.generationProfileRef);
                 },
             }));
             return response.sendStatus(404);

@@ -6,7 +6,7 @@ export async function runtimeRequest(path = '/configuration', { method = 'GET', 
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
     const payload = await response.json();
-    if (!response.ok) throw Object.assign(new Error(payload.error || 'Runtime request failed'), { code: payload.error, details: payload.details });
+    if (!response.ok) throw Object.assign(new Error(payload.message || payload.error || 'Runtime request failed'), { code: payload.error, details: payload.details });
     return payload;
 }
 

@@ -149,7 +149,7 @@ export function forkPromptClosure(entries, selected, { derive = false, scope = {
     return { entries: output, ref };
 }
 
-export function mountPromptEditor({ document: doc, parent, entry, entries, onSave, onBack, librarySurface = false }) {
+export function mountPromptEditor({ document: doc, parent, entry, entries, onSave, onBack, librarySurface = false, presetSurface = false }) {
     let draft = clone(entry.resource); let advanced = false; let submitted = false;
     const root = element(doc, 'section', undefined, parent); root.className = 'atri-prompt-editor';
     root.dataset.atriPromptEditor = 'true';
@@ -157,7 +157,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
     function render() {
         root.replaceChildren();
         const title = element(doc, 'h3', undefined, root); title.textContent = draft.displayName; title.tabIndex = -1;
-        element(doc, 'p', librarySurface ? 'Save a new revision. Existing references keep their exact version.' : 'New exact revision · existing references stay pinned. Review changes before committing in Studio.', root);
+        element(doc, 'p', presetSurface ? 'Save changes to this preset. Other presets and pinned sessions stay unchanged.' : librarySurface ? 'Save a new revision. Existing references keep their exact version.' : 'New exact revision · existing references stay pinned. Review changes before committing in Studio.', root);
         const toolbar = element(doc, 'div', undefined, root); toolbar.className = 'atri-prompt-actions';
         action(doc, toolbar, 'Back to resources', onBack);
         const status = element(doc, 'div', undefined, root);
@@ -290,7 +290,8 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
                             row.querySelector('[data-atria-used-by]')?.remove(); const result = element(doc, 'div', undefined, row); result.dataset.atriaUsedBy = 'true'; renderResourceReferenceRows({ document: doc, root: result, references: refs, host });
                         } catch (e) { error(doc, row, e); }
                     });
-                    if (entry.ref.scope === 'library') {
+                    if (entry.presetOwner) action(doc, row, 'Open preset', () => host.openPromptPreset(entry.presetOwner));
+                    if (entry.ref.scope === 'library' && !entry.presetOwner) {
                         action(doc, row, 'New revision', () => editor(entry));
                         const archive = action(doc, row, entry.archived ? 'Restore from archive' : 'Archive', async () => {
                             if (archive.disabled) return; archive.disabled = true;

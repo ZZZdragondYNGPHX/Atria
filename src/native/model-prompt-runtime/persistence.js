@@ -77,6 +77,8 @@ export class VersionedJsonResourceHandler {
         const identity = getVersionedModelPromptResourceIdentity(resourceType, resource);
         return withRuntimeWrite(handle, () => this._engine.withTransaction(handle, async (tx) => {
             assertWritable();
+            const owned = await getNativeDocument(tx, this._rootKey(handle, resourceType, identity.resourceId));
+            if (owned?.presetOwner) throw new TypeError('Edit this resource through its Prompt preset');
             for (const ref of collectVersionedModelPromptResourceRefs(resourceType, resource)) {
                 if (!await getNativeDocument(tx, this._revisionKey(handle, ref.resourceType, ref.resourceId, ref.revision))) throw new NotFoundError('Referenced exact Prompt resource', ref);
             }
@@ -105,6 +107,7 @@ export class VersionedJsonResourceHandler {
             assertWritable();
             const key = this._rootKey(handle, resourceType, resourceId); const root = await getNativeDocument(tx, key);
             if (!root) throw new NotFoundError('Library resource');
+            if (root.presetOwner) throw new TypeError('Manage this resource through its Prompt preset');
             await putMutable(tx, key, { ...root, archived });
             return { resourceType, resourceId, archived };
         }));
@@ -114,6 +117,8 @@ export class VersionedJsonResourceHandler {
         if (ref.scope !== 'library' || !['core.prompt-program', 'core.prompt-module'].includes(ref.resourceType) || typeof references !== 'function') throw new TypeError('Writable Library Prompt resource required');
         return withRuntimeWrite(handle, async () => {
             await this.getExact(handle, ref);
+            const owned = await this._engine.withTransaction(handle, tx => getNativeDocument(tx, this._rootKey(handle, ref.resourceType, ref.resourceId)));
+            if (owned?.presetOwner) throw new TypeError('Manage this resource through its Prompt preset');
             const blockers = await references({ scope: 'library', resourceType: ref.resourceType, resourceId: ref.resourceId });
             if (blockers.length) throw new ConflictError('native_resource_referenced', { references: blockers });
             return this._engine.withTransaction(handle, async tx => {
