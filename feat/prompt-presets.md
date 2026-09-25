@@ -48,3 +48,7 @@ Existing standalone Library/Project/Package resources are preserved. Use the pre
 - `npm run frontend:prebuild-cache` succeeded using the existing bundle cache. Native source/CSS behavior was exercised by the real-host browser tests; no fresh full webpack rebuild was claimed.
 
 No unrelated full suite, GitHub CI waiting, Android, Docker or live provider testing was performed. No remaining task blocker.
+
+## 2026-09-25 confirmed follow-up
+
+The completed follow-up `docs:fix/knowledge-originals-preset-boundaries.md` supersedes the earlier standalone-module copying UI described above: preset interiors no longer expose any global resource picker. Whole-preset import/export remains on the preset list, with Export on each row. Existing-resource migration remains an explicit action on that list. A new browser check verifies all three internal editors contain no other-preset data and make no global resource catalog request.
