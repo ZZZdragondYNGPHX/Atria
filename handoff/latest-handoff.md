@@ -121,6 +121,23 @@ Hard cut: no dual-read/write/fallback to legacy preset/card Regex stores, and no
 default migration requirement. "Regex Presets" (saved groups of enabled scripts) is a
 separate feature from legacy "Preset Scripts" and should be audited independently.
 
+### NPC-006 — Complete Regex Native cutover
+
+Regex is now an explicit Atria Global Plugin, but current main still exposes and
+executes SillyTavern-era `PRESET` and `SCOPED` script ownership. The UI, engine and
+capability state still reference prompt presets/character cards through
+`SCRIPT_TYPES.PRESET`, `SCRIPT_TYPES.SCOPED`, `getPresetManager()`,
+`preset_allowed_regex` and `character_allowed_regex`.
+
+Required outcome: retire those two legacy ownership scopes end-to-end, not merely hide
+their UI. Global Atria-owned Regex rules and read-only plugin/runtime rules remain.
+If a real non-global Atria use case exists, it must receive a proper Native
+Project/Package/resource owner rather than aliasing the legacy scopes.
+
+Do not automatically remove the separate Regex Presets feature merely because of its
+name. Audit whether it can remain as a scope-neutral way to save/switch enabled Atria
+Regex rule sets after preset/card script ownership is gone.
+
 ## Architecture boundaries
 
 Preserve the current Native Model / Prompt / Runtime and Library / Knowledge authority,
@@ -152,6 +169,8 @@ from KnowledgeBinding.enabled and preserve immutable revision/dependency authori
 12. Relevant current Runtime/Play request UI and generation-host paths.
 13. Current first-run onboarding/persona/language implementation, Atria Shell navigation,
     workspace routing, overlay/back resolver and localization paths.
+14. Current Regex UI/engine/capability persistence, legacy preset-manager coupling,
+    character/card Regex storage and plugin/runtime Regex provider paths.
 14. Regex engine/editor persistence paths, legacy preset-manager/character-card scope
     dependencies, capability settings keys, runtime provider API and project/package
     composition/build/install paths relevant to a Native Regex scope replacement.
