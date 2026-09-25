@@ -158,6 +158,89 @@ SillyTavern World Info's per-entry toggle is the usability reference. The implem
 - Desktop and narrow/mobile UI tests cover toggle state, revision/save flow and reload behavior.
 - Relevant Knowledge/Native guards, lint and build pass.
 
+### NPC-005 — First-run guided onboarding / interactive product tour
+
+The current first-run experience is a blocking onboarding dialog centered on persona/name and UI language. After saving those fields, the onboarding ends. New users are then dropped into the full product without a guided path through the common Atria workflows.
+
+Required behavior:
+
+- Upgrade the current first-run name/language dialog into the first step of a multi-step onboarding flow.
+- Step 1 must retain the existing required identity/language setup and its persistence behavior.
+- After the user clicks Next, onboarding must be able to navigate to a specific real Atria workspace/surface for the next lesson.
+- Each lesson must present clear instructions tied to the current real product surface while allowing the user to perform the actual operation in that surface.
+- The guide must provide Previous and Next controls so the user can move backward/forward between onboarding steps without restarting the whole flow.
+- Moving between steps must restore or navigate to the correct target surface deterministically; the guide must not assume the user stayed on the previous screen.
+- The onboarding layer must not replace the underlying feature UI with mock controls. Users should learn the real interface and real actions.
+- A step may require an observable user action before it is considered complete where that is useful for learning. Completion conditions must be explicit and bounded; the guide must never trap the user because an optional/external dependency is unavailable.
+- Users need a clear Skip/Exit path and a clear Finish state.
+- Progress must survive ordinary reload/restart so a partially completed tour can resume safely.
+- Completed onboarding must not block normal startup on later launches.
+- Users must be able to reopen the guided tour (or specific lessons) later from an appropriate Help/Settings entry rather than making first-run onboarding permanently one-shot.
+- The experience must work across desktop and mobile layouts. Target highlighting/instructions must tolerate responsive navigation differences such as rail vs bottom navigation, dock vs sheet, and temporary overlays.
+- Guidance must coexist correctly with Android Back / overlay / sheet behavior and must not leave the product in a trapped modal state.
+- The guide must use Atria navigation/workspace APIs and product state. Do not implement cross-screen guidance by brittle DOM click scripts, fixed pixel coordinates, arbitrary timeouts, or legacy SillyTavern panel assumptions.
+- UI text must use the existing Atria localization system; changing the language during Step 1 must immediately update subsequent onboarding instructions.
+- Accessibility must be preserved: keyboard/focus order, screen-reader labels, reduced-motion behavior, and visible focus must remain usable during the tour.
+
+#### Onboarding curriculum
+
+Before implementation, audit the current `main` product and write the concrete common-operation step list into this plan. The curriculum should teach the normal first-use path across Atria rather than every advanced/debug feature.
+
+At minimum, evaluate whether the guided path needs to cover:
+
+- identity/name and interface language;
+- the main navigation model and how to move between product domains;
+- connection/model/runtime setup needed before generation;
+- Library resource discovery/import and basic management;
+- starting/opening a playable project/session;
+- the core Play interaction and common session controls;
+- Knowledge / Worlds & Knowledge basics;
+- Prompt/Generation selection and the player-facing controls added by NPC-001 where appropriate;
+- save/load/recovery basics;
+- where common Settings, Help and Diagnostics live.
+
+This list is a scope floor for the audit, not permission to invent unnecessary tutorial steps. Use the current product IA and actual common workflows to decide the final sequence. Advanced Studio authoring, developer tooling, Agents internals, diagnostics internals and other specialist features should only be included if they are genuinely part of normal first-use operation.
+
+#### Step model / product requirements
+
+The onboarding implementation must have an explicit step/state model rather than one long hard-coded callback chain. Each step should be able to describe, using a Native/Atria-owned contract:
+
+- stable step ID and order;
+- localized title/instruction content;
+- target product route/workspace;
+- optional target element/region using a stable product identifier rather than CSS position assumptions;
+- whether user interaction with the underlying surface is allowed/required;
+- optional completion predicate/event;
+- Previous/Next/Skip behavior;
+- mobile/desktop target variants only where the product actually has different navigation surfaces.
+
+The exact schema is an implementation decision to be derived from current code. Avoid a second generic workflow/orchestration engine: this is a small onboarding state machine owned by the product shell.
+
+#### Acceptance criteria
+
+- Fresh install opens the guided onboarding at Step 1 with name/language.
+- Next from Step 1 navigates to the intended real product surface and shows the next instruction without losing onboarding state.
+- Users can operate the real underlying interface during interactive lessons.
+- Previous/Next can traverse the tour and reliably restore the correct target surface.
+- Required-action lessons detect the real product event/state rather than treating a decorative click as success.
+- Skip/Exit and Finish leave Atria in a usable normal state.
+- Partial progress survives reload/restart and resumes predictably.
+- Completed users are not shown the first-run guide again unless they deliberately reopen it.
+- The guide can be reopened later from a discoverable product entry.
+- Language switching in Step 1 affects subsequent guide text immediately.
+- Desktop and narrow/mobile E2E cover cross-workspace navigation, overlays/sheets and Back behavior.
+- Tests cover first run, resume, back/forward navigation, completion, skip, unavailable optional dependencies and reopening the guide.
+- Existing onboarding persona/language persistence behavior remains correct.
+- Relevant Shell/navigation/localization guards, lint and frontend build pass.
+
+#### Explicit non-goals
+
+- Replacing normal product screens with tutorial-only duplicates.
+- Teaching every advanced or developer feature during first run.
+- Restoring legacy SillyTavern onboarding/import UI.
+- Automating user choices that should be made by the user.
+- Encoding the tutorial as fragile selectors and scripted DOM clicks instead of stable Atria product navigation/targets.
+
 ## Product / architecture constraints
 
 - Preserve the Native Model / Prompt / Runtime and Native Library/Knowledge authority boundaries already on `main`.
@@ -181,9 +264,10 @@ Before editing, inspect the current contracts and product surfaces and resolve:
 6. What the current archive/delete/versioned-resource/dependency contracts already support for Prompt Program/Module removal, and which references must block destructive deletion.
 7. What current Knowledge Entry fields are most useful in the compact list and which current UI/state path should own search/filter/sort/expanded-entry state.
 8. Where per-entry enabled state belongs in the immutable Native Knowledge contract, and how every activation/selection/serialization path must honor it without conflating it with KnowledgeBinding.enabled.
+9. Which Shell/navigation APIs and stable target identifiers the onboarding tour should use, where onboarding progress belongs, and which current product workflows constitute the final common-operation curriculum.
 
 Record any substantive answer here before or with the implementation commit that depends on it.
 
 ## Future gaps
 
-Append newly confirmed gaps below as `NPC-005`, `NPC-006`, etc. Preserve their original intent and keep completed items in the document with status/evidence rather than silently deleting history.
+Append newly confirmed gaps below as `NPC-006`, `NPC-007`, etc. Preserve their original intent and keep completed items in the document with status/evidence rather than silently deleting history.
