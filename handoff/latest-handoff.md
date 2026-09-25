@@ -5,20 +5,19 @@ Updated: 2026-09-25 (Asia/Shanghai).
 ## Current task
 
 Repository: `ZZZdragondYNGPHX/Atria`.
-Working branch: `fix/native-product-ux-audit`.
-Pushed HEAD: `652bb6386f61e9c5fb983157c8852b1680736eb2`.
-Main remains `ad15c1e0c3e15e625ba163e284a300c00811f10d`.
+Former task branch: `fix/native-product-ux-audit` (deleted locally and remotely).
+Integrated product commit: `652bb6386f61e9c5fb983157c8852b1680736eb2`.
+Current `main` HEAD: `19bf87c2eeddcb15b68d1e7faff79af6080c9549` (documentation status).
+`main` was fast-forwarded from `ad15c1e0c3e15e625ba163e284a300c00811f10d`.
 
 Use the existing workspace AGENTS.md and FORK_MAINTENANCE.md. Remote main copies
 are obsolete; the user explicitly confirmed this. Atria is independent, and
 SillyTavern/Luker are reference sources only. Preserve the user's uncommitted rule
 changes. Current Atria UI/tokens/components outrank every frontend Skill.
 
-Follow `fix/native-product-ux-audit:docs/fix/native-product-ux-gaps.md` in order.
-Do not replan. For each issue implement/test/remove from active backlog and make
-one atomic commit. After each group regress/push and continue without asking.
-Stop only for required human/device evidence, Secrets/permissions, or a major
-architecture conflict. Do not merge into main or delete this active branch.
+The ordered backlog at `main:docs/fix/native-product-ux-gaps.md` is complete.
+Each issue was implemented and committed independently, with group regression.
+The verified task commits are now on `main`; the temporary fix branch is deleted.
 
 ## Completed
 
@@ -112,8 +111,8 @@ guard and six Native authority guards passed. Existing E2E lint warnings are not
 
 ## Next
 
-No active implementation remains from this backlog. The user-requested task branch
-is retained and pushed; main was not merged or changed. Do not restart Group 1 or
+No active implementation remains from this backlog. `main` contains the verified
+result; the temporary task branch has been removed. Do not restart Group 1 or
 use obsolete remote rules to replace the user's current workspace rules.
 The unavailable external/platform checks and earlier exploratory whole-repository
 failures are documented honestly in Group 8 and the final closure record.

@@ -80,7 +80,8 @@ issues were corrected; reference sequencing and World history each passed their
 focused rerun, and the remaining ten authoring scenarios passed together.
 
 Groups 1–9 and NUX-001 through NUX-044 are complete. Active backlog is empty.
-No main merge, physical Android/device check, Docker build, live MySQL/PostgreSQL,
+Fast-forward merged into `main` at `652bb6386`; the task fix branch was deleted.
+No physical Android/device check, Docker build, live MySQL/PostgreSQL,
 paid provider request or GPU inference is claimed. Earlier whole-repository optional
 DB/Windows-sensitive failures remain documented under Group 8; the final related
 355-suite run and FS/SQLite integrity checks are green.
