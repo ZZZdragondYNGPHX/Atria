@@ -21,7 +21,7 @@ Formal plan:
 `docs:feat/native-prompt-controls.md`
 
 The plan is a living backlog. Confirmed items are NPC-001 through NPC-005. If the
-user adds more gaps, append NPC-004/NPC-005/etc. on the same task branch. Do not
+user adds more gaps, append NPC-006/NPC-007/etc. on the same task branch. Do not
 invent adjacent scope.
 
 ## Confirmed gaps
@@ -77,21 +77,31 @@ inside the proper immutable Native Knowledge authoring/revision model and surviv
 Resource Bundle/Package/Project serialization paths. Do not reuse legacy World Info
 storage or its `disable` field.
 
-### NPC-005 — First-run guided onboarding / interactive product tour
+### NPC-005 — Persistent guided learning / interactive product tour
 
 The current first-run flow is a blocking name/language onboarding dialog and ends
-after that setup. Upgrade it into a multi-step guided onboarding system.
+after that setup. Replace this limitation with a persistent guided-learning system.
 
-Step 1 keeps name/language. Later steps navigate to real Atria workspaces and teach
-the user through instructions over the actual interface. The guide needs stable
-Previous/Next/Skip/Finish behavior, resumable progress, reopen-later support,
+Fresh install automatically starts at Step 1 (name/language), but first launch is only
+the entry point. The guide must remain permanently available from a discoverable
+Help/Learning entry so users can browse the curriculum, jump to a lesson, replay
+completed lessons, or resume unfinished progress at any time.
+
+Later steps navigate to real Atria workspaces and teach through instructions over the
+actual interface. The system needs stable Previous/Next/Close behavior, first-run
+Skip/Finish, resumable progress, curriculum/index navigation, direct lesson selection,
 desktop/mobile navigation awareness, immediate localization after language changes,
-and optional action-completion checks based on real product state/events.
+and optional completion checks based on real product state/events.
+
+Completing or skipping onboarding must stop automatic startup prompting only; it must
+never remove access to the guide. Replaying lessons must not reset unrelated product
+data.
 
 The guide must use stable Atria Shell/navigation/target contracts, not brittle DOM
 click scripts, fixed coordinates or legacy SillyTavern panels. Before implementation,
 audit current main and record the concrete common-operation curriculum in the formal
-plan. The intent is to teach normal Atria use, not every advanced/developer feature.
+plan. The intent is a long-lived in-product learning/reference system, not a disposable
+first-run wizard.
 
 ## Architecture boundaries
 
