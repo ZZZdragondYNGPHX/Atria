@@ -851,4 +851,15 @@ Session HEAD; screenshot inspected. Changed JavaScript lint and diff checks pass
 An initial test command named a nonexistent Runtime test file; the corrected adjacent
 suite command passed. No user-owned workspace rules were staged.
 
-Next: Group 7 regression, then NUX-041.
+Group 7 regression: 133 Native/Shell/Skills/Skills UI/Skills endpoint suites ran;
+1246 cases passed, 72 skipped, with one outdated Package navigation expectation.
+After correcting that fixture, three adjacent suites passed seven cases (all failing
+coverage is now green). Full source/public ESLint and frontend cache compilation passed.
+Nine real Edge 390px scenarios passed in native-session/15-native-portability.e2e.js,
+covering Bundle retry, immutable originals, exact Work versions, update consent, Library
+and Play Save recovery, Session naming/concurrency, readable history and reference
+resolution. Current history and reference-remediation screenshots were inspected;
+earlier issue-specific screenshots were also inspected. No live MySQL/Postgres,
+paid-provider, physical-device, Android-build or Docker claim.
+
+Next: Group 8 NUX-041.

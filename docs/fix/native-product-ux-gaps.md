@@ -89,7 +89,8 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 统一资源便携、PackageVersion、Session、Save 与引用冲突的产品闭环。
 
-All issues in this group are implemented. Group regression is pending.
+All issues in this group are implemented and group regression passed.
+Implementation and validation: [completed work](native-product-ux-completed.md).
 
 # Group 8 — P1 → P2 — Plugin Hard Cut
 
