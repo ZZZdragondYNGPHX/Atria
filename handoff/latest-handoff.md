@@ -1,9 +1,9 @@
 # Latest handoff — Prompt module category navigation
 
 Updated: 2026-09-25 (Asia/Shanghai).
-Main: `e42bd5043939af90583b473c22b68c4b57ca0aaf` (local, not pushed).
+Main: `e42bd5043939af90583b473c22b68c4b57ca0aaf` (pushed).
 Implementation: `31f91f783e5183eab7d7ad5b4a7d950b957eb5d0`.
-Status: complete locally; verified task tree equals integrated main tree.
+Status: complete and pushed; verified task tree equals integrated main tree.
 Temporary branch deleted. Working trees clean after handoff commit.
 
 Prompt Modules now uses a hierarchical category filter including descendants.
@@ -17,7 +17,7 @@ plus final desktop regression rerun passed. Screenshots inspected. ESLint,
 localization coverage and whitespace checks passed. No Android/Docker/inference.
 Full record: `fix/prompt-module-category-navigation.md`.
 
-This UI task was not pushed. The prior preset cleanup below was successfully
+User subsequently authorized pushing; main and docs were pushed and remote HEADs verified. The prior preset cleanup below was successfully
 pushed to main and docs before this task began.
 
 ---
