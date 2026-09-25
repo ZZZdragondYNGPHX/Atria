@@ -16,6 +16,54 @@ function fixture() {
 }
 
 describe('isolated Prompt presets', () => {
+    test('Regex stays with each preset across duplicate imports, pinned revisions and deletion', async () => {
+        const h = await makeTempFsEngineHarness();
+        try {
+            const store = new PromptPresetStore({ engine: h.engine }), library = new VersionedJsonResourceHandler({ engine: h.engine });
+            const source = fixture();
+            source.regexScripts = [{ id: 'same-id', scriptName: 'Preset rule', findRegex: 'before', replaceString: 'after', placement: [1] }];
+            const a = await store.save(h.handle, source), b = await store.save(h.handle, source, { importing: true });
+            const first = await store.get(h.handle, a.presetId), second = await store.get(h.handle, b.presetId);
+            expect(first.regexScripts).toEqual(second.regexScripts);
+            const pinned = first.refs.find(r => r.resourceId === a.presetId);
+            first.regexScripts[0].replaceString = 'changed';
+            const updated = await store.save(h.handle, first, { id: a.presetId, expectedRevision: first.revision });
+            expect((await store.resolveRegex(h.handle, pinned)).regexScripts[0].replaceString).toBe('changed');
+            expect((await store.get(h.handle, b.presetId)).regexScripts[0].replaceString).toBe('after');
+            await expect(store.delete(h.handle, a.presetId, a.revision)).rejects.toThrow();
+            await store.delete(h.handle, a.presetId, updated.revision);
+            expect(await store.resolveRegex(h.handle, pinned)).toBeNull();
+            expect((await library.getExact(h.handle, pinned)).snapshot.promptProgramId).toBe(a.presetId);
+            expect(await store.list(h.handle)).toHaveLength(1);
+            await expect(store.get(h.handle, a.presetId)).rejects.toThrow();
+            source.regexScripts.push(source.regexScripts[0]);
+            await expect(store.save(h.handle, source)).rejects.toThrow('duplicate Regex');
+        } finally { await h.cleanup(); }
+    });
+
+    test('Regex HTTP resolves the narrator route owner and clears it on deletion', async () => {
+        const h = await makeTempFsEngineHarness();
+        try {
+            const library = new VersionedJsonResourceHandler({ engine: h.engine });
+            let routes = [];
+            const app = express(); app.use(express.json());
+            app.use((req, res, next) => { if (req.headers['x-user']) req.user = { profile: { handle: req.headers['x-user'] } }; next(); });
+            app.use(createNativeGenerationRouter(() => ({ library, persistence: { listRuntimeRoutes: async () => routes } })));
+            await supertest(app).get('/regex-scopes').expect(401);
+            expect((await supertest(app).get('/regex-scopes').set('x-user', h.handle).expect(200)).body.preset).toBeNull();
+            const store = new PromptPresetStore({ engine: h.engine });
+            const saved = await store.save(h.handle, fixture()); const preset = await store.get(h.handle, saved.presetId);
+            routes = [{ runtimeRouteId: 'primary', role: 'role.narrator', promptProgramRef: preset.refs.find(r => r.resourceId === saved.presetId), fallbackRouteRefs: [] }];
+            expect((await supertest(app).get('/regex-scopes').set('x-user', h.handle).expect(200)).body.preset.presetId).toBe(saved.presetId);
+            routes.push({ ...routes[0], runtimeRouteId: 'second' });
+            await supertest(app).get('/regex-scopes').set('x-user', h.handle).expect(400);
+            await supertest(app).get('/regex-scopes?routeId=primary').set('x-user', h.handle).expect(200);
+            await supertest(app).delete('/presets/' + saved.presetId).set('x-user', h.handle).send({ expectedRevision: 'stale' }).expect(409);
+            await supertest(app).delete('/presets/' + saved.presetId).set('x-user', h.handle).send({ expectedRevision: saved.revision }).expect(200);
+            expect((await supertest(app).get('/regex-scopes?routeId=primary').set('x-user', h.handle).expect(200)).body.preset).toBeNull();
+        } finally { await h.cleanup(); }
+    });
+
     test('imports independently, preserves partial classification and exports a complete editable closure', async () => {
         const h = await makeTempFsEngineHarness();
         try {

@@ -114,7 +114,8 @@ for (const width of [1440, 390]) test(`Knowledge drafts, Prompt deletion, Regex 
     await editor.locator('input[name="replace_position"]').first().check();
     await editor.locator('.popup-button-ok').click();
     await expect(regex.locator('#saved_regex_scripts')).toContainText('NPC account ' + width);
-    await expect(regex.locator('#preset_scripts_block,#scoped_scripts_block')).toHaveCount(0);
+    await expect(regex.locator('#preset_scripts_block,#game_scripts_block')).toHaveCount(2);
+    await expect(regex.locator('#scoped_scripts_block')).toHaveCount(0);
     await page.screenshot({ path: info.outputPath(`regex-${width}.png`) });
     expect(await page.evaluate(async () => {
         const { getRegexedString, regex_placement } = await import('/scripts/extensions/regex/engine.js');

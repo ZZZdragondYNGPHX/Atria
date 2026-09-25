@@ -27,6 +27,8 @@ import { isRegexScriptPaused, recordRegexExecution, resetRegexScriptState } from
 export const SCRIPT_TYPES = {
     // ORDER MATTERS: defines the regex script priority
     GLOBAL: 0,
+    PRESET: 1,
+    GAME: 2,
 };
 
 /**
@@ -93,6 +95,21 @@ function sanitizePersistedRegexScriptList(scripts, scriptType) {
 
 /** @type {Map<string, { provider: (options?: GetRegexScriptsOptions) => RegexScript[] | null | undefined, reloadOnChange: boolean, managedScripts?: Map<string, RegexScript> }>} */
 const runtimeRegexProviders = new Map();
+// Adapters project resource-owned rules; they never copy rules into settings.
+const nativeRegexScopes = new Map();
+export function registerNativeRegexScope(type, adapter) {
+    if (![SCRIPT_TYPES.PRESET, SCRIPT_TYPES.GAME].includes(type)) throw new TypeError('Invalid Regex scope');
+    nativeRegexScopes.set(type, adapter);
+}
+export function getRegexScopeOwner(type) {
+    if (type === SCRIPT_TYPES.GLOBAL) return 'global';
+    if (type === SCRIPT_TYPES.GAME) return nativeSessionRuntime.snapshot?.session?.packageId || null;
+    return nativeRegexScopes.get(type)?.owner() || null;
+}
+export function regexExecutionId(script, type, owner = getRegexScopeOwner(type)) {
+    const encode = value => Array.from(String(value), char => char.codePointAt(0).toString(16)).join('_');
+    return type === SCRIPT_TYPES.GLOBAL ? script.id : `atri_scope_${type}_${encode(owner)}__${encode(script.id)}`;
+}
 export const REGEX_RUNTIME_SCRIPTS_CHANGED_EVENT = 'atria:regex-runtime-scripts-changed';
 
 const REGEX_SCOPE_MASK = Object.freeze({
@@ -280,8 +297,7 @@ function getStaticRegexExecutionPlan() {
         return cached;
     }
 
-    const scripts = Object.values(SCRIPT_TYPES)
-        .flatMap(type => getScriptsByType(type, { allowedOnly: true }));
+    const scripts = getScriptsByType(SCRIPT_TYPES.GLOBAL);
     const plan = createRegexExecutionPlan(scripts, { warnInvalidPlacement: true });
     RegexProvider.instance.reserve(plan.patternCount);
     staticRegexExecutionPlanBuilds += 1;
@@ -664,18 +680,17 @@ export function getRuntimeRegexScripts(options = DEFAULT_GET_REGEX_SCRIPTS_OPTIO
  * @returns {RegexScript[]} An array of regex scripts, where each script is an object containing the necessary information.
  */
 export function getNativeRegexScripts() {
-    const source = nativeSessionRuntime.snapshot?.manifest;
-    return nativeSessionRuntime.regexScripts().map((script, index) => ({ ...script,
-        id: script.id || `native-regex:${source?.packageId}:${source?.version}:${index}`,
-        __runtime_owner: 'Native Package · ' + (source?.name || source?.packageId || '') + ' · ' + (source?.version || ''),
-    }));
+    return [SCRIPT_TYPES.PRESET, SCRIPT_TYPES.GAME].flatMap(type => getScriptsByType(type).map(script => ({ ...script,
+        id: regexExecutionId(script, type),
+        __runtime_owner: type === SCRIPT_TYPES.PRESET ? 'Preset' : 'Game',
+    })));
 }
 
 export function getRegexScripts(options = DEFAULT_GET_REGEX_SCRIPTS_OPTIONS) {
     return [
-        ...Object.values(SCRIPT_TYPES).flatMap(type => getScriptsByType(type, options)),
-        ...collectRuntimeRegexScripts(options),
+        ...getScriptsByType(SCRIPT_TYPES.GLOBAL),
         ...getNativeRegexScripts(),
+        ...collectRuntimeRegexScripts(options),
     ];
 }
 
@@ -797,7 +812,15 @@ export function getRegexScriptDiagnostics(scripts = getRegexScripts({ allowedOnl
  * @param {GetRegexScriptsOptions} options Options for retrieving the regex scripts
  * @returns {RegexScript[]} An array of regex scripts for the specified type.
  */
-export function getScriptsByType(scriptType) { return scriptType === SCRIPT_TYPES.GLOBAL ? sanitizePersistedRegexScriptList(capabilitySettings.regex ?? [], SCRIPT_TYPES.GLOBAL) : []; }
+export function getScriptsByType(scriptType) {
+    if (scriptType === SCRIPT_TYPES.GLOBAL) return sanitizePersistedRegexScriptList(capabilitySettings.regex ?? [], SCRIPT_TYPES.GLOBAL);
+    const scripts = scriptType === SCRIPT_TYPES.GAME ? nativeSessionRuntime.regexScripts() : nativeRegexScopes.get(scriptType)?.get();
+    return filterValidPersistedRegexScripts(scripts).map((script, index) => {
+        const copy = { ...script, id: script.id || `rule-${index}` };
+        Object.defineProperty(copy, '__regexScope', { value: { type: scriptType, owner: getRegexScopeOwner(scriptType) } });
+        return copy;
+    });
+}
 
 /**
  * Saves an array of regex scripts for a specific type.
@@ -805,8 +828,15 @@ export function getScriptsByType(scriptType) { return scriptType === SCRIPT_TYPE
  * @param {SCRIPT_TYPES} scriptType The type of regex scripts to save.
  * @returns {Promise<void>}
  */
-export async function saveScriptsByType(scripts, scriptType) {
-    if (scriptType !== SCRIPT_TYPES.GLOBAL) throw new TypeError('Only account Regex rules are writable');
+export async function saveScriptsByType(scripts, scriptType, owner = getRegexScopeOwner(scriptType)) {
+    if (scriptType !== SCRIPT_TYPES.GLOBAL) {
+        const adapter = nativeRegexScopes.get(scriptType);
+        if (!owner || owner !== getRegexScopeOwner(scriptType) || !adapter || scripts.some(script => script.__regexScope && script.__regexScope.owner !== owner)) throw new Error('Regex scope changed. Reopen the editor.');
+        await adapter.save(scripts, owner);
+        scripts.forEach(script => resetRegexScriptState(regexExecutionId(script, scriptType, owner)));
+        notifyRuntimeRegexScriptsChanged({ requestReload: true });
+        return;
+    }
     capabilitySettings.regex = filterValidPersistedRegexScripts(scripts);
     capabilitySettings.regex_presets = normalizeRegexPresets(capabilitySettings.regex_presets, capabilitySettings.regex);
     invalidateRegexExecutionPlans(); saveSettingsDebounced();
@@ -888,11 +918,10 @@ export function getRegexedString(rawString, placement, { characterOverride, isMa
     // Runtime provider callbacks and the active Native Package projection
     // are dynamic by contract. Evaluate them on every call, but still narrow
     // them by placement/lane before execution. Keep the same ordering exposed
-    // by getRegexScripts(): registered runtime providers first, Native Package
-    // processors last.
+    // by getRegexScripts(): Preset, Game, then registered runtime providers.
     const runtimeScripts = [
-        ...collectRuntimeRegexScripts({ allowedOnly: true }),
         ...getNativeRegexScripts(),
+        ...collectRuntimeRegexScripts({ allowedOnly: true }),
     ];
     const runtimeCandidates = runtimeScripts.length > 0
         ? getRegexExecutionCandidates(

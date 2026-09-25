@@ -1,4 +1,6 @@
 import { formatShellText as fmt, translateShellText as tl } from '../atria-shell/localization.js';
+const configurationListeners = new Set();
+export function onRuntimeConfigurationChanged(listener) { configurationListeners.add(listener); return () => configurationListeners.delete(listener); }
 export async function runtimeRequest(path = '/configuration', { method = 'GET', body, signal } = {}) {
     const headers = globalThis.Atria?.getContext?.()?.getRequestHeaders?.() || {};
     const response = await fetch('/api/native/generation' + path, {
@@ -7,6 +9,9 @@ export async function runtimeRequest(path = '/configuration', { method = 'GET', 
     });
     const payload = await response.json();
     if (!response.ok) throw Object.assign(new Error(payload.message || payload.error || 'Runtime request failed'), { code: payload.error, details: payload.details });
+    if (method !== 'GET' && /^\/(presets|configuration)(\/|$)/.test(path)) {
+        await Promise.all([...configurationListeners].map(listener => listener()));
+    }
     return payload;
 }
 

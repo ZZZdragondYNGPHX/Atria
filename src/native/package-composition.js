@@ -283,6 +283,14 @@ export class PackageInstaller {
         });
     }
 
+    async currentRegexEdit(handle, packageId, packageVersionId) {
+        const record = await this._packageRepo.get(handle, packageId);
+        if (!record?.currentVersionId || record.currentVersionId === packageVersionId) return null;
+        const opened = await this.open(handle, packageId, record.currentVersionId);
+        if (!opened.manifest.metadata?.atri_regex_edits?.ancestorVersions?.includes(packageVersionId)) return null;
+        return { schemaVersion: 1, regexScripts: opened.manifest.processors?.regex || [] };
+    }
+
     async currentKnowledgeEdits(handle, packageId, bindings, packageVersionId) {
         const record = await this._packageRepo.get(handle, packageId);
         if (!record?.currentVersionId || record.currentVersionId === packageVersionId || !bindings.some(item => item.source.kind === 'package')) return [];

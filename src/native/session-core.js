@@ -1,3 +1,4 @@
+import { normalizeNativeRegexScripts } from '../../public/shared/native-regex.js';
 import { assertPackagedWorldSnapshot } from './world-knowledge.js';
 import {
     assertNativeResourceKey, assertSession, assertSessionRevision, assertTimelineEntry, assertVariant,
@@ -138,7 +139,17 @@ export class SessionCore {
         const knowledge = validateKnowledgeBindingSet(snapshot.knowledge, installed.manifest, installed.entryPoint);
         const worlds = selectedWorlds(snapshot.states, installed.manifest, installed.entryPoint);
         const base = { ...snapshot, knowledge, manifest: packageKnowledgeManifest(installed.manifest, knowledge), entryPoint: installed.entryPoint, worlds };
+        if (snapshot.states.atri_game_regex) base.manifest = { ...base.manifest, processors: { ...base.manifest.processors, regex: normalizeNativeRegexScripts(snapshot.states.atri_game_regex.regexScripts) } };
         if (!options.revisionId) {
+            const regexEdit = await this._packages.currentRegexEdit?.(handle, session.packageId, session.packageVersionId);
+            if (regexEdit && hashNativeDocument(regexEdit) !== hashNativeDocument(snapshot.states.atri_game_regex || null)) {
+                const states = { ...base.states, atri_game_regex: regexEdit };
+                const manifest = { ...base.manifest, processors: { ...base.manifest.processors, regex: normalizeNativeRegexScripts(regexEdit.regexScripts) } };
+                try { await this._publish(handle, { ...base, manifest }, { states }); } catch (error) {
+                    if (error.code !== 'native_session_head_conflict' || options.retriedRegex) throw error;
+                }
+                return this.load(handle, sessionId, { ...options, retriedRegex: true });
+            }
             const edits = await this._packages.currentKnowledgeEdits?.(handle, session.packageId, knowledge.bindings, session.packageVersionId) || [];
             if (edits.length) {
                 const revisions = new Map(edits.map(item => [item.knowledgeBase.knowledgeBaseId, item.revision.knowledgeRevisionId]));
@@ -146,7 +157,7 @@ export class SessionCore {
                     ? { ...binding, source: { ...binding.source, knowledgeRevisionId: revisions.get(binding.source.knowledgeBaseId) } } : binding),
                 snapshots: [...knowledge.snapshots.filter(item => item.kind !== 'package' || !revisions.has(item.snapshot.knowledgeBase.knowledgeBaseId)), ...edits.map(snapshot => ({ kind: 'package', snapshot }))] };
                 const states = { ...base.states }; delete states.atri_knowledge_runtime;
-                try { return await this._publish(handle, { ...base, manifest: packageKnowledgeManifest(installed.manifest, next) }, { knowledge: next, states }); } catch (error) {
+                try { return await this._publish(handle, { ...base, manifest: packageKnowledgeManifest(base.manifest, next) }, { knowledge: next, states }); } catch (error) {
                     if (error.code === 'native_session_head_conflict' && !options.retriedKnowledge) return this.load(handle, sessionId, { ...options, retriedKnowledge: true });
                     throw error;
                 }

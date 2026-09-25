@@ -12,6 +12,67 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
+for (const width of [1440, 390]) test(`Preset Regex editor, bulk controls and portable ownership at ${width}px`, async ({ page }, info) => {
+    test.setTimeout(120000);
+    await page.setViewportSize({ width, height: 960 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await awaitMainUI(page, server.baseURL);
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('prompt-presets'));
+    await page.getByRole('button', { name: 'New preset', exact: true }).click();
+    const presetId = await page.locator('[data-atri-prompt-preset]').getAttribute('data-atri-prompt-preset');
+    await page.getByRole('button', { name: 'Preset Regex', exact: true }).click();
+    await page.getByRole('button', { name: 'New Regex rule', exact: true }).click();
+    const dialog = page.locator('dialog[open]');
+    await dialog.locator('.regex_script_name').fill('Portable rule');
+    await dialog.locator('.find_regex').fill('/before/g');
+    await dialog.locator('.regex_replace_string').fill('after');
+    await dialog.locator('input[name="replace_position"][value="1"]').check();
+    await dialog.locator('.popup-button-ok').click();
+    await expect(page.getByRole('checkbox', { name: 'Portable rule', exact: true })).toBeVisible();
+    await page.getByRole('checkbox', { name: 'Portable rule', exact: true }).check();
+    await page.getByRole('button', { name: 'Disable selected rules', exact: true }).click();
+    await expect(page.locator('[data-atri-prompt-preset] article')).toContainText('Disabled');
+    await page.getByRole('checkbox', { name: 'Portable rule', exact: true }).check();
+    await page.getByRole('button', { name: 'Enable selected rules', exact: true }).click();
+    await expect(page.locator('[data-atri-prompt-preset] article')).toContainText('Enabled');
+    await expect(page.getByLabel('Import Regex rules', { exact: true })).toBeVisible();
+    await page.getByLabel('Import Regex rules', { exact: true }).setInputFiles({
+        name: 'rules.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ id: 'portable-id', scriptName: 'Imported rule', findRegex: '/after/g', replaceString: 'final', placement: [1] })),
+    });
+    await page.getByRole('button', { name: 'Import selected rules', exact: true }).click();
+    await expect(page.getByRole('checkbox', { name: 'Imported rule', exact: true })).toBeVisible();
+    await page.screenshot({ path: info.outputPath('preset-regex.png') });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.getByRole('button', { name: 'Back to presets', exact: true }).click();
+    const downloadPromise = page.waitForEvent('download');
+    await page.locator(`[data-atri-preset-id="${presetId}"]`).getByRole('button', { name: 'Export preset', exact: true }).click();
+    const exportedPath = info.outputPath('preset-regex.json'); await (await downloadPromise).saveAs(exportedPath);
+    await expect(page.getByLabel('Import preset', { exact: true })).toBeVisible();
+    await page.getByLabel('Import preset', { exact: true }).setInputFiles(exportedPath);
+    await page.getByRole('button', { name: 'Import selected preset', exact: true }).click();
+    const importedId = await page.locator('[data-atri-prompt-preset]').getAttribute('data-atri-prompt-preset');
+    await expect(page.locator('[data-atri-prompt-preset]')).not.toHaveAttribute('data-atri-prompt-preset', presetId);
+    await page.getByRole('button', { name: 'Preset Regex', exact: true }).click();
+    await expect(page.locator('[data-atri-prompt-preset] article')).toHaveCount(2);
+    const readPresets = () => page.evaluate(async ({ presetId, importedId }) => {
+        const { runtimeRequest: request } = await import('/scripts/native/runtime-client.js');
+        return Promise.all([request('/presets/' + presetId), request('/presets/' + importedId)]);
+    }, { presetId, importedId });
+    const [original, imported] = await readPresets();
+    expect(imported.regexScripts).toEqual(original.regexScripts);
+    await page.getByRole('checkbox', { name: 'Portable rule', exact: true }).check();
+    await page.getByRole('button', { name: 'Disable selected rules', exact: true }).click();
+    await expect(page.locator('[data-atri-prompt-preset] article').first()).toContainText('Disabled');
+    const [unchanged, changed] = await readPresets();
+    expect(unchanged.regexScripts[0].disabled).toBe(false);
+    expect(changed.regexScripts[0].disabled).toBe(true);
+    await page.getByRole('button', { name: 'Back to presets', exact: true }).click();
+    await page.locator(`[data-atri-preset-id="${importedId}"]`).getByRole('button', { name: 'Delete preset', exact: true }).click();
+    await page.locator('dialog[open] .popup-button-ok').click();
+    await expect(page.locator(`[data-atri-preset-id="${importedId}"]`)).toHaveCount(0);
+    await expect(page.locator(`[data-atri-preset-id="${presetId}"]`)).toBeVisible();
+});
+
 test('migrates existing resources without exposing loose modules inside the preset', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('language', 'en'));
     await awaitMainUI(page, server.baseURL);
