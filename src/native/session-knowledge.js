@@ -5,6 +5,25 @@ import { hashNativeDocument } from './repositories/common.js';
 const sourceKey = source => `${source.kind}:${source.knowledgeBaseId}@${source.knowledgeRevisionId}`;
 const snapshotKey = snapshot => `${snapshot.knowledgeBase.knowledgeBaseId}@${snapshot.revision.knowledgeRevisionId}`;
 
+// A package edit is captured in the existing Session knowledge snapshot, so
+// historical revisions and portable saves do not need the newer installation.
+export function packageKnowledgeManifest(manifest, value) {
+    const replacements = new Map((value?.snapshots || []).filter(item => item.kind === 'package').map(item => {
+        const snapshot = assertPackagedKnowledgeSnapshot(item.snapshot);
+        const id = snapshot.knowledgeBase.knowledgeBaseId;
+        if (!manifest.knowledge.some(original => original.knowledgeBase.knowledgeBaseId === id)) throw new TypeError('Package Knowledge identity cannot change');
+        return [id, snapshot];
+    }));
+    if (!replacements.size) return manifest;
+    return { ...manifest,
+        knowledge: manifest.knowledge.map(item => replacements.get(item.knowledgeBase.knowledgeBaseId) || item),
+        knowledgeBindings: manifest.knowledgeBindings.map(binding => {
+            const snapshot = replacements.get(binding.source.knowledgeBaseId);
+            return snapshot ? { ...binding, source: { ...binding.source, knowledgeRevisionId: snapshot.revision.knowledgeRevisionId } } : binding;
+        }),
+    };
+}
+
 // Package-wide defaults are bindings not scoped to any EntryPoint/World. Scoped
 // bindings join only when that EntryPoint/World is selected; target/visibility
 // and augment/override remain data for N6, never prompt compilation here.
@@ -26,12 +45,13 @@ export function validateKnowledgeBindingSet(value, manifest, entryPoint) {
     if (value?.schemaVersion !== 1 || !Array.isArray(value.bindings) || !Array.isArray(value.snapshots)) {
         throw new TypeError('Invalid resolved KnowledgeBindingSet');
     }
+    manifest = packageKnowledgeManifest(manifest, value);
     const bindings = value.bindings.map(assertKnowledgeBinding);
     if (new Set(bindings.map(binding => binding.knowledgeBindingId)).size !== bindings.length) {
         throw new TypeError('Duplicate KnowledgeBinding identity');
     }
     const snapshots = value.snapshots.map(item => {
-        if (!['library', 'session'].includes(item.kind)) throw new TypeError('Invalid Session Knowledge source');
+        if (!['library', 'session', 'package'].includes(item.kind)) throw new TypeError('Invalid Session Knowledge source');
         const snapshot = assertPackagedKnowledgeSnapshot(item.snapshot);
         validateRequiredEntryGraph(snapshot);
         return { kind: item.kind, snapshot };

@@ -282,4 +282,16 @@ export class PackageInstaller {
             preflight: inspected.preflight,
         });
     }
+
+    async currentKnowledgeEdits(handle, packageId, bindings, packageVersionId) {
+        const record = await this._packageRepo.get(handle, packageId);
+        if (!record?.currentVersionId || record.currentVersionId === packageVersionId || !bindings.some(item => item.source.kind === 'package')) return [];
+        const opened = await this.open(handle, packageId, record.currentVersionId);
+        const edits = opened.manifest.metadata?.atri_knowledge_edits;
+        if (!Array.isArray(edits)) return [];
+        return opened.manifest.knowledge.filter(snapshot => bindings.some(binding => binding.source.kind === 'package'
+            && binding.source.knowledgeBaseId === snapshot.knowledgeBase.knowledgeBaseId
+            && binding.source.knowledgeRevisionId !== snapshot.revision.knowledgeRevisionId
+            && edits.some(edit => edit.knowledgeBaseId === binding.source.knowledgeBaseId && edit.ancestorRevisions?.includes(binding.source.knowledgeRevisionId))));
+    }
 }

@@ -106,6 +106,12 @@ export function createNativeProductRouter(getServices = services) {
     router.get('/works', route(async (_req, res, { product }, handle) => {
         res.json(await product.listWorks(handle));
     }));
+    router.get('/works/:packageId/knowledge/:knowledgeBaseId', route(async (req, res, { product }, handle) => {
+        res.json(await product.getPackageKnowledge(handle, req.params.packageId, req.params.knowledgeBaseId));
+    }));
+    router.put('/works/:packageId/knowledge/:knowledgeBaseId', route(async (req, res, { product }, handle) => {
+        res.json(await product.editPackageKnowledge(handle, req.params.packageId, req.params.knowledgeBaseId, req.body));
+    }));
     router.get('/works/:packageId', route(async (req, res, { product }, handle) => {
         res.json(await product.getWork(handle, req.params.packageId));
     }));

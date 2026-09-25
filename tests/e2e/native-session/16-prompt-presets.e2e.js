@@ -12,7 +12,7 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
-test('migrates existing resources and copies an unreferenced module independently', async ({ page }) => {
+test('migrates existing resources without exposing loose modules inside the preset', async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem('language', 'en'));
     await awaitMainUI(page, server.baseURL);
     const source = await page.evaluate(async () => {
@@ -34,14 +34,11 @@ test('migrates existing resources and copies an unreferenced module independentl
     await page.getByRole('button', { name: 'Create independent preset', exact: true }).click();
     await page.getByRole('button', { name: 'Prompt Modules', exact: true }).click();
     await expect(page.locator('.atri-preset-category summary')).toHaveText('Legacy suite');
-    await page.getByRole('button', { name: 'Copy existing module', exact: true }).click();
-    await page.getByRole('combobox', { name: 'Existing module', exact: true }).selectOption({ label: 'Loose module · library · ' + source.orphan.revision });
-    await page.getByRole('button', { name: 'Copy into this preset', exact: true }).click();
-    await expect(page.getByRole('textbox', { name: 'Prompt body', exact: true })).toHaveValue('Independent copy');
-    await page.getByRole('button', { name: 'Save revision', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Copy existing module', exact: true })).toHaveCount(0);
+    await expect(page.locator('[data-atri-prompt-preset]')).not.toContainText('Loose module');
     const id = await page.locator('[data-atri-prompt-preset]').getAttribute('data-atri-prompt-preset');
     const preset = await page.evaluate(async id => (await import('/scripts/native/runtime-client.js')).runtimeRequest('/presets/' + id), id);
-    expect(preset.entries.filter(e => e.resourceType === 'core.prompt-module')).toHaveLength(2);
+    expect(preset.entries.filter(e => e.resourceType === 'core.prompt-module')).toHaveLength(1);
     expect(preset.entries.some(e => e.resource.promptModuleId === source.orphan.promptModuleId)).toBe(false);
     expect(preset.entries.find(e => e.resourceType === 'core.generation-profile').resource.sampling.temperature).toBe(0.3);
 });
@@ -81,11 +78,11 @@ for (const width of [1440, 390]) test(`preset ownership, nested categories and e
     await page.getByRole('combobox', { name: 'Module for stage 1', exact: true }).selectOption({ index: 1 });
     await page.getByRole('button', { name: 'Add module', exact: true }).click();
     await page.getByRole('button', { name: 'Save revision', exact: true }).click();
+    await page.getByRole('button', { name: 'Back to presets', exact: true }).click();
     const downloadPromise = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Export preset', exact: true }).click();
+    await page.locator(`[data-atri-preset-id="${presetId}"]`).getByRole('button', { name: 'Export preset', exact: true }).click();
     const download = await downloadPromise;
     const exportPath = info.outputPath('preset.json'); await download.saveAs(exportPath);
-    await page.getByRole('button', { name: 'Back to presets', exact: true }).click();
     await page.getByLabel('Import preset', { exact: true }).setInputFiles(exportPath);
     await page.getByRole('button', { name: 'Import selected preset', exact: true }).click();
     const importedId = await page.locator('[data-atri-prompt-preset]').getAttribute('data-atri-prompt-preset');

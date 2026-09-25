@@ -1,5 +1,7 @@
-import { resolveSessionKnowledge } from './session-knowledge.js';
-import { assertPackagedWorldSnapshot } from './world-knowledge.js';
+import { resolveSessionKnowledge, packageKnowledgeManifest } from './session-knowledge.js';
+import { assertPackagedWorldSnapshot, assertPackagedKnowledgeSnapshot } from './world-knowledge.js';
+import { buildAtriaPackageContainer } from './package-container.js';
+import { validateRequiredEntryGraph } from './dependency-closure.js';
 import { normalizeSessionTitle } from '../../public/scripts/native/session-title-contract.js';
 import { createHash } from 'node:crypto';
 import { hashNativeDocument, withNativeResourceWrite } from './repositories/common.js';
@@ -87,6 +89,52 @@ export class NativeProductService {
         }
     }
 
+    async getPackageKnowledge(handle, packageId, knowledgeBaseId) {
+        const record = await this._packages.get(handle, packageId);
+        if (!record?.currentVersionId) throw new NotFoundError('native package');
+        const opened = await this._installer.open(handle, packageId, record.currentVersionId);
+        const snapshot = opened.manifest.knowledge.find(item => item.knowledgeBase.knowledgeBaseId === knowledgeBaseId);
+        if (!snapshot) throw new NotFoundError('Package Knowledge');
+        return { snapshot, packageVersionId: record.currentVersionId, origin: { displayName: record.displayName, version: opened.packageVersion.version } };
+    }
+
+    async editPackageKnowledge(handle, packageId, knowledgeBaseId, input) {
+        return withNativeResourceWrite(handle, 'package:' + packageId, async () => {
+            const record = await this._packages.get(handle, packageId);
+            if (!record || record.currentVersionId !== input.packageVersionId) throw new ConflictError('native_package_knowledge_conflict');
+            const opened = await this._installer.open(handle, packageId, record.currentVersionId);
+            const original = opened.manifest.knowledge.find(item => item.knowledgeBase.knowledgeBaseId === knowledgeBaseId);
+            if (!original) throw new NotFoundError('Package Knowledge');
+            if (original.revision.knowledgeRevisionId !== input.baseRevisionId) throw new ConflictError('native_package_knowledge_conflict');
+            const { content } = revisionInput({ baseRevisionId: input.baseRevisionId, content: input.content }, 'knowledgeRevision', ['entries', 'metadata']);
+            const revisionId = createNativeId('knowledgeRevision');
+            const updated = assertPackagedKnowledgeSnapshot({ knowledgeBase: { ...original.knowledgeBase, currentRevisionId: revisionId },
+                revision: { ...original.revision, knowledgeRevisionId: revisionId, entryIds: content.entries.map(item => item.knowledgeEntryId), metadata: content.metadata || {}, createdAt: Date.now() }, entries: content.entries });
+            validateRequiredEntryGraph(updated);
+            const manifest = clone(opened.manifest), previousVersion = manifest.packageVersionId;
+            manifest.packageVersionId = createNativeId('packageVersion');
+            manifest.knowledge = manifest.knowledge.map(item => item.knowledgeBase.knowledgeBaseId === knowledgeBaseId ? updated : item);
+            manifest.knowledgeBindings = manifest.knowledgeBindings.map(binding => binding.source.knowledgeBaseId === knowledgeBaseId
+                ? { ...binding, source: { ...binding.source, knowledgeRevisionId: revisionId } } : binding);
+            manifest.metadata ||= {};
+            const edits = Array.isArray(manifest.metadata.atri_knowledge_edits) ? manifest.metadata.atri_knowledge_edits : [];
+            const prior = edits.find(item => item.knowledgeBaseId === knowledgeBaseId);
+            manifest.metadata.atri_knowledge_edits = [...edits.filter(item => item.knowledgeBaseId !== knowledgeBaseId),
+                { knowledgeBaseId, ancestorRevisions: [...new Set([...(prior?.ancestorRevisions || []), original.revision.knowledgeRevisionId])] }];
+            const retarget = value => {
+                if (!value || typeof value !== 'object') return;
+                if (value.scope === 'package' && value.packageId === packageId && value.packageVersionId === previousVersion) value.packageVersionId = manifest.packageVersionId;
+                Object.values(value).forEach(retarget);
+            };
+            retarget(manifest);
+            const { archive } = buildAtriaPackageContainer({ manifest, sourceFiles: opened.sourceFiles, assetPayloads: opened.assets });
+            await this._installer.install(handle, archive, { grantedPermissions: opened.preflight.requiredPermissions, setCurrent: false });
+            await this._packages.publishKnowledgeEdit(handle, packageId, manifest.packageVersionId,
+                { expectedCurrentVersionId: previousVersion, knowledgeBaseId, knowledgeRevisionId: revisionId });
+            return this.getPackageKnowledge(handle, packageId, knowledgeBaseId);
+        });
+    }
+
     async listWorks(handle) {
         const [packages, sessions] = await Promise.all([
             this._packages.list(handle),
@@ -167,7 +215,7 @@ export class NativeProductService {
         const record = await this._packages.get(handle, packageId);
         if (!record || (snapshot && snapshot.session.packageId !== packageId)) throw new NotFoundError('native package', { packageId });
         const installed = await this._installer.open(handle, packageId, snapshot?.session.packageVersionId || record.currentVersionId);
-        const manifest = installed.manifest;
+        const manifest = snapshot?.manifest || installed.manifest;
         const entry = snapshot?.entryPoint || manifest.entryPoints.find(item => item.entryPointId === entryPointId) || manifest.entryPoints[0];
         if (entryPointId && entry.entryPointId !== entryPointId) throw invalidField('entryPointId');
         const stored = snapshot ? null : await this._packages.getState(handle, packageId, 'atri_resource_setup_' + entry.entryPointId);
@@ -228,7 +276,8 @@ export class NativeProductService {
         }
         const installed = await this._installer.open(handle, packageId, current.packageVersionId);
         const entryPoint = installed.manifest.entryPoints.find(item => item.entryPointId === current.entryPointId);
-        const knowledge = await resolveSessionKnowledge({ handle, manifest: installed.manifest, entryPoint, knowledgeRepo: this._knowledge, sessionBindings, sessionKnowledge, packageBindingIds: input.knowledgeRefs.filter(ref => ref.scope === 'package').map(ref => ref.bindingId) });
+        const knowledge = await resolveSessionKnowledge({ handle, manifest: packageKnowledgeManifest(installed.manifest, current.resolved.knowledge), entryPoint, knowledgeRepo: this._knowledge, sessionBindings, sessionKnowledge, packageBindingIds: input.knowledgeRefs.filter(ref => ref.scope === 'package').map(ref => ref.bindingId) });
+        knowledge.snapshots.push(...current.resolved.knowledge.snapshots.filter(item => item.kind === 'package' && knowledge.bindings.some(binding => binding.source.kind === 'package' && binding.source.knowledgeBaseId === item.snapshot.knowledgeBase.knowledgeBaseId)));
         const resolved = { worldSelection: { schemaVersion: 1, worlds, primaryWorldId: input.primaryWorldId }, knowledge };
         if (sessionId) return this._core.updateResources(handle, sessionId, resolved, { expectedRevisionId: input.expectedRevisionId });
         await this._packages.setState(handle, packageId, 'atri_resource_setup_' + current.entryPointId, { packageVersionId: current.packageVersionId, resolved }, { expectedIntegrity: input.expectedIntegrity });
