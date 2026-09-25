@@ -235,7 +235,7 @@ function projectListCard(documentRef, record, host, onDeleted) {
 }
 
 async function renderProjectList(documentRef, root, host) {
-    let projects = await nativeStudioClient.listProjects();
+    let projects = await nativeStudioClient.listProjects({ summary: true });
     root.dataset.atriaBuildProjects = 'true';
     root.append(heading(documentRef, 'Build Projects', 'Create and refine your interactive works.'));
     const creation = documentRef.createElement('details'); creation.className = 'atri-studio-details';

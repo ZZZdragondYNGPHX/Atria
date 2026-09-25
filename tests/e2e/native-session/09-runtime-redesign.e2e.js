@@ -8,6 +8,7 @@ import { startServer, tearDownServer } from '../_lib/server.js';
 import { seedNativeSessionDataRoot } from './_helpers.js';
 
 let server; let resources;
+if (process.env.PW_NATIVE_CHANNEL) test.use({ channel: process.env.PW_NATIVE_CHANNEL });
 test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(async () => {
@@ -27,6 +28,7 @@ test.afterAll(async () => { await tearDownServer(server); });
 test('Runtime setup identifies missing Secret and opens its owner at 320px', async ({ page }, info) => {
     await boot(page, 320); await open(page, 'routes');
     const setup = root(page).locator('details').filter({ has: page.getByText('Runtime setup', { exact: true }) });
+    await setup.locator('summary').click();
     await expect(setup.getByRole('button', { name: 'Set up Secret', exact: true })).toBeVisible();
     await expect(setup.locator('li')).toHaveCount(6);
     await shot(page, info, 'runtime-setup-missing-secret-320');

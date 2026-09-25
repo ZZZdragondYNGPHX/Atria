@@ -21,6 +21,15 @@ export class SavePointRepo {
         ));
     }
 
+    async countBySession(handle) {
+        const saves = await this._engine.withTransaction(handle, tx => listNativeDocuments(tx, {
+            kind: NATIVE_RESOURCE_KINDS.savePoint, handle,
+        }));
+        const counts = new Map();
+        for (const save of saves) counts.set(save.sessionId, (counts.get(save.sessionId) || 0) + 1);
+        return counts;
+    }
+
     async list(handle, sessionId) {
         return this._engine.withTransaction(handle, tx => listNativeDocuments(tx, {
             kind: NATIVE_RESOURCE_KINDS.savePoint,

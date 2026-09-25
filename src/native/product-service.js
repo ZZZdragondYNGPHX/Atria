@@ -655,7 +655,7 @@ export class NativeProductService {
         return this._knowledge.delete(handle, knowledgeBaseId);
     }
 
-    async _sessionDependency(handle, session) {
+    async _sessionDependency(handle, session, packages = null) {
         const required = {
             packageId: session.packageId,
             packageVersionId: session.packageVersionId,
@@ -665,7 +665,9 @@ export class NativeProductService {
         };
         let opened;
         try {
-            opened = await this._installer.open(handle, session.packageId, session.packageVersionId);
+            const key = JSON.stringify([session.packageId, session.packageVersionId]);
+            if (packages && !packages.has(key)) packages.set(key, this._installer.open(handle, session.packageId, session.packageVersionId));
+            opened = await (packages ? packages.get(key) : this._installer.open(handle, session.packageId, session.packageVersionId));
         } catch (error) {
             return {
                 status: 'invalid',
@@ -702,9 +704,14 @@ export class NativeProductService {
 
     async listSessions(handle, { packageId = null } = {}) {
         const sessions = await this._sessions.list(handle);
+        const selected = byUpdatedAt(packageId ? sessions.filter(item => item.packageId === packageId) : sessions);
+        if (!selected.length) return [];
+        const saveCounts = await this._saves.countBySession(handle);
+        // Request-local only: every inventory still validates current blobs.
+        // Multiple Sessions pinned to one version share that validation work.
+        const packages = new Map();
         return Promise.all(
-            byUpdatedAt(packageId ? sessions.filter(item => item.packageId === packageId) : sessions)
-                .map(item => this._sessionSummary(handle, item)),
+            selected.map(async item => ({ ...item, dependency: await this._sessionDependency(handle, item, packages), saveCount: saveCounts.get(item.sessionId) || 0 })),
         );
     }
 

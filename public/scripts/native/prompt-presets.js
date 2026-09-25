@@ -39,8 +39,14 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
     const field = (parent, label, value = '') => { const wrap = node('label', label, parent); wrap.className = 'atri-library-field'; const el = node('input', undefined, wrap); el.value = value; el.setAttribute('aria-label', tl(label)); return el; };
     const select = (parent, label, values, value) => { const wrap = node('label', label, parent); wrap.className = 'atri-library-field'; const el = node('select', undefined, wrap); el.setAttribute('aria-label', tl(label)); for (const [id, title] of values) { const opt = node('option', undefined, el); opt.textContent = title; opt.value = id; } el.value = value || ''; return el; };
     const save = async next => {
-        const result = await runtimeRequest('/presets/' + preset.presetId, { method: 'PUT', body: { preset: next, expectedRevision: preset.revision } });
-        preset = await runtimeRequest('/presets/' + result.presetId); void host.refreshSearch?.(); renderDetail(); restoreListPosition();
+        const token = sequence;
+        await runtimeRequest('/presets/' + preset.presetId, { method: 'PUT', body: { preset: next, expectedRevision: preset.revision }, onCommitted: async result => {
+            const saved = await runtimeRequest('/presets/' + result.presetId);
+            if (disposed || token !== sequence) return;
+            preset = saved; renderDetail(); restoreListPosition();
+            // Search reads fresh inventories when opened. Do not rebuild every
+            // domain (including all historical resources) after each module edit.
+        } });
     };
     const open = async id => { const token = ++sequence; closeMenu(); categoryFilter = 'all'; listPosition = null; body.replaceChildren(); node('p', 'Loading exact resources…'); const value = await runtimeRequest('/presets/' + id); if (disposed || token !== sequence) return; preset = value; section = null; renderDetail(); };
     const create = async (value, importing = false) => { const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId); };

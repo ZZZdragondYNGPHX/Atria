@@ -111,7 +111,9 @@ describe('A1 Native Studio HTTP boundary', () => {
         const app = appFor(studio);
 
         expect((await request(app).get('/projects')).status).toBe(200);
-        expect(studio.listProjects).toHaveBeenCalledWith('u');
+        expect(studio.listProjects).toHaveBeenCalledWith('u', { summary: false });
+        await request(app).get('/projects?summary=true&handle=other-user').expect(200);
+        expect(studio.listProjects).toHaveBeenLastCalledWith('u', { summary: true });
         await request(app).delete('/projects/project_test').send({ baseRevision: 'reviewed_revision', handle: 'other-user' }).expect(200);
         expect(studio.deleteProject).toHaveBeenCalledWith('u', 'project_test', 'reviewed_revision');
 

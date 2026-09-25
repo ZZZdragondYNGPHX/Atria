@@ -239,8 +239,11 @@ export class StudioService {
         return actual;
     }
 
-    async listProjects(handle) {
+    async listProjects(handle, { summary = false } = {}) {
         const projects = await this._projects.list(handle);
+        // The browser list only needs project metadata. Resolve synchronized
+        // exact Git revisions when opening/editing/deleting a project instead.
+        if (summary) return projects.map(project => ({ project }));
         const output = [];
         for (const project of projects) {
             const revision = await this.getRevision(handle, project.projectId);

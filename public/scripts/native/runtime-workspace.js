@@ -141,7 +141,10 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             }
             if (!disposed && panel.isConnected) button('Check setup again', () => refresh(), content);
         };
-        void refresh(true);
+        let checked = false;
+        panel.addEventListener('toggle', () => {
+            if (panel.open && !checked) { checked = true; void refresh(true); }
+        });
     }
     function renderList() {
         editorSequence += 1;
@@ -183,9 +186,20 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         }
         search.addEventListener('input', fill); fill();
     }
-    function edit(original, fresh = false) {
+    async function edit(original, fresh = false) {
         const editorToken = ++editorSequence;
         activeEditor = original?.[ids[section]] || 'new';
+        if (section === 'routes') {
+            root.replaceChildren(createAtriaStatePanel(doc, 'loading', { title: translateShellText('Loading Native Runtime…') }));
+            try {
+                const resources = await runtimeRequest('/resources', { signal: controller.signal });
+                if (disposed || editorToken !== editorSequence) return;
+                scopedResources = resources;
+            } catch (error) {
+                if (!disposed && editorToken === editorSequence) { renderList(); failure(error, root); }
+                return;
+            }
+        }
         const value = original ? clone(original) : { schemaVersion: 1, scope: 'player', [ids[section]]: prefixes[section] + '_' + crypto.randomUUID().replaceAll('-', ''), displayName: '' };
         root.replaceChildren(); root.dataset.editor = 'true';
         adaptEditor();
@@ -450,7 +464,6 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 status.replaceChildren();
                 notice('Saved. Refreshing…', status);
                 data = await runtimeRequest('/configuration', { signal: controller.signal });
-                if (section === 'routes') scopedResources = await runtimeRequest('/resources', { signal: controller.signal });
                 if (disposed || editorToken !== editorSequence) return;
                 renderList(); notice('Saved successfully. Exact route references remain pinned.'); root.querySelector('input')?.focus();
                 void host.refreshSearch?.();
@@ -564,9 +577,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 return;
             }
             const configuration = await runtimeRequest('/configuration', { signal: controller.signal });
-            const resources = section === 'routes' ? await runtimeRequest('/resources', { signal: controller.signal }) : [];
             if (disposed || sequence !== loadingSequence) return;
-            data = configuration; scopedResources = resources;
+            data = configuration;
             if (section === 'diagnostics') diagnostics(); else { renderList(); deepLink(selectedRoute); }
         } catch (error) { if (!disposed && sequence === loadingSequence) { root.replaceChildren(); failure(error, root); button('Retry loading', load); } }
     }

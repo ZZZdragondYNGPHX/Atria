@@ -105,6 +105,22 @@ for (const width of [1440, 390]) test(`module filtering, action menus and return
     await page.locator('dialog[open] .popup-button-ok').click();
     await expect(rows).toHaveCount(34);
     await expect(filter).toHaveValue('cat_empty');
+    // A slow configuration observer must not keep a committed category move stale.
+    await page.evaluate(async () => {
+        const { onRuntimeConfigurationChanged } = await import('/scripts/native/runtime-client.js');
+        window.releasePresetObserver = null;
+        window.removePresetObserver = onRuntimeConfigurationChanged(() => new Promise(resolve => { window.releasePresetObserver = resolve; }));
+    });
+    const moved = rows.filter({ has: page.getByRole('button', { name: 'Module 28', exact: true }) });
+    await moved.getByRole('button', { name: 'Module actions', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Move module', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Module category', exact: true }).selectOption('cat_root');
+    await page.locator('dialog[open] .popup-button-ok').click();
+    await expect(rows).toHaveCount(33);
+    await expect(moved).toHaveCount(0);
+    await filter.selectOption('cat_root');
+    await expect(moved).toHaveCount(1);
+    await page.evaluate(() => { window.releasePresetObserver(); window.removePresetObserver(); });
 });
 
 for (const width of [1440, 390]) test(`Preset Regex editor, bulk controls and portable ownership at ${width}px`, async ({ page }, info) => {

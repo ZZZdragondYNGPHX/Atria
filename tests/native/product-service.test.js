@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, jest, test } from '@jest/globals';
 
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import {
@@ -94,6 +94,19 @@ describe('N9 Native Product UI service', () => {
             const listedSession = (await product.listSessions(h.handle))[0];
             expect(listedSession.sessionId).toBe(started.session.sessionId);
             expect(listedSession.dependency.status).toBe('ready');
+
+            const second = await product.startWork(h.handle, f.manifest.packageId, { entryPointId: f.entryPointId });
+            const opened = jest.spyOn(f.packageInstaller, 'open');
+            const counts = jest.spyOn(f.savePointRepo, 'countBySession');
+            const summaries = await product.listSessions(h.handle);
+            expect(summaries).toHaveLength(2);
+            expect(summaries.every(item => item.dependency.status === 'ready')).toBe(true);
+            expect(opened).toHaveBeenCalledTimes(1);
+            expect(counts).toHaveBeenCalledTimes(1);
+            await product.listSessions(h.handle);
+            expect(opened).toHaveBeenCalledTimes(2); // Validate bytes again on the next request.
+            opened.mockRestore(); counts.mockRestore();
+            await f.sessionRepo.delete(h.handle, second.session.sessionId);
 
             const quick = await product.createSave(h.handle, started.session.sessionId, { kind: 'quick' });
             expect(quick).toMatchObject({

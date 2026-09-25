@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+if (process.env.PW_NATIVE_CHANNEL) test.use({ channel: process.env.PW_NATIVE_CHANNEL });
 /* eslint-disable playwright/no-conditional-in-test -- Responsive actions follow the actual compact navigation. */
 import { createNativeId } from '../../../src/native/identity.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
@@ -195,13 +196,13 @@ test('Build project list, loading failure, retry and native creation', async ({ 
     await seedProject(page, 'List fixture');
     let release;
     const gate = new Promise(resolve => { release = resolve; });
-    await page.route('**/api/native/studio/projects', async route => { await gate; await route.fulfill({ status: 503, json: { message: 'Projects unavailable' } }); });
+    await page.route('**/api/native/studio/projects?summary=true', async route => { await gate; await route.fulfill({ status: 503, json: { message: 'Projects unavailable' } }); });
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openBuild());
     await expect(page.getByText('Loading Atria Studio…', { exact: true })).toBeVisible();
     await page.screenshot({ path: info.outputPath('project-loading-320.png'), fullPage: true }); release();
-    await expect(page.getByRole('alert')).toContainText('Projects unavailable');
+    await expect(page.getByRole('alert')).toContainText('The operation could not finish. Refresh its current state before trying again.');
     await page.screenshot({ path: info.outputPath('project-retry-320.png'), fullPage: true });
-    await page.unroute('**/api/native/studio/projects');
+    await page.unroute('**/api/native/studio/projects?summary=true');
     await page.getByRole('button', { name: 'Try again', exact: true }).click();
     await expect(page.getByLabel('Search projects', { exact: true })).toBeVisible();
     await page.getByLabel('Search projects', { exact: true }).fill('unknown project');
