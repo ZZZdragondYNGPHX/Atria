@@ -310,3 +310,20 @@ describe('N9 Native Product UI service', () => {
     });
 
 });
+
+test('starting an earlier installed exact version preserves the default and other Session pins', async () => {
+    const h = await makeTempFsEngineHarness();
+    try {
+        const f = await installFixture(h), product = new NativeProductService({ ...f, worldRepo: new WorldRepo({ engine: h.engine }), sessionCore: f.core, projectStore: new ProjectStore({ directoriesByHandle: () => h.dirs }) });
+        const old = await product.startWork(h.handle, f.manifest.packageId);
+        const next = structuredClone(f.manifest); next.packageVersionId = createNativeId('packageVersion'); next.version = '2.0.0'; next.entryPoints[0].entryPointId = createNativeId('entryPoint');
+        await f.packageInstaller.install(h.handle, buildAtriaPackageContainer({ manifest: next, sourceFiles: new Map(), assetPayloads: new Map() }).archive);
+        const version = await product.getWorkVersion(h.handle, next.packageId, f.manifest.packageVersionId);
+        expect(version.current).toBe(false); expect(version.manifest.entryPoints[0].entryPointId).toBe(f.entryPointId);
+        const earlier = await product.startWork(h.handle, next.packageId, { packageVersionId: version.packageVersion.packageVersionId, entryPointId: f.entryPointId });
+        expect(earlier.session.packageVersionId).toBe(f.manifest.packageVersionId);
+        expect((await f.packageRepo.get(h.handle, next.packageId)).currentVersionId).toBe(next.packageVersionId);
+        expect((await f.sessionRepo.get(h.handle, old.session.sessionId)).packageVersionId).toBe(f.manifest.packageVersionId);
+        await expect(product.getWorkVersion(h.handle, next.packageId, createNativeId('packageVersion'))).rejects.toMatchObject({ name: 'NotFoundError' });
+    } finally { await h.cleanup(); }
+});

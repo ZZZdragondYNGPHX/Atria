@@ -129,6 +129,13 @@ export class NativeProductService {
         };
     }
 
+    async getWorkVersion(handle, packageId, packageVersionId) {
+        const opened = await this._installer.open(handle, packageId, packageVersionId);
+        if (!opened) throw new NotFoundError('native package version', { packageId, packageVersionId });
+        const record = await this._packages.get(handle, packageId);
+        return { packageVersion: opened.packageVersion, manifest: opened.manifest, current: record?.currentVersionId === packageVersionId };
+    }
+
     async startWork(handle, packageId, options = {}) {
         const record = await this._packages.get(handle, packageId);
         if (!record) throw new NotFoundError('native package', { packageId });

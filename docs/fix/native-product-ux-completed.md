@@ -750,4 +750,17 @@ cases covered discovery retry and inert read-only content. Real Edge at 390px pa
 World/Knowledge original browsing, exact Used By and a three-resource independent
 Fork. Screenshot inspected; changed JavaScript ESLint and diff checks passed.
 
-Next: NUX-035 in Group 7.
+### NUX-035
+
+Installed Work version rows resolve the selected hash-verified PackageVersion and
+its own EntryPoints before explicit Session creation. Current/default and non-default
+versions are explained; neither the Work default nor existing Session pins changes.
+The primary Start New action also sends the displayed exact version. Retrying an
+open failure after successful version-specific creation reuses that created Session.
+
+Validation: Native product service/HTTP passed 15 cases and adjacent Shell/localization
+passed ten. Real Edge at 390px installed a second version with a different EntryPoint,
+started the original exact version and verified the newer default stayed unchanged.
+Screenshot inspected; changed JavaScript lint and diff checks passed.
+
+Next: NUX-036 in Group 7.

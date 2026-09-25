@@ -195,3 +195,9 @@ test.each([['worlds', 'commitWorldRevision'], ['knowledge', 'commitKnowledgeRevi
     expect(response.status).toBe(201);
     expect(product[method]).toHaveBeenCalledWith(expect.any(String), 'resource', body);
 });
+
+test('installed version resolution keeps both exact IDs and the authenticated owner', async () => {
+    const product = { getWorkVersion: jest.fn(async () => ({ current: false })) };
+    expect((await request(appFor(product)).get('/works/pkg_a/versions/pkgv_b?handle=other')).status).toBe(200);
+    expect(product.getWorkVersion).toHaveBeenCalledWith('u', 'pkg_a', 'pkgv_b');
+});

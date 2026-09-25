@@ -156,7 +156,7 @@ async function workDetail(doc, root, host, id, refresh) {
     const controls = actions(doc, content); const latest = work.sessions?.[0];
     if (latest) action(doc, controls, 'Continue', () => openSession(host, latest.sessionId), { disabled: latest.dependency?.status !== 'ready', primary: true });
     action(doc, controls, 'Start New', async () => {
-        const created = await client.startWork(id, { entryPointId: selector.value || entryPoints[0]?.entryPointId });
+        const created = await client.startWork(id, { packageVersionId: work.packageVersion.packageVersionId, entryPointId: selector.value || entryPoints[0]?.entryPointId });
         await openSession(host, created.session.sessionId);
     }, { disabled: work.status !== 'ready' || !entryPoints.length, primary: !latest });
     const info = section(doc, root, 'About this work', 'atriaWorkSummary');
@@ -178,6 +178,27 @@ async function workDetail(doc, root, host, id, refresh) {
         el(doc, 'strong', '', version.version, row);
         if (version.packageVersionId === work.package.currentVersionId) el(doc, 'span', 'atri-library-meta', tl('Current'), row);
         disclosure(doc, row, 'Details', version);
+        row.dataset.atriaInstalledVersion = version.packageVersionId;
+        action(doc, row, 'Start from this version', async () => {
+            row.querySelector('[data-atria-version-start]')?.remove();
+            const exact = await client.getWorkVersion(id, version.packageVersionId);
+            const review = el(doc, 'section', 'atri-library-section', undefined, row); review.dataset.atriaVersionStart = 'true';
+            el(doc, 'h4', '', exact.manifest.name + ' · ' + exact.packageVersion.version, review);
+            el(doc, 'p', '', tl(exact.current ? 'This is the current default version.' : 'This starts a separate Session on a non-default installed version.'), review);
+            el(doc, 'p', '', tl('The default Work version and existing Sessions remain unchanged.'), review);
+            const label = el(doc, 'label', 'atri-library-field', tl('Starting point'), review);
+            const entries = el(doc, 'select', '', undefined, label); entries.setAttribute('aria-label', tl('Starting point'));
+            for (const entry of exact.manifest.entryPoints) { const option = el(doc, 'option', '', entry.displayName, entries); option.value = entry.entryPointId; }
+            let createdSessionId = null;
+            action(doc, review, 'Create Session on this version', async () => {
+                if (!createdSessionId) {
+                    const created = await client.startWork(id, { packageVersionId: version.packageVersionId, entryPointId: entries.value });
+                    createdSessionId = created.session.sessionId; entries.disabled = true;
+                }
+                await openSession(host, createdSessionId);
+            }, { primary: true, disabled: !exact.manifest.entryPoints.length });
+            action(doc, review, 'Cancel', () => review.remove());
+        });
     }
     const games = section(doc, root, 'My Games', 'atriaMyGames');
     if (!work.sessions?.length) state(doc, games, 'empty', 'No game progress yet', 'Start a new story from this work.');

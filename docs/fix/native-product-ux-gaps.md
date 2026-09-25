@@ -89,24 +89,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 统一资源便携、PackageVersion、Session、Save 与引用冲突的产品闭环。
 
-## NUX-035 — Installed Work versions are visible but not actionable
-
-**Current evidence**
-
-Frontend redesign now displays **Installed versions**.
-
-Backend `startWork()` accepts an explicit `packageVersionId`.
-
-The Work UI's **Start New** still starts against the current version and does not expose “start from this installed version”.
-
-**Acceptance**
-
-Allow intentional session creation from an installed exact PackageVersion, clearly marking current/default and preventing accidental downgrade semantics.
-
----
-
----
-
 ## NUX-036 — Package update / permission review lacks change impact and post-install management
 
 **Current evidence**

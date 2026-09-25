@@ -109,6 +109,9 @@ export function createNativeProductRouter(getServices = services) {
     router.get('/works/:packageId', route(async (req, res, { product }, handle) => {
         res.json(await product.getWork(handle, req.params.packageId));
     }));
+    router.get('/works/:packageId/versions/:packageVersionId', route(async (req, res, { product }, handle) => {
+        res.json(await product.getWorkVersion(handle, req.params.packageId, req.params.packageVersionId));
+    }));
     router.post('/works/:packageId/start', route(async (req, res, { product }, handle) => {
         res.json(await product.startWork(handle, req.params.packageId, req.body || {}));
     }));

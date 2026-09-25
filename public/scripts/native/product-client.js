@@ -33,6 +33,7 @@ function encode(value) {
 export const nativeProductClient = Object.freeze({
     listWorks: () => request('works'),
     getWork: packageId => request(`works/${encode(packageId)}`),
+    getWorkVersion: (packageId, packageVersionId) => request(`works/${encode(packageId)}/versions/${encode(packageVersionId)}`),
     startWork: (packageId, options = {}) => request(`works/${encode(packageId)}/start`, {
         method: 'POST',
         body: options,

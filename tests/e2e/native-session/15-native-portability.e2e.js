@@ -1,3 +1,4 @@
+import { buildAtriaPackageContainer, createNativeId } from '../../../src/native/index.js';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { startServer, tearDownServer } from '../_lib/server.js';
@@ -89,4 +90,29 @@ test('installed World and Knowledge originals browse exact content and fork inde
     await original.getByRole('button', { name: 'Load references', exact: true }).click();
     await expect(original.locator('[data-atria-package-used-by]')).toContainText('Knowledge Binding');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('Work starts an intentional Session from an installed exact version without changing the default', async ({ page }, info) => {
+    test.setTimeout(120000); await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const original = await page.evaluate(async () => (await (await import('/scripts/native/product-client.js')).nativeProductClient.listWorks())[0].manifest);
+    const next = structuredClone(original); next.packageVersionId = createNativeId('packageVersion'); next.version = '2.0.0'; next.entryPoints[0].entryPointId = createNativeId('entryPoint'); next.entryPoints[0].displayName = 'New edition start';
+    const archive = buildAtriaPackageContainer({ manifest: next, sourceFiles: new Map(), assetPayloads: new Map() }).archive.toString('base64');
+    await page.evaluate(async ({ archive, id }) => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        await client.installPackage(archive, []); window.Atria.shell.getWorkspaceHost().openLibraryWork(id);
+    }, { archive, id: original.packageId });
+    const row = page.locator('[data-atria-installed-version="' + original.packageVersionId + '"]');
+    await row.getByRole('button', { name: 'Start from this version', exact: true }).click();
+    await expect(row).toContainText('non-default installed version'); await expect(row).toContainText('default Work version and existing Sessions remain unchanged');
+    await expect(row.getByLabel('Starting point', { exact: true })).toHaveValue(original.entryPoints[0].entryPointId);
+    await page.screenshot({ path: info.outputPath('installed-version-start-390.png') });
+    const response = page.waitForResponse(r => r.url().endsWith('/works/' + original.packageId + '/start') && r.request().method() === 'POST');
+    await row.getByRole('button', { name: 'Create Session on this version', exact: true }).click();
+    const created = await (await response).json(); expect(created.session.packageVersionId).toBe(original.packageVersionId);
+    const current = await page.evaluate(async id => (await (await import('/scripts/native/product-client.js')).nativeProductClient.getWork(id)).package.currentVersionId, original.packageId);
+    expect(current).toBe(next.packageVersionId);
 });

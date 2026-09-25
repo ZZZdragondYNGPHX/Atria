@@ -7734,5 +7734,10 @@
     "This exact Package revision is immutable. Create an independent Library copy to author changes.": "此精确安装包修订不可修改。请创建独立资源库副本后编辑。",
     "Load references": "加载引用",
     "The exact dependency closure will also become independent Library copies.": "全部精确依赖也会创建为独立资源库副本。",
-    "The fork destination conflicts with existing content. Review the fork again to choose fresh identities.": "Fork 目标与现有内容冲突。请重新审阅以生成新的身份。"
+    "The fork destination conflicts with existing content. Review the fork again to choose fresh identities.": "Fork 目标与现有内容冲突。请重新审阅以生成新的身份。",
+    "Start from this version": "从此版本开始",
+    "This is the current default version.": "这是当前默认版本。",
+    "The default Work version and existing Sessions remain unchanged.": "作品默认版本和已有会话保持不变。",
+    "Create Session on this version": "在此版本创建会话",
+    "This starts a separate Session on a non-default installed version.": "将在非默认的已安装版本上创建独立会话。"
 }
