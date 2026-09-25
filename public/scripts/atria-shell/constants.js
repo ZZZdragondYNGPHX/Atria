@@ -7,6 +7,7 @@ export const ATRIA_PRIMARY_DOMAINS = Object.freeze([
 ]);
 
 export const ATRIA_GLOBAL_UTILITIES = Object.freeze([
+    Object.freeze({ id: 'learning', label: 'Learning center', icon: 'fa-solid fa-book-open', glyph: 'library' }),
     Object.freeze({ id: 'command', label: 'Command', icon: 'fa-solid fa-magnifying-glass', glyph: 'search' }),
     Object.freeze({ id: 'diagnostics', label: 'Diagnostics', icon: 'fa-solid fa-stethoscope', glyph: 'diagnostics' }),
     Object.freeze({ id: 'plugins', label: 'Plugins', icon: 'fa-solid fa-puzzle-piece', glyph: 'plugins' }),

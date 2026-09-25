@@ -1,4 +1,4 @@
-import { parseKnowledgeRegex } from './knowledge-contracts.js';
+import { normalizeKnowledgeEntryEnabled, parseKnowledgeRegex } from './knowledge-contracts.js';
 
 export const KNOWLEDGE_RUNTIME_NAMESPACE = 'atri_knowledge_runtime';
 
@@ -16,8 +16,13 @@ export async function evaluateNativeKnowledge(plan, {
     const rejected = [...plan.rejected];
     const effects = {};
     const previous = state?.effects ?? {};
-    const byId = new Map(plan.included.map(item => [relationKey(item, item.knowledgeEntryId), item]));
-    const ordered = [...plan.included].sort((a, b) => b.authorityRank - a.authorityRank
+    // Also enforce the contract for detached plans passed directly to selection.
+    const included = plan.included.filter(item => {
+        if (normalizeKnowledgeEntryEnabled(item.entry.enabled) !== false) return true;
+        rejected.push({ identity: item.identity, reason: 'entry_disabled' }); return false;
+    });
+    const byId = new Map(included.map(item => [relationKey(item, item.knowledgeEntryId), item]));
+    const ordered = [...included].sort((a, b) => b.authorityRank - a.authorityRank
         || (tiers[b.entry.metadata?.budgetTier] ?? 1) - (tiers[a.entry.metadata?.budgetTier] ?? 1)
         || b.priority - a.priority || a.identity.localeCompare(b.identity));
     const eligible = new Map();

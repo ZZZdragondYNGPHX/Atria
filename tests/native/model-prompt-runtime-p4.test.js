@@ -14,6 +14,28 @@ import { readPromptControls } from '../../src/native/model-prompt-runtime/prompt
 const cleanups = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0)) await cleanup(); });
 
+test('NPC-002 authenticated delete checks every revision, Runtime and Project owners and rejects Package originals', async () => {
+    const f = await fixture();
+    f.host.studio.getResourceReferences = jest.fn(async () => []);
+    await f.library.commit(f.h.handle, 'core.prompt-program', { ...f.prompt, revision: 'r-delete' });
+    const ref = { scope: 'library', resourceType: 'core.prompt-program', resourceId: f.prompt.promptProgramId, revision: 'r-delete' };
+    const app = express(); app.use(express.json());
+    app.use((req, _res, next) => { if (req.headers['x-test-user']) req.user = { profile: { handle: f.h.handle } }; next(); });
+    app.use(createNativeGenerationRouter(() => f.host));
+    await supertest(app).post('/resources/delete').send(ref).expect(401);
+    const remove = value => supertest(app).post('/resources/delete').set('x-test-user', 'yes').send(value);
+    const blocked = await remove(ref).expect(409);
+    expect(blocked.body.details.references.some(item => item.owner === 'Runtime')).toBe(true);
+    expect(f.host.studio.getResourceReferences.mock.calls[0][1]).not.toHaveProperty('revision');
+    for (const route of await f.persistence.listRuntimeRoutes(f.h.handle)) await f.persistence.deleteProfile(f.h.handle, 'routes', route.runtimeRouteId);
+    f.host.studio.getResourceReferences.mockResolvedValueOnce([{ node: { scope: 'project', displayName: 'Project owner' }, owner: 'Project owner' }]);
+    await remove(ref).expect(409);
+    await remove({ ...ref, scope: 'package', packageId: createNativeId('package'), packageVersionId: createNativeId('packageVersion') }).expect(400);
+    await remove(ref).expect(200);
+    await expect(f.library.getExact(f.h.handle, { ...ref, revision: f.prompt.revision })).rejects.toThrow();
+    await expect(f.library.getExact(f.h.handle, ref)).rejects.toThrow();
+});
+
 async function fixture({ format = 'openai-compatible', stream = false, handler } = {}) {
     const requests = [];
     const server = createServer(async (req, res) => {

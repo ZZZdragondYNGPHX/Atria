@@ -4,6 +4,7 @@ import { resourceBundleExport } from './resource-bundle-controls.js';
 import { renderResourceReferenceRows } from './resource-reference-rows.js';
 import { el, action, disclosure, heading, feedback } from './library-ui.js';
 import { translateShellText as tl, formatShellText as fmt } from '../atria-shell/localization.js';
+import { mountKnowledgeEntryBrowser } from './knowledge-entry-browser.js';
 
 export async function mountPackageLibraryList({ document: doc, root, knowledge, host }) {
     const section = el(doc, 'section', 'atri-library-section', undefined, root); section.dataset.atriaPackageResources = 'true';
@@ -42,11 +43,7 @@ export async function mountPackageLibraryOriginal({ document: doc, root, ref, ho
     if (knowledge) {
         const entries = el(doc, 'section', 'atri-library-section', undefined, root);
         el(doc, 'h3', '', tl('Entries'), entries);
-        for (const entry of snapshot.entries) {
-            const row = el(doc, 'article', 'atri-library-knowledge-entry', undefined, entries);
-            el(doc, 'h4', '', entry.metadata?.title || tl('Knowledge entry'), row); el(doc, 'p', '', entry.content, row);
-            disclosure(doc, row, 'Details', entry);
-        }
+        mountKnowledgeEntryBrowser({ document: doc, root: entries, entries: snapshot.entries });
     } else {
         const content = disclosure(doc, root, 'World baseline', snapshot.revision.baseline); content.open = true;
         disclosure(doc, root, 'World schema', snapshot.revision.schema);

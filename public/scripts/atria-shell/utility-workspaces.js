@@ -228,6 +228,7 @@ export function mountSettingsUtility({ document: documentRef = globalThis.docume
         id: 'settings', title: 'Settings', description: 'Make Atria feel right for you.',
     });
     const grid = documentRef.createElement('section');
+    action(documentRef, frame.actions, 'Learning center', () => globalThis.Atria?.shell?.getLearningCenter()?.open());
     grid.className = 'atria-preference-groups';
     grid.dataset.atriaSettingsPrimary = 'true';
     const placements = [];

@@ -1,5 +1,6 @@
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { knowledgeFormControls } from './knowledge-form-controls.js';
+import { mountKnowledgeEntryBrowser } from './knowledge-entry-browser.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { KNOWLEDGE_DELIVERY_POSITIONS, KNOWLEDGE_CONDITION_LOGIC, KNOWLEDGE_CONDITION_OPERATORS, validateKnowledgeEditorValue } from './knowledge-contracts.js';
 import { el, action, disclosure, feedback, confirmLibraryAction } from './library-ui.js';
@@ -10,9 +11,10 @@ const entryName = (entry, index) => entry.metadata?.title || entry.metadata?.lab
 const lines = value => value.split('\n').filter(item => item.length > 0);
 
 /** Edits one detached revision draft; only onReview can hand it to an owner. */
-export function mountKnowledgeEditor({ document: doc, root, value, label = 'Knowledge revision JSON', onReview, confirmDelete = confirmLibraryAction }) {
+export function mountKnowledgeEditor({ document: doc, root, value, initialEntryId, openEntry = true, browseState = {}, label = 'Knowledge revision JSON', onReview, confirmDelete = confirmLibraryAction }) {
     let draft = clone(value); draft.entries ||= [];
-    let selected = 0; let advanced = false; let source = ''; let openSections = new Set();
+    let selected = Math.max(0, draft.entries.findIndex(entry => entry.knowledgeEntryId === initialEntryId)); let editing = Boolean(initialEntryId) && openEntry; let entryFields; let browser;
+    let advanced = false; let source = ''; let openSections = new Set();
     const shell = el(doc, 'section', 'atri-knowledge-editor', undefined, root);
     const controls = el(doc, 'div', 'atri-library-actions', undefined, shell);
     const fields = el(doc, 'div', 'atri-knowledge-fields', undefined, shell);
@@ -21,11 +23,11 @@ export function mountKnowledgeEditor({ document: doc, root, value, label = 'Know
     function rememberSections() { openSections = new Set([...fields.querySelectorAll('details[open][data-section]')].map(item => item.dataset.section)); }
     function changeView() { rememberSections(); render(); }
     function group(name) {
-        const node = disclosure(doc, fields, name); node.dataset.section = name; node.open = openSections.has(name); return node;
+        const node = disclosure(doc, entryFields, name); node.dataset.section = name; node.open = openSections.has(name); return node;
     }
     const { input, checkbox, numeric, renderTargets: targets } = knowledgeFormControls(doc, changeView);
     const renderTargets = (parent, entry) => targets(parent, entry.delivery ||= {});
-    function updateTitle(select, entry) { select.options[selected].textContent = entryName(entry, selected); }
+    function updateTitle(select, entry) { select.options[selected].textContent = entryName(entry, selected); browser.refresh(); }
     function renderConditions(parent, entry) {
         const applicability = entry.applicability ||= {};
         const conditions = applicability.stateConditions ||= [];
@@ -75,12 +77,19 @@ export function mountKnowledgeEditor({ document: doc, root, value, label = 'Know
         });
         if (advanced) input(fields, label, source, value => { source = value; }, 'textarea');
         else {
-            action(doc, controls, 'Add entry', () => { draft.entries.push({ knowledgeEntryId: createStudioNativeId('kentry'), content: '', metadata: { title: tl('Knowledge entry') + ' ' + (draft.entries.length + 1) } }); selected = draft.entries.length - 1; changeView(); fields.querySelector('[aria-label="' + tl('Entry title') + '"]')?.focus(); });
+            action(doc, controls, 'Add entry', () => { draft.entries.push({ knowledgeEntryId: createStudioNativeId('kentry'), content: '', metadata: { title: tl('Knowledge entry') + ' ' + (draft.entries.length + 1) } }); selected = draft.entries.length - 1; editing = true; changeView(); fields.querySelector('[aria-label="' + tl('Entry title') + '"]')?.focus(); });
+            browser = mountKnowledgeEntryBrowser({ document: doc, root: fields, entries: draft.entries, state: browseState,
+                onEdit: (entry, index) => { selected = index; editing = true; changeView(); entryFields.querySelector('summary')?.focus(); },
+                onToggle: (entry, enabled) => { entry.enabled = enabled; browser.refresh(); },
+            });
             if (!draft.entries.length) el(doc, 'p', 'atri-library-meta', tl('No entries. Add an entry to begin this revision.'), fields);
             else {
                 selected = Math.min(selected, draft.entries.length - 1); const entry = draft.entries[selected];
-                const select = input(fields, 'Selected entry', String(selected), value => { selected = Number(value); changeView(); }, 'text', draft.entries.map((item, index) => [String(index), entryName(item, index)]));
-                const tools = el(doc, 'div', 'atri-library-actions', undefined, fields);
+                entryFields = disclosure(doc, fields, 'Edit entry'); entryFields.open = editing;
+                entryFields.addEventListener('toggle', () => { if (entryFields.isConnected) editing = entryFields.open; });
+                const select = input(entryFields, 'Selected entry', String(selected), value => { selected = Number(value); changeView(); }, 'text', draft.entries.map((item, index) => [String(index), entryName(item, index)]));
+                const tools = el(doc, 'div', 'atri-library-actions', undefined, entryFields);
+                action(doc, tools, 'Back to entries', () => { editing = false; entryFields.open = false; browser.focus(entry.knowledgeEntryId); });
                 for (const [caption, offset] of [['Move entry up', -1], ['Move entry down', 1]]) action(doc, tools, caption, () => { const next = selected + offset; [draft.entries[selected], draft.entries[next]] = [draft.entries[next], draft.entries[selected]]; selected = next; changeView(); }, { disabled: selected + offset < 0 || selected + offset >= draft.entries.length });
                 action(doc, tools, 'Delete entry', async () => {
                     const owners = draft.entries.filter(other => other.knowledgeEntryId !== entry.knowledgeEntryId && ['requiredEntryIds', 'relatedEntryIds'].some(key => other.relations?.[key]?.includes(entry.knowledgeEntryId)));
@@ -88,8 +97,8 @@ export function mountKnowledgeEditor({ document: doc, root, value, label = 'Know
                     if (!await confirmDelete('Remove this entry from the draft revision?')) return;
                     draft.entries.splice(selected, 1); selected = Math.max(0, selected - 1); changeView();
                 }, { danger: true });
-                input(fields, 'Entry title', entry.metadata?.title || entry.metadata?.label || '', value => { (entry.metadata ||= {}).title = value; updateTitle(select, entry); });
-                input(fields, 'Entry content', entry.content, value => { entry.content = value; updateTitle(select, entry); }, 'textarea');
+                input(entryFields, 'Entry title', entry.metadata?.title || entry.metadata?.label || '', value => { (entry.metadata ||= {}).title = value; updateTitle(select, entry); });
+                input(entryFields, 'Entry content', entry.content, value => { entry.content = value; updateTitle(select, entry); }, 'textarea');
                 const discovery = group('Discovery'); const discoveryValue = entry.discovery ||= {};
                 for (const [key, caption] of [['keywords', 'Keywords'], ['aliases', 'Aliases'], ['regex', 'Regular expressions']]) input(discovery, caption, (discoveryValue[key] || []).join('\n'), value => { discoveryValue[key] = lines(value); }, 'textarea');
                 el(doc, 'p', 'atri-library-meta', tl('Enter one discovery term per line. No terms means always eligible after applicability checks.'), discovery);
@@ -105,7 +114,7 @@ export function mountKnowledgeEditor({ document: doc, root, value, label = 'Know
                 renderTargets(delivery, entry);
                 input(delivery, 'Budget priority', entry.metadata?.budgetTier || 'normal', value => { (entry.metadata ||= {}).budgetTier = value; }, 'text', ['critical', 'scene', 'normal', 'optional']);
                 input(delivery, 'Compact content', entry.metadata?.compactContent || '', value => { (entry.metadata ||= {}).compactContent = value; }, 'textarea');
-                disclosure(doc, fields, 'Exact entry identity', { knowledgeEntryId: entry.knowledgeEntryId });
+                disclosure(doc, entryFields, 'Exact entry identity', { knowledgeEntryId: entry.knowledgeEntryId });
             }
         }
         action(doc, controls, 'Review Changes', async () => {

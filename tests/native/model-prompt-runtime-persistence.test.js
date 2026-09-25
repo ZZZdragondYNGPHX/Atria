@@ -26,6 +26,27 @@ function moduleResource({
     };
 }
 
+test('Prompt deletion removes all immutable revisions, rejects owners and protects referenced history', async () => {
+    const h = await makeTempFsEngine();
+    try {
+        const resources = new VersionedJsonResourceHandler({ engine: h.engine });
+        const value = moduleResource(); const type = 'core.prompt-module';
+        await resources.commit(h.handle, type, value);
+        await resources.commit(h.handle, type, { ...value, revision: 'rev-2' });
+        const ref = { scope: 'library', resourceType: type, resourceId: value.promptModuleId, revision: value.revision };
+        await expect(resources.delete(h.handle, { ...ref, scope: 'package' }, async () => [])).rejects.toThrow(/Library/);
+        await expect(resources.delete(h.handle, ref, async target => {
+            expect(target).not.toHaveProperty('revision'); return [{ owner: 'Project', revision: 'rev-1' }];
+        })).rejects.toMatchObject({ code: 'native_resource_referenced' });
+        expect(await resources.listRevisions(h.handle, type, ref.resourceId)).toHaveLength(2);
+        await resources.setArchived(h.handle, type, ref.resourceId, true);
+        expect((await resources.list(h.handle))[0].archived).toBe(true);
+        expect(await resources.delete(h.handle, ref, async () => [])).toEqual({ deleted: true, revisions: 2 });
+        expect(await resources.list(h.handle)).toEqual([]);
+        await expect(resources.getExact(h.handle, ref)).rejects.toThrow();
+    } finally { await h.cleanup(); }
+});
+
 function connectionProfile(id = createNativeId('connectionProfile')) {
     return {
         schemaVersion: 1,

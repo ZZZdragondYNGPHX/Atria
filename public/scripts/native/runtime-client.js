@@ -31,6 +31,7 @@ export function runtimeRemediation(code) {
         native_runtime_referenced: ['This item is still in use. Update its references before deleting it.', null],
         native_runtime_delete_failed: ['Could not delete this item. Reload and try again.', null],
         native_resource_archive_failed: ['Could not change the archive state. Reload and try again.', null],
+        native_resource_delete_failed: ['Could not delete this item. Reload and try again.', null],
         native_provider_probe_unsupported: ['This endpoint does not offer a supported model-list check. You can enter a model ID manually.', null],
         native_provider_endpoint_invalid: ['Use an HTTP or HTTPS endpoint without embedded credentials, query parameters or fragments.', null],
         native_provider_authentication_failed: ['The provider rejected this Secret. Select another Secret or check its access permissions.', null],

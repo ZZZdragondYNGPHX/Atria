@@ -63,6 +63,7 @@ describe('N3 resolved KnowledgeBindingSet', () => {
 
     test('Session remains pinned to Library revision N after Library current moves to N+1 until explicit update', async () => {
         const libraryN = knowledgeSnapshot('Library revision N');
+        libraryN.entries[0].enabled = false;
         const bindingN = bindingFor(libraryN, 'library');
         await publishKnowledge(h, f.knowledgeRepo, libraryN, bindingN);
 
@@ -73,6 +74,7 @@ describe('N3 resolved KnowledgeBindingSet', () => {
         const pinned = created.knowledge.snapshots.find(item => item.kind === 'library');
         expect(pinned.snapshot.revision.knowledgeRevisionId).toBe(libraryN.revision.knowledgeRevisionId);
         expect(pinned.snapshot.entries[0].content).toBe('Library revision N');
+        expect(pinned.snapshot.entries[0].enabled).toBe(false);
 
         const libraryN1 = structuredClone(libraryN);
         libraryN1.revision.knowledgeRevisionId = createNativeId('knowledgeRevision');

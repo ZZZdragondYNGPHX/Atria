@@ -5,6 +5,7 @@ import { createCommandRegistry } from './command-registry.js';
 import { createAtriaNavigationAuthority } from './navigation-authority.js';
 import { mountNativePlayHost } from './native-play-host.js';
 import { createAtriaWorkspaceHost } from './workspace-host.js';
+import { mountLearningCenter } from './learning-center.js';
 
 function readRecoveryPreference(windowRef) {
     try {
@@ -42,6 +43,7 @@ export function initializeAtriaShellFoundation({
     translate,
     utilities,
     forceRecovery,
+    accountStorage,
 } = {}) {
     if (!documentRef?.body || !windowRef) {
         throw new Error('Atria shell foundation requires document and window');
@@ -53,6 +55,7 @@ export function initializeAtriaShellFoundation({
     let playHost = null;
     let workspaceHost = null;
     let appearance = null;
+    let learning = null;
     let recoveryMode = forceRecovery === undefined
         ? readRecoveryPreference(windowRef)
         : Boolean(forceRecovery);
@@ -77,6 +80,7 @@ export function initializeAtriaShellFoundation({
                 plugins: utilities?.plugins || (() => workspaceHost?.openUtility('plugins')),
                 settings: utilities?.settings || (() => workspaceHost?.openUtility('settings')),
                 account: utilities?.account || (() => workspaceHost?.openUtility('account')),
+                learning: () => learning?.open(),
             },
         });
         appearance ||= installAtriaAppearance({
@@ -94,6 +98,7 @@ export function initializeAtriaShellFoundation({
                 shell,
                 navigation,
             });
+            learning = mountLearningCenter({ document: documentRef, shell, host: workspaceHost, storage: accountStorage });
         } catch (error) {
             workspaceHost?.dispose();
             workspaceHost = null;
@@ -115,6 +120,7 @@ export function initializeAtriaShellFoundation({
 
     function unmount() {
         if (!shell) return false;
+        learning?.dispose(); learning = null;
         workspaceHost?.dispose();
         workspaceHost = null;
         playHost?.unmount();
@@ -157,6 +163,7 @@ export function initializeAtriaShellFoundation({
         getNavigation: () => navigation,
         getPlayHost: () => playHost,
         getWorkspaceHost: () => workspaceHost,
+        getLearningCenter: () => learning,
         getRoot: () => shell?.root || null,
         getAppearance: () => appearance?.get() || null,
         isRecoveryMode: () => recoveryMode,

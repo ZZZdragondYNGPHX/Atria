@@ -14,8 +14,8 @@ import {
 } from './primitives.js';
 import { formatShellText, translateShellText } from './localization.js';
 
-const SIDEBAR_UTILITIES = Object.freeze(['plugins', 'diagnostics', 'settings']);
-const MENU_UTILITIES = Object.freeze(['settings', 'plugins', 'diagnostics', 'account']);
+const SIDEBAR_UTILITIES = Object.freeze(['learning', 'plugins', 'diagnostics', 'settings']);
+const MENU_UTILITIES = Object.freeze(['learning', 'settings', 'plugins', 'diagnostics', 'account']);
 const SHEET_STATES = Object.freeze(['peek', 'half', 'full']);
 
 const COMMAND_ICON_RULES = Object.freeze([
@@ -930,6 +930,8 @@ export function createAtriaAppShell({
     }
 
     function dismissChildRouteForBack(kind) {
+        const learning = new documentRef.defaultView.CustomEvent('atria-learning-back', { cancelable: true });
+        if (!documentRef.dispatchEvent(learning)) return true;
         // Give the active Workspace controller its transient panels before
         // consuming the existing Navigation Authority child route (Escape/Back).
         const transient = new documentRef.defaultView.CustomEvent('atria-workspace-back', { cancelable: true });

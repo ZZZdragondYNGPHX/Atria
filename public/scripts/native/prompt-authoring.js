@@ -1,5 +1,5 @@
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
-import { referenceRemediation } from './library-ui.js';
+import { referenceRemediation, confirmLibraryAction } from './library-ui.js';
 import { resourceBundleExport, mountResourceBundleImport } from './resource-bundle-controls.js';
 import { mountPromptCondition, mountPromptParameters, mountPromptDerive } from './prompt-semantics.js';
 import { renderResourceReferenceRows } from './resource-reference-rows.js';
@@ -297,6 +297,20 @@ export function mountPromptLibrary({ document: doc, body, route, host }) {
                             try { await runtimeRequest('/resources/archive', { method: 'POST', body: { ref: entry.ref, archived: !entry.archived } }); await render(); } catch (cause) { if (!disposed) { error(doc, row, cause); archive.disabled = false; } }
                         });
                         element(doc, 'small', 'Archiving hides all revisions from active lists. Existing exact references remain available.', row);
+                        if (type !== 'core.generation-profile') action(doc, row, 'Delete resource', async () => {
+                            if (!await confirmLibraryAction('Delete this Prompt resource and all its revisions? This cannot be undone.')) return;
+                            try {
+                                await runtimeRequest('/resources/delete', { method: 'POST', body: entry.ref });
+                                selectedRef = null; void host.refreshSearch?.(); await render();
+                            } catch (cause) {
+                                if (cause.code === 'native_resource_referenced') {
+                                    row.querySelector('[data-atria-used-by]')?.remove();
+                                    const result = element(doc, 'div', undefined, row); result.dataset.atriaUsedBy = 'true';
+                                    element(doc, 'p', 'Resolve references before deleting', result);
+                                    renderResourceReferenceRows({ document: doc, root: result, references: cause.details.references, host });
+                                } else error(doc, row, cause);
+                            }
+                        }).classList.add('atri-library-danger');
                     }
                     if (entry.ref.scope === 'project') action(doc, row, 'Open in Build', () => host.openBuild(entry.ref.projectId));
                     for (const derive of type === 'core.prompt-program' ? [false, true] : [false]) {

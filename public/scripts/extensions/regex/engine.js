@@ -1,4 +1,5 @@
 import { nativeSessionRuntime } from '../../native/session-runtime.js';
+import { normalizeRegexPresets } from '../../../shared/regex-presets.js';
 /**
  * Regex Core architecture boundary.
  *
@@ -13,12 +14,10 @@ import { nativeSessionRuntime } from '../../native/session-runtime.js';
  * authoritative state or UI lifecycle.
  */
 
-import { characters, saveSettingsDebounced, substituteParams, substituteParamsExtended, this_chid } from '../../../script.js';
-import { capabilitySettings, writeExtensionField } from '../../capability-host.js';
+import { saveSettingsDebounced, substituteParams, substituteParamsExtended } from '../../../script.js';
+import { capabilitySettings } from '../../capability-host.js';
 import { t } from '../../i18n.js';
-import { getPresetManager } from '../../preset-manager.js';
 import { regexFromString } from '../../utils.js';
-import { lodash } from '../../../lib.js';
 import { isRegexScriptPaused, recordRegexExecution, resetRegexScriptState } from './redos-reporter.js';
 
 /**
@@ -28,8 +27,6 @@ import { isRegexScriptPaused, recordRegexExecution, resetRegexScriptState } from
 export const SCRIPT_TYPES = {
     // ORDER MATTERS: defines the regex script priority
     GLOBAL: 0,
-    PRESET: 2,
-    SCOPED: 1,
 };
 
 /**
@@ -38,22 +35,11 @@ export const SCRIPT_TYPES = {
 export const SCRIPT_TYPE_UNKNOWN = -1;
 
 /**
- * @typedef {import('../../char-data.js').RegexScriptData} RegexScript
- */
-
-/**
- * @typedef {object} GetRegexScriptsOptions
- * @property {boolean} allowedOnly Only return allowed scripts
- */
-
-/**
  * @type {Readonly<GetRegexScriptsOptions>}
  */
 const DEFAULT_GET_REGEX_SCRIPTS_OPTIONS = Object.freeze({ allowedOnly: false });
 const REGEX_SCRIPT_TYPE_LABELS = Object.freeze({
     [SCRIPT_TYPES.GLOBAL]: 'global',
-    [SCRIPT_TYPES.SCOPED]: 'scoped',
-    [SCRIPT_TYPES.PRESET]: 'preset',
     [SCRIPT_TYPE_UNKNOWN]: 'unknown',
 });
 const warnedInvalidPlacementScripts = new Set();
@@ -68,88 +54,16 @@ function filterValidPersistedRegexScripts(scripts) {
     return Array.isArray(scripts) ? scripts.filter(isPersistedRegexScriptRecord) : [];
 }
 
-function getPersistedRegexScriptCleanupKey(scriptType) {
-    switch (scriptType) {
-        case SCRIPT_TYPES.GLOBAL:
-            return 'global';
-        case SCRIPT_TYPES.SCOPED:
-            return `scoped:${String(characters?.[this_chid]?.avatar || '').trim()}`;
-        case SCRIPT_TYPES.PRESET:
-            return `preset:${String(getCurrentPresetAPI?.() || '').trim()}:${String(getCurrentPresetName?.() || '').trim()}`;
-        default:
-            return '';
-    }
-}
+function getPersistedRegexScriptCleanupKey(scriptType) { return scriptType === SCRIPT_TYPES.GLOBAL ? 'global' : ''; }
 
-function getPersistedRegexScriptCleanupToastMessage(scriptType) {
-    switch (scriptType) {
-        case SCRIPT_TYPES.GLOBAL:
-            return t`Global regex entries contained invalid data. Invalid entries were removed automatically. Check the browser console for details.`;
-        case SCRIPT_TYPES.SCOPED:
-            return t`Character-scoped regex entries contained invalid data. Invalid entries were removed automatically. Check the browser console for details.`;
-        case SCRIPT_TYPES.PRESET:
-            return t`Preset regex entries contained invalid data. Invalid entries were removed automatically. Check the browser console for details.`;
-        default:
-            return t`Some regex scripts contained invalid data. Invalid entries were removed automatically. Check the browser console for details.`;
-    }
-}
+function getPersistedRegexScriptCleanupToastMessage() { return t`Global regex entries contained invalid data. Invalid entries were removed automatically. Check the browser console for details.`; }
 
 function schedulePersistedRegexScriptCleanup(scriptType, scripts) {
-    const cleanupKey = getPersistedRegexScriptCleanupKey(scriptType);
-    if (!cleanupKey || pendingPersistedRegexScriptCleanups.has(cleanupKey)) {
-        return;
-    }
-
-    const nextScripts = structuredClone(filterValidPersistedRegexScripts(scripts));
-    const targetChid = Number(this_chid);
-    const targetPresetApiId = String(getCurrentPresetAPI?.() || '').trim();
-    const targetPresetName = String(getCurrentPresetName?.() || '').trim();
-    pendingPersistedRegexScriptCleanups.add(cleanupKey);
-
-    if (typeof toastr !== 'undefined') {
-        toastr.error(getPersistedRegexScriptCleanupToastMessage(scriptType), t`Regex script error`);
-    }
-
-    queueMicrotask(() => {
-        void (async () => {
-            try {
-                switch (scriptType) {
-                    case SCRIPT_TYPES.GLOBAL:
-                        capabilitySettings.regex = nextScripts;
-                        saveSettingsDebounced();
-                        break;
-                    case SCRIPT_TYPES.SCOPED: {
-                        if (!Number.isInteger(targetChid)) {
-                            return;
-                        }
-                        await writeExtensionField(targetChid, 'regex_scripts', nextScripts);
-                        break;
-                    }
-                    case SCRIPT_TYPES.PRESET: {
-                        if (!targetPresetApiId || !targetPresetName) {
-                            return;
-                        }
-                        const presetManager = getPresetManager(targetPresetApiId);
-                        if (!presetManager) {
-                            return;
-                        }
-                        await presetManager.writePresetExtensionField({ name: targetPresetName, path: 'regex_scripts', value: nextScripts });
-                        break;
-                    }
-                    default:
-                        break;
-                }
-            } catch (error) {
-                console.warn('[Regex] Failed to persist sanitized regex scripts', {
-                    scriptType: REGEX_SCRIPT_TYPE_LABELS[scriptType] || String(scriptType),
-                    cleanupKey,
-                    error,
-                });
-            } finally {
-                pendingPersistedRegexScriptCleanups.delete(cleanupKey);
-            }
-        })();
-    });
+    const key = getPersistedRegexScriptCleanupKey(scriptType);
+    if (!key || pendingPersistedRegexScriptCleanups.has(key)) return;
+    pendingPersistedRegexScriptCleanups.add(key);
+    if (typeof toastr !== 'undefined') toastr.error(getPersistedRegexScriptCleanupToastMessage(), t`Regex script error`);
+    queueMicrotask(() => { capabilitySettings.regex = filterValidPersistedRegexScripts(scripts); saveSettingsDebounced(); pendingPersistedRegexScriptCleanups.delete(key); });
 }
 
 function sanitizePersistedRegexScriptList(scripts, scriptType) {
@@ -176,51 +90,6 @@ function sanitizePersistedRegexScriptList(scripts, scriptType) {
 
     return scripts;
 }
-
-function summarizeRegexScriptForLog(script) {
-    if (!script || typeof script !== 'object') {
-        return null;
-    }
-
-    return {
-        id: String(script.id || ''),
-        name: String(script.scriptName || ''),
-        disabled: Boolean(script.disabled),
-        placementCount: Array.isArray(script.placement) ? script.placement.length : 0,
-        findRegexLength: String(script.findRegex || '').length,
-        replaceLength: String(script.replaceString || '').length,
-        promptOnly: Boolean(script.promptOnly),
-        markdownOnly: Boolean(script.markdownOnly),
-        pluginOnly: Boolean(script.pluginOnly),
-        runOnEdit: Boolean(script.runOnEdit),
-    };
-}
-/**
- * @typedef {object} RuntimeRegexProviderOptions
- * @property {boolean} [reloadOnChange=false] Request chat reload when provider is registered/unregistered.
- */
-
-/**
- * @typedef {object} RuntimeRegexScriptsChangedOptions
- * @property {boolean} [requestReload=false]
- */
-
-/**
- * @typedef {object} RuntimeRegexProviderRegistration
- * @property {string} owner
- * @property {(options?: RuntimeRegexScriptsChangedOptions) => void} refresh Notify listeners that provider output changed
- * @property {() => void} unregister Remove the provider registration
- */
-
-/**
- * @typedef {RuntimeRegexProviderRegistration & {
- *   upsertScript: (script: RegexScript, options?: RuntimeRegexScriptsChangedOptions) => boolean,
- *   removeScript: (scriptId: string, options?: RuntimeRegexScriptsChangedOptions) => boolean,
- *   setScripts: (scripts: RegexScript[] | null | undefined, options?: RuntimeRegexScriptsChangedOptions) => void,
- *   clearScripts: (options?: RuntimeRegexScriptsChangedOptions) => void,
- *   getScripts: () => RegexScript[],
- * }} ManagedRuntimeRegexProviderRegistration
- */
 
 /** @type {Map<string, { provider: (options?: GetRegexScriptsOptions) => RegexScript[] | null | undefined, reloadOnChange: boolean, managedScripts?: Map<string, RegexScript> }>} */
 const runtimeRegexProviders = new Map();
@@ -313,16 +182,6 @@ function regexScriptMatchesDepth(script, depth) {
 }
 
 /**
- * @typedef {{
- *   placementIndex: Map<any, RegexScript[]>,
- *   selectionCache: Map<string, RegexScript[]>,
- *   depthSelectionCache: Map<string, RegexScript[]>,
- *   scriptCount: number,
- *   patternCount: number,
- * }} RegexExecutionPlan
- */
-
-/**
  * Builds a placement index once for a stable script collection.
  *
  * @param {RegexScript[]} scripts
@@ -411,22 +270,7 @@ function getRegexExecutionCandidates(plan, placement, params = {}) {
     return selected;
 }
 
-function getStaticRegexExecutionContextKey() {
-    const character = characters?.[this_chid];
-    const presetApi = String(getCurrentPresetAPI?.() || '');
-    const presetName = String(getCurrentPresetName?.() || '');
-    const scopedAllowed = isScopedScriptsAllowed(character) ? 1 : 0;
-    const presetAllowed = isPresetScriptsAllowed(presetApi, presetName) ? 1 : 0;
-    return [
-        staticRegexExecutionRevision,
-        String(this_chid ?? ''),
-        String(character?.avatar || ''),
-        presetApi,
-        presetName,
-        scopedAllowed,
-        presetAllowed,
-    ].join('|');
-}
+function getStaticRegexExecutionContextKey() { return String(staticRegexExecutionRevision); }
 
 function getStaticRegexExecutionPlan() {
     const key = getStaticRegexExecutionContextKey();
@@ -814,16 +658,24 @@ export function getRuntimeRegexScripts(options = DEFAULT_GET_REGEX_SCRIPTS_OPTIO
 }
 
 /**
- * Retrieves the list of regex scripts by combining the scripts from the extension settings and the character data
+ * Retrieves the list of regex scripts by combining account rules, registered Plugin rules and exact Native Session rules
  *
  * @param {GetRegexScriptsOptions} options Options for retrieving the regex scripts
  * @returns {RegexScript[]} An array of regex scripts, where each script is an object containing the necessary information.
  */
+export function getNativeRegexScripts() {
+    const source = nativeSessionRuntime.snapshot?.manifest;
+    return nativeSessionRuntime.regexScripts().map((script, index) => ({ ...script,
+        id: script.id || `native-regex:${source?.packageId}:${source?.version}:${index}`,
+        __runtime_owner: 'Native Package · ' + (source?.name || source?.packageId || '') + ' · ' + (source?.version || ''),
+    }));
+}
+
 export function getRegexScripts(options = DEFAULT_GET_REGEX_SCRIPTS_OPTIONS) {
     return [
         ...Object.values(SCRIPT_TYPES).flatMap(type => getScriptsByType(type, options)),
         ...collectRuntimeRegexScripts(options),
-        ...nativeSessionRuntime.regexScripts(),
+        ...getNativeRegexScripts(),
     ];
 }
 
@@ -931,7 +783,12 @@ export function getRegexScriptDiagnostics(scripts = getRegexScripts({ allowedOnl
         }
     }
 
-    return { duplicates, conflicts };
+    const inventory = filterValidPersistedRegexScripts(scripts).map((script, index) => ({
+        id: script.id, name: script.scriptName, order: index, source: script.__runtime_owner || 'account',
+        reason: script.disabled ? 'disabled' : isRegexScriptPaused(script.id) ? 'paused' : !script.findRegex ? 'empty_pattern' : !normalizedPlacements(script).length ? 'missing_placement' : 'eligible',
+        placement: normalizedPlacements(script),
+    }));
+    return { duplicates, conflicts, inventory };
 }
 
 /**
@@ -940,33 +797,7 @@ export function getRegexScriptDiagnostics(scripts = getRegexScripts({ allowedOnl
  * @param {GetRegexScriptsOptions} options Options for retrieving the regex scripts
  * @returns {RegexScript[]} An array of regex scripts for the specified type.
  */
-export function getScriptsByType(scriptType, { allowedOnly } = DEFAULT_GET_REGEX_SCRIPTS_OPTIONS) {
-    switch (scriptType) {
-        case SCRIPT_TYPE_UNKNOWN:
-            return [];
-        case SCRIPT_TYPES.GLOBAL:
-            return sanitizePersistedRegexScriptList(capabilitySettings.regex ?? [], SCRIPT_TYPES.GLOBAL);
-        case SCRIPT_TYPES.SCOPED: {
-            if (nativeSessionRuntime.active) return [];
-            if (allowedOnly && !capabilitySettings?.character_allowed_regex?.includes(characters?.[this_chid]?.avatar)) {
-                return [];
-            }
-            const scopedScripts = characters[this_chid]?.data?.extensions?.regex_scripts;
-            return sanitizePersistedRegexScriptList(scopedScripts, SCRIPT_TYPES.SCOPED);
-        }
-        case SCRIPT_TYPES.PRESET: {
-            if (allowedOnly && !capabilitySettings?.preset_allowed_regex?.[getCurrentPresetAPI()]?.includes(getCurrentPresetName())) {
-                return [];
-            }
-            const presetManager = getPresetManager();
-            const presetScripts = presetManager?.readPresetExtensionField({ path: 'regex_scripts' });
-            return sanitizePersistedRegexScriptList(presetScripts, SCRIPT_TYPES.PRESET);
-        }
-        default:
-            console.warn(`getScriptsByType: Invalid script type ${scriptType}`);
-            return [];
-    }
-}
+export function getScriptsByType(scriptType) { return scriptType === SCRIPT_TYPES.GLOBAL ? sanitizePersistedRegexScriptList(capabilitySettings.regex ?? [], SCRIPT_TYPES.GLOBAL) : []; }
 
 /**
  * Saves an array of regex scripts for a specific type.
@@ -975,169 +806,10 @@ export function getScriptsByType(scriptType, { allowedOnly } = DEFAULT_GET_REGEX
  * @returns {Promise<void>}
  */
 export async function saveScriptsByType(scripts, scriptType) {
-    const normalizedScripts = filterValidPersistedRegexScripts(scripts);
-    invalidateRegexExecutionPlans();
-    const character = characters?.[this_chid];
-    const context = {
-        scriptType: REGEX_SCRIPT_TYPE_LABELS[scriptType] || String(scriptType),
-        scriptCount: normalizedScripts.length,
-        chid: this_chid ?? null,
-        avatar: character?.avatar || null,
-        currentPresetApi: getCurrentPresetAPI?.() || null,
-        currentPresetName: getCurrentPresetName?.() || null,
-        scripts: normalizedScripts.slice(0, 5).map(summarizeRegexScriptForLog),
-    };
-
-    console.info('[Regex] saveScriptsByType requested', context);
-
-    switch (scriptType) {
-        case SCRIPT_TYPES.GLOBAL:
-            capabilitySettings.regex = normalizedScripts;
-            saveSettingsDebounced();
-            console.info('[Regex] Global scripts staged in extension settings', context);
-            break;
-        case SCRIPT_TYPES.SCOPED:
-            await writeExtensionField(this_chid, 'regex_scripts', normalizedScripts);
-            console.info('[Regex] Scoped scripts persisted to character extension field', context);
-            break;
-        case SCRIPT_TYPES.PRESET: {
-            const presetManager = getPresetManager();
-            await presetManager.writePresetExtensionField({ path: 'regex_scripts', value: normalizedScripts });
-            console.info('[Regex] Preset scripts persisted to preset extension field', context);
-            break;
-        }
-        default:
-            console.warn(`saveScriptsByType: Invalid script type ${scriptType}`);
-            break;
-    }
-}
-
-/**
- * Check if character's regexes are allowed to be used; if character is undefined, returns false
- * @param {Character|undefined} character
- * @returns {boolean}
- */
-export function isScopedScriptsAllowed(character) {
-    return !!capabilitySettings?.character_allowed_regex?.includes(character?.avatar);
-}
-
-/**
- * Allow character's regexes to be used; if character is undefined, do nothing
- * @param {Character|undefined} character
- * @returns {void}
- */
-export function allowScopedScripts(character) {
-    const avatar = character?.avatar;
-    if (!avatar) {
-        return;
-    }
-    if (!Array.isArray(capabilitySettings?.character_allowed_regex)) {
-        capabilitySettings.character_allowed_regex = [];
-    }
-    if (!capabilitySettings.character_allowed_regex.includes(avatar)) {
-        capabilitySettings.character_allowed_regex.push(avatar);
-        invalidateRegexExecutionPlans();
-        saveSettingsDebounced();
-        console.info('[Regex] Scoped scripts allowed for character', {
-            avatar,
-            chid: this_chid ?? null,
-        });
-    }
-}
-
-/**
- * Disallow character's regexes to be used; if character is undefined, do nothing
- * @param {Character|undefined} character
- * @returns {void}
- */
-export function disallowScopedScripts(character) {
-    const avatar = character?.avatar;
-    if (!avatar) {
-        return;
-    }
-    if (!Array.isArray(capabilitySettings?.character_allowed_regex)) {
-        return;
-    }
-    const index = capabilitySettings.character_allowed_regex.indexOf(avatar);
-    if (index !== -1) {
-        capabilitySettings.character_allowed_regex.splice(index, 1);
-        invalidateRegexExecutionPlans();
-        saveSettingsDebounced();
-        console.info('[Regex] Scoped scripts disallowed for character', {
-            avatar,
-            chid: this_chid ?? null,
-        });
-    }
-}
-
-/**
- * Check if preset's regexes are allowed to be used
- * @param {string} apiId API ID
- * @param {string} presetName Preset name
- * @returns {boolean} True if allowed, false if not
- */
-export function isPresetScriptsAllowed(apiId, presetName) {
-    if (!apiId || !presetName) {
-        return false;
-    }
-    return !!capabilitySettings?.preset_allowed_regex?.[apiId]?.includes(presetName);
-}
-
-/**
- * Allow preset's regexes to be used
- * @param {string} apiId API ID
- * @param {string} presetName Preset name
- * @returns {void}
- */
-export function allowPresetScripts(apiId, presetName) {
-    if (!apiId || !presetName) {
-        return;
-    }
-    if (!Array.isArray(capabilitySettings?.preset_allowed_regex?.[apiId])) {
-        lodash.set(capabilitySettings, ['preset_allowed_regex', apiId], []);
-    }
-    if (!capabilitySettings.preset_allowed_regex[apiId].includes(presetName)) {
-        capabilitySettings.preset_allowed_regex[apiId].push(presetName);
-        invalidateRegexExecutionPlans();
-        saveSettingsDebounced();
-    }
-}
-
-/**
- * Disallow preset's regexes to be used
- * @param {string} apiId API ID
- * @param {string} presetName Preset name
- * @returns {void}
- */
-export function disallowPresetScripts(apiId, presetName) {
-    if (!apiId || !presetName) {
-        return;
-    }
-    if (!Array.isArray(capabilitySettings?.preset_allowed_regex?.[apiId])) {
-        return;
-    }
-    const index = capabilitySettings.preset_allowed_regex[apiId].indexOf(presetName);
-    if (index !== -1) {
-        capabilitySettings.preset_allowed_regex[apiId].splice(index, 1);
-        invalidateRegexExecutionPlans();
-        saveSettingsDebounced();
-    }
-}
-
-/**
- * Gets the current API ID from the preset manager.
- * @returns {string|null} Current API ID, or null if no preset manager
- */
-export function getCurrentPresetAPI() {
-    return getPresetManager()?.apiId ?? null;
-}
-
-/**
- * Gets the name of the currently selected preset.
- * @returns {string|null} The name of the currently selected preset, or null if no preset manager
- */
-export function getCurrentPresetName() {
-    return getPresetManager()?.getSelectedPresetName() ?? null;
+    if (scriptType !== SCRIPT_TYPES.GLOBAL) throw new TypeError('Only account Regex rules are writable');
+    capabilitySettings.regex = filterValidPersistedRegexScripts(scripts);
+    capabilitySettings.regex_presets = normalizeRegexPresets(capabilitySettings.regex_presets, capabilitySettings.regex);
+    invalidateRegexExecutionPlans(); saveSettingsDebounced();
 }
 
 /**
@@ -1220,7 +892,7 @@ export function getRegexedString(rawString, placement, { characterOverride, isMa
     // processors last.
     const runtimeScripts = [
         ...collectRuntimeRegexScripts({ allowedOnly: true }),
-        ...nativeSessionRuntime.regexScripts().map(script => ({ ...script, __runtime_owner: 'native-session' })),
+        ...getNativeRegexScripts(),
     ];
     const runtimeCandidates = runtimeScripts.length > 0
         ? getRegexExecutionCandidates(

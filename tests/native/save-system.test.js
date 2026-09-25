@@ -421,6 +421,7 @@ describe('N8 .atriasave portability / Checkpoint B', () => {
         try {
             const f = await installFixture(source);
             const library = knowledgeSnapshot('Promote me explicitly');
+            library.entries[0].enabled = false;
             const binding = bindingFor(library, 'library');
             await publishKnowledge(source, f.knowledgeRepo, library, binding);
             const view = await f.core.create(source.handle, {
@@ -446,6 +447,8 @@ describe('N8 .atriasave portability / Checkpoint B', () => {
                 promotion,
             );
             expect(promoted.binding.source.kind).toBe('library');
+            const promotedEntries = await other.knowledgeRepo.listEntries(target.handle, promoted.binding.source.knowledgeBaseId, promoted.binding.source.knowledgeRevisionId);
+            expect(promotedEntries[0].enabled).toBe(false);
             expect(promoted.knowledgeBase.displayName).toBe('My canon');
             const retry = await other.saveSystem.promoteEmbeddedKnowledge(target.handle, imported.session.sessionId, promotion);
             expect(retry.binding.knowledgeBindingId).toBe(targetBindingId);

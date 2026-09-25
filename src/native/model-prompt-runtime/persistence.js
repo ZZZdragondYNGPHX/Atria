@@ -77,6 +77,9 @@ export class VersionedJsonResourceHandler {
         const identity = getVersionedModelPromptResourceIdentity(resourceType, resource);
         return withRuntimeWrite(handle, () => this._engine.withTransaction(handle, async (tx) => {
             assertWritable();
+            for (const ref of collectVersionedModelPromptResourceRefs(resourceType, resource)) {
+                if (!await getNativeDocument(tx, this._revisionKey(handle, ref.resourceType, ref.resourceId, ref.revision))) throw new NotFoundError('Referenced exact Prompt resource', ref);
+            }
             await putImmutable(
                 tx,
                 this._revisionKey(handle, resourceType, identity.resourceId, identity.revision),
@@ -105,6 +108,22 @@ export class VersionedJsonResourceHandler {
             await putMutable(tx, key, { ...root, archived });
             return { resourceType, resourceId, archived };
         }));
+    }
+
+    async delete(handle, ref, references) {
+        if (ref.scope !== 'library' || !['core.prompt-program', 'core.prompt-module'].includes(ref.resourceType) || typeof references !== 'function') throw new TypeError('Writable Library Prompt resource required');
+        return withRuntimeWrite(handle, async () => {
+            await this.getExact(handle, ref);
+            const blockers = await references({ scope: 'library', resourceType: ref.resourceType, resourceId: ref.resourceId });
+            if (blockers.length) throw new ConflictError('native_resource_referenced', { references: blockers });
+            return this._engine.withTransaction(handle, async tx => {
+                assertWritable();
+                const revisions = await listNativeDocuments(tx, { kind: NATIVE_RESOURCE_KINDS.versionedJsonResourceRevision, handle, resourceType: ref.resourceType, resourceId: ref.resourceId });
+                for (const revision of revisions) await tx.deleteResource(this._revisionKey(handle, ref.resourceType, ref.resourceId, revision.revision));
+                await tx.deleteResource(this._rootKey(handle, ref.resourceType, ref.resourceId));
+                return { deleted: true, revisions: revisions.length };
+            });
+        });
     }
 
     async getExact(handle, { resourceType, resourceId, revision }) {
@@ -287,9 +306,10 @@ export class NativeModelPromptPersistence {
             .map(assertModelProfile));
     }
 
-    async saveRuntimeRoute(handle, value) {
+    async saveRuntimeRoute(handle, value, { validate = async () => {} } = {}) {
         return withRuntimeWrite(handle, async () => {
             const route = assertRuntimeRoute(value);
+            await validate(route);
             if (route.scope !== 'player') throw new TypeError('P1 persistence accepts player Runtime Routes only');
             const [model, connection] = await Promise.all([
                 this.getModelProfile(handle, route.modelProfileRef.modelProfileId),
