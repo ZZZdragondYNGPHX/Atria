@@ -1,4 +1,23 @@
-# Latest handoff — Prompt stage order and insertion position
+# Latest handoff — Collapsible prompt editors
+
+Updated: 2026-09-25 (Asia/Shanghai).
+Main: `4dab353ac639d42eae885c79e18245267abd6820` (local, not pushed).
+Implementation: `dc10712b791e0d9cc14e39b3b359d6d08e0d3aae`.
+Status: integrated tree matches task tree; temporary branch deleted.
+
+Prompt program/module sections and individual stages default collapsed. Native
+details support independent expansion; summaries show counts/status. Expansion
+survives rerenders/editor mode changes/preset saves. New stages expand; local
+semantic validation reveals the corresponding section. Save/Back remain outside
+disclosures. Prior stage ordering and insertion-position fixes are retained.
+
+Passed: 15 unit tests, four Edge desktop/mobile scenarios, localization and
+whitespace checks. ESLint: no errors, two pre-existing test warnings. Screenshots
+inspected. No Android/Docker or inference. Record: `feat/prompt-editor-folds.md`.
+This task and the preceding two tasks remain local; no push performed.
+
+---
+# Previous handoff — Prompt stage order and insertion position
 
 Updated: 2026-09-25 (Asia/Shanghai).
 Main: `19b0aaf6b8be79cb77e0696d957a9e15ae0fabf6` (local, not pushed).
