@@ -507,3 +507,13 @@ No new storage authority or automatic legacy Regex migration. Old Knowledge entr
 - Fresh fetch confirmed main baseline unchanged. Merge completed without conflicts; `git diff --exit-code feat/native-prompt-controls HEAD` proved the integrated tree identical to the verified feature tree. Working tree clean.
 - Final Regex browser passed: import changes cached execution immediately; bulk disable, group reapply, export download, delete and dangling-group cleanup. Focused execution-plan tests: 11 passed. Changed-file lint and whitespace checks passed.
 - Remote and local `feat/native-prompt-controls` deleted after main push; remote main confirmed. `docs` remains permanent. No remaining NPC work or stop gate.
+
+## Follow-up: World / Knowledge workflows (2026-09-25)
+
+User reported that installed Work originals have no usable entry CRUD/toggle flow, parameters are hidden in JSON disclosures, copies are difficult to find, and Work/Session bindings cannot change. This reopens product workflow acceptance; prior tests proved only Library paths.
+
+Branch: fix/world-knowledge-workflows from main aa3a0b0dc. Scope includes existing Sessions per explicit user answer.
+
+Decisions: use existing bundle fork/import for prominent editable-copy actions; expose entry CRUD and named parameter groups directly. Keep Package originals immutable. Work defaults belong to existing PackageState; Session changes belong to immutable Session revisions with optimistic concurrency and historical recovery. Exact World snapshots travel in Session state, changed World baselines are explicit resets while unchanged exact Worlds retain state. Knowledge selection reuses the existing binding-set snapshot authority. Validate UI workflows, runtime resolution, revision recovery and portable save paths affected by these changes only.
+
+Follow-up completion: `docs:fix/world-knowledge-workflows.md` records the corrected installed-original workflow acceptance, parameter/entry UX, explicit Work and existing Session bindings, and portable World snapshot/asset handling. Implemented at `45f0fdbd56dac8dd46e80431b3cd094eb67a34ea`, integrated/pushed main `23bfdc608b5e5ee2b6b863f116d118d529b0bab9`. Affected tests and 1440px/390px browser paths passed; temporary fix branch removed.
