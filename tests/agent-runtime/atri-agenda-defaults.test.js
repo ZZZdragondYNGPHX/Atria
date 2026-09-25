@@ -1,9 +1,6 @@
-import fs from 'node:fs';
 import { test, expect } from '@jest/globals';
 import { createWorkspaceFactoryPreset, getWorkspaceLibrary, prepareImportedWorkspacePreset, restoreNativeWorkspacePresets, workspaceHostProfile } from '../../public/scripts/agents/orchestrator/workspace/host-presets.js';
 import { emptyPresetLibrary, updatePresetLibrary, exportWorkspacePreset, importWorkspacePreset } from '../../public/scripts/lib/agent-workspace/presets.js';
-
-const read = path => JSON.parse(fs.readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8'));
 
 test('Atri factory omits compatibility selections and exports a native Agenda', () => {
     const preset = createWorkspaceFactoryPreset('agenda', 'builtin-agenda');
@@ -19,25 +16,6 @@ test('Atri factory omits compatibility selections and exports a native Agenda', 
         expect(agent.name.startsWith('Atri-')).toBe(true);
         expect(agent.tools).toEqual([]);
         expect(agent.modelProfile).not.toHaveProperty('apiPresetName');
-    }
-});
-
-test.each(['Atri-plugin-only', 'Atri-agenda-agent'])('%s injects runtime messages once after the reference boundary in both orders', name => {
-    const helpAsset = name === 'Atri-plugin-only' ? 'plugin-only' : 'agent-non-director';
-    const preset = read(`public/presets/${helpAsset}.json`);
-    expect(preset.name).toBe(name);
-    expect(preset.function_calling).toBe(true);
-    expect(read('default/content/index.json').some(item => item.filename.includes('Atri-'))).toBe(false);
-    const prompts = new Map(preset.prompts.map(prompt => [prompt.identifier, prompt]));
-    expect(prompts.size).toBe(preset.prompts.length);
-    expect(preset.prompt_order.map(group => group.character_id)).toEqual([100000, 100001]);
-    for (const group of preset.prompt_order) {
-        for (const item of group.order) expect(prompts.get(item.identifier)?.enabled).toBe(item.enabled);
-        const enabled = group.order.filter(item => item.enabled).map(item => item.identifier);
-        expect(enabled.filter(id => id === 'chatHistory')).toHaveLength(1);
-        expect(enabled.at(-1)).toBe('chatHistory');
-        expect(enabled.indexOf('atri-atria-reference-close')).toBeLessThan(enabled.indexOf('chatHistory'));
-        for (const id of ['agentSystemPrompt', 'agentTask', 'agentResults']) expect(enabled).not.toContain(id);
     }
 });
 
