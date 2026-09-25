@@ -210,10 +210,23 @@ export class VersionedJsonResourceHandler {
 
     async listWithRevisions(handle, { resourceType = null } = {}) {
         const roots = await this.list(handle, { resourceType });
-        return Object.freeze(await Promise.all(roots.map(async root => Object.freeze({
+        if (!roots.length) return Object.freeze([]);
+        // FS lists scan the resource-kind directory. Scan revisions once, not
+        // once per root (quadratic in the number of modules and their history).
+        const revisions = await this._engine.withTransaction(handle, tx => tx.listResources({
+            kind: NATIVE_RESOURCE_KINDS.versionedJsonResourceRevision, handle,
+            ...(resourceType === null ? {} : { resourceType }),
+        }));
+        const byResource = new Map();
+        for (const record of revisions) {
+            const key = JSON.stringify([record.key.resourceType, record.key.resourceId]);
+            if (!byResource.has(key)) byResource.set(key, []);
+            byResource.get(key).push(record.key.revision);
+        }
+        return Object.freeze(roots.map(root => Object.freeze({
             ...root,
-            revisions: await this.listRevisions(handle, root.resourceType, root.resourceId),
-        }))));
+            revisions: Object.freeze((byResource.get(JSON.stringify([root.resourceType, root.resourceId])) || []).sort()),
+        })));
     }
 }
 

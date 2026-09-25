@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, jest, test } from '@jest/globals';
 
 import {
     NativeModelPromptPersistence,
@@ -121,11 +121,17 @@ describe('P1 generic versioned JSON resource persistence', () => {
             const second = moduleResource();
             await resources.commit(h.handle, 'core.prompt-module', first);
             await resources.commit(h.handle, 'core.prompt-module', second);
+            await resources.commit(h.handle, 'core.prompt-module', { ...first, revision: 'rev-2' });
+            const transactions = jest.spyOn(h.engine, 'withTransaction');
 
             const listed = await resources.listWithRevisions(h.handle, {
                 resourceType: 'core.prompt-module',
             });
             expect(listed).toHaveLength(2);
+            expect(transactions).toHaveBeenCalledTimes(2); // One root scan and one revision scan, independent of root count.
+            expect(listed.find(item => item.resourceId === first.promptModuleId).revisions).toEqual(['rev-1', 'rev-2']);
+            expect(listed.find(item => item.resourceId === second.promptModuleId).revisions).toEqual(['rev-1']);
+            transactions.mockRestore();
             expect(new Set(listed.map(item => item.resourceId))).toEqual(
                 new Set([first.promptModuleId, second.promptModuleId]),
             );

@@ -167,8 +167,8 @@ export function createNativeStudioRouter(getServices = services) {
         }));
     }));
 
-    router.get('/projects', route(async (_req, res, { studio }, handle) => {
-        res.json(await studio.listProjects(handle));
+    router.get('/projects', route(async (req, res, { studio }, handle) => {
+        res.json(await studio.listProjects(handle, { summary: req.query.summary === 'true' }));
     }));
 
     router.post('/projects', route(async (req, res, { studio }, handle) => {

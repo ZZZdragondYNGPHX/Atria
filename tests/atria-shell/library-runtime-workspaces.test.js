@@ -151,6 +151,19 @@ describe('N9 Library / Runtime domain adapters', () => {
         controller.dispose();
     });
 
+    test('Runtime route list does not wait for the exact resource inventory', async () => {
+        globalThis.fetch = jest.fn(async url => {
+            if (String(url).endsWith('/configuration')) return jsonResponse({ connections: [], models: [], routes: [], profiles: [], resources: [] });
+            throw new Error('Unexpected inventory load: ' + url);
+        });
+        const slot = document.getElementById('slot');
+        const controller = mountRuntimeDomainWorkspace({ document, slot, route: { domain: 'runtime', child: null }, host: { openRuntimeSection: jest.fn() } });
+        await flush();
+        expect(slot.textContent).not.toContain('Loading Native Runtime');
+        expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+        controller.dispose();
+    });
+
     test('Native Connections never reparents the legacy editor and capabilities links resolve to Models', async () => {
         globalThis.fetch = jest.fn(async () => jsonResponse({ connections: [], models: [], routes: [], profiles: [], resources: [] }));
         const slot = document.getElementById('slot');

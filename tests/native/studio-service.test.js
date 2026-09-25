@@ -1,5 +1,5 @@
 import { createStudioWorkspace, sourceWriteOperation, projectSaveOperation, createAuthoringOperation } from '../../public/scripts/native/studio-authoring.js';
-import { describe, expect, test } from '@jest/globals';
+import { describe, expect, jest, test } from '@jest/globals';
 
 import { createGitClient } from '../../src/git/client.js';
 import {
@@ -80,6 +80,12 @@ describe('A1 Native StudioService authoring boundary', () => {
             const source = projectSource(); const other = projectSource();
             const created = await service.createProject(h.handle, source);
             await service.createProject(h.handle, other);
+            const revisions = jest.spyOn(service, 'getRevision');
+            expect(await service.listProjects(h.handle, { summary: true })).toHaveLength(2);
+            expect(revisions).not.toHaveBeenCalled();
+            expect((await service.listProjects(h.handle)).every(item => item.revision)).toBe(true);
+            expect(revisions).toHaveBeenCalledTimes(2);
+            revisions.mockRestore();
             const changed = await service.writeSource(h.handle, source.project.projectId, {
                 path: 'notes.txt', content: 'new work', baseRevision: created.revision.revision,
                 origin: { kind: 'human', id: 'test' },

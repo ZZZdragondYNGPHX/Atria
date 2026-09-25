@@ -50,7 +50,7 @@ function query(values) {
 }
 
 export const nativeStudioClient = Object.freeze({
-    listProjects: () => request('projects'),
+    listProjects: ({ summary = false } = {}) => request('projects' + (summary ? '?summary=true' : '')),
     createProject: source => request('projects', { method: 'POST', body: { source } }),
     getProject: projectId => request(`projects/${encode(projectId)}`),
     deleteProject: (projectId, baseRevision) => request(`projects/${encode(projectId)}`, { method: 'DELETE', body: { baseRevision } }),
