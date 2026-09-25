@@ -1,4 +1,24 @@
-# Latest handoff — Prompt module category navigation
+# Latest handoff — Native loading and module category refresh
+
+Updated: 2026-09-25 (Asia/Shanghai).
+Main: `b3beb59dd1cb0d37e6329b6d669448aba213753c` (local, not pushed).
+Implementation: `32f9b539c95f130340725e88e6c840bda3edc3c9`.
+Status: complete; integrated tree matches tested task tree; temporary branch deleted.
+
+Runtime lists no longer await the full resource inventory; setup checks load on
+expansion and exact choices load on route edit. Revision lists use one grouped
+scan. Build summaries avoid per-project Git synchronization. Session listings
+share exact package validation per request and count saves in one scan. Module
+category moves repaint from the committed snapshot while configuration observers
+refresh, without rebuilding global search after each edit.
+
+Validation: 41 Jest tests, five Edge scenarios, ESLint, native localization and
+whitespace checks passed. Runtime/Build screenshots inspected. No Android/Docker
+or inference. Production-scale latency not benchmarked. Main/docs remain local.
+Full record: `fix/native-workspace-loading.md`.
+
+---
+# Previous handoff — Prompt module category navigation
 
 Updated: 2026-09-25 (Asia/Shanghai).
 Main: `e42bd5043939af90583b473c22b68c4b57ca0aaf` (pushed).
