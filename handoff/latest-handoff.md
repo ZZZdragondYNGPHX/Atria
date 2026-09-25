@@ -1,4 +1,22 @@
-# Latest handoff — Native loading and module category refresh
+# Latest handoff — Prompt stage order and insertion position
+
+Updated: 2026-09-25 (Asia/Shanghai).
+Main: `19b0aaf6b8be79cb77e0696d957a9e15ae0fabf6` (local, not pushed).
+Implementation: `3774921c7c8b20a6a662bcdfd533dd12c6b185d5`.
+Status: complete; integrated tree matches verified task tree; task branch deleted.
+
+Stage module lists now share the compiler's existing ordering rule. Adding a
+module preserves the picker viewport position and focus instead of jumping to
+the stage ID input. User explicitly withdrew global insertion/unique ownership
+and cross-stage movement; module stage constraints remain unchanged.
+
+Passed 60 targeted unit tests, two Edge scenarios at 1440/390px, changed-file
+ESLint, native localization and whitespace checks. No Android/Docker or inference.
+Record: `fix/prompt-stage-order-position.md`. This and preceding loading changes
+remain local; no push was performed.
+
+---
+# Previous handoff — Native loading and module category refresh
 
 Updated: 2026-09-25 (Asia/Shanghai).
 Main: `b3beb59dd1cb0d37e6329b6d669448aba213753c` (local, not pushed).
