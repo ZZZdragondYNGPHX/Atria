@@ -1,4 +1,4 @@
-import { validatePromptParameters } from '../../../public/scripts/native/prompt-parameter-contracts.js';
+import { validatePromptParameters } from '../../../public/shared/prompt-parameters.js';
 import { assertNativeId } from '../identity.js';
 
 export const ATRIA_MODEL_PROMPT_SCHEMA_VERSION = 1;
@@ -399,13 +399,14 @@ function assertParameterDefinitions(value, field) {
     for (const [name, definition] of Object.entries(value)) {
         token(name, field + ' parameter name');
         object(definition, field + '.' + name);
-        only(definition, ['type', 'required', 'default'], field + '.' + name);
+        only(definition, ['type', 'required', 'default', 'label', 'description', 'options'], field + '.' + name);
         if (!PARAMETER_TYPES.includes(definition.type)) {
             throw new TypeError(field + '.' + name + '.type is unsupported');
         }
         out[name] = Object.freeze({
             type: definition.type,
             required: Boolean(definition.required),
+            ...Object.fromEntries(['label', 'description', 'options'].filter(key => definition[key] !== undefined).map(key => [key, clone(definition[key], field + '.' + name + '.' + key)])),
             ...(definition.default === undefined ? {} : { default: clone(definition.default, field + '.' + name + '.default') }),
         });
     }
@@ -610,6 +611,7 @@ export function assertRuntimeRoute(value) {
         'generationProfileRef',
         'promptProgramRef',
         'fallbackRouteRefs',
+        'promptParameters',
         'policy',
         'requirements',
     ], 'RuntimeRoute');
@@ -660,6 +662,7 @@ export function assertRuntimeRoute(value) {
             'RuntimeRoute.promptProgramRef',
         ),
         fallbackRouteRefs: freezeArray(fallbacks),
+        ...(value.promptParameters === undefined ? {} : { promptParameters: clone(object(value.promptParameters, 'RuntimeRoute.promptParameters'), 'RuntimeRoute.promptParameters') }),
         policy: Object.freeze({
             timeoutMs: integer(value.policy.timeoutMs, 'RuntimeRoute.policy.timeoutMs', { min: 1 }),
             maxRetries: integer(value.policy.maxRetries, 'RuntimeRoute.policy.maxRetries', { min: 0, max: 20 }),
@@ -757,6 +760,7 @@ export function assertPromptIR(value) {
         'tools',
         'outputContract',
         'prefill',
+        'compilation',
         'provenance',
     ], 'PromptIR');
     if (value.schemaVersion !== 1) throw new TypeError('PromptIR.schemaVersion must be 1');
@@ -797,6 +801,7 @@ export function assertPromptIR(value) {
             ? {}
             : { prefill: text(value.prefill, 'PromptIR.prefill', 1024 * 1024, { allowEmpty: true }) }),
         provenance: assertProvenance(value.provenance || [], 'PromptIR.provenance'),
+        ...(value.compilation === undefined ? {} : { compilation: clone(object(value.compilation, 'PromptIR.compilation'), 'PromptIR.compilation') }),
     });
 }
 

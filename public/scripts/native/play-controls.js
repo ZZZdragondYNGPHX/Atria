@@ -10,6 +10,7 @@ import {
 } from './product-client.js';
 import { NATIVE_SESSION_LIFECYCLE, onNativeSessionLifecycle } from './session-lifecycle.js';
 import { createAtriaIcon } from '../atria-shell/icons.js';
+import { mountPlayPromptControls } from './prompt-runtime-controls.js';
 
 function actionButton(documentRef, label, handler) {
     const node = documentRef.createElement('button');
@@ -505,6 +506,10 @@ export function mountNativePlayControls({
         void showTimeline();
     });
     const context = actionButton(documentRef, 'Context', showContext);
+    const promptControls = actionButton(documentRef, 'Prompt choices', () => {
+        openDrawer('Prompt choices'); drawerBody.replaceChildren();
+        void mountPlayPromptControls(documentRef, drawerBody);
+    });
 
     const more = documentRef.createElement('details');
     more.className = 'atria-play-more';
@@ -534,7 +539,7 @@ export function mountNativePlayControls({
         // so the destination button can receive its click.
         if (!more.contains(event.relatedTarget)) more.open = false;
     });
-    toolbar.append(timeline, context, save, more, status);
+    toolbar.append(timeline, context, promptControls, save, more, status);
     root.prepend(landing);
     const sessionHeader = root.querySelector('[data-atria-play-session-header]');
     if (sessionHeader) sessionHeader.append(toolbar);

@@ -320,6 +320,17 @@ export class NativeModelPromptPersistence {
         });
     }
 
+    async updatePromptParameters(handle, id, expected, parameters, validate) {
+        return withRuntimeWrite(handle, async () => {
+            const route = await this.getRuntimeRoute(handle, id);
+            if (!route || hashNativeDocument(route) !== hashNativeDocument(expected)) throw new ConflictError('native_prompt_controls_conflict');
+            await validate(route, parameters);
+            const updated = assertRuntimeRoute({ ...route, promptParameters: parameters });
+            await this._save(handle, NATIVE_RESOURCE_KINDS.runtimeRoute, 'runtimeRouteId', id, updated);
+            return updated;
+        });
+    }
+
     async deleteProfile(handle, kind, id) {
         const definitions = { connections: [NATIVE_RESOURCE_KINDS.connectionProfile, 'connectionProfileId'], models: [NATIVE_RESOURCE_KINDS.modelProfile, 'modelProfileId'], routes: [NATIVE_RESOURCE_KINDS.runtimeRoute, 'runtimeRouteId'] };
         if (!definitions[kind]) throw new TypeError('Unsupported Runtime resource');

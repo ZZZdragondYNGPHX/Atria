@@ -65,6 +65,10 @@ Preview/execute request fields:
   authority. Native selected facts/history remain owned by the context adapter.
 - `prompt`: typed `parameters`, request `locals`, checked `artifacts`, `stageIds`.
   Caller-supplied `prompt.host` is rejected.
+  Effective parameters use authored defaults, then the resolved player's Runtime
+  Route `promptParameters`, then explicit request parameters. Every fallback uses
+  its own route choices and exact Program definitions; unknown names, wrong types
+  and values outside declared choices fail closed before send.
 - `fallbackMode`: `disabled` (default), `automatic`, or `confirm`.
   `unknownCapabilityOverrides` permit explicit unknown evidence only, not unsupported.
 - `/preview` only: `previewRefs.promptProgramRef` / `generationProfileRef`.
@@ -91,6 +95,36 @@ agent task/evidence/constraints, before/after history/input, response prefill/po
 history). Programs order stages and exact module refs. Stage order is canonical;
 within a stage target, priority and stable module ID provide deterministic ordering.
 Conditions are finite validated data, never executable JavaScript/ST macros.
+
+### Player Prompt controls (NPC-001)
+
+Parameter definitions optionally declare `label`, `description`, and `options`
+(`[{ value, label }]`, 1–128 distinct string or finite-number values matching the
+parameter type). Boolean parameters render as checkboxes; finite options render
+as single-selection controls and must declare a default or be required.
+Author labels/values are data, never locale keys.
+Defaults and control definitions remain immutable Prompt authoring data.
+
+Play's **Prompt choices** inspector and Runtime Diagnostics edit overrides owned
+by the selected player Runtime Route, shared across its sessions and reloads.
+They do not choose a new execution route or write Session/Package/Program state.
+Unchecking **Override default** removes that override on save; **Restore Prompt
+defaults** persists an empty override map. Required values without defaults still
+need an explicit selection before generation. Changing an exact Program reference
+does not silently discard stale overrides; the UI diagnoses them and compilation
+rejects them until corrected or reset. Request-owned overrides remain supported.
+
+Authenticated GET/PUT `/prompt-controls/:runtimeRouteId` read exact inherited
+definitions through existing Library/Project/Package readers. PUT accepts
+`{ expected: <loaded route>, parameters: <partial overrides> }`, validates values,
+and performs a serialized compare-and-update of only the existing mutable route.
+Concurrent edits require reopening controls; no extra persistence authority or
+Prompt revision is created. The general route configuration API remains unchanged.
+
+`snapshot.promptIr.compilation` records effective parameters, selected stages and
+included/disabled/condition-false module decisions for the same compiler used by
+preview and execution. Generic parameter errors are safe machine codes with
+localized product remediation; invalid values cannot trigger a fallback send.
 
 `PromptCompiler({ hostDefinitions })` accepts `{ request, resolved, contextPlan }`.
 Parameters, request locals, module parameters and prior-stage artifacts use typed,

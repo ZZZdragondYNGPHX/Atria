@@ -1,9 +1,16 @@
-import { formatShellText as formatProductText } from '../atria-shell/localization.js';
-// Shared by authoring and Native resource contracts; matches runtime variable binding.
+import { formatShellText } from '../atria-shell/localization.js';
+import { validatePromptParameters as validate } from '../../shared/prompt-parameters.js';
+export { validatePromptSelection } from '../../shared/prompt-parameters.js';
+
 export function validatePromptParameters(definitions) {
-    for (const [name, definition] of Object.entries(definitions || {})) {
-        if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(name) || ['constructor', 'prototype', '__proto__'].includes(name)) throw new TypeError(formatProductText('Invalid parameter name: ${0}', [name]));
-        if (definition.default !== undefined && (definition.type !== 'json' && typeof definition.default !== definition.type || definition.type === 'number' && !Number.isFinite(definition.default))) throw new TypeError(formatProductText('Parameter default does not match its type: ${0}', [name]));
+    try { return validate(definitions, formatShellText); } catch (error) {
+        const messages = {
+            prompt_parameter_choice_required: 'An exclusive choice needs an authored default or Required parameter enabled.',
+            prompt_parameter_options: 'Use distinct option values matching the parameter type, and give every option a label.',
+            prompt_parameter_option: 'The default must match one of the declared options.',
+            prompt_parameter_metadata: 'Control labels and descriptions must contain 1 to 512 characters.',
+        };
+        if (messages[error.message]) throw new TypeError(formatShellText(messages[error.message]));
+        throw error;
     }
-    return definitions;
 }

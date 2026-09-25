@@ -25,6 +25,34 @@ function args(modules = [], extra = {}) {
 const compile = value => new PromptCompiler().compile(value);
 
 describe('P3 Prompt compiler', () => {
+    test('NPC-001 typed choices select mutually exclusive modules, expose evidence and reject stale values', () => {
+        const value = args(['calm', 'fast'].map(mode => mod(mode, { condition: { op: 'eq', path: 'param.mode', value: mode } })), {
+            parameters: { mode: { type: 'string', label: 'Writing pace', default: 'calm', options: [{ value: 'calm', label: 'Calm' }, { value: 'fast', label: 'Fast' }] }, enabled: { type: 'boolean', default: false } },
+        });
+        expect(compile(value).promptIr.directives).toEqual(['calm']);
+        value.resolved.route.promptParameters = { mode: 'fast', enabled: true };
+        const result = compile(value);
+        expect(result.promptIr.directives).toEqual(['fast']);
+        expect(result.promptIr.compilation.parameters).toEqual({ mode: 'fast', enabled: true });
+        expect(result.promptIr.compilation.modules.map(item => item.status)).toEqual(expect.arrayContaining(['included', 'condition-false']));
+        value.request.prompt = { parameters: { mode: 'calm' } };
+        expect(compile(value).promptIr.directives).toEqual(['calm']);
+        value.request.prompt.parameters.mode = 'removed'; expect(() => compile(value)).toThrow('parameter_option');
+        value.request.prompt = { parameters: null }; expect(() => compile(value)).toThrow('parameters_invalid');
+        value.request.prompt = {}; value.resolved.route.promptParameters = { obsolete: true }; expect(() => compile(value)).toThrow('parameter_unknown');
+    });
+
+    test.each([
+        { type: 'string', options: [] },
+        { type: 'string', options: [{ value: 'a', label: 'A' }] },
+        { type: 'string', default: 'other', options: [{ value: 'a', label: 'A' }] },
+        { type: 'boolean', options: [{ value: true, label: 'On' }] },
+        { type: 'number', options: [{ value: '1', label: 'One' }] },
+        { type: 'string', options: [{ value: 'a', label: 'A' }, { value: 'a', label: 'Again' }] },
+        { type: 'string', label: '' },
+    ])('NPC-001 rejects invalid authored control metadata %j', definition => {
+        expect(() => assertPromptProgram(program([], { parameters: { choice: definition } }))).toThrow();
+    });
     test('deterministic immutable IR, semantic positions and request authority', () => {
         const value = args(['system.style', 'context.before_history', 'context.after_history', 'context.before_input', 'context.after_input', 'response.post_history', 'response.prefill']
             .map(target => mod(target, { target })), { responseDirective: { body: 'directive' } });

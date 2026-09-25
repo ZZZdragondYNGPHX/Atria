@@ -4,7 +4,7 @@ const read = path => readFileSync(path, 'utf8');
 const ui = read('public/scripts/native/prompt-authoring.js');
 assert.doesNotMatch(ui, /getPresetManager|PromptManager|connectionManager|oai_settings|power_user|localStorage|indexedDB|executeWorkspace|applyChangeSet/);
 for (const name of ['core.prompt-program', 'core.prompt-module', 'core.generation-profile', 'Read-only original', 'Used By', 'Advanced editor', 'Stage / module tree', 'stageProject', 'previewRefs']) assert.ok(ui.includes(name), name);
-assert.match(ui, /entry.ref.scope === 'library'\) action\(doc, row, 'New revision'/);
+assert.match(ui, /entry.ref.scope === 'library'\) \{\s*action\(doc, row, 'New revision'/);
 assert.match(ui, /if \(!await stageProject\(source, label\)\)/);
 assert.match(ui, /result.closure.resources/);
 const studio = read('public/scripts/native/studio-workspace.js');

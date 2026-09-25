@@ -8,6 +8,7 @@ import { confirmLibraryAction, referenceRemediation } from './library-ui.js';
 import { createStudioNativeId } from './studio-authoring.js';
 import { nativeStudioClient } from './studio-client.js';
 import { runtimeReadiness } from './runtime-readiness.js';
+import { mountPromptRuntimeControls } from './prompt-runtime-controls.js';
 
 const sectionLabels = { routes: 'Routes', models: 'Models', connections: 'Connections', retrieval: 'Retrieval', diagnostics: 'Diagnostics' };
 const resourceLabels = { routes: 'route', models: 'model', connections: 'connection' };
@@ -465,6 +466,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const form = node('form'); form.className = 'atri-runtime-form';
         const routing = group(form, 'Preview route');
         const routeSelect = field(routing, 'Route to preview', '', options(data.routes, ids.routes)); routeSelect.required = true;
+        const promptControls = node('div', undefined, routing);
+        routeSelect.addEventListener('change', () => {
+            promptControls.replaceChildren();
+            if (routeSelect.value) void mountPromptRuntimeControls({ document: doc, root: promptControls, routeId: routeSelect.value });
+        });
         if (!data.routes.length) { notice('Create a route before compiling a preview.', routing); button('Manage routes', () => host.openRuntimeSection('routes'), routing); }
         const context = group(form, 'Pinned context', nativeSessionRuntime.active ? 'The current Native session supplies the exact context.' : 'Choose a Project and its exact revision, or open a Native game.');
         const project = field(context, 'Build Project', '', [['', 'Choose…']]); const revision = field(context, 'Exact Project revision', '', [['', 'Choose…']]);

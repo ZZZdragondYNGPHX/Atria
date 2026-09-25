@@ -37,7 +37,10 @@ export function bindValues(definitions = {}, values = {}) {
         const value = Object.hasOwn(values, name) ? values[name] : definition.default;
         if (value === undefined) {
             if (definition.required) promptError('parameter_required');
-        } else result[name] = typedValue(value, definition.type);
+        } else {
+            result[name] = typedValue(value, definition.type);
+            if (definition.options && !definition.options.some(option => option.value === value)) promptError('parameter_option');
+        }
     }
     return result;
 }

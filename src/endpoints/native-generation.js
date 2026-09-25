@@ -1,5 +1,6 @@
 import { getVersionedModelPromptResourceIdentity, VERSIONED_MODEL_PROMPT_RESOURCE_TYPES } from '../native/model-prompt-runtime/resources.js';
 import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
+import { readPromptControls, validatePromptOverrides } from '../native/model-prompt-runtime/prompt-controls.js';
 import express from 'express';
 import { NativeRetrievalPersistence } from '../native/retrieval-persistence.js';
 import { getStorageEngine } from '../storage/index.js';
@@ -41,6 +42,25 @@ function services() {
 
 export function createNativeGenerationRouter(getHost = services) {
     const router = express.Router();
+    router.get('/prompt-controls/:id', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try {
+            const host = getHost(); const route = await host.persistence.getRuntimeRoute(handle, req.params.id);
+            const definitions = await readPromptControls(host, handle, route);
+            res.json({ route, definitions });
+        } catch { res.status(400).json({ error: 'native_prompt_controls_unavailable' }); }
+    });
+    router.put('/prompt-controls/:id', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try {
+            const host = getHost();
+            const route = await host.persistence.updatePromptParameters(handle, req.params.id, req.body.expected, req.body.parameters,
+                async route => validatePromptOverrides(await readPromptControls(host, handle, route), req.body.parameters));
+            res.json(route);
+        } catch (error) { res.status(409).json({ error: error.code === 'native_prompt_controls_conflict' ? error.code : 'native_prompt_controls_invalid' }); }
+    });
     router.get('/retrieval', async (req, res) => {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         try { res.json(await new NativeRetrievalPersistence({ engine: getStorageEngine() }).list(req.user.profile.handle)); } catch { res.status(500).json({ error: 'native_retrieval_unavailable' }); }

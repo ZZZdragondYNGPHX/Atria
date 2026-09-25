@@ -17,6 +17,10 @@ export function getRuntimeEvidence() { return latestEvidence; }
 
 export function runtimeRemediation(code) {
     const actions = {
+        prompt_parameter_option: ['Saved Prompt choices are invalid. Open Prompt choices and restore defaults or choose valid values.', 'diagnostics'],
+        prompt_parameter_unknown: ['Saved Prompt choices are invalid. Open Prompt choices and restore defaults or choose valid values.', 'diagnostics'],
+        prompt_parameter_type: ['Saved Prompt choices are invalid. Open Prompt choices and restore defaults or choose valid values.', 'diagnostics'],
+        prompt_parameter_required: ['A required Prompt choice is missing. Open Prompt choices and select a value.', 'diagnostics'],
         native_retrieval_unavailable: ['This exact retrieval revision is unavailable. Select another revision in Memory or create one in Runtime Retrieval.', 'retrieval'],
         native_retrieval_secret_unavailable: ['The retrieval Secret is unavailable. Create a retrieval revision with an existing stored Secret.', 'retrieval'],
         native_retrieval_invalid: ['Check the retrieval task, model, endpoint, stored Secret and provider options.', 'retrieval'],
