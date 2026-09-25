@@ -88,6 +88,9 @@ function runSelfTest() {
 
 function runRepositoryGuard() {
     const files = walk(CORE_ROOT);
+    // This dual-host contract is served to authoring UI and imported by Core;
+    // it must obey the same no-browser/no-legacy boundary as Core itself.
+    files.push('public/shared/prompt-parameters.js');
     if (files.length === 0) throw new Error('P0 Native Core contract directory is missing');
     for (const path of files) assertSource(path, readFileSync(resolve(ROOT, path), 'utf8'));
 

@@ -114,6 +114,7 @@ export class GenerationService {
         } catch (error) {
             // Never attach an adapter/secret exception, stack, payload, or cause to diagnostics.
             if (error instanceof GenerationError) throw new GenerationError(error.code);
+            if (['prompt_parameter_option', 'prompt_parameter_unknown', 'prompt_parameter_type', 'prompt_parameter_required'].includes(error.code)) throw new GenerationError(error.code);
             throw new GenerationError('generation_execution_failed');
         }
     }

@@ -55,12 +55,30 @@ export function mountPromptParameters(doc, root, definitions = {}) {
     function add(name = '', definition = { type: 'string' }) {
         const row = el(doc, 'fieldset', '', undefined, section); const nameInput = field(doc, row, 'Parameter name', name);
         const type = select(doc, row, 'Parameter type', ['string', 'number', 'boolean', 'json'].map(item => [item, item]), definition.type);
+        const label = field(doc, row, 'Control label', definition.label || '');
+        const description = field(doc, row, 'Control description', definition.description || '');
+        const optionsBox = el(doc, 'div', '', undefined, row); const optionRows = [];
+        function addOption(option = { value: '', label: '' }) {
+            const box = el(doc, 'div', '', undefined, optionsBox);
+            const optionValue = field(doc, box, 'Option value', option.value);
+            const optionLabel = field(doc, box, 'Option label', option.label);
+            const item = { read: () => ({ value: type.value === 'number' ? (optionValue.value.trim() ? Number(optionValue.value) : NaN) : optionValue.value, label: optionLabel.value }) };
+            optionRows.push(item);
+            action(doc, box, 'Remove option', () => { optionRows.splice(optionRows.indexOf(item), 1); box.remove(); });
+        }
+        for (const option of definition.options || []) addOption(option);
+        const addChoice = action(doc, row, 'Add exclusive option', () => addOption());
+        const updateOptions = () => { optionsBox.hidden = addChoice.hidden = !['string', 'number'].includes(type.value); };
+        type.addEventListener('change', updateOptions); updateOptions();
         const required = field(doc, row, 'Required parameter', '', 'checkbox'); required.checked = Boolean(definition.required); required.parentElement.classList.add('atri-prompt-toggle');
         const enabled = field(doc, row, 'Use default value', '', 'checkbox'); enabled.checked = Object.hasOwn(definition, 'default'); enabled.parentElement.classList.add('atri-prompt-toggle');
         const valueBox = el(doc, 'div', '', undefined, row); let readValue;
         function draw() { valueBox.replaceChildren(); readValue = typedInput(doc, valueBox, 'Default value', type.value, definition.default); valueBox.hidden = !enabled.checked; }
         type.addEventListener('change', () => { definition = {}; draw(); }); enabled.addEventListener('change', () => { valueBox.hidden = !enabled.checked; }); draw();
-        const item = { read: () => [nameInput.value, { type: type.value, required: required.checked, ...(enabled.checked ? { default: readValue() } : {}) }] }; rows.push(item);
+        const item = { read: () => [nameInput.value, { type: type.value, required: required.checked,
+            ...(label.value.trim() ? { label: label.value } : {}), ...(description.value.trim() ? { description: description.value } : {}),
+            ...(!optionsBox.hidden && optionRows.length ? { options: optionRows.map(item => item.read()) } : {}),
+            ...(enabled.checked ? { default: readValue() } : {}) }] }; rows.push(item);
         action(doc, row, 'Remove parameter', () => { rows.splice(rows.indexOf(item), 1); row.remove(); });
     }
     for (const [name, definition] of Object.entries(definitions)) add(name, definition);

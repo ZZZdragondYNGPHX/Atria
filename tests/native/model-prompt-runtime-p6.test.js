@@ -15,6 +15,16 @@ const compile = (resources, promptProgramRef) => new PromptCompiler().compile({ 
 } }).promptIr;
 
 describe('P6 exact fork and Package freeze', () => {
+    test('NPC-001 inherited labels, finite choices and defaults survive Package flatten and Library fork', () => {
+        const parameters = { mode: { type: 'string', label: 'Style', description: 'Choose one style', default: 'calm', options: [{ value: 'calm', label: 'Calm' }, { value: 'fast', label: 'Fast' }] } };
+        const m = module('{{param.mode}}'); const parent = program([m], { parameters }); const child = program([], { parentRef: ref(parent) });
+        const frozen = freezePackagePromptPrograms([m, parent, child].map(entry), owner).map(item => ({ ...item, ref: ref(item.resource) }));
+        const leaf = frozen.find(item => item.resource.promptProgramId === child.promptProgramId);
+        expect(leaf.resource.parameters.mode).toMatchObject(parameters.mode);
+        expect(compile(frozen, leaf.ref).compilation.parameters).toEqual({ mode: 'calm' });
+        const forked = forkPromptClosure(frozen, leaf);
+        expect(forked.entries.at(-1).resource.parameters.mode).toMatchObject(parameters.mode);
+    });
     test('flattened configure/replace/disable/add has identical compiled content, no parent lookup and no mutation', () => {
         const a = module('base'), b = module('disabled'), replacement = module('replacement {{module.tone}}', { parameters: { tone: { type: 'string', default: 'calm' } } });
         const added = module('added'); const parent = program([a, b]);

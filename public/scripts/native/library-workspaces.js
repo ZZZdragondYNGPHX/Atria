@@ -7,6 +7,7 @@ import { mountLibraryRevisionHistory } from './library-revision-history.js';
 import { nativeStudioClient } from './studio-client.js';
 import { mountKnowledgeBindingManager } from './knowledge-binding-manager.js';
 import { mountLibraryRevisionEditor } from './library-revision-editor.js';
+import { mountKnowledgeEntryBrowser } from './knowledge-entry-browser.js';
 import { createAtriaStatePanel } from '../atria-shell/primitives.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { arrayBufferToBase64, nativeProductClient as client } from './product-client.js';
@@ -221,7 +222,7 @@ async function workDetail(doc, root, host, id, refresh) {
     }, { danger: true });
 }
 
-async function worldKnowledge(doc, root, route, host) {
+async function worldKnowledge(doc, root, route, host, browseState = {}) {
     const child = String(route?.child?.id || '');
     const knowledge = child === 'knowledge' || child.startsWith('knowledge:');
     const label = knowledge ? 'Knowledge Bases' : 'Worlds';
@@ -256,14 +257,16 @@ async function worldKnowledge(doc, root, route, host) {
         }
         const revisionActions = actions(doc, root);
         resourceBundleExport(doc, revisionActions, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId: id, revision: resource.currentRevisionId }, resource.displayName);
-        action(doc, revisionActions, resource.currentRevisionId ? 'New revision' : 'Create first revision', () => {
+        const editRevision = (initialEntryId, entryEnabled) => {
             const reload = async saved => {
-                root.replaceChildren(); await worldKnowledge(doc, root, route, host);
+                root.replaceChildren(); await worldKnowledge(doc, root, route, host, browseState);
+                if (initialEntryId) [...root.querySelectorAll('[data-atria-knowledge-entry-id]')].find(row => row.dataset.atriaKnowledgeEntryId === initialEntryId)?.querySelector('summary')?.focus();
                 if (saved) feedback(doc, root, tl('Saved immutable Library revision.') + ' ' + (saved.worldRevisionId || saved.knowledgeRevisionId));
             };
             root.replaceChildren();
-            mountLibraryRevisionEditor({ document: doc, root, detail, knowledge, onClose: () => reload(), onSaved: reload });
-        }, { primary: true });
+            mountLibraryRevisionEditor({ document: doc, root, detail, knowledge, initialEntryId, entryEnabled, browseState, onClose: () => reload(), onSaved: reload });
+        };
+        action(doc, revisionActions, resource.currentRevisionId ? 'New revision' : 'Create first revision', () => editRevision(), { primary: true });
         const manage = disclosure(doc, root, 'Manage resource');
         const name = field(doc, manage, knowledge ? 'Knowledge Base name' : 'World name', resource.displayName); name.required = true;
         const controls = actions(doc, manage);
@@ -288,11 +291,8 @@ async function worldKnowledge(doc, root, route, host) {
         }, { danger: true });
         if (knowledge) {
             const entries = section(doc, root, 'Entries', 'atriaKnowledgeEntries');
-            for (const entry of detail.entries) {
-                const article = el(doc, 'article', 'atri-library-knowledge-entry', undefined, entries); article.dataset.atriaKnowledgeEntryId = entry.knowledgeEntryId;
-                el(doc, 'h4', '', entry.metadata?.title || tl('Knowledge entry'), article);
-                el(doc, 'p', '', entry.content, article); disclosure(doc, article, 'Details', { knowledgeEntryId: entry.knowledgeEntryId, delivery: entry.delivery, discovery: entry.discovery });
-            }
+            el(doc, 'p', 'atri-library-meta', tl('Entry changes are drafts. Review and save a new immutable revision; existing bindings keep their exact revision.'), entries);
+            mountKnowledgeEntryBrowser({ document: doc, root: entries, entries: detail.entries, state: browseState, onEdit: entry => editRevision(entry.knowledgeEntryId), onToggle: (entry, enabled) => editRevision(entry.knowledgeEntryId, enabled) });
             if (!detail.entries.length) state(doc, entries, 'empty', 'No entries', 'This revision contains no Knowledge entries.');
             const bindings = section(doc, root, 'Bindings & references', 'atriaKnowledgeBindings');
             mountKnowledgeBindingManager({ document: doc, root: bindings, detail, host });

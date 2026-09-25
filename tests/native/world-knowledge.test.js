@@ -34,6 +34,14 @@ const IDs = Object.freeze({
     revisionId: 'rev_' + 'f'.repeat(32),
 });
 
+test('entry enabled is optional without rewriting historical content and validates a boolean', () => {
+    const entry = { knowledgeEntryId: IDs.knowledgeEntryA, content: 'Knowledge' };
+    expect(assertKnowledgeEntry(entry)).not.toHaveProperty('enabled');
+    expect(assertKnowledgeEntry({ ...entry, enabled: false }).enabled).toBe(false);
+    expect(assertKnowledgeEntry({ ...entry, enabled: true }).enabled).toBe(true);
+    expect(() => assertKnowledgeEntry({ ...entry, enabled: 'false' })).toThrow(/boolean/);
+});
+
 function worldSnapshot() {
     return {
         world: {

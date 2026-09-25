@@ -117,10 +117,11 @@ export class PromptCompiler {
         if (plan.requestId !== request.requestId) promptError('request_identity');
         const program = flattenPromptProgram(resolved);
         const values = immutable(request.prompt || {});
+        if (values.parameters !== undefined && (!values.parameters || typeof values.parameters !== 'object' || Array.isArray(values.parameters))) promptError('parameters_invalid');
         if (Object.keys(values).some(key => !['parameters', 'locals', 'artifacts', 'host', 'stageIds'].includes(key))) promptError('request_field');
         const env = {
             host: bindValues(this.hostDefinitions, values.host),
-            param: bindValues(program.parameters, values.parameters),
+            param: bindValues(program.parameters, { ...resolved.route.promptParameters, ...values.parameters }),
             local: bindValues(program.locals, values.locals), artifact: {}, module: {},
         };
         const declarations = { host: this.hostDefinitions, param: program.parameters, local: program.locals, artifact: {}, module: {} };
@@ -206,6 +207,7 @@ export class PromptCompiler {
             else if (block.target === 'response.prefill') ir.prefill = block.content;
             else ir.contextSlots.push(block);
         }
-        return immutable({ promptIr: assertPromptIR(ir), diagnostics, selectedStages: stages.filter(id => selected.includes(id)) });
+        ir.compilation = { parameters: env.param, modules: diagnostics, selectedStages: stages.filter(id => selected.includes(id)) };
+        return immutable({ promptIr: assertPromptIR(ir), diagnostics, selectedStages: ir.compilation.selectedStages });
     }
 }

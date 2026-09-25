@@ -1,5 +1,6 @@
 import { getVersionedModelPromptResourceIdentity, VERSIONED_MODEL_PROMPT_RESOURCE_TYPES } from '../native/model-prompt-runtime/resources.js';
 import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
+import { readPromptControls, validatePromptOverrides } from '../native/model-prompt-runtime/prompt-controls.js';
 import express from 'express';
 import { NativeRetrievalPersistence } from '../native/retrieval-persistence.js';
 import { getStorageEngine } from '../storage/index.js';
@@ -41,6 +42,44 @@ function services() {
 
 export function createNativeGenerationRouter(getHost = services) {
     const router = express.Router();
+    const resourceReferences = async (host, handle, ref) => {
+        const references = [...await host.studio.getResourceReferences(handle, ref, { reverse: true })].filter(item => !(item.node?.scope === 'library' && item.node.resourceType === ref.resourceType && item.node.resourceId === ref.resourceId));
+        for (const route of await host.persistence.listRuntimeRoutes(handle)) {
+            if ([route.promptProgramRef, route.generationProfileRef].some(item => item.scope === 'library' && item.resourceType === ref.resourceType && item.resourceId === ref.resourceId && (!ref.revision || item.revision === ref.revision))) {
+                references.push({ node: { displayName: route.displayName, resourceType: 'core.runtime-route', resourceId: route.runtimeRouteId, scope: 'player', metadata: { exactRef: ref } }, owner: 'Runtime', edge: { kind: 'runtime-route-exact', from: route.runtimeRouteId } });
+            }
+        }
+        return references;
+    };
+    router.post('/resources/delete', async (request, response) => {
+        const handle = request.user?.profile?.handle;
+        if (!handle) return response.sendStatus(401);
+        try {
+            const ref = assertExactResourceRef(request.body); const host = getHost();
+            response.json(await host.library.delete(handle, ref, target => resourceReferences(host, handle, target)));
+        } catch (error) {
+            response.status(error.code === 'native_resource_referenced' ? 409 : 400).json({ error: error.code === 'native_resource_referenced' ? error.code : 'native_resource_delete_failed', details: error.details });
+        }
+    });
+    router.get('/prompt-controls/:id', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try {
+            const host = getHost(); const route = await host.persistence.getRuntimeRoute(handle, req.params.id);
+            const definitions = await readPromptControls(host, handle, route);
+            res.json({ route, definitions });
+        } catch { res.status(400).json({ error: 'native_prompt_controls_unavailable' }); }
+    });
+    router.put('/prompt-controls/:id', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try {
+            const host = getHost();
+            const route = await host.persistence.updatePromptParameters(handle, req.params.id, req.body.expected, req.body.parameters,
+                async route => validatePromptOverrides(await readPromptControls(host, handle, route), req.body.parameters));
+            res.json(route);
+        } catch (error) { res.status(409).json({ error: error.code === 'native_prompt_controls_conflict' ? error.code : 'native_prompt_controls_invalid' }); }
+    });
     router.get('/retrieval', async (req, res) => {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         try { res.json(await new NativeRetrievalPersistence({ engine: getStorageEngine() }).list(req.user.profile.handle)); } catch { res.status(500).json({ error: 'native_retrieval_unavailable' }); }
@@ -209,7 +248,11 @@ export function createNativeGenerationRouter(getHost = services) {
                 };
                 await visit(candidate);
             }
-            if (method) return response.json(await host.persistence[method](handle, request.body));
+            if (method) return response.json(await host.persistence[method](handle, request.body, {
+                validate: async route => {
+                    for (const ref of [route.promptProgramRef, route.generationProfileRef]) if (ref.scope === 'library') await host.library.getExact(handle, ref);
+                },
+            }));
             return response.sendStatus(404);
         } catch (error) { response.status(400).json({ error: error.code === 'native_runtime_fallback_role' ? error.code : 'native_generation_configuration_invalid' }); }
     });

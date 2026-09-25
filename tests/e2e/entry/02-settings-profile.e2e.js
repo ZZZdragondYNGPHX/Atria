@@ -19,10 +19,10 @@ test('onboarding account name, theme CRUD and two-language preferences persist',
     await expect(dialog).toBeVisible({ timeout: 60000 });
     await dialog.locator('.popup-input').fill('Atria Reader');
     await page.route('**/api/users/change-name', route => route.fulfill({ status: 500 }), { times: 1 });
-    await dialog.getByRole('button', { name: 'Get started', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Next lesson', exact: true }).click();
     await expect(page.locator('.toast-message').filter({ hasText: 'Failed to change name' })).toBeVisible();
     await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: 'Get started', exact: true }).click();
+    await dialog.getByRole('button', { name: 'Next lesson', exact: true }).click();
     await expect(dialog).toBeHidden();
     await page.evaluate(() => globalThis.Atria.shell.getWorkspaceHost().openUtility('account'));
     await expect(page.locator('[data-atria-account-primary] .userName')).toHaveText('Atria Reader');

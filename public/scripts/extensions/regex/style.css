@@ -24,18 +24,6 @@
     text-align: center;
 }
 
-#scoped_scripts_block,
-#preset_scripts_block {
-    opacity: 1;
-    transition: opacity var(--animation-duration-2x) ease-in-out;
-}
-
-#scoped_scripts_block .move_to_scoped,
-#global_scripts_block .move_to_global,
-#preset_scripts_block .move_to_preset {
-    display: none;
-}
-
 #plugin_scripts_block .regex-script-label {
     background-color: color-mix(in srgb, var(--black50a) 55%, transparent);
 }
@@ -47,16 +35,8 @@
 #plugin_scripts_block .regex-script-label .disable_regex,
 #plugin_scripts_block .regex-script-label .regex-toggle-on,
 #plugin_scripts_block .regex-script-label .regex-toggle-off,
-#plugin_scripts_block .regex-script-label .move_to_global,
-#plugin_scripts_block .regex-script-label .move_to_preset,
-#plugin_scripts_block .regex-script-label .move_to_scoped,
 #plugin_scripts_block .regex-script-label .export_regex {
     display: none !important;
-}
-
-#scoped_scripts_block:not(:has(#regex_scoped_toggle:checked)),
-#preset_scripts_block:not(:has(#regex_preset_toggle:checked)) {
-    opacity: 0.5;
 }
 
 .regex_settings .regex-section {

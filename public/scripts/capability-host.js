@@ -1,4 +1,5 @@
 import { nativeSessionRuntime } from './native/session-runtime.js';
+import { normalizeRegexPresets } from '../shared/regex-presets.js';
 import { eventSource, event_types, saveSettings, getRequestHeaders, buildObjectPatchOperationsAsync, buildObjectPatchOperations, cloneJsonValue } from '../script.js';
 import './loader.js';
 import { renderTemplate, renderTemplateAsync } from './templates.js';
@@ -20,21 +21,22 @@ export function registerCapabilityApi(name, api) {
 export function getCapabilityApi(name) { return apis.get(name); }
 export function getCapabilityLoadState(name) { return loadStates.get(name) || 'pending'; }
 const defaultCapabilitySettings = () => ({
-    disabledPlugins: [], regex: [], regex_presets: [], character_allowed_regex: [], preset_allowed_regex: {},
+    disabledPlugins: [], regex: [], regex_presets: [],
     note: { default: '', chara: [], wiAddition: [] }, variables: { global: {} }, attachments: [], character_attachments: {}, disabled_attachments: [],
 });
 export const capabilitySettings = defaultCapabilitySettings();
-const retainedKeys = new Set(['disabledPlugins', 'regex', 'regex_presets', 'regex_section_collapsed', 'character_allowed_regex', 'preset_allowed_regex', 'note', 'variables', 'attachments', 'character_attachments', 'disabled_attachments', 'orchestrator', 'memory_graph', 'game-runtime', 'search_tools']);
+const retainedKeys = new Set(['disabledPlugins', 'regex', 'regex_presets', 'regex_section_collapsed', 'note', 'variables', 'attachments', 'character_attachments', 'disabled_attachments', 'orchestrator', 'memory_graph', 'game-runtime', 'search_tools']);
 export function primeCapabilitySettings(settings) {
     // Retain already-authored Atria capabilities once; never hydrate retired extension settings.
     const source = structuredClone(settings.atri_capabilities || settings.extension_settings || {});
     for (const key of Object.keys(capabilitySettings)) delete capabilitySettings[key];
     Object.assign(capabilitySettings, defaultCapabilitySettings());
     for (const [key, value] of Object.entries(source)) if (retainedKeys.has(key)) capabilitySettings[key] = value;
+    capabilitySettings.regex_presets = normalizeRegexPresets(capabilitySettings.regex_presets, capabilitySettings.regex);
     const disabled = source.disabledPlugins || source.disabledExtensions;
     capabilitySettings.disabledPlugins = (Array.isArray(disabled) ? disabled : []).filter(name => globalPluginNames.includes(name));
 }
-export function serializeCapabilitySettings() { return Object.fromEntries(Object.entries(capabilitySettings).filter(([key]) => retainedKeys.has(key))); }
+export function serializeCapabilitySettings() { return { ...Object.fromEntries(Object.entries(capabilitySettings).filter(([key]) => retainedKeys.has(key))), regex_presets: normalizeRegexPresets(capabilitySettings.regex_presets, capabilitySettings.regex) }; }
 function assertGlobalPlugin(name) { if (!globalPluginNames.includes(name)) throw new TypeError('Unknown Atria Global Plugin'); }
 export async function enableGlobalPlugin(name, reload = true) {
     assertGlobalPlugin(name); const previous = capabilitySettings.disabledPlugins;

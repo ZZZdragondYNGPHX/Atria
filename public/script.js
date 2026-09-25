@@ -2002,12 +2002,14 @@ async function firstLoadInit() {
     // existing native Conversation/Composer through the single-DOM ownership
     // seam; explicit legacy recovery is handled inside the shell foundation.
     const shellFoundation = initializeAtriaShellFoundation({
+        accountStorage,
         document,
         window,
         translate: translateText,
     });
     if (globalThis.Atria) {
         globalThis.Atria.shell = shellFoundation;
+        if (!firstRun) shellFoundation.getLearningCenter()?.restore();
     }
 
     initNavPanelPins();
@@ -15351,7 +15353,7 @@ async function doOnboarding(avatarId) {
     const template = $('#onboarding_template .onboarding').clone(true);
     const popup = new Popup(template, POPUP_TYPE.INPUT, currentUser?.name || name1, {
         cancelButton: false,
-        okButton: t`Get started`,
+        okButton: t`Next lesson`,
         onClosing: async (instance) => {
             if (instance.result !== POPUP_RESULT.AFFIRMATIVE) return true;
             if (instance.mainInput.value.trim()) {
@@ -15370,6 +15372,7 @@ async function doOnboarding(avatarId) {
         },
     });
     popup.dlg.classList.add('atri-onboarding-dialog');
+    popup.okButton.dataset.i18n = 'Next lesson';
     popup.mainInput.id = `atri-persona-${popup.id}`;
     popup.mainInput.setAttribute('aria-describedby', `atri-persona-help-${popup.id}`);
     template.find('.atri-persona-help').attr('id', `atri-persona-help-${popup.id}`);
@@ -15394,6 +15397,7 @@ async function doOnboarding(avatarId) {
             position: persona_description_positions.IN_PROMPT,
         };
     }
+    return Boolean(userName);
 }
 
 function reloadLoop() {
@@ -15699,13 +15703,16 @@ export async function getSettings(options = {}) {
                 await hideLoader();
             }
             onboardingTask = doOnboarding(user_avatar)
-                .then(async () => {
+                .then(async completed => {
+                    if (!completed) return;
                     firstRun = false;
                     try {
                         await saveSettings(0, { directSave: true });
                     } catch (error) {
                         console.error('Failed to persist firstRun completion', error);
                     }
+                    const { continueLearningAfterIdentity } = await import('./scripts/atria-shell/learning-center.js');
+                    continueLearningAfterIdentity();
                 })
                 .catch((error) => {
                     console.error('Onboarding failed', error);
@@ -15716,6 +15723,7 @@ export async function getSettings(options = {}) {
     rememberSettingsSnapshot(buildSettingsPayload());
     settingsReady = true;
     await eventSource.emit(event_types.SETTINGS_LOADED);
+    if (!firstRun) globalThis.Atria?.shell?.getLearningCenter()?.restore();
 
     // onboardingTask (if any) intentionally not awaited — it owns its own
     // persistence of `firstRun = false`. Keeping a reference prevents the

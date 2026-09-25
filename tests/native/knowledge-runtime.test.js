@@ -58,6 +58,17 @@ function addExternal(snapshot, kind, knowledge, binding) {
     snapshot.knowledge.snapshots.push({ kind, snapshot: knowledge });
 }
 
+test('entry disable filters before exclusive selection and required expansion; binding disable stays distinct', () => {
+    const snapshot = snapshotFromFixture();
+    const entry = snapshot.manifest.knowledge[0].entries[0]; entry.enabled = false;
+    let plan = compileNativeKnowledgePlan(snapshot, { target: 'narrator' });
+    expect(plan.included).toHaveLength(0);
+    expect(plan.rejected.some(item => item.reason === 'entry_disabled')).toBe(true);
+    snapshot.knowledge.bindings[0].enabled = false;
+    plan = compileNativeKnowledgePlan(snapshot, { target: 'narrator' });
+    expect(plan.rejected.some(item => item.reason === 'binding_disabled')).toBe(true);
+});
+
 describe('N6 Native KnowledgeCompiler / KnowledgePlan', () => {
     test('Package canonical Knowledge reaches the narrator Native selector with stable identity', () => {
         const snapshot = snapshotFromFixture();

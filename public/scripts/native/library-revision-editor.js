@@ -5,12 +5,13 @@ import { nativeProductClient as client } from './product-client.js';
 import { el, action, heading, disclosure, feedback, libraryError } from './library-ui.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 
-export function mountLibraryRevisionEditor({ document: doc, root, detail, knowledge, onClose, onSaved }) {
+export function mountLibraryRevisionEditor({ document: doc, root, detail, knowledge, initialEntryId, entryEnabled, browseState, onClose, onSaved }) {
     const resource = knowledge ? detail.knowledgeBase : detail.world;
     const revision = knowledge ? detail.selectedRevision : detail.currentRevision;
     const baseRevisionId = resource.currentRevisionId;
     const value = knowledge ? { entries: revision ? structuredClone(detail.entries) : [{ knowledgeEntryId: createStudioNativeId('kentry'), content: '' }], metadata: structuredClone(revision?.metadata || {}) }
         : { schema: structuredClone(revision?.schema || {}), baseline: structuredClone(revision?.baseline || {}), knowledgeBindingIds: [...(revision?.knowledgeBindingIds || [])], assetIds: [...(revision?.assetIds || [])], metadata: structuredClone(revision?.metadata || {}) };
+    if (knowledge && typeof entryEnabled === 'boolean') value.entries.find(entry => entry.knowledgeEntryId === initialEntryId).enabled = entryEnabled;
     const section = el(doc, 'section', 'atri-library-section atri-library-revision-editor', undefined, root);
     heading(doc, section, resource.displayName, tl('Create an immutable revision. Existing exact references keep their original revision.'), true);
     disclosure(doc, section, 'Editing base revision', { resourceId: resource.knowledgeBaseId || resource.worldId, revisionId: baseRevisionId });
@@ -18,7 +19,7 @@ export function mountLibraryRevisionEditor({ document: doc, root, detail, knowle
     const editor = el(doc, 'div', '', undefined, section);
     const review = el(doc, 'section', 'atri-library-section', undefined, section); review.hidden = true;
     const mountEditor = knowledge ? mountKnowledgeEditor : mountWorldEditor;
-    mountEditor({ document: doc, root: editor, value, label: knowledge ? 'Knowledge revision JSON' : 'World revision JSON',
+    mountEditor({ document: doc, root: editor, value, initialEntryId, openEntry: entryEnabled === undefined, browseState, label: knowledge ? 'Knowledge revision JSON' : 'World revision JSON',
         onReview: (draft, { dependencies = [] } = {}) => {
             editor.hidden = true; review.hidden = false; review.replaceChildren();
             el(doc, 'h3', '', tl('Review revision'), review);

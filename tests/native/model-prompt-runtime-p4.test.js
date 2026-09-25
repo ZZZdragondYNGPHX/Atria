@@ -9,9 +9,32 @@ import { createNativeGenerationRouter } from '../../src/endpoints/native-generat
 import { runNativePlayGeneration } from '../../public/scripts/native/play-generation.js';
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
 import { seedGenerationProfiles } from './helpers/generation-fixture.js';
+import { readPromptControls } from '../../src/native/model-prompt-runtime/prompt-controls.js';
 
 const cleanups = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0)) await cleanup(); });
+
+test('NPC-002 authenticated delete checks every revision, Runtime and Project owners and rejects Package originals', async () => {
+    const f = await fixture();
+    f.host.studio.getResourceReferences = jest.fn(async () => []);
+    await f.library.commit(f.h.handle, 'core.prompt-program', { ...f.prompt, revision: 'r-delete' });
+    const ref = { scope: 'library', resourceType: 'core.prompt-program', resourceId: f.prompt.promptProgramId, revision: 'r-delete' };
+    const app = express(); app.use(express.json());
+    app.use((req, _res, next) => { if (req.headers['x-test-user']) req.user = { profile: { handle: f.h.handle } }; next(); });
+    app.use(createNativeGenerationRouter(() => f.host));
+    await supertest(app).post('/resources/delete').send(ref).expect(401);
+    const remove = value => supertest(app).post('/resources/delete').set('x-test-user', 'yes').send(value);
+    const blocked = await remove(ref).expect(409);
+    expect(blocked.body.details.references.some(item => item.owner === 'Runtime')).toBe(true);
+    expect(f.host.studio.getResourceReferences.mock.calls[0][1]).not.toHaveProperty('revision');
+    for (const route of await f.persistence.listRuntimeRoutes(f.h.handle)) await f.persistence.deleteProfile(f.h.handle, 'routes', route.runtimeRouteId);
+    f.host.studio.getResourceReferences.mockResolvedValueOnce([{ node: { scope: 'project', displayName: 'Project owner' }, owner: 'Project owner' }]);
+    await remove(ref).expect(409);
+    await remove({ ...ref, scope: 'package', packageId: createNativeId('package'), packageVersionId: createNativeId('packageVersion') }).expect(400);
+    await remove(ref).expect(200);
+    await expect(f.library.getExact(f.h.handle, { ...ref, revision: f.prompt.revision })).rejects.toThrow();
+    await expect(f.library.getExact(f.h.handle, ref)).rejects.toThrow();
+});
 
 async function fixture({ format = 'openai-compatible', stream = false, handler } = {}) {
     const requests = [];
@@ -43,6 +66,49 @@ async function fixture({ format = 'openai-compatible', stream = false, handler }
 }
 
 describe('P4 authenticated Native generation host and real HTTP transport', () => {
+    test.each(['project', 'package'])('NPC-001 reads exact %s-owned controls without changing originals', async scope => {
+        const f = await fixture();
+        const origin = scope === 'project' ? { scope, projectId: f.request.projectId }
+            : { scope, packageId: createNativeId('package'), packageVersionId: createNativeId('packageVersion') };
+        const prompt = { ...f.prompt, stages: [{ stageId: 'stage.main', moduleRefs: [] }], parameters: { toggle: { type: 'boolean', label: 'Grounding', default: true } } };
+        const resources = [{ resourceType: 'core.prompt-program', resource: prompt, origin }];
+        f.project.source.resources = resources;
+        f.host.packageInstaller = { open: async () => ({ manifest: { resources } }) };
+        const route = { ...f.routes[0], promptProgramRef: { ...origin, resourceType: 'core.prompt-program', resourceId: prompt.promptProgramId, revision: prompt.revision } };
+        await f.persistence.saveRuntimeRoute(f.h.handle, route);
+        const before = JSON.stringify(resources);
+        expect(await readPromptControls(f.host, f.h.handle, route)).toMatchObject(prompt.parameters);
+        expect(JSON.stringify(resources)).toBe(before);
+        await expect(readPromptControls(f.host, f.h.handle, { ...route, runtimeRouteId: createNativeId('runtimeRoute') })).rejects.toThrow();
+    });
+    test('NPC-001 API persists route selections, rejects stale writes and keeps preview/execute identical without revisions', async () => {
+        const f = await fixture();
+        const prompt = { ...f.prompt, revision: 'controls', parameters: {
+            mode: { type: 'string', label: 'Style', default: 'calm', options: [{ value: 'calm', label: 'Calm' }, { value: 'fast', label: 'Fast' }] },
+            enabled: { type: 'boolean', default: true },
+        } };
+        await f.library.commit(f.h.handle, 'core.prompt-program', prompt);
+        await f.persistence.saveRuntimeRoute(f.h.handle, { ...f.routes[0], promptProgramRef: { ...f.routes[0].promptProgramRef, revision: 'controls' } });
+        const app = express(); app.use(express.json()); app.use((req, res, next) => { req.user = { profile: { handle: f.h.handle } }; next(); });
+        app.use(createNativeGenerationRouter(() => f.host));
+        const path = '/prompt-controls/' + f.routes[0].runtimeRouteId;
+        const initial = await supertest(app).get(path).expect(200);
+        expect(initial.body.definitions.mode.label).toBe('Style');
+        const payload = { expected: initial.body.route, parameters: { mode: 'fast', enabled: false } };
+        await supertest(app).put(path).send(payload).expect(200);
+        await supertest(app).put(path).send(payload).expect(409);
+        const loaded = await supertest(app).get(path).expect(200);
+        expect(loaded.body.route.promptParameters).toEqual(payload.parameters);
+        await supertest(app).put(path).send({ expected: loaded.body.route, parameters: { mode: 'removed' } }).expect(409);
+        const preview = await f.host.execute(f.h.handle, f.request, undefined, undefined, { preview: true });
+        const executed = await f.host.execute(f.h.handle, f.request);
+        expect(preview.snapshot.promptIr.compilation).toEqual(executed.snapshot.promptIr.compilation);
+        expect(preview.snapshot.promptIr.compilation.parameters).toEqual(payload.parameters);
+        expect(await f.library.listRevisions(f.h.handle, 'core.prompt-program', prompt.promptProgramId)).toEqual(['controls', 'r1']);
+        await supertest(app).put(path).send({ expected: loaded.body.route, parameters: {} }).expect(200);
+        const reset = await f.host.execute(f.h.handle, f.request, undefined, undefined, { preview: true });
+        expect(reset.snapshot.promptIr.compilation.parameters).toEqual({ mode: 'calm', enabled: true });
+    });
     test.each([['openai-compatible', false], ['openai-compatible', true], ['raw-text', false], ['raw-text', true]])('%s stream=%s uses exact config and send-boundary Secret', async (format, stream) => {
         const f = await fixture({ format, stream });
         const result = await f.host.execute(f.h.handle, f.request);

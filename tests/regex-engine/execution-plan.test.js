@@ -20,17 +20,13 @@ jest.unstable_mockModule('../../public/script.js', () => ({
 const capabilitySettings = {
     disabledPlugins: [],
     regex: [],
-    character_allowed_regex: [],
-    preset_allowed_regex: {},
 };
 
 jest.unstable_mockModule('../../public/scripts/capability-host.js', () => ({
     capabilitySettings: capabilitySettings,
-    writeExtensionField: jest.fn(),
 }));
 
 jest.unstable_mockModule('../../public/scripts/i18n.js', () => ({ t: (s) => s }));
-jest.unstable_mockModule('../../public/scripts/preset-manager.js', () => ({ getPresetManager: () => null }));
 
 const regexFromStringMock = jest.fn((input) => {
     if (typeof input !== 'string') return null;
@@ -78,8 +74,6 @@ beforeAll(async () => {
 
 beforeEach(() => {
     capabilitySettings.regex = [];
-    capabilitySettings.character_allowed_regex = [];
-    capabilitySettings.preset_allowed_regex = {};
     regexFromStringMock.mockClear();
     engine.RegexProvider.instance.clear();
     engine.invalidateRegexExecutionPlans();

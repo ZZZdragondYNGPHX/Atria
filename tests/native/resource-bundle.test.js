@@ -18,6 +18,7 @@ async function setup() {
 }
 async function seedWorld({ h, options: o }) {
     const kb = createNativeId('knowledgeBase'), kv = createNativeId('knowledgeRevision'), entries = [{ knowledgeEntryId: createNativeId('knowledgeEntry'), content: 'Harbor', metadata: {} }, { knowledgeEntryId: createNativeId('knowledgeEntry'), content: 'Map', metadata: {} }];
+    entries[0].enabled = false;
     entries[1].relations = { requiredEntryIds: [entries[0].knowledgeEntryId] };
     await o.knowledgeRepo.commitRevision(h.handle, { knowledgeBaseId: kb, knowledgeRevisionId: kv, entryIds: entries.map(item => item.knowledgeEntryId), metadata: {} }, entries, { createRoot: { knowledgeBaseId: kb, displayName: 'Harbor knowledge', currentRevisionId: null } });
     const binding = createNativeId('knowledgeBinding'); await o.knowledgeRepo.saveBinding(h.handle, { knowledgeBindingId: binding, source: { kind: 'library', knowledgeBaseId: kb, knowledgeRevisionId: kv }, enabled: true, mode: 'augment', metadata: {} });
@@ -33,6 +34,7 @@ test('World bundle freezes exact Knowledge/Binding/asset closure and imports fre
         const result = await service.import(h.handle, bundle, plan.token); expect(result.root.resourceId).not.toBe(original.resourceId);
         const world = await options.library.getExact(h.handle, result.root), binding = await options.knowledgeRepo.getBinding(h.handle, world.snapshot.revision.knowledgeBindingIds[0]);
         const entries = await options.knowledgeRepo.listEntries(h.handle, binding.source.knowledgeBaseId, binding.source.knowledgeRevisionId);
+        expect(entries[0].enabled).toBe(false);
         expect(entries[1].relations.requiredEntryIds).toEqual([entries[0].knowledgeEntryId]); expect(world.snapshot.revision.metadata.atriaResourceBundle.source).toEqual(original);
         expect(await service.import(h.handle, bundle, plan.token)).toEqual(result); expect(await options.worldRepo.list(h.handle)).toHaveLength(2);
         expect((await options.library.getExact(h.handle, original)).snapshot.revision.baseline).toEqual({ region: 'Harbor' });
@@ -94,6 +96,7 @@ test('Project and installed Package resources use verified exact closures, inclu
         const projectBundle = await service.export(h.handle, { ...world, scope: 'project', projectId });
         expect(projectBundle.resources).toHaveLength(4);
         const built = await buildProjectPackage({ handle: h.handle, projectId, ...o });
+        expect(built.manifest.knowledge[0].entries[0].enabled).toBe(false);
         await new PackageInstaller({ packageRepo: target.options.packageRepo, assetStore: target.options.assetStore }).install(target.h.handle, built.archive);
         const packageRef = { ...world, scope: 'package', packageId, packageVersionId: built.manifest.packageVersionId };
         const studio = new StudioService(target.options);
@@ -104,6 +107,7 @@ test('Project and installed Package resources use verified exact closures, inclu
         const refs = await studio.getResourceReferences(target.h.handle, packageRef, { reverse: true });
         expect(refs.some(item => item.node.resourceType === 'core.package')).toBe(true);
         const knowledgeRef = { ...packageRef, resourceType: 'core.knowledge', resourceId: built.manifest.knowledge[0].knowledgeBase.knowledgeBaseId, revision: built.manifest.knowledge[0].revision.knowledgeRevisionId };
+        expect((await studio.getPackageLibraryResource(target.h.handle, knowledgeRef)).snapshot.entries[0].enabled).toBe(false);
         expect((await studio.getResourceReferences(target.h.handle, knowledgeRef, { reverse: true })).some(item => item.node.resourceType === 'core.knowledge-binding')).toBe(true);
         await expect(studio.getPackageLibraryResource(target.h.handle, { ...packageRef, scope: 'library' })).rejects.toThrow('Package');
         const portable = await target.service.export(target.h.handle, packageRef);

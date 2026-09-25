@@ -1,5 +1,6 @@
 import { normalizeKnowledgeLifecycle, normalizeKnowledgeRelations, normalizeKnowledgeDiscovery, normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector, KNOWLEDGE_TARGET_KINDS } from '../../public/scripts/native/knowledge-contracts.js';
 import { assertNativeId } from './identity.js';
+import { normalizeKnowledgeEntryEnabled } from '../../public/scripts/native/knowledge-contracts.js';
 
 export const KNOWLEDGE_BINDING_MODES = Object.freeze(['augment', 'override']);
 export const KNOWLEDGE_SOURCE_KINDS = Object.freeze(['package', 'library', 'session', 'project']);
@@ -210,6 +211,7 @@ export function assertKnowledgeEntry(value) {
         value,
         new Set([
             'knowledgeEntryId',
+            'enabled',
             'content',
             'discovery',
             'applicability',
@@ -222,6 +224,7 @@ export function assertKnowledgeEntry(value) {
     );
     return Object.freeze({
         knowledgeEntryId: assertNativeId(value.knowledgeEntryId, 'knowledgeEntry', 'KnowledgeEntry.knowledgeEntryId'),
+        ...(value.enabled === undefined ? {} : { enabled: normalizeKnowledgeEntryEnabled(value.enabled) }),
         content: text(value.content, 'KnowledgeEntry.content', { allowEmpty: true, maxLength: 4 * 1024 * 1024 }),
         ...(value.discovery === undefined ? {} : { discovery: normalizeKnowledgeDiscovery(value.discovery) }),
         ...(value.applicability === undefined ? {} : { applicability: normalizeKnowledgeApplicability(value.applicability) }),

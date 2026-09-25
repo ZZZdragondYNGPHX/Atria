@@ -12,6 +12,21 @@ function plan(...included) {
 }
 const evaluate = (value, options = {}) => evaluateNativeKnowledge(value, { countTokens: text => text.length, ...options });
 
+test('disabled entries cannot activate directly, recursively, from state, sticky state, related or required paths', async () => {
+    const value = plan(item('root', { content: 'trigger', relations: { relatedEntryIds: ['disabled'] } }),
+        { ...item('disabled', { enabled: false, content: 'FORBIDDEN', discovery: { keywords: ['trigger'] } }), stateActivated: true },
+        item('dependent', { relations: { requiredEntryIds: ['disabled'] } }));
+    const rendered = [];
+    const result = await evaluate(value, { budget: 7, state: { effects: { 'binding:disabled': { stickyUntil: 50 } } }, render: text => { rendered.push(text); return text; } });
+    expect(result.entries.map(entry => entry.knowledgeEntryId)).toEqual(['root']);
+    expect(result.rejected).toContainEqual({ identity: 'binding:disabled', reason: 'entry_disabled' });
+    expect(rendered).not.toContain('FORBIDDEN');
+    expect(JSON.stringify(nativeKnowledgePromptChannels(result))).not.toContain('FORBIDDEN');
+    expect(result.pendingState.effects).not.toHaveProperty('binding:disabled');
+    value.included[1].entry.enabled = true;
+    expect((await evaluate(value)).entries.map(entry => entry.knowledgeEntryId)).toContain('disabled');
+});
+
 test('Native discovery supports literal aliases, regex, recursive content, related entries and stable identity', async () => {
     const value = plan(
         item('first', { content: 'the HARBOR', discovery: { aliases: ['dock'] }, relations: { relatedEntryIds: ['related'] } }),

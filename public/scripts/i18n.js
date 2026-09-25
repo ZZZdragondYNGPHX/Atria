@@ -4,7 +4,7 @@ import { updateSecretDisplay } from './secrets.js';
 const storageKey = 'language';
 const overrideLanguage = localStorage.getItem(storageKey);
 const requestedLocale = String(overrideLanguage || navigator.language || navigator.userLanguage || 'en').toLowerCase();
-const localeFile = requestedLocale.startsWith('zh') ? 'zh-cn' : 'en';
+let localeFile = requestedLocale.startsWith('zh') ? 'zh-cn' : 'en';
 var langs;
 // Don't change to let/const! It will break module loading.
 // eslint-disable-next-line prefer-const
@@ -361,7 +361,18 @@ export async function initLocales() {
             localStorage.removeItem(storageKey);
         }
 
-        location.reload();
+        if (this.closest('.atri-onboarding')) {
+            localeFile = language.startsWith('zh') ? 'zh-cn' : 'en';
+            localeData = await getLocaleData(localeFile);
+            if (localeFile === 'en') {
+                this.closest('.atri-onboarding-dialog')?.querySelectorAll('[data-i18n]').forEach(node => {
+                    const key = node.getAttribute('data-i18n');
+                    if (!key.startsWith('[')) node.textContent = key;
+                });
+            }
+            applyLocale();
+            document.dispatchEvent(new CustomEvent('atria-language-changed'));
+        } else location.reload();
     });
 
     observer.observe(document, {

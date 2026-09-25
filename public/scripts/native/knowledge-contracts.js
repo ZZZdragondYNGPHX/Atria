@@ -3,6 +3,11 @@ import { WORLD_INFO_CONDITION_OPERATORS } from '../atri-world-info-state-conditi
 
 export const KNOWLEDGE_CONDITION_OPERATORS = WORLD_INFO_CONDITION_OPERATORS;
 export const KNOWLEDGE_CONDITION_LOGIC = Object.freeze(['all', 'any']);
+// Absence means enabled without rewriting historical immutable snapshots/hashes.
+export function normalizeKnowledgeEntryEnabled(value) {
+    if (value !== undefined && typeof value !== 'boolean') throw new TypeError(formatProductText('Knowledge entry enabled must be boolean.'));
+    return value;
+}
 const blocked = new Set(['__proto__', 'constructor', 'prototype']);
 const scalar = value => value === null || typeof value === 'string' || typeof value === 'boolean' || (typeof value === 'number' && Number.isFinite(value));
 function object(value, field, keys) {
@@ -89,13 +94,14 @@ export function validateKnowledgeEditorValue(value, { complete = false } = {}) {
     if (complete && ids.size !== value.entries.length) throw new TypeError(formatProductText('entries contain duplicate identities'));
     for (const [index, entry] of value.entries.entries()) {
         if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new TypeError(formatProductText('entries.${0} must be an object', [index]));
+        normalizeKnowledgeEntryEnabled(entry.enabled);
         normalizeKnowledgeDelivery(entry.delivery, `entries.${index}.delivery`);
         normalizeKnowledgeDiscovery(entry.discovery, `entries.${index}.discovery`);
         normalizeKnowledgeApplicability(entry.applicability);
         normalizeKnowledgeLifecycle(entry.lifecycle);
         const relations = normalizeKnowledgeRelations(entry.relations);
         if (complete) {
-            object(entry, `entries.${index}`, ['knowledgeEntryId', 'content', 'discovery', 'applicability', 'lifecycle', 'relations', 'delivery', 'metadata']);
+            object(entry, `entries.${index}`, ['knowledgeEntryId', 'enabled', 'content', 'discovery', 'applicability', 'lifecycle', 'relations', 'delivery', 'metadata']);
             if (!/^kentry_[a-f0-9]{32}$/.test(entry.knowledgeEntryId || '')) throw new TypeError(formatProductText('entries.${0}.knowledgeEntryId must be an exact identity', [index]));
             if (typeof entry.content !== 'string' || entry.content.length > 4 * 1024 * 1024) throw new TypeError(formatProductText('entries.${0}.content must be text of at most 4 MiB', [index]));
             for (const key of ['requiredEntryIds', 'relatedEntryIds']) for (const id of relations?.[key] || []) if (!ids.has(id)) throw new TypeError(formatProductText('entries.${0}.relations.${1} references a missing entry', [index, key]));

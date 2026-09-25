@@ -1,4 +1,5 @@
 import { normalizeKnowledgeLifecycle, normalizeKnowledgeRelations, normalizeKnowledgeDiscovery, normalizeKnowledgeApplicability, normalizeKnowledgeDelivery, normalizeKnowledgeSelector } from './knowledge-contracts.js';
+import { normalizeKnowledgeEntryEnabled } from './knowledge-contracts.js';
 import {
     STATE_CONDITION_RESULT,
     evaluateStateConditions,
@@ -221,6 +222,7 @@ export function compileNativeKnowledgePlan(snapshot, options = {}) {
         const authority = authorityFor(binding);
         if (!authority) continue;
         for (const [sourceEntryIndex, entry] of (source.entries ?? []).entries()) {
+            normalizeKnowledgeEntryEnabled(entry.enabled);
             normalizeKnowledgeDelivery(entry.delivery);
             normalizeKnowledgeDiscovery(entry.discovery);
             normalizeKnowledgeLifecycle(entry.lifecycle);
@@ -250,6 +252,10 @@ export function compileNativeKnowledgePlan(snapshot, options = {}) {
             };
             if (binding.enabled !== true) {
                 rejected.push(rejection(candidate, 'binding_disabled'));
+                continue;
+            }
+            if (entry.enabled === false) {
+                rejected.push(rejection(candidate, 'entry_disabled'));
                 continue;
             }
             if (!targetMatches(binding.target, target) || !targetMatches(entry?.delivery?.target, target)) {

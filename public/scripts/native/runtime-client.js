@@ -17,6 +17,10 @@ export function getRuntimeEvidence() { return latestEvidence; }
 
 export function runtimeRemediation(code) {
     const actions = {
+        prompt_parameter_option: ['Saved Prompt choices are invalid. Open Prompt choices and restore defaults or choose valid values.', 'diagnostics'],
+        prompt_parameter_unknown: ['Saved Prompt choices are invalid. Open Prompt choices and restore defaults or choose valid values.', 'diagnostics'],
+        prompt_parameter_type: ['Saved Prompt choices are invalid. Open Prompt choices and restore defaults or choose valid values.', 'diagnostics'],
+        prompt_parameter_required: ['A required Prompt choice is missing. Open Prompt choices and select a value.', 'diagnostics'],
         native_retrieval_unavailable: ['This exact retrieval revision is unavailable. Select another revision in Memory or create one in Runtime Retrieval.', 'retrieval'],
         native_retrieval_secret_unavailable: ['The retrieval Secret is unavailable. Create a retrieval revision with an existing stored Secret.', 'retrieval'],
         native_retrieval_invalid: ['Check the retrieval task, model, endpoint, stored Secret and provider options.', 'retrieval'],
@@ -27,6 +31,7 @@ export function runtimeRemediation(code) {
         native_runtime_referenced: ['This item is still in use. Update its references before deleting it.', null],
         native_runtime_delete_failed: ['Could not delete this item. Reload and try again.', null],
         native_resource_archive_failed: ['Could not change the archive state. Reload and try again.', null],
+        native_resource_delete_failed: ['Could not delete this item. Reload and try again.', null],
         native_provider_probe_unsupported: ['This endpoint does not offer a supported model-list check. You can enter a model ID manually.', null],
         native_provider_endpoint_invalid: ['Use an HTTP or HTTPS endpoint without embedded credentials, query parameters or fragments.', null],
         native_provider_authentication_failed: ['The provider rejected this Secret. Select another Secret or check its access permissions.', null],
