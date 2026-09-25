@@ -29,6 +29,7 @@ export function removePresetCategory(preset, categoryId) {
 export function mountPromptPresets({ document: doc, body, host, route }) {
     let disposed = false, sequence = 0, preset = null, section = null;
     let categoryFilter = 'all', listPosition = null, closeMenu = () => {};
+    const editorFoldStates = new Map();
     const node = (tag, text, parent = body) => { const el = doc.createElement(tag); if (text !== undefined) el.textContent = tl(text); parent.append(el); return el; };
     const literal = (tag, text, parent) => { const el = node(tag, undefined, parent); el.textContent = text; return el; };
     const fail = error => { if (!disposed) { const el = node('p', error.message); el.setAttribute('role', 'alert'); } };
@@ -158,7 +159,8 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         closeMenu(); if (!parent && section === MODULE) rememberListPosition(idOf(entry));
         if (!parent) body.replaceChildren(); const draft = clone(entry);
         const entries = preset.entries.map(e => ({ ...e, ref: entryRef(e) }));
-        mountPromptEditor({ document: doc, parent: parent || body, entry: { ...draft, ref: entryRef(draft) }, entries, librarySurface: true, presetSurface: true, onBack: () => { if (parent) section = null; renderDetail(); restoreListPosition(); }, onSave: async resource => {
+        if (!editorFoldStates.has(idOf(entry))) editorFoldStates.set(idOf(entry), new Map());
+        mountPromptEditor({ document: doc, parent: parent || body, entry: { ...draft, ref: entryRef(draft) }, entries, foldState: editorFoldStates.get(idOf(entry)), librarySurface: true, presetSurface: true, onBack: () => { if (parent) section = null; renderDetail(); restoreListPosition(); }, onSave: async resource => {
             if (resource[PROMPT_TYPES[entry.resourceType][1]] !== idOf(entry)) throw new Error(tl('Cannot change resource identity.'));
             const next = clone(preset); const item = { resourceType: entry.resourceType, resource };
             if (fresh) next.entries.push(item); else next.entries[next.entries.findIndex(e => idOf(e) === idOf(entry))] = item;

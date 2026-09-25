@@ -1,3 +1,4 @@
+import { openPromptSections } from './_helpers.js';
 import { test, expect } from '@playwright/test';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { awaitMainUI } from '../_lib/page.js';
@@ -12,7 +13,7 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
-for (const width of [1440, 390]) test(`stage module additions retain picker position and compile order at ${width}px`, async ({ page }) => {
+for (const width of [1440, 390]) test(`stage module additions retain picker position and compile order at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 800 });
     await page.addInitScript(() => localStorage.setItem('language', 'en'));
     await awaitMainUI(page, server.baseURL);
@@ -33,6 +34,11 @@ for (const width of [1440, 390]) test(`stage module additions retain picker posi
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('prompt-presets'));
     await page.locator(`[data-atri-preset-id="${presetId}"]`).getByRole('button', { name: 'Open preset', exact: true }).click();
     await page.getByRole('button', { name: 'Prompt Programs', exact: true }).click();
+    await expect(page.locator('[data-prompt-fold][open]')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Save revision', exact: true })).toBeVisible();
+    await page.screenshot({ path: info.outputPath('program-collapsed.png') });
+    await page.locator('[data-prompt-fold="stages"] > summary').click();
+    await page.locator('[data-prompt-fold="stage:stage.main"] > summary').click();
     const picker = page.locator('[data-atri-stage-module-picker]');
     const add = page.getByRole('button', { name: 'Add module', exact: true });
     await picker.scrollIntoViewIfNeeded();
@@ -46,10 +52,22 @@ for (const width of [1440, 390]) test(`stage module additions retain picker posi
         expect(Math.abs((await picker.boundingBox()).y - before)).toBeLessThan(3);
         await expect(page.locator('.atri-prompt-stages fieldset > div > span').first()).toContainText('Ordered module ' + index + ' ·');
     }
+    const previousEditor = await page.locator('[data-atri-prompt-editor]').elementHandle();
     await page.getByRole('button', { name: 'Save revision', exact: true }).click();
+    await expect.poll(() => previousEditor.evaluate(node => node.isConnected)).toBe(false);
     await expect(page.locator('.atri-prompt-stages fieldset > div > span')).toHaveCount(30);
     const names = await page.locator('.atri-prompt-stages fieldset > div > span').allTextContents();
     expect(names.map(text => Number(text.split(' · ')[0].replace('Ordered module ', '')))).toEqual(Array.from({ length: 30 }, (_, i) => 29 - i));
+    await expect(page.locator('[data-prompt-fold="stages"]')).toHaveAttribute('open', '');
+    await page.getByRole('button', { name: 'Add stage', exact: true }).click();
+    await expect(page.locator('[data-prompt-fold="stage:stage.step2"]')).toHaveAttribute('open', '');
+    await page.locator('[data-prompt-fold="parameters"] > summary').click();
+    await page.getByRole('button', { name: 'Add parameter', exact: true }).click();
+    await page.locator('[data-prompt-fold="parameters"] > summary').click();
+    await page.getByRole('button', { name: 'Save revision', exact: true }).click();
+    await expect(page.locator('[data-prompt-fold="parameters"]')).toHaveAttribute('open', '');
+    await expect(page.getByRole('alert')).toBeVisible();
+    await page.screenshot({ path: info.outputPath('program-validation-expanded.png') });
 });
 
 for (const width of [1440, 390]) test(`module filtering, action menus and return position at ${width}px`, async ({ page }, info) => {
@@ -102,6 +120,7 @@ for (const width of [1440, 390]) test(`module filtering, action menus and return
     await page.screenshot({ path: info.outputPath('module-menu.png') });
     const box = await page.getByRole('menu').boundingBox(); expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(width);
     await page.getByRole('menuitem', { name: 'View / edit parameters', exact: true }).click();
+    await openPromptSections(page, 'module');
     await page.getByRole('textbox', { name: 'Prompt body', exact: true }).fill('Updated body');
     await page.getByRole('button', { name: 'Save revision', exact: true }).click();
     await expect(filter).toHaveValue('cat_child'); await expect(target).toBeVisible();
@@ -131,6 +150,7 @@ for (const width of [1440, 390]) test(`module filtering, action menus and return
     await page.locator('dialog[open] .popup-button-cancel').click();
     await page.getByRole('button', { name: 'Module list actions', exact: true }).click();
     await page.getByRole('menuitem', { name: 'New module', exact: true }).click();
+    await openPromptSections(page, 'identity');
     await page.getByRole('textbox', { name: 'Display name', exact: true }).fill('Created in selected category');
     await page.getByRole('button', { name: 'Save revision', exact: true }).click();
     const created = rows.filter({ has: page.getByRole('button', { name: 'Created in selected category', exact: true }) });
@@ -280,7 +300,9 @@ for (const width of [1440, 390]) test(`preset ownership, nested categories and e
     await expect(filter).toContainText('└ Child');
     await page.getByRole('button', { name: 'Module list actions', exact: true }).click();
     await page.getByRole('menuitem', { name: 'New module', exact: true }).click();
+    await openPromptSections(page, 'identity');
     await page.getByRole('textbox', { name: 'Display name', exact: true }).fill('My module');
+    await openPromptSections(page, 'module');
     await page.getByRole('textbox', { name: 'Prompt body', exact: true }).fill('Preset-owned content');
     await page.getByRole('button', { name: 'Save revision', exact: true }).click();
     await page.getByRole('button', { name: 'Module actions', exact: true }).click();
@@ -299,6 +321,7 @@ for (const width of [1440, 390]) test(`preset ownership, nested categories and e
     await page.screenshot({ path: info.outputPath('categories.png') });
     await page.getByRole('button', { name: 'Back to preset', exact: true }).click();
     await page.getByRole('button', { name: 'Prompt Programs', exact: true }).click();
+    await openPromptSections(page, 'stages', 'stage:stage.main');
     await page.getByRole('combobox', { name: 'Module for stage 1', exact: true }).selectOption({ index: 1 });
     await page.getByRole('button', { name: 'Add module', exact: true }).click();
     await page.getByRole('button', { name: 'Save revision', exact: true }).click();

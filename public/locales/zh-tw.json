@@ -8276,5 +8276,11 @@
     "Module list actions": "模組清單操作",
     "Move category": "移動分類",
     "Enter a category name.": "請輸入分類名稱。",
-    "No modules in this category.": "此分類下尚無模組。"
+    "No modules in this category.": "此分類下尚無模組。",
+    "Module settings": "模組設定",
+    "${0} stages · ${1} modules": "${0} 個階段 · ${1} 個模組",
+    "${0} modules": "${0} 個模組",
+    "${0} parameters": "${0} 個參數",
+    "${0} operations": "${0} 項操作",
+    "Configured": "已設定"
 }

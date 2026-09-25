@@ -8413,5 +8413,11 @@
     "Module list actions": "模块列表操作",
     "Move category": "移动分类",
     "Enter a category name.": "请输入分类名称。",
-    "No modules in this category.": "此分类下暂无模块。"
+    "No modules in this category.": "此分类下暂无模块。",
+    "Module settings": "模块设置",
+    "${0} stages · ${1} modules": "${0} 个阶段 · ${1} 个模块",
+    "${0} modules": "${0} 个模块",
+    "${0} parameters": "${0} 个参数",
+    "${0} operations": "${0} 项操作",
+    "Configured": "已配置"
 }
