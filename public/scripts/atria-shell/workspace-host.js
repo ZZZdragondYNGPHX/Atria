@@ -284,7 +284,7 @@ export function createAtriaWorkspaceHost({
                         : descriptor.kind === 'diagnostics'
                             ? translateShellText('Incidents, startup diagnostics and raw evidence use the existing diagnostics controller.')
                             : descriptor.kind === 'plugins'
-                                ? translateShellText('Third-party plugins reuse the existing extension loader, manifests and enable/disable persistence.')
+                                ? translateShellText('Manage Work Plugins and your Global Plugins.')
                                 : descriptor.kind === 'settings'
                                     ? translateShellText('Global preferences reuse the existing User Settings controls and persistence authorities.')
                                     : descriptor.kind === 'account'
@@ -862,9 +862,9 @@ export function createAtriaWorkspaceHost({
         shell.registry.register({
             id: 'workspace.plugins',
             title: translateShellText('Open Plugins'),
-            description: translateShellText('Manage installed third-party extensions'),
+            description: translateShellText('Manage Work Plugins and Global Plugins'),
             group: translateShellText('Utilities'),
-            keywords: ['plugins', 'extensions', 'third-party'],
+            keywords: ['plugins', 'work', 'global', 'regex', 'search'],
             run: () => openUtility('plugins'),
         }),
         shell.registry.register({

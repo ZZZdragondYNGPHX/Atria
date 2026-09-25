@@ -1,6 +1,8 @@
 import { createAtriaStatePanel } from './primitives.js';
-import { translateShellText, formatShellText } from './localization.js';
+import { translateShellText } from './localization.js';
 import { createAtriaIcon } from './icons.js';
+import { el, action, disclosure, feedback } from '../native/library-ui.js';
+import { permissionRow } from '../native/package-permissions.js';
 import { nativeProductClient } from '../native/product-client.js';
 
 function createLocalizedStatePanel(documentRef, kind, options = {}) {
@@ -11,7 +13,7 @@ function createLocalizedStatePanel(documentRef, kind, options = {}) {
     });
 }
 
-const THIRD_PARTY_EXTENSION_TYPES = new Set(['local', 'global']);
+export const GLOBAL_PLUGINS = Object.freeze(['regex', 'search-tools']);
 
 function savePlacement(documentRef, node) {
     if (!node?.parentNode) return null;
@@ -80,36 +82,8 @@ function makeButton(documentRef, label, {
     return button;
 }
 
-export function isThirdPartyPlugin(name, type = '') {
-    const id = String(name || '').trim();
-    const normalizedType = String(type || '').trim().toLowerCase();
-    return id.startsWith('third-party/') || THIRD_PARTY_EXTENSION_TYPES.has(normalizedType);
-}
-
-export function classifyPluginEntries({
-    extensionNames = [],
-    extensionTypes = {},
-    disabledExtensions = [],
-    getManifest = () => null,
-} = {}) {
-    const disabled = new Set(Array.isArray(disabledExtensions) ? disabledExtensions : []);
-    return extensionNames
-        .filter(name => isThirdPartyPlugin(name, extensionTypes?.[name]))
-        .map(name => {
-            const manifest = getManifest(name) || {};
-            return Object.freeze({
-                name,
-                type: String(extensionTypes?.[name] || ''),
-                enabled: !disabled.has(name),
-                displayName: String(manifest.display_name || name.replace(/^third-party\//, '')),
-                version: String(manifest.version || ''),
-                author: Array.isArray(manifest.author)
-                    ? manifest.author.join(', ')
-                    : String(manifest.author || ''),
-                description: String(manifest.description || ''),
-            });
-        })
-        .sort((left, right) => left.displayName.localeCompare(right.displayName));
+export function classifyPluginEntries({ disabledExtensions = [] } = {}) {
+    return GLOBAL_PLUGINS.map(name => ({ name, displayName: name === 'regex' ? 'Regex' : 'Search Tools', enabled: !disabledExtensions.includes(name) }));
 }
 
 async function resolveExtensionAuthority(extensionAuthority) {
@@ -117,345 +91,119 @@ async function resolveExtensionAuthority(extensionAuthority) {
     return await import('../extensions.js');
 }
 
-function renderPluginList(documentRef, container, plugins, authority, onOpenSettings) {
-    container.replaceChildren();
-    if (!plugins.length) {
-        container.append(createLocalizedStatePanel(documentRef, 'empty', {
-            title: 'No third-party plugins installed',
-            message: 'Install an extension to add tools to your workspace.',
-        }));
-        return;
-    }
-
-    const list = documentRef.createElement('div');
-    list.className = 'atria-plugin-list';
-    for (const plugin of plugins) {
-        const card = documentRef.createElement('article');
-        card.className = 'atria-plugin-card';
-        card.dataset.atriaPlugin = plugin.name;
-
-        const titleRow = documentRef.createElement('div');
-        titleRow.className = 'atria-plugin-card__title-row';
-        const title = documentRef.createElement('strong');
-        title.textContent = plugin.displayName;
-        const scope = documentRef.createElement('span');
-        scope.className = 'atria-plugin-card__scope';
-        scope.textContent = plugin.type || translateShellText('Third-party extension');
-        titleRow.append(title, scope);
-
-        const metadata = documentRef.createElement('small');
-        metadata.className = 'atria-plugin-card__metadata';
-        metadata.textContent = [plugin.version && `v${plugin.version}`, plugin.author]
-            .filter(Boolean)
-            .join(' · ') || 'Third-party extension';
-
-        const description = documentRef.createElement('p');
-        description.textContent = plugin.description || translateShellText('No description provided by this plugin.');
-
-        const controls = documentRef.createElement('div');
-        controls.className = 'atria-plugin-card__controls';
-        const toggleLabel = documentRef.createElement('label');
-        toggleLabel.className = 'atria-plugin-toggle';
-        const toggle = documentRef.createElement('input');
-        toggle.type = 'checkbox';
-        toggle.checked = plugin.enabled;
-        toggle.setAttribute('role', 'switch');
-        toggle.setAttribute('aria-label', plugin.displayName);
-        const feedback = documentRef.createElement('p');
-        feedback.className = 'atria-plugin-feedback';
-        feedback.setAttribute('role', 'status');
-        toggle.dataset.pluginName = plugin.name;
-        const toggleText = documentRef.createElement('span');
-        toggleText.textContent = translateShellText(plugin.enabled ? 'Enabled' : 'Disabled');
-        toggleLabel.append(toggle, toggleText);
-
-        toggle.addEventListener('change', async () => {
-            const desired = toggle.checked;
-            toggle.disabled = true;
-            card.dataset.saveState = 'saving';
-            feedback.textContent = translateShellText('Saving…');
-            try {
-                if (desired) await authority.enableExtension(plugin.name, false);
-                else await authority.disableExtension(plugin.name, false);
-                toggleText.textContent = translateShellText(desired ? 'Enabled' : 'Disabled');
-                card.dataset.saveState = 'saved';
-                feedback.textContent = translateShellText('Saved. Reload Atria to apply extension changes.');
-            } catch (error) {
-                toggle.checked = !desired;
-                toggleText.textContent = translateShellText(toggle.checked ? 'Enabled' : 'Disabled');
-                card.dataset.saveState = 'error';
-                feedback.textContent = translateShellText('Could not save this change. Try again.');
-                console.error('[atria-shell] Plugin toggle failed', {
-                    plugin: plugin.name,
-                    error,
-                });
-            } finally {
-                toggle.disabled = false;
-            }
-        });
-
-        const settings = makeButton(documentRef, 'Compatibility settings', {
-            icon: 'fa-solid fa-sliders',
-            title: 'Open the existing extension settings surface',
-        });
-        settings.addEventListener('click', onOpenSettings);
-        controls.append(toggleLabel, settings);
-        card.append(titleRow, metadata, description, controls, feedback);
-        list.append(card);
-    }
-    container.append(list);
-}
-
-function nativePluginRecords(works = []) {
-    const records = [];
-    for (const work of Array.isArray(works) ? works : []) {
-        const packageId = String(work?.package?.packageId || '').trim();
-        const packageName = String(work?.package?.displayName || work?.manifest?.name || packageId).trim();
-        for (const plugin of work?.manifest?.runtime?.plugins || []) {
-            const pluginId = String(plugin?.pluginId || '').trim();
-            if (!pluginId) continue;
-            records.push({
-                pluginId,
-                version: String(plugin?.version || ''),
-                packageId,
-                packageVersionId: String(work?.package?.currentVersionId || ''),
-                packageName,
-                capabilities: Array.isArray(plugin?.packageRuntime?.capabilities)
-                    ? plugin.packageRuntime.capabilities
-                    : [],
-                contributions: Array.isArray(plugin?.packageRuntime?.contributions)
-                    ? plugin.packageRuntime.contributions
-                    : [],
-            });
-        }
-    }
-    return records.sort((left, right) => (
-        left.pluginId.localeCompare(right.pluginId)
-        || left.packageName.localeCompare(right.packageName)
-    ));
-}
-
-function renderNativePlugins(documentRef, container, records) {
-    container.replaceChildren();
-    if (!records.length) {
-        container.append(createLocalizedStatePanel(documentRef, 'empty', {
-            title: 'No Native plugins yet',
-            message: 'Plugins included with your installed works will appear here.',
-        }));
-        return;
-    }
-
-    const list = documentRef.createElement('div');
-    list.className = 'atria-plugin-list';
-    for (const record of records) {
-        const card = documentRef.createElement('article');
-        card.className = 'atria-plugin-card';
-        card.dataset.atriaNativePlugin = record.pluginId;
-
-        const titleRow = documentRef.createElement('div');
-        titleRow.className = 'atria-plugin-card__title-row';
-        const title = documentRef.createElement('strong');
-        title.textContent = record.pluginId;
-        const scope = documentRef.createElement('span');
-        scope.className = 'atria-plugin-card__scope';
-        scope.textContent = 'Package Runtime';
-        titleRow.append(title, scope);
-
-        const metadata = documentRef.createElement('small');
-        metadata.className = 'atria-plugin-card__metadata';
-        metadata.textContent = [
-            record.version && `v${record.version}`,
-            record.packageName,
-        ].filter(Boolean).join(' · ');
-
-        const description = documentRef.createElement('p');
-        const capabilities = record.capabilities.length
-            ? record.capabilities.join(', ')
-            : translateShellText('Declared contributions');
-        description.textContent = formatShellText('${0} contributions', [record.contributions.length], undefined, 'atria.utilities.contributions') + ' · ' + capabilities;
-
-        const details = documentRef.createElement('details');
-        const summary = documentRef.createElement('summary');
-        summary.textContent = translateShellText('Details');
-        const evidence = documentRef.createElement('pre');
-        evidence.textContent = JSON.stringify({ packageId: record.packageId, packageVersionId: record.packageVersionId, capabilities: record.capabilities, contributions: record.contributions }, null, 2);
-        details.append(summary, evidence);
-        card.append(titleRow, metadata, description, details);
-        list.append(card);
-    }
-    container.append(list);
-}
-
 export async function mountPluginsUtility({
-    document: documentRef = globalThis.document,
-    slot,
-    body = slot,
-    extensionAuthority,
-    productClient = nativeProductClient,
+    document: doc = globalThis.document, slot, body = slot, extensionAuthority,
+    productClient = nativeProductClient, host = globalThis.Atria?.shell?.getWorkspaceHost?.(),
 } = {}) {
-    const frame = makeUtilityFrame(documentRef, {
-        id: 'plugins',
-        title: 'Plugins',
-        description: 'Explore the capabilities included with your works.',
-    });
-
-    const refresh = makeButton(documentRef, 'Refresh', { icon: 'fa-solid fa-rotate' });
-    frame.actions.append(refresh);
-
-    const nativeSection = documentRef.createElement('section');
-    nativeSection.className = 'atria-native-plugin-surface';
-    nativeSection.dataset.atriaPluginSurface = 'native';
-    const nativeTitle = documentRef.createElement('h3');
-    nativeTitle.textContent = translateShellText('Native Plugins');
-    const nativeHint = documentRef.createElement('p');
-    nativeHint.textContent = translateShellText('Included with installed works. Each work manages its own plugin permissions.');
-    const nativeList = documentRef.createElement('div');
-    nativeList.className = 'atria-native-plugin-list-host';
-    nativeSection.append(nativeTitle, nativeHint, nativeList);
-
-    const legacy = documentRef.createElement('details');
-    legacy.className = 'atria-plugin-compatibility';
-    legacy.dataset.atriaLegacyPlugins = 'true';
-    const legacySummary = documentRef.createElement('summary');
-    legacySummary.textContent = translateShellText('Advanced · Legacy extensions');
-    const legacyHint = documentRef.createElement('p');
-    legacyHint.textContent = translateShellText('Manage installed extensions and their settings.');
-    const legacyBody = documentRef.createElement('div');
-    legacyBody.className = 'atria-plugin-legacy-body';
-    legacy.append(legacySummary, legacyHint, legacyBody);
-
+    const frame = makeUtilityFrame(doc, { id: 'plugins', title: 'Plugins', description: 'Work capabilities and your global tools.' });
     body.replaceChildren(frame.root);
+    let disposed = false, loading = false;
+    const placements = [], listeners = [];
+    const refresh = makeButton(doc, 'Refresh', { icon: 'fa-solid fa-rotate' }); frame.actions.append(refresh);
+    const works = el(doc, 'section', 'atria-native-plugin-surface', undefined, frame.body); works.dataset.atriaPluginSurface = 'work';
+    el(doc, 'h3', '', translateShellText('Work Plugins'), works);
+    el(doc, 'p', '', translateShellText('Included with an exact installed Work version. Manage permissions and dependencies with that Work.'), works);
+    const workList = el(doc, 'div', 'atria-native-plugin-list-host', undefined, works);
+    const globals = el(doc, 'section', 'atria-plugin-list', undefined, frame.body); globals.dataset.atriaPluginSurface = 'global';
+    el(doc, 'h3', '', translateShellText('Global Plugins'), globals);
     const authority = await resolveExtensionAuthority(extensionAuthority);
     if (!body.contains(frame.root)) return { root: frame.root, dispose() { frame.root.remove(); } };
-    const legacyList = documentRef.createElement('div');
-    legacyList.className = 'atria-plugin-list-host';
-
-    const serverSurface = documentRef.createElement('section');
-    serverSurface.className = 'atria-plugin-server-surface';
-    serverSurface.dataset.atriaPluginSurface = 'server';
-    const serverTitle = documentRef.createElement('strong');
-    serverTitle.textContent = translateShellText('Server plugins');
-    const serverCopy = documentRef.createElement('p');
-    serverCopy.textContent = translateShellText('Server plugins are managed by your server administrator.');
-    serverSurface.append(serverTitle, serverCopy);
-
-    const compatibility = documentRef.createElement('details');
-    compatibility.className = 'atria-plugin-compatibility';
-    compatibility.dataset.atriaPluginCompatibility = 'true';
-    const compatibilitySummary = documentRef.createElement('summary');
-    compatibilitySummary.textContent = translateShellText('Extension compatibility settings');
-    const compatibilityBody = documentRef.createElement('div');
-    compatibilityBody.className = 'atria-plugin-compatibility__body';
-    compatibility.append(compatibilitySummary, compatibilityBody);
-
-    const compatibilityNodes = [
-        documentRef.getElementById('extensions_settings'),
-        documentRef.getElementById('extensions_settings2'),
-    ].filter(Boolean);
-    const placements = compatibilityNodes.map(node => [node, savePlacement(documentRef, node)]);
-    for (const node of compatibilityNodes) {
-        node.dataset.atriaWorkspaceEmbedded = 'true';
-        compatibilityBody.append(node);
-    }
-
-    // Bridge existing extension drawers; their original click handlers remain the authority.
-    const drawerHeaders = [...compatibilityBody.querySelectorAll('.inline-drawer-toggle.inline-drawer-header')]
-        .filter(node => !node.matches('button, summary, a, input'));
-    const drawerAttributes = drawerHeaders.map(node => [node, ['role', 'tabindex', 'aria-expanded'].map(name => [name, node.getAttribute(name)])]);
-    const syncDrawers = () => {
-        for (const node of drawerHeaders) {
-            node.setAttribute('role', 'button');
-            node.tabIndex = 0;
-            node.setAttribute('aria-expanded', String(Boolean(node.querySelector('.inline-drawer-icon.up, .fa-circle-chevron-up'))));
-        }
-    };
-    syncDrawers();
-    const drawerObserver = new MutationObserver(syncDrawers);
-    drawerObserver.observe(compatibilityBody, { subtree: true, attributes: true, attributeFilter: ['class'] });
-    const onDrawerKey = event => {
-        if (!['Enter', ' '].includes(event.key) || !drawerHeaders.includes(event.target)) return;
-        event.preventDefault();
-        event.target.click();
-    };
-    compatibilityBody.addEventListener('keydown', onDrawerKey);
-
-    function openCompatibility() {
-        legacy.open = true;
-        compatibility.open = true;
-        compatibility.scrollIntoView?.({ block: 'nearest' });
-    }
-
-    function renderLegacy() {
-        const plugins = classifyPluginEntries({
-            extensionNames: authority.extensionNames || [],
-            extensionTypes: authority.extensionTypes || {},
-            disabledExtensions: authority.extension_settings?.disabledExtensions || [],
-            getManifest: name => authority.getExtensionManifest?.(name),
+    for (const plugin of classifyPluginEntries({ disabledExtensions: authority.extension_settings?.disabledExtensions || [] })) {
+        const card = el(doc, 'article', 'atria-plugin-card', undefined, globals); card.dataset.atriaPlugin = plugin.name;
+        el(doc, 'h4', '', translateShellText(plugin.displayName), card);
+        el(doc, 'p', '', translateShellText(plugin.name === 'regex' ? 'Transform text with your saved rules. Runs locally without a network permission.' : 'Search and visit external sources using your configured providers. Review provider access in its settings.'), card);
+        const label = el(doc, 'label', 'atria-plugin-toggle', undefined, card), toggle = el(doc, 'input', '', undefined, label);
+        toggle.type = 'checkbox'; toggle.setAttribute('role', 'switch'); toggle.setAttribute('aria-label', translateShellText(plugin.displayName)); toggle.checked = plugin.enabled;
+        const state = el(doc, 'span', '', translateShellText(plugin.enabled ? 'Enabled' : 'Disabled'), label);
+        const status = el(doc, 'p', 'atria-plugin-feedback', undefined, card); status.setAttribute('role', 'status');
+        toggle.addEventListener('change', async () => {
+            const desired = toggle.checked; toggle.disabled = true; card.dataset.saveState = 'saving';
+            try {
+                await (desired ? authority.enableExtension(plugin.name, false) : authority.disableExtension(plugin.name, false));
+                if (disposed) return;
+                state.textContent = translateShellText(desired ? 'Enabled' : 'Disabled'); card.dataset.saveState = 'saved';
+                status.textContent = translateShellText('Saved. Reload Atria to apply plugin changes.');
+            } catch {
+                if (disposed) return;
+                toggle.checked = !desired; card.dataset.saveState = 'error'; status.textContent = translateShellText('Could not save this change. Try again.');
+            } finally { toggle.disabled = false; }
         });
-        renderPluginList(documentRef, legacyList, plugins, authority, openCompatibility);
-        frame.root.dataset.atriaLegacyPluginCount = String(plugins.length);
-    }
-
-    let disposed = false;
-    let refreshing = false;
-    async function renderNative() {
-        if (disposed || refreshing) return;
-        refreshing = true;
-        refresh.disabled = true;
-        nativeList.replaceChildren(createLocalizedStatePanel(documentRef, 'loading', {
-            title: 'Native Plugins',
-            message: 'Loading plugins from your installed works…',
-        }));
-        try {
-            const works = await productClient.listWorks();
-            if (disposed) return;
-            const records = nativePluginRecords(works);
-            renderNativePlugins(documentRef, nativeList, records);
-            frame.root.dataset.atriaNativePluginCount = String(records.length);
-        } catch (error) {
-            nativeList.replaceChildren(createLocalizedStatePanel(documentRef, 'error', {
-                title: 'Native Plugins',
-                message: error?.message || String(error),
-            }));
-        } finally {
-            refreshing = false;
-            refresh.disabled = false;
-        }
-    }
-
-    const installLegacy = makeButton(documentRef, 'Install Legacy Extension', { icon: 'fa-solid fa-plus' });
-    installLegacy.addEventListener('click', () => documentRef.getElementById('third_party_extension_button')?.click?.());
-    const manageLegacy = makeButton(documentRef, 'Legacy Extension Manager', { icon: 'fa-solid fa-puzzle-piece' });
-    manageLegacy.addEventListener('click', () => documentRef.getElementById('extensions_details')?.click?.());
-    const legacyActions = documentRef.createElement('div');
-    legacyActions.className = 'atria-domain-workspace__actions';
-    legacyActions.append(installLegacy, manageLegacy);
-    legacyBody.append(legacyActions, legacyList, serverSurface, compatibility);
-
-    refresh.addEventListener('click', () => {
-        renderLegacy();
-        void renderNative();
-    });
-    frame.body.append(nativeSection, legacy);
-    renderLegacy();
-    await renderNative();
-
-    return {
-        root: frame.root,
-        dispose() {
-            disposed = true;
-            drawerObserver.disconnect();
-            compatibilityBody.removeEventListener('keydown', onDrawerKey);
-            for (const [node, attributes] of drawerAttributes) {
-                for (const [name, value] of attributes) {
-                    if (value === null) node.removeAttribute(name);
-                    else node.setAttribute(name, value);
-                }
+        const settings = disclosure(doc, card, 'Plugin settings'); settings.dataset.atriaGlobalPluginSettings = plugin.name;
+        const mountSettings = () => {
+            if (settings.querySelector('[data-atria-workspace-embedded]')) return;
+            const node = doc.getElementById(plugin.name === 'regex' ? 'regex_container' : 'search_tools_settings');
+            if (!node || !node.childElementCount) {
+                settings.querySelector('.atri-library-feedback')?.remove();
+                feedback(doc, settings, translateShellText('Settings are unavailable. Enable this plugin and reload Atria, then retry.'));
+                return;
             }
-            for (const [node, placement] of placements) restorePlacement(node, placement);
-            frame.root.remove();
-        },
-    };
+            settings.querySelector('.atri-library-feedback')?.remove();
+            placements.push([node, savePlacement(doc, node)]); node.dataset.atriaWorkspaceEmbedded = 'true'; settings.append(node);
+            // Preserve the existing handlers while making the retained drawer keyboard-operable.
+            for (const header of node.querySelectorAll('.inline-drawer-header.inline-drawer-toggle')) {
+                if (header.matches('button, summary, a, input')) continue;
+                const attributes = ['role', 'tabindex', 'aria-expanded'].map(name => [name, header.getAttribute(name)]);
+                const sync = () => header.setAttribute('aria-expanded', String(Boolean(header.querySelector('.inline-drawer-icon.up, .fa-circle-chevron-up'))));
+                header.setAttribute('role', 'button'); header.tabIndex = 0; sync();
+                const observer = new MutationObserver(sync); observer.observe(header, { subtree: true, attributes: true, attributeFilter: ['class'] });
+                const keydown = event => { if (['Enter', ' '].includes(event.key)) { event.preventDefault(); header.click(); } };
+                header.addEventListener('keydown', keydown);
+                listeners.push(() => { observer.disconnect(); header.removeEventListener('keydown', keydown); for (const [name, value] of attributes) { if (value === null) header.removeAttribute(name); else header.setAttribute(name, value); } });
+            }
+        };
+        settings.addEventListener('toggle', () => { if (settings.open) mountSettings(); });
+        action(doc, settings, 'Retry settings', mountSettings);
+    }
+    function renderVersion(parent, work, exact) {
+        const manifest = exact.manifest, plugins = manifest.runtime?.plugins || [];
+        for (const plugin of plugins) {
+            const card = el(doc, 'article', 'atria-plugin-card', undefined, parent); card.dataset.atriaNativePlugin = plugin.pluginId;
+            el(doc, 'h4', '', plugin.displayName || translateShellText('Work plugin'), card);
+            el(doc, 'p', 'atria-plugin-card__metadata', manifest.name + ' · ' + manifest.version + ' · ' + plugin.version, card);
+            el(doc, 'p', '', translateShellText('Installed with this Work version'), card);
+            const deps = disclosure(doc, card, 'Plugin dependencies');
+            if (!plugin.dependencies?.length) el(doc, 'p', '', translateShellText('No plugin dependencies'), deps);
+            for (const dependency of plugin.dependencies || []) {
+                const target = plugins.find(value => value.pluginId === dependency.pluginId && value.version === dependency.version);
+                el(doc, 'p', '', (target?.displayName || translateShellText('Unavailable dependency')) + ' · ' + dependency.version + ' · ' + translateShellText(target ? 'Included' : dependency.optional ? 'Optional' : 'Required'), deps);
+                disclosure(doc, deps, 'Details', dependency);
+            }
+            const permissions = disclosure(doc, card, 'Work permissions');
+            for (const permission of manifest.permissions || []) permissionRow(doc, permissions, permission, { installed: true });
+            if (!manifest.permissions?.length) el(doc, 'p', '', translateShellText('This version declares no permissions.'), permissions);
+            el(doc, 'p', '', translateShellText('Permissions use installation-time consent. Required declarations are accepted when installing; optional declarations have no separate stored grant.'), permissions);
+            action(doc, card, 'Manage owning Work', () => host?.openLibraryWork(work.package.packageId, manifest.name));
+            disclosure(doc, card, 'Details', { packageId: work.package.packageId, packageVersionId: exact.packageVersion.packageVersionId, plugin });
+        }
+        return plugins.length;
+    }
+    async function load() {
+        if (loading || disposed) return; loading = true; refresh.disabled = true;
+        workList.replaceChildren(createLocalizedStatePanel(doc, 'loading', { title: 'Work Plugins', message: 'Loading plugins from your installed works…' }));
+        try {
+            const inventory = await productClient.listWorks(); if (disposed) return;
+            workList.replaceChildren(); let count = 0, failures = 0;
+            for (const item of inventory) {
+                const group = el(doc, 'section', 'atria-plugin-list', undefined, workList);
+                try {
+                    const work = await productClient.getWork(item.package.packageId); if (disposed) return;
+                    const results = await Promise.allSettled(work.versions.map(version => productClient.getWorkVersion(work.package.packageId, version.packageVersionId)));
+                    if (disposed) return;
+                    for (const result of results) {
+                        if (result.status === 'fulfilled') count += renderVersion(group, work, result.value);
+                        else failures++;
+                    }
+                } catch { failures++; }
+            }
+            if (!count && !failures) workList.append(createLocalizedStatePanel(doc, 'empty', { title: 'No Work plugins yet', message: 'Plugins included with your installed works will appear here.' }));
+            if (failures) { feedback(doc, workList, translateShellText('Some Work versions could not be loaded. Results may be incomplete.'), true); action(doc, workList, 'Try again', load); }
+            frame.root.dataset.atriaNativePluginCount = String(count);
+        } catch {
+            if (!disposed) { workList.replaceChildren(); feedback(doc, workList, translateShellText('Work plugins could not be loaded.'), true); action(doc, workList, 'Try again', load); }
+        } finally { loading = false; refresh.disabled = false; }
+    }
+    refresh.addEventListener('click', load); await load();
+    return { root: frame.root, dispose() { disposed = true; for (const remove of listeners) remove(); for (const [node, placement] of placements) restorePlacement(node, placement); frame.root.remove(); } };
 }
 
 // Preference-only host bridge: move existing controls with their event handlers and

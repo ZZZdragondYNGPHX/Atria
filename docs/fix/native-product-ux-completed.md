@@ -862,4 +862,26 @@ resolution. Current history and reference-remediation screenshots were inspected
 earlier issue-specific screenshots were also inspected. No live MySQL/Postgres,
 paid-provider, physical-device, Android-build or Docker claim.
 
-Next: Group 8 NUX-041.
+## Group 8
+
+### NUX-041
+
+Plugins now separates Work Plugins from Global Plugins. Work inventory reads every
+installed exact PackageVersion, shows readable plugin/Work names, dependencies and
+installation-time permission consent, and navigates to the owning Work. Partial
+version failures remain visible with retry. Raw IDs/contributions stay in Details.
+Global Plugins is an explicit Regex/Search Tools allowlist and reuses their existing
+persistence and own settings controls, with keyboard-operable drawers and placement
+restoration. Orchestrator/Memory, third-party installation, the legacy manager and
+unfiltered extension settings are absent from this product surface. Workspace command
+copy now reflects Work/Global ownership. The physical retirement follows in NUX-042.
+
+Validation: five focused/adjacent suites passed 30 cases, including Package plugin
+capability/dependency guards. Three real Edge utility/navigation/settings scenarios
+and an additional two-installed-version Work plugin scenario passed. 390px screenshots
+were inspected. Changed JavaScript lint and diff checks passed. An initial browser
+command was interrupted because its test-edit script used the wrong relative path;
+the corrected final cases passed. Existing absent Stable Diffusion service startup
+probes were non-fatal and will disappear with the planned physical retirement.
+
+Next: NUX-042.

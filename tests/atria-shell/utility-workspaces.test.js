@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import {
     classifyPluginEntries,
-    isThirdPartyPlugin,
     mountAccountUtility,
     mountPluginsUtility,
     mountSettingsUtility,
@@ -32,124 +31,48 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         `;
     });
 
-    test('classifies only true third-party frontend extensions as Plugins', () => {
-        expect(isThirdPartyPlugin('orchestrator', 'system')).toBe(false);
-        expect(isThirdPartyPlugin('third-party/example', 'local')).toBe(true);
-        expect(isThirdPartyPlugin('example', 'global')).toBe(true);
-
-        const plugins = classifyPluginEntries({
-            extensionNames: [
-                'orchestrator',
-                'memory-graph',
-                'third-party/example',
-                'third-party/global-example',
-            ],
-            extensionTypes: {
-                orchestrator: 'system',
-                'memory-graph': 'system',
-                'third-party/example': 'local',
-                'third-party/global-example': 'global',
-            },
-            disabledExtensions: ['third-party/global-example'],
-            getManifest: name => ({
-                display_name: name.includes('global') ? 'Global Example' : 'Example',
-                version: '1.2.3',
-            }),
-        });
-
-        expect(plugins.map(plugin => plugin.name)).toEqual([
-            'third-party/example',
-            'third-party/global-example',
-        ]);
-        expect(plugins.find(plugin => plugin.name === 'third-party/global-example')?.enabled).toBe(false);
+    test('Global Plugins are an explicit allowlist regardless of legacy inventory', () => {
+        const plugins = classifyPluginEntries({ extensionNames: ['orchestrator', 'memory-graph', 'third-party/example'], disabledExtensions: ['search-tools'] });
+        expect(plugins.map(item => item.name)).toEqual(['regex', 'search-tools']);
+        expect(plugins[1].enabled).toBe(false);
     });
 
-    test('Plugins reuses extension state/persistence and restores compatibility settings DOM on dispose', async () => {
-        const slot = document.getElementById('slot');
-        const settingsOne = document.getElementById('extensions_settings');
-        const settingsTwo = document.getElementById('extensions_settings2');
-        const originalParent = settingsOne.parentNode;
-        settingsOne.innerHTML = '<div class="inline-drawer-header inline-drawer-toggle"><i class="inline-drawer-icon down"></i>Fixture settings</div>';
-        const drawerHeader = settingsOne.firstElementChild;
-        const originalClick = jest.fn();
-        drawerHeader.addEventListener('click', originalClick);
-        const disableExtension = jest.fn(async () => {});
-        const enableExtension = jest.fn(async () => {});
-        const extensionAuthority = {
-            extensionNames: ['orchestrator', 'third-party/example'],
-            extensionTypes: {
-                orchestrator: 'system',
-                'third-party/example': 'local',
-            },
-            extension_settings: { disabledExtensions: [] },
-            getExtensionManifest: jest.fn(name => ({
-                display_name: name === 'orchestrator' ? 'Atria Orchestrator' : 'Example Plugin',
-                version: '2.0.0',
-                author: 'Plugin Author',
-                description: 'Third-party fixture',
-            })),
-            disableExtension,
-            enableExtension,
-        };
-
+    test('Plugins show exact Work versions and retain only the two owned settings panels', async () => {
+        const slot = document.getElementById('slot'), original = document.getElementById('extensions_settings');
+        original.innerHTML = '<div id="regex_container"><div class="inline-drawer-header inline-drawer-toggle"><i class="inline-drawer-icon down"></i>Regex rules</div></div><div id="other">Other extension</div>';
+        const regex = document.getElementById('regex_container'), header = regex.firstChild, click = jest.fn(); header.addEventListener('click', click);
+        const authority = { extension_settings: { disabledExtensions: [] }, disableExtension: jest.fn(async () => {}), enableExtension: jest.fn(async () => {}) };
+        const host = { openLibraryWork: jest.fn() };
         const productClient = {
-            listWorks: jest.fn(async () => [{
-                package: { packageId: 'pkg_1', displayName: 'Native Work' },
-                manifest: {
-                    runtime: {
-                        plugins: [{
-                            pluginId: 'native.package-ui',
-                            version: '1.0.0',
-                            packageRuntime: {
-                                capabilities: ['ui.contributions'],
-                                contributions: [{ type: 'play.toolbar', id: 'toolbar' }],
-                            },
-                        }],
-                    },
-                },
-            }]),
+            listWorks: async () => [{ package: { packageId: 'pkg' } }],
+            getWork: async () => ({ package: { packageId: 'pkg' }, versions: [{ packageVersionId: 'old' }, { packageVersionId: 'current' }] }),
+            getWorkVersion: jest.fn(async (_id, version) => ({ packageVersion: { packageVersionId: version }, manifest: { name: 'Voyage', version, permissions: [], runtime: { plugins: [{ pluginId: 'plugin.ui', displayName: 'Story controls', version: '1', dependencies: [], packageRuntime: {} }] } } })),
         };
-        const controller = await mountPluginsUtility({
-            document,
-            slot,
-            extensionAuthority,
-            productClient,
-        });
+        const controller = await mountPluginsUtility({ document, slot, extensionAuthority: authority, productClient, host });
+        expect(slot.querySelectorAll('[data-atria-plugin]')).toHaveLength(2);
+        expect(slot.querySelectorAll('[data-atria-native-plugin]')).toHaveLength(2);
+        expect(slot.textContent).toContain('Story controls'); expect(slot.textContent).toContain('old');
+        expect(slot.querySelector('[data-atria-legacy-plugins]')).toBeNull(); expect(slot.contains(original)).toBe(false);
+        const settings = slot.querySelector('[data-atria-global-plugin-settings="regex"]'); settings.open = true; settings.dispatchEvent(new Event('toggle'));
+        expect(settings.contains(regex)).toBe(true); expect(slot.querySelector('#other')).toBeNull();
+        header.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); expect(click).toHaveBeenCalledTimes(1);
+        const toggle = slot.querySelector('[role="switch"]'); toggle.checked = false; toggle.dispatchEvent(new Event('change'));
+        await Promise.resolve(); await Promise.resolve(); expect(authority.disableExtension).toHaveBeenCalledWith('regex', false);
+        [...slot.querySelectorAll('button')].find(b => b.textContent === 'Manage owning Work').click(); expect(host.openLibraryWork).toHaveBeenCalledWith('pkg', 'Voyage');
+        controller.dispose(); expect(regex.parentNode).toBe(original); expect(header.hasAttribute('role')).toBe(false);
+    });
 
-        expect(slot.querySelector('[data-atria-plugin-surface="native"]')).not.toBeNull();
-        expect(slot.querySelector('[data-atria-native-plugin="native.package-ui"]')).not.toBeNull();
-        expect(slot.querySelectorAll('[data-atria-plugin]')).toHaveLength(1);
-        expect(slot.querySelector('[data-atria-plugin="third-party/example"]')).not.toBeNull();
-        expect(slot.querySelector('[data-atria-legacy-plugins="true"]').open).toBe(false);
-        expect(slot.textContent).not.toContain('Atria Orchestrator');
-        expect(slot.contains(settingsOne)).toBe(true);
-        expect(slot.contains(settingsTwo)).toBe(true);
-        expect(slot.querySelector('[data-atria-plugin-surface="server"]')?.textContent)
-            .toContain('Server plugins');
-        expect(document.querySelectorAll('#extensions_settings')).toHaveLength(1);
-        expect(document.querySelectorAll('#extensions_settings2')).toHaveLength(1);
-
-        const toggle = slot.querySelector('[data-plugin-name="third-party/example"]');
-        toggle.checked = false;
-        toggle.dispatchEvent(new Event('change', { bubbles: true }));
-        await Promise.resolve();
-        await Promise.resolve();
-        expect(disableExtension).toHaveBeenCalledWith('third-party/example', false);
-
-        slot.querySelector('[data-atria-plugin="third-party/example"] .atria-utility-action').click();
-        expect(slot.querySelector('[data-atria-plugin-compatibility="true"]').open).toBe(true);
-
-        expect(drawerHeader.getAttribute('role')).toBe('button');
-        drawerHeader.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-        expect(originalClick).toHaveBeenCalledTimes(1);
+    test('failed Work versions retain loaded plugins and expose a retry', async () => {
+        const productClient = {
+            listWorks: async () => [{ package: { packageId: 'pkg' } }],
+            getWork: async () => ({ package: { packageId: 'pkg' }, versions: [{ packageVersionId: 'v' }] }),
+            getWorkVersion: jest.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ packageVersion: { packageVersionId: 'v' }, manifest: { name: 'Work', version: '1', runtime: { plugins: [{ pluginId: 'plugin.one', displayName: 'Recovered', version: '1' }] } } }),
+        };
+        const controller = await mountPluginsUtility({ document, slot: document.getElementById('slot'), extensionAuthority: {}, productClient });
+        expect(controller.root.textContent).toContain('Results may be incomplete');
+        [...controller.root.querySelectorAll('button')].find(b => b.textContent === 'Try again').click();
+        await new Promise(resolve => setTimeout(resolve, 0)); expect(controller.root.textContent).toContain('Recovered');
         controller.dispose();
-        expect(drawerHeader.hasAttribute('role')).toBe(false);
-        expect(drawerHeader.hasAttribute('tabindex')).toBe(false);
-        drawerHeader.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-        expect(originalClick).toHaveBeenCalledTimes(1);
-        expect(settingsOne.parentNode).toBe(originalParent);
-        expect(settingsTwo.parentNode).toBe(originalParent);
-        expect(settingsOne.dataset.atriaWorkspaceEmbedded).toBeUndefined();
     });
 
     test('Settings moves preference-only controls and never exposes generation authority, even under Advanced', async () => {
@@ -240,7 +163,7 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         const errorLog = jest.spyOn(console, 'error').mockImplementation(() => {});
         const controller = await mountPluginsUtility({ document, slot: document.getElementById('slot'),
             productClient: { listWorks: async () => [] }, extensionAuthority: {
-                extensionNames: ['third-party/test'], extensionTypes: {}, extension_settings: { disabledExtensions: [] },
+                extensionNames: ['regex'], extensionTypes: {}, extension_settings: { disabledExtensions: [] },
                 disableExtension: jest.fn(async () => { throw new Error('offline'); }),
             } });
         const toggle = controller.root.querySelector('[role="switch"]');

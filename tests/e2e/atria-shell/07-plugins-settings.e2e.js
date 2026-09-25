@@ -1,7 +1,6 @@
+import { sessionFixture } from '../../native/helpers/session-fixture.js';
+import { buildAtriaPackageContainer, createNativeId } from '../../../src/native/index.js';
 import { test, expect } from '@playwright/test';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import { markOnboarded } from '../_lib/fixtures.js';
 import { awaitMainUI } from '../_lib/page.js';
@@ -10,24 +9,7 @@ import { startServer, tearDownServer } from '../_lib/server.js';
 test.describe.configure({ mode: 'serial' });
 
 let server;
-const PLUGIN_DIR = 'r7g-plugin-fixture';
-const PLUGIN_ID = `third-party/${PLUGIN_DIR}`;
-const REPO_ROOT = fileURLToPath(new URL('../../..', import.meta.url));
-const GLOBAL_PLUGIN_ROOT = resolve(REPO_ROOT, 'public/scripts/extensions/third-party', PLUGIN_DIR);
-
 test.beforeAll(async () => {
-    // Global extensions are discovered during server startup, so create the
-    // fixture before boot rather than mutating the per-user directory after
-    // discovery has already been cached.
-    mkdirSync(GLOBAL_PLUGIN_ROOT, { recursive: true });
-    writeFileSync(resolve(GLOBAL_PLUGIN_ROOT, 'manifest.json'), JSON.stringify({
-        display_name: 'R7G Fixture Plugin',
-        loading_order: 999,
-        version: '1.0.0',
-        author: 'Atria Tests',
-        description: 'Third-party fixture for R7G product classification.',
-    }, null, 2));
-
     server = await startServer({
         batchKey: 'regression',
         scenarioId: 'r7g-plugins-settings',
@@ -37,7 +19,6 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
     await tearDownServer(server);
-    rmSync(GLOBAL_PLUGIN_ROOT, { recursive: true, force: true });
 });
 
 async function ensureShellMounted(page) {
@@ -61,12 +42,10 @@ async function nativeCounts(page) {
 test.describe('R7G Plugins & Settings Reclassification', () => {
     test('Expanded routes Plugins, Settings and Account through existing authorities', async ({ page }) => {
         await page.setViewportSize({ width: 1440, height: 900 });
+        await page.addInitScript(() => localStorage.setItem('language', 'en'));
+        await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+        await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
         await awaitMainUI(page, server.baseURL);
-
-        await page.waitForFunction(async id => {
-            const extensionModule = await import('/scripts/extensions.js');
-            return extensionModule.extensionNames.includes(id);
-        }, PLUGIN_ID, { timeout: 15_000 });
 
         await page.evaluate(() => {
             window.__r7gSettingsRoot = document.getElementById('user-settings-block');
@@ -78,31 +57,19 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
         await root.locator('[data-atria-utility="plugins"]').click();
         await expect(page).toHaveURL(/atriaChild=utility.plugins/);
         await expect(root.locator('[data-atria-utility-workspace="plugins"]')).toBeVisible();
-        await expect(root.locator(`[data-atria-plugin="${PLUGIN_ID}"]`)).toHaveCount(1);
-        await expect(root.locator('[data-atria-plugin="orchestrator"]')).toHaveCount(0);
-        await expect(root.locator('[data-atria-plugin="memory-graph"]')).toHaveCount(0);
-
-        await root.locator('[data-atria-legacy-plugins] > summary').click();
-        const pluginCard = root.locator(`[data-atria-plugin="${PLUGIN_ID}"]`);
-        const toggle = pluginCard.locator('input[type="checkbox"]');
-        await expect(toggle).toBeChecked();
-        await toggle.click();
+        await expect(root.locator('[data-atria-plugin]')).toHaveCount(2);
+        await expect(root.locator('[data-atria-plugin="orchestrator"], [data-atria-plugin="memory-graph"], [data-atria-legacy-plugins]')).toHaveCount(0);
+        await expect(root.getByRole('heading', { name: 'Work Plugins', exact: true })).toBeVisible();
+        await expect(root.getByRole('heading', { name: 'Global Plugins', exact: true })).toBeVisible();
+        const pluginCard = root.locator('[data-atria-plugin="regex"]'), toggle = pluginCard.getByRole('switch');
+        await expect(toggle).toBeChecked(); await toggle.click();
         await expect(pluginCard).toHaveAttribute('data-save-state', 'saved');
-        await expect.poll(async () => await page.evaluate(async id => {
-            const extensionModule = await import('/scripts/extensions.js');
-            return extensionModule.extension_settings.disabledExtensions.includes(id);
-        }, PLUGIN_ID)).toBe(true);
-
+        await expect.poll(async () => page.evaluate(async () => (await import('/scripts/extensions.js')).extension_settings.disabledExtensions.includes('regex'))).toBe(true);
         await toggle.click();
-        await expect.poll(async () => await page.evaluate(async id => {
-            const extensionModule = await import('/scripts/extensions.js');
-            return extensionModule.extension_settings.disabledExtensions.includes(id);
-        }, PLUGIN_ID)).toBe(false);
-
-        await pluginCard.getByRole('button', { name: 'Compatibility settings' }).click();
-        await expect(root.locator('[data-atria-plugin-compatibility="true"]')).toHaveAttribute('open', '');
-        await expect(root.locator('#extensions_settings')).toHaveCount(1);
-        await expect(root.locator('#extensions_settings2')).toHaveCount(1);
+        await expect.poll(async () => page.evaluate(async () => (await import('/scripts/extensions.js')).extension_settings.disabledExtensions.includes('regex'))).toBe(false);
+        await pluginCard.getByText('Plugin settings', { exact: true }).click();
+        await expect(pluginCard.locator('#regex_container')).toHaveCount(1);
+        await expect(root.locator('#extensions_settings, #extensions_settings2')).toHaveCount(0);
 
         await root.locator('[data-atria-utility="settings"]').click();
         await expect(page).toHaveURL(/atriaChild=utility.settings/);
@@ -153,6 +120,9 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
 
     test('legacy entries forward through the authoritative Shell and API remains owned by Runtime', async ({ page }) => {
         await page.setViewportSize({ width: 1280, height: 800 });
+        await page.addInitScript(() => localStorage.setItem('language', 'en'));
+        await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+        await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
         await awaitMainUI(page, server.baseURL);
         const root = await ensureShellMounted(page);
 
@@ -175,8 +145,11 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
         expect(await nativeCounts(page)).toEqual({ chat: 1, sendForm: 1, textarea: 1 });
     });
 
-    test('Compact opens focused utilities through Command and restores Play without orphan DOM', async ({ page }) => {
+    test('Compact opens focused utilities through Command and restores Play without orphan DOM', async ({ page }, info) => {
         await page.setViewportSize({ width: 390, height: 844 });
+        await page.addInitScript(() => localStorage.setItem('language', 'en'));
+        await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+        await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
         await awaitMainUI(page, server.baseURL);
 
         await page.evaluate(() => {
@@ -194,6 +167,7 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
         });
         await expect(root.locator('[data-atria-utility-workspace="plugins"]')).toBeVisible();
         await expect(page).toHaveURL(/atriaChild=utility.plugins/);
+        await page.screenshot({ path: info.outputPath('plugins-390.png') });
 
         await page.evaluate(async () => {
             await window.Atria.shell.getShell().registry.execute('workspace.settings');
@@ -226,4 +200,31 @@ test.describe('R7G Plugins & Settings Reclassification', () => {
             extensionsTwoRestored: true,
         });
     });
+});
+
+
+test('Work Plugins preserve old installed versions and route permission management to their Work', async ({ page }, info) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const { manifest } = sessionFixture(); manifest.name = 'Plugin voyage';
+    manifest.runtime = { plugins: [{ format: 'atria-plugin', schemaVersion: 1, apiVersion: 1, pluginId: 'plugin.runtime', displayName: 'Story compass', version: '1.0.0', permissions: [], dependencies: [], contributions: [], packageRuntime: { format: 'atria-package-runtime', version: 1, execution: 'declarative', capabilities: ['runtime.selector'], contributions: [{ id: 'plugin.runtime.hp', type: 'play.selector', config: { selectors: [{ id: 'plugin.hp', formula: 'world.hp' }] } }], config: {} } }] };
+    const data = [];
+    for (const version of ['1.0.0', '2.0.0']) {
+        manifest.version = version; manifest.packageVersionId = createNativeId('packageVersion');
+        data.push(buildAtriaPackageContainer({ manifest, sourceFiles: new Map(), assetPayloads: new Map() }).archive.toString('base64'));
+    }
+    await page.evaluate(async archives => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        for (const bytes of archives) await client.installPackage(bytes);
+        window.Atria.shell.getWorkspaceHost().openUtility('plugins');
+    }, data);
+    const cards = page.locator('[data-atria-native-plugin="plugin.runtime"]'); await expect(cards).toHaveCount(2);
+    await expect(cards.first().getByRole('heading', { name: 'Story compass', exact: true })).toBeVisible();
+    await expect(cards.first()).toContainText('Plugin voyage'); await expect(cards.nth(1)).toContainText('Plugin voyage');
+    await page.screenshot({ path: info.outputPath('work-plugins-390.png') });
+    await cards.first().getByRole('button', { name: 'Manage owning Work', exact: true }).click();
+    await expect(page.locator('[data-atria-work-detail]')).toContainText('Plugin voyage');
 });
