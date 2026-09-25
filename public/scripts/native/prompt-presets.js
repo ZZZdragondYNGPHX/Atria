@@ -41,6 +41,11 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
     };
     const open = async id => { const token = ++sequence; body.replaceChildren(); node('p', 'Loading exact resources…'); const value = await runtimeRequest('/presets/' + id); if (disposed || token !== sequence) return; preset = value; section = null; renderDetail(); };
     const create = async (value, importing = false) => { const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId); };
+    const exportPreset = value => {
+        const data = { format: value.format, schemaVersion: 1, programId: value.programId, categories: value.categories, moduleCategories: value.moduleCategories, entries: value.entries };
+        const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+        const a = node('a'); a.href = url; a.download = value.displayName.replace(/[^\p{L}\p{N}_ -]/gu, '_').slice(0, 80) + '.prompt-preset.json'; a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
     const confirmRemoval = async (next, modules, affected, label) => {
         const content = node('div', undefined, doc.createDocumentFragment());
         node('p', 'Delete the selected items? Program references will be removed together. Pinned history remains available.', content);
@@ -75,11 +80,6 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         button(nav, 'Back to presets', list);
         if (section) button(nav, 'Back to preset', () => { section = null; renderDetail(); });
         literal('h2', preset.entries.find(e => idOf(e) === preset.programId).resource.displayName, root);
-        button(nav, 'Export preset', () => {
-            const data = { format: preset.format, schemaVersion: 1, programId: preset.programId, categories: preset.categories, moduleCategories: preset.moduleCategories, entries: preset.entries };
-            const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-            const a = node('a', undefined, root); a.href = url; a.download = preset.displayName.replace(/[^\p{L}\p{N}_ -]/gu, '_').slice(0, 80) + '.prompt-preset.json'; a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-        });
         if (!section) {
             node('p', 'This preset owns its program, modules and generation settings. Changes affect only this preset.', root);
             const cards = node('div', undefined, root); cards.className = 'atri-preset-sections';
@@ -95,19 +95,6 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         }
         const tools = node('div', undefined, root); tools.className = 'atri-prompt-actions';
         button(tools, 'New module', () => edit({ resourceType: MODULE, resource: newPromptResource(MODULE) }, true));
-        button(tools, 'Copy existing module', async () => {
-            const entries = (await runtimeRequest('/resources')).filter(e => e.ref.resourceType === MODULE);
-            if (disposed || !tools.isConnected) return;
-            const panel = node('div', undefined, root); panel.className = 'atri-preset-category-form';
-            const choice = select(panel, 'Existing module', [['', tl('Choose…')], ...entries.map((e, i) => [String(i), e.resource.displayName + ' · ' + e.ref.scope + ' · ' + e.ref.revision])]);
-            button(panel, 'Copy into this preset', () => {
-                if (!choice.value) { choice.focus(); return; }
-                const resource = clone(entries[Number(choice.value)].resource);
-                resource.promptModuleId = createStudioNativeId('pmod'); resource.revision = createStudioNativeId('rev');
-                edit({ resourceType: MODULE, resource }, true);
-            });
-            choice.focus();
-        });
         const form = node('div', undefined, root); form.className = 'atri-preset-category-form';
         const categoryName = field(form, 'Category name');
         const parent = select(form, 'Parent category', [['', tl('Top level')], ...preset.categories.map(c => [c.id, categoryPath(c.id)])]);
@@ -154,7 +141,11 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
             const file = field(root, 'Import preset'); file.type = 'file'; file.accept = '.json,application/json';
             button(root, 'Import selected preset', async () => { if (!file.files?.length) { file.focus(); return; } await create(JSON.parse(await file.files[0].text()), true); });
             if (!presets.length) node('p', 'No presets yet. Create a preset or import a file.', root);
-            for (const preset of presets) { const row = node('article', undefined, root); row.className = 'atri-prompt-resource'; literal('h3', preset.displayName, row); button(row, 'Open preset', () => open(preset.presetId)); }
+            for (const preset of presets) {
+                const row = node('article', undefined, root); row.className = 'atri-prompt-resource'; row.dataset.atriPresetId = preset.presetId;
+                literal('h3', preset.displayName, row); button(row, 'Open preset', () => open(preset.presetId));
+                button(row, 'Export preset', async () => exportPreset(await runtimeRequest('/presets/' + preset.presetId)));
+            }
             const existing = node('details', undefined, root); node('summary', 'Existing resources — migrate into an independent preset', existing);
             button(existing, 'Choose existing resources', async () => {
                 const entries = await runtimeRequest('/resources'); existing.replaceChildren(); node('summary', 'Existing resources — migrate into an independent preset', existing);

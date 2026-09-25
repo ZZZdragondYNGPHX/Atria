@@ -4,7 +4,7 @@ import {
     NATIVE_RESOURCE_KINDS,
 } from './contracts.js';
 import { createNativeId, assertNativeId } from './identity.js';
-import { resolveSessionKnowledge, validateKnowledgeBindingSet } from './session-knowledge.js';
+import { resolveSessionKnowledge, validateKnowledgeBindingSet, packageKnowledgeManifest } from './session-knowledge.js';
 import { cloneNativeDocument, hashNativeDocument } from './repositories/common.js';
 import {
     SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, RESERVED_SESSION_NAMESPACES,
@@ -137,7 +137,22 @@ export class SessionCore {
         validateWorldState(snapshot.states, installed.manifest, installed.entryPoint);
         const knowledge = validateKnowledgeBindingSet(snapshot.knowledge, installed.manifest, installed.entryPoint);
         const worlds = selectedWorlds(snapshot.states, installed.manifest, installed.entryPoint);
-        return { ...snapshot, knowledge, manifest: installed.manifest, entryPoint: installed.entryPoint, worlds };
+        const base = { ...snapshot, knowledge, manifest: packageKnowledgeManifest(installed.manifest, knowledge), entryPoint: installed.entryPoint, worlds };
+        if (!options.revisionId) {
+            const edits = await this._packages.currentKnowledgeEdits?.(handle, session.packageId, knowledge.bindings, session.packageVersionId) || [];
+            if (edits.length) {
+                const revisions = new Map(edits.map(item => [item.knowledgeBase.knowledgeBaseId, item.revision.knowledgeRevisionId]));
+                const next = { ...knowledge, bindings: knowledge.bindings.map(binding => binding.source.kind === 'package' && revisions.has(binding.source.knowledgeBaseId)
+                    ? { ...binding, source: { ...binding.source, knowledgeRevisionId: revisions.get(binding.source.knowledgeBaseId) } } : binding),
+                snapshots: [...knowledge.snapshots.filter(item => item.kind !== 'package' || !revisions.has(item.snapshot.knowledgeBase.knowledgeBaseId)), ...edits.map(snapshot => ({ kind: 'package', snapshot }))] };
+                const states = { ...base.states }; delete states.atri_knowledge_runtime;
+                try { return await this._publish(handle, { ...base, manifest: packageKnowledgeManifest(installed.manifest, next) }, { knowledge: next, states }); } catch (error) {
+                    if (error.code === 'native_session_head_conflict' && !options.retriedKnowledge) return this.load(handle, sessionId, { ...options, retriedKnowledge: true });
+                    throw error;
+                }
+            }
+        }
+        return base;
     }
 
     async create(handle, { packageId, packageVersionId, entryPointId, displayTitle,

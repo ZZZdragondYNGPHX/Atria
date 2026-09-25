@@ -31,6 +31,8 @@ function encode(value) {
 }
 
 export const nativeProductClient = Object.freeze({
+    getPackageKnowledge: (packageId, knowledgeBaseId) => request(`works/${encode(packageId)}/knowledge/${encode(knowledgeBaseId)}`),
+    editPackageKnowledge: (packageId, knowledgeBaseId, input) => request(`works/${encode(packageId)}/knowledge/${encode(knowledgeBaseId)}`, { method: 'PUT', body: input }),
     getResourceSetup: (packageId, { sessionId, entryPointId } = {}) => request(`works/${encode(packageId)}/resource-setup?` + new URLSearchParams({ ...(sessionId ? { sessionId } : {}), ...(entryPointId ? { entryPointId } : {}) })),
     saveResourceSetup: (packageId, input) => request(`works/${encode(packageId)}/resource-setup`, { method: 'PUT', body: input }),
     listWorks: () => request('works'),

@@ -135,6 +135,23 @@ export class PackageRepo {
         ));
     }
 
+    async publishKnowledgeEdit(handle, packageId, packageVersionId, { expectedCurrentVersionId, knowledgeBaseId, knowledgeRevisionId }) {
+        assertWritable();
+        return this._engine.withTransaction(handle, async tx => {
+            const rootKey = this._packageKey(handle, packageId), root = await getNativeDocument(tx, rootKey);
+            if (root?.currentVersionId !== expectedCurrentVersionId) throw new ConflictError('native_package_knowledge_conflict');
+            if (!await getNativeDocument(tx, this._versionKey(handle, packageId, packageVersionId))) throw new NotFoundError('Package version');
+            const records = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.packageState, handle, packageId });
+            for (const record of records) if (record.key.namespace.startsWith('atri_resource_setup_') && record.doc.packageVersionId === expectedCurrentVersionId) {
+                const next = cloneNativeDocument(record.doc); next.packageVersionId = packageVersionId;
+                next.resolved.knowledge.bindings = next.resolved.knowledge.bindings.map(binding => binding.source.kind === 'package' && binding.source.knowledgeBaseId === knowledgeBaseId
+                    ? { ...binding, source: { ...binding.source, knowledgeRevisionId } } : binding);
+                await putMutable(tx, record.key, next, { expectedIntegrity: record.integrity });
+            }
+            await putMutable(tx, rootKey, { ...root, currentVersionId: packageVersionId, updatedAt: Math.max(Date.now(), root.updatedAt || 0) });
+        });
+    }
+
     async setState(handle, packageId, namespace, value, options = {}) {
         assertWritable();
         const doc = cloneNativeDocument(value, 'PackageUserState');
