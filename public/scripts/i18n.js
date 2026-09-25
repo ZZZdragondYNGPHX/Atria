@@ -3,11 +3,8 @@ import { updateSecretDisplay } from './secrets.js';
 
 const storageKey = 'language';
 const overrideLanguage = localStorage.getItem(storageKey);
-const localeFile = String(overrideLanguage || navigator.language || navigator.userLanguage || 'en').toLowerCase();
-const localeFallbacks = {
-    'zh-cn': ['zh-tw'],
-    'zh-tw': ['zh-cn'],
-};
+const requestedLocale = String(overrideLanguage || navigator.language || navigator.userLanguage || 'en').toLowerCase();
+const localeFile = requestedLocale.startsWith('zh') ? 'zh-cn' : 'en';
 var langs;
 // Don't change to let/const! It will break module loading.
 // eslint-disable-next-line prefer-const
@@ -52,7 +49,7 @@ export function addLocaleData(localeId, data) {
  * @returns {string[]} Locale IDs to load in order
  */
 function getLocaleLoadOrder(language) {
-    return [...new Set([...(localeFallbacks[language] || []), language])];
+    return [language];
 }
 
 /**
@@ -142,6 +139,7 @@ globalThis.__i18n = Object.freeze({ t, translate });
  * @returns {Promise<Record<string, string>>} Locale data
  */
 async function loadLocaleData(language) {
+    if (language === 'en') return {};
     let supportedLang = findLang(language);
     if (!supportedLang) {
         return {};
@@ -335,6 +333,7 @@ export function applyLocale(root = document) {
 
 function addLanguagesToDropdown() {
     const uiLanguageSelects = $('#ui_language_select, #onboarding_ui_language_select');
+    uiLanguageSelects.empty();
     for (const langObj of langs) { // Set the value to the language code
         const option = document.createElement('option');
         option.value = langObj.lang; // Set the value to the language code
@@ -342,10 +341,7 @@ function addLanguagesToDropdown() {
         uiLanguageSelects.append(option);
     }
 
-    const selectedLanguage = localStorage.getItem(storageKey);
-    if (selectedLanguage) {
-        uiLanguageSelects.val(selectedLanguage);
-    }
+    uiLanguageSelects.val(localeFile);
 }
 
 export async function initLocales() {

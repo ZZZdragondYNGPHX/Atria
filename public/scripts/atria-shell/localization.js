@@ -1,4 +1,6 @@
 export const SHELL_TEXT_KEYS = Object.freeze({
+    'Custom CSS': 'atria.shell.settings.customCss',
+    'Edit Atria tokens below, then update the theme or save as a new theme.': 'atria.shell.settings.customCssHelp',
     'Back to ${0}': 'atria.shell.backTo',
     'Import project asset': 'atria.product.import.project.asset.3c2f74',
     'Import asset': 'atria.product.import.asset.2bcb40',

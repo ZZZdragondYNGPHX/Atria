@@ -5,6 +5,8 @@ import { el, action, disclosure, feedback } from '../native/library-ui.js';
 import { permissionRow } from '../native/package-permissions.js';
 import { nativeProductClient } from '../native/product-client.js';
 
+export const ATRIA_THEME_CSS_EXAMPLE = ':root:root {\n  --atri-accent: #7c6aef;\n  --atri-canvas: #15131c;\n  --atri-surface-1: #201d29;\n  --atri-text-primary: #f5f3ff;\n}';
+
 function createLocalizedStatePanel(documentRef, kind, options = {}) {
     return createAtriaStatePanel(documentRef, kind, {
         ...options,
@@ -25,6 +27,8 @@ function savePlacement(documentRef, node) {
         style: node.getAttribute('style'),
         hidden: node.hidden,
         ariaHidden: node.getAttribute('aria-hidden'),
+        ariaLabel: node.getAttribute('aria-label'),
+        ariaDescribedBy: node.getAttribute('aria-describedby'),
     });
 }
 
@@ -37,6 +41,10 @@ function restorePlacement(node, placement) {
     node.hidden = placement.hidden;
     if (placement.ariaHidden === null) node.removeAttribute('aria-hidden');
     else node.setAttribute('aria-hidden', placement.ariaHidden);
+    for (const [attribute, value] of [['aria-label', placement.ariaLabel], ['aria-describedby', placement.ariaDescribedBy]]) {
+        if (value === null) node.removeAttribute(attribute);
+        else node.setAttribute(attribute, value);
+    }
     delete node.dataset.atriaWorkspaceEmbedded;
 }
 
@@ -209,7 +217,7 @@ export async function mountPluginsUtility({
 // Preference-only host bridge: move existing controls with their event handlers and
 // persistence, never the unfiltered User Settings drawer or generation controls.
 export const PREFERENCE_CONTROLS = Object.freeze({
-    appearance: ['themes', 'color-picker-block', 'font_scale'],
+    appearance: ['UI-presets-block', 'color-picker-block', 'customCSS', 'font_scale'],
     language: ['UI-language-block'],
     interface: ['send_on_enter', 'auto_scroll_chat_to_bottom', 'auto_save_msg_edits', 'confirm_message_delete', 'before_unload_guard_mode'],
     accessibility: ['reduced_motion', 'fast_ui_mode'],
@@ -241,13 +249,23 @@ export function mountSettingsUtility({ document: documentRef = globalThis.docume
             const placement = savePlacement(documentRef, node);
             if (!placement) continue;
             placements.push([node, placement]);
-            const row = documentRef.createElement(controlId === 'color-picker-block' ? 'details' : 'div');
+            const row = documentRef.createElement(['color-picker-block', 'customCSS'].includes(controlId) ? 'details' : 'div');
             row.className = 'atria-preference-row';
-            if (controlId === 'color-picker-block') {
+            if (['color-picker-block', 'customCSS'].includes(controlId)) {
                 row.dataset.atriaSettingsCompatibility = 'preferences-only';
                 const summary = documentRef.createElement('summary');
-                summary.textContent = translateShellText('Advanced appearance controls');
+                summary.textContent = translateShellText(controlId === 'customCSS' ? 'Custom CSS' : 'Advanced appearance controls');
                 row.append(summary);
+                if (controlId === 'customCSS') {
+                    const help = documentRef.createElement('p');
+                    help.id = 'atria-custom-theme-help';
+                    help.textContent = translateShellText('Edit Atria tokens below, then update the theme or save as a new theme.');
+                    const example = documentRef.createElement('pre');
+                    example.textContent = ATRIA_THEME_CSS_EXAMPLE;
+                    node.setAttribute('aria-label', translateShellText('Custom CSS'));
+                    node.setAttribute('aria-describedby', help.id);
+                    row.append(help, example);
+                }
             }
             if (node.matches('input, select')) {
                 const label = documentRef.createElement('label');

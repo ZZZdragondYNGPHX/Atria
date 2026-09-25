@@ -206,6 +206,19 @@ async function resetSettings(handle, callback) {
     }
 }
 
+/** Persist a display name through the account authority, including single-user mode. */
+export async function saveAccountName(name, handle = getCurrentUserHandle()) {
+    const normalized = String(name).replace(/\s+/g, ' ').trim();
+    if (!normalized) throw new Error(t`Enter a persona name to get started.`);
+    const response = await fetch('/api/users/change-name', {
+        method: 'POST',
+        headers: getRequestHeaders(),
+        body: JSON.stringify({ handle, name: normalized }),
+    });
+    if (!response.ok) throw new Error(t`Failed to change name`);
+    if (currentUser?.handle === handle) currentUser.name = normalized;
+}
+
 /**
  * Change a user's display name.
  * @param {string} handle User handle
@@ -223,21 +236,12 @@ async function changeName(handle, name, callback) {
 
         name = String(result);
 
-        const response = await fetch('/api/users/change-name', {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body: JSON.stringify({ handle, name }),
-        });
-
-        if (!response.ok) {
-            const data = await response.json();
-            toastr.error(data.error || 'Unknown error', 'Failed to change name');
-            throw new Error('Failed to change name');
-        }
+        await saveAccountName(name, handle);
 
         toastr.success('Name changed successfully', 'Name Changed');
         callback();
     } catch (error) {
+        toastr.error(error.message, t`Failed to change name`);
         console.error('Error changing name:', error);
     }
 }

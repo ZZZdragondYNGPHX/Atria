@@ -3090,12 +3090,13 @@ async function deleteTheme() {
 
     if (themeIndex !== -1) {
         themes.splice(themeIndex, 1);
-        $(`#themes option[value="${themeName}"]`).remove();
-        power_user.theme = themes[0]?.name;
-        saveSettingsDebounced();
+        $('#themes option').filter((_, option) => option.value === themeName).remove();
+        power_user.theme = themes[0]?.name || '';
+        $('#themes').val(power_user.theme);
         if (power_user.theme) {
             applyTheme(power_user.theme);
         }
+        await saveSettings(0, { directSave: true });
         toastr.success('Theme deleted.');
     }
 }
@@ -3104,7 +3105,7 @@ async function deleteTheme() {
  * Exports the current theme to a file.
  */
 async function exportTheme() {
-    const themeFile = await saveTheme(power_user.theme);
+    const themeFile = getThemeObject(power_user.theme || 'Atria');
     const fileName = `${themeFile.name}.json`;
     download(JSON.stringify(themeFile, null, 4), fileName, 'application/json');
 }
@@ -3122,9 +3123,10 @@ async function importTheme(file) {
     const fileText = await getFileText(file);
     const parsed = JSON.parse(fileText);
 
-    if (!parsed.name) {
+    if (!parsed || typeof parsed !== 'object' || typeof parsed.name !== 'string' || !parsed.name.trim()) {
         throw new Error('Missing name');
     }
+    parsed.name = await getSanitizedFilename(parsed.name.trim());
 
     if (themes.some(t => t.name === parsed.name)) {
         throw new Error('Theme with that name already exists');
@@ -3138,14 +3140,7 @@ async function importTheme(file) {
         }
     }
 
-    themes.push(parsed);
     await saveTheme(parsed.name, getNewTheme(parsed));
-    const option = document.createElement('option');
-    option.selected = false;
-    option.value = parsed.name;
-    option.innerText = parsed.name;
-    $('#themes').append(option);
-    saveSettingsDebounced();
     toastr.success(parsed.name, 'Theme imported');
 }
 
@@ -3193,11 +3188,12 @@ async function saveTheme(name = undefined, theme = undefined) {
         $('#themes').append(option);
     } else {
         themes[themeIndex] = theme;
-        $(`#themes option[value="${name}"]`).prop('selected', true);
+        $('#themes').val(name);
     }
 
     power_user.theme = name;
-    saveSettingsDebounced();
+    applyTheme(name);
+    await saveSettings(0, { directSave: true });
 
     return theme;
 }

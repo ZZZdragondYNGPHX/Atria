@@ -1299,9 +1299,12 @@ router.get('/me', async (request, response) => {
         }
 
         const user = request.user.profile;
+        // Single-user requests use the fixed default profile for permissions.
+        // Display identity still comes from the persisted account.
+        const savedUser = await storage.getItem(toKey(user.handle));
         const viewModel = {
             handle: user.handle,
-            name: user.name,
+            name: savedUser?.name ?? user.name,
             avatar: await getUserAvatar(user.handle),
             admin: user.admin,
             password: !!user.password,

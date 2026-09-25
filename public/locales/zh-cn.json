@@ -8239,5 +8239,7 @@
     "Summarizer": "摘要生成器",
     "Critic": "评审器",
     "Authoring": "创作",
-    "Studio": "工作室"
+    "Studio": "工作室",
+    "atria.shell.settings.customCss": "自定义 CSS",
+    "atria.shell.settings.customCssHelp": "编辑下方 Atria 样式变量，然后更新当前主题或另存为新主题。"
 }

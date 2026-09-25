@@ -292,7 +292,7 @@ import { initVariableOpLog, extractMessageById, pushFloorVarOp } from './scripts
 import { extractFromText as extractSideEffectMacrosFromText } from './scripts/variable-op-log/extractor.js';
 import { installFrontendLogCapture, setFrontendConsoleDebugLoggingEnabled } from './scripts/frontend-log-manager.js';
 import { initAndroidDebugTrail } from './scripts/atria-android-debug-trail.js';
-import { currentUser, setUserControls } from './scripts/user.js';
+import { currentUser, setUserControls, saveAccountName } from './scripts/user.js';
 import { POPUP_RESULT, POPUP_TYPE, Popup, callGenericPopup, fixToastrForDialogs } from './scripts/popup.js';
 import { renderTemplate, renderTemplateAsync } from './scripts/templates.js';
 import { initScrapers } from './scripts/scrapers.js';
@@ -15352,9 +15352,17 @@ async function doOnboarding(avatarId) {
     const popup = new Popup(template, POPUP_TYPE.INPUT, currentUser?.name || name1, {
         cancelButton: false,
         okButton: t`Get started`,
-        onClosing: (instance) => {
+        onClosing: async (instance) => {
             if (instance.result !== POPUP_RESULT.AFFIRMATIVE) return true;
-            if (instance.mainInput.value.trim()) return true;
+            if (instance.mainInput.value.trim()) {
+                try {
+                    await saveAccountName(instance.mainInput.value);
+                    return true;
+                } catch (error) {
+                    toastr.error(error.message);
+                    return false;
+                }
+            }
             instance.mainInput.setAttribute('aria-invalid', 'true');
             template.find('.atri-persona-error').prop('hidden', false);
             instance.mainInput.focus();
@@ -15377,7 +15385,7 @@ async function doOnboarding(avatarId) {
     let userName = await popup.show();
 
     if (userName) {
-        userName = String(userName).replace('\n', ' ');
+        userName = String(userName).replace(/\s+/g, ' ').trim();
         setUserName(userName);
         console.log(`Binding persona ${avatarId} to name ${userName}`);
         power_user.personas[avatarId] = userName;

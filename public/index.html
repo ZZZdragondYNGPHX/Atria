@@ -5224,27 +5224,27 @@
                             <h4 class="title_restorable">
                                 <span data-i18n="UI Theme">UI Theme</span>
                                 <div class="flex-container">
-                                    <div id="ui_preset_import_button" class="menu_button menu_button_icon margin0" title="Import a theme file" data-i18n="[title]Import a theme file">
+                                    <button type="button" id="ui_preset_import_button" class="menu_button menu_button_icon margin0" title="Import a theme file" data-i18n="[title]Import a theme file">
                                         <i class="fa-solid fa-file-import"></i>
-                                    </div>
-                                    <div id="ui_preset_export_button" class="menu_button menu_button_icon margin0" title="Export a theme file" data-i18n="[title]Export a theme file">
+                                    </button>
+                                    <button type="button" id="ui_preset_export_button" class="menu_button menu_button_icon margin0" title="Export a theme file" data-i18n="[title]Export a theme file">
                                         <i class="fa-solid fa-file-export"></i>
-                                    </div>
-                                    <div id="ui-preset-delete-button" class="menu_button menu_button_icon margin0" title="Delete a theme" data-i18n="[title]Delete a theme">
+                                    </button>
+                                    <button type="button" id="ui-preset-delete-button" class="menu_button menu_button_icon margin0" title="Delete a theme" data-i18n="[title]Delete a theme">
                                         <i class="fa-solid fa-trash-can"></i>
-                                    </div>
+                                    </button>
                                 </div>
                                 <input type="file" id="ui_preset_import_file" accept=".json" hidden>
                             </h4>
                             <div class="flex-container flexnowrap alignitemscenter">
-                                <select id="themes" class="margin0">
+                                <select id="themes" class="margin0" aria-label="Theme" data-i18n="[aria-label]Theme">
                                 </select>
-                                <div id="ui-preset-update-button" title="Update a theme file" data-i18n="[title]Update a theme file" class="menu_button margin0">
+                                <button type="button" id="ui-preset-update-button" title="Update a theme file" data-i18n="[title]Update a theme file" class="menu_button margin0">
                                     <i class="fa-solid fa-save"></i>
-                                </div>
-                                <div id="ui-preset-save-button" title="Save as a new theme" data-i18n="[title]Save as a new theme" class="menu_button margin0">
+                                </button>
+                                <button type="button" id="ui-preset-save-button" title="Save as a new theme" data-i18n="[title]Save as a new theme" class="menu_button margin0">
                                     <i class="fa-solid fa-file-circle-plus"></i>
-                                </div>
+                                </button>
                             </div>
                         </div>
                         <div name="themeElements" class="flex-container flexFlowColumn flexNoGap">

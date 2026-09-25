@@ -804,3 +804,27 @@ html[data-atria-appearance] :is(.backupSyncCenter,.storageManagementCenter) .men
     color: var(--atri-text-tertiary);
     font-size: 16px;
 }
+
+/* Theme management keeps the existing controller inside the preference surface. */
+.atria-preference-row #UI-presets-block .title_restorable {
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.atria-preference-row #UI-presets-block button {
+    min-width: 44px;
+    min-height: 44px;
+}
+.atria-preference-row #UI-presets-block select {
+    flex: 1;
+}
+.atria-preference-row #customCSS {
+    width: 100%;
+    min-height: 180px;
+    resize: vertical;
+}
+.atria-preference-row pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: var(--atri-font-mono);
+    font-size: var(--atri-text-caption);
+}

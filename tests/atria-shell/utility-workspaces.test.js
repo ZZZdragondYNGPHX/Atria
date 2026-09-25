@@ -22,7 +22,7 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
                 <section id="user-settings-block" class="drawer-content closedDrawer" aria-hidden="true">
                     <div id="account_controls"></div>
                     <div id="UI-language-block"><select id="ui_language_select"><option>English</option></select></div>
-                    <div id="color-picker-block">Colors</div><div id="UI-Theme-Block"><select id="themes"><option>Default</option></select><label><input type="checkbox" id="reduced_motion">Reduced Motion</label><label><input id="enableLabMode">Sampling</label></div>
+                    <div id="color-picker-block">Colors</div><div id="UI-Theme-Block"><div id="UI-presets-block"><select id="themes"><option>Default</option></select><button id="ui-preset-save-button">Add theme</button><input type="file" id="ui_preset_import_file" hidden></div><textarea id="customCSS"></textarea><label><input type="checkbox" id="reduced_motion">Reduced Motion</label><label><input id="enableLabMode">Sampling</label></div>
                     <div id="movingUIModeCheckBlock"></div>
                     <div id="power-user-options-block"></div>
                 </section>
@@ -93,6 +93,10 @@ describe('A6 utility product surfaces via WorkspaceHost slot contract', () => {
         expect(settingsRoot.dataset.atriaWorkspaceEmbedded).toBeUndefined();
         expect(settingsRoot.classList.contains('closedDrawer')).toBe(true);
         expect(accountControls.hidden).toBe(false);
+        expect(slot.querySelector('#UI-presets-block #themes')).not.toBeNull();
+        expect(slot.querySelector('#ui-preset-save-button')).not.toBeNull();
+        expect(slot.querySelector('#ui_preset_import_file')).not.toBeNull();
+        expect(slot.querySelector('#customCSS').getAttribute('aria-label')).toBe('Custom CSS');
         expect(slot.textContent).toContain('Appearance');
         expect(slot.textContent).toContain('Accessibility');
 

@@ -8102,5 +8102,7 @@
     "Summarizer": "摘要生成器",
     "Critic": "評審器",
     "Authoring": "創作",
-    "Studio": "工作室"
+    "Studio": "工作室",
+    "atria.shell.settings.customCss": "自訂 CSS",
+    "atria.shell.settings.customCssHelp": "編輯下方 Atria 樣式變數，然後更新目前主題或另存為新主題。"
 }
