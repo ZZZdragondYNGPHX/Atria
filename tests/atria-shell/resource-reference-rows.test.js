@@ -19,7 +19,8 @@ test('reference rows show exact ownership and route to existing owners without r
     expect(host.openBuild).toHaveBeenCalledWith('project-a', 'Adventure');
     expect(host.openLibraryResource).toHaveBeenCalledWith({ scope: 'library', resourceType: 'core.prompt-program', resourceId: 'prompt', revision: 'pinned' }, 'Narrator');
     expect(host.openRuntimeSection).toHaveBeenCalledWith('routes', 'route');
-    expect(host.openLibraryWork).toHaveBeenCalledWith('pkg', 'Library');
+    expect(host.openLibraryResource).toHaveBeenCalledWith({ scope: 'package', packageId: 'pkg', packageVersionId: 'version', resourceType: 'core.world', resourceId: 'world', revision: 'old' }, 'Packaged harbor');
+    expect(host.openLibraryWork).not.toHaveBeenCalled();
     expect(root.textContent).toContain('pinned');
     expect(resourceReferenceForNode(nodes[3])).toMatchObject({ scope: 'package', packageId: 'pkg', packageVersionId: 'version', revision: 'old' });
 });
