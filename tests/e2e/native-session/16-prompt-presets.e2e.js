@@ -12,6 +12,46 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
+for (const width of [1440, 390]) test(`stage module additions retain picker position and compile order at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await awaitMainUI(page, server.baseURL);
+    const presetId = await page.evaluate(async () => {
+        const { runtimeRequest } = await import('/scripts/native/runtime-client.js');
+        const { newPromptResource, resourceRef } = await import('/scripts/native/prompt-authoring.js');
+        const program = newPromptResource('core.prompt-program'), generation = newPromptResource('core.generation-profile');
+        const entries = [{ resourceType: 'core.prompt-program', resource: program }, { resourceType: 'core.generation-profile', resource: generation }];
+        for (let i = 0; i < 32; i++) {
+            const resource = newPromptResource('core.prompt-module'); resource.displayName = 'Ordered module ' + i; resource.priority = i;
+            entries.push({ resourceType: 'core.prompt-module', resource });
+            if (i < 28) program.stages[0].moduleRefs.push(resourceRef('core.prompt-module', resource, { scope: 'library' }));
+        }
+        return (await runtimeRequest('/presets', { method: 'POST', body: { preset: {
+            format: 'atria.prompt-preset', schemaVersion: 1, programId: program.promptProgramId, entries,
+        } } })).presetId;
+    });
+    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('prompt-presets'));
+    await page.locator(`[data-atri-preset-id="${presetId}"]`).getByRole('button', { name: 'Open preset', exact: true }).click();
+    await page.getByRole('button', { name: 'Prompt Programs', exact: true }).click();
+    const picker = page.locator('[data-atri-stage-module-picker]');
+    const add = page.getByRole('button', { name: 'Add module', exact: true });
+    await picker.scrollIntoViewIfNeeded();
+    await add.scrollIntoViewIfNeeded();
+    for (const index of [28, 29]) {
+        const option = picker.locator('option').filter({ hasText: 'Ordered module ' + index + ' ·' });
+        await picker.selectOption(await option.getAttribute('value'));
+        const before = (await picker.boundingBox()).y;
+        await add.click();
+        await expect(picker).toBeFocused();
+        expect(Math.abs((await picker.boundingBox()).y - before)).toBeLessThan(3);
+        await expect(page.locator('.atri-prompt-stages fieldset > div > span').first()).toContainText('Ordered module ' + index + ' ·');
+    }
+    await page.getByRole('button', { name: 'Save revision', exact: true }).click();
+    await expect(page.locator('.atri-prompt-stages fieldset > div > span')).toHaveCount(30);
+    const names = await page.locator('.atri-prompt-stages fieldset > div > span').allTextContents();
+    expect(names.map(text => Number(text.split(' · ')[0].replace('Ordered module ', '')))).toEqual(Array.from({ length: 30 }, (_, i) => 29 - i));
+});
+
 for (const width of [1440, 390]) test(`module filtering, action menus and return position at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 800 });
     await page.addInitScript(() => localStorage.setItem('language', 'en'));

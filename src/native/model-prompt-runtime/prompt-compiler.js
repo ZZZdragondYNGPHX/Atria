@@ -1,13 +1,9 @@
 import { assertExactResourceRef, assertPromptIR, assertPromptModule, assertPromptProgram, assertRequestContextPlan } from './contracts.js';
 import { immutable } from './execution-utils.js';
 import { bindValues, evaluateCondition, interpolate, promptError, readVariable, typedValue } from './prompt-values.js';
+import { PROMPT_TARGETS, comparePromptModules } from '../../../public/shared/prompt-module-order.js';
 
-export const PROMPT_TARGETS = Object.freeze([
-    'system.foundation', 'system.character', 'system.world', 'system.style', 'system.response',
-    'agent.task', 'agent.evidence', 'agent.constraints',
-    'context.before_history', 'context.after_history', 'context.before_input', 'context.after_input',
-    'response.post_history', 'response.prefill',
-]);
+export { PROMPT_TARGETS };
 const refKey = value => JSON.stringify(assertExactResourceRef(value));
 
 // Reads only the exact closure already validated by RouteResolver, never a Library head.
@@ -157,8 +153,7 @@ export class PromptCompiler {
                 continue;
             }
             for (const name of stage.consumes) if (!Object.hasOwn(env.artifact, name)) promptError('artifact_missing');
-            const modules = [...stage.modules].sort((a, b) => PROMPT_TARGETS.indexOf(a.module.target) - PROMPT_TARGETS.indexOf(b.module.target)
-                || b.module.priority - a.module.priority || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+            const modules = [...stage.modules].sort(comparePromptModules);
             for (const entry of modules) {
                 const { module } = entry;
                 if (entry.disabled) { diagnostics.push({ stageId: stage.stageId, moduleId: entry.id, status: 'disabled' }); continue; }
