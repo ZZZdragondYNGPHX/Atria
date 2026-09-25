@@ -10,6 +10,33 @@ function editor(type = 'core.prompt-module', onSave = jest.fn()) {
         entry: { resource, ref: resourceRef(type, resource, { scope: 'library' }) }, entries: [], onSave, onBack: jest.fn() });
     return { root, resource, onSave };
 }
+
+test('program stages use compiler ordering and adding keeps focus on the stage module picker', async () => {
+    const program = newPromptResource('core.prompt-program');
+    const entries = [
+        ['pmod_z', 'Foundation Z', 'system.foundation', 0],
+        ['pmod_a', 'Foundation A', 'system.foundation', 0],
+        ['pmod_b', 'High priority', 'system.foundation', 9],
+        ['pmod_c', 'Context', 'context.before_history', 99],
+        ['pmod_d', 'Agent', 'agent.task', 0],
+    ].map(([promptModuleId, displayName, target, priority]) => {
+        const resource = { ...newPromptResource('core.prompt-module'), promptModuleId, displayName, target, priority };
+        return { resource, ref: resourceRef('core.prompt-module', resource, { scope: 'library' }) };
+    });
+    program.stages[0].moduleRefs = [entries[3].ref, entries[0].ref, entries[1].ref, entries[4].ref];
+    const onSave = jest.fn();
+    const root = mountPromptEditor({ document, parent: document.body, entries, librarySurface: true,
+        entry: { resource: program, ref: resourceRef('core.prompt-program', program, { scope: 'library' }) }, onSave, onBack: jest.fn() });
+    const picker = root.querySelector('[data-atri-stage-module-picker]');
+    picker.value = [...picker.options].find(option => option.textContent.startsWith('High priority')).value;
+    button(root, 'Add module').click();
+    expect(document.activeElement).toBe(root.querySelector('[data-atri-stage-module-picker]'));
+    expect([...root.querySelectorAll('.atri-prompt-stages fieldset > div > span')].map(node => node.textContent.split(' · ')[0]))
+        .toEqual(['High priority', 'Foundation A', 'Foundation Z', 'Agent', 'Context']);
+    button(root, 'Save revision').click(); await flush();
+    expect(onSave.mock.calls[0][0].stages[0].moduleRefs.map(ref => ref.resourceId)).toEqual(['pmod_b', 'pmod_a', 'pmod_z', 'pmod_d', 'pmod_c']);
+    expect(program.stages[0].moduleRefs).toHaveLength(4); // Editor never mutates the pinned input snapshot.
+});
 test('Simple/Advanced retains edits and parse failures; failed save stays editable and success cannot double-submit', async () => {
     const onSave = jest.fn().mockRejectedValueOnce(new Error('Save refused')).mockResolvedValueOnce({});
     const { root } = editor('core.prompt-module', onSave); root.querySelector('[aria-label="Prompt body"]').value = 'Kept text';

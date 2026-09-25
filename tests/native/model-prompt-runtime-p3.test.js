@@ -192,7 +192,8 @@ describe('P3 Prompt compiler', () => {
             const library = new VersionedJsonResourceHandler({ engine: h.engine });
             const module = mod('{{local.note}}');
             const value = args([module], { locals: { note: { type: 'string', default: 'persisted' } }, exclusiveTargets: ['system.foundation'] });
-            for (const entry of value.resolved.resources) await library.commit(h.handle, entry.ref.resourceType, entry.resource);
+            // Persist dependencies before the program that references them.
+            for (const entry of [...value.resolved.resources].reverse()) await library.commit(h.handle, entry.ref.resourceType, entry.resource);
             value.resolved.resources = await Promise.all(value.resolved.resources.map(async entry => ({ ...entry, resource: (await library.getExact(h.handle, entry.ref)).snapshot })));
             expect(compile(value).promptIr.directives).toEqual(['persisted']);
             const before = JSON.stringify(value.resolved.resources);

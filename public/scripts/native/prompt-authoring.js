@@ -7,6 +7,7 @@ import { formatShellText, translateShellText } from '../atria-shell/localization
 import { createStudioNativeId } from './studio-authoring.js';
 import { runtimeRequest } from './runtime-client.js';
 import { nativeStudioClient } from './studio-client.js';
+import { comparePromptModules } from '../../shared/prompt-module-order.js';
 
 export const PROMPT_TYPES = Object.freeze({
     'core.prompt-program': ['Prompt Programs', 'promptProgramId', 'pprog'],
@@ -190,13 +191,22 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 specific = () => ({ target: target.value, stages: stages.value.split(',').map(v => v.trim()).filter(Boolean), body: body.value, priority: Number(priority.value) });
             } else if (entry.ref.resourceType === 'core.prompt-program') {
                 const stages = clone(draft.stages); const stageConditions = new Map();
+                const modules = new Map(entries.filter(item => item.ref.resourceType === 'core.prompt-module').map(item => [exactKey(item.ref), item.resource]));
+                const compareRefs = (a, b) => comparePromptModules(
+                    { id: a.resourceId, module: modules.get(exactKey(a)) || {} },
+                    { id: b.resourceId, module: modules.get(exactKey(b)) || {} },
+                );
                 const syncConditions = () => { for (const [stage, read] of stageConditions) if (stages.includes(stage)) stage.condition = read(); };
                 const tree = element(doc, 'section', undefined, fields); tree.className = 'atri-prompt-stages';
                 element(doc, 'h4', 'Stage / module tree', tree);
-                const renderStages = (focusIndex) => {
+                const renderStages = (focusIndex, anchor = null) => {
                     try { syncConditions(); } catch (e) { status.replaceChildren(); error(doc, status, e); return; }
+                    const anchorTop = anchor?.getBoundingClientRect().top;
+                    const scroll = [];
+                    if (anchor) for (let node = anchor.parentElement; node; node = node.parentElement) scroll.push([node, node.scrollTop, node.scrollLeft]);
                     stageConditions.clear(); tree.querySelectorAll(':scope > fieldset').forEach(node => node.remove());
                     stages.forEach((stage, index) => {
+                        stage.moduleRefs.sort(compareRefs);
                         const row = element(doc, 'fieldset', undefined, tree); element(doc, 'legend', formatShellText('Stage ${0}', [index + 1], undefined, 'atria.product.stageIndex'), row);
                         const id = input(doc, row, formatShellText('Stage ID ${0}', [index + 1], undefined, 'atria.product.stageIdIndex'), stage.stageId); id.addEventListener('input', () => { stage.stageId = id.value; });
                         stageConditions.set(stage, mountPromptCondition(doc, row, stage.condition));
@@ -207,11 +217,25 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                         }
                         const choices = entries.filter(item => item.ref.resourceType === 'core.prompt-module' && (entry.ref.scope !== 'library' || item.ref.scope === 'library') && item.ref.scope !== 'package');
                         const picker = select(doc, row, formatShellText('Module for stage ${0}', [index + 1], undefined, 'atria.product.stageModuleIndex'), [['', 'Choose exact module…'], ...choices.map(item => [exactKey(item.ref), item.resource.displayName + ' · ' + item.ref.revision + ' · ' + item.ref.scope, true])]);
-                        action(doc, row, 'Add module', () => { if (picker.value && !stage.moduleRefs.some(v => exactKey(v) === picker.value)) stage.moduleRefs.push(JSON.parse(picker.value)); renderStages(index); });
+                        picker.dataset.atriStageModulePicker = 'true';
+                        action(doc, row, 'Add module', () => {
+                            if (!picker.value || stage.moduleRefs.some(v => exactKey(v) === picker.value)) return;
+                            stage.moduleRefs.push(JSON.parse(picker.value)); renderStages(index, picker);
+                        });
                         action(doc, row, 'Move stage up', () => { if (index) { [stages[index - 1], stages[index]] = [stages[index], stages[index - 1]]; renderStages(index - 1); } });
                         action(doc, row, 'Remove stage', () => { if (stages.length > 1) { stages.splice(index, 1); renderStages(Math.min(index, stages.length - 1)); } });
                     });
-                    if (librarySurface && focusIndex !== undefined) tree.querySelectorAll(':scope > fieldset')[focusIndex]?.querySelector('input')?.focus();
+                    const focusedStage = tree.querySelectorAll(':scope > fieldset')[focusIndex];
+                    if (anchor) {
+                        const picker = focusedStage?.querySelector('[data-atri-stage-module-picker]');
+                        picker?.focus({ preventScroll: true });
+                        for (const [node, top, left] of scroll) if (node.isConnected) { node.scrollTop = top; node.scrollLeft = left; }
+                        // New rows appear above the picker. Keep that control at
+                        // its previous viewport position for repeated additions.
+                        if (picker) for (const [node] of scroll) {
+                            if (node.isConnected && node.scrollHeight > node.clientHeight) node.scrollTop += picker.getBoundingClientRect().top - anchorTop;
+                        }
+                    } else if (librarySurface && focusIndex !== undefined) focusedStage?.querySelector('input')?.focus();
                 };
                 action(doc, fields, 'Add stage', () => { let index = stages.length + 1; while (stages.some(stage => stage.stageId === 'stage.step' + index)) index++; stages.push({ stageId: 'stage.step' + index, moduleRefs: [] }); renderStages(); }); renderStages();
                 const directive = input(doc, fields, 'Response Directive', draft.responseDirective?.body || '', true);
