@@ -125,6 +125,7 @@ export function createNativeProductRouter(getServices = services) {
     router.post('/packages/install', route(async (req, res, { product }, handle) => {
         res.json(await product.installPackage(handle, decodeArchive(req.body?.data), {
             grantedPermissions: req.body?.grantedPermissions || [],
+            ...(req.body?.requiredPackage ? { requiredPackage: req.body.requiredPackage } : {}),
             ...(Object.hasOwn(req.body || {}, 'baseVersionId') ? { baseVersionId: req.body.baseVersionId } : {}),
         }));
     }));

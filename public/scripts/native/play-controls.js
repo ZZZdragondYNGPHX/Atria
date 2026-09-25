@@ -1,3 +1,4 @@
+import { mountSaveDependencyRecovery } from './save-dependency-recovery.js';
 import { mountEmbeddedKnowledgePromotion } from './embedded-knowledge-promotion.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import {
@@ -207,7 +208,9 @@ export function mountNativePlayControls({
             details.append(label, pre); target.append(details);
         }
 
-        if (preflight.dependency?.status !== 'ready') return;
+        if (preflight.dependency?.status !== 'ready') {
+            mountSaveDependencyRecovery({ document: documentRef, root: target, preflight, saveData: data, host: globalThis.Atria?.shell?.getWorkspaceHost?.(), onReady: () => importPortableSave(file, target) }); return;
+        }
 
         const importButton = actionButton(documentRef, 'Import & Open', async () => {
             importButton.disabled = true;

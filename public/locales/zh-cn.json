@@ -7781,5 +7781,17 @@
     "Export any progress you want to keep, then remove dependent Sessions before uninstalling this Work.": "请先导出要保留的进度，再移除依赖会话并卸载此作品。",
     "Review dependent Sessions": "查看依赖会话",
     "The installed default changed after review. Select the file again to review the current update impact.": "审阅后已安装的默认版本发生变化。请重新选择文件以审阅当前更新影响。",
-    "Requested permissions": "请求权限"
+    "Requested permissions": "请求权限",
+    "Recover matching Work": "恢复匹配作品",
+    "Choose the exact Work file required by this save. Its identity, version and content hash must all match.": "请选择此存档要求的精确作品文件。身份、版本和内容哈希必须全部匹配。",
+    "Required Work details": "所需作品详情",
+    "The exact Work is still unavailable. Install the matching file or inspect the installed Work.": "精确作品仍不可用。请安装匹配文件或检查已安装作品。",
+    "Check installed dependency again": "重新检查已安装依赖",
+    "Inspect installed Work": "检查已安装作品",
+    "Matching Work file": "匹配作品文件",
+    "Choose matching Work": "选择匹配作品",
+    "The Work file exceeds the supported size.": "作品文件超出支持大小。",
+    "This file is not the exact Work required by the save. Nothing was installed.": "此文件不是存档所需的精确作品，未安装任何内容。",
+    "Installing this dependency preserves any existing default Work version. Your save remains ready for the next import step.": "安装此依赖会保留现有的作品默认版本，随后可继续导入此存档。",
+    "Install matching Work": "安装匹配作品"
 }

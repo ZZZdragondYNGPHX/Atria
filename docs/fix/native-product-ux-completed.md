@@ -786,4 +786,20 @@ Real Edge at 390px passed missing-consent refusal, explicit grant, installation,
 permission inspection and navigation to dependent Sessions. Screenshot inspected; lint and
 diff checks passed.
 
-Next: NUX-037 in Group 7.
+### NUX-037
+
+Library and Play Save import now recover the exact Work in place: choose a matching
+Package, review required consent, install, re-preflight the same Save and continue import.
+Identity, version and full archive hash are checked in UI and server before any installation.
+Existing default Work versions and names survive installation of an older Save dependency.
+Recheck and inspect-installed-Work actions support recovery performed elsewhere; immutable
+same-ID content conflicts retain the normal repository guards.
+
+Validation: product/HTTP/Package suites passed 21 cases. Save-system/Play/recovery checks
+passed 17 cases with two explicit optional MySQL/PostgreSQL skips (those local services
+refused connections in the initial unfiltered run); filesystem and SQLite round trips passed.
+Earlier recovery/localization checks passed nine cases. Both real Edge 390px Library and
+Play scenarios rejected a wrong-hash file, installed the exact Work and imported/opened the
+same Save identity. Screenshots inspected; changed JavaScript lint and diff checks passed.
+
+Next: NUX-038 in Group 7.

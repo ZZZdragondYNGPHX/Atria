@@ -195,7 +195,7 @@ export class PackageInstaller {
         return preflightAtriaPackageContainer(archive);
     }
 
-    async install(handle, archive, { grantedPermissions = [] } = {}) {
+    async install(handle, archive, { grantedPermissions = [], setCurrent = true } = {}) {
         const preflight = this.preflight(archive);
         const granted = new Set(grantedPermissions);
         const missing = preflight.requiredPermissions.filter(permission => !granted.has(permission));
@@ -237,7 +237,7 @@ export class PackageInstaller {
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
             }));
-        } else if (existing.displayName !== manifest.name) {
+        } else if (setCurrent && existing.displayName !== manifest.name) {
             await this._packageRepo.save(handle, assertPackageRecord({
                 ...existing,
                 displayName: manifest.name,
@@ -245,7 +245,7 @@ export class PackageInstaller {
             }));
         }
 
-        await this._packageRepo.commitVersion(handle, packageVersion, { setCurrent: true });
+        await this._packageRepo.commitVersion(handle, packageVersion, { setCurrent });
         return Object.freeze({
             package: await this._packageRepo.get(handle, manifest.packageId),
             packageVersion,

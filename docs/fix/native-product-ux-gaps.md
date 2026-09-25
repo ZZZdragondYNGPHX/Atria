@@ -89,22 +89,6 @@ Implementation and validation: [completed work](native-product-ux-completed.md).
 
 **Group goal:** 统一资源便携、PackageVersion、Session、Save 与引用冲突的产品闭环。
 
-## NUX-037 — Save dependency recovery explains the problem but does not complete the recovery path
-
-**Current evidence**
-
-When a `.atriasave` requires a missing/mismatched exact Package, Play/Library explains that the matching Work must be installed first.
-
-There is no direct “install/open matching Work” recovery action from the same flow.
-
-**Acceptance**
-
-Provide a direct recovery path into Package install/version resolution while preserving exact hash/version verification.
-
----
-
----
-
 ## NUX-038 — Native Sessions support displayTitle but cannot be named/renamed normally
 
 **Current evidence**

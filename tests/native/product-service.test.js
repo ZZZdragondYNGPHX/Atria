@@ -349,3 +349,22 @@ test('update preflight explains permission/capability deltas, pins and stale-rev
         await expect(product.deleteWork(h.handle, next.packageId)).rejects.toMatchObject({ code: 'native_package_referenced' });
     } finally { await h.cleanup(); }
 });
+
+test('Save dependency recovery refuses wrong bytes and installs an exact older version without changing default', async () => {
+    const h = await makeTempFsEngineHarness();
+    try {
+        const f = await installFixture(h), product = new NativeProductService({ ...f, worldRepo: new WorldRepo({ engine: h.engine }), sessionCore: f.core, projectStore: new ProjectStore({ directoriesByHandle: () => h.dirs }) });
+        const original = buildAtriaPackageContainer({ manifest: f.manifest, sourceFiles: new Map(), assetPayloads: new Map() }).archive;
+        const preflight = await product.preflightPackageUpdate(h.handle, original);
+        const required = { packageId: preflight.packageId, packageVersionId: preflight.packageVersionId, packageVersion: preflight.version, packageContentHash: preflight.packageContentHash };
+        const next = structuredClone(f.manifest); next.packageVersionId = createNativeId('packageVersion'); next.version = '2.0.0'; next.name = 'Current edition';
+        const archive = buildAtriaPackageContainer({ manifest: next, sourceFiles: new Map(), assetPayloads: new Map() }).archive;
+        await product.installPackage(h.handle, archive);
+        await f.packageRepo.deleteVersion(h.handle, required.packageId, required.packageVersionId);
+        await expect(product.installPackage(h.handle, archive, { requiredPackage: required })).rejects.toMatchObject({ code: 'native_save_package_mismatch' });
+        expect(await f.packageRepo.getVersion(h.handle, required.packageId, required.packageVersionId)).toBeNull();
+        await product.installPackage(h.handle, original, { requiredPackage: required, baseVersionId: next.packageVersionId });
+        const current = await f.packageRepo.get(h.handle, required.packageId); expect(current.currentVersionId).toBe(next.packageVersionId); expect(current.displayName).toBe('Current edition');
+        expect((await product.getWorkVersion(h.handle, required.packageId, required.packageVersionId)).packageVersion.packageContentHash).toBe(required.packageContentHash);
+    } finally { await h.cleanup(); }
+});

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { hashNativeDocument, withNativeResourceWrite } from './repositories/common.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { assertNativeId, createNativeId } from './identity.js';
@@ -173,7 +174,7 @@ export class NativeProductService {
         const before = previous?.manifest.permissions || [], after = preflight.permissions || [];
         const old = new Map(before.map(item => [item.permission, item])), next = new Map(after.map(item => [item.permission, item]));
         const sessions = (await this._sessions.list(handle)).filter(item => item.packageId === preflight.packageId);
-        return { ...preflight, update: {
+        return { ...preflight, packageContentHash: createHash('sha256').update(archive).digest('hex'), update: {
             previous: record?.currentVersionId ? { packageVersionId: record.currentVersionId, version: oldVersion?.version || null } : null, comparisonAvailable,
             addedPermissions: (comparisonAvailable ? after : []).filter(item => !old.has(item.permission)), removedPermissions: before.filter(item => !next.has(item.permission)),
             changedPermissions: after.filter(item => old.has(item.permission) && (old.get(item.permission).required !== item.required || old.get(item.permission).reason !== item.reason)),
@@ -186,12 +187,17 @@ export class NativeProductService {
 
     async installPackage(handle, archive, options = {}) {
         const preflight = this.preflightPackage(archive);
+        const required = options.requiredPackage;
+        if (required && (required.packageId !== preflight.packageId || required.packageVersionId !== preflight.packageVersionId || required.packageVersion !== preflight.version || required.packageContentHash !== createHash('sha256').update(archive).digest('hex'))) {
+            throw new ConflictError('native_save_package_mismatch', { packageId: required.packageId, packageVersionId: required.packageVersionId });
+        }
         return withNativeResourceWrite(handle, 'package:' + preflight.packageId, async () => {
             if (Object.hasOwn(options, 'baseVersionId')) {
                 const current = await this._packages.get(handle, preflight.packageId);
                 if ((current?.currentVersionId || null) !== options.baseVersionId) throw new ConflictError('native_package_update_conflict', { packageId: preflight.packageId, expectedRevisionId: options.baseVersionId, actualRevisionId: current?.currentVersionId || null });
             }
-            return this._installer.install(handle, archive, { grantedPermissions: options.grantedPermissions || [] });
+            const current = await this._packages.get(handle, preflight.packageId);
+            return this._installer.install(handle, archive, { grantedPermissions: options.grantedPermissions || [], setCurrent: !required || !current?.currentVersionId });
         });
     }
 

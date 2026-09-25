@@ -7336,5 +7336,17 @@
     "Export any progress you want to keep, then remove dependent Sessions before uninstalling this Work.": "請先匯出要保留的進度，再移除依賴工作階段並解除安裝此作品。",
     "Review dependent Sessions": "檢視依賴工作階段",
     "The installed default changed after review. Select the file again to review the current update impact.": "審閱後已安裝的預設版本發生變化。請重新選擇檔案以審閱目前更新影響。",
-    "Requested permissions": "請求權限"
+    "Requested permissions": "請求權限",
+    "Recover matching Work": "復原相符作品",
+    "Choose the exact Work file required by this save. Its identity, version and content hash must all match.": "請選擇此存檔要求的精確作品檔案。身分、版本和內容雜湊必須全部相符。",
+    "Required Work details": "所需作品詳情",
+    "The exact Work is still unavailable. Install the matching file or inspect the installed Work.": "精確作品仍無法使用。請安裝相符檔案或檢查已安裝作品。",
+    "Check installed dependency again": "重新檢查已安裝依賴",
+    "Inspect installed Work": "檢查已安裝作品",
+    "Matching Work file": "相符作品檔案",
+    "Choose matching Work": "選擇相符作品",
+    "The Work file exceeds the supported size.": "作品檔案超出支援大小。",
+    "This file is not the exact Work required by the save. Nothing was installed.": "此檔案不是存檔所需的精確作品，未安裝任何內容。",
+    "Installing this dependency preserves any existing default Work version. Your save remains ready for the next import step.": "安裝此依賴會保留現有的作品預設版本，隨後可繼續匯入此存檔。",
+    "Install matching Work": "安裝相符作品"
 }

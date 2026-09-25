@@ -1,3 +1,4 @@
+import { sessionFixture } from '../../native/helpers/session-fixture.js';
 import { buildAtriaPackageContainer, createNativeId } from '../../../src/native/index.js';
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
@@ -149,4 +150,37 @@ test('Package update reviews new permissions and preserves Session pins with pos
     await expect(page.getByRole('button', { name: 'Review dependent Sessions', exact: true })).toBeVisible();
     const state = await page.evaluate(async id => (await (await import('/scripts/native/product-client.js')).nativeProductClient.getSession(id)).snapshot.session, old.session.sessionId);
     expect(state.packageVersionId).toBe(old.manifest.packageVersionId);
+});
+
+for (const surface of ['Library', 'Play']) test(surface + ' Save recovery rejects mismatched Work bytes then installs and imports in place', async ({ page }, info) => {
+    test.setTimeout(120000); await page.setViewportSize({ width: 390, height: 900 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/text-models', route => route.fulfill({ json: [] }));
+    await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
+    await awaitMainUI(page, server.baseURL);
+    const fixture = sessionFixture(); fixture.manifest.name = 'Recoverable voyage';
+    const archive = buildAtriaPackageContainer({ manifest: fixture.manifest, sourceFiles: new Map(), assetPayloads: new Map() }).archive;
+    const wrong = buildAtriaPackageContainer({ manifest: { ...fixture.manifest, name: 'Wrong content' }, sourceFiles: new Map(), assetPayloads: new Map() }).archive;
+    const saved = await page.evaluate(async ({ data, packageId, surface }) => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        await client.installPackage(data); const created = await client.startWork(packageId);
+        const payload = await client.exportSession(created.session.sessionId); await client.deleteSession(created.session.sessionId); await client.deleteWork(packageId);
+        const host = window.Atria.shell.getWorkspaceHost(); if (surface === 'Library') host.openLibrarySection('works'); else host.openPlay();
+        return { payload, session: created.session };
+    }, { data: archive.toString('base64'), packageId: fixture.manifest.packageId, surface });
+    const importer = surface === 'Library' ? page.locator('[data-atria-native-save-import]') : page.locator('[data-atria-native-play-landing] .atria-native-portable-save');
+    await importer.locator('summary').first().click();
+    await importer.locator('input[type="file"]').first().setInputFiles({ name: 'voyage.atriasave', mimeType: 'application/octet-stream', buffer: Buffer.from(saved.payload.data, 'base64') });
+    const recovery = importer.locator('[data-atria-save-recovery]'); await expect(recovery).toBeVisible();
+    await recovery.getByLabel('Matching Work file', { exact: true }).setInputFiles({ name: 'wrong.atria', mimeType: 'application/octet-stream', buffer: wrong });
+    await expect(recovery.getByRole('alert')).toContainText('Nothing was installed');
+    await recovery.getByLabel('Matching Work file', { exact: true }).setInputFiles({ name: 'exact.atria', mimeType: 'application/octet-stream', buffer: archive });
+    await expect(recovery.getByRole('button', { name: 'Install matching Work', exact: true })).toBeVisible();
+    await page.screenshot({ path: info.outputPath(surface.toLowerCase() + '-save-recovery-390.png') });
+    await recovery.getByRole('button', { name: 'Install matching Work', exact: true }).click();
+    await expect(importer.locator('[data-atria-save-preflight="ready"]')).toBeVisible();
+    await importer.getByRole('button', { name: surface === 'Library' ? 'Import Save' : 'Import & Open', exact: true }).click();
+    await page.locator('dialog.popup[open] .popup-button-ok').click();
+    await expect.poll(() => page.evaluate(() => window.Atria.nativeSessionRuntime.snapshot?.session.sessionId)).toBe(saved.session.sessionId);
+    expect(await page.evaluate(() => window.Atria.nativeSessionRuntime.snapshot.session.packageContentHash)).toBe(saved.session.packageContentHash);
 });

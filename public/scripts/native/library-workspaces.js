@@ -1,3 +1,4 @@
+import { mountSaveDependencyRecovery } from './save-dependency-recovery.js';
 import { permissionRow, renderPackageUpdateReview, mountWorkPermissions } from './package-permissions.js';
 import { mountPackageLibraryList, mountPackageLibraryOriginal } from './package-library-resources.js';
 import { resourceBundleExport, mountResourceBundleImport } from './resource-bundle-controls.js';
@@ -70,7 +71,9 @@ function importSurface(doc, parent, kind, host, refresh) {
                 }
             }
             disclosure(doc, review, 'Details', isPackage ? { capabilities: preflight.capabilities, packageId: preflight.packageId } : preflight.dependency?.required || preflight.package);
-            if (!ready) return;
+            if (!ready) {
+                mountSaveDependencyRecovery({ document: doc, root: review, preflight, saveData: data, host, onReady: () => input.dispatchEvent(new doc.defaultView.Event('change')) }); return;
+            }
             const controls = actions(doc, review);
             action(doc, controls, isPackage ? 'Install / Update' : 'Import Save', async () => {
                 if (token !== sequence) return;
