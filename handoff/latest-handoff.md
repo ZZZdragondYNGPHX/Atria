@@ -6,7 +6,7 @@ Updated: 2026-09-25 (Asia/Shanghai).
 
 Repository: `ZZZdragondYNGPHX/Atria`.
 Working branch: `fix/native-product-ux-audit`.
-Pushed HEAD: `2f7a6a7ad`.
+Pushed HEAD: `a1125deb9`.
 Main remains `ad15c1e0c3e15e625ba163e284a300c00811f10d`.
 
 Use the existing workspace AGENTS.md and FORK_MAINTENANCE.md. Remote main copies
@@ -76,22 +76,33 @@ Prompt conditions/parameters/derive controls are complete. Group regression pass
 125 suites / 1210 cases (68 optional DB skips), all 11 real Edge Studio/authoring
 scenarios, changed-file ESLint, diff checks and frontend cache compilation.
 
+Group 7 NUX-033 through NUX-040 is implemented, independently committed and pushed.
+Detailed implementation/validation: [Group 7](native-product-ux-group-7.md).
+One exact Resource Bundle mechanism, immutable Package originals, version-specific
+start, update consent, Save dependency recovery, Session naming, readable history
+and actionable reference resolution are complete. Regression ran 133 suites with
+1246 passing cases/72 skips and one stale Package navigation assertion; correcting
+it passed all seven cases in three adjacent suites. Full lint, frontend compilation
+and nine real Edge 390px scenarios passed. No live external database claim.
+
 ## Next
 
-Continue Group 7 with NUX-033, the unified exact Resource Bundle. NUX-033 and later
-remain active. Follow the existing backlog without replanning. Existing Library,
-WorldRepo/KnowledgeRepo, exact versioned JSON, Resource Graph and Package APIs are
-the authorities to compose. Preserve exact closure, conflict review, fresh identity,
-origin and Secret exclusion; then continue NUX-034 onward.
-Retain capabilities under Native owners before deleting legacy code.
+Continue Group 8 NUX-041, then NUX-042, followed by Group 9 NUX-043/044.
+Follow the existing backlog without replanning. Work Plugins must retain exact
+PackageVersion ownership and installation consent; Global Plugins are only Regex
+and Search Tools. Agents remains the sole home of Orchestrator/Memory. Before
+physical cleanup, move retained Agents, Studio UI editor, browser WebLLM retrieval
+and shared tool runtime dependencies out of the extension tree. Preserve Native
+state/configuration authorities and remove obsolete branches rather than retain
+legacy authority for user-data migration.
 
 ## Local work
 
 Pre-existing AGENTS.md/FORK_MAINTENANCE.md edits and Phase 6–8 test outputs remain
 untouched and excluded from commits. Current task has local untracked
 `tests/.native-ux-playwright.config.js` selecting installed Edge and
-`tests/test-results-native-ux-g1*` and `tests/test-results-native-ux-g2*` / `tests/test-results-native-ux-g3*` / `tests/test-results-native-ux-g4*` / `tests/test-results-native-ux-g5*` / `tests/test-results-native-ux-g6*` outputs, plus
-`tests/.e2e-scratch/native-ux-g6-build` frontend cache. Bundled Chromium installation stalled;
+`tests/test-results-native-ux-g1*` and `tests/test-results-native-ux-g2*` / `tests/test-results-native-ux-g3*` / `tests/test-results-native-ux-g4*` / `tests/test-results-native-ux-g5*` / `tests/test-results-native-ux-g6*` / `tests/test-results-native-ux-g7*` outputs, plus
+`tests/.e2e-scratch/native-ux-g6-build` / `native-ux-g7-build` frontend caches. Bundled Chromium installation stalled;
 Edge was used for actual browser validation. Remove task-only temporary outputs
 when no longer needed; do not touch prior-task artifacts.
 
