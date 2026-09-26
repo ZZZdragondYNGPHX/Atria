@@ -4496,10 +4496,13 @@ Action
 ├─ disabled reason
 ├─ args / form binding
 ├─ confirm policy
+├─ idempotency policy
 ├─ simulate
 ├─ dispatch
 ├─ busy state
 ├─ typed result
+├─ transaction receipt
+├─ optional compensation / undo policy
 ├─ user-facing failure
 └─ diagnostics
 ```
@@ -5098,7 +5101,7 @@ media_request
 4. Package Data Resource；
 5. Data Projection；
 6. Native Composer Host capability；
-7. Action v2 / Command Surface；
+7. Action v2 / Command Surface + idempotency / transaction receipt；
 8. Declarative Mutation authoring shorthand；
 9. Message Projection；
 10. Package Turn Contract + bounded synchronous Turn Stage；
@@ -6569,7 +6572,162 @@ Scenario Test Bench 是 Authoring / Studio 的深化，不是新的 Runtime auth
 这也是本轮对《银麒赎世》作者侧能力的主要吸收结果。
 
 
+### 26.33 Action v2 继续深化：Idempotency / Transaction Receipt / Compensation
+
+《银麒赎世》还有一类反复出现的体验：
+
+- 批量购买后短时间撤回；
+- 任务审核中取消；
+- 已应用结果需要安全回滚；
+- 战斗重打返还本场消耗；
+- 用户双击不能重复扣费；
+- 网络 retry 不能重复发奖；
+- swipe / retry 不能重复入账。
+
+这说明 Action v2 不能只回答：
+
+> “按钮能不能点？”
+
+还必须回答：
+
+> “这次动作是不是已经执行过、执行了什么、还能不能撤销？”
+
+因此 Action v2 增加：
+
+```text
+Action Request
+├─ actionId
+├─ args
+├─ expectedRevisionId
+└─ idempotencyKey
+
+        ↓
+
+Action Receipt
+├─ receiptId
+├─ actionId
+├─ status
+├─ baseRevisionId
+├─ committedRevisionId
+├─ eventRefs
+├─ result
+├─ idempotencyKey
+└─ undo capability
+```
+
+#### Idempotency
+
+Host 必须能阻止：
+
+- double tap；
+- retry after timeout；
+- repeated callback；
+- same auxiliary result applied twice。
+
+Package 可以声明 idempotency scope，例如：
+
+- request；
+- revision；
+- semantic key。
+
+但 Package 不能自己维护全局 `alreadyProcessedIds` localStorage 集合。
+
+#### Undo / Compensation
+
+“撤销”不能等于开放 arbitrary rollback。
+
+应区分：
+
+1. **cancel-before-commit**
+   - 例如 Auxiliary Task 还在审核；
+   - 直接取消任务，不产生 authority mutation。
+
+2. **retry-from-pre-activity**
+   - 例如战斗重打；
+   - Activity 自己持有 transaction boundary；
+   - settlement 未接受前可 discard/restart。
+
+3. **compensating command**
+   - 已经提交购买/奖励；
+   - 通过预声明 typed compensator 产生反向业务事件；
+   - 例如 `shop.refund_purchase(receiptId)`。
+
+4. **historical branch / restore**
+   - 属于 Session / Save / Branch UX；
+   - 不伪装成普通 Action undo。
+
+推荐：
+
+```text
+purchase
+→ commit
+→ receipt(undoable=true)
+
+undo(receipt)
+→ validate receipt still compensatable
+→ typed compensation Command
+→ Event
+→ Reducer
+→ new Revision
+```
+
+这样历史仍不可变。
+
+撤销不是删除旧 Event，而是产生新的补偿事实。
+
+### 26.34 Cross-domain Receipt 应与单 Revision Commit 对齐
+
+如果 Action 同时改变：
+
+- World State；
+- Session Application State；
+- Event Journal；
+
+Receipt 必须指向**同一个 committed Revision**。
+
+不能出现：
+
+```text
+reward applied
+quest still reviewing
+```
+
+或：
+
+```text
+inventory item removed
+phone receipt says purchase active
+```
+
+因此 Action Receipt 也是 Experience Diagnostics 的重要证据：
+
+- 玩家看结果；
+- Studio 看 Event；
+- Runtime 看 Revision；
+- Undo 判断是否仍合法。
+
+### 26.35 本轮仍不新增顶层能力
+
+Idempotency / Receipt / Compensation 全部归入第 7 项 Action v2。
+
+它同时被：
+
+- UI button；
+- Composer Action；
+- Message Action；
+- Activity settlement；
+- Auxiliary Task result apply；
+
+复用。
+
+所以当前能力主表仍保持 **28 项**。
+
+
 ## 二十七、修订记录
+
+### 2026-09-26 — Discussion Draft v1.5
+
+继续压力测试《银麒赎世》的撤回/审核取消/战斗重打/防重复入账体验。将第 7 项 Action v2 深化为带 idempotency、transaction receipt 与 typed compensation/undo policy 的 Command Surface；区分 cancel-before-commit、Activity retry、compensating Command 与历史 Branch restore。能力总数仍维持 28。
 
 ### 2026-09-26 — Discussion Draft v1.4
 
