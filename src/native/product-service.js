@@ -716,7 +716,18 @@ export class NativeProductService {
     }
 
     async getSessionHistory(handle, sessionId) {
-        assertNativeId(sessionId, 'session'); return this._sessions.getHistory(handle, sessionId);
+        assertNativeId(sessionId, 'session');
+        const history = await this._sessions.getHistory(handle, sessionId);
+        // One Timeline inventory, not one full Session snapshot per revision.
+        // Only reachable heads enter the facade; orphan/uncommitted entries stay out.
+        const heads = new Set(history.revisions.map(item => item.timelineHead?.messageId).filter(Boolean));
+        const entries = heads.size ? await this._sessions.listTimeline(handle, sessionId) : [];
+        const messages = entries.filter(item => heads.has(item.messageId)).map(item => ({
+            messageId: item.messageId, branchId: item.branchId, role: item.role,
+            sequence: item.sequence, actorId: item.actorId ?? null,
+            preview: Array.from(String(item.content || '').slice(0, 560)).slice(0, 280).join(''),
+        }));
+        return { ...history, messages };
     }
 
     async getSession(handle, sessionId) {

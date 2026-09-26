@@ -1,5 +1,6 @@
 /** @jest-environment jsdom */
 
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
 
 import { activateNativeExperienceRuntime } from '../../public/scripts/native/experience/ui/live.js';
@@ -92,6 +93,22 @@ describe('A4 Native Experience Runtime activation', () => {
         expect(document.getElementById('atri-ui-label').textContent).toBe('V2 shared Host');
         expect(session.recoveryActive).toBe(mode === 'full');
         await session.dispose(); expect(document.getElementById('atri-ui-label')).toBeNull(); playHost.unmount();
+    });
+    test.each(['component', 'hybrid', 'full'])('P2 message projection and Conversation presentation share the %s Host', async mode => {
+        const { playHost, shellFoundation } = shellFixture();
+        const fixture = JSON.parse(readFileSync(new URL('../native/fixtures/message-projection-v2.json', import.meta.url)));
+        const raw = fixture.document;
+        if (mode !== 'component') raw.views[0].surface = 'app.root';
+        const packageState = state(mode); packageState.runtime.experience.componentModelVersion = 2; delete packageState.runtime.experience.surface;
+        const chat = document.getElementById('chat'); chat.innerHTML = '<div class="mes" mesid="0"><div class="mes_text">Canonical</div></div>';
+        const snapshot = { session: { sessionId: 's' }, revision: { branchId: 'b', revisionId: 'r' },
+            timeline: [{ messageId: 'm', role: 'assistant', activeVariantId: 'v' }],
+            variants: [{ variantId: 'v', content: 'The harbor bells rang as the courier arrived.', projection: fixture.projection }] };
+        const session = await activateNativeExperienceRuntime(packageState, worldSession(), { document, shell: shellFoundation, nativePlayHost: playHost,
+            getSnapshot: () => snapshot, isActiveTail: () => false, fetchImpl: resourceFetch({ 'ui/main.json': raw }) });
+        expect(document.querySelectorAll('.atri-message-flow')).toHaveLength(1);
+        expect(chat.dataset.atriConversation).toBe('reader'); expect(session.getRenderReceipts()[0].kind).toBe('render');
+        await session.dispose(); expect(chat.querySelector('.mes_text').textContent).toBe('Canonical'); playHost.unmount();
     });
     beforeEach(() => {
         document.body.innerHTML = `

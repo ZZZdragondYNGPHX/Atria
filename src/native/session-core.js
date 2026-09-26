@@ -1,3 +1,6 @@
+import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
+import { validateMessageBlocks } from '../../public/scripts/native/experience/ui/message-templates.js';
+import { assertMessageProjection, assertTurnEnvelope } from '../../public/shared/native-message-contract.js';
 import { normalizeNativeRegexScripts } from '../../public/shared/native-regex.js';
 import { assertPackagedWorldSnapshot } from './world-knowledge.js';
 import {
@@ -12,6 +15,34 @@ import {
 } from './session-snapshot.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { ACTION_RECEIPTS_NAMESPACE, assertActionRequest, actionReceipts, assertCompensation } from './action-receipts.js';
+
+// Projection is a first-class immutable Variant field, never Timeline metadata.
+// User and assistant messages may project; only assistant turns accept envelopes.
+function normalizeMessageDraft(draft) {
+    if (!draft || typeof draft !== 'object' || Array.isArray(draft)) throw new TypeError('Timeline draft must be a record');
+    const { envelope: rawEnvelope, projection: rawProjection, ...entryDraft } = draft;
+    let projection;
+    let diagnostics = [];
+    if (Object.hasOwn(draft, 'envelope')) {
+        if (draft.role !== 'assistant') throw new TypeError('TurnEnvelope requires an assistant message');
+        const envelope = assertTurnEnvelope(rawEnvelope);
+        if (Object.hasOwn(draft, 'content') && draft.content !== envelope.narrative) throw new TypeError('Conflicting draft content and envelope narrative');
+        if (Object.hasOwn(draft, 'projection')) {
+            const supplied = assertMessageProjection(rawProjection, envelope.narrative);
+            if (!envelope.projection || hashNativeDocument(supplied) !== hashNativeDocument(envelope.projection)) {
+                throw new TypeError('Conflicting draft projection and envelope projection');
+            }
+        }
+        entryDraft.content = envelope.narrative;
+        projection = envelope.projection;
+        diagnostics = envelope.diagnostics;
+    } else if (Object.hasOwn(draft, 'projection')) {
+        projection = assertMessageProjection(rawProjection, draft.content ?? '');
+    }
+    if (projection && !['user', 'assistant'].includes(draft.role)) throw new TypeError('MessageProjection requires a user or assistant message');
+    if (Object.hasOwn(entryDraft.metadata ?? {}, 'atri_turn_diagnostics')) throw new TypeError('Turn diagnostics metadata is reserved');
+    return { entryDraft, projection, diagnostics };
+}
 
 function timelineSelection(entry) {
     return { messageId: entry.messageId, branchId: entry.branchId,
@@ -136,6 +167,7 @@ export class SessionCore {
         const installed = await this._openPackage(handle, session.packageId, session.packageVersionId, session.entryPointId);
         if (installed.packageVersion.packageContentHash !== session.packageContentHash
             || installed.packageVersion.version !== session.packageVersion) throw new Error('Session PackageVersion dependency mismatch');
+        await this._validateProjections(handle, snapshot, snapshot.variants, installed);
         validateWorldState(snapshot.states, installed.manifest, installed.entryPoint);
         const knowledge = validateKnowledgeBindingSet(snapshot.knowledge, installed.manifest, installed.entryPoint);
         const worlds = selectedWorlds(snapshot.states, installed.manifest, installed.entryPoint);
@@ -200,22 +232,50 @@ export class SessionCore {
     }
 
     _newEntry(base, draft, sequence = base.timeline.length) {
+        const { entryDraft, projection, diagnostics } = normalizeMessageDraft(draft);
         const messageId = createNativeId('message');
         const variantId = createNativeId('variant');
         if (draft.actorId && !base.manifest.actors.some(actor => actor.actorId === draft.actorId)) {
             throw new TypeError('Timeline actor must belong to exact PackageVersion');
         }
-        const entry = assertTimelineEntry({ ...draft, sessionId: base.session.sessionId,
+        const entry = assertTimelineEntry({ ...entryDraft, sessionId: base.session.sessionId,
             branchId: base.revision?.branchId ?? base.session.activeBranchId, messageId, sequence,
             variantIds: [variantId], activeVariantId: variantId });
         const variant = assertVariant({ sessionId: entry.sessionId, messageId, variantId,
-            content: entry.content, metadata: entry.metadata, createdAt: Date.now() });
+            content: entry.content, ...(projection ? { projection } : {}),
+            metadata: diagnostics.length ? { ...entry.metadata, atri_turn_diagnostics: diagnostics } : entry.metadata,
+            createdAt: Date.now() });
         return { entry, variant };
+    }
+
+    // Compile exact installed source bytes once for this validation batch. No
+    // compiled definitions/functions escape into a Session/HTTP snapshot.
+    async _validateProjections(handle, base, variants, installed = null) {
+        const projected = variants.filter(variant => variant.projection !== undefined);
+        if (!projected.length) return;
+        const roles = new Map(base.timeline.map(entry => [entry.messageId, entry.role]));
+        for (const variant of projected) {
+            if (!['user', 'assistant'].includes(roles.get(variant.messageId))) throw new TypeError('MessageProjection requires a user or assistant message');
+        }
+        // Prose-only presentation is valid without Component Model v2.
+        if (!projected.some(variant => variant.projection.flow.some(node => node.kind === 'block'))) return;
+        const { session } = base;
+        installed ??= await this._openPackage(handle, session.packageId, session.packageVersionId, session.entryPointId);
+        if (installed.packageVersion.packageContentHash !== session.packageContentHash
+            || installed.packageVersion.version !== session.packageVersion) throw new Error('Session PackageVersion dependency mismatch');
+        const experience = installed.entryPoint.runtime?.experience ?? installed.manifest.runtime?.experience;
+        if (experience?.componentModelVersion !== 2) throw new TypeError('Message blocks require pinned UI Document v2');
+        const bytes = installed.sourceFiles.get(experience.component);
+        if (!bytes || bytes.length > 2 * 1024 * 1024) throw new TypeError('Missing or oversized pinned UI Document v2');
+        const definition = compileUiDocument(JSON.parse(bytes.toString('utf8')), { mode: experience.mode });
+        for (const variant of projected) validateMessageBlocks(definition, variant.projection);
     }
 
     async _publish(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
         graph = base.graph, branchId = base.revision?.branchId ?? base.session.activeBranchId,
         entries = [], variants = [], branches = [], actionRequest = null } = {}) {
+        variants = variants.map(assertVariant);
+        await this._validateProjections(handle, { ...base, timeline }, variants);
         validateWorldState(states, base.manifest, base.entryPoint);
         const revisionId = createNativeId('revision');
         if (actionRequest) {

@@ -1,0 +1,364 @@
+{
+  "document": {
+    "schemaVersion": 2,
+    "stateVersion": 1,
+    "conversation": {
+      "mode": "reader",
+      "profile": "novel"
+    },
+    "views": [
+      {
+        "id": "host",
+        "surface": "chat.header",
+        "mount": "always",
+        "root": {
+          "id": "title",
+          "type": "text",
+          "props": {
+            "text": "Harbor dispatch"
+          }
+        }
+      }
+    ],
+    "messageBlocks": {
+      "prose": {
+        "version": 1,
+        "maxInstances": 8,
+        "dataSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 8192
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        "document": {
+          "schemaVersion": 2,
+          "stateVersion": 1,
+          "views": [
+            {
+              "id": "message",
+              "surface": "chat.footer",
+              "mount": "always",
+              "root": {
+                "id": "prose",
+                "type": "text",
+                "bindings": {
+                  "text": {
+                    "template": "{{block.text}}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "status": {
+        "version": 1,
+        "maxInstances": 4,
+        "dataSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "value": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "label",
+            "value"
+          ]
+        },
+        "document": {
+          "schemaVersion": 2,
+          "stateVersion": 1,
+          "views": [
+            {
+              "id": "message",
+              "surface": "chat.footer",
+              "mount": "always",
+              "root": {
+                "id": "status",
+                "type": "stack",
+                "children": [
+                  {
+                    "id": "label",
+                    "type": "text",
+                    "bindings": {
+                      "text": {
+                        "template": "{{block.label}}: {{block.value}}"
+                      }
+                    }
+                  },
+                  {
+                    "id": "value",
+                    "type": "progress",
+                    "props": {
+                      "max": 100
+                    },
+                    "bindings": {
+                      "value": {
+                        "expr": "block.value"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "claim": {
+        "version": 1,
+        "maxInstances": 1,
+        "attachmentKind": "claim",
+        "actionPolicy": "active-tail",
+        "dataSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "claimId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "amount": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9999
+            },
+            "details": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  }
+                },
+                "required": [
+                  "id",
+                  "text"
+                ]
+              }
+            }
+          },
+          "required": [
+            "claimId",
+            "label",
+            "amount",
+            "details"
+          ]
+        },
+        "document": {
+          "schemaVersion": 2,
+          "stateVersion": 1,
+          "localState": {
+            "details": {
+              "type": "boolean",
+              "default": false,
+              "scope": "mount"
+            }
+          },
+          "preferences": {
+            "compact": {
+              "type": "boolean",
+              "default": false,
+              "scope": "player"
+            }
+          },
+          "actions": {
+            "details": {
+              "steps": [
+                {
+                  "op": "ui.toggle",
+                  "path": "ui.details"
+                }
+              ]
+            },
+            "compact": {
+              "steps": [
+                {
+                  "op": "ui.toggle",
+                  "path": "prefs.compact"
+                }
+              ]
+            },
+            "claim": {
+              "idempotency": "request",
+              "steps": [
+                {
+                  "op": "command.dispatch",
+                  "commandId": "rewards.claim",
+                  "args": {
+                    "claimId": {
+                      "expr": "block.claimId"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "views": [
+            {
+              "id": "message",
+              "surface": "chat.footer",
+              "mount": "always",
+              "root": {
+                "id": "claim",
+                "type": "stack",
+                "children": [
+                  {
+                    "id": "summary",
+                    "type": "text",
+                    "bindings": {
+                      "text": {
+                        "template": "{{block.label}} (+{{block.amount}})"
+                      }
+                    }
+                  },
+                  {
+                    "id": "toggle",
+                    "type": "button",
+                    "props": {
+                      "text": "Toggle details"
+                    },
+                    "events": {
+                      "click": "details"
+                    }
+                  },
+                  {
+                    "id": "details",
+                    "type": "details",
+                    "props": {
+                      "label": "Claim details"
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "!ui.details"
+                      }
+                    },
+                    "children": [
+                      {
+                        "id": "lines",
+                        "type": "repeat",
+                        "source": "block.details",
+                        "key": "item.id",
+                        "pageSize": 4,
+                        "emptyText": "No details",
+                        "children": [
+                          {
+                            "id": "line",
+                            "type": "text",
+                            "bindings": {
+                              "text": {
+                                "template": "{{index + 1}}. {{item.text}}"
+                              }
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "id": "anchor",
+                        "type": "text",
+                        "bindings": {
+                          "text": {
+                            "template": "Message {{message.messageId}}"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "compact",
+                    "type": "button",
+                    "props": {
+                      "text": "Compact view"
+                    },
+                    "events": {
+                      "click": "compact"
+                    }
+                  },
+                  {
+                    "id": "claim_button",
+                    "type": "button",
+                    "props": {
+                      "text": "Claim reward"
+                    },
+                    "events": {
+                      "click": "claim"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "projection": {
+    "schemaVersion": 1,
+    "flow": [
+      {
+        "kind": "prose",
+        "text": "The harbor bells rang as the courier arrived."
+      },
+      {
+        "id": "reputation",
+        "type": "status",
+        "version": 1,
+        "data": {
+          "label": "Harbor reputation",
+          "value": 45
+        },
+        "kind": "block"
+      },
+      {
+        "id": "reward",
+        "type": "claim",
+        "version": 1,
+        "data": {
+          "claimId": "harbor_delivery",
+          "label": "Delivery reward",
+          "amount": 25,
+          "details": [
+            {
+              "id": "payment",
+              "text": "Twenty-five coins for the completed delivery."
+            }
+          ]
+        },
+        "kind": "block"
+      }
+    ]
+  }
+}

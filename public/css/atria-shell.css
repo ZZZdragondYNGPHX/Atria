@@ -2005,3 +2005,18 @@ body[data-atria-native-session-active="true"] #char_connections_button {
 .atri-ui-badge { align-self: flex-start; background: var(--atri-surface-3); border-radius: 6px; padding: 4px 8px; }
 .atri-ui-confirm { color: var(--atri-text-primary); background: var(--atri-surface-1); border: 1px solid var(--atri-separator-strong); border-radius: 12px; max-width: min(420px, calc(100vw - 32px)); padding: 24px; }
 .atri-ui-confirm button + button { margin-inline-start: 8px; }
+/* P2 Host-owned narrative presentation. Canonical content and authority stay untouched. */
+.atri-conversation-presentation { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border-bottom: 1px solid var(--atri-separator); }
+.atri-conversation-presentation label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 13px; color: var(--atri-text-secondary); }
+.atri-conversation-presentation select { min-height: 44px; max-width: 100%; font: inherit; color: var(--atri-text-primary); background: var(--atri-surface-2); border: 1px solid var(--atri-separator-strong); border-radius: 8px; padding: 8px; }
+.atri-message-flow { display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow-wrap: anywhere; }
+.atri-message-prose { white-space: pre-wrap; }
+.atri-message-block { border: 1px solid var(--atri-separator-strong); border-radius: 12px; background: var(--atri-surface-1); }
+.atri-message-action-status { color: var(--atri-text-secondary); font-size: 12px; margin: 8px 0 0; }
+#chat[data-atri-conversation] .mes[hidden] { display: none !important; }
+#chat[data-atri-conversation="reader"] .mesAvatarWrapper, #chat[data-atri-conversation="reader"] .extraMesButtons { display: none; }
+#chat[data-atri-narrative="novel"] .mes_text { font-family: var(--atri-font-serif, Georgia, serif); line-height: 1.9; max-width: 72ch; }
+#chat[data-atri-narrative="dialogue"] .mes_text { border-inline-start: 2px solid var(--atri-accent); padding-inline-start: 12px; line-height: 1.65; }
+
+[data-atria-reply-variants] .atri-library-button { min-height: 44px; }
+[data-atria-reply-variants] { font-family: var(--atri-font-sans); margin-block: 8px; }

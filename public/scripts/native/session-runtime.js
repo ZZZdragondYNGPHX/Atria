@@ -54,7 +54,7 @@ export function normalizeNativeStateNamespace(value) {
 }
 
 function isEmptyGenerationDraft(command) {
-    const content = String(command?.draft?.content ?? '');
+    const content = String(command?.draft?.envelope?.narrative ?? command?.draft?.content ?? '');
     const attachments = command?.draft?.metadata?.attachments ?? [];
     const reasoning = String(command?.draft?.metadata?.runtime?.extra?.reasoning ?? '');
     return ['', '...'].includes(content.trim()) && attachments.length === 0 && reasoning.trim() === '';
@@ -659,12 +659,12 @@ export class NativeSessionRuntime {
     }
 
     async forkRevision(revisionId = this.snapshot?.revision?.revisionId, { displayName } = {}) {
-        this.assertWritable();
-        await this.persist();
+        if (!this.active || this.failed || this.generation || this.host?.isGenerating?.()) throw new Error('Native Session is not ready to fork');
+        if (this.history) this._assertBarrier(); else await this.persist();
         const previous = this.snapshot;
         const next = await this.request('command', {
             sessionId: previous.session.sessionId,
-            expectedRevisionId: previous.revision.revisionId,
+            expectedRevisionId: previous.session.headRevisionId,
             command: {
                 type: 'fork',
                 revisionId,

@@ -1,3 +1,4 @@
+import { mountConversationPresentation } from '../../message-presentation.js';
 import { loadGameSelectorDefinitions } from './declarative.js';
 import { createPackageRuntimeContributionRegistry } from './plugin-contributions.js';
 import { createFullGameHost } from './full-host.js';
@@ -124,6 +125,7 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
 
     let mounted = null;
     let documentRuntime = null;
+    let conversationRuntime = null;
     try {
         if (experience.componentModelVersion === 2) {
             const definition = compileUiDocument(await loadGamePackageJsonResource(packageState, experience.component, options), { mode });
@@ -132,6 +134,11 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
                 ...options, document: documentRef, window: options.window || globalThis.window, surfaceHost, selectors, worldSession, data, nativePlayHost,
                 composer: options.composer || nativePlayHost?.product?.composerApi,
                 stateStorage: options.createStateStorage?.(definition, packageState),
+            });
+            conversationRuntime = mountConversationPresentation(definition, {
+                ...options, document: documentRef, window: options.window || globalThis.window, data, worldSession,
+                composer: options.composer || nativePlayHost?.product?.composerApi,
+                createMessageStateStorage: (messageDocument, type) => options.createStateStorage?.(messageDocument, packageState, type),
             });
         } else {
             const definition = await loadGameComponentDefinition(packageState, {
@@ -146,6 +153,7 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
         }
         fullHost?.activate();
     } catch (error) {
+        conversationRuntime?.dispose();
         documentRuntime?.dispose();
         await componentRuntime.unmountAll();
         surfaceHost.unmountAll();
@@ -167,14 +175,18 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
         getContributions(query = {}) {
             return contributions.list(query);
         },
+        getRenderReceipts: () => conversationRuntime?.getRenderReceipts() ?? [],
+        executeMessageAction: (...args) => conversationRuntime?.execute(...args),
         refresh() {
             const changed = componentRuntime.refreshSelectors();
             documentRuntime?.refresh();
+            conversationRuntime?.refresh();
             return changed;
         },
         async dispose() {
             if (disposed) return;
             disposed = true;
+            conversationRuntime?.dispose();
             documentRuntime?.dispose();
             await componentRuntime.unmountAll();
             surfaceHost.unmountAll();

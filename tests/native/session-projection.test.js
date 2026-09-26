@@ -506,6 +506,36 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         expect(runtime.snapshot.timeline.at(-1).content).toBe('Later');
     });
 
+    test('P2 accepted Turn Envelope survives the runtime empty-Draft barrier', async () => {
+        await appendUser();
+        await runtime.prepareGeneration('normal');
+        const envelope = { schemaVersion: 1, narrative: 'Accepted envelope', projection: { schemaVersion: 1,
+            flow: [{ kind: 'prose', text: 'Accepted envelope' }] }, outcomes: [], diagnostics: [{ code: 'valid', message: 'Parsed' }] };
+        messages.push({ name: 'Actor', is_user: false, is_system: false, mes: envelope.narrative, extra: {}, atri_native: { envelope } });
+        await runtime.persist();
+        expect(runtime.generation).toBeNull();
+        expect(runtime.snapshot.timeline.at(-1).content).toBe('Accepted envelope');
+        expect(messages.at(-1).atri_native.projection).toEqual(envelope.projection);
+        expect(messages.at(-1).atri_native.envelope).toBeUndefined();
+        expect(messages.at(-1).mes).not.toContain('Parsed');
+        await runtime.persist();
+    });
+
+    test('P2 exact revision facade forks inspected history without inheriting future state', async () => {
+        const original = runtime.snapshot;
+        await appendUser('Future turn');
+        await runtime.open(original.session.sessionId, { revisionId: original.revision.revisionId });
+        expect(runtime.history).toBe(true);
+        const next = await runtime.forkRevision(original.revision.revisionId);
+        expect(runtime.history).toBe(false);
+        expect(next.revision.branchId).not.toBe(original.revision.branchId);
+        expect(next.timeline.map(entry => entry.messageId)).toEqual(original.timeline.map(entry => entry.messageId));
+        expect(next.states.atri_world_state).toEqual(original.states.atri_world_state);
+        runtime.generation = { kind: 'append' };
+        await expect(runtime.forkRevision()).rejects.toThrow('not ready');
+        runtime.generation = null;
+    });
+
     test('stale HEAD with a new Draft fails closed without legacy rebase/retry', async () => {
         await appendUser();
         await f.core.appendTimeline(h.handle, runtime.snapshot.session.sessionId, {
@@ -546,10 +576,39 @@ describe('N4 pure projection authority', () => {
     beforeEach(async () => { h = await makeTempFsEngineHarness(); });
     afterEach(async () => { await h.cleanup(); });
 
+    test('P2 projection is immutable authority while render receipts stay presentation-only', async () => {
+        const f = await installFixture(h);
+        const snapshot = await f.core.create(h.handle, f.start);
+        const projected = { schemaVersion: 1, flow: [{ kind: 'prose', text: 'Opening' }] };
+        snapshot.variants[0] = { ...snapshot.variants[0], projection: projected };
+        const chat = projectNativeSession(snapshot).chat;
+        expect(chat[0].mes).toBe('Opening');
+        expect(chat[0].atri_native.projection).toEqual(projected);
+        chat[0].atri_native.renderReceipt = { kind: 'render', status: 'failed' };
+        expect(timelineIntents(snapshot, chat)).toEqual([]);
+        chat[0].atri_native.projection = { schemaVersion: 1, flow: [] };
+        expect(() => timelineIntents(snapshot, chat)).toThrow(/Committed/);
+    });
+
+    test('P2 Draft Turn Envelope uses existing append commands without leaking projection into narrative', async () => {
+        const f = await installFixture(h);
+        const snapshot = await f.core.create(h.handle, f.start);
+        const envelope = { schemaVersion: 1, narrative: 'Next', projection: { schemaVersion: 1, flow: [{ kind: 'prose', text: 'Next' }] }, outcomes: [], diagnostics: [] };
+        const chat = projectNativeSession(snapshot).chat;
+        chat.push({ mes: 'Next', is_user: false, name: 'Narrator', atri_native: { envelope } });
+        const commands = timelineIntents(snapshot, chat);
+        expect(commands[0].draft.envelope).toEqual(envelope);
+        const next = await f.core.applyTimelineCommands(h.handle, snapshot.session.sessionId, commands, { expectedRevisionId: snapshot.revision.revisionId });
+        expect(projectNativeSession(next).chat.at(-1).mes).toBe('Next');
+        expect(next.variants.at(-1).projection).toEqual(envelope.projection);
+        chat.at(-1).mes = 'Conflicting text';
+        expect(() => timelineIntents(snapshot, chat)).toThrow(/differs/);
+    });
+
     test('Actor prompt fields and Regex derive only from installed content', async () => {
         const fixture = sessionFixture();
         fixture.manifest.actors[0].profile = { description: 'Harbor guide', personality: 'Calm', scenario: 'Moonlit pier' };
-        fixture.manifest.processors = { regex: [{ scriptName: 'Display', findRegex: 'pier', replaceString: 'dock' }] };
+        fixture.manifest.processors = { regex: [{ id: 'display', scriptName: 'Display', findRegex: 'pier', replaceString: 'dock', placement: [2] }] };
         const f = await installFixture(h, fixture);
         const view = await f.core.create(h.handle, f.start);
         expect(projectNativeSession(view).character.data).toMatchObject({ description: 'Harbor guide', scenario: 'Moonlit pier' });

@@ -1,3 +1,6 @@
+import { assertMessageProjection, assertTurnEnvelope } from '../../public/shared/native-message-contract.js';
+export { assertMessageProjection, assertTurnEnvelope, assertConversationThread } from '../../public/shared/native-message-contract.js';
+
 import { normalizeNativeRegexScripts } from '../../public/shared/native-regex.js';
 import { assertExperienceDataClosure } from '../../public/shared/native-experience-contract.js';
 import { validateSkillDeclarations } from '../../public/scripts/native/skill-declarations.js';
@@ -391,12 +394,20 @@ export function assertTimelineEntry(value) {
 
 export function assertVariant(value) {
     noLegacyIdentity(value, 'Variant');
+    assertOnlyKeys(value, new Set(['variantId', 'sessionId', 'messageId', 'content', 'projection', 'metadata', 'createdAt']), 'Variant');
+    const content = text(value.content == null ? '' : value.content, 'Variant.content', { allowEmpty: true, maxLength: 4 * 1024 * 1024 });
+    const metadata = value.metadata === undefined ? {} : cloneJson(plain(value.metadata, 'Variant.metadata'), 'Variant.metadata');
+    if (Object.hasOwn(metadata, 'atri_turn_diagnostics')) {
+        metadata.atri_turn_diagnostics = assertTurnEnvelope({ schemaVersion: 1, narrative: '', outcomes: [],
+            diagnostics: metadata.atri_turn_diagnostics }).diagnostics;
+    }
     return Object.freeze({
         variantId: assertNativeId(value.variantId, 'variant', 'Variant.variantId'),
         sessionId: assertNativeId(value.sessionId, 'session', 'Variant.sessionId'),
         messageId: assertNativeId(value.messageId, 'message', 'Variant.messageId'),
-        content: text(value.content == null ? '' : value.content, 'Variant.content', { allowEmpty: true, maxLength: 4 * 1024 * 1024 }),
-        metadata: value.metadata === undefined ? {} : cloneJson(plain(value.metadata, 'Variant.metadata'), 'Variant.metadata'),
+        content,
+        ...(Object.hasOwn(value, 'projection') ? { projection: assertMessageProjection(value.projection, content) } : {}),
+        metadata,
         createdAt: timestamp(value.createdAt, 'Variant.createdAt'),
     });
 }

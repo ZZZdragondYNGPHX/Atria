@@ -16,12 +16,13 @@ export function mountUiDocument(definition, options) {
     const confirmations = new Set();
     const native = createNativeComponentRegistry(doc, { nativePlayHost: options.nativePlayHost });
     const environment = createResponsiveEnvironment(options.environmentRoot || doc.createElement('div'), { window: options.window });
-    let disposed = false; let renderedNodes = 0; let openingStep = definition.opening?.initial;
+    const nodeBudget = options.nodeBudget || { nodes: 0, limit: 2048 };
+    let disposed = false; let openingStep = definition.opening?.initial;
     const openingHistory = []; let openingComplete = false;
     const listeners = new Set();
     const receipts = new Map();
     const context = (extra = {}) => {
-        const result = { ...state.snapshot(), world: options.worldSession?.getState?.() ?? {}, data: options.data ?? {}, env: environment.get(), selectors: options.selectors?.snapshot?.() ?? {}, ...extra };
+        const result = { ...state.snapshot(), world: options.presentationContext ? {} : options.worldSession?.getState?.() ?? {}, data: options.data ?? {}, env: environment.get(), selectors: options.selectors?.snapshot?.() ?? {}, ...options.presentationContext, ...extra };
         const pending = new Set(); const evaluated = new Set();
         const own = { ...result.selectors };
         for (const [key, expression] of Object.entries(definition.selectors)) Object.defineProperty(own, key, { enumerable: true, get() {
@@ -61,10 +62,13 @@ export function mountUiDocument(definition, options) {
         const action = definition.actions[actionId];
         if (!action) throw new Error('Unknown UI action');
         const attempt = attempts.get(actionId) || { index: 0, base: options.worldSession?.getRevisionId?.(), results: [] };
-        const requestId = request.idempotencyKey || attempt.requestId || (action.idempotency === 'revision' ? actionId + ':' + attempt.base
+        const requestId = request.idempotencyKey || attempt.requestId || options.actionKey?.(actionId) || (action.idempotency === 'revision' ? actionId + ':' + attempt.base
             : Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join(''));
         attempt.requestId = requestId;
         const run = async () => {
+            const intercepted = await options.beforeAction?.(actionId, action, extra, { state: state.snapshot(), confirm, resuming: attempts.has(actionId) });
+            if (intercepted?.handled) return intercepted.result;
+            if (disposed) throw new Error('Experience disposed');
             const constraint = constraints(action, context(extra));
             if (constraint.status === 'blocked') throw new Error(constraint.playerMessage);
             if (constraint.status === 'confirm_required' && !await confirm(constraint.playerMessage)) return { status: 'cancelled' };
@@ -153,11 +157,11 @@ export function mountUiDocument(definition, options) {
         syncOpening();
     }
     function renderNode(node, getExtra, cleanup, instance = '') {
-        if (renderedNodes >= 2048) throw new Error('Rendered UI node budget exceeded');
-        renderedNodes++; cleanup.push(() => { renderedNodes--; });
+        if (nodeBudget.nodes >= nodeBudget.limit) throw new Error('Rendered UI node budget exceeded');
+        nodeBudget.nodes++; cleanup.push(() => { nodeBudget.nodes--; });
         const element = doc.createElement(TAGS[node.type] || 'div');
         element.className = 'atri-ui-node atri-ui-' + node.type;
-        element.id = 'atri-ui-' + node.id + instance;
+        element.id = 'atri-ui-' + (options.instanceId ? options.instanceId + '-' : '') + node.id + instance;
         const props = node.props;
         if (props.text !== undefined) element.textContent = props.text;
         if (props.placeholder !== undefined) element.placeholder = props.placeholder;
@@ -227,7 +231,7 @@ export function mountUiDocument(definition, options) {
                 const actionId = node.events.click || node.events.submit; const condition = constraints(definition.actions[actionId], ctx);
                 const busy = activeActions.has(actionId);
                 element.setAttribute('aria-busy', String(busy));
-                if ('disabled' in element) element.disabled = props.disabled === true || Boolean(node.bindings.disabled?.read(ctx)) || busy || condition.status === 'blocked';
+                if ('disabled' in element) element.disabled = props.disabled === true || Boolean(node.bindings.disabled?.read(ctx)) || busy || condition.status === 'blocked' || options.actionDisabled?.(actionId, definition.actions[actionId], attempts.has(actionId)) === true;
                 if (condition.playerMessage) { status.textContent = condition.playerMessage; if (!status.isConnected) element.after(status); }
             }
         }

@@ -37,11 +37,11 @@ const functions = Object.freeze({
     concat: (...values) => text(values.map(value => String(value ?? '')).join('')),
 });
 const calls = new Set(['min', 'max', 'clamp', 'round', 'floor', 'ceil', 'abs', ...Object.keys(functions)]);
-export function expression(source) {
+export function expression(source, allowedRoots = UI_ROOTS) {
     text(source, 2048);
     // Bound parser nesting before recursion, including unary chains.
     if ((source.match(/[(!+-]/g) || []).length > 64) throw new Error('UI expression exceeds complexity limit');
-    const ast = compileFormula(source, { strings: true, roots: UI_ROOTS });
+    const ast = compileFormula(source, { strings: true, roots: allowedRoots });
     const roots = new Set();
     function inspect(node) {
         if (node.type === 'call' && !calls.has(node.callee)) throw new Error('Unknown UI expression function');
@@ -54,30 +54,30 @@ export function expression(source) {
     inspect(ast);
     return Object.freeze({ roots: Object.freeze([...roots]), read: context => evaluateFormulaAst(ast, context, { functions }) });
 }
-export function valueTemplate(raw, depth = 0) {
+export function valueTemplate(raw, roots = UI_ROOTS, depth = 0) {
     if (depth > 16) throw new Error('UI value nesting exceeded');
     if (raw && typeof raw === 'object' && !Array.isArray(raw) && Object.hasOwn(raw, 'expr')) {
         fields(raw, ['expr'], 'Expression');
-        return expression(raw.expr);
+        return expression(raw.expr, roots);
     }
     if (raw && typeof raw === 'object' && !Array.isArray(raw) && Object.hasOwn(raw, 'template')) {
         fields(raw, ['template'], 'Template');
         const source = text(raw.template);
         const parts = []; let offset = 0;
         for (const match of source.matchAll(/\{\{([^{}]+)\}\}/g)) {
-            parts.push(source.slice(offset, match.index), expression(match[1])); offset = match.index + match[0].length;
+            parts.push(source.slice(offset, match.index), expression(match[1], roots)); offset = match.index + match[0].length;
         }
         parts.push(source.slice(offset));
         if (parts.some(part => typeof part === 'string' && /\{\{|\}\}/.test(part))) throw new Error('Invalid UI template');
         return { read: context => text(parts.map(part => typeof part === 'string' ? part : String(part.read(context) ?? '')).join('')) };
     }
     if (Array.isArray(raw)) {
-        const items = raw.map(item => valueTemplate(item, depth + 1));
+        const items = raw.map(item => valueTemplate(item, roots, depth + 1));
         return { read: context => items.map(item => item.read(context)) };
     }
     if (raw && typeof raw === 'object') {
         json(raw);
-        const entries = Object.entries(raw).map(([key, child]) => [key, valueTemplate(child, depth + 1)]);
+        const entries = Object.entries(raw).map(([key, child]) => [key, valueTemplate(child, roots, depth + 1)]);
         return { read: context => Object.fromEntries(entries.map(([key, child]) => [key, child.read(context)])) };
     }
     const literal = json(raw);

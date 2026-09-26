@@ -1,3 +1,4 @@
+import { createReplyVariantController } from '../reply-variants.js';
 import { executeFirstPartyGeneration } from '../generation-compat.js';
 import { nativeGenerationActive } from '../generation-client.js';
 import { loadGameLogicDefinition } from './logic/package.js';
@@ -44,6 +45,7 @@ const saveSettingsDebounced = atriaContext.saveSettingsDebounced;
 let revision = 0;
 let currentWorldSession = null;
 let currentUiSession = null;
+let currentReplyController = null;
 let currentLlmSession = null;
 let currentTurnController = null;
 let currentNarrator = null;
@@ -227,6 +229,7 @@ function publishPackageState(next) {
 }
 
 async function disposeCurrentUi() {
+    currentReplyController?.dispose(); currentReplyController = null;
     const session = currentUiSession;
     currentUiSession = null;
     if (session?.dispose) {
@@ -346,12 +349,47 @@ export async function reloadGamePackage() {
 
     if (next.status === GAME_PACKAGE_STATUS.READY && next.active) {
         try {
+            currentReplyController = createReplyVariantController({
+                getContext() {
+                    const snapshot = nativeSessionRuntime.snapshot;
+                    return { sessionId: snapshot?.session.sessionId, revisionId: snapshot?.revision.revisionId,
+                        branchId: snapshot?.revision.branchId, tailMessageId: snapshot?.timeline.at(-1)?.messageId,
+                        isHistory: nativeSessionRuntime.history, busy: Boolean(nativeSessionRuntime.generation || nativeSessionRuntime.host?.isGenerating?.()),
+                        canWrite: nativeSessionRuntime.active && !nativeSessionRuntime.history && !nativeSessionRuntime.failed,
+                        canFork: nativeSessionRuntime.active && !nativeSessionRuntime.failed };
+                },
+                onInspect: target => nativeSessionRuntime.open(target.sessionId, { revisionId: target.revisionId }),
+                onSwitchBranch: branchId => nativeSessionRuntime.switchBranch(branchId),
+                onRetry: () => getContext().generate('regenerate'),
+                onFork: target => nativeSessionRuntime.forkRevision(target.revisionId),
+            });
             currentUiSession = await activateNativeExperienceRuntime(next, currentWorldSession, {
                 headers: getRequestHeaders(),
-                createStateStorage(definition, packageState) {
+                mountReplyVariants: (element, anchor) => currentReplyController?.mount(element, anchor),
+                getSnapshot: () => nativeSessionRuntime.snapshot,
+                isBusy: () => Boolean(nativeSessionRuntime.generation || nativeSessionRuntime.failed || nativeSessionRuntime.host?.isGenerating?.()),
+                isActiveTail: anchor => !nativeSessionRuntime.history && !nativeSessionRuntime.generation
+                    && nativeSessionRuntime.snapshot?.session.sessionId === anchor.sessionId
+                    && nativeSessionRuntime.snapshot?.revision.branchId === anchor.branchId
+                    && nativeSessionRuntime.snapshot?.timeline.at(-1)?.activeVariantId === anchor.variantId,
+                renderProse(text, node, index) {
+                    const message = getContext().chat[index];
+                    node.innerHTML = atriaContext.messageFormatting(text, message.name, message.is_system, message.is_user, index);
+                },
+                async onForkAction(anchor, blockId, actionId, state, extra) {
+                    const snapshot = nativeSessionRuntime.snapshot;
+                    if (snapshot.session.sessionId !== anchor.sessionId || snapshot.revision.branchId !== anchor.branchId
+                        || nativeSessionRuntime.generation) throw new Error('Message action anchor changed');
+                    const index = snapshot.timeline.findIndex(entry => entry.messageId === anchor.messageId && entry.activeVariantId === anchor.variantId);
+                    if (index < 0) throw new Error('Message action anchor is unavailable');
+                    await nativeSessionRuntime.fork(index);
+                    if (!currentUiSession?.executeMessageAction) throw new Error('Message presentation is unavailable after fork');
+                    return currentUiSession.executeMessageAction(anchor, blockId, actionId, state, extra);
+                },
+                createStateStorage(definition, packageState, messageType) {
                     const snapshot = nativeSessionRuntime.snapshot;
                     return createNativeUiStateStorage({ packageId: packageState.descriptor.packageId, entryPointId: packageState.descriptor.entryPointId,
-                        stateVersion: definition.stateVersion, sessionId: snapshot.session.sessionId, branchId: snapshot.revision.branchId,
+                        stateVersion: messageType ? definition.stateVersion + ':message:' + messageType : definition.stateVersion, sessionId: snapshot.session.sessionId, branchId: snapshot.revision.branchId,
                         settings: getRuntimeSettingsRoot, save: saveSettingsDebounced });
                 },
                 hostActions: {
@@ -362,6 +400,7 @@ export async function reloadGamePackage() {
                 },
             });
         } catch (error) {
+            currentReplyController?.dispose(); currentReplyController = null;
             currentWorldSession = null;
             disposeRuntimeSystems();
             currentUiSession = null;
@@ -637,6 +676,7 @@ onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, () => {
     if (currentPackage.runtime?.experience?.componentModelVersion !== 2) return;
     // A presentation failure must not turn a successful authority commit into
     // a failed write or trigger an automatic duplicate transaction.
+    void currentReplyController?.invalidate().catch(error => console.error('Native reply refresh failed', error));
     try { currentUiSession?.refresh?.(); } catch (error) { console.error('Native UI revision refresh failed', error); }
 });
 for (const lifecycle of [

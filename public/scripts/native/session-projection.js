@@ -1,3 +1,4 @@
+import { assertMessageProjection, assertTurnEnvelope } from '../../shared/native-message-contract.js';
 // Runtime ABI only. No storage, filename lookup, latest-pointer resolution or host DOM.
 const copy = value => JSON.parse(JSON.stringify(value));
 const EXTRA_FIELDS = ['bias', 'reasoning', 'reasoning_duration', 'reasoning_type', 'token_count', 'api', 'model',
@@ -68,6 +69,7 @@ export function committedMessageFingerprint(message) {
             metadata: authorityVariantMetadata(message, position),
         })),
         provenance: copy(message?.atri_native?.provenance ?? null),
+        projection: copy(message?.atri_native?.projection ?? null),
     };
     return JSON.stringify(stableValue(canonical));
 }
@@ -156,6 +158,7 @@ export function projectNativeSession(snapshot) {
                 variantIds: [...entry.variantIds],
                 actorId: entry.actorId ?? null,
                 role: entry.role,
+                ...(activeVariant?.projection ? { projection: assertMessageProjection(activeVariant.projection, activeVariant.content) } : {}),
                 provenance: copy(activeVariant?.metadata?.provenance ?? null),
             } };
         message.atri_native.committedFingerprint = committedMessageFingerprint(message);
@@ -181,6 +184,9 @@ export function timelineIntents(snapshot, messages) {
         if (message?.atri_native?.messageId) {
             throw committedTimelineMutation('Committed Native Timeline messages cannot be reordered or reinserted');
         }
+        if (message.atri_native?.envelope && message.atri_native?.projection) throw new Error('Draft must not mix Turn Envelope and projection');
+        const envelope = message.atri_native?.envelope ? assertTurnEnvelope(message.atri_native.envelope) : null;
+        if (envelope && envelope.narrative !== (message.mes ?? '')) throw new Error('Turn Envelope narrative differs from Draft content');
         commands.push({
             type: 'append',
             draft: {
@@ -188,7 +194,8 @@ export function timelineIntents(snapshot, messages) {
                 ...(!message.is_user && !message.is_system && snapshot.entryPoint.actorIds.length
                     ? { actorId: snapshot.entryPoint.primaryActorId ?? snapshot.entryPoint.actorIds[0] }
                     : {}),
-                content: message.mes ?? '',
+                ...(envelope ? { envelope } : { content: message.mes ?? '',
+                    ...(message.atri_native?.projection ? { projection: assertMessageProjection(message.atri_native.projection, message.mes ?? '') } : {}) }),
                 metadata: runtimeMetadata(message),
             },
         });
