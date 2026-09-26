@@ -6723,7 +6723,518 @@ Idempotency / Receipt / Compensation 全部归入第 7 项 Action v2。
 所以当前能力主表仍保持 **28 项**。
 
 
+### 26.36 Model Task 的 Output Contract 不能等同于 Authority
+
+继续拆《银麒赎世》的十个 phoneAPI 通道后，出现一个此前定义不够清楚的问题。
+
+当前第 27 项已经要求每个 Model Task 有：
+
+- input schema；
+- Context policy；
+- Prompt / Generation refs；
+- output contract。
+
+但：
+
+> **output contract 只能说明“返回什么形状的数据”，不能说明“这个结果有资格改变什么”。**
+
+例如该样本中：
+
+- social chat 的结果应该进入某个 scoped conversation thread；
+- forum / live 结果属于 Session Application content；
+- task evaluation 会影响任务评级，但不应该获得任意 World write；
+- outpost sync 是从 narrative 中推断 World change proposal；
+- world dynamics 会提出自治世界事件；
+- plot task 是任务候选，不是已发生事实；
+- image generation 最终产出 Media Attachment / Asset reference。
+
+这些结果即使全部都是合法 JSON，它们的 authority 也完全不同。
+
+因此第 27 项必须增加：
+
+> **Model Task Result Authority / Sink Policy**
+
+### 26.37 Model Task Result Policy
+
+候选：
+
+```text
+ModelTaskResultPolicy
+├─ resultClass
+│  ├─ advisory
+│  ├─ turn_context
+│  ├─ presentation
+│  ├─ session_app_proposal
+│  ├─ world_outcome_proposal
+│  ├─ activity_proposal
+│  └─ media_request
+├─ outputSchema
+├─ authorityCeiling
+├─ resultAdapterRef
+├─ commitPolicy
+├─ observationPolicy
+└─ diagnosticsPolicy
+```
+
+关键原则：
+
+#### advisory
+
+例如：
+
+- quest quality score；
+- recommendation；
+- classification。
+
+结果本身不产生 authority mutation。
+
+调用方可以把结果交给一个 deterministic workflow / typed Command 决定是否采用。
+
+#### turn_context
+
+例如：
+
+- 同步 Turn Processor 的分析结果；
+- planner hint；
+- recall condensation。
+
+只存在于当前 request / Turn Context。
+
+不能持久化成 World Truth。
+
+#### presentation
+
+例如：
+
+- Message Projection data；
+- UI summary；
+- generated flavor text。
+
+可以持久化到 presentation-owned domain，但没有 World write authority。
+
+#### session_app_proposal
+
+例如：
+
+- forum post；
+- phone message；
+- generated quest candidate。
+
+输出先经过对应 Session Application Domain 的 schema 与 typed Command。
+
+不能直接写任意 `atri_*` namespace。
+
+#### world_outcome_proposal
+
+例如：
+
+- outpost sync；
+- world dynamics；
+- narrative-outcome；
+- semantic state interpretation。
+
+合法路径仍然是：
+
+```text
+Model Result
+→ schema validation
+→ semantic proposal
+→ domain validator / rule
+→ typed Command / Event
+→ World Reducer
+```
+
+不能得到：
+
+`world.patch`
+
+#### media_request
+
+例如：
+
+- illustration；
+- avatar；
+- surveillance image；
+- live cover。
+
+由 Host-owned Media capability 执行并产出：
+
+- Attachment；
+- AssetRef；
+- media metadata。
+
+模型结果不携带任意可执行 URL。
+
+### 26.38 Authority Ceiling 必须由 Host 约束，而不是 Package 自报
+
+Package 可以声明：
+
+> “这个 Task 的结果是 `world_outcome_proposal`。”
+
+但这不能等价于：
+
+> “这个 Task 获得 World write 权限。”
+
+Host 必须检查：
+
+- Package 是否存在对应 typed result adapter；
+- adapter 是否只映射到已注册 Command；
+- output 是否通过 schema；
+- 当前 Session / Revision 是否允许应用；
+- 当前 Task execution class 是否允许 commit；
+- 是否需要用户确认；
+- 是否已经应用过；
+- 是否违反 domain authority。
+
+因此应形成：
+
+```text
+Model Task
+→ Result Artifact
+→ Result Adapter
+→ Typed Authority Surface
+→ optional Revision Commit
+```
+
+Result Adapter 也不能是 Package JavaScript。
+
+它应该是：
+
+- declarative mapping；
+- bounded interpretation mapping；
+- registered Host primitive；
+- typed Command reference。
+
+这能避免未来出现一种新的“看起来结构化、实际上还是裸 patch”的 API。
+
+### 26.39 Model Task Result 必须带可追踪 provenance
+
+复杂 Experience 有大量模型任务时，单纯保存最终结果不够排障。
+
+每个可持久化 Task result 至少应能追溯：
+
+```text
+Task Result Record
+├─ taskId / invocationId
+├─ task definition revision
+├─ execution class
+├─ Session / Branch / Revision anchor
+├─ ContextPlan snapshot ref/hash
+├─ Runtime Route snapshot
+├─ Prompt Program / Generation refs
+├─ raw/normalized result hash
+├─ validation outcome
+├─ result class
+├─ applied receipt / committedRevisionId
+└─ diagnostics
+```
+
+Secret 与 provider credential 永远不进入该记录。
+
+这使：
+
+- Experience Diagnostics；
+- Studio recorded fixture；
+- stale-result analysis；
+- duplicate-apply diagnosis；
+- regression reproduction；
+
+可以共享同一证据链。
+
+### 26.40 新缺口不另编号：Host Task Scheduling / Backpressure
+
+《银麒赎世》的真实实现还有一套很有价值的工程补丁：
+
+- API pool；
+- per-pool max concurrency；
+- queue；
+- short-window dedupe；
+- retry / exponential backoff；
+- timeout / abort；
+- busy detection；
+- 自动生成队列上限；
+- 同一角色跨 chat / group / forum / live 的 cooldown / conflict guard。
+
+这些不是某个具体 phone App 的能力。
+
+它们说明：
+
+> **当一个 Experience 拥有多个 Model Task / Auxiliary Task 后，光有“任务生命周期”还不够，还需要 Host-owned execution scheduling。**
+
+当前 `main@4dab353a` 的 Native Generation Host 已有：
+
+- per-route timeout；
+- same-route retry；
+- complete-route fallback；
+- AbortSignal cancellation。
+
+但这些仍是**单次 Generation execution**语义。
+
+当前没有一等的 Experience-level：
+
+- task queue；
+- priority/fairness；
+- backpressure；
+- coalescing；
+- supersede；
+- global / route / connection concurrency budget。
+
+因此第 24 / 27 项补：
+
+> **Host Task Scheduling / Backpressure Policy**
+
+但不新增第 29 项。
+
+### 26.41 Task Execution Policy
+
+候选：
+
+```text
+TaskExecutionPolicy
+├─ executionClass
+│  ├─ turn_blocking
+│  ├─ interactive
+│  ├─ background
+│  └─ maintenance
+├─ concurrencyClass
+├─ concurrencyLimitHint
+├─ queuePolicy
+├─ dedupeKey
+├─ coalesceKey
+├─ supersedePolicy
+├─ expiryPolicy
+├─ retryPolicy
+├─ cancellationPolicy
+├─ costBudgetHint
+└─ diagnosticsPolicy
+```
+
+#### Host owns the hard limits
+
+Package 只能：
+
+- 声明任务语义；
+- 请求更保守的限制；
+- 声明可否合并 / 替代。
+
+Package 不能：
+
+- 把自己设为无限最高优先级；
+- 关闭全局限流；
+- 无限并发；
+- 建立自己的 Promise worker pool；
+- 自己 sleep/backoff 后绕过 Host。
+
+实际 hard limit 由玩家 / Host 决定：
+
+- per Connection；
+- per Model；
+- per Provider；
+- per Experience；
+- total in-flight；
+- token / request budget。
+
+#### Interactive work should not be starved by background work
+
+例如玩家主动：
+
+- 发送消息；
+- 打开需要实时模型响应的 UI；
+- 提交任务评价；
+
+不应该因为后台：
+
+- world dynamics；
+- forum generation；
+- memory condensation；
+- auto social；
+
+已经排满队列而长期饿死。
+
+因此需要 Host-defined fairness / priority class。
+
+Package 不能自定义任意数值优先级，只能选择受控 execution class。
+
+#### Coalesce / Supersede
+
+很多后台 Task 不值得全部执行。
+
+例如：
+
+```text
+world_dynamics(revision 100)
+world_dynamics(revision 101)
+world_dynamics(revision 102)
+```
+
+如果 100 / 101 尚未开始，而 102 已经覆盖它们：
+
+可以：
+
+> coalesce → 只执行最新有效工作。
+
+同理：
+
+- UI search query；
+- preview；
+- media preview；
+- derived summary；
+
+可以声明 supersede。
+
+但：
+
+- reward settlement；
+- committed workflow transition；
+- user-confirmed Action；
+
+不能被静默 coalesce。
+
+### 26.42 Cancellation 必须从 Session/Branch 生命周期向下传播
+
+至少需要：
+
+```text
+user stop
+session switch
+branch fork
+retry from earlier revision
+experience exit
+task superseded
+dependency invalidated
+```
+
+能够取消仍未提交的 Task。
+
+对于已经发出的 provider 请求：
+
+- 尽力 Abort；
+- 即使 provider 不合作，晚回结果仍需 anchor/stale 检查；
+- cancelled Task 永远不能凭“请求已经完成”恢复写权限。
+
+因此：
+
+> Cancellation 与 stale-result check 是两层保护，不是二选一。
+
+### 26.43 Actor / Channel 冲突不应变成全局 mutex API
+
+《银麒赎世》为了避免：
+
+- 某角色正在直播却同时自动发论坛；
+- 某角色明明当面在场却又自动发私聊；
+- 同一角色短时间在多个频道给出互相矛盾的内容；
+
+实现了角色 channel lock / cooldown。
+
+真正产品能力值得保留，但 Native 不应开放：
+
+`lockActor("林知意")`
+
+更合理的是：
+
+```text
+World / Activity / Session App
+        ↓
+Actor Availability Projection
+        ↓
+Task eligibility / Automation condition
+        ↓
+Host scheduler
+```
+
+例如：
+
+```text
+ActorAvailability(actorId, "phone.dm")
+→ available / unavailable + reason
+```
+
+来源可以是：
+
+- 当前 location / scene；
+- active Activity；
+- capture / death / offline status；
+- Session App commitment；
+- Package deterministic rule。
+
+它是第 5 项 Data Projection、第 13 项 Automation、第 26 项 Perspective 与第 27 项 Model Task 的组合能力。
+
+不新增单独 Actor Lock authority。
+
+### 26.44 第 24 / 27 项的最终职责边界继续明确
+
+经过本轮：
+
+#### Model Task (#27)
+
+负责：
+
+> **模型要做什么工作、看什么 Context、输出什么 Result Artifact、结果最高拥有哪类 authority。**
+
+#### Auxiliary Task Runtime (#24)
+
+负责：
+
+> **这个异步工作实例从 queued 到 completed/stale/cancelled 的生命周期。**
+
+#### Host Task Scheduler (#24/#27 shared runtime)
+
+负责：
+
+> **现在能不能运行、何时运行、并发多少、是否合并/抢占/取消。**
+
+#### Runtime Automation (#13)
+
+负责：
+
+> **为什么此刻需要创建这项工作。**
+
+因此：
+
+```text
+Automation
+    ↓ creates
+Task Invocation
+    ↓ scheduled by
+Host Scheduler
+    ↓ executes
+Model Task
+    ↓ produces
+Typed Result Artifact
+    ↓ authority adapter
+Domain Command / Projection / Media
+    ↓
+Revision / presentation result
+```
+
+这条链比旧生态里每个功能自己维护：
+
+- timer；
+- queue；
+- fetch；
+- API key；
+- retry；
+- localStorage lock；
+
+更适合平台化。
+
+### 26.45 本轮继续不新增第 29 项
+
+本轮发现的是两个**已有 primitive 的关键缺口**：
+
+1. 第 27 项缺少 Result Authority / Sink Policy；
+2. 第 24 / 27 项缺少 Host Task Scheduling / Backpressure。
+
+二者都没有理由独立成为新的用户级 capability 编号。
+
+因此能力主表仍保持 **28 项**。
+
+
 ## 二十七、修订记录
+
+### 2026-09-26 — Discussion Draft v1.6
+
+继续拆解《银麒赎世》的多模型通道与自动生成基础设施。确认 Model Task 的 output schema 不能等同于 authority，给第 27 项增加 Result Authority / Sink Policy、typed result adapter 与可追踪 provenance；同时依据该卡 API pool / queue / dedupe / cooldown，以及当前 Native Generation Host 仅有单请求 retry/fallback/cancel 的实现基线，将 Host Task Scheduling / Backpressure 纳入第 24/27 项共享 runtime。补充 Actor Availability Projection 作为 Data Projection + Automation + Perspective 的组合能力。能力总数仍维持 28。
 
 ### 2026-09-26 — Discussion Draft v1.5
 
