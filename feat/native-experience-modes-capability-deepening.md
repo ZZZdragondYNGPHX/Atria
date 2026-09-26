@@ -7616,7 +7616,7 @@ Scoped Operation State 是多个现有 primitive 的共同 runtime projection：
 能力主表继续保持 **28 项**。
 
 
-### 26.46 新缺口 29 — Temporal Runtime / World Clock
+### 26.56 新缺口 29 — Temporal Runtime / World Clock
 
 继续拆《银麒赎世》后，出现一个此前被 `Runtime Automation / World Process` 语法掩盖、但实际上还没有被定义的底层能力：
 
@@ -7670,7 +7670,7 @@ Scoped Operation State 是多个现有 primitive 的共同 runtime projection：
 
 > **Temporal Runtime / World Clock & Schedule**
 
-### 26.47 必须先区分四种时间
+### 26.57 必须先区分四种时间
 
 Atria 不应该再让一个 `time` 字段同时承担所有语义。
 
@@ -7733,7 +7733,7 @@ Package/Game 内的权威虚构时间。
 
 它通常不能直接当作 World Time，除非 Activity settlement 明确产生 `advance_world_time` outcome。
 
-### 26.48 World Time 不能只是任意字符串
+### 26.58 World Time 不能只是任意字符串
 
 如果 Package 只保存：
 
@@ -7795,7 +7795,7 @@ WorldSchedule
 
 > “显示日期是一套、冷却判断又偷偷用另一套 day number。”
 
-### 26.49 World Clock 仍不能成为第二套 mutation authority
+### 26.59 World Clock 仍不能成为第二套 mutation authority
 
 Temporal Runtime 不允许：
 
@@ -7823,7 +7823,7 @@ one Session Revision
 
 > **Temporal Runtime 提供统一时间语义与计算 primitive，不提供绕过 Command/Event/Reducer 的写口。**
 
-### 26.50 Runtime Automation 依赖 Temporal Runtime，而不是自己发明时间
+### 26.60 Runtime Automation 依赖 Temporal Runtime，而不是自己发明时间
 
 第 13 项此前已经提出：
 
@@ -7861,7 +7861,7 @@ World Process 的：
 
 三者不能合并。
 
-### 26.51 Gameplay authority 默认不能被 wall clock 偷偷推进
+### 26.61 Gameplay authority 默认不能被 wall clock 偷偷推进
 
 为了保持：
 
@@ -7894,7 +7894,7 @@ wall-clock observation
 
 这样“现实时间经过多少”也成为可追踪的外部输入，而不是隐藏副作用。
 
-### 26.52 Temporal Runtime 与其它能力的关系
+### 26.62 Temporal Runtime 与其它能力的关系
 
 #### Activity
 
@@ -7961,7 +7961,7 @@ Task freshness 首先看：
 - simulate catch-up；
 - assert schedule fired exactly once。
 
-### 26.53 Custom Calendar 也必须声明式
+### 26.63 Custom Calendar 也必须声明式
 
 Atria 不能只支持现实 Gregorian。
 
@@ -7991,7 +7991,7 @@ Package 可以定义：
 
 这样《天书江湖录》的传统时辰、《银麒赎世》的末日 D±N、现代日期制，都能在同一个 Temporal Runtime 上表达。
 
-### 26.54 本轮正式新增第 29 项
+### 26.64 本轮正式新增第 29 项
 
 此前连续几轮都成功把新发现压回已有 primitive，没有继续扩表。
 
@@ -8033,7 +8033,7 @@ Package 可以定义：
 
 继续用《银麒赎世》的主生成/任务审核/生图/世界动态/据点同步并行状态压力测试 streaming 与 UI runtime。将 Round 4 的“Draft narrative 可 streaming、authority finalize 后 commit”推广为 Host-owned Scoped Operation State / Operation Projection；明确 busy 必须按 semantic claim/conflict scope 判断，Package UI 可读取 queued/running/streaming/retrying/finalizing/stale 等状态，Presentation/Local UI 可并行而冲突 authority transaction 通过 Revision/CAS 串行。能力总数仍维持 28。
 
-### 2026-09-26 — Discussion Draft v1.7
+### 2026-09-26 — Discussion Draft v1.8
 
 继续压力测试《银麒赎世》的长期时间系统。确认当前 World State 可自行保存时间字段、Runtime Automation 已引用 world-time、Studio 草案已有 clock fixture，但 `main` 尚无一等 Game World Clock。新增第 29 项 Temporal Runtime / World Clock & Schedule：严格区分 wall clock、Turn/Revision logical time、World Time 与 Activity/Task elapsed time，以 branch-aware canonical WorldInstant/Duration/Schedule 支撑 cooldown、deadline、cross-day process、catch-up、Perspective freshness 与 deterministic Studio tests；时间推进仍必须经 typed Command/Event/Reducer，不形成第二套 authority。
 
