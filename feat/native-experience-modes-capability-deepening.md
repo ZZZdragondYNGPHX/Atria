@@ -3268,6 +3268,17 @@ SillyTavern、MVU、Tavern Helper、CardApp、重前端 Regex 卡只作为：
 
 > **在不破坏这些 authority 边界的前提下，把前端表达力补到足以覆盖甚至超过高阶 MVU/重前端卡。**
 
+### 23.3.1 当前 `main` 实现基线校正
+
+基于 `main@4dab353ac639d42eae885c79e18245267abd6820` 的实际代码再审计，以下能力不是从零开始，后续设计必须复用现有地基而不是建立平行系统：
+
+- **Component Model v1** 已具备 semantic surfaces、`container / text / button / input / native-slot`、`text / value / hidden` 绑定、World selector、`dispatch / simulate` typed Command，以及 mobile/tablet/desktop + orientation 响应式条件；v2 的缺口是 Form、Local UI State、动态结构、Action Sequence、Composer/Surface/Message action、safe appearance 等更高表达力。
+- **Studio** 已有 Component Model v1 的 `design / structure / bindings / source` 编辑、组件树增删/排序、基础属性编辑以及 Native Preview；因此“Studio visual authoring”不是从零建设，而是把现有编辑器深化到 v2 的 state/form/action/data/message-block/diagnostics 可视化 authoring。
+- **Game Turn Controller** 已有 Turn Transaction phase、Attempt、retry、switch variant、stop/undo/delete，以及不改变 authoritative fingerprint 的 prose-only `rewriteNarrative`。未来 Turn Envelope 与 Reply Variant facade 必须扩展并整合这套机制，同时落到现有 Session Branch / Revision，而不是再造一套 turn/variant 状态机。
+- **Declarative Logic** 已有 declarative Command / Reducer / Rule / Interpretation Mapping，并最终进入现有 typed Command → Event → Reducer authority 链路。未来 Declarative Mutation 只能是更低样板成本的 authoring shorthand，不能形成第二套 mutation authority 或平行 DSL/runtime。
+- **Host / Environment** 已有 device、orientation、touch、keyboard、viewport 环境投影，以及 Full Host 的基础 focus/recovery 行为；后续缺口集中在 Browser Fullscreen、semantic focus navigation、gamepad、safe-area、overlay/input policy 等高级 Host capability。
+- **Game LLM Runtime** 已有强 `authority-first` 路径，也已有 `Event Interpreter → Interpretation Mapping → typed Command` 的受控语义映射。未来 `narrative-outcome` 的缺口不是“第一次允许模型提出语义状态变化”，而是把 prose + projection + semantic outcomes 纳入统一 Package Turn Contract / Turn Envelope，并提供验证、模拟与原子提交语义。
+
 ### 23.4 第一组差距：UI 基础能力
 
 当前明确不足：
@@ -3562,26 +3573,30 @@ Studio 后续至少应支持：
 3. Player Preference State；
 4. Package Data Resource；
 5. Data Projection；
-6. Native Composer Host；
+6. Native Composer Host capability（在现有 Native Composer product / generation ABI 之上提供受控 Package action）；
 7. Action v2；
-8. Declarative Mutation shorthand；
+8. Declarative Mutation authoring shorthand（复用现有 declarative Command / Event / Reducer 链路）；
 9. Message Projection；
 10. Package Turn Contract；
-11. Turn Envelope；
-12. narrative-outcome policy；
+11. Turn Envelope（复用现有 Game Turn Controller / Session Revision，不建立平行 turn state machine）；
+12. narrative-outcome policy（复用现有 semantic interpretation → typed Command 地基，但形成完整单轮 contract）；
 13. Runtime Automation；
 14. Opening Phase / Variant；
-15. Reply Variant / Branch facade；
+15. Reply Variant / Branch facade（建立在现有 Attempt / Branch / Revision 能力之上）；
 16. Conversation feed/latest/reader；
-17. Host Fullscreen / focus / gamepad；
+17. Host advanced presentation/input（Fullscreen / semantic focus / gamepad / safe-area；基础 responsive/focus 已存在）；
 18. safe theme/style/motion；
-19. Studio visual authoring；
+19. Studio visual authoring v2 deepening（v1 Structured UI editor / Native Preview 已存在）；
 20. Experience diagnostics。
 
 这些才是后续深化目标。
 
 
 ## 二十四、修订记录
+
+### 2026-09-26 — Discussion Draft v0.9
+
+完成当前 `main@4dab353a` 的实现基线复核：确认 Component Model v1 / responsive surfaces、Studio Structured UI + Preview、Game Turn Controller Attempt/Retry/Switch、Declarative Logic、Host Environment/focus 与 semantic interpretation mapping 已存在。相应校正能力缺口措辞，冻结 Turn Envelope、Reply Variant、Mutation shorthand、Composer capability 与 Studio v2 必须建立在现有 Native runtime 上深化，不另建平行体系。
 
 ### 2026-09-26 — Discussion Draft v0.8
 
