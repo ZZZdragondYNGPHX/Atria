@@ -4200,10 +4200,10 @@ otherwise
 21. **Activity Runtime / Transactional Subscene**；
 22. **Native Media / Scene Host（含长期 2D/3D Scene）**；
 23. **Immutable Asset Pack / Heavy Resource Delivery**；
-24. **Auxiliary Task / Background Model Job Runtime**。
+24. **Auxiliary Task / Background Model Job Runtime**；
 25. **Native Add-on / Content Extension Layer**。
 
-这 24 项仍然不是最终答案，后续样本可以继续拆分或合并。
+这 25 项仍然不是最终答案，后续样本可以继续拆分或合并。
 
 ### 24.16 《瀚海》压力测试的核心结论
 
