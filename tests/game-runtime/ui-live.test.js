@@ -84,6 +84,15 @@ function shellFixture() {
 }
 
 describe('A4 Native Experience Runtime activation', () => {
+    test.each(['component', 'hybrid', 'full'])('v2 %s activates through the shared Host and releases ownership', async mode => {
+        const { playHost, shellFoundation } = shellFixture();
+        const packageState = state(mode); packageState.runtime.experience.componentModelVersion = 2; delete packageState.runtime.experience.surface;
+        const raw = { schemaVersion: 2, stateVersion: 1, views: [{ id: 'main', mount: 'always', surface: mode === 'component' ? 'chat.header' : 'app.root', root: { id: 'label', type: 'text', props: { text: 'V2 shared Host' } } }] };
+        const session = await activateNativeExperienceRuntime(packageState, worldSession(), { document, shell: shellFoundation, nativePlayHost: playHost, fetchImpl: resourceFetch({ 'ui/main.json': raw }) });
+        expect(document.getElementById('atri-ui-label').textContent).toBe('V2 shared Host');
+        expect(session.recoveryActive).toBe(mode === 'full');
+        await session.dispose(); expect(document.getElementById('atri-ui-label')).toBeNull(); playHost.unmount();
+    });
     beforeEach(() => {
         document.body.innerHTML = `
             <div id="left-nav-panel"></div>

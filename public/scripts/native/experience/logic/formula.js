@@ -29,7 +29,7 @@ function isIdentifierPart(char) {
     return /[A-Za-z0-9_]/.test(char);
 }
 
-function tokenize(source) {
+function tokenize(source, options = {}) {
     const input = String(source ?? '');
     const tokens = [];
     let index = 0;
@@ -38,6 +38,16 @@ function tokenize(source) {
         const char = input[index];
         if (/\s/.test(char)) {
             index += 1;
+            continue;
+        }
+
+        if (char === '"' && options.strings === true) {
+            const start = index++;
+            while (index < input.length) {
+                if (input[index] === '\\') { index += 2; continue; }
+                if (input[index++] === '"') break;
+            }
+            tokens.push({ type: 'string', value: JSON.parse(input.slice(start, index)), offset: start });
             continue;
         }
 
@@ -79,7 +89,7 @@ function tokenize(source) {
             continue;
         }
 
-        if ('+-*/%<>!(),.'.includes(char)) {
+        if ('+-*/%<>!(),.'.includes(char) || (options.strings === true && '[]'.includes(char))) {
             const type = '+-*/%<>!'.includes(char) ? 'operator' : 'punctuation';
             tokens.push({ type, value: char, offset: index });
             index += 1;
@@ -106,8 +116,9 @@ function freezeAst(node) {
     return Object.freeze(node);
 }
 
-function parserFor(source) {
-    const tokens = tokenize(source);
+function parserFor(source, options = {}) {
+    const tokens = tokenize(source, options);
+    const roots = options.roots ? new Set(options.roots) : REFERENCE_ROOTS;
     let cursor = 0;
 
     function peek() {
@@ -125,7 +136,13 @@ function parserFor(source) {
 
     function parseReferenceOrCall() {
         const parts = [consume().value];
-        while (peek().value === '.') {
+        while (peek().value === '.' || (options.strings === true && peek().value === '[')) {
+            if (peek().value === '[') {
+                consume('[');
+                const key = consume();
+                if (key.type !== 'string' && !(key.type === 'number' && Number.isSafeInteger(key.value) && key.value >= 0)) throw new Error('Formula index must be a literal key');
+                parts.push(String(key.value)); consume(']'); continue;
+            }
             consume('.');
             const next = peek();
             if (next.type !== 'identifier') {
@@ -157,7 +174,7 @@ function parserFor(source) {
         if (literal === 'false') return { type: 'literal', value: false };
         if (literal === 'null') return { type: 'literal', value: null };
 
-        if (!REFERENCE_ROOTS.has(parts[0])) {
+        if (!roots.has(parts[0])) {
             throw new Error(`Formula reference root '${parts[0]}' is not allowed`);
         }
         if (parts.some(part => BLOCKED_PATH_SEGMENTS.has(part))) {
@@ -172,7 +189,7 @@ function parserFor(source) {
 
     function parsePrimary() {
         const token = peek();
-        if (token.type === 'number') {
+        if (token.type === 'number' || token.type === 'string') {
             consume();
             return { type: 'literal', value: token.value };
         }
@@ -346,11 +363,11 @@ function evaluateNode(node, context, functions) {
     throw new Error(`Unsupported Formula AST node type '${String(node.type)}'`);
 }
 
-export function compileFormula(source) {
+export function compileFormula(source, options = {}) {
     const text = String(source ?? '').trim();
     if (!text) throw new Error('Formula source must be non-empty');
     if (text.length > 4096) throw new Error('Formula source exceeds 4096 characters');
-    return parserFor(text);
+    return parserFor(text, options);
 }
 
 export function evaluateFormulaAst(ast, context = {}, options = {}) {

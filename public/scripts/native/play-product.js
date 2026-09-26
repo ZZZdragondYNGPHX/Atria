@@ -272,29 +272,28 @@ export function mountAtriaPlayProduct({
         });
     }
 
+    let submitting = false;
+    async function submitDraft() {
+        const runtime = activeRuntime();
+        const value = textarea.value.trim();
+        if (submitting || generating()) throw new Error(tl('Generation is already running.'));
+        if (!value || !runtimeWritable(runtime)) throw new Error(tl('Native Composer is not ready.'));
+        const generate = globalThis.Atria?.getContext?.()?.generate;
+        if (typeof generate !== 'function') throw new Error(tl('Native generation entrypoint is unavailable.'));
+        submitting = true;
+        native.sendTextarea.value = value;
+        native.sendTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.value = ''; resizeInput(); following = true;
+        runtimeError.hidden = true; composerStatus.textContent = tl('Generating…');
+        try { return await generate('normal'); } finally { submitting = false; render(); }
+    }
     function submit(event) {
         event.preventDefault();
         if (generating()) {
             globalThis.Atria?.getContext?.()?.stopGeneration?.();
             return;
         }
-        const runtime = activeRuntime();
-        const value = textarea.value.trim();
-        if (!value || !runtimeWritable(runtime)) return;
-
-        native.sendTextarea.value = value;
-        native.sendTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-        const sendButton = native.sendForm.querySelector('#send_but');
-        if (!sendButton) {
-            composerStatus.textContent = tl('Native generation entrypoint is unavailable.');
-            return;
-        }
-        textarea.value = '';
-        resizeInput();
-        following = true;
-        runtimeError.hidden = true;
-        composerStatus.textContent = tl('Generating…');
-        sendButton.click();
+        void submitDraft().catch(error => { composerStatus.textContent = error.message; });
     }
 
     composer.addEventListener('submit', submit);
@@ -333,6 +332,14 @@ export function mountAtriaPlayProduct({
         conversation,
         composer,
         textarea,
+        composerApi: Object.freeze({
+            getDraft: () => textarea.value,
+            setDraft(value) { if (typeof value !== 'string' || value.length > 65536) throw new Error('Invalid Composer draft'); textarea.value = value; resizeInput(); },
+            appendDraft(value) { if (typeof value !== 'string' || textarea.value.length + value.length > 65536) throw new Error('Invalid Composer draft'); textarea.value += value; resizeInput(); },
+            clearDraft() { textarea.value = ''; resizeInput(); },
+            focus() { textarea.focus(); },
+            submit: submitDraft,
+        }),
         sessionHeader,
         getComponent(id) {
             return components.get(String(id || '').trim()) || null;

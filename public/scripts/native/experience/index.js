@@ -27,6 +27,7 @@ import {
 } from '../session-lifecycle.js';
 import { nativeProductClient } from '../product-client.js';
 import { nativeSessionRuntime } from '../session-runtime.js';
+import { createNativeUiStateStorage } from '../ui-state-storage.js';
 
 const MODULE_NAME = 'game-runtime';
 export const GAME_PACKAGE_CHANGED_EVENT = 'atria:game-package-changed';
@@ -347,6 +348,12 @@ export async function reloadGamePackage() {
         try {
             currentUiSession = await activateNativeExperienceRuntime(next, currentWorldSession, {
                 headers: getRequestHeaders(),
+                createStateStorage(definition, packageState) {
+                    const snapshot = nativeSessionRuntime.snapshot;
+                    return createNativeUiStateStorage({ packageId: packageState.descriptor.packageId, entryPointId: packageState.descriptor.entryPointId,
+                        stateVersion: definition.stateVersion, sessionId: snapshot.session.sessionId, branchId: snapshot.revision.branchId,
+                        settings: getRuntimeSettingsRoot, save: saveSettingsDebounced });
+                },
                 hostActions: {
                     exitExperience: exitCurrentGameUi,
                     stopGeneration: stopCurrentGeneration,
@@ -388,6 +395,7 @@ export async function reloadGamePackage() {
 async function syncCurrentWorldRevision() {
     const session = currentWorldSession;
     if (!session) return null;
+    if (currentPackage.runtime?.experience?.componentModelVersion === 2) return reloadGamePackage();
 
     try {
         const result = await session.syncBranch();
@@ -625,6 +633,12 @@ eventSource.on(eventTypes.CHAT_CHANGED, () => {
 });
 
 onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, () => reloadGamePackage());
+onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, () => {
+    if (currentPackage.runtime?.experience?.componentModelVersion !== 2) return;
+    // A presentation failure must not turn a successful authority commit into
+    // a failed write or trigger an automatic duplicate transaction.
+    try { currentUiSession?.refresh?.(); } catch (error) { console.error('Native UI revision refresh failed', error); }
+});
 for (const lifecycle of [
     NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED,
     NATIVE_SESSION_LIFECYCLE.REVISION_RESTORED,

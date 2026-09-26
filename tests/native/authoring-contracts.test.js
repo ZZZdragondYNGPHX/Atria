@@ -87,9 +87,11 @@ describe('P0 Experience contract foundation', () => {
         expect(() => assertNativeExperienceContract({ ...experienceFixture(), [key]: {} })).toThrow(/unsupported field/);
     });
 
-    test('Component v2 does not silently enter the v1 Experience contract', () => {
+    test('Component v2 is explicit and never silently upgrades v1', () => {
         for (const mode of ['component', 'hybrid', 'full']) {
-            expect(() => assertExperienceContract({ mode, componentModelVersion: 2 })).toThrow(/must be 1/);
+            expect(assertExperienceContract({ mode, componentModelVersion: 1 })).toEqual({ mode, componentModelVersion: 1 });
+            expect(assertExperienceContract({ mode, componentModelVersion: 2 })).toEqual({ mode, componentModelVersion: 2 });
+            expect(() => assertExperienceContract({ mode, componentModelVersion: 3 })).toThrow(/must be 1 or 2/);
         }
     });
 });

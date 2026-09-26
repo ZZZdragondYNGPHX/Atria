@@ -12,6 +12,20 @@ async function flush() {
 }
 
 describe('A6 Atria-native Play product', () => {
+    test('typed Composer uses the manual submit path and rejects busy, empty and historical writes', async () => {
+        const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
+            sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
+        } });
+        const api = product.composerApi;
+        await expect(api.submit()).rejects.toThrow(/ready/);
+        api.setDraft('A'); api.appendDraft('B'); expect(api.getDraft()).toBe('AB');
+        runtime.history = true; await expect(api.submit()).rejects.toThrow(/ready/); runtime.history = false;
+        document.body.dataset.generating = 'true'; await expect(api.submit()).rejects.toThrow(/running/); delete document.body.dataset.generating;
+        await api.submit(); expect(globalThis.Atria.getContext().generate).toHaveBeenCalledTimes(1);
+        api.clearDraft(); expect(api.getDraft()).toBe('');
+        expect(() => api.setDraft({ html: '<script>' })).toThrow(/Invalid/);
+        product.dispose();
+    });
     let runtime;
 
     beforeEach(() => {
@@ -46,7 +60,8 @@ describe('A6 Atria-native Play product', () => {
                 ],
             },
         };
-        globalThis.Atria = { nativeSessionRuntime: runtime };
+        const generate = jest.fn(async () => 'Generated');
+        globalThis.Atria = { nativeSessionRuntime: runtime, getContext: () => ({ generate }) };
         document.body.dataset.atriaNativeSessionActive = 'true';
     });
 
@@ -98,7 +113,8 @@ describe('A6 Atria-native Play product', () => {
         product.composer.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
         await flush();
 
-        expect(clicked).toHaveBeenCalledTimes(1);
+        expect(clicked).not.toHaveBeenCalled();
+        expect(globalThis.Atria.getContext().generate).toHaveBeenCalledWith('normal');
         expect(abiTextarea.value).toBe('Take the northern path.');
         expect(product.textarea.value).toBe('');
         expect(runtime.snapshot.timeline).toHaveLength(2);
@@ -158,7 +174,8 @@ describe('A6 Atria-native Play product', () => {
         product.textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
         expect(clicked).not.toHaveBeenCalled();
         product.textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }));
-        expect(clicked).toHaveBeenCalledTimes(1);
+        expect(clicked).not.toHaveBeenCalled();
+        expect(globalThis.Atria.getContext().generate).toHaveBeenCalledWith('normal');
         expect(document.getElementById('send_textarea').value).toBe('A choice');
         product.dispose();
     });

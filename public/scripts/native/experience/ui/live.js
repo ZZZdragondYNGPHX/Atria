@@ -6,6 +6,10 @@ import { loadGameComponentDefinition } from './package.js';
 import { createComponentUiRuntime } from './runtime.js';
 import { createSelectorRuntime } from './selectors.js';
 import { createSurfaceHost } from './surfaces.js';
+import { loadGamePackageJsonResource, loadExperienceData } from '../package-loader.js';
+import { compileUiDocument } from './v2-document.js';
+import { mountUiDocument } from './v2-runtime.js';
+import { json } from './v2-values.js';
 
 const EXPERIENCE_MODES = new Set(['text', 'component', 'hybrid', 'full']);
 
@@ -58,7 +62,7 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
     ];
 
     const isFull = mode === 'full';
-    const adapter = isFull ? null : createAtriaSurfaceAdapter(documentRef, {
+    const adapter = createAtriaSurfaceAdapter(documentRef, {
         mode,
         shell: shellFoundation,
         nativePlayHost,
@@ -76,7 +80,7 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
 
     const surfaceHost = createSurfaceHost({
         resolveSurface(surfaceId) {
-            if (isFull) return surfaceId === 'app.root' ? fullHost.root : null;
+            if (isFull && surfaceId === 'app.root') return fullHost.root;
             return adapter.resolveSurface(surfaceId);
         },
         createElement: tag => documentRef.createElement(tag),
@@ -119,18 +123,30 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
     });
 
     let mounted = null;
+    let documentRuntime = null;
     try {
-        const definition = await loadGameComponentDefinition(packageState, {
-            document: documentRef,
-            window: options.window || globalThis.window,
-            fetchImpl: options.fetchImpl,
-            headers: options.headers || {},
-            nativePlayHost,
-        });
-        if (!definition) throw new Error(mode + ' Experience did not resolve a Component Model');
-        mounted = await componentRuntime.mountComponent(definition);
+        if (experience.componentModelVersion === 2) {
+            const definition = compileUiDocument(await loadGamePackageJsonResource(packageState, experience.component, options), { mode });
+            const data = json(await loadExperienceData(packageState, options));
+            documentRuntime = mountUiDocument(definition, {
+                ...options, document: documentRef, window: options.window || globalThis.window, surfaceHost, selectors, worldSession, data, nativePlayHost,
+                composer: options.composer || nativePlayHost?.product?.composerApi,
+                stateStorage: options.createStateStorage?.(definition, packageState),
+            });
+        } else {
+            const definition = await loadGameComponentDefinition(packageState, {
+                document: documentRef,
+                window: options.window || globalThis.window,
+                fetchImpl: options.fetchImpl,
+                headers: options.headers || {},
+                nativePlayHost,
+            });
+            if (!definition) throw new Error(mode + ' Experience did not resolve a Component Model');
+            mounted = await componentRuntime.mountComponent(definition);
+        }
         fullHost?.activate();
     } catch (error) {
+        documentRuntime?.dispose();
         await componentRuntime.unmountAll();
         surfaceHost.unmountAll();
         fullHost?.dispose();
@@ -152,11 +168,14 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
             return contributions.list(query);
         },
         refresh() {
-            return componentRuntime.refreshSelectors();
+            const changed = componentRuntime.refreshSelectors();
+            documentRuntime?.refresh();
+            return changed;
         },
         async dispose() {
             if (disposed) return;
             disposed = true;
+            documentRuntime?.dispose();
             await componentRuntime.unmountAll();
             surfaceHost.unmountAll();
             fullHost?.dispose();

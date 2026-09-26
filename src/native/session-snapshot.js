@@ -7,7 +7,7 @@ export const SESSION_CORE_NAMESPACE = 'atri_session_core';
 export const TIMELINE_NAMESPACE = 'atri_timeline';
 export const KNOWLEDGE_NAMESPACE = 'atri_knowledge';
 export const RESERVED_SESSION_NAMESPACES = Object.freeze([
-    SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, 'atri_world_selection',
+    SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, 'atri_world_selection', 'atri_action_receipts',
 ]);
 
 export async function readCheckedDocument(tx, key) {

@@ -1,4 +1,10 @@
 export const SHELL_TEXT_KEYS = Object.freeze({
+    'Check this field.': 'atria.experience.p1.check_field',
+    'Check the highlighted fields.': 'atria.experience.p1.check_fields',
+    'Working…': 'atria.experience.p1.working',
+    'Load more': 'atria.experience.p1.load_more',
+    'Generation is already running.': 'atria.experience.p1.generating',
+    'Native Composer is not ready.': 'atria.experience.p1.composer_not_ready',
     'Stop generation before changing resource choices.': 'atria.knowledge.workflow.stop_generation',
     'All targets': 'atria.knowledge.workflow.all_targets',
     'Configure Worlds & Knowledge': 'atria.knowledge.workflow.0',

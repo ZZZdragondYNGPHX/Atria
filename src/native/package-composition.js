@@ -1,4 +1,5 @@
 import { freezePackagePromptPrograms } from './model-prompt-runtime/package-freeze.js';
+import { validateExperienceResources } from './experience-validation.js';
 import { createHash } from 'node:crypto';
 
 import {
@@ -159,6 +160,7 @@ export async function buildProjectPackage({
     });
 
     const sourceFiles = await projectStore.readBuildFiles(handle, projectId);
+    validateExperienceResources(manifest, sourceFiles, new Map([...assetPayloads].map(([key, item]) => [key, item.bytes])), { lower: true });
     const container = buildAtriaPackageContainer({
         manifest,
         sourceFiles,
@@ -208,6 +210,7 @@ export class PackageInstaller {
 
         const inspected = inspectAtriaPackageContainer(archive);
         const manifest = inspected.manifest;
+        validateExperienceResources(manifest, inspected.sourceFiles, inspected.assets);
         const packageContentHash = digest(archive);
         const packageVersion = assertPackageVersion({
             packageVersionId: manifest.packageVersionId,

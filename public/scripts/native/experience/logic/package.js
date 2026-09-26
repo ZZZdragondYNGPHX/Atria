@@ -1,4 +1,5 @@
-import { loadGamePackageJsonResource } from '../package-loader.js';
+import { loadGamePackageJsonResource, loadExperienceData } from '../package-loader.js';
+import { json } from '../ui/v2-values.js';
 import { compileDeclarativeLogic } from './declarative.js';
 
 export async function loadGameLogicDefinition(packageState, options = {}) {
@@ -23,7 +24,8 @@ export async function loadGameLogicDefinition(packageState, options = {}) {
         fetchImpl: options.fetchImpl,
         headers: options.headers || {},
     });
-    const compiled = compileDeclarativeLogic(raw);
+    const data = json(await loadExperienceData(packageState, options));
+    const compiled = compileDeclarativeLogic(raw, { data });
 
     return {
         commands: [...compiled.commands],

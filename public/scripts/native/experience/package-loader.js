@@ -132,3 +132,22 @@ export async function loadGamePackageJsonResource(packageState, relativePath, op
         );
     }
 }
+
+export async function loadExperienceData(packageState, options = {}) {
+    const entries = packageState.descriptor?.experienceContract?.dataResources || [];
+    const result = {};
+    const names = new Set(entries.map(ref => ref.resourceId));
+    for (const ref of entries) {
+        const response = await postJson('runtime/resource', { sessionId: sessionIdOf(packageState), resourceId: ref.resourceId }, options);
+        const path = ref.resourceId.split('.'); let target = result;
+        for (const segment of path) if (!segment || ['__proto__', 'constructor', 'prototype'].includes(segment)) throw new Error('Unsafe Package Data identifier');
+        for (let index = 0; index < path.length - 1; index++) {
+            const segment = path[index];
+            if (!segment || names.has(path.slice(0, index + 1).join('.'))) throw new Error('Overlapping Package Data identifiers');
+            target[segment] ??= {}; target = target[segment];
+        }
+        if (Object.hasOwn(target, path.at(-1))) throw new Error('Overlapping Package Data identifiers');
+        target[path.at(-1)] = await response.json();
+    }
+    return result;
+}

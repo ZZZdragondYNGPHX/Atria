@@ -62,6 +62,13 @@ function experienceRuntimeSource(value) {
     if (value.component === undefined) {
         throw new TypeError(contract.mode + ' Experience requires a declarative component resource');
     }
+    if (contract.componentModelVersion === 2) {
+        if (value.surface !== undefined) throw new TypeError('Component v2 surfaces belong to document views');
+        return Object.freeze({ ...contract,
+            component: runtimeJsonPath(value.component, 'Native Runtime experience.component'),
+            ...(value.selectors === undefined ? {} : { selectors: runtimeJsonPath(value.selectors, 'Native Runtime experience.selectors') }),
+        });
+    }
     const surface = String(value.surface || 'app.root').trim();
     if (!EXPERIENCE_SURFACES.has(surface)) {
         throw new TypeError(`Native Runtime experience.surface '${surface}' is unsupported`);

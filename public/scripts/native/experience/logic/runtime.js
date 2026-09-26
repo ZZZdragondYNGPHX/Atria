@@ -205,7 +205,7 @@ export function createGameLogicRuntime(options = {}) {
             });
         }
 
-        if (initialEvents.length === 0) {
+        if (initialEvents.length === 0 && !options.actionRequest) {
             return {
                 ok: true,
                 status: 'no_change',
@@ -265,7 +265,7 @@ export function createGameLogicRuntime(options = {}) {
         try {
             projected = options.simulate === true
                 ? await world.simulateEvents(transactionEvents)
-                : await world.commitEvents(transactionEvents);
+                : await world.commitEvents(transactionEvents, options.actionRequest);
         } catch (error) {
             const isSimulation = options.simulate === true;
             throw wrapGameLogicError(error, {
@@ -316,8 +316,8 @@ export function createGameLogicRuntime(options = {}) {
                 args: clone(result.args),
             };
         },
-        dispatch(commandId, args) {
-            const run = () => execute(commandId, args, { simulate: false });
+        dispatch(commandId, args, actionRequest = null) {
+            const run = () => execute(commandId, args, { simulate: false, actionRequest });
             const pending = transactionQueue.then(run, run);
             transactionQueue = pending.catch(() => undefined);
             return pending;

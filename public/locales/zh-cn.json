@@ -8419,5 +8419,12 @@
     "${0} modules": "${0} 个模块",
     "${0} parameters": "${0} 个参数",
     "${0} operations": "${0} 项操作",
-    "Configured": "已配置"
+    "Configured": "已配置",
+    "atria.experience.p1.check_field": "请检查此字段。",
+    "atria.experience.p1.check_fields": "请检查标出的字段。",
+    "atria.experience.p1.working": "处理中…",
+    "atria.experience.p1.load_more": "加载更多",
+    "atria.experience.p1.generating": "正在生成中。",
+    "atria.experience.p1.composer_not_ready": "请输入内容，并确认当前会话可编辑。",
+    "atria.experience.p1.generation_unavailable": "生成服务暂不可用。"
 }

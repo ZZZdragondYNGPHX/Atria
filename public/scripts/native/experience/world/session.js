@@ -148,9 +148,9 @@ export async function createGameWorldSession(options = {}) {
         };
     }
 
-    async function commitEvents(eventDrafts) {
+    async function commitEvents(eventDrafts, actionRequest = null) {
         const projected = projectEvents(eventDrafts);
-        if (projected.committed.length === 0) {
+        if (projected.committed.length === 0 && !actionRequest) {
             return {
                 state: clone(projected.state),
                 committed: [],
@@ -162,7 +162,7 @@ export async function createGameWorldSession(options = {}) {
         const next = await nativeRuntime.commitStatePatch({
             atri_world_state: nextWorldRoot(nativeRuntime, definition, projected.state),
             [GAME_RUNTIME_STATE_NAMESPACE]: projected.runtimeState,
-        });
+        }, { expectedRevisionId: projected.identity.revisionId, actionRequest });
         return {
             state: getState(),
             committed: clone(projected.committed),
@@ -196,8 +196,36 @@ export async function createGameWorldSession(options = {}) {
         },
     });
 
+    let actionQueue = Promise.resolve();
+    function dispatchAction(request) {
+        const run = async () => {
+            const existing = (nativeRuntime.snapshot.states.atri_action_receipts?.receipts ?? []).find(item => item.idempotencyKey === request.idempotencyKey);
+            if (existing) {
+                if (existing.actionId !== request.actionId || existing.commandId !== request.commandId || JSON.stringify(existing.args) !== JSON.stringify(request.args)
+                    || existing.compensation !== (request.compensation ?? null) || existing.compensates !== (request.compensates ?? null)) throw new Error('Action idempotency key conflict');
+                return clone(existing);
+            }
+            if (request.expectedRevisionId !== nativeIdentity(nativeRuntime).revisionId) throw new Error('Action revision is stale');
+            const result = await logicRuntime.dispatch(request.commandId, request.args, request);
+            if (!result.ok) throw new Error(result.errors?.join('; ') || 'Action validation failed');
+            const receipt = (nativeRuntime.snapshot.states.atri_action_receipts?.receipts ?? []).find(item => item.idempotencyKey === request.idempotencyKey);
+            if (!receipt) throw new Error('Action receipt is missing');
+            return clone(receipt);
+        };
+        const pending = actionQueue.then(run, run); actionQueue = pending.catch(() => {}); return pending;
+    }
+
     return Object.freeze({
         definition: Object.freeze(clone(definition)),
+
+        dispatchAction,
+        getActionReceipts: () => clone(nativeRuntime.snapshot.states.atri_action_receipts?.receipts ?? []),
+        compensateAction(receipt) {
+            if (!receipt?.compensation) throw new Error('No compensation command');
+            return dispatchAction({ actionId: receipt.actionId, commandId: receipt.compensation,
+                args: { receiptId: receipt.receiptId }, expectedRevisionId: nativeIdentity(nativeRuntime).revisionId,
+                idempotencyKey: 'undo:' + receipt.receiptId, compensation: null, compensates: receipt.receiptId });
+        },
 
         async syncBranch() {
             return {

@@ -2,6 +2,7 @@ import {
     compileFormula,
     evaluateFormulaAst,
 } from './formula.js';
+import { lowerDeclarativeMutations } from './mutations.js';
 
 const BLOCKED_PATH_SEGMENTS = new Set(['__proto__', 'prototype', 'constructor']);
 const PATH_SEGMENT_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*$/;
@@ -32,9 +33,9 @@ function normalizeOptionalArray(value, label) {
     return value;
 }
 
-function compileValueTemplate(value, label) {
+function compileValueTemplate(value, label, options = {}) {
     if (Array.isArray(value)) {
-        const items = value.map((item, index) => compileValueTemplate(item, label + '[' + index + ']'));
+        const items = value.map((item, index) => compileValueTemplate(item, label + '[' + index + ']', options));
         return Object.freeze({ kind: 'array', items: Object.freeze(items) });
     }
 
@@ -46,13 +47,14 @@ function compileValueTemplate(value, label) {
             }
             return Object.freeze({
                 kind: 'formula',
-                ast: compileFormula(value.formula),
+                data: options.data,
+                ast: compileFormula(value.formula, options.data === undefined ? {} : { strings: true, roots: ['world', 'args', 'selectors', 'data'] }),
             });
         }
 
         const entries = Object.entries(value).map(([key, child]) => [
             key,
-            compileValueTemplate(child, label + '.' + key),
+            compileValueTemplate(child, label + '.' + key, options),
         ]);
         return Object.freeze({
             kind: 'object',
@@ -89,6 +91,7 @@ function evaluateTemplate(template, context) {
     if (template.kind === 'formula') {
         return evaluateFormulaAst(template.ast, {
             world: context.world,
+            data: template.data,
             args: context.args,
             selectors: context.selectors || {},
         }, {
@@ -98,7 +101,7 @@ function evaluateTemplate(template, context) {
     throw new Error(`Unsupported declarative template kind '${String(template.kind)}'`);
 }
 
-function compileEventTemplate(raw, label) {
+function compileEventTemplate(raw, label, options = {}) {
     if (!isPlainObject(raw)) throw new Error(label + ' must be an object');
     assertKnownFields(raw, new Set(['type', 'payload']), label);
 
@@ -107,7 +110,7 @@ function compileEventTemplate(raw, label) {
 
     return Object.freeze({
         type,
-        payload: compileValueTemplate(raw.payload ?? {}, label + '.payload'),
+        payload: compileValueTemplate(raw.payload ?? {}, label + '.payload', options),
     });
 }
 
@@ -118,7 +121,7 @@ function evaluateEventTemplate(template, context) {
     };
 }
 
-function compileValidator(raw, index, commandId) {
+function compileValidator(raw, index, commandId, options = {}) {
     if (!isPlainObject(raw)) {
         throw new Error(`Declarative command '${commandId}' validator ${index} must be an object`);
     }
@@ -131,7 +134,7 @@ function compileValidator(raw, index, commandId) {
         throw new Error(`Declarative command '${commandId}' validator ${index} requires formula`);
     }
 
-    const ast = compileFormula(raw.formula);
+    const ast = compileFormula(raw.formula, options.data === undefined ? {} : { strings: true, roots: ['world', 'args', 'selectors', 'data'] });
     const id = typeof raw.id === 'string' && raw.id.trim()
         ? raw.id.trim()
         : 'validator_' + (index + 1);
@@ -143,6 +146,7 @@ function compileValidator(raw, index, commandId) {
         const result = evaluateFormulaAst(ast, {
             world,
             args,
+            data: options.data,
             selectors: {},
         });
         if (typeof result !== 'boolean') {
@@ -154,7 +158,7 @@ function compileValidator(raw, index, commandId) {
     return validator;
 }
 
-function normalizeAssignments(raw, type) {
+function normalizeAssignments(raw, type, options = {}) {
     if (!isPlainObject(raw) || Object.keys(raw).length === 0) {
         throw new Error(`Declarative reducer '${type}' requires non-empty assignments`);
     }
@@ -174,7 +178,7 @@ function normalizeAssignments(raw, type) {
         return Object.freeze({
             path,
             segments: Object.freeze(segments),
-            value: compileValueTemplate(value, `Reducer '${type}' assignment '${path}'`),
+            value: compileValueTemplate(value, `Reducer '${type}' assignment '${path}'`, options),
         });
     });
 }
@@ -196,7 +200,7 @@ function applyAssignment(target, assignment, value) {
     cursor[assignment.segments.at(-1)] = clone(value);
 }
 
-export function compileDeclarativeCommand(raw) {
+export function compileDeclarativeCommand(raw, options = {}) {
     if (!isPlainObject(raw)) throw new Error('Declarative command must be an object');
     assertKnownFields(
         raw,
@@ -211,12 +215,12 @@ export function compileDeclarativeCommand(raw) {
         `Declarative command '${id}' events`,
     ).map((event, index) => compileEventTemplate(
         event,
-        `Declarative command '${id}' event ${index}`,
+        `Declarative command '${id}' event ${index}`, options,
     ));
     const validators = normalizeOptionalArray(
         raw.validators,
         `Declarative command '${id}' validators`,
-    ).map((validator, index) => compileValidator(validator, index, id));
+    ).map((validator, index) => compileValidator(validator, index, id, options));
 
     let llm;
     if (raw.llm !== undefined) {
@@ -247,7 +251,7 @@ export function compileDeclarativeCommand(raw) {
     };
 }
 
-export function compileDeclarativeReducer(raw) {
+export function compileDeclarativeReducer(raw, options = {}) {
     if (!isPlainObject(raw)) throw new Error('Declarative reducer must be an object');
     assertKnownFields(
         raw,
@@ -257,7 +261,7 @@ export function compileDeclarativeReducer(raw) {
 
     const type = typeof raw.type === 'string' ? raw.type.trim() : '';
     if (!type) throw new Error('Declarative reducer requires type');
-    const assignments = normalizeAssignments(raw.assign, type);
+    const assignments = normalizeAssignments(raw.assign, type, options);
 
     return {
         type,
@@ -278,7 +282,7 @@ export function compileDeclarativeReducer(raw) {
     };
 }
 
-export function compileDeclarativeRule(raw) {
+export function compileDeclarativeRule(raw, options = {}) {
     if (!isPlainObject(raw)) throw new Error('Declarative rule must be an object');
     assertKnownFields(
         raw,
@@ -293,14 +297,14 @@ export function compileDeclarativeRule(raw) {
         if (typeof raw.when !== 'string' || !raw.when.trim()) {
             throw new Error(`Declarative rule '${id}' when must be a non-empty string`);
         }
-        whenAst = compileFormula(raw.when);
+        whenAst = compileFormula(raw.when, options.data === undefined ? {} : { strings: true, roots: ['world', 'args', 'selectors', 'data'] });
     }
     const events = normalizeOptionalArray(
         raw.events,
         `Declarative rule '${id}' events`,
     ).map((event, index) => compileEventTemplate(
         event,
-        `Declarative rule '${id}' event ${index}`,
+        `Declarative rule '${id}' event ${index}`, options,
     ));
 
     return {
@@ -311,6 +315,7 @@ export function compileDeclarativeRule(raw) {
             when(context) {
                 const result = evaluateFormulaAst(whenAst, {
                     world: context.state,
+                    data: options.data,
                     args: context.event?.payload ?? {},
                     selectors: {
                         commandArgs: context.args ?? {},
@@ -327,6 +332,7 @@ export function compileDeclarativeRule(raw) {
         emit(context) {
             return events.map(event => evaluateEventTemplate(event, {
                 world: context.state,
+                data: options.data,
                 args: context.event?.payload ?? {},
                 selectors: {
                     commandArgs: context.args ?? {},
@@ -337,7 +343,7 @@ export function compileDeclarativeRule(raw) {
     };
 }
 
-export function compileDeclarativeInterpretationMapping(raw) {
+export function compileDeclarativeInterpretationMapping(raw, options = {}) {
     if (!isPlainObject(raw)) {
         throw new Error('Declarative interpretation mapping must be an object');
     }
@@ -360,7 +366,7 @@ export function compileDeclarativeInterpretationMapping(raw) {
 
     const argsTemplate = compileValueTemplate(
         raw.args ?? {},
-        `Declarative interpretation mapping '${eventType}' args`,
+        `Declarative interpretation mapping '${eventType}' args`, options,
     );
     let whenAst = null;
     if (raw.when !== undefined) {
@@ -369,7 +375,7 @@ export function compileDeclarativeInterpretationMapping(raw) {
                 `Declarative interpretation mapping '${eventType}' when must be a non-empty string`,
             );
         }
-        whenAst = compileFormula(raw.when);
+        whenAst = compileFormula(raw.when, options.data === undefined ? {} : { strings: true, roots: ['world', 'args', 'selectors', 'data'] });
     }
 
     return Object.freeze({
@@ -378,6 +384,7 @@ export function compileDeclarativeInterpretationMapping(raw) {
             const formulaContext = {
                 world: context.world,
                 args: context.interpretation,
+                data: options.data,
                 selectors: {
                     observation: context.observation ?? {},
                 },
@@ -400,8 +407,9 @@ export function compileDeclarativeInterpretationMapping(raw) {
     });
 }
 
-export function compileDeclarativeLogic(raw = {}) {
+export function compileDeclarativeLogic(raw = {}, options = {}) {
     if (!isPlainObject(raw)) throw new Error('Declarative logic root must be an object');
+    if (raw.schemaVersion === 2) raw = lowerDeclarativeMutations(raw);
     assertKnownFields(
         raw,
         new Set(['commands', 'reducers', 'rules', 'interpretations']),
@@ -411,19 +419,19 @@ export function compileDeclarativeLogic(raw = {}) {
     const commands = normalizeOptionalArray(
         raw.commands,
         'Declarative logic commands',
-    ).map(compileDeclarativeCommand);
+    ).map(item => compileDeclarativeCommand(item, options));
     const reducers = normalizeOptionalArray(
         raw.reducers,
         'Declarative logic reducers',
-    ).map(compileDeclarativeReducer);
+    ).map(item => compileDeclarativeReducer(item, options));
     const rules = normalizeOptionalArray(
         raw.rules,
         'Declarative logic rules',
-    ).map(compileDeclarativeRule);
+    ).map(item => compileDeclarativeRule(item, options));
     const interpretations = normalizeOptionalArray(
         raw.interpretations,
         'Declarative logic interpretations',
-    ).map(compileDeclarativeInterpretationMapping);
+    ).map(item => compileDeclarativeInterpretationMapping(item, options));
 
     return Object.freeze({
         commands: Object.freeze(commands),

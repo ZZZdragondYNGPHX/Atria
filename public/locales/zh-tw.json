@@ -8282,5 +8282,12 @@
     "${0} modules": "${0} 個模組",
     "${0} parameters": "${0} 個參數",
     "${0} operations": "${0} 項操作",
-    "Configured": "已設定"
+    "Configured": "已設定",
+    "atria.experience.p1.check_field": "請檢查此欄位。",
+    "atria.experience.p1.check_fields": "請檢查標出的欄位。",
+    "atria.experience.p1.working": "處理中…",
+    "atria.experience.p1.load_more": "載入更多",
+    "atria.experience.p1.generating": "正在生成中。",
+    "atria.experience.p1.composer_not_ready": "請輸入內容，並確認目前工作階段可編輯。",
+    "atria.experience.p1.generation_unavailable": "生成服務暫不可用。"
 }

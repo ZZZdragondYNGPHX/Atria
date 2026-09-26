@@ -317,12 +317,12 @@ export function assertExperienceContract(value) {
         }
         return Object.freeze({ mode: 'text' });
     }
-    if (value.componentModelVersion !== ATRIA_COMPONENT_MODEL_VERSION) {
-        throw new TypeError('Experience.componentModelVersion must be 1 for ' + value.mode);
+    if (![1, 2].includes(value.componentModelVersion)) {
+        throw new TypeError('Experience.componentModelVersion must be 1 or 2 for ' + value.mode);
     }
     return Object.freeze({
         mode: value.mode,
-        componentModelVersion: ATRIA_COMPONENT_MODEL_VERSION,
+        componentModelVersion: value.componentModelVersion,
     });
 }
 

@@ -55,6 +55,7 @@ export function createNativeSessionRouter(getServices = services) {
             }
             if (command?.type === 'runtime') {
                 res.json(await core.applyRuntimeCommit(handle, sessionId, {
+                    actionRequest: command.actionRequest ?? null,
                     commands,
                     statePatch: command.statePatch ?? {},
                     deleteNamespaces: command.deleteNamespaces ?? [],
@@ -108,6 +109,16 @@ export function createNativeSessionRouter(getServices = services) {
         }
         // Runtime v1 executes only host-validated declarative resources. Do not
         // provide an executable JS/module transport from package source.
+        if (req.body?.resourceId !== undefined) {
+            const resolved = resolveNativeRuntimePackage(opened, snapshot.session.entryPointId);
+            const ref = resolved.descriptor.experienceContract?.dataResources.find(item => item.resourceId === req.body.resourceId);
+            if (!ref || req.body.path !== undefined) throw new TypeError('Unknown Package Data reference');
+            const bytes = opened.assets.get(ref.assetId);
+            if (!bytes || bytes.length > 2 * 1024 * 1024 || createHash('sha256').update(bytes).digest('hex') !== ref.contentHash) throw new TypeError('Invalid exact Package Data resource');
+            const value = JSON.parse(bytes.toString('utf8'));
+            res.set('Cache-Control', 'private, no-store').json(value);
+            return;
+        }
         const path = String(req.body?.path || '').trim();
         if (
             !path

@@ -11,6 +11,7 @@ import {
     SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, RESERVED_SESSION_NAMESPACES,
 } from './session-snapshot.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
+import { ACTION_RECEIPTS_NAMESPACE, assertActionRequest, actionReceipts, assertCompensation } from './action-receipts.js';
 
 function timelineSelection(entry) {
     return { messageId: entry.messageId, branchId: entry.branchId,
@@ -214,9 +215,19 @@ export class SessionCore {
 
     async _publish(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
         graph = base.graph, branchId = base.revision?.branchId ?? base.session.activeBranchId,
-        entries = [], variants = [], branches = [] } = {}) {
+        entries = [], variants = [], branches = [], actionRequest = null } = {}) {
         validateWorldState(states, base.manifest, base.entryPoint);
         const revisionId = createNativeId('revision');
+        if (actionRequest) {
+            const previous = actionReceipts(base);
+            if (previous.length >= 2048) throw new TypeError('Action receipt retention limit reached');
+            const previousEvents = new Set((base.states.atri_game_runtime?.events ?? []).map(event => event.id));
+            const eventRefs = (states.atri_game_runtime?.events ?? []).filter(event => !previousEvents.has(event.id)).map(event => event.id);
+            states = { ...states, [ACTION_RECEIPTS_NAMESPACE]: { schemaVersion: 1, receipts: [...previous, {
+                ...actionRequest, receiptId: 'action:' + revisionId, status: 'committed', baseRevisionId: base.revision.revisionId,
+                committedRevisionId: revisionId, branchId, eventRefs,
+            }] } };
+        }
         const core = { schemaVersion: 1, parentRevisionId: base.session.headRevisionId,
             branches: graph.map(node => ({ branchId: node.branchId, forkRevisionId: node.forkRevisionId,
                 headRevisionId: node.branchId === branchId ? revisionId : node.headRevisionId })) };
@@ -295,8 +306,20 @@ export class SessionCore {
         commands = [],
         statePatch = {},
         deleteNamespaces = [],
+        actionRequest = null,
     } = {}, { expectedRevisionId } = {}) {
-        const base = await this._current(handle, sessionId, expectedRevisionId);
+        const request = actionRequest === null ? null : assertActionRequest(actionRequest);
+        const base = await this._current(handle, sessionId, request ? undefined : expectedRevisionId);
+        if (request) {
+            const receipts = actionReceipts(base);
+            const existing = receipts.find(receipt => receipt.idempotencyKey === request.idempotencyKey);
+            if (existing) {
+                if (existing.fingerprint !== request.fingerprint) throw new TypeError('Action idempotency key conflict');
+                return base;
+            }
+            if (expectedRevisionId !== request.expectedRevisionId || base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
+            assertCompensation(request, receipts);
+        }
         const timelineChanges = appendRuntimeTimeline(this, base, commands);
         const { values, deletes } = validateRuntimeStateChanges(handle, sessionId, statePatch, deleteNamespaces);
         const states = { ...base.states, ...values };
@@ -305,13 +328,14 @@ export class SessionCore {
         const changedState = Object.keys(values).some(namespace =>
             hashNativeDocument(base.states[namespace] ?? null) !== hashNativeDocument(values[namespace]))
             || deletes.some(namespace => Object.prototype.hasOwnProperty.call(base.states, namespace));
-        if (timelineChanges.entries.length === 0 && !changedState) return base;
+        if (timelineChanges.entries.length === 0 && !changedState && !request) return base;
 
         return this._publish(handle, base, {
             timeline: timelineChanges.timeline,
             entries: timelineChanges.entries,
             variants: timelineChanges.variants,
             states,
+            actionRequest: request,
         });
     }
 

@@ -1984,3 +1984,24 @@ body[data-atria-native-session-active="true"] #char_connections_button {
 }
 .atria-command-search-status:empty { display: none; }
 .atria-command-search-status summary { cursor: pointer; }
+
+/* Host-owned declarative Experience UI v2. Packages supply no CSS. */
+.atri-ui-document { color: var(--atri-text-primary); font-family: var(--atri-font-sans); padding: 16px; min-width: 0; }
+.atri-ui-document [hidden] { display: none !important; }
+.atri-ui-stack, .atri-ui-container, .atri-ui-form { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.atri-ui-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 12px; }
+.atri-ui-scroll { max-height: 60dvh; overflow: auto; }
+.atri-ui-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; font-size: 14px; }
+.atri-ui-field input, .atri-ui-field textarea, .atri-ui-field select, .atri-ui-document button, .atri-ui-confirm button { font: inherit; color: var(--atri-text-primary); background: var(--atri-surface-2); border: 1px solid var(--atri-separator-strong); border-radius: 8px; min-height: 44px; padding: 10px 12px; max-width: 100%; }
+.atri-ui-field input:not([type=checkbox]), .atri-ui-field textarea, .atri-ui-field select { width: 100%; box-sizing: border-box; }
+.atri-ui-field input[type=checkbox] { align-self: flex-start; width: 24px; }
+.atri-ui-document button { cursor: pointer; }
+.atri-ui-document button:disabled { opacity: .5; cursor: not-allowed; }
+.atri-ui-document :focus-visible, .atri-ui-confirm :focus-visible { outline: 2px solid var(--atri-accent); outline-offset: 3px; }
+.atri-ui-error, .atri-ui-feedback[role=alert] { color: var(--atri-danger, #e87878); font-size: 14px; }
+.atri-ui-feedback:empty, .atri-ui-error:empty { display: none; }
+.atri-ui-repeat { display: flex; flex-direction: column; gap: 12px; }
+.atri-ui-repeat > .atri-ui-node { padding: 12px; border: 1px solid var(--atri-separator); border-radius: 8px; }
+.atri-ui-badge { align-self: flex-start; background: var(--atri-surface-3); border-radius: 6px; padding: 4px 8px; }
+.atri-ui-confirm { color: var(--atri-text-primary); background: var(--atri-surface-1); border: 1px solid var(--atri-separator-strong); border-radius: 12px; max-width: min(420px, calc(100vw - 32px)); padding: 24px; }
+.atri-ui-confirm button + button { margin-inline-start: 8px; }

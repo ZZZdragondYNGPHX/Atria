@@ -208,7 +208,7 @@ export class NativeSessionRuntime {
         });
     }
 
-    commitStatePatch(statePatch = {}, { deleteNamespaces = [] } = {}) {
+    commitStatePatch(statePatch = {}, { deleteNamespaces = [], expectedRevisionId = null, actionRequest = null } = {}) {
         this.assertWritable();
         if (!statePatch || typeof statePatch !== 'object' || Array.isArray(statePatch)) {
             throw new TypeError('Native runtime state patch must be an object');
@@ -229,8 +229,9 @@ export class NativeSessionRuntime {
             if (this.snapshot.session.sessionId !== sessionId) {
                 this._failBarrier(committedTimelineMutation('Native Session changed during a queued state write'));
             }
-            if (Object.keys(patch).length === 0 && deletes.length === 0) return this.snapshot;
+            if (Object.keys(patch).length === 0 && deletes.length === 0 && !actionRequest) return this.snapshot;
             const previous = this.snapshot;
+            if (expectedRevisionId && expectedRevisionId !== previous.revision.revisionId) throw new Error('Native Action revision changed before commit');
             try {
                 const next = await this.request('command', {
                     sessionId,
@@ -239,6 +240,7 @@ export class NativeSessionRuntime {
                         type: 'runtime',
                         statePatch: patch,
                         deleteNamespaces: deletes,
+                        ...(actionRequest ? { actionRequest: copy(actionRequest) } : {}),
                     },
                 });
                 this.snapshot = next;
