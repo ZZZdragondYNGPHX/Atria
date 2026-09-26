@@ -7616,11 +7616,426 @@ Scoped Operation State 是多个现有 primitive 的共同 runtime projection：
 能力主表继续保持 **28 项**。
 
 
+### 26.46 新缺口 29 — Temporal Runtime / World Clock
+
+继续拆《银麒赎世》后，出现一个此前被 `Runtime Automation / World Process` 语法掩盖、但实际上还没有被定义的底层能力：
+
+> **Atria 目前没有一等的 Game World Clock / Temporal Model。**
+
+该样本大量玩法依赖：
+
+- 世界日期 / 时刻；
+- 末日倒计时；
+- 每日任务刷新；
+- 跨天据点日结；
+- 派遣返回日；
+- 事件到期；
+- 多日冷却；
+- NPC 状态自然回落；
+- 最近若干游戏日内的信息可见性；
+- 每 N 回合自动生成；
+- 现实时间 UI / network timeout；
+- retry / review / temporary undo window。
+
+旧实现因此同时维护了多种“时间”：
+
+- MVU 中的世界日期；
+- 末日倒计时；
+- 自己换算的 story day / D±N；
+- message / turn count；
+- `Date.now()`；
+- `setTimeout / setInterval`；
+- 各模块自己的 cooldown / lastDate / dueDay。
+
+这也是该卡历史上反复出现：
+
+- 跨天不触发；
+- 返回日显示错误；
+- cooldown 字段写方 / 读方尺度不一致；
+- 跳过若干天后任务没有补跑；
+- 同一状态在不同模块使用不同天尺；
+
+这类 bug 的根本原因之一。
+
+当前 Atria `main@4dab353a`：
+
+- Session / Revision metadata 有现实 epoch timestamp；
+- World State 可以由 Package 自己保存任意日期字段；
+- Runtime Automation 草案已经提出 `clock / world-time` trigger；
+- Studio Test Bench 草案已经提出 clock fixture；
+
+但没有 canonical Temporal Runtime。
+
+因此新增第 29 项：
+
+> **Temporal Runtime / World Clock & Schedule**
+
+### 26.47 必须先区分四种时间
+
+Atria 不应该再让一个 `time` 字段同时承担所有语义。
+
+至少区分：
+
+#### 1. Wall Clock
+
+现实时间。
+
+用于：
+
+- provider timeout；
+- UI debounce；
+- toast merge；
+- network retry backoff；
+- diagnostic timestamp。
+
+默认**不能直接改变游戏世界 authority**。
+
+#### 2. Turn / Revision Logical Time
+
+由：
+
+- Timeline sequence；
+- Session Revision；
+- Turn / Attempt；
+
+天然提供的逻辑顺序。
+
+用于：
+
+- every N turns；
+- retry / supersede；
+- stale-result；
+- recent-turn context。
+
+它不是游戏世界日期。
+
+#### 3. World Time
+
+Package/Game 内的权威虚构时间。
+
+例如：
+
+- 第 12 天；
+- 2026-09-29 18:00；
+- 甲子年二月廿二日；
+- 第 3000 个 simulation tick。
+
+这是 Branch-aware / Revision-aware authority。
+
+#### 4. Activity / Task Elapsed Time
+
+某个局部 Activity / Task 内：
+
+- 回合数；
+- countdown；
+- animation / interaction elapsed；
+- timeout budget。
+
+它通常不能直接当作 World Time，除非 Activity settlement 明确产生 `advance_world_time` outcome。
+
+### 26.48 World Time 不能只是任意字符串
+
+如果 Package 只保存：
+
+`"2026年9月17日晚上"`
+
+Host 就无法可靠：
+
+- 比较先后；
+- 算 duration；
+- 判断 deadline；
+- 做 catch-up；
+- 做 deterministic test；
+- 做 schedule；
+- 做 cooldown；
+- 在 custom calendar 与 UI label 之间分离。
+
+因此候选 Native temporal contract：
+
+```text
+TemporalProfile
+├─ clockId
+├─ base unit
+├─ calendar projection
+│  ├─ gregorian
+│  └─ custom declarative calendar
+└─ formatting policy
+
+WorldInstant
+├─ clockId
+└─ tick
+
+WorldDuration
+├─ clockId
+└─ ticks
+
+WorldSchedule
+├─ scheduleId
+├─ dueAt
+├─ optional recurrence
+├─ catchUpPolicy
+└─ idempotency key
+```
+
+权威比较只使用：
+
+`clockId + tick`
+
+人类可读：
+
+- 日期；
+- 星期；
+- 时辰；
+- D+7；
+- 季节；
+
+全部由 Temporal Projection 派生。
+
+这样不会再出现：
+
+> “显示日期是一套、冷却判断又偷偷用另一套 day number。”
+
+### 26.49 World Clock 仍不能成为第二套 mutation authority
+
+Temporal Runtime 不允许：
+
+`clock.set("tomorrow")`
+
+Package-facing 合法路径仍然是：
+
+```text
+Action / World Process / Activity Settlement / Model Outcome
+        ↓
+typed advance-time proposal
+        ↓
+validate temporal policy
+        ↓
+World Command
+        ↓
+time.advanced Event
+        ↓
+World Reducer / Temporal state
+        ↓
+one Session Revision
+```
+
+因此：
+
+> **Temporal Runtime 提供统一时间语义与计算 primitive，不提供绕过 Command/Event/Reducer 的写口。**
+
+### 26.50 Runtime Automation 依赖 Temporal Runtime，而不是自己发明时间
+
+第 13 项此前已经提出：
+
+```text
+trigger:
+- turn
+- clock
+- world-time
+- event
+- state transition
+```
+
+现在应明确：
+
+- `turn` → Session logical sequence；
+- `world-time` → Temporal Runtime；
+- `clock` 若指 wall clock，必须显式标记 wall-clock policy。
+
+World Process 的：
+
+- deadline；
+- recurrence；
+- catch-up；
+- elapsed duration；
+
+都统一引用 Temporal primitive。
+
+因此第 29 项不是新的 scheduler。
+
+边界是：
+
+- **Temporal Runtime**：时间是什么、如何比较、如何投影；
+- **Runtime Automation / World Process**：什么时候因时间触发工作；
+- **Host Task Scheduler**：现实计算资源什么时候执行任务。
+
+三者不能合并。
+
+### 26.51 Gameplay authority 默认不能被 wall clock 偷偷推进
+
+为了保持：
+
+- Branch reproducibility；
+- Save reproducibility；
+- Studio deterministic scenario；
+- offline debugging；
+
+默认规则应为：
+
+> **现实时间流逝本身不自动等于 World Time 流逝。**
+
+如果某个游戏确实需要：
+
+- 现实一天 = 游戏一天；
+- 离线 8 小时后农场成熟；
+
+也不能让 Package 自己 `Date.now() - lastSeen` 后直接 patch World。
+
+应由 Host：
+
+```text
+wall-clock observation
+→ persisted external-time observation
+→ temporal policy
+→ deterministic elapsed proposal
+→ World Process catch-up
+→ committed Revision
+```
+
+这样“现实时间经过多少”也成为可追踪的外部输入，而不是隐藏副作用。
+
+### 26.52 Temporal Runtime 与其它能力的关系
+
+#### Activity
+
+Activity 可以：
+
+- 使用自己的 local turn / elapsed；
+- settlement 时提出 world-duration cost。
+
+例如：
+
+`battle took 18 world minutes`
+
+Runtime 再统一 commit。
+
+#### Workflow / Session App
+
+Quest / dispatch / inbox 可以保存：
+
+- createdAtWorld；
+- dueAtWorld；
+- expiresAtWorld；
+
+但不维护自己的 day parser。
+
+#### Epistemic Perspective
+
+Perspective Record 的：
+
+- witnessedAt；
+- toldAt；
+- rumor age；
+
+可引用 WorldInstant。
+
+“超过 2 游戏日的信息不再进入当前 Context”也能用同一时间语义完成。
+
+#### Conversation Thread
+
+thread message 可以同时拥有：
+
+- logical order；
+- world timestamp；
+- wall diagnostic timestamp。
+
+三者不混用。
+
+#### Auxiliary Task
+
+Task freshness 首先看：
+
+- Revision anchor；
+
+必要时再看：
+
+- WorldInstant constraint。
+
+#### Studio Test Bench
+
+必须能：
+
+- freeze World Clock；
+- advance duration；
+- jump to instant；
+- simulate catch-up；
+- assert schedule fired exactly once。
+
+### 26.53 Custom Calendar 也必须声明式
+
+Atria 不能只支持现实 Gregorian。
+
+角色游戏常见：
+
+- 修仙历；
+- 帝国历；
+- 季节轮；
+- 自定义时辰；
+- 无年月、只有 Day 1 / Day 2；
+- 抽象 simulation tick。
+
+因此 Calendar 只是：
+
+> `tick → human-readable fields`
+
+的 declarative projection。
+
+Package 可以定义：
+
+- units；
+- cycle lengths；
+- names；
+- formatting；
+
+但不能上传 JS date parser。
+
+这样《天书江湖录》的传统时辰、《银麒赎世》的末日 D±N、现代日期制，都能在同一个 Temporal Runtime 上表达。
+
+### 26.54 本轮正式新增第 29 项
+
+此前连续几轮都成功把新发现压回已有 primitive，没有继续扩表。
+
+但 Temporal Runtime 不能继续藏在第 13 项里，因为它同时被：
+
+- Action；
+- Workflow；
+- Activity；
+- Automation；
+- World Process；
+- Conversation；
+- Perspective；
+- Auxiliary Task；
+- Studio Test Bench；
+
+共同依赖。
+
+所以当前能力主表由 28 项增至 **29 项**。
+
+新增：
+
+29. **Temporal Runtime / World Clock & Schedule**。
+
+它不是：
+
+- real-time background scheduler；
+- arbitrary timer API；
+- `Date.now()` wrapper；
+- 第二套 World State。
+
+它是：
+
+> **让整个 Native Experience 对“什么时候发生、过去了多久、何时到期”使用同一种可分支、可重放、可测试的时间语义。**
+
+
 ## 二十七、修订记录
 
 ### 2026-09-26 — Discussion Draft v1.7
 
 继续用《银麒赎世》的主生成/任务审核/生图/世界动态/据点同步并行状态压力测试 streaming 与 UI runtime。将 Round 4 的“Draft narrative 可 streaming、authority finalize 后 commit”推广为 Host-owned Scoped Operation State / Operation Projection；明确 busy 必须按 semantic claim/conflict scope 判断，Package UI 可读取 queued/running/streaming/retrying/finalizing/stale 等状态，Presentation/Local UI 可并行而冲突 authority transaction 通过 Revision/CAS 串行。能力总数仍维持 28。
+
+### 2026-09-26 — Discussion Draft v1.7
+
+继续压力测试《银麒赎世》的长期时间系统。确认当前 World State 可自行保存时间字段、Runtime Automation 已引用 world-time、Studio 草案已有 clock fixture，但 `main` 尚无一等 Game World Clock。新增第 29 项 Temporal Runtime / World Clock & Schedule：严格区分 wall clock、Turn/Revision logical time、World Time 与 Activity/Task elapsed time，以 branch-aware canonical WorldInstant/Duration/Schedule 支撑 cooldown、deadline、cross-day process、catch-up、Perspective freshness 与 deterministic Studio tests；时间推进仍必须经 typed Command/Event/Reducer，不形成第二套 authority。
 
 ### 2026-09-26 — Discussion Draft v1.6
 
