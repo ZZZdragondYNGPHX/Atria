@@ -3354,14 +3354,9 @@ SillyTavern、MVU、Tavern Helper、CardApp、重前端 Regex 卡只作为：
 
 ### 23.8 第五组差距：状态分层
 
-高阶前端需要至少：
+Round 5 初始审计先识别出 World / Session / Local UI / Player Preference 四个大类；后续三个重型案例进一步证明这仍然过粗。当前正式分层已扩展为 World State、Session Application State、Activity State、Local UI State、Message-local UI State、Player Preference State，详见 §26.11。
 
-1. World State；
-2. Session-authoritative State；
-3. Local UI State；
-4. Player Preference State。
-
-Atria 当前前两层有较强基础，但 UI/Preference 层尚未形成 Native Package contract。
+Atria 当前 World 与底层 Session namespace 有较强基础，但 Package-facing Session Application / UI / Preference contract 尚未形成。
 
 必须避免再次把：
 
@@ -3452,19 +3447,21 @@ Atria 当前 Entry Point 不能等价覆盖：
 
 > Reply Variant / Branch facade。
 
-### 23.13 第十组差距：Conversation Presentation
+### 23.13 第十组差距：Conversation Presentation / Scoped Threads
 
-高阶 Hybrid 应能把同一 Timeline 以不同方式呈现：
+高阶 Hybrid 应能把主 Timeline 以不同方式呈现：
 
 - feed；
 - latest；
 - reader。
 
-而不是 Package 自己重新读 Timeline、重新造聊天系统。
+《银麒赎世》进一步证明复杂应用还可能拥有私聊、群聊、终端日志等**二级 Conversation Thread**。这类 thread 不应伪装成主 Timeline，也不应让 Package 自己重新造一套聊天基础设施。
 
-需要：
+因此该能力应覆盖：
 
-> Native Conversation presentation mode。
+> Native Conversation presentation + Session Application scoped conversation thread。
+
+主 Timeline 仍由 Native Session / Revision 权威拥有；二级 thread 则属于 Typed Session Application State，并复用 participant、message、unread、retry/fork、Context target 等共享 conversation primitive。
 
 ### 23.14 第十一组差距：Host UI / Input Capability
 
@@ -3530,7 +3527,7 @@ Studio 后续至少应支持：
 
 否则 Native contract 再强，也只会变成难写的手工 JSON。
 
-### 23.17 第十四组差距：Diagnostics
+### 23.17 第十四组差距：Health / Diagnostics / Repair
 
 复杂卡必须能回答：
 
@@ -3543,7 +3540,7 @@ Studio 后续至少应支持：
 - 哪个 Runtime Automation 被 cycle guard 阻止？
 - 当前 UI 读的是 World / UI / Preference 哪个状态？
 
-因此 Experience Runtime 需要统一 diagnostics surface，而不是 console-only。
+因此 Experience Runtime 需要统一 Health / Diagnostics surface，而不是 console-only。后续《银麒赎世》压力测试进一步证明还需要 preflight、typed repair 与 save migration，详见 §26.16。
 
 ### 23.18 后续所有样本的使用方法
 
@@ -3567,7 +3564,7 @@ Studio 后续至少应支持：
 2. Local UI State；
 3. Player Preference State；
 4. Package Data Resource；
-5. Data Projection；
+5. Data Projection / bounded data & graph query；
 6. Native Composer Host capability（在现有 Native Composer product / generation ABI 之上提供受控 Package action）；
 7. Action v2；
 8. Declarative Mutation authoring shorthand（复用现有 declarative Command / Event / Reducer 链路）；
@@ -3578,13 +3575,13 @@ Studio 后续至少应支持：
 13. Runtime Automation；
 14. Opening Phase / Variant；
 15. Reply Variant / Branch facade（建立在现有 Attempt / Branch / Revision 能力之上）；
-16. Conversation feed/latest/reader；
+16. Conversation feed/latest/reader + scoped conversation threads；
 17. Host advanced presentation/input（Fullscreen / semantic focus / gamepad / safe-area；基础 responsive/focus 已存在）；
 18. safe theme/style/motion；
 19. Studio visual authoring v2 deepening（v1 Structured UI editor / Native Preview 已存在）；
 20. Experience diagnostics。
 
-这些才是后续深化目标。
+这 20 项是 Round 5 的**初始缺口表**，不是最终列表；后续三个案例已继续拆分/合并，最新主表见 §26.21。
 
 
 ## 二十四、案例压力测试 01 — 《瀚海》独立重型前端
@@ -6111,7 +6108,7 @@ Atria 已有：
 25. Native Add-on / Content Extension Layer；
 26. **Epistemic / Actor Perspective Projection**；
 27. **Package Model Task / Generation Task Contract**；
-28. **Typed Session Application State**。
+28. **Typed Session Application State / workflow & thread domains**。
 
 这 28 项仍然不是冻结答案。
 
@@ -6191,7 +6188,196 @@ Tooling
 因此本轮新增的 26–28 三项，比增加几十个具体 Widget 更有长期价值。
 
 
+### 26.24 反向压缩：手机聊天 / Workflow / Social Graph 不再新增第 29 项
+
+继续拆完该卡后，本轮没有继续把能力表膨胀到 29+。
+
+#### 二级私聊 / 群聊
+
+它们不是新的顶层 Runtime。
+
+应扩展第 16 项：
+
+> **Conversation Presentation + Scoped Conversation Thread**
+
+候选 thread contract：
+
+```text
+ConversationThread
+├─ threadId
+├─ domainId
+├─ participants
+├─ perspective policy
+├─ message records
+├─ unread / cursor
+├─ attachment refs
+├─ retry / fork policy
+└─ context policy
+```
+
+边界：
+
+- 主 Narrative Timeline 仍然只有 Native SessionCore 可以拥有；
+- Package 不能把 phone thread 冒充主 Timeline；
+- scoped thread 属于 Session Application State；
+- thread 内 retry / truncate / regenerate 应形成该 domain 自己的 immutable revisioned command，而不是 mutable array splice；
+- Model Task 可以以 `thread + actor perspective` 为 Context target。
+
+这样可以承载：
+
+- phone DM；
+- group chat；
+- terminal log；
+- NPC mail；
+- radio channel；
+- party chat；
+- in-world forum reply thread。
+
+不需要第 29 项。
+
+#### Task / Quest Workflow
+
+该卡的：
+
+`available → accepted → core_complete → reviewing → rewarded / cancelled`
+
+以及：
+
+- cancel review；
+- retry；
+- reward；
+- chain；
+- mode lock；
+
+也不需要独立 Workflow Engine。
+
+建议提供：
+
+> **Workflow Definition authoring shorthand**
+
+它编译为：
+
+```text
+Session Application State
++ Action v2
++ Auxiliary Task
++ Runtime Automation
++ typed Command/Event
+```
+
+Workflow 可以有：
+
+- named states；
+- allowed transitions；
+- transition guards；
+- async gate；
+- completion effect；
+- timeout/cancel policy。
+
+但最终 authority 仍是 Session Application Domain，不建立第二套 workflow persistence。
+
+#### Relationship / Social Graph
+
+关系网、好友圈、群成员、共同经历、谁认识谁，进一步验证了第 5 项不能只有简单 selector。
+
+Data Projection 应支持一组**有界、确定性的 query primitive**：
+
+- filter；
+- sort；
+- group；
+- lookup；
+- join；
+- aggregate；
+- neighbors；
+- bounded traversal；
+- reachable；
+- shortest-path（有明确上限时）。
+
+输入可来自：
+
+- Package Data；
+- World State；
+- Session Application State；
+- Epistemic records。
+
+不允许：
+
+- arbitrary SQL；
+- arbitrary JS predicate；
+- unbounded graph traversal。
+
+因此 Social Graph 归入：
+
+> **Data Projection / bounded data & graph query**
+
+也不新增第 29 项。
+
+### 26.25 Cross-domain Atomic Commit 是底层规则，不是新能力编号
+
+《银麒赎世》的任务评价、据点同步、战斗结算等经常需要同时改变：
+
+- World State；
+- Session Application State；
+- Event Journal；
+- Timeline / observation。
+
+如果它们分别 commit，会重新出现旧卡常见的“双源撕裂”。
+
+当前 Atria `SessionCore.applyRuntimeCommit()` 已能在一个 Revision 中同时：
+
+- append Timeline；
+- patch 多个 Session namespace；
+- CAS against expected Revision。
+
+因此实现阶段应把这项能力提升为共享规则：
+
+> **所有跨 Session-authoritative domain 的一次逻辑事务，必须尽可能在同一个 Native Revision Commit 中原子发布。**
+
+例如：
+
+```text
+Quest Evaluation Result
+→ validate
+→ {
+     World: reward +100
+     SessionApp: quest = completed
+     Journal: quest.completed
+     Observation: reward summary
+   }
+→ one Revision commit
+```
+
+这不是新的裸 patch API。
+
+Package 仍然只调用 typed Action / Command / Task result apply；Runtime 负责组装 transaction。
+
+### 26.26 当前反向压缩后的结论
+
+经过继续审计，本样本最终只新增 3 个顶层候选：
+
+- 26 Epistemic / Actor Perspective Projection；
+- 27 Package Model Task / Generation Task Contract；
+- 28 Typed Session Application State。
+
+其余复杂能力都可以合理吸收到已有 primitive：
+
+- 二级聊天 → 16 + 28；
+- Workflow → 7 + 13 + 24 + 28；
+- Social Graph → 5 + 26 + 28；
+- World Dynamics → 13 + 24 + 27；
+- 文生图 → 18 + 22 + 27；
+- 配置体检 → 20；
+- 删楼 / swipe 防重复结算 → Revision / Branch + atomic commit；
+- 多账号 → 26 + 28。
+
+这说明当前能力表开始出现可组合性，而不是“每来一个新玩法就新增一个平台 API”。
+
+
 ## 二十七、修订记录
+
+### 2026-09-26 — Discussion Draft v1.3
+
+继续完成《银麒赎世》反向压缩审计。没有继续新增第 29 项：将二级私聊/群聊归入 Conversation Presentation + Scoped Thread，将任务审核/连环任务归入 Session Application State 上的 Workflow shorthand，将关系网/图算法归入 Data Projection 的 bounded graph query；同时确认跨 World / Session App / Journal / Timeline 的逻辑事务必须复用现有 SessionCore 的单 Revision 原子提交，而不是建立多套快照或双源同步。
 
 ### 2026-09-26 — Discussion Draft v1.2
 
