@@ -1,3 +1,83 @@
+# Handoff — Native Experience P3 complete
+
+Updated: 2026-09-27. **P3 complete and pushed; stop before P4**.
+
+- Repository: `ZZZdragondYNGPHX/Atria`.
+- Work branch: `feat/native-experience-modes-capability-deepening`.
+- Work HEAD: `522386dda781bab752304adcdb98bf561c857c52` (pushed).
+- P2 `1be87f0186d3f53c4bce8a7cc46a409e953ca46f` and all earlier commits preserved.
+- Main unchanged: `4dab353ac639d42eae885c79e18245267abd6820`. No merge or branch deletion before P9.
+- Formal plan §0 remains authoritative and unchanged: no substantive design deviation.
+- Only P3 was authorized. Stop; P4 requires the next continuation.
+
+## P3 implemented
+
+1. **Package Task/Turn contract.** Optional `runtime.experienceContract.taskRuntime` is validated through existing Package/Descriptor paths. Exact Task Prompt and Generation identities must resolve inside the Package's existing model/prompt resource closure. Task semantic ID, immutable Variant, Binding Slot and the existing fixed Runtime role vocabulary remain separate. No new per-business-task runtime role, renderer, Session or persistence family.
+2. **Task Binding / Model Execution Lane.** Player `capabilitySettings.atri_task_bindings[packageId][slotId]` stores only a player Runtime Route reference, through existing settings/save. The Host borrows that route's model, connection, fallback and execution policy, and composes the Task Variant's exact Package Prompt/Generation resources over every fallback lane. It does not inherit the borrowed Narrator Prompt or prompt parameters. Route/model/connection snapshots are captured before queue execution, so later player edits cannot change the reserved resource identities. GenerationService, RouteResolver, PromptCompiler, Secret port and EffectiveRequestSnapshot remain the actual execution path.
+3. **Result authority and exposure.** Closed bounded input/output schemas reuse the existing data-schema compiler and World schema validator. P3 sinks are `advisory→proposal`, `turn_context→turn`, `presentation→artifact`, `world_outcome_proposal→proposal`. Future Session App / Activity / Media sinks fail closed until their phases. Context opt-in (`input/history/world/knowledge`) filters the existing Native selection; arbitrary stored state and past proposals do not enter prompts. P6 still owns deeper actor/perspective/source-budget work.
+4. **Authority-first Turn.** For a Package with declarative World logic and free-text input, the existing Intent Resolver/tool catalog resolves only explicitly exposed Commands. The same World/Command/Rule/Reducer engine commits facts before Narrator reads them. Already-committed facts survive a later narrative failure by design; the Host never retries the entire authority-producing Turn automatically. Native retry/fork remains the explicit way to choose an earlier revision.
+5. **Narrative-outcome Turn.** Up to four synchronous `turn_context` Tasks run as provisional stages. The ordinary Narrator route or optional presentation Task Variant produces the draft. The Interpreter Task receives `{narrative, stages}` as semantic evidence and emits only the existing semantic decision/event/confidence/severity/participants/evidence shape. Its Package allowlist/confidence policy is validated again at finalize; arbitrary numeric patches are rejected. Pinned declarative Interpretation Mapping → typed Command → Rule/Reducer prepares a private candidate using the existing World engine and the same Package/EntryPoint RNG seed. SessionCore atomically commits narrative, projection, World/Event state and Turn receipt with expected HEAD. Failed validation/cancel/stale never publishes the draft.
+6. **Turn Envelope extension.** `outcomes` now accepts up to 16 typed `{requestId, interpretation}` proposals, not arbitrary JSON. The configured narrative-outcome Turn requires exactly its one declared Interpreter outcome; authority-first requires `[]`. Generic append/runtime append still rejects nonempty outcomes; only `turn.finalize` can consume them. Low-confidence no-change normalization occurs before recording outcomes. Canonical prose equality, immutable birth Variant and pinned projection validation remain unchanged. Structured Narrator Task JSON stays operation-local; only its validated narrative becomes provisional presentation, and projection is mounted after commit.
+7. **Provisional Draft barrier.** Normal Native Play routes configured Package Turns through `/generation/turn`. `markProvisionalTurn()` prevents ordinary autosave from committing stream text. Stop/failure reloads canonical authority without calling the old partial-Draft persistence path. Accepted server snapshots reuse NativeSessionRuntime's projection install. Quiet/impersonation and old Packages retain their prior paths; configured Turn continuation requires an explicit new Turn. No second conversation renderer was added.
+8. **Proposal Artifact.** Revision-backed `atri_task_results` is a protected SessionCore namespace, carried by existing snapshots/save/export/fork/restore. A record uses invocation ID as proposal identity and records task/variant, anchor/branch, schema-associated payload, result class, status, exact prompt/generation refs, definition/context/request/raw/normalized hashes, non-secret execution configuration and model-delivery receipt. Generating a proposal changes no World facts. Explicit Apply (including a user-edited schema-valid payload) rechecks current revision/branch, then runs a declared advisory `applyCommand` or semantic mapping atomically. Rejection has no World effect. Apply receipt replay is once-only even after a lost response; changed replay payload fails. Stale/historical proposals cannot silently apply. Load revalidates committed records against the pinned Task definitions.
+9. **Host Scoped Operations / Auxiliary Tasks.** One shared server scheduler covers ordinary model calls, Task calls and complete Turns. Turn stages execute under their parent permit, avoiding nested-queue deadlock and retaining the claim through finalize. Operation kinds `turn/model_task/auxiliary_task` expose read-only queued/running/streaming/retrying/finalizing/completed/failed/cancelled/stale state, attempt count, provisional text and a separate model-delivery receipt. `finalizing` is an uninterruptible CAS boundary: cancel never claims to undo a commit. Failed/stale/cancelled provisional text is cleared; ignored-abort workers retain permits until settlement.
+10. **Backpressure and lifecycle.** Host limits default to 4 total in flight, 2 per shared resource (Session, Route, Connection, Model, Provider), 64 queued and 256 retained operations, with a 120-second queue+execution deadline. Fixed execution classes use priority plus aging. Exact request coalescing, bounded provider-failure retry/backoff, stream reset, explicit cancel and latest supersede are supported. `queuePolicy:latest` is restricted away from semantic outcome/apply-command work. Package cannot declare arbitrary priorities, secrets, URLs or worker pools. Provider context/token budgets still run in GenerationService. Detached `/task/start` survives view closure; foreground disconnect cancels through the existing AbortSignal path.
+
+## Concrete authoring and Host seams
+
+- Shared contract: `public/shared/native-task-contract.js`; semantic envelope shape remains in the import-free `public/shared/native-message-contract.js`.
+- `taskRuntime`: `{schemaVersion:1,slots:[{id,requiredCapabilities}],tasks:[...],turn?}`.
+- Task: `{id,bindingSlotId,executionClass,inputSchema,context,resultPolicy,variants,interpretation?,queuePolicy?}`. Execution class is `turn_blocking|interactive|background|maintenance`; queue policy defaults to `fifo`, optionally `latest` for replaceable non-authority work.
+- Variant: `{id,prompt:{resourceId,revision},generation:{resourceId,revision},outputSchema,requiredCapabilities}`. Its enclosing immutable Package supplies resource ownership. No model/connection choice in the author definition.
+- Result policy: `{resultClass,sink,applyCommand?}`. `applyCommand` is allowed only for advisory proposals. `world_outcome_proposal` requires the existing strict Event Interpretation request contract.
+- Turn: `{policy:"authority-first"|"narrative-outcome",stages:[taskId],narratorTaskId?,interpreterTaskId?}`. Stages must be turn-blocking turn-context Tasks. An optional Narrator must be a turn-blocking presentation Task; it receives `{stages}` and returns a JSON string or typed Turn Envelope without outcomes. Interpreter receives `{narrative,stages}`. Standalone calls always name an explicit Variant; Turn defaults to the first declared Variant unless the player supplies its selection.
+- Generation routes: POST `/api/native/generation/task`, `/task/start`, `/turn`; GET/DELETE `/operations/:id`. Authenticated handle is server-owned; another owner cannot inspect or cancel an operation.
+- Session commands: `turn.finalize`, `proposal.resolve`, routed through existing authenticated `/api/native/session/command`. Model provenance cannot be supplied through the direct Turn command route.
+- Existing Experience Host API adds `getTaskBindings/setTaskBinding`, `invokeTask/readOperation/cancelOperation/resolveProposal`. `public/scripts/native/task-client.js` rejects historical calls until explicit fork and uses existing Session/settings authorities. Visual Slot configuration, generic operation panels and Studio authoring remain P9 productization.
+- Enabled exactly `turn-contract@1`, `narrative-outcome@1`, `model-task@1`, `auxiliary-task@1`; P4+ features remain reserved.
+
+## Actual P3 verification
+
+**362 distinct tests / 15 targeted and adjacent suites passed.** Reruns are not double-counted. FS and SQLite were selected with `ATRIA_DISABLE_MYSQL_TESTS=1` and `ATRIA_DISABLE_POSTGRES_TESTS=1`.
+
+- `native/task-runtime-p3.test.js` (31): strict contracts, immutable Variants, typed outcomes, scheduler concurrency/backpressure/coalescing/supersede/fairness/timeout/cancel/retry/stale/finalize, real local HTTP model fixtures, exact Task-vs-Narrator Program composition, FS+SQLite atomic finalize, rollback/fork, Proposal Apply/replay/stale/reject, both Turn policies and cancelled/failed Interpreter paths.
+- `native/model-prompt-runtime-p4.test.js` (31): adjacent existing model Host/transport/role isolation/fallback/config/preview behavior, new authenticated task/turn/detached/operation HTTP paths and Native Play P3 publication. This pre-existing suite name belongs to the earlier model/prompt project, not authorization to execute this project's P4.
+- `native/session-projection.test.js` (47): includes FS+SQLite provisional autosave/Stop regression.
+- `native/message-projection-contract.test.js`, `native/contracts.test.js`, `native/authoring-contracts.test.js`, `native/runtime-descriptor.test.js`, `native/package-build-install.test.js`, `native/session-runtime-http.test.js`, `native/save-system.test.js`.
+- `game-runtime/llm-runtime.test.js`, `game-runtime/llm-event-interpreter.test.js`.
+- Adjacent `native/session-core.contract.test.js` (22), `native/experience-actions.test.js` (9), `atria-shell/native-play-product.test.js` (7).
+
+Commands used `npm --prefix tests run test:unit -- --runInBand <selected paths> --silent --verbose=false`. Changed JS ESLint passed without warnings; changed guards passed `node --check`; `git diff --check` passed. A0/A3/A4, Experience foundation (53 files), P2 message presentation and new `scripts/check-native-task-runtime.mjs` guards passed. The new guard preserves P4 reserved capabilities and the provisional persistence barrier.
+
+Resolved ordinary issues included fixture schema/resource ownership, explicit command tool exposure, preserving ordinary generation cancellation error codes and role-isolated request keys, preserving the import-free cross-realm message contract, preventing Stop from publishing provisional prose, keeping complete Turns under one scheduler permit, and avoiding whole-Turn retries after authority-first commits. No unresolved validation failure. No full-repository run, Android, Docker, paid/live inference, CI polling or new visual UI; local HTTP fixture requests and unit/contract checks supplied runtime evidence.
+
+## Deliberate phase boundaries / next work
+
+- Operation projection is transient Host execution state. Detached jobs survive view closure, not Host restart; completed artifacts/receipts are durable Session revisions. A restart does not silently replay uncertain work. Cross-restart lifecycle/ready-barrier/retention policy belongs with P4 Session Application integration.
+- Task/Turn result history currently has a hard 256-record limit and fails closed without silently evicting authority. P4 must design retention/compaction coherently with revision/fork semantics.
+- P3 accepts only its implemented result sinks. Session App proposals, Activity/media settlement and shared/continuity authorities wait for their phases.
+- P6 owns richer Context/Perspective/actor targeting. P9 owns visual Binding Slot/operation/proposal configuration and final cross-stage productization.
+- No P4 Automation, Temporal, Session Application lifecycle, full Opening readiness or Workflow body was implemented. Keep main and the feature branch intact.
+
+## P4 takeover prompt
+
+```text
+接手 GitHub 项目 ZZZdragondYNGPHX/Atria。本次只执行 P4，完成后停止，不继续 P5。
+
+沿用 feat/native-experience-modes-capability-deepening。P3 已完成并推送，HEAD：522386dda781bab752304adcdb98bf561c857c52。
+先 fetch，依次读取 main:AGENTS.md、main:FORK_MAINTENANCE.md、docs:feat/native-experience-modes-capability-deepening.md 的 §0、docs:handoff/native-experience-modes-capability-deepening.md、docs:handoff/latest-handoff.md，再读相关代码、测试与 guard。若远端推进，保留已有提交，以最新 HEAD 为准；不重审历史重型角色卡。
+
+执行 P4 — Session Application / Temporal / Automation / Experience Workflow：覆盖 #13/#28/#29/#32、#14 的完整 lifecycle integration、Experience Ready Barrier、Scope Lifecycle、Scheduled Interaction、retention/compaction 和 World Process catch-up。严格区分 session.loaded 与 experience.ready，以及 World Clock、logical revision time、wall clock、activity elapsed time。simple Quest Workflow 可编译为 shorthand；跨 Turn 的应用生命周期使用 Workflow/Phase Graph。
+
+复用 P0–P3 和现有 Native authority。重点接续 P3 的受保护 atri_task_results、完整 Turn/Task scheduler、Scoped Operation 和确定性 Command/Event/Reducer，不把 transient operation projection 变成第二套持久化事实源。设计跨重启恢复与 retention 时保留 once-only receipts、Branch/Revision coherence、stale/cancel/finalize 语义。保留 immutable Variant、canonical narrative/projection、provisional Narrator、semantic-only Interpreter、Task semantic/Runtime role/Model binding 分离以及 render/authority/model-delivery receipt 分离。不新增 renderer、Session 或 persistence。
+
+只运行针对性/相邻测试、修改区域 lint/syntax 和相关 guard；普通失败自行修复。不机械跑全仓，不跑 Android、Docker、付费模型调用，不依赖 GitHub CI。完成后提交推送当前分支，更新两份 handoff；仅实质设计变化才修改正式方案。停止并提供 P5 接手提示词。P9 最终验证前不合并 main、不删除工作分支。
+```
+
+---
+
+## Archived predecessor — P2
+
 # Handoff — Native Experience P2 complete
 
 Updated: 2026-09-26. Status: **P2 complete and pushed; stopped before P3**.

@@ -1,3 +1,27 @@
+# Latest handoff — Native Experience P3 complete
+
+Updated: 2026-09-27. **P3 complete and pushed; stop before P4**.
+
+- Work branch: `feat/native-experience-modes-capability-deepening`.
+- HEAD: `522386dda781bab752304adcdb98bf561c857c52` (pushed); all P0–P2 commits preserved.
+- Main unchanged: `4dab353ac639d42eae885c79e18245267abd6820`. No merge/deletion before P9.
+- Normative plan: `feat/native-experience-modes-capability-deepening.md` §0, unchanged (no substantive design deviation).
+- Full concrete contracts, limits, validation and P4 prompt: `handoff/native-experience-modes-capability-deepening.md`.
+
+P3 implements strict Package Task/Variant/Slot/Turn declarations and exact resource closure; player-owned Slot bindings borrow captured model/connection/fallback lanes while preserving Task-owned Prompt/Generation/output/authority. It adds typed semantic Turn outcomes, authority-first and narrative-outcome finalize, bounded synchronous stages, inert Proposal Artifacts with explicit typed Apply/reject/stale/replay, and one Host scheduler for complete Turns, Model Tasks, Auxiliary Tasks and ordinary generations. Shared global/resource budgets, priority aging, backpressure, coalescing/supersede, streaming, retry, timeout, cancel and stale checks are Host-owned.
+
+Native Play marks configured Turns provisional: autosave cannot publish streamed text and Stop restores canonical authority. Interpreter emits semantic proposals only; pinned Interpretation Mapping → existing Command/Rule/Reducer computes consequences. SessionCore atomically publishes narrative/projection/World/Event/receipt, keeping immutable Variants and separate model-delivery/authority/render domains. Completed task records reuse protected `atri_task_results` inside existing revision snapshots; save/fork/load semantics remain Native. No second renderer, Session or persistence.
+
+Passed **362 distinct tests / 15 targeted and adjacent suites**, including FS+SQLite, real local HTTP fake providers, both Turn policies, atomic rollback/fork, Proposal Apply/replay/stale, authenticated operation controls, ordinary model Host regressions and provisional autosave/Stop. Changed JS lint, changed guard syntax/whitespace, A0/A3/A4/Experience/P2 and new P3 guards passed. No full-repo, Android, Docker, paid inference or required CI run. No new visual UI.
+
+Boundaries: transient operations do not survive Host restart; detached jobs survive view closure, completed artifacts remain durable. P4 owns Session Application/ready/lifecycle integration, cross-restart policy and retention/compaction (current Task history cap 256 fails closed). P6 deepens Context/Perspective. P9 owns visual Slot/operation/proposal authoring. Future result sinks and P4+ capability versions remain unsupported.
+
+The user authorized **P3 only**. Stop now. Next continuation: **P4 — Session Application / Temporal / Automation / Experience Workflow**, #13/#28/#29/#32 plus complete #14 lifecycle, Ready Barrier, Scoped lifecycle, scheduling, retention and World Process catch-up. Fetch and preserve newer feature commits; read main rules, §0 and both handoffs first. Finish P4 on this branch, push/update handoffs, stop before P5. Keep main untouched until P9.
+
+---
+
+## Archived predecessor — P2
+
 # Latest handoff — Native Experience P2 complete
 
 Updated: 2026-09-26. **P2 complete and pushed; stop before P3**.
