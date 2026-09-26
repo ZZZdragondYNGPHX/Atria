@@ -2,15 +2,22 @@ import { rememberRuntimeEvidence, runtimeGenerationError } from './runtime-clien
 import { nativeSessionRuntime } from './session-runtime.js';
 
 export async function executeNativeGeneration({ role, messages = [], tools = [], outputContract = null, abortSignal, source, onChunk, ...options } = {}) {
+    const payload = await executeNativeOperation('execute', { role, messages, tools, outputContract, ...options }, { abortSignal, source, onChunk });
+    rememberRuntimeEvidence(payload);
+    return { ...payload.response, requestInfo: payload.snapshot, snapshot: payload.snapshot, routing: payload.routing };
+}
+
+export async function executeNativeOperation(kind, options, { abortSignal, source, onChunk } = {}) {
+    if (!['execute', 'task', 'turn'].includes(kind)) throw new TypeError('Unknown Native operation');
     const snapshot = nativeSessionRuntime.snapshot;
     const identity = source || (nativeSessionRuntime.active ? {
         sessionId: snapshot.session.sessionId, revisionId: snapshot.revision.revisionId,
     } : null);
     if (!identity) throw Object.assign(new Error('Open a Native Session or Project before generating.'), { code: 'native_generation_context_required' });
     const headers = globalThis.Atria?.getContext?.()?.getRequestHeaders?.() || {};
-    const response = await fetch('/api/native/generation/execute', {
+    const response = await fetch('/api/native/generation/' + kind, {
         method: 'POST', signal: abortSignal, headers: { ...headers, 'Content-Type': 'application/json', ...(onChunk ? { Accept: 'text/event-stream' } : {}) },
-        body: JSON.stringify({ ...identity, ...options, role, messages, tools, outputContract,
+        body: JSON.stringify({ ...identity, ...options,
             requestId: 'request-' + Array.from(crypto.getRandomValues(new Uint8Array(16)), value => value.toString(16).padStart(2, '0')).join('') }),
     });
     let payload;
@@ -32,8 +39,7 @@ export async function executeNativeGeneration({ role, messages = [], tools = [],
         if (!payload) throw new Error('Native generation stream ended without a result');
     } else payload = await response.json();
     if (!response.ok) throw runtimeGenerationError(payload.error || 'Native generation failed', response.status);
-    rememberRuntimeEvidence(payload);
-    return { ...payload.response, requestInfo: payload.snapshot, snapshot: payload.snapshot, routing: payload.routing };
+    return payload;
 }
 
 export function nativeGenerationActive() { return nativeSessionRuntime.active; }

@@ -15,10 +15,12 @@ import {
 } from './session-snapshot.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { ACTION_RECEIPTS_NAMESPACE, assertActionRequest, actionReceipts, assertCompensation } from './action-receipts.js';
+import { TASK_STATE_NAMESPACE, assertTaskValue, assertSemanticOutcome } from '../../public/shared/native-task-contract.js';
+import { prepareTaskAuthority, validateTaskRecords } from './task-authority.js';
 
 // Projection is a first-class immutable Variant field, never Timeline metadata.
 // User and assistant messages may project; only assistant turns accept envelopes.
-function normalizeMessageDraft(draft) {
+function normalizeMessageDraft(draft, allowOutcomes = false) {
     if (!draft || typeof draft !== 'object' || Array.isArray(draft)) throw new TypeError('Timeline draft must be a record');
     const { envelope: rawEnvelope, projection: rawProjection, ...entryDraft } = draft;
     let projection;
@@ -26,6 +28,7 @@ function normalizeMessageDraft(draft) {
     if (Object.hasOwn(draft, 'envelope')) {
         if (draft.role !== 'assistant') throw new TypeError('TurnEnvelope requires an assistant message');
         const envelope = assertTurnEnvelope(rawEnvelope);
+        if (envelope.outcomes.length && !allowOutcomes) throw new TypeError('Outcomes require atomic Turn finalize');
         if (Object.hasOwn(draft, 'content') && draft.content !== envelope.narrative) throw new TypeError('Conflicting draft content and envelope narrative');
         if (Object.hasOwn(draft, 'projection')) {
             const supplied = assertMessageProjection(rawProjection, envelope.narrative);
@@ -165,6 +168,7 @@ export class SessionCore {
         const snapshot = await this._sessions.loadSnapshot(handle, sessionId, options);
         const { session } = snapshot;
         const installed = await this._openPackage(handle, session.packageId, session.packageVersionId, session.entryPointId);
+        validateTaskRecords({ ...snapshot, manifest: installed.manifest });
         if (installed.packageVersion.packageContentHash !== session.packageContentHash
             || installed.packageVersion.version !== session.packageVersion) throw new Error('Session PackageVersion dependency mismatch');
         await this._validateProjections(handle, snapshot, snapshot.variants, installed);
@@ -231,8 +235,8 @@ export class SessionCore {
         return this._publish(handle, base, { timeline: entries, entries, variants, branches: [branch] });
     }
 
-    _newEntry(base, draft, sequence = base.timeline.length) {
-        const { entryDraft, projection, diagnostics } = normalizeMessageDraft(draft);
+    _newEntry(base, draft, sequence = base.timeline.length, allowOutcomes = false) {
+        const { entryDraft, projection, diagnostics } = normalizeMessageDraft(draft, allowOutcomes);
         const messageId = createNativeId('message');
         const variantId = createNativeId('variant');
         if (draft.actorId && !base.manifest.actors.some(actor => actor.actorId === draft.actorId)) {
@@ -273,11 +277,22 @@ export class SessionCore {
 
     async _publish(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
         graph = base.graph, branchId = base.revision?.branchId ?? base.session.activeBranchId,
-        entries = [], variants = [], branches = [], actionRequest = null } = {}) {
+        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null } = {}) {
         variants = variants.map(assertVariant);
         await this._validateProjections(handle, { ...base, timeline }, variants);
         validateWorldState(states, base.manifest, base.entryPoint);
         const revisionId = createNativeId('revision');
+        if (taskRecord) {
+            const records = base.states[TASK_STATE_NAMESPACE]?.records ?? [];
+            if (records.length >= 256) throw new TypeError('Task result retention limit reached');
+            states = { ...states, [TASK_STATE_NAMESPACE]: { schemaVersion: 1, records: [...records, {
+                ...taskRecord, storedRevisionId: revisionId,
+            }] } };
+        }
+        if (taskResolution) states = { ...states, [TASK_STATE_NAMESPACE]: { schemaVersion: 1,
+            records: states[TASK_STATE_NAMESPACE].records.map(record => record.invocationId !== taskResolution ? record : {
+                ...record, authorityReceipt: { ...record.authorityReceipt, committedRevisionId: revisionId },
+            }) } };
         if (actionRequest) {
             const previous = actionReceipts(base);
             if (previous.length >= 2048) throw new TypeError('Action receipt retention limit reached');
@@ -354,6 +369,78 @@ export class SessionCore {
         const base = await this._current(handle, sessionId, expectedRevisionId);
         const { entry, variant } = this._newEntry(base, draft);
         return this._publish(handle, base, { timeline: [...base.timeline, entry], entries: [entry], variants: [variant] });
+    }
+
+    async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [] }, { expectedRevisionId } = {}) {
+        if (!expectedRevisionId || typeof invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(invocationId)) throw new TypeError('Turn anchor and invocation required');
+        const base = await this.load(handle, sessionId);
+        let envelope = assertTurnEnvelope(raw);
+        const fingerprint = hashNativeDocument(envelope);
+        const existing = base.states[TASK_STATE_NAMESPACE]?.records.find(record => record.invocationId === invocationId);
+        if (existing) {
+            if (existing.fingerprint !== fingerprint || existing.kind !== 'turn') throw new TypeError('Turn invocation conflict');
+            return base;
+        }
+        if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
+        const policy = base.manifest.runtime?.experienceContract?.taskRuntime?.turn;
+        if (!policy) throw new TypeError('Package Turn contract required');
+        if (policy.policy === 'authority-first' && envelope.outcomes.length) throw new TypeError('Authority-first narrative cannot write outcomes');
+        if (policy.policy === 'narrative-outcome') {
+            const interpreter = base.manifest.runtime.experienceContract.taskRuntime.tasks.find(task => task.id === policy.interpreterTaskId);
+            if (envelope.outcomes.length !== 1 || envelope.outcomes[0].requestId !== interpreter.interpretation.id) throw new TypeError('Turn requires its declared Interpreter outcome');
+            envelope = assertTurnEnvelope({ ...envelope, outcomes: [assertSemanticOutcome(envelope.outcomes[0], interpreter.interpretation)] });
+        }
+        const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+        const patch = envelope.outcomes.some(item => item.interpretation.decision !== 'no_change')
+            ? await prepareTaskAuthority(base, installed, { outcomes: envelope.outcomes }) : {};
+        const { entry, variant } = this._newEntry(base, { role: 'assistant', envelope }, base.timeline.length, true);
+        return this._publish(handle, base, { states: { ...base.states, ...patch }, timeline: [...base.timeline, entry], entries: [entry], variants: [variant],
+            taskRecord: { kind: 'turn', invocationId, fingerprint, requestHash, provenance, anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId,
+                outcomes: envelope.outcomes, status: 'applied', authorityReceipt: { kind: 'authority', messageId: entry.messageId } } });
+    }
+
+    async recordTaskResult(handle, sessionId, record, { expectedRevisionId } = {}) {
+        if (!expectedRevisionId || typeof record.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(record.invocationId)) throw new TypeError('Task requires an invocation and revision anchor');
+        const base = await this._current(handle, sessionId, expectedRevisionId);
+        const task = base.manifest.runtime?.experienceContract?.taskRuntime?.tasks.find(item => item.id === record.taskId);
+        const variant = task?.variants.find(item => item.id === record.variantId);
+        if (!variant || task.resultPolicy.resultClass === 'turn_context') throw new TypeError('Task result is not durable');
+        const payload = assertTaskValue(record.payload, variant.outputSchema);
+        if (task.interpretation) assertSemanticOutcome({ requestId: task.interpretation.id, interpretation: payload }, task.interpretation);
+        if (base.states[TASK_STATE_NAMESPACE]?.records.some(item => item.invocationId === record.invocationId)) throw new TypeError('Duplicate Task invocation');
+        return this._publish(handle, base, { taskRecord: { ...record, payload, kind: 'task', status: task.resultPolicy.sink === 'proposal' ? 'draft' : 'completed',
+            resultClass: task.resultPolicy.resultClass, anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId } });
+    }
+
+    async resolveTaskProposal(handle, sessionId, { invocationId, decision, payload }, { expectedRevisionId } = {}) {
+        const base = await this.load(handle, sessionId);
+        if (!expectedRevisionId || !['apply', 'reject'].includes(decision)) throw new TypeError('Proposal resolution requires explicit decision and anchor');
+        const records = base.states[TASK_STATE_NAMESPACE]?.records ?? [];
+        const record = records.find(item => item.invocationId === invocationId && item.kind === 'task');
+        if (!record) throw new TypeError('Unknown proposal');
+        if (record.status === 'applied' && decision === 'apply') {
+            if (payload !== undefined && hashNativeDocument(payload) !== hashNativeDocument(record.payload)) throw new TypeError('Applied Proposal payload conflict');
+            if (![base.revision.revisionId, record.authorityReceipt?.baseRevisionId].includes(expectedRevisionId)) throw new ConflictError('native_session_head_conflict', { sessionId });
+            return base;
+        }
+        if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
+        if (record.status !== 'draft') throw new TypeError('Proposal is closed');
+        const task = base.manifest.runtime.experienceContract.taskRuntime.tasks.find(item => item.id === record.taskId);
+        if (task.resultPolicy.sink !== 'proposal') throw new TypeError('Task is not a proposal');
+        if (decision === 'apply' && (record.storedRevisionId !== expectedRevisionId || record.branchId !== base.revision.branchId)) throw new TypeError('Proposal is stale; generate a new proposal or explicitly fork');
+        let patch = {};
+        const nextPayload = payload === undefined ? record.payload : assertTaskValue(payload, task.variants.find(item => item.id === record.variantId).outputSchema);
+        if (decision === 'apply') {
+            const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+            if (task.interpretation) patch = await prepareTaskAuthority(base, installed, { outcomes: [{ requestId: task.interpretation.id, interpretation: nextPayload }] });
+            else if (task.resultPolicy.applyCommand) patch = await prepareTaskAuthority(base, installed, { command: { id: task.resultPolicy.applyCommand, args: nextPayload } });
+            else throw new TypeError('Proposal has no typed Apply action');
+        }
+        const states = { ...base.states, ...patch, [TASK_STATE_NAMESPACE]: { schemaVersion: 1, records: records.map(item => item !== record ? item : {
+            ...record, payload: nextPayload, status: decision === 'apply' ? 'applied' : 'rejected',
+            authorityReceipt: decision === 'apply' ? { kind: 'authority', baseRevisionId: expectedRevisionId } : null,
+        }) } };
+        return this._publish(handle, base, { states, taskResolution: decision === 'apply' ? invocationId : null });
     }
 
     /**

@@ -15,7 +15,7 @@ assert.throws(() => assertMessageProjection(fixture.projection, narrative + 'cha
 assert.throws(() => assertTurnEnvelope({ schemaVersion: 1, narrative, outcomes: [{ patch: {} }], diagnostics: [] }));
 assert.throws(() => assertConversationThread({ schemaVersion: 1, threadId: 'mail', scope: { kind: 'session' }, participants: [], messages: [], persistence: 'custom' }));
 for (const name of ['message-projection', 'turn-envelope', 'reply-variant', 'conversation-presentation']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[name].supported, [1]);
-for (const name of ['turn-contract', 'model-task', 'auxiliary-task', 'narrative-outcome']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[name].supported, []);
+for (const name of ['turn-contract', 'model-task', 'auxiliary-task', 'narrative-outcome']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[name].supported, [1]);
 for (const path of ['public/scripts/native/message-presentation.js', 'public/scripts/native/reply-variants.js', 'public/shared/native-message-contract.js']) {
     const source = readFileSync(path, 'utf8');
     assert(!/\blocalStorage\b|\bindexedDB\b|\beval\s*\(|new\s+Function\s*\(|\/api\/card-app\/|\bswipe_id\b/.test(source), path);
@@ -25,4 +25,4 @@ assert(host.includes('mountUiDocument(') && host.includes("kind: 'render'"));
 assert(!/statePatch|putImmutable|putMutable|writeFile/.test(host));
 const core = readFileSync('src/native/session-core.js', 'utf8');
 assert(core.includes('_validateProjections') && core.includes('validateMessageBlocks'));
-console.log('P2 message presentation guard passed: immutable projection, pinned templates, one renderer, split receipts, P3 reserved');
+console.log('P2 message presentation guard passed: immutable projection, pinned templates, one renderer, split receipts');

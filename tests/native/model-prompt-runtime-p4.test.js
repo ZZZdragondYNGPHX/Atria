@@ -10,9 +10,32 @@ import { runNativePlayGeneration } from '../../public/scripts/native/play-genera
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
 import { seedGenerationProfiles } from './helpers/generation-fixture.js';
 import { readPromptControls } from '../../src/native/model-prompt-runtime/prompt-controls.js';
+import { nativeTaskScheduler } from '../../src/native/task-scheduler.js';
 
 const cleanups = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0)) await cleanup(); });
+
+test('P3 HTTP task/turn and operation endpoints retain authenticated ownership', async () => {
+    const host = { executeTask: jest.fn(async () => ({ record: { status: 'draft' } })), executeTurn: jest.fn(async () => ({ finalized: true })) };
+    const app = express(); app.use(express.json());
+    app.use((req, _res, next) => { if (req.headers['x-user']) req.user = { profile: { handle: req.headers['x-user'] } }; next(); });
+    app.use('/generation', createNativeGenerationRouter(() => host));
+    await supertest(app).post('/generation/task').send({}).expect(401);
+    await supertest(app).post('/generation/task').set('x-user', 'alice').send({ handle: 'foreign' }).expect(200);
+    expect(host.executeTask.mock.calls[0][0]).toBe('alice');
+    await supertest(app).post('/generation/turn').set('x-user', 'alice').send({}).expect(200);
+    expect(host.executeTurn.mock.calls[0][0]).toBe('alice');
+    host.executeTask.mockImplementationOnce(async (_owner, _input, _signal, onChunk) => { onChunk({ operationId: 'detached' }); return {}; });
+    expect((await supertest(app).post('/generation/task/start').set('x-user', 'alice').send({}).expect(202)).body.operationId).toBe('detached');
+    let finish;
+    const operation = nativeTaskScheduler.submit({ owner: 'alice', kind: 'auxiliary_task', anchor: {}, executionClass: 'background', resources: [],
+        key: 'p3-http', fingerprint: 'same', fresh: async () => true, run: () => new Promise(resolve => { finish = resolve; }), finalize: async value => value });
+    await supertest(app).get('/generation/operations/' + operation.operationId).set('x-user', 'bob').expect(404);
+    await supertest(app).delete('/generation/operations/' + operation.operationId).set('x-user', 'bob').expect(404);
+    await supertest(app).get('/generation/operations/' + operation.operationId).set('x-user', 'alice').expect(200);
+    await supertest(app).delete('/generation/operations/' + operation.operationId).set('x-user', 'alice').expect(200);
+    await expect(operation.result).rejects.toMatchObject({ code: 'operation_cancelled' }); finish();
+});
 
 test('NPC-002 authenticated delete checks every revision, Runtime and Project owners and rejects Package originals', async () => {
     const f = await fixture();
@@ -270,6 +293,17 @@ describe('P4 Native Play publication uses the existing lifecycle', () => {
         const f = hostFixture();
         await runNativePlayGeneration({ ...f, type: 'normal', input: 'hello', execute: async () => { f.events.push('execute'); return { assistantText: 'reply' }; } });
         expect(f.events).toEqual(['prepare', 'started', 'user', 'persist', 'execute', 'assistant:normal', 'persist', 'ended']);
+    });
+    test('P3 Package Turn uses provisional Host finalize rather than publishing a second assistant', async () => {
+        const f = hostFixture();
+        f.runtime.snapshot = { session: { sessionId: 'session', packageId: 'package' }, revision: { revisionId: 'revision' },
+            manifest: { runtime: { experienceContract: { taskRuntime: { turn: { policy: 'narrative-outcome' } } } } } };
+        f.runtime.markProvisionalTurn = () => f.events.push('provisional');
+        f.runtime.acceptOperationSnapshot = async () => f.events.push('accepted');
+        const executeOperation = jest.fn(async () => ({ timeline: [{ content: 'Finalized' }] }));
+        expect(await runNativePlayGeneration({ ...f, type: 'normal', input: 'hello', executeOperation })).toBe('Finalized');
+        expect(f.events).toEqual(['prepare', 'started', 'user', 'persist', 'provisional', 'accepted', 'ended']);
+        expect(executeOperation.mock.calls[0][0]).toBe('turn');
     });
     test.each(['regenerate', 'continue'])('%s preserves Native retry/continuation semantics without a new user turn', async type => {
         const f = hostFixture();

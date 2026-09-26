@@ -25,7 +25,7 @@ function integerBound(value, minimum, maximum, label) {
 
 // Validate the schema itself before reusing the existing deterministic data
 // validator. In particular, unsupported keywords must never be silently ignored.
-function compileDataSchema(raw, depth = 0, budget = { nodes: 0 }) {
+export function compileDataSchema(raw, depth = 0, budget = { nodes: 0 }) {
     if (depth > 8 || ++budget.nodes > 256) throw new Error('Message dataSchema complexity exceeded');
     if (!Object.hasOwn(SCHEMA_FIELDS, raw?.type)) throw new Error('Unknown message dataSchema type');
     fields(raw, ['type', ...SCHEMA_FIELDS[raw.type]], 'Message dataSchema');

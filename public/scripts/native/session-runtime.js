@@ -359,6 +359,19 @@ export class NativeSessionRuntime {
         return snapshot;
     }
 
+    async acceptOperationSnapshot(snapshot, { turn = false } = {}) {
+        if (this.history || snapshot.session.sessionId !== this.snapshot?.session.sessionId
+            || snapshot.revision.branchId !== this.snapshot.revision.branchId) throw new Error('Native operation scope changed');
+        if (this.generation && !turn) return snapshot;
+        // Reload the current committed authority, never install a late stale reply.
+        return this._loadProjection(snapshot.session.sessionId, {});
+    }
+
+    markProvisionalTurn() {
+        if (!this.active || this.history || !this.generation) throw new Error('Native Turn requires an active generation Draft');
+        this.generation.provisionalTurn = true;
+    }
+
     async open(sessionId, { revisionId } = {}) {
         if (this.host.isGenerating()) throw new Error('Stop generation before switching Native Session');
         if (this.active) {
@@ -543,6 +556,7 @@ export class NativeSessionRuntime {
         const sessionId = this.snapshot.session.sessionId;
         const operation = async () => {
             this.assertWritable();
+            if (this.generation?.provisionalTurn) return true;
             if (this.snapshot.session.sessionId !== sessionId) {
                 this._failBarrier(committedTimelineMutation('Native Session changed during a queued write'));
             }
@@ -642,6 +656,12 @@ export class NativeSessionRuntime {
      */
     async finalizeStoppedGeneration() {
         if (!this.active || !this.generation) return true;
+        if (this.generation.provisionalTurn) {
+            const previous = this.snapshot;
+            await this._loadProjection(previous.session.sessionId, {});
+            await this._emit(NATIVE_SESSION_LIFECYCLE.DRAFT_ABORTED, this.snapshot, previous, { kind: 'turn' });
+            return true;
+        }
         const sessionId = this.snapshot.session.sessionId;
         await this.persist();
         if (!this.active || this.snapshot.session.sessionId !== sessionId) return true;

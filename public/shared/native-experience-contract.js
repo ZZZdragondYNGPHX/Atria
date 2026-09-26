@@ -1,3 +1,5 @@
+import { assertTaskRuntime } from './native-task-contract.js';
+
 // Implementation Baseline v1.0 vocabulary. A reserved version is not a Host
 // implementation, permission grant, runtime role, or state namespace.
 export const ATRIA_EXPERIENCE_CONTRACT_VERSION = 1;
@@ -11,9 +13,9 @@ export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
     ['action', [2], [2]],
     ['declarative-mutation', [1], [1]],
     ['message-projection', [1], [1]],
-    ['turn-contract', [1]],
+    ['turn-contract', [1], [1]],
     ['turn-envelope', [1], [1]],
-    ['narrative-outcome', [1]],
+    ['narrative-outcome', [1], [1]],
     ['runtime-automation', [1]],
     ['opening', [1], [1]],
     ['reply-variant', [1], [1]],
@@ -25,10 +27,10 @@ export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
     ['activity', [1]],
     ['media-scene', [1]],
     ['asset-pack', [1]],
-    ['auxiliary-task', [1]],
+    ['auxiliary-task', [1], [1]],
     ['addon', [1]],
     ['perspective', [1]],
-    ['model-task', [1]],
+    ['model-task', [1], [1]],
     ['session-application', [1]],
     ['temporal', [1]],
     ['player-continuity', [1]],
@@ -61,7 +63,7 @@ function list(value, label, validate, key) {
 // action, turn, task and authority bodies require their own strict contracts.
 // No generic config/extension/persistence/exposure payload belongs in this seam.
 export function assertNativeExperienceContract(value) {
-    fields(value, ['schemaVersion', 'capabilities', 'dataResources'], 'ExperienceContract');
+    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime'], 'ExperienceContract');
     if (value.schemaVersion !== ATRIA_EXPERIENCE_CONTRACT_VERSION) {
         throw new TypeError('ExperienceContract.schemaVersion must be 1');
     }
@@ -87,7 +89,8 @@ export function assertNativeExperienceContract(value) {
         }
         return Object.freeze({ resourceId: item.resourceId, assetId: item.assetId, contentHash: item.contentHash });
     }, item => item.resourceId);
-    return Object.freeze({ schemaVersion: ATRIA_EXPERIENCE_CONTRACT_VERSION, capabilities, dataResources });
+    return Object.freeze({ schemaVersion: ATRIA_EXPERIENCE_CONTRACT_VERSION, capabilities, dataResources,
+        ...(value.taskRuntime === undefined ? {} : { taskRuntime: assertTaskRuntime(value.taskRuntime) }) });
 }
 
 // The containing immutable PackageVersion supplies ownership. No URL, mutable

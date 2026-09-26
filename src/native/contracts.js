@@ -640,6 +640,14 @@ export function assertAtriaPackageManifest(value) {
         const runtime = cloneJson(plain(value.runtime, 'AtriaPackage.runtime'), 'AtriaPackage.runtime');
         if (runtime.experienceContract !== undefined) {
             runtime.experienceContract = assertExperienceDataClosure(runtime.experienceContract, assets);
+            for (const task of runtime.experienceContract.taskRuntime?.tasks ?? []) {
+                for (const variant of task.variants) {
+                    for (const [field, type] of [['prompt', 'core.prompt-program'], ['generation', 'core.generation-profile']]) {
+                        const ref = variant[field];
+                        if (!modelPromptResourceKeys.has(type + ':' + ref.resourceId + '@' + ref.revision)) throw new TypeError('Task references missing exact Package resource');
+                    }
+                }
+            }
         }
         if (runtime.modelPrompt !== undefined) {
             runtime.modelPrompt = assertPackageModelPromptRuntimeMetadata(runtime.modelPrompt, {

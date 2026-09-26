@@ -153,12 +153,28 @@ export function assertMessageProjection(value, content) {
     return projection(value, content, dataBudget());
 }
 
-/** P2 reserves outcomes as an explicitly empty array. Diagnostics are not UI data. */
+export function assertOutcomeShape(value) {
+    record(value, ['requestId', 'interpretation'], 'Semantic outcome');
+    const requestId = identifier(value.requestId, 'Outcome request');
+    const raw = value.interpretation;
+    record(raw, ['decision', 'confidence', 'eventType', 'severity', 'participants', 'evidence'], 'Interpretation', ['eventType', 'severity', 'participants', 'evidence']);
+    if (!['event', 'no_change'].includes(raw.decision) || typeof raw.confidence !== 'number' || !Number.isFinite(raw.confidence) || raw.confidence < 0 || raw.confidence > 1) fail('Interpretation', 'requires semantic decision and confidence');
+    const interpretation = { decision: raw.decision, confidence: raw.confidence };
+    if (raw.decision === 'event') {
+        interpretation.eventType = identifier(raw.eventType, 'Event type', /^[A-Za-z][A-Za-z0-9._-]{0,127}$/);
+        if (raw.severity !== undefined) interpretation.severity = identifier(raw.severity, 'Severity');
+        interpretation.participants = Object.freeze(array(raw.participants ?? [], 16, 'Participants').map(item => text(item, 128, 'Participant')));
+    } else if (['eventType', 'severity', 'participants'].some(key => Object.hasOwn(raw, key))) fail('No change', 'cannot include event fields');
+    interpretation.evidence = Object.freeze(array(raw.evidence ?? [], 8, 'Evidence').map(item => text(item, 500, 'Evidence')));
+    return Object.freeze({ requestId, interpretation: Object.freeze(interpretation) });
+}
+
+/** Semantic proposals confer no authority until the pinned Package finalize path. */
 export function assertTurnEnvelope(value) {
     record(value, ['schemaVersion', 'narrative', 'projection', 'outcomes', 'diagnostics'], 'TurnEnvelope', ['projection']);
     version(value.schemaVersion, 'TurnEnvelope.schemaVersion');
     const narrative = text(value.narrative, LIMIT.contentLength, 'TurnEnvelope.narrative');
-    array(value.outcomes, 0, 'TurnEnvelope.outcomes (reserved for P3)');
+    const outcomes = array(value.outcomes, 16, 'TurnEnvelope.outcomes').map(assertOutcomeShape);
     const diagnostics = array(value.diagnostics, LIMIT.diagnostics, 'TurnEnvelope.diagnostics').map(item => {
         record(item, ['code', 'message'], 'Turn diagnostic');
         return Object.freeze({ code: identifier(item.code, 'Diagnostic code'),
@@ -166,7 +182,7 @@ export function assertTurnEnvelope(value) {
     });
     return Object.freeze({ schemaVersion: 1, narrative,
         ...(Object.hasOwn(value, 'projection') ? { projection: assertMessageProjection(value.projection, narrative) } : {}),
-        outcomes: Object.freeze([]), diagnostics: Object.freeze(diagnostics) });
+        outcomes: Object.freeze(outcomes), diagnostics: Object.freeze(diagnostics) });
 }
 
 /**

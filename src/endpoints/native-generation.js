@@ -16,6 +16,7 @@ import { createHttpGenerationProvider } from '../native/adapters/http-generation
 import { createNativeMessagesProvider } from '../native/adapters/native-messages-provider.js';
 import { assertConnectionProfile, assertExactResourceRef } from '../native/model-prompt-runtime/contracts.js';
 import { prepareProviderDiscovery, discoverProviderModels } from '../native/adapters/provider-discovery.js';
+import { nativeTaskScheduler } from '../native/task-scheduler.js';
 
 function services() {
     const { core, packageInstaller } = getNativeSessionServices();
@@ -43,6 +44,28 @@ function services() {
 
 export function createNativeGenerationRouter(getHost = services) {
     const router = express.Router();
+    router.get('/operations/:id', (req, res) => {
+        if (!req.user?.profile?.handle) return res.sendStatus(401);
+        try { res.json(nativeTaskScheduler.project(req.user.profile.handle, req.params.id)); } catch { res.sendStatus(404); }
+    });
+    router.delete('/operations/:id', (req, res) => {
+        if (!req.user?.profile?.handle) return res.sendStatus(401);
+        try { res.json({ cancelled: nativeTaskScheduler.cancel(req.user.profile.handle, req.params.id) }); } catch { res.sendStatus(404); }
+    });
+    router.post('/task/start', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        // Explicit detached work survives view closure, but not Host restart.
+        // Its final result still enters the existing revision-backed Session.
+        try {
+            const result = await getHost().executeTask(handle, req.body, undefined, chunk => {
+                if (!res.headersSent && chunk.operationId) res.status(202).json({ operationId: chunk.operationId });
+            });
+            if (!res.headersSent) res.json(result);
+        } catch {
+            if (!res.headersSent) res.status(400).json({ error: 'native_task_start_failed' });
+        }
+    });
     const presets = host => new PromptPresetStore({ engine: host.library._engine });
     router.get('/regex-scopes', async (req, res) => {
         const handle = req.user?.profile?.handle;
@@ -290,7 +313,7 @@ export function createNativeGenerationRouter(getHost = services) {
             return response.sendStatus(404);
         } catch (error) { response.status(400).json({ error: error.code === 'native_runtime_fallback_role' ? error.code : 'native_generation_configuration_invalid' }); }
     });
-    router.post(['/execute', '/preview'], async (request, response) => {
+    router.post(['/execute', '/preview', '/task', '/turn'], async (request, response) => {
         const handle = request.user?.profile?.handle;
         if (!handle) return response.sendStatus(401);
         const controller = new AbortController();
@@ -302,7 +325,9 @@ export function createNativeGenerationRouter(getHost = services) {
         const abort = () => { if (!response.writableEnded) controller.abort(); };
         response.on('close', abort);
         try {
-            const result = await getHost().execute(handle, request.body, controller.signal, streaming ? chunk => emit({ chunk }) : undefined, { preview: request.path === '/preview' });
+            const host = getHost();
+            const method = request.path === '/task' ? 'executeTask' : request.path === '/turn' ? 'executeTurn' : 'execute';
+            const result = await host[method](handle, request.body, controller.signal, streaming ? chunk => emit({ chunk }) : undefined, { preview: request.path === '/preview' });
             if (!controller.signal.aborted) {
                 if (streaming) { emit({ result }); response.end(); } else response.json(result);
             }

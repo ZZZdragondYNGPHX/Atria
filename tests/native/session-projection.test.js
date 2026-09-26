@@ -289,6 +289,21 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         expect(messages.map(item => item.atri_native.messageId)).toEqual([greetingId, userId, assistantId]);
     });
 
+    test('P3 provisional Turn never publishes via autosave or stop, even with streamed prose', async () => {
+        await runtime.prepareGeneration('normal');
+        messages.push({ name: 'Player', is_user: true, is_system: false, mes: 'Explore', extra: {} });
+        await runtime.persist();
+        const anchor = runtime.snapshot.revision.revisionId;
+        runtime.markProvisionalTurn();
+        messages.push({ name: 'Actor', is_user: false, is_system: false, mes: 'Unvalidated provisional narrative', extra: {} });
+        await runtime.persist();
+        expect((await f.core.load(h.handle, runtime.snapshot.session.sessionId)).revision.revisionId).toBe(anchor);
+        await runtime.finalizeStoppedGeneration();
+        expect(runtime.snapshot.revision.revisionId).toBe(anchor);
+        expect(messages.at(-1).mes).toBe('Explore');
+        expect(runtime.generation).toBeNull();
+    });
+
     test('real send lifecycle commits user revision before assistant while keeping generation Draft open', async () => {
         expect(await runtime.prepareGeneration('normal')).toBe('normal');
         expect(runtime.generation).toMatchObject({ kind: 'append' });

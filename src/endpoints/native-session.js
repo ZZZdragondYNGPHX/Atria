@@ -63,6 +63,10 @@ export function createNativeSessionRouter(getServices = services) {
             } else {
                 res.json(await core.applyTimelineCommands(handle, sessionId, commands, { expectedRevisionId }));
             }
+        } else if (command?.type === 'turn.finalize') {
+            res.json(await core.finalizeTurn(handle, sessionId, { envelope: command.envelope, invocationId: command.invocationId }, { expectedRevisionId }));
+        } else if (command?.type === 'proposal.resolve') {
+            res.json(await core.resolveTaskProposal(handle, sessionId, command, { expectedRevisionId }));
         } else if (command?.type === 'restore') {
             if (typeof command.saveId !== 'string') throw new TypeError('Native restore requires saveId');
             res.json(await core.restoreSavePoint(handle, sessionId, command.saveId, { expectedRevisionId }));

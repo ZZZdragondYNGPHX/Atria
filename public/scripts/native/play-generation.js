@@ -1,7 +1,7 @@
-import { executeNativeGeneration } from './generation-client.js';
+import { executeNativeGeneration, executeNativeOperation } from './generation-client.js';
 
 // Keep publication on NativeSessionRuntime's existing Draft/Revision boundary.
-export async function runNativePlayGeneration({ runtime, type, signal, input = '', quietPrompt = '', host, execute = executeNativeGeneration }) {
+export async function runNativePlayGeneration({ runtime, type, signal, input = '', quietPrompt = '', host, execute = executeNativeGeneration, executeOperation = executeNativeOperation }) {
     if (signal?.aborted) throw Object.assign(new Error('Native generation cancelled'), { code: 'generation_cancelled' });
     const originalType = type;
     const generationType = await runtime.prepareGeneration(type);
@@ -13,6 +13,17 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
         }
         if (signal?.aborted) throw Object.assign(new Error('Native generation cancelled'), { code: 'generation_cancelled' });
         const game = host.gameApi?.();
+        if (runtime.snapshot?.manifest?.runtime?.experienceContract?.taskRuntime?.turn && !['quiet', 'impersonate'].includes(originalType)) {
+            if (originalType === 'continue') throw new Error('Package Turn continuation requires an explicit new Turn');
+            runtime.markProvisionalTurn();
+            const context = host.context?.() ?? globalThis.Atria?.getContext?.();
+            const slotBindings = context?.capabilitySettings?.atri_task_bindings?.[runtime.snapshot.session.packageId] ?? {};
+            const result = await executeOperation('turn', { slotBindings, userInput: input,
+                invocationId: 'turn-' + crypto.randomUUID() }, { abortSignal: signal, onChunk: host.onChunk,
+                source: { sessionId: runtime.snapshot.session.sessionId, revisionId: runtime.snapshot.revision.revisionId } });
+            await runtime.acceptOperationSnapshot(result, { turn: true });
+            return result.timeline.at(-1)?.content ?? '';
+        }
         if ([undefined, 'normal'].includes(originalType) && input.trim() && game?.isActive?.()
             && game.getPackageState?.()?.descriptor?.experience?.mode === 'text') {
             return await game.submitFreeText({ userInput: input, abortSignal: signal });
