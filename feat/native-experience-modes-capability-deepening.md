@@ -3197,7 +3197,395 @@ Round 4 完成。下一步进入 **Round 5 — MVU / Legacy Migration**。
 
 
 
-## 二十三、修订记录
+---
+
+## 二十三、Round 5 — Capability Benchmark Gap Analysis
+
+### 23.1 本任务明确不做 SillyTavern 迁移体系
+
+本企划后续不以“兼容 / 迁移 SillyTavern 角色卡”为目标。
+
+SillyTavern、MVU、Tavern Helper、CardApp、重前端 Regex 卡只作为：
+
+> **能力压力测试与竞品/旧生态行为样本。**
+
+用途是回答：
+
+- 这类玩法能做到什么？
+- Atria Native 当前是否能表达？
+- 如果不能，Atria 缺的是哪一类通用能力？
+- 这个能力是否值得作为独立产品能力加入？
+
+不做：
+
+- SillyTavern importer architecture；
+- legacy source-map / migration report；
+- `legacy-mvu-patch` 长期 authority adapter；
+- `triggerSlash` Native 兼容 API；
+- `replaceMvuData` Native 兼容 API；
+- arbitrary Regex HTML compatibility runtime；
+- Tavern Helper API 复刻；
+- 为旧格式保留双重事实源。
+
+角色卡适配可以继续作为人工验证手段，但它不是产品架构目标。
+
+### 23.2 对照原则：吸收能力，不吸收实现
+
+对照示例：
+
+| 旧生态行为 | Atria 应吸收的能力 | 不应复制 |
+| --- | --- | --- |
+| HTML 自定义开局 | Form + Local UI State + Composer Action | HTML/JS 注入 |
+| MVU 状态栏 | World State + Component/Projection | Regex HTML |
+| `replaceMvuData` | UI 可触发确定性权威状态变化 | 任意 World patch |
+| Quick Reply | Message Action + Runtime Trigger | Slash script |
+| swipe | Reply Variant UX | mutable swipe array |
+| World Info | Knowledge discovery/delivery | legacy field schema |
+| Regex display-only | Message Projection | replacement HTML |
+| localStorage UI 偏好 | Player Preference State | Package arbitrary browser storage |
+| 前端 save/load | Native SavePoint/Branch | 删除消息 + 恢复变量快照 |
+| 前端地图/商店/战斗 | Package Data + View + Command | Vue/Pinia runtime 注入 |
+
+### 23.3 Atria 当前已经明显强于旧生态的基础
+
+后续设计应保护这些优势，不为了追平前端自由度而退化：
+
+- immutable Timeline / Variant；
+- Revision / Branch；
+- SavePoint；
+- World State schema；
+- Event Journal；
+- typed Command / Reducer / Rule；
+- deterministic RNG；
+- Native Knowledge state/lifecycle；
+- Prompt Program semantic target；
+- Package/Version exact identity；
+- declarative runtime boundary；
+- explicit permission/capability；
+- Native Model/Prompt Runtime 的 structured-output capability。
+
+因此本任务是：
+
+> **在不破坏这些 authority 边界的前提下，把前端表达力补到足以覆盖甚至超过高阶 MVU/重前端卡。**
+
+### 23.4 第一组差距：UI 基础能力
+
+当前明确不足：
+
+- Form；
+- textarea/select/checkbox/radio/range；
+- Local UI State；
+- two-way local model；
+- dynamic repeat/list；
+- richer conditional rendering；
+- dynamic binding；
+- safe style / theme；
+- reusable UI template；
+- multi-view / multi-surface；
+- modal/drawer declarative control。
+
+对应方案：
+
+> Component Model v2。
+
+### 23.5 第二组差距：消息级结构化 UI
+
+当前明确不足：
+
+- 正文后状态栏；
+- 正文穿插组件；
+- story options；
+- battle-start card；
+- unlock/title card；
+- message snapshot；
+- historical message action；
+- structured assistant output → Native UI。
+
+对应方案：
+
+> Message Projection + Package Turn Contract + Turn Envelope。
+
+### 23.6 第三组差距：UI → Runtime 行为
+
+当前明确不足：
+
+- Composer prefill；
+- Composer submit；
+- UI 直接触发 typed Command；
+- 简单 deterministic state mutation 的低样板成本；
+- Action Sequence；
+- surface open/close；
+- generation busy/disabled 状态。
+
+对应方案：
+
+- Native Composer Host capability；
+- Action v2；
+- Declarative Mutation shorthand；
+- typed Command/Event 仍为唯一 World authority。
+
+### 23.7 第四组差距：Package 数据与派生逻辑
+
+重前端样本暴露：
+
+- item catalog；
+- skill definitions；
+- map graph；
+- shops；
+- historical events；
+- title rules；
+- route data；
+- static lookup tables。
+
+当前 UI/selector contract 无法优雅消费这类大型静态数据。
+
+对应方案：
+
+- read-only Package Data Resource；
+- Data Projection；
+- 受限 builtin algorithms；
+- Selector 不局限于标量。
+
+### 23.8 第五组差距：状态分层
+
+高阶前端需要至少：
+
+1. World State；
+2. Session-authoritative State；
+3. Local UI State；
+4. Player Preference State。
+
+Atria 当前前两层有较强基础，但 UI/Preference 层尚未形成 Native Package contract。
+
+必须避免再次把：
+
+- tab；
+- modal；
+- setup form；
+- display mode；
+- option send mode；
+
+全部塞进剧情变量。
+
+### 23.9 第六组差距：Turn 产生策略
+
+Atria 当前 Game Runtime 更偏：
+
+`authority-first`
+
+但开放式 RP/MVU 类玩法需要：
+
+`narrative-outcome`
+
+因此两者都应是一等 Native policy：
+
+#### authority-first
+
+适合确定性游戏、战斗、经济、规则系统。
+
+#### narrative-outcome
+
+适合开放式 RP，让模型提出 semantic outcome，再由 typed runtime 验证、模拟和提交。
+
+不是为了兼容 MVU，而是 Atria 本身需要同时支持：
+
+> **规则驱动游戏** 与 **叙事驱动状态游戏**。
+
+### 23.10 第七组差距：Lifecycle Automation
+
+高阶卡常见能力：
+
+- session start；
+- turn before/after；
+- assistant/user message 后；
+- Knowledge activation；
+- state changed；
+- world event committed。
+
+Atria 当前有底层 lifecycle event 和 Game Rule，但缺少 Package 可声明的统一 Runtime Automation contract。
+
+需要独立设计：
+
+> Declarative Runtime Trigger / Automation。
+
+它不属于 Component。
+
+### 23.11 第八组差距：Opening Experience
+
+Atria 当前 Entry Point 不能等价覆盖：
+
+- first message variants；
+- setup wizard；
+- custom start；
+- preview opening；
+- opening confirm。
+
+需要：
+
+- Opening Phase；
+- Opening Variant；
+- Setup View；
+- confirm → first immutable Timeline commit。
+
+这也是 Atria 自己应该有的产品能力，而非“兼容 alternate greetings”。
+
+### 23.12 第九组差距：Reply / Branch UX
+
+底层 Branch/Revision 已经强于 mutable swipe。
+
+缺的是：
+
+- reply previous/next；
+- retry；
+- variant count；
+- branch-aware preview；
+- 从旧消息 fork；
+- 用户不需要理解 Branch ID。
+
+因此需要：
+
+> Reply Variant / Branch facade。
+
+### 23.13 第十组差距：Conversation Presentation
+
+高阶 Hybrid 应能把同一 Timeline 以不同方式呈现：
+
+- feed；
+- latest；
+- reader。
+
+而不是 Package 自己重新读 Timeline、重新造聊天系统。
+
+需要：
+
+> Native Conversation presentation mode。
+
+### 23.14 第十一组差距：Host UI / Input Capability
+
+从重前端样本还发现：
+
+- Fullscreen；
+- responsive device/orientation；
+- keyboard focus；
+- gamepad navigation；
+- modal focus trap；
+- safe-area；
+- generation busy state。
+
+这些应由 Host 提供，不让 Package 自己抓 DOM/window。
+
+候选：
+
+- Host Fullscreen；
+- semantic focus navigation；
+- gamepad mapping；
+- environment context；
+- overlay ownership。
+
+### 23.15 第十二组差距：前端审美自由度
+
+仅禁止 HTML/CSS 并不足够。
+
+若 Native Component 做不出精美重前端，作者仍会寻找逃逸路径。
+
+因此必须提供：
+
+- semantic theme tokens；
+- safe layout；
+- safe style allowlist；
+- Package Asset；
+- responsive appearance；
+- animation/motion 的受控 Native primitives（后续讨论）；
+- Studio preview。
+
+目标：
+
+> 在不开放 arbitrary HTML/JS/CSS 的情况下，仍能做出完整产品级 UI。
+
+### 23.16 第十三组差距：Authoring / Studio
+
+要真正“吃掉重前端生态”，不能只提供 JSON contract。
+
+Studio 后续至少应支持：
+
+- Component tree editor；
+- View/Surface editor；
+- state/schema browser；
+- selector/expression inspector；
+- form preview；
+- message block template preview；
+- Package Data browser；
+- Action wiring；
+- Turn Contract editor；
+- simulated World State；
+- responsive preview；
+- diagnostics；
+- dependency/reference navigation。
+
+否则 Native contract 再强，也只会变成难写的手工 JSON。
+
+### 23.17 第十四组差距：Diagnostics
+
+复杂卡必须能回答：
+
+- 为什么这个 Component 没显示？
+- 哪个 selector 失败？
+- Action 为什么被拒绝？
+- 哪个 Command validator 失败？
+- 哪个 block schema 不合法？
+- 本轮 structured output 为什么 rejected？
+- 哪个 Runtime Automation 被 cycle guard 阻止？
+- 当前 UI 读的是 World / UI / Preference 哪个状态？
+
+因此 Experience Runtime 需要统一 diagnostics surface，而不是 console-only。
+
+### 23.18 后续所有样本的使用方法
+
+以后继续拿 SillyTavern/MVU/重前端卡对照时，只做三件事：
+
+1. 提取它展示出来的**用户能力**；
+2. 检查 Atria Native 是否已有；
+3. 没有则判断是否值得变成通用 Native capability。
+
+不再讨论：
+
+- 如何自动迁移该卡；
+- 如何兼容它的旧 API；
+- 如何让它原封不动运行。
+
+### 23.19 Round 5 当前结论
+
+当前已经形成的 Atria 能力缺口主表：
+
+1. Component Model v2；
+2. Local UI State；
+3. Player Preference State；
+4. Package Data Resource；
+5. Data Projection；
+6. Native Composer Host；
+7. Action v2；
+8. Declarative Mutation shorthand；
+9. Message Projection；
+10. Package Turn Contract；
+11. Turn Envelope；
+12. narrative-outcome policy；
+13. Runtime Automation；
+14. Opening Phase / Variant；
+15. Reply Variant / Branch facade；
+16. Conversation feed/latest/reader；
+17. Host Fullscreen / focus / gamepad；
+18. safe theme/style/motion；
+19. Studio visual authoring；
+20. Experience diagnostics。
+
+这些才是后续深化目标。
+
+
+## 二十四、修订记录
+
+### 2026-09-26 — Discussion Draft v0.8
+
+纠正 Round 5 方向：本任务不设计 SillyTavern/MVU 迁移与兼容体系。旧卡只作为 capability benchmark / pressure test。新增 Atria Native 能力缺口主表，并明确后续只吸收用户能力、不复制 legacy API/运行时。
 
 ### 2026-09-26 — Discussion Draft v0.7
 
