@@ -766,7 +766,181 @@ Experience 只是 Native runtime 的声明式 UI / interaction layer。
 
 ---
 
-## 十九、修订记录
+---
+
+## 十九、Round 2 能力账本（进行中）
+
+本轮开始对照 `vanilla` 与当前 `main`，把“旧生态实际行为”拆成 Native 能力，而不是按旧 API 名称照搬。
+
+### 19.1 开局 / Alternate Greetings
+
+已确认 SillyTavern 的 `first_mes + alternate_greetings` 在聊天运行时中本质上属于**首条 assistant message 的多个 swipe**，而不是多个独立 Session / Entry Point。
+
+因此后续 Native 设计需要区分：
+
+- **Entry Point**：真正不同的游戏初始世界、资源绑定、初始状态或流程入口；
+- **Opening Variant**：同一 Entry Point 下的不同首条消息 / 开场版本；
+- **Setup Wizard**：需要用户先填写/选择，再提交第一条用户输入的交互式开局。
+
+不能再把所有 `alternate_greetings` 机械转换成 Entry Point。
+
+### 19.2 Quick Reply / 自动动作
+
+SillyTavern Quick Reply 实际能力不只是“按钮发文字”，还包含：
+
+- 手动点击执行；
+- 上下文菜单；
+- startup；
+- user message 后；
+- AI message 后；
+- chat change；
+- new chat；
+- before generation；
+- group member draft；
+- 可阻止自动执行。
+
+Native 不应复制 Quick Reply + Slash Script 体系，而应拆成：
+
+- Message / Composer Action；
+- Session / Generation lifecycle trigger；
+- declarative action sequence；
+- 可选条件；
+- 明确 capability / permission。
+
+其中“显示按钮”“自动执行”“生命周期触发”应是三件不同的能力。
+
+### 19.3 Regex
+
+Vanilla Regex 当前表达了至少四个独立维度：
+
+1. **placement**：USER_INPUT / AI_OUTPUT / SLASH_COMMAND 等；
+2. **lane**：markdown/display、prompt、普通存储文本；
+3. **message depth**：minDepth / maxDepth；
+4. **execution policy**：runOnEdit、macro substitution。
+
+Atria 已经拥有 Native Regex scope，并明确 Regex 只负责文本变换，不拥有 Game Runtime / World State / HUD。
+
+后续方向暂定：
+
+- 纯文本清理、兼容旧 Prompt 处理仍由 Regex 负责；
+- Regex 生成 HTML/JS 前端的用途迁往 Message Projection / Component；
+- display-only 与 prompt-only 的“语义隔离”需要成为 Message Projection / Prompt Pipeline 的一等能力，而不能继续依赖 Regex 技巧完成。
+
+### 19.4 World Info → Native Knowledge 差异
+
+Atria Native Knowledge 当前已原生覆盖：
+
+- enabled；
+- keywords / aliases / regex discovery；
+- state conditions；
+- probability；
+- sticky / cooldown / delay；
+- required / related / exclusive relation；
+- before / after delivery；
+- priority；
+- narrator / actor / agent / user target。
+
+但 SillyTavern World Info 仍有 Native Knowledge 尚未完整表达的语义：
+
+- primary + secondary key 的 selective logic；
+- per-entry scan depth；
+- case sensitivity；
+- whole-word matching；
+- persona / character / scenario / creator-note 等额外 scan source；
+- recursion；
+- exclude recursion / prevent recursion / delay-until-recursion；
+- group / group weight / group override / group scoring；
+-更丰富的 prompt insertion position 与 role/depth；
+- generation-type triggers；
+- automation id；
+-部分全局 budget / minimum activation / overflow 语义。
+
+因此不能宣称现有 Native Knowledge 已“完全吃掉 World Info”。Round 5 需要决定这些能力中哪些：
+- 应原生吸收；
+- 应改写成更通用的 Knowledge contract；
+- 应由 Prompt Program / Runtime Rule 承接；
+- 属于旧实现细节而不再保留。
+
+### 19.5 Variables / MVU
+
+SillyTavern 本身存在：
+
+- chat-local variables；
+- global variables；
+- slash-command lexical scope；
+- macro side effects（set/add/inc/dec/get）。
+
+Atria Native 已存在更明确的：
+
+- World State；
+- Session State namespace；
+- Revision / Branch；
+- declarative Command / Reducer / Rule。
+
+同时当前 Atria 的 Memory state provider 已能只读读取：
+- Native state providers；
+- committed MVU `stat_data`；
+- LoreState readonly state。
+
+当前 MVU 适配是**只读兼容 Provider**，不是完整 MVU 写入运行时。
+
+因此后续需要明确四种状态层，禁止混用：
+
+1. **World State**：剧情/游戏权威事实；
+2. **Session State**：会话运行时持久状态；
+3. **Local UI State**：表单、tab、wizard 等临时前端状态；
+4. **Legacy Provider State**：MVU / LoreState 等兼容读取。
+
+### 19.6 MVU 卡的典型行为已经验证
+
+实际角色卡验证了常见 MVU 前端链路至少包含：
+
+- 当前 `stat_data` 注入；
+- 变量定义；
+- 变量更新规则；
+- 模型输出结构化 `UpdateVariable / JSONPatch`；
+- 正文状态标签；
+- `story_options`；
+- Regex 将结构化标签转成可交互 HTML；
+- 点击按钮后将文本发送/触发下一轮。
+
+这说明后续不能只补“状态栏 Component”，还必须同时覆盖：
+
+- state update contract；
+- message structured block；
+- quick action；
+- composer submit；
+- message-local rendering；
+- prompt/display separation。
+
+### 19.7 Round 2 当前结论
+
+已经确认的方向：
+
+1. **alternate greetings ≠ Entry Point**，需要 Opening Variant 概念。
+2. **Quick Reply 应拆成 Action + Lifecycle Trigger + UI**。
+3. **Regex 保留文本处理职责，但退出 UI 所有权**。
+4. **Native Knowledge 尚未完整覆盖 World Info 高阶激活语义**。
+5. **MVU 兼容 Provider 目前是只读桥，不等于 Native MVU 已完成**。
+6. **需要四层状态模型：World / Session / Local UI / Legacy Provider**。
+7. **Message Projection 与 Composer Action 是吃掉传统 MVU 前端的核心，不只是附加功能**。
+
+Round 2 尚未完成，下一步继续审计：
+
+- swipe / regenerate / continue / branch；
+- message edit/delete/retry 与 message-local UI 的关系；
+- macros；
+- prompt insertion / author note 类能力；
+- World Info 高阶语义是否全部值得 Native 化；
+- Tavern Helper / CardApp / LoreState 常见前端调用面；
+- 结构化模型输出与变量更新的事务边界。
+
+
+## 二十、修订记录
+
+### 2026-09-26 — Discussion Draft v0.2
+
+补充 Round 2 进行中的能力账本：开局/Opening Variant、Quick Reply 生命周期、Regex 语义、World Info 与 Native Knowledge 差异、四层状态模型，以及实际 MVU 前端链路。
 
 ### 2026-09-26 — Discussion Draft v0.1
 
