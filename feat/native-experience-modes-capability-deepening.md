@@ -5501,6 +5501,7 @@ Context Compiler
 ModelTaskDefinition
 ├─ taskId
 ├─ semantic role
+├─ bindingSlotId
 ├─ execution class
 │  ├─ turn-stage
 │  ├─ auxiliary
@@ -5515,8 +5516,8 @@ ModelTaskDefinition
 │  ├─ allowed lanes
 │  ├─ required lanes
 │  └─ budget hints
-├─ promptProgramRef
-├─ generationProfileRef
+├─ task promptProgramRef
+├─ generation intent / recommendation
 ├─ required capabilities
 ├─ output contract
 └─ diagnostics policy
@@ -8437,11 +8438,454 @@ narrativeOutcome.strategy = inline | interpreted
 > **Atria 不复制 MVU 的“额外变量更新 API”，但应原生支持 Narrator 与 Outcome Interpreter 分离的双模型 Turn。**
 
 
+### 26.74 十个 Model Task 不能变成十份 API 配置
+
+《银麒赎世》当前把 social chat、task evaluation、world dynamics、forum、live、surveillance、shop evaluation、outpost sync、plot task、image generation 分成多个独立 phoneAPI 通道。
+
+旧宿主缺少统一 Model Runtime，因此每个通道只能各自保存：
+
+- endpoint；
+- key；
+- model；
+- timeout；
+- retry；
+- max concurrency。
+
+Atria 已经拥有：
+
+- Connection；
+- Model Profile；
+- Secret Store；
+- Runtime Route；
+- exact Prompt / Generation resources。
+
+所以第 27 项如果最后变成：
+
+> “每个 Model Task 都让玩家重新配一条完整 Runtime Route”
+
+本质上只是把十个 phoneAPI 设置页换了名字。
+
+这不是可接受的 Native UX。
+
+### 26.75 必须拆开三种身份
+
+复杂 Experience 中至少存在三个不同概念：
+
+1. **Task semantic identity**
+   - `social_chat`；
+   - `quest_evaluator`；
+   - `world_dynamics`；
+   - `outpost_interpreter`。
+
+2. **Author-owned Task Program**
+   - Task Prompt；
+   - Context policy；
+   - output schema；
+   - result authority；
+   - required capabilities。
+
+3. **Player-owned execution choice**
+   - 用哪个 Model；
+   - 哪个 Connection；
+   - fallback；
+   - timeout / retry；
+   - cost / quality preference。
+
+不能把三者都编码成一个 Runtime role name。
+
+否则会出现：
+
+```text
+role.social_chat
+role.forum
+role.live
+role.task_eval
+role.world_dynamics
+role.outpost_sync
+...
+```
+
+然后玩家又被迫为每个 role 配一条 Route。
+
+因此：
+
+> **Package Task semantic 不是 Runtime Route role。**
+
+Runtime role 只应表达少量 Host execution semantics；Package 的业务语义属于 ModelTaskDefinition。
+
+### 26.76 Task Binding Slot
+
+第 27 项增加：
+
+> **Task Binding Slot**
+
+Package 可以把多个 Model Task 分组到少量稳定 slot。
+
+例如：
+
+```text
+Model Tasks
+├─ phone.dm.generate       → slot: social
+├─ phone.group.generate    → slot: social
+├─ forum.generate          → slot: social
+├─ quest.evaluate          → slot: structured
+├─ outpost.interpret       → slot: structured
+├─ world.simulate          → slot: world_sim
+└─ illustration.generate   → slot: media
+```
+
+候选：
+
+```text
+TaskBindingSlot
+├─ slotId
+├─ displayName
+├─ requiredCapabilities
+├─ requirementScope
+│  ├─ entrypoint_required
+│  ├─ feature_required
+│  └─ optional
+├─ executionClass
+├─ author recommendation
+└─ compatibility policy
+```
+
+这样十几个 Task 最终可能只需要玩家处理：
+
+- Narrative；
+- Structured；
+- Social；
+- World Simulation；
+- Media；
+
+这几类模型选择。
+
+Package 仍然可以让一个 Task 拥有独立 slot，但不应默认一 Task 一配置。
+
+### 26.77 当前 Runtime Route 的组合粒度对 Package Task 太粗
+
+继续核对 `main@4dab353a` 后发现一个真实结构问题。
+
+当前 Runtime Route 同时绑定：
+
+- Connection / Model；
+- exact Generation Profile；
+- exact Prompt Program；
+- fallback；
+- execution policy。
+
+这对固定职责的：
+
+- Narrator；
+- Event Interpreter；
+- Orchestrator；
+
+非常合理。
+
+但 Package Model Task 会拥有**自己的 Task Prompt Program**。
+
+如果：
+
+- social chat；
+- quest evaluation；
+- world dynamics；
+
+三个 Task 使用三个不同 Prompt Program，而“玩家想让它们都跑同一个便宜模型”，当前 Route 粒度会迫使玩家复制三条：
+
+```text
+same model
+same connection
+same fallback
+same timeout
+different prompt
+```
+
+这说明未来 Model Task 不能机械套用现有 Runtime Route 一整个对象。
+
+### 26.78 从 Runtime Route 中抽出可复用的 Model Execution Lane
+
+长期更干净的模型是把 Runtime Route 的两部分语义拆开：
+
+```text
+Model Execution Lane
+├─ player Model / Connection
+├─ fallback lane
+├─ timeout / retry
+├─ capability evidence
+└─ player execution policy
+
+Author Program
+├─ Prompt Program
+├─ Context policy
+├─ output contract
+├─ result authority
+└─ generation intent
+
+            ↓ compose
+
+Effective Task Execution Plan
+```
+
+这不要求立刻新增一个新的顶层产品域。
+
+实现阶段可以：
+
+- 从现有 Runtime Route 中抽取共享的 execution-lane contract；
+- 让普通 Runtime Route 继续表现为：
+  - Execution Lane + role Prompt/Generation；
+- 让 Package Model Task 表现为：
+  - Task Binding Slot → Execution Lane；
+  - 再叠加 task-owned Program / Contract。
+
+如果首版为了兼容现有数据结构，暂时允许“从某条 Runtime Route 借用 execution lane”，Host 也必须明确：
+
+> **Package Task 不得意外继承那条 Route 的 Narrator Prompt。**
+
+不能因为玩家把 `social` slot 绑定到 Narrator Route，就把整个 Narrator Prompt Program 拿去生成论坛帖子。
+
+### 26.79 Task Prompt 与 Generation Intent 的所有权
+
+对于 Package Model Task：
+
+#### Prompt
+
+Task 的 Prompt Program 应由 Package exact resource 定义。
+
+原因：
+
+- 它定义输入语义；
+- 输出约束；
+- Context 使用方式；
+- Task contract 本身。
+
+玩家可以：
+
+- 选择模型；
+- 选择允许的 typed parameters；
+- Fork / Derive 自己的资源后显式替换；
+
+但不能因为换模型而无意间丢掉 Task Prompt。
+
+#### Generation
+
+Generation 比 Prompt 更适合允许分层策略。
+
+候选：
+
+```text
+generationPolicy:
+- package_exact
+- package_recommended
+- player_lane_default
+```
+
+例如：
+
+- Event / Outcome Interpreter 可以推荐低温度结构化 profile；
+- Social chat 可以允许玩家使用自己的 conversational profile；
+- image generation 使用 media-specific profile。
+
+无论哪种，都必须：
+
+- 有 exact EffectiveRequestSnapshot；
+- 通过 capability validation；
+- 不 silent-follow latest。
+
+本轮暂不冻结最终字段名，但冻结：
+
+> **Task Prompt contract 与玩家 Model binding 必须能独立组合。**
+
+### 26.80 Player-owned Experience Task Bindings
+
+建议由玩家拥有：
+
+```text
+ExperienceTaskBindings
+├─ packageId
+├─ slotBindings
+│  ├─ social      → executionLaneRef
+│  ├─ structured  → executionLaneRef
+│  ├─ world_sim   → executionLaneRef
+│  └─ media       → executionLaneRef
+└─ optional taskOverrides
+   └─ quest.evaluate → executionLaneRef
+```
+
+它不是：
+
+- Package content；
+- World State；
+- Session Application State。
+
+它属于：
+
+> **player-owned Runtime configuration。**
+
+因此：
+
+- 不随 Branch 回滚；
+- 不允许 Package 写入；
+- 不含 Secret value；
+- Package update 不能静默覆盖。
+
+### 26.81 Binding resolution 必须确定性
+
+候选解析顺序：
+
+```text
+1. explicit player per-task override
+2. player slot binding
+3. Package-declared compatible built-in inheritance
+4. unavailable
+```
+
+第 3 项必须显式声明。
+
+例如作者可以声明：
+
+> `structured` slot 可以继承当前 `event_interpreter` execution lane。
+
+但不能因为系统发现“这里有一个模型”就随便拿来用。
+
+如果没有合法 binding：
+
+- required entrypoint slot → Preflight 阻止进入依赖它的 Entry Point；
+- feature-required slot → 对应 feature disabled + remediation；
+- optional slot → graceful degradation。
+
+不能偷偷 fallback 到 Legacy sender 或任意全局模型。
+
+### 26.82 Package 更新时复用绑定，但必须重新验证
+
+Slot ID 应在 Package family 内保持稳定。
+
+例如：
+
+`social`
+
+从 V1 → V2 仍然可以复用玩家原来的 execution binding。
+
+但新 PackageVersion 可能新增：
+
+- structured output requirement；
+- context minimum；
+- image capability；
+- tool requirement。
+
+因此每次打开 exact PackageVersion 时：
+
+```text
+existing player binding
+→ validate against new slot requirements
+→ compatible   → reuse
+→ incompatible → Health / Preflight remediation
+```
+
+禁止：
+
+- 因版本更新自动换 Model；
+- 自动改 Route；
+- 自动启用 provider capability override。
+
+历史 Model Task invocation 已保存自己的 EffectiveRequestSnapshot / provenance，因此玩家后来改 binding 不会改写旧结果。
+
+### 26.83 Play / Runtime UX 应按 Slot 配置，而不是按内部 Task 列表轰炸玩家
+
+Package Health / Runtime Setup 应显示类似：
+
+```text
+Story
+✓ Narrator             GPT-X
+
+Game intelligence
+✓ Structured tasks     Model Y
+✓ Social simulation    Model Z
+! World simulation     Not configured
+○ Media generation     Optional / Off
+```
+
+展开后才能看到：
+
+- 哪些 Model Task 共用这个 slot；
+- required capabilities；
+- author recommendation；
+- 当前 route/lane；
+- per-task advanced override；
+- cost / context warning。
+
+应支持受控的批量操作：
+
+> “对所有兼容的 text slot 使用当前 Narrator model”。
+
+但真正保存前逐 slot 做 capability validation。
+
+这比让普通玩家理解：
+
+- 10 个 API URL；
+- 10 个 Key；
+- 10 个 Prompt；
+- 10 个内部 taskId；
+
+更符合 Atria 的产品定位。
+
+### 26.84 Runtime role 不应随 Package Task 数量无限增长
+
+当前 Native Generation Host 固定平台 roles：
+
+- narrator；
+- intent_resolver；
+- event_interpreter；
+- orchestrator；
+- studio；
+- memory；
+- search。
+
+未来 Package Model Task 不应动态把：
+
+`role.phone.chat`、`role.forum`、`role.shop_eval`
+
+注册成全局 Runtime role。
+
+实现上更合理的是：
+
+- 保留少量 Host-known execution role / class；
+- Package Task 用 `taskId + bindingSlotId` 表达业务语义；
+- Host 从 Task Binding 得到 exact player execution lane；
+- Task Program / Result Policy 决定真正的工作合同。
+
+是否最终需要一个通用 `package_task` Host role，留到实现设计阶段决定。
+
+冻结的是：
+
+> **Task semantic namespace 与平台 Runtime role namespace 必须分离。**
+
+### 26.85 这次仍不新增第 30 项
+
+Task Binding Slot / Model Execution Lane 是第 27 项：
+
+> Package Model Task / Generation Task Contract
+
+缺失的“用户配置与执行绑定”半边。
+
+它同时接入：
+
+- #20 Health / Preflight；
+- #24 Auxiliary Task / Scheduler；
+- #17 Host capability；
+- Player Runtime configuration。
+
+因此能力主表仍保持 **29 项**。
+
+
 ## 二十七、修订记录
 
 ### 2026-09-26 — Discussion Draft v1.7
 
 继续用《银麒赎世》的主生成/任务审核/生图/世界动态/据点同步并行状态压力测试 streaming 与 UI runtime。将 Round 4 的“Draft narrative 可 streaming、authority finalize 后 commit”推广为 Host-owned Scoped Operation State / Operation Projection；明确 busy 必须按 semantic claim/conflict scope 判断，Package UI 可读取 queued/running/streaming/retrying/finalizing/stale 等状态，Presentation/Local UI 可并行而冲突 authority transaction 通过 Revision/CAS 串行。能力总数仍维持 28。
+
+### 2026-09-26 — Discussion Draft v2.0
+
+继续压力测试《银麒赎世》的十通道模型配置，发现第 27 项只定义 Model Task 而未定义玩家如何高效绑定实际模型。新增 Task Binding Slot，并明确区分 Package Task semantic、author-owned Task Program 与 player-owned execution choice；同时指出当前 Runtime Route 把 Model/Connection 与 Prompt/Generation 绑定得过粗，复杂 Package Task 不应被迫一 Task 一 Route。提出可复用 Model Execution Lane / Effective Task Execution Plan，Task Prompt 与玩家 Model binding 独立组合，Package 更新按稳定 slot 复用并重新验证。能力总数仍为 29。
 
 ### 2026-09-26 — Discussion Draft v1.9
 
