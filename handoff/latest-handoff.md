@@ -1,11 +1,11 @@
 # Latest handoff — Native Experience Modes & Capability Deepening
 
 Updated: 2026-09-26.
-Status: implementation authorized; **P0 has not started**.
+Status: **P0 complete and pushed; stopped before P1**.
 
 Main baseline: `4dab353ac639d42eae885c79e18245267abd6820`.
 Work branch: `feat/native-experience-modes-capability-deepening`.
-Work branch HEAD: `4dab353ac639d42eae885c79e18245267abd6820`.
+Work branch HEAD: `349287c166bff9344bb9bbabc812a799b9cb8534` (pushed).
 Plan: `feat/native-experience-modes-capability-deepening.md`.
 Plan baseline commit: `6308c36e1a10b4c406f1ef5affcabe2eae545d71`.
 Detailed handoff: `handoff/native-experience-modes-capability-deepening.md`.
@@ -15,17 +15,38 @@ The top §0 of the plan is normative and supersedes stale earlier Round wording.
 The capability inventory is 32 items and implementation is split into P0–P9
 on one persistent work branch.
 
-Next stage: **P0 — Contract Foundation & Regression Fence**. Establish the
-minimal strict authoring/runtime vocabulary and version seams required by later
-capabilities, preserve existing v1 packages, and extend contract/guard coverage.
-Do not implement P1+ product surfaces yet.
+P0 added optional strict package-level `runtime.experienceContract` v1, shared
+32-feature version vocabulary with reserved vs supported versions, exact JSON
+AssetRef declarations, Project/Package/Descriptor validation and Host support
+checks before browser activation. Existing packages without the field and
+Component Model v1 remain unchanged. Only `component-model@1` is currently
+supported in the new vocabulary; required future features fail closed. Optional
+reserved features are metadata only. No feature bodies or new storage authority
+were implemented. EntryPoint cannot override package requirements.
+
+Fixed the A3 guard's obsolete path filter, which previously scanned zero active
+Experience files. Added a recursive Experience contract foundation guard and
+strict negative fixtures plus build/install/reopen coverage. Formal plan remains
+unchanged because P0 found no substantive architecture conflict.
+
+Passed: 138 distinct tests across 10 targeted/adjacent suites (including FS and
+SQLite Session Core), changed-JS ESLint, changed-MJS syntax, whitespace, and
+A0/A3/A4 plus the new Experience contract foundation guard (47 files). Initial
+SQLite binding absence was repaired locally, then all 22 Session Core tests
+passed. No binaries/config/lockfile changes committed. Exact suites and resolved
+failures are recorded in the detailed task handoff.
+
+Next stage: **P1 — Component v2 / Form / Local State / Action / Opening
+Foundation**. Cover #1/#2/#3/#4/#6/#7/#8 and basic #14. Preserve v1, keep UI state
+outside World Revisions, use existing typed authority for Form/Action, and enable
+only capability versions actually implemented. Do not implement P2+ bodies.
 
 Validation policy: targeted/adjacent checks for touched code, changed-area lint
 and relevant guards. No habitual full-repo suite, Android, Docker or paid model
 calls. Codex Astra does not need GitHub CI to complete a phase unless CI/workflow
-behavior itself changes. Fix normal failures autonomously. At P0 completion,
+behavior itself changes. Fix normal failures autonomously. At P1 completion,
 commit+push, update plan only for substantive design changes, update both handoff
-files, stop, and provide the P1 takeover prompt. Do not merge main before P9.
+files, stop, and provide the P2 takeover prompt. Do not merge main before P9.
 
 ---
 
