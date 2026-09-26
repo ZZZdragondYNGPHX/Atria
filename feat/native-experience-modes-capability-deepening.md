@@ -3578,7 +3578,7 @@ Studio 后续至少应支持：
 16. Conversation feed/latest/reader + scoped conversation threads；
 17. Host advanced presentation/input（Fullscreen / semantic focus / gamepad / safe-area；基础 responsive/focus 已存在）；
 18. safe theme/style/motion；
-19. Studio visual authoring v2 deepening（v1 Structured UI editor / Native Preview 已存在）；
+19. Studio visual authoring v2 + Scenario Simulation / Test Bench（v1 Structured UI editor / Native Preview 已存在）；
 20. Experience diagnostics。
 
 这 20 项是 Round 5 的**初始缺口表**，不是最终列表；后续三个案例已继续拆分/合并，最新主表见 §26.21。
@@ -4187,7 +4187,7 @@ otherwise
 16. Conversation feed/latest/reader；
 17. Host advanced presentation/input；
 18. Safe Appearance / Motion / Media Presentation；
-19. Studio visual authoring v2 deepening；
+19. Studio visual authoring v2 + Scenario Simulation / Test Bench；
 20. Experience diagnostics；
 21. **Activity Runtime / Transactional Subscene**；
 22. **Native Media / Scene Host（含长期 2D/3D Scene）**；
@@ -6373,7 +6373,207 @@ Package 仍然只调用 typed Action / Command / Task result apply；Runtime 负
 这说明当前能力表开始出现可组合性，而不是“每来一个新玩法就新增一个平台 API”。
 
 
+### 26.27 作者侧压力测试：Studio 不能只做可视化编辑
+
+《银麒赎世》的开发过程本身也是一个重要 benchmark。
+
+该项目已经建立：
+
+- 大量单元测试；
+- build artifact 正向 / 负向 marker；
+- 编译门禁；
+- prompt payload 拦截；
+- 多轮实机 smoke；
+- schema / hot-update / conflict guard；
+- 多种设备与运行配置检查。
+
+这说明复杂 Native Experience 的作者真正需要的不是：
+
+> “拖几个组件出来看看”。
+
+而是：
+
+> **在发布前可重复验证整个 Experience contract。**
+
+当前 Atria `main` 已有：
+
+- Studio Structured UI editor / Native Preview；
+- Prompt `/preview`；
+- Effective Request Snapshot；
+- ContextPlan / token / capability diagnostics；
+- Command `simulate`；
+- Build validation。
+
+这些是很好的地基，但还没有一等的 Package-level scenario test workflow。
+
+因此第 19 项应正式扩展为：
+
+> **Studio Visual Authoring + Scenario Simulation / Test Bench**
+
+候选测试用例：
+
+```text
+ExperienceScenario
+├─ scenarioId
+├─ package revision
+├─ entry point
+├─ initial World / Session fixtures
+├─ opening selections
+├─ environment fixture
+│  ├─ viewport
+│  ├─ touch / keyboard / gamepad
+│  ├─ reduced motion
+│  └─ host capabilities
+├─ deterministic RNG seed
+├─ clock / world-time fixture
+├─ scripted actions / user inputs
+├─ model task mode
+│  ├─ mock
+│  ├─ recorded
+│  └─ live preview
+├─ expected assertions
+└─ capture policy
+```
+
+Studio 应能逐步执行并检查：
+
+- Opening Wizard 分支是否可达；
+- Action availability / disabled reason；
+- Command simulation；
+- Activity start / cancel / settlement；
+- Session Application workflow transition；
+- World Process tick / catch-up；
+- Auxiliary Task stale policy；
+- Epistemic actor context；
+- Message Projection schema；
+- Conversation thread；
+- responsive / host capability fallback；
+- exact Prompt / ContextPlan；
+- token budget；
+- Health / Diagnostics。
+
+### 26.28 测试必须复用生产 Runtime，而不是 Studio 特制解释器
+
+冻结原则：
+
+> **Preview / Test Bench 与真实 Play 必须走同一套 compiler / validator / reducer / projection contract。**
+
+允许 mock：
+
+- Model Task output；
+- wall clock；
+- RNG；
+- Host environment；
+- external capability availability。
+
+不允许 mock 成另一套语义：
+
+- Studio-only selector；
+- Studio-only Action；
+- Studio-only reducer；
+- Studio-only Message Projection parser。
+
+否则会重新出现：
+
+> “Studio 预览能跑，安装后的 Package 不能跑”。
+
+### 26.29 Experience Assertions 应是声明式的
+
+Package / Studio scenario 可以声明：
+
+```text
+after action "equip"
+expect:
+- world.player.equipment.main == "sword-01"
+- event "equipment.changed" emitted once
+- sessionApp.inventoryView.selection unchanged
+- no unauthorized namespace write
+```
+
+常见 assertion primitive：
+
+- state path equals / matches schema；
+- Event emitted / not emitted；
+- Action available / denied；
+- Revision advanced exactly once；
+- Projection block valid；
+- Model Task output accepted / rejected；
+- token budget under threshold；
+- expected capability fallback selected；
+- diagnostic code present / absent。
+
+不能让 Package test fixture 执行 arbitrary JS assertion。
+
+### 26.30 Golden UI 只做辅助证据
+
+重前端当然需要：
+
+- PC；
+- Mobile；
+- Handheld；
+- light/dark；
+- safe-area；
+- reduced-motion；
+
+的视觉预览。
+
+但 screenshot/golden 不应成为唯一测试。
+
+优先级应为：
+
+1. typed structural assertion；
+2. runtime semantic assertion；
+3. accessibility/layout diagnostics；
+4. screenshot / visual review。
+
+这样 Studio 测试才不依赖“像不像某张旧卡”。
+
+### 26.31 Authoring Test Bench 与 Experience Health 共用诊断语言
+
+测试失败和玩家运行失败应使用同一 diagnostics vocabulary。
+
+例如：
+
+```text
+action.command.validation_failed
+model_task.route_missing
+context.budget.hard_reserve_overflow
+activity.settlement.rejected
+session_app.schema_mismatch
+perspective.source_stale
+asset_pack.required_missing
+host.scene3d.unavailable
+```
+
+Studio 可以：
+
+- 在测试里 assert diagnostic；
+- 跳到对应 authoring owner；
+- 给出修复位置。
+
+Player Runtime 则：
+
+- 显示用户可理解状态；
+- 提供 Host-owned remediation。
+
+这样第 19 与第 20 项不会成为两套工具链。
+
+### 26.32 本轮仍不新增第 29 项
+
+Scenario Test Bench 是 Authoring / Studio 的深化，不是新的 Runtime authority。
+
+因此最新主表仍保持 28 项，只将第 19 项更新为：
+
+> **Studio visual authoring v2 + Scenario Simulation / Test Bench**
+
+这也是本轮对《银麒赎世》作者侧能力的主要吸收结果。
+
+
 ## 二十七、修订记录
+
+### 2026-09-26 — Discussion Draft v1.4
+
+继续以《银麒赎世》的开发/测试体系反向压力测试 Studio。确认“Studio visual authoring”定义过窄，将第 19 项深化为 Visual Authoring + Scenario Simulation / Test Bench：以 deterministic fixture、mock/recorded/live Model Task、Action/Activity/WorldProcess/SessionApp/Perspective assertions 和多设备环境模拟验证 Package，并要求 Test Bench 复用生产 Runtime contract。能力总数仍维持 28，不新增第 29 项。
 
 ### 2026-09-26 — Discussion Draft v1.3
 
