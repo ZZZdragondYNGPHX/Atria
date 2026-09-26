@@ -1,3 +1,27 @@
+# Latest handoff — Native Experience P2 complete
+
+Updated: 2026-09-26. **P2 complete and pushed; stop before P3**.
+
+- Work branch: `feat/native-experience-modes-capability-deepening`.
+- HEAD: `1be87f0186d3f53c4bce8a7cc46a409e953ca46f` (pushed); P1 `24e75668b9cf739796ea4c679056391702a8973b` preserved.
+- Main unchanged: `4dab353ac639d42eae885c79e18245267abd6820`; no merge or branch deletion before P9.
+- Normative plan: `feat/native-experience-modes-capability-deepening.md` §0. Formal plan unchanged (no substantive design deviation).
+- Detailed contracts, limits, test table and P3 prompt: `handoff/native-experience-modes-capability-deepening.md`.
+
+P2 implements immutable first-class `Variant.projection`, canonical prose equality, P2 Turn Envelope with empty/reserved outcomes, pinned Package message templates checked before commit and during load, mount-local message UI, actionable attachments through P1 typed Commands/receipts, explicit historical fork, feed/latest/reader with narrative profiles, and read-only scoped-thread primitives. It reuses the existing v2 compiler/renderer, Native Conversation/prose formatter and SessionRevision persistence. Render receipts remain mount-local diagnostics, distinct from authority/model-delivery receipts.
+
+Branch Graph/Reply Variant facade derives branch content ancestry rather than mutable swipes, with bounded search/timeline/preview/current/origin/detached states, previous/next/count and injected Native inspect/switch/retry/fork callbacks. History adds lightweight reachable-message summaries, not full snapshots per node. Explicit switch restores the complete branch head. P2 support enables only its four implemented capability versions; P3 features remain reserved.
+
+Passed **563 distinct tests / 22 targeted and adjacent suites**, including FS+SQLite, save/import/export/fork/restore, pinned schema rejection, host Draft envelope commit, typed receipt replay, all three layouts, bounded historical UI, context/history and HTTP contracts. Changed-area ESLint/syntax/whitespace, A0/A3/A4/Experience (53 files)/new P2 guards and zh-CN/zh-TW localization passed. Real Edge 1440px/390px fixtures and screenshot inspection passed; independent rollback probes restored original copy behavior. No full-repo, Android, Docker, paid model or required CI run.
+
+Intentional boundaries: thread mutation/lifecycle and Context/Perspective remain P4/P6; durable generic action/operation continuation is P3; Turn Envelope outcomes stay `[]` until typed P3 finalize exists. No background task/scheduler, authority-first/narrative-outcome implementation or automatic model repair was started.
+
+The user authorized **P2 only**. Stop now. Next continuation: **P3 — Turn / Model Task / Auxiliary Operation Runtime**, #10/#12/#24/#27. Fetch and preserve newer feature commits; read main AGENTS/FORK, normative §0 and both handoffs before editing. Reuse P0–P2; do not re-review historical heavy cards. At P3 completion push the same branch, update both handoffs, stop before P4 and provide its takeover prompt. Keep main untouched and the work branch until P9.
+
+---
+
+## Archived predecessor — P1 (historical)
+
 # Latest handoff — Native Experience P1 complete
 
 Updated: 2026-09-26. **P1 complete and pushed; stop before P2**.

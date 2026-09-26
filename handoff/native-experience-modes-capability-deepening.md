@@ -1,3 +1,92 @@
+# Handoff — Native Experience P2 complete
+
+Updated: 2026-09-26. Status: **P2 complete and pushed; stopped before P3**.
+
+- Repository: `ZZZdragondYNGPHX/Atria`.
+- Work branch: `feat/native-experience-modes-capability-deepening`.
+- Work HEAD: `1be87f0186d3f53c4bce8a7cc46a409e953ca46f` (pushed).
+- P1 predecessor preserved: `24e75668b9cf739796ea4c679056391702a8973b`.
+- Main remains `4dab353ac639d42eae885c79e18245267abd6820`; no merge/deletion.
+- Plan: `feat/native-experience-modes-capability-deepening.md`, normative §0.
+- Only P2 was authorized. Continue on this same branch for P3 only after a new continuation.
+
+## P2 implementation and contracts
+
+1. **Immutable Message Projection.** `Variant.projection` is a first-class optional field, not an arbitrary metadata convention. Shared browser/server assertions deep-copy/freeze it and reject unknown fields. Shape: `{schemaVersion:1,flow:[{kind:"prose",text},{kind:"block",id,type,version:1,data}]}`. Prose segments join without separators and must equal canonical `Variant.content`. User/assistant projections are allowed; system/tool projections are rejected. Existing Variants without this field keep their behavior.
+2. **Pinned templates at write and read.** `SessionCore` validates every new projected Variant before atomic publication and revalidates committed projections during load. Blocks resolve to the Session-pinned Package/EntryPoint v2 UI source, compiled once per validation batch. Unknown template/version/data keys or malformed data reject the batch without advancing HEAD. Plain prose-only projections do not require v2. The same existing SessionRevision/Variant repositories carry save/export/import/fork/restore; no new persistence authority exists.
+3. **P2 Turn Envelope seam.** `{schemaVersion:1,narrative,projection?,outcomes:[],diagnostics:[]}` is normalized through existing append commands. Only assistant drafts accept it. Conflicting narrative/projection inputs reject; non-empty outcomes remain reserved for P3. Diagnostics are bounded `{code,message}` records stored only under `Variant.metadata.atri_turn_diagnostics`, never exposed to templates or canonical history. The runtime empty-Draft barrier reads envelope narrative, so accepted envelopes are not accidentally discarded. Draft host transport accepts `atri_native.envelope` or `atri_native.projection`; canonical committed projection is rebound in place.
+4. **One v2 compiler/renderer.** UI document `messageBlocks[type]` declares `{version:1,dataSchema,maxInstances?,attachmentKind?,actionPolicy?,document}`. Templates recursively reuse `compileUiDocument` and `mountUiDocument`; there is no second component renderer. Data schema is a validated closed subset of the existing World schema validator: string/number/integer/boolean/object/array, typed bounds/enums, closed object properties and required keys. Model data chooses only declared block types and schema data, not Component trees/actions/HTML/CSS.
+5. **Message-local UI and snapshot context.** A template has one `chat.footer / always` placeholder view, mounted by Host into its message; no nested templates, native slots, selectors, Opening or live World reads. Roots: `ui/prefs/data/env/block/message/item/index/event/form`. `block` is immutable data; `message` contains only presentation-safe role/message ID. Local state is mount-only; declared player/device preferences reuse P1 settings with template/type isolation. All blocks in one message share a 2048 rendered-node budget and unique DOM IDs.
+6. **Actionable attachments.** Types `claim/payment_request/item_offer/action_ref` are semantic template tags. `ui-only` (default), `active-tail`, and `fork-from-anchor` govern actions. UI/preferences may change while viewing history; Commands/Composer remain read-only unless current tail or Host-confirmed explicit fork. Fork resumes through the newly mounted branch renderer using existing typed Action v2. Attachment idempotency uses `variantId:blockId:actionId` and existing `atri_action_receipts`; repeat claims after refresh/remount do not repeat authority writes. Failed later P1 steps can resume in-mount without repeating the successful Command. Generic durable operation recovery remains P3.
+7. **Conversation / narrative presentation.** `conversation:{mode:"feed"|"latest"|"reader",profile:"default"|"novel"|"dialogue"}` defaults to feed/default. Host toolbar lets players change presentation without changing Timeline. Ordered prose/block flow uses the existing canonical prose formatter and v2 renderer; render failure leaves canonical DOM available. Host observes existing Conversation DOM/pagination, retains message mounts when identity is unchanged and cleans up on replacement/disposal. Component/Hybrid/Full use this same Host path.
+8. **Scoped thread foundation.** `assertConversationThread` and Host `mountConversationThread` accept read-only typed `{schemaVersion:1,threadId,scope,participants,messages}` snapshots, with session/world/scene scope. They reuse message presentation with 50-message pages and no authority-producing actions. They are not a second main Timeline. Typed Session Application ownership/lifecycle, unread persistence, Context/Perspective routing and thread authoring belong to P4/P6, not P2.
+9. **Branch Graph / Reply Variant facade.** Existing history UI now has bounded graph/lineage rows, search, branch-filtered timeline, preview, current/origin/detached/incomplete markers, and previous/next/count for reply alternatives. Command-parent ancestry and branch-content ancestry are kept separate, including state-only/switch revisions. `getSessionHistory` adds lightweight reachable-message summaries via one Timeline inventory; no full snapshot per graph node. Reply controls lazily share a Session metadata cache and call existing inspect/switch/retry/fork paths. Previous/next are preview-only; explicit switch restores the complete branch head. Exact historical revision fork uses live expected HEAD, never mutates a birth Variant. State-only revision refresh retains valid active-tail Retry.
+10. **Separate receipt domains.** Render receipts are bounded mount-local `kind:"render"` diagnostics (up to 256 retained). They never write SessionState or mark model delivery/authority success. Authority receipts remain P1 revision-backed transactions. P3 must introduce real operation/delivery semantics rather than treating a successful render as delivery.
+
+Enabled versions: `message-projection@1`, `turn-envelope@1`, `reply-variant@1`, `conversation-presentation@1`, in addition to P0/P1 support. P3–P9 requirements remain reserved. No substantive architecture deviation required changing the formal plan.
+
+Primary executable-free fixture: `tests/native/fixtures/message-projection-v2.json` (`{document,projection}`). Shared primitives: `public/shared/native-message-contract.js`. Host presentation: `public/scripts/native/message-presentation.js`. Branch facade: `public/scripts/native/reply-variants.js` and existing `session-history.js`.
+
+Hard limits include 128 flow nodes, 32 template types / 32 instances per type, aggregate block data 4096 nodes / depth 16 / 65536 characters, 16 diagnostics, 64 thread participants / 256 thread messages, 2048 rendered nodes per message, history metadata 20000 branches+revisions, 25 branch rows/page, at most 100 revision rows in DOM, 280-codepoint previews, and 15-second metadata timeout. Existing v2 resource/JSON limits continue to apply.
+
+## Actual P2 validation
+
+**563 distinct tests / 22 targeted and adjacent suites passed.** Reruns are not double-counted. Storage tests selected FS+SQLite via `ATRIA_DISABLE_MYSQL_TESTS=1` and `ATRIA_DISABLE_POSTGRES_TESTS=1`.
+
+| Suite under `tests/` | Passed |
+|---|---:|
+| `atria-shell/native-reply-variants.test.js` | 8 |
+| `atria-shell/session-history.test.js` | 2 |
+| `game-runtime/message-templates.test.js` | 186 |
+| `game-runtime/ui-component-model.test.js` | 4 |
+| `game-runtime/ui-live.test.js` | 11 |
+| `game-runtime/ui-v2.test.js` | 23 |
+| `native/authoring-contracts.test.js` | 45 |
+| `native/context-history.test.js` | 2 |
+| `native/contracts.test.js` | 27 |
+| `native/experience-actions.test.js` | 9 |
+| `native/message-presentation.test.js` | 10 |
+| `native/message-projection-contract.test.js` | 84 |
+| `native/package-build-install.test.js` | 5 |
+| `native/product-http.test.js` | 14 |
+| `native/product-service.test.js` | 7 |
+| `native/runtime-descriptor.test.js` | 10 |
+| `native/save-system.test.js` | 13 |
+| `native/session-core.contract.test.js` | 22 |
+| `native/session-durability.test.js` | 17 |
+| `native/session-history-p2.test.js` | 10 |
+| `native/session-projection.test.js` | 45 |
+| `native/session-runtime-http.test.js` | 9 |
+
+Commands used scoped batches with `npm --prefix tests run test:unit -- --runInBand <selected suite paths>` or the equivalent `node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand --runTestsByPath <selected paths>`. Coverage includes save/export/import, FS+SQLite immutability and coherent fork/restore, pinned-template rejection before commit and on corrupted reload, P1 typed receipt replay/continuation, strict negative schema/root cases, three layouts, DOM cleanup, read-only history, graph ancestry, HTTP ownership and canonical context history.
+
+Changed JS ESLint, changed MJS `node --check`, `git diff --check`, A0/A3/A4 guards, Experience foundation guard (53 files), new `scripts/check-native-message-presentation.mjs`, and zh-CN/zh-TW localization all passed. `node tests/frontend/experience-p2.smoke.mjs` passed on real headless Edge at 1440px/390px; screenshots inspected. Checked ordered flow, local details, once-only attachment receipt, feed/latest/reader, reply preview, responsive overflow, no page errors and canonical DOM restoration. Separate Branch Graph fixture covered desktop/mobile and light/dark presentation. These are controlled local browser fixtures, not live-model end-to-end tests.
+
+Original-byte hashes were retained. Independent compiler/backend/history/support-catalog copies passed baseline/modified/rollback probes; rollback restores original bytes/behavior without reverting the working branch. Local evidence stays outside tracked product files.
+
+Resolved ordinary failures: baseline Regex test fixture lacked current required id/placement (fixture corrected; Regex code unchanged); initial backend harness selected unavailable MySQL/PostgreSQL before the existing engine switches were set; browser fixture needed UTF-8 and the real library stylesheet/Host width reset. Integration fixed envelope empty-Draft detection, post-command continuation/replay UI and state-only revision Retry freshness. First commit attempt lacked local Git author config; the successful command reused preceding commits' `Codex <codex@openai.com>` via per-command config, without changing global settings. No outstanding validation failure.
+
+No full-repository suite, Android, Docker, paid/live model inference or CI dependency/polling. Main and the feature branch are both retained.
+
+## P3 boundary and next takeover
+
+P2 stops here. Do not implement P3 runtime work until a new continuation. P3 owns Package Turn Contract, bounded stages, authority-first/narrative-outcome finalize, Model Task/Task Variant/Binding/Proposal and scoped operation scheduling, streaming/retry/stale/cancel/backpressure. Preserve the shared renderer, authority, pinned closure and receipt separation. P2 outcomes are deliberately empty; extending them requires typed P3 contract and tests, not permissive JSON passthrough.
+
+```text
+接手 GitHub 项目 ZZZdragondYNGPHX/Atria。本次只执行 P3，完成后停止，不继续 P4。
+
+沿用工作分支 feat/native-experience-modes-capability-deepening；P2 已完成并推送，HEAD：1be87f0186d3f53c4bce8a7cc46a409e953ca46f。
+先 fetch，依次读取 main:AGENTS.md、main:FORK_MAINTENANCE.md、docs:feat/native-experience-modes-capability-deepening.md 的 §0、docs:handoff/native-experience-modes-capability-deepening.md、docs:handoff/latest-handoff.md，再读相关代码、测试与 guard。若远端推进，保留全部已有提交，以最新 HEAD 为准；不重审历史重型角色卡。
+
+执行 P3 — Turn / Model Task / Auxiliary Operation Runtime：覆盖 #10/#12/#24/#27、Task Variant、Task Binding Slot / Model Execution Lane、Result Authority / Sink Policy、Proposal Artifact、Scoped Operation 的 streaming/retry/stale/cancel，以及 Host scheduler/backpressure。复用 P0–P2 contract 和现有 Native authority；Package Task semantic、Runtime role、Model binding 分离；Narrator Draft 在 narrative-outcome finalize 前保持 provisional；Interpreter 只产生 semantic outcome proposal，不输出任意变量 patch。P2 Turn Envelope 当前 outcomes 必须为 []；在 P3 明确扩展该边界，保留 immutable Variant、canonical narrative/projection 分离、历史动作只读或显式 fork，以及 render/authority/model delivery receipt 分离。不要建立第二套 renderer、Session 或 persistence。
+
+只运行针对性/相邻测试、修改区域 lint/syntax 和相关 guard。普通失败自行修复，不机械跑全仓，不跑 Android、Docker、付费模型调用，不依赖 GitHub CI 才算完成。完成后提交推送当前分支，更新两份 handoff；仅有实质设计变化才修改正式方案。停止，不继续 P4，并提供 P4 接手提示词。P9 最终验证前不合并 main、不删除工作分支。
+```
+
+---
+
+## Archived predecessor handoff — P1 (historical, not the current stage)
+
 # Handoff — Native Experience Modes & Capability Deepening
 
 Updated: 2026-09-26. Status: **P1 complete and pushed; stopped before P2**.
