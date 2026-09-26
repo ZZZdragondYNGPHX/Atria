@@ -9,6 +9,8 @@
 - 正式工作分支：`feat/native-experience-modes-capability-deepening`
 - 分支起点：`main@4dab353ac639d42eae885c79e18245267abd6820`
 - 计划文档：`docs:feat/native-experience-modes-capability-deepening.md`
+- 任务交接：`docs:handoff/native-experience-modes-capability-deepening.md`
+- 最新交接：`docs:handoff/latest-handoff.md`
 - 当前能力主表：**32 项**
 - 旧空分支 `feat/component-form-composer-submit` 不承载本任务实现，也不作为方案依据。
 - 本任务属于大型多阶段开发：整个任务沿用同一工作分支；每完成一个阶段即提交、推送、更新必要文档与 handoff，然后停止，等待下一阶段接手。
@@ -961,9 +963,11 @@ Component / Message Projection
 
 ---
 
-## 十二、SillyTavern / MVU 能力吸收清单（初稿）
+## 十二、历史讨论：SillyTavern / MVU 能力吸收清单（早期初稿，非实施清单）
 
-以下清单将在下一轮开始逐项拆解归属和实现方式：
+> 本节是早期压力测试输入清单，已由 §23–§28 与 §0 Implementation Baseline 收敛。实施阶段不得按此列表机械迁移 Legacy 功能。
+
+以下是当时用于拆解能力的历史清单：
 
 1. 自定义开局 HTML / 多步表单
 2. alternate greetings / 开局跳转
@@ -1083,9 +1087,11 @@ Experience 只是 Native runtime 的声明式 UI / interaction layer。
 
 ---
 
-## 十七、本轮尚未冻结的问题
+## 十七、历史讨论：早期未冻结问题（已由后续章节收敛）
 
-以下内容只记录方向，不视为最终设计：
+> 本节保留早期讨论痕迹，不再代表当前未决列表。实施时以 §0 与后续案例收敛结论为准。
+
+当时尚未冻结的内容包括：
 
 - Component Model v1 增量扩展还是推出 v2；
 - Local UI State 的持久化生命周期；
@@ -1103,7 +1109,7 @@ Experience 只是 Native runtime 的声明式 UI / interaction layer。
 
 ---
 
-## 十八、后续讨论顺序
+## 十八、历史讨论：原计划讨论顺序（已完成 / 已被后续压力测试取代）
 
 ### Round 2 — SillyTavern + MVU Feature Inventory
 
@@ -1136,15 +1142,17 @@ Experience 只是 Native runtime 的声明式 UI / interaction layer。
 - prompt/display isolation
 - history / swipe / revision semantics
 
-### Round 5 — MVU / Legacy Migration
+### Round 5 — [历史草案，已取消] MVU / Legacy Migration
 
-定稿：
+当时曾计划讨论：
 
 - provider bridge
 - stat_data mapping
 - Native World migration
 - Regex frontend migration
 - compatibility boundary
+
+> 后续 §23 明确纠正：本任务不建设 SillyTavern / MVU 自动迁移体系；旧生态只作为 Capability Benchmark。
 
 ### Round 6 — Mode Contract & Authoring UX
 
