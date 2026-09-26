@@ -1,3 +1,34 @@
+# Latest handoff — Native Experience Modes & Capability Deepening
+
+Updated: 2026-09-26.
+Status: implementation authorized; **P0 has not started**.
+
+Main baseline: `4dab353ac639d42eae885c79e18245267abd6820`.
+Work branch: `feat/native-experience-modes-capability-deepening`.
+Work branch HEAD: `4dab353ac639d42eae885c79e18245267abd6820`.
+Plan: `feat/native-experience-modes-capability-deepening.md`.
+Plan baseline commit: `009844b0750554a8c206910fb5c4c84840aab2cf`.
+Detailed handoff: `handoff/native-experience-modes-capability-deepening.md`.
+
+Discussion Draft v2.3 has been normalized into **Implementation Baseline v1.0**.
+The top §0 of the plan is normative and supersedes stale earlier Round wording.
+The capability inventory is 32 items and implementation is split into P0–P9
+on one persistent work branch.
+
+Next stage: **P0 — Contract Foundation & Regression Fence**. Establish the
+minimal strict authoring/runtime vocabulary and version seams required by later
+capabilities, preserve existing v1 packages, and extend contract/guard coverage.
+Do not implement P1+ product surfaces yet.
+
+Validation policy: targeted/adjacent checks for touched code, changed-area lint
+and relevant guards. No habitual full-repo suite, Android, Docker or paid model
+calls. Codex Astra does not need GitHub CI to complete a phase unless CI/workflow
+behavior itself changes. Fix normal failures autonomously. At P0 completion,
+commit+push, update plan only for substantive design changes, update both handoff
+files, stop, and provide the P1 takeover prompt. Do not merge main before P9.
+
+---
+
 # Latest handoff — Collapsible prompt editors
 
 Updated: 2026-09-25 (Asia/Shanghai).
