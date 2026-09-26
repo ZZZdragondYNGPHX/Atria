@@ -3139,15 +3139,58 @@ location.arrived { locationId }
 
 真正数值与最终 state 仍由 Command/Reducer 决定。
 
-#### 不作为首选主路径
+#### Policy B 的两种 Native 执行策略
 
-`post-narrative reconciler`
+经过后续重型 MVU 样本压力测试，`narrative-outcome` 不应只绑定“同一模型一次输出 prose + outcome”。
 
-仅用于 Legacy MVU/自由文本迁移，因为它需要第二次解释，而且可能出现 prose 与 authority 不一致。
+**B1 — inline outcome**
+
+```text
+Narrator
+→ prose + declared blocks + semantic outcome sidecar
+→ validate / simulate
+→ atomic commit
+```
+
+优点：
+
+- 单次模型调用；
+- 延迟较低；
+- prose 与 outcome 同源。
+
+适合：
+
+- provider structured output 足够稳定；
+- 模型同时写叙事与结构化 sidecar 的质量可接受。
+
+**B2 — post-narrative semantic interpretation**
+
+```text
+Narrator
+→ Draft prose
+→ dedicated Outcome/Event Interpreter
+→ semantic outcome proposals
+→ validate / map / simulate
+→ atomic commit Draft prose + projection + authority outcome
+```
+
+这是一个**原生策略**，不是 Legacy MVU compatibility。
+
+它允许：
+
+- Narrator 专注 prose；
+- Interpreter 使用独立 Model / Runtime Route；
+- Interpreter 使用低温度 / structured-output；
+- narrative 继续 streaming 为 provisional draft；
+- authority 仍然只来自 typed Command / Event / Reducer。
+
+真正只保留为兼容桥的是：
+
+> **从任意 Legacy 自由文本 / Regex tag / JSONPatch 中抽取裸 mutation 的 resolver。**
 
 `draft → resolve → final prose`
 
-保留为高一致性高级 pipeline，将来可由 Orchestrator/Role policy 选择，但不作为本轮基础 Runtime 的强制成本。
+仍保留为更高一致性的可选 reconciliation pipeline：当 Package 明确需要“authority 结果反向校正 prose”时，可由 Turn policy 选择第二次 prose rewrite，但不作为默认成本。
 
 ### 22.30 Narrative-outcome 的一致性规则
 
@@ -3185,7 +3228,7 @@ Round 4 至此冻结：
 18. Streaming 只提前展示 Draft narrative；block/outcome finalize 后生效。
 19. Static Opening Variant 可复用 Projection；Setup Wizard 仍属于 Experience View。
 20. Narrative Outcome 采用 `authority-first` 与 `narrative-outcome` 两个一等 policy。
-21. Legacy post-narrative resolver 只作为兼容桥。
+21. `narrative-outcome` 同时支持 inline outcome 与 Native post-narrative semantic interpretation；只有 Legacy 自由文本/Regex/JSONPatch mutation resolver 属于兼容桥。
 22. 长期目标是 atomic Native Turn Commit Envelope。
 
 Round 4 完成。下一步进入 **Round 5 — MVU / Legacy Migration**。
@@ -8027,11 +8070,382 @@ Package 可以定义：
 > **让整个 Native Experience 对“什么时候发生、过去了多久、何时到期”使用同一种可分支、可重放、可测试的时间语义。**
 
 
+### 26.65 《银麒赎世》的 MVU 双模型迫使我们修正 Round 4
+
+该卡明确推荐：
+
+> 主 AI 专注写故事，额外模型专门输出变量更新。
+
+如果只看它的实现形式，这当然是：
+
+- MVU；
+- JSON Patch-like；
+- 额外模型；
+- 变量补丁。
+
+这些实现 Atria 不应复制。
+
+但它背后的产品能力不能被一起丢掉：
+
+> **叙事生成与状态解释可以由两个职责不同的模型完成。**
+
+这不是为了兼容旧卡。
+
+对于开放式 RP，它有真实优势：
+
+- Narrator 不需要同时兼顾文学表达与严格 JSON；
+- 可以为 Interpreter 选择更擅长结构化输出、低方差的模型；
+- prose 可以自然 streaming；
+- 复杂 World schema 不必全部压进 Narrator 的输出格式要求；
+- Interpreter 可以专门检查“本轮叙事究竟产生了哪些 durable semantic outcomes”。
+
+因此此前：
+
+> “post-narrative reconciler 只作为兼容桥”
+
+的结论过度收窄。
+
+Round 4 已直接修正文案。
+
+### 26.66 当前 main 已经有正确地基，但还没有接成这种 Turn policy
+
+当前 `main@4dab353a` 已有 `event_interpreter`：
+
+- 独立 Runtime role；
+- structured output；
+- allowed event types；
+- confidence threshold；
+- 明确禁止：
+  - numeric authority calculation；
+  - World patch；
+  - Event Journal direct write；
+- 结果经过 Interpretation Mapping；
+- mapping 再进入 typed Command；
+- World State / Journal direct mutation 会被 Runtime 检测并拒绝。
+
+这已经比传统 MVU extra-model patch 干净很多。
+
+但当前实现的 `buildEventInterpreterMessages()` 主要输入是：
+
+- authoritative observation；
+- committed events；
+- command results；
+- user input。
+
+它**没有把 Narrator Draft prose 作为本轮 semantic evidence**。
+
+同时当前普通 `completeFreeTextTurn()` 路径仍然是：
+
+```text
+Intent Resolver
+→ typed Command / World commit
+→ Memory recall
+→ Narrator
+→ Memory finalize
+```
+
+也就是强 `authority-first`。
+
+因此缺口不是再写一套 Interpreter。
+
+而是：
+
+> **把现有 Event Interpreter / Mapping 能力接入 narrative-outcome 的 Native Turn pipeline。**
+
+### 26.67 Narrative-outcome 的两个 execution strategy
+
+冻结：
+
+#### Strategy 1 — inline
+
+```text
+Narrator
+→ {
+     prose,
+     blocks,
+     outcomes
+   }
+→ validate
+→ simulate
+→ commit
+```
+
+优点：
+
+- 一次调用；
+- latency / cost 低；
+- outcome 与 prose 在同一模型内生成。
+
+缺点：
+
+- 对 structured-output 能力依赖更高；
+- Narrator 注意力同时承担 prose 与结构化 contract。
+
+#### Strategy 2 — interpreted
+
+```text
+Narrator
+→ Draft prose
+
+Draft prose
++ pre-turn observation
++ user input
++ allowed semantic outcome vocabulary
+        ↓
+Outcome Interpreter
+        ↓
+semantic proposals
+        ↓
+Interpretation Mapping
+        ↓
+simulate typed Commands
+        ↓
+atomic Turn commit
+```
+
+优点：
+
+- Narrator 完全专注叙事；
+- Interpreter 可以独立绑定 Runtime Route；
+- 更适合不同模型分工；
+- 对传统开放式 RP 的自然语言自由度更高。
+
+缺点：
+
+- 至少多一次模型调用；
+- latency / token cost 更高；
+- 必须处理 Draft prose 与最终 authority 不一致的失败路径。
+
+### 26.68 Interpreter 仍然不能变成“变量模型”
+
+Native Outcome Interpreter 的 authority ceiling 应极低。
+
+它只能回答：
+
+> **“Draft 中发生了什么语义事件？”**
+
+例如：
+
+```text
+relationship.changed
+item.acquired
+location.arrived
+character.injured
+quest.core_completed
+```
+
+它不能回答：
+
+```text
+金币 = 1732
+HP = 46
+好感度 += 7
+inventory[3] = ...
+```
+
+最终具体数值仍由：
+
+- Command validator；
+- Rule；
+- Reducer；
+- deterministic calculation；
+
+决定。
+
+如果 Package 真的允许模型提出 bounded magnitude：
+
+`small / medium / large`
+
+也只是 semantic parameter。
+
+最终数值映射仍归 Runtime。
+
+### 26.69 Draft prose 在 Interpreter 完成前仍然是 provisional
+
+这与 `26.46–26.55 的 Scoped Operation model 对齐。
+
+```text
+Narrator stream
+→ provisional Draft prose
+→ Narrator terminal result
+→ Outcome Interpreter
+→ validate / simulate
+→ final Turn commit
+```
+
+在 Interpreter 完成前：
+
+- Draft 可以显示；
+- 不能被当作 committed Timeline fact；
+- Message Projection authority action 不生效；
+- downstream World Process 不应把它当新事实。
+
+如果 Interpreter：
+
+- timeout；
+- output invalid；
+- mapping rejected；
+- simulation fails；
+
+默认：
+
+> **整个 narrative-outcome Turn 不提交。**
+
+这样不会出现：
+
+> “正文已经成为历史，但变量更新失败。”
+
+### 26.70 No-change 与 Interpreter failure 必须区分
+
+`no_change` 是一个合法 semantic result。
+
+它表示：
+
+> Interpreter 判断本轮没有需要进入 authority 的 durable outcome。
+
+此时可以提交 prose。
+
+但：
+
+- timeout；
+- parse failure；
+- schema failure；
+- confidence policy reject；
+- mapping invalid；
+
+不是 `no_change`。
+
+不能为了“让聊天继续”而偷偷降级成：
+
+> prose-only commit。
+
+除非 Package Turn Contract 明确把该 outcome stage 声明为：
+
+- optional；
+- advisory-only。
+
+### 26.71 Outcome reject 后是否重写 prose 必须是显式 policy
+
+如果 Draft 写：
+
+> “他成功买下了长剑。”
+
+但 Interpreter proposal 最终被 Rule 拒绝：
+
+> 钱不够。
+
+Runtime 不能：
+
+- 提交原 prose；
+- 又让 World 保持没买。
+
+候选 Turn failure policy：
+
+```text
+onOutcomeReject:
+├─ fail_turn
+├─ retry_interpreter
+└─ reconcile_prose
+```
+
+#### fail_turn
+
+最简单、最可预测。
+
+Draft 作为未提交草稿。
+
+#### retry_interpreter
+
+只适用于：
+
+- transport；
+- malformed structured output；
+- 可恢复解析问题。
+
+不能用 retry 强迫模型把一个本来非法的 outcome 说成合法。
+
+#### reconcile_prose
+
+显式高一致性策略：
+
+```text
+rejected proposal
++ authoritative simulation reason
++ original Draft
+→ Narrator rewrite
+→ re-interpret if required
+→ final commit
+```
+
+它就是此前保留的：
+
+`draft → resolve → final prose`
+
+但现在明确：
+
+- opt-in；
+- bounded retry；
+- diagnostics visible；
+- 不能无限自循环。
+
+默认仍不做隐式 repair generation。
+
+### 26.72 双模型不是强制，也不能让 Package 指定私人模型
+
+Package 只能声明：
+
+```text
+narrativeOutcome.strategy = inline | interpreted
+```
+
+以及 Interpreter 的：
+
+- Model Task semantic；
+- Prompt Program；
+- Generation Profile intent；
+- required structured-output capability。
+
+玩家仍通过 Runtime Route 选择实际：
+
+- Connection；
+- Model；
+- fallback。
+
+因此作者可以表达：
+
+> “推荐一个低方差结构化 Interpreter。”
+
+但不能表达：
+
+> “必须把变量更新发到作者写死的某个 API / Key。”
+
+### 26.73 这项修正不新增第 30 项
+
+它深化的是：
+
+- #10 Package Turn Contract；
+- #12 narrative-outcome policy；
+- #27 Package Model Task；
+- #11 Turn Envelope；
+- #24 Task lifecycle / scheduler；
+- #20 Diagnostics。
+
+因此当前能力主表仍为 **29 项**。
+
+真正新增的是一条重要设计原则：
+
+> **Atria 不复制 MVU 的“额外变量更新 API”，但应原生支持 Narrator 与 Outcome Interpreter 分离的双模型 Turn。**
+
+
 ## 二十七、修订记录
 
 ### 2026-09-26 — Discussion Draft v1.7
 
 继续用《银麒赎世》的主生成/任务审核/生图/世界动态/据点同步并行状态压力测试 streaming 与 UI runtime。将 Round 4 的“Draft narrative 可 streaming、authority finalize 后 commit”推广为 Host-owned Scoped Operation State / Operation Projection；明确 busy 必须按 semantic claim/conflict scope 判断，Package UI 可读取 queued/running/streaming/retrying/finalizing/stale 等状态，Presentation/Local UI 可并行而冲突 authority transaction 通过 Revision/CAS 串行。能力总数仍维持 28。
+
+### 2026-09-26 — Discussion Draft v1.9
+
+继续压力测试《银麒赎世》的 MVU 双模型模式，并修正 Round 4 过早冻结的“post-narrative resolver 只作兼容桥”结论。`narrative-outcome` 现在正式支持 inline outcome 与 post-narrative semantic interpretation 两种 Native execution strategy；复用当前 `event_interpreter → Interpretation Mapping → typed Command` 地基，让 Narrator Draft 可由独立低方差结构化模型解释语义 outcome，同时保持 Draft provisional、最终原子提交与 authority ceiling。Legacy 自由文本/Regex/JSONPatch mutation resolver 才继续只作为兼容桥。能力总数仍为 29。
 
 ### 2026-09-26 — Discussion Draft v1.8
 
