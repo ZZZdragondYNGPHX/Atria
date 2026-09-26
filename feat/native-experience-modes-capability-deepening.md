@@ -2827,25 +2827,381 @@ Block 内允许少量非权威 Local UI State，例如：
 17. Native Conversation Host 增加 feed/latest/reader 一类 presentation 能力。
 18. Message-local UI state 与 World/Player Preference 分离。
 
-### 22.20 Round 4 下一步待商讨
+### 22.20 Round 4 最终收敛
 
-进入 Round 5（MVU / Legacy Migration）前还需要定：
+#### A. 区分 Package Turn Contract、Model Turn Output、Committed Turn Envelope
 
-1. Turn Envelope 的正式 JSON schema；
-2. block type registry 放在 UI Document 还是独立 Message Projection resource；
-3. structured-output adapter 与 text-envelope adapter 的默认优先级；
-4. optional/required block/outcome 的错误策略；
-5. projection 是否允许引用 Package Asset；
-6. message template 的可读 context 精确白名单；
-7. Opening Variant 是否也复用同一个 projection flow；
-8. Narrative Outcome Resolution 最终选择：
-   - single-call structured turn；
-   - post-narrative resolver；
-   - draft→resolve→final prose；
-   - 按 Package policy 可选多策略。
+不把三者混成一个 schema。
+
+**Package Turn Contract** 是作者声明的规则：
+
+- 允许哪些 Message Block；
+- 每种 Block 的 data schema；
+- 对应哪个 Component template；
+- 是否 required；
+- 允许哪些 actions；
+- 允许哪些 outcome；
+- outcome schema 与 command/event mapping；
+- transport policy；
+- legacy extractor；
+- failure policy。
+
+**Model Turn Output** 是模型一次生成允许返回的最小结构。建议 canonical 形态：
+
+```json
+{
+  "schemaVersion": 1,
+  "flow": [
+    { "kind": "prose", "text": "..." },
+    { "kind": "block", "type": "story-options", "data": {} }
+  ],
+  "outcomes": [
+    { "type": "relationship.changed", "data": {} }
+  ]
+}
+```
+
+模型不生成：
+
+- templateId；
+- required/optional；
+- action implementation；
+- CSS；
+- asset URL；
+- provenance；
+- diagnostics；
+- Revision/Branch identity。
+
+这些全部由 Package Contract + Runtime 补齐。
+
+**Committed Turn Envelope** 是验证、解析、authority resolution 后写入 Native Session 的结果：
+
+```text
+CommittedTurn
+├─ canonicalContent
+├─ projection
+│  └─ normalized flow + block snapshots
+├─ committedOutcomes
+│  └─ Event/Command provenance
+└─ diagnostics/provenance
+```
+
+### 22.21 canonical prose flow 的存储方式
+
+最终采用：
+
+> **Variant.content 为唯一 canonical prose；Projection prose segment 使用 range 引用。**
+
+Runtime 接收 Model Turn Output 后：
+
+1. 按 flow 顺序拼接所有 `prose.text`，不自动增加分隔符；
+2. 形成 `Variant.content`；
+3. 将每个 prose segment 归一化为 `{ kind: "prose", start, end }`；
+4. block 保持在 flow 原位置；
+5. 校验所有 prose range 单调、无重叠、完整对应 canonical content。
+
+因此 committed projection 不重复保存整段正文。
+
+概念：
+
+```json
+{
+  "content": "第一段\n\n第二段",
+  "projection": {
+    "flow": [
+      { "kind": "prose", "start": 0, "end": 5 },
+      { "kind": "block", "blockId": "...", "type": "status", "data": {} },
+      { "kind": "prose", "start": 5, "end": 8 }
+    ]
+  }
+}
+```
+
+range 使用 Runtime 内部字符串 offset；Package / 模型不直接提供 offset。
+
+### 22.22 Block Registry 独立于 UI Document
+
+Block Registry 不放进 Component Model v2 UI Document。
+
+原因：
+
+- Block type 是模型输出 contract 与 runtime validation authority；
+- template 是 UI presentation；
+- 同一个 block type 未来可能有不同 presentation；
+- Text Experience / accessibility fallback 也需要认识 block，不应反向依赖整个 UI tree。
+
+因此建议新增独立 **Package Turn Contract / Message Projection resource**。
+
+它引用：
+
+```text
+block type
+→ data schema
+→ Component v2 templateId
+→ text fallback
+→ action policy
+→ requirement
+```
+
+UI Document 只负责声明 template 本身。
+
+### 22.23 Provider Transport 优先级
+
+Atria 当前 Native Model/Prompt Runtime 已有真正的 `outputContract`，并把它作为 `generation.structured-output` requirement；OpenAI-compatible、Anthropic、Gemini Native adapters 都已有 JSON Schema 映射。
+
+因此 Native Package 默认优先级冻结为：
+
+```text
+1. structured-output
+2. text-envelope
+3. legacy extractor（仅兼容/导入）
+```
+
+但不是无条件偷偷降级。
+
+Package Turn Contract 声明 policy：
+
+- `structured-required`
+- `structured-preferred`
+- `text-compatible`
+- `legacy-compatible`
+
+其中推荐默认：
+
+> `structured-preferred`
+
+Route 有 `generation.structured-output` 时使用现有 `PromptIR.outputContract`。
+
+没有该能力时，只有 Package 明确允许 text transport 才转入 text-envelope；不能让 GenerationService 的 provider fallback 静默丢掉 output authority。
+
+### 22.24 不默认增加“修复模型调用”
+
+required output 校验失败时，**默认不自动再调用一次模型修复**。
+
+原因：
+
+- 隐式增加延迟；
+- 隐式增加 token/费用；
+- 行为难解释；
+- 用户停止/重试语义复杂；
+- structured-output 本来就应该承担 schema 约束。
+
+默认策略：
+
+- structured response schema/required outcome invalid → Turn 失败，不 commit；
+- text-envelope required parse invalid → Turn 失败，不 commit；
+- optional block invalid → drop block + diagnostics；
+- optional non-authority decoration invalid → narrative 仍可 commit；
+- authority outcome invalid → 不允许静默丢弃后提交剧情。
+
+未来可提供显式 Package policy：
+
+`repair: none | once`
+
+但 `none` 为默认，并且 Studio 必须显示该行为会额外增加一次 generation。
+
+### 22.25 required/optional 的控制权属于 Package
+
+模型不能自己声明：
+
+```text
+"required": false
+```
+
+Block/Outcome requirement 固定在 Package Turn Contract。
+
+例如：
+
+- `story-options`：optional 或 required，由卡作者决定；
+- `battle-start`：如果该玩法必须进入战斗，可 required；
+- `unlock-card`：projection 可 optional，但对应的 `skill.unlocked` outcome 若生成则必须合法；
+- authoritive outcome：默认 required-on-presence。
+
+这避免模型通过把错误数据标成 optional 绕过 contract。
+
+### 22.26 Projection 可以引用 Asset，但只能引用 Package Authority
+
+允许 Message template 使用图片/音频等 Package Asset。
+
+但模型不得返回任意 URL。
+
+允许方式：
+
+1. template 静态引用 exact Package `assetId`；
+2. block data 使用由 Package Contract 限制的 asset key/enum；
+3. Runtime 将 key 解析到当前 pinned PackageVersion 的 exact AssetRef。
+
+禁止：
+
+- model-supplied `https://...`；
+- CSS `url()`；
+- dynamic arbitrary filesystem path。
+
+现有 AssetRef 已拥有 `assetId + contentHash + mediaType + logicalName`，可直接作为基础。
+
+Session/generated attachment 是另一条 authority，不在 Message Block 首版混入。
+
+### 22.27 Message Template 可读 Context 白名单
+
+冻结为：
+
+- `block`：当前 immutable block snapshot data；
+- `message`：安全 message presentation metadata；
+- `packageData`：只读 pinned Package Data Resource；
+- `preference`：Package 声明可读的 Player Preference key；
+- `env`：响应式/无障碍环境；
+- `local`：该 block mount-local UI state；
+- `item/index`：repeat scope；
+- `asset`：只读 Package asset resolver；
+- `i18n`：Package localization resolver。
+
+明确禁止：
+
+- live `world`；
+- arbitrary Session State；
+- other messages；
+- raw Timeline；
+- secrets；
+- network；
+- plugin globals；
+- DOM。
+
+需要实时世界状态的 UI 应移到 Experience View；需要“当时世界状态”的 block 在 commit 时物化到 `block.data`。
+
+### 22.28 Opening Variant 的复用边界
+
+**静态 Opening Variant** 可以复用同一个 Turn/Projection flow。
+
+即一个 opening 可以包含：
+
+- prose；
+- 状态卡；
+- opening quick actions；
+- 图片/说明 block。
+
+在 Opening Phase 被用户选中并确认后，它作为首条 immutable assistant Variant 提交。
+
+但：
+
+> **Setup Wizard 不属于 Message Projection。**
+
+Wizard 是 Experience View，因为它包含未提交表单状态和多步 Local UI State。
+
+Wizard submit 后才产生：
+
+- initial authoritative setup Command/Mutation；
+- 或第一条 user turn；
+- 然后进入普通 Turn Envelope。
+
+### 22.29 Narrative Outcome Resolution 正式采用“双主路径”
+
+不把所有游戏强迫成一种生成策略。
+
+#### Policy A — `authority-first`
+
+适合确定性游戏：
+
+```text
+User/UI Action
+→ Intent/Typed Command
+→ Event/Reducer
+→ World commit
+→ Narrator 写 prose
+```
+
+沿用当前 Game Runtime 的核心原则。
+
+#### Policy B — `narrative-outcome`
+
+适合 RP / MVU 风格游戏：
+
+```text
+Model Turn Output
+├─ prose
+├─ blocks
+└─ semantic outcome proposals
+       ↓
+schema validation
+       ↓
+map to typed Command/Event
+       ↓
+simulate authority result
+       ↓
+success
+       ↓
+atomic Turn commit
+```
+
+模型提出的是**语义 outcome**，不是任意 World JSON Patch。
+
+例如：
+
+```text
+relationship.changed { actor, direction, magnitude }
+item.acquired { itemId, quantity }
+location.arrived { locationId }
+```
+
+真正数值与最终 state 仍由 Command/Reducer 决定。
+
+#### 不作为首选主路径
+
+`post-narrative reconciler`
+
+仅用于 Legacy MVU/自由文本迁移，因为它需要第二次解释，而且可能出现 prose 与 authority 不一致。
+
+`draft → resolve → final prose`
+
+保留为高一致性高级 pipeline，将来可由 Orchestrator/Role policy 选择，但不作为本轮基础 Runtime 的强制成本。
+
+### 22.30 Narrative-outcome 的一致性规则
+
+为减少“正文说造成 20 伤害，Reducer 实际只造成 7”的冲突：
+
+- Model outcome 应尽量是 semantic intent/result class，不直接声称最终权威数值；
+- 若 Package 允许 exact value proposal，该值仍必须通过 validator/rule；
+- Runtime 的 committed outcome 是最终 authority；
+- Package Prompt 应告诉 Narrator 避免在尚未计算的字段上宣称精确结果；
+- 对必须严格一致的玩法使用 `authority-first`。
+
+因此 `narrative-outcome` 的定位不是取代 Game Runtime，而是给开放式 RP 一个安全的 MVU 上位替代。
+
+### 22.31 Round 4 最终冻结项
+
+Round 4 至此冻结：
+
+1. 一等 Message Projection，与 immutable Variant 绑定。
+2. Package Turn Contract、Model Turn Output、Committed Turn Envelope 三层分离。
+3. Variant.content 是唯一 canonical prose。
+4. Projection prose 使用 Runtime 生成的 range，不重复保存正文。
+5. Block Registry 使用独立 Turn Contract resource。
+6. UI template 留在 Component Model v2 UI Document。
+7. 模型只能生成 prose + declared block data + declared outcome data。
+8. Provider 优先 `structured-output → text-envelope → legacy extractor`。
+9. 默认不做隐式 repair generation。
+10. required/optional 由 Package Contract 决定。
+11. Projection 默认 display-only。
+12. World authority 只来自 Command/Event/Reducer。
+13. block 默认 snapshot-only，不读取 live World。
+14. Message template context 采用严格白名单。
+15. Projection 可以使用 pinned Package Asset，不允许任意 URL。
+16. Historical authority action 采用 active-tail / explicit fork policy。
+17. Reply Variant facade 恢复 narrative + projection + state 全套 Branch。
+18. Streaming 只提前展示 Draft narrative；block/outcome finalize 后生效。
+19. Static Opening Variant 可复用 Projection；Setup Wizard 仍属于 Experience View。
+20. Narrative Outcome 采用 `authority-first` 与 `narrative-outcome` 两个一等 policy。
+21. Legacy post-narrative resolver 只作为兼容桥。
+22. 长期目标是 atomic Native Turn Commit Envelope。
+
+Round 4 完成。下一步进入 **Round 5 — MVU / Legacy Migration**。
+
 
 
 ## 二十三、修订记录
+
+### 2026-09-26 — Discussion Draft v0.7
+
+完成 Round 4 收敛：正式区分 Package Turn Contract / Model Turn Output / Committed Turn Envelope；确定 canonical prose range projection、独立 Block Registry、structured-output 优先级、无隐式 repair、Package Asset 与 template context 白名单、Opening Variant 复用边界，并冻结 authority-first / narrative-outcome 双主路径。
 
 ### 2026-09-26 — Discussion Draft v0.6
 
