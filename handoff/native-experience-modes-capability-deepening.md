@@ -11,7 +11,7 @@ Status: **implementation authorized; no product code implemented yet**.
 - Work branch HEAD: `4dab353ac639d42eae885c79e18245267abd6820`
 - Branch base: current `main`; ahead/behind at creation: 0/0
 - Docs plan: `docs:feat/native-experience-modes-capability-deepening.md`
-- Frozen implementation-plan commit: `009844b0750554a8c206910fb5c4c84840aab2cf`
+- Frozen implementation-plan commit: `6308c36e1a10b4c406f1ef5affcabe2eae545d71`
 - Baseline label: **Implementation Baseline v1.0**
 - Capability count: **32**
 - Entire implementation uses this one work branch through P0–P9. Do not create per-phase branches.
