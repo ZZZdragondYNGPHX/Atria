@@ -1,4 +1,26 @@
-# Latest handoff — Native Experience Modes & Capability Deepening
+# Latest handoff — Native Experience P1 complete
+
+Updated: 2026-09-26. **P1 complete and pushed; stop before P2**.
+
+Work branch: `feat/native-experience-modes-capability-deepening`.
+HEAD: `24e75668b9cf739796ea4c679056391702a8973b` (pushed).
+Main unchanged: `4dab353ac639d42eae885c79e18245267abd6820`.
+Plan: `feat/native-experience-modes-capability-deepening.md`, normative §0 Implementation Baseline v1.0, 32 capabilities, P0–P9 on one branch.
+Detailed contract/limits/test record: `handoff/native-experience-modes-capability-deepening.md`.
+
+P1 adds isolated Component v2 UI documents, strict Form/local state/preferences, pure expressions/templates, immutable Package Data, keyed Collection basics, shared Native Composer submission, Action receipts/idempotency/typed compensation, mutation lowering into existing IR, and basic conditional Opening/Wizard. V1 remains on its existing renderer. Component/Hybrid/Full share the same Host. UI state uses existing settings; device scope uses a Host-owned non-secret browser identity. World/receipt facts still commit in one Native SessionRevision. No Package execution or second persistence authority was introduced.
+
+Enabled only implemented P1 feature versions; all P2–P9 requirements still fail closed when unsupported. Formal plan unchanged: no substantive architecture deviation. See detailed handoff for exact schemas, scopes, hard limits and phase boundaries. Opening completion remains mount-local until P4 lifecycle work; durable generic operation recovery belongs to P3.
+
+Passed **187 distinct tests / 19 targeted and adjacent suites**, including FS+SQLite Session Core, install/reopen/HTTP Data, atomic receipts/replay/fork/compensation, v1/v2 UI and Composer. Changed-area ESLint/syntax/whitespace, A0/A3/A4/Experience (52 files) guards and zh-CN/zh-TW localization passed. Real Edge 1440px/390px fixture checks passed; screenshots inspected. No full-repo, Android, Docker, paid inference or required CI run.
+
+User explicitly authorized P1 then stop, not P2. Next authorized stage needs a new continuation: **P2 — Message Projection / Conversation / Branch Presentation** (#9/#11/#15 and #16 presentation/thread basics), message-local UI, actionable attachments, narrative presentation profile and Branch/Reply Variant facade. Keep Variants immutable, canonical narrative distinct from projection, historical actions read-only or explicit fork, render receipts distinct from authority/model delivery. Reuse P1 seams; do not implement P3 bodies.
+
+Fetch first and preserve newer work-branch commits; read main AGENTS/FORK, formal §0, both handoffs, current code/tests. At P2 completion commit/push same branch, update both handoffs, stop before P3. Do not merge main or delete the branch before P9 final verification.
+
+---
+
+# Previous handoff — Native Experience P0 complete
 
 Updated: 2026-09-26.
 Status: **P0 complete and pushed; stopped before P1**.
