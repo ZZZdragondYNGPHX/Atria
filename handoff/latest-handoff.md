@@ -7,7 +7,7 @@ Main baseline: `4dab353ac639d42eae885c79e18245267abd6820`.
 Work branch: `feat/native-experience-modes-capability-deepening`.
 Work branch HEAD: `4dab353ac639d42eae885c79e18245267abd6820`.
 Plan: `feat/native-experience-modes-capability-deepening.md`.
-Plan baseline commit: `009844b0750554a8c206910fb5c4c84840aab2cf`.
+Plan baseline commit: `6308c36e1a10b4c406f1ef5affcabe2eae545d71`.
 Detailed handoff: `handoff/native-experience-modes-capability-deepening.md`.
 
 Discussion Draft v2.3 has been normalized into **Implementation Baseline v1.0**.
