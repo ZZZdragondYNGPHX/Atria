@@ -1,5 +1,14 @@
 import { ATRIA_PACKAGE_CAPABILITIES } from './contracts.js';
 import { assertNativeId } from './identity.js';
+import { assertNativeExperienceContract } from '../../public/shared/native-experience-contract.js';
+
+export {
+    ATRIA_EXPERIENCE_CONTRACT_VERSION,
+    ATRIA_EXPERIENCE_CAPABILITIES,
+    assertNativeExperienceContract,
+    assertExperienceDataClosure,
+    assertSupportedExperienceContract,
+} from '../../public/shared/native-experience-contract.js';
 
 export const ATRIA_AUTHORING_SCHEMA_VERSION = 1;
 export const ATRIA_EXPERIENCE_MODES = Object.freeze(['text', 'component', 'hybrid', 'full']);
@@ -511,6 +520,7 @@ export function assertNativeRuntimeDescriptor(value) {
             'packageContentHash',
             'entryPointId',
             'experience',
+            'experienceContract',
             'capabilities',
             'resources',
             'plugins',
@@ -551,6 +561,9 @@ export function assertNativeRuntimeDescriptor(value) {
         packageContentHash: digest(value.packageContentHash, 'RuntimeDescriptor.packageContentHash'),
         entryPointId: assertNativeId(value.entryPointId, 'entryPoint', 'RuntimeDescriptor.entryPointId'),
         experience: assertExperienceContract(value.experience),
+        ...(value.experienceContract === undefined ? {} : {
+            experienceContract: assertNativeExperienceContract(value.experienceContract),
+        }),
         capabilities,
         resources: Object.freeze(resources),
         plugins: unique(value.plugins, 'RuntimeDescriptor.plugins', namespaced),

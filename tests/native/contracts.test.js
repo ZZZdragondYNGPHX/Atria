@@ -44,6 +44,28 @@ const IDs = Object.freeze({
 const PACKAGE_HASH = 'f'.repeat(64);
 const ASSET_HASH = 'a'.repeat(64);
 
+test('P0 Package Data uses exact existing AssetRefs and strict package-owned declarations', () => {
+    const experienceContract = {
+        schemaVersion: 1,
+        capabilities: [{ id: 'package-data', version: 1, required: false }],
+        dataResources: [{ resourceId: 'items', assetId: IDs.assetId, contentHash: ASSET_HASH }],
+    };
+    const value = packageManifest({
+        runtime: { experienceContract },
+        assets: [{ assetId: IDs.assetId, contentHash: ASSET_HASH, size: 2, mediaType: 'application/json' }],
+    });
+    expect(assertAtriaPackageManifest(value).runtime.experienceContract).toEqual(experienceContract);
+    expect(() => assertAtriaPackageManifest({ ...value, assets: [] })).toThrow(/exact application\/json/);
+    for (const patch of [{ contentHash: 'b'.repeat(64) }, { mediaType: 'text/javascript' }, { mediaType: 'text/html' }]) {
+        expect(() => assertAtriaPackageManifest({ ...value, assets: [{ ...value.assets[0], ...patch }] })).toThrow(/exact application\/json/);
+    }
+    expect(() => assertAtriaPackageManifest({ ...value, runtime: { experienceContract: { ...experienceContract, script: 'main.js' } } })).toThrow(/unsupported field/);
+    expect(() => assertAtriaPackageManifest({
+        ...value,
+        entryPoints: [{ ...value.entryPoints[0], runtime: { experienceContract } }],
+    })).toThrow(/cannot be overridden/);
+});
+
 test('Package Regex normalizes ID-less native rules and rejects duplicate IDs', () => {
     const rule = { scriptName: 'Existing native rule', findRegex: '/hello/g', replaceString: 'world', placement: [1] };
     const value = packageManifest({ processors: { regex: [rule, { ...rule, id: 'atri_game_regex_0' }] } });

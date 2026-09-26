@@ -1,4 +1,5 @@
 import { skillDeclarationId, validateSkillDeclarations } from '../../public/scripts/native/skill-declarations.js';
+import { assertExperienceDataClosure, assertSupportedExperienceContract } from '../../public/shared/native-experience-contract.js';
 import {
     ATRIA_RUNTIME_DESCRIPTOR_FORMAT,
     ATRIA_RUNTIME_DESCRIPTOR_SCHEMA_VERSION,
@@ -97,6 +98,9 @@ function gameRuntimeSource(value) {
 function runtimeSource(manifest, entryPoint) {
     const packageRuntime = plain(manifest?.runtime) ? manifest.runtime : {};
     const entryRuntime = plain(entryPoint?.runtime) ? entryPoint.runtime : {};
+    if (entryRuntime.experienceContract !== undefined) {
+        throw new TypeError('experienceContract belongs to Package.runtime and cannot be overridden by an EntryPoint');
+    }
     const experience = experienceRuntimeSource(entryRuntime.experience ?? packageRuntime.experience);
 
     const packageGame = gameRuntimeSource(packageRuntime.game);
@@ -198,6 +202,8 @@ export function compileNativeRuntimeDescriptor({ packageVersion, manifest, entry
     if (!entryPoint) throw new TypeError('Runtime Descriptor EntryPoint is not part of this PackageVersion');
 
     const runtime = runtimeSource(manifest, entryPoint);
+    const experienceContract = manifest.runtime?.experienceContract === undefined ? undefined
+        : assertSupportedExperienceContract(assertExperienceDataClosure(manifest.runtime.experienceContract, manifest.assets));
     const descriptor = assertNativeRuntimeDescriptor({
         format: ATRIA_RUNTIME_DESCRIPTOR_FORMAT,
         schemaVersion: ATRIA_RUNTIME_DESCRIPTOR_SCHEMA_VERSION,
@@ -212,6 +218,7 @@ export function compileNativeRuntimeDescriptor({ packageVersion, manifest, entry
                 : { componentModelVersion: runtime.experience.componentModelVersion }),
         }),
         capabilities: manifest.capabilities,
+        ...(experienceContract === undefined ? {} : { experienceContract }),
         resources: compileResources(manifest, entryPoint),
         plugins: (runtime.plugins || []).map(item => item.pluginId),
         skills: packageSkillIds(manifest),

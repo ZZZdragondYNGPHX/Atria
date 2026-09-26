@@ -1,3 +1,5 @@
+import { assertSupportedExperienceContract } from '../../../shared/native-experience-contract.js';
+
 export const GAME_PACKAGE_STATUS = Object.freeze({
     NONE: 'none',
     READY: 'ready',
@@ -79,6 +81,10 @@ export async function loadNativeGamePackage(session, options = {}) {
                 runtime: null,
                 errors: ['Native Runtime Descriptor response is invalid'],
             });
+        }
+
+        if (descriptor.experienceContract !== undefined) {
+            assertSupportedExperienceContract(descriptor.experienceContract);
         }
 
         return Object.freeze({

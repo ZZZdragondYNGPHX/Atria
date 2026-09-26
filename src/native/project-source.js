@@ -1,3 +1,4 @@
+import { assertNativeExperienceContract } from '../../public/shared/native-experience-contract.js';
 import {
     ATRIA_PACKAGE_CAPABILITIES,
     ATRIA_PACKAGE_PERMISSIONS,
@@ -176,6 +177,9 @@ function assertPackageSource(value) {
         'metadata',
     ]) {
         if (value[key] !== undefined) out[key] = cloneJson(value[key], 'AtriaProject.package.' + key);
+    }
+    if (out.runtime?.experienceContract !== undefined) {
+        out.runtime.experienceContract = assertNativeExperienceContract(out.runtime.experienceContract);
     }
     return Object.freeze(out);
 }

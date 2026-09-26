@@ -25,7 +25,8 @@ for (const file of implementationFiles) {
 const source = Object.fromEntries(
     implementationFiles.map(file => [file, fs.readFileSync(file, 'utf8')]),
 );
-const gameRuntimeFiles = implementationFiles.filter(file => file.includes('/game-runtime/'));
+const gameRuntimeFiles = implementationFiles.filter(file => file.includes('/native/experience/'));
+if (!gameRuntimeFiles.length) throw new Error('A3 guard must scan active Native Experience files');
 const activeGameRuntime = gameRuntimeFiles.map(file => source[file]).join('\n');
 
 for (const [label, pattern] of [

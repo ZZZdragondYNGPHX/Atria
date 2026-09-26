@@ -51,6 +51,35 @@ function fixture(overrides = {}) {
 }
 
 describe('A3 Native Runtime Descriptor compiler', () => {
+    test('P0 derives contract metadata for every layout without enabling reserved features', () => {
+        const experienceContract = {
+            schemaVersion: 1,
+            capabilities: [{ id: 'component-model', version: 2, required: false }],
+            dataResources: [],
+        };
+        for (const mode of ['text', 'component', 'hybrid', 'full']) {
+            const f = fixture({
+                manifest: { runtime: { experienceContract } },
+                entryPoint: { runtime: { experience: mode === 'text' ? { mode } : {
+                    mode, componentModelVersion: 1, component: 'ui/main.json',
+                } } },
+            });
+            expect(compileNativeRuntimeDescriptor(f).descriptor.experienceContract).toEqual(experienceContract);
+            expect(compileNativeRuntimeDescriptor(f).runtime).not.toHaveProperty('experienceContract');
+            f.manifest.runtime.experienceContract = { ...experienceContract, capabilities: [{ id: 'component-model', version: 2, required: true }] };
+            expect(() => compileNativeRuntimeDescriptor(f)).toThrow(/Host does not support/);
+        }
+    });
+
+    test('P0 compiler revalidates resource closure and forbids EntryPoint requirement overrides', () => {
+        const contract = { schemaVersion: 1, capabilities: [], dataResources: [] };
+        const f = fixture({ manifest: { runtime: { experienceContract: contract } } });
+        f.manifest.runtime.experienceContract = { ...contract, dataResources: [{ resourceId: 'items', assetId: createNativeId('asset'), contentHash: 'a'.repeat(64) }] };
+        expect(() => compileNativeRuntimeDescriptor(f)).toThrow(/exact application\/json/);
+        f.entryPoint.runtime.experienceContract = contract;
+        expect(() => compileNativeRuntimeDescriptor(f)).toThrow(/cannot be overridden/);
+    });
+
     test('Skill declarations use shared validation and preserve extension data in the source', () => {
         const f = fixture({ manifest: { skills: [{ skillId: 'guide', custom: { tone: 'quiet' } }, 'global-helper'] } });
         expect(compileNativeRuntimeDescriptor(f, { entryPointId: f.entryPointId }).descriptor.skills).toEqual(['guide', 'global-helper']);

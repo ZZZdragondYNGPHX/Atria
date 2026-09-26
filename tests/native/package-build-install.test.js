@@ -13,7 +13,9 @@ import {
     StudioProjectRouter,
     WorldRepo,
     buildProjectPackage,
+    assertAtriaProjectSource,
     createNativeId,
+    resolveNativeRuntimePackage,
 } from '../../src/native/index.js';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -148,6 +150,48 @@ function projectSource(deps) {
 }
 
 describe('N2 Source Project -> build -> install -> reopen', () => {
+    test('P0 preserves the strict Experience seam and exact JSON data through existing build/install storage', async () => {
+        const author = await makeTempFsEngine();
+        const target = await makeTempFsEngine();
+        try {
+            const deps = await seedAuthoringLibrary(author);
+            const projectStore = new ProjectStore({ directoriesByHandle: () => author.dirs });
+            const source = projectSource(deps);
+            const bytes = Buffer.from('{"items":[{"id":"potion","price":10}]}');
+            const assetId = createNativeId('asset');
+            const experienceContract = {
+                schemaVersion: 1,
+                capabilities: [{ id: 'package-data', version: 1, required: false }],
+                dataResources: [{ resourceId: 'items', assetId, contentHash: digest(bytes) }],
+            };
+            source.package.runtime = { experience: { mode: 'text' }, experienceContract };
+            source.assetFiles = [{ assetId, path: 'data/items.json', mediaType: 'application/json' }];
+            expect(assertAtriaProjectSource(source).package.runtime.experienceContract).toEqual(experienceContract);
+            const invalid = structuredClone(source);
+            invalid.package.runtime.experienceContract.persistence = {};
+            expect(() => assertAtriaProjectSource(invalid)).toThrow(/unsupported field/);
+            await projectStore.create(author.handle, source, { files: new Map([['data/items.json', bytes]]) });
+            const built = await buildProjectPackage({
+                handle: author.handle, projectId: source.project.projectId, projectStore,
+                worldRepo: deps.worldRepo, knowledgeRepo: deps.knowledgeRepo, assetStore: deps.assetStore,
+            });
+            const installer = new PackageInstaller({
+                packageRepo: new PackageRepo({ engine: target.engine }),
+                assetStore: new AssetStore({ engine: target.engine, directoriesByHandle: () => target.dirs }),
+            });
+            await installer.install(target.handle, built.archive, { grantedPermissions: ['generation'] });
+            const reopened = await installer.open(target.handle, built.manifest.packageId, built.manifest.packageVersionId);
+            expect(reopened.assets.get(assetId)).toEqual(bytes);
+            expect(reopened.manifest.runtime.experienceContract).toEqual(experienceContract);
+            const resolved = resolveNativeRuntimePackage(reopened, source.package.entryPoints[0].entryPointId);
+            expect(resolved.descriptor.experienceContract).toEqual(experienceContract);
+            expect(resolved.descriptor.resources).toContainEqual({ resourceType: 'core.asset', resourceId: assetId, revision: digest(bytes) });
+        } finally {
+            await author.cleanup();
+            await target.cleanup();
+        }
+    });
+
     test('installed PackageVersion remains self-contained with no target Library dependencies', async () => {
         const author = await makeTempFsEngine();
         const target = await makeTempFsEngine();

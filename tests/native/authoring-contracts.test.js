@@ -1,9 +1,13 @@
 import { describe, expect, test } from '@jest/globals';
+import { readFileSync } from 'node:fs';
 
 import {
     ATRIA_AUTHORING_SCHEMA_VERSION,
     ATRIA_COMPONENT_MODEL_VERSION,
     ATRIA_EXPERIENCE_MODES,
+    ATRIA_EXPERIENCE_CAPABILITIES,
+    assertNativeExperienceContract,
+    assertSupportedExperienceContract,
     ATRIA_NATIVE_SKILL_SCOPES,
     ATRIA_PACKAGE_RUNTIME_FORMAT,
     ATRIA_PLUGIN_FORMAT,
@@ -27,6 +31,68 @@ import {
 
 const HASH_A = 'a'.repeat(64);
 const HASH_B = 'b'.repeat(64);
+const experienceFixture = () => JSON.parse(readFileSync(new URL('./fixtures/experience-contract-v1.json', import.meta.url), 'utf8'));
+
+describe('P0 Experience contract foundation', () => {
+    test('round-trips the fixture without granting reserved capabilities or mutating input', () => {
+        const input = experienceFixture();
+        const contract = assertSupportedExperienceContract(input);
+        expect(contract).toEqual(input);
+        input.capabilities[0].version = 2;
+        expect(contract.capabilities[0].version).toBe(1);
+        expect(Object.isFrozen(contract.dataResources[0])).toBe(true);
+        expect(assertNativeRuntimeDescriptor(runtimeDescriptor({ experienceContract: contract })).experienceContract).toEqual(contract);
+    });
+
+    test('all 32 vocabulary entries distinguish reserved versions from implemented support', () => {
+        expect(Object.keys(ATRIA_EXPERIENCE_CAPABILITIES)).toHaveLength(32);
+        for (const [id, definition] of Object.entries(ATRIA_EXPERIENCE_CAPABILITIES)) {
+            for (const version of definition.versions) {
+                const value = { schemaVersion: 1, capabilities: [{ id, version, required: true }], dataResources: [] };
+                expect(assertNativeExperienceContract(value)).toEqual(value);
+            }
+            for (const version of definition.versions.filter(item => !definition.supported.includes(item))) {
+                const value = { schemaVersion: 1, capabilities: [{ id, version, required: true }], dataResources: [] };
+                expect(() => assertSupportedExperienceContract(value)).toThrow(/Host does not support/);
+            }
+        }
+    });
+
+    test.each([
+        value => { value.schemaVersion = '1'; },
+        value => { value.schemaVersion = 2; },
+        value => { value.capabilities = null; },
+        value => { value.dataResources = {}; },
+        value => { value.capabilities[0].id = 'unknown'; },
+        value => { value.capabilities[0].id = '__proto__'; },
+        value => { value.capabilities[0].version = '1'; },
+        value => { value.capabilities[0].version = 99; },
+        value => { value.capabilities[0].required = 1; },
+        value => { value.capabilities[0].config = {}; },
+        value => { value.capabilities.push(value.capabilities[0]); },
+        value => { value.dataResources.push(value.dataResources[0]); },
+        value => { value.dataResources[0].contentHash = 'latest'; },
+        value => { value.dataResources[0].assetId = 'https://example.org/data.json'; },
+        value => { value.dataResources[0].resourceId = '../data'; },
+        value => { value.dataResources[0].path = 'runtime/main.js'; },
+        value => { value.dataResources[0].exposure = 'model'; },
+        value => { value.capabilities = Array(257).fill(value.capabilities[0]); },
+    ])('rejects malformed, unknown or non-exact declarations %#', mutate => {
+        const value = experienceFixture();
+        mutate(value);
+        expect(() => assertNativeExperienceContract(value)).toThrow(TypeError);
+    });
+
+    test.each(['gameManifest', 'CardApp', 'script', 'html', 'css', 'network', 'session', 'world', 'persistence', 'context', 'tasks'])('does not open a %s passthrough', key => {
+        expect(() => assertNativeExperienceContract({ ...experienceFixture(), [key]: {} })).toThrow(/unsupported field/);
+    });
+
+    test('Component v2 does not silently enter the v1 Experience contract', () => {
+        for (const mode of ['component', 'hybrid', 'full']) {
+            expect(() => assertExperienceContract({ mode, componentModelVersion: 2 })).toThrow(/must be 1/);
+        }
+    });
+});
 
 function operation(kind = 'human') {
     return {

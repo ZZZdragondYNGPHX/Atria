@@ -1,4 +1,5 @@
 import { normalizeNativeRegexScripts } from '../../public/shared/native-regex.js';
+import { assertExperienceDataClosure } from '../../public/shared/native-experience-contract.js';
 import { validateSkillDeclarations } from '../../public/scripts/native/skill-declarations.js';
 import { assertNativeId } from './identity.js';
 import { assertPackageModelPromptRuntimeMetadata } from './model-prompt-runtime/contracts.js';
@@ -233,6 +234,9 @@ export function assertActor(value) {
 }
 
 export function assertEntryPoint(value) {
+    if (value?.runtime?.experienceContract !== undefined) {
+        throw new TypeError('experienceContract belongs to Package.runtime and cannot be overridden by an EntryPoint');
+    }
     noLegacyIdentity(value, 'EntryPoint');
     if (Object.prototype.hasOwnProperty.call(value, 'world')) {
         throw new TypeError('EntryPoint.world is retired; use worldIds/primaryWorldId');
@@ -623,6 +627,9 @@ export function assertAtriaPackageManifest(value) {
     };
     if (value.runtime !== undefined) {
         const runtime = cloneJson(plain(value.runtime, 'AtriaPackage.runtime'), 'AtriaPackage.runtime');
+        if (runtime.experienceContract !== undefined) {
+            runtime.experienceContract = assertExperienceDataClosure(runtime.experienceContract, assets);
+        }
         if (runtime.modelPrompt !== undefined) {
             runtime.modelPrompt = assertPackageModelPromptRuntimeMetadata(runtime.modelPrompt, {
                 packageId,

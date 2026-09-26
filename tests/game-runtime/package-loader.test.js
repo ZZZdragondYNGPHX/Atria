@@ -35,6 +35,32 @@ const descriptor = {
 };
 
 describe('A3 Native Game Runtime loader', () => {
+    test.each([
+        { schemaVersion: 1, capabilities: [{ id: 'component-model', version: 2, required: true }], dataResources: [] },
+        { schemaVersion: 1, capabilities: [{ id: 'unknown', version: 1, required: false }], dataResources: [] },
+        { schemaVersion: 1, capabilities: [], dataResources: [], script: 'main.js' },
+        { schemaVersion: 2, capabilities: [], dataResources: [] },
+    ])('P0 fails closed before activation for invalid or unsupported contract %#', async experienceContract => {
+        const fetchImpl = jest.fn(async () => response({ body: {
+            descriptor: { ...descriptor, experienceContract }, runtime: { experience: { mode: 'text' } },
+        } }));
+        const result = await loadNativeGamePackage('session_current', { fetchImpl });
+        expect(result.active).toBe(false);
+        expect(result.status).toBe(GAME_PACKAGE_STATUS.ERROR);
+        expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+
+    test('P0 retains optional reserved capability metadata without granting it', async () => {
+        const experienceContract = { schemaVersion: 1, capabilities: [{ id: 'workflow', version: 1, required: false }], dataResources: [] };
+        const fetchImpl = jest.fn(async () => response({ body: {
+            descriptor: { ...descriptor, experienceContract }, runtime: { experience: { mode: 'text' } },
+        } }));
+        const result = await loadNativeGamePackage('session_current', { fetchImpl });
+        expect(result.status).toBe(GAME_PACKAGE_STATUS.READY);
+        expect(result.descriptor.experienceContract).toEqual(experienceContract);
+        expect(result.runtime).not.toHaveProperty('workflow');
+    });
+
     test('does not activate without an active Native Session identity', async () => {
         const fetchImpl = jest.fn();
         const result = await loadNativeGamePackage('', { fetchImpl });

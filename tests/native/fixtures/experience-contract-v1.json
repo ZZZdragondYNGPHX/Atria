@@ -1,0 +1,15 @@
+{
+    "schemaVersion": 1,
+    "capabilities": [
+        { "id": "component-model", "version": 1, "required": true },
+        { "id": "package-data", "version": 1, "required": false },
+        { "id": "workflow", "version": 1, "required": false }
+    ],
+    "dataResources": [
+        {
+            "resourceId": "catalog.items",
+            "assetId": "asset_eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+    ]
+}
