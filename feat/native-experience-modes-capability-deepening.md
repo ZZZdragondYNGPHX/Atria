@@ -43,9 +43,9 @@ Atria 当前已经存在 `text / component / hybrid / full` Experience contract�
 
 这导致三个 Experience 模式目前更像不同的“挂载范围”，尚未成为足够完整的角色卡 / 游戏前端平台。
 
-在实际迁移 SillyTavern 高阶角色卡时，问题已经暴露：一个典型的“自定义开局表单 → 收集多个输入 → 组合 Prompt → 写入 Composer → 自动发送”的酒馆卡交互，当前 Native Component Model 无法直接表达。类似问题也会继续出现在 MVU 状态栏、消息内快速回复、正文后状态卡、动态表单、分步向导等场景。
+在以 SillyTavern 高阶角色卡作为 Capability Benchmark / Pressure Test 时，问题已经暴露：一个典型的“自定义开局表单 → 收集多个输入 → 组合 Prompt → 写入 Composer → 自动发送”的旧生态交互，当前 Native Component Model 无法直接表达。类似缺口也会继续出现在 MVU 状态栏、消息内快速回复、正文后状态卡、动态表单、分步向导等场景。
 
-因此本任务目标不是给单张角色卡打补丁，而是进一步深化 Atria 的 Experience 模式，使其系统性承接 SillyTavern 基础交互能力与 MVU 前端能力。
+因此本任务目标不是迁移或兼容单张角色卡，而是从多个优秀案例中抽象真实产品能力，进一步深化 Atria 的 Experience 模式，并用 Atria 自己的统一 Native contract 实现这些能力。
 
 ---
 
@@ -93,9 +93,9 @@ Component / Hybrid / Full 应共享：
 - Accessibility
 - Native World / Session State integration
 
-### 3.3 MVU Native 化方向
+### 3.3 MVU / 重前端案例的 Native 抽象方向
 
-目标是：
+这里的箭头表示“能力抽象”，不是数据迁移或兼容映射。目标是：
 
 ```text
 MVU stat_data / variables
@@ -107,7 +107,7 @@ Regex HTML / MVU Frontend
 Native Component / Message Projection
 ```
 
-MVU Provider 保留为 legacy compatibility bridge，而不是新 Atria Package 的首选权威状态系统。
+MVU Provider 即使存在，也只属于 legacy compatibility bridge；本企划的案例审计不以迁移旧卡为目标，新 Atria Package 不以 MVU / Tavern Helper / Regex HTML 作为核心权威或运行接口。
 
 ---
 
@@ -884,12 +884,7 @@ Atria Native 已存在更明确的：
 
 当前 MVU 适配是**只读兼容 Provider**，不是完整 MVU 写入运行时。
 
-因此后续需要明确四种状态层，禁止混用：
-
-1. **World State**：剧情/游戏权威事实；
-2. **Session State**：会话运行时持久状态；
-3. **Local UI State**：表单、tab、wizard 等临时前端状态；
-4. **Legacy Provider State**：MVU / LoreState 等兼容读取。
+因此后续必须明确区分状态 authority，禁止继续把所有内容都叫“变量”。Round 5 的重型案例已经进一步把这套模型拆细为 World State、Session Application State、Activity State、Local UI State、Message-local UI State、Player Preference State；Legacy Provider State 只属于兼容读取，详见 §26.11。
 
 ### 19.6 MVU 卡的典型行为已经验证
 
@@ -5158,7 +5153,1049 @@ media_request
 > **让作者不再需要通过劫持聊天宿主，才能做出完整的 LLM Game/Application。**
 
 
-## 二十六、修订记录
+## 二十六、案例压力测试 03 — 《银麒赎世》V24.4（大型 SillyTavern / MVU Application）
+
+### 26.1 样本定位
+
+本轮样本为用户上传的：
+
+- `V24.4.json`
+- Character：`银麒赎世`
+- `chara_card_v3 / spec_version 3.0`
+- 版本：`24.4`
+- 样本生成日期：2026-09-26
+- 卡内说明对应 V24.4 发布：2026-09-13
+
+该样本已经明显超出“角色卡 + 状态栏”。
+
+其真实产品形态包含：
+
+- 16 页 Opening Wizard；
+- 主叙事；
+- 独立系统面板；
+- 独立手机应用壳；
+- 任务 / 商城 / 背包 / 战斗 / 据点 / 事件链；
+- 私聊 / 群聊 / 朋友圈 / 论坛 / 直播 / 监控；
+- 多账号视角；
+- 世界动态推演；
+- 文生图；
+- MVU 双模型；
+- 独立长期存储；
+- 删楼回滚保护；
+- 配置体检 / 存档体检 / Runtime Diagnostics；
+- 多个独立模型调用通道。
+
+Card 内当前还包含：
+
+- 182 个 Worldbook entry；
+- 29 个 Regex；
+- 9 个 Tavern Helper script；
+- 手机 UI 与系统面板均已发展为大型 application code。
+
+因此本样本最适合检验：
+
+> **当一个“角色卡”已经自行长出多应用、多模型、多视角、长期持久化与自治世界时，Atria Native Capability Layer 还缺什么。**
+
+本轮仍然只审计产品能力，不设计 SillyTavern / MVU 兼容层。
+
+### 26.2 第一结论：这不是一套 UI，而是多个 Runtime Domain
+
+该卡至少同时维护：
+
+```text
+Narrative Domain
+Game / World Domain
+Task Workflow Domain
+Phone / Social Domain
+World Dynamics Domain
+Battle Activity
+Image / Media Domain
+Diagnostics / Repair Domain
+```
+
+旧实现被迫把这些内容压进：
+
+- MVU；
+- chat metadata；
+- IndexedDB；
+- Worldbook；
+- Regex；
+- iframe；
+- Tavern Helper script；
+- 多条独立 API。
+
+Atria 不应复制这种存储与通信结构。
+
+但它证明：
+
+> **Full / Hybrid 的能力上限必须允许一个 Package 拥有多个长期运行的 application domain，而不是只有 World State + 一棵 UI Tree。**
+
+### 26.3 Atria 已有地基：Session State 本身不是新发明
+
+本轮再次复核当前 `main@4dab353a`。
+
+`SessionCore` 已经支持任意非保留的 Native Session State namespace，并且这些 namespace：
+
+- 随 immutable Session Revision 提交；
+- 随 Branch 分叉；
+- 可以在同一 runtime commit 中与 Timeline append 一起提交；
+- portable namespace 会进入 Native Save export/import；
+- 历史 Revision 继续保持不可变。
+
+因此《银麒赎世》为了手机消息、论坛、图片索引、任务旗标等自行建立：
+
+- chat metadata；
+- IndexedDB；
+- 双源同步；
+- snapshot ring；
+
+并不意味着 Atria 要再造一个数据库。
+
+真正缺的是：
+
+> **Package-facing Typed Session Application State Contract。**
+
+也就是把当前底层已有的 namespace 存储能力正式提升成 Experience Capability。
+
+### 26.4 新缺口 26 — Epistemic / Actor Perspective Projection
+
+这是本样本最重要的新发现之一。
+
+该卡后期专门实现了：
+
+- 某 NPC 是否在当前场景；
+- 某 NPC 是否亲历近期事件；
+- 两个 NPC 是否拥有共同经历；
+- 圈外人物不能知道主角私密主线；
+- 私聊只允许参与者知道；
+- 公共事件可以传播；
+- 私密系统信息不能传播；
+- 同一段对话从不同账号查看仍然一致；
+- 冒用账号时，收到消息的人可能形成错误认知；
+- 角色可以“相信某件事”，但这件事未必是 World Truth。
+
+这已经不是普通 Knowledge activation。
+
+当前 Atria 已有很好的基础：
+
+- Knowledge target / visibility 已支持 `narrator / actor / agent / user`；
+- Knowledge 可以 target exact actor id；
+- Context Compiler 已经能为 Narrator / Actor / Agent 生成隔离的 ContextPlan。
+
+但当前这些机制主要回答：
+
+> “一份稳定 Knowledge 对谁可见？”
+
+还没有一等回答：
+
+> “运行时发生的一件事，哪些角色亲历、听说、收到、误信、怀疑或完全不知道？”
+
+因此新增：
+
+> **Epistemic / Actor Perspective Projection**
+
+候选数据流：
+
+```text
+World Truth / Event Journal
+            ↓
+Exposure / Communication / Observation
+            ↓
+Actor Perspective Projection
+            ↓
+Actor-targeted ContextPlan
+```
+
+绝对不要维护：
+
+```text
+NPC A World State clone
+NPC B World State clone
+NPC C World State clone
+```
+
+否则必然形成多套事实权威。
+
+候选 Perspective Record：
+
+```text
+Perspective Record
+├─ actorId
+├─ sourceRef
+├─ channel
+│  ├─ witnessed
+│  ├─ direct_message
+│  ├─ told_by
+│  ├─ public_broadcast
+│  ├─ surveillance
+│  ├─ rumor
+│  └─ inference
+├─ observedAtRevision
+├─ claim / typed subject
+├─ epistemic status
+│  ├─ known
+│  ├─ believed
+│  ├─ suspected
+│  └─ disputed
+└─ provenance
+```
+
+这里必须区分：
+
+- **World Truth**：世界真实发生了什么；
+- **Actor Belief / Observation**：某个角色认为发生了什么。
+
+后者可以是错的。
+
+这样才能原生支持：
+
+- 秘密；
+- 谣言；
+- 误会；
+- 身份冒用；
+- 监控；
+- 分队行动；
+- NPC 私聊；
+- 多 POV；
+- 玩家不在场事件；
+- dramatic irony。
+
+Actor Perspective 不修改 World Truth。
+
+它只影响：
+
+- actor-targeted model context；
+- limited-POV narrator context；
+- 当前视角 UI 的信息投影；
+- Knowledge / Memory / Conversation 的可见投影。
+
+### 26.5 Perspective 与 Knowledge / Memory 的边界
+
+冻结建议：
+
+#### Knowledge
+
+回答：
+
+> 世界中有什么稳定知识 / 规则 / 设定？
+
+#### Memory
+
+回答：
+
+> 过去哪些经历值得长期召回？
+
+#### Epistemic Perspective
+
+回答：
+
+> **这个角色现在有资格知道 / 相信什么？**
+
+因此 Epistemic Layer 不替代 Knowledge / Memory。
+
+它是 Context Projection 的一层 runtime evidence / filter：
+
+```text
+Knowledge
+Memory
+Conversation
+World Events
+Session App Events
+        ↓
+Perspective Projection(actorId)
+        ↓
+Context Compiler
+```
+
+### 26.6 新缺口 27 — Package Model Task / Generation Task Contract
+
+《银麒赎世》不是只有主 Narrator 与一个变量模型。
+
+它实际允许为不同产品功能分别配置模型通道，例如：
+
+- social chat；
+- task evaluation；
+- world dynamics；
+- forum；
+- live；
+- surveillance；
+- shop evaluation；
+- outpost sync；
+- plot task；
+- image generation。
+
+这揭示了当前 Atria 的真实边界。
+
+当前 `main`：
+
+- Native Generation Host 只接受固定平台 role：
+  - `narrator`
+  - `intent_resolver`
+  - `event_interpreter`
+  - `orchestrator`
+  - `studio`
+  - `memory`
+  - `search`
+- Game Runtime Role Router 目前只含：
+  - `narrator`
+  - `intent_resolver`
+  - `event_interpreter`
+  - `orchestrator`
+  - `studio`
+- Package `runtime.modelPrompt` 可以声明 namespaced role intent 和 exact Prompt / Generation ref，但 Host 当前没有一等的任意 Package task execution contract。
+
+所以一个复杂游戏目前无法干净声明：
+
+> “我有一个 social-chat model task、一个 quest-evaluator、一个 world-dynamics task，它们不是 Narrator，也不是 Event Interpreter。”
+
+因此新增：
+
+> **Package Model Task / Generation Task Contract**
+
+候选：
+
+```text
+ModelTaskDefinition
+├─ taskId
+├─ semantic role
+├─ execution class
+│  ├─ turn-stage
+│  ├─ auxiliary
+│  └─ interactive
+├─ input schema
+├─ context target
+│  ├─ narrator
+│  ├─ actor:<id>
+│  ├─ agent
+│  └─ explicit projection
+├─ context policy
+│  ├─ allowed lanes
+│  ├─ required lanes
+│  └─ budget hints
+├─ promptProgramRef
+├─ generationProfileRef
+├─ required capabilities
+├─ output contract
+└─ diagnostics policy
+```
+
+重要：
+
+> Model Task 定义“这个模型工作是什么”，不是“什么时候运行”。
+
+执行时机仍然分别属于：
+
+- Package Turn Contract / synchronous stage；
+- Auxiliary Task Runtime；
+- Runtime Automation；
+- UI Action。
+
+因此：
+
+```text
+Model Task Definition
+        ×
+Execution Runtime
+```
+
+二者正交。
+
+### 26.7 Package Model Task 不能携带玩家私有 API 配置
+
+即使增加 Package Model Task，也不能复制 phoneAPI 的：
+
+```text
+Package
+→ URL
+→ API Key
+→ model name
+```
+
+Package 只能声明：
+
+- task semantic；
+- required capability；
+- Prompt / Generation author intent；
+- output contract。
+
+玩家仍然通过：
+
+- Connection；
+- Model；
+- Runtime Route；
+- Secret Store；
+
+决定实际请求发给哪里。
+
+因此：
+
+```text
+Package Model Task
+        ↓
+player-owned Runtime Route binding
+        ↓
+Connection / Model / Secret
+```
+
+Package 永远不能读取 Secret。
+
+### 26.8 Model Task 必须支持 Actor-targeted Context
+
+《银麒赎世》的 NPC 私聊与群聊暴露了关键要求：
+
+一个 `social_chat` task 不能默认拿当前主聊天的完整 Context。
+
+它应声明：
+
+```text
+task = social_chat
+participants = [A, B]
+target = actor perspective / conversation scope
+```
+
+Runtime 再通过：
+
+- Epistemic Projection；
+- Actor Knowledge；
+- shared Conversation；
+- shared Memory；
+- public World observations；
+
+编译该 Task 自己的 ContextPlan。
+
+因此 Package Model Task 与第 26 项 Epistemic Layer 是直接互补关系。
+
+### 26.9 Context Source Budget 应进入 Model Task contract
+
+该卡的“AI 感知”允许分别控制：
+
+- social；
+- forum；
+- live；
+- memory；
+- world dynamics；
+
+各自注入量。
+
+Atria 当前 Context Compiler 已有 lane cap / minimum guarantee 等预算地基。
+
+所以不新增“AI 感知 API”。
+
+应把它 Native 化为：
+
+> **Task-level Context Source Policy**
+
+Package 可以声明：
+
+- 哪些 Context lane 与该 Task 有意义；
+- required / optional；
+- suggested max budget。
+
+Player Preference 可以控制：
+
+- 某些 optional source 是否启用；
+- detail level。
+
+最终 token safety 仍由 Host Context Compiler 决定。
+
+### 26.10 新缺口 28 — Typed Session Application State
+
+《银麒赎世》的手机系统说明，存在大量：
+
+> 必须长期保存、必须随 Branch / Revision 回滚，但并不是 World Truth 的数据。
+
+例如：
+
+- private message threads；
+- group threads；
+- forum posts；
+- social graph derived records；
+- generated-media index；
+- task workflow state；
+- async task status；
+- application inbox / unread；
+- world-dynamics feed；
+- UI-visible operation history。
+
+它们不应进入 World State。
+
+也不能进入 Local UI State，因为关闭 UI 后不能消失。
+
+也不属于 Player Preference。
+
+因此正式定义：
+
+> **Session Application State**
+
+它是现有 Native Session State namespace 的 Package-facing typed contract。
+
+候选：
+
+```text
+Session Application Domain
+├─ domainId / namespace
+├─ schema
+├─ storage shape
+├─ indexes / query projections
+├─ commands
+├─ events
+├─ reducers
+├─ migration version
+└─ retention policy
+```
+
+权威写入仍然不能是：
+
+`session.patch("phone.messages", ...)`
+
+而应为：
+
+```text
+Session App Command
+→ validate
+→ Event
+→ Reducer
+→ new Session namespace state
+→ immutable Revision
+```
+
+World State 的冻结原则不变：
+
+```text
+World Command
+→ Event
+→ World Reducer
+```
+
+二者共享 typed authority 思想，但 authority domain 不同。
+
+### 26.11 六种状态必须正式分开
+
+经过三个重型样本，当前 Native 设计应明确区分：
+
+1. **World State**
+   - 游戏 / 剧情真实事实；
+   - Branch-aware；
+   - typed Command / Event / Reducer。
+
+2. **Session Application State**
+   - 当前存档的应用域持久数据；
+   - Branch-aware；
+   - phone / forum / workflow / derived feed 等；
+   - typed Session App Command / Event / Reducer。
+
+3. **Activity State**
+   - 某个 Activity 内部的临时事务状态；
+   - 完成后 settlement；
+   - 可按 policy 决定是否支持 resume。
+
+4. **Local UI State**
+   - tab / form / open state；
+   - 非剧情权威。
+
+5. **Message-local UI State**
+   - 单条 Projection block 的临时交互状态。
+
+6. **Player Preference State**
+   - 跨 Session；
+   - 不随 Branch 回滚。
+
+Legacy MVU / LoreState Provider 不算新的 Native authority，只是兼容读取。
+
+### 26.12 大型 Session App 数据不能物理实现成一个巨型 JSON
+
+《银麒赎世》最后不得不：
+
+- chat metadata + IndexedDB 双存储；
+- 大 key 单独存；
+- cache；
+- backup；
+- snapshot；
+- merge；
+- 去重。
+
+Atria 虽已有 Session namespace 底层，但未来 Session Application State 仍要避免：
+
+> 每发一条手机消息就复制整个百万级 social state。
+
+因此实现阶段应允许 Host-owned 的：
+
+- chunked collection；
+- keyed record；
+- immutable page/chunk；
+- index projection；
+- content-addressed payload。
+
+但对 Package 仍暴露统一 typed domain contract。
+
+也就是说：
+
+> **逻辑上是一个 Session Application Domain；物理上不要求是一个单体 JSON document。**
+
+这是 persistence implementation concern，不开放数据库句柄给 Package。
+
+### 26.13 Branch / Retry 必须覆盖所有 Session-authoritative Domain
+
+该卡需要 snapshot ring，根因是：
+
+- MVU；
+- phone metadata；
+- IndexedDB；
+- root metadata；
+
+分散在多个权威来源。
+
+Atria 不应复制 snapshot ring。
+
+应冻结：
+
+> **凡属于 Session-authoritative 的状态，都必须随同一 Revision graph 分支 / 回滚。**
+
+包括：
+
+- World State；
+- Session Application State；
+- Event Journal；
+- Activity settlement result；
+- committed Auxiliary Task result。
+
+不包括：
+
+- Player Preference；
+- device rendering preference；
+- immutable Package Data。
+
+这使：
+
+- Retry；
+- Restart From Here；
+- Branch；
+- SavePoint；
+
+天然不会产生：
+
+> “剧情回去了，手机 / 任务 / 论坛还留在未来”。
+
+### 26.14 Auxiliary Task Runtime 得到第三次强化
+
+该卡的 task evaluation、world dynamics、forum/live 等链路暴露大量真实工程问题：
+
+- 请求很慢；
+- rate limit；
+- 用户取消；
+- 切 Session 后旧结果回来；
+- 同一 Task 并发两次；
+- late result 写入新 Revision；
+- API 返回成功但无有效结果；
+- fallback；
+- pending UI；
+- retry。
+
+因此第 24 项进一步冻结：
+
+Auxiliary Task 必须绑定：
+
+```text
+Session
+Branch
+Revision anchor
+Model Task Definition
+ContextPlan snapshot
+Runtime Route snapshot
+```
+
+完成时：
+
+```text
+result
+→ anchor check
+→ stale?
+→ validate output
+→ authority-specific apply
+→ CAS commit
+```
+
+若 Session / Branch / Revision 已变化且 policy 不允许 rebase：
+
+> 结果进入 `stale`，绝不偷偷写入当前状态。
+
+### 26.15 Runtime Automation 深化为 World Process Recipe，但不新增第 29 项
+
+该卡有：
+
+- 每日刷新；
+- 据点日结；
+- 派遣返回；
+- NPC 据点发展；
+- 末日阶段规则；
+- 周期性世界动态；
+- 事件生成；
+- 自动社交。
+
+Atria 当前 Package manifest 虽已有 `world-simulation` capability 名称，但 `main` 中它目前主要还是 capability vocabulary，并不存在独立的 World Simulation runtime。
+
+本轮不新增一个新的平行 scheduler。
+
+第 13 项 Runtime Automation 应深化为：
+
+> **Runtime Automation / World Process Recipe**
+
+候选：
+
+```text
+WorldProcess
+├─ processId
+├─ trigger
+│  ├─ turn
+│  ├─ clock
+│  ├─ world-time
+│  ├─ event
+│  └─ state transition
+├─ condition
+├─ idempotency key
+├─ steps
+│  ├─ deterministic Command
+│  ├─ Rule evaluation
+│  ├─ Auxiliary Model Task
+│  └─ observation publication
+├─ catch-up policy
+├─ failure policy
+└─ diagnostics
+```
+
+例如跨过 7 个游戏日时：
+
+- 不能靠 UI `setInterval`；
+- 不能要求模型脑补“七次日结”；
+- Runtime 根据 catch-up policy：
+  - exact；
+  - bounded；
+  - aggregate；
+- 产生确定性事件 / Task；
+- 最终提交 Session Revision。
+
+因此：
+
+> Runtime Automation 决定“什么时候跑”；World Process Recipe 决定“一次自治流程由哪些受控步骤组成”。
+
+仍不允许 Package 定时执行 arbitrary JS。
+
+### 26.16 Experience Diagnostics 升级为 Health / Diagnostics / Repair / Migration
+
+本样本的“配置体检 / 存档体检 / 运行诊断”不是边角功能。
+
+当 Experience 依赖：
+
+- Model Task；
+- Runtime Route；
+- Add-on；
+- Asset Pack；
+- optional capability；
+- Session schema；
+- background job；
+
+玩家必须能知道：
+
+> “为什么这一块没有工作？”
+
+因此第 20 项正式扩展为：
+
+> **Experience Health / Diagnostics / Repair / Migration**
+
+至少包括：
+
+#### Preflight
+
+- Package requirements；
+- optional capability；
+- Model Task route binding；
+- Asset Pack availability；
+- Add-on compatibility；
+- Host capability。
+
+#### Runtime Diagnostics
+
+- Turn / Task trace；
+- ContextPlan；
+- selected Runtime Route；
+- token budget；
+- Action validation；
+- World Process；
+- Auxiliary Task；
+- stale / retry / cancellation；
+- Projection error。
+
+#### Save Health
+
+- Session domain schema version；
+- impossible references；
+- missing assets；
+- orphan records；
+- migration status。
+
+#### Repair
+
+必须：
+
+- preview diff；
+- explicit player confirmation；
+- typed remediation；
+- undo / Revision when it mutates Session authority。
+
+Package 不得：
+
+- 任意修改玩家全局设置；
+- 自动启用 Plugin；
+- 自动改 Secret；
+- 删除其它 Package 内容。
+
+需要宿主设置变化时，只能生成：
+
+> Host-owned remediation suggestion / action。
+
+### 26.17 Capability Negotiation 必须玩家可见
+
+此前 Host capability negotiation 更偏运行时：
+
+`scene3d available?`
+
+本样本说明它还必须可解释：
+
+```text
+Feature: World Dynamics
+
+required:
+- task route configured
+- model.text supported
+
+optional:
+- long context >= suggested budget
+
+status:
+- ready
+- degraded
+- unavailable
+
+remediation:
+- configure route
+```
+
+所以 capability negotiation 不能只是日志里的 Boolean。
+
+Studio 与 Player Runtime 都需要展示：
+
+- requirements；
+- effective capabilities；
+- degradation path；
+- remediation。
+
+### 26.18 多模型 ≠ MVU 双模型专用 API
+
+本样本推荐：
+
+> Narrator 写故事 + 另一个模型写变量补丁。
+
+Atria 当前已经有更干净的：
+
+- narrator；
+- event_interpreter；
+- narrative-outcome；
+- typed Command / Event authority。
+
+因此不要增加：
+
+- “MVU extra model”；
+- “变量模型 API”。
+
+真正应该吸收的是：
+
+> **一个 Experience 可以拥有多个职责明确、输出 contract 不同、可分别绑定 Runtime Route 的 Model Task。**
+
+变量解释只是其中一种 Task。
+
+### 26.19 文生图也应走 Model Task / Media capability
+
+本样本大量使用可选 image generation：
+
+- chat image；
+- forum image；
+- surveillance；
+- moment；
+- live cover；
+- narrative illustration。
+
+产品能力值得保留，但不能变成：
+
+`Package fetch image API`
+
+未来应归入 Model Task / Media capability：
+
+```text
+Package emits typed Media Task
+→ player-owned media-capable Route / Provider
+→ Host executes
+→ result stored as Session Attachment / AssetRef
+→ Message Projection / Scene Host renders
+```
+
+Package 只能接触：
+
+- typed request；
+- task result ref；
+- media metadata。
+
+不能接触：
+
+- provider credential；
+- arbitrary remote URL；
+- raw network API。
+
+### 26.20 本样本没有证明需要“任意网络 API”
+
+《银麒赎世》的 phoneAPI 各通道之所以直接保存 URL / Key / Model，是因为旧宿主没有统一 Model Runtime。
+
+Atria 已有：
+
+- Connection；
+- Model；
+- Runtime Route；
+- Secret Store；
+- Prompt / Generation exact resource；
+- Provider normalization。
+
+因此本轮反而进一步确认：
+
+> **Native Package 不应因为重型卡需要多 AI，就获得 arbitrary network permission 作为默认解法。**
+
+如果某类能力可以通过 Host-owned Model Task 实现，就不应退回 Package 自己发 HTTP。
+
+### 26.21 本样本对能力主表的调整
+
+经过《银麒赎世》压力测试：
+
+- 第 13 项 Runtime Automation → 深化为 Runtime Automation / World Process Recipe；
+- 第 20 项 Experience diagnostics → 深化为 Health / Diagnostics / Repair / Migration；
+- 第 24 项 Auxiliary Task → 补 Revision anchor / stale-result / CAS apply；
+- Host capability negotiation → 增加 player-visible requirement / degraded / remediation；
+- Context Compiler → 增加 Task-level Context Source Policy；
+- 新增 Epistemic / Actor Perspective Projection；
+- 新增 Package Model Task / Generation Task Contract；
+- 新增 Typed Session Application State。
+
+因此当前主表由 25 项调整为 **28 项**：
+
+1. Component Model v2；
+2. Local UI State；
+3. Player Preference State；
+4. Package Data Resource；
+5. Data Projection；
+6. Native Composer Host capability；
+7. Action v2 / Command Surface；
+8. Declarative Mutation authoring shorthand；
+9. Message Projection；
+10. Package Turn Contract + bounded synchronous Turn Stage；
+11. Turn Envelope；
+12. narrative-outcome policy；
+13. Runtime Automation / World Process Recipe；
+14. Opening Phase / Variant + conditional Wizard；
+15. Reply Variant / Branch facade；
+16. Conversation feed/latest/reader；
+17. Host advanced presentation/input + capability negotiation；
+18. Safe Appearance / Motion / Media Presentation；
+19. Studio visual authoring v2 deepening；
+20. Experience Health / Diagnostics / Repair / Migration；
+21. Activity Runtime / Transactional Subscene + Outcome Narrative Handoff；
+22. Native Media / Scene Host；
+23. Immutable Asset Pack / Heavy Resource Delivery；
+24. Auxiliary Task / Background Model Job Runtime；
+25. Native Add-on / Content Extension Layer；
+26. **Epistemic / Actor Perspective Projection**；
+27. **Package Model Task / Generation Task Contract**；
+28. **Typed Session Application State**。
+
+这 28 项仍然不是冻结答案。
+
+### 26.22 当前 Capability Layer 的结构开始变得更清楚
+
+三个重型样本之后，Atria Native Experience 不再适合被理解成：
+
+```text
+Component Model
++ World State
++ LLM
+```
+
+更合理的结构已经变成：
+
+```text
+Presentation
+├─ Component / View
+├─ Message Projection
+├─ Scene / Media
+└─ Host
+
+Interaction
+├─ Composer
+├─ Action
+└─ Activity
+
+Authority
+├─ World State
+├─ Session Application State
+├─ Event Journal
+└─ Revision / Branch
+
+Intelligence
+├─ Turn Contract
+├─ Model Task
+├─ Auxiliary Task
+├─ Runtime Automation / World Process
+└─ Context Compiler
+
+Information
+├─ Knowledge
+├─ Memory
+├─ Epistemic / Perspective
+└─ Data Projection
+
+Distribution
+├─ Package
+├─ Add-on
+└─ Asset Pack
+
+Tooling
+├─ Studio
+└─ Health / Diagnostics / Repair
+```
+
+这个结构比按“酒馆插件功能”逐个迁移更稳定。
+
+### 26.23 《银麒赎世》的核心启发
+
+这张卡最值得吸收的不是它有：
+
+- 手机；
+- 论坛；
+- 直播；
+- 据点；
+- N 个 API。
+
+而是它已经在旧生态里撞到了三个真正的平台问题：
+
+1. **复杂应用需要持久的非 World Application State。**
+2. **不同 AI 工作需要不同 Task Contract 和 Context。**
+3. **多人 / 多视角世界必须区分 World Truth 与 Actor Knowledge。**
+
+这三项不能只靠“更大的 UI”和“更多 World 变量”解决。
+
+因此本轮新增的 26–28 三项，比增加几十个具体 Widget 更有长期价值。
+
+
+## 二十七、修订记录
+
+### 2026-09-26 — Discussion Draft v1.2
+
+完成第三个重型案例压力测试：用户提供的《银麒赎世》V24.4。新增 Epistemic / Actor Perspective Projection、Package Model Task / Generation Task Contract、Typed Session Application State 三个一等候选能力；确认当前 SessionCore 已有 revision-aware 任意 namespace 底座，因此不复制 IndexedDB / snapshot-ring，而将其产品化为 typed Session Application Domain。同步深化 Runtime Automation 为 World Process Recipe、Experience Diagnostics 为 Health / Repair / Migration，并给 Auxiliary Task 增加 Revision anchor / stale result / CAS apply 语义。当前能力主表增至 28 项。
 
 ### 2026-09-26 — Discussion Draft v1.1
 
