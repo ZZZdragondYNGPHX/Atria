@@ -7230,7 +7230,397 @@ Revision / presentation result
 因此能力主表仍保持 **28 项**。
 
 
+### 26.46 Streaming 需要从“Narrative 特例”推广为 Scoped Operation State
+
+Round 4 已经冻结：
+
+- narrative draft 可以 streaming；
+- projection / authoritative outcome 必须 finalize 后生效；
+- authoritative outcome 不能在 streaming 中途 commit。
+
+这个原则仍然正确。
+
+但《银麒赎世》说明，重型 Experience 中同时存在：
+
+- 主 Narrator streaming；
+- task evaluation；
+- image generation；
+- world dynamics；
+- outpost sync；
+- forum / live generation；
+- background summary；
+- Action commit；
+- Activity settlement。
+
+如果 Runtime 只有一个全局：
+
+`isGenerating = true / false`
+
+会产生两个问题：
+
+1. **过度阻塞**
+   - 主 Narrator 在生成时，玩家只是打开背包 / 切 Tab / 看论坛，也被一起锁住。
+
+2. **阻塞不足**
+   - 某个 world-writing Task 正在 finalizing 时，另一个会修改同一 authority domain 的 Action 仍可能同时提交。
+
+因此需要：
+
+> **Scoped Operation State / Operation Projection**
+
+它不是新的 authority domain，而是 Host 对正在执行工作的只读运行状态。
+
+### 26.47 Operation Handle
+
+候选：
+
+```text
+OperationHandle
+├─ operationId
+├─ kind
+│  ├─ turn
+│  ├─ action
+│  ├─ model_task
+│  ├─ auxiliary_task
+│  ├─ activity
+│  ├─ media
+│  └─ world_process
+├─ ownerRef
+├─ scope / claims
+├─ status
+│  ├─ queued
+│  ├─ running
+│  ├─ streaming
+│  ├─ retrying
+│  ├─ waiting_confirmation
+│  ├─ finalizing
+│  ├─ completed
+│  ├─ failed
+│  ├─ cancelled
+│  └─ stale
+├─ progress
+├─ cancellable
+├─ startedAt
+├─ diagnosticsRef
+└─ provisionalPresentation?
+```
+
+Operation State 默认：
+
+- Host-owned；
+- read-only to Package；
+- 不属于 World State；
+- 不属于 Player Preference；
+- 不因为 UI 关闭而被 Package 随意销毁。
+
+对于必须跨 reload 存活的 Auxiliary Task：
+
+- authoritative Task record 仍存 Session Application State；
+- Operation Projection 只是当前 Host execution / presentation view。
+
+### 26.48 Busy 必须按 claim / conflict scope 判断，而不是全局 boolean
+
+Action / Task / Activity 可以声明受控的 semantic claim，例如：
+
+```text
+world:player.inventory
+world:outpost:<id>
+session_app:phone.thread:<id>
+activity:battle:<id>
+turn:current
+actor:<id>
+```
+
+但 Package 不直接获得 mutex。
+
+Host 使用这些 claim 判断：
+
+- 是否可以并行；
+- 是否需要 queue；
+- 哪些 Action 暂时 unavailable；
+- disabled reason 是什么。
+
+例如：
+
+#### Narrator streaming
+
+可以并行：
+
+- 切换 UI Tab；
+- 查看只读 inventory；
+- 修改 Local UI State；
+- 调整 device-local preference。
+
+可能不能并行：
+
+- 另一次当前 Turn commit；
+- 修改同一 Branch authoritative state 的 Action，若会让当前 Turn 的 Revision anchor 失效。
+
+#### Image generation
+
+通常可以与主 Narrator 并行。
+
+如果图片绑定的是当前尚未 finalized 的 Message Projection：
+
+- 可以生成 provisional media；
+- 但最终 attachment link 要等目标 Variant 确认后再绑定。
+
+#### Quest evaluation
+
+可以显示：
+
+`reviewing`
+
+但 reward Action 在 Task result validate + commit 前保持不可用。
+
+### 26.49 Component / Action 应读取 Operation Projection
+
+Component Model v2 的 read-only context 不应只有：
+
+- World；
+- Session App；
+- Local UI；
+- Preference；
+- Environment。
+
+还需要 Host-owned：
+
+> **Operation Projection**
+
+例如：
+
+```text
+operation("quest-eval:123").status
+operationKind("model_task").runningCount
+claim("world:player.inventory").busy
+action("shop.buy").availability
+```
+
+UI 因此可以原生表达：
+
+- spinner；
+- progress；
+- queued；
+- retrying；
+- cancel；
+- waiting；
+- stale；
+- disabled reason。
+
+而不是每个 Package 自己维护：
+
+- `isLoading`
+- `isSubmitting`
+- `isGenerating`
+- `pendingFoo`
+- DOM class；
+- global variable。
+
+### 26.50 Provisional Presentation 与 Committed Presentation 必须区分
+
+Streaming UI 允许提前看，但不能伪装成已经提交。
+
+建议：
+
+```text
+Provisional Presentation
+├─ operationId
+├─ transient content
+├─ replaceable
+├─ cancellable
+└─ not addressable as committed Timeline / Session fact
+```
+
+#### 主 Narrative
+
+```text
+stream chunks
+→ provisional prose
+→ final response complete
+→ validate Turn Contract
+→ atomic Turn commit
+→ committed Variant
+```
+
+如果：
+
+- user Stop；
+- provider fail；
+- outcome invalid；
+
+则 provisional prose 可以：
+
+- discard；
+- 或由 Host 提供“未提交草稿”恢复入口；
+
+但不能自动成为正式 Timeline 事实。
+
+#### Model Task
+
+默认：
+
+> 不因为 provider 能 streaming，就自动向 Package 暴露半截 JSON。
+
+只有 Result Policy 明确允许：
+
+- advisory preview；
+- presentation text；
+- progress text；
+
+时才允许 provisional stream。
+
+以下结果一律 finalize 后才生效：
+
+- World outcome proposal；
+- Session App mutation proposal；
+- Activity settlement；
+- typed quest reward；
+- media attachment binding。
+
+### 26.51 Progress Event 不是模型 Authority
+
+对于：
+
+- downloading asset；
+- image generation；
+- long context compile；
+- queue wait；
+- provider retry；
+
+Host 可以产生 typed progress event：
+
+```text
+OperationProgress
+├─ operationId
+├─ phase
+├─ current?
+├─ total?
+├─ messageCode?
+└─ retryAfter?
+```
+
+这只是 execution telemetry / UI projection。
+
+它不能：
+
+- 写 World；
+- 写 Session App；
+- 进入 narrative truth；
+- 被 Package 当成“任务已经完成”。
+
+### 26.52 Stop / Cancel 的作用域必须明确
+
+旧宿主常见：
+
+> 一个 Stop 按钮 = 尽量停掉所有生成。
+
+Native Experience 需要区分：
+
+- stop current Narrator Turn；
+- cancel one background Model Task；
+- cancel an Activity before settlement；
+- cancel queued work；
+- cancel all Experience background work；
+- exit Experience。
+
+因此 Host action 应操作：
+
+`operationId / operation scope`
+
+而不是 Package 调：
+
+`abortEverything()`
+
+如果 user Stop 当前 Narrator：
+
+- 与该 Turn 绑定的同步 processor 一并取消；
+- 是否取消已独立运行的 Auxiliary Task 由它的 dependency policy 决定；
+- unrelated media / maintenance 不必自动死亡。
+
+### 26.53 UI 与 Generation 可以并行，但 Authority 必须串行到 Revision
+
+这张卡经常使用“生成中闸门”，是因为旧架构无法保证：
+
+- UI deterministic write；
+- 主 AI 变量更新；
+- phone API；
+- metadata save；
+
+在同一 authority graph 中一致。
+
+Atria 的目标不应是：
+
+> “生成时整个游戏冻结。”
+
+而应是：
+
+> **Presentation / Local interaction 尽量并行；冲突的 authority transaction 通过 Revision/CAS/claims 正确串行。**
+
+因此：
+
+```text
+UI read / local state
+        ───────────────→ can continue
+
+independent Media Task
+        ───────────────→ can continue
+
+World-authoritative write A
+        ──┐
+          ├─ conflict / Revision CAS
+World-authoritative write B
+        ──┘
+```
+
+如果一个 Action 基于旧 Revision：
+
+- simulate 可以重新执行；
+- commit 必须 CAS；
+- 冲突后返回 typed stale/conflict；
+- 不允许 Package 静默“再写一次”。
+
+### 26.54 当前 main 的实现基线
+
+当前 `main@4dab353a`：
+
+- Native Generation client 已支持 SSE chunk；
+- chunk 通过 `onChunk` 给 presentation observer；
+- terminal result 才返回完整 snapshot/response；
+- Game UI v1 仍主要围绕 World selector 与直接 command dispatch；
+- 尚无 Package-facing Operation Projection / scoped busy contract。
+
+因此该能力不是重做 streaming transport。
+
+真正缺口是：
+
+> **把已有 stream transport、未来 Model Task/Auxiliary lifecycle、Action busy 与 Component availability 统一成 Host-owned Scoped Operation model。**
+
+### 26.55 本轮仍不新增第 29 项
+
+Scoped Operation State 是多个现有 primitive 的共同 runtime projection：
+
+- #2 Local UI State：消费 operation 状态，但不拥有它；
+- #7 Action v2：用它表达 pending / disabled / receipt；
+- #10 Turn Contract：拥有 turn operation；
+- #21 Activity：拥有 activity operation；
+- #24 Auxiliary Task：提供持久 lifecycle；
+- #27 Model Task：提供 generation operation；
+- #17 Host：提供 Stop / cancel / progress surface。
+
+因此不应新增：
+
+> “Loading API / Busy API / Streaming API”
+
+三个平行能力。
+
+能力主表继续保持 **28 项**。
+
+
 ## 二十七、修订记录
+
+### 2026-09-26 — Discussion Draft v1.7
+
+继续用《银麒赎世》的主生成/任务审核/生图/世界动态/据点同步并行状态压力测试 streaming 与 UI runtime。将 Round 4 的“Draft narrative 可 streaming、authority finalize 后 commit”推广为 Host-owned Scoped Operation State / Operation Projection；明确 busy 必须按 semantic claim/conflict scope 判断，Package UI 可读取 queued/running/streaming/retrying/finalizing/stale 等状态，Presentation/Local UI 可并行而冲突 authority transaction 通过 Revision/CAS 串行。能力总数仍维持 28。
 
 ### 2026-09-26 — Discussion Draft v1.6
 
