@@ -4,11 +4,405 @@
 
 - 任务：Native Experience Modes & Capability Deepening
 - 类型：`feat/*`
-- 文档状态：**讨论中 / 持续修订**
+- 文档状态：**Implementation Baseline v1.0 / 已授权进入实施**
 - 当前实现基线：`main@4dab353ac639d42eae885c79e18245267abd6820`
+- 正式工作分支：`feat/native-experience-modes-capability-deepening`
+- 分支起点：`main@4dab353ac639d42eae885c79e18245267abd6820`
 - 计划文档：`docs:feat/native-experience-modes-capability-deepening.md`
-- 当前不进入实现阶段；先经过若干轮产品与架构讨论，讨论结论随时回写本文。
-- 现有临时分支 `feat/component-form-composer-submit` 目前没有承载实现，不作为已定方案依据。
+- 当前能力主表：**32 项**
+- 旧空分支 `feat/component-form-composer-submit` 不承载本任务实现，也不作为方案依据。
+- 本任务属于大型多阶段开发：整个任务沿用同一工作分支；每完成一个阶段即提交、推送、更新必要文档与 handoff，然后停止，等待下一阶段接手。
+
+## 〇、实施规范基线（Implementation Baseline v1.0）
+
+> 本节自 2026-09-26 起是本任务的**规范性实施入口**。后续“一～二十八”保留为完整讨论、压力测试与设计证据。若历史章节与本节冲突，以本节和之后明确更新的实施决策为准；不要为了维持早期草案一致性而恢复已经被后续样本推翻的设计。
+
+### 0.1 当前冻结目标
+
+Atria 要建立一套共享的 **Native Experience Capability Layer**：
+
+- `Component / Hybrid / Full` 只表示 **layout ownership**，不是功能等级；
+- 三种模式共享同一能力层；
+- `Component = Chat Enhancement`；
+- `Hybrid = Chat-based Game Application`；
+- `Full = Standalone Game/Application`；
+- Package 不通过升级模式来获得 Form、Action、Composer、Message UI、Activity、Model Task 等基础能力；
+- Experience 复用现有 Native Session / World / Revision / Branch / Event Journal / Knowledge / Memory / Model-Prompt Runtime，不建立平行事实源。
+
+### 0.2 规范优先级
+
+实施时按以下优先级解决冲突：
+
+1. 本节“实施规范基线”；
+2. 当前代码与测试中的已集成 Native contract；
+3. §23–§28 的最终 Gap Analysis 与案例压力测试结论；
+4. §19–§22 的早期讨论记录；
+5. Legacy SillyTavern / MVU / Tavern Helper / Regex HTML 的历史行为。
+
+Legacy 案例只证明**用户能力需求**，不拥有 Atria API 设计权。
+
+### 0.3 不可违反的架构不变量
+
+1. **Typed authority only**  
+   World / Session Application / Player Continuity / Shared Realm 等权威写入必须经受控 Command / Event / Reducer / transaction contract；不开放裸 `patch` / `replaceMvuData` / 任意 state mutation。
+
+2. **Declarative package runtime**  
+   Native Package 不执行任意 JS，不注入任意 HTML/script，不获得任意 CSS、DOM、localStorage、database handle、WebSocket 或 arbitrary network API。
+
+3. **Prompt / Display / Authority 分离**  
+   Narrative、Projection、Outcome、Diagnostics、Context exposure 不混为一条字符串通道。
+
+4. **Storage does not imply exposure**  
+   数据属于哪个 authority/lifetime domain，与 Narrator / Actor / Task / UI 能否读取它正交；Context 必须 allow-by-contract。
+
+5. **One truth, many perspectives**  
+   多 POV / 多玩家可以有不同 Perspective / Presentation，但不能产生互相漂移的 World Truth。
+
+6. **Revision first**  
+   Session-authoritative 的 World、Session App、committed Activity result、committed Task result 必须与 Revision / Branch 一致；Retry / Restart / Branch 不允许留下“未来状态”。
+
+7. **No remote executable dependency**  
+   Package / Add-on / UI / Scene 所需资源必须形成 exact dependency closure；远程可变 HTML / JS 不作为 Native Runtime 依赖。
+
+8. **Host owns execution safety**  
+   Task 调度、并发、backpressure、Secret、Connection、Model、provider、cancel、timeout、capability negotiation 与 hard limits 由 Host / Player 控制，Package 只能声明语义需求。
+
+### 0.4 32 项能力主表与实施归属
+
+| # | Capability | 首要实施阶段 |
+|---|---|---|
+| 1 | Component Model v2 | P1 |
+| 2 | Local UI State | P1 |
+| 3 | Player Preference State | P1 |
+| 4 | Package Data Resource | P0/P1 |
+| 5 | Data Projection / bounded query / Scene Projection | P6 |
+| 6 | Native Composer Host capability | P1 |
+| 7 | Action v2 / Command Surface / receipt / compensation | P1 |
+| 8 | Declarative Mutation authoring shorthand | P1 |
+| 9 | Message Projection | P2 |
+| 10 | Package Turn Contract + bounded synchronous Turn Stage | P3 |
+| 11 | Turn Envelope | P2/P3 |
+| 12 | `authority-first` + `narrative-outcome` | P3 |
+| 13 | Runtime Automation / World Process Recipe | P4 |
+| 14 | Opening Phase / Variant / conditional Wizard | P1/P4 |
+| 15 | Reply Variant / Branch Graph facade | P2 |
+| 16 | Conversation Presentation + Scoped Conversation Thread | P2/P6 |
+| 17 | Host advanced presentation/input + capability negotiation | P5/P9 |
+| 18 | Safe Appearance / Motion / Media / Speech Presentation | P5 |
+| 19 | Studio visual authoring v2 + Scenario Simulation / Test Bench | P9 |
+| 20 | Experience Health / Diagnostics / Repair / Migration | P9 |
+| 21 | Activity Runtime / Transactional Subscene + Narrative Handoff | P5 |
+| 22 | Native Media / Scene Host + typed Scene Cue IR | P5 |
+| 23 | Immutable Asset Pack / Heavy Resource Delivery | P5 |
+| 24 | Auxiliary Task / Background Model Job Runtime | P3 |
+| 25 | Native Add-on / Content Extension + Community Registry contract | P7 |
+| 26 | Epistemic / Actor Perspective Projection | P6 |
+| 27 | Package Model Task / Task Variant / Binding / Proposal Artifact | P3 |
+| 28 | Typed Session Application State + Scope Lifecycle | P4 |
+| 29 | Temporal Runtime / World Clock & Schedule | P4 |
+| 30 | Player Continuity State / Account Authority Domain | P7 |
+| 31 | Shared Session & Realm Runtime / Multi-participant Authority | P8 |
+| 32 | Experience Workflow / Phase Graph Runtime | P4 |
+
+“首要实施阶段”只表示首次形成完整 contract 的阶段。后续阶段可以组合使用，但禁止提前实现后续阶段的大块产品能力。
+
+### 0.5 状态 / Authority 总图
+
+```text
+Package Immutable
+├─ Package Data
+├─ Knowledge
+└─ Asset / Add-on
+
+Player Local / Non-authoritative
+├─ Local UI State
+├─ Message-local UI State
+└─ Player Preference State
+
+Session Authority
+├─ World State
+├─ Session Application State
+└─ Activity settlement
+
+Player Continuity Authority
+└─ cross-Session gameplay facts
+
+Shared Authority
+├─ Shared Session
+└─ Realm Domain
+
+Host Runtime Projection
+├─ Operation
+├─ Presence
+├─ Environment
+└─ Diagnostics
+```
+
+与上述 authority 正交：
+
+```text
+Exposure / Perspective
+Model Tasks
+Temporal
+Workflow
+Presentation
+```
+
+### 0.6 P0–P9 实施阶段
+
+#### P0 — Contract Foundation & Regression Fence
+
+目标：
+
+- 把 32 项能力所需的顶层名词、版本边界、资源引用与 capability vocabulary 落到现有 Native contract；
+- 明确哪些是新 schema/version，哪些复用现有 contract；
+- 建立拒绝 Legacy authority / arbitrary executable / unknown capability 的回归护栏；
+- 不做大规模 UI 产品行为。
+
+重点现有地基：
+
+- `src/native/authoring-contracts.js`
+- `src/native/runtime-descriptor.js`
+- `src/native/session-core.js`
+- `public/scripts/native/session-runtime.js`
+- `public/scripts/native/experience/index.js`
+- `tests/native/authoring-contracts.test.js`
+- 现有 A0–A4 hard-cut / runtime guards
+
+阶段完成条件：
+
+- 新 contract 可被 fixture 表达；
+- old v1 Package 行为保持；
+- 新字段 strict validation；
+- 没有第二套 Session / World persistence。
+
+#### P1 — Component v2 / Form / Local State / Action / Opening Foundation
+
+覆盖：
+
+- #1 / #2 / #3 / #4 / #6 / #7 / #8；
+- #14 的基础 Opening / Wizard；
+- Form validation 的 `allowed / advisory / confirm_required / blocked`；
+- Host-owned Collection View 基础；
+- Native Composer action。
+
+重点：
+
+- Component Model v2 与 v1 明确版本隔离；
+- UI state 不产生 World Revision；
+- Form submit / Action 最终仍进入 typed authority；
+- 不允许 Expression / Template 产生副作用。
+
+#### P2 — Message Projection / Conversation / Branch Presentation
+
+覆盖：
+
+- #9 / #11 / #15；
+- #16 的 presentation/thread 基础；
+- Message-local UI；
+- Actionable Message Attachment；
+- Narrative Presentation Profile；
+- Branch Graph / Reply Variant 产品 facade。
+
+重点：
+
+- immutable Variant；
+- canonical narrative 与 projection 分离；
+- historical action 默认只读或显式 fork；
+- render receipt 与 authority / model delivery receipt 分开。
+
+#### P3 — Turn / Model Task / Auxiliary Operation Runtime
+
+覆盖：
+
+- #10 / #12 / #24 / #27；
+- Task Variant；
+- Task Binding Slot / Model Execution Lane；
+- Result Authority / Sink Policy；
+- Proposal Artifact；
+- Scoped Operation / streaming / retry / stale / cancel；
+- Host scheduler / backpressure。
+
+重点：
+
+- Package Task semantic ≠ Runtime role ≠ Model binding；
+- Narrator Draft 在 narrative-outcome finalize 前是 provisional；
+- Interpreter 只产生 semantic outcome proposal，不能变成变量 patch 模型。
+
+#### P4 — Session Application / Temporal / Automation / Experience Workflow
+
+覆盖：
+
+- #13 / #28 / #29 / #32；
+- #14 的完整 lifecycle integration；
+- Experience Ready Barrier；
+- Scope Lifecycle；
+- Scheduled Interaction；
+- retention / compaction policy；
+- World Process catch-up。
+
+重点：
+
+- `session.loaded != experience.ready`；
+- World Clock、logical revision time、wall clock、activity elapsed time分离；
+- simple Quest Workflow 仍可编译成 shorthand；
+- 跨 Turn 的 Application lifecycle 才使用 Experience Workflow / Phase Graph。
+
+#### P5 — Activity / Media / Scene / Asset / Host Capability
+
+覆盖：
+
+- #17 / #18 / #21 / #22 / #23；
+- typed Scene Cue IR；
+- Activity Outcome → Narrative Handoff；
+- Asset Pack / heavy delivery；
+- Speech / Actor Voice；
+- Fullscreen / focus / gamepad / responsive capability negotiation。
+
+重点：
+
+- Activity settlement 先 commit facts，再给 Narrator 已提交 Observation；
+- Model 不输出 HTML / CSS / JS scene；
+- Scene/Media 只引用 exact AssetRef / Attachment。
+
+#### P6 — Data Projection / Perspective / Scoped Information / Narrative Rollup
+
+覆盖：
+
+- #5 / #26；
+- #16 的 Context / Perspective 深化；
+- bounded graph query；
+- Actor availability；
+- Hierarchical Narrative Rollup；
+- Open Loop 与 Memory 分离。
+
+重点：
+
+- World Truth 与 Actor Belief 分离；
+- Perspective 是 projection，不是 NPC World clone；
+- Rollup 是 derived recall artifact，不替代 authority；
+- player-only / presentation-only 数据不自动进入 Prompt。
+
+#### P7 — Add-on / Community Contract / Player Continuity / Cross-Authority Transfer
+
+覆盖：
+
+- #25 / #30；
+- exact Add-on composition；
+- typed shareable resource；
+- Player Continuity revision graph；
+- Cross-Authority Transfer Intent / Receipt / Saga。
+
+重点：
+
+- Session Branch restore 不能复制已 externalize 的资产；
+- Add-on 不 patch Base Package source；
+- Community payload install 时重新 validate / sanitize；
+- Player Continuity 可 local-first，云同步不是 Package 前提。
+
+#### P8 — Shared Session & Realm Runtime
+
+覆盖：
+
+- #31；
+- participant identity / ACL；
+- shared turn；
+- presence；
+- late join / reconnect；
+- Snapshot + Cursor；
+- Scene Scope / split party；
+- deterministic shared rule / RNG；
+- Realm domain；
+- Session / Player / Realm cross-authority transaction。
+
+重点：
+
+- host 是 participant capability role，不是 `publishArbitraryWorldSnapshot` API；
+- one truth, many perspectives；
+- Package 不直接拥有 WebSocket / auth token / Secret。
+
+#### P9 — Studio / Health / Productization / Final Integration
+
+覆盖：
+
+- #19 / #20；
+- capability negotiation UI；
+- visual authoring；
+- Scenario Simulation / Test Bench；
+- Health / Repair / Migration；
+- full Experience diagnostics；
+- author preview；
+- end-to-end integration of P0–P8。
+
+最终阶段才做：
+
+- 跨阶段 broad regression；
+- final docs cleanup；
+- `main` merge；
+- integrated verification；
+- delete temporary branch。
+
+### 0.7 阶段执行与验证规则
+
+这是大型多阶段任务。
+
+每个阶段：
+
+1. 从当前工作分支最新远端 HEAD 继续，不新建阶段分支；
+2. 先读本规范区、当前 handoff 和阶段涉及的现有代码；
+3. 只实现当前阶段，不提前吞后续阶段；
+4. 完成代码与必要测试；
+5. 提交并推送工作分支；
+6. 有实质方案变化时更新本正式方案；无变化不要机械改文档；
+7. 更新 `docs:handoff/latest-handoff.md`；
+8. 记录当前分支/HEAD、完成项、未完成项、关键决策、验证状态、下一阶段目标；
+9. 停止继续开发并给出下一阶段接手提示词。
+
+验证遵循“修改哪块验证哪块”：
+
+- 必做：targeted unit / contract / regression tests；
+- 必做：changed-area lint / syntax / relevant guard；
+- 需要时：adjacent integration tests；
+- 不默认：每阶段完整全仓测试、Android、Docker、真实模型调用；
+- P9 最终集成再做与本任务范围相称的 broad regression；
+- 若 GitHub CI 进入明显耗时阶段，不持续轮询；汇报 HEAD / CI 状态后停止；
+- 普通代码、测试、workflow 失败自行修复，不交给用户处理；
+- 只有真机日志、真实 UI 截图、权限/Secret/账号授权等必须依赖用户时才暂停。
+
+### 0.8 明确非目标
+
+本任务不做：
+
+- SillyTavern / MVU 自动迁移体系；
+- 让旧卡原样运行的兼容运行时；
+- `triggerSlash` Native API；
+- arbitrary `world.patch` / `session.patch`；
+- Regex HTML UI；
+- Package JS / arbitrary iframe / remote executable HTML；
+- DOM/localStorage/IndexedDB hack；
+- Package-controlled arbitrary network；
+- mutable swipe/message authority；
+- 为每个 Package Model Task 增加新的平台 runtime role；
+- 以 Full 模式作为“解锁高级能力”的方式；
+- 未经当前阶段需要主动同步 `vanilla` / `luker`。
+
+### 0.9 实施中的设计变更规则
+
+v2.3 不是不可修改的教条。
+
+Codex 在实施中如果发现：
+
+- 当前 `main` 已有能力可复用；
+- contract 与实际代码存在冲突；
+- 某项设计会形成第二套 authority / persistence；
+- 某阶段拆分导致明显返工；
+- 测试证明设计假设错误；
+
+应先以当前代码和不变量为依据修正方案，再继续实现，并把**实质性**变化回写本文件。
+
+禁止为了保持文档表面一致而维护错误架构。
+
+---
 
 ## 一、背景与问题
 
@@ -11201,6 +11595,10 @@ Package install 后应有：
 这正是本轮应该从重前端旧生态里吸收、而不是照搬的精华。
 
 ## 二十九、修订记录
+### 2026-09-26 — Implementation Baseline v1.0
+
+用户结束当前压力测试讨论并授权 Codex Astra 开始实施。将 Discussion Draft v2.3 规范化为顶部 Implementation Baseline：冻结 8 条架构不变量、32 项能力主表、Authority 总图、P0–P9 单分支实施顺序、阶段交接/验证规则与明确非目标。历史 Round/案例章节完整保留为设计证据，但出现冲突时不再覆盖顶部规范基线。正式实现分支为 `feat/native-experience-modes-capability-deepening`，基于 `main@4dab353ac639d42eae885c79e18245267abd6820`。
+
 ### 2026-09-26 — Discussion Draft v2.3
 
 完成第五个样本《废材教主的肉身布教计划 ～ 目标是三亿元！》v1.1 的 card-side Runtime 协议审计。确认该卡本体主要充当多 Model Task / Prompt contract，重前端由远程 HTML bootstrap；其 START_GAME → MORNING → PLAN → STORY/GAL → NIGHT → STORY/DAY COMPRESSION 以及定时 SMS/X 证明此前“Workflow 只需 shorthand”的结论过窄。新增 #32 Experience Workflow / Phase Graph Runtime；同时把 STORY/GAL 抽象为 Narrative Presentation Profile + Model Task Variant，把 GAL 字符串命令收敛成 #22 typed Scene Cue IR，并补 Scheduled Interaction、Actionable Message Attachment、runtime-authored typed Session artifact、Hierarchical Narrative Rollup / Open Loop separation。能力主表由 31 项增至 32 项。
