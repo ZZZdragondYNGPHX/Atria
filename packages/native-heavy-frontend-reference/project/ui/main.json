@@ -362,14 +362,70 @@
                 "id": "church_copy",
                 "type": "text",
                 "props": {
-                  "text": "Overview, Facilities, Decrees, Projects, and Opportunities will appear here as authority-backed records become available."
+                  "text": "Long-term metrics come from World Authority; daily operations, projects, and opportunities remain Session Application records."
+                }
+              },
+              {
+                "id": "church_metrics",
+                "type": "grid",
+                "children": [
+                  {
+                    "id": "church_level",
+                    "type": "text",
+                    "bindings": {
+                      "text": {
+                        "template": "Level {{world.church.level}}"
+                      }
+                    }
+                  },
+                  {
+                    "id": "church_money",
+                    "type": "text",
+                    "bindings": {
+                      "text": {
+                        "template": "Money {{world.church.money}}"
+                      }
+                    }
+                  },
+                  {
+                    "id": "church_followers",
+                    "type": "text",
+                    "bindings": {
+                      "text": {
+                        "template": "Followers {{world.church.followers}}"
+                      }
+                    }
+                  },
+                  {
+                    "id": "church_reputation",
+                    "type": "text",
+                    "bindings": {
+                      "text": {
+                        "template": "Reputation {{world.church.reputation}}"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "church_promotion",
+                "type": "badge",
+                "props": {
+                  "text": "Promotion available"
+                },
+                "bindings": {
+                  "hidden": {
+                    "expr": "world.church.promotionAvailable == false"
+                  }
                 }
               },
               {
                 "id": "church_status",
                 "type": "badge",
-                "props": {
-                  "text": "No church records yet"
+                "bindings": {
+                  "text": {
+                    "template": "Authority records {{length(projection.church.items)}}"
+                  }
                 }
               }
             ]
@@ -394,15 +450,51 @@
                 "id": "schedule_copy",
                 "type": "text",
                 "props": {
-                  "text": "The Game Clock timeline is not populated in this shell."
+                  "text": "Schedule records are Session Application Authority bound to the continuous Lifecycle Game Clock."
                 }
               },
               {
                 "id": "schedule_status",
                 "type": "badge",
-                "props": {
-                  "text": "No scheduled items yet"
+                "bindings": {
+                  "text": {
+                    "template": "Scheduled records {{length(projection.schedule.items)}}"
+                  }
                 }
+              },
+              {
+                "id": "schedule_records",
+                "type": "repeat",
+                "source": "projection.schedule.items",
+                "key": "item.id",
+                "pageSize": 12,
+                "emptyText": "No scheduled items",
+                "children": [
+                  {
+                    "id": "schedule_record",
+                    "type": "stack",
+                    "children": [
+                      {
+                        "id": "schedule_record_title",
+                        "type": "text",
+                        "bindings": {
+                          "text": {
+                            "template": "{{item.data.title}} · {{item.data.status}}"
+                          }
+                        }
+                      },
+                      {
+                        "id": "schedule_record_time",
+                        "type": "text",
+                        "bindings": {
+                          "text": {
+                            "template": "{{item.data.startTick}}–{{item.data.endTick}} · {{item.data.policy}}"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           },

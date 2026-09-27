@@ -10,7 +10,7 @@
   },
   "package": {
     "name": "Native Heavy-Frontend Reference Package",
-    "version": "0.1.0-phase1",
+    "version": "0.2.0-phase2",
     "description": "A story-first Hybrid Native reference package built from original placeholder content.",
     "author": "Atria Reference",
     "actors": [
@@ -34,13 +34,17 @@
           "actor_b48a53176eb663a1af411fb6f8638d66"
         ],
         "primaryActorId": "actor_b48a53176eb663a1af411fb6f8638d66",
-        "worldIds": [],
-        "knowledgeBindingIds": []
+        "worldIds": [
+          "world_0f47cf3a197b4af1a416084443678d9c"
+        ],
+        "knowledgeBindingIds": [],
+        "primaryWorldId": "world_0f47cf3a197b4af1a416084443678d9c"
       }
     ],
     "capabilities": [
       "narrative",
-      "game-runtime"
+      "game-runtime",
+      "world-simulation"
     ],
     "permissions": [],
     "runtime": {
@@ -86,33 +90,1682 @@
             "id": "studio-authoring",
             "version": 2,
             "required": true
+          },
+          {
+            "id": "declarative-mutation",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "session-application",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "temporal",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "workflow",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "data-projection",
+            "version": 1,
+            "required": true
           }
         ],
         "dataResources": [],
         "lifecycleRuntime": {
           "schemaVersion": 1,
-          "scopes": [],
-          "domains": [],
-          "clocks": [],
-          "advances": [],
+          "scopes": [
+            {
+              "id": "session",
+              "kind": "session"
+            }
+          ],
+          "domains": [
+            {
+              "id": "events",
+              "scopeId": "session",
+              "schemaVersion": 1,
+              "recordSchema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "maxLength": 64,
+                    "enum": [
+                      "church",
+                      "schedule",
+                      "opportunity",
+                      "system"
+                    ]
+                  },
+                  "origin": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "participants": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "maxItems": 8
+                  },
+                  "location": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "status": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "enum": [
+                      "proposed",
+                      "active",
+                      "resolved",
+                      "cancelled"
+                    ]
+                  },
+                  "premise": {
+                    "type": "string",
+                    "maxLength": 1024
+                  },
+                  "goal": {
+                    "type": "string",
+                    "maxLength": 1024
+                  },
+                  "currentBeat": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "enum": [
+                      "narrative",
+                      "activity",
+                      "task",
+                      "transition",
+                      "terminal"
+                    ]
+                  },
+                  "resolvedBeats": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 128
+                  },
+                  "startedAt": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "outcomeReceiptRefs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "maxItems": 16
+                  },
+                  "narrativeRefs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 128
+                    },
+                    "maxItems": 16
+                  }
+                },
+                "required": [
+                  "kind",
+                  "origin",
+                  "participants",
+                  "location",
+                  "status",
+                  "premise",
+                  "goal",
+                  "currentBeat",
+                  "resolvedBeats",
+                  "startedAt",
+                  "outcomeReceiptRefs",
+                  "narrativeRefs"
+                ],
+                "additionalProperties": false
+              },
+              "initial": {
+                "kind": "system",
+                "origin": "",
+                "participants": [],
+                "location": "",
+                "status": "proposed",
+                "premise": "",
+                "goal": "",
+                "currentBeat": "transition",
+                "resolvedBeats": 0,
+                "startedAt": 0,
+                "outcomeReceiptRefs": [],
+                "narrativeRefs": []
+              },
+              "commands": [
+                {
+                  "id": "open",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "enum": [
+                          "church",
+                          "schedule",
+                          "opportunity",
+                          "system"
+                        ]
+                      },
+                      "origin": {
+                        "type": "string",
+                        "maxLength": 128
+                      },
+                      "participants": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "maxItems": 8
+                      },
+                      "location": {
+                        "type": "string",
+                        "maxLength": 128
+                      },
+                      "premise": {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      "goal": {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      "startedAt": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "origin",
+                      "participants",
+                      "location",
+                      "premise",
+                      "goal",
+                      "startedAt"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "event": "event.opened",
+                  "assign": {
+                    "kind": {
+                      "formula": "args.kind"
+                    },
+                    "origin": {
+                      "formula": "args.origin"
+                    },
+                    "participants": {
+                      "formula": "args.participants"
+                    },
+                    "location": {
+                      "formula": "args.location"
+                    },
+                    "status": "active",
+                    "premise": {
+                      "formula": "args.premise"
+                    },
+                    "goal": {
+                      "formula": "args.goal"
+                    },
+                    "currentBeat": "narrative",
+                    "resolvedBeats": 0,
+                    "startedAt": {
+                      "formula": "args.startedAt"
+                    },
+                    "outcomeReceiptRefs": [],
+                    "narrativeRefs": []
+                  }
+                },
+                {
+                  "id": "advance-beat",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {
+                      "beat": {
+                        "type": "string",
+                        "maxLength": 32,
+                        "enum": [
+                          "narrative",
+                          "activity",
+                          "task",
+                          "transition",
+                          "terminal"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "beat"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "event": "event.beat.advanced",
+                  "assign": {
+                    "currentBeat": {
+                      "formula": "args.beat"
+                    },
+                    "resolvedBeats": {
+                      "formula": "world.resolvedBeats + 1"
+                    }
+                  }
+                },
+                {
+                  "id": "resolve",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {
+                      "outcomeReceiptRefs": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        "maxItems": 16
+                      },
+                      "narrativeRefs": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "maxLength": 128
+                        },
+                        "maxItems": 16
+                      }
+                    },
+                    "required": [
+                      "outcomeReceiptRefs",
+                      "narrativeRefs"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "event": "event.resolved",
+                  "assign": {
+                    "status": "resolved",
+                    "currentBeat": "terminal",
+                    "outcomeReceiptRefs": {
+                      "formula": "args.outcomeReceiptRefs"
+                    },
+                    "narrativeRefs": {
+                      "formula": "args.narrativeRefs"
+                    }
+                  },
+                  "terminal": true
+                },
+                {
+                  "id": "cancel",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "event.cancelled",
+                  "assign": {
+                    "status": "cancelled",
+                    "currentBeat": "terminal"
+                  },
+                  "terminal": true
+                }
+              ],
+              "retention": {
+                "maxItems": 96,
+                "maxLogicalBytes": 262144,
+                "keepPinned": true,
+                "keepReferenced": true
+              }
+            },
+            {
+              "id": "schedule",
+              "scopeId": "session",
+              "schemaVersion": 1,
+              "recordSchema": {
+                "type": "object",
+                "properties": {
+                  "actorId": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "startTick": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "endTick": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "policy": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "enum": [
+                      "hard",
+                      "soft",
+                      "background"
+                    ]
+                  },
+                  "operationKind": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "enum": [
+                      "none",
+                      "outreach",
+                      "project",
+                      "meeting"
+                    ]
+                  },
+                  "location": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "status": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "enum": [
+                      "planned",
+                      "active",
+                      "completed",
+                      "missed",
+                      "cancelled"
+                    ]
+                  }
+                },
+                "required": [
+                  "actorId",
+                  "title",
+                  "startTick",
+                  "endTick",
+                  "policy",
+                  "operationKind",
+                  "location",
+                  "status"
+                ],
+                "additionalProperties": false
+              },
+              "initial": {
+                "actorId": "",
+                "title": "",
+                "startTick": 0,
+                "endTick": 0,
+                "policy": "soft",
+                "operationKind": "none",
+                "location": "",
+                "status": "planned"
+              },
+              "commands": [
+                {
+                  "id": "assign",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {
+                      "actorId": {
+                        "type": "string",
+                        "maxLength": 64,
+                        "enum": [
+                          "actor_b48a53176eb663a1af411fb6f8638d66"
+                        ]
+                      },
+                      "title": {
+                        "type": "string",
+                        "maxLength": 128
+                      },
+                      "startTick": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      },
+                      "duration": {
+                        "type": "integer",
+                        "minimum": 30,
+                        "maximum": 480
+                      },
+                      "policy": {
+                        "type": "string",
+                        "maxLength": 32,
+                        "enum": [
+                          "hard",
+                          "soft",
+                          "background"
+                        ]
+                      },
+                      "operationKind": {
+                        "type": "string",
+                        "maxLength": 32,
+                        "enum": [
+                          "none",
+                          "outreach",
+                          "project",
+                          "meeting"
+                        ]
+                      },
+                      "location": {
+                        "type": "string",
+                        "maxLength": 128
+                      }
+                    },
+                    "required": [
+                      "actorId",
+                      "title",
+                      "startTick",
+                      "duration",
+                      "policy",
+                      "operationKind",
+                      "location"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "event": "schedule.assigned",
+                  "assign": {
+                    "actorId": {
+                      "formula": "args.actorId"
+                    },
+                    "title": {
+                      "formula": "args.title"
+                    },
+                    "startTick": {
+                      "formula": "args.startTick"
+                    },
+                    "endTick": {
+                      "formula": "args.startTick + args.duration"
+                    },
+                    "policy": {
+                      "formula": "args.policy"
+                    },
+                    "operationKind": {
+                      "formula": "args.operationKind"
+                    },
+                    "location": {
+                      "formula": "args.location"
+                    },
+                    "status": "planned"
+                  }
+                },
+                {
+                  "id": "start",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "schedule.started",
+                  "assign": {
+                    "status": "active"
+                  }
+                },
+                {
+                  "id": "complete",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "schedule.completed",
+                  "assign": {
+                    "status": "completed"
+                  },
+                  "terminal": true
+                },
+                {
+                  "id": "miss",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "schedule.missed",
+                  "assign": {
+                    "status": "missed"
+                  },
+                  "terminal": true
+                },
+                {
+                  "id": "cancel",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "schedule.cancelled",
+                  "assign": {
+                    "status": "cancelled"
+                  },
+                  "terminal": true
+                }
+              ],
+              "retention": {
+                "maxItems": 128,
+                "maxLogicalBytes": 262144,
+                "keepPinned": true,
+                "keepReferenced": true,
+                "terminalTtl": {
+                  "clockId": "game-clock",
+                  "ticks": 4320
+                }
+              }
+            },
+            {
+              "id": "church-operations",
+              "scopeId": "session",
+              "schemaVersion": 1,
+              "recordSchema": {
+                "type": "object",
+                "properties": {
+                  "dayIndex": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "outreachCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 64
+                  },
+                  "projectWorkCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 64
+                  },
+                  "expectedMoneyDelta": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "expectedFollowerDelta": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "expectedReputationDelta": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "settlementStatus": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "enum": [
+                      "unopened",
+                      "open",
+                      "prepared"
+                    ]
+                  }
+                },
+                "required": [
+                  "dayIndex",
+                  "outreachCount",
+                  "projectWorkCount",
+                  "expectedMoneyDelta",
+                  "expectedFollowerDelta",
+                  "expectedReputationDelta",
+                  "settlementStatus"
+                ],
+                "additionalProperties": false
+              },
+              "initial": {
+                "dayIndex": 0,
+                "outreachCount": 0,
+                "projectWorkCount": 0,
+                "expectedMoneyDelta": 0,
+                "expectedFollowerDelta": 0,
+                "expectedReputationDelta": 0,
+                "settlementStatus": "unopened"
+              },
+              "commands": [
+                {
+                  "id": "open-day",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "church.day.opened",
+                  "assign": {
+                    "dayIndex": {
+                      "formula": "world.dayIndex + 1"
+                    },
+                    "outreachCount": 0,
+                    "projectWorkCount": 0,
+                    "expectedMoneyDelta": 0,
+                    "expectedFollowerDelta": 0,
+                    "expectedReputationDelta": 0,
+                    "settlementStatus": "open"
+                  }
+                },
+                {
+                  "id": "record-outreach",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "church.outreach.recorded",
+                  "assign": {
+                    "outreachCount": {
+                      "formula": "world.outreachCount + 1"
+                    },
+                    "expectedMoneyDelta": {
+                      "formula": "world.expectedMoneyDelta + 35"
+                    },
+                    "expectedFollowerDelta": {
+                      "formula": "world.expectedFollowerDelta + 2"
+                    },
+                    "expectedReputationDelta": {
+                      "formula": "world.expectedReputationDelta + 1"
+                    }
+                  }
+                },
+                {
+                  "id": "record-project-work",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "church.project-work.recorded",
+                  "assign": {
+                    "projectWorkCount": {
+                      "formula": "world.projectWorkCount + 1"
+                    },
+                    "expectedMoneyDelta": {
+                      "formula": "world.expectedMoneyDelta + 20"
+                    },
+                    "expectedFollowerDelta": {
+                      "formula": "world.expectedFollowerDelta + 1"
+                    }
+                  }
+                },
+                {
+                  "id": "prepare-settlement",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "church.settlement.prepared",
+                  "assign": {
+                    "settlementStatus": "prepared"
+                  }
+                }
+              ],
+              "retention": {
+                "maxItems": 8,
+                "maxLogicalBytes": 32768,
+                "keepPinned": true,
+                "keepReferenced": true
+              }
+            },
+            {
+              "id": "church-projects",
+              "scopeId": "session",
+              "schemaVersion": 1,
+              "recordSchema": {
+                "type": "object",
+                "properties": {
+                  "templateId": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "status": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "enum": [
+                      "draft",
+                      "active",
+                      "completed",
+                      "cancelled"
+                    ]
+                  },
+                  "startTick": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "dueTick": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "progress": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000
+                  },
+                  "target": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100000
+                  },
+                  "assignedActorIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "maxItems": 8
+                  },
+                  "costMoney": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "operationKind": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "enum": [
+                      "none",
+                      "outreach",
+                      "facility",
+                      "community"
+                    ]
+                  },
+                  "milestone": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000
+                  }
+                },
+                "required": [
+                  "templateId",
+                  "status",
+                  "startTick",
+                  "dueTick",
+                  "progress",
+                  "target",
+                  "assignedActorIds",
+                  "costMoney",
+                  "operationKind",
+                  "milestone"
+                ],
+                "additionalProperties": false
+              },
+              "initial": {
+                "templateId": "",
+                "status": "draft",
+                "startTick": 0,
+                "dueTick": 0,
+                "progress": 0,
+                "target": 100,
+                "assignedActorIds": [],
+                "costMoney": 0,
+                "operationKind": "none",
+                "milestone": 0
+              },
+              "commands": [
+                {
+                  "id": "start",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {
+                      "templateId": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "startTick": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      },
+                      "dueTick": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      },
+                      "target": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100000
+                      },
+                      "assignedActorIds": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "maxLength": 64,
+                          "enum": [
+                            "actor_b48a53176eb663a1af411fb6f8638d66"
+                          ]
+                        },
+                        "maxItems": 8
+                      },
+                      "costMoney": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 1000000
+                      },
+                      "operationKind": {
+                        "type": "string",
+                        "maxLength": 32,
+                        "enum": [
+                          "none",
+                          "outreach",
+                          "facility",
+                          "community"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "templateId",
+                      "startTick",
+                      "dueTick",
+                      "target",
+                      "assignedActorIds",
+                      "costMoney",
+                      "operationKind"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "event": "church.project.started",
+                  "assign": {
+                    "templateId": {
+                      "formula": "args.templateId"
+                    },
+                    "status": "active",
+                    "startTick": {
+                      "formula": "args.startTick"
+                    },
+                    "dueTick": {
+                      "formula": "args.dueTick"
+                    },
+                    "progress": 0,
+                    "target": {
+                      "formula": "args.target"
+                    },
+                    "assignedActorIds": {
+                      "formula": "args.assignedActorIds"
+                    },
+                    "costMoney": {
+                      "formula": "args.costMoney"
+                    },
+                    "operationKind": {
+                      "formula": "args.operationKind"
+                    },
+                    "milestone": 0
+                  }
+                },
+                {
+                  "id": "advance",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {
+                      "workUnits": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1000
+                      }
+                    },
+                    "required": [
+                      "workUnits"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "event": "church.project.advanced",
+                  "assign": {
+                    "progress": {
+                      "formula": "min(world.progress + args.workUnits, world.target)"
+                    },
+                    "milestone": {
+                      "formula": "min(world.milestone + args.workUnits, world.target)"
+                    }
+                  }
+                },
+                {
+                  "id": "complete",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "church.project.completed",
+                  "assign": {
+                    "status": "completed"
+                  },
+                  "terminal": true
+                },
+                {
+                  "id": "cancel",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "church.project.cancelled",
+                  "assign": {
+                    "status": "cancelled"
+                  },
+                  "terminal": true
+                }
+              ],
+              "retention": {
+                "maxItems": 64,
+                "maxLogicalBytes": 131072,
+                "keepPinned": true,
+                "keepReferenced": true,
+                "terminalTtl": {
+                  "clockId": "game-clock",
+                  "ticks": 10080
+                }
+              }
+            },
+            {
+              "id": "opportunities",
+              "scopeId": "session",
+              "schemaVersion": 1,
+              "recordSchema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "enum": [
+                      "sponsor",
+                      "visitor",
+                      "request",
+                      "cooperation",
+                      "offer",
+                      "problem"
+                    ]
+                  },
+                  "source": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "summary": {
+                    "type": "string",
+                    "maxLength": 1024
+                  },
+                  "status": {
+                    "type": "string",
+                    "maxLength": 32,
+                    "enum": [
+                      "pending",
+                      "accepted",
+                      "rejected",
+                      "expired",
+                      "promoted"
+                    ]
+                  },
+                  "moneyDelta": {
+                    "type": "integer",
+                    "minimum": -1000000,
+                    "maximum": 1000000
+                  },
+                  "followerDelta": {
+                    "type": "integer",
+                    "minimum": -1000000,
+                    "maximum": 1000000
+                  },
+                  "reputationDelta": {
+                    "type": "integer",
+                    "minimum": -1000,
+                    "maximum": 1000
+                  },
+                  "eventId": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "kind",
+                  "source",
+                  "title",
+                  "summary",
+                  "status",
+                  "moneyDelta",
+                  "followerDelta",
+                  "reputationDelta",
+                  "eventId"
+                ],
+                "additionalProperties": false
+              },
+              "initial": {
+                "kind": "request",
+                "source": "",
+                "title": "",
+                "summary": "",
+                "status": "pending",
+                "moneyDelta": 0,
+                "followerDelta": 0,
+                "reputationDelta": 0,
+                "eventId": ""
+              },
+              "commands": [
+                {
+                  "id": "offer",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "maxLength": 32,
+                        "enum": [
+                          "sponsor",
+                          "visitor",
+                          "request",
+                          "cooperation",
+                          "offer",
+                          "problem"
+                        ]
+                      },
+                      "source": {
+                        "type": "string",
+                        "maxLength": 128
+                      },
+                      "title": {
+                        "type": "string",
+                        "maxLength": 128
+                      },
+                      "summary": {
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      "moneyDelta": {
+                        "type": "integer",
+                        "minimum": -1000000,
+                        "maximum": 1000000
+                      },
+                      "followerDelta": {
+                        "type": "integer",
+                        "minimum": -1000000,
+                        "maximum": 1000000
+                      },
+                      "reputationDelta": {
+                        "type": "integer",
+                        "minimum": -1000,
+                        "maximum": 1000
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "source",
+                      "title",
+                      "summary",
+                      "moneyDelta",
+                      "followerDelta",
+                      "reputationDelta"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "event": "opportunity.offered",
+                  "assign": {
+                    "kind": {
+                      "formula": "args.kind"
+                    },
+                    "source": {
+                      "formula": "args.source"
+                    },
+                    "title": {
+                      "formula": "args.title"
+                    },
+                    "summary": {
+                      "formula": "args.summary"
+                    },
+                    "status": "pending",
+                    "moneyDelta": {
+                      "formula": "args.moneyDelta"
+                    },
+                    "followerDelta": {
+                      "formula": "args.followerDelta"
+                    },
+                    "reputationDelta": {
+                      "formula": "args.reputationDelta"
+                    },
+                    "eventId": ""
+                  }
+                },
+                {
+                  "id": "accept",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "opportunity.accepted",
+                  "assign": {
+                    "status": "accepted"
+                  },
+                  "terminal": true
+                },
+                {
+                  "id": "reject",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "opportunity.rejected",
+                  "assign": {
+                    "status": "rejected"
+                  },
+                  "terminal": true
+                },
+                {
+                  "id": "promote",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {
+                      "eventId": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "eventId"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "event": "opportunity.promoted",
+                  "assign": {
+                    "status": "promoted",
+                    "eventId": {
+                      "formula": "args.eventId"
+                    }
+                  },
+                  "terminal": true
+                },
+                {
+                  "id": "expire",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "opportunity.expired",
+                  "assign": {
+                    "status": "expired"
+                  },
+                  "terminal": true
+                }
+              ],
+              "retention": {
+                "maxItems": 96,
+                "maxLogicalBytes": 196608,
+                "keepPinned": true,
+                "keepReferenced": true,
+                "terminalTtl": {
+                  "clockId": "game-clock",
+                  "ticks": 10080
+                }
+              }
+            }
+          ],
+          "clocks": [
+            {
+              "id": "game-clock",
+              "unit": "minute",
+              "initialTick": 480
+            }
+          ],
+          "advances": [
+            {
+              "id": "advance-game-time",
+              "clockId": "game-clock",
+              "maxTicks": 1440
+            }
+          ],
           "automations": [],
-          "workflows": [],
+          "workflows": [
+            {
+              "id": "church-day-cycle",
+              "scopeId": "session",
+              "initial": "day-open",
+              "nodes": [
+                {
+                  "id": "day-open",
+                  "kind": "action",
+                  "action": {
+                    "kind": "app.command",
+                    "domainId": "church-operations",
+                    "recordId": "current-day",
+                    "commandId": "open-day",
+                    "args": {}
+                  }
+                },
+                {
+                  "id": "active-day",
+                  "kind": "user_gate"
+                },
+                {
+                  "id": "day-settlement-worked",
+                  "kind": "action",
+                  "action": {
+                    "kind": "world.command",
+                    "commandId": "church.settle-worked-day",
+                    "args": {}
+                  }
+                },
+                {
+                  "id": "day-settlement-idle",
+                  "kind": "action",
+                  "action": {
+                    "kind": "world.command",
+                    "commandId": "church.settle-idle-day",
+                    "args": {}
+                  }
+                }
+              ],
+              "transitions": [
+                {
+                  "id": "activate-day",
+                  "from": "day-open",
+                  "to": "active-day"
+                },
+                {
+                  "id": "settle-worked",
+                  "from": "active-day",
+                  "to": "day-settlement-worked"
+                },
+                {
+                  "id": "settle-idle",
+                  "from": "active-day",
+                  "to": "day-settlement-idle"
+                },
+                {
+                  "id": "next-day-worked",
+                  "from": "day-settlement-worked",
+                  "to": "day-open"
+                },
+                {
+                  "id": "next-day-idle",
+                  "from": "day-settlement-idle",
+                  "to": "day-open"
+                }
+              ]
+            }
+          ],
           "interactions": [],
           "retention": {
-            "maxTaskResults": 1,
-            "maxReceipts": 1
+            "maxTaskResults": 16,
+            "maxReceipts": 1024
           }
+        },
+        "informationRuntime": {
+          "schemaVersion": 1,
+          "sources": [
+            {
+              "id": "schedule-source",
+              "kind": "application",
+              "semantic": "truth",
+              "scopeId": "session",
+              "domainId": "schedule",
+              "fields": [
+                [
+                  "actorId"
+                ],
+                [
+                  "title"
+                ],
+                [
+                  "startTick"
+                ],
+                [
+                  "endTick"
+                ],
+                [
+                  "policy"
+                ],
+                [
+                  "operationKind"
+                ],
+                [
+                  "location"
+                ],
+                [
+                  "status"
+                ]
+              ]
+            },
+            {
+              "id": "church-operations-source",
+              "kind": "application",
+              "semantic": "truth",
+              "scopeId": "session",
+              "domainId": "church-operations",
+              "fields": [
+                [
+                  "dayIndex"
+                ],
+                [
+                  "outreachCount"
+                ],
+                [
+                  "projectWorkCount"
+                ],
+                [
+                  "expectedMoneyDelta"
+                ],
+                [
+                  "expectedFollowerDelta"
+                ],
+                [
+                  "expectedReputationDelta"
+                ],
+                [
+                  "settlementStatus"
+                ]
+              ]
+            },
+            {
+              "id": "church-projects-source",
+              "kind": "application",
+              "semantic": "truth",
+              "scopeId": "session",
+              "domainId": "church-projects",
+              "fields": [
+                [
+                  "templateId"
+                ],
+                [
+                  "status"
+                ],
+                [
+                  "startTick"
+                ],
+                [
+                  "dueTick"
+                ],
+                [
+                  "progress"
+                ],
+                [
+                  "target"
+                ],
+                [
+                  "operationKind"
+                ],
+                [
+                  "milestone"
+                ]
+              ]
+            },
+            {
+              "id": "opportunities-source",
+              "kind": "application",
+              "semantic": "truth",
+              "scopeId": "session",
+              "domainId": "opportunities",
+              "fields": [
+                [
+                  "kind"
+                ],
+                [
+                  "title"
+                ],
+                [
+                  "summary"
+                ],
+                [
+                  "status"
+                ]
+              ]
+            }
+          ],
+          "views": [
+            {
+              "id": "schedule",
+              "audience": "player",
+              "sources": [
+                "schedule-source"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 64,
+              "maxCharacters": 16384
+            },
+            {
+              "id": "church",
+              "audience": "player",
+              "sources": [
+                "church-operations-source",
+                "church-projects-source",
+                "opportunities-source"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 96,
+              "maxCharacters": 24576
+            }
+          ],
+          "actors": [],
+          "graphs": []
         }
+      },
+      "game": {
+        "logic": "logic/world.json"
       }
     },
     "metadata": {
       "referenceKind": "native-heavy-frontend",
-      "implementationPhase": 1,
+      "implementationPhase": 2,
       "storyFirst": true,
-      "placeholderContent": true
+      "placeholderContent": true,
+      "authorityModel": "world+lifecycle-session-application"
     }
   },
-  "worlds": [],
+  "worlds": [
+    {
+      "world": {
+        "worldId": "world_0f47cf3a197b4af1a416084443678d9c",
+        "displayName": "Haven District",
+        "currentRevisionId": "worldRevision_96c699e6d26547a58b59de8a98ce2f0e",
+        "createdAt": 1790524800000,
+        "updatedAt": 1790524800000
+      },
+      "revision": {
+        "worldRevisionId": "worldRevision_96c699e6d26547a58b59de8a98ce2f0e",
+        "worldId": "world_0f47cf3a197b4af1a416084443678d9c",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "calendar": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000000
+                },
+                "lastSettledDay": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000
+                }
+              },
+              "required": [
+                "day",
+                "lastSettledDay"
+              ],
+              "additionalProperties": false
+            },
+            "church": {
+              "type": "object",
+              "properties": {
+                "money": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000000
+                },
+                "followers": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000000000
+                },
+                "reputation": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "level": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5
+                },
+                "facilities": {
+                  "type": "object",
+                  "properties": {
+                    "hall": {
+                      "type": "boolean"
+                    },
+                    "outreachDesk": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "hall",
+                    "outreachDesk"
+                  ],
+                  "additionalProperties": false
+                },
+                "decrees": {
+                  "type": "object",
+                  "properties": {
+                    "communityFirst": {
+                      "type": "boolean"
+                    },
+                    "openBooks": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "communityFirst",
+                    "openBooks"
+                  ],
+                  "additionalProperties": false
+                },
+                "positions": {
+                  "type": "object",
+                  "properties": {
+                    "leader": {
+                      "type": "string",
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "leader"
+                  ],
+                  "additionalProperties": false
+                },
+                "promotionAvailable": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "money",
+                "followers",
+                "reputation",
+                "level",
+                "facilities",
+                "decrees",
+                "positions",
+                "promotionAvailable"
+              ],
+              "additionalProperties": false
+            },
+            "unlockedAreas": {
+              "type": "object",
+              "properties": {
+                "sanctuary": {
+                  "type": "boolean"
+                },
+                "market": {
+                  "type": "boolean"
+                },
+                "district": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "sanctuary",
+                "market",
+                "district"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "calendar",
+            "church",
+            "unlockedAreas"
+          ],
+          "additionalProperties": false
+        },
+        "baseline": {
+          "calendar": {
+            "day": 1,
+            "lastSettledDay": 0
+          },
+          "church": {
+            "money": 120,
+            "followers": 12,
+            "reputation": 8,
+            "level": 1,
+            "facilities": {
+              "hall": true,
+              "outreachDesk": false
+            },
+            "decrees": {
+              "communityFirst": false,
+              "openBooks": false
+            },
+            "positions": {
+              "leader": "actor_b48a53176eb663a1af411fb6f8638d66"
+            },
+            "promotionAvailable": false
+          },
+          "unlockedAreas": {
+            "sanctuary": true,
+            "market": true,
+            "district": false
+          }
+        },
+        "knowledgeBindingIds": [],
+        "assetIds": [],
+        "metadata": {
+          "referencePhase": 2,
+          "objectiveFactsOnly": true
+        },
+        "createdAt": 1790524800000
+      }
+    }
+  ],
   "knowledge": [],
   "knowledgeBindings": [],
   "resources": [],

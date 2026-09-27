@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 2,
+  "mutations": [
+    {
+      "id": "church.purchase-outreach-desk",
+      "event": "church.facility.purchased",
+      "argsSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "validators": [
+        {
+          "id": "enough-money",
+          "formula": "world.church.money >= 80",
+          "error": "Church money is below the outreach desk cost"
+        },
+        {
+          "id": "not-built",
+          "formula": "world.church.facilities.outreachDesk == false",
+          "error": "Outreach desk is already built"
+        }
+      ],
+      "assign": {
+        "church.money": {
+          "formula": "world.church.money - 80"
+        },
+        "church.facilities.outreachDesk": true
+      }
+    },
+    {
+      "id": "church.enact-community-first",
+      "event": "church.decree.enacted",
+      "argsSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "validators": [
+        {
+          "id": "reputation-gate",
+          "formula": "world.church.reputation >= 9",
+          "error": "Church reputation is too low for this decree"
+        },
+        {
+          "id": "not-active",
+          "formula": "world.church.decrees.communityFirst == false",
+          "error": "Community First is already active"
+        }
+      ],
+      "assign": {
+        "church.decrees.communityFirst": true
+      }
+    },
+    {
+      "id": "church.promote-level",
+      "event": "church.level.promoted",
+      "argsSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "validators": [
+        {
+          "id": "promotion-ready",
+          "formula": "world.church.promotionAvailable == true",
+          "error": "Church promotion is not available"
+        },
+        {
+          "id": "below-cap",
+          "formula": "world.church.level < 5",
+          "error": "Church level is already at the Phase 2 cap"
+        }
+      ],
+      "assign": {
+        "church.level": {
+          "formula": "world.church.level + 1"
+        },
+        "church.promotionAvailable": false
+      }
+    },
+    {
+      "id": "church.settle-worked-day",
+      "event": "church.day.settled.worked",
+      "argsSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "validators": [
+        {
+          "id": "unsettled-day",
+          "formula": "world.calendar.lastSettledDay < world.calendar.day",
+          "error": "Current church day is already settled"
+        }
+      ],
+      "assign": {
+        "calendar.lastSettledDay": {
+          "formula": "world.calendar.day"
+        },
+        "calendar.day": {
+          "formula": "world.calendar.day + 1"
+        },
+        "church.money": {
+          "formula": "world.church.money + 55"
+        },
+        "church.followers": {
+          "formula": "world.church.followers + 3"
+        },
+        "church.reputation": {
+          "formula": "clamp(world.church.reputation + 1, 0, 100)"
+        },
+        "church.promotionAvailable": {
+          "formula": "world.church.followers + 3 >= 15 && world.church.reputation + 1 >= 9"
+        }
+      }
+    },
+    {
+      "id": "church.settle-idle-day",
+      "event": "church.day.settled.idle",
+      "argsSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "validators": [
+        {
+          "id": "unsettled-day",
+          "formula": "world.calendar.lastSettledDay < world.calendar.day",
+          "error": "Current church day is already settled"
+        }
+      ],
+      "assign": {
+        "calendar.lastSettledDay": {
+          "formula": "world.calendar.day"
+        },
+        "calendar.day": {
+          "formula": "world.calendar.day + 1"
+        },
+        "church.promotionAvailable": {
+          "formula": "world.church.followers >= 15 && world.church.reputation >= 9"
+        }
+      }
+    }
+  ],
+  "interpretations": []
+}
