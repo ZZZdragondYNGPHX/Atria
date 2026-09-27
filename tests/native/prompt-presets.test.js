@@ -50,11 +50,13 @@ describe('isolated Prompt presets', () => {
             app.use((req, res, next) => { if (req.headers['x-user']) req.user = { profile: { handle: req.headers['x-user'] } }; next(); });
             app.use(createNativeGenerationRouter(() => ({ library, persistence: { listRuntimeRoutes: async () => routes } })));
             await supertest(app).get('/regex-scopes').expect(401);
+            await supertest(app).get('/prompt-scope').expect(401);
             expect((await supertest(app).get('/regex-scopes').set('x-user', h.handle).expect(200)).body.preset).toBeNull();
             const store = new PromptPresetStore({ engine: h.engine });
             const saved = await store.save(h.handle, fixture()); const preset = await store.get(h.handle, saved.presetId);
             routes = [{ runtimeRouteId: 'primary', role: 'role.narrator', promptProgramRef: preset.refs.find(r => r.resourceId === saved.presetId), fallbackRouteRefs: [] }];
             expect((await supertest(app).get('/regex-scopes').set('x-user', h.handle).expect(200)).body.preset.presetId).toBe(saved.presetId);
+            expect((await supertest(app).get('/prompt-scope').set('x-user', h.handle).expect(200)).body.preset).toEqual({ presetId: saved.presetId, revision: saved.revision });
             routes.push({ ...routes[0], runtimeRouteId: 'second' });
             await supertest(app).get('/regex-scopes').set('x-user', h.handle).expect(400);
             await supertest(app).get('/regex-scopes?routeId=primary').set('x-user', h.handle).expect(200);

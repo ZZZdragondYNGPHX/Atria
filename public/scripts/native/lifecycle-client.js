@@ -214,6 +214,7 @@ export function createNativeLifecycleClient({ runtime, fetchImpl = (...args) => 
         queryInformationGraph: (graphId, startId, options) => queryInformationGraph(current(scope), graphId, startId, options),
         getActorAvailability: actorId => actorAvailability(current(scope), actorId),
         get acceptingSnapshot() { return accepting; },
+        get ready() { return Boolean(scope?.ready && !scope.controller.signal.aborted && runtime.active && identity(runtime.snapshot) === scope.identity); },
         get busy() { return Boolean(scope?.busy || scope?.pumping); },
         getSnapshot: () => runtime.snapshot,
         command: action => command(scope, action),

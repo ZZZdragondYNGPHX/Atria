@@ -20,6 +20,8 @@ const definitions = [
     ['shared', 'Fixed seats, Shared Turn, ACL and independent Realm', 'public/shared/native-shared-contract.js'],
     ['scenario', 'Studio Scenario fixture v1, recorded Tasks and assertions', 'src/native/studio-scenario.js'],
     ['prompt-resources', 'Typed Prompt Program, Module and Generation Profile resources', 'src/native/model-prompt-runtime/resources.js'],
+    ['browser-extensions', 'Browser extension installation, SDK v1, scopes and lifecycle example', 'src/native/authoring-examples/browser-extension.md'],
+    ['browser-extension-sdk', 'Executable browser SDK v1 helpers and typed Native adapters', 'public/scripts/native/extension-sdk.js'],
     ['example-ui-v2', 'Minimal Component UI v2 document accepted by the production compiler', 'src/native/authoring-examples/ui-v2.json'],
     ['example-scenario', 'Minimal non-mutating Studio Scenario fixture', 'src/native/authoring-examples/scenario.json'],
 ];

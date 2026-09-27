@@ -11,7 +11,8 @@ export function assertExtensionFiles(files, entrypoint) {
     if (!files || Array.isArray(files) || Object.keys(files).length > 128 || !Object.hasOwn(files, entrypoint) || !/\.(m?js)$/.test(entrypoint)) throw new TypeError('Invalid plugin entrypoint/files');
     let total = 0;
     for (const [path, content] of Object.entries(files)) {
-        if (!/^[a-zA-Z0-9_./-]+$/.test(path) || path.startsWith('/') || path.split('/').some(part => !part || ['..', '.', '.git'].includes(part)) || typeof content !== 'string') throw new TypeError('Invalid plugin file');
+        if (!/^[a-zA-Z0-9_./-]+$/.test(path) || path.startsWith('/') || path.split('/').length > 13
+            || path.split('/').some(part => !part || ['..', '.', '.git'].includes(part)) || typeof content !== 'string' || content.includes('\0')) throw new TypeError('Invalid plugin file');
         total += Buffer.byteLength(content); if (total > 4 * 1024 * 1024) throw new TypeError('Plugin size limit');
     }
     return files;
@@ -45,9 +46,14 @@ export class ExtensionsStore {
             || typeof input.name !== 'string' || !input.name.trim() || input.name.length > 100 || !['local', 'external'].includes(input.kind) || typeof input.enabled !== 'boolean') throw new TypeError('Invalid extension');
         const targets = assertScriptTargets(input.targets); assertExtensionFiles(input.files, input.entrypoint);
         if (input.kind === 'local' && (input.entrypoint !== 'index.js' || Object.keys(input.files).length !== 1)) throw new TypeError('Local script requires index.js');
+        if (input.kind === 'external') {
+            const url = new URL(input.sourceUrl);
+            if (url.protocol !== 'https:' || url.username || url.password || url.hash || url.search) throw new TypeError('Use an HTTPS Git repository URL without credentials');
+        } else if (input.sourceUrl != null) throw new TypeError('Local scripts cannot have a source URL');
         const id = input.id ?? 'ext_' + randomUUID().replaceAll('-', '');
         return withNativeResourceWrite(handle, 'extensions', async () => {
             const previous = input.id ? await this.get(handle, input.id) : null;
+            if (previous && previous.kind !== input.kind) throw new TypeError('Cannot change extension kind');
             if ((previous?.revision ?? null) !== expectedRevision) throw new ConflictError('atri_extensions_conflict');
             const value = { ...structuredClone(input), id, targets, sourceUrl: input.sourceUrl ?? null };
             const record = { ...value, revision: hashNativeDocument(value) };

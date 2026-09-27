@@ -65,6 +65,30 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine
             await store.remove(h.handle, enabled.id, enabled.revision); expect(await store.list(h.handle)).toEqual([]);
         } finally { await h.cleanup(); }
     });
+    test('rejected URL updates retain enabled exact files; accepted updates require enabling again', async () => {
+        const h = await makeHarness();
+        try {
+            const store = new ExtensionsStore({ engine: h.engine });
+            const external = { ...script(), kind: 'external', sourceUrl: 'https://example.com/plugin.git', enabled: true,
+                files: { 'index.js': 'export function activate() {}', 'parts/helper.js': 'export const value = 1;', 'style.css': 'p { color: red; }' } };
+            const saved = await store.save(h.handle, external);
+            let candidate = { ...external, files: { '../bad.js': 'bad' } };
+            const app = express(); app.use(express.json()); app.use((req, _res, next) => { req.user = { profile: { handle: h.handle } }; next(); });
+            app.use(createNativeExtensionsRouter({ store: () => store, install: async () => candidate }));
+            await request(app).post('/install').send({ id: saved.id, expectedRevision: saved.revision }).expect(400);
+            expect(await store.get(h.handle, saved.id)).toEqual(saved);
+            candidate = { ...external, files: { ...external.files, 'parts/helper.js': 'export const value = 2;' } };
+            await request(app).post('/install').send({ id: saved.id, expectedRevision: 'stale' }).expect(409);
+            expect((await store.get(h.handle, saved.id)).revision).toBe(saved.revision);
+            await request(app).get(`/files/${saved.id}/${saved.revision}/parts/helper.js`).expect(200).expect('Content-Type', /javascript/);
+            await request(app).get(`/files/${saved.id}/${saved.revision}/style.css`).expect(200).expect('Content-Type', /css/);
+            const update = await request(app).post('/install').send({ id: saved.id, expectedRevision: saved.revision }).expect(200);
+            expect(update.body.enabled).toBe(false);
+            await request(app).get(`/files/${saved.id}/${saved.revision}/index.js`).expect(409);
+            await expect(store.save(h.handle, { ...script(), files: { 'index.js': 'bad\0binary' } })).rejects.toThrow('Invalid');
+            await expect(store.save(h.handle, { ...external, sourceUrl: 'https://user:secret@example.com/plugin' })).rejects.toThrow('credentials');
+        } finally { await h.cleanup(); }
+    });
 });
 test('repository install imports inert files, defaults disabled and cleans its temporary root', async () => {
     let root;
@@ -76,4 +100,16 @@ test('repository install imports inert files, defaults disabled and cleans its t
     expect(result.enabled).toBe(false); expect(result.files['index.js']).toContain('never execute');
     await expect(fs.stat(root)).rejects.toMatchObject({ code: 'ENOENT' });
     await expect(readExternalExtension('file:///local')).rejects.toThrow('HTTPS');
+});
+
+test('invalid manifest/encoding never publishes a candidate and always removes cloned files', async () => {
+    for (const invalid of ['manifest', 'encoding']) {
+        let root;
+        await expect(readExternalExtension('https://example.com/plugin.git', { clone: async (_url, dir) => {
+            root = dir;
+            await fs.writeFile(path.join(dir, 'atria.extension.json'), JSON.stringify({ schemaVersion: 1, apiVersion: invalid === 'manifest' ? 99 : 1, name: 'Demo', entrypoint: 'index.js' }));
+            await fs.writeFile(path.join(dir, 'index.js'), Buffer.from([0xff, 0xfe]));
+        } })).rejects.toThrow();
+        await expect(fs.stat(root)).rejects.toMatchObject({ code: 'ENOENT' });
+    }
 });

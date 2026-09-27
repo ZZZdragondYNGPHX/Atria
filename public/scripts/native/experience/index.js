@@ -802,6 +802,7 @@ registerCapabilityApi(MODULE_NAME, {
     pumpLifecycle: lifecycleClient.pump,
     getPackageState: getGamePackageState,
     isActive: isGamePackageActive,
+    isExperienceReady: () => lifecycleClient.ready,
     getWorldState,
     getWorldJournal,
     getWorldBranchIdentity,

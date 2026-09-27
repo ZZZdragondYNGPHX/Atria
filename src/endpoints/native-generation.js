@@ -85,14 +85,15 @@ export function createNativeGenerationRouter(getHost = services) {
         }
     });
     const presets = host => new PromptPresetStore({ engine: host.library._engine });
-    router.get('/regex-scopes', async (req, res) => {
+    router.get(['/regex-scopes', '/prompt-scope'], async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         try {
             if (req.query.routeId !== undefined && typeof req.query.routeId !== 'string') throw new TypeError('Invalid route');
             const host = getHost();
             const route = selectNativeRuntimeRoute(await host.persistence.listRuntimeRoutes(handle), 'role.narrator', req.query.routeId ? { runtimeRouteId: req.query.routeId } : undefined);
-            res.json({ preset: await presets(host).resolveRegex(handle, route.promptProgramRef) });
+            const preset = await presets(host).resolveRegex(handle, route.promptProgramRef);
+            res.json({ preset: req.path === '/prompt-scope' && preset ? { presetId: preset.presetId, revision: preset.revision } : preset });
         } catch (error) {
             if (!req.query.routeId && error.code === 'native_generation_route_missing') return res.json({ preset: null });
             res.status(400).json({ error: error.code || 'native_regex_scopes_unavailable' });

@@ -35,16 +35,19 @@ afterEach(() => { clients.splice(0).forEach(client => client.cancel()); jest.use
 
 test('Ready is distinct from Session loaded; one ready and one bounded pump after preparation', async () => {
     const f = fixture(); const load = f.client.beginLoad();
+    expect(f.client.ready).toBe(false);
     expect(f.emit).not.toHaveBeenCalled();
     await expect(load.ready()).rejects.toThrow('not_prepared');
     await load.prepare(f.packageState);
     expect(f.emit).not.toHaveBeenCalled();
     await load.ready();
+    expect(f.client.ready).toBe(true);
     expect(f.emit).toHaveBeenCalledWith(NATIVE_SESSION_LIFECYCLE.EXPERIENCE_READY, expect.objectContaining({ sessionId: 'session', revisionId: 'r0' }));
     expect(f.fetchImpl.mock.calls.map(call => JSON.parse(call[1].body).command.action.kind)).toEqual(['experience.ready', 'pump']);
     expect(f.runtime.acceptOperationSnapshot).toHaveBeenCalledTimes(2);
     await load.ready();
     expect(f.emit).toHaveBeenCalledTimes(1);
+    f.client.cancel(); expect(f.client.ready).toBe(false);
 });
 
 test.each(['packageId', 'packageVersionId', 'entryPointId', 'packageContentHash'])('exact package mismatch %s never becomes ready', async key => {

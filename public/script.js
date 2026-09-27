@@ -2147,6 +2147,10 @@ async function firstLoadInit() {
     performance.mark('[init] batch3 done');
     await eventSource.emit(event_types.APP_INITIALIZED);
     await eventSource.emit(event_types.APP_READY);
+    // User-enabled Host extensions start after built-in capabilities are ready.
+    // Keep activation outside the boot barrier; recovery mode skips this host.
+    void import('./scripts/native/extensions-host.js').then(module => module.initializeNativeExtensions())
+        .catch(error => console.warn('[Atria Extensions] startup failed', error));
     // APP_READY is the final authority for the initial boot cover. The
     // static preloader must never survive beyond this boundary even if a
     // legacy loader handle was already cleaned up through another path.

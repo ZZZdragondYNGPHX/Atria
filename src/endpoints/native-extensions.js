@@ -22,7 +22,7 @@ export function createNativeExtensionsRouter({ store = () => new ExtensionsStore
         const previous = req.body.id ? await api.get(handle, req.body.id) : null;
         if (previous && previous.kind !== 'external') throw new TypeError('Only external plugins can update from URL');
         const candidate = await install(previous?.sourceUrl ?? req.body.url);
-        res.json(await api.save(handle, { ...candidate, ...(previous ? { id: previous.id, targets: previous.targets } : {}) }, req.body.expectedRevision ?? null));
+        res.json(await api.save(handle, { ...candidate, enabled: false, ...(previous ? { id: previous.id, targets: previous.targets } : {}) }, req.body.expectedRevision ?? null));
     }));
     router.get('/files/:id/:revision/*', route(async (req, res, api, handle) => {
         const plugin = await api.get(handle, req.params.id);

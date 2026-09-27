@@ -10,6 +10,8 @@ export async function readExternalExtension(url, { clone = (url, root) => create
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'atri-extension-'));
     try {
         await clone(remote.href, root);
+        const manifestStat = await fs.lstat(path.join(root, 'atria.extension.json'));
+        if (!manifestStat.isFile() || manifestStat.isSymbolicLink() || manifestStat.size > 16384) throw new TypeError('Invalid Atria browser extension manifest file');
         const manifest = JSON.parse(await fs.readFile(path.join(root, 'atria.extension.json'), 'utf8'));
         if (manifest.schemaVersion !== 1 || manifest.apiVersion !== 1 || typeof manifest.name !== 'string' || typeof manifest.entrypoint !== 'string'
             || Object.keys(manifest).some(key => !['schemaVersion', 'apiVersion', 'name', 'entrypoint'].includes(key))) throw new TypeError('Invalid Atria browser extension manifest');
@@ -24,7 +26,7 @@ export async function readExternalExtension(url, { clone = (url, root) => create
                     if (bytes > 4 * 1024 * 1024 || Object.keys(files).length >= 128) throw new TypeError('Plugin size/file limit');
                     const buffer = await fs.readFile(path.join(root, name));
                     if (buffer.includes(0)) throw new TypeError('Plugin assets must be text; use SVG/CSS/JSON');
-                    files[name] = buffer.toString('utf8');
+                    files[name] = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
                 }
             }
         }
