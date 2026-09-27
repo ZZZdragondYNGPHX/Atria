@@ -23,6 +23,12 @@ function stateFor(revision, definition, writable = true) {
 function validateState(state, definition) {
     const pending = state.intents.filter(intent => intent.status === 'prepared');
     if (state.claims.length > 2048 || state.intents.length > 2048 || state.receipts.length + pending.length > 2048) throw new TypeError('Continuity durable receipt limit');
+    const reservedBytes = pending.reduce((total, intent) => total + 2048 + (intent.direction === 'deposit'
+        && !state.domains[intent.continuityDomainId].some(record => record.id === intent.lineageId)
+        ? Buffer.byteLength(JSON.stringify({ id: intent.lineageId, status: 'active', value: intent.value })) : 0), 0);
+    // Reserve final receipt and incoming record bytes before debiting Session.
+    // Leave headroom under the repository's 8 MiB Revision envelope limit.
+    if (Buffer.byteLength(JSON.stringify(state)) + reservedBytes > 6 * 1024 * 1024) throw new TypeError('Continuity state and transfer reservation byte limit');
     for (const domain of definition.domains) {
         const records = state.domains[domain.id];
         // Escrow reserves destination capacity too. Another Session must not
