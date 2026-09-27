@@ -1,6 +1,6 @@
 # Atria Native Heavy-Frontend Reference Package 企划书
 
-> 状态：Discussion Draft v0.11  
+> 状态：Discussion Draft v0.12  
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
@@ -169,8 +169,8 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 8. **Message Projection / Conversation — 已冻结**
 9. **纯 Native 文本演出 / Dialogue / Scene Presentation — 已冻结**
 10. **SMS / Social / Mail 等二级应用 — 已冻结**
-11. **存档、分支、恢复与长期游玩 — 当前**
-12. Studio Authoring / Scenario / Health 验证策略
+11. **存档、分支、恢复与长期游玩 — 已冻结**
+12. **Studio Authoring / Scenario / Health 验证策略 — 当前**
 13. 最终能力矩阵与是否存在真实平台缺口
 
 顺序可根据讨论结果调整。
@@ -2295,21 +2295,263 @@ Phone 使用轻量：
 
 真正高优先级的通信通过 Event 回流 Story。
 
-## 18. Round 11 — 存档、分支、恢复与长期游玩待讨论
+## 18. Round 11 — 存档、分支、恢复与长期游玩冻结方案
+
+Round 11 已获得用户认可，以下作为 v1 Session / Branch / Restore 基线。
+
+### 18.1 一个 Revision 表示一个完整一致的游戏世界
+
+一次已提交 Revision 必须同时描述当前 Branch 的一致状态，包括：
+
+- Timeline；
+- World；
+- Event Instances；
+- Schedule；
+- Church Operations；
+- Projects；
+- Opportunities；
+- SMS / Social / Mail；
+- Lifecycle Clock；
+- scheduled interactions；
+- 其他 Branch-owned Session App state。
+
+不得允许 Timeline、Phone、Church、Schedule 等停在不同未来状态。
+
+### 18.2 Branch 是完整平行世界
+
+Branch 不只是替换一条 Assistant 文本。
+
+Fork 后，所有 Branch-owned Authority 都必须沿新的 Revision lineage 演化。
+
+不同 Branch 可以拥有不同：
+
+- Narrative；
+- World outcome；
+- Phone history；
+- Schedule；
+- Event；
+- Church state；
+- scheduled future。
+
+### 18.3 Reply Retry 使用 Atria Revision / Branch 语义
+
+Package 不自建 mutable swipe state。
+
+Retry / regenerate 复用 Atria Host 的 immutable committed Timeline + derived Branch 行为。
+
+对本资产而言，可理解为：
+
+`同一 User ancestor → Branch A / Branch B → 各自 Narrative + Authority state`
+
+### 18.4 v1 不自建 Save Slot / Quick Save / Checkpoint 数据库
+
+Package 不实现：
+
+- Save 1 / Save 2 / Save 3；
+- Quick Save；
+- Quick Load；
+- 复制 World Snapshot 的自建 checkpoint；
+- Phone / Church 独立存档。
+
+第一版使用 Atria Host 原生 Session / Revision / Branch / restore 能力。
+
+### 18.5 Story Anchor 仅允许引用现有 Revision
+
+如果后续需要用户可见 Bookmark / Story Anchor，只允许保存轻量引用，例如：
+
+- revisionId；
+- label；
+- timestamp / display metadata。
+
+Anchor 不复制 World / Session state，不形成第二套存档系统。
+
+v1 不主动要求实现该能力。
+
+### 18.6 Local UI State 不随 Branch 回滚
+
+以下 UI 状态不属于历史游戏事实：
+
+- 当前 Tab；
+- scroll position；
+- accordion；
+- 当前选择的人物；
+- 临时筛选；
+- 其他纯 UI 状态。
+
+Fork / Restore 不需要恢复“当时用户打开了哪个页面”。
+
+### 18.7 Player Preference 不随 Branch 回滚
+
+作品级 Preference 属于玩家当前体验设置，不属于某个旧 Revision。
+
+例如通知偏好、经营提示等，在切换旧 Branch 后仍保持玩家当前设置。
+
+### 18.8 Event 精确恢复
+
+Active Event 的：
+
+- status；
+- current Beat；
+- participants；
+- goal；
+- timestamps；
+- relevant refs；
+
+必须从 Session App Authority 恢复。
+
+不依赖 Narrator阅读旧正文猜测“当时进行到哪”。
+
+### 18.9 Scene Presentation 不单独存档
+
+Scene 是 Event + Presentation intent 的投影。
+
+恢复 active Event 后自然恢复对应 Scene Presentation，不保存平行的 scene runtime snapshot。
+
+### 18.10 Scheduled interaction 与 delayed Communication 依赖 Atria Lifecycle
+
+Delayed SMS、scheduled interaction 等不建立 Package 自己的 `sent=true` 幂等数据库。
+
+依赖 Atria 已有：
+
+- invocation identity；
+- branch / revision anchor；
+- scheduled / cancelled / stale state；
+- receipts；
+- tombstone / retention。
+
+Fork 后另一个 Branch 不得投递来自旧未来的幽灵 interaction。
+
+### 18.11 所有 Authority Side Effect 必须可幂等
+
+任何可能因网络、模型、前端重试而重复调用的 Authority 操作都必须使用 Atria 的 revision / invocation / idempotency / receipt 机制。
+
+包括：
+
+- Facility upgrade；
+- Opportunity accept；
+- Communication append / delivery；
+- Schedule assignment；
+- Project settlement；
+- Day Settlement；
+- Event resolution；
+- World outcome commit。
+
+Package 不通过 UI flag 判断“是否已经执行”。
+
+### 18.12 Day Settlement 原子且幂等
+
+每一日结算必须具有稳定 invocation identity，并且一次结算只允许形成一个 Authority commit。
+
+请求重入时不得重复增加 money / followers / reputation / project progress。
+
+### 18.13 Project / Milestone Settlement 同样幂等
+
+Project 与 milestone 使用稳定业务身份。
+
+完成 / 结算必须能通过 receipt / Revision lineage 判断是否已执行，而不是依据 UI 显示状态。
+
+### 18.14 主 Narrative Turn 原子提交
+
+主 `narrative-outcome` Turn 的最终 Publish 必须把：
+
+- committed Narrative；
+- validated semantic outcomes；
+- Event advance；
+- World / Session changes；
+
+作为同一个一致 Revision 的结果。
+
+不能出现“正文已经 commit，Interpreter / Authority 更新失败”的半提交状态。
+
+### 18.15 Streaming / 中间模型步骤不是 Authority
+
+Streaming draft、Narrator 中间结果、Interpreter 中间结果都不是游戏事实。
+
+只有完整 Turn Envelope 通过验证并 commit 后：
+
+- Timeline；
+- World；
+- Event；
+- related Session state；
+
+才成为 Authority。
+
+### 18.16 确定性 Business Command 可以独立 Commit
+
+Facility upgrade、Schedule action 等确定性操作可以直接形成独立 Revision。
+
+若该操作触发重要剧情，则基于已经提交后的新 Revision 创建 / 激活 Event，再进入 Narrator。
+
+### 18.17 Memory Branch-aware，但不是 World Authority
+
+Package 依赖 Atria Memory 的 Branch / Revision 感知能力。
+
+但即使 Memory 检索结果与当前 Branch World 冲突：
+
+> **World / Session Authority 永远优先。**
+
+Memory 只提供 Context，不用于恢复当前存档事实。
+
+### 18.18 Phone / Church / Schedule 不允许幽灵未来
+
+切换 Branch / Restore 后：
+
+- 旧 Branch 的未发生 SMS 不得残留；
+- 旧 Branch 的 Social / Mail 不得残留；
+- 旧 Branch 的 Schedule / Project future 不得继续触发；
+- 旧 Branch 的 active Event 不得泄漏。
+
+这些均由统一 Revision / Branch 恢复，而非每个应用自行补救。
+
+### 18.19 Session App 对象需要终态与 Retention
+
+Event、Opportunity、Project 等业务对象需要明确 terminal status，例如：
+
+- completed；
+- cancelled；
+- expired；
+- failed / resolved（若该 Domain 需要）。
+
+终态对象不再参与 active eligibility、Dashboard 或 Narrator Context。
+
+长期历史可保留必要 provenance / receipt，并按 Atria / Domain retention contract compact。
+
+### 18.20 主 Timeline 不由 Package 压缩或删除
+
+Package 不为了 Context token 节省去：
+
+- 删除旧 Narrative；
+- 合并 committed messages；
+- 用 summary 替换历史 Timeline。
+
+Context / Memory 如何使用长历史由 Atria Host 负责。
+
+### 18.21 Branch / Revision / Retry UI 由 Host 负责
+
+Package 不复制：
+
+- Branch Tree；
+- Revision Browser；
+- Retry Manager；
+- Save Manager。
+
+Hybrid Experience 直接复用 Host 提供的 Session / Branch UX。
+
+## 19. Round 12 — Studio Authoring / Scenario / Health 验证策略待讨论
 
 本轮尚未冻结。
 
 需要决定：
 
-- World、Session App、Lifecycle、Phone、Event、Church Operations、Schedule 哪些必须随 Revision / Branch 原子一致；
-- Reply Variant 切换是否等价于切换到对应 Authority revision；
-- 当前 active Event / current Scene 在恢复后如何继续；
-- scheduled interaction / delayed SMS 在读档后如何避免重复投递；
-- Day Settlement / Project settlement 在恢复后如何避免重复结算；
-- Runtime Task 中途失败或用户重试时，如何避免重复写入；
-- Local UI State / Player Preference 是否应该随存档；
-- Atria Memory 与 Branch / Revision 的一致性边界；
-- 长线游玩是否需要 Package 自建 checkpoint / archive（当前倾向否）；
-- 是否需要“章节 / 日 / Event”层的用户可见存档锚点；
-- Branch 切换时 Phone / Social / Mail 如何恢复；
-- v1 是否需要显式 Save Slot UI，还是完全使用 Atria Host 原生 Session / Revision / Branch 能力。
+- 本资产源码目录如何拆分；
+- 哪些内容应该成为 Studio Project Source resource；
+- v1 是否从一开始就要求“Studio 可编辑、可 Preview、可 Scenario”；
+- Scenario 应覆盖哪些最关键的垂直流程；
+- 哪些验证属于每次资产修改必须运行，哪些只在里程碑运行；
+- 是否要求所有 Model Task 都能在 Scenario 中使用 stub / deterministic fixture；
+- 如何验证 narrative-outcome 的原子提交和 Branch 一致性；
+- 如何验证 delayed SMS、Day Settlement、Project settlement 不重复；
+- 如何验证 Church / Phone / Schedule 的 Projection 与 Authority 一致；
+- Experience Health 在本资产中应该检查哪些真实风险；
+- 是否需要 Package 专属的 authoring checklist / verification profile；
+- 如何避免把资产开发变成“每改一个文案就跑全仓测试”。
