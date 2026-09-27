@@ -20,7 +20,7 @@ import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { ACTION_RECEIPTS_NAMESPACE, assertActionRequest, actionReceipts, assertCompensation } from './action-receipts.js';
 import { TASK_STATE_NAMESPACE, assertTaskValue, assertSemanticOutcome } from '../../public/shared/native-task-contract.js';
 import { prepareTaskAuthority, validateTaskRecords } from './task-authority.js';
-import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle } from './lifecycle-authority.js';
+import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle, prepareDeclaredTaskResult } from './lifecycle-authority.js';
 import { fields } from '../../public/scripts/native/experience/ui/v2-values.js';
 import { applyContinuity, continuityDefinition, continuityDisplay, continuityEffects, projectContinuity, reconcileOwnership } from './continuity-authority.js';
 
@@ -508,6 +508,13 @@ export class SessionCore {
         const payload = assertTaskValue(record.payload, variant.outputSchema);
         if (task.interpretation) assertSemanticOutcome({ requestId: task.interpretation.id, interpretation: payload }, task.interpretation);
         if (base.states[TASK_STATE_NAMESPACE]?.records.some(item => item.invocationId === record.invocationId)) throw new TypeError('Duplicate Task invocation');
+        if (task.resultPolicy.sink === 'app_command') {
+            const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+            const prepared = await prepareDeclaredTaskResult(base, installed, queued, task, variant, { ...record, payload });
+            return this._publish(handle, base, { states: prepared.states, taskResolution: record.invocationId,
+                taskRecord: { ...record, payload, kind: 'task', status: 'applied', resultClass: task.resultPolicy.resultClass,
+                    anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId, authorityReceipt: prepared.authorityReceipt } });
+        }
         const draft = activityNarrative(base, queued, record, payload);
         const narrative = draft ? this._newEntry(base, draft, base.timeline.length) : null;
         return this._publish(handle, base, { ...(narrative ? { timeline: [...base.timeline, narrative.entry], entries: [narrative.entry], variants: [narrative.variant] } : {}),

@@ -126,6 +126,49 @@ export function compactLifecycle(base, state, { reserveTask = false, pruneIntera
 function active(state, scopeId) {
     if (state.scopes[scopeId]?.status !== 'active') throw new TypeError('Scope is not active');
 }
+
+// Shared by explicit proposal acceptance and the narrower declared Task sink.
+// This only stages durable intent; the existing Lifecycle pump owns delivery.
+function scheduleInteraction(base, candidate, mapping, record) {
+    const state = candidate.states[NS];
+    active(state, mapping.scopeId);
+    const payload = record.payload;
+    fields(payload, ['recordId', 'dueTick', 'args'], 'Scheduled interaction payload'); taskId(payload.recordId);
+    const clock = state.clocks[mapping.clockId];
+    if (!integer(payload.dueTick) || payload.dueTick < clock || payload.dueTick - clock > mapping.maxDelay) throw new TypeError('Scheduled interaction WorldInstant outside declared bounds');
+    const domain = lifecycleDefinition(base).domains.find(item => item.id === mapping.domainId);
+    const command = domain.commands.find(item => item.id === mapping.commandId);
+    const args = assertTaskValue(payload.args, command.argsSchema);
+    if (state.interactions.length >= 128) compactLifecycle(candidate, state);
+    if (state.interactions.length >= 128) throw new TypeError('Scheduled interaction backpressure');
+    state.interactions.push({ proposalId: record.invocationId, interactionId: mapping.id, scopeId: mapping.scopeId,
+        scopeEpoch: state.scopes[mapping.scopeId].epoch, clockId: mapping.clockId, dueTick: payload.dueTick,
+        domainId: mapping.domainId, commandId: mapping.commandId, recordId: payload.recordId, args,
+        anchorRevisionId: record.storedRevisionId ?? base.revision.revisionId, taskId: record.taskId, variantId: record.variantId, status: 'scheduled' });
+}
+
+export async function prepareDeclaredTaskResult(base, installed, queued, task, variant, record) {
+    const state = base.states[NS];
+    if (!state?.ready || !queued || task.resultPolicy.sink !== 'app_command') throw new TypeError('Declared App Command requires durable Lifecycle intent');
+    const binding = variant.resultBinding;
+    const def = lifecycleDefinition(base);
+    const mapping = binding.kind === 'interaction.schedule' ? def.interactions.find(item => item.id === binding.interactionId) : null;
+    const domain = def.domains.find(item => item.id === (mapping?.domainId ?? binding.domainId));
+    // A trigger cannot grant authority in another scope, even if both are active.
+    if (domain.scopeId !== queued.scopeId || (mapping && mapping.taskId !== task.id)) throw new TypeError('Task result scope/binding mismatch');
+    active(state, domain.scopeId);
+    if (binding.kind === 'app.command') {
+        const action = { ...binding, recordId: binding.recordId ?? 'task-' + hashNativeDocument(record.invocationId).slice(0, 48), args: record.payload };
+        const prepared = await prepareLifecycle(base, installed, action);
+        return { states: prepared.states, authorityReceipt: { kind: 'authority', decision: 'app.command',
+            domainId: action.domainId, commandId: action.commandId, recordId: action.recordId, baseRevisionId: base.revision.revisionId } };
+    }
+    const candidate = { ...base, states: copy(base.states) };
+    scheduleInteraction(base, candidate, mapping, record);
+    compactLifecycle(candidate, candidate.states[NS]);
+    return { states: candidate.states, authorityReceipt: { kind: 'authority', decision: 'schedule',
+        interactionId: mapping.id, baseRevisionId: base.revision.revisionId } };
+}
 function addOutbox(state, action, scopeId, occurrence, workflowId = null) {
     if (state.outbox.length >= 128) throw new TypeError('Scheduled interaction backpressure');
     const invocationId = 'lc:' + hashNativeDocument({ occurrence, scopeId, epoch: state.scopes[scopeId].epoch }).slice(0, 48);
@@ -262,23 +305,10 @@ export async function prepareLifecycle(base, installed, action) {
         const proposal = candidate.states.atri_task_results?.records.find(item => item.invocationId === action.proposalId);
         if (!mapping || !proposal || proposal.taskId !== mapping.taskId || proposal.status !== 'draft'
             || proposal.branchId !== base.revision.branchId || proposal.storedRevisionId !== base.revision.revisionId) throw new TypeError('Scheduled interaction proposal is stale or closed');
-        active(state, mapping.scopeId);
-        const payload = proposal.payload;
-        fields(payload, ['recordId', 'dueTick', 'args'], 'Scheduled interaction payload'); taskId(payload.recordId);
-        const clock = state.clocks[mapping.clockId];
-        if (!integer(payload.dueTick) || payload.dueTick < clock || payload.dueTick - clock > mapping.maxDelay) throw new TypeError('Scheduled interaction WorldInstant outside declared bounds');
-        const domain = def.domains.find(item => item.id === mapping.domainId);
-        const command = domain.commands.find(item => item.id === mapping.commandId);
-        const args = assertTaskValue(payload.args, command.argsSchema);
-        if (state.interactions.length >= 128) compactLifecycle(candidate, state);
-        if (state.interactions.length >= 128) throw new TypeError('Scheduled interaction backpressure');
-        state.interactions.push({ proposalId: action.proposalId, interactionId: mapping.id, scopeId: mapping.scopeId,
-            scopeEpoch: state.scopes[mapping.scopeId].epoch, clockId: mapping.clockId, dueTick: payload.dueTick,
-            domainId: mapping.domainId, commandId: mapping.commandId, recordId: payload.recordId, args,
-            anchorRevisionId: proposal.storedRevisionId, taskId: proposal.taskId, variantId: proposal.variantId, status: 'scheduled' });
+        scheduleInteraction(base, candidate, mapping, proposal);
         proposal.status = 'applied'; proposal.authorityReceipt = { kind: 'authority', decision: 'schedule', baseRevisionId: base.revision.revisionId };
         taskResolution = proposal.invocationId;
-        events.push({ type: 'interaction.scheduled', proposalId: proposal.invocationId, clockId: mapping.clockId, dueTick: payload.dueTick });
+        events.push({ type: 'interaction.scheduled', proposalId: proposal.invocationId, clockId: mapping.clockId, dueTick: proposal.payload.dueTick });
     } else if (action.kind === 'interaction.cancel') {
         fields(action, ['kind', 'proposalId'], 'Scheduled interaction cancel');
         const item = state.interactions.find(item => item.proposalId === action.proposalId);

@@ -53,18 +53,34 @@ export function assertTaskRuntime(value) {
         const inputSchema = compileDataSchema(item.inputSchema);
         const context = list(item.context, 5, v => choice(v, ['input', 'history', 'world', 'knowledge', 'projection']));
         fields(item.resultPolicy, ['resultClass', 'sink', 'applyCommand'], 'Task result policy');
-        const policies = { advisory: 'proposal', turn_context: 'turn', presentation: 'artifact', world_outcome_proposal: 'proposal' };
+        const policies = { advisory: 'proposal', turn_context: 'turn', presentation: 'artifact', world_outcome_proposal: 'proposal', declared_app_command: 'app_command' };
         if (!Object.hasOwn(policies, item.resultPolicy.resultClass) || policies[item.resultPolicy.resultClass] !== item.resultPolicy.sink) throw new TypeError('Result authority/sink mismatch');
         if (item.resultPolicy.applyCommand !== undefined) {
             taskId(item.resultPolicy.applyCommand);
             if (item.resultPolicy.resultClass !== 'advisory') throw new TypeError('Only advisory proposals may declare Apply Command');
         }
         const queuePolicy = choice(item.queuePolicy ?? 'fifo', ['fifo', 'latest']);
-        if (queuePolicy === 'latest' && (item.resultPolicy.resultClass === 'world_outcome_proposal' || item.resultPolicy.applyCommand)) throw new TypeError('Authority-producing Tasks cannot supersede confirmed work');
+        const bridge = item.resultPolicy.resultClass === 'declared_app_command';
+        if (bridge && item.executionClass !== 'background') throw new TypeError('Declared App Command requires a background Task');
+        if (queuePolicy === 'latest' && (bridge || item.resultPolicy.resultClass === 'world_outcome_proposal' || item.resultPolicy.applyCommand)) throw new TypeError('Authority-producing Tasks cannot supersede confirmed work');
         const variants = list(item.variants, 8, variant => {
-            fields(variant, ['id', 'prompt', 'generation', 'outputSchema', 'requiredCapabilities'], 'Task Variant');
+            fields(variant, ['id', 'prompt', 'generation', 'outputSchema', 'requiredCapabilities', 'resultBinding'], 'Task Variant');
+            if (bridge !== (variant.resultBinding !== undefined)) throw new TypeError('Declared App Command requires an exclusive Variant result binding');
+            if (bridge) {
+                const binding = variant.resultBinding;
+                choice(binding.kind, ['app.command', 'interaction.schedule']);
+                if (binding.kind === 'app.command') {
+                    fields(binding, ['kind', 'domainId', 'commandId', 'recordId'], 'Task App binding');
+                    taskId(binding.domainId); taskId(binding.commandId);
+                    if (binding.recordId !== undefined) taskId(binding.recordId);
+                } else {
+                    fields(binding, ['kind', 'interactionId'], 'Task interaction binding');
+                    taskId(binding.interactionId);
+                }
+            }
             return { id: taskId(variant.id), prompt: exact(variant.prompt), generation: exact(variant.generation),
-                outputSchema: compileDataSchema(variant.outputSchema), requiredCapabilities: list(variant.requiredCapabilities, 16, taskId) };
+                outputSchema: compileDataSchema(variant.outputSchema), requiredCapabilities: list(variant.requiredCapabilities, 16, taskId),
+                ...(bridge ? { resultBinding: variant.resultBinding } : {}) };
         });
         if (!variants.length) throw new TypeError('Task requires a Variant');
         const interpretation = item.interpretation === undefined ? undefined : normalizeEventInterpretationRequest(item.interpretation);
