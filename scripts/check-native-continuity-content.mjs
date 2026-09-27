@@ -6,7 +6,7 @@ import { assertCommunityRegistry } from '../public/shared/native-content-contrac
 import { NATIVE_RESOURCE_KINDS, assertNativeResourceKey } from '../src/native/contracts.js';
 
 for (const id of ['addon', 'player-continuity']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, [1]);
-for (const id of ['shared-realm', 'experience-health', 'studio-authoring']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, []);
+for (const id of ['experience-health', 'studio-authoring']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, []);
 assertNativeExperienceContract(continuityFixture()); assertNativeExperienceContract(contentFixture());
 assert.throws(() => assertCommunityRegistry({ schemaVersion: 1, entries: [], trusted: true }));
 assertNativeResourceKey({ kind: NATIVE_RESOURCE_KINDS.playerContinuityRevision, handle: 'local', packageId: 'pkg_' + 'a'.repeat(32), revisionId: 'rev_' + 'b'.repeat(32) });
@@ -24,4 +24,4 @@ assert.match(read('src/native/continuity-authority.js'), /transfer\.prepared/);
 assert.match(read('src/native/continuity-authority.js'), /transfer\.compensated/);
 assert.match(read('src/native/adapters/generation-host.js'), /!preflight && snapshot\.externalEffects/);
 assert.match(read('public/scripts/native/experience/ui/v2-document.js'), /step\.op\.startsWith\('continuity\.'\)/);
-console.log('P7 guard passed: exact Base/add-on proof, typed Community and Continuity, independent Native revisions, ownership reconciliation, recoverable Saga, existing renderer/Host, P8+ reserved');
+console.log('P7 guard passed: exact Base/add-on proof, typed Community and Continuity, independent Native revisions, ownership reconciliation, recoverable Saga, existing renderer/Host, P9 reserved');

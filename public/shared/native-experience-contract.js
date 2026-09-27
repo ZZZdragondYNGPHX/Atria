@@ -1,3 +1,4 @@
+import { assertSharedRuntime } from './native-shared-contract.js';
 import { assertPresentationRuntime, assertPresentationClosure } from './native-presentation-contract.js';
 import { assertTaskRuntime } from './native-task-contract.js';
 import { assertLifecycleRuntime } from './native-lifecycle-contract.js';
@@ -39,7 +40,7 @@ export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
     ['session-application', [1], [1]],
     ['temporal', [1], [1]],
     ['player-continuity', [1], [1]],
-    ['shared-realm', [1]],
+    ['shared-realm', [1], [1]],
     ['workflow', [1], [1]],
 ].map(([id, versions, supported = []]) => [id, Object.freeze({
     versions: Object.freeze(versions),
@@ -68,7 +69,7 @@ function list(value, label, validate, key) {
 // action, turn, task and authority bodies require their own strict contracts.
 // No generic config/extension/persistence/exposure payload belongs in this seam.
 export function assertNativeExperienceContract(value) {
-    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime', 'presentationRuntime', 'informationRuntime', 'contentRuntime', 'continuityRuntime'], 'ExperienceContract');
+    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime', 'presentationRuntime', 'informationRuntime', 'contentRuntime', 'continuityRuntime', 'sharedRuntime'], 'ExperienceContract');
     if (value.schemaVersion !== ATRIA_EXPERIENCE_CONTRACT_VERSION) {
         throw new TypeError('ExperienceContract.schemaVersion must be 1');
     }
@@ -99,6 +100,7 @@ export function assertNativeExperienceContract(value) {
     return Object.freeze({ schemaVersion: ATRIA_EXPERIENCE_CONTRACT_VERSION, capabilities, dataResources,
         ...(taskRuntime === undefined ? {} : { taskRuntime }),
         ...(lifecycleRuntime === undefined ? {} : { lifecycleRuntime }),
+        ...(value.sharedRuntime === undefined ? {} : { sharedRuntime: assertSharedRuntime(value.sharedRuntime, lifecycleRuntime, value.informationRuntime === undefined ? undefined : assertInformationRuntime(value.informationRuntime, lifecycleRuntime, taskRuntime), value.continuityRuntime) }),
         ...(value.contentRuntime === undefined ? {} : { contentRuntime: assertContentRuntime(value.contentRuntime) }),
         ...(value.continuityRuntime === undefined ? {} : { continuityRuntime: assertContinuityRuntime(value.continuityRuntime, lifecycleRuntime) }),
         ...(value.informationRuntime === undefined ? {} : { informationRuntime: assertInformationRuntime(value.informationRuntime, lifecycleRuntime, taskRuntime) }),

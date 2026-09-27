@@ -29,8 +29,9 @@ async function postJson(path, body, options = {}) {
     if (typeof fetchImpl !== 'function') throw new Error('Native Game Runtime has no fetch implementation');
     const response = await fetchImpl('/api/native/session/' + path, {
         method: 'POST',
+        ...(options.signal ? { signal: options.signal } : {}),
         headers: requestHeaders(options.headers || {}),
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, ...(options.sharedOwner ? { sharedOwner: options.sharedOwner } : {}) }),
         cache: 'no-store',
     });
     if (!response?.ok) {

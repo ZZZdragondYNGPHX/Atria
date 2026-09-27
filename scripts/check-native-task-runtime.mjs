@@ -4,7 +4,7 @@ import { assertTurnEnvelope } from '../public/shared/native-message-contract.js'
 import { ATRIA_EXPERIENCE_CAPABILITIES } from '../public/shared/native-experience-contract.js';
 
 for (const id of ['turn-contract', 'narrative-outcome', 'model-task', 'auxiliary-task']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, [1]);
-for (const id of ['shared-realm']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, []);
+for (const id of ['experience-health']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, []);
 assert.throws(() => assertTurnEnvelope({ schemaVersion: 1, narrative: '', outcomes: [{ requestId: 'test', interpretation: { decision: 'event', confidence: 1, eventType: 'Change', patch: { hp: 1 } } }], diagnostics: [] }));
 for (const path of ['public/shared/native-task-contract.js', 'src/native/task-scheduler.js', 'src/native/task-authority.js', 'public/scripts/native/task-client.js']) {
     const source = readFileSync(path, 'utf8');
@@ -16,4 +16,4 @@ const host = readFileSync('src/native/adapters/generation-host.js', 'utf8');
 assert(host.includes('taskPlan.variant.prompt') && host.includes('taskPlan.variant.generation') && host.includes('nativeTaskScheduler.submit'));
 const runtime = readFileSync('public/scripts/native/session-runtime.js', 'utf8');
 assert(runtime.includes('if (this.generation?.provisionalTurn) return true;'));
-console.log('P3 runtime guard passed: typed outcomes, split delivery/authority, shared authority, provisional barrier, P8+ reserved');
+console.log('P3 runtime guard passed: typed outcomes, split delivery/authority, shared authority, provisional barrier, P9 reserved');

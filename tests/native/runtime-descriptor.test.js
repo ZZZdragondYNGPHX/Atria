@@ -54,7 +54,7 @@ describe('A3 Native Runtime Descriptor compiler', () => {
     test('P0 derives contract metadata for every layout without enabling reserved features', () => {
         const experienceContract = {
             schemaVersion: 1,
-            capabilities: [{ id: 'shared-realm', version: 1, required: false }],
+            capabilities: [{ id: 'experience-health', version: 1, required: false }],
             dataResources: [],
         };
         for (const mode of ['text', 'component', 'hybrid', 'full']) {
@@ -66,7 +66,7 @@ describe('A3 Native Runtime Descriptor compiler', () => {
             });
             expect(compileNativeRuntimeDescriptor(f).descriptor.experienceContract).toEqual(experienceContract);
             expect(compileNativeRuntimeDescriptor(f).runtime).not.toHaveProperty('experienceContract');
-            f.manifest.runtime.experienceContract = { ...experienceContract, capabilities: [{ id: 'shared-realm', version: 1, required: true }] };
+            f.manifest.runtime.experienceContract = { ...experienceContract, capabilities: [{ id: 'experience-health', version: 1, required: true }] };
             expect(() => compileNativeRuntimeDescriptor(f)).toThrow(/Host does not support/);
         }
     });

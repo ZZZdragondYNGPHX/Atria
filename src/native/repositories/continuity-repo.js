@@ -7,16 +7,18 @@ import { getNativeDocument, putImmutable, putMutable, hashNativeDocument, withNa
 // Same Native resource engine and commit-last discipline as Session/World.
 // The account handle is supplied by the authenticated Host, never a Package.
 export class ContinuityRepo {
-    constructor({ engine }) { this._engine = engine; }
-    lock(handle, packageId, operation) { return withNativeResourceWrite(handle, 'continuity:' + packageId, operation); }
+    constructor({ engine, rootKind = K.playerContinuity, revisionKind = K.playerContinuityRevision, lockPrefix = 'continuity:', keyField = 'packageId' }) {
+        this._engine = engine; this._rootKind = rootKind; this._revisionKind = revisionKind; this._lockPrefix = lockPrefix; this._keyField = keyField;
+    }
+    lock(handle, packageId, operation) { return withNativeResourceWrite(handle, this._lockPrefix + packageId, operation); }
     async load(handle, packageId, revisionId = null) {
         return this._engine.withTransaction(handle, async tx => {
-            const root = await getNativeDocument(tx, { kind: K.playerContinuity, handle, packageId });
+            const root = await getNativeDocument(tx, { kind: this._rootKind, handle, [this._keyField]: packageId });
             if (!root) {
                 if (revisionId) throw new NotFoundError('Continuity Revision');
                 return null;
             }
-            const record = await tx.getResource({ kind: K.playerContinuityRevision, handle, packageId, revisionId: revisionId ?? root.revisionId });
+            const record = await tx.getResource({ kind: this._revisionKind, handle, [this._keyField]: packageId, revisionId: revisionId ?? root.revisionId });
             if (!record || hashNativeDocument(record.doc) !== record.integrity) throw new Error('Continuity Revision integrity mismatch');
             return record.doc;
         });
@@ -28,10 +30,10 @@ export class ContinuityRepo {
             sequence: (prior?.sequence ?? 0) + 1, state: structuredClone(state), event: structuredClone(event), createdAt: Date.now() };
         if (Buffer.byteLength(JSON.stringify(revision)) > 8 * 1024 * 1024) throw new TypeError('Continuity revision byte limit');
         return this._engine.withTransaction(handle, async tx => {
-            const key = { kind: K.playerContinuity, handle, packageId };
+            const key = { kind: this._rootKind, handle, [this._keyField]: packageId };
             const root = await tx.getResource(key);
             if ((root?.doc.revisionId ?? null) !== (prior?.revisionId ?? null)) throw new ConflictError('native_continuity_head_conflict');
-            await putImmutable(tx, { kind: K.playerContinuityRevision, handle, packageId, revisionId: revision.revisionId }, revision);
+            await putImmutable(tx, { kind: this._revisionKind, handle, [this._keyField]: packageId, revisionId: revision.revisionId }, revision);
             await putMutable(tx, key, { packageId, revisionId: revision.revisionId }, { expectedIntegrity: root?.integrity ?? null });
             return revision;
         });

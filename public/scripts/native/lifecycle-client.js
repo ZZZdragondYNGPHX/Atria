@@ -50,6 +50,7 @@ export function createNativeLifecycleClient({ runtime, fetchImpl = (...args) => 
             client: Object.freeze({ getSnapshot: () => current(token),
                 command: action => command(token, action),
                 continuityCommand: action => command(token, action, 'continuity'),
+                realmCommand: action => command(token, action, 'realm'),
                 isWritable: () => { try { current(token, { writable: true }); return token.ready; } catch { return false; } },
             }),
         });
@@ -105,6 +106,7 @@ export function createNativeLifecycleClient({ runtime, fetchImpl = (...args) => 
         const snapshot = current(token, { writable: true });
         if (!token.ready || !token.packageState?.descriptor.experienceContract?.lifecycleRuntime) throw failure('native_lifecycle_not_ready');
         if (type === 'lifecycle' ? !ACTIONS.has(action?.kind) : !['command', 'transfer', 'transfer.cancel', 'transfer.resume'].includes(action?.kind)) throw new TypeError('Unknown lifecycle action');
+        if (type === 'realm' && !token.packageState.descriptor.experienceContract.sharedRuntime?.realm) throw failure('native_realm_undeclared');
         if (type === 'continuity' && !token.packageState.descriptor.experienceContract.continuityRuntime) throw failure('native_continuity_undeclared');
         if (token.busy) throw failure('native_lifecycle_busy');
         const key = JSON.stringify([type, action]);
@@ -216,6 +218,7 @@ export function createNativeLifecycleClient({ runtime, fetchImpl = (...args) => 
         getSnapshot: () => runtime.snapshot,
         command: action => command(scope, action),
         continuityCommand: action => command(scope, action, 'continuity'),
+        realmCommand: action => command(scope, action, 'realm'),
         getContinuityProjection: async (viewId, revisionId = null) => {
             const token = scope, snapshot = current(token);
             const result = await request(token, '/api/native/session/continuity/projection', { sessionId: snapshot.session.sessionId, viewId, revisionId });

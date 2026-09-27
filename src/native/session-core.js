@@ -1,3 +1,4 @@
+import { applyRealm, realmDefinition, reconcileRealm, loadRealm } from './realm-authority.js';
 import { activityNarrative, publishActivities } from './activity-authority.js';
 import { assertInformationClosure } from '../../public/shared/native-information-contract.js';
 import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
@@ -216,7 +217,7 @@ export class SessionCore {
             base.continuityRevisionId = revision?.revisionId ?? null;
             base.continuityViews = continuityDisplay(base, revision);
         }
-        return base;
+        return loadRealm(this, handle, base, Boolean(options.revisionId));
     }
 
     async create(handle, { packageId, packageVersionId, entryPointId, displayTitle,
@@ -294,20 +295,25 @@ export class SessionCore {
     }
 
     async _publish(handle, base, options = {}) {
-        if (!continuityDefinition(base)) return this._publishLocked(handle, base, options);
+        if (!continuityDefinition(base) && !realmDefinition(base)) return this._publishLocked(handle, base, options);
         if (!this._continuity) throw new TypeError('Continuity repository required');
         return this._continuity.lock(handle, base.session.packageId, () => this._publishLocked(handle, base, options));
     }
 
     async _publishLocked(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
         graph = base.graph, branchId = base.revision?.branchId ?? base.session.activeBranchId,
-        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null } = {}) {
+        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false } = {}) {
         if (continuityDefinition(base)) states = reconcileOwnership(base, states,
             await this._continuity.load(handle, base.session.packageId), { publication: true, pendingIntentId });
+        if (realmDefinition(base)) states = reconcileRealm(base, states,
+            await this._sessions.realm.load(handle, base.session.packageId), { publication: true, pendingIntentId: pendingRealmIntentId });
         variants = variants.map(assertVariant);
         await this._validateProjections(handle, { ...base, timeline }, variants);
         validateWorldState(states, base.manifest, base.entryPoint);
         const revisionId = createNativeId('revision');
+        if (sharedPublication) for (const turn of Object.values(states.atri_shared?.turns ?? {})) {
+            if (turn.expectedRevisionId === null || turn.expectedRevisionId === base.revision?.revisionId) turn.expectedRevisionId = revisionId;
+        }
         if (taskRecord) {
             if (lifecycleDefinition(base)) {
                 states = cloneNativeDocument(states);
@@ -365,9 +371,9 @@ export class SessionCore {
         const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
             entries, variants, branches, expectedRevisionId: base.session.headRevisionId });
         const continuity = continuityDefinition(base) ? await this._continuity.load(handle, base.session.packageId) : null;
-        return { ...snapshot, manifest: base.manifest, entryPoint: base.entryPoint,
+        return loadRealm(this, handle, { ...snapshot, manifest: base.manifest, entryPoint: base.entryPoint,
             ...(continuityDefinition(base) ? { externalEffects: continuityEffects(continuity, base.session.sessionId), continuityRevisionId: continuity?.revisionId ?? null, continuityViews: continuityDisplay(base, continuity) } : {}),
-            worlds: selectedWorlds(states, base.manifest, base.entryPoint) };
+            worlds: selectedWorlds(states, base.manifest, base.entryPoint) });
     }
 
     async _current(handle, sessionId, expectedRevisionId) {
@@ -441,6 +447,11 @@ export class SessionCore {
     async applyContinuityCommand(handle, sessionId, command, { expectedRevisionId } = {}) {
         assertNativeId(expectedRevisionId, 'revision');
         return applyContinuity(this, handle, sessionId, command, expectedRevisionId);
+    }
+
+    async applyRealmCommand(handle, sessionId, command, { expectedRevisionId } = {}) {
+        assertNativeId(expectedRevisionId, 'revision');
+        return applyRealm(this, handle, sessionId, command, expectedRevisionId);
     }
 
     async getContinuityProjection(handle, sessionId, viewId, { revisionId = null } = {}) {

@@ -5,7 +5,7 @@ import { assertPresentationRuntime, assertSceneCueIR } from '../public/shared/na
 import { compileUiDocument } from '../public/scripts/native/experience/ui/v2-document.js';
 
 for (const id of ['activity', 'media-scene', 'asset-pack', 'safe-presentation', 'host-presentation-input']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, [1]);
-for (const id of ['shared-realm']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, []);
+for (const id of ['experience-health']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, []);
 const definition = assertPresentationRuntime({ schemaVersion: 1, activities: [], scenes: [], assetPacks: [], voices: [], host: [] });
 assert(Object.isFrozen(definition));
 assert.throws(() => assertSceneCueIR({ schemaVersion: 1, cues: [{ id: 'scene', kind: 'caption', text: 'caption', html: '<script></script>' }] }, definition));
@@ -30,4 +30,4 @@ assert.match(read('src/native/session-core.js'), /publishActivities\(\{ \.\.\.ba
 assert.match(read('src/native/adapters/generation-host.js'), /activity\.narrator\.variantId/);
 assert.match(read('src/native/asset-delivery.js'), /assets\.openDelivery/);
 assert.match(read('src/native/repositories/asset-store.js'), /file\.createReadStream\(\{ start, end, autoClose: false \}\)/);
-console.log('P5 presentation guard passed: five capabilities, inert Cue IR, one renderer/authority, committed handoff, exact streaming, Host cleanup, P8+ reserved');
+console.log('P5 presentation guard passed: five capabilities, inert Cue IR, one renderer/authority, committed handoff, exact streaming, Host cleanup, P9 reserved');

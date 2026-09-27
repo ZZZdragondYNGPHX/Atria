@@ -44,6 +44,8 @@ export class SessionRepo {
         if (!engine) throw new TypeError('SessionRepo requires { engine }');
         this._engine = engine;
         this.continuity = new ContinuityRepo({ engine });
+        this.realm = new ContinuityRepo({ engine, rootKind: NATIVE_RESOURCE_KINDS.realm, revisionKind: NATIVE_RESOURCE_KINDS.realmRevision });
+        this.sharedAccess = new ContinuityRepo({ engine, rootKind: NATIVE_RESOURCE_KINDS.sharedAccess, revisionKind: NATIVE_RESOURCE_KINDS.sharedAccessRevision, lockPrefix: 'shared-access:', keyField: 'sessionId' });
     }
 
     _sessionKey(handle, sessionId) {
@@ -733,6 +735,9 @@ export class SessionRepo {
         return this.continuity.lock(handle, session.packageId, () => withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
             const root = await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.playerContinuity, handle, packageId: session.packageId });
             const continuity = root && await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.playerContinuityRevision, handle, packageId: session.packageId, revisionId: root.revisionId });
+            const realmRoot = await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.realm, handle, packageId: session.packageId });
+            const realm = realmRoot && await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.realmRevision, handle, packageId: session.packageId, revisionId: realmRoot.revisionId });
+            if (realm?.state.intents.some(intent => intent.sessionId === sessionId && intent.status === 'prepared')) throw new ConflictError('native_transfer_pending');
             if (continuity?.state.intents.some(intent => intent.sessionId === sessionId && intent.status === 'prepared')) throw new ConflictError('native_transfer_pending');
             for (const kind of [
                 NATIVE_RESOURCE_KINDS.savePoint,

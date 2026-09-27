@@ -2,7 +2,7 @@ import { fields as valueFields } from '../../public/scripts/native/experience/ui
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
 import { assertLifecycleJson } from '../../public/shared/native-lifecycle-contract.js';
 import { assertTaskValue, taskId } from '../../public/shared/native-task-contract.js';
-import { CONTINUITY_SESSION_NAMESPACE as NS } from '../../public/shared/native-continuity-contract.js';
+import { CONTINUITY_SESSION_NAMESPACE as DEFAULT_NS } from '../../public/shared/native-continuity-contract.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { ConflictError } from '../storage/errors.js';
 
@@ -43,7 +43,7 @@ function validateState(state, definition) {
 function requireHead(revision, expected) {
     if (expected === undefined || (revision?.revisionId ?? null) !== expected) throw new ConflictError('native_continuity_head_conflict');
 }
-function sessionTransferState(base) { return copy(base.states[NS] ?? { schemaVersion: 1, bindings: [], receipts: [] }); }
+function sessionTransferState(base, NS = DEFAULT_NS) { return copy(base.states[NS] ?? { schemaVersion: 1, bindings: [], receipts: [] }); }
 function activeScope(base, domain, epoch) {
     const scope = base.states.atri_lifecycle?.scopes[domain.scopeId];
     if (!scope || scope.status !== 'active' || scope.epoch !== epoch) throw new TypeError('Transfer scope is stale or inactive');
@@ -52,8 +52,7 @@ function activeScope(base, domain, epoch) {
 // Called for every publication, including restore/switch/fork and Task/Activity
 // settlement. Historical snapshots remain immutable; their continuation loses
 // claims already externalized. No external authority is rolled back.
-export function reconcileOwnership(base, states, revision, { pendingIntentId = null, publication = false } = {}) {
-    const definition = continuityDefinition(base);
+export function reconcileOwnership(base, states, revision, { pendingIntentId = null, publication = false, definition = continuityDefinition(base), namespace: NS = DEFAULT_NS } = {}) {
     if (!definition) return states;
     const state = stateFor(revision, definition, false);
     if (publication && state.intents.some(intent => intent.sessionId === base.session.sessionId && intent.status === 'prepared' && intent.id !== pendingIntentId)) throw new ConflictError('native_transfer_pending');
@@ -96,31 +95,34 @@ export function continuityDisplay(base, revision) {
     return Object.fromEntries(continuityDefinition(base).views.map(view => [view.id, projectContinuityRevision(base, view.id, revision)]));
 }
 
-export async function applyContinuity(core, handle, sessionId, raw, expectedRevisionId) {
+export async function applyContinuity(core, handle, sessionId, raw, expectedRevisionId, options = {}) {
+    const repo = options.repo ?? core._continuity;
+    const definitionFor = options.definitionFor ?? continuityDefinition;
+    const NS = options.namespace ?? DEFAULT_NS;
     const command = assertLifecycleJson(raw);
     fields(command, ['type', 'invocationId', 'action'], 'Continuity command');
     if (command.type !== 'continuity' || typeof command.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(command.invocationId)) throw new TypeError('Continuity invocation required');
     let base = await core.load(handle, sessionId);
-    const definition = continuityDefinition(base);
-    if (!definition || !core._continuity) throw new TypeError('Continuity contract required');
+    const definition = definitionFor(base);
+    if (!definition || !repo) throw new TypeError('Continuity contract required');
     const packageId = base.session.packageId;
     if (command.action?.kind === 'transfer.resume') {
         fields(command.action, ['kind', 'intentId'], 'Transfer resume');
         if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict');
-        const revision = await core._continuity.load(handle, packageId);
+        const revision = await repo.load(handle, packageId);
         const intent = revision?.state.intents.find(intent => intent.id === command.action.intentId && intent.sessionId === sessionId);
         if (!intent || intent.status === 'compensated') throw new TypeError('Recoverable transfer required');
-        return applyContinuity(core, handle, sessionId, { type: 'continuity', invocationId: intent.invocationId, action: intent.action }, intent.baseRevisionId);
+        return applyContinuity(core, handle, sessionId, { type: 'continuity', invocationId: intent.invocationId, action: intent.action }, intent.baseRevisionId, options);
     }
-    return core._continuity.lock(handle, packageId, async () => {
+    return repo.lock(handle, packageId, async () => {
         base = await core.load(handle, sessionId, { skipPackageEdits: true });
-        let revision = await core._continuity.load(handle, packageId);
+        let revision = await repo.load(handle, packageId);
         let state = stateFor(revision, definition);
         const action = command.action, id = sessionId + ':' + command.invocationId;
         const fingerprint = hashNativeDocument({ action, expectedRevisionId });
         const commit = async event => {
             validateState(state, definition);
-            revision = await core._continuity.commit(handle, packageId, revision, state, event);
+            revision = await repo.commit(handle, packageId, revision, state, event);
         };
         const response = async receipt => ({ ...await core.load(handle, sessionId, { skipPackageEdits: true }), continuityRevisionId: revision?.revisionId ?? null, continuityReceipt: receipt });
         const prior = state.receipts.find(receipt => receipt.id === id);
@@ -175,9 +177,12 @@ export async function applyContinuity(core, handle, sessionId, raw, expectedRevi
         if (intent && (intent.fingerprint !== fingerprint || intent.status === 'compensated')) throw new TypeError('Transfer invocation conflict or compensated');
         if (!intent) {
             if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict');
+            // A different authority's prepared Saga also owns this Session.
+            // Do not reserve a second ledger and make both resumes wait forever.
+            if (base.externalEffects?.some(effect => effect.status === 'prepared')) throw new ConflictError('native_transfer_pending');
             requireHead(revision, action.expectedContinuityRevisionId); activeScope(base, sessionDomain, action.scopeEpoch); taskId(action.recordId);
             if (state.intents.some(intent => intent.sessionId === sessionId && intent.status === 'prepared')) throw new ConflictError('native_transfer_pending');
-            const sessionState = sessionTransferState(base);
+            const sessionState = sessionTransferState(base, NS);
             let value, lineageId, previousClaim;
             if (action.direction === 'deposit') {
                 if (action.lineageId !== undefined) throw new TypeError('Deposit lineage is Host-owned');
@@ -215,7 +220,7 @@ export async function applyContinuity(core, handle, sessionId, raw, expectedRevi
         if (!published) {
             if (rawBase.revision.revisionId !== intent.baseRevisionId) throw new ConflictError('native_transfer_session_conflict');
             activeScope(base, sessionDomain, intent.scopeEpoch);
-            const states = copy(rawBase.states); const markers = sessionTransferState(rawBase); states[NS] = markers;
+            const states = copy(rawBase.states); const markers = sessionTransferState(rawBase, NS); states[NS] = markers;
             const records = states.atri_lifecycle.domains[sessionDomain.id].records;
             if (intent.direction === 'deposit') states.atri_lifecycle.domains[sessionDomain.id].records = records.filter(record => record.id !== intent.recordId);
             else {
@@ -228,7 +233,7 @@ export async function applyContinuity(core, handle, sessionId, raw, expectedRevi
             }
             if (markers.receipts.length >= 2048) throw new TypeError('Session transfer receipt limit');
             markers.receipts.push({ id, kind: 'transfer', lineageId: intent.lineageId, direction: intent.direction });
-            const next = await core._publishLocked(handle, { ...base, states: rawBase.states }, { states, pendingIntentId: id });
+            const next = await core._publishLocked(handle, { ...base, states: rawBase.states }, { states, [options.pendingKey ?? 'pendingIntentId']: id });
             sessionRevisionId = next.revision.revisionId;
         }
         state = copy(revision.state); intent = state.intents.find(intent => intent.id === id);

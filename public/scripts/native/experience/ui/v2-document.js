@@ -11,6 +11,8 @@ const OPS = {
     'surface.open': ['view'], 'surface.close': ['view'],
     'action.compensate': ['actionId'],
     'activity.start': ['args'], 'activity.pause': ['args'], 'activity.resume': ['args'], 'activity.settle': ['args'], 'activity.cancel': ['args'],
+    'shared.open': ['args'], 'shared.submit': ['args'], 'shared.commit': ['args'], 'shared.cancel': ['args'],
+    'realm.command': ['args'], 'realm.transfer': ['args'], 'realm.resume': ['args'], 'realm.cancel': ['args'],
     'continuity.command': ['args'], 'continuity.transfer': ['args'], 'continuity.resume': ['args'], 'continuity.cancel': ['args'],
     'scene.show': ['sceneId'], 'host.fullscreen': ['sceneId'], 'host.focus': ['sceneId'],
     'opening.next': [], 'opening.back': [], 'opening.confirm': [],
@@ -50,7 +52,7 @@ export function compileUiDocument(raw, { mode, message = false, actionPolicy = '
             for (const required of OPS[step.op]) if (step[required] === undefined && required !== 'args') throw new Error('Missing Action field ' + required);
             if (step.path !== undefined) statePath(step.path);
             if (step.commandId !== undefined && (typeof step.commandId !== 'string' || !/^[a-z][a-z0-9._-]{0,63}$/.test(step.commandId))) throw new Error('Invalid command id');
-            if (['command.dispatch', 'action.compensate'].includes(step.op) || step.op.startsWith('activity.') || step.op.startsWith('continuity.')) writes++;
+            if (['command.dispatch', 'action.compensate'].includes(step.op) || step.op.startsWith('activity.') || step.op.startsWith('continuity.') || step.op.startsWith('realm.') || step.op.startsWith('shared.')) writes++;
             return Object.freeze({ ...step, when: step.when === undefined ? null : expression(step.when, roots),
                 value: step.value === undefined ? null : valueTemplate(step.value, roots), args: valueTemplate(step.args ?? {}, roots) });
         });

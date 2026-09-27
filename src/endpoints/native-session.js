@@ -1,3 +1,4 @@
+import { SharedAuthority } from '../native/shared-authority.js';
 import { deliverNativeAsset } from '../native/asset-delivery.js';
 import express from 'express';
 import { createHash } from 'node:crypto';
@@ -34,6 +35,28 @@ export function createNativeSessionRouter(getServices = services) {
             response.status(status).json({ error: error.code || (status === 400 ? 'native_invalid_command' : 'native_session_failed') });
         }
     };
+    router.post('/shared/enable', route(async (req, res, { core }, handle) => {
+        res.json(await new SharedAuthority(core).enable(handle, req.body.sessionId, req.body.expectedRevisionId));
+    }));
+    for (const method of ['snapshot', 'membership', 'heartbeat', 'command']) router.post('/shared/' + method, route(async (req, res, { core }, handle) => {
+        const { owner, sessionId, action, cursor } = req.body;
+        if (typeof owner !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(owner)) throw new TypeError('Shared owner handle required');
+        res.set('Cache-Control', 'private, no-store').json(await new SharedAuthority(core)[method](owner, sessionId, handle, method === 'snapshot' ? cursor : action));
+    }));
+    router.post('/shared/realm', route(async (req, res, { core }, handle) => {
+        res.json(await new SharedAuthority(core).realm(req.body.owner, req.body.sessionId, handle, req.body.command, req.body.expectedRevisionId, req.body.expectedAccessRevisionId));
+    }));
+    router.post('/realm/graph', route(async (req, res, { core }, handle) => {
+        const base = await core.load(handle, req.body.sessionId);
+        if (!base.manifest.runtime?.experienceContract?.sharedRuntime?.realm) throw new TypeError('Realm contract required');
+        res.json(await core._sessions.realm.graph(handle, base.session.packageId, req.body.limit));
+    }));
+    router.post('/realm/projection', route(async (req, res, { core }, handle) => {
+        const base = await core.load(handle, req.body.sessionId);
+        const view = base.realmViews?.[req.body.viewId];
+        if (!view) throw new TypeError('Declared Realm view required');
+        res.json(view);
+    }));
     router.post('/create', route(async (req, res, { core }, handle) => {
         res.json(await core.create(handle, req.body));
     }));
@@ -67,6 +90,8 @@ export function createNativeSessionRouter(getServices = services) {
             }
         } else if (command?.type === 'lifecycle') {
             res.json(await core.applyLifecycleCommand(handle, sessionId, command, { expectedRevisionId }));
+        } else if (command?.type === 'realm') {
+            res.json(await core.applyRealmCommand(handle, sessionId, { ...command, type: 'continuity' }, { expectedRevisionId }));
         } else if (command?.type === 'continuity') {
             res.json(await core.applyContinuityCommand(handle, sessionId, command, { expectedRevisionId }));
         } else if (command?.type === 'turn.finalize') {
@@ -96,7 +121,15 @@ export function createNativeSessionRouter(getServices = services) {
     router.post('/continuity/graph', route(async (req, res, { core }, handle) => {
         res.json(await core.getContinuityGraph(handle, req.body.sessionId, req.body.limit));
     }));
+    async function resourceOwner(req, core, handle) {
+        const owner = req.body?.sharedOwner ?? req.query?.sharedOwner;
+        if (owner === undefined) return handle;
+        if (typeof owner !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(owner)) throw new TypeError('Shared owner handle required');
+        await new SharedAuthority(core).access(owner, req.body?.sessionId ?? req.query?.sessionId, handle);
+        return owner;
+    }
     router.post('/runtime/resolve', route(async (req, res, { core, packageInstaller }, handle) => {
+        handle = await resourceOwner(req, core, handle);
         const snapshot = await core.load(handle, req.body?.sessionId);
         const opened = await packageInstaller.open(
             handle,
@@ -114,6 +147,7 @@ export function createNativeSessionRouter(getServices = services) {
         });
     }));
     router.post('/runtime/resource', route(async (req, res, { core, packageInstaller }, handle) => {
+        handle = await resourceOwner(req, core, handle);
         const snapshot = await core.load(handle, req.body?.sessionId);
         const opened = await packageInstaller.open(
             handle,
@@ -196,7 +230,13 @@ export function createNativeSessionRouter(getServices = services) {
         // Immutable upload; the explicit Timeline command attaches the ref. Unattached uploads are not Session progress.
         res.json(await assets.put(handle, ref, bytes));
     }));
-    router.get('/asset/:assetId', route(async (req, res, { assets }, handle) => {
+    router.get('/asset/:assetId', route(async (req, res, { assets, core }, handle) => {
+        const owner = await resourceOwner(req, core, handle);
+        if (owner !== handle) {
+            const base = await core.load(owner, req.query.sessionId, { skipPackageEdits: true });
+            if (!base.manifest.assets.some(ref => ref.assetId === req.params.assetId)) throw new TypeError('Shared asset must belong to exact Package closure');
+        }
+        handle = owner;
         assertNativeId(req.params.assetId, 'asset');
         await deliverNativeAsset(req, res, assets, handle);
     }));

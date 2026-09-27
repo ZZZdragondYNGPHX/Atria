@@ -43,7 +43,9 @@ export function mountUiDocument(definition, options) {
     const receipts = new Map();
     const context = (extra = {}) => {
         const result = { ...state.snapshot(), world: options.presentationContext ? {} : options.worldSession?.getState?.() ?? {}, data: options.data ?? {}, env: environment.get(), selectors: options.selectors?.snapshot?.() ?? {}, ...options.presentationContext, ...extra };
-        result.projection = options.presentationContext ? {} : displayInformation(options.getSnapshot?.());
+        result.projection = options.presentationContext ? {} : (options.sharedClient ? options.sharedClient.getProjection() : displayInformation(options.getSnapshot?.()));
+        result.shared = options.presentationContext ? {} : options.sharedClient?.getSnapshot() ?? {};
+        result.realm = options.presentationContext ? {} : options.sharedClient?.getSnapshot()?.realm ?? options.getSnapshot?.()?.realmViews ?? {};
         result.continuity = options.presentationContext ? {} : options.getSnapshot?.()?.continuityViews ?? {};
         const pending = new Set(); const evaluated = new Set();
         const own = { ...result.selectors };
@@ -124,7 +126,7 @@ export function mountUiDocument(definition, options) {
                 draft[root][key] = step.op === 'ui.set' ? value : step.op === 'ui.toggle' ? !draft[root][key] : copy(field.default);
                 fieldErrors(field, draft[root][key]);
             } else if (step.op === 'command.dispatch') command.confirmation = { commandId: step.commandId, args: json(step.args.read(ctx)) };
-            else if (step.op === 'action.compensate' || step.op.startsWith('continuity.')) throw new Error('Opening requires a declared confirmation Command');
+            else if (step.op === 'action.compensate' || step.op.startsWith('continuity.') || step.op.startsWith('realm.') || step.op.startsWith('shared.')) throw new Error('Opening requires a declared confirmation Command');
             else if (step.op === 'composer.set') composerText = value;
             else if (step.op === 'composer.clear') composerText = '';
             else if (step.op === 'composer.append') {
@@ -204,6 +206,14 @@ export function mountUiDocument(definition, options) {
                     const receipt = receipts.get(step.actionId) || options.worldSession.getActionReceipts().findLast(item => item.actionId === step.actionId && item.compensation);
                     if (!receipt) throw new Error('No compensatable Action receipt');
                     results.push(await options.worldSession.compensateAction(receipt));
+                } else if (step.op.startsWith('shared.')) {
+                    if (!options.sharedClient || options.presentationContext || request.opening) throw new Error('Shared Host unavailable for this surface');
+                    const kinds = { 'shared.open': 'turn.open', 'shared.submit': 'turn.submit', 'shared.commit': 'turn.commit', 'shared.cancel': 'turn.cancel' };
+                    results.push(await options.sharedClient.command({ ...json(step.args.read(ctx)), kind: kinds[step.op] }));
+                } else if (step.op.startsWith('realm.')) {
+                    if (!options.realm || options.presentationContext || request.opening) throw new Error('Realm Host unavailable for this surface');
+                    const kinds = { 'realm.command': 'command', 'realm.transfer': 'transfer', 'realm.resume': 'transfer.resume', 'realm.cancel': 'transfer.cancel' };
+                    results.push(await options.realm({ ...json(step.args.read(ctx)), kind: kinds[step.op] }));
                 } else if (step.op.startsWith('continuity.')) {
                     if (!options.continuity) throw new Error('Continuity Host unavailable');
                     attempts.set(actionId, attempt);

@@ -1,3 +1,4 @@
+export { createNativeSharedClient, mountNativeSharedExperience } from '../shared-client.js';
 import { createNativePresentationClient } from '../presentation-client.js';
 import { createReplyVariantController } from '../reply-variants.js';
 import { executeFirstPartyGeneration } from '../generation-compat.js';
@@ -412,6 +413,7 @@ export async function reloadGamePackage() {
                 assertCurrent: load.assertCurrent,
                 lifecycle: next.descriptor.experienceContract?.lifecycleRuntime ? load.client : null,
                 continuity: next.descriptor.experienceContract?.continuityRuntime ? load.client.continuityCommand : null,
+                realm: next.descriptor.experienceContract?.sharedRuntime?.realm ? load.client.realmCommand : null,
                 mountReplyVariants: (element, anchor) => nextReplyController?.mount(element, anchor),
                 getSnapshot: () => nativeSessionRuntime.snapshot,
                 getApplicationRecords: lifecycleClient.getApplicationRecords,
@@ -784,6 +786,7 @@ registerCapabilityApi(MODULE_NAME, {
     getContinuityGraph: lifecycleClient.getContinuityGraph,
     getExternalEffects: lifecycleClient.getExternalEffects,
     continuityCommand: lifecycleClient.continuityCommand,
+    realmCommand: lifecycleClient.realmCommand,
     queryInformationGraph: lifecycleClient.queryInformationGraph,
     getActorAvailability: lifecycleClient.getActorAvailability,
     getPresentationCapabilities: presentationClient.getCapabilities,
