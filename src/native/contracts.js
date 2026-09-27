@@ -1,3 +1,4 @@
+import { assertInformationClosure } from '../../public/shared/native-information-contract.js';
 import { assertMessageProjection, assertTurnEnvelope } from '../../public/shared/native-message-contract.js';
 export { assertMessageProjection, assertTurnEnvelope, assertConversationThread } from '../../public/shared/native-message-contract.js';
 
@@ -640,6 +641,7 @@ export function assertAtriaPackageManifest(value) {
         const runtime = cloneJson(plain(value.runtime, 'AtriaPackage.runtime'), 'AtriaPackage.runtime');
         if (runtime.experienceContract !== undefined) {
             runtime.experienceContract = assertExperienceDataClosure(runtime.experienceContract, assets);
+            assertInformationClosure(runtime.experienceContract.informationRuntime, out);
             for (const task of runtime.experienceContract.taskRuntime?.tasks ?? []) {
                 for (const variant of task.variants) {
                     for (const [field, type] of [['prompt', 'core.prompt-program'], ['generation', 'core.generation-profile']]) {

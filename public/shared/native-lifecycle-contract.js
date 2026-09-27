@@ -54,6 +54,7 @@ function declaration(value) {
     if (logicalBytes(result) > MAX_BYTES) throw new TypeError('Lifecycle declaration byte limit');
     return result;
 }
+export { declaration as assertLifecycleJson };
 function objectSchema(value) {
     const schema = compileDataSchema(value);
     if (schema.type !== 'object') throw new TypeError('Lifecycle record/args schema must be a closed object');

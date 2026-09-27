@@ -3,6 +3,7 @@ import { createUiState, fieldErrors } from './v2-state.js';
 import { copy, json } from './v2-values.js';
 import { createNativeComponentRegistry } from './native-components.js';
 import { createResponsiveEnvironment } from './environment.js';
+import { displayInformation } from '../../../../shared/native-information-runtime.js';
 
 const TAGS = { text: 'span', badge: 'span', progress: 'progress', button: 'button', details: 'details', form: 'form', input: 'input', textarea: 'textarea', select: 'select', checkbox: 'input', range: 'input', separator: 'hr' };
 const rank = { allowed: 0, advisory: 1, confirm_required: 2, blocked: 3 };
@@ -42,6 +43,7 @@ export function mountUiDocument(definition, options) {
     const receipts = new Map();
     const context = (extra = {}) => {
         const result = { ...state.snapshot(), world: options.presentationContext ? {} : options.worldSession?.getState?.() ?? {}, data: options.data ?? {}, env: environment.get(), selectors: options.selectors?.snapshot?.() ?? {}, ...options.presentationContext, ...extra };
+        result.projection = options.presentationContext ? {} : displayInformation(options.getSnapshot?.());
         const pending = new Set(); const evaluated = new Set();
         const own = { ...result.selectors };
         for (const [key, expression] of Object.entries(definition.selectors)) Object.defineProperty(own, key, { enumerable: true, get() {

@@ -36,7 +36,7 @@ const descriptor = {
 
 describe('A3 Native Game Runtime loader', () => {
     test.each([
-        { schemaVersion: 1, capabilities: [{ id: 'perspective', version: 1, required: true }], dataResources: [] },
+        { schemaVersion: 1, capabilities: [{ id: 'addon', version: 1, required: true }], dataResources: [] },
         { schemaVersion: 1, capabilities: [{ id: 'unknown', version: 1, required: false }], dataResources: [] },
         { schemaVersion: 1, capabilities: [], dataResources: [], script: 'main.js' },
         { schemaVersion: 2, capabilities: [], dataResources: [] },
@@ -51,7 +51,7 @@ describe('A3 Native Game Runtime loader', () => {
     });
 
     test('P0 retains optional reserved capability metadata without granting it', async () => {
-        const experienceContract = { schemaVersion: 1, capabilities: [{ id: 'perspective', version: 1, required: false }], dataResources: [] };
+        const experienceContract = { schemaVersion: 1, capabilities: [{ id: 'addon', version: 1, required: false }], dataResources: [] };
         const fetchImpl = jest.fn(async () => response({ body: {
             descriptor: { ...descriptor, experienceContract }, runtime: { experience: { mode: 'text' } },
         } }));

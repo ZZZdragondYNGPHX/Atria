@@ -1,6 +1,7 @@
 import { assertPresentationRuntime, assertPresentationClosure } from './native-presentation-contract.js';
 import { assertTaskRuntime } from './native-task-contract.js';
 import { assertLifecycleRuntime } from './native-lifecycle-contract.js';
+import { assertInformationRuntime } from './native-information-contract.js';
 
 // Implementation Baseline v1.0 vocabulary. A reserved version is not a Host
 // implementation, permission grant, runtime role, or state namespace.
@@ -10,7 +11,7 @@ export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
     ['local-ui-state', [1], [1]],
     ['player-preference-state', [1], [1]],
     ['package-data', [1], [1]],
-    ['data-projection', [1]],
+    ['data-projection', [1], [1]],
     ['composer', [1], [1]],
     ['action', [2], [2]],
     ['declarative-mutation', [1], [1]],
@@ -31,7 +32,7 @@ export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
     ['asset-pack', [1], [1]],
     ['auxiliary-task', [1], [1]],
     ['addon', [1]],
-    ['perspective', [1]],
+    ['perspective', [1], [1]],
     ['model-task', [1], [1]],
     ['session-application', [1], [1]],
     ['temporal', [1], [1]],
@@ -65,7 +66,7 @@ function list(value, label, validate, key) {
 // action, turn, task and authority bodies require their own strict contracts.
 // No generic config/extension/persistence/exposure payload belongs in this seam.
 export function assertNativeExperienceContract(value) {
-    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime', 'presentationRuntime'], 'ExperienceContract');
+    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime', 'presentationRuntime', 'informationRuntime'], 'ExperienceContract');
     if (value.schemaVersion !== ATRIA_EXPERIENCE_CONTRACT_VERSION) {
         throw new TypeError('ExperienceContract.schemaVersion must be 1');
     }
@@ -96,6 +97,7 @@ export function assertNativeExperienceContract(value) {
     return Object.freeze({ schemaVersion: ATRIA_EXPERIENCE_CONTRACT_VERSION, capabilities, dataResources,
         ...(taskRuntime === undefined ? {} : { taskRuntime }),
         ...(lifecycleRuntime === undefined ? {} : { lifecycleRuntime }),
+        ...(value.informationRuntime === undefined ? {} : { informationRuntime: assertInformationRuntime(value.informationRuntime, lifecycleRuntime, taskRuntime) }),
         ...(value.presentationRuntime === undefined ? {} : { presentationRuntime: assertPresentationRuntime(value.presentationRuntime, lifecycleRuntime, taskRuntime) }) });
 }
 

@@ -1,6 +1,7 @@
+import { projectInformation, queryInformationGraph, actorAvailability } from '../../shared/native-information-runtime.js';
 import { NATIVE_SESSION_LIFECYCLE, emitNativeSessionLifecycle } from './session-lifecycle.js';
 
-const ACTIONS = new Set(['activity.start', 'activity.pause', 'activity.resume', 'activity.settle', 'activity.cancel', 'opening.progress', 'opening.complete', 'experience.ready', 'pump', 'scope.transition', 'app.command', 'clock.advance', 'workflow.transition', 'retention.compact', 'interaction.schedule', 'interaction.cancel', 'workflow.cancel', 'scheduled.cancel', 'app.pin']);
+const ACTIONS = new Set(['information.rollup', 'activity.start', 'activity.pause', 'activity.resume', 'activity.settle', 'activity.cancel', 'opening.progress', 'opening.complete', 'experience.ready', 'pump', 'scope.transition', 'app.command', 'clock.advance', 'workflow.transition', 'retention.compact', 'interaction.schedule', 'interaction.cancel', 'workflow.cancel', 'scheduled.cancel', 'app.pin']);
 const clone = value => structuredClone(value);
 const failure = (code, message = code) => Object.assign(new Error(message), { code });
 const identity = snapshot => [snapshot?.session?.sessionId, snapshot?.revision?.branchId, snapshot?.session?.packageVersionId, snapshot?.session?.entryPointId, snapshot?.session?.packageContentHash].join(':');
@@ -201,6 +202,9 @@ export function createNativeLifecycleClient({ runtime, fetchImpl = (...args) => 
         activity: snapshot ? elapsed : null };
     }
     return Object.freeze({ beginLoad, cancel, pump, getApplicationRecords, getTemporalProjection,
+        getInformationProjection: (viewId, options) => projectInformation(current(scope), viewId, options),
+        queryInformationGraph: (graphId, startId, options) => queryInformationGraph(current(scope), graphId, startId, options),
+        getActorAvailability: actorId => actorAvailability(current(scope), actorId),
         get acceptingSnapshot() { return accepting; },
         get busy() { return Boolean(scope?.busy || scope?.pumping); },
         getSnapshot: () => runtime.snapshot,

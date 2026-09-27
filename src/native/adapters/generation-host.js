@@ -2,6 +2,7 @@ import { GenerationService } from '../model-prompt-runtime/generation-service.js
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { createNativeSessionContextAdapter } from './native-session-context.js';
+import { assertInformationActorAvailable, informationDefinition } from '../../../public/shared/native-information-runtime.js';
 import { immutable, ProviderFailure, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { assertTaskValue } from '../../../public/shared/native-task-contract.js';
@@ -362,7 +363,10 @@ export class NativeGenerationHost {
         if (preview && input.previewRefs) persistence.getRuntimeRoute = async (owner, id) => id === route.runtimeRouteId ? route : this.persistence.getRuntimeRoute(owner, id);
         const resolver = new RouteResolver({ persistence, library: this.library, providers: this.providers, getScopedResource });
         if (preflight) return resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role, requirements });
-        const nativeContext = snapshot ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }) }) : null;
+        if (snapshot) assertInformationActorAvailable(snapshot, taskPlan?.task.id);
+        if (informationDefinition(snapshot) && input.messages?.length) fail('native_information_unscoped_messages');
+        const nativeContext = snapshot ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
+            options: { informationTaskId: taskPlan?.task.id } }) : null;
         const contextProvider = { buildRequestContextPlan: async (request, resolved) => {
             const selected = nativeContext ? await nativeContext.buildRequestContextPlan(request, resolved) : {
                 schemaVersion: 1, requestId: request.requestId, source, items: [], provenance: [],
@@ -372,6 +376,7 @@ export class NativeGenerationHost {
             // append the original user turn again after a tool result.
             const exposed = taskPlan ? selected.items.filter(item => {
                 const context = taskPlan.task.context;
+                if (item.id.startsWith('projection:')) return context.includes('projection');
                 return item.kind === 'context.history' ? context.includes('history')
                     : item.id.startsWith('knowledge:') ? context.includes('knowledge')
                         : item.id === 'state:atri_world_state' && context.includes('world');

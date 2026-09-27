@@ -1,7 +1,7 @@
 import { compileFormula, evaluateFormulaAst } from '../logic/formula.js';
 import { cloneGameUiValue } from './clone.js';
 
-export const UI_ROOTS = Object.freeze(['world', 'ui', 'prefs', 'data', 'selectors', 'env', 'item', 'index', 'event', 'form']);
+export const UI_ROOTS = Object.freeze(['world', 'ui', 'prefs', 'data', 'projection', 'selectors', 'env', 'item', 'index', 'event', 'form']);
 const BLOCKED = new Set(['__proto__', 'prototype', 'constructor']);
 export const copy = cloneGameUiValue;
 export function fields(value, allowed, label) {

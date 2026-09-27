@@ -1,3 +1,5 @@
+import { json, fields } from './experience/ui/v2-values.js';
+
 export const CONTEXT_DERIVED_NAMESPACE = 'atri_context_derived';
 export const CONTEXT_DERIVED_SCHEMA_VERSION = 1;
 export const TURN_DIGEST_SCHEMA_VERSION = 1;
@@ -132,7 +134,21 @@ export function assertNarrativeArtifact(value) {
         coverage: normalizeCoverage(value.coverage),
         createdAt: Number.isFinite(Number(value.createdAt)) ? Number(value.createdAt) : 0,
         status: text(value.status) || 'complete',
+        ...(value.projection === undefined ? {} : { projection: normalizeRollupProjection(value.projection) }),
     });
+}
+
+function normalizeRollupProjection(value) {
+    fields(value, ['schemaVersion', 'viewId', 'sessionId', 'packageVersionId', 'scopeEpochs', 'sources', 'openLoopRefs', 'producer'], 'Rollup projection');
+    if (value.schemaVersion !== 1 || !value.viewId || !value.sessionId || !value.packageVersionId
+        || !value.scopeEpochs || !Array.isArray(value.sources) || !value.sources.length || value.sources.length > 64
+        || !Array.isArray(value.openLoopRefs) || value.openLoopRefs.length > 64
+        || JSON.stringify(value).length > 65536) throw new TypeError('Invalid rollup projection');
+    for (const source of value.sources) {
+        fields(source, ['id', 'sourceId', 'recordId', 'fingerprint'], 'Rollup source');
+        if (['id', 'sourceId', 'recordId', 'fingerprint'].some(key => typeof source[key] !== 'string')) throw new TypeError('Invalid rollup source');
+    }
+    return json(value);
 }
 
 export function validateNarrativeSpine(values = []) {

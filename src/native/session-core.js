@@ -1,4 +1,5 @@
 import { activityNarrative, publishActivities } from './activity-authority.js';
+import { assertInformationClosure } from '../../public/shared/native-information-contract.js';
 import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
 import { validateMessageBlocks } from '../../public/scripts/native/experience/ui/message-templates.js';
 import { assertMessageProjection, assertTurnEnvelope } from '../../public/shared/native-message-contract.js';
@@ -161,6 +162,7 @@ export class SessionCore {
         const installed = await this._packages.open(handle, packageId, packageVersionId);
         if (!installed) throw new NotFoundError('native package version', { packageId, packageVersionId });
         const entryPoint = installed.manifest.entryPoints.find(item => item.entryPointId === entryPointId);
+        assertInformationClosure(installed.manifest.runtime?.experienceContract?.informationRuntime, installed.manifest);
         if (!entryPoint) throw new NotFoundError('native entry point', { entryPointId });
         return { ...installed, entryPoint };
     }
@@ -523,6 +525,9 @@ export class SessionCore {
         }
         const timelineChanges = appendRuntimeTimeline(this, base, commands);
         const { values, deletes } = validateRuntimeStateChanges(handle, sessionId, statePatch, deleteNamespaces);
+        if (base.manifest.runtime?.experienceContract?.informationRuntime && (Object.hasOwn(values, 'atri_context_derived') || deletes.includes('atri_context_derived'))) {
+            throw new TypeError('Information derived state requires typed lifecycle publication');
+        }
         const states = { ...base.states, ...values };
         for (const namespace of deletes) delete states[namespace];
 

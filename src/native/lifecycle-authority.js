@@ -1,4 +1,6 @@
 import { prepareActivity, validateActivities } from './activity-authority.js';
+import { prepareInformationRollup } from './information-authority.js';
+import { validateInformationState } from '../../public/shared/native-information-runtime.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
 import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
 import { fieldErrors } from '../../public/scripts/native/experience/ui/v2-state.js';
@@ -53,6 +55,7 @@ export function validateLifecycle(base) {
     if (new Set(state.receipts.map(item => item.invocationId)).size !== state.receipts.length) throw new TypeError('Duplicate lifecycle receipt');
     for (const receipt of state.receipts) if (!invocation(receipt.invocationId) || receipt.kind !== 'authority') throw new TypeError('Invalid lifecycle receipt');
     validateActivities(base);
+    validateInformationState(base);
     if (typeof state.ready !== 'boolean' || typeof state.opening.completed !== 'boolean') throw new TypeError('Invalid lifecycle barrier');
 }
 
@@ -290,6 +293,8 @@ export async function prepareLifecycle(base, installed, action) {
         if (!record || typeof action.pinned !== 'boolean') throw new TypeError('Invalid App pin'); active(state, record.scopeId); record.pinned = action.pinned;
     } else if (action.kind === 'retention.compact') {
         fields(action, ['kind'], 'Retention compact');
+    } else if (action.kind === 'information.rollup') {
+        prepareInformationRollup(candidate, action);
     } else if (action.kind.startsWith('activity.')) {
         await prepareActivity(candidate, action, { apply, addOutbox, events });
     } else if (action.kind.startsWith('opening.')) {

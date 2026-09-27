@@ -9,6 +9,7 @@ import {
     normalizeContextPolicy,
     normalizeContextSourceRefs,
 } from './context-derived.js';
+import { informationContext } from '../../shared/native-information-runtime.js';
 
 export const CONTEXT_PLAN_SCHEMA_VERSION = 1;
 
@@ -788,7 +789,9 @@ export class SessionContextCompiler {
             coverage.narrativeThroughSequence,
             options.promptContentByMessageId,
         );
-        const knowledge = knowledgeItems(snapshot, target, options.memoryEvidence);
+        const information = informationContext(snapshot, target, options.informationTaskId);
+        const knowledgeTarget = information?.actorId ? { kind: 'actor', id: information.actorId } : target;
+        const knowledge = knowledgeItems(snapshot, knowledgeTarget, options.memoryEvidence);
         const branchScope = currentBranchScope(snapshot);
         const narrative = narrativeItems(derivedState, branchScope);
         const commitments = commitmentItems(derivedState, target, branchScope);
@@ -832,7 +835,7 @@ export class SessionContextCompiler {
             coverage: clone(coverage),
             knowledgePlan: knowledge.plan,
         });
-        for (const provider of this.providers) {
+        for (const provider of information ? [] : this.providers) {
             try {
                 const supplied = await provider.provide(providerContext);
                 for (const rawItem of Array.isArray(supplied) ? supplied : []) {
@@ -848,6 +851,21 @@ export class SessionContextCompiler {
             }
         }
 
+        // Opt-in scoped information replaces implicit raw World/history/memory
+        // reads, including provider contributions. Knowledge keeps its existing
+        // target contract and additionally requires explicit view permission.
+        if (information) {
+            const visibleMessages = new Set((information.projection?.items ?? []).filter(item => item.variantId).map(item => item.recordId));
+            // Existing Memory evidence is reusable only with an explicit grant
+            // and all of its source messages in this exact Perspective. Unknown
+            // provenance and cross-Branch/Revision packets fail closed.
+            const memory = information.memory ? (Array.isArray(options.memoryEvidence) ? options.memoryEvidence.slice(0, 128) : []).filter(item => {
+                const refs = item.sourceRefs ?? item.source?.sourceRefs;
+                return Array.isArray(refs) && refs.length > 0 && refs.length <= 64 && refs.every(ref => ref.kind === 'timeline'
+                    && visibleMessages.has(ref.messageId) && ref.branchId === snapshot.revision.branchId && ref.revisionId === snapshot.revision.revisionId);
+            }) : [];
+            candidates = [...information.items.map(normalizeContextItem), ...(information.knowledge ? knowledge.items : []), ...memoryItems(memory, snapshot, rejectedMemoryIds)];
+        }
         const rejected = [...preRejected];
         candidates = candidates.filter(item => {
             if (visibleTo(item, target)) return true;
