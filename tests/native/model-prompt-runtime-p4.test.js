@@ -1,3 +1,4 @@
+import { skillEntryKey } from '../../public/shared/extension-contract.js';
 import { afterEach, describe, expect, jest, test } from '@jest/globals';
 import express from 'express';
 import supertest from 'supertest';
@@ -386,4 +387,35 @@ describe('P8 host request identity hard cut', () => {
         const result = await f.host.execute(f.h.handle, { ...f.request, routeRef: { scope: 'player', runtimeRouteId: f.routes[0].runtimeRouteId } });
         expect(result.snapshot.runtimeRouteId).toBe(f.routes[0].runtimeRouteId);
     });
+});
+
+
+test('Skill narrative Host budgets always content and runs scoped reference rounds through actual GenerationService', async () => {
+    let rounds = 0;
+    const f = await fixture({ handler: (_req, res) => {
+        rounds++;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ choices: [{ message: rounds === 1 ? { content: 'Intermediate reasoning', tool_calls: [
+            { id: 'ref', type: 'function', function: { name: 'atri_skill_read', arguments: JSON.stringify({ name: 'guide', path: 'ref.md', offset: 2, limit: 1 }) } },
+        ] } : { content: 'Final prose' } }] }));
+    } });
+    const guide = { name: 'guide', scope: { kind: 'global' }, installedHash: 'stable' };
+    const readFile = jest.fn(async ({ path }) => ({ content: path === 'SKILL.md' ? 'Always guidance' : 'Scoped reference', totalLines: 3 }));
+    f.host.skillRepository = handle => { expect(handle).toBe(f.h.handle); return { list: async () => [guide], get: async () => guide, readFile }; };
+    f.host.extensions = { settings: async () => ({ value: { skills: { [skillEntryKey(guide)]: { paths: { narrative: 'always' } } } } }) };
+    const onChunk = jest.fn();
+    const result = await f.host.execute(f.h.handle, f.request, undefined, onChunk);
+    expect(result.response.text).toBe('Final prose');
+    expect(result.skillRounds).toHaveLength(2);
+    expect(result.skillRounds[0].contextPlan.items.find(item => item.id === 'atri.skills').content).toContain('Always guidance');
+    expect(readFile).toHaveBeenLastCalledWith({ name: 'guide', scope: guide.scope, path: 'ref.md', offset: 2, limit: 1 });
+    const messages = f.requests[1].body.messages;
+    expect(messages.at(-1)).toMatchObject({ role: 'tool', tool_call_id: 'ref' });
+    expect(messages.filter(item => item.content === 'Selected task')).toHaveLength(1);
+    expect(onChunk.mock.calls.filter(([value]) => value.text).map(([value]) => value.text)).toEqual(['Final prose']);
+    // Existing compiler/token budget is still authoritative before another send.
+    readFile.mockResolvedValue({ content: 'word '.repeat(6500), totalLines: 1 });
+    await f.persistence.saveModelProfile(f.h.handle, { ...f.model, limits: { contextTokens: 700, outputTokens: 512 } });
+    await expect(f.host.execute(f.h.handle, { ...f.request, requestId: 'budget' })).rejects.toMatchObject({ code: 'generation_context_budget_exceeded' });
+    expect(rounds).toBe(2);
 });

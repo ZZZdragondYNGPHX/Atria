@@ -1,3 +1,5 @@
+import { nativeSessionRuntime } from '../../public/scripts/native/session-runtime.js';
+import { skillEntryKey } from '../../public/shared/extension-contract.js';
 // Case #78 — Multi-skill visible: director sees N skills; sub-agent inherits (ported from e2e).
 //
 // Spec:
@@ -29,6 +31,8 @@ import { describe, test, expect, beforeAll, beforeEach } from '@jest/globals';
 const SKILL_NAMES = ['reef-rotation', 'lantern-protocol', 'salt-mark-history'];
 
 let currentSkillsList = async () => [];
+let invocationSettings = {};
+let fileReads = [];
 
 // Install BEFORE import — the production module captures
 // `Atria.getContext().skills` at module-load time.
@@ -36,6 +40,8 @@ globalThis.Atria = {
     getContext: () => ({
         skills: {
             list: async (...args) => currentSkillsList(...args),
+            invocationSettings: async () => invocationSettings,
+            readFile: async opts => { fileReads.push(opts); return { content: 'ALWAYS BODY' }; },
         },
         translate: (s) => String(s ?? ''),
         addLocaleData: () => {},
@@ -55,6 +61,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
     invalidateSkillInventory();
+    invocationSettings = {}; fileReads = []; nativeSessionRuntime.snapshot = null;
     currentSkillsList = async () => [];
 });
 
@@ -149,4 +156,29 @@ describe('#78 — Multi-skill visible: director sees N skills; sub-agent inherit
         const expected = SKILL_NAMES.filter(n => n !== SKILL_NAMES[1]).sort();
         expect(subWithDeny.map(s => s.name).sort()).toEqual(expected);
     });
+});
+
+
+test('Native Agents select exact Package skills, apply path settings and retain mode/agent denies', async () => {
+    const guide = { name: 'native-guide', scope: { kind: 'package', packageId: 'work', packageVersionId: 'exact' } };
+    const denied = { name: 'blocked', scope: { kind: 'global' } };
+    currentSkillsList = async () => [guide, denied,
+        { name: 'studio-only', scope: { kind: 'global' }, metadata: { 'atria-paths': 'studio' } },
+        { name: 'character-only', scope: { kind: 'character', characterFile: 'a.png' } },
+        { name: 'foreign', scope: { kind: 'package', packageId: 'work', packageVersionId: 'other' } },
+    ];
+    invocationSettings = { skills: {
+        [skillEntryKey(guide)]: { paths: { agents: 'always', narrative: 'off' } },
+        [skillEntryKey(denied)]: { paths: { agents: 'always' } },
+    } };
+    nativeSessionRuntime.snapshot = { session: { packageId: 'work', packageVersionId: 'exact' }, manifest: { skills: ['native-guide'] } };
+    try {
+        const visible = await resolveAgentVisibleSkills({ modeProfile: { skills: { visible: ['*'], deny: ['blocked'] } },
+            agentConfig: { skills: { visible: ['+'], deny: [] } }, runtimeContext: { characterFile: 'a.png' } });
+        expect(visible.map(item => item.name)).toEqual(['native-guide']);
+        expect(buildAvailableSkillsBlock(visible)).toContain('ALWAYS BODY');
+        expect(fileReads).toEqual([{ scope: guide.scope, name: guide.name, path: 'SKILL.md' }]);
+        invocationSettings.skills[skillEntryKey(guide)].paths.agents = 'off';
+        expect(await resolveAgentVisibleSkills({ modeProfile: { skills: { visible: ['*'], deny: ['blocked'] } } })).toEqual([]);
+    } finally { nativeSessionRuntime.snapshot = null; }
 });

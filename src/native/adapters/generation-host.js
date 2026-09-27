@@ -1,3 +1,4 @@
+import { prepareNarrativeSkills, runNarrativeSkillLoop, isNarrativeSkillInvocation } from '../skill-invocation.js';
 import { GenerationService } from '../model-prompt-runtime/generation-service.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
@@ -29,8 +30,8 @@ export function selectNativeRuntimeRoute(routeList, role, routeRef) {
 
 // A host composition over existing P1 storage and Native Session/Studio authorities.
 export class NativeGenerationHost {
-    constructor({ persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort }) {
-        Object.assign(this, { persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort });
+    constructor({ persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions }) {
+        Object.assign(this, { persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions });
     }
 
     async executionResources(handle, route, sessionId, capture = {}) {
@@ -368,6 +369,14 @@ export class NativeGenerationHost {
         if (informationDefinition(snapshot) && input.messages?.length) fail('native_information_unscoped_messages');
         const nativeContext = snapshot ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
             options: { informationTaskId: taskPlan?.task.id } }) : null;
+        const skills = this.skillRepository && isNarrativeSkillInvocation(input.role, taskPlan, runtime)
+            ? await prepareNarrativeSkills({ repository: this.skillRepository(handle), settings: (await this.extensions.settings(handle)).value,
+                context: snapshot ? { packageId: snapshot.session.packageId, packageVersionId: snapshot.session.packageVersionId,
+                    skillIds: snapshot.manifest.skills?.map(item => typeof item === 'string' ? item : item.skillId ?? item.id) }
+                    : { projectId: input.projectId } }) : null;
+        if (skills?.tools.length && input.tools?.length) fail('native_skill_tool_conflict');
+        if (skills?.tools.length && !requirements.includes('generation.tools')) requirements.push('generation.tools');
+        const skillTranscript = [];
         const contextProvider = { buildRequestContextPlan: async (request, resolved) => {
             const selected = nativeContext ? await nativeContext.buildRequestContextPlan(request, resolved) : {
                 schemaVersion: 1, requestId: request.requestId, source, items: [], provenance: [],
@@ -382,13 +391,17 @@ export class NativeGenerationHost {
                     : item.id.startsWith('knowledge:') ? context.includes('knowledge')
                         : item.id === 'state:atri_world_state' && context.includes('world');
             }) : selected.items;
-            const items = exposed.map(item => input.messages?.length && item.kind === 'context.input'
+            const items = exposed.map(item => (input.messages?.length || skillTranscript.length) && item.kind === 'context.input'
                 ? { ...item, kind: 'context.history', content: { role: 'user', content: item.content } } : item);
             // Host-owned task dialogue is supplemental context, never a second fact scan.
             for (const [index, message] of (input.messages || []).entries()) {
                 items.push({ kind: 'context.history', id: 'task-message-' + index, content: message, provenance: [{ source: 'host.task' }] });
             }
-            if (taskPlan?.task.context.includes('input')) items.push({ kind: 'context.input', id: 'task-input', content: JSON.stringify(taskPlan.payload), provenance: [{ source: 'host.task' }] });
+            if (taskPlan?.task.context.includes('input')) items.push({ kind: skillTranscript.length ? 'context.history' : 'context.input', id: 'task-input',
+                content: skillTranscript.length ? { role: 'user', content: JSON.stringify(taskPlan.payload) } : JSON.stringify(taskPlan.payload), provenance: [{ source: 'host.task' }] });
+            items.push(...(skills?.items ?? []));
+            for (const [index, message] of skillTranscript.entries()) items.push({ kind: 'context.history', id: 'skill-message-' + index,
+                content: message, provenance: [{ source: 'host.skills' }] });
             return { ...selected, items };
         } };
         if (input.prompt?.host !== undefined) fail('native_generation_host_readonly');
@@ -418,9 +431,16 @@ export class NativeGenerationHost {
                 } };
             } });
         const request = { requestId: input.requestId, role, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId },
-            handle, signal, onChunk, requirements, tools: input.tools || [], outputContract: input.outputContract ?? null,
+            handle, signal, onChunk: skills?.tools.length ? undefined : onChunk, requirements, tools: skills?.tools.length ? skills.tools : input.tools || [], outputContract: input.outputContract ?? null,
             prompt: { ...input.prompt, host: hostView }, fallbackMode: input.fallbackMode ?? 'disabled', unknownCapabilityOverrides: input.unknownCapabilityOverrides || [] };
-        const result = await service.execute(request, { preview });
+        const result = skills?.tools.length && !preview ? await runNarrativeSkillLoop({
+            execute: () => service.execute(request), skills, transcript: skillTranscript, signal, onChunk,
+            fresh: async () => {
+                const current = snapshot ? (await this.sessionCore.load(handle, input.sessionId)).revision.revisionId
+                    : (await this.studio.getProject(handle, input.projectId)).revision.revision;
+                if (current !== (snapshot ? input.revisionId : input.revision)) fail('native_generation_revision_conflict');
+            },
+        }) : await service.execute(request, { preview });
         return immutable({ ...result, routing: { fallbackUsed: result.snapshot.runtimeRouteId !== route.runtimeRouteId, attempts } });
     }
 }

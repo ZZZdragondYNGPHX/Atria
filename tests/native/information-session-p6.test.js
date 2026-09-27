@@ -120,6 +120,21 @@ describe.each(CONTRACT_HARNESSES)('P6 exact Session information - $name', ({ mak
             slotBindings: { structured: request.routeRef } })).resolves.toMatchObject({ bindings: [{ taskId: 'summarize', variantId: 'default', bindingSlotId: 'structured' }] });
         await expect(host.execute(h.handle, { ...request, revisionId: inactive.revision.revisionId }, undefined, undefined, { preview: true })).rejects.toThrow(/Actor is unavailable/);
     });
+    test('narrative Skill context cannot implicitly expose private P6 facts or enter unrelated Tasks', async () => {
+        const { host, request } = await hostFixture();
+        const skill = { name: 'procedural', scope: { kind: 'global' }, metadata: { 'atria-paths': 'narrative' } };
+        host.skillRepository = () => ({ list: async () => [skill] });
+        host.extensions = { settings: async () => ({ value: { skills: {} } }) };
+        const preview = await host.execute(h.handle, request, undefined, undefined, { preview: true });
+        const originalItems = preview.snapshot.contextPlan.items.filter(item => item.id !== 'atri.skills');
+        expect(originalItems.every(item => item.id.startsWith('projection:'))).toBe(true);
+        expect(preview.snapshot.contextPlan.items.find(item => item.id === 'atri.skills').content).toContain('procedural');
+        expect(JSON.stringify(preview.snapshot.contextPlan.items)).not.toContain('Opening');
+        const task = base.manifest.runtime.experienceContract.taskRuntime.tasks[0];
+        const taskPreview = await host.execute(h.handle, request, undefined, undefined, { preview: true,
+            taskPlan: { task, variant: task.variants[0], slot: base.manifest.runtime.experienceContract.taskRuntime.slots[0], payload: {} } });
+        expect(taskPreview.snapshot.contextPlan.items.some(item => item.id === 'atri.skills')).toBe(false);
+    });
     test('exact Package Task preview has its own projection grant and explicit input', async () => {
         const { host, request } = await hostFixture();
         const task = base.manifest.runtime.experienceContract.taskRuntime.tasks[0];

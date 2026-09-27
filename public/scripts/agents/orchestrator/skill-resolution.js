@@ -1,3 +1,6 @@
+import { nativeSessionRuntime } from '../../native/session-runtime.js';
+import { resolveSkillInvocation, loadAlwaysSkills, skillInstructions } from '../../../shared/skill-invocation.js';
+
 /**
  * Skill-resolution helpers for orchestrator runtimes.
  *
@@ -103,6 +106,13 @@ export function ensureSkillsFieldShape(obj, { isAgent = false } = {}) {
  * @returns {Promise<Array>} visible skills (SkillIndexEntry shape)
  */
 export async function resolveAgentVisibleSkills({ modeProfile, agentConfig, runtimeContext }) {
+    if (nativeSessionRuntime.active) {
+        const snapshot = nativeSessionRuntime.snapshot;
+        return resolveNativeAgentVisibleSkills({ modeProfile, agentConfig, nativeContext: {
+            packageId: snapshot.session.packageId, packageVersionId: snapshot.session.packageVersionId,
+            skillIds: snapshot.manifest.skills?.map(item => typeof item === 'string' ? item : item.skillId ?? item.id),
+        } });
+    }
     const now = Date.now();
     if (!cachedInventory || (now - cacheStamp) > CACHE_TTL_MS) {
         try {
@@ -116,78 +126,11 @@ export async function resolveAgentVisibleSkills({ modeProfile, agentConfig, runt
     }
     const inventoryRaw = Array.isArray(cachedInventory) ? cachedInventory : [];
 
-    // Physical scope merge (later-wins). Building a Map keyed by name gives
-    // O(N) merge and natural collision handling — a character-scope skill
-    // with the same name as a preset-scope one supersedes it for this turn.
-    //
-    // Precedence: character > orch-preset > oai-preset > global.
-    // orch-preset overrides oai-preset because an orchestration preset is
-    // the more specialized binding for an orchestration run — skills
-    // deliberately attached to a specific recipe should win over generic
-    // preset-wide skills.
-    const merged = new Map();
-    for (const e of inventoryRaw) {
-        if (e?.scope?.kind === 'global') merged.set(e.name, e);
-    }
-    if (runtimeContext?.presetName) {
-        for (const e of inventoryRaw) {
-            if (e?.scope?.kind === 'preset'
-                && e.scope.name === runtimeContext.presetName) {
-                merged.set(e.name, e);
-            }
-        }
-    }
-    if (runtimeContext?.orchPreset) {
-        for (const e of inventoryRaw) {
-            if (e?.scope?.kind === 'orch-preset'
-                && e.scope.mode === runtimeContext.orchPreset.mode
-                && e.scope.name === runtimeContext.orchPreset.name) {
-                merged.set(e.name, e);
-            }
-        }
-    }
-    if (runtimeContext?.characterFile) {
-        for (const e of inventoryRaw) {
-            if (e?.scope?.kind === 'character'
-                && e.scope.characterFile === runtimeContext.characterFile) {
-                merged.set(e.name, e);
-            }
-        }
-    }
-    const inventory = Array.from(merged.values());
-
-    // Normalize the mode profile so the lookups below always see arrays.
-    // We mutate the input here rather than working on a clone — sanitizer
-    // shape is idempotent and callers benefit from the canonical fields.
     ensureSkillsFieldShape(modeProfile);
-    const modeVisible = Array.isArray(modeProfile?.skills?.visible)
-        ? modeProfile.skills.visible : ['*'];
-    const modeDeny = Array.isArray(modeProfile?.skills?.deny)
-        ? modeProfile.skills.deny : [];
-    const agentVisible = Array.isArray(agentConfig?.skills?.visible)
-        ? agentConfig.skills.visible : null;
-    const agentDeny = Array.isArray(agentConfig?.skills?.deny)
-        ? agentConfig.skills.deny : [];
-
-    let effectiveVisible;
-    if (!agentVisible || agentVisible.length === 0) {
-        effectiveVisible = modeVisible;
-    } else if (agentVisible[0] === '+') {
-        effectiveVisible = [...modeVisible, ...agentVisible.slice(1)];
-    } else {
-        effectiveVisible = agentVisible;
-    }
-    const effectiveDeny = [...new Set([...modeDeny, ...agentDeny])];
-
-    const visibleSet = new Set(effectiveVisible);
-    const denySet = new Set(effectiveDeny);
-    const wildcard = visibleSet.has('*');
-
-    return inventory.filter(s =>
-        s && typeof s.name === 'string'
-        && (wildcard || visibleSet.has(s.name))
-        && !denySet.has(s.name),
-    );
+    return loadAlwaysSkills(resolveSkillInvocation(inventoryRaw, {
+        context: runtimeContext, legacy: true, path: 'agents', modeProfile, agentConfig,
+        settings: await skillsApi.invocationSettings?.(),
+    }), opts => skillsApi.readFile(opts));
 }
 
 
@@ -216,59 +159,11 @@ export async function resolveNativeAgentVisibleSkills({ modeProfile, agentConfig
         }
     }
     const raw = Array.isArray(cachedInventory) ? cachedInventory : [];
-    const merged = new Map();
-
-    for (const entry of raw) {
-        if (entry?.scope?.kind === 'global') merged.set(entry.name, entry);
-    }
-    if (nativeContext.projectId) {
-        for (const entry of raw) {
-            if (
-                entry?.scope?.kind === 'project'
-                && entry.scope.projectId === nativeContext.projectId
-            ) {
-                merged.set(entry.name, entry);
-            }
-        }
-    }
-    if (nativeContext.packageId && nativeContext.packageVersionId) {
-        for (const entry of raw) {
-            if (
-                entry?.scope?.kind === 'package'
-                && entry.scope.packageId === nativeContext.packageId
-                && entry.scope.packageVersionId === nativeContext.packageVersionId
-            ) {
-                merged.set(entry.name, entry);
-            }
-        }
-    }
-
     ensureSkillsFieldShape(modeProfile);
-    const modeVisible = Array.isArray(modeProfile?.skills?.visible)
-        ? modeProfile.skills.visible : ['*'];
-    const modeDeny = Array.isArray(modeProfile?.skills?.deny)
-        ? modeProfile.skills.deny : [];
-    const agentVisible = Array.isArray(agentConfig?.skills?.visible)
-        ? agentConfig.skills.visible : null;
-    const agentDeny = Array.isArray(agentConfig?.skills?.deny)
-        ? agentConfig.skills.deny : [];
-
-    const effectiveVisible = !agentVisible || agentVisible.length === 0
-        ? modeVisible
-        : (agentVisible[0] === '+' ? [...modeVisible, ...agentVisible.slice(1)] : agentVisible);
-    const visibleSet = new Set(effectiveVisible);
-    const denySet = new Set([...modeDeny, ...agentDeny]);
-    const declared = Array.isArray(nativeContext.skillIds) && nativeContext.skillIds.length
-        ? new Set(nativeContext.skillIds)
-        : null;
-
-    return [...merged.values()].filter(entry => {
-        if (!entry || typeof entry.name !== 'string') return false;
-        if (!visibleSet.has('*') && !visibleSet.has(entry.name)) return false;
-        if (denySet.has(entry.name)) return false;
-        if (!declared) return true;
-        return entry.scope?.kind === 'global' || declared.has(entry.name);
-    });
+    return loadAlwaysSkills(resolveSkillInvocation(raw, {
+        context: nativeContext, path: 'agents', modeProfile, agentConfig,
+        settings: await skillsApi.invocationSettings?.(),
+    }), opts => skillsApi.readFile(opts));
 }
 
 /**
@@ -292,6 +187,7 @@ export function buildAvailableSkillsBlock(visibleSkills) {
         '<available_skills>',
         lines,
         '</available_skills>',
+        skillInstructions(visibleSkills),
         '',
         '(Use skill_read to consult specific content; skill_search to grep within a skill.)',
     ].join('\n');

@@ -1,4 +1,5 @@
 /** @jest-environment jsdom */
+import { skillEntryKey } from '../../public/shared/extension-contract.js';
 
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
 
@@ -149,6 +150,7 @@ describe('A8 Native Studio Project Agent client', () => {
                     preflight: { requiredPermissions: [] },
                 });
             }
+            if (path === '/api/native/extensions/settings') return response({ value: { skills: {} } });
             if (path === '/api/skills?scope=all') {
                 return response([{
                     name: 'project-guidance',
@@ -249,4 +251,50 @@ describe('A8 Native Studio Project Agent client', () => {
         expect(calls.some(item => item.type === 'fetch' && /workspaces\/execute|\/commit/.test(item.path))).toBe(false);
         controller.dispose();
     });
+    test('Studio applies path preferences and reads scoped supporting files through the actual tool loop', async () => {
+        const original = globalThis.fetch;
+        const always = { name: 'always-guide', scope: { kind: 'project', projectId }, description: 'Always instructions' };
+        const demand = { name: 'reference-guide', scope: { kind: 'global' }, description: 'Reference instructions' };
+        const hidden = { name: 'agents-only', scope: { kind: 'global' }, metadata: { 'atria-paths': 'agents' } };
+        let round = 0; const prompts = []; const reads = [];
+        globalThis.fetch = jest.fn(async (url, options = {}) => {
+            const path = String(url);
+            if (path === '/api/skills?scope=all') return response([always, demand, hidden]);
+            if (path === '/api/native/extensions/settings') return response({ value: { skills: {
+                [skillEntryKey(always)]: { paths: { studio: 'always', narrative: 'off' } },
+            } } });
+            if (path.startsWith('/api/skills/')) {
+                reads.push(path);
+                return response({ content: path.includes('ref.md') ? 'Supporting reference' : 'LOADED ALWAYS', totalLines: 205 });
+            }
+            if (path === '/api/native/generation/execute') {
+                prompts.push(JSON.parse(options.body)); round++;
+                return response({ response: round === 1 ? { text: '', toolCalls: [{ id: 'r', name: 'atri_agent_read_skill', args: { name: demand.name, path: 'ref.md', offset: 201, limit: 5 } }] }
+                    : { assistantText: 'Done', toolCalls: [] }, snapshot: {} });
+            }
+            return original(url, options);
+        });
+        await runNativeStudioAgentTask({ projectId, taskId });
+        expect(prompts[0].messages[0].content).toContain('LOADED ALWAYS');
+        expect(prompts[0].messages[0].content).toContain('reference-guide');
+        expect(prompts[0].messages[0].content).not.toContain('agents-only');
+        expect(reads).toHaveLength(2);
+        expect(reads[1]).toContain('global/reference-guide/file?path=ref.md&offset=201&limit=5');
+        expect(prompts[1].messages.at(-1).content).toContain('Supporting reference');
+    });
+
+    test('Studio off paths cannot be read by naming them directly', async () => {
+        const original = globalThis.fetch;
+        globalThis.fetch = jest.fn(async (url, options = {}) => {
+            if (String(url) === '/api/native/extensions/settings') return response({ value: { skills: {
+                [skillEntryKey({ name: 'project-guidance', scope: { kind: 'project', projectId } })]: { paths: { agents: 'always' } },
+            } } });
+            if (String(url) === '/api/native/generation/execute') return response({ response: { toolCalls: [
+                { id: 'r', name: 'atri_agent_read_skill', args: { name: 'project-guidance' } },
+            ] }, snapshot: {} });
+            return original(url, options);
+        });
+        await expect(runNativeStudioAgentTask({ projectId, taskId })).rejects.toThrow('not available');
+    });
+
 });

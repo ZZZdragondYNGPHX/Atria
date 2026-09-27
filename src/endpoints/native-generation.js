@@ -1,3 +1,5 @@
+import { createSkillRepository } from '../skills/repository.js';
+import { ExtensionsStore } from '../native/extensions-store.js';
 import { getVersionedModelPromptResourceIdentity, VERSIONED_MODEL_PROMPT_RESOURCE_TYPES } from '../native/model-prompt-runtime/resources.js';
 import { RouteResolver } from '../native/model-prompt-runtime/route-resolver.js';
 import { readPromptControls, validatePromptOverrides } from '../native/model-prompt-runtime/prompt-controls.js';
@@ -25,6 +27,8 @@ function services() {
         persistence: new NativeModelPromptPersistence({ engine: getStorageEngine() }),
         library: new VersionedJsonResourceHandler({ engine: getStorageEngine() }),
         sessionCore: core, packageInstaller, studio, agent,
+        skillRepository: handle => createSkillRepository(getUserDirectories(handle).root),
+        extensions: new ExtensionsStore({ engine: getStorageEngine() }),
         providers: {
             'provider.openai-compatible': createHttpGenerationProvider(),
             'provider.raw-text': createHttpGenerationProvider({ format: 'raw-text' }),

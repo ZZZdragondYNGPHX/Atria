@@ -1,3 +1,4 @@
+import { resolveSkillInvocation, loadAlwaysSkills, skillInstructions, boundedSkillReadOptions, boundSkillFile } from '../../shared/skill-invocation.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { translateShellText as t } from '../atria-shell/localization.js';
 import { executeNativeGeneration } from './generation-client.js';
@@ -27,42 +28,26 @@ async function listNativeSkills(projectId, packageRef = null) {
     if (!response.ok) return [];
     const payload = await response.json();
     const entries = Array.isArray(payload) ? payload : (payload?.entries || []);
-    return entries.filter(entry => {
-        if (entry?.scope?.kind === 'global') return true;
-        if (entry?.scope?.kind === 'project') return entry.scope.projectId === projectId;
-        if (entry?.scope?.kind === 'package' && packageRef?.packageVersionId) {
-            return entry.scope.packageId === packageRef.packageId
-                && entry.scope.packageVersionId === packageRef.packageVersionId;
-        }
-        return false;
-    });
+    const settingsResponse = await fetch('/api/native/extensions/settings', { headers: requestHeaders() });
+    if (!settingsResponse.ok) throw new Error('Skill settings unavailable');
+    const settings = (await settingsResponse.json()).value;
+    const resolved = resolveSkillInvocation(entries, { context: { projectId, ...packageRef }, settings, path: 'studio' });
+    return loadAlwaysSkills(resolved, opts => readNativeSkill(resolved, opts.name, { ...opts, full: true }));
 }
 
-function resolvedSkillInventory(entries) {
-    const score = entry => (
-        entry?.scope?.kind === 'package' ? 3
-            : entry?.scope?.kind === 'project' ? 2
-                : entry?.scope?.kind === 'global' ? 1 : 0
-    );
-    const merged = new Map();
-    for (const entry of entries) {
-        const current = merged.get(entry.name);
-        if (!current || score(entry) >= score(current)) merged.set(entry.name, entry);
-    }
-    return [...merged.values()].sort((left, right) => String(left.name).localeCompare(String(right.name)));
-}
-
-async function readNativeSkill(entries, name, { path = 'SKILL.md', offset = 1, limit = 200, list = false } = {}) {
-    const entry = resolvedSkillInventory(entries).find(item => item.name === name);
+async function readNativeSkill(entries, name, { path = 'SKILL.md', offset = 1, limit = 200, list = false, full = false } = {}) {
+    if (!list && !full) boundedSkillReadOptions({ path, offset, limit });
+    const entry = entries.find(item => item.name === name);
     if (!entry) throw new Error('Native Skill is not available in the current project scope: ' + name);
     const encodedScope = scopePath(entry.scope);
     if (!encodedScope) throw new Error('Native Skill does not use an A5 Native scope');
     const response = await fetch(
-        `/api/skills/${encodeURIComponent(encodedScope)}/${encodeURIComponent(entry.name)}/${list ? 'files' : 'file?' + new URLSearchParams({ path, offset, limit })}`,
+        `/api/skills/${encodeURIComponent(encodedScope)}/${encodeURIComponent(entry.name)}/${list ? 'files' : 'file?' + new URLSearchParams(full ? { path } : { path, offset, limit })}`,
         { headers: requestHeaders() },
     );
     if (!response.ok) throw new Error('Native Skill read failed (' + response.status + ')');
-    return response.json();
+    const result = await response.json();
+    return list ? result : boundSkillFile(result);
 }
 
 function skillTools() {
@@ -93,7 +78,7 @@ function skillTools() {
 }
 
 function summarizeSkills(entries) {
-    return resolvedSkillInventory(entries).map(entry => ({
+    return entries.map(entry => ({
         name: entry.name,
         scope: entry.scope,
         description: entry.description || entry.frontmatter?.description || '',
@@ -156,6 +141,7 @@ export function buildNativeProjectAgentSystemPrompt(context, skillEntries = []) 
         '',
         'Resolved Native Skill inventory (read with atri_agent_read_skill only when useful):',
         JSON.stringify(skills),
+        skillInstructions(skillEntries),
     ].join('\n');
 }
 
@@ -199,7 +185,7 @@ async function executeModelTool(projectId, taskId, call, skillEntries) {
         return { skills: summarizeSkills(skillEntries) };
     }
     if (call.name === 'atri_agent_read_skill') {
-        return readNativeSkill(skillEntries, String(call.args?.name || ''), call.args);
+        return readNativeSkill(skillEntries, String(call.args?.name || ''), boundedSkillReadOptions(call.args));
     }
     if (call.name === 'atri_agent_skill_files') return readNativeSkill(skillEntries, String(call.args?.name || ''), { list: true });
     return nativeStudioClient.executeAgentTool(projectId, taskId, {
@@ -227,7 +213,7 @@ export async function runNativeStudioAgentTask({
             packageVersionId: preflight.packageVersion.packageVersionId,
         }
         : null;
-    const skillEntries = await listNativeSkills(projectId, packageRef).catch(() => []);
+    const skillEntries = await listNativeSkills(projectId, packageRef);
     const transcript = [...messages];
     if (!transcript.length) transcript.push({ role: 'user', content: context.task.intent });
 

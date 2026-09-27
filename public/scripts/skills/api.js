@@ -85,6 +85,9 @@ function scopeToUrl(scope) {
 }
 
 export const skillsApi = {
+    async invocationSettings() {
+        return (await jsonFetch('/api/native/extensions/settings')).value;
+    },
     async listOwners() {
         const [projects, works] = await Promise.all([
             jsonFetch('/api/native/product/projects'), jsonFetch('/api/native/product/works'),
