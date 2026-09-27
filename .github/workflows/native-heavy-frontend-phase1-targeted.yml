@@ -1,0 +1,27 @@
+name: Native Heavy Frontend Phase 1 Targeted Check
+
+on:
+  push:
+    branches:
+      - package/native-heavy-frontend-reference
+    paths:
+      - 'packages/native-heavy-frontend-reference/project/**'
+      - 'packages/native-heavy-frontend-reference/verify-phase1.mjs'
+      - '.github/workflows/native-heavy-frontend-phase1-targeted.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  phase1-targeted:
+    name: Phase 1 Validate and Preview State
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run targeted Phase 1 validation
+        run: node packages/native-heavy-frontend-reference/verify-phase1.mjs
