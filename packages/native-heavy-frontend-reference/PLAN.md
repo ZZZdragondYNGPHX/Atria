@@ -1,6 +1,6 @@
 # Atria Native Heavy-Frontend Reference Package 企划书
 
-> 状态：Discussion Draft v0.5  
+> 状态：Discussion Draft v0.6  
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
@@ -163,8 +163,8 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 2. **World / Session App / Event / UI / Preference 状态切分 — 当前**
 3. **Model Task 与 Turn 编排 — 已冻结**
 4. **Lifecycle / 时间 / 日程 / Morning-Night 工作流 — 已冻结**
-5. **宗教 / 教会模拟经营的数据模型、结算与剧情耦合 — 当前**
-6. Knowledge / Prompt / Memory 分层
+5. **宗教 / 教会模拟经营的数据模型、结算与剧情耦合 — 已冻结**
+6. **Knowledge / Prompt / Memory 分层 — 当前**
 7. Hybrid UI 信息架构
 8. Message Projection / 选项 / Conversation
 9. 纯 Native 文本演出 / GAL 表达（v1 无外部媒体资产；立绘延期）
@@ -1011,21 +1011,288 @@ Skip 前必须检查：
 - due interaction；
 - 必须处理的经营 /剧情节点。
 
-## 12. Round 5 — 宗教 / 教会模拟经营待讨论
+## 12. Round 5 — 宗教 / 教会模拟经营冻结方案
+
+Round 5 已获得用户认可，以下作为经营层设计基线。
+
+### 12.1 定位：剧情驱动的轻量经营层
+
+教会系统不是第二主游戏，也不是复杂模拟器。
+
+其核心职责：
+
+- 提供长期目标；
+- 提供资源压力与成长反馈；
+- 提供角色岗位与项目安排；
+- 提供地区 / 设施 / 教令的长期选择；
+- 制造 Opportunity 与 Event 条件；
+- 把玩家长期经营选择反馈到 AI 剧情。
+
+它不负责：
+
+- 替代主 Timeline；
+- 每回合输出经营正文；
+- 让玩家持续维护大量 KPI；
+- 让 LLM 决定确定性数值；
+- 通过经营失败轻易终止整个游戏。
+
+### 12.2 核心长期指标
+
+v1 只保留四个核心教会指标：
+
+- `money`；
+- `followers`；
+- `reputation`；
+- `level`。
+
+前三者为可变资源，`level` 为长期发展阶段。
+
+不默认增加 appeal、faith power、influence、morale 等额外核心资源；可由现有数据派生的显示指标使用 Projection。
+
+### 12.3 Followers v1 只保存总量
+
+第一版 `followers` 只保存总体规模，不按性别、职业、年龄、地区、阶层等拆分群体。
+
+真正重要的单个信徒应成为 NPC / Event participant，而不是信徒统计表中的一行。
+
+若后续真实剧情需要地区势力或受众差异，再单独讨论新的有限结构，不提前做复杂分群。
+
+### 12.4 Church Level 不自动升级
+
+达到数值阈值只意味着“获得升级资格”，不直接自动改变 `church.level`。
+
+升级可以要求：
+
+- followers；
+- reputation；
+- facilities；
+- 关键剧情 milestone；
+- 其他明确前置条件。
+
+达到资格后产生 Promotion Available，玩家确认并完成必要剧情 / 操作后才正式升级。
+
+这样 Church Level 的关键成长节点可以自然成为重要 Event。
+
+### 12.5 Facilities
+
+设施是轻量长期系统，主要负责：
+
+1. **解锁**
+   - 新功能；
+   - 新岗位；
+   - 新地区 / 活动；
+   - 新 Event 条件；
+   - 新人物容量 / 使用场景。
+
+2. **有限 modifier**
+   - 收益；
+   - 容量；
+   - Schedule；
+   - Project 效率；
+   - Opportunity eligibility。
+
+不实现水电、卫生、耐久、清洁度等无明确剧情价值的细粒度模拟。
+
+### 12.6 Decree 是 v1 核心经营功能
+
+教令正式进入 v1 核心系统。
+
+教令不是单纯数值 Buff，而是长期方向选择。
+
+一个 Decree 可以同时影响：
+
+- deterministic modifier；
+- Event eligibility；
+- Opportunity；
+- 相关 Narrator Context；
+- 社会反馈 / reputation 风险；
+- 后续可选经营路线。
+
+Narrator 只看到与当前剧情相关的已生效教令，不把整棵 Decree Tree 注入 Prompt。
+
+### 12.7 Position 与 Assignment 分离
+
+#### Position
+
+长期人物身份 / 职位，属于 World State，例如：
+
+- 教主；
+- 财务负责人；
+- 宣传负责人；
+- 后勤负责人。
+
+用于：
+
+- 身份；
+- 权限；
+- modifier；
+- Event eligibility；
+- 角色职责。
+
+#### Assignment
+
+当天具体工作，属于 Session App Schedule，例如：
+
+- 10:00–14:00 在商业区宣传；
+- 下午处理财务；
+- 当晚接待访客。
+
+长期岗位不等于当天必须执行对应工作。
+
+### 12.8 Projects
+
+Project 是经营层的主要中型玩法对象，属于 Session App / Church Operations。
+
+典型类型：
+
+- 宣传活动；
+- 募资计划；
+- 庆典；
+- 设施扩建；
+- 地区开拓；
+- 合作企划。
+
+Project 可以跨日，并至少表达：
+
+- status；
+- duration / start / due；
+- assigned actors；
+- cost；
+- requirements；
+- progress / milestone。
+
+普通推进确定性处理；重要 milestone 可以触发 Event。
+
+### 12.9 Opportunity 统一业务入口
+
+Sponsor / Visitor / Request / Cooperation / Special Offer / Problem 等统一抽象为 Opportunity。
+
+Opportunity 首先是 Session App 业务对象。
+
+根据重要度分两条路径：
+
+- **普通 Opportunity**
+  - UI 查看；
+  - 接受 / 拒绝；
+  - typed Command；
+  - deterministic result。
+
+- **剧情级 Opportunity**
+  - convert / promote to Event；
+  - 进入 Narrator 主剧情。
+
+这样不会让每一封赞助请求都强制生成大段正文。
+
+### 12.10 即时 + 日结混合结算
+
+#### 即时结算
+
+适用于明确即时交易：
+
+- purchase；
+- facility upgrade；
+- pay cost；
+- collect sponsor；
+- consume item；
+- 其他确定性即时操作。
+
+#### Day Settlement
+
+适用于后台经营：
+
+- 日常宣传；
+- background assignment；
+- 常规经营收益；
+- 跨日 Project 推进；
+- NPC 不在玩家面前发生的普通工作。
+
+避免每个小时或每个 Schedule 项都频繁跳小额资源变化。
+
+### 12.11 普通经营数值 deterministic
+
+经营收益、花费和资源变化由规则系统计算。
+
+可以使用：
+
+- Actor 能力；
+-地区 modifier；
+- Facility；
+- Decree；
+- Position；
+- Project；
+- 其他 Package Data rule。
+
+模型不能决定精确 money/followers/reputation 数值。
+
+AI 可以决定发生了什么有剧情价值的情况；Runtime 决定可提交的精确数值。
+
+### 12.12 软失败优先
+
+因为经营只是次级玩法，v1 默认采用可恢复的软失败：
+
+- 收益下降；
+- Opportunity 消失；
+- Project 延期；
+- reputation 小幅降低；
+- Actor 疲劳；
+- 产生麻烦 Event。
+
+不因普通经营运气或数值不足轻易造成：
+
+- Game Over；
+- 教会永久倒闭；
+- 核心人物永久离队；
+- 不可逆主线终止。
+
+重大不可逆失败必须由明确的重要剧情节点与玩家选择产生。
+
+### 12.13 经营系统的最高设计指标
+
+评估一个经营机制是否值得存在时，优先问：
+
+> 它能否给 AI 剧情提供新的、长期有意义的条件？
+
+高价值机制示例：
+
+- Facility → 解锁空间 / Event；
+- Decree → 改变长期剧情方向；
+- Money → 制造取舍；
+- Followers → 反馈组织规模；
+- Reputation → 改变社会反馈；
+- Project → 制造长期事件节点。
+
+如果一个数值只用于叠加小幅百分比，但几乎不影响剧情，则优先删除。
+
+### 12.14 教会 Dashboard 保持克制
+
+教会主界面只突出少量高价值信息：
+
+- Church Level；
+- Money；
+- Followers；
+- Reputation；
+- Today’s Assignments；
+- Active Projects；
+- Pending Opportunities。
+
+Facilities、Decrees 等进入二级页面。
+
+Play 的视觉与交互中心仍然是当前故事、人物和 Event，而不是财务 Dashboard。
+
+## 13. Round 6 — Knowledge / Prompt / Memory 分层待讨论
 
 本轮尚未冻结。
 
 需要决定：
 
-- 教会经营的最小核心循环到底是什么；
-- money / followers / reputation / church level 是否已经足够，还是需要更多核心资源；
-- 设施、岗位、教令、项目分别承担什么玩法职责；
-- NPC / 角色“上班”是纯 Schedule，还是需要岗位与能力修正；
-- 经营收益是每天统一结算，还是活动完成即时结算；
-- 教会等级如何升级，是否与剧情 milestone 联动；
-- 信徒是否只用一个数字，还是需要群体 / 类型结构；
-- 赞助、访客、委托、地区经营等是常规业务对象还是 Event Proposal；
-- 如何保证经营层提供长期目标但不变成正文主角；
-- 哪些经营结果应该触发主剧情 Event；
-- 经营失败有没有真正负反馈，以及负反馈应该多重；
-- 第一版到底做“轻量经营骨架”还是直接实现完整经营树。
+- 哪些内容属于 Package Data，哪些属于 Knowledge；
+- 角色设定、世界规则、写作规则分别放在哪里；
+- Narrator 的 Prompt Program / Module 应如何拆；
+- Knowledge 如何按角色、地点、Event、教会状态条件激活；
+- 教令 / Facility / Opportunity 等经营事实进入 Prompt 的边界；
+- Memory 与 Knowledge 的职责边界；
+- 是否需要作者自建“剧情摘要” Knowledge（当前倾向否）；
+- Social / World / Planner 与 Narrator 是否共享同一 Prompt Program；
+- 如何避免旧卡那种一个 World Info 同时承担 lore、任务路由和输出格式控制；
+- 哪些规则必须放 system/module，哪些应作为可检索 Knowledge；
+- 如何控制 Context budget，避免重型资产因为长期游玩把 Prompt 撑爆。
