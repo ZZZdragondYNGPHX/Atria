@@ -6,7 +6,8 @@ import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
 export function shouldStageRestoreArchive(uploadPath, { platform = process.platform } = {}) {
-    const normalized = path.resolve(String(uploadPath || '')).replaceAll('\\', '/');
+    const paths = platform === 'win32' ? path.win32 : path.posix;
+    const normalized = paths.resolve(String(uploadPath || '')).replaceAll('\\', '/');
     return platform === 'android'
         || normalized.startsWith('/storage/emulated/')
         || normalized.startsWith('/sdcard/');

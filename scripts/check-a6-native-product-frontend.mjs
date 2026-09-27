@@ -35,7 +35,7 @@ requirePattern(
 );
 requirePattern(
     'public/scripts/native/play-product.js',
-    /native\.sendTextarea\.value[\s\S]*sendButton\.click\(\)/,
+    /getContext\?\.\(\)\?\.generate[\s\S]*native\.sendTextarea\.value[\s\S]*await generate\('normal'\)/,
     'A6 Composer must bridge the existing Native generation boundary',
 );
 rejectPattern(

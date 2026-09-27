@@ -90,6 +90,19 @@ describe.each(CONTRACT_HARNESSES.filter(({ name }) => ['FsEngine', 'SqliteEngine
         } finally { await h.cleanup(); }
     });
 });
+test.each([false, true])('Native extension failure correlates install/update=%s without logging source or credentials', async update => {
+    const incidents = [];
+    const app = express(); app.use(express.json()); app.use((req, _res, next) => { req.user = { profile: { handle: 'fixture' } }; next(); });
+    app.use(createNativeExtensionsRouter({ store: () => ({ get: async () => ({ kind: 'external', sourceUrl: 'https://example.test/repo' }) }),
+        install: async (_url, { onStage }) => { onStage('manifest'); throw new Error('secret remote details'); },
+        captureIncident: incident => incidents.push(incident) }));
+    const response = await request(app).post('/install').send({ url: 'https://example.test/repo', ...(update ? { id: 'existing' } : {}) }).expect(400);
+    expect(response.headers['x-atria-operation-id']).toBeTruthy();
+    expect(response.headers['x-atria-failure-stage']).toBe('manifest');
+    expect(incidents).toEqual([expect.objectContaining({ type: update ? 'extension_update_failure' : 'extension_install_failure', stage: 'manifest', correlation: { operationId: response.headers['x-atria-operation-id'] } })]);
+    expect(JSON.stringify(incidents)).not.toMatch(/secret remote details|example\.test/);
+});
+
 test('repository install imports inert files, defaults disabled and cleans its temporary root', async () => {
     let root;
     const result = await readExternalExtension('https://example.com/plugin.git', { clone: async (_url, dir) => {

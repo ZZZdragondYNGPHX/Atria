@@ -56,9 +56,8 @@ describe('immersive composer and narrative integration', () => {
         composer.setEnabled(true);
 
         const extensionButton = document.getElementById('atriaImmersiveExtensions');
-        expect(extensionButton).not.toBeNull();
-        expect(extensionButton.hidden).toBe(true);
-        expect(extensionButton.querySelector('.fa-magic-wand-sparkles')).not.toBeNull();
+        // Extensions has one shell entry, not a second immersive manager.
+        expect(extensionButton).toBeNull();
 
         document.getElementById('atriaImmersiveSend').click();
         expect(actions.send).toHaveBeenCalledTimes(1);

@@ -83,6 +83,11 @@ describe('SqliteEngine.closeHandle', () => {
         // `src/sync/sqlite-snapshot.js` clears them; mirror that here so
         // the test exercises the post-reconcile filesystem state, not a
         // half-reconciled hybrid.
+        // Windows cannot unlink an open SQLite WAL or replace the open DB.
+        // Exercise the production close-before-swap order there; a no-op
+        // closeHandle still fails this test at unlink/rename. POSIX additionally
+        // demonstrates the stale-inode read before releasing the handle below.
+        if (process.platform === 'win32') engine.closeHandle(handle);
         for (const suffix of ['-wal', '-shm']) {
             const p = dbPath + suffix;
             if (fs.existsSync(p)) fs.unlinkSync(p);
@@ -93,9 +98,12 @@ describe('SqliteEngine.closeHandle', () => {
         // OLD (now-unlinked) inode. SQLite happily reads from it and
         // returns the OLD marker — the very failure mode the orchestrator
         // is guarding against.
-        const stale = await engine.withTransaction(handle, async (tx) =>
-            tx.getResource({ kind: 'settings', handle }));
-        expect(stale).toEqual({ marker: 'OLD' });
+        if (process.platform !== 'win32') {
+            const stale = await engine.withTransaction(handle, async (tx) =>
+                tx.getResource({ kind: 'settings', handle }));
+            // eslint-disable-next-line jest/no-conditional-expect
+            expect(stale).toEqual({ marker: 'OLD' });
+        }
 
         // Step 4: drop the cached handle and read again. `_dbFor` lazily
         // reopens against `dbPath`, which now resolves to the replacement

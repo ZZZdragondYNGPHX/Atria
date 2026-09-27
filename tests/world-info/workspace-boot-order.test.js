@@ -8,8 +8,8 @@ describe('World Info workspace boot order', () => {
         const source = readFileSync(SCRIPT_PATH, 'utf8');
 
         const workspaceMount = source.indexOf('initWorldInfoWorkspace();');
-        const loaderHide = source.indexOf('await hideLoader();');
-        const extensionBootstrap = source.indexOf('() => initExtensions()');
+        const loaderHide = source.indexOf('await hideLoader({ immediate: true });');
+        const extensionBootstrap = source.indexOf('import(\'./scripts/native/extensions-host.js\')');
         const fullWorldInfoInit = source.indexOf('() => initWorldInfo()');
 
         expect(workspaceMount).toBeGreaterThanOrEqual(0);

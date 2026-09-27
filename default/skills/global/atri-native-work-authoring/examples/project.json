@@ -1,0 +1,39 @@
+{
+  "format": "atria-project-source",
+  "schemaVersion": 1,
+  "project": {
+    "projectId": "project_11111111111111111111111111111111",
+    "packageId": "pkg_22222222222222222222222222222222",
+    "displayName": "Native Starter",
+    "createdAt": 1,
+    "updatedAt": 1
+  },
+  "package": {
+    "name": "Native Starter",
+    "version": "1.0.0",
+    "actors": [],
+    "entryPoints": [
+      {
+        "entryPointId": "entry_33333333333333333333333333333333",
+        "displayName": "Arrival",
+        "actorIds": [],
+        "worldIds": [],
+        "knowledgeBindingIds": []
+      }
+    ],
+    "capabilities": [
+      "narrative"
+    ],
+    "permissions": []
+  },
+  "worlds": [],
+  "knowledge": [],
+  "knowledgeBindings": [],
+  "dependencies": {
+    "worlds": [],
+    "knowledge": [],
+    "knowledgeBindings": [],
+    "assets": []
+  },
+  "assetFiles": []
+}

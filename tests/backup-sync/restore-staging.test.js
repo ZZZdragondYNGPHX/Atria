@@ -14,6 +14,7 @@ describe('restore archive staging', () => {
         expect(shouldStageRestoreArchive('/storage/emulated/0/Atria/data/_uploads/a.zip', { platform: 'linux' })).toBe(true);
         expect(shouldStageRestoreArchive('/sdcard/Atria/a.zip', { platform: 'linux' })).toBe(true);
         expect(shouldStageRestoreArchive('/tmp/backup.zip', { platform: 'linux' })).toBe(false);
+        expect(shouldStageRestoreArchive('C:\\storage\\emulated\\0\\a.zip', { platform: 'win32' })).toBe(false);
     });
 
     test('stages bytes into an internal temporary copy and cleans it up', async () => {

@@ -7,8 +7,6 @@ describe('FS_TREE_CATEGORIES', () => {
             'secrets',
             'characters',
             'assets',
-            'extensions',
-            'globalExtensions',
             'vectors',
         ]);
     });

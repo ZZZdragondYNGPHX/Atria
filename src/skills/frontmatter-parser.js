@@ -1,4 +1,5 @@
 import { parse as parseYaml } from 'yaml';
+import { SKILL_INVOCATION_PATHS } from '../../public/shared/extension-contract.js';
 
 const NAME_REGEX = /^[a-z0-9_-]+$/;
 const NAME_MAX_LEN = 128;
@@ -31,12 +32,20 @@ export function parseSkillFrontmatter(content) {
     if (!description) throw new Error('SKILL.md frontmatter must include description');
 
     const metadata = parsed.metadata && typeof parsed.metadata === 'object' ? parsed.metadata : {};
+    let paths;
+    if (Object.hasOwn(metadata, 'atria-paths')) {
+        const raw = metadata['atria-paths'];
+        if (typeof raw !== 'string') throw new Error('metadata.atria-paths must be a comma-separated string');
+        paths = raw.trim() ? raw.split(',').map(path => path.trim()) : [];
+        if (paths.some(path => !SKILL_INVOCATION_PATHS.includes(path))) throw new Error('metadata.atria-paths contains an unknown invocation path');
+    }
 
     return {
         name,
         description,
         license: parsed.license ? String(parsed.license).trim() : null,
         metadata: {
+            ...(paths === undefined ? {} : { 'atria-paths': [...new Set(paths)].join(',') }),
             author: metadata.author ? String(metadata.author).trim() : null,
             version: metadata.version ? String(metadata.version).trim() : null,
             tags: Array.isArray(metadata.tags) ? metadata.tags.map(t => String(t).trim()).filter(Boolean) : [],

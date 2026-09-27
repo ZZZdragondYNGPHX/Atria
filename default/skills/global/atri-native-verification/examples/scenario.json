@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "steps": [
+    {
+      "kind": "checkpoint",
+      "input": "opening"
+    },
+    {
+      "kind": "restore",
+      "input": "opening"
+    }
+  ]
+}

@@ -4,17 +4,21 @@ import path from 'node:path';
 import { createGitClient } from '../git/client.js';
 import { assertExtensionFiles } from './extensions-store.js';
 
-export async function readExternalExtension(url, { clone = (url, root) => createGitClient({ backend: 'builtin' }).clone(url, root, { depth: 1 }) } = {}) {
+export async function readExternalExtension(url, { clone = (url, root) => createGitClient({ backend: 'builtin' }).clone(url, root, { depth: 1 }), onStage = () => {} } = {}) {
+    onStage('url');
     const remote = new URL(url);
     if (remote.protocol !== 'https:' || remote.username || remote.password || remote.hash || remote.search) throw new TypeError('Use an HTTPS Git repository URL without credentials');
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'atri-extension-'));
     try {
+        onStage('clone');
         await clone(remote.href, root);
+        onStage('manifest');
         const manifestStat = await fs.lstat(path.join(root, 'atria.extension.json'));
         if (!manifestStat.isFile() || manifestStat.isSymbolicLink() || manifestStat.size > 16384) throw new TypeError('Invalid Atria browser extension manifest file');
         const manifest = JSON.parse(await fs.readFile(path.join(root, 'atria.extension.json'), 'utf8'));
         if (manifest.schemaVersion !== 1 || manifest.apiVersion !== 1 || typeof manifest.name !== 'string' || typeof manifest.entrypoint !== 'string'
             || Object.keys(manifest).some(key => !['schemaVersion', 'apiVersion', 'name', 'entrypoint'].includes(key))) throw new TypeError('Invalid Atria browser extension manifest');
+        onStage('files');
         const files = {}; let bytes = 0;
         async function walk(relative = '') {
             for (const entry of await fs.readdir(path.join(root, relative), { withFileTypes: true })) {

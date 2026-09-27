@@ -8,6 +8,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixture = (name) => readFileSync(join(__dirname, 'fixtures', name), 'utf8');
 
 describe('parseSkillFrontmatter', () => {
+    test('preserves normalized invocation defaults, including explicit no-path metadata', () => {
+        const parse = value => parseSkillFrontmatter(`---\nname: test\ndescription: test\nmetadata:\n  atria-paths: ${value}\n---\n`);
+        expect(parse('" studio,agents,studio "').metadata['atria-paths']).toBe('studio,agents');
+        expect(parse('""').metadata['atria-paths']).toBe('');
+        expect(() => parse('[studio]')).toThrow(/comma-separated/);
+        expect(() => parse('studio,unknown')).toThrow(/unknown invocation/);
+    });
     test('parses minimal valid SKILL.md', () => {
         const result = parseSkillFrontmatter(fixture('valid-skill.md'));
         expect(result).toEqual({

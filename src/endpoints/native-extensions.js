@@ -1,10 +1,12 @@
 import express from 'express';
+import { randomUUID } from 'node:crypto';
+import { captureBackendIncident } from '../logging/runtime.js';
 import { ExtensionsStore } from '../native/extensions-store.js';
 import { readExternalExtension } from '../native/extension-install.js';
 import { getStorageEngine } from '../storage/index.js';
 import { listAuthoringReferences, readAuthoringReference } from '../native/authoring-reference.js';
 
-export function createNativeExtensionsRouter({ store = () => new ExtensionsStore({ engine: getStorageEngine() }), install = readExternalExtension } = {}) {
+export function createNativeExtensionsRouter({ store = () => new ExtensionsStore({ engine: getStorageEngine() }), install = readExternalExtension, captureIncident = captureBackendIncident } = {}) {
     const router = express.Router();
     router.use((req, res, next) => req.user?.profile?.handle ? next() : res.sendStatus(401));
     const route = fn => async (req, res) => {
@@ -19,10 +21,24 @@ export function createNativeExtensionsRouter({ store = () => new ExtensionsStore
     router.get('/plugins/:id', route(async (req, res, api, handle) => res.json(await api.get(handle, req.params.id))));
     router.delete('/plugins/:id', route(async (req, res, api, handle) => res.json(await api.remove(handle, req.params.id, req.body.expectedRevision))));
     router.post('/install', route(async (req, res, api, handle) => {
-        const previous = req.body.id ? await api.get(handle, req.body.id) : null;
-        if (previous && previous.kind !== 'external') throw new TypeError('Only external plugins can update from URL');
-        const candidate = await install(previous?.sourceUrl ?? req.body.url);
-        res.json(await api.save(handle, { ...candidate, enabled: false, ...(previous ? { id: previous.id, targets: previous.targets } : {}) }, req.body.expectedRevision ?? null));
+        const operationId = randomUUID(); let diagnosticStage = 'lookup';
+        res.setHeader('x-atria-operation-id', operationId);
+        try {
+            const previous = req.body.id ? await api.get(handle, req.body.id) : null;
+            if (previous && previous.kind !== 'external') throw new TypeError('Only external plugins can update from URL');
+            const candidate = await install(previous?.sourceUrl ?? req.body.url, { onStage: stage => { diagnosticStage = stage; } });
+            diagnosticStage = 'save';
+            res.json(await api.save(handle, { ...candidate, enabled: false, ...(previous ? { id: previous.id, targets: previous.targets } : {}) }, req.body.expectedRevision ?? null));
+        } catch (error) {
+            res.setHeader('x-atria-failure-stage', diagnosticStage);
+            // Correlate the failed operation without storing repository URLs,
+            // downloaded code, request bodies or arbitrary Git error text.
+            try {
+                captureIncident({ type: req.body.id ? 'extension_update_failure' : 'extension_install_failure', primaryModule: 'extensions',
+                    stage: diagnosticStage, summary: 'Native extension operation failed', correlation: { operationId }, probableOwner: 'extension' });
+            } catch { /* Diagnostics cannot replace the original failure. */ }
+            throw error;
+        }
     }));
     router.get('/files/:id/:revision/*', route(async (req, res, api, handle) => {
         const plugin = await api.get(handle, req.params.id);
