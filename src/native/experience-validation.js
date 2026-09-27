@@ -25,9 +25,17 @@ export function validateExperienceResources(manifest, files, assets, { lower = f
         const bytes = files.get(path);
         if (!bytes) continue;
         const raw = JSON.parse(bytes.toString('utf8'));
-        if (raw.schemaVersion !== 2) continue;
-        const lowered = lowerDeclarativeMutations(raw);
+        const hasAppMapping = raw.interpretations?.some(item => item.appCommand !== undefined);
+        if (raw.schemaVersion !== 2 && !hasAppMapping) continue;
+        const lowered = raw.schemaVersion === 2 ? lowerDeclarativeMutations(raw) : raw;
         compileDeclarativeLogic(lowered, { data: {} });
+        for (const mapping of lowered.interpretations ?? []) {
+            if (!mapping.appCommand) continue;
+            const { domainId, commandId } = mapping.appCommand;
+            const contract = manifest.runtime?.experienceContract;
+            if (!contract?.lifecycleRuntime?.domains.some(domain => domain.id === domainId && domain.commands.some(command => command.id === commandId))) throw new TypeError('Interpretation references unknown App Command');
+            if (!contract.taskRuntime?.tasks.some(task => task.interpretation?.allowedEventTypes.includes(mapping.eventType))) throw new TypeError('App interpretation requires declared semantic Task');
+        }
         if (lower) files.set(path, Buffer.from(JSON.stringify(lowered)));
     }
     for (const ref of manifest.runtime?.experienceContract?.dataResources ?? []) {

@@ -4,6 +4,7 @@ import { createInterpretationMappingRegistry } from '../../public/scripts/native
 import { assertSemanticOutcome } from '../../public/shared/native-task-contract.js';
 import { assertTaskValue } from '../../public/shared/native-task-contract.js';
 import { assertNativeId } from './identity.js';
+import { prepareLifecycle } from './lifecycle-authority.js';
 
 export function validateTaskRecords(base) {
     const state = base.states.atri_task_results;
@@ -62,8 +63,8 @@ export async function createTaskWorld(base, installed, publish = null) {
 }
 
 export async function prepareTaskAuthority(base, installed, { outcomes = [], command = null }) {
-    const { world, statePatch, logic } = await createTaskWorld(base, installed);
-    const mapper = createInterpretationMappingRegistry(logic.interpretations);
+    const { world, statePatch, logic, candidate } = await createTaskWorld(base, installed);
+    const mapper = createInterpretationMappingRegistry(logic.interpretations, { sessionAuthority: true });
     const requests = installed.manifest.runtime?.experienceContract?.taskRuntime?.tasks ?? [];
     for (const raw of outcomes) {
         const task = requests.find(item => item.interpretation?.id === raw.requestId);
@@ -72,6 +73,14 @@ export async function prepareTaskAuthority(base, installed, { outcomes = [], com
         if (outcome.interpretation.decision === 'no_change') continue;
         const mapped = mapper.map(outcome.interpretation, { world: world.getState(), observation: null, turn: null });
         for (const proposal of mapped.commands) {
+            if (proposal.kind === 'app.command') {
+                // Lifecycle preparation is private too: no publication, clock
+                // advance or scheduler pump until the enclosing Session CAS.
+                const prepared = await prepareLifecycle(candidate, installed, proposal);
+                Object.assign(candidate.states, prepared.states);
+                Object.assign(statePatch, prepared.states);
+                continue;
+            }
             const result = await world.dispatchCommandInternal(proposal.id, proposal.args);
             if (!result.ok) throw new TypeError('Semantic outcome Command rejected');
         }

@@ -349,7 +349,7 @@ export function compileDeclarativeInterpretationMapping(raw, options = {}) {
     }
     assertKnownFields(
         raw,
-        new Set(['eventType', 'command', 'args', 'when']),
+        new Set(['eventType', 'command', 'args', 'when', 'appCommand']),
         'Declarative interpretation mapping',
     );
 
@@ -358,11 +358,27 @@ export function compileDeclarativeInterpretationMapping(raw, options = {}) {
         throw new Error('Declarative interpretation mapping has invalid eventType');
     }
     const command = String(raw.command || '').trim();
-    if (!INTERPRETATION_COMMAND_ID_PATTERN.test(command)) {
+    if ((!command && raw.appCommand === undefined) || (raw.command !== undefined && !INTERPRETATION_COMMAND_ID_PATTERN.test(command))) {
         throw new Error(
             `Declarative interpretation mapping '${eventType}' has invalid command id`,
         );
     }
+
+    const app = raw.appCommand;
+    let appRecord, appArgs, appDomainId, appCommandId;
+    if (app !== undefined) {
+        if (!isPlainObject(app)) throw new Error('Interpretation appCommand must be an object');
+        assertKnownFields(app, new Set(['domainId', 'commandId', 'recordId', 'args']), 'Interpretation appCommand');
+        for (const key of ['domainId', 'commandId']) {
+            if (typeof app[key] !== 'string' || !INTERPRETATION_COMMAND_ID_PATTERN.test(app[key]) || BLOCKED_PATH_SEGMENTS.has(app[key])) throw new Error('Interpretation appCommand requires fixed identifiers');
+        }
+        appDomainId = app.domainId;
+        appCommandId = app.commandId;
+        if (app.recordId === undefined) throw new Error('Interpretation appCommand requires recordId');
+        appRecord = compileValueTemplate(app.recordId, 'Interpretation appCommand recordId', options);
+        appArgs = compileValueTemplate(app.args ?? {}, 'Interpretation appCommand args', options);
+    }
+    if (!command && raw.args !== undefined) throw new Error('Interpretation args require World command');
 
     const argsTemplate = compileValueTemplate(
         raw.args ?? {},
@@ -399,10 +415,15 @@ export function compileDeclarativeInterpretationMapping(raw, options = {}) {
                 if (!allowed) return [];
             }
 
-            return {
+            const worldCommand = {
                 id: command,
                 args: evaluateTemplate(argsTemplate, formulaContext),
             };
+            if (!app) return worldCommand;
+            return [...(command ? [worldCommand] : []), {
+                kind: 'app.command', domainId: appDomainId, commandId: appCommandId,
+                recordId: evaluateTemplate(appRecord, formulaContext), args: evaluateTemplate(appArgs, formulaContext),
+            }];
         },
     });
 }

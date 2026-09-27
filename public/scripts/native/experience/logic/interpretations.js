@@ -18,12 +18,21 @@ function isPlainObject(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function normalizeProposal(raw, index, eventType) {
+function normalizeProposal(raw, index, eventType, sessionAuthority) {
     if (!isPlainObject(raw)) {
         throw new Error(
             `Interpretation mapping '${eventType}' command proposal ${index} must be an object`,
         );
     }
+    if (raw.kind === 'app.command') {
+        if (!sessionAuthority) throw new Error('App interpretation requires Session authority');
+        for (const key of ['domainId', 'commandId', 'recordId']) {
+            if (typeof raw[key] !== 'string' || !COMMAND_ID_PATTERN.test(raw[key]) || ['constructor', 'prototype', '__proto__'].includes(raw[key])) throw new Error('Invalid mapped App identifier');
+        }
+        if (!isPlainObject(raw.args)) throw new Error('Mapped App args must be an object');
+        return deepFreeze(clone(raw));
+    }
+    if (raw.kind !== undefined) throw new Error('Unknown interpretation Command kind');
     const id = String(raw.id || raw.commandId || '').trim();
     if (!COMMAND_ID_PATTERN.test(id)) {
         throw new Error(
@@ -71,7 +80,7 @@ function normalizeDefinitions(definitions) {
     });
 }
 
-export function createInterpretationMappingRegistry(definitions = []) {
+export function createInterpretationMappingRegistry(definitions = [], { sessionAuthority = false } = {}) {
     const mappings = new Map(
         normalizeDefinitions(definitions).map(definition => [definition.eventType, definition]),
     );
@@ -114,7 +123,9 @@ export function createInterpretationMappingRegistry(definitions = []) {
                 ? []
                 : (Array.isArray(output) ? output : [output]);
 
-            if (rawCommands.length > MAX_COMMANDS_PER_INTERPRETATION) {
+            if (rawCommands.length > (sessionAuthority ? 2 : MAX_COMMANDS_PER_INTERPRETATION)
+                || rawCommands.filter(command => command?.kind === 'app.command').length > 1
+                || rawCommands.filter(command => command?.kind !== 'app.command').length > 1) {
                 throw new Error(
                     `Interpretation mapping '${eventType}' emitted too many commands`,
                 );
@@ -124,7 +135,7 @@ export function createInterpretationMappingRegistry(definitions = []) {
                 status: rawCommands.length > 0 ? 'mapped' : 'no_change',
                 eventType,
                 commands: Object.freeze(
-                    rawCommands.map((command, index) => normalizeProposal(command, index, eventType)),
+                    rawCommands.map((command, index) => normalizeProposal(command, index, eventType, sessionAuthority)),
                 ),
             });
         },
