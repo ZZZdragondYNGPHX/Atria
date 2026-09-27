@@ -151,7 +151,7 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 1. 只聚焦一个明确主题；
 2. 给出候选方案、边界、优缺点和推荐方向；
 3. 用户确认或提出修订；
-4. **只有用户明确认可本轮结论后**，才把冻结结果写入本企划书并提升 Discussion Draft 版本；
+4. **只有用户明确认可本轮结论后**，才把冻结结果写入本企划书；讨论阶段提升 Discussion Draft 版本，最终收敛后升级为 Implementation Baseline；
 5. 更新完成后进入下一轮；
 6. 未确认的设想只保留在对话中，不提前写成既定方案。
 
@@ -577,7 +577,7 @@ Narrator 可以根据当前任务使用不同语义 Variant，例如：
 - free narrative；
 - event beat；
 - transition；
-- text-GAL presentation；
+- text scene presentation；
 
 但它们共享同一套人物理解、Knowledge、Memory、World / Event context、Timeline continuity 与输出边界。
 
