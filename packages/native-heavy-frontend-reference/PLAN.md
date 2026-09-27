@@ -1,6 +1,6 @@
 # Atria Native Heavy-Frontend Reference Package 企划书
 
-> 状态：Discussion Draft v0.10  
+> 状态：Discussion Draft v0.11  
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
@@ -168,8 +168,8 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 7. **Hybrid UI 信息架构 — 已冻结**
 8. **Message Projection / Conversation — 已冻结**
 9. **纯 Native 文本演出 / Dialogue / Scene Presentation — 已冻结**
-10. **SMS / Social / Mail 等二级应用 — 当前**
-11. 存档、分支、恢复、压缩与长期游玩
+10. **SMS / Social / Mail 等二级应用 — 已冻结**
+11. **存档、分支、恢复与长期游玩 — 当前**
 12. Studio Authoring / Scenario / Health 验证策略
 13. 最终能力矩阵与是否存在真实平台缺口
 
@@ -2091,21 +2091,225 @@ Event resolve 后：
 
 v1 不为未来立绘提前引入背景 / 表情 / CG / Audio / Asset Pack 依赖。
 
-## 17. Round 10 — SMS / Social / Mail 二级应用待讨论
+## 17. Round 10 — SMS / Social / Mail 二级应用冻结方案
+
+Round 10 已获得用户认可，以下作为 v1 Phone / Communication 基线。
+
+### 17.1 Phone 是世界内通信层，不是第二套主 Conversation
+
+Phone 属于 Hybrid 支持应用。
+
+它负责表现人物与世界在主剧情之外的通信活动，但不拥有主 Narrator、主 Timeline 或主 Story authority。
+
+### 17.2 三种通信使用不同 Domain
+
+UI 统一在 Phone 下，但底层不强行使用同一种万能 message schema。
+
+- **Messages / SMS** → Conversation Thread；
+- **Social** → Post / Reply Domain；
+- **Mail** → Mail Domain。
+
+它们可以共享 identity、timestamp、unread、provenance 等公共概念，但保留各自真正需要的数据结构。
+
+### 17.3 SMS / Messages
+
+Messages 使用 scoped Conversation Thread 思路，至少表达：
+
+- participants；
+- messages；
+- unread；
+- lastMessageAt；
+- delivery state。
+
+Phone 内允许玩家自由输入，但该输入属于 Communication，不成为主 Timeline User Message。
+
+### 17.4 Phone Input 与 Story Composer 分离
+
+- **Story Composer** → 推进主剧情；
+- **Phone Input** → 发送世界内通信。
+
+视觉语言可以一致，但执行路径不同。
+
+Phone Input 不直接触发主 Narrator。
+
+### 17.5 NPC 主动通信必须有 Runtime Trigger
+
+Social / SMS / Mail 模型不能自行决定“现在应该主动联系玩家”。
+
+流程必须是：
+
+`Runtime / Event / Schedule / Opportunity trigger → Social Task → content generation → scheduled / immediate delivery`
+
+Runtime 决定为什么现在发生；模型决定角色具体如何表达。
+
+### 17.6 回复延迟与 Game Clock / Schedule 联动
+
+Social Task 只输出粗粒度回复时机语义，例如：
+
+- immediate；
+- short delay；
+- delayed；
+- after activity。
+
+Runtime 根据：
+
+- Game Clock；
+- Schedule；
+- active Event；
+- Actor availability；
+- relevant rule；
+
+计算真正的 `replyAt`，并通过 scheduled interaction 投递。
+
+### 17.7 Social 保持轻量
+
+v1 Social 只用于制造“世界在继续活动”的感觉。
+
+支持：
+
+- 玩家发布少量 Post；
+- NPC Reply；
+- NPC 在 Runtime Trigger 下发布 Post；
+- 必要的 comment interaction。
+
+不实现完整社交平台模拟，例如：
+
+- follower economy；
+- algorithm；
+- trending engine；
+- 无限路人账户；
+- 大规模点赞 / 转发模拟。
+
+### 17.8 Mail 主要承载正式业务
+
+Mail 与 SMS 定位分开。
+
+Mail 适合：
+
+- 正式通知；
+- 账单；
+- 赞助提案；
+- 合作邀请；
+- 教会业务；
+- 组织 / 公共通知。
+
+结构固定、信息确定的 Mail 优先使用 Package Template，不调用模型。
+
+只有真正需要角色个性、自然语言变化时才使用 Social Task。
+
+### 17.9 Mail Attachment / 引用不直接修改 World
+
+Mail 可以引用：
+
+- Opportunity；
+- Project；
+- payment offer；
+- item / business record；
+- 其他 Session App entity。
+
+打开 Mail 只代表看见信息。
+
+真正的领取、接受、支付、升级等业务操作必须跳转到拥有 Authority 的 Church / Opportunity / Project 等应用，通过 typed Command 修改 World。
+
+### 17.10 Communication 可以升级为 Event
+
+重要 SMS / Social / Mail 可以成为剧情入口。
+
+例如：
+
+`Communication record → Event Proposal / Event Ref → Event Instance → Narrator → Story`
+
+通信本身不是主剧情 authority；真正值得阅读的大事件最终回到 Event / Narrator / Story。
+
+### 17.11 Phone 内容默认不进入主 Narrator Context
+
+Narrator 不默认读取全部 SMS / Social / Mail history。
+
+只有当前 Event 真正相关的通信片段才通过 relevant Context Projection 进入主剧情模型调用。
+
+### 17.12 不自建 Communication Memory / Summary
+
+Package 不增加：
+
+- SMS summary Task；
+- Social summary Task；
+- Mail summary Task；
+- Communication memory store。
+
+Atria Memory 继续负责长期记忆。
+
+结构上保持 Communication / Event / World / Timeline 的来源和 provenance 清楚，让平台能够按价值检索。
+
+### 17.13 Phone v1 不做 Reply Variant / Swipe / Regenerate
+
+Phone 中已提交的通信记录就是 committed Session App record。
+
+v1 不提供：
+
+- swipe；
+- regenerate；
+- message-level variant；
+- communication-level independent fork UI。
+
+Phone 不变成第二套 SillyTavern。
+
+### 17.14 Phone 随 Session Revision / Branch 保持一致
+
+虽然 Phone 自身没有独立 Branch UI，但 SMS / Social / Mail 都属于当前 Session / Branch 的状态。
+
+主 Session 回到旧 Revision / 新 Fork 后，Phone 内容必须与对应 Branch 一致，不能保留来自另一个未来分支的“幽灵消息”。
+
+### 17.15 Social Task Variants
+
+第一版 Social Task 可以拥有：
+
+- `sms.reply`；
+- `sms.initiate`；
+- `social.reply`；
+- `social.post`；
+- `mail.compose`；
+- `mail.reply`。
+
+主动型 Variant 只能在 Runtime Trigger 下运行。
+
+### 17.16 Template 优先于不必要的模型调用
+
+结构固定且事实确定的通知优先使用 Template / deterministic rendering。
+
+模型只用于真正需要：
+
+- 角色个性；
+- 自然语言变化；
+- 临场表达；
+- 开放式回复。
+
+### 17.17 未读与通知
+
+Phone 使用轻量：
+
+- unread badge；
+- toast；
+- Context notice。
+
+普通通信不插入主 Timeline。
+
+真正高优先级的通信通过 Event 回流 Story。
+
+## 18. Round 11 — 存档、分支、恢复与长期游玩待讨论
 
 本轮尚未冻结。
 
 需要决定：
 
-- Phone 内三个子应用的数据模型是否统一；
-- SMS / Social / Mail 的消息是否共用 Conversation Thread primitive；
-- Social Post / Reply 是否应该和 SMS Thread 使用不同 Domain；
-- Mail 是否需要附件 / payment / Opportunity 引用；
-- Social / SMS / Mail 由 Social Task 的哪些 Variant 生成；
-- 哪些通信可以主动由 NPC 发起；
-- NPC 回复延迟如何与 Schedule / Game Clock 协同；
-- 通信内容是否进入 Atria Memory；
-- 某条通信何时升级为主剧情 Event；
-- Phone 内通信是否允许玩家自由输入；
-- 玩家在 Phone 内发出的消息是否进入主 Timeline（当前倾向否）；
-- 如何避免 Phone 变成第二个完整聊天系统而复制主 Conversation。
+- World、Session App、Lifecycle、Phone、Event、Church Operations、Schedule 哪些必须随 Revision / Branch 原子一致；
+- Reply Variant 切换是否等价于切换到对应 Authority revision；
+- 当前 active Event / current Scene 在恢复后如何继续；
+- scheduled interaction / delayed SMS 在读档后如何避免重复投递；
+- Day Settlement / Project settlement 在恢复后如何避免重复结算；
+- Runtime Task 中途失败或用户重试时，如何避免重复写入；
+- Local UI State / Player Preference 是否应该随存档；
+- Atria Memory 与 Branch / Revision 的一致性边界；
+- 长线游玩是否需要 Package 自建 checkpoint / archive（当前倾向否）；
+- 是否需要“章节 / 日 / Event”层的用户可见存档锚点；
+- Branch 切换时 Phone / Social / Mail 如何恢复；
+- v1 是否需要显式 Save Slot UI，还是完全使用 Atria Host 原生 Session / Revision / Branch 能力。
