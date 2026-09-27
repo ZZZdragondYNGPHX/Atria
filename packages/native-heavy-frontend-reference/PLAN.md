@@ -1,10 +1,10 @@
 # Atria Native Heavy-Frontend Reference Package 企划书
 
-> 状态：Discussion Draft v0.13  
+> 状态：Implementation Baseline v1.0  
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
-> 当前阶段：架构讨论，尚未进入正式资产实现。
+> 当前阶段：架构已冻结；等待 Platform Gap G1 / G2 合入 `main` 后同步本 Package 分支并进入 Phase 1。
 
 ## 1. 项目目标
 
@@ -117,7 +117,7 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 - 第一版按长期可扩展 Package 设计，但实现时优先做最小垂直切片，不为了展示平台能力一次性启用所有 Native 子系统。
 - **v1 不引入背景、表情、CG、Audio 或其他外部媒体 Asset Pack。**
 - **立绘延期到后续版本**；第一版不为了未来立绘提前建立媒体资源依赖或 Scene 资源管线。
-- 第一版若保留 GAL / 演出感，只使用 Native UI、文字、结构化段落、角色名/说话者、布局与轻量 Host 呈现，不依赖外部图片或音频。
+- 第一版文本演出只使用 Native UI、canonical prose、段落层级、Scene Header、布局与轻量 Host 呈现，不依赖外部图片或音频，也不强制 speaker mapping。
 
 ### 5.1 次级宗教 / 教会模拟经营
 
@@ -160,7 +160,7 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 ## 7. 拟议讨论顺序
 
 1. **底层框架 / Authority & Runtime Skeleton — 已冻结**
-2. **World / Session App / Event / UI / Preference 状态切分 — 当前**
+2. **World / Session App / Event / UI / Preference 状态切分 — 已冻结**
 3. **Model Task 与 Turn 编排 — 已冻结**
 4. **Lifecycle / 时间 / 日程 / Morning-Night 工作流 — 已冻结**
 5. **宗教 / 教会模拟经营的数据模型、结算与剧情耦合 — 已冻结**
@@ -171,7 +171,7 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 10. **SMS / Social / Mail 等二级应用 — 已冻结**
 11. **存档、分支、恢复与长期游玩 — 已冻结**
 12. **Studio Authoring / Scenario / Health 验证策略 — 已冻结**
-13. **最终能力矩阵与是否存在真实平台缺口 — 当前**
+13. **最终能力矩阵与是否存在真实平台缺口 — 已冻结**
 
 顺序可根据讨论结果调整。
 
@@ -192,7 +192,7 @@ Round 1 已获得用户认可，以下作为后续设计基线。
 底层采用五层职责结构：
 
 1. **Experience / UI**
-   - Dashboard、Conversation、Phone、Schedule、GAL、Message UI 等；
+   - Dashboard、Conversation、Phone、Schedule、Dialogue / Scene Presentation、Message UI 等；
    - 只负责交互与呈现，不成为游戏事实源。
 
 2. **Gameplay Services**
@@ -207,7 +207,7 @@ Round 1 已获得用户认可，以下作为后续设计基线。
    - Lifecycle、Clock、Workflow、Automation 作为运行阶段和调度骨架。
 
 4. **Model Services**
-   - Narrator、Planner、Social、World、Curator 等职责化模型服务；
+   - Narrator、Planner、Social、World 四类职责化模型服务；
    - 模型产生 narrative、proposal、structured result 或 semantic outcome，不直接拥有数据库。
 
 5. **Presentation / Projection**
@@ -216,19 +216,13 @@ Round 1 已获得用户认可，以下作为后续设计基线。
 
 ### 8.3 日循环
 
-本 Reference Package 冻结使用“日循环”作为一级游戏周期，以实际压力测试：
+本 Reference Package 使用连续 Game Clock，并以日循环作为长期节奏。
 
-- Morning；
-- Planning / Daytime；
-- Evening；
-- Night；
-- Day Settlement；
-- Advance Day；
-- 下一日 Morning。
+真正的每日 Lifecycle 主干冻结为：
 
-日循环只是**本资产的 Lifecycle Phase Graph**，不是 Atria 平台的通用硬编码。
+`DAY OPEN → ACTIVE DAY → DAY SETTLEMENT → NEXT DAY`
 
-Phase 表示世界运行阶段，而不是 UI 页面。玩家处于 Morning 时仍可打开人物、背包、教会、手机等其他界面。
+Morning / Daytime / Evening / Night 只是由 Game Clock 派生的 dayPart，不是互斥模式。Event 可以跨时段、跨日继续运行。
 
 ### 8.4 Event Instance
 
@@ -250,11 +244,11 @@ Event 内部使用更通用的 **Beat**：
 
 - setup；
 - escalation；
-- choice；
+- development；
 - consequence；
 - resolution；
 
-具体 Event 可拥有不同数量的 Beat。Beat 后续可以映射 narrative、choice、activity、task、transition、terminal 等不同语义。
+具体 Event 可拥有不同数量的 Beat。Beat 是运行状态而不是预写正文，可表达 narrative、task、transition、terminal 等有限语义；玩家始终通过自由 Composer 输入，不存在 Narrative Choice 系统。
 
 ### 8.6 Specialized Model Services
 
@@ -470,7 +464,6 @@ Beat 负责说明“这一轮要解决什么”，不提前决定“这一轮具
 通用语义可以包括：
 
 - narrative；
-- choice；
 - activity；
 - task；
 - transition；
@@ -560,7 +553,7 @@ Host 已经负责的系统主题、文字大小、Reduce Motion、设备音量�
 - 不以 Scene / Asset 系统作为第一版完成条件；
 - **立绘延期到后续版本**，届时再基于实际需要审查 Atria 当时的 Presentation / Asset contract。
 
-第一版若需要 GAL / 演出表达，只使用 Native UI、文本、说话者、结构化段落、布局和现有 Host 可安全提供的轻量 presentation，不依赖图片和音频。
+第一版若需要 Scene 演出表达，只使用 Native UI、canonical prose、段落级排版、Scene Header 和现有 Host 可安全提供的轻量 presentation，不依赖图片和音频，也不要求模型输出 speaker / emotion / pose。
 
 ## 10. Round 3 — Model Task / Turn 编排冻结方案
 
@@ -583,7 +576,6 @@ Narrator 可以根据当前任务使用不同语义 Variant，例如：
 
 - free narrative；
 - event beat；
-- choice consequence；
 - transition；
 - text-GAL presentation；
 
@@ -650,8 +642,7 @@ Narrator负责“发生了什么”；Interpreter / Rule / Reducer 负责“这�
    - 主剧情；
    - Event Beat；
    - 玩家自由输入；
-   - choice consequence；
-   - text-GAL 的同一 Narrative 内容。
+   - text scene 的同一 Narrative 内容。
 
 2. **Planner**
    - Event proposal；
@@ -785,9 +776,9 @@ Narrator 每次只获得与当前剧情相关的上下文，例如：
 
 经营规则全集和无关报表不进入 Prompt。
 
-### 10.14 Text GAL 不是第二个模型
+### 10.14 Text Scene 不是第二个模型
 
-v1 不建立独立 GAL Task。
+v1 不建立独立 Scene/GAL Task。
 
 同一 Narrator Narrative 可以由不同 Presentation 呈现：
 
@@ -1593,7 +1584,6 @@ Story 页面承载：
 - 主 Timeline / Conversation；
 - Current Event Header；
 - Message Projection；
-- Choices / Actions；
 - Native Composer；
 - 必要的相关 Context。
 
@@ -2821,16 +2811,317 @@ Health 可以检查：
 
 Project Agent 只能准备 Review，不替代最终人工 Review / Commit gate。
 
-## 20. Round 13 — 最终 Capability Matrix / 平台缺口审计待讨论
+## 20. Round 13 — 最终 Capability Matrix / 平台缺口审计冻结方案
 
-本轮尚未冻结。
+Round 13 已获得用户认可。架构讨论至此结束，本企划提升为 **Implementation Baseline v1.0**。
 
-目标：
+审计基于创建本 Package 分支时的 `main@93991c7ccea30ce7499935bbb91592ae137086dd`。正式实现前必须重新同步最新 `main`，但不得回退本 Baseline 已冻结的产品边界。
 
-- 将已确认的全部 v1 需求逐项映射到 Atria 当前 Native capability；
-- 区分“平台已经支持，只需要资产配置 / schema / UI 实现”与“当前 contract 真实无法表达”；
-- 识别是否存在必须先修 Core 才能开始 Package 实现的阻塞项；
-- 确认 v1 是否仍然应该保持 Hybrid；
-- 确认删掉 Choice、Curator、媒体 Asset 后，哪些原先担心的能力缺口已经自然消失；
-- 明确第一版实现边界；
-- 将企划从 Discussion Draft 收敛为 Implementation Baseline。
+### 20.1 最终判断
+
+Atria 当前 Native Experience 已能承载本重型 Reference Package 的绝大多数需求。
+
+本次真实资产压力测试没有发现“需要重新设计整套 Native Experience”的架构缺失。主要能力已有明确承载点：
+
+| v1 需求 | Native 承载点 | 状态 |
+| --- | --- | --- |
+| Story-first Hybrid | Component Model v2 / Hybrid / native conversation + composer slots | 已支持 |
+| Local UI / Preference | Local UI State / Player Preference State | 已支持 |
+| Church 长期事实 | Native World + typed Command / Reducer | 已支持 |
+| Event / Schedule / Phone / Projects | Session Application + Lifecycle Domains | 已支持 |
+| 连续 Game Clock / 日循环 | Temporal / Lifecycle Clock / Workflow / Automation | 已支持 |
+| Narrator 主 Turn | Turn Contract / Turn Envelope / narrative-outcome | 已支持 |
+| Planner / Social / World | Model Task / Auxiliary Task / Variant | 已支持 |
+| Prompt / Knowledge / Context | Model-Prompt Runtime / Knowledge / Data Projection / Memory | 已支持 |
+| Branch / Retry / Restore | Native Session Revision / Branch / receipts | 已支持 |
+| Text-first Scene | Conversation Presentation / Safe Presentation / UI v2 | 基础已支持 |
+| Studio 制作闭环 | Studio Authoring v2 / Preview / Scenario / Health / Build | 已支持 |
+
+删除 Choice、Curator、背景、表情、CG、Audio、v1 立绘后，不再为这些能力保留隐性依赖或平台工作。
+
+### 20.2 v1 Experience Mode
+
+v1 继续固定为 **Hybrid — Chat-based Game Application**。
+
+不切换 Full，也不通过提高 Experience Mode 来获得能力。
+
+- Atria Host 继续拥有主 Conversation / Composer / Session；
+- Package 拥有 Story 周边应用、Church、Schedule、Phone、People、Opening 与 Context；
+- Full 只在未来真正需要完整独立主界面时重新评估。
+
+### 20.3 v1 候选 Capability Surface
+
+实现阶段应按实际引用继续最小化，当前预计核心能力包括：
+
+- `component-model@2`；
+- `local-ui-state`；
+- `player-preference-state`；
+- `package-data`；
+- `data-projection`；
+- `composer`；
+- `action@2`；
+- `declarative-mutation`；
+- `message-projection`（仅 display-only，需要时使用）；
+- `turn-contract`；
+- `turn-envelope`；
+- `narrative-outcome`；
+- `reply-variant`；
+- `conversation-presentation`；
+- `host-presentation-input`；
+- `safe-presentation`；
+- `model-task`；
+- `auxiliary-task`；
+- `session-application`；
+- `temporal`；
+- `workflow`；
+- `runtime-automation`；
+- `opening`；
+- `studio-authoring@2`；
+- `experience-health`。
+
+v1 默认不要求：
+
+- `asset-pack`；
+- `media-scene`；
+- `activity`；
+- `addon`；
+- `player-continuity`；
+- `shared-realm`；
+- `perspective`。
+
+若实现阶段没有真实引用，不得为了展示能力强行开启。
+
+### 20.4 Platform Gap G1 — Turn → Session Application Atomic Outcome
+
+**状态：硬阻塞，必须在核心 Event/Narrator 实现前解决。**
+
+当前 `narrative-outcome` 已能把：
+
+`Narrative + semantic outcome + World Command result + Timeline`
+
+在同一 Session Revision 原子提交。
+
+但本 Package 已冻结：
+
+> Event Instance 属于 Session Application，而不是 World。
+
+当前 Turn semantic outcome 的 Authority preparation 最终走 World Command / private candidate World 路径，缺少在同一 Turn commit 中安全执行声明式 Session Application Command 的能力。
+
+本 Package 需要：
+
+`Narrator → Interpreter → declared semantic outcome → typed World Command and/or typed App Command → validation → one atomic Session Revision`
+
+必须继续满足：
+
+- 模型不能输出任意 state patch；
+- 模型不能自由选择任意 Command；
+- semantic mapping 必须预声明且受 schema 约束；
+- World / App Command 都必须通过现有 typed validation；
+- 任一 outcome 失败时 provisional Narrative 不得 commit；
+- `expectedRevisionId` / invocation / receipt / retry 语义保持一致；
+- 现有只修改 World 的 narrative-outcome 行为保持兼容。
+
+详细需求见 `PLATFORM_GAPS.md#G1`。
+
+### 20.5 Platform Gap G2 — Declared Background Task → App Command Bridge
+
+**状态：重要前置；按用户决定，在 Package 正式实现前一并解决。**
+
+当前 Lifecycle 可以触发 background Task，Task result 可以成为 durable proposal，Lifecycle 也有 typed App Command / scheduled interaction。
+
+但安全边界明确禁止 Package automation/workflow 自动消费刚产生的 fresh proposal；普通 proposal 需要显式 Host acceptance。
+
+本 Package 的 NPC SMS / Social / Mail / Morning Report 存在一类更窄需求：
+
+> Runtime 已经确定“现在必须执行这个声明过的业务动作”，模型只负责生成受 schema 约束的内容。
+
+需要一个严格声明式桥：
+
+`Runtime Trigger → declared Task → schema-valid result → predeclared App Command / scheduled interaction → Branch/Revision-safe commit`
+
+必须保证：
+
+- 不是通用“AI Proposal 自动执行”；
+- Task / Variant 与目标 Domain / Command 在 Package contract 中提前绑定；
+- 输出 schema 与 Command args 严格匹配；
+- 不允许模型选择任意 Domain / Command；
+- stale / cancelled / wrong branch 不得提交；
+- invocation / receipt 保证重试不重复；
+- 普通 advisory/proposal 的 Host acceptance 安全语义不被削弱。
+
+详细需求见 `PLATFORM_GAPS.md#G2`。
+
+### 20.6 Deferred Gap D1 — Dynamic Conversation Presentation Profile
+
+当前 UI v2 conversation profile 支持 `default / novel / dialogue`，但 profile 是 UI Document 静态声明，不能直接由 Event Projection 动态切换。
+
+这会限制“Event 自动进入 Dialogue / Scene Presentation”的细节体验，但不妨碍 v1：
+
+- 使用统一 profile；
+- 使用 Event Header；
+- 使用 canonical prose 的段落级排版；
+- 保持 Story-first。
+
+因此：
+
+> **D1 v1 不修、不阻塞。**
+
+未来加入立绘或更强 Scene Presentation 时再重新评估。
+
+### 20.7 已确认不是平台缺口的内容
+
+以下全部归 Package 实现，不开 Core feat：
+
+- Church money / followers / reputation / level；
+- Facilities / Decrees / Positions；
+- Projects / Opportunities；
+- Event / Beat schema；
+- Schedule hard / soft / background policy；
+- DAY OPEN / ACTIVE DAY / DAY SETTLEMENT；
+- SMS / Social / Mail Domain；
+- Phone unread / delivery state；
+- Story / Church / Schedule / Phone / People UI；
+- Prompt Programs / Knowledge；
+- Narrator / Planner / Social / World Task；
+- Context Projection；
+- Preview fixtures；
+- Package-specific Scenario；
+- Session App retention；
+- deterministic settlement formulas。
+
+### 20.8 v1 明确删除 / 延期
+
+第一版不实现：
+
+- Narrative Choice / next_action；
+- Curator / Story Compression / Day Compression；
+- Package 自建 Memory；
+- Package 自建 Save Slot / Quick Save；
+- 背景 / 表情 / CG / Audio；
+- Asset Pack；
+- 立绘；
+- 独立 GAL Runtime；
+- Full Experience；
+- Phone message swipe / regenerate；
+- 社交平台完整经济模拟；
+- 复杂信徒分群；
+- 自动 dynamic conversation profile。
+
+### 20.9 平台 Gap 修复流程
+
+G1 / G2 不允许在 `package/native-heavy-frontend-reference` 中直接修改 Atria Core。
+
+执行顺序：
+
+1. 从最新 `main` 创建独立 `feat/*`；
+2. 在对应 feat 中只解决一个 Platform Gap；
+3. 只运行受影响的 Native contract / runtime tests，不默认跑全仓；
+4. 更新 `docs` 分支对应 feat 文档；
+5. 提交、推送、合并回 `main`；
+6. 确认合并后删除临时 feat 分支；
+7. 两个 Gap 均进入 `main` 后，将最新 `main` 合并进本 Package 分支；
+8. 重新跑与两个新 contract 直接相关的最小验证后进入 Package Phase 1。
+
+### 20.10 Implementation Phases
+
+两个平台前置完成后，本 Package 在同一 `package/native-heavy-frontend-reference` 分支分阶段实现，不重复创建新 Package 分支。
+
+#### Phase 1 — Studio Project Skeleton + Story-first Shell
+
+- 建立 `project/` 正式 Atria Project Source；
+- Package metadata / EntryPoint / Actor skeleton；
+- Hybrid Experience 基础 contract；
+- Story / Church / Schedule / Phone / People 一级导航；
+- Conversation + Composer native slots；
+- Opening 最小流程；
+- v1 无媒体 Asset；
+- Targeted Validate + Preview。
+
+完成后停止，更新 PLAN 实施进度 / handoff，并给出下一阶段接手提示词。
+
+#### Phase 2 — Authority + Lifecycle + Church Core
+
+- World schema；
+- Session Application Domains；
+- Event / Schedule / Church Operations / Project / Opportunity；
+- Game Clock；
+- DAY OPEN / ACTIVE DAY / DAY SETTLEMENT；
+- Church deterministic rules；
+- typed Actions / Commands；
+- 最小 `church-day-cycle` recorded Scenario。
+
+完成后停止并交接。
+
+#### Phase 3 — Narrative Runtime + Knowledge
+
+- Narrator / Interpreter；
+- narrative-outcome + G1 App outcome；
+- Event Beat 推进；
+- Planner / World Task；
+- Prompt Programs / shared Modules；
+- Knowledge / Context Projection；
+- Atria Memory 接入；
+- `story-turn` recorded Scenario。
+
+完成后停止并交接。
+
+#### Phase 4 — Hybrid Application Completion
+
+- Church 完整页面；
+- Schedule 时间轴；
+- People；
+- Story Header / Context Rail / Sheet；
+- Story / Scene text presentation；
+- display-only Message Projection；
+- desktop / compact Preview fixtures。
+
+完成后停止并交接。
+
+#### Phase 5 — Phone / Communication
+
+- SMS Thread；
+- Social；
+- Mail；
+- Phone input；
+- unread / notification；
+- G2 background Task → App Command / scheduled delivery；
+- Communication → Event bridge；
+- `communication` Scenario。
+
+完成后停止并交接。
+
+#### Phase 6 — Branch / Regression / Build
+
+- `branch-restore` Scenario；
+- 四个核心 Scenario 全量回归；
+- Experience Health；
+- Preview coverage；
+- Studio preflight；
+- `prepare_review`；
+- human review；
+- Build；
+- 人工 Playtest 记录。
+
+实现完成后再决定 Package 发布、合并/保留方式；不得把 `package/*` 当作 Atria Core feat 合入流程。
+
+### 20.11 Implementation Baseline 冻结条件
+
+从 v1.0 起：
+
+- 已冻结产品边界不得因实现便利被静默改写；
+- 若当前 contract 与 Baseline 冲突，先判断是资产实现错误还是平台缺口；
+- 新平台缺口必须有可复现 evidence 后才能升级 Core；
+- 删除项不得在实现阶段“顺手加回来”；
+- 若架构确需变更，先更新 PLAN 并取得用户认可，再修改实现。
+
+
+
+## 21. Baseline 状态
+
+- Architecture discussion：**完成**
+- Implementation Baseline：**v1.0**
+- Main audit baseline：`93991c7ccea30ce7499935bbb91592ae137086dd`
+- Package branch：`package/native-heavy-frontend-reference`
+- Platform prerequisites：**G1 / G2 待独立 feat 合入 main**
+- Package implementation：**尚未开始**
+- Next Package step：平台前置完成后同步 `main`，执行 Phase 1
