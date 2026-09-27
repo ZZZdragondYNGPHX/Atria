@@ -1,0 +1,495 @@
+{
+  "schemaVersion": 2,
+  "stateVersion": 1,
+  "localState": {
+    "player_name": {
+      "type": "string",
+      "default": "",
+      "scope": "session",
+      "required": true,
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "section": {
+      "type": "string",
+      "default": "story",
+      "scope": "session",
+      "enum": [
+        "story",
+        "church",
+        "schedule",
+        "phone",
+        "people"
+      ]
+    }
+  },
+  "selectors": {
+    "story_active": "ui.section == \"story\"",
+    "church_active": "ui.section == \"church\"",
+    "schedule_active": "ui.section == \"schedule\"",
+    "phone_active": "ui.section == \"phone\"",
+    "people_active": "ui.section == \"people\""
+  },
+  "actions": {
+    "confirm_opening": {
+      "steps": [
+        {
+          "op": "opening.confirm"
+        }
+      ]
+    },
+    "finish_opening": {
+      "steps": [
+        {
+          "op": "ui.set",
+          "path": "ui.section",
+          "value": "story"
+        }
+      ]
+    },
+    "show_story": {
+      "steps": [
+        {
+          "op": "ui.set",
+          "path": "ui.section",
+          "value": "story"
+        }
+      ]
+    },
+    "show_church": {
+      "steps": [
+        {
+          "op": "ui.set",
+          "path": "ui.section",
+          "value": "church"
+        }
+      ]
+    },
+    "show_schedule": {
+      "steps": [
+        {
+          "op": "ui.set",
+          "path": "ui.section",
+          "value": "schedule"
+        }
+      ]
+    },
+    "show_phone": {
+      "steps": [
+        {
+          "op": "ui.set",
+          "path": "ui.section",
+          "value": "phone"
+        }
+      ]
+    },
+    "show_people": {
+      "steps": [
+        {
+          "op": "ui.set",
+          "path": "ui.section",
+          "value": "people"
+        }
+      ]
+    }
+  },
+  "views": [
+    {
+      "id": "opening",
+      "surface": "chat.header",
+      "mount": "always",
+      "root": {
+        "id": "opening_form",
+        "type": "form",
+        "events": {
+          "submit": "confirm_opening"
+        },
+        "children": [
+          {
+            "id": "opening_title",
+            "type": "text",
+            "props": {
+              "text": "Begin a new story"
+            }
+          },
+          {
+            "id": "opening_copy",
+            "type": "text",
+            "props": {
+              "text": "Choose the name used by this reference session. Story is the default home."
+            }
+          },
+          {
+            "id": "player_name",
+            "type": "input",
+            "model": "ui.player_name",
+            "props": {
+              "label": "Your name",
+              "placeholder": "Traveler"
+            }
+          },
+          {
+            "id": "opening_submit",
+            "type": "button",
+            "props": {
+              "text": "Enter Story",
+              "submit": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "main",
+      "surface": "app.root",
+      "mount": "always",
+      "root": {
+        "id": "app_shell",
+        "type": "stack",
+        "children": [
+          {
+            "id": "app_title",
+            "type": "text",
+            "props": {
+              "text": "Native Heavy-Frontend Reference"
+            }
+          },
+          {
+            "id": "desktop_nav",
+            "type": "grid",
+            "bindings": {
+              "hidden": {
+                "expr": "env.device != \"desktop\""
+              }
+            },
+            "children": [
+              {
+                "id": "desktop_story",
+                "type": "button",
+                "props": {
+                  "text": "Story"
+                },
+                "events": {
+                  "click": "show_story"
+                }
+              },
+              {
+                "id": "desktop_church",
+                "type": "button",
+                "props": {
+                  "text": "Church"
+                },
+                "events": {
+                  "click": "show_church"
+                }
+              },
+              {
+                "id": "desktop_schedule",
+                "type": "button",
+                "props": {
+                  "text": "Schedule"
+                },
+                "events": {
+                  "click": "show_schedule"
+                }
+              },
+              {
+                "id": "desktop_phone",
+                "type": "button",
+                "props": {
+                  "text": "Phone"
+                },
+                "events": {
+                  "click": "show_phone"
+                }
+              },
+              {
+                "id": "desktop_people",
+                "type": "button",
+                "props": {
+                  "text": "People"
+                },
+                "events": {
+                  "click": "show_people"
+                }
+              }
+            ]
+          },
+          {
+            "id": "compact_nav",
+            "type": "select",
+            "model": "ui.section",
+            "props": {
+              "label": "Section",
+              "options": [
+                {
+                  "value": "story",
+                  "label": "Story"
+                },
+                {
+                  "value": "church",
+                  "label": "Church"
+                },
+                {
+                  "value": "schedule",
+                  "label": "Schedule"
+                },
+                {
+                  "value": "phone",
+                  "label": "Phone"
+                },
+                {
+                  "value": "people",
+                  "label": "People"
+                }
+              ]
+            },
+            "bindings": {
+              "hidden": {
+                "expr": "env.device == \"desktop\""
+              }
+            }
+          },
+          {
+            "id": "story_page",
+            "type": "container",
+            "bindings": {
+              "hidden": {
+                "expr": "selectors.story_active == false"
+              }
+            },
+            "children": [
+              {
+                "id": "event_label",
+                "type": "badge",
+                "props": {
+                  "text": "Story · Free Narrative"
+                }
+              },
+              {
+                "id": "event_header",
+                "type": "text",
+                "props": {
+                  "text": "No active event. The main narrative remains the visual priority."
+                }
+              },
+              {
+                "id": "desktop_context",
+                "type": "details",
+                "props": {
+                  "label": "Context"
+                },
+                "bindings": {
+                  "hidden": {
+                    "expr": "env.device != \"desktop\""
+                  }
+                },
+                "children": [
+                  {
+                    "id": "desktop_context_people",
+                    "type": "text",
+                    "props": {
+                      "text": "Participants: no active event"
+                    }
+                  },
+                  {
+                    "id": "desktop_context_fact",
+                    "type": "text",
+                    "props": {
+                      "text": "Relevant facts: none yet"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "story_divider",
+                "type": "separator"
+              },
+              {
+                "id": "conversation_slot",
+                "type": "native-slot",
+                "props": {
+                  "component": "conversation"
+                }
+              },
+              {
+                "id": "compact_context",
+                "type": "details",
+                "props": {
+                  "label": "Context"
+                },
+                "bindings": {
+                  "hidden": {
+                    "expr": "env.device == \"desktop\""
+                  }
+                },
+                "children": [
+                  {
+                    "id": "compact_context_copy",
+                    "type": "text",
+                    "props": {
+                      "text": "No active context yet. Supporting information remains intentionally light."
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "composer_slot",
+                "type": "native-slot",
+                "props": {
+                  "component": "composer"
+                }
+              }
+            ]
+          },
+          {
+            "id": "church_page",
+            "type": "stack",
+            "bindings": {
+              "hidden": {
+                "expr": "selectors.church_active == false"
+              }
+            },
+            "children": [
+              {
+                "id": "church_title",
+                "type": "text",
+                "props": {
+                  "text": "Church"
+                }
+              },
+              {
+                "id": "church_copy",
+                "type": "text",
+                "props": {
+                  "text": "Overview, Facilities, Decrees, Projects, and Opportunities will appear here as authority-backed records become available."
+                }
+              },
+              {
+                "id": "church_status",
+                "type": "badge",
+                "props": {
+                  "text": "No church records yet"
+                }
+              }
+            ]
+          },
+          {
+            "id": "schedule_page",
+            "type": "stack",
+            "bindings": {
+              "hidden": {
+                "expr": "selectors.schedule_active == false"
+              }
+            },
+            "children": [
+              {
+                "id": "schedule_title",
+                "type": "text",
+                "props": {
+                  "text": "Schedule"
+                }
+              },
+              {
+                "id": "schedule_copy",
+                "type": "text",
+                "props": {
+                  "text": "The Game Clock timeline is not populated in this shell."
+                }
+              },
+              {
+                "id": "schedule_status",
+                "type": "badge",
+                "props": {
+                  "text": "No scheduled items yet"
+                }
+              }
+            ]
+          },
+          {
+            "id": "phone_page",
+            "type": "stack",
+            "bindings": {
+              "hidden": {
+                "expr": "selectors.phone_active == false"
+              }
+            },
+            "children": [
+              {
+                "id": "phone_title",
+                "type": "text",
+                "props": {
+                  "text": "Phone"
+                }
+              },
+              {
+                "id": "phone_copy",
+                "type": "text",
+                "props": {
+                  "text": "Messages, Social, and Mail are ready for future Native communication records."
+                }
+              },
+              {
+                "id": "phone_status",
+                "type": "badge",
+                "props": {
+                  "text": "No unread items"
+                }
+              }
+            ]
+          },
+          {
+            "id": "people_page",
+            "type": "stack",
+            "bindings": {
+              "hidden": {
+                "expr": "selectors.people_active == false"
+              }
+            },
+            "children": [
+              {
+                "id": "people_title",
+                "type": "text",
+                "props": {
+                  "text": "People"
+                }
+              },
+              {
+                "id": "people_copy",
+                "type": "text",
+                "props": {
+                  "text": "Identity, position, schedule, relationship, and recent relevant information will appear here."
+                }
+              },
+              {
+                "id": "people_status",
+                "type": "badge",
+                "props": {
+                  "text": "No projected people records yet"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "opening": {
+    "initial": "welcome",
+    "steps": [
+      {
+        "id": "welcome",
+        "view": "opening",
+        "fields": [
+          "ui.player_name"
+        ],
+        "next": []
+      }
+    ],
+    "confirmAction": "finish_opening"
+  },
+  "conversation": {
+    "mode": "reader",
+    "profile": "novel"
+  }
+}

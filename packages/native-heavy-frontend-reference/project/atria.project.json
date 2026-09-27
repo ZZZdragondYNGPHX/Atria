@@ -1,0 +1,127 @@
+{
+  "format": "atria-project-source",
+  "schemaVersion": 1,
+  "project": {
+    "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+    "packageId": "pkg_747746f9c66b7539f97bfa1fecbb761e",
+    "displayName": "Native Heavy-Frontend Reference",
+    "createdAt": 1790524800000,
+    "updatedAt": 1790524800000
+  },
+  "package": {
+    "name": "Native Heavy-Frontend Reference Package",
+    "version": "0.1.0-phase1",
+    "description": "A story-first Hybrid Native reference package built from original placeholder content.",
+    "author": "Atria Reference",
+    "actors": [
+      {
+        "actorId": "actor_b48a53176eb663a1af411fb6f8638d66",
+        "displayName": "Caretaker",
+        "role": "narrative-anchor",
+        "profile": {
+          "summary": "An original neutral placeholder actor used to anchor the reference shell."
+        },
+        "metadata": {
+          "placeholder": true
+        }
+      }
+    ],
+    "entryPoints": [
+      {
+        "entryPointId": "entry_860c164ab18371b783b6d8c9565b392d",
+        "displayName": "Story",
+        "actorIds": [
+          "actor_b48a53176eb663a1af411fb6f8638d66"
+        ],
+        "primaryActorId": "actor_b48a53176eb663a1af411fb6f8638d66",
+        "worldIds": [],
+        "knowledgeBindingIds": []
+      }
+    ],
+    "capabilities": [
+      "narrative",
+      "game-runtime"
+    ],
+    "permissions": [],
+    "runtime": {
+      "experience": {
+        "mode": "hybrid",
+        "componentModelVersion": 2,
+        "component": "ui/main.json"
+      },
+      "experienceContract": {
+        "schemaVersion": 1,
+        "capabilities": [
+          {
+            "id": "component-model",
+            "version": 2,
+            "required": true
+          },
+          {
+            "id": "local-ui-state",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "composer",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "action",
+            "version": 2,
+            "required": true
+          },
+          {
+            "id": "opening",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "conversation-presentation",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "studio-authoring",
+            "version": 2,
+            "required": true
+          }
+        ],
+        "dataResources": [],
+        "lifecycleRuntime": {
+          "schemaVersion": 1,
+          "scopes": [],
+          "domains": [],
+          "clocks": [],
+          "advances": [],
+          "automations": [],
+          "workflows": [],
+          "interactions": [],
+          "retention": {
+            "maxTaskResults": 1,
+            "maxReceipts": 1
+          }
+        }
+      }
+    },
+    "metadata": {
+      "referenceKind": "native-heavy-frontend",
+      "implementationPhase": 1,
+      "storyFirst": true,
+      "placeholderContent": true
+    }
+  },
+  "worlds": [],
+  "knowledge": [],
+  "knowledgeBindings": [],
+  "resources": [],
+  "dependencies": {
+    "worlds": [],
+    "knowledge": [],
+    "knowledgeBindings": [],
+    "assets": [],
+    "resources": []
+  },
+  "assetFiles": []
+}
