@@ -1,6 +1,6 @@
 # Atria Native Heavy-Frontend Reference Package 企划书
 
-> 状态：Discussion Draft v0.12  
+> 状态：Discussion Draft v0.13  
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
@@ -170,8 +170,8 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 9. **纯 Native 文本演出 / Dialogue / Scene Presentation — 已冻结**
 10. **SMS / Social / Mail 等二级应用 — 已冻结**
 11. **存档、分支、恢复与长期游玩 — 已冻结**
-12. **Studio Authoring / Scenario / Health 验证策略 — 当前**
-13. 最终能力矩阵与是否存在真实平台缺口
+12. **Studio Authoring / Scenario / Health 验证策略 — 已冻结**
+13. **最终能力矩阵与是否存在真实平台缺口 — 当前**
 
 顺序可根据讨论结果调整。
 
@@ -2537,21 +2537,300 @@ Package 不复制：
 
 Hybrid Experience 直接复用 Host 提供的 Session / Branch UX。
 
-## 19. Round 12 — Studio Authoring / Scenario / Health 验证策略待讨论
+## 19. Round 12 — Studio Authoring / Scenario / Health 验证策略冻结方案
+
+Round 12 已获得用户认可，以下作为 v1 Authoring / Verification 基线。
+
+### 19.1 正式资产源必须是 Atria Studio Project Source
+
+本资产正式源使用 `atria-project-source`。
+
+Repo 中的资产源码必须能够进入：
+
+`Project Source → Studio → Validate → Preview → Scenario → Review → Build → .atria`
+
+不以“只手工生成最终 .atria 包”作为制作方式。
+
+### 19.2 Repo 目录结构
+
+资产根目录：
+
+`packages/native-heavy-frontend-reference/`
+
+计划采用：
+
+- `PLAN.md` — 正式企划；
+- `project/` — Studio Project Source；
+- `scenarios/` — recorded Scenario；
+- `fixtures/` — Scenario / Preview 的确定性开发 fixture。
+
+具体文件数量与子路径在实现时遵循当前 Studio / compiler contract，不提前发明不存在的 include / import 机制。
+
+### 19.3 Project Source 是资源关系真相
+
+`atria.project.json` 与其正式 Project Source 结构负责：
+
+- package；
+- actors；
+- entryPoints；
+- worlds；
+- knowledge；
+- knowledgeBindings；
+- model/prompt resources；
+- dependencies；
+- source files。
+
+不再建立另一套需要手工同步的 custom manifest / prompt index / state manifest。
+
+### 19.4 v1 不建立媒体 Asset Source
+
+v1 `assetFiles` 保持为空。
+
+不为未来立绘提前创建：
+
+- portrait manifest；
+- CG manifest；
+- audio manifest；
+- background map；
+- 空 Asset Pack。
+
+未来真正加入立绘时，再按当时 Atria Asset / Presentation contract 扩展。
+
+### 19.5 从第一版开始经过 Studio
+
+第一版实现从一开始就要求：
+
+- Validate；
+- Preview；
+- Scenario；
+- Review；
+- Build；
+
+能够工作。
+
+本 Reference Package 同时用于证明 Atria 作者平台可以制作重型 Native 作品，而不是只证明 Runtime 可以手写运行。
+
+### 19.6 Project Agent 可以参与作者流程，但不是运行依赖
+
+实现阶段可以真实使用 Project Agent：
+
+- API catalog；
+- Authoring reference；
+- Plan；
+- proposal；
+- Preview；
+- Scenario；
+- prepare review。
+
+但最终 Package 运行不依赖 Agent 在线，也不把 Agent 状态写进作品 Runtime。
+
+### 19.7 验证分三级
+
+#### Level A — 局部编辑验证
+
+每次修改只验证受影响资源 / contract。
+
+例如：
+
+- Knowledge 修改 → Knowledge / binding / reference validation；
+- Prompt 修改 → Prompt resource / Task binding；
+- Church UI 修改 → UI compiler +相关 Preview；
+- Lifecycle 修改 → 对应 Lifecycle Scenario。
+
+不因文案或局部资源修改默认运行完整 Package regression。
+
+#### Level B — 功能垂直 Scenario
+
+只有修改真正运行链路时运行对应 Scenario。
+
+#### Level C — 里程碑 Regression
+
+阶段完成、准备 Build / Release 时再运行全部核心 Scenario、Health、Preflight。
+
+### 19.8 v1 四个核心 Scenario
+
+第一版只维护四条高价值纵向 Scenario：
+
+1. **story-turn**
+   - Player Turn；
+   - recorded Narrator；
+   - narrative-outcome；
+   - Authority commit；
+   - Timeline；
+   - Event / World outcome；
+   - 原子提交。
+
+2. **church-day-cycle**
+   - Day Open；
+   - Assignment；
+   - background operation / Project；
+   - Clock；
+   - Day Settlement；
+   - World；
+   - settlement 幂等。
+
+3. **communication**
+   - 玩家 SMS；
+   - Social recorded Task；
+   - semantic delay；
+   - scheduled interaction；
+   - Clock delivery；
+   - Thread；
+   - 不进入主 Timeline；
+   - 不重复投递。
+
+4. **branch-restore**
+   - checkpoint；
+   - Authority changes；
+   - Communication；
+   - Event；
+   - restore / alternate path；
+   - Church / Phone / Schedule / Lifecycle / Timeline 一致恢复。
+
+### 19.9 Scenario 不调用真实模型
+
+Studio Scenario 使用 recorded / mock Task result。
+
+验证目标是：
+
+- Runtime；
+- schema；
+- state transition；
+- idempotency；
+- Branch；
+- Lifecycle。
+
+不验证第三方模型当天是否会稳定返回某种文案。
+
+核心 Scenario 的真实 provider call 必须为 0。
+
+### 19.10 Prompt / Narrative 质量使用人工 Playtest
+
+自动 Scenario 不承担：
+
+- 文笔评分；
+- 人设自然度；
+- 剧情趣味；
+- 长线情感一致性；
+- Context 是否“读起来够好”。
+
+这些通过真实 Playtest 评估。
+
+自动验证只检查可客观断言的结构与 Authority 行为。
+
+### 19.11 改哪里验证哪里
+
+Package-only 修改不默认运行与该资产无关的：
+
+- 数据库全套测试；
+- 全仓 E2E；
+- 无关平台模块；
+- 其他 Product regression。
+
+只有里程碑才执行本 Package 的完整 regression。
+
+### 19.12 平台缺口必须单独升级为 Atria Core 任务
+
+若 Package 实现暴露真实平台缺口：
+
+1. 在 Package 企划 / gap 记录中描述可复现需求；
+2. 不在 `package/*` 分支偷偷修改 Atria Core；
+3. 单独创建合适的 `feat/*` 或 `fix/*`；
+4. 修复、验证并合入 `main`；
+5. Package 分支再同步新基线继续资产实现。
+
+资产研发与平台研发保持清晰边界。
+
+### 19.13 Preview 与 Scenario 职责分离
+
+**Preview** 验证：
+
+- Story-first UI；
+- Church；
+- Schedule；
+- Phone；
+- People；
+- Scene Presentation；
+- desktop / compact presentation。
+
+**Scenario** 验证：
+
+- Runtime state；
+- Lifecycle；
+- Task result handling；
+- idempotency；
+- Branch / restore；
+- Authority consistency。
+
+不拿 Scenario 测 CSS，也不拿 Preview 推测 settlement correctness。
+
+### 19.14 Preview 使用有内容的 fixture state
+
+实现阶段准备少量高价值 Preview fixture，例如：
+
+- story-active-event；
+- church-busy-day；
+- phone-unread；
+- schedule-full-day；
+- compact-story。
+
+避免所有 Preview 都停在空白 Day 1。
+
+这些只是 Authoring fixture，不成为正式 Session save。
+
+### 19.15 Experience Health 只诊断，不猜测修复 Authority
+
+Health 可以检查：
+
+- exact Package version；
+- required binding；
+- Lifecycle readiness；
+- pending / stale Task；
+- retention；
+- schema / authority validity；
+- dependency availability。
+
+禁止通过：
+
+- Projection；
+- UI snapshot；
+- AI 猜测；
+
+反向覆盖 World / Session Authority。
+
+### 19.16 Package-specific 风险清单
+
+本资产预期重点检查：
+
+- active Event refs；
+- participant refs；
+- Church level / Facility / Project refs；
+- Schedule Actor / clock refs；
+- Communication participant / Opportunity refs；
+- scheduled interaction orphan；
+- active project / event scope；
+- retention。
+
+优先使用现有 Project validation / Scenario / Health contract 覆盖；不因为“未来也许需要”提前扩平台。
+
+### 19.17 Build 前完整闭环
+
+正式 Build / Release 前：
+
+`Targeted edits → targeted validation → Preview / affected Scenario → milestone regression → prepare_review → human review → commit → build`
+
+Project Agent 只能准备 Review，不替代最终人工 Review / Commit gate。
+
+## 20. Round 13 — 最终 Capability Matrix / 平台缺口审计待讨论
 
 本轮尚未冻结。
 
-需要决定：
+目标：
 
-- 本资产源码目录如何拆分；
-- 哪些内容应该成为 Studio Project Source resource；
-- v1 是否从一开始就要求“Studio 可编辑、可 Preview、可 Scenario”；
-- Scenario 应覆盖哪些最关键的垂直流程；
-- 哪些验证属于每次资产修改必须运行，哪些只在里程碑运行；
-- 是否要求所有 Model Task 都能在 Scenario 中使用 stub / deterministic fixture；
-- 如何验证 narrative-outcome 的原子提交和 Branch 一致性；
-- 如何验证 delayed SMS、Day Settlement、Project settlement 不重复；
-- 如何验证 Church / Phone / Schedule 的 Projection 与 Authority 一致；
-- Experience Health 在本资产中应该检查哪些真实风险；
-- 是否需要 Package 专属的 authoring checklist / verification profile；
-- 如何避免把资产开发变成“每改一个文案就跑全仓测试”。
+- 将已确认的全部 v1 需求逐项映射到 Atria 当前 Native capability；
+- 区分“平台已经支持，只需要资产配置 / schema / UI 实现”与“当前 contract 真实无法表达”；
+- 识别是否存在必须先修 Core 才能开始 Package 实现的阻塞项；
+- 确认 v1 是否仍然应该保持 Hybrid；
+- 确认删掉 Choice、Curator、媒体 Asset 后，哪些原先担心的能力缺口已经自然消失；
+- 明确第一版实现边界；
+- 将企划从 Discussion Draft 收敛为 Implementation Baseline。
