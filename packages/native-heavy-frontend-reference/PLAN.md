@@ -1,6 +1,6 @@
 # Atria Native Heavy-Frontend Reference Package 企划书
 
-> 状态：Discussion Draft v0.1  
+> 状态：Discussion Draft v0.2  
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
@@ -103,15 +103,42 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 
 讨论阶段不为了“也许以后会用”继续扩建 Atria。只有在当前 Native contract 无法表达经过确认的资产需求时，才记录为平台缺口。
 
-## 5. 初步资产定位
+### 4.8 AI 剧情优先，模拟经营为辅助层
 
-当前仅作为讨论起点，尚未冻结：
+本参考资产的核心体验仍然是 AI 输出剧情与角色互动。宗教 / 教会模拟经营系统作为次级玩法与世界反馈层存在，用于提供资源、决策、成长、事件条件和长期目标，但不得挤占正文输出、强迫每轮展示经营报表，或把作品重心转成纯数值经营游戏。
 
-- 建议 Experience：**Hybrid**；
+## 5. 资产定位与已冻结底层方向
+
+主 Experience 冻结为 **Hybrid — Chat-based Game Application**。
+
 - 主 Timeline / Conversation 继续属于 Atria Host；
-- Package 拥有游戏 Dashboard、状态 HUD、开局流程、手机/日程/邮件/GAL 等应用界面；
-- Full 是否需要作为额外 EntryPoint 或未来演示模式，待讨论；
-- Component 不作为主模式，但可用于消息内/聊天周边组件能力验证。
+- Package 拥有 Dashboard、状态 HUD、开局流程、手机、日程、邮件、GAL / Scene、宗教 / 教会经营等应用界面；
+- Component 不作为主模式，但可用于消息内或聊天周边的结构化 UI；
+- Full 不作为第一版主入口；只有后续确有独立应用主界面的需求时再评估，不以升级模式来换能力；
+- 第一版按长期可扩展 Package 设计，但实现时优先做最小垂直切片，不为了展示平台能力一次性启用所有 Native 子系统。
+
+### 5.1 次级宗教 / 教会模拟经营
+
+宗教 / 教会系统是本资产的长期游戏循环之一，但定位为**剧情驱动的经营点缀**。
+
+它可以提供：
+
+- 教会等级 / 声望 / 信徒 / 资金等长期资源；
+- 建筑、设施、岗位、教令、项目等发展项；
+- 日程和地区行动的条件与收益；
+- NPC、新闻、邮件、事件的触发条件；
+- 剧情选择带来的可见经营后果；
+- 长期目标、阶段解锁与世界反馈。
+
+它原则上不负责：
+
+- 替代主 Timeline；
+- 每回合强制生成大量经营文本；
+- 让模型逐项计算确定性数值；
+- 把所有剧情都降格为经营结算；
+- 建立独立于 Native Authority 的第二套模拟数据库。
+
+具体数据域与结算边界在后续状态切分 / Lifecycle 轮次继续冻结。
 
 ## 6. 讨论与更新规则
 
@@ -130,35 +157,170 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 
 ## 7. 拟议讨论顺序
 
-1. **底层框架 / Authority & Runtime Skeleton**
-2. World / Session App / UI / Preference 状态切分
+1. **底层框架 / Authority & Runtime Skeleton — 已冻结**
+2. **World / Session App / Event / UI / Preference 状态切分 — 当前**
 3. Model Task 与 Turn 编排
 4. Lifecycle / 时间 / 日程 / Morning-Night 工作流
-5. Knowledge / Prompt / Memory 分层
-6. Hybrid UI 信息架构
-7. Message Projection / 选项 / Conversation
-8. GAL / Scene / Asset 系统
-9. SMS / 社交 / 邮件等二级应用
-10. 存档、分支、恢复、压缩与长期游玩
-11. Studio Authoring / Scenario / Health 验证策略
-12. 最终能力矩阵与是否存在真实平台缺口
+5. 宗教 / 教会模拟经营的数据模型、结算与剧情耦合
+6. Knowledge / Prompt / Memory 分层
+7. Hybrid UI 信息架构
+8. Message Projection / 选项 / Conversation
+9. GAL / Scene / Asset 系统
+10. SMS / 社交 / 邮件等二级应用
+11. 存档、分支、恢复、压缩与长期游玩
+12. Studio Authoring / Scenario / Health 验证策略
+13. 最终能力矩阵与是否存在真实平台缺口
 
 顺序可根据讨论结果调整。
 
-## 8. Round 1 — 底层框架待讨论问题
+## 8. Round 1 — 底层框架冻结方案
 
-本轮尚未冻结答案。
+Round 1 已获得用户认可，以下作为后续设计基线。
 
-需要决定：
+### 8.1 产品本质
 
-- 这个 Package 最核心的运行循环是什么；
-- 主 Experience 是否固定为 Hybrid；
-- World、Session Application、Task、Lifecycle、Presentation 之间谁负责什么；
-- “一天”是否作为主游戏周期；
-- “故事事件”是 World 事实、Session App Record、Workflow，还是 Activity；
-- Story / Plan / Morning / Night / SMS / GAL 等模型能力应如何组合，而不是继续复制旧 Tag Router；
-- 是否需要一个统一的 Game Director Task，还是采用多个职责单一 Task；
-- Timeline 与游戏事件日志如何分工；
-- 资产是否从第一版就按长期可扩展 Package 设计，还是先做最小垂直切片。
+本 Package 定义为：
 
-本轮确认后，将新增“底层框架冻结方案”章节并升级企划版本。
+> **由 Native Authority 驱动的长线 Hybrid 游戏应用，LLM 是若干游戏服务之一，而不是整个游戏引擎。**
+
+既不采用“一个超级 Prompt / 一次 JSON 返回承担全部后端”的模式，也不退化为“所有剧情写死、LLM 只润色”的传统游戏。
+
+### 8.2 五层 Native Game Kernel
+
+底层采用五层职责结构：
+
+1. **Experience / UI**
+   - Dashboard、Conversation、Phone、Schedule、GAL、Message UI 等；
+   - 只负责交互与呈现，不成为游戏事实源。
+
+2. **Gameplay Services**
+   - typed Action / Command；
+   - Event；
+   - Activity；
+   - Thread；
+   - Item / Interaction 等游戏服务。
+
+3. **Authorities + Lifecycle**
+   - World、Session Application、Timeline、Player Preference 等权威；
+   - Lifecycle、Clock、Workflow、Automation 作为运行阶段和调度骨架。
+
+4. **Model Services**
+   - Narrator、Planner、Social、World、Curator 等职责化模型服务；
+   - 模型产生 narrative、proposal、structured result 或 semantic outcome，不直接拥有数据库。
+
+5. **Presentation / Projection**
+   - Narrative、Message Blocks、Scene、通知、诊断等展示结果；
+   - 展示数据与 Prompt / Authority 明确分离。
+
+### 8.3 日循环
+
+本 Reference Package 冻结使用“日循环”作为一级游戏周期，以实际压力测试：
+
+- Morning；
+- Planning / Daytime；
+- Evening；
+- Night；
+- Day Settlement；
+- Advance Day；
+- 下一日 Morning。
+
+日循环只是**本资产的 Lifecycle Phase Graph**，不是 Atria 平台的通用硬编码。
+
+Phase 表示世界运行阶段，而不是 UI 页面。玩家处于 Morning 时仍可打开人物、背包、教会、手机等其他界面。
+
+### 8.4 Event Instance
+
+“正在发生的剧情事件”冻结为 **Session Application 中的 Event Instance**，而不是直接塞入 World State。
+
+职责关系：
+
+- **World**：客观且需要存档 / 分支一致的事实；
+- **Event Instance**：当前正在发生、可暂停、可推进、可完成的剧情事务；
+- **Timeline**：已经真正呈现给玩家的主叙事。
+
+Event Instance 至少需要表达参与者、地点、状态、当前进度、开始时间、上下文与结果引用。
+
+### 8.5 Beat 而不是固定 Shot
+
+不把基准样本的 5–6 Shot 机制硬编码成平台规则。
+
+Event 内部使用更通用的 **Beat**：
+
+- setup；
+- escalation；
+- choice；
+- consequence；
+- resolution；
+
+具体 Event 可拥有不同数量的 Beat。Beat 后续可以映射 narrative、choice、activity、task、transition、terminal 等不同语义。
+
+### 8.6 Specialized Model Services
+
+不建立一个拥有全部事实和全部动作权限的万能 Game Director。
+
+初步冻结五类职责：
+
+- **Narrator**：正式剧情 / Event Beat；
+- **Planner**：候选事件、日程与未来内容 proposal；
+- **Social**：SMS / 社交 / 邮件等角色通信；
+- **World**：新闻、环境和宏观世界反馈；
+- **Curator**：摘要、压缩和长期信息整理。
+
+具体用一个 Task 多 Variant 还是多个 Task，将在 Model Task 轮次按当前 contract 冻结。
+
+Planner 只生产 proposal；真正的合法性检查、状态提交和调度由 Native Authority / Lifecycle 完成。
+
+### 8.7 Lifecycle 是真正的导演
+
+旧样本的 STORY / PLAN / MORNING / NIGHT 等不再作为 World Info Tag Router。
+
+底层调度原则冻结为：
+
+> **Lifecycle + Authority 才是 Game Director；AI 不担任系统管理员。**
+
+Lifecycle 决定阶段、触发与工作流；Authority 决定事实；Task 负责需要生成或解释的语义工作。
+
+### 8.8 Timeline 边界
+
+Timeline 只承载玩家真正经历的主叙事。
+
+默认不把以下内容机械写入主 Timeline：
+
+- Morning 新闻；
+- 短信记录；
+- 邮件；
+- 排班；
+- 道具掉落；
+- 系统通知；
+- 教会经营报表；
+- 后台世界日志。
+
+这些内容保存在各自的 Session App / World / projection 域。只有当它们真正触发或进入主剧情时，才通过 Event / Narrative 进入 Timeline。
+
+### 8.9 核心操作流
+
+底层操作链冻结为：
+
+- UI-only → Local UI；
+- 确定性游戏操作 → typed Command → Authority；
+- Event 推进 → Event Instance → Task / Turn → validated outcome → Authority + Timeline / Projection；
+- 生命周期推进 → Workflow / Clock → Task / App Command。
+
+不允许 UI、模型返回值或展示层绕过 typed Authority 写入。
+
+## 9. Round 2 — 状态切分待讨论
+
+本轮尚未冻结。
+
+需要进一步决定：
+
+- 哪些长期事实进入 World；
+- 哪些业务对象进入 Session Application；
+- Event Instance 的正式 schema 边界；
+- Character State 应全部归 World，还是拆出 runtime/session 部分；
+- 教会经营中的资金、信徒、等级、设施、项目、今日排班分别属于哪里；
+- 邮件、SMS、社交帖子、新闻、任务、道具、关系分别属于哪个 Authority；
+- Local UI State 的生命周期；
+- Player Preference 第一版需要哪些 key；
+- 哪些信息只做派生 Projection，不持久化；
+- 哪些数据应该作为 Package Data 静态定义，而不是 Session / World 状态。
