@@ -60,11 +60,11 @@ const snapshot = {
 };
 snapshot.states.atri_lifecycle.domains.schedule.records.push({
     id: 'preview-outreach', scopeId: 'session', status: 'active', pinned: false,
-    value: { actorId: 'actor_b48a53176eb663a1af411fb6f8638d66', title: 'Preview outreach', startTick: 540, endTick: 720, policy: 'background', operationKind: 'outreach', location: 'market', status: 'planned' },
+    value: { actor_id: 'actor_b48a53176eb663a1af411fb6f8638d66', title: 'Preview outreach', start_tick: 540, end_tick: 720, policy: 'background', operation_kind: 'outreach', location: 'market', status: 'planned' },
 });
 snapshot.states.atri_lifecycle.domains['church-operations'].records.push({
     id: 'current-day', scopeId: 'session', status: 'active', pinned: false,
-    value: { dayIndex: 1, outreachCount: 1, projectWorkCount: 0, expectedMoneyDelta: 35, expectedFollowerDelta: 2, expectedReputationDelta: 1, settlementStatus: 'open' },
+    value: { day_index: 1, outreach_count: 1, project_work_count: 0, expected_money_delta: 35, expected_follower_delta: 2, expected_reputation_delta: 1, settlement_status: 'open' },
 });
 const projection = displayInformation(snapshot);
 assert.equal(projection.schedule.items.length, 1);
