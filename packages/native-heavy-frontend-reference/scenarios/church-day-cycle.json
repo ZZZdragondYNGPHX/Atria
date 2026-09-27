@@ -45,12 +45,12 @@
         "recordId": "caretaker-outreach",
         "commandId": "assign",
         "args": {
-          "actorId": "actor_b48a53176eb663a1af411fb6f8638d66",
+          "actor_id": "actor_b48a53176eb663a1af411fb6f8638d66",
           "title": "Community outreach",
-          "startTick": 540,
+          "start_tick": 540,
           "duration": 180,
           "policy": "background",
-          "operationKind": "outreach",
+          "operation_kind": "outreach",
           "location": "market"
         }
       }
@@ -73,15 +73,15 @@
         "recordId": "district-outreach",
         "commandId": "start",
         "args": {
-          "templateId": "district-outreach",
-          "startTick": 540,
-          "dueTick": 1920,
+          "template_id": "district-outreach",
+          "start_tick": 540,
+          "due_tick": 1920,
           "target": 100,
-          "assignedActorIds": [
+          "assigned_actor_ids": [
             "actor_b48a53176eb663a1af411fb6f8638d66"
           ],
-          "costMoney": 0,
-          "operationKind": "outreach"
+          "cost_money": 0,
+          "operation_kind": "outreach"
         }
       }
     },
@@ -93,7 +93,7 @@
         "recordId": "district-outreach",
         "commandId": "advance",
         "args": {
-          "workUnits": 25
+          "work_units": 25
         }
       }
     },
