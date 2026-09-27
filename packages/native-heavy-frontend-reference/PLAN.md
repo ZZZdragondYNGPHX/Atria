@@ -1,6 +1,6 @@
 # Atria Native Heavy-Frontend Reference Package 企划书
 
-> 状态：Discussion Draft v0.6  
+> 状态：Discussion Draft v0.7  
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
@@ -164,8 +164,8 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 3. **Model Task 与 Turn 编排 — 已冻结**
 4. **Lifecycle / 时间 / 日程 / Morning-Night 工作流 — 已冻结**
 5. **宗教 / 教会模拟经营的数据模型、结算与剧情耦合 — 已冻结**
-6. **Knowledge / Prompt / Memory 分层 — 当前**
-7. Hybrid UI 信息架构
+6. **Knowledge / Prompt / Memory 分层 — 已冻结**
+7. **Hybrid UI 信息架构 — 当前**
 8. Message Projection / 选项 / Conversation
 9. 纯 Native 文本演出 / GAL 表达（v1 无外部媒体资产；立绘延期）
 10. SMS / 社交 / 邮件等二级应用
@@ -1279,20 +1279,298 @@ Facilities、Decrees 等进入二级页面。
 
 Play 的视觉与交互中心仍然是当前故事、人物和 Event，而不是财务 Dashboard。
 
-## 13. Round 6 — Knowledge / Prompt / Memory 分层待讨论
+## 13. Round 6 — Knowledge / Prompt / Memory 分层冻结方案
+
+Round 6 已获得用户认可，以下作为上下文与提示词架构基线。
+
+### 13.1 六来源 Context
+
+任一模型调用的上下文明确区分六种来源：
+
+1. **Prompt Program / Modules** — 模型应该怎样完成当前工作；
+2. **Knowledge** — 作者预先定义、世界原本是什么；
+3. **Live Authority Projection** — 当前世界 / Session 现在客观是什么；
+4. **Memory** — 游玩过程中形成、值得长期记住的经历；
+5. **Recent Timeline** — 最近实际发生的主叙事；
+6. **Task Input** — 本轮具体需要处理的输入。
+
+六类来源不能互相替代，也不因为“数据存在”就自动进入模型 Context。
+
+### 13.2 Package Data 与 Knowledge
+
+冻结原则：
+
+> **Package Data 给 Runtime；Knowledge 给模型。**
+
+Package Data 保存：
+
+- area / facility / decree / item 等静态定义；
+- requirements；
+- modifier；
+- rule table；
+- eligibility；
+- 其他程序需要的结构化定义。
+
+Knowledge 保存：
+
+- 世界观；
+- 地区叙事描述；
+- 组织背景；
+- 人物详细设定；
+- 社会常识；
+- 历史背景；
+- 角色基础认知；
+- 其他模型需要理解的世界知识。
+
+Package Data 默认不直接进入 Prompt，只有经过显式 Context Projection 的相关片段才可以进入模型。
+
+### 13.3 Character Actor 与 Character Knowledge 分层
+
+Actor / Package 只保存 Runtime 真正需要的稳定机器身份、引用和结构化身份数据。
+
+丰富人物设定放在 Character Knowledge，包括：
+
+- 性格；
+- 背景；
+- 习惯；
+- 说话方式；
+- 价值观；
+- 关系背景；
+- 行为倾向；
+- 文字外貌描述。
+
+只有当前真正参与 Event / Task 的 Actor 才优先激活其 Character Knowledge，避免全角色卡每轮全部注入。
+
+### 13.4 Prompt Program 只负责“怎样完成任务”
+
+Prompt Program / Module 不承担世界数据库职责。
+
+Narrator Foundation 只描述：
+
+- Narrator 的任务身份；
+- Authority 纪律；
+- 当前 Turn 的叙事职责；
+- 玩家行动空间；
+- 角色一致性；
+- structured output 的语义要求。
+
+教会定义、人物背景、地区描述和当前资金等不进入固定 Foundation Prompt。
+
+### 13.5 Narrative Style 属于 Prompt Module
+
+以下内容属于 Narrator Prompt Module，而不是 Knowledge：
+
+- 视角；
+- 长短句偏好；
+- 文风；
+- 对话格式；
+- 字数倾向；
+- 禁止句式；
+- 其他写作风格约束。
+
+这样未来可以替换写作风格，而不修改世界 Knowledge。
+
+### 13.6 四个模型服务使用独立 Prompt Program
+
+Narrator、Planner、Social、World 不使用“一个巨大 Prompt + mode”结构。
+
+第一版至少拥有：
+
+- **Narrator Program**；
+- **Planner Program**；
+- **Social Program**；
+- **World Program**。
+
+允许复用少量共享 Prompt Module，例如：
+
+- authority discipline；
+- package tone；
+- common character integrity。
+
+但不同职责保持独立主 Program。
+
+### 13.7 Structured Output schema 由 Native contract 承担
+
+不再把长篇 TypeScript interface / JSON schema 全量复制到 Prompt 文本里。
+
+Task Variant 使用 Atria Native structured output / output schema。
+
+Prompt 只解释：
+
+- 字段语义中模型容易误解的部分；
+- 当前 Task 特有规则；
+- Authority / presentation 边界。
+
+### 13.8 Knowledge activation 以当前 Event / Task 为中心
+
+Narrator Knowledge 候选优先由当前上下文实体决定，例如：
+
+- Event participants；
+- location；
+- involved organization；
+- topic / concept；
+- explicit hook。
+
+不采用“把整个 Knowledge Base 全量塞入 Prompt”的方式，也不默认依赖无限制全文关键词扫描。
+
+### 13.9 动态教会状态走 Authority Projection
+
+动态经营状态绝不通过修改 Knowledge 表达。
+
+例如：
+
+- 当前 money；
+- church level；
+- active decree；
+- facility status；
+- current project；
+- current opportunity；
+
+属于 World / Session App。
+
+只有与当前剧情相关时，由 Authority Projection 形成紧凑的 Context 输入。
+
+### 13.10 Decree 等系统使用多层表达
+
+以 Decree 为例：
+
+- **Package Data** — id、requirements、modifier、event tags；
+- **Knowledge** — 这项政策在世界内意味着什么；
+- **World** — 是否已经生效；
+- **Projection** — 当前剧情真正相关时给模型的有限摘要。
+
+同一概念在不同层有不同职责，不建立重复 Authority。
+
+### 13.11 Knowledge / Memory / World / Timeline 严格区分
+
+冻结定义：
+
+- **Knowledge** — 开局前作者定义、世界原本就存在的知识；
+- **Memory** — 游玩后形成、模型未来需要长期记住的经历；
+- **World** — 当前客观事实；
+- **Timeline** — 最近实际呈现给玩家的主叙事。
+
+例如：
+
+- “A 与 B 是青梅竹马”可以是作者 Knowledge；
+- “Day 8 A 第一次在重大决定上听取 B 意见”属于 Memory；
+- “church.money = 30000”属于 World；
+- 最近两轮对话正文属于 Timeline。
+
+Memory 不因记住了某个事实就成为 Authority。
+
+### 13.12 Package v1 不自建 Memory 编排
+
+第一版不实现：
+
+- 自建 Curator；
+- Story Compression；
+- Day Compression；
+- 自建 Memory Store；
+- Prompt 内长期摘要数据库；
+- Package 专属记忆调度器。
+
+Package 的责任是提供干净的 Timeline、Event、World、Session App 事实与稳定 Actor identity；长期记忆抽取、检索和压缩交给 Atria Memory。
+
+只有实际长线测试发现明确缺口时，才记录平台问题。
+
+### 13.13 Recent Timeline 与 Memory 分工
+
+- Recent Timeline 负责短期连续性；
+- Memory 负责长期连续性；
+- Knowledge 负责世界设定；
+- Authority Projection 负责当前事实。
+
+Narrator 连续剧情优先依赖最近 Timeline，不用 Memory 替代最近对话。
+
+### 13.14 Context Budget 优先级
+
+Token 紧张时按价值裁剪，而不是平均压缩。
+
+#### Tier 1 — 不应丢失
+
+- 当前 Player Input；
+- Current Event / Beat；
+- 当前参与 Actor 核心信息；
+- Recent Timeline；
+- 必要 Authority facts。
+
+#### Tier 2 — 强相关
+
+- relevant Knowledge；
+- relevant Memory；
+- 当前 location；
+- 与 Event 直接相关的 church / World 状态。
+
+#### Tier 3 — 辅助
+
+- 次要世界背景；
+- 非核心人物补充；
+- 宏观新闻；
+- 次要历史。
+
+#### Tier 4 — 默认不进入
+
+- 无关经营数据；
+- 完整 Facility 表；
+- 完整 Decree tree；
+- 全部 Schedule；
+- 全部 Communication history；
+- 不相关角色设定。
+
+### 13.15 Social Context 独立裁剪
+
+Social Task 默认只获得：
+
+- sender / user；
+- recipient；
+- relationship；
+- recent thread；
+- recipient current state；
+- current Schedule；
+- relevant recent Event / Memory；
+- 本条 message。
+
+不默认读取完整主 Timeline、完整世界观或全部教会数据。
+
+### 13.16 Planner Context
+
+Planner 重点读取：
+
+- 未完成 Event；
+- open hooks；
+- Schedule 空位；
+- Actor availability；
+- 当前长期目标；
+- 关键 church / World 状态；
+- 最近 Event tags / novelty information。
+
+不需要完整剧情原文。
+
+### 13.17 World Task Context
+
+World Task 读取：
+
+- 已提交 World facts；
+- recent important events；
+- relevant macro Knowledge。
+
+World Task 负责把事实包装成活跃的世界表达，不自行创造新的 World Truth。
+
+## 14. Round 7 — Hybrid UI 信息架构待讨论
 
 本轮尚未冻结。
 
 需要决定：
 
-- 哪些内容属于 Package Data，哪些属于 Knowledge；
-- 角色设定、世界规则、写作规则分别放在哪里；
-- Narrator 的 Prompt Program / Module 应如何拆；
-- Knowledge 如何按角色、地点、Event、教会状态条件激活；
-- 教令 / Facility / Opportunity 等经营事实进入 Prompt 的边界；
-- Memory 与 Knowledge 的职责边界；
-- 是否需要作者自建“剧情摘要” Knowledge（当前倾向否）；
-- Social / World / Planner 与 Narrator 是否共享同一 Prompt Program；
-- 如何避免旧卡那种一个 World Info 同时承担 lore、任务路由和输出格式控制；
-- 哪些规则必须放 system/module，哪些应作为可检索 Knowledge；
-- 如何控制 Context budget，避免重型资产因为长期游玩把 Prompt 撑爆。
+- Play 主界面的视觉中心到底是 Conversation / Event，还是 Dashboard；
+- Hybrid 是否保留 Atria 原生 Conversation + Composer 为常驻核心；
+- 教会 Dashboard、人物、日程、手机、邮件、Social、教令、设施、Projects、Opportunity 如何组织；
+- 哪些内容需要一级入口，哪些应该藏到二级页面；
+- 当前 Event、当前人物、当前时间、教会关键状态应该如何常驻显示；
+- 手机是否作为 SMS / Social / Mail 的统一入口；
+- 文本 GAL / 普通长文本是否需要玩家可切换，还是根据 Event presentation 自动选择；
+- Message Projection 的选项、状态条、Event 信息应该放在消息内部还是固定侧栏 / 顶栏；
+- desktop 与 compact/mobile 是否使用同一信息层级；
+- 如何避免重前端最终变成 Dashboard-first，导致 AI 正文被挤到次要位置；
+- v1 不使用外部媒体资产的前提下，如何仍然做出明显区别于普通聊天页的 Hybrid 应用体验。
