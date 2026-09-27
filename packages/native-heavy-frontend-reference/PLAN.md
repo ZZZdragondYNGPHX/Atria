@@ -2,9 +2,9 @@
 
 > 状态：Implementation Baseline v1.0  
 > 分支：`package/native-heavy-frontend-reference`  
-> 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
+> 基线：`main@35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
-> 当前阶段：架构已冻结；等待 Platform Gap G1 / G2 合入 `main` 后同步本 Package 分支并进入 Phase 1。
+> 当前阶段：Phase 1 已完成并验证；已停止在 Phase 2 — Authority + Lifecycle + Church Core 之前。
 
 ## 1. 项目目标
 
@@ -2893,7 +2893,7 @@ v1 默认不要求：
 
 ### 20.4 Platform Gap G1 — Turn → Session Application Atomic Outcome
 
-**状态：硬阻塞，必须在核心 Event/Narrator 实现前解决。**
+**状态：已满足。G1 已合入 `main@35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`，Package 不实现 Core workaround。**
 
 当前 `narrative-outcome` 已能把：
 
@@ -2925,7 +2925,7 @@ v1 默认不要求：
 
 ### 20.5 Platform Gap G2 — Declared Background Task → App Command Bridge
 
-**状态：重要前置；按用户决定，在 Package 正式实现前一并解决。**
+**状态：已满足。G2 已合入 `main@35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`，Package 不实现 Core workaround。**
 
 当前 Lifecycle 可以触发 background Task，Task result 可以成为 durable proposal，Lifecycle 也有 typed App Command / scheduled interaction。
 
@@ -3120,8 +3120,73 @@ G1 / G2 不允许在 `package/native-heavy-frontend-reference` 中直接修改 A
 
 - Architecture discussion：**完成**
 - Implementation Baseline：**v1.0**
-- Main audit baseline：`93991c7ccea30ce7499935bbb91592ae137086dd`
+- Main audit baseline：`35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`
 - Package branch：`package/native-heavy-frontend-reference`
-- Platform prerequisites：**G1 / G2 待独立 feat 合入 main**
-- Package implementation：**尚未开始**
-- Next Package step：平台前置完成后同步 `main`，执行 Phase 1
+- Platform prerequisites：**G1 / G2 已合入 main 并完成 Package 侧确认**
+- Package implementation：**Phase 1 完成**
+- Next Package step：**Phase 2 — Authority + Lifecycle + Church Core**
+
+
+## 22. Implementation Progress
+
+### 22.1 Phase 1 — Studio Project Skeleton + Story-first Shell
+
+**状态：完成。停止在 Phase 2 之前。**
+
+实施基线：
+
+- Package branch：`package/native-heavy-frontend-reference`；
+- 同步 main：`main@35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b` 已通过真实 merge commit `7f3e8148388586e86d2f0e03607b5af298456787` 合入本 Package 分支；
+- G1 / G2：均已确认存在于该 main 基线；未在 Package 内添加 Core workaround；
+- Project Source：`packages/native-heavy-frontend-reference/project/atria.project.json`；
+- UI Document：`packages/native-heavy-frontend-reference/project/ui/main.json`；
+- Package 专用定向验证：`packages/native-heavy-frontend-reference/verify-phase1.mjs`。
+
+已完成：
+
+- 创建正式 `atria-project-source@1`；
+- 建立独立 Package metadata、EntryPoint 与 Actor skeleton；
+- 建立 Hybrid Component Model v2 Experience contract；
+- Story / Church / Schedule / Phone / People 五个一级入口，Story 为默认首页；
+- Story 使用 Atria 原生 `conversation` 与 `composer` slots；
+- 建立最小 Opening，只保存未提交 Local UI draft 并由 Host Lifecycle 完成 Opening；
+- desktop 使用五入口原生导航，compact 使用等价单一 Section select；
+- Story 保持正文优先，desktop Context 与 compact Context Sheet 路径均只保留轻量占位信息；
+- `assetFiles = []`；
+- 所有示例内容均为独立安全占位内容，未搬运基准 SillyTavern 卡正文。
+
+Phase 1 明确未实现：
+
+- Narrative Choice / `next_action`；
+- Curator / Story Compression / Day Compression；
+- Package 自建 Memory；
+- 背景 / 表情 / CG / Audio / 立绘 / Asset Pack；
+- GAL Runtime；
+- Full Experience；
+- Package 自建 Save Slot；
+- Phase 2 World / Church / Schedule / Event Authority；
+- Atria Core 修改。
+
+关键实现决策：
+
+1. Opening 需要可恢复的 Host 生命周期状态，因此 Phase 1 只声明空的 Lifecycle Runtime 容器；其 Domains / Clocks / Automations / Workflows / Interactions 全部为空，不提前实现 Phase 2 业务 Lifecycle。
+2. Package 不提供 CSS；desktop / compact 基础布局只使用 Atria Host-owned UI v2 `stack` / `grid` / responsive environment。
+3. Story 页面持有唯一主 Narrative 输入路径：Native Conversation + Native Composer；支持应用不复制第二套主 Timeline。
+4. Phase 1 只建立 Church / Schedule / Phone / People 壳层，不写入任何业务 Authority。
+
+验证记录：
+
+- 实现提交：`455846a250b770141512aaa8e7a78f4fb80f2383`；
+- 定向验证提交：`1c950a2b877868624e0811ecc75ed15d5c82c604`；
+- GitHub Actions run：`36335711473`，job `Phase 1 Validate and Preview State`，结论 **success**；
+- 生产 `assertAtriaProjectSource`：通过；
+- 生产 UI v2 `compileUiDocument(..., { mode: 'hybrid' })`：通过；
+- Preview-state：desktop Story 默认可见、desktop nav 可见、compact nav 隐藏；compact Story 默认可见、compact nav 可见、Context Sheet 路径启用；
+- 原生 Conversation / Composer slot、最小 Opening、单一 `app.root`、`assetFiles=[]` 边界：通过；
+- 未运行四个完整 Scenario、无关全仓单测、全仓 lint、Android / Docker / paid inference。
+
+下一阶段严格为：
+
+> **Phase 2 — Authority + Lifecycle + Church Core**
+
+Phase 2 开始前应读取最新 `main:AGENTS.md`、`main:FORK_MAINTENANCE.md`、本 PLAN、`PLATFORM_GAPS.md` 与 Phase 1 handoff；不得重复 Phase 1 shell，也不得提前进入 Phase 3 Narrative Runtime。

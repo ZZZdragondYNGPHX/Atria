@@ -2,13 +2,13 @@
 
 > Package branch: `package/native-heavy-frontend-reference`  
 > Package baseline: `PLAN.md` — Implementation Baseline v1.0  
-> Audit baseline: `main@93991c7ccea30ce7499935bbb91592ae137086dd`
+> Audit baseline: `main@35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`
 
 本文只记录由已冻结 Package 需求真实压出的 Atria Core Gap，不是功能愿望清单。
 
 ## G1 — Turn → Session Application Atomic Outcome
 
-**状态：Hard blocker before Narrative/Event implementation.**
+**状态：Resolved in `main@35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`; Package Phase 1 confirmed the prerequisite and adds no Core workaround.**
 
 ### 当前能力与缺口
 
@@ -49,7 +49,7 @@
 
 ## G2 — Declared Background Task → App Command Bridge
 
-**状态：Important prerequisite before Phone/Communication implementation；用户已决定在 Package 正式动工前与 G1 一并处理。**
+**状态：Resolved in `main@35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`; Package Phase 1 confirmed the prerequisite and adds no Core workaround.**
 
 ### 当前能力与缺口
 
