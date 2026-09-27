@@ -86,11 +86,14 @@ describe('R7G WorkspaceHost', () => {
         const navigation = createAtriaNavigationAuthority({ window });
         const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry(), navigation });
         const records = [];
-        const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters: { library: makeAdapter('library', records), agents: makeAdapter('agents', records) } });
+        const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters: { plugins: makeAdapter('plugins', records), library: makeAdapter('library', records), agents: makeAdapter('agents', records) } });
         host.openKnowledgeEntry('kb:a', 'r1', 'entry:b', 'Entry'); await flushWorkspace();
         expect(navigation.getRoute().domain).toBe('library');
         expect(JSON.parse(decodeURIComponent(navigation.getRoute().child.id.slice(16)))).toEqual({ knowledgeBaseId: 'kb:a', revisionId: 'r1', entryId: 'entry:b' });
         host.openSkill({ kind: 'package', packageId: 'p', packageVersionId: 'v1' }, 'name/a'); await flushWorkspace();
+        expect(navigation.getRoute().domain).toBe('play');
+        expect(host.getActiveWorkspace().kind).toBe('plugins');
+        expect(shell.root.querySelector('[data-atria-utility="plugins"]')?.getAttribute('aria-current')).toBe('page');
         expect(JSON.parse(decodeURIComponent(navigation.getRoute().child.id.slice(7)))).toEqual({ scope: { kind: 'package', packageId: 'p', packageVersionId: 'v1' }, name: 'name/a' });
         host.openOrchestration('preset:1', 'Preset'); await flushWorkspace();
         expect(routeDescriptor(navigation.getRoute())).toMatchObject({ kind: 'agents', section: 'orchestration', presetId: 'preset:1' });
@@ -238,9 +241,9 @@ describe('R7G WorkspaceHost', () => {
 
         host.openLibrarySection('skills');
         await flushWorkspace();
-        expect(navigation.getRoute().child?.id).toBe('skills');
+        expect(navigation.getRoute().child?.id).toBe('utility.plugins');
         expect(adapters.library).toHaveBeenCalledTimes(1);
-        expect(records.find(item => item.kind === 'library').controller.updateRoute).toHaveBeenCalled();
+        expect(adapters.plugins).toHaveBeenCalledTimes(1);
 
         host.openRuntimeSection('roles');
         await flushWorkspace();
@@ -277,7 +280,7 @@ describe('R7G WorkspaceHost', () => {
             child: { id: 'utility.plugins' },
         });
         expect(host.getActiveWorkspace()).toMatchObject({ key: 'utility:plugins', kind: 'plugins' });
-        expect(adapters.plugins).toHaveBeenCalledTimes(1);
+        expect(adapters.plugins).toHaveBeenCalledTimes(2);
 
         host.openUtility('settings');
         await flushWorkspace();
@@ -475,8 +478,8 @@ describe('R7G WorkspaceHost', () => {
         skills.click();
         await flushWorkspace();
         expect(navigation.getRoute()).toMatchObject({
-            domain: 'library',
-            child: { id: 'skills' },
+            domain: 'play',
+            child: { id: 'utility.plugins' },
         });
 
         const diagnostics = document.createElement('button');
@@ -590,7 +593,7 @@ describe('R7G WorkspaceHost', () => {
         expect(routeDescriptor({
             domain: 'play',
             child: { id: 'utility.plugins', label: 'Plugins', kind: 'workspace' },
-        })).toMatchObject({ key: 'utility:plugins', kind: 'plugins', title: 'Plugins' });
+        })).toMatchObject({ key: 'utility:plugins', kind: 'plugins', title: 'Extensions' });
         expect(routeDescriptor({
             domain: 'runtime',
             child: { id: 'utility.settings', label: 'Settings', kind: 'workspace' },

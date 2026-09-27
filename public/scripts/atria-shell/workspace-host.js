@@ -1,8 +1,8 @@
+import { mountExtensionsWorkspace } from '../native/extensions-workspace.js';
 import { createAtriaIcon } from './icons.js';
 import { createAtriaStatePanel } from './primitives.js';
 import {
     mountAccountUtility,
-    mountPluginsUtility,
     mountSettingsUtility,
 } from './utility-workspaces.js';
 import {
@@ -41,7 +41,7 @@ const AGENT_SECTION_DESCRIPTIONS = Object.freeze({
 
 const UTILITY_LABELS = Object.freeze({
     diagnostics: 'Diagnostics',
-    plugins: 'Plugins',
+    plugins: 'Extensions',
     settings: 'Settings',
     account: 'Account',
 });
@@ -58,6 +58,7 @@ function normalizeAgentSection(route) {
 
 function routeDescriptor(route) {
     const childId = String(route?.child?.id || '').trim();
+    if (childId === 'skills' || childId.startsWith('skills:')) return { key: 'extensions:' + childId, kind: 'plugins', title: 'Extensions' };
     if (childId.startsWith('utility.')) {
         const utilityId = childId.slice('utility.'.length);
         const title = UTILITY_LABELS[utilityId];
@@ -234,7 +235,7 @@ export function createAtriaWorkspaceAdapters() {
         library: mountLibraryDomainWorkspace,
         runtime: mountRuntimeDomainWorkspace,
         diagnostics: mountDiagnosticsWorkspace,
-        plugins: mountPluginsUtility,
+        plugins: mountExtensionsWorkspace,
         settings: mountSettingsUtility,
         account: mountAccountUtility,
         placeholder: mountPlaceholder,
@@ -286,7 +287,7 @@ export function createAtriaWorkspaceHost({
                         : descriptor.kind === 'diagnostics'
                             ? translateShellText('Incidents, startup diagnostics and raw evidence use the existing diagnostics controller.')
                             : descriptor.kind === 'plugins'
-                                ? translateShellText('Manage Work Plugins and your Global Plugins.')
+                                ? translateShellText('Manage Skills, external plugins, local scripts and built-in tools.')
                                 : descriptor.kind === 'settings'
                                     ? translateShellText('Global preferences reuse the existing User Settings controls and persistence authorities.')
                                     : descriptor.kind === 'account'
@@ -446,6 +447,7 @@ export function createAtriaWorkspaceHost({
     }
 
     function openLibrarySection(section = 'works') {
+        if (section === 'skills') return openUtility('plugins');
         const raw = String(section || 'works').trim().toLowerCase();
         const requested = ['prompt-programs', 'prompt-modules', 'generation-profiles'].includes(raw) ? 'prompt-presets' : raw;
         const child = requested === 'worlds' || requested === 'knowledge'
@@ -533,7 +535,8 @@ export function createAtriaWorkspaceHost({
     }
 
     function openSkill(scope, name) {
-        return openLibraryDetail('skills:' + encodeURIComponent(JSON.stringify({ scope, name })), name, 'detail', 'workspace-skill');
+        if (navigation.getRoute().domain !== 'play') navigation.navigate('play', { history: 'push', reason: 'workspace-skill-host' });
+        return navigation.navigateChild({ id: 'skills:' + encodeURIComponent(JSON.stringify({ scope, name })), label: 'Extensions', kind: 'workspace' }, { history: 'push', reason: 'workspace-skill' });
     }
 
     function openOrchestration(presetId, label) {
@@ -838,14 +841,6 @@ export function createAtriaWorkspaceHost({
             run: () => openLibrarySection('knowledge'),
         }),
         shell.registry.register({
-            id: 'workspace.skills',
-            title: translateShellText('Open Skills Library'),
-            description: translateShellText('Open the existing Skill Manager controller inside Library'),
-            group: translateShellText('Workspaces'),
-            keywords: ['library', 'skills'],
-            run: () => openLibrarySection('skills'),
-        }),
-        shell.registry.register({
             id: 'workspace.runtime-overview',
             title: translateShellText('Open Runtime Routes'),
             description: translateShellText('Configure Native model and prompt routes'),
@@ -887,10 +882,10 @@ export function createAtriaWorkspaceHost({
         }),
         shell.registry.register({
             id: 'workspace.plugins',
-            title: translateShellText('Open Plugins'),
-            description: translateShellText('Manage Work Plugins and Global Plugins'),
+            title: translateShellText('Open Extensions'),
+            description: translateShellText('Manage Skills, external plugins, local scripts and built-in tools.'),
             group: translateShellText('Utilities'),
-            keywords: ['plugins', 'work', 'global', 'regex', 'search'],
+            keywords: ['extensions', 'skills', 'plugins', 'scripts', 'regex', 'search'],
             run: () => openUtility('plugins'),
         }),
         shell.registry.register({

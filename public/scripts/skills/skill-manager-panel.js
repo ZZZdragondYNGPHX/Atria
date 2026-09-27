@@ -453,7 +453,7 @@ export function buildPanelHtml(groups, allScopes, selectedFilterKey, activeTab, 
  * @param {(s: string) => string} [opts.t] - i18n helper; defaults to identity.
  * @returns {Promise<void>}
  */
-export async function openSkillManagerPanel({ context, initialScope = null, initialName = null, initialTab = 'installed', t = (s) => s } = {}) {
+export async function openSkillManagerPanel({ context, initialScope = null, initialName = null, initialTab = 'installed', organization = null, t = (s) => s } = {}) {
     if (!context || !context.skills) {
         throw new Error('openSkillManagerPanel: context.skills missing');
     }
@@ -540,6 +540,7 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
         mount.innerHTML = buildPanelHtml(filtered, allScopes, state.filterKey, state.tab, t, esc);
         mount.removeAttribute('aria-busy');
         bindEvents(mount);
+        if (organization && !loadError && state.tab === 'installed') await organization.render(mount, state.skills, refresh);
         if (loadError) {
             const message = document.createElement('p'); message.setAttribute('role', 'alert'); message.textContent = loadError;
             const retry = document.createElement('button'); retry.type = 'button'; retry.textContent = t('Refresh');

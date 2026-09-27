@@ -101,7 +101,7 @@ async function resolveExtensionAuthority(extensionAuthority) {
 
 export async function mountPluginsUtility({
     document: doc = globalThis.document, slot, body = slot, extensionAuthority,
-    productClient = nativeProductClient, host = globalThis.Atria?.shell?.getWorkspaceHost?.(),
+    productClient = nativeProductClient, host = globalThis.Atria?.shell?.getWorkspaceHost?.(), builtinsOnly = false,
 } = {}) {
     const frame = makeUtilityFrame(doc, { id: 'plugins', title: 'Plugins', description: 'Work capabilities and your global tools.' });
     body.replaceChildren(frame.root);
@@ -210,7 +210,7 @@ export async function mountPluginsUtility({
             if (!disposed) { workList.replaceChildren(); feedback(doc, workList, translateShellText('Work plugins could not be loaded.'), true); action(doc, workList, 'Try again', load); }
         } finally { loading = false; refresh.disabled = false; }
     }
-    refresh.addEventListener('click', load); await load();
+    if (builtinsOnly) { works.remove(); frame.header.remove(); globals.querySelector('h3')?.remove(); } else { refresh.addEventListener('click', load); await load(); }
     return { root: frame.root, dispose() { disposed = true; for (const remove of listeners) remove(); for (const [node, placement] of placements) restorePlacement(node, placement); frame.root.remove(); } };
 }
 

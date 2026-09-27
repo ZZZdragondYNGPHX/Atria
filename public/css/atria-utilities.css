@@ -828,3 +828,32 @@ html[data-atria-appearance] :is(.backupSyncCenter,.storageManagementCenter) .men
     font-family: var(--atri-font-mono);
     font-size: var(--atri-text-caption);
 }
+.atri-extensions-content, .atri-extension-editor, .atri-extension-editor fieldset {
+    min-width: 0;
+}
+.atri-extensions .atria-domain-workspace__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--atri-space-2, 8px);
+    margin-bottom: var(--atri-space-3, 12px);
+}
+.atria-app-shell .atri-extensions button.is-selected {
+    color: var(--atri-accent-text);
+    background: var(--atri-accent-soft);
+}
+.atri-extension-list, .atri-extension-editor, .atri-skill-organization {
+    display: grid;
+    gap: var(--atri-space-3, 12px);
+}
+.atri-extension-editor { border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-md, 12px); }
+.atri-extension-editor fieldset { display: grid; gap: 8px; border: 1px solid var(--atri-separator-strong); }
+.atri-extensions .atri-library-field:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; }
+.atri-extensions input[type="checkbox"] { width: 20px; min-width: 20px; height: 20px; }
+.atria-app-shell .atri-extensions .atri-extension-code { width: 100%; min-height: 260px; resize: vertical; font-family: monospace; }
+.atri-extensions pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 400px; overflow: auto; }
+.atri-extensions p, .atri-extensions label { overflow-wrap: anywhere; }
+.atri-extensions input, .atri-extensions select, .atri-extensions textarea { max-width: 100%; min-width: 0; }
+.atria-app-shell .atri-extensions button, .atri-extensions summary, .atria-app-shell .atri-extensions select { min-height: 44px; }
+.atri-extensions .atria_skill_row { flex-wrap: wrap; }
+.atri-extensions .atria_skill_row > details { flex-basis: 100%; width: 100%; }
+.atri-extensions [hidden] { display: none !important; }

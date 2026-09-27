@@ -23,7 +23,6 @@ export const LIBRARY_SECTIONS = Object.freeze([
     Object.freeze({ id: 'works', label: 'Works' }),
     Object.freeze({ id: 'worlds-knowledge', label: 'Worlds & Knowledge' }),
     Object.freeze({ id: 'prompt-presets', label: 'Prompt Presets' }),
-    Object.freeze({ id: 'skills', label: 'Skills' }),
 ]);
 
 export const RUNTIME_SECTIONS = Object.freeze([
@@ -123,7 +122,7 @@ function updateDomainTabs(frame, activeSection) {
     }
 }
 
-async function mountSkillsWorkspace({ document: documentRef, body, route }) {
+export async function mountSkillsWorkspace({ document: documentRef, body, route, organization = false }) {
     const context = globalThis.Atria?.getContext?.();
     const skills = await import('../skills/skill-manager-panel.js');
 
@@ -149,6 +148,7 @@ async function mountSkillsWorkspace({ document: documentRef, body, route }) {
 
     const target = route?.child?.id?.startsWith('skills:') ? JSON.parse(decodeURIComponent(route.child.id.slice(7))) : null;
     const task = skills.openSkillManagerPanel({
+        organization: organization ? (await import('../native/skill-organization.js')).createSkillOrganization() : null,
         initialScope: target?.scope,
         initialName: target?.name,
         context: embeddedContext,
