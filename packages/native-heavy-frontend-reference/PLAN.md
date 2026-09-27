@@ -1,6 +1,6 @@
 # Atria Native Heavy-Frontend Reference Package 企划书
 
-> 状态：Discussion Draft v0.8.1  
+> 状态：Discussion Draft v0.9  
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
@@ -166,8 +166,8 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 5. **宗教 / 教会模拟经营的数据模型、结算与剧情耦合 — 已冻结**
 6. **Knowledge / Prompt / Memory 分层 — 已冻结**
 7. **Hybrid UI 信息架构 — 已冻结**
-8. **Message Projection / 选项 / Conversation — 当前**
-9. 纯 Native 文本演出 / GAL 表达（v1 无外部媒体资产；立绘延期）
+8. **Message Projection / Conversation — 已冻结**
+9. **纯 Native 文本演出 / Dialogue / Scene Presentation（v1 无外部媒体资产；立绘延期）— 当前**
 10. SMS / 社交 / 邮件等二级应用
 11. 存档、分支、恢复、压缩与长期游玩
 12. Studio Authoring / Scenario / Health 验证策略
@@ -1766,23 +1766,193 @@ Mobile 继续保持：
 - Context Rail 转为 Context Sheet；
 - Church / Schedule / Phone / People 保持同一信息层级，不做桌面页面简单缩放。
 
-## 15. Round 8 — Message Projection / Conversation 待讨论
+## 15. Round 8 — Message Projection / Conversation 冻结方案
+
+Round 8 已获得用户认可，以下作为 v1 主 Timeline / Message 基线。
+
+### 15.1 Canonical Timeline Content 只保存正文
+
+Assistant Variant 的 `content` 只保存 canonical prose。
+
+不把以下内容混入 canonical content：
+
+- 控制标签；
+- 选项；
+- JSON；
+- Event metadata；
+- World / Session patch；
+- UI block metadata；
+- Runtime diagnostics；
+- 内部 Beat 状态。
+
+未来 Prompt history 继续使用 canonical prose，而不是 presentation metadata。
+
+### 15.2 v1 完全没有 Narrative Choice
+
+v1 不实现：
+
+- next_action；
+- 推荐选项；
+- Quick Choice；
+- 剧情按钮；
+- “点击选项直接发送 / 填入 Composer”的 Choice Preference。
+
+玩家推进主剧情只通过 Native Composer 自由输入。
+
+### 15.3 Native Composer 是唯一主剧情输入入口
+
+无论当前是否处于 Event：
+
+`Player → Native Composer → User Timeline Message → Narrator Turn`
+
+不通过隐藏 action、预置菜单或模型生成按钮替玩家推进剧情。
+
+### 15.4 Message Projection 只做 display-only Presentation
+
+v1 Message Projection 不承担 World / Session Command，也不承担剧情选择。
+
+它只在确有必要时用于：
+
+- 文本排版；
+- 轻量 narrative badge / result marker；
+- commit-time snapshot；
+- 其他纯展示信息。
+
+普通剧情消息可以完全没有 Projection。
+
+### 15.5 确定性业务操作回到所属应用
+
+以下操作不塞在 AI 正文下面：
+
+- Mail attachment claim；
+- Opportunity accept / reject；
+- Facility upgrade；
+- Project operation；
+- Schedule operation；
+- Decree / Church operation；
+- 其他确定性业务 Command。
+
+它们分别在 Phone / Church / Schedule 等应用页面中执行 typed Command。
+
+如果确定性操作触发重要剧情：
+
+`Business Command → milestone / Event trigger → Event Instance → Narrator`
+
+### 15.6 主剧情消息全部只读
+
+v1 不在 Story 消息中放可执行 Authority Action，因此历史主剧情消息自然保持只读。
+
+v1 不需要依赖历史 Message Action 的 `active-tail / fork-from-anchor` 来执行剧情操作。
+
+Branch / Fork 仍由正常 Reply Variant / Session 机制承担。
+
+### 15.7 Free Narrative 与 Event Narrative 共用同一 Message Contract
+
+不建立 `normal_message` / `event_message` 两套 Timeline schema。
+
+区别只来自 Turn Context：
+
+- Free Narrative：无 active Event；
+- Event Narrative：包含 Current Event / Beat。
+
+最终都提交成同一种 User / Assistant Variant。
+
+### 15.8 Reply Variant 必须保持 Revision 一致
+
+切换 Reply Variant 不能只替换文字。
+
+每个 Variant 必须和对应的：
+
+- canonical content；
+- projection；
+- World / Session Revision；
+- Branch anchor；
+
+保持一致，避免“文字是 Variant B，事实还停在 Variant A”。
+
+### 15.9 Message Projection 使用 commit-time snapshot
+
+历史消息内的 display block 不读取 live World。
+
+若某条消息需要显示“当时”的状态：
+
+`Turn commit → materialize required fields → immutable block.data`
+
+回看历史时保持当时值，不随当前 World 改变。
+
+### 15.10 Projection 不进入未来 Prompt
+
+Projection 是 display-only。
+
+下一轮 Narrator 默认只看到：
+
+- canonical Timeline prose；
+- 已经通过 Authority commit 的事实；
+- 当前 Context Projection；
+- relevant Knowledge / Memory。
+
+不把 message block JSON、UI metadata、result badge data 再塞回 Prompt。
+
+### 15.11 v1 不使用 message-local mutable UI state
+
+第一版尽量保持消息本身无局部可变状态。
+
+不为了展示能力添加：
+
+- message tabs；
+- per-message forms；
+- local clicked state；
+- fold state；
+- message-local mini app。
+
+若后续真实需求出现，再单独加入。
+
+### 15.12 Dialogue / Scene Presentation 不产生第二份正文
+
+Dialogue / Scene Presentation 只能渲染 canonical prose。
+
+不保存第二套 Dialogue JSON 作为 Narrative Authority，也不让普通 Story 和 Dialogue View 各自生成内容。
+
+### 15.13 实时状态不重复塞进每条消息
+
+Current Event、人物状态、当前时间、教会关键状态等实时信息继续由：
+
+- Story Header；
+- Context Rail / Sheet；
+- Church / People / Schedule；
+
+展示。
+
+只有确实需要历史快照时，才进入 immutable Message Projection。
+
+### 15.14 v1 Message 层设计目标
+
+v1 的“重前端感”主要来自整个 Hybrid 应用，而不是每一条 AI 回复挂大量按钮和状态卡。
+
+主 Story 应尽量保持：
+
+> **干净、可读、连续、自由输入优先。**
+
+## 16. Round 9 — 纯 Native 文本演出 / Dialogue / Scene Presentation 待讨论
 
 本轮尚未冻结。
 
-**已确认前提：v1 完全删除 Narrative Choice / 选项系统。**
+前提：
+
+- v1 不使用背景、表情、CG、Audio 或立绘；
+- 不创建独立 GAL Task；
+- 不保存第二份 Dialogue Narrative；
+- canonical prose 仍是唯一 Narrative Authority。
 
 需要决定：
 
-- Narrator 一次主 Turn 的 canonical Timeline content 应该只保存纯 prose，还是保存结构化 narrative segments；
-- Message Projection v1 到底保留哪些 block 类型；
-- 确定性业务 Action 是否允许嵌入消息，还是统一放在对应应用页面；
-- 历史消息上的 authority action 如何处理 active-tail / explicit fork；
-- Reply Variant / Branch 切换时 projection 和 Event / World state 如何同步；
-- 普通自由聊天与 Event Turn 是否共享同一种 Message contract；
-- Dialogue / Scene Presentation 应落在 canonical content 还是 projection；
-- 状态条、人物状态、教会相关提示是否属于 message-local snapshot；
-- Message-local UI state 是否第一版直接不用；
-- 是否允许消息 block 读取 live World，还是一律使用 commit-time snapshot；
-- 如何保证 display-only block 不进入未来 Prompt；
-- 玩家推进主剧情是否统一只通过 Native Composer 自由输入（当前倾向是）。
+- Dialogue / Scene Presentation 如何从 canonical prose 得到足够的演出感；
+- 是否要求 Narrator canonical prose 使用统一角色台词标记 / Markdown 约定；
+- Presentation 是自动分析 prose，还是依赖 Turn 中的 display-only segment hints；
+- narration、dialogue、system-style narration 是否需要不同排版；
+- speaker 名称如何与 Actor identity 对齐；
+- 多人物快速对话如何避免变成普通聊天气泡；
+- v1 是否需要场景标题、地点、时间、参与者等 Scene Header；
+- Text-first 演出允许哪些安全动效 / typography；
+- 是否需要“聚焦当前说话人”这类纯 UI 状态；
+- prose-heavy 与 dialogue-heavy 内容怎样共存而不让模型为了 UI 被迫写固定格式。
