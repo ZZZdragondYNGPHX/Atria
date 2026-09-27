@@ -1,0 +1,10 @@
+{
+    "schemaVersion": 2,
+    "stateVersion": 1,
+    "views": [{
+        "id": "main",
+        "surface": "chat.footer",
+        "mount": "always",
+        "root": { "id": "welcome", "type": "text", "props": { "text": "Welcome to your Work" } }
+    }]
+}

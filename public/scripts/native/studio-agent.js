@@ -5,7 +5,7 @@ import { nativeStudioClient } from './studio-client.js';
 
 const MAX_MODEL_ROUNDS = 12;
 const STOP_STATES = new Set(['review', 'blocked', 'conflict', 'taken_over', 'completed']);
-const SKILL_TOOL_NAMES = new Set(['atri_agent_list_skills', 'atri_agent_read_skill']);
+const SKILL_TOOL_NAMES = new Set(['atri_agent_list_skills', 'atri_agent_read_skill', 'atri_agent_skill_files']);
 
 function clone(value) {
     return value == null ? value : structuredClone(value);
@@ -52,13 +52,13 @@ function resolvedSkillInventory(entries) {
     return [...merged.values()].sort((left, right) => String(left.name).localeCompare(String(right.name)));
 }
 
-async function readNativeSkill(entries, name) {
+async function readNativeSkill(entries, name, { path = 'SKILL.md', offset = 1, limit = 200, list = false } = {}) {
     const entry = resolvedSkillInventory(entries).find(item => item.name === name);
     if (!entry) throw new Error('Native Skill is not available in the current project scope: ' + name);
     const encodedScope = scopePath(entry.scope);
     if (!encodedScope) throw new Error('Native Skill does not use an A5 Native scope');
     const response = await fetch(
-        `/api/skills/${encodeURIComponent(encodedScope)}/${encodeURIComponent(entry.name)}/file?path=SKILL.md&limit=12000`,
+        `/api/skills/${encodeURIComponent(encodedScope)}/${encodeURIComponent(entry.name)}/${list ? 'files' : 'file?' + new URLSearchParams({ path, offset, limit })}`,
         { headers: requestHeaders() },
     );
     if (!response.ok) throw new Error('Native Skill read failed (' + response.status + ')');
@@ -67,6 +67,7 @@ async function readNativeSkill(entries, name) {
 
 function skillTools() {
     return [
+        { type: 'function', function: { name: 'atri_agent_skill_files', description: 'List supporting files available inside one resolved Skill.', parameters: { type: 'object', properties: { name: { type: 'string' } }, required: ['name'], additionalProperties: false } } },
         {
             type: 'function',
             function: {
@@ -79,10 +80,10 @@ function skillTools() {
             type: 'function',
             function: {
                 name: 'atri_agent_read_skill',
-                description: 'Read the resolved SKILL.md for one A5 Native Skill by name. Read-only.',
+                description: 'Read SKILL.md or a supporting file in one resolved Skill. Paginated and read-only; follow references instead of guessing API details.',
                 parameters: {
                     type: 'object',
-                    properties: { name: { type: 'string' } },
+                    properties: { name: { type: 'string' }, path: { type: 'string' }, offset: { type: 'integer', minimum: 1, description: 'One-based line offset' }, limit: { type: 'integer', minimum: 1, maximum: 500, description: 'Maximum lines to read' } },
                     required: ['name'],
                     additionalProperties: false,
                 },
@@ -126,6 +127,8 @@ export function buildNativeProjectAgentSystemPrompt(context, skillEntries = []) 
         'Prefer structured/domain Authoring Operations. source.write/move/delete are low-level fallback only.',
         'Library relationships must use exact revisions. Never invent or resolve "latest".',
         'Use A2 Resource Graph tools for discovery/references/dependency closure, A5 Skills for know-how, and plugin-defined Resource Registry descriptors when relevant.',
+        'Discover current Native Experience contracts with atri_agent_api_catalog and read relevant pages using atri_agent_api_read. This includes UI v2, Tasks, lifecycle, Activity/Scene, information, Continuity, Shared/Realm and Scenario. Never invent a field from a capability name.',
+        'Skills may link supporting files: list them with atri_agent_skill_files, then read the relevant path with atri_agent_read_skill. Follow pagination when a file is truncated.',
         'Before proposing writes, call atri_agent_set_plan once with concrete semantic steps.',
         'When your proposed operation set is coherent, call atri_agent_prepare_review. That dry-runs the Workspace, validates it and inspects Native Preview/simulation without committing.',
         'If validation/evaluation fails and Task status is repair, diagnose the diagnostics, call atri_agent_reset_operations, propose a corrected set, then call prepare_review again. Repair rounds are bounded by server policy.',
@@ -196,8 +199,9 @@ async function executeModelTool(projectId, taskId, call, skillEntries) {
         return { skills: summarizeSkills(skillEntries) };
     }
     if (call.name === 'atri_agent_read_skill') {
-        return readNativeSkill(skillEntries, String(call.args?.name || ''));
+        return readNativeSkill(skillEntries, String(call.args?.name || ''), call.args);
     }
+    if (call.name === 'atri_agent_skill_files') return readNativeSkill(skillEntries, String(call.args?.name || ''), { list: true });
     return nativeStudioClient.executeAgentTool(projectId, taskId, {
         name: call.name,
         args: call.args || {},

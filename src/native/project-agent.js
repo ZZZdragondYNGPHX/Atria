@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { listAuthoringReferences, readAuthoringReference } from './authoring-reference.js';
 
 import { ConflictError, NotFoundError } from '../storage/errors.js';
 import {
@@ -106,6 +107,8 @@ export function buildProjectAgentTools(registry) {
     });
 
     return Object.freeze([
+        tool({ name: 'atri_agent_api_catalog', description: 'Discover current Atria Native capabilities and authoritative authoring references, including UI v2, Tasks, Scene, information, continuity, Shared/Realm and Scenario. Read-only.', parameters: objectSchema({ query: { type: 'string' } }) }),
+        tool({ name: 'atri_agent_api_read', description: 'Read a paginated current compiler contract or tested example by catalog id. Follow nextOffset for complete reference; never guess unsupported fields.', parameters: objectSchema({ id: { type: 'string' }, offset: { type: 'integer', minimum: 0 }, limit: { type: 'integer', minimum: 1, maximum: 24000 } }, ['id']) }),
         tool({
             name: 'atri_agent_set_plan',
             description: 'Set the semantic Project Task plan before proposing edits. This changes Task state only, never Project state.',
@@ -811,6 +814,8 @@ export class ProjectAgentService {
         }
 
         this._ensureMutable(task);
+        if (toolName === 'atri_agent_api_catalog') return listAuthoringReferences(args.query);
+        if (toolName === 'atri_agent_api_read') return readAuthoringReference(args);
         if (toolName === 'atri_agent_get_project') {
             return this._studio.getProject(handle, projectId);
         }
