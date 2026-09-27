@@ -351,6 +351,14 @@ export class NativeProductService {
         } };
     }
 
+    async installCommunity(handle, base, bytes) {
+        return this._installer.installCommunity(handle, base, bytes);
+    }
+
+    async composePackage(handle, base, resources, options = {}) {
+        return this._installer.compose(handle, base, resources, options);
+    }
+
     async installPackage(handle, archive, options = {}) {
         const preflight = this.preflightPackage(archive);
         const required = options.requiredPackage;

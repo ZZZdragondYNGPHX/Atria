@@ -14,7 +14,7 @@ function fixture() {
 test('strict frozen P5 contract uses one optional version boundary and only enables five capabilities', () => {
     const normalized = assertNativeExperienceContract(fixture()); expect(Object.isFrozen(normalized.presentationRuntime.scenes[0].cues)).toBe(true);
     for (const id of ['activity', 'media-scene', 'asset-pack', 'safe-presentation', 'host-presentation-input']) expect(ATRIA_EXPERIENCE_CAPABILITIES[id].supported).toEqual([1]);
-    for (const id of ['shared-realm', 'addon']) expect(ATRIA_EXPERIENCE_CAPABILITIES[id].supported).toEqual([]);
+    for (const id of ['shared-realm']) expect(ATRIA_EXPERIENCE_CAPABILITIES[id].supported).toEqual([]);
 });
 test.each(['html', 'css', 'js', 'url', 'patch', '__proto__', 'provider', 'secret'])('rejects executable/unknown field %s at nested Scene boundary', field => {
     const value = fixture(); Object.defineProperty(value.presentationRuntime.scenes[0].cues[0], field, { enumerable: true, value: 'arbitrary' });

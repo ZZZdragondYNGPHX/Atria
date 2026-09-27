@@ -49,6 +49,7 @@ export function createNativeLifecycleClient({ runtime, fetchImpl = (...args) => 
             ready: () => ready(token),
             client: Object.freeze({ getSnapshot: () => current(token),
                 command: action => command(token, action),
+                continuityCommand: action => command(token, action, 'continuity'),
                 isWritable: () => { try { current(token, { writable: true }); return token.ready; } catch { return false; } },
             }),
         });
@@ -100,15 +101,16 @@ export function createNativeLifecycleClient({ runtime, fetchImpl = (...args) => 
         current(token, { writable: true });
         return runtime.snapshot;
     }
-    async function command(token, action) {
+    async function command(token, action, type = 'lifecycle') {
         const snapshot = current(token, { writable: true });
         if (!token.ready || !token.packageState?.descriptor.experienceContract?.lifecycleRuntime) throw failure('native_lifecycle_not_ready');
-        if (!ACTIONS.has(action?.kind)) throw new TypeError('Unknown lifecycle action');
+        if (type === 'lifecycle' ? !ACTIONS.has(action?.kind) : !['command', 'transfer', 'transfer.cancel', 'transfer.resume'].includes(action?.kind)) throw new TypeError('Unknown lifecycle action');
+        if (type === 'continuity' && !token.packageState.descriptor.experienceContract.continuityRuntime) throw failure('native_continuity_undeclared');
         if (token.busy) throw failure('native_lifecycle_busy');
-        const key = JSON.stringify(action);
+        const key = JSON.stringify([type, action]);
         if (token.pending && token.pending.key !== key) throw failure('native_lifecycle_retry_pending');
         const pending = token.pending ?? { key, body: { sessionId: snapshot.session.sessionId, expectedRevisionId: snapshot.revision.revisionId,
-            command: { type: 'lifecycle', action: clone(action), invocationId: invocationId() } } };
+            command: { type, action: clone(action), invocationId: invocationId() } } };
         if (snapshot.revision.revisionId !== pending.body.expectedRevisionId) throw failure('native_lifecycle_stale');
         token.pending = pending;
         token.busy = true;
@@ -150,7 +152,8 @@ export function createNativeLifecycleClient({ runtime, fetchImpl = (...args) => 
         } finally { token.busy = false; }
     }
     function pump(token = scope) {
-        current(token, { writable: true });
+        const snapshot = current(token, { writable: true });
+        if (snapshot.externalEffects?.some(effect => effect.status === 'prepared')) return Promise.resolve(snapshot);
         if (token.pumping) return token.pumping;
         if (token.busy) return Promise.reject(failure('native_lifecycle_busy'));
         // No browser clock, catch-up loop or second scheduler. One bounded
@@ -172,6 +175,9 @@ export function createNativeLifecycleClient({ runtime, fetchImpl = (...args) => 
             revisionId: snapshot.revision.revisionId, branchId: snapshot.revision.branchId,
             packageVersionId: snapshot.session.packageVersionId, entryPointId: snapshot.session.entryPointId });
         current(token, { writable: true });
+        // Mount recovery controls after restart, but do not advance automation
+        // through an unfinished cross-authority transfer.
+        if (snapshot.externalEffects?.some(effect => effect.status === 'prepared')) return runtime.snapshot;
         if (token.packageState.descriptor.experienceContract?.lifecycleRuntime) {
             await command(token, { kind: 'experience.ready' });
             await pump(token);
@@ -209,5 +215,15 @@ export function createNativeLifecycleClient({ runtime, fetchImpl = (...args) => 
         get busy() { return Boolean(scope?.busy || scope?.pumping); },
         getSnapshot: () => runtime.snapshot,
         command: action => command(scope, action),
+        continuityCommand: action => command(scope, action, 'continuity'),
+        getContinuityProjection: async (viewId, revisionId = null) => {
+            const token = scope, snapshot = current(token);
+            const result = await request(token, '/api/native/session/continuity/projection', { sessionId: snapshot.session.sessionId, viewId, revisionId });
+            current(token);
+            if (runtime.snapshot.revision.revisionId !== snapshot.revision.revisionId) throw failure('native_lifecycle_stale');
+            return result;
+        },
+        getContinuityGraph: limit => request(scope, '/api/native/session/continuity/graph', { sessionId: current(scope).session.sessionId, limit }),
+        getExternalEffects: () => clone(current(scope).externalEffects ?? []),
     });
 }

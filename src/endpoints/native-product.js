@@ -141,6 +141,12 @@ export function createNativeProductRouter(getServices = services) {
             ...(Object.hasOwn(req.body || {}, 'baseVersionId') ? { baseVersionId: req.body.baseVersionId } : {}),
         }));
     }));
+    router.post('/community/install', route(async (req, res, { product }, handle) => {
+        res.json(await product.installCommunity(handle, req.body.base, decodeArchive(req.body.data)));
+    }));
+    router.post('/packages/compose', route(async (req, res, { product }, handle) => {
+        res.json(await product.composePackage(handle, req.body.base, req.body.resources, { grantedPermissions: req.body.grantedPermissions || [] }));
+    }));
 
     router.get('/worlds', route(async (_req, res, { product }, handle) => {
         res.json(await product.listWorlds(handle));

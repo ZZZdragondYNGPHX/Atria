@@ -1,4 +1,5 @@
 import { normalizeSessionTitle } from '../../../public/scripts/native/session-title-contract.js';
+import { ContinuityRepo } from './continuity-repo.js';
 import {
     NATIVE_RESOURCE_KINDS,
     assertBranch,
@@ -42,6 +43,7 @@ export class SessionRepo {
     constructor({ engine }) {
         if (!engine) throw new TypeError('SessionRepo requires { engine }');
         this._engine = engine;
+        this.continuity = new ContinuityRepo({ engine });
     }
 
     _sessionKey(handle, sessionId) {
@@ -726,7 +728,12 @@ export class SessionRepo {
 
     async delete(handle, sessionId) {
         assertWritable();
-        return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
+        const session = await this.get(handle, sessionId);
+        if (!session) return false;
+        return this.continuity.lock(handle, session.packageId, () => withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
+            const root = await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.playerContinuity, handle, packageId: session.packageId });
+            const continuity = root && await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.playerContinuityRevision, handle, packageId: session.packageId, revisionId: root.revisionId });
+            if (continuity?.state.intents.some(intent => intent.sessionId === sessionId && intent.status === 'prepared')) throw new ConflictError('native_transfer_pending');
             for (const kind of [
                 NATIVE_RESOURCE_KINDS.savePoint,
                 NATIVE_RESOURCE_KINDS.sessionRevision,
@@ -740,6 +747,6 @@ export class SessionRepo {
                 }
             }
             return tx.deleteResource(this._sessionKey(handle, sessionId));
-        }));
+        })));
     }
 }

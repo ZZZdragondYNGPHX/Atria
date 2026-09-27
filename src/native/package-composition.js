@@ -1,6 +1,7 @@
 import { freezePackagePromptPrograms } from './model-prompt-runtime/package-freeze.js';
 import { validateExperienceResources } from './experience-validation.js';
 import { createHash } from 'node:crypto';
+import { composeContent, contentDigest, readCommunity, validateContentComposition } from './content-composition.js';
 
 import {
     assertAssetRef,
@@ -209,6 +210,7 @@ export class PackageInstaller {
         }
 
         const inspected = inspectAtriaPackageContainer(archive);
+        validateContentComposition(inspected);
         const manifest = inspected.manifest;
         validateExperienceResources(manifest, inspected.sourceFiles, inspected.assets);
         const packageContentHash = digest(archive);
@@ -270,6 +272,7 @@ export class PackageInstaller {
             throw new Error('Installed Package content hash mismatch');
         }
         const inspected = inspectAtriaPackageContainer(archive);
+        validateContentComposition(inspected);
         if (
             inspected.manifest.packageId !== packageId
             || inspected.manifest.packageVersionId !== packageVersionId
@@ -284,6 +287,34 @@ export class PackageInstaller {
             assets: inspected.assets,
             preflight: inspected.preflight,
         });
+    }
+
+    async installCommunity(handle, base, bytes) {
+        const opened = await this.open(handle, base.packageId, base.packageVersionId);
+        if (!opened || opened.packageVersion.packageContentHash !== base.packageContentHash) throw new TypeError('Exact installed Base required');
+        const runtime = opened.manifest.runtime?.experienceContract?.contentRuntime;
+        if (!runtime || runtime.composition) throw new TypeError('Uncomposed Base extension contract required');
+        readCommunity(bytes, base, runtime);
+        const ref = { assetId: 'asset_' + contentDigest(bytes).slice(0, 32), contentHash: contentDigest(bytes), size: bytes.length, mediaType: 'application/json' };
+        await this._assetStore.put(handle, ref, bytes);
+        return { assetId: ref.assetId, contentHash: ref.contentHash };
+    }
+
+    async compose(handle, base, resources, options = {}) {
+        if (!Array.isArray(resources) || resources.length > 32) throw new TypeError('Composition resource limit');
+        const opened = await this.open(handle, base.packageId, base.packageVersionId);
+        if (!opened || opened.packageVersion.packageContentHash !== base.packageContentHash) throw new TypeError('Exact installed Base required');
+        const baseBytes = await this._assetStore.readBlob(handle, base.packageContentHash);
+        const payloads = [];
+        for (const ref of resources) {
+            const installed = await this._assetStore.getRef(handle, ref.assetId);
+            if (!installed || installed.contentHash !== ref.contentHash) throw new TypeError('Missing installed exact Community resource');
+            payloads.push({ ref, bytes: await this._assetStore.readBlob(handle, ref.contentHash) });
+        }
+        const resolved = composeContent(baseBytes, payloads, createNativeId('packageVersion'));
+        validateExperienceResources(resolved.manifest, resolved.sourceFiles, resolved.assets);
+        const { archive } = buildAtriaPackageContainer({ manifest: resolved.manifest, sourceFiles: resolved.sourceFiles, assetPayloads: resolved.assets });
+        return this.install(handle, archive, { ...options, setCurrent: false });
     }
 
     async currentRegexEdit(handle, packageId, packageVersionId) {

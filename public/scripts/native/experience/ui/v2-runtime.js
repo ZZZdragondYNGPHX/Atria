@@ -44,6 +44,7 @@ export function mountUiDocument(definition, options) {
     const context = (extra = {}) => {
         const result = { ...state.snapshot(), world: options.presentationContext ? {} : options.worldSession?.getState?.() ?? {}, data: options.data ?? {}, env: environment.get(), selectors: options.selectors?.snapshot?.() ?? {}, ...options.presentationContext, ...extra };
         result.projection = options.presentationContext ? {} : displayInformation(options.getSnapshot?.());
+        result.continuity = options.presentationContext ? {} : options.getSnapshot?.()?.continuityViews ?? {};
         const pending = new Set(); const evaluated = new Set();
         const own = { ...result.selectors };
         for (const [key, expression] of Object.entries(definition.selectors)) Object.defineProperty(own, key, { enumerable: true, get() {
@@ -123,7 +124,7 @@ export function mountUiDocument(definition, options) {
                 draft[root][key] = step.op === 'ui.set' ? value : step.op === 'ui.toggle' ? !draft[root][key] : copy(field.default);
                 fieldErrors(field, draft[root][key]);
             } else if (step.op === 'command.dispatch') command.confirmation = { commandId: step.commandId, args: json(step.args.read(ctx)) };
-            else if (step.op === 'action.compensate') throw new Error('Opening requires a declared confirmation Command');
+            else if (step.op === 'action.compensate' || step.op.startsWith('continuity.')) throw new Error('Opening requires a declared confirmation Command');
             else if (step.op === 'composer.set') composerText = value;
             else if (step.op === 'composer.clear') composerText = '';
             else if (step.op === 'composer.append') {
@@ -203,6 +204,11 @@ export function mountUiDocument(definition, options) {
                     const receipt = receipts.get(step.actionId) || options.worldSession.getActionReceipts().findLast(item => item.actionId === step.actionId && item.compensation);
                     if (!receipt) throw new Error('No compensatable Action receipt');
                     results.push(await options.worldSession.compensateAction(receipt));
+                } else if (step.op.startsWith('continuity.')) {
+                    if (!options.continuity) throw new Error('Continuity Host unavailable');
+                    attempts.set(actionId, attempt);
+                    const kinds = { 'continuity.command': 'command', 'continuity.transfer': 'transfer', 'continuity.resume': 'transfer.resume', 'continuity.cancel': 'transfer.cancel' };
+                    results.push(await options.continuity({ ...json(step.args.read(ctx)), kind: kinds[step.op] }));
                 } else if (step.op.startsWith('activity.')) {
                     if (!options.presentation) throw new Error('Activity Host unavailable');
                     attempts.set(actionId, attempt);

@@ -290,6 +290,7 @@ export class NativeGenerationHost {
         if (input.sessionId) {
             snapshot = immutable(await this.sessionCore.load(handle, input.sessionId));
             if (snapshot.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
+            if (!preflight && snapshot.externalEffects?.some(effect => effect.status === 'prepared')) fail('native_transfer_pending');
             source = { kind: 'session', sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
             runtime = snapshot.manifest.runtime;
         } else if (input.projectId) {

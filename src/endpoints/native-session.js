@@ -67,6 +67,8 @@ export function createNativeSessionRouter(getServices = services) {
             }
         } else if (command?.type === 'lifecycle') {
             res.json(await core.applyLifecycleCommand(handle, sessionId, command, { expectedRevisionId }));
+        } else if (command?.type === 'continuity') {
+            res.json(await core.applyContinuityCommand(handle, sessionId, command, { expectedRevisionId }));
         } else if (command?.type === 'turn.finalize') {
             res.json(await core.finalizeTurn(handle, sessionId, { envelope: command.envelope, invocationId: command.invocationId }, { expectedRevisionId }));
         } else if (command?.type === 'proposal.resolve') {
@@ -87,6 +89,12 @@ export function createNativeSessionRouter(getServices = services) {
         } else if (command?.type === 'switch') {
             res.json(await core.switchBranch(handle, sessionId, command.branchId, { expectedRevisionId }));
         } else throw new TypeError('Unsupported Native runtime command');
+    }));
+    router.post('/continuity/projection', route(async (req, res, { core }, handle) => {
+        res.json(await core.getContinuityProjection(handle, req.body.sessionId, req.body.viewId, { revisionId: req.body.revisionId }));
+    }));
+    router.post('/continuity/graph', route(async (req, res, { core }, handle) => {
+        res.json(await core.getContinuityGraph(handle, req.body.sessionId, req.body.limit));
     }));
     router.post('/runtime/resolve', route(async (req, res, { core, packageInstaller }, handle) => {
         const snapshot = await core.load(handle, req.body?.sessionId);

@@ -21,6 +21,7 @@ import { TASK_STATE_NAMESPACE, assertTaskValue, assertSemanticOutcome } from '..
 import { prepareTaskAuthority, validateTaskRecords } from './task-authority.js';
 import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle } from './lifecycle-authority.js';
 import { fields } from '../../public/scripts/native/experience/ui/v2-values.js';
+import { applyContinuity, continuityDefinition, continuityDisplay, continuityEffects, projectContinuity, reconcileOwnership } from './continuity-authority.js';
 
 // Projection is a first-class immutable Variant field, never Timeline metadata.
 // User and assistant messages may project; only assistant turns accept envelopes.
@@ -153,6 +154,7 @@ export class SessionCore {
         this._saves = savePointRepo;
         this._packages = packageInstaller;
         this._knowledge = knowledgeRepo;
+        this._continuity = sessionRepo.continuity;
     }
 
     async _openPackage(handle, packageId, packageVersionId, entryPointId) {
@@ -183,7 +185,7 @@ export class SessionCore {
         const worlds = selectedWorlds(snapshot.states, installed.manifest, installed.entryPoint);
         const base = { ...snapshot, knowledge, manifest: packageKnowledgeManifest(installed.manifest, knowledge), entryPoint: installed.entryPoint, worlds };
         if (snapshot.states.atri_game_regex) base.manifest = { ...base.manifest, processors: { ...base.manifest.processors, regex: normalizeNativeRegexScripts(snapshot.states.atri_game_regex.regexScripts) } };
-        if (!options.revisionId) {
+        if (!options.revisionId && !options.skipPackageEdits) {
             const regexEdit = await this._packages.currentRegexEdit?.(handle, session.packageId, session.packageVersionId);
             if (regexEdit && hashNativeDocument(regexEdit) !== hashNativeDocument(snapshot.states.atri_game_regex || null)) {
                 const states = { ...base.states, atri_game_regex: regexEdit };
@@ -205,6 +207,14 @@ export class SessionCore {
                     throw error;
                 }
             }
+        }
+        if (continuityDefinition(base)) {
+            if (!this._continuity) throw new TypeError('Continuity repository required');
+            const revision = await this._continuity.load(handle, session.packageId);
+            if (!options.revisionId) base.states = reconcileOwnership(base, base.states, revision);
+            base.externalEffects = continuityEffects(revision, sessionId);
+            base.continuityRevisionId = revision?.revisionId ?? null;
+            base.continuityViews = continuityDisplay(base, revision);
         }
         return base;
     }
@@ -283,9 +293,17 @@ export class SessionCore {
         for (const variant of projected) validateMessageBlocks(definition, variant.projection);
     }
 
-    async _publish(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
+    async _publish(handle, base, options = {}) {
+        if (!continuityDefinition(base)) return this._publishLocked(handle, base, options);
+        if (!this._continuity) throw new TypeError('Continuity repository required');
+        return this._continuity.lock(handle, base.session.packageId, () => this._publishLocked(handle, base, options));
+    }
+
+    async _publishLocked(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
         graph = base.graph, branchId = base.revision?.branchId ?? base.session.activeBranchId,
-        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null } = {}) {
+        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null } = {}) {
+        if (continuityDefinition(base)) states = reconcileOwnership(base, states,
+            await this._continuity.load(handle, base.session.packageId), { publication: true, pendingIntentId });
         variants = variants.map(assertVariant);
         await this._validateProjections(handle, { ...base, timeline }, variants);
         validateWorldState(states, base.manifest, base.entryPoint);
@@ -346,7 +364,9 @@ export class SessionCore {
             updatedAt: Math.max(Date.now(), base.session.updatedAt) });
         const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
             entries, variants, branches, expectedRevisionId: base.session.headRevisionId });
+        const continuity = continuityDefinition(base) ? await this._continuity.load(handle, base.session.packageId) : null;
         return { ...snapshot, manifest: base.manifest, entryPoint: base.entryPoint,
+            ...(continuityDefinition(base) ? { externalEffects: continuityEffects(continuity, base.session.sessionId), continuityRevisionId: continuity?.revisionId ?? null, continuityViews: continuityDisplay(base, continuity) } : {}),
             worlds: selectedWorlds(states, base.manifest, base.entryPoint) };
     }
 
@@ -416,6 +436,22 @@ export class SessionCore {
         for (const draft of prepared.drafts) { const created = this._newEntry(base, draft, timeline.length); timeline.push(created.entry); entries.push(created.entry); variants.push(created.variant); }
         return this._publish(handle, base, { states: prepared.states, timeline, entries, variants, taskResolution: prepared.taskResolution, lifecycleReceipt: { invocationId: command.invocationId,
             fingerprint, baseRevisionId: expectedRevisionId, action: command.action.kind, events: prepared.events } });
+    }
+
+    async applyContinuityCommand(handle, sessionId, command, { expectedRevisionId } = {}) {
+        assertNativeId(expectedRevisionId, 'revision');
+        return applyContinuity(this, handle, sessionId, command, expectedRevisionId);
+    }
+
+    async getContinuityProjection(handle, sessionId, viewId, { revisionId = null } = {}) {
+        const base = await this.load(handle, sessionId);
+        return projectContinuity(this._continuity, handle, base, viewId, revisionId);
+    }
+
+    async getContinuityGraph(handle, sessionId, limit) {
+        const base = await this.load(handle, sessionId);
+        if (!continuityDefinition(base)) throw new TypeError('Continuity contract required');
+        return this._continuity.graph(handle, base.session.packageId, limit);
     }
 
     async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [] }, { expectedRevisionId } = {}) {

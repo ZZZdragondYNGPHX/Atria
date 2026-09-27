@@ -2,6 +2,8 @@ import { assertPresentationRuntime, assertPresentationClosure } from './native-p
 import { assertTaskRuntime } from './native-task-contract.js';
 import { assertLifecycleRuntime } from './native-lifecycle-contract.js';
 import { assertInformationRuntime } from './native-information-contract.js';
+import { assertContentRuntime } from './native-content-contract.js';
+import { assertContinuityRuntime } from './native-continuity-contract.js';
 
 // Implementation Baseline v1.0 vocabulary. A reserved version is not a Host
 // implementation, permission grant, runtime role, or state namespace.
@@ -31,12 +33,12 @@ export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
     ['media-scene', [1], [1]],
     ['asset-pack', [1], [1]],
     ['auxiliary-task', [1], [1]],
-    ['addon', [1]],
+    ['addon', [1], [1]],
     ['perspective', [1], [1]],
     ['model-task', [1], [1]],
     ['session-application', [1], [1]],
     ['temporal', [1], [1]],
-    ['player-continuity', [1]],
+    ['player-continuity', [1], [1]],
     ['shared-realm', [1]],
     ['workflow', [1], [1]],
 ].map(([id, versions, supported = []]) => [id, Object.freeze({
@@ -66,7 +68,7 @@ function list(value, label, validate, key) {
 // action, turn, task and authority bodies require their own strict contracts.
 // No generic config/extension/persistence/exposure payload belongs in this seam.
 export function assertNativeExperienceContract(value) {
-    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime', 'presentationRuntime', 'informationRuntime'], 'ExperienceContract');
+    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime', 'presentationRuntime', 'informationRuntime', 'contentRuntime', 'continuityRuntime'], 'ExperienceContract');
     if (value.schemaVersion !== ATRIA_EXPERIENCE_CONTRACT_VERSION) {
         throw new TypeError('ExperienceContract.schemaVersion must be 1');
     }
@@ -97,6 +99,8 @@ export function assertNativeExperienceContract(value) {
     return Object.freeze({ schemaVersion: ATRIA_EXPERIENCE_CONTRACT_VERSION, capabilities, dataResources,
         ...(taskRuntime === undefined ? {} : { taskRuntime }),
         ...(lifecycleRuntime === undefined ? {} : { lifecycleRuntime }),
+        ...(value.contentRuntime === undefined ? {} : { contentRuntime: assertContentRuntime(value.contentRuntime) }),
+        ...(value.continuityRuntime === undefined ? {} : { continuityRuntime: assertContinuityRuntime(value.continuityRuntime, lifecycleRuntime) }),
         ...(value.informationRuntime === undefined ? {} : { informationRuntime: assertInformationRuntime(value.informationRuntime, lifecycleRuntime, taskRuntime) }),
         ...(value.presentationRuntime === undefined ? {} : { presentationRuntime: assertPresentationRuntime(value.presentationRuntime, lifecycleRuntime, taskRuntime) }) });
 }
@@ -112,6 +116,14 @@ export function assertExperienceDataClosure(contract, assets) {
         }
     }
     assertPresentationClosure(normalized.presentationRuntime, assets);
+    const composition = normalized.contentRuntime?.composition;
+    if (composition) {
+        const references = [...composition.resources.map(ref => ({ ...ref, mediaType: 'application/json' })),
+            { assetId: 'asset_' + composition.base.packageContentHash.slice(0, 32), contentHash: composition.base.packageContentHash, mediaType: 'application/vnd.atria.package' }];
+        for (const ref of references) {
+            if (!assets.some(asset => asset.assetId === ref.assetId && asset.contentHash === ref.contentHash && asset.mediaType === ref.mediaType)) throw new TypeError('Content composition requires exact embedded Base and Community assets');
+        }
+    }
     return normalized;
 }
 
