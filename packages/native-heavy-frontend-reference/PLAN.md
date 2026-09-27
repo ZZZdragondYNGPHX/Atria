@@ -1,6 +1,6 @@
 # Atria Native Heavy-Frontend Reference Package 企划书
 
-> 状态：Discussion Draft v0.7  
+> 状态：Discussion Draft v0.8  
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
@@ -165,8 +165,8 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 4. **Lifecycle / 时间 / 日程 / Morning-Night 工作流 — 已冻结**
 5. **宗教 / 教会模拟经营的数据模型、结算与剧情耦合 — 已冻结**
 6. **Knowledge / Prompt / Memory 分层 — 已冻结**
-7. **Hybrid UI 信息架构 — 当前**
-8. Message Projection / 选项 / Conversation
+7. **Hybrid UI 信息架构 — 已冻结**
+8. **Message Projection / 选项 / Conversation — 当前**
 9. 纯 Native 文本演出 / GAL 表达（v1 无外部媒体资产；立绘延期）
 10. SMS / 社交 / 邮件等二级应用
 11. 存档、分支、恢复、压缩与长期游玩
@@ -1557,20 +1557,243 @@ World Task 读取：
 
 World Task 负责把事实包装成活跃的世界表达，不自行创造新的 World Truth。
 
-## 14. Round 7 — Hybrid UI 信息架构待讨论
+## 14. Round 7 — Hybrid UI 信息架构冻结方案
+
+Round 7 已获得用户认可，以下作为 v1 Hybrid UI 基线。
+
+### 14.1 Story-first
+
+Hybrid 主界面固定采用 **Story-first**。
+
+玩家打开作品时，默认视觉与交互中心必须是：
+
+- 当前主剧情；
+- Current Event；
+- Conversation；
+- Native Composer。
+
+教会、日程、手机、人物等作为可随时进入的支持应用，不得把主剧情挤成次要区域。
+
+### 14.2 一级导航
+
+v1 一级入口冻结为：
+
+1. **Story**
+2. **Church**
+3. **Schedule**
+4. **Phone**
+5. **People**
+
+Story 是默认首页。
+
+### 14.3 Story
+
+Story 页面承载：
+
+- 主 Timeline / Conversation；
+- Current Event Header；
+- Message Projection；
+- Choices / Actions；
+- Native Composer；
+- 必要的相关 Context。
+
+Desktop 主正文占主要视觉宽度；辅助信息不得反客为主。
+
+### 14.4 Church
+
+Church 二级页面至少包括：
+
+- Overview；
+- Facilities；
+- Decrees；
+- Projects；
+- Opportunities。
+
+Church 首页只展示少量高价值信息：
+
+- Church Level；
+- Money；
+- Followers；
+- Reputation；
+- Today’s Assignments；
+- Active Projects；
+- Pending Opportunities。
+
+不做 Excel-style KPI Dashboard，不在 v1 加复杂统计图表。
+
+### 14.5 Schedule
+
+Schedule 使用 Game Clock 时间轴表达：
+
+- 当前时间；
+- 已确认行程；
+- NPC background assignments；
+- due interactions；
+- 即将到来的 hard / soft 项。
+
+不使用回合数作为视觉时间轴。
+
+### 14.6 Phone
+
+Phone 统一承载：
+
+- Messages / SMS；
+- Social；
+- Mail。
+
+不为 SMS、Social、Mail 各建立独立一级导航。
+
+### 14.7 People
+
+People 以剧情理解为核心，展示：
+
+- 人物身份；
+- Position；
+- 当前状态；
+- Today schedule；
+- relationship；
+- relevant recent information。
+
+不默认设计传统 RPG STR/DEX/CHA 数值面板。
+
+### 14.8 Current Event Header
+
+当前存在 Event 时，Story 顶部显示轻量 Event Header，例如：
+
+- Event title；
+- location；
+- participants；
+- 当前 goal / player-facing status。
+
+不暴露内部 `currentBeat`、workflow phase、Event Instance ID 等 Runtime 实现细节。
+
+### 14.9 Story 中的教会信息保持极轻
+
+Story 可常驻少量教会状态，例如：
+
+`Lv · Money · Followers · Reputation`
+
+但只能作为弱辅助信息；完整经营信息进入 Church。
+
+### 14.10 Context Rail / Context Sheet
+
+Desktop 可使用右侧 Context Rail，但仅承载：
+
+1. 当前参与人物；
+2. 当前故事真正相关的事实；
+3. 进入 Church / Schedule / Phone 等应用的快捷入口。
+
+不得把所有经营数据复制成侧栏 Dashboard。
+
+Compact / Mobile 不压缩 Story 来硬塞右栏，改为按需展开的 Context Sheet。
+
+### 14.11 Message Choice 与消息绑定
+
+Choices / Quick Actions 属于产生它们的 Message Projection。
+
+它们必须跟随对应 assistant message，而不是放在全局固定“当前选项”区域。
+
+这样历史回看、Reply Variant 和 Branch 都能明确知道选择属于哪一轮。
+
+### 14.12 永远保留自由 Composer
+
+无论当前消息是否提供推荐选项，Native Composer 都必须可用。
+
+Choices 是建议行动，不是玩家唯一合法输入。
+
+### 14.13 Choice Behavior
+
+复用 Player Preference：
+
+- `send_immediately`；
+- `fill_composer`。
+
+`fill_composer` 允许玩家点击建议后继续修改文字，再正式发送。
+
+### 14.14 通知默认不进入主 Timeline
+
+以下内容默认使用 badge / toast / app state，而不是机械插入 Story：
+
+- 新 SMS；
+- Mail；
+- Project 完成；
+- Facility 完成；
+- 教会经营结算；
+- 普通 Schedule 结果；
+- 其他后台通知。
+
+只有真正进入当前剧情时才通过 Event / Narrative 写入 Timeline。
+
+### 14.15 Opportunity 是经营到剧情的 UI 桥梁
+
+普通 Opportunity 留在 Church。
+
+剧情级 Opportunity 可以在 Story 显示轻量入口，例如“有人正在门口等你”，玩家接受后转换为 Event Instance。
+
+### 14.16 v1 的视觉定位
+
+v1 明确定位为：
+
+> **高质量 text-first narrative application**
+
+不使用背景、CG、Audio 或立绘，依靠：
+
+- typography；
+- spacing；
+- structured components；
+- dialogue grouping；
+- badges；
+- progress / status；
+- Native UI transitions；
+
+建立区别于普通聊天页的产品体验。
+
+### 14.17 Dialogue / Scene Presentation
+
+原先的“Text GAL”在产品层改称 **Dialogue / Scene Presentation**。
+
+它和普通 Story Rendering 共享同一个 Narrative Authority，只是表现方式不同。
+
+例如同一 Narrative 可以表现为：
+
+- prose-heavy Story；
+- speaker + dialogue grouping；
+- structured narration / dialogue blocks。
+
+v1 不建立第二套 GAL 模型，也不依赖媒体 Asset。
+
+### 14.18 v1 不提供手动 Story / Dialogue 切换
+
+第一版由当前 Narrative / Event presentation 自行选择合适渲染，不增加玩家手动 Story/Dialogue 模式切换 Preference。
+
+若实际使用发现明确需要，再在后续版本增加。
+
+### 14.19 Mobile / Compact
+
+Mobile 继续保持：
+
+- Story 全宽优先；
+- Composer 常驻；
+- 一级导航压缩为底部或等价 compact navigation；
+- Context Rail 转为 Context Sheet；
+- Church / Schedule / Phone / People 保持同一信息层级，不做桌面页面简单缩放。
+
+## 15. Round 8 — Message Projection / 选项 / Conversation 待讨论
 
 本轮尚未冻结。
 
 需要决定：
 
-- Play 主界面的视觉中心到底是 Conversation / Event，还是 Dashboard；
-- Hybrid 是否保留 Atria 原生 Conversation + Composer 为常驻核心；
-- 教会 Dashboard、人物、日程、手机、邮件、Social、教令、设施、Projects、Opportunity 如何组织；
-- 哪些内容需要一级入口，哪些应该藏到二级页面；
-- 当前 Event、当前人物、当前时间、教会关键状态应该如何常驻显示；
-- 手机是否作为 SMS / Social / Mail 的统一入口；
-- 文本 GAL / 普通长文本是否需要玩家可切换，还是根据 Event presentation 自动选择；
-- Message Projection 的选项、状态条、Event 信息应该放在消息内部还是固定侧栏 / 顶栏；
-- desktop 与 compact/mobile 是否使用同一信息层级；
-- 如何避免重前端最终变成 Dashboard-first，导致 AI 正文被挤到次要位置；
-- v1 不使用外部媒体资产的前提下，如何仍然做出明显区别于普通聊天页的 Hybrid 应用体验。
+- Narrator 一次主 Turn 的 canonical Timeline content 应该只保存纯 prose，还是保存结构化 narrative segments；
+- Message Projection 允许哪些 block 类型；
+- Choices / Actions 是模型直接生成 block data，还是由 Event / Runtime 生成；
+- 选择按钮是否必须与当前 Event / Command 绑定；
+- 历史消息上的 action 如何处理 active-tail / explicit fork；
+- Reply Variant / Branch 切换时 projection 和 Event / World state 如何同步；
+- 普通自由聊天与 Event Turn 是否共享同一种 Message contract；
+- Dialogue / Scene Presentation 应落在 canonical content 还是 projection；
+- 状态条、人物状态、教会相关提示是否属于 message-local snapshot；
+- Message-local UI state 可以保留哪些内容；
+- 是否允许消息 block 读取 live World，还是一律使用 commit-time snapshot；
+- 如何保证 display-only block 不进入未来 Prompt；
+- 用户点击 choice 后发送的是自然语言、typed action，还是二者组合。
