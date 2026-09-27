@@ -1,6 +1,6 @@
 # Atria Native Heavy-Frontend Reference Package 企划书
 
-> 状态：Discussion Draft v0.9  
+> 状态：Discussion Draft v0.10  
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
@@ -167,8 +167,8 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 6. **Knowledge / Prompt / Memory 分层 — 已冻结**
 7. **Hybrid UI 信息架构 — 已冻结**
 8. **Message Projection / Conversation — 已冻结**
-9. **纯 Native 文本演出 / Dialogue / Scene Presentation（v1 无外部媒体资产；立绘延期）— 当前**
-10. SMS / 社交 / 邮件等二级应用
+9. **纯 Native 文本演出 / Dialogue / Scene Presentation — 已冻结**
+10. **SMS / Social / Mail 等二级应用 — 当前**
 11. 存档、分支、恢复、压缩与长期游玩
 12. Studio Authoring / Scenario / Health 验证策略
 13. 最终能力矩阵与是否存在真实平台缺口
@@ -1933,26 +1933,179 @@ v1 的“重前端感”主要来自整个 Hybrid 应用，而不是每一条 AI
 
 > **干净、可读、连续、自由输入优先。**
 
-## 16. Round 9 — 纯 Native 文本演出 / Dialogue / Scene Presentation 待讨论
+## 16. Round 9 — 纯 Native 文本演出 / Dialogue / Scene Presentation 冻结方案
+
+Round 9 已获得用户认可，以下作为 v1 文本演出基线。
+
+### 16.1 v1 不做 GAL Runtime
+
+第一版不存在独立 GAL Runtime、GAL Task 或第二套 Narrative storage。
+
+v1 只提供两种共享同一 canonical prose 的 Presentation：
+
+- **Story Presentation**
+- **Scene Presentation**
+
+二者都渲染同一 Assistant Variant `content`。
+
+### 16.2 Narrator 不输出视觉脚本
+
+Narrator 不返回：
+
+- speaker mapping；
+- expression；
+- pose；
+- show / hide；
+- move；
+- camera；
+- presentation hint；
+- 其他为 UI 服务的视觉脚本。
+
+不把旧式 `@show / @move / [actor][expression]` DSL 换成新的结构化视觉脚本。
+
+### 16.3 不强制剧本式 speaker 标记
+
+v1 不要求 Narrator 每句台词都输出角色名。
+
+允许自然小说写法，例如：
+
+- 叙述段；
+- 独立引号台词；
+- 省略重复 speaker；
+- 自然对话节奏。
+
+不为了 UI 强迫正文变成剧本格式。
+
+### 16.4 Scene Presentation 只做段落级排版
+
+Scene renderer 可以对 canonical prose 做 best-effort 文本 presentation，例如：
+
+- 普通叙述使用标准正文排版；
+- 独立台词段增加留白 / 强调；
+- 连续短对话采用更紧凑节奏；
+- 场景分隔增加空间层级；
+- Markdown emphasis 保留；
+- 长叙述自动回落普通阅读样式。
+
+Presentation parser 失败时必须安全降级为普通 prose。
+
+解析结果不成为 Authority。
+
+### 16.5 v1 不使用模型生成 Presentation Hints
+
+第一版不要求模型额外返回：
+
+- paragraph type；
+- speaker；
+- dialogue metadata；
+- scene directives；
+- presentation AST。
+
+避免额外 schema、token、validation 与模型注意力成本。
+
+如未来加入立绘后确实需要精确 Actor mapping，再单独扩展 Presentation metadata。
+
+### 16.6 Scene Header 来自 Authority Projection
+
+Event Scene 顶部可以显示：
+
+- Event title；
+- location；
+- Game Clock；
+- participants；
+- 当前 player-facing goal / status。
+
+这些来自 Event / World / Lifecycle Projection，不写入 canonical prose，也不进入 Timeline history。
+
+### 16.7 Scene 仍属于 Story 页面
+
+进入 Scene Presentation 时：
+
+- Story route 不变；
+- Conversation / Timeline authority 不变；
+- Native Composer 保留；
+- 不进入独立全屏 GAL 应用；
+- Context 与其他 Hybrid 能力继续可访问。
+
+只是 Story 内容区改变文本 presentation。
+
+### 16.8 Presentation intent 由 Event / Runtime 提供
+
+Free Narrative 默认使用 Story Presentation。
+
+特定 Event 可以声明 / 投影 Scene Presentation intent。
+
+该 intent 只影响显示，不改变：
+
+- Narrator Task；
+- Prompt Program；
+- Timeline；
+- World；
+- Memory；
+- Message schema。
+
+### 16.9 不做 Typewriter
+
+v1 不增加二次逐字播放。
+
+直接使用模型真实 streaming / committed prose 的正常阅读节奏，避免 Streaming + Typewriter 双重延迟。
+
+### 16.10 动效保持轻量
+
+v1 只允许轻量 Host UI 动效，例如：
+
+- Scene Header transition；
+- 新段落轻量出现；
+- page / sheet transition；
+- Context 更新；
+- unread badge；
+- Event 状态变化。
+
+不做逐句震动、跳动、闪烁或重型视觉演出。
+
+必须服从 Host 的 reduced-motion / accessibility 行为。
+
+### 16.11 Event 结束自然回到 Story Presentation
+
+Event resolve 后：
+
+- Scene Header 消失；
+- Story Presentation 恢复；
+- Timeline 不发生格式转换；
+- canonical prose 保持原样。
+
+### 16.12 未来立绘只扩展 Presentation
+
+后续版本若加入立绘：
+
+`Scene Presentation + Actor Visual Projection + Portrait Asset`
+
+不修改：
+
+- Timeline；
+- Narrator；
+- Event Authority；
+- Prompt；
+- Memory；
+- Message Contract。
+
+v1 不为未来立绘提前引入背景 / 表情 / CG / Audio / Asset Pack 依赖。
+
+## 17. Round 10 — SMS / Social / Mail 二级应用待讨论
 
 本轮尚未冻结。
 
-前提：
-
-- v1 不使用背景、表情、CG、Audio 或立绘；
-- 不创建独立 GAL Task；
-- 不保存第二份 Dialogue Narrative；
-- canonical prose 仍是唯一 Narrative Authority。
-
 需要决定：
 
-- Dialogue / Scene Presentation 如何从 canonical prose 得到足够的演出感；
-- 是否要求 Narrator canonical prose 使用统一角色台词标记 / Markdown 约定；
-- Presentation 是自动分析 prose，还是依赖 Turn 中的 display-only segment hints；
-- narration、dialogue、system-style narration 是否需要不同排版；
-- speaker 名称如何与 Actor identity 对齐；
-- 多人物快速对话如何避免变成普通聊天气泡；
-- v1 是否需要场景标题、地点、时间、参与者等 Scene Header；
-- Text-first 演出允许哪些安全动效 / typography；
-- 是否需要“聚焦当前说话人”这类纯 UI 状态；
-- prose-heavy 与 dialogue-heavy 内容怎样共存而不让模型为了 UI 被迫写固定格式。
+- Phone 内三个子应用的数据模型是否统一；
+- SMS / Social / Mail 的消息是否共用 Conversation Thread primitive；
+- Social Post / Reply 是否应该和 SMS Thread 使用不同 Domain；
+- Mail 是否需要附件 / payment / Opportunity 引用；
+- Social / SMS / Mail 由 Social Task 的哪些 Variant 生成；
+- 哪些通信可以主动由 NPC 发起；
+- NPC 回复延迟如何与 Schedule / Game Clock 协同；
+- 通信内容是否进入 Atria Memory；
+- 某条通信何时升级为主剧情 Event；
+- Phone 内通信是否允许玩家自由输入；
+- 玩家在 Phone 内发出的消息是否进入主 Timeline（当前倾向否）；
+- 如何避免 Phone 变成第二个完整聊天系统而复制主 Conversation。
