@@ -178,7 +178,7 @@
                     "type": "string",
                     "maxLength": 1024
                   },
-                  "currentBeat": {
+                  "current_beat": {
                     "type": "string",
                     "maxLength": 32,
                     "enum": [
@@ -189,17 +189,17 @@
                       "terminal"
                     ]
                   },
-                  "resolvedBeats": {
+                  "resolved_beats": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 128
                   },
-                  "startedAt": {
+                  "started_at": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100000000
                   },
-                  "outcomeReceiptRefs": {
+                  "outcome_receipt_refs": {
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -207,7 +207,7 @@
                     },
                     "maxItems": 16
                   },
-                  "narrativeRefs": {
+                  "narrative_refs": {
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -240,11 +240,11 @@
                 "status": "proposed",
                 "premise": "",
                 "goal": "",
-                "currentBeat": "transition",
-                "resolvedBeats": 0,
-                "startedAt": 0,
-                "outcomeReceiptRefs": [],
-                "narrativeRefs": []
+                "current_beat": "transition",
+                "resolved_beats": 0,
+                "started_at": 0,
+                "outcome_receipt_refs": [],
+                "narrative_refs": []
               },
               "commands": [
                 {
@@ -286,7 +286,7 @@
                         "type": "string",
                         "maxLength": 1024
                       },
-                      "startedAt": {
+                      "started_at": {
                         "type": "integer",
                         "minimum": 0,
                         "maximum": 100000000
@@ -324,13 +324,13 @@
                     "goal": {
                       "formula": "args.goal"
                     },
-                    "currentBeat": "narrative",
-                    "resolvedBeats": 0,
-                    "startedAt": {
-                      "formula": "args.startedAt"
+                    "current_beat": "narrative",
+                    "resolved_beats": 0,
+                    "started_at": {
+                      "formula": "args.started_at"
                     },
-                    "outcomeReceiptRefs": [],
-                    "narrativeRefs": []
+                    "outcome_receipt_refs": [],
+                    "narrative_refs": []
                   }
                 },
                 {
@@ -357,11 +357,11 @@
                   },
                   "event": "event.beat.advanced",
                   "assign": {
-                    "currentBeat": {
+                    "current_beat": {
                       "formula": "args.beat"
                     },
-                    "resolvedBeats": {
-                      "formula": "world.resolvedBeats + 1"
+                    "resolved_beats": {
+                      "formula": "world.resolved_beats + 1"
                     }
                   }
                 },
@@ -370,7 +370,7 @@
                   "argsSchema": {
                     "type": "object",
                     "properties": {
-                      "outcomeReceiptRefs": {
+                      "outcome_receipt_refs": {
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -378,7 +378,7 @@
                         },
                         "maxItems": 16
                       },
-                      "narrativeRefs": {
+                      "narrative_refs": {
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -396,12 +396,12 @@
                   "event": "event.resolved",
                   "assign": {
                     "status": "resolved",
-                    "currentBeat": "terminal",
-                    "outcomeReceiptRefs": {
-                      "formula": "args.outcomeReceiptRefs"
+                    "current_beat": "terminal",
+                    "outcome_receipt_refs": {
+                      "formula": "args.outcome_receipt_refs"
                     },
-                    "narrativeRefs": {
-                      "formula": "args.narrativeRefs"
+                    "narrative_refs": {
+                      "formula": "args.narrative_refs"
                     }
                   },
                   "terminal": true
@@ -417,7 +417,7 @@
                   "event": "event.cancelled",
                   "assign": {
                     "status": "cancelled",
-                    "currentBeat": "terminal"
+                    "current_beat": "terminal"
                   },
                   "terminal": true
                 }
@@ -436,7 +436,7 @@
               "recordSchema": {
                 "type": "object",
                 "properties": {
-                  "actorId": {
+                  "actor_id": {
                     "type": "string",
                     "maxLength": 64
                   },
@@ -444,12 +444,12 @@
                     "type": "string",
                     "maxLength": 128
                   },
-                  "startTick": {
+                  "start_tick": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100000000
                   },
-                  "endTick": {
+                  "end_tick": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100000000
@@ -463,7 +463,7 @@
                       "background"
                     ]
                   },
-                  "operationKind": {
+                  "operation_kind": {
                     "type": "string",
                     "maxLength": 32,
                     "enum": [
@@ -502,12 +502,12 @@
                 "additionalProperties": false
               },
               "initial": {
-                "actorId": "",
+                "actor_id": "",
                 "title": "",
-                "startTick": 0,
-                "endTick": 0,
+                "start_tick": 0,
+                "end_tick": 0,
                 "policy": "soft",
-                "operationKind": "none",
+                "operation_kind": "none",
                 "location": "",
                 "status": "planned"
               },
@@ -517,7 +517,7 @@
                   "argsSchema": {
                     "type": "object",
                     "properties": {
-                      "actorId": {
+                      "actor_id": {
                         "type": "string",
                         "maxLength": 64,
                         "enum": [
@@ -528,7 +528,7 @@
                         "type": "string",
                         "maxLength": 128
                       },
-                      "startTick": {
+                      "start_tick": {
                         "type": "integer",
                         "minimum": 0,
                         "maximum": 100000000
@@ -547,7 +547,7 @@
                           "background"
                         ]
                       },
-                      "operationKind": {
+                      "operation_kind": {
                         "type": "string",
                         "maxLength": 32,
                         "enum": [
@@ -575,23 +575,23 @@
                   },
                   "event": "schedule.assigned",
                   "assign": {
-                    "actorId": {
-                      "formula": "args.actorId"
+                    "actor_id": {
+                      "formula": "args.actor_id"
                     },
                     "title": {
                       "formula": "args.title"
                     },
-                    "startTick": {
-                      "formula": "args.startTick"
+                    "start_tick": {
+                      "formula": "args.start_tick"
                     },
-                    "endTick": {
-                      "formula": "args.startTick + args.duration"
+                    "end_tick": {
+                      "formula": "args.start_tick + args.duration"
                     },
                     "policy": {
                       "formula": "args.policy"
                     },
-                    "operationKind": {
-                      "formula": "args.operationKind"
+                    "operation_kind": {
+                      "formula": "args.operation_kind"
                     },
                     "location": {
                       "formula": "args.location"
@@ -673,37 +673,37 @@
               "recordSchema": {
                 "type": "object",
                 "properties": {
-                  "dayIndex": {
+                  "day_index": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 1000000
                   },
-                  "outreachCount": {
+                  "outreach_count": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 64
                   },
-                  "projectWorkCount": {
+                  "project_work_count": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 64
                   },
-                  "expectedMoneyDelta": {
+                  "expected_money_delta": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 1000000
                   },
-                  "expectedFollowerDelta": {
+                  "expected_follower_delta": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 1000000
                   },
-                  "expectedReputationDelta": {
+                  "expected_reputation_delta": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 1000
                   },
-                  "settlementStatus": {
+                  "settlement_status": {
                     "type": "string",
                     "maxLength": 32,
                     "enum": [
@@ -725,13 +725,13 @@
                 "additionalProperties": false
               },
               "initial": {
-                "dayIndex": 0,
-                "outreachCount": 0,
-                "projectWorkCount": 0,
-                "expectedMoneyDelta": 0,
-                "expectedFollowerDelta": 0,
-                "expectedReputationDelta": 0,
-                "settlementStatus": "unopened"
+                "day_index": 0,
+                "outreach_count": 0,
+                "project_work_count": 0,
+                "expected_money_delta": 0,
+                "expected_follower_delta": 0,
+                "expected_reputation_delta": 0,
+                "settlement_status": "unopened"
               },
               "commands": [
                 {
@@ -744,15 +744,15 @@
                   },
                   "event": "church.day.opened",
                   "assign": {
-                    "dayIndex": {
-                      "formula": "world.dayIndex + 1"
+                    "day_index": {
+                      "formula": "world.day_index + 1"
                     },
-                    "outreachCount": 0,
-                    "projectWorkCount": 0,
-                    "expectedMoneyDelta": 0,
-                    "expectedFollowerDelta": 0,
-                    "expectedReputationDelta": 0,
-                    "settlementStatus": "open"
+                    "outreach_count": 0,
+                    "project_work_count": 0,
+                    "expected_money_delta": 0,
+                    "expected_follower_delta": 0,
+                    "expected_reputation_delta": 0,
+                    "settlement_status": "open"
                   }
                 },
                 {
@@ -765,17 +765,17 @@
                   },
                   "event": "church.outreach.recorded",
                   "assign": {
-                    "outreachCount": {
-                      "formula": "world.outreachCount + 1"
+                    "outreach_count": {
+                      "formula": "world.outreach_count + 1"
                     },
-                    "expectedMoneyDelta": {
-                      "formula": "world.expectedMoneyDelta + 35"
+                    "expected_money_delta": {
+                      "formula": "world.expected_money_delta + 35"
                     },
-                    "expectedFollowerDelta": {
-                      "formula": "world.expectedFollowerDelta + 2"
+                    "expected_follower_delta": {
+                      "formula": "world.expected_follower_delta + 2"
                     },
-                    "expectedReputationDelta": {
-                      "formula": "world.expectedReputationDelta + 1"
+                    "expected_reputation_delta": {
+                      "formula": "world.expected_reputation_delta + 1"
                     }
                   }
                 },
@@ -789,14 +789,14 @@
                   },
                   "event": "church.project-work.recorded",
                   "assign": {
-                    "projectWorkCount": {
-                      "formula": "world.projectWorkCount + 1"
+                    "project_work_count": {
+                      "formula": "world.project_work_count + 1"
                     },
-                    "expectedMoneyDelta": {
-                      "formula": "world.expectedMoneyDelta + 20"
+                    "expected_money_delta": {
+                      "formula": "world.expected_money_delta + 20"
                     },
-                    "expectedFollowerDelta": {
-                      "formula": "world.expectedFollowerDelta + 1"
+                    "expected_follower_delta": {
+                      "formula": "world.expected_follower_delta + 1"
                     }
                   }
                 },
@@ -810,7 +810,7 @@
                   },
                   "event": "church.settlement.prepared",
                   "assign": {
-                    "settlementStatus": "prepared"
+                    "settlement_status": "prepared"
                   }
                 }
               ],
@@ -828,7 +828,7 @@
               "recordSchema": {
                 "type": "object",
                 "properties": {
-                  "templateId": {
+                  "template_id": {
                     "type": "string",
                     "maxLength": 64
                   },
@@ -842,12 +842,12 @@
                       "cancelled"
                     ]
                   },
-                  "startTick": {
+                  "start_tick": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100000000
                   },
-                  "dueTick": {
+                  "due_tick": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 100000000
@@ -862,7 +862,7 @@
                     "minimum": 1,
                     "maximum": 100000
                   },
-                  "assignedActorIds": {
+                  "assigned_actor_ids": {
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -870,12 +870,12 @@
                     },
                     "maxItems": 8
                   },
-                  "costMoney": {
+                  "cost_money": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 1000000
                   },
-                  "operationKind": {
+                  "operation_kind": {
                     "type": "string",
                     "maxLength": 32,
                     "enum": [
@@ -906,15 +906,15 @@
                 "additionalProperties": false
               },
               "initial": {
-                "templateId": "",
+                "template_id": "",
                 "status": "draft",
-                "startTick": 0,
-                "dueTick": 0,
+                "start_tick": 0,
+                "due_tick": 0,
                 "progress": 0,
                 "target": 100,
-                "assignedActorIds": [],
-                "costMoney": 0,
-                "operationKind": "none",
+                "assigned_actor_ids": [],
+                "cost_money": 0,
+                "operation_kind": "none",
                 "milestone": 0
               },
               "commands": [
@@ -923,16 +923,16 @@
                   "argsSchema": {
                     "type": "object",
                     "properties": {
-                      "templateId": {
+                      "template_id": {
                         "type": "string",
                         "maxLength": 64
                       },
-                      "startTick": {
+                      "start_tick": {
                         "type": "integer",
                         "minimum": 0,
                         "maximum": 100000000
                       },
-                      "dueTick": {
+                      "due_tick": {
                         "type": "integer",
                         "minimum": 0,
                         "maximum": 100000000
@@ -942,7 +942,7 @@
                         "minimum": 1,
                         "maximum": 100000
                       },
-                      "assignedActorIds": {
+                      "assigned_actor_ids": {
                         "type": "array",
                         "items": {
                           "type": "string",
@@ -953,12 +953,12 @@
                         },
                         "maxItems": 8
                       },
-                      "costMoney": {
+                      "cost_money": {
                         "type": "integer",
                         "minimum": 0,
                         "maximum": 1000000
                       },
-                      "operationKind": {
+                      "operation_kind": {
                         "type": "string",
                         "maxLength": 32,
                         "enum": [
@@ -982,28 +982,28 @@
                   },
                   "event": "church.project.started",
                   "assign": {
-                    "templateId": {
-                      "formula": "args.templateId"
+                    "template_id": {
+                      "formula": "args.template_id"
                     },
                     "status": "active",
-                    "startTick": {
-                      "formula": "args.startTick"
+                    "start_tick": {
+                      "formula": "args.start_tick"
                     },
-                    "dueTick": {
-                      "formula": "args.dueTick"
+                    "due_tick": {
+                      "formula": "args.due_tick"
                     },
                     "progress": 0,
                     "target": {
                       "formula": "args.target"
                     },
-                    "assignedActorIds": {
-                      "formula": "args.assignedActorIds"
+                    "assigned_actor_ids": {
+                      "formula": "args.assigned_actor_ids"
                     },
-                    "costMoney": {
-                      "formula": "args.costMoney"
+                    "cost_money": {
+                      "formula": "args.cost_money"
                     },
-                    "operationKind": {
-                      "formula": "args.operationKind"
+                    "operation_kind": {
+                      "formula": "args.operation_kind"
                     },
                     "milestone": 0
                   }
@@ -1013,7 +1013,7 @@
                   "argsSchema": {
                     "type": "object",
                     "properties": {
-                      "workUnits": {
+                      "work_units": {
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 1000
@@ -1027,10 +1027,10 @@
                   "event": "church.project.advanced",
                   "assign": {
                     "progress": {
-                      "formula": "min(world.progress + args.workUnits, world.target)"
+                      "formula": "min(world.progress + args.work_units, world.target)"
                     },
                     "milestone": {
-                      "formula": "min(world.milestone + args.workUnits, world.target)"
+                      "formula": "min(world.milestone + args.work_units, world.target)"
                     }
                   }
                 },
@@ -1116,22 +1116,22 @@
                       "promoted"
                     ]
                   },
-                  "moneyDelta": {
+                  "money_delta": {
                     "type": "integer",
                     "minimum": -1000000,
                     "maximum": 1000000
                   },
-                  "followerDelta": {
+                  "follower_delta": {
                     "type": "integer",
                     "minimum": -1000000,
                     "maximum": 1000000
                   },
-                  "reputationDelta": {
+                  "reputation_delta": {
                     "type": "integer",
                     "minimum": -1000,
                     "maximum": 1000
                   },
-                  "eventId": {
+                  "event_id": {
                     "type": "string",
                     "maxLength": 64
                   }
@@ -1155,10 +1155,10 @@
                 "title": "",
                 "summary": "",
                 "status": "pending",
-                "moneyDelta": 0,
-                "followerDelta": 0,
-                "reputationDelta": 0,
-                "eventId": ""
+                "money_delta": 0,
+                "follower_delta": 0,
+                "reputation_delta": 0,
+                "event_id": ""
               },
               "commands": [
                 {
@@ -1190,17 +1190,17 @@
                         "type": "string",
                         "maxLength": 1024
                       },
-                      "moneyDelta": {
+                      "money_delta": {
                         "type": "integer",
                         "minimum": -1000000,
                         "maximum": 1000000
                       },
-                      "followerDelta": {
+                      "follower_delta": {
                         "type": "integer",
                         "minimum": -1000000,
                         "maximum": 1000000
                       },
-                      "reputationDelta": {
+                      "reputation_delta": {
                         "type": "integer",
                         "minimum": -1000,
                         "maximum": 1000
@@ -1232,16 +1232,16 @@
                       "formula": "args.summary"
                     },
                     "status": "pending",
-                    "moneyDelta": {
-                      "formula": "args.moneyDelta"
+                    "money_delta": {
+                      "formula": "args.money_delta"
                     },
-                    "followerDelta": {
-                      "formula": "args.followerDelta"
+                    "follower_delta": {
+                      "formula": "args.follower_delta"
                     },
-                    "reputationDelta": {
-                      "formula": "args.reputationDelta"
+                    "reputation_delta": {
+                      "formula": "args.reputation_delta"
                     },
-                    "eventId": ""
+                    "event_id": ""
                   }
                 },
                 {
@@ -1277,7 +1277,7 @@
                   "argsSchema": {
                     "type": "object",
                     "properties": {
-                      "eventId": {
+                      "event_id": {
                         "type": "string",
                         "maxLength": 64
                       }
@@ -1290,8 +1290,8 @@
                   "event": "opportunity.promoted",
                   "assign": {
                     "status": "promoted",
-                    "eventId": {
-                      "formula": "args.eventId"
+                    "event_id": {
+                      "formula": "args.event_id"
                     }
                   },
                   "terminal": true
