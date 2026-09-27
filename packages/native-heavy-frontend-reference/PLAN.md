@@ -1,6 +1,6 @@
 # Atria Native Heavy-Frontend Reference Package 企划书
 
-> 状态：Discussion Draft v0.3  
+> 状态：Discussion Draft v0.4  
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
@@ -161,8 +161,8 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 
 1. **底层框架 / Authority & Runtime Skeleton — 已冻结**
 2. **World / Session App / Event / UI / Preference 状态切分 — 当前**
-3. Model Task 与 Turn 编排
-4. Lifecycle / 时间 / 日程 / Morning-Night 工作流
+3. **Model Task 与 Turn 编排 — 已冻结**
+4. **Lifecycle / 时间 / 日程 / Morning-Night 工作流 — 当前**
 5. 宗教 / 教会模拟经营的数据模型、结算与剧情耦合
 6. Knowledge / Prompt / Memory 分层
 7. Hybrid UI 信息架构
@@ -266,9 +266,8 @@ Event 内部使用更通用的 **Beat**：
 - **Planner**：候选事件、日程与未来内容 proposal；
 - **Social**：SMS / 社交 / 邮件等角色通信；
 - **World**：新闻、环境和宏观世界反馈；
-- **Curator**：摘要、压缩和长期信息整理。
 
-具体用一个 Task 多 Variant 还是多个 Task，将在 Model Task 轮次按当前 contract 冻结。
+具体 Task / Variant 边界在 Round 3 冻结。长期记忆、剧情摘要与压缩不再由本 Package 自建 Curator Task，统一交给 Atria 现有 Memory 体系。
 
 Planner 只生产 proposal；真正的合法性检查、状态提交和调度由 Native Authority / Lifecycle 完成。
 
@@ -563,20 +562,265 @@ Host 已经负责的系统主题、文字大小、Reduce Motion、设备音量�
 
 第一版若需要 GAL / 演出表达，只使用 Native UI、文本、说话者、结构化段落、布局和现有 Host 可安全提供的轻量 presentation，不依赖图片和音频。
 
-## 10. Round 3 — Model Task / Turn 编排待讨论
+## 10. Round 3 — Model Task / Turn 编排冻结方案
+
+Round 3 已获得用户认可，以下作为模型运行基线。
+
+### 10.1 AI 剧情是绝对核心
+
+本 Package 的模型预算和交互中心始终是主剧情。
+
+- 主剧情是玩家最频繁、篇幅最大、信息量最大的模型调用；
+- 经营、日程、通信、世界新闻等系统服务剧情，而不是与正文争夺生成带宽；
+- 普通确定性经营动作不调用模型；
+- 只有真正具有剧情价值的经营节点才转换成 Event 并进入 Narrator。
+
+### 10.2 单一主 Narrator Turn Contract
+
+主剧情只维护一条核心 Narrator Turn 主干，不复制 SillyTavern 样本的多个 MODE Story Router。
+
+Narrator 可以根据当前任务使用不同语义 Variant，例如：
+
+- free narrative；
+- event beat；
+- choice consequence；
+- transition；
+- text-GAL presentation；
+
+但它们共享同一套人物理解、Knowledge、Memory、World / Event context、Timeline continuity 与输出边界。
+
+不同展示方式不建立第二套故事引擎。
+
+### 10.3 主剧情采用 `narrative-outcome`
+
+自由剧情 Turn 冻结采用：
+
+`Player Input → Narrator → Narrative → Semantic Interpreter → declared outcome proposal → typed Command / Reducer validation → Authority commit`
+
+原因：
+
+- 优先保留自由剧情与角色临场反应；
+- 不要求玩家自由输入先被强制翻译成确定性 Command 才能叙述；
+- 状态变化仍然必须经过受限语义与 typed Authority。
+
+Semantic Interpreter 绝不能把正文转换成任意 JSON Patch，只能提出 Package 预先声明的有限语义 outcome，例如关系变化、Event 推进、位置变化、时间推进或经营剧情影响。真正数值和合法性由 Runtime 决定。
+
+### 10.4 确定性操作走 Authority-first / direct Command
+
+确定性 UI 与经营操作不经过 Narrator，例如：
+
+`UI → typed Command → validation → World / Session App commit`
+
+适用于：
+
+- 设施升级；
+- 排班；
+- 接受 / 拒绝明确经营操作；
+- 领取附件；
+- 确定性购买 / 消耗；
+- 其他规则已知的状态变化。
+
+若某次确定性操作触发重要 milestone：
+
+`Command commit → Event trigger → Event Instance → Narrator`
+
+这样经营系统制造剧情，但不替代剧情。
+
+### 10.5 AI 决定语义，Runtime 决定数字
+
+Narrator 不承担数据库 stored procedure 职责。
+
+不再要求 Narrator直接返回：
+
+- money delta；
+- 精确 time_pass；
+- relationship 数值；
+- Event index；
+- 经营结算数字；
+- 人物属性数值；
+- World patch。
+
+Narrator负责“发生了什么”；Interpreter / Rule / Reducer 负责“这意味着什么”；Runtime 负责“最终数字是多少”。
+
+### 10.6 模型服务缩减为四类
+
+本 Package 第一版只保留四类模型服务：
+
+1. **Narrator**
+   - 主剧情；
+   - Event Beat；
+   - 玩家自由输入；
+   - choice consequence；
+   - text-GAL 的同一 Narrative 内容。
+
+2. **Planner**
+   - Event proposal；
+   - Schedule proposal；
+   - 候选未来内容；
+   - 不拥有最终事实写权限。
+
+3. **Social**
+   - SMS reply；
+   - social reply；
+   - mail reply / compose；
+   - spontaneous communication；
+   - 统一为一个职责 Task，通过 Variant 区分具体渠道。
+
+4. **World**
+   - morning report；
+   - news；
+   - rumor；
+   - advertisement；
+   - public notice；
+   - world flavor。
+
+**不创建 Curator Task。**
+
+Atria 已有 Memory 系统，本 Package 不再自建 Story Compression / Day Compression / 长期 memory 生成链，也不维护第二套摘要数据库。
+
+### 10.7 Planner 只生成 Proposal
+
+Planner 是内容 brainstormer，不是 Game Director。
+
+它可以建议：
+
+- 某角色去某地区；
+- 某个赞助商出现；
+- 某个 Event 值得发生；
+- 某个既有 hook 应推进。
+
+Runtime 必须再根据 World、Schedule、Event cooldown、人物可用性、教会等级、地区状态和近期剧情进行确定性检查。
+
+只有通过验证的 Proposal 才能写入 Schedule / Event Queue / Session App。
+
+Planner 不直接写 World，不直接控制 Timeline。
+
+### 10.8 Planner 低频调用
+
+Planner 不随每个剧情 Turn 运行。
+
+候选触发点包括：
+
+- Morning；
+- Event Queue 缺少可用内容；
+- 长期目标达成；
+- 新地区 / 新阶段解锁；
+- 当前剧情确实需要新的未来内容。
+
+如果已有 Event、pending request、有效 Schedule 或未解决 hook，应优先延续已有内容，避免每天无条件制造大量新剧情。
+
+### 10.9 Social：一个 Task + 多 Variant
+
+Social Task 统一承载不同通信形式。
+
+它只读取必要上下文：
+
+- 当前人物；
+- relationship；
+- 当前时间；
+- Schedule；
+- 当前 Event；
+- 对应 Thread history；
+- 必要的 Memory / relevant context。
+
+不默认读取整个主 Timeline。
+
+生成结果先作为 Message Proposal，经 schema validation 和 typed append 后进入 Session Application，不能由模型直接写通信数据库。
+
+### 10.10 World Task
+
+World Task 负责让宏观世界具有动态感，例如新闻、晨报、传闻、广告和公共通知。
+
+原则：
+
+- 纯氛围内容可以只进入 Daily Records；
+- 如果报道声称某个长期世界事实已经改变，必须先存在对应 World fact / Event；
+- 新闻是 Presentation，不是 World authority。
+
+### 10.11 Memory 完全复用 Atria
+
+本 Package 不实现：
+
+- Story Compression Task；
+- Day Compression Task；
+- Curator；
+- 自建长期 Memory Store；
+- Prompt 内手工维护的平行长期摘要权威。
+
+Atria Memory 直接消费已经提交的主 Timeline、Event / World / Session 事实及其允许的上下文。Package 只负责提供干净、明确且经过 Authority commit 的事实来源。
+
+如后续真实实现发现 Atria Memory 在该重型资产上存在具体缺口，再单独记录平台缺口，不提前复制旧卡的压缩方案。
+
+### 10.12 Narrator Context 必须限流
+
+Narrator 每次只获得与当前剧情相关的上下文，例如：
+
+- Current Beat；
+- Event premise / goal；
+- participants；
+- relevant character state；
+- current location；
+- relevant World facts；
+- relevant church facts；
+- recent Timeline；
+- relevant Knowledge；
+- relevant Memory；
+- Player input。
+
+不能因为数据存在就把完整 World JSON、全部经营规则、所有短信、所有日程和所有 Knowledge 塞入 Prompt。
+
+**数据存在 ≠ Narrator 可以看到。**
+
+### 10.13 教会经营进入 Narrator 的方式
+
+普通经营数字不进入正文。
+
+只有与当前 Event / 剧情直接相关的经营事实才进入 Narrator Context，例如：
+
+- 资金危机；
+- 某个具体赞助；
+- 教会等级导致的新身份；
+- 某设施首次开放；
+- 某经营决定造成的人物冲突。
+
+经营规则全集和无关报表不进入 Prompt。
+
+### 10.14 Text GAL 不是第二个模型
+
+v1 不建立独立 GAL Task。
+
+同一 Narrator Narrative 可以由不同 Presentation 呈现：
+
+- 普通长文本；
+- 角色名 + 台词式文本演出；
+- 结构化 dialogue / narration block。
+
+未来增加立绘时，也只扩展 Presentation / Actor visual mapping，不重新建立第二套 GAL 剧情模型。
+
+### 10.15 主剧情结构化输出保持极小
+
+Narrator 输出只保留真正属于叙事层的结构：
+
+- narrative；
+- 必要 presentation blocks；
+- 有限 semantic cues（若当前 Turn contract 确实需要）。
+
+World / Session App / Lifecycle 的最终字段由 Interpreter、Command、Reducer 与 Runtime 产生，不让 Narrator一边写小说一边维护游戏数据库。
+
+## 11. Round 4 — Lifecycle / 时间 / 日程 / Morning-Night 工作流待讨论
 
 本轮尚未冻结。
 
 需要决定：
 
-- 主剧情是否使用一个固定 Narrator Turn Contract；
-- Planner、Social、World、Curator 应该是独立 Task 还是 Task Variant；
-- 哪些 Task 是 turn-blocking，哪些可以 interactive / background；
-- `authority-first` 与 `narrative-outcome` 在本作品中分别用于什么场景；
-- Event Beat 如何形成 Narrator 输入；
-- Narrator 应看到哪些 World / Session App / Knowledge / Memory / Event 信息；
-- 经营结果如何进入剧情，而又不让 Narrator负责确定性结算；
-- Planner Proposal 如何验证、拒绝、重试；
-- Social / Morning / Night 是否允许不进入主 Timeline；
-- 压缩 / Curator 在什么时候运行，怎样避免抢占正常剧情调用；
-- 一次主剧情生成的结构化返回应该保留哪些字段，哪些应由 Runtime 自己产生。
+- 一天的正式 Phase Graph 如何定义；
+- World Clock 的单位、推进方式与正文时间如何对应；
+- Morning / Daytime / Evening / Night / Settlement 是否都需要显式 phase；
+- 玩家自由剧情是否可以跨 phase、跨越大量时间；
+- Schedule 如何与 Clock、Event、人物可用性同步；
+- Event 是否允许暂停并跨日；
+- Morning Report / Planner / Social 延迟消息分别由什么 trigger 驱动；
+- Night 是否只是时间段，还是一个需要显式结算 / 事件处理的 workflow phase；
+- 教会经营的日结在何时发生；
+- 玩家连续聊天时怎样避免每条消息都机械推进固定分钟数；
+- 模型叙述中出现“几小时后”“第二天”等时间跳跃时，如何转换成受控 Lifecycle change。
