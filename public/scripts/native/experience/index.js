@@ -1,3 +1,4 @@
+import { createNativePresentationClient } from '../presentation-client.js';
 import { createReplyVariantController } from '../reply-variants.js';
 import { executeFirstPartyGeneration } from '../generation-compat.js';
 import { nativeGenerationActive } from '../generation-client.js';
@@ -44,7 +45,10 @@ const registerCapabilityApi = atriaContext.registerCapabilityApi;
 const capabilitySettings = atriaContext.capabilitySettings;
 const saveSettingsDebounced = atriaContext.saveSettingsDebounced;
 
-const lifecycleClient = createNativeLifecycleClient({ runtime: nativeSessionRuntime, getBindings: () => getTaskBindings() });
+const lifecycleClient = createNativeLifecycleClient({ runtime: nativeSessionRuntime, getBindings: () => getTaskBindings(), getActivityElapsed: () => presentationClient.getActivityProjection() });
+const presentationClient = createNativePresentationClient({ runtime: nativeSessionRuntime, lifecycle: lifecycleClient, headers: getRequestHeaders,
+    voicePreferences: () => capabilitySettings.atri_actor_voices ?? {},
+    saveVoicePreference(actorId, voiceURI) { capabilitySettings.atri_actor_voices ??= {}; capabilitySettings.atri_actor_voices[actorId] = voiceURI; saveSettingsDebounced?.(); } });
 let revision = 0;
 let currentWorldSession = null;
 let currentUiSession = null;
@@ -249,6 +253,7 @@ function publishPackageState(next) {
 }
 
 async function disposeCurrentUi() {
+    presentationClient.dispose();
     currentReplyController?.dispose(); currentReplyController = null;
     const session = currentUiSession;
     currentUiSession = null;
@@ -342,6 +347,8 @@ export async function reloadGamePackage() {
     if (next.status === GAME_PACKAGE_STATUS.READY && next.active) {
         try {
             await load.prepare(next);
+            await load.wait(presentationClient.prepare(next));
+            load.assertCurrent();
             next = { ...next, snapshot: nativeSessionRuntime.snapshot };
             const [logicDefinition, observationProjectors] = await load.wait(Promise.all([
                 loadGameLogicDefinition(next, { headers: getRequestHeaders() }),
@@ -359,6 +366,7 @@ export async function reloadGamePackage() {
             load.assertCurrent();
             nextRuntimeSystems = createRuntimeSystems(nextWorldSession, { observationProjectors });
         } catch (error) {
+            if (loadRevision === revision) presentationClient.dispose();
             nextWorldSession = null;
             nextRuntimeSystems = null;
             next = {
@@ -406,6 +414,7 @@ export async function reloadGamePackage() {
                 mountReplyVariants: (element, anchor) => nextReplyController?.mount(element, anchor),
                 getSnapshot: () => nativeSessionRuntime.snapshot,
                 getApplicationRecords: lifecycleClient.getApplicationRecords,
+                presentation: presentationClient,
                 isBusy: () => Boolean(nativeSessionRuntime.generation || nativeSessionRuntime.failed || nativeSessionRuntime.host?.isGenerating?.()),
                 isActiveTail: anchor => !nativeSessionRuntime.history && !nativeSessionRuntime.generation
                     && nativeSessionRuntime.snapshot?.session.sessionId === anchor.sessionId
@@ -447,6 +456,7 @@ export async function reloadGamePackage() {
             nextReplyController?.dispose();
             await nextUiSession?.dispose();
             if (loadRevision !== revision) return currentPackage;
+            presentationClient.dispose();
             currentReplyController = null;
             currentWorldSession = null;
             disposeRuntimeSystems();
@@ -728,7 +738,7 @@ eventSource.on(eventTypes.CHAT_CHANGED, () => {
 onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, () => {
     // acceptOperationSnapshot installs the canonical projection and emits this
     // event too. Its own lifecycle write must not remount or recursively ready.
-    if (lifecycleClient.acceptingSnapshot) { currentUiSession?.refresh?.(); return; }
+    if (lifecycleClient.acceptingSnapshot) { presentationClient.refresh(); currentUiSession?.refresh?.(); return; }
     return reloadGamePackage();
 });
 onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, async () => {
@@ -740,6 +750,7 @@ onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, async () => {
     publishPackageState({ status: GAME_PACKAGE_STATUS.NONE, active: false, sessionId: '', descriptor: null, runtime: null, errors: [] });
 });
 onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, event => {
+    presentationClient.refresh();
     if (!lifecycleClient.acceptingSnapshot && !event.stateNamespaces?.includes('atri_lifecycle')
         && currentPackage.descriptor?.experienceContract?.lifecycleRuntime) {
         const loadRevision = revision;
@@ -767,6 +778,15 @@ registerCapabilityApi(MODULE_NAME, {
     getSnapshot: lifecycleClient.getSnapshot,
     getApplicationRecords: lifecycleClient.getApplicationRecords,
     getTemporalProjection: lifecycleClient.getTemporalProjection,
+    getPresentationCapabilities: presentationClient.getCapabilities,
+    presentScene: presentationClient.presentScene,
+    activityCommand: presentationClient.activity,
+    requestFullscreen: presentationClient.fullscreen,
+    focusScene: presentationClient.focus,
+    sampleGamepads: presentationClient.sampleGamepads,
+    speak: presentationClient.speak,
+    stopSpeech: presentationClient.stopSpeech,
+    setActorVoice: presentationClient.setActorVoice,
     lifecycleCommand: lifecycleClient.command,
     pumpLifecycle: lifecycleClient.pump,
     getPackageState: getGamePackageState,

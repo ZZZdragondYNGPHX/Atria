@@ -1,3 +1,4 @@
+import { activityNarrative, publishActivities } from './activity-authority.js';
 import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
 import { validateMessageBlocks } from '../../public/scripts/native/experience/ui/message-templates.js';
 import { assertMessageProjection, assertTurnEnvelope } from '../../public/shared/native-message-contract.js';
@@ -321,6 +322,7 @@ export class SessionCore {
                 const queued = states.atri_lifecycle.outbox.find(item => item.invocationId === taskRecord.invocationId);
                 if (queued) queued.status = 'completed';
             }
+            publishActivities({ ...base, states }, revisionId, branchId, taskRecord);
             validateLifecycle({ ...base, states });
         }
         const core = { schemaVersion: 1, parentRevisionId: base.session.headRevisionId,
@@ -457,8 +459,11 @@ export class SessionCore {
         const payload = assertTaskValue(record.payload, variant.outputSchema);
         if (task.interpretation) assertSemanticOutcome({ requestId: task.interpretation.id, interpretation: payload }, task.interpretation);
         if (base.states[TASK_STATE_NAMESPACE]?.records.some(item => item.invocationId === record.invocationId)) throw new TypeError('Duplicate Task invocation');
-        return this._publish(handle, base, { taskRecord: { ...record, payload, kind: 'task', status: task.resultPolicy.sink === 'proposal' ? 'draft' : 'completed',
-            resultClass: task.resultPolicy.resultClass, anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId } });
+        const draft = activityNarrative(base, queued, record, payload);
+        const narrative = draft ? this._newEntry(base, draft, base.timeline.length) : null;
+        return this._publish(handle, base, { ...(narrative ? { timeline: [...base.timeline, narrative.entry], entries: [narrative.entry], variants: [narrative.variant] } : {}),
+            taskRecord: { ...record, payload, kind: 'task', ...(narrative ? { authorityReceipt: { kind: 'authority', messageId: narrative.entry.messageId, activityInstanceId: queued.activityInstanceId } } : {}), status: task.resultPolicy.sink === 'proposal' ? 'draft' : 'completed',
+                resultClass: task.resultPolicy.resultClass, anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId } });
     }
 
     async resolveTaskProposal(handle, sessionId, { invocationId, decision, payload }, { expectedRevisionId } = {}) {

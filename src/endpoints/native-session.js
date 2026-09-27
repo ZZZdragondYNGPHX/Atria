@@ -1,3 +1,4 @@
+import { deliverNativeAsset } from '../native/asset-delivery.js';
 import express from 'express';
 import { createHash } from 'node:crypto';
 import { SessionCore } from '../native/session-core.js';
@@ -27,7 +28,8 @@ export function createNativeSessionRouter(getServices = services) {
         try {
             await operation(request, response, getServices(), request.user.profile.handle);
         } catch (error) {
-            const status = error.code?.includes('conflict') ? 409
+            if (response.headersSent) { response.destroy(); return; }
+            const status = error.name === 'ConflictError' || error.code?.includes('conflict') ? 409
                 : error instanceof TypeError ? 400 : error.name === 'NotFoundError' ? 404 : 500;
             response.status(status).json({ error: error.code || (status === 400 ? 'native_invalid_command' : 'native_session_failed') });
         }
@@ -188,14 +190,7 @@ export function createNativeSessionRouter(getServices = services) {
     }));
     router.get('/asset/:assetId', route(async (req, res, { assets }, handle) => {
         assertNativeId(req.params.assetId, 'asset');
-        const asset = await assets.read(handle, req.params.assetId);
-        if (!asset) return res.sendStatus(404);
-        // Never execute uploaded HTML/SVG/scripts in the application origin.
-        const mediaType = /^(image\/(png|jpeg|gif|webp|avif)|audio\/[a-z0-9.+-]+|video\/[a-z0-9.+-]+|text\/plain)$/.test(asset.ref.mediaType)
-            ? asset.ref.mediaType : 'application/octet-stream';
-        res.set({ 'Content-Type': mediaType, 'X-Content-Type-Options': 'nosniff',
-            'Content-Security-Policy': 'sandbox; default-src \'none\'', 'Cache-Control': 'private, max-age=3600' });
-        res.send(asset.bytes);
+        await deliverNativeAsset(req, res, assets, handle);
     }));
     return router;
 }

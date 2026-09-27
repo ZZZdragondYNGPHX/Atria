@@ -201,6 +201,15 @@ export function mountUiDocument(definition, options) {
                     const receipt = receipts.get(step.actionId) || options.worldSession.getActionReceipts().findLast(item => item.actionId === step.actionId && item.compensation);
                     if (!receipt) throw new Error('No compensatable Action receipt');
                     results.push(await options.worldSession.compensateAction(receipt));
+                } else if (step.op.startsWith('activity.')) {
+                    if (!options.presentation) throw new Error('Activity Host unavailable');
+                    attempts.set(actionId, attempt);
+                    results.push(await options.presentation.activity(step.op, json(step.args.read(ctx))));
+                } else if (['host.fullscreen', 'host.focus', 'scene.show'].includes(step.op)) {
+                    if (!options.presentation) throw new Error('Presentation Host unavailable');
+                    if (step.op === 'host.fullscreen') await options.presentation.fullscreen(step.sceneId);
+                    else if (step.op === 'host.focus') options.presentation.focus(step.sceneId);
+                    else options.presentation.presentScene(step.sceneId);
                 } else if (step.op.startsWith('composer.')) {
                     const composer = options.composer;
                     if (!composer) throw new Error('Native Composer is unavailable');
@@ -271,10 +280,19 @@ export function mountUiDocument(definition, options) {
     function renderNode(node, getExtra, cleanup, instance = '') {
         if (nodeBudget.nodes >= nodeBudget.limit) throw new Error('Rendered UI node budget exceeded');
         nodeBudget.nodes++; cleanup.push(() => { nodeBudget.nodes--; });
-        const element = doc.createElement(TAGS[node.type] || 'div');
+        const element = doc.createElement(node.type === 'media-cue' ? ({ image: 'img', audio: 'audio', video: 'video' }[node.props.cue.kind]) : node.type === 'speech-cue' ? 'button' : TAGS[node.type] || 'div');
         element.className = 'atri-ui-node atri-ui-' + node.type;
         element.id = 'atri-ui-' + (options.instanceId ? options.instanceId + '-' : '') + node.id + instance;
         const props = node.props;
+        if (node.type === 'scene') {
+            if (!options.presentation) throw new Error('Scene Host unavailable');
+            const scene = options.presentation.mountScene(element, props.sceneId); cleanup.push(() => scene.dispose());
+        }
+        if (node.type === 'media-cue') cleanup.push(options.presentation.bindMedia(element, props.cue, options.onDiagnostic));
+        if (node.type === 'speech-cue') {
+            element.type = 'button'; element.textContent = props.cue.text;
+            element.addEventListener('click', () => { try { options.presentation.speak(props.cue); } catch (error) { options.onDiagnostic?.({ code: error.code ?? 'native_speech_unavailable' }); } });
+        }
         if (props.text !== undefined) element.textContent = props.text;
         if (props.placeholder !== undefined) element.placeholder = props.placeholder;
         if (node.type === 'button') element.type = props.submit ? 'submit' : 'button';

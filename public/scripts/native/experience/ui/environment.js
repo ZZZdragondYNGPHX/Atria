@@ -35,6 +35,7 @@ function resolveEnvironment(windowRef) {
         orientation,
         touch,
         keyboard,
+        reducedMotion: mediaMatches(windowRef, '(prefers-reduced-motion: reduce)'),
         width,
         height,
     });
@@ -76,6 +77,7 @@ export function createResponsiveEnvironment(root, options = {}) {
             || next.orientation !== current.orientation
             || next.touch !== current.touch
             || next.keyboard !== current.keyboard
+            || next.reducedMotion !== current.reducedMotion
             || next.width !== current.width
             || next.height !== current.height
         );
@@ -90,6 +92,8 @@ export function createResponsiveEnvironment(root, options = {}) {
     }
 
     const onResize = () => refresh();
+    const motionQuery = windowRef.matchMedia?.('(prefers-reduced-motion: reduce)');
+    motionQuery?.addEventListener?.('change', onResize);
     windowRef.addEventListener?.('resize', onResize);
     windowRef.addEventListener?.('orientationchange', onResize);
 
@@ -110,6 +114,7 @@ export function createResponsiveEnvironment(root, options = {}) {
             if (disposed) return;
             disposed = true;
             listeners.clear();
+            motionQuery?.removeEventListener?.('change', onResize);
             windowRef.removeEventListener?.('resize', onResize);
             windowRef.removeEventListener?.('orientationchange', onResize);
         },

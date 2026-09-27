@@ -1,3 +1,4 @@
+import { prepareActivity, validateActivities } from './activity-authority.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
 import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
 import { fieldErrors } from '../../public/scripts/native/experience/ui/v2-state.js';
@@ -47,10 +48,11 @@ export function validateLifecycle(base) {
             || !['active', 'completed', 'cancelled'].includes(current.status)) throw new TypeError('Invalid Workflow state');
     }
     if (!Array.isArray(state.interactions) || state.interactions.length > 128) throw new TypeError('Scheduled interaction retention limit');
-    if (!Array.isArray(state.receipts) || state.receipts.length + state.taskTombstones.length > def.retention.maxReceipts
+    if (!Array.isArray(state.receipts) || state.receipts.length + state.taskTombstones.length + (state.activityTombstones?.length ?? 0) > def.retention.maxReceipts
         || !Array.isArray(state.outbox) || state.outbox.length > 128) throw new TypeError('Lifecycle retention limit');
     if (new Set(state.receipts.map(item => item.invocationId)).size !== state.receipts.length) throw new TypeError('Duplicate lifecycle receipt');
     for (const receipt of state.receipts) if (!invocation(receipt.invocationId) || receipt.kind !== 'authority') throw new TypeError('Invalid lifecycle receipt');
+    validateActivities(base);
     if (typeof state.ready !== 'boolean' || typeof state.opening.completed !== 'boolean') throw new TypeError('Invalid lifecycle barrier');
 }
 
@@ -104,9 +106,18 @@ export function compactLifecycle(base, state, { reserveTask = false, pruneIntera
     // Outbox completion receipts live in Task results/tombstones; removing the
     // duplicate queue payload cannot permit an occurrence to run a second time.
     state.outbox = state.outbox.filter(item => item.status === 'pending');
+    if (pruneInteractions || (state.activities?.length ?? 0) >= 128) {
+        state.activityTombstones ??= [];
+        state.activities = (state.activities ?? []).filter(item => {
+            if (!['completed', 'cancelled', 'stale'].includes(item.status) || mentions(base.timeline, item.instanceId)
+                || Object.values(state.domains).some(domain => mentions(domain.records, item.instanceId))) return true;
+            state.activityTombstones.push({ instanceId: item.instanceId, activityId: item.activityId, status: item.status });
+            return false;
+        });
+    }
     if (pruneInteractions || state.interactions.length >= 128) state.interactions = state.interactions.filter(item => item.status === 'scheduled' || mentions(base.timeline, item.proposalId)
         || Object.values(state.domains).some(domain => mentions(domain.records, item.proposalId)));
-    if (state.receipts.length + state.taskTombstones.length > def.retention.maxReceipts) throw new TypeError('Lifecycle receipt retention limit reached');
+    if (state.receipts.length + state.taskTombstones.length + (state.activityTombstones?.length ?? 0) > def.retention.maxReceipts) throw new TypeError('Lifecycle receipt retention limit reached');
 }
 
 function active(state, scopeId) {
@@ -230,6 +241,7 @@ export async function prepareLifecycle(base, installed, action) {
         if (scope.status !== action.status) {
             scope.status = action.status; scope.epoch++;
             for (const item of state.outbox) if (item.scopeId === action.scopeId && item.status === 'pending') item.status = 'cancelled';
+            for (const item of state.activities ?? []) if (item.scopeId === action.scopeId && ['active', 'paused', 'settled'].includes(item.status)) item.status = 'stale';
             for (const item of state.interactions) if (item.scopeId === action.scopeId && item.status === 'scheduled') item.status = 'stale';
             for (const flow of def.workflows.filter(item => item.scopeId === action.scopeId)) {
                 const current = state.workflows[flow.id];
@@ -278,6 +290,8 @@ export async function prepareLifecycle(base, installed, action) {
         if (!record || typeof action.pinned !== 'boolean') throw new TypeError('Invalid App pin'); active(state, record.scopeId); record.pinned = action.pinned;
     } else if (action.kind === 'retention.compact') {
         fields(action, ['kind'], 'Retention compact');
+    } else if (action.kind.startsWith('activity.')) {
+        await prepareActivity(candidate, action, { apply, addOutbox, events });
     } else if (action.kind.startsWith('opening.')) {
         const draft = await prepareOpening(candidate, installed, action, state, events);
         if (draft) drafts.push(draft);

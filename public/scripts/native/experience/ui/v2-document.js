@@ -3,16 +3,18 @@ import { compileState } from './v2-state.js';
 import { compileMessageBlocks, MESSAGE_ROOTS, MESSAGE_ACTION_POLICIES } from './message-templates.js';
 import { fields, id, json, text, valueTemplate, expression, UI_ROOTS } from './v2-values.js';
 
-const TYPES = ['container', 'stack', 'grid', 'scroll', 'separator', 'text', 'badge', 'progress', 'button', 'details', 'form', 'input', 'textarea', 'select', 'checkbox', 'range', 'repeat', 'native-slot'];
+const TYPES = ['container', 'stack', 'grid', 'scroll', 'separator', 'text', 'badge', 'progress', 'button', 'details', 'form', 'input', 'textarea', 'select', 'checkbox', 'range', 'repeat', 'native-slot', 'scene', 'media-cue', 'speech-cue'];
 const OPS = {
     'ui.set': ['path', 'value'], 'ui.toggle': ['path'], 'ui.reset': ['path'],
     'command.dispatch': ['commandId', 'args'], 'command.simulate': ['commandId', 'args'],
     'composer.set': ['value'], 'composer.append': ['value'], 'composer.clear': [], 'composer.focus': [], 'composer.submit': [],
     'surface.open': ['view'], 'surface.close': ['view'],
     'action.compensate': ['actionId'],
+    'activity.start': ['args'], 'activity.pause': ['args'], 'activity.resume': ['args'], 'activity.settle': ['args'], 'activity.cancel': ['args'],
+    'scene.show': ['sceneId'], 'host.fullscreen': ['sceneId'], 'host.focus': ['sceneId'],
     'opening.next': [], 'opening.back': [], 'opening.confirm': [],
 };
-export function compileUiDocument(raw, { mode, message = false, actionPolicy = 'ui-only' } = {}) {
+export function compileUiDocument(raw, { mode, message = false, actionPolicy = 'ui-only', hostScene = false } = {}) {
     raw = json(raw);
     fields(raw, ['schemaVersion', 'stateVersion', 'localState', 'preferences', 'selectors', 'actions', 'views', 'opening', 'messageBlocks', 'conversation'], 'UI Document');
     if (raw.schemaVersion !== 2 || !Number.isSafeInteger(raw.stateVersion) || raw.stateVersion < 1) throw new Error('UI Document requires schemaVersion 2 and positive stateVersion');
@@ -47,7 +49,7 @@ export function compileUiDocument(raw, { mode, message = false, actionPolicy = '
             for (const required of OPS[step.op]) if (step[required] === undefined && required !== 'args') throw new Error('Missing Action field ' + required);
             if (step.path !== undefined) statePath(step.path);
             if (step.commandId !== undefined && (typeof step.commandId !== 'string' || !/^[a-z][a-z0-9._-]{0,63}$/.test(step.commandId))) throw new Error('Invalid command id');
-            if (['command.dispatch', 'action.compensate'].includes(step.op)) writes++;
+            if (['command.dispatch', 'action.compensate'].includes(step.op) || step.op.startsWith('activity.')) writes++;
             return Object.freeze({ ...step, when: step.when === undefined ? null : expression(step.when, roots),
                 value: step.value === undefined ? null : valueTemplate(step.value, roots), args: valueTemplate(step.args ?? {}, roots) });
         });
@@ -68,11 +70,15 @@ export function compileUiDocument(raw, { mode, message = false, actionPolicy = '
         id(rawNode.id);
         if (nodeIds.has(rawNode.id)) throw new Error('Duplicate UI node id');
         nodeIds.add(rawNode.id);
+        if (['media-cue', 'speech-cue'].includes(rawNode.type) && !hostScene) throw new Error('Scene primitives are Host-owned');
+        if (message && rawNode.type === 'scene') throw new Error('Scene requires active scoped Host');
         if (!TYPES.includes(rawNode.type)) throw new Error('Unknown v2 node type');
         if (rawNode.type === 'native-slot' && (message || mode === 'component' || inRepeat)) throw new Error('Native slot ownership is invalid');
         if (rawNode.type === 'form' && inForm) throw new Error('Nested forms are invalid');
         const props = rawNode.props ?? {};
-        fields(props, ['text', 'label', 'placeholder', 'disabled', 'component', 'options', 'submit', 'max', 'value'], 'UI props');
+        fields(props, ['text', 'label', 'placeholder', 'disabled', 'component', 'options', 'submit', 'max', 'value', 'sceneId', 'cue'], 'UI props');
+        if (rawNode.type === 'scene') { if (typeof props.sceneId !== 'string' || !/^[a-z][a-z0-9._-]{0,63}$/.test(props.sceneId)) throw new Error('Scene identifier required'); } else if (props.sceneId !== undefined) throw new Error('Unexpected Scene reference');
+        if (['media-cue', 'speech-cue'].includes(rawNode.type)) { if (!props.cue) throw new Error('Host Scene Cue required'); } else if (props.cue !== undefined) throw new Error('Unexpected Scene Cue');
         for (const key of ['text', 'label', 'placeholder']) if (props[key] !== undefined) text(props[key]);
         for (const key of ['disabled', 'submit']) if (props[key] !== undefined && typeof props[key] !== 'boolean') throw new Error('Invalid UI boolean');
         if (props.submit !== undefined && rawNode.type !== 'button') throw new Error('Unexpected submit property');
@@ -106,7 +112,7 @@ export function compileUiDocument(raw, { mode, message = false, actionPolicy = '
         for (const action of Object.values(events)) if (!Object.hasOwn(actions, action)) throw new Error('Unknown action reference');
         const children = rawNode.children ?? [];
         if (!Array.isArray(children)) throw new Error('Children must be an array');
-        if ([...controls, 'text', 'badge', 'progress', 'separator', 'native-slot', 'button'].includes(rawNode.type) && children.length) throw new Error('Leaf controls cannot have children');
+        if ([...controls, 'text', 'badge', 'progress', 'separator', 'native-slot', 'button', 'scene', 'media-cue', 'speech-cue'].includes(rawNode.type) && children.length) throw new Error('Leaf controls cannot have children');
         const repeat = rawNode.type === 'repeat';
         if (repeat && (inRepeat || children.length !== 1)) throw new Error('Repeat requires one template and cannot nest');
         if (!repeat && ['source', 'key', 'pageSize', 'emptyText'].some(key => rawNode[key] !== undefined)) throw new Error('Unexpected collection field');

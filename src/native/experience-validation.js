@@ -6,6 +6,9 @@ import { json } from '../../public/scripts/native/experience/ui/v2-values.js';
 // Validate before install and lower authoring-only shorthand during build. Old
 // v1 resources keep their exact source bytes and existing validation boundary.
 export function validateExperienceResources(manifest, files, assets, { lower = false } = {}) {
+    for (const voice of manifest.runtime?.experienceContract?.presentationRuntime?.voices ?? []) {
+        if (!manifest.actors.some(actor => actor.actorId === voice.actorId)) throw new TypeError('Actor Voice must belong to Package');
+    }
     const logicPaths = new Set();
     for (const entry of manifest.entryPoints) {
         const experience = entry.runtime?.experience ?? manifest.runtime?.experience;

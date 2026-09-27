@@ -1,3 +1,4 @@
+import { assertPresentationRuntime, assertPresentationClosure } from './native-presentation-contract.js';
 import { assertTaskRuntime } from './native-task-contract.js';
 import { assertLifecycleRuntime } from './native-lifecycle-contract.js';
 
@@ -21,13 +22,13 @@ export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
     ['opening', [1], [1]],
     ['reply-variant', [1], [1]],
     ['conversation-presentation', [1], [1]],
-    ['host-presentation-input', [1]],
-    ['safe-presentation', [1]],
+    ['host-presentation-input', [1], [1]],
+    ['safe-presentation', [1], [1]],
     ['studio-authoring', [2]],
     ['experience-health', [1]],
-    ['activity', [1]],
-    ['media-scene', [1]],
-    ['asset-pack', [1]],
+    ['activity', [1], [1]],
+    ['media-scene', [1], [1]],
+    ['asset-pack', [1], [1]],
     ['auxiliary-task', [1], [1]],
     ['addon', [1]],
     ['perspective', [1]],
@@ -64,7 +65,7 @@ function list(value, label, validate, key) {
 // action, turn, task and authority bodies require their own strict contracts.
 // No generic config/extension/persistence/exposure payload belongs in this seam.
 export function assertNativeExperienceContract(value) {
-    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime'], 'ExperienceContract');
+    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime', 'presentationRuntime'], 'ExperienceContract');
     if (value.schemaVersion !== ATRIA_EXPERIENCE_CONTRACT_VERSION) {
         throw new TypeError('ExperienceContract.schemaVersion must be 1');
     }
@@ -91,9 +92,11 @@ export function assertNativeExperienceContract(value) {
         return Object.freeze({ resourceId: item.resourceId, assetId: item.assetId, contentHash: item.contentHash });
     }, item => item.resourceId);
     const taskRuntime = value.taskRuntime === undefined ? undefined : assertTaskRuntime(value.taskRuntime);
+    const lifecycleRuntime = value.lifecycleRuntime === undefined ? undefined : assertLifecycleRuntime(value.lifecycleRuntime, taskRuntime);
     return Object.freeze({ schemaVersion: ATRIA_EXPERIENCE_CONTRACT_VERSION, capabilities, dataResources,
         ...(taskRuntime === undefined ? {} : { taskRuntime }),
-        ...(value.lifecycleRuntime === undefined ? {} : { lifecycleRuntime: assertLifecycleRuntime(value.lifecycleRuntime, taskRuntime) }) });
+        ...(lifecycleRuntime === undefined ? {} : { lifecycleRuntime }),
+        ...(value.presentationRuntime === undefined ? {} : { presentationRuntime: assertPresentationRuntime(value.presentationRuntime, lifecycleRuntime, taskRuntime) }) });
 }
 
 // The containing immutable PackageVersion supplies ownership. No URL, mutable
@@ -106,6 +109,7 @@ export function assertExperienceDataClosure(contract, assets) {
             throw new TypeError('Package Data reference must resolve to an exact application/json AssetRef in this PackageVersion');
         }
     }
+    assertPresentationClosure(normalized.presentationRuntime, assets);
     return normalized;
 }
 

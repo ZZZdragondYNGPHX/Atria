@@ -46,6 +46,7 @@ describe('Game UI responsive environment contract', () => {
             orientation: 'portrait',
             touch: true,
             keyboard: false,
+            reducedMotion: false,
             width: 390,
             height: 844,
         });
@@ -60,6 +61,17 @@ describe('Game UI responsive environment contract', () => {
         expect(root.style.getPropertyValue('--atria-game-viewport-width')).toBe('390px');
 
         environment.dispose();
+    });
+
+    test('tracks reduced-motion changes and removes its media listener on dispose', () => {
+        const motion = new EventTarget(); motion.matches = false;
+        window.matchMedia = jest.fn(query => query === '(prefers-reduced-motion: reduce)' ? motion : { matches: false });
+        const environment = createResponsiveEnvironment(document.getElementById('root'), { window });
+        const changes = jest.fn(); environment.subscribe(changes);
+        motion.matches = true; motion.dispatchEvent(new Event('change'));
+        expect(environment.get().reducedMotion).toBe(true); expect(changes).toHaveBeenCalledTimes(1);
+        environment.dispose(); motion.matches = false; motion.dispatchEvent(new Event('change'));
+        expect(environment.get().reducedMotion).toBe(true); expect(changes).toHaveBeenCalledTimes(1);
     });
 
     test('refreshes the same root for desktop landscape without alternate HTML', () => {

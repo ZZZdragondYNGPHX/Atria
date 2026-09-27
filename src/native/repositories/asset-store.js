@@ -145,6 +145,31 @@ export class AssetStore {
         return { ref, bytes };
     }
 
+    // Verify with bounded memory, then stream the requested range from the same
+    // open immutable blob. No parallel cache or asset persistence authority.
+    async openDelivery(handle, assetId) {
+        const ref = await this.getRef(handle, assetId);
+        if (!ref) return null;
+        let file;
+        try {
+            file = await fs.promises.open(this._blobPath(handle, ref.contentHash), 'r');
+            const hash = createHash('sha256'); const buffer = Buffer.allocUnsafe(65536);
+            let position = 0;
+            for (;;) {
+                const { bytesRead } = await file.read(buffer, 0, buffer.length, position);
+                if (!bytesRead) break;
+                hash.update(buffer.subarray(0, bytesRead)); position += bytesRead;
+                if (position > ref.size) throw new ConflictError('native_asset_corrupt', { assetId });
+            }
+            if (position !== ref.size || hash.digest('hex') !== ref.contentHash) throw new ConflictError('native_asset_corrupt', { assetId });
+            return { ref, stream: (start, end) => file.createReadStream({ start, end, autoClose: false }), close: () => file.close() };
+        } catch (error) {
+            await file?.close();
+            if (error.code === 'ENOENT') throw new NotFoundError('native asset blob', { assetId });
+            throw error;
+        }
+    }
+
     async deleteRef(handle, assetId) {
         assertWritable();
         return this._engine.withTransaction(handle, async (tx) => {

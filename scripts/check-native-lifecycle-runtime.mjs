@@ -13,7 +13,7 @@ assert.throws(() => assertLifecycleRuntime({ ...lifecycleRuntime, interactions: 
 assert(Object.isFrozen(normalized.domains[0].commands[0].assign));
 assert.deepEqual(assertNativeExperienceContract({ schemaVersion: 1, capabilities: [], dataResources: [], lifecycleRuntime, taskRuntime }).lifecycleRuntime, normalized);
 for (const id of ['session-application', 'temporal', 'workflow', 'runtime-automation']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, [1]);
-for (const id of ['activity', 'media-scene', 'data-projection', 'addon', 'player-continuity', 'shared-realm']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, []);
+for (const id of ['data-projection', 'addon', 'player-continuity', 'shared-realm']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, []);
 assert.throws(() => assertLifecycleRuntime({ ...lifecycleRuntime, retention: { maxTaskResults: 1, maxReceipts: 4097 } }, taskRuntime));
 assert.throws(() => assertLifecycleRuntime({ ...lifecycleRuntime, automations: [{ ...lifecycleRuntime.automations[0], trigger: { kind: 'session.loaded' } }] }, taskRuntime));
 const source = readFileSync('public/shared/native-lifecycle-contract.js', 'utf8');
@@ -25,7 +25,7 @@ for (const path of paths) {
 }
 const core = readFileSync('src/native/session-core.js', 'utf8');
 assert(core.includes('lifecycle-authority.js') && core.includes('applyLifecycleCommand') && core.includes('lifecycleReceipt'), 'Lifecycle must reuse SessionCore authority');
-assert(readFileSync('src/native/session-snapshot.js', 'utf8').includes("'atri_lifecycle'"), 'Lifecycle state is reserved');
+assert(readFileSync('src/native/session-snapshot.js', 'utf8').includes('\'atri_lifecycle\''), 'Lifecycle state is reserved');
 const host = readFileSync('src/native/adapters/generation-host.js', 'utf8');
 assert(host.includes('executeLifecycle') && host.includes('this.executeTask') && host.includes('nativeTaskScheduler.submit'), 'No second Task scheduler');
 const authority = readFileSync('src/native/lifecycle-authority.js', 'utf8');

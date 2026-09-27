@@ -173,6 +173,9 @@ export class NativeGenerationHost {
             ...(contract?.lifecycleRuntime?.workflows ?? []).flatMap(flow => flow.nodes.map(node => node.action))]) {
             if (action?.kind === 'task') selected.get(action.taskId).add(action.variantId);
         }
+        for (const activity of contract?.presentationRuntime?.activities ?? []) {
+            if (activity.narrator) selected.get(activity.narrator.taskId).add(activity.narrator.variantId);
+        }
         const bindings = [];
         for (const task of tasks) {
             const routeRef = input.slotBindings?.[task.bindingSlotId];
