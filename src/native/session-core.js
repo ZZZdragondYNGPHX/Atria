@@ -17,6 +17,8 @@ import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { ACTION_RECEIPTS_NAMESPACE, assertActionRequest, actionReceipts, assertCompensation } from './action-receipts.js';
 import { TASK_STATE_NAMESPACE, assertTaskValue, assertSemanticOutcome } from '../../public/shared/native-task-contract.js';
 import { prepareTaskAuthority, validateTaskRecords } from './task-authority.js';
+import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle } from './lifecycle-authority.js';
+import { fields } from '../../public/scripts/native/experience/ui/v2-values.js';
 
 // Projection is a first-class immutable Variant field, never Timeline metadata.
 // User and assistant messages may project; only assistant turns accept envelopes.
@@ -169,6 +171,7 @@ export class SessionCore {
         const { session } = snapshot;
         const installed = await this._openPackage(handle, session.packageId, session.packageVersionId, session.entryPointId);
         validateTaskRecords({ ...snapshot, manifest: installed.manifest });
+        validateLifecycle({ ...snapshot, manifest: installed.manifest });
         if (installed.packageVersion.packageContentHash !== session.packageContentHash
             || installed.packageVersion.version !== session.packageVersion) throw new Error('Session PackageVersion dependency mismatch');
         await this._validateProjections(handle, snapshot, snapshot.variants, installed);
@@ -223,6 +226,8 @@ export class SessionCore {
                 entryPoint: installed.entryPoint, knowledgeRepo: this._knowledge,
                 libraryBindingIds, sessionBindings, sessionKnowledge, packageBindingIds }),
         };
+        const lifecycle = initialLifecycle(lifecycleDefinition(base));
+        if (lifecycle) base.states.atri_lifecycle = lifecycle;
         const initial = installed.entryPoint.initialTimeline ?? [];
         if (!Array.isArray(initial)) throw new TypeError('EntryPoint initialTimeline must be an array');
         const entries = [];
@@ -277,13 +282,17 @@ export class SessionCore {
 
     async _publish(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
         graph = base.graph, branchId = base.revision?.branchId ?? base.session.activeBranchId,
-        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null } = {}) {
+        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null } = {}) {
         variants = variants.map(assertVariant);
         await this._validateProjections(handle, { ...base, timeline }, variants);
         validateWorldState(states, base.manifest, base.entryPoint);
         const revisionId = createNativeId('revision');
         if (taskRecord) {
-            const records = base.states[TASK_STATE_NAMESPACE]?.records ?? [];
+            if (lifecycleDefinition(base)) {
+                states = cloneNativeDocument(states);
+                compactLifecycle({ ...base, states }, states.atri_lifecycle, { reserveTask: true });
+            }
+            const records = states[TASK_STATE_NAMESPACE]?.records ?? [];
             if (records.length >= 256) throw new TypeError('Task result retention limit reached');
             states = { ...states, [TASK_STATE_NAMESPACE]: { schemaVersion: 1, records: [...records, {
                 ...taskRecord, storedRevisionId: revisionId,
@@ -302,6 +311,17 @@ export class SessionCore {
                 ...actionRequest, receiptId: 'action:' + revisionId, status: 'committed', baseRevisionId: base.revision.revisionId,
                 committedRevisionId: revisionId, branchId, eventRefs,
             }] } };
+        }
+        if (states.atri_lifecycle) {
+            states = cloneNativeDocument(states);
+            states.atri_lifecycle.logicalTime++;
+            if (lifecycleReceipt) states.atri_lifecycle.receipts.push({ ...lifecycleReceipt, kind: 'authority',
+                committedRevisionId: revisionId, branchId });
+            if (taskRecord) {
+                const queued = states.atri_lifecycle.outbox.find(item => item.invocationId === taskRecord.invocationId);
+                if (queued) queued.status = 'completed';
+            }
+            validateLifecycle({ ...base, states });
         }
         const core = { schemaVersion: 1, parentRevisionId: base.session.headRevisionId,
             branches: graph.map(node => ({ branchId: node.branchId, forkRevisionId: node.forkRevisionId,
@@ -371,12 +391,36 @@ export class SessionCore {
         return this._publish(handle, base, { timeline: [...base.timeline, entry], entries: [entry], variants: [variant] });
     }
 
+    async applyLifecycleCommand(handle, sessionId, command, { expectedRevisionId } = {}) {
+        try { fields(command, ['type', 'invocationId', 'action'], 'Lifecycle command'); } catch (error) { throw new TypeError(error.message); }
+        if (command.type !== 'lifecycle' || !expectedRevisionId || typeof command.invocationId !== 'string'
+            || !/^[a-zA-Z0-9._:-]{1,128}$/.test(command.invocationId)) throw new TypeError('Lifecycle invocation and anchor required');
+        const base = await this.load(handle, sessionId);
+        if (!lifecycleDefinition(base)) throw new TypeError('Package lifecycle contract required');
+        const fingerprint = hashNativeDocument(command.action);
+        const receipt = base.states.atri_lifecycle.receipts.find(item => item.invocationId === command.invocationId);
+        if (receipt) {
+            if (receipt.fingerprint !== fingerprint) throw new TypeError('Lifecycle invocation conflict');
+            return base;
+        }
+        if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
+        const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+        let prepared;
+        try { prepared = await prepareLifecycle(base, installed, command.action); } catch (error) { throw new TypeError(error.message); }
+        if (hashNativeDocument(prepared.states) === hashNativeDocument(base.states)) return base;
+        const timeline = [...base.timeline]; const entries = []; const variants = [];
+        for (const draft of prepared.drafts) { const created = this._newEntry(base, draft, timeline.length); timeline.push(created.entry); entries.push(created.entry); variants.push(created.variant); }
+        return this._publish(handle, base, { states: prepared.states, timeline, entries, variants, taskResolution: prepared.taskResolution, lifecycleReceipt: { invocationId: command.invocationId,
+            fingerprint, baseRevisionId: expectedRevisionId, action: command.action.kind, events: prepared.events } });
+    }
+
     async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [] }, { expectedRevisionId } = {}) {
         if (!expectedRevisionId || typeof invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(invocationId)) throw new TypeError('Turn anchor and invocation required');
         const base = await this.load(handle, sessionId);
         let envelope = assertTurnEnvelope(raw);
         const fingerprint = hashNativeDocument(envelope);
-        const existing = base.states[TASK_STATE_NAMESPACE]?.records.find(record => record.invocationId === invocationId);
+        const existing = base.states[TASK_STATE_NAMESPACE]?.records.find(record => record.invocationId === invocationId)
+            ?? base.states.atri_lifecycle?.taskTombstones.find(record => record.invocationId === invocationId);
         if (existing) {
             if (existing.fingerprint !== fingerprint || existing.kind !== 'turn') throw new TypeError('Turn invocation conflict');
             return base;
@@ -402,6 +446,11 @@ export class SessionCore {
     async recordTaskResult(handle, sessionId, record, { expectedRevisionId } = {}) {
         if (!expectedRevisionId || typeof record.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(record.invocationId)) throw new TypeError('Task requires an invocation and revision anchor');
         const base = await this._current(handle, sessionId, expectedRevisionId);
+        const queued = base.states.atri_lifecycle?.outbox.find(item => item.invocationId === record.invocationId);
+        if (record.invocationId.startsWith('lc:') && !queued) throw new TypeError('Scheduled interaction no longer exists');
+        if (queued && (queued.status !== 'pending' || base.states.atri_lifecycle.scopes[queued.scopeId].status !== 'active'
+            || base.states.atri_lifecycle.scopes[queued.scopeId].epoch !== queued.scopeEpoch || queued.taskId !== record.taskId || queued.variantId !== record.variantId)) throw new TypeError('Scheduled interaction is stale or cancelled');
+        if (base.states.atri_lifecycle?.taskTombstones.some(item => item.invocationId === record.invocationId)) throw new TypeError('Task invocation was compacted');
         const task = base.manifest.runtime?.experienceContract?.taskRuntime?.tasks.find(item => item.id === record.taskId);
         const variant = task?.variants.find(item => item.id === record.variantId);
         if (!variant || task.resultPolicy.resultClass === 'turn_context') throw new TypeError('Task result is not durable');

@@ -287,6 +287,21 @@ export function mountAtriaPlayProduct({
         runtimeError.hidden = true; composerStatus.textContent = tl('Generating…');
         try { return await generate('normal'); } finally { submitting = false; render(); }
     }
+    async function submitCommitted(snapshot) {
+        const runtime = activeRuntime();
+        const tail = snapshot?.timeline?.at(-1);
+        if (submitting || generating() || !runtimeWritable(runtime)
+            || runtime.snapshot.session.sessionId !== snapshot?.session?.sessionId
+            || runtime.snapshot.revision.revisionId !== snapshot?.revision?.revisionId
+            || tail?.role !== 'user') throw new Error('Committed Opening input is no longer current');
+        const generate = globalThis.Atria?.getContext?.()?.generate;
+        if (typeof generate !== 'function') throw new Error(tl('Native generation entrypoint is unavailable.'));
+        submitting = true;
+        native.sendTextarea.value = '';
+        native.sendTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+        textarea.value = ''; resizeInput(); following = true;
+        try { return await generate('normal'); } finally { submitting = false; render(); }
+    }
     function submit(event) {
         event.preventDefault();
         if (generating()) {
@@ -339,6 +354,7 @@ export function mountAtriaPlayProduct({
             clearDraft() { textarea.value = ''; resizeInput(); },
             focus() { textarea.focus(); },
             submit: submitDraft,
+            submitCommitted,
         }),
         sessionHeader,
         getComponent(id) {

@@ -41,6 +41,7 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
         throw new Error(`Unsupported Native Experience mode '${mode}'`);
     }
 
+    options.assertCurrent?.();
     const contributions = createPackageRuntimeContributionRegistry(packageState?.runtime?.plugins || []);
 
     // Text remains the A3 host ABI. It participates in the same Experience
@@ -62,6 +63,7 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
         ...contributions.selectorDefinitions(),
     ];
 
+    options.assertCurrent?.();
     const isFull = mode === 'full';
     const adapter = createAtriaSurfaceAdapter(documentRef, {
         mode,
@@ -130,6 +132,7 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
         if (experience.componentModelVersion === 2) {
             const definition = compileUiDocument(await loadGamePackageJsonResource(packageState, experience.component, options), { mode });
             const data = json(await loadExperienceData(packageState, options));
+            options.assertCurrent?.();
             documentRuntime = mountUiDocument(definition, {
                 ...options, document: documentRef, window: options.window || globalThis.window, surfaceHost, selectors, worldSession, data, nativePlayHost,
                 composer: options.composer || nativePlayHost?.product?.composerApi,
@@ -148,9 +151,11 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
                 headers: options.headers || {},
                 nativePlayHost,
             });
+            options.assertCurrent?.();
             if (!definition) throw new Error(mode + ' Experience did not resolve a Component Model');
             mounted = await componentRuntime.mountComponent(definition);
         }
+        options.assertCurrent?.();
         fullHost?.activate();
     } catch (error) {
         conversationRuntime?.dispose();

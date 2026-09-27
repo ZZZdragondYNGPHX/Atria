@@ -52,6 +52,20 @@ export function createNativeGenerationRouter(getHost = services) {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         try { res.json({ cancelled: nativeTaskScheduler.cancel(req.user.profile.handle, req.params.id) }); } catch { res.sendStatus(404); }
     });
+    router.post('/lifecycle/prepare', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try { res.json(await getHost().prepareLifecycle(handle, req.body)); } catch (error) {
+            res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_lifecycle_preflight_failed' });
+        }
+    });
+    router.post('/lifecycle', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try { res.json(await getHost().executeLifecycle(handle, req.body)); } catch (error) {
+            res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_lifecycle_execution_failed' });
+        }
+    });
     router.post('/task/start', async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);

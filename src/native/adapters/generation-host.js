@@ -63,7 +63,8 @@ export class NativeGenerationHost {
         const { requestId: _requestId, ...turnRequest } = input;
         const requestHash = hashNativeDocument(turnRequest);
         const base = await this.sessionCore.load(handle, input.sessionId);
-        const previous = base.states.atri_task_results?.records.find(item => item.invocationId === input.invocationId);
+        const previous = base.states.atri_task_results?.records.find(item => item.invocationId === input.invocationId)
+            ?? base.states.atri_lifecycle?.taskTombstones.find(item => item.invocationId === input.invocationId);
         if (previous) {
             if (previous.requestHash !== requestHash || previous.kind !== 'turn') fail('native_turn_invocation_conflict');
             return base;
@@ -161,8 +162,60 @@ export class NativeGenerationHost {
         return { invocationId: input.invocationId, provenance, envelope: { ...draft, outcomes } };
     }
 
-    async executeTask(handle, input, signal, onChunk, { transient = false, scheduled = false, lanePlan = null } = {}) {
+    async prepareLifecycle(handle, input) {
+        if (Object.keys(input).some(key => !['sessionId', 'revisionId', 'slotBindings'].includes(key))) fail('native_lifecycle_request_invalid');
+        const base = await this.sessionCore.load(handle, input.sessionId);
+        if (base.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
+        const contract = base.manifest.runtime?.experienceContract;
+        const tasks = contract?.taskRuntime?.tasks ?? [];
+        const selected = new Map(tasks.map(task => [task.id, new Set([task.variants[0].id])]));
+        for (const action of [...(contract?.lifecycleRuntime?.automations ?? []).map(item => item.action),
+            ...(contract?.lifecycleRuntime?.workflows ?? []).flatMap(flow => flow.nodes.map(node => node.action))]) {
+            if (action?.kind === 'task') selected.get(action.taskId).add(action.variantId);
+        }
+        const bindings = [];
+        for (const task of tasks) {
+            const routeRef = input.slotBindings?.[task.bindingSlotId];
+            if (routeRef?.scope !== 'player') fail('native_task_binding_missing');
+            const route = await this.persistence.getRuntimeRoute(handle, routeRef.runtimeRouteId);
+            if (!route) fail('native_task_binding_missing');
+            const slot = contract.taskRuntime.slots.find(item => item.id === task.bindingSlotId);
+            for (const id of selected.get(task.id)) {
+                const variant = task.variants.find(item => item.id === id);
+                await this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId,
+                    requestId: 'preflight:' + task.id, role: route.role.replace(/^role\./, ''), routeRef,
+                    outputContract: { name: 'atria_task', schema: variant.outputSchema } }, undefined, undefined,
+                { taskPlan: { task, variant, slot, payload: null }, scheduled: true, preflight: true });
+                bindings.push({ taskId: task.id, variantId: variant.id, bindingSlotId: slot.id });
+            }
+        }
+        return { revisionId: input.revisionId, bindings };
+    }
+
+    // Durable intent is revision-backed; the existing Task scheduler owns actual
+    // execution. A Host restart resumes pending intents, never a saved Promise.
+    async executeLifecycle(handle, input, signal) {
+        if (Object.keys(input).some(key => !['sessionId', 'revisionId', 'slotBindings'].includes(key))) fail('native_lifecycle_request_invalid');
+        let snapshot = await this.sessionCore.load(handle, input.sessionId);
+        if (snapshot.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
+        if (!snapshot.states.atri_lifecycle?.ready) fail('native_lifecycle_not_ready');
+        const results = [];
+        for (let count = 0; count < 4; count++) {
+            checkCancellation(signal);
+            const item = snapshot.states.atri_lifecycle.outbox.find(item => item.status === 'pending'
+                && snapshot.states.atri_lifecycle.scopes[item.scopeId]?.status === 'active'
+                && snapshot.states.atri_lifecycle.scopes[item.scopeId].epoch === item.scopeEpoch);
+            if (!item) break;
+            const result = await this.executeTask(handle, { sessionId: input.sessionId, revisionId: snapshot.revision.revisionId,
+                invocationId: item.invocationId, taskId: item.taskId, variantId: item.variantId, input: item.input, slotBindings: input.slotBindings }, signal, undefined, { lifecycleInvocation: true });
+            snapshot = result.snapshot; results.push(result.record);
+        }
+        return { snapshot, results };
+    }
+
+    async executeTask(handle, input, signal, onChunk, { transient = false, scheduled = false, lanePlan = null, lifecycleInvocation = false } = {}) {
         input = immutable(input);
+        if (input.invocationId?.startsWith('lc:') && !lifecycleInvocation) fail('native_task_reserved_invocation');
         if (Object.keys(input).some(key => !['sessionId', 'revisionId', 'taskId', 'variantId', 'input', 'slotBindings', 'invocationId', 'requestId', 'fallbackMode'].includes(key))) fail('native_task_request_invalid');
         const snapshot = await this.sessionCore.load(handle, input.sessionId);
         const task = snapshot.manifest.runtime?.experienceContract?.taskRuntime?.tasks.find(item => item.id === input.taskId);
@@ -178,7 +231,8 @@ export class NativeGenerationHost {
         const anchor = { sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: input.revisionId };
         if (typeof input.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(input.invocationId)) fail('native_task_invocation_required');
         const fingerprint = hashNativeDocument({ task, variant, payload, anchor, routeRef, fallbackMode: input.fallbackMode ?? 'disabled' });
-        const existing = snapshot.states.atri_task_results?.records.find(item => item.invocationId === input.invocationId);
+        const existing = snapshot.states.atri_task_results?.records.find(item => item.invocationId === input.invocationId)
+            ?? snapshot.states.atri_lifecycle?.taskTombstones.find(item => item.invocationId === input.invocationId);
         if (existing) {
             if (existing.fingerprint !== fingerprint) fail('native_task_invocation_conflict');
             return { record: existing, snapshot };
@@ -218,7 +272,7 @@ export class NativeGenerationHost {
         return operation.result;
     }
 
-    async execute(handle, value, signal, onChunk, { preview = false, taskPlan = null, scheduled = false, lanePlan = null } = {}) {
+    async execute(handle, value, signal, onChunk, { preview = false, taskPlan = null, scheduled = false, lanePlan = null, preflight = false } = {}) {
         const input = immutable(value);
         if (!ROLES.has(input.role)) fail('native_generation_role_invalid');
         // The HTTP host currently owns player routes only. Never reinterpret an
@@ -304,6 +358,7 @@ export class NativeGenerationHost {
         }
         if (preview && input.previewRefs) persistence.getRuntimeRoute = async (owner, id) => id === route.runtimeRouteId ? route : this.persistence.getRuntimeRoute(owner, id);
         const resolver = new RouteResolver({ persistence, library: this.library, providers: this.providers, getScopedResource });
+        if (preflight) return resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role, requirements });
         const nativeContext = snapshot ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }) }) : null;
         const contextProvider = { buildRequestContextPlan: async (request, resolved) => {
             const selected = nativeContext ? await nativeContext.buildRequestContextPlan(request, resolved) : {

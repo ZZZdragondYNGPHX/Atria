@@ -9,16 +9,35 @@ const rank = { allowed: 0, advisory: 1, confirm_required: 2, blocked: 3 };
 
 export function mountUiDocument(definition, options) {
     const doc = options.document;
-    const state = createUiState(definition, options.stateStorage);
+    const lifecycle = definition.opening ? options.lifecycle : null;
+    const savedOpening = lifecycle?.getSnapshot()?.states?.atri_lifecycle?.opening;
+    const state = createUiState(definition, lifecycle ? {
+        read: (root, key, scope) => root === 'ui' ? savedOpening?.values?.[key] : options.stateStorage?.read?.(root, key, scope),
+        write: (root, key, scope, value) => { if (root !== 'ui') options.stateStorage?.write?.(root, key, scope, value); },
+    } : options.stateStorage);
+    // Mount-scoped setup values also resume from the existing Session snapshot.
+    if (lifecycle) for (const [key, value] of Object.entries(savedOpening?.values ?? {})) {
+        if (Object.hasOwn(definition.localState, key)) state.set('ui.' + key, value);
+    }
     const views = new Map();
     const activeActions = new Map();
     const attempts = new Map();
     const confirmations = new Set();
     const native = createNativeComponentRegistry(doc, { nativePlayHost: options.nativePlayHost });
-    const environment = createResponsiveEnvironment(options.environmentRoot || doc.createElement('div'), { window: options.window });
     const nodeBudget = options.nodeBudget || { nodes: 0, limit: 2048 };
     let disposed = false; let openingStep = definition.opening?.initial;
-    const openingHistory = []; let openingComplete = false;
+    if (savedOpening?.step != null) {
+        if (!definition.opening.steps.some(step => step.id === savedOpening.step)) throw new Error('Saved Opening step is unavailable');
+        openingStep = savedOpening.step;
+    }
+    const openingHistory = [...(savedOpening?.history ?? [])]; let openingComplete = savedOpening?.completed === true;
+    if (openingHistory.some(id => !definition.opening.steps.some(step => step.id === id))) throw new Error('Saved Opening history is unavailable');
+    const environment = createResponsiveEnvironment(options.environmentRoot || doc.createElement('div'), { window: options.window });
+    const openingVariant = savedOpening?.variant ?? null;
+    let openingTimer = null;
+    let openingWrite = Promise.resolve();
+    let pendingProgress = null;
+    let openingBusy = null;
     const listeners = new Set();
     const receipts = new Map();
     const context = (extra = {}) => {
@@ -36,9 +55,39 @@ export function mountUiDocument(definition, options) {
     };
     function refresh() {
         if (disposed) return;
+        if (lifecycle?.getSnapshot()?.states?.atri_lifecycle?.opening?.completed) openingComplete = true;
+        updateOpeningVisibility();
         for (const listener of listeners) listener();
     }
-    const unsubscribe = state.subscribe(refresh);
+    function openingPayload() {
+        return { kind: 'opening.progress', step: openingStep, history: [...openingHistory], values: state.snapshot().ui, variant: openingVariant };
+    }
+    function persistOpening(payload = openingPayload()) {
+        if (!lifecycle) return Promise.resolve();
+        clearTimeout(openingTimer);
+        const write = async () => {
+            if (disposed) throw new Error('Experience disposed');
+            if (openingComplete) return;
+            // Replay an uncertain earlier write before publishing a newer draft.
+            if (pendingProgress) {
+                const previous = pendingProgress;
+                await lifecycle.command(previous); pendingProgress = null;
+                if (JSON.stringify(previous) === JSON.stringify(payload)) return;
+            }
+            pendingProgress = payload;
+            await lifecycle.command(payload);
+            pendingProgress = null;
+        };
+        openingWrite = openingWrite.catch(() => {}).then(write);
+        return openingWrite;
+    }
+    const unsubscribe = state.subscribe(() => {
+        refresh();
+        if (lifecycle && !openingComplete && lifecycle.isWritable()) {
+            clearTimeout(openingTimer);
+            openingTimer = setTimeout(() => { void persistOpening().catch(error => options.onDiagnostic?.({ status: 'failed', message: error.message })); }, 150);
+        }
+    });
     const unsubscribeEnv = environment.subscribe(refresh);
     function constraints(action, ctx) {
         let result = { status: 'allowed', reasonCode: '', playerMessage: '' };
@@ -55,6 +104,36 @@ export function mountUiDocument(definition, options) {
             const { root, key, definition: field } = state.resolve(path);
             return fieldErrors(field, snapshot[root][key]).map(reason => ({ path, reason }));
         });
+    }
+    function planOpening(action, extra) {
+        const draft = state.snapshot(); const steps = [];
+        const command = { kind: 'opening.complete', preferences: copy(state.snapshot().prefs) };
+        let composerText = null;
+        for (const step of action.steps) {
+            const ctx = context({ ...extra, ...draft });
+            const allowed = step.when ? step.when.read(ctx) : true;
+            if (typeof allowed !== 'boolean') throw new Error('Action when requires a boolean');
+            const value = allowed ? step.value?.read(ctx) : undefined;
+            steps.push({ allowed, value });
+            if (!allowed) continue;
+            if (step.op.startsWith('ui.')) {
+                const { root, key, definition: field } = state.resolve(step.path);
+                draft[root][key] = step.op === 'ui.set' ? value : step.op === 'ui.toggle' ? !draft[root][key] : copy(field.default);
+                fieldErrors(field, draft[root][key]);
+            } else if (step.op === 'command.dispatch') command.confirmation = { commandId: step.commandId, args: json(step.args.read(ctx)) };
+            else if (step.op === 'action.compensate') throw new Error('Opening requires a declared confirmation Command');
+            else if (step.op === 'composer.set') composerText = value;
+            else if (step.op === 'composer.clear') composerText = '';
+            else if (step.op === 'composer.append') {
+                if (composerText === null) throw new Error('Opening submission requires a declared Composer draft');
+                composerText += value;
+            } else if (step.op === 'composer.submit') {
+                if (command.submission || typeof composerText !== 'string' || !composerText.trim()) throw new Error('Opening requires one declared Composer submission');
+                command.submission = { text: composerText.trim() };
+            }
+        }
+        if (command.submission && typeof options.composer?.submitCommitted !== 'function') throw new Error('Committed Native Composer submission is unavailable');
+        return { command, steps };
     }
     async function execute(actionId, extra = {}, request = {}) {
         if (disposed) throw new Error('Experience disposed');
@@ -73,16 +152,31 @@ export function mountUiDocument(definition, options) {
             if (constraint.status === 'blocked') throw new Error(constraint.playerMessage);
             if (constraint.status === 'confirm_required' && !await confirm(constraint.playerMessage)) return { status: 'cancelled' };
             if (constraint.playerMessage) options.onDiagnostic?.(constraint);
+            if (request.opening && lifecycle && !attempt.openingPrepared) {
+                attempt.openingPlan = planOpening(action, extra);
+                await persistOpening();
+                attempt.openingPrepared = true;
+                attempts.set(actionId, attempt);
+            }
+            if (request.opening && lifecycle && !attempt.openingCommitted) {
+                try { attempt.openingSnapshot = await lifecycle.command(attempt.openingPlan.command); } catch (error) {
+                    if (error.status >= 400 && error.status < 500) attempts.delete(actionId);
+                    throw error;
+                }
+                attempt.openingCommitted = true;
+                openingComplete = true;
+            }
             const results = attempt.results;
             for (let index = attempt.index; index < action.steps.length; index++) {
                 if (disposed) throw new Error('Experience disposed');
                 const step = action.steps[index]; const ctx = context(extra);
-                if (step.when) {
-                    const allowed = step.when.read(ctx);
+                const planned = attempt.openingPlan?.steps[index];
+                if (planned || step.when) {
+                    const allowed = planned ? planned.allowed : step.when.read(ctx);
                     if (typeof allowed !== 'boolean') throw new Error('Action when requires a boolean');
                     if (!allowed) continue;
                 }
-                const value = step.value?.read(ctx);
+                const value = planned ? planned.value : step.value?.read(ctx);
                 if (step.op === 'ui.set') state.set(step.path, value);
                 else if (step.op === 'ui.toggle') state.toggle(step.path);
                 else if (step.op === 'ui.reset') state.reset(step.path);
@@ -91,10 +185,14 @@ export function mountUiDocument(definition, options) {
                         idempotencyKey: requestId, compensation: action.compensation };
                     attempts.set(actionId, attempt);
                     let result;
-                    try { result = await options.worldSession.dispatchAction(attempt.command); } catch (error) {
+                    try {
+                        if (request.opening && lifecycle) {
+                            result = attempt.openingSnapshot;
+                        } else result = await options.worldSession.dispatchAction(attempt.command);
+                    } catch (error) {
                         // Known pre-publication failures can accept an edited draft;
                         // uncertain commit failures retain the exact replay request.
-                        if (error.code && error.code !== 'COMMIT_FAILED') attempts.delete(actionId);
+                        if (error.code && error.code !== 'COMMIT_FAILED' && !request.opening) attempts.delete(actionId);
                         throw error;
                     }
                     receipts.set(actionId, result); results.push(result);
@@ -110,7 +208,8 @@ export function mountUiDocument(definition, options) {
                     if (step.op === 'composer.append') composer.appendDraft(value);
                     if (step.op === 'composer.clear') composer.clearDraft();
                     if (step.op === 'composer.focus') composer.focus();
-                    if (step.op === 'composer.submit') results.push(await composer.submit());
+                    if (step.op === 'composer.submit') results.push(await (request.opening && lifecycle
+                        ? composer.submitCommitted(attempt.openingSnapshot) : composer.submit()));
                 } else if (step.op === 'surface.open') mountView(step.view);
                 else if (step.op === 'surface.close') unmountView(step.view);
                 else if (step.op.startsWith('opening.')) await advanceOpening(step.op, extra);
@@ -139,21 +238,34 @@ export function mountUiDocument(definition, options) {
             doc.body.append(dialog); dialog.showModal();
         });
     }
-    async function advanceOpening(op, extra) {
-        if (!definition.opening || openingComplete) throw new Error('No active Opening');
-        if (op === 'opening.back') { openingStep = openingHistory.pop() || openingStep; syncOpening(); return; }
-        const step = definition.opening.steps.find(item => item.id === openingStep);
-        if (validatePaths(step.fields).length) throw new Error(tl('Check the highlighted fields.'));
-        if (op === 'opening.confirm') {
-            if (step.next.some(edge => edge.when.read(context(extra)))) throw new Error('Opening is not at its confirmation step');
-            const result = await execute(definition.opening.confirmAction, extra);
-            if (result.status === 'completed') openingComplete = true;
-        } else {
+    function advanceOpening(op, extra) {
+        if (openingBusy) return openingBusy;
+        openingBusy = advanceOpeningOnce(op, extra).finally(() => { openingBusy = null; });
+        return openingBusy;
+    }
+    async function advanceOpeningOnce(op, extra) {
+        if (!definition.opening || (openingComplete && !attempts.has(definition.opening.confirmAction))) throw new Error('No active Opening');
+        if (lifecycle && !lifecycle.isWritable()) throw new Error('Opening requires the active writable Session');
+        const nextHistory = [...openingHistory];
+        let nextStep = openingStep;
+        if (op === 'opening.back') nextStep = nextHistory.pop() || openingStep;
+        else {
+            const step = definition.opening.steps.find(item => item.id === openingStep);
+            if (validatePaths(step.fields).length) throw new Error(tl('Check the highlighted fields.'));
+            if (op === 'opening.confirm') {
+                if (step.next.some(edge => edge.when.read(context(extra)))) throw new Error('Opening is not at its confirmation step');
+                const result = await execute(definition.opening.confirmAction, extra, { opening: true });
+                if (result.status === 'completed') openingComplete = true;
+                syncOpening(); return;
+            }
             const edge = step.next.find(item => item.when.read(context(extra)) === true);
             if (!edge) throw new Error('No matching Opening transition');
-            if (openingHistory.length >= 64) throw new Error('Opening navigation limit exceeded');
-            openingHistory.push(openingStep); openingStep = edge.to;
+            if (nextHistory.length >= 64) throw new Error('Opening navigation limit exceeded');
+            nextHistory.push(openingStep); nextStep = edge.to;
         }
+        await persistOpening({ ...openingPayload(), step: nextStep, history: nextHistory });
+        if (disposed) throw new Error('Experience disposed');
+        openingHistory.splice(0, openingHistory.length, ...nextHistory); openingStep = nextStep;
         syncOpening();
     }
     function renderNode(node, getExtra, cleanup, instance = '') {
@@ -281,20 +393,27 @@ export function mountUiDocument(definition, options) {
         views.set(id, { mount, cleanup });
     }
     function unmountView(id) { const view = views.get(id); if (!view) return; view.cleanup.reverse().forEach(fn => fn()); view.mount.unmount(); views.delete(id); }
-    function syncOpening() {
+    function updateOpeningVisibility() {
         if (!definition.opening) return;
         const target = definition.opening.steps.find(step => step.id === openingStep)?.view;
         for (const step of definition.opening.steps) {
             const view = views.get(step.view); if (view) view.mount.container.hidden = openingComplete || step.view !== target;
         }
-        views.get(target)?.mount.container.querySelector('input, button, select, textarea')?.focus();
+    }
+    function syncOpening() {
+        updateOpeningVisibility();
+        if (!openingComplete) {
+            const target = definition.opening?.steps.find(step => step.id === openingStep)?.view;
+            views.get(target)?.mount.container.querySelector('input, button, select, textarea')?.focus();
+        }
         refresh();
     }
     try { for (const view of definition.views) if (view.mount === 'always') mountView(view.id); syncOpening(); } catch (error) { for (const key of [...views.keys()]) unmountView(key); unsubscribe(); unsubscribeEnv(); environment.dispose(); throw error; }
     return Object.freeze({
         state, execute, refresh,
+        flushOpening: () => persistOpening(),
         getReceipt: actionId => copy(receipts.get(actionId)),
         async compensate(actionId) { const receipt = receipts.get(actionId); if (!receipt?.compensation) throw new Error('Action is not compensatable'); return options.worldSession.compensateAction(receipt); },
-        dispose() { disposed = true; for (const cancel of confirmations) cancel(); attempts.clear(); unsubscribe(); unsubscribeEnv(); environment.dispose(); for (const key of [...views.keys()]) unmountView(key); },
+        dispose() { disposed = true; clearTimeout(openingTimer); for (const cancel of confirmations) cancel(); attempts.clear(); unsubscribe(); unsubscribeEnv(); environment.dispose(); for (const key of [...views.keys()]) unmountView(key); },
     });
 }

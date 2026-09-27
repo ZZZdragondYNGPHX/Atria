@@ -27,6 +27,7 @@ import {
     NATIVE_SESSION_LIFECYCLE,
     onNativeSessionLifecycle,
 } from '../session-lifecycle.js';
+import { createNativeLifecycleClient } from '../lifecycle-client.js';
 import { nativeProductClient } from '../product-client.js';
 import { nativeSessionRuntime } from '../session-runtime.js';
 import { createNativeUiStateStorage } from '../ui-state-storage.js';
@@ -43,6 +44,7 @@ const registerCapabilityApi = atriaContext.registerCapabilityApi;
 const capabilitySettings = atriaContext.capabilitySettings;
 const saveSettingsDebounced = atriaContext.saveSettingsDebounced;
 
+const lifecycleClient = createNativeLifecycleClient({ runtime: nativeSessionRuntime, getBindings: () => getTaskBindings() });
 let revision = 0;
 let currentWorldSession = null;
 let currentUiSession = null;
@@ -260,6 +262,8 @@ async function disposeCurrentUi() {
 }
 
 async function exitCurrentGameUi() {
+    revision += 1;
+    lifecycleClient.cancel();
     await disposeCurrentUi();
     return true;
 }
@@ -291,6 +295,7 @@ async function saveCurrentGameSession() {
 
 async function disableCurrentPackageForSession() {
     revision += 1;
+    lifecycleClient.cancel();
     await disposeCurrentUi();
     currentWorldSession = null;
     disposeRuntimeSystems();
@@ -317,29 +322,41 @@ function openGameDiagnostics() {
 
 export async function reloadGamePackage() {
     const loadRevision = ++revision;
+    const load = lifecycleClient.beginLoad();
+    await disposeCurrentUi();
+    if (loadRevision !== revision) return currentPackage;
     const sessionId = nativeSessionRuntime.active
         ? String(nativeSessionRuntime.snapshot?.session?.sessionId || '')
         : '';
-    let next = await loadNativeGamePackage(sessionId, { headers: getRequestHeaders() });
+    let next;
+    try {
+        next = await load.wait(loadNativeGamePackage(sessionId, { headers: getRequestHeaders(), signal: load.signal }));
+    } catch (error) {
+        if (loadRevision !== revision) return currentPackage;
+        next = { status: GAME_PACKAGE_STATUS.ERROR, active: false, sessionId, descriptor: null, runtime: null, errors: [error.message] };
+    }
     if (loadRevision !== revision) return currentPackage;
 
     let nextWorldSession = null;
     let nextRuntimeSystems = null;
     if (next.status === GAME_PACKAGE_STATUS.READY && next.active) {
         try {
+            await load.prepare(next);
             next = { ...next, snapshot: nativeSessionRuntime.snapshot };
-            const [logicDefinition, observationProjectors] = await Promise.all([
+            const [logicDefinition, observationProjectors] = await load.wait(Promise.all([
                 loadGameLogicDefinition(next, { headers: getRequestHeaders() }),
                 loadGameObservationDefinitions(next, { headers: getRequestHeaders() }),
-            ]);
-            nextWorldSession = await createGameWorldSession({
+            ]));
+            load.assertCurrent();
+            nextWorldSession = await load.wait(createGameWorldSession({
                 packageState: next,
                 nativeRuntime: nativeSessionRuntime,
                 commands: logicDefinition.commands,
                 reducers: logicDefinition.reducers,
                 rules: logicDefinition.rules,
                 interpretations: logicDefinition.interpretations,
-            });
+            }));
+            load.assertCurrent();
             nextRuntimeSystems = createRuntimeSystems(nextWorldSession, { observationProjectors });
         } catch (error) {
             nextWorldSession = null;
@@ -356,7 +373,6 @@ export async function reloadGamePackage() {
     }
 
     if (loadRevision !== revision) return currentPackage;
-    await disposeCurrentUi();
     disposeRuntimeSystems();
     currentWorldSession = nextWorldSession;
     currentLlmSession = nextRuntimeSystems?.llmSession || null;
@@ -366,8 +382,10 @@ export async function reloadGamePackage() {
     currentTurnRecipes = nextRuntimeSystems?.recipes || null;
 
     if (next.status === GAME_PACKAGE_STATUS.READY && next.active) {
+        let nextUiSession = null;
+        let nextReplyController = null;
         try {
-            currentReplyController = createReplyVariantController({
+            nextReplyController = createReplyVariantController({
                 getContext() {
                     const snapshot = nativeSessionRuntime.snapshot;
                     return { sessionId: snapshot?.session.sessionId, revisionId: snapshot?.revision.revisionId,
@@ -381,10 +399,13 @@ export async function reloadGamePackage() {
                 onRetry: () => getContext().generate('regenerate'),
                 onFork: target => nativeSessionRuntime.forkRevision(target.revisionId),
             });
-            currentUiSession = await activateNativeExperienceRuntime(next, currentWorldSession, {
+            nextUiSession = await load.wait(activateNativeExperienceRuntime(next, currentWorldSession, {
                 headers: getRequestHeaders(),
-                mountReplyVariants: (element, anchor) => currentReplyController?.mount(element, anchor),
+                assertCurrent: load.assertCurrent,
+                lifecycle: next.descriptor.experienceContract?.lifecycleRuntime ? load.client : null,
+                mountReplyVariants: (element, anchor) => nextReplyController?.mount(element, anchor),
                 getSnapshot: () => nativeSessionRuntime.snapshot,
+                getApplicationRecords: lifecycleClient.getApplicationRecords,
                 isBusy: () => Boolean(nativeSessionRuntime.generation || nativeSessionRuntime.failed || nativeSessionRuntime.host?.isGenerating?.()),
                 isActiveTail: anchor => !nativeSessionRuntime.history && !nativeSessionRuntime.generation
                     && nativeSessionRuntime.snapshot?.session.sessionId === anchor.sessionId
@@ -416,9 +437,17 @@ export async function reloadGamePackage() {
                     save: saveCurrentGameSession,
                     openDiagnostics: openGameDiagnostics,
                 },
-            });
+            }).then(async session => {
+                try { load.assertCurrent(); return session; } catch (error) { await session.dispose(); throw error; }
+            }));
+            load.assertCurrent();
+            currentUiSession = nextUiSession;
+            currentReplyController = nextReplyController;
         } catch (error) {
-            currentReplyController?.dispose(); currentReplyController = null;
+            nextReplyController?.dispose();
+            await nextUiSession?.dispose();
+            if (loadRevision !== revision) return currentPackage;
+            currentReplyController = null;
             currentWorldSession = null;
             disposeRuntimeSystems();
             currentUiSession = null;
@@ -432,7 +461,14 @@ export async function reloadGamePackage() {
             };
         }
     }
+    if (loadRevision !== revision) return currentPackage;
     publishPackageState(next);
+    if (next.status === GAME_PACKAGE_STATUS.READY && next.active) {
+        // Projection/UI are now mounted; SESSION_LOADED alone is not ready.
+        try { await load.ready(); } catch (error) {
+            if (loadRevision === revision) console.warn(`[${MODULE_NAME}] Lifecycle readiness failed`, error);
+        }
+    } else lifecycleClient.cancel();
 
     const identity = next.descriptor
         ? next.descriptor.packageId + '@' + next.descriptor.packageVersionId
@@ -451,8 +487,8 @@ export async function reloadGamePackage() {
 
 async function syncCurrentWorldRevision() {
     const session = currentWorldSession;
-    if (!session) return null;
-    if (currentPackage.runtime?.experience?.componentModelVersion === 2) return reloadGamePackage();
+    if (!session || currentPackage.descriptor?.experienceContract?.lifecycleRuntime
+        || currentPackage.runtime?.experience?.componentModelVersion === 2) return reloadGamePackage();
 
     try {
         const result = await session.syncBranch();
@@ -689,8 +725,30 @@ eventSource.on(eventTypes.CHAT_CHANGED, () => {
     if (!nativeSessionRuntime.active) void reloadGamePackage();
 });
 
-onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, () => reloadGamePackage());
-onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, () => {
+onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, () => {
+    // acceptOperationSnapshot installs the canonical projection and emits this
+    // event too. Its own lifecycle write must not remount or recursively ready.
+    if (lifecycleClient.acceptingSnapshot) { currentUiSession?.refresh?.(); return; }
+    return reloadGamePackage();
+});
+onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, async () => {
+    revision += 1;
+    lifecycleClient.cancel();
+    await disposeCurrentUi();
+    currentWorldSession = null;
+    disposeRuntimeSystems();
+    publishPackageState({ status: GAME_PACKAGE_STATUS.NONE, active: false, sessionId: '', descriptor: null, runtime: null, errors: [] });
+});
+onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, event => {
+    if (!lifecycleClient.acceptingSnapshot && !event.stateNamespaces?.includes('atri_lifecycle')
+        && currentPackage.descriptor?.experienceContract?.lifecycleRuntime) {
+        const loadRevision = revision;
+        // Let the committing Turn release its generation flag before the wakeup.
+        setTimeout(() => {
+            if (loadRevision !== revision || lifecycleClient.busy) return;
+            void Promise.resolve().then(() => lifecycleClient.pump()).catch(error => console.warn(`[${MODULE_NAME}] Lifecycle pump deferred`, error));
+        }, 0);
+    }
     if (currentPackage.runtime?.experience?.componentModelVersion !== 2) return;
     // A presentation failure must not turn a successful authority commit into
     // a failed write or trigger an automatic duplicate transaction.
@@ -701,11 +759,16 @@ for (const lifecycle of [
     NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED,
     NATIVE_SESSION_LIFECYCLE.REVISION_RESTORED,
 ]) {
-    onNativeSessionLifecycle(lifecycle, () => syncCurrentWorldRevision());
+    onNativeSessionLifecycle(lifecycle, () => { lifecycleClient.cancel(); revision += 1; return syncCurrentWorldRevision(); });
 }
 
 registerCapabilityApi(MODULE_NAME, {
     reloadPackage: reloadGamePackage,
+    getSnapshot: lifecycleClient.getSnapshot,
+    getApplicationRecords: lifecycleClient.getApplicationRecords,
+    getTemporalProjection: lifecycleClient.getTemporalProjection,
+    lifecycleCommand: lifecycleClient.command,
+    pumpLifecycle: lifecycleClient.pump,
     getPackageState: getGamePackageState,
     isActive: isGamePackageActive,
     getWorldState,

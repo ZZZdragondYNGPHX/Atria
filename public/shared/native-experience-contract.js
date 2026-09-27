@@ -1,4 +1,5 @@
 import { assertTaskRuntime } from './native-task-contract.js';
+import { assertLifecycleRuntime } from './native-lifecycle-contract.js';
 
 // Implementation Baseline v1.0 vocabulary. A reserved version is not a Host
 // implementation, permission grant, runtime role, or state namespace.
@@ -16,7 +17,7 @@ export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
     ['turn-contract', [1], [1]],
     ['turn-envelope', [1], [1]],
     ['narrative-outcome', [1], [1]],
-    ['runtime-automation', [1]],
+    ['runtime-automation', [1], [1]],
     ['opening', [1], [1]],
     ['reply-variant', [1], [1]],
     ['conversation-presentation', [1], [1]],
@@ -31,11 +32,11 @@ export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
     ['addon', [1]],
     ['perspective', [1]],
     ['model-task', [1], [1]],
-    ['session-application', [1]],
-    ['temporal', [1]],
+    ['session-application', [1], [1]],
+    ['temporal', [1], [1]],
     ['player-continuity', [1]],
     ['shared-realm', [1]],
-    ['workflow', [1]],
+    ['workflow', [1], [1]],
 ].map(([id, versions, supported = []]) => [id, Object.freeze({
     versions: Object.freeze(versions),
     supported: Object.freeze(supported),
@@ -63,7 +64,7 @@ function list(value, label, validate, key) {
 // action, turn, task and authority bodies require their own strict contracts.
 // No generic config/extension/persistence/exposure payload belongs in this seam.
 export function assertNativeExperienceContract(value) {
-    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime'], 'ExperienceContract');
+    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime'], 'ExperienceContract');
     if (value.schemaVersion !== ATRIA_EXPERIENCE_CONTRACT_VERSION) {
         throw new TypeError('ExperienceContract.schemaVersion must be 1');
     }
@@ -89,8 +90,10 @@ export function assertNativeExperienceContract(value) {
         }
         return Object.freeze({ resourceId: item.resourceId, assetId: item.assetId, contentHash: item.contentHash });
     }, item => item.resourceId);
+    const taskRuntime = value.taskRuntime === undefined ? undefined : assertTaskRuntime(value.taskRuntime);
     return Object.freeze({ schemaVersion: ATRIA_EXPERIENCE_CONTRACT_VERSION, capabilities, dataResources,
-        ...(value.taskRuntime === undefined ? {} : { taskRuntime: assertTaskRuntime(value.taskRuntime) }) });
+        ...(taskRuntime === undefined ? {} : { taskRuntime }),
+        ...(value.lifecycleRuntime === undefined ? {} : { lifecycleRuntime: assertLifecycleRuntime(value.lifecycleRuntime, taskRuntime) }) });
 }
 
 // The containing immutable PackageVersion supplies ownership. No URL, mutable

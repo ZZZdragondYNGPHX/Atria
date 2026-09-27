@@ -343,8 +343,9 @@ export class NativeSessionRuntime {
         return true;
     }
 
-    async _loadProjection(sessionId, { revisionId } = {}) {
+    async _loadProjection(sessionId, { revisionId, acceptGuard } = {}) {
         const snapshot = await this.request('load', { sessionId, revisionId });
+        if (acceptGuard && !acceptGuard()) throw new Error('Native operation scope changed before projection install');
         this.queue = Promise.resolve();
         this.snapshot = snapshot;
         this._clearStagedStates();
@@ -359,12 +360,12 @@ export class NativeSessionRuntime {
         return snapshot;
     }
 
-    async acceptOperationSnapshot(snapshot, { turn = false } = {}) {
+    async acceptOperationSnapshot(snapshot, { turn = false, acceptGuard } = {}) {
         if (this.history || snapshot.session.sessionId !== this.snapshot?.session.sessionId
             || snapshot.revision.branchId !== this.snapshot.revision.branchId) throw new Error('Native operation scope changed');
         if (this.generation && !turn) return snapshot;
         // Reload the current committed authority, never install a late stale reply.
-        return this._loadProjection(snapshot.session.sessionId, {});
+        return this._loadProjection(snapshot.session.sessionId, { acceptGuard });
     }
 
     markProvisionalTurn() {
