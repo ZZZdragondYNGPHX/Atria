@@ -1,6 +1,6 @@
 # Atria Native Heavy-Frontend Reference Package 企划书
 
-> 状态：Discussion Draft v0.2  
+> 状态：Discussion Draft v0.3  
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
@@ -61,7 +61,6 @@
 - `authority-first` / `narrative-outcome` Turn；
 - Lifecycle / World Clock / Workflow / Automation / scheduled interaction；
 - Activity Runtime；
-- Scene / Media / Speech / immutable Asset；
 - Knowledge / Prompt Program / Prompt Module / Generation Profile；
 - Information / Perspective Projection；
 - Memory；
@@ -112,10 +111,13 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 主 Experience 冻结为 **Hybrid — Chat-based Game Application**。
 
 - 主 Timeline / Conversation 继续属于 Atria Host；
-- Package 拥有 Dashboard、状态 HUD、开局流程、手机、日程、邮件、GAL / Scene、宗教 / 教会经营等应用界面；
+- Package 拥有 Dashboard、状态 HUD、开局流程、手机、日程、邮件、纯 Native 文本演出、宗教 / 教会经营等应用界面；
 - Component 不作为主模式，但可用于消息内或聊天周边的结构化 UI；
 - Full 不作为第一版主入口；只有后续确有独立应用主界面的需求时再评估，不以升级模式来换能力；
 - 第一版按长期可扩展 Package 设计，但实现时优先做最小垂直切片，不为了展示平台能力一次性启用所有 Native 子系统。
+- **v1 不引入背景、表情、CG、Audio 或其他外部媒体 Asset Pack。**
+- **立绘延期到后续版本**；第一版不为了未来立绘提前建立媒体资源依赖或 Scene 资源管线。
+- 第一版若保留 GAL / 演出感，只使用 Native UI、文字、结构化段落、角色名/说话者、布局与轻量 Host 呈现，不依赖外部图片或音频。
 
 ### 5.1 次级宗教 / 教会模拟经营
 
@@ -165,7 +167,7 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 6. Knowledge / Prompt / Memory 分层
 7. Hybrid UI 信息架构
 8. Message Projection / 选项 / Conversation
-9. GAL / Scene / Asset 系统
+9. 纯 Native 文本演出 / GAL 表达（v1 无外部媒体资产；立绘延期）
 10. SMS / 社交 / 邮件等二级应用
 11. 存档、分支、恢复、压缩与长期游玩
 12. Studio Authoring / Scenario / Health 验证策略
@@ -308,19 +310,273 @@ Timeline 只承载玩家真正经历的主叙事。
 
 不允许 UI、模型返回值或展示层绕过 typed Authority 写入。
 
-## 9. Round 2 — 状态切分待讨论
+## 9. Round 2 — 状态切分冻结方案
+
+Round 2 已获得用户认可，以下作为后续实现的数据边界。
+
+### 9.1 七域模型
+
+本资产采用七类明确分工的数据域：
+
+1. **Package Data** — 作品版本定义的静态规则与目录；
+2. **World State** — 已经成立的客观世界事实；
+3. **Session Application State** — 当前 Session / Branch 中运行的业务对象与过程；
+4. **Lifecycle State** — 时间、阶段、scope、workflow、automation 等运行骨架；
+5. **Local UI State** — 未提交且不构成游戏事实的界面状态；
+6. **Player Preference State** — 本作品独有、跨界面/会话保留的玩家操作偏好；
+7. **Projection** — 从上述权威派生出的展示结果，不成为第二事实源。
+
+判断原则：
+
+- **Package Data 存定义**；
+- **Session Application 存过程**；
+- **World 存已经结算成立的事实**；
+- **Lifecycle 存运行阶段与时间推进**；
+- **UI / Preference 只影响交互体验**；
+- **Projection 只负责显示**。
+
+### 9.2 Package Data
+
+进入 Package Data 的典型内容：
+
+- 区域定义与解锁规则；
+- 角色静态身份 / archetype；
+- 道具定义与确定性效果；
+- 教会设施、职位、教令、项目定义；
+- 等级、升级、收益、容量、倍率等经营规则；
+- Event archetype / tag / condition 定义；
+- 其他不会因为某一局游玩过程本身而变化的规则数据。
+
+规则值不复制进每个 World 存档作为平行配置。Package 升级是否影响旧 Session 仍服从 exact Package / schema 版本边界。
+
+### 9.3 World State
+
+World 只保存已经成立、读档/分支必须精确恢复的客观事实，例如：
+
+- 世界日期对应的客观进度锚点（真正的时间推进仍由 Lifecycle 驱动）；
+- 已解锁区域与世界阶段；
+- 教会资金、信徒、声望、等级；
+- 已建成设施、已生效教令、永久经营进度；
+- 人物关系、成长、技能、持有资源；
+- 疲劳、情绪等确实被作品定义为世界中的真实人物状态；
+- 已确认的地点 / 可用性状态（仅在它本身是事实时）；
+- 已结算的任务、事件、经营后果。
+
+不把未来计划、正在执行的事务或纯 UI 缓存复制到 World。
+
+### 9.4 Session Application State
+
+Session Application 保存当前运行中的业务对象，按 typed Domain 拆分，而不是建立一个万能大对象。
+
+第一版预期 Domain：
+
+- **Events** — 当前剧情 Event Instance；
+- **Schedule** — 已确认但尚未完全结算的日程与行动安排；
+- **Mail** — 邮件对象、附件状态、已读 / 已领取状态；
+- **SMS / Communication Threads** — 私聊 / 群聊消息、未读与会话状态；
+- **Social** — 动态、评论与当前社交内容；
+- **Requests / Quests** — 当前委托、请求、待决事项；
+- **Church Operations** — 今日岗位、活动、建设、赞助提案、访客、待结算经营事务；
+- **Daily Records** — 当天生成的晨报、世界简报和必要运行记录。
+
+原则：**World 存结果，Session App 存过程。**
+
+### 9.5 教会 / 宗教经营的状态切分
+
+教会经营正式采用四层分工：
+
+#### Package Data — 规则
+
+- 设施 / 升级定义；
+- 教令树；
+- 岗位；
+- 地区经营修正；
+- 收益公式与阈值；
+- 项目 / 活动模板。
+
+#### Session Application — 当前经营过程
+
+- 今日排班；
+- 正在进行的宣传 / 建设 / 项目；
+- 赞助提案；
+- 访客；
+- pending decisions；
+- 当日 settlement candidate。
+
+#### World — 已结算长期事实
+
+- money；
+- followers；
+- reputation；
+- church level；
+- facilities；
+- decrees；
+- unlocked areas；
+- long-term progress。
+
+#### Projection — 展示
+
+如“预计今日收入”“预计新增信徒”“某角色正在工作”等可以由 World + Schedule + Lifecycle 派生时，只计算并显示，不额外持久化。
+
+### 9.6 经营与 AI 剧情的关系
+
+经营系统优先采用确定性规则，不因普通排班、收益计算、资源扣除而调用模型。
+
+典型链路：
+
+`UI Action → typed Command → Session App / World → deterministic validation / settlement`
+
+只有重要经营节点达到剧情价值时，才进入：
+
+`经营条件成立 → Event Proposal → Event Instance → Narrator → 主剧情`
+
+因此经营系统负责**制造剧情条件与长期反馈**，AI 负责**演出真正值得阅读的故事**。普通经营报表不进入主 Timeline，也不占用正文生成额度。
+
+### 9.7 人物状态边界
+
+冻结原则：
+
+- 疲劳、情绪、关系、成长、技能、真正所在地等，只要作品定义为客观人物事实，进入 World；
+- 今日排班、当前工作任务、正在进行的 Event、尚未结算的行动进入 Session App；
+- 可以可靠派生的状态不重复保存。
+
+### 9.8 Event Instance schema 原则
+
+Event Instance 属于 Session Application。
+
+第一版至少表达：
+
+- `id`；
+- `kind`；
+- `origin`；
+- `participants`；
+- `location`；
+- `status`；
+- `premise`；
+- `goal`；
+- `currentBeat`；
+- `resolvedBeats`；
+- `startedAt`；
+- `outcomeReceiptRefs`；
+- `narrativeRefs`。
+
+不预先生成整场 Event 的完整剧情剧本。
+
+`premise` 说明事件为什么发生，`goal` 说明当前事件需要解决什么；Narrator 只面对当前 Beat 和有效上下文即时生成剧情，避免被早先的模型计划强行拖回固定线路。
+
+### 9.9 Beat 是运行状态，不是预写正文
+
+Beat 负责说明“这一轮要解决什么”，不提前决定“这一轮具体要写什么”。
+
+通用语义可以包括：
+
+- narrative；
+- choice；
+- activity；
+- task；
+- transition；
+- terminal。
+
+Event 可拥有不同数量 Beat，不硬编码 5–6 Shot。
+
+### 9.10 Schedule
+
+日程属于 Session Application。
+
+Planner 可以产生 Schedule Proposal，但在写入前必须经过 deterministic validation，例如：
+
+- 人物是否可用；
+- 区域是否解锁；
+- 时间是否冲突；
+- 是否已被 Event 占用；
+- 行动容量是否允许。
+
+通过后才成为已确认 Schedule；真正发生并结算的结果再进入 World。
+
+### 9.11 通信对象
+
+邮件、SMS、社交动态属于 Session Application，而不是主 Timeline 或 World。
+
+- 邮件正文存在 Mail Domain；
+- SMS / 群聊存在 Communication Thread；
+- Social Post / Reply 存在 Social Domain；
+- 附件中的资金 / 道具只有在用户执行领取、接受、交易等 typed Command 后才修改 World。
+
+文本中声称“到账”不能代替 Authority commit。
+
+### 9.12 晨报 / 新闻
+
+本局运行中生成的晨报与新闻属于 Daily Records / Session Application，不是作者 Knowledge。
+
+若新闻反映真实长期世界变化，则必须存在对应 World 事实 / Event；新闻只是其可读表达。
+
+### 9.13 Local UI State
+
+Local UI State 必须满足：即使丢失，也不会改变游戏事实。
+
+可包含：
+
+- 当前 Tab；
+- 当前选中的人物；
+- 筛选 / 排序；
+- 展开状态；
+- 未提交表单；
+- 草稿消息；
+- 当前 Wizard 页。
+
+不得包含资金、关系、Event outcome、任务完成等 Authority 字段。
+
+### 9.14 Player Preference
+
+第一版只声明本作品确实需要的少量偏好，例如：
+
+- 选项点击后直接发送还是填入 Composer；
+- 默认游戏面板；
+- 是否显示经营提示；
+- 本作品自己的通知偏好。
+
+Host 已经负责的系统主题、文字大小、Reduce Motion、设备音量等不在 Package 内重复实现。
+
+### 9.15 Projection
+
+所有可由现有 Authority / Lifecycle 可靠计算出来的显示值使用 Projection，不再持久化第二份。
+
+例如：
+
+- 教会等级标签；
+- 预计收入；
+- 角色工作状态；
+- 距离阶段结束时间；
+- Event 状态摘要。
+
+### 9.16 v1 外部媒体资产边界
+
+**第一版不使用任何背景、表情、CG、Audio 或其他外部媒体 Asset Pack。**
+
+因此：
+
+- 不建立媒体资源依赖；
+- 不为了未来资源预埋一套平行 manifest；
+- 不把远程 URL 当作 Package 资产；
+- 不以 Scene / Asset 系统作为第一版完成条件；
+- **立绘延期到后续版本**，届时再基于实际需要审查 Atria 当时的 Presentation / Asset contract。
+
+第一版若需要 GAL / 演出表达，只使用 Native UI、文本、说话者、结构化段落、布局和现有 Host 可安全提供的轻量 presentation，不依赖图片和音频。
+
+## 10. Round 3 — Model Task / Turn 编排待讨论
 
 本轮尚未冻结。
 
-需要进一步决定：
+需要决定：
 
-- 哪些长期事实进入 World；
-- 哪些业务对象进入 Session Application；
-- Event Instance 的正式 schema 边界；
-- Character State 应全部归 World，还是拆出 runtime/session 部分；
-- 教会经营中的资金、信徒、等级、设施、项目、今日排班分别属于哪里；
-- 邮件、SMS、社交帖子、新闻、任务、道具、关系分别属于哪个 Authority；
-- Local UI State 的生命周期；
-- Player Preference 第一版需要哪些 key；
-- 哪些信息只做派生 Projection，不持久化；
-- 哪些数据应该作为 Package Data 静态定义，而不是 Session / World 状态。
+- 主剧情是否使用一个固定 Narrator Turn Contract；
+- Planner、Social、World、Curator 应该是独立 Task 还是 Task Variant；
+- 哪些 Task 是 turn-blocking，哪些可以 interactive / background；
+- `authority-first` 与 `narrative-outcome` 在本作品中分别用于什么场景；
+- Event Beat 如何形成 Narrator 输入；
+- Narrator 应看到哪些 World / Session App / Knowledge / Memory / Event 信息；
+- 经营结果如何进入剧情，而又不让 Narrator负责确定性结算；
+- Planner Proposal 如何验证、拒绝、重试；
+- Social / Morning / Night 是否允许不进入主 Timeline；
+- 压缩 / Curator 在什么时候运行，怎样避免抢占正常剧情调用；
+- 一次主剧情生成的结构化返回应该保留哪些字段，哪些应由 Runtime 自己产生。
