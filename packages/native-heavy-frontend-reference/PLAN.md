@@ -1,6 +1,6 @@
 # Atria Native Heavy-Frontend Reference Package 企划书
 
-> 状态：Discussion Draft v0.8  
+> 状态：Discussion Draft v0.8.1  
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
@@ -1687,30 +1687,18 @@ Desktop 可使用右侧 Context Rail，但仅承载：
 
 Compact / Mobile 不压缩 Story 来硬塞右栏，改为按需展开的 Context Sheet。
 
-### 14.11 Message Choice 与消息绑定
+### 14.11 自由 Composer 是唯一主剧情输入入口
 
-Choices / Quick Actions 属于产生它们的 Message Projection。
+v1 不提供 Narrative Choice / 推荐选项 / Quick Choice。
 
-它们必须跟随对应 assistant message，而不是放在全局固定“当前选项”区域。
+- Narrator 不生成 next actions；
+- assistant message 下方不出现剧情选项按钮；
+- 不存在“点击选项直接发送 / 填入 Composer”的 Choice Preference；
+- 玩家推进主剧情始终通过 Native Composer 自由输入。
 
-这样历史回看、Reply Variant 和 Branch 都能明确知道选择属于哪一轮。
+Message Projection 只用于必要的 display-only 信息和确定性业务操作，不承担“替玩家建议下一句话”的职责。
 
-### 14.12 永远保留自由 Composer
-
-无论当前消息是否提供推荐选项，Native Composer 都必须可用。
-
-Choices 是建议行动，不是玩家唯一合法输入。
-
-### 14.13 Choice Behavior
-
-复用 Player Preference：
-
-- `send_immediately`；
-- `fill_composer`。
-
-`fill_composer` 允许玩家点击建议后继续修改文字，再正式发送。
-
-### 14.14 通知默认不进入主 Timeline
+### 14.12 通知默认不进入主 Timeline
 
 以下内容默认使用 badge / toast / app state，而不是机械插入 Story：
 
@@ -1724,13 +1712,13 @@ Choices 是建议行动，不是玩家唯一合法输入。
 
 只有真正进入当前剧情时才通过 Event / Narrative 写入 Timeline。
 
-### 14.15 Opportunity 是经营到剧情的 UI 桥梁
+### 14.13 Opportunity 是经营到剧情的 UI 桥梁
 
 普通 Opportunity 留在 Church。
 
 剧情级 Opportunity 可以在 Story 显示轻量入口，例如“有人正在门口等你”，玩家接受后转换为 Event Instance。
 
-### 14.16 v1 的视觉定位
+### 14.14 v1 的视觉定位
 
 v1 明确定位为：
 
@@ -1748,7 +1736,7 @@ v1 明确定位为：
 
 建立区别于普通聊天页的产品体验。
 
-### 14.17 Dialogue / Scene Presentation
+### 14.15 Dialogue / Scene Presentation
 
 原先的“Text GAL”在产品层改称 **Dialogue / Scene Presentation**。
 
@@ -1762,13 +1750,13 @@ v1 明确定位为：
 
 v1 不建立第二套 GAL 模型，也不依赖媒体 Asset。
 
-### 14.18 v1 不提供手动 Story / Dialogue 切换
+### 14.16 v1 不提供手动 Story / Dialogue 切换
 
 第一版由当前 Narrative / Event presentation 自行选择合适渲染，不增加玩家手动 Story/Dialogue 模式切换 Preference。
 
 若实际使用发现明确需要，再在后续版本增加。
 
-### 14.19 Mobile / Compact
+### 14.17 Mobile / Compact
 
 Mobile 继续保持：
 
@@ -1778,22 +1766,23 @@ Mobile 继续保持：
 - Context Rail 转为 Context Sheet；
 - Church / Schedule / Phone / People 保持同一信息层级，不做桌面页面简单缩放。
 
-## 15. Round 8 — Message Projection / 选项 / Conversation 待讨论
+## 15. Round 8 — Message Projection / Conversation 待讨论
 
 本轮尚未冻结。
+
+**已确认前提：v1 完全删除 Narrative Choice / 选项系统。**
 
 需要决定：
 
 - Narrator 一次主 Turn 的 canonical Timeline content 应该只保存纯 prose，还是保存结构化 narrative segments；
-- Message Projection 允许哪些 block 类型；
-- Choices / Actions 是模型直接生成 block data，还是由 Event / Runtime 生成；
-- 选择按钮是否必须与当前 Event / Command 绑定；
-- 历史消息上的 action 如何处理 active-tail / explicit fork；
+- Message Projection v1 到底保留哪些 block 类型；
+- 确定性业务 Action 是否允许嵌入消息，还是统一放在对应应用页面；
+- 历史消息上的 authority action 如何处理 active-tail / explicit fork；
 - Reply Variant / Branch 切换时 projection 和 Event / World state 如何同步；
 - 普通自由聊天与 Event Turn 是否共享同一种 Message contract；
 - Dialogue / Scene Presentation 应落在 canonical content 还是 projection；
 - 状态条、人物状态、教会相关提示是否属于 message-local snapshot；
-- Message-local UI state 可以保留哪些内容；
+- Message-local UI state 是否第一版直接不用；
 - 是否允许消息 block 读取 live World，还是一律使用 commit-time snapshot；
 - 如何保证 display-only block 不进入未来 Prompt；
-- 用户点击 choice 后发送的是自然语言、typed action，还是二者组合。
+- 玩家推进主剧情是否统一只通过 Native Composer 自由输入（当前倾向是）。
