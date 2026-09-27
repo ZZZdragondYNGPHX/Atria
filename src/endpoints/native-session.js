@@ -1,4 +1,5 @@
 import { SharedAuthority } from '../native/shared-authority.js';
+import { inspectExperienceHealth, previewExperienceRepair, applyExperienceRepair } from '../native/experience-health.js';
 import { deliverNativeAsset } from '../native/asset-delivery.js';
 import express from 'express';
 import { createHash } from 'node:crypto';
@@ -35,6 +36,15 @@ export function createNativeSessionRouter(getServices = services) {
             response.status(status).json({ error: error.code || (status === 400 ? 'native_invalid_command' : 'native_session_failed') });
         }
     };
+    router.post('/health', route(async (req, res, { core }, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(await inspectExperienceHealth(core, handle, req.body.sessionId));
+    }));
+    router.post('/health/preview', route(async (req, res, { core }, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(await previewExperienceRepair(core, handle, req.body.sessionId, req.body.request));
+    }));
+    router.post('/health/apply', route(async (req, res, { core }, handle) => {
+        res.json(await applyExperienceRepair(core, handle, req.body.sessionId, req.body.repair));
+    }));
     router.post('/shared/enable', route(async (req, res, { core }, handle) => {
         res.json(await new SharedAuthority(core).enable(handle, req.body.sessionId, req.body.expectedRevisionId));
     }));

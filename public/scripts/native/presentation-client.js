@@ -3,6 +3,7 @@ import { compileUiDocument } from './experience/ui/v2-document.js';
 import { mountUiDocument } from './experience/ui/v2-runtime.js';
 import { createSurfaceHost } from './experience/ui/surfaces.js';
 import { createResponsiveEnvironment } from './experience/ui/environment.js';
+import { detectPresentationCapabilities } from './host-capabilities.js';
 
 import { cloneGameUiValue as copy } from './experience/ui/clone.js';
 const key = ref => ref.assetId + ':' + ref.contentHash;
@@ -26,10 +27,7 @@ export function createNativePresentationClient({ runtime, lifecycle, document: d
         return value;
     }
     function capabilities() {
-        const nav = win?.navigator;
-        return { fullscreen: Boolean(doc?.fullscreenEnabled && doc.documentElement?.requestFullscreen), focus: Boolean(doc?.documentElement?.focus),
-            gamepad: typeof nav?.getGamepads === 'function', responsive: Boolean(win), 'reduced-motion': typeof win?.matchMedia === 'function',
-            speech: Boolean(win?.speechSynthesis && win?.SpeechSynthesisUtterance), audio: Boolean(doc?.createElement('audio').canPlayType), video: Boolean(doc?.createElement('video').canPlayType) };
+        return detectPresentationCapabilities(doc, win);
     }
     function gesture() { if (!win?.navigator?.userActivation?.isActive) fail('native_presentation_user_activation_required'); }
     function receipt(token, value) { token.receipts.push({ kind: 'render', ...value }); if (token.receipts.length > 128) token.receipts.shift(); }

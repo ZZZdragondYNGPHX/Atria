@@ -116,7 +116,8 @@ export function flattenComponentTree(root) {
         const children = Array.isArray(node.children) ? node.children : [];
         children.forEach((child, childIndex) => visit(child, node.id, depth + 1, childIndex));
     }
-    visit(root);
+    if (root?.schemaVersion === 2) root.views.forEach(view => visit(view.root));
+    else visit(root);
     return output;
 }
 
@@ -134,7 +135,8 @@ export function updateComponentNode(root, componentId, updater) {
         }
         for (const child of Array.isArray(node.children) ? node.children : []) visit(child);
     }
-    visit(next);
+    if (next?.schemaVersion === 2) next.views.forEach(view => visit(view.root));
+    else visit(next);
     if (!found) throw new Error(formatProductText('Component not found: ${0}', [componentId]));
     return next;
 }

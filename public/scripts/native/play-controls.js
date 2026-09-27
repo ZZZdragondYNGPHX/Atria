@@ -11,6 +11,8 @@ import {
 import { NATIVE_SESSION_LIFECYCLE, onNativeSessionLifecycle } from './session-lifecycle.js';
 import { createAtriaIcon } from '../atria-shell/icons.js';
 import { mountPlayPromptControls } from './prompt-runtime-controls.js';
+import { mountExperienceHealth } from './experience-health-ui.js';
+import { mountSharedSessionPanel } from './shared-session-ui.js';
 
 function actionButton(documentRef, label, handler) {
     const node = documentRef.createElement('button');
@@ -113,16 +115,19 @@ export function mountNativePlayControls({
     let returnFocus = null;
     let drawerRequest = 0;
     let disposed = false;
+    let experiencePanel = null;
     let unsubscribeNavigation = null;
     let inspectorWasOpen = false;
     const shell = () => globalThis.Atria?.shell?.getShell?.();
     function hideDrawer() {
+        experiencePanel?.dispose(); experiencePanel = null;
         drawerRequest++;
         if (shell()?.slots?.dock?.contains(drawer)) shell().setDockOpen(false);
         else drawer.hidden = true;
         if (returnFocus?.isConnected) returnFocus.focus();
     }
     function openDrawer(title) {
+        experiencePanel?.dispose(); experiencePanel = null;
         if (!drawer.contains(documentRef.activeElement)) {
             returnFocus = documentRef.activeElement?.closest?.('.atria-play-more')?.querySelector('summary') || documentRef.activeElement;
         }
@@ -517,7 +522,15 @@ export function mountNativePlayControls({
     moreLabel.textContent = tl('More');
     const moreActions = documentRef.createElement('div');
     moreActions.className = 'atria-play-more-actions';
-    moreActions.append(retry, reenter, restart, quickSave, load);
+    const health = actionButton(documentRef, 'Experience health', () => {
+        openDrawer('Experience health');
+        experiencePanel = mountExperienceHealth({ document: documentRef, root: drawerBody, runtime: activeRuntime() });
+    });
+    const sharing = actionButton(documentRef, 'Shared session', () => {
+        openDrawer('Shared session');
+        experiencePanel = mountSharedSessionPanel({ document: documentRef, root: drawerBody, runtime: activeRuntime() });
+    });
+    moreActions.append(health, sharing, retry, reenter, restart, quickSave, load);
     moreActions.addEventListener('click', () => {
         more.open = false;
         if (moreActions.contains(documentRef.activeElement)) moreLabel.focus();
@@ -588,6 +601,7 @@ export function mountNativePlayControls({
         drawer,
         sync,
         dispose() {
+            experiencePanel?.dispose(); experiencePanel = null;
             disposed = true;
             documentRef.removeEventListener('pointerdown', dismissMore);
             root.removeEventListener('atria-play-action-error', reportActionError);

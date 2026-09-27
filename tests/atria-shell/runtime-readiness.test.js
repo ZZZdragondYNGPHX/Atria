@@ -43,9 +43,12 @@ test('setup refresh recovers from inventory failure and opens the canonical miss
     const view = mountNativeRuntimeWorkspace({ document, body, section: 'routes', host });
     const flush = () => new Promise(resolve => setTimeout(resolve, 0));
     try {
-        // Routes first loads the shared catalog; retry this initial failure.
-        await flush(); failed = false;
-        [...view.root.querySelectorAll('button')].find(button => button.textContent === 'Retry loading').click(); await flush();
+        // The catalog loads configuration only; setup inventory is lazy.
+        await flush();
+        const setup = view.root.querySelector('details'); setup.open = true; setup.dispatchEvent(new Event('toggle')); await flush();
+        expect(view.root.textContent).toContain('Could not check Runtime setup');
+        failed = false;
+        [...view.root.querySelectorAll('button')].find(button => button.textContent === 'Check setup again').click(); await flush();
         [...view.root.querySelectorAll('button')].find(button => button.textContent === 'Set up Prompt Program').click();
         expect(host.openLibrarySection).toHaveBeenCalledWith('prompt-programs');
         failed = true;

@@ -12,6 +12,7 @@ import { ProjectStore } from '../native/project-store.js';
 import { VersionedJsonResourceHandler } from '../native/model-prompt-runtime/persistence.js';
 import { StudioService } from '../native/authoring/studio-service.js';
 import { ProjectAgentService } from '../native/project-agent.js';
+import { runStudioScenario } from '../native/studio-scenario.js';
 
 let studioService = null;
 let projectAgentService = null;
@@ -19,6 +20,7 @@ let projectAgentService = null;
 function services() {
     if (!studioService) {
         studioService = new StudioService({
+            simulationRunner: runStudioScenario,
             projectStore: new ProjectStore({ directoriesByHandle: getUserDirectories }),
             worldRepo: getWorldRepo(),
             knowledgeRepo: getKnowledgeRepo(),
@@ -323,6 +325,10 @@ export function createNativeStudioRouter(getServices = services) {
 
     router.get('/previews', route(async (req, res, { studio }, handle) => {
         res.json(studio.listPreviews(handle, req.query.projectId || null));
+    }));
+
+    router.get('/previews/:previewId/ui', route(async (req, res, { studio }, handle) => {
+        res.set('Cache-Control', 'private, no-store').json(studio.getPreviewUi(handle, req.params.previewId));
     }));
 
     router.delete('/previews/:previewId', route(async (req, res, { studio }, handle) => {

@@ -1,13 +1,14 @@
 import { loadNativeGamePackage, loadGamePackageJsonResource, loadExperienceData } from './experience/package-loader.js';
 import { compileUiDocument } from './experience/ui/v2-document.js';
 import { mountUiDocument } from './experience/ui/v2-runtime.js';
+import { createIsolatedExperienceSlots } from './isolated-experience-slots.js';
 
 // Host-owned, mount-scoped HTTP transport. It holds only a disposable display
 // projection; the canonical Session and permission checks stay on the server.
 // Packages receive the frozen methods, never the transport/auth configuration.
 export function createNativeSharedClient({ owner, sessionId, fetchImpl = (...args) => fetch(...args),
     headers = () => globalThis.Atria?.getContext?.()?.getRequestHeaders?.() ?? {},
-    invocationId = () => crypto.randomUUID(), onProjection = () => {}, timeoutMs = 30000 } = {}) {
+    invocationId = () => 'shared-' + crypto.randomUUID(), onProjection = () => {}, timeoutMs = 30000 } = {}) {
     const controller = new AbortController();
     let snapshot = null, pending = null, busy = false, sequence = 0;
     const current = () => { if (controller.signal.aborted) throw new Error('native_shared_disposed'); };
@@ -86,6 +87,7 @@ export async function mountNativeSharedExperience(options) {
         if (selected.document) {
             const definition = compileUiDocument(selected.document, { mode: selected.state.runtime.experience.mode });
             mounted = mountUiDocument(definition, { document: options.document, window: options.window, surfaceHost: options.surfaceHost,
+                nativePlayHost: createIsolatedExperienceSlots(options.document, true),
                 environmentRoot: options.environmentRoot, stateStorage: options.stateStorage, data: selected.data, sharedClient: client, realm: client.realmCommand });
         }
         return Object.freeze({ client, packageState: selected.state, refresh: client.refresh, dispose() { mounted?.dispose(); mounted = null; client.dispose(); } });

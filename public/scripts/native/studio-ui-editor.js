@@ -1,9 +1,6 @@
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { translateShellText as t } from '../atria-shell/localization.js';
-import {
-    compileExperienceComponentModel,
-    renderExperienceComponentModel,
-} from './experience/ui/component-model.js';
+import { compileStudioUi, mountStudioPreviewUi } from './studio-preview-ui.js';
 import {
     flattenComponentTree,
     updateComponentNode,
@@ -11,6 +8,8 @@ import {
 
 const TABS = Object.freeze(['design', 'structure', 'bindings', 'source']);
 const TYPES = Object.freeze(['container', 'text', 'button', 'input', 'native-slot']);
+const V2_TYPES = ['container', 'stack', 'grid', 'scroll', 'separator', 'text', 'badge', 'progress', 'button', 'details', 'form', 'input', 'textarea', 'select', 'checkbox', 'range', 'repeat', 'native-slot', 'scene'];
+const roots = model => model.schemaVersion === 2 ? model.views.map(view => view.root) : [model];
 
 function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -89,7 +88,7 @@ function selectedRecord(model, componentId) {
 
 function removeComponent(model, componentId) {
     const next = clone(model);
-    if (next.id === componentId) throw new Error('The root component cannot be removed');
+    if (roots(next).some(node => node.id === componentId)) throw new Error('The root component cannot be removed');
     let removed = false;
     function visit(node) {
         if (!Array.isArray(node.children)) return;
@@ -101,7 +100,7 @@ function removeComponent(model, componentId) {
         }
         for (const child of node.children) visit(child);
     }
-    visit(next);
+    roots(next).forEach(visit);
     if (!removed) throw new Error(formatProductText('Component not found: ${0}', [componentId]));
     return next;
 }
@@ -130,7 +129,7 @@ function reorder(model, componentId, direction) {
         }
         for (const child of node.children) visit(child);
     }
-    visit(next);
+    roots(next).forEach(visit);
     return { model: next, moved };
 }
 
@@ -151,6 +150,8 @@ export function mountStructuredUiEditor({
     const propertyDrafts = new Map();
     const pendingDrafts = new Set();
     let invalidDraft = false;
+    let previewMount = null;
+    const isV2 = () => model.schemaVersion === 2;
 
     const shell = documentRef.createElement('section');
     shell.className = 'atria-studio-ui-editor';
@@ -158,7 +159,7 @@ export function mountStructuredUiEditor({
     root.replaceChildren(shell);
 
     function validate(nextModel = model) {
-        return compileExperienceComponentModel(nextModel, { mode });
+        return compileStudioUi(nextModel, mode, initialModel?.schemaVersion === 2 ? 2 : 1);
     }
 
     function updateModel(nextModel, nextSelectedId = selectedId) {
@@ -166,7 +167,7 @@ export function mountStructuredUiEditor({
         model = clone(nextModel);
         const currentIds = new Set(flattenComponentTree(model).map(record => record.id));
         for (const id of propertyDrafts.keys()) if (!currentIds.has(id)) { propertyDrafts.delete(id); pendingDrafts.delete(`properties:${id}`); }
-        for (const id of bindingDrafts.keys()) if (!currentIds.has(id)) { bindingDrafts.delete(id); pendingDrafts.delete(id); }
+        for (const id of bindingDrafts.keys()) if (!id.startsWith('document:') && !currentIds.has(id)) { bindingDrafts.delete(id); pendingDrafts.delete(id); }
         if (!pendingDrafts.has('source')) sourceDraft = null;
         invalidDraft = false;
         selectedId = nextSelectedId;
@@ -191,7 +192,7 @@ export function mountStructuredUiEditor({
     function renderTabs(container) {
         const tabs = documentRef.createElement('nav');
         tabs.className = 'atria-studio-editor-tabs';
-        for (const tab of TABS) {
+        for (const tab of (isV2() ? ['design', 'structure', 'bindings', 'document', 'source'] : TABS)) {
             tabs.append(button(documentRef, tab[0].toUpperCase() + tab.slice(1), () => {
                 activeTab = tab;
                 render();
@@ -207,9 +208,9 @@ export function mountStructuredUiEditor({
         const canvas = documentRef.createElement('div');
         canvas.className = 'atria-studio-design__canvas';
         canvas.dataset.atriaStudioCanvas = 'true';
-        const compiled = validate();
-        const rendered = renderExperienceComponentModel(documentRef, compiled);
-        canvas.append(rendered);
+        previewMount = mountStudioPreviewUi(documentRef, canvas, model, mode, diagnostic => {
+            statusMessage = diagnostic.message;
+        });
         canvas.addEventListener('click', event => {
             const target = event.target?.closest?.('[data-atria-component-id]');
             if (!target) return;
@@ -222,7 +223,7 @@ export function mountStructuredUiEditor({
         properties.className = 'atria-studio-design__properties';
         if (record) {
             const draft = propertyDrafts.get(record.id) || { type: record.node.type, text: record.node.props?.text || '', className: record.node.props?.className || '', ariaLabel: record.node.props?.ariaLabel || '' };
-            const typeControl = select(documentRef, draft.type, TYPES, 'Component type');
+            const typeControl = select(documentRef, draft.type, isV2() ? V2_TYPES : TYPES, 'Component type');
             const textControl = input(documentRef, draft.text, 'Component text');
             const classControl = input(documentRef, draft.className, 'Component class');
             const ariaControl = input(documentRef, draft.ariaLabel, 'Component aria label');
@@ -233,17 +234,23 @@ export function mountStructuredUiEditor({
             properties.append(
                 field(documentRef, 'Type', typeControl),
                 field(documentRef, 'Text', textControl),
-                field(documentRef, 'Class', classControl),
-                field(documentRef, 'ARIA label', ariaControl),
             );
+            if (!isV2()) properties.append(field(documentRef, 'Class', classControl), field(documentRef, 'ARIA label', ariaControl));
+            else {
+                const labelControl = input(documentRef, record.node.props?.label || '', 'Field label');
+                properties.append(field(documentRef, 'Field label', labelControl));
+                labelControl.addEventListener('change', () => {
+                    updateModel(updateComponentNode(model, record.id, node => ({ ...node, props: { ...node.props, label: labelControl.value } })));
+                });
+            }
             properties.append(button(documentRef, 'Apply Properties', () => {
                 const nextModel = updateComponentNode(model, record.id, node => {
                     const props = { ...(node.props || {}) };
-                    for (const [key, value] of [
+                    for (const [key, value] of (isV2() ? [['text', textControl.value]] : [
                         ['text', textControl.value],
                         ['className', classControl.value],
                         ['ariaLabel', ariaControl.value],
-                    ]) {
+                    ])) {
                         if (value) props[key] = value;
                         else delete props[key];
                     }
@@ -265,6 +272,23 @@ export function mountStructuredUiEditor({
     }
 
     function renderStructure(body) {
+        if (isV2()) {
+            const record = selectedRecord(model, selectedId);
+            const kind = select(documentRef, 'text', ['text', 'button', 'container', 'form', 'input', 'textarea', 'checkbox', 'range'], 'New component type');
+            body.append(field(documentRef, 'New component type', kind), button(documentRef, 'Add component', () => {
+                const id = 'node_' + String(idFactory()).replaceAll('-', '').slice(0, 16);
+                const next = clone(model);
+                const node = { id, type: kind.value };
+                if (['input', 'textarea', 'checkbox', 'range'].includes(kind.value)) {
+                    const type = kind.value === 'checkbox' ? 'boolean' : kind.value === 'range' ? 'number' : 'string';
+                    next.localState ??= {};
+                    next.localState[id] = { type, default: type === 'boolean' ? false : type === 'number' ? 0 : '', scope: 'mount' };
+                    node.model = 'ui.' + id; node.props = { label: id };
+                } else if (['text', 'button'].includes(kind.value)) node.props = { text: kind.value };
+                else node.children = [];
+                updateModel(addChild(next, record.id, node), id);
+            }));
+        }
         const tree = documentRef.createElement('div');
         tree.className = 'atria-studio-structure-tree';
         for (const record of flattenComponentTree(model)) {
@@ -292,7 +316,7 @@ export function mountStructuredUiEditor({
                     const compact = String(idFactory()).replaceAll('-', '').toLowerCase().slice(0, 12);
                     const child = { id: 'component_' + compact, type: 'container', children: [] };
                     updateModel(addChild(model, record.id, child), child.id);
-                }, { disabled: record.node.type === 'input' || record.node.type === 'native-slot' }),
+                }, { disabled: isV2() ? !['container', 'stack', 'grid', 'scroll', 'details', 'form'].includes(record.node.type) : record.node.type === 'input' || record.node.type === 'native-slot' }),
                 button(documentRef, '×', () => {
                     updateModel(removeComponent(model, record.id), record.parentId || model.id);
                 }, { disabled: record.parentId == null }),
@@ -310,7 +334,10 @@ export function mountStructuredUiEditor({
     function renderBindings(body) {
         const record = selectedRecord(model, selectedId);
         if (!record) return;
-        const value = {
+        const value = isV2() ? {
+            bindings: record.node.bindings || {}, events: record.node.events || {},
+            ...(record.node.model ? { model: record.node.model } : {}),
+        } : {
             bindings: record.node.bindings || {},
             actions: record.node.actions || {},
             visibility: record.node.visibility || null,
@@ -326,11 +353,11 @@ export function mountStructuredUiEditor({
                 pendingDrafts.delete(record.id);
                 updateModel(updateComponentNode(model, record.id, node => {
                     const next = { ...node };
-                    for (const key of ['bindings', 'actions']) {
+                    for (const key of (isV2() ? ['bindings', 'events'] : ['bindings', 'actions'])) {
                         if (parsed[key] && Object.keys(parsed[key]).length) next[key] = parsed[key];
                         else delete next[key];
                     }
-                    for (const key of ['visibility', 'responsive']) {
+                    for (const key of (isV2() ? ['model'] : ['visibility', 'responsive'])) {
                         if (parsed[key]) next[key] = parsed[key];
                         else delete next[key];
                     }
@@ -363,7 +390,31 @@ export function mountStructuredUiEditor({
         }));
     }
 
+    function renderDocument(body) {
+        for (const view of model.views) {
+            const surface = select(documentRef, view.surface, ['app.root', 'chat.header', 'chat.footer', 'composer.before', 'composer.after', 'sidebar.left', 'sidebar.right', 'drawer', 'modal'], 'View surface');
+            const mount = select(documentRef, view.mount, ['always', 'on-demand'], 'View mount');
+            body.append(field(documentRef, view.id, surface), field(documentRef, 'View mount', mount), button(documentRef, 'Apply view', () => {
+                const next = clone(model); Object.assign(next.views.find(item => item.id === view.id), { surface: surface.value, mount: mount.value }); updateModel(next);
+            }));
+        }
+        body.append(button(documentRef, 'Add view', () => {
+            const id = 'view_' + String(idFactory()).replaceAll('-', '').slice(0, 16);
+            const next = clone(model); next.views.push({ id, surface: 'drawer', mount: 'on-demand', root: { id: id + '_root', type: 'container', children: [] } }); updateModel(next);
+        }));
+        for (const key of ['localState', 'preferences', 'selectors', 'actions', 'opening', 'messageBlocks', 'conversation']) {
+            const editor = textarea(documentRef, bindingDrafts.get('document:' + key) ?? JSON.stringify(model[key] ?? null, null, 2), key);
+            editor.addEventListener('input', () => { bindingDrafts.set('document:' + key, editor.value); markDraft('document:' + key); });
+            body.append(field(documentRef, key, editor), button(documentRef, 'Apply ' + key, () => {
+                const next = clone(model); const parsed = JSON.parse(editor.value);
+                if (parsed === null) delete next[key]; else next[key] = parsed;
+                validate(next); bindingDrafts.delete('document:' + key); pendingDrafts.delete('document:' + key); updateModel(next);
+            }));
+        }
+    }
+
     function render() {
+        previewMount?.dispose(); previewMount = null;
         const focused = shell.contains(documentRef.activeElement) ? documentRef.activeElement : null;
         const focusLabel = focused?.getAttribute('aria-label');
         const focusText = focused?.tagName === 'BUTTON' ? focused.textContent : null;
@@ -376,6 +427,7 @@ export function mountStructuredUiEditor({
         if (activeTab === 'design') renderDesign(body);
         else if (activeTab === 'structure') renderStructure(body);
         else if (activeTab === 'bindings') renderBindings(body);
+        else if (activeTab === 'document') renderDocument(body);
         else renderSource(body);
         shell.append(body);
 
@@ -404,6 +456,7 @@ export function mountStructuredUiEditor({
             }
         },
         dispose() {
+            previewMount?.dispose();
             shell.remove();
         },
     };

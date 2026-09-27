@@ -65,10 +65,12 @@ requirePattern(
     'A7 Structured UI must provide Design / Structure / Bindings / Source',
 );
 requirePattern(
-    'public/scripts/native/studio-ui-editor.js',
+    'public/scripts/native/studio-preview-ui.js',
     /compileExperienceComponentModel[\s\S]*renderExperienceComponentModel/,
     'A7 visual UI editor must consume the shared A4 Component Model',
 );
+requirePattern('public/scripts/native/studio-ui-editor.js', /compileStudioUi[\s\S]*mountStudioPreviewUi/, 'P9 editor must use the shared versioned preview adapter');
+requirePattern('public/scripts/native/studio-preview-ui.js', /compileUiDocument[\s\S]*mountUiDocument/, 'P9 preview must use the production v2 compiler and renderer');
 rejectPattern(
     'public/scripts/native/studio-ui-editor.js',
     /innerHTML|DOMParser|eval\s*\(|new Function|javascript:/,
@@ -77,7 +79,7 @@ rejectPattern(
 
 requirePattern(
     'public/scripts/native/studio-workspace.js',
-    /attachResource[\s\S]*forkResource[\s\S]*updateResource/,
+    /prepareOperation[\s\S]*resource\.attach[\s\S]*resource\.fork[\s\S]*resource\.update/,
     'A7 must productize exact Library Attach / Fork / explicit Update',
 );
 requirePattern(

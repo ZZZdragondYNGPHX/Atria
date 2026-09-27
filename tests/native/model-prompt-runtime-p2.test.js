@@ -223,10 +223,8 @@ describe('P2 Generation Core with P1 filesystem authorities', () => {
         await f.persistence.saveRuntimeRoute(f.h.handle, f.routes[0]);
         const result = await f.service.execute(f.request());
         expect(result.snapshot.diagnostics.effectiveConfig.resources).toHaveLength(3);
-        await f.library.commit(f.h.handle, 'core.prompt-program', { ...f.prompt, revision: 'r3', stages: [{ stageId: 'stage.main', moduleRefs: [{ ...ref, revision: 'missing' }] }] });
-        f.routes[0].promptProgramRef.revision = 'r3';
-        await f.persistence.saveRuntimeRoute(f.h.handle, f.routes[0]);
-        await expect(f.service.execute(f.request())).rejects.toMatchObject({ code: 'generation_execution_failed' });
+        await expect(f.library.commit(f.h.handle, 'core.prompt-program', { ...f.prompt, revision: 'r3', stages: [{ stageId: 'stage.main', moduleRefs: [{ ...ref, revision: 'missing' }] }] })).rejects.toThrow(/Referenced exact Prompt resource/);
+        await expect(f.library.getExact(f.h.handle, { scope: 'library', resourceType: 'core.prompt-program', resourceId: f.prompt.promptProgramId, revision: 'r3' })).rejects.toThrow(/not found/);
     });
 
     test('fallback validates the new model context budget before secret/send', async () => {

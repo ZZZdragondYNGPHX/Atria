@@ -15,10 +15,9 @@ import {
     createAtriaStatePanel,
 } from '../atria-shell/primitives.js';
 import { translateShellText } from '../atria-shell/localization.js';
-import {
-    compileExperienceComponentModel,
-    renderExperienceComponentModel,
-} from './experience/ui/component-model.js';
+import { compileStudioUi, mountStudioPreviewUi } from './studio-preview-ui.js';
+import { previewStudioUiMigration } from './studio-ui-migration.js';
+import { presentationNegotiation } from './host-capabilities.js';
 import {
     createHumanOrigin,
     createAuthoringOperation,
@@ -650,6 +649,8 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 baseRevision: state.revision.revision,
                 ...(ep?.entryPointId ? { entryPointId: ep.entryPointId } : {}),
             });
+            if (state.disposed) { void nativeStudioClient.closePreview(result.preview.previewId).catch(() => {}); return; }
+            if (state.preview) void nativeStudioClient.closePreview(state.preview.previewId).catch(() => {});
             state.preview = result.preview;
             state.activeView = 'preview';
             state.mobileView = 'preview';
@@ -665,6 +666,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         try {
             state.simulation = await nativeStudioClient.simulate(projectId, {
                 baseRevision: state.revision.revision,
+                scenario: JSON.parse(state.scenarioDraft ?? '{"schemaVersion":1,"steps":[]}'),
             });
             state.activeView = 'simulation'; state.mobileView = 'editor'; updateMobile();
             log(state.simulation.status === 'completed' ? 'success' : 'info', formatProductText('Simulation ${0}.', [t(state.simulation.status)]), state.simulation);
@@ -867,10 +869,20 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         try {
             const file = await nativeStudioClient.readSource(projectId, componentPath);
             const model = JSON.parse(decodeUtf8(file.content));
-            compileExperienceComponentModel(model, { mode: experience.mode });
+            compileStudioUi(model, experience.mode, experience.componentModelVersion ?? 1);
+            if (model.schemaVersion !== 2) body.append(button(documentRef, 'Review UI v2 migration', () => {
+                const migration = previewStudioUiMigration(model, experience);
+                const source = patchProjectSource(state.source, next => {
+                    const entry = next.package.entryPoints[0];
+                    if (entry.runtime?.experience) entry.runtime.experience = migration.experience;
+                    else next.package.runtime.experience = migration.experience;
+                });
+                return stageOperations([projectSaveOperation(projectId, source), sourceWriteOperation(componentPath, JSON.stringify(migration.model, null, 2))], 'Migrate static UI to version 2');
+            }));
             const hostNode = documentRef.createElement('div');
             body.append(hostNode);
-            mountStructuredUiEditor({
+            state.structuredEditor?.dispose();
+            state.structuredEditor = mountStructuredUiEditor({
                 document: documentRef,
                 root: hostNode,
                 initialModel: model,
@@ -965,7 +977,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         await mountSourceEditor({ document: documentRef, root: body, projectId, stageOperations,
             validateStructured: (path, value) => {
                 const experiences = [state.source.package.runtime?.experience, ...state.source.package.entryPoints.map(entry => entry.runtime?.experience)].filter(Boolean);
-                for (const experience of experiences) if (experience.mode !== 'text' && experience.component === path) compileExperienceComponentModel(value, { mode: experience.mode });
+                for (const experience of experiences) if (experience.mode !== 'text' && experience.component === path) compileStudioUi(value, experience.mode, experience.componentModelVersion ?? 1);
             },
         });
     }
@@ -984,18 +996,21 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             persisted: state.preview.persisted,
         }, null, 2);
         body.append(technicalDetails(documentRef, meta.textContent, 'Preview details'));
+        for (const item of presentationNegotiation(state.preview.descriptor?.experienceContract?.presentationRuntime, documentRef, documentRef.defaultView)) {
+            const row = documentRef.createElement('p'); row.textContent = `${item.id} · ${t(item.status)}`; body.append(row);
+        }
 
-        const experience = experienceFromProject(state.source);
-        const componentPath = experienceComponentPath(state.source);
-        if (experience.mode !== 'text' && componentPath) {
+        const previewId = state.preview.previewId;
+        if (state.preview.experience?.mode !== 'text') {
             try {
-                const file = await nativeStudioClient.readSource(projectId, componentPath);
-                const model = JSON.parse(decodeUtf8(file.content));
-                const compiled = compileExperienceComponentModel(model, { mode: experience.mode });
+                const exact = await nativeStudioClient.getPreviewUi(previewId);
+                if (state.disposed || state.preview?.previewId !== previewId || !body.isConnected) return;
+                if (!exact.model) return;
                 const canvas = documentRef.createElement('div');
                 canvas.className = 'atria-studio-preview-canvas';
-                canvas.append(renderExperienceComponentModel(documentRef, compiled));
                 body.append(canvas);
+                state.previewMount?.dispose();
+                state.previewMount = mountStudioPreviewUi(documentRef, canvas, exact.model, exact.experience.mode);
             } catch (error) {
                 body.append(panel(documentRef, 'error', 'Preview render failed', error?.message || String(error)));
             }
@@ -1006,6 +1021,18 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
 
     function renderSimulation(body) {
         body.append(heading(documentRef, 'Test / Simulation', 'Check the committed project without changing your play sessions.'));
+        const label = documentRef.createElement('label'); label.textContent = t('Scenario fixture');
+        const fixture = documentRef.createElement('textarea'); fixture.className = 'text_pole atria-studio-editor__textarea';
+        fixture.value = state.scenarioDraft ?? '{\n  "schemaVersion": 1,\n  "steps": []\n}';
+        fixture.addEventListener('input', () => { state.scenarioDraft = fixture.value; }); label.append(fixture); body.append(label);
+        body.append(actionRow(documentRef, button(documentRef, 'Load scenario fixture', async () => {
+            const file = await nativeStudioClient.readSource(projectId, 'scenarios/main.json');
+            if (state.disposed) return;
+            state.scenarioDraft = decodeUtf8(file.content); renderEditor();
+        }), button(documentRef, 'Stage scenario fixture', () => {
+            const value = JSON.parse(fixture.value);
+            return stageOperations([sourceWriteOperation('scenarios/main.json', JSON.stringify(value, null, 2))], 'Update scenario fixture');
+        })));
         body.append(actionRow(documentRef, button(documentRef, 'Run Simulation', runSimulation, { primary: true })));
         if (state.simulation) {
             const pre = documentRef.createElement('pre');
@@ -1035,6 +1062,8 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     }
 
     function renderEditor() {
+        state.structuredEditor?.dispose(); state.structuredEditor = null;
+        state.previewMount?.dispose(); state.previewMount = null;
         if (state.disposed) return;
         center.replaceChildren();
         const body = documentRef.createElement('section');
@@ -1287,6 +1316,9 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         dismissTransient,
         dispose() {
             state.disposed = true;
+            state.structuredEditor?.dispose();
+            state.previewMount?.dispose();
+            if (state.preview) void nativeStudioClient.closePreview(state.preview.previewId).catch(() => {});
             environment.dispose(); aiController.dispose();
         },
     };

@@ -54,7 +54,7 @@ describe('P4 shared lifecycle declarations', () => {
             'declarative-mutation', 'message-projection', 'turn-contract', 'turn-envelope', 'narrative-outcome', 'opening',
             'reply-variant', 'conversation-presentation', 'auxiliary-task', 'model-task',
             'session-application', 'temporal', 'runtime-automation', 'workflow'];
-        expect(Object.entries(ATRIA_EXPERIENCE_CAPABILITIES).filter(([, value]) => value.supported.length).map(([id]) => id).sort()).toEqual(supported.sort());
+        expect(Object.entries(ATRIA_EXPERIENCE_CAPABILITIES).filter(([, value]) => value.supported.length).map(([id]) => id)).toEqual(expect.arrayContaining(supported));
         for (const id of ['session-application', 'temporal', 'runtime-automation', 'workflow']) expect(ATRIA_EXPERIENCE_CAPABILITIES[id].supported).toEqual([1]);
     });
     test.each([

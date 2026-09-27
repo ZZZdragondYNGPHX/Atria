@@ -300,6 +300,7 @@ export function mountUiDocument(definition, options) {
         nodeBudget.nodes++; cleanup.push(() => { nodeBudget.nodes--; });
         const element = doc.createElement(node.type === 'media-cue' ? ({ image: 'img', audio: 'audio', video: 'video' }[node.props.cue.kind]) : node.type === 'speech-cue' ? 'button' : TAGS[node.type] || 'div');
         element.className = 'atri-ui-node atri-ui-' + node.type;
+        element.dataset.atriaComponentId = node.id;
         element.id = 'atri-ui-' + (options.instanceId ? options.instanceId + '-' : '') + node.id + instance;
         const props = node.props;
         if (node.type === 'scene') {

@@ -66,8 +66,8 @@ describe('A3 Native Runtime Descriptor compiler', () => {
             });
             expect(compileNativeRuntimeDescriptor(f).descriptor.experienceContract).toEqual(experienceContract);
             expect(compileNativeRuntimeDescriptor(f).runtime).not.toHaveProperty('experienceContract');
-            f.manifest.runtime.experienceContract = { ...experienceContract, capabilities: [{ id: 'experience-health', version: 1, required: true }] };
-            expect(() => compileNativeRuntimeDescriptor(f)).toThrow(/Host does not support/);
+            f.manifest.runtime.experienceContract = { ...experienceContract, capabilities: [{ id: 'experience-health', version: 999, required: true }] };
+            expect(() => compileNativeRuntimeDescriptor(f)).toThrow(/Unsupported/);
         }
     });
 

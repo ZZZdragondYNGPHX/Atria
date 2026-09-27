@@ -159,7 +159,7 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
                     }],
                 });
             }
-            if (path === '/api/native/studio/projects') {
+            if (path === '/api/native/studio/projects?summary=true') {
                 return response([{
                     project: {
                         projectId: 'project_11111111111111111111111111111111',
@@ -370,7 +370,10 @@ describe('N9 Native World/Knowledge and Studio workspaces', () => {
         await flush();
         expect(body.querySelector('[data-atria-knowledge-detail] h2').textContent)
             .toBe('Renamed Knowledge');
-        expect(body.querySelector('[data-atria-knowledge-entry-id="entry_1"]').textContent).toContain('Native entry');
+        const entry = body.querySelector('[data-atria-knowledge-entry-id="entry_1"]');
+        const details = entry.matches('details') ? entry : entry.querySelector('details');
+        details.open = true; details.dispatchEvent(new Event('toggle')); await flush();
+        expect(entry.textContent).toContain('Native entry');
         expect(body.querySelector('[data-atria-knowledge-bindings="true"]').textContent)
             .toContain('Manage binding');
         expect(body.querySelectorAll('[data-atria-revision-id]')).toHaveLength(2);

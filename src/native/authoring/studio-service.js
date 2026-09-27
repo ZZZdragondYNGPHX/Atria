@@ -618,6 +618,7 @@ export class StudioService {
                             revision: base,
                             source,
                             options: simulationOptions,
+                            versionedJsonResources: this._versionedJsonResources,
                             projectStore: this._projects,
                             worldRepo: this._worlds,
                             knowledgeRepo: this._knowledge,
@@ -711,6 +712,7 @@ export class StudioService {
                 worldRepo: this._worlds,
                 knowledgeRepo: this._knowledge,
                 assetStore: this._assets,
+                versionedJsonResources: this._versionedJsonResources,
             });
             const items = Array.isArray(value) ? value : value?.diagnostics || [];
             for (const item of items) diagnostics.push(normalizeDiagnostic(item));
@@ -1006,6 +1008,17 @@ export class StudioService {
         ));
     }
 
+    getPreviewUi(handle, previewId) {
+        if (this._previewOwners.get(previewId) !== handle) throw new TypeError('Preview unavailable');
+        const preview = this._previewHost.get(previewId);
+        if (!preview) throw new TypeError('Preview unavailable');
+        const experience = preview.runtime?.experience;
+        const path = experience?.component;
+        const bytes = path ? new Map(preview.sourceFiles).get(path) : null;
+        return { previewId, packageVersionId: preview.packageVersionId, experience,
+            model: bytes ? JSON.parse(Buffer.from(bytes).toString('utf8')) : null };
+    }
+
     closePreview(handle, previewId) {
         if (this._previewOwners.get(previewId) !== handle) return false;
         this._previewOwners.delete(previewId);
@@ -1032,6 +1045,7 @@ export class StudioService {
                 revision,
                 source,
                 options,
+                versionedJsonResources: this._versionedJsonResources,
                 projectStore: this._projects,
                 worldRepo: this._worlds,
                 knowledgeRepo: this._knowledge,
@@ -1040,7 +1054,7 @@ export class StudioService {
             return Object.freeze({
                 projectId,
                 revision,
-                status: 'completed',
+                status: result?.status === 'failed' ? 'failed' : 'completed',
                 result,
             });
         });

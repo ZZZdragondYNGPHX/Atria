@@ -5,7 +5,7 @@ import { projectInformation, queryInformationGraph } from '../public/shared/nati
 import { informationSnapshot } from '../tests/native/helpers/information-fixture.js';
 
 for (const id of ['data-projection', 'perspective']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, [1]);
-for (const id of ['experience-health']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, []);
+for (const id of ['experience-health']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, id === 'studio-authoring' ? [2] : [1]);
 const snapshot = informationSnapshot();
 const before = JSON.stringify(snapshot);
 const projection = projectInformation(snapshot, 'pov');
@@ -24,4 +24,4 @@ assert.match(read('src/native/session-core.js'), /Information derived state requ
 assert.match(read('public/scripts/native/context-compiler.js'), /informationContext\(snapshot, target/);
 assert.match(read('src/native/adapters/generation-host.js'), /native_information_unscoped_messages/);
 assert.match(read('public/scripts/native/experience/ui/v2-runtime.js'), /displayInformation\(options\.getSnapshot/);
-console.log('P6 information guard passed: scoped projections, bounded graph, Truth/Belief separation, typed derived rollups, one Context/renderer/Session, P9 reserved');
+console.log('P6 information guard passed: scoped projections, bounded graph, Truth/Belief separation, typed derived rollups, one Context/renderer/Session, P9 Host capabilities integrated');

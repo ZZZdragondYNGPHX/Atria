@@ -125,6 +125,12 @@
 .atria-native-play-drawer details summary { cursor: pointer; padding-block: 8px; }
 .atria-native-play-host > .atria-native-play-drawer { overflow: auto; max-height: 60%; }
 
+.atri-experience-panel { display: grid; gap: 12px; min-width: 0; }
+.atri-experience-panel label { display: grid; gap: 6px; margin-block: 10px; }
+.atri-experience-panel input, .atri-experience-panel select { width: 100%; min-width: 0; max-width: 100%; }
+.atri-experience-panel p { overflow-wrap: anywhere; }
+.atri-experience-panel .atria-native-play-actions__button { margin: 4px; white-space: normal; }
+
 .atria-native-play-actions__button:focus-visible, .atria-play-more summary:focus-visible,
 .atria-play-composer__send:focus-visible, .atria-play-latest:focus-visible,
 .atria-native-portable-save summary:focus-visible, .atria-play-conversation:focus-visible {

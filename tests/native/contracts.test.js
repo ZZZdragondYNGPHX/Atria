@@ -491,6 +491,8 @@ describe('N0 Native Store schema v1', () => {
             'packages',
             'package_versions',
             'package_states',
+            'player_continuity',
+            'player_continuity_revisions',
             'worlds',
             'world_revisions',
             'knowledge_bases',

@@ -8,6 +8,7 @@ import { createNativeSharedClient, mountNativeSharedExperience } from '../../pub
 import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
 import { mountUiDocument } from '../../public/scripts/native/experience/ui/v2-runtime.js';
 import { createSurfaceHost } from '../../public/scripts/native/experience/ui/surfaces.js';
+import { taskId } from '../../public/shared/native-task-contract.js';
 
 const snapshot = (revisionId = 'r1') => ({ kind: 'shared-session', sessionId: 'session', packageContentHash: 'exact', seatId: 'seat1',
     revisionId, accessRevisionId: 'a1', cursor: revisionId, projection: { pov: { items: [{ data: { text: 'Visible' } }] } }, realm: {}, turn: { id: 'turn' } });
@@ -15,6 +16,21 @@ const response = value => ({ ok: true, json: async () => value });
 const definition = () => ({ schemaVersion: 2, stateVersion: 1, localState: {}, preferences: {},
     actions: { submit: { steps: [{ op: 'shared.submit', args: { turnId: { expr: 'shared.turn.id' }, ruleId: 'save', args: { text: 'Ready' } } }] } },
     views: [{ id: 'main', surface: 'chat.footer', mount: 'always', root: { id: 'count', type: 'text', bindings: { text: { expr: 'length(projection.pov.items)' } } } }] });
+
+test('default Shared invocation remains a valid Task identifier when UUID begins with a digit', async () => {
+    const prior = Object.getOwnPropertyDescriptor(crypto, 'randomUUID');
+    Object.defineProperty(crypto, 'randomUUID', { configurable: true, value: () => '12345678-1234-1234-1234-123456789abc' });
+    const fetchImpl = jest.fn(async () => response(snapshot()));
+    const client = createNativeSharedClient({ owner: 'host', sessionId: 'session', fetchImpl });
+    try {
+        await client.refresh(); await client.command({ kind: 'turn.submit', turnId: 'turn', ruleId: 'save', args: {} });
+        const { invocationId } = JSON.parse(fetchImpl.mock.calls.at(-1)[1].body).action;
+        expect(taskId(invocationId)).toBe('shared-12345678-1234-1234-1234-123456789abc');
+    } finally {
+        client.dispose();
+        if (prior) Object.defineProperty(crypto, 'randomUUID', prior); else delete crypto.randomUUID;
+    }
+});
 
 test('existing v2 renderer consumes remote granted projections and invokes typed Shared actions', async () => {
     const root = document.createElement('section'); document.body.append(root);
@@ -74,4 +90,19 @@ test('Shared mount resolves the exact Package through existing loader and render
     expect(JSON.parse(fetchImpl.mock.calls[1][1].body).sharedOwner).toBe('host');
     expect(JSON.parse(fetchImpl.mock.calls[2][1].body).path).toBe('ui/main.json');
     mounted.dispose(); expect(root.textContent).toBe(''); root.remove();
+});
+
+test('P9 remote Native slots cannot reparent a local private conversation', async () => {
+    const privateRoot = document.createElement('div'); const node = document.createElement('div'); node.dataset.atriaNativeProductComponent = 'conversation'; node.textContent = 'private transcript'; privateRoot.append(node); document.body.append(privateRoot);
+    const root = document.createElement('section'); document.body.append(root);
+    const raw = definition(); raw.views[0].surface = 'app.root'; raw.views[0].root = { id: 'slot', type: 'native-slot', props: { component: 'conversation' } };
+    const fetchImpl = jest.fn(async path => {
+        if (path.endsWith('/snapshot')) return response(snapshot());
+        if (path.endsWith('/resolve')) return response({ descriptor: { format: 'atria-native-runtime-descriptor', schemaVersion: 1,
+            entryPointId: 'entry', packageContentHash: 'exact', experience: { mode: 'full' } }, runtime: { experience: { mode: 'full', componentModelVersion: 2, component: 'ui/main.json' } } });
+        return response(raw);
+    });
+    const mounted = await mountNativeSharedExperience({ owner: 'host', sessionId: 'session', fetchImpl, document, window, surfaceHost: createSurfaceHost({ resolveSurface: () => root }) });
+    expect(node.parentElement).toBe(privateRoot); expect(root.textContent).not.toContain('private transcript');
+    mounted.dispose(); root.remove(); privateRoot.remove();
 });

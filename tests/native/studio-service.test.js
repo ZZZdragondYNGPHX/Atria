@@ -12,6 +12,7 @@ import {
     createNativeId,
 } from '../../src/native/index.js';
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
+import { runStudioScenario } from '../../src/native/studio-scenario.js';
 
 function projectSource(overrides = {}) {
     const projectId = overrides.projectId || createNativeId('project');
@@ -73,6 +74,25 @@ function makeService(h, options = {}) {
 }
 
 describe('A1 Native StudioService authoring boundary', () => {
+    test('P9 preview retains immutable authored UI after source edits and only its owner can read it', async () => {
+        const h = await makeTempFsEngine();
+        try {
+            const { service, projectStore } = makeService(h, { simulationRunner: runStudioScenario });
+            const source = projectSource();
+            source.package.capabilities.push('game-runtime');
+            source.package.runtime = { experience: { mode: 'component', componentModelVersion: 2, component: 'ui.json' } };
+            const model = { schemaVersion: 2, stateVersion: 1, views: [{ id: 'main', surface: 'chat.footer', mount: 'always', root: { id: 'hello', type: 'text', props: { text: 'Pinned' } } }] };
+            const created = await service.createProject(h.handle, source, { files: new Map([['ui.json', Buffer.from(JSON.stringify(model))]]) });
+            const result = await service.previewProject(h.handle, source.project.projectId, { baseRevision: created.revision.revision });
+            await projectStore.writeFile(h.handle, source.project.projectId, 'ui.json', Buffer.from(JSON.stringify({ ...model, stateVersion: 2 })));
+            expect(service.getPreviewUi(h.handle, result.preview.previewId).model).toEqual(model);
+            expect(() => service.getPreviewUi('other', result.preview.previewId)).toThrow(/unavailable/);
+            const simulation = await service.simulateProject(h.handle, source.project.projectId, { scenario: { schemaVersion: 1, steps: [] } });
+            expect(simulation.result).toMatchObject({ status: 'passed', persisted: false, providerCalls: 0 });
+            service.closePreview(h.handle, result.preview.previewId);
+            expect(() => service.getPreviewUi(h.handle, result.preview.previewId)).toThrow(/unavailable/);
+        } finally { await h.cleanup(); }
+    });
     test('project deletion rejects stale revision and removes only the chosen project source', async () => {
         const h = await makeTempFsEngine();
         try {
