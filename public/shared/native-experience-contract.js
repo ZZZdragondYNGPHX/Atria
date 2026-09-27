@@ -97,6 +97,7 @@ export function assertNativeExperienceContract(value) {
     }, item => item.resourceId);
     const taskRuntime = value.taskRuntime === undefined ? undefined : assertTaskRuntime(value.taskRuntime);
     const lifecycleRuntime = value.lifecycleRuntime === undefined ? undefined : assertLifecycleRuntime(value.lifecycleRuntime, taskRuntime);
+    if (!lifecycleRuntime && taskRuntime?.tasks.some(task => task.resultPolicy.sink === 'app_command')) throw new TypeError('Declared App Command requires Lifecycle runtime');
     return Object.freeze({ schemaVersion: ATRIA_EXPERIENCE_CONTRACT_VERSION, capabilities, dataResources,
         ...(taskRuntime === undefined ? {} : { taskRuntime }),
         ...(lifecycleRuntime === undefined ? {} : { lifecycleRuntime }),

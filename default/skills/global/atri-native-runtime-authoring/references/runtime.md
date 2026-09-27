@@ -8,6 +8,8 @@
 
 读取 `lifecycle`。Domain、Command、retention、scope、workflow 与逻辑时间属于版本化声明。App 写入走 typed Command 和 expected revision；不要创建第二套 Session state 或独立 scheduler。logical time、World time、真实墙钟与 Host 活跃 elapsed 不是同一个值。恢复只恢复声明和权威状态，不恢复旧 provider stream。
 
+Runtime 已决定执行的后台内容生成可声明 `resultPolicy: { resultClass: 'declared_app_command', sink: 'app_command' }`，仅用于 `background` / `fifo` Task。每个 Variant 必须有固定 `resultBinding`：`{ kind: 'app.command', domainId, commandId, recordId? }` 或 `{ kind: 'interaction.schedule', interactionId }`。即时输出 schema 必须与目标 Command args 完全一致；省略固定 `recordId` 时 Host 从 invocation 生成稳定记录 ID。延迟输出复用 interaction 的闭合 `{ recordId, dueTick, args }` schema，`args` 与 Command 完全一致，`dueTick` 受既有 Clock / maxDelay 约束。Trigger 与目标必须同 scope。只消费已提交的 Lifecycle outbox intent；模型不选择 Domain/Command，也不产生 raw patch。结果与 App effect / scheduled intent、receipt 原子提交。普通 advisory/proposal 仍需 Host acceptance，不能放入 automation 自动批准。用 Scenario 的 recorded Task `invocationId: '$pending'` 验证，`providerCalls` 必须为 0。
+
 ## Activity（P5）
 
 读取 `presentation` 的 Activity 输入、outcome、settlement 和 Narrator 声明。设计 start/pause/resume/settle/cancel 的合法转换；结算通过一个已声明 App 或 World Command。先原子提交事实和 narrative handoff，再运行指定 Narrator Task/Variant。Observation 绑定真实 Revision/Branch；叙述只生成文字，不能再次结算或修正事实。

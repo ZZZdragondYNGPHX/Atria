@@ -148,8 +148,11 @@ function interaction(item, runtime, taskRuntime) {
     if (item.scopeId !== domain.scopeId) throw new TypeError('Lifecycle interaction/domain scope mismatch');
     integer(item.maxDelay, 1);
     const task = reference(taskRuntime?.tasks ?? [], item.taskId, 'interaction Task');
-    if (task.resultPolicy.resultClass !== 'advisory' || task.resultPolicy.sink !== 'proposal') throw new TypeError('Lifecycle interaction requires an advisory/proposal Task');
-    for (const variant of task.variants) {
+    const bridge = task.resultPolicy.resultClass === 'declared_app_command';
+    if (!bridge && (task.resultPolicy.resultClass !== 'advisory' || task.resultPolicy.sink !== 'proposal')) throw new TypeError('Lifecycle interaction requires an advisory/proposal or declared App Command Task');
+    const variants = bridge ? task.variants.filter(variant => variant.resultBinding?.kind === 'interaction.schedule' && variant.resultBinding.interactionId === item.id) : task.variants;
+    if (!variants.length) throw new TypeError('Lifecycle interaction requires a bound Task Variant');
+    for (const variant of variants) {
         const schema = variant.outputSchema;
         const keys = ['recordId', 'dueTick', 'args'];
         if (schema.type !== 'object' || schema.additionalProperties !== false
@@ -188,7 +191,7 @@ function normalizeAction(item, runtime, taskRuntime) {
             fields(item, ['kind', 'taskId', 'variantId', 'input'], 'Lifecycle Task action');
             const task = reference(taskRuntime?.tasks ?? [], item.taskId, 'Task');
             reference(task.variants, item.variantId, 'Task Variant');
-            if (!['artifact', 'proposal'].includes(task.resultPolicy.sink)) throw new TypeError('Lifecycle Task requires a durable P3 sink');
+            if (!['artifact', 'proposal', 'app_command'].includes(task.resultPolicy.sink)) throw new TypeError('Lifecycle Task requires a durable P3 sink');
             return { ...item, input: assertTaskValue(item.input, task.inputSchema) };
         }
         default: throw new TypeError('Unknown lifecycle action kind');
@@ -276,6 +279,18 @@ export function assertLifecycleRuntime(value, taskRuntime) {
     const workflows = list(value.workflows, 32, item => workflow(item, scopes, clocks), 'workflow');
     const runtime = { schemaVersion: 1, scopes, domains, clocks, advances, workflows };
     runtime.interactions = list(value.interactions === undefined ? [] : value.interactions, 128, item => interaction(item, runtime, tasks), 'interaction');
+    for (const task of tasks?.tasks ?? []) for (const variant of task.variants) {
+        const binding = variant.resultBinding;
+        if (!binding) continue;
+        if (binding.kind === 'app.command') {
+            const target = reference(domains, binding.domainId, 'Task domain');
+            const command = reference(target.commands, binding.commandId, 'Task command');
+            if (schemaSignature(variant.outputSchema) !== schemaSignature(command.argsSchema)) throw new TypeError('Task output must exactly match App Command args');
+        } else {
+            const target = reference(runtime.interactions, binding.interactionId, 'Task interaction');
+            if (target.taskId !== task.id) throw new TypeError('Task interaction binding mismatch');
+        }
+    }
     // Resolve actions only after all domains/workflow graphs exist (forward refs allowed).
     runtime.workflows = workflows.map(item => ({ ...item, nodes: item.nodes.map(node => ({ ...node,
         ...(node.action === undefined ? {} : { action: normalizeAction(node.action, runtime, tasks) }),
@@ -287,6 +302,16 @@ export function assertLifecycleRuntime(value, taskRuntime) {
         integer(item.maxCatchUp, 1, 32);
         return { ...item, trigger: trigger(item.trigger, clocks), action: normalizeAction(item.action, runtime, tasks) };
     }, 'automation');
+    const assertTaskScope = (action, scopeId) => {
+        if (action?.kind !== 'task') return;
+        const binding = tasks.tasks.find(task => task.id === action.taskId).variants.find(variant => variant.id === action.variantId).resultBinding;
+        if (!binding) return;
+        const target = binding.kind === 'app.command' ? runtime.domains.find(item => item.id === binding.domainId)
+            : runtime.interactions.find(item => item.id === binding.interactionId);
+        if (target.scopeId !== scopeId) throw new TypeError('Declared Task trigger and target scope must match');
+    };
+    for (const flow of runtime.workflows) for (const node of flow.nodes) assertTaskScope(node.action, flow.scopeId);
+    for (const automation of runtime.automations) assertTaskScope(automation.action, automation.scopeId);
     fields(value.retention, ['maxTaskResults', 'maxReceipts'], 'Lifecycle retention');
     runtime.retention = { maxTaskResults: integer(value.retention.maxTaskResults, 1, 256), maxReceipts: integer(value.retention.maxReceipts, 1, 4096) };
     // maxReceipts is a fail-closed admission cap on exact replay history, NOT an

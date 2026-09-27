@@ -226,6 +226,7 @@ export class NativeGenerationHost {
         const task = snapshot.manifest.runtime?.experienceContract?.taskRuntime?.tasks.find(item => item.id === input.taskId);
         const variant = task?.variants.find(item => item.id === input.variantId);
         if (!variant) fail('native_task_variant_missing');
+        if (task.resultPolicy.sink === 'app_command' && (!lifecycleInvocation || transient || scheduled)) fail('native_task_lifecycle_intent_required');
         const payload = assertTaskValue(input.input, task.inputSchema);
         const routeRef = input.slotBindings?.[task.bindingSlotId];
         if (!routeRef || routeRef.scope !== 'player') fail('native_task_binding_missing');
@@ -243,6 +244,13 @@ export class NativeGenerationHost {
             return { record: existing, snapshot };
         }
         if (snapshot.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
+        if (task.resultPolicy.sink === 'app_command') {
+            const lifecycle = snapshot.states.atri_lifecycle;
+            const intent = lifecycle?.outbox.find(item => item.invocationId === input.invocationId);
+            if (!lifecycle?.ready || !intent || intent.status !== 'pending' || intent.taskId !== task.id || intent.variantId !== variant.id
+                || lifecycle.scopes[intent.scopeId]?.status !== 'active' || lifecycle.scopes[intent.scopeId].epoch !== intent.scopeEpoch
+                || hashNativeDocument(intent.input) !== hashNativeDocument(payload)) fail('native_task_lifecycle_intent_required');
+        }
         const captured = lanePlan ?? {};
         const resources = lanePlan ? [] : await this.executionResources(handle, route, input.sessionId, captured);
         const work = { owner: handle, anchor, kind: ['background', 'maintenance'].includes(task.executionClass) ? 'auxiliary_task' : 'model_task', executionClass: task.executionClass,
