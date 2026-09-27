@@ -488,7 +488,7 @@
                         "type": "text",
                         "bindings": {
                           "text": {
-                            "template": "{{item.data.startTick}}–{{item.data.endTick}} · {{item.data.policy}}"
+                            "template": "{{item.data.start_tick}}–{{item.data.end_tick}} · {{item.data.policy}}"
                           }
                         }
                       }
