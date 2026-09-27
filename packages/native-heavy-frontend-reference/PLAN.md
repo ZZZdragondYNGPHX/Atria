@@ -1,6 +1,6 @@
 # Atria Native Heavy-Frontend Reference Package 企划书
 
-> 状态：Discussion Draft v0.4  
+> 状态：Discussion Draft v0.5  
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@93991c7ccea30ce7499935bbb91592ae137086dd`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
@@ -162,8 +162,8 @@ Package 声明需要什么能力、Task、资产、状态和 View；Model Route�
 1. **底层框架 / Authority & Runtime Skeleton — 已冻结**
 2. **World / Session App / Event / UI / Preference 状态切分 — 当前**
 3. **Model Task 与 Turn 编排 — 已冻结**
-4. **Lifecycle / 时间 / 日程 / Morning-Night 工作流 — 当前**
-5. 宗教 / 教会模拟经营的数据模型、结算与剧情耦合
+4. **Lifecycle / 时间 / 日程 / Morning-Night 工作流 — 已冻结**
+5. **宗教 / 教会模拟经营的数据模型、结算与剧情耦合 — 当前**
 6. Knowledge / Prompt / Memory 分层
 7. Hybrid UI 信息架构
 8. Message Projection / 选项 / Conversation
@@ -807,20 +807,225 @@ Narrator 输出只保留真正属于叙事层的结构：
 
 World / Session App / Lifecycle 的最终字段由 Interpreter、Command、Reducer 与 Runtime 产生，不让 Narrator一边写小说一边维护游戏数据库。
 
-## 11. Round 4 — Lifecycle / 时间 / 日程 / Morning-Night 工作流待讨论
+## 11. Round 4 — Lifecycle / 时间 / 日程 / Morning-Night 工作流冻结方案
+
+Round 4 已获得用户认可，以下作为时间与日程运行基线。
+
+### 11.1 连续 Game Clock
+
+本资产使用连续游戏时钟，而不是聊天回合计时。
+
+底层时间应可以投影为：
+
+- day；
+- hour；
+- minute；
+- dayPart。
+
+`morning / daytime / evening / night` 只是由 Game Clock 派生出的时间标签，用于 UI、Event eligibility、Schedule 和 Context，不作为互斥游戏模式。
+
+### 11.2 每日 Lifecycle 只有少量真正 Phase
+
+一天的 Lifecycle 主干冻结为：
+
+`DAY OPEN → ACTIVE DAY → DAY SETTLEMENT → NEXT DAY → DAY OPEN`
+
+#### DAY OPEN
+
+每天只执行一次：
+
+- 初始化当天业务；
+- 检查跨日 Schedule / due interaction；
+- 启动需要的 Morning Report / Planner 等辅助任务；
+- 准备当天经营与通信状态。
+
+DAY OPEN 完成后立即进入 ACTIVE DAY，不要求辅助模型任务全部结束后才允许游玩。
+
+#### ACTIVE DAY
+
+绝大多数玩家操作和剧情都发生在 ACTIVE DAY，包括：
+
+- 主剧情；
+- Event；
+- 教会经营；
+- 日程；
+- 手机；
+- 邮件；
+- Social；
+- 其他 UI。
+
+上午、下午、晚上和深夜都仍然可以处于 ACTIVE DAY。
+
+#### DAY SETTLEMENT
+
+负责：
+
+- 当日经营结算；
+- Schedule 结算；
+- Daily business state 清理；
+- 跨日资源变化；
+- 到期流程；
+- 下一日初始化所需事实。
+
+它不负责自动生成长篇“夜间总结”，也不应机械把结算报表插入主 Timeline。
+
+### 11.3 Morning / Night 是时间条件，不是模式
+
+不保留 `MODE_MORNING` / `MODE_NIGHT` 这类 Router。
+
+Morning / Night 只影响：
+
+- Event eligibility；
+- 日程可用性；
+- 通信回复逻辑；
+- UI / Projection；
+- 特定 Trigger。
+
+夜间不存在强制“结束夜晚”步骤。
+
+### 11.4 时间不按每条消息固定推进
+
+禁止“每回复固定 +N 分钟”的机械规则。
+
+时间推进来源分为：
+
+1. **确定性 Action**
+   - 已知 duration 的活动 / 操作；
+   - 直接由规则推进。
+
+2. **Event / Activity duration**
+   - Event 或 Activity 具有声明式时间成本；
+   - 由 Runtime 推进。
+
+3. **自由剧情中的语义时间**
+   - Narrator / Interpreter 只提出粗粒度语义，例如 `none / minor / normal / major / extended`；
+   - Runtime 决定实际 tick / minute 数值。
+
+4. **玩家明确时间指令**
+   - 例如“等三小时”“明早再见”；
+   - 解析为受控 time skip / clock advance，并执行冲突检查。
+
+### 11.5 AI 判断时间语义，Runtime 决定精确数字
+
+Narrator 不返回假精确的 `time_pass = 117` 等字段。
+
+AI 判断的是“没有明显推进 / 片刻 / 一段时间 / 很久”等语义量级；最终分钟数由 Runtime、Event、Action 或 Package rule 决定。
+
+### 11.6 Schedule 绑定 Game Clock
+
+Schedule 使用真实游戏时间，不使用“第几个聊天回合”。
+
+已确认 Schedule 写入 Session Application 后，与 Game Clock 协同驱动：
+
+- 行动开始；
+- 到期 interaction；
+- NPC 工作；
+- SMS / Mail delivery；
+- Event trigger；
+- 教会经营事务。
+
+### 11.7 Schedule 冲突策略
+
+Schedule 至少需要表达三类语义：
+
+- **hard** — 错过就产生明确后果或 missed 状态；
+- **soft** — 可以延迟执行；
+- **background** — 可在玩家不在场时后台完成。
+
+具体字段名与 schema 在实现阶段以当前 Atria Lifecycle / Session App contract 为准，不提前发明平台字段。
+
+### 11.8 Clock advance 必须处理跨越的 due items
+
+当时间从 A 跳到 B 时，Runtime 必须检查区间内到期的 Schedule / Interaction，不能简单把时钟改到 B 后吞掉中间事务。
+
+到期项根据自身策略可以：
+
+- interrupt；
+- defer；
+- miss；
+- convert / promote to Event；
+- background settle。
+
+### 11.9 NPC 普通排班后台结算
+
+NPC 日常工作默认使用 deterministic settlement，不调用 Narrator。
+
+只有以下情况才值得提升为 Event：
+
+- 重大成功 / 失败；
+- 重要人物出现；
+- 人物关系冲突；
+- 首次 milestone；
+- 关键长期目标变化；
+- 玩家需要介入的情况。
+
+经营日程负责制造剧情机会，但不能把每项排班都变成正文。
+
+### 11.10 Event 与 Day Lifecycle 正交
+
+Event 可以跨时段、跨日、暂停和恢复。
+
+Event 的生命周期不被日界线强制关闭。
+
+例如：
+
+- Day 3 晚间开始；
+- 跨过 midnight；
+- Day 4 仍继续同一 Event。
+
+日结与 Event 是两条正交轴。
+
+### 11.11 跨日不得机械打断主剧情
+
+如果重要 Event 在跨日时仍 active，DAY SETTLEMENT / DAY OPEN 可以完成其必要 Authority 处理，但默认只更新 Dashboard / Daily Records，不在主正文中插入经营报表。
+
+只有跨日结算本身产生真正影响当前剧情的重要事实，才创建/触发 Event。
+
+### 11.12 Morning Report 不阻塞 Narrator
+
+DAY OPEN 可触发 Morning Report / World Task，但主剧情不等待其完成。
+
+生成成功后将结果写入对应 Daily Record / Session App；玩家可以随后查看。
+
+同样原则适用于其他辅助 Task。
+
+### 11.13 Social 延迟依赖 Game Clock
+
+AI 可以提出“立即 / 稍后 / 明显延迟”等回复语义；Runtime 决定合法投递时间，并由 Clock / scheduled interaction 实际投递。
+
+AI 不直接控制 wall clock，也不自行 sleep / timer。
+
+### 11.14 玩家可主动 Skip Time
+
+第一版允许设计受控的时间跳过操作，例如：
+
+- 等待一段时间；
+- 等到下一 Schedule；
+- 休息到晚上；
+- 休息到明早。
+
+Skip 前必须检查：
+
+- 当前 Event 是否允许；
+- 区间内 hard Schedule；
+- due interaction；
+- 必须处理的经营 /剧情节点。
+
+## 12. Round 5 — 宗教 / 教会模拟经营待讨论
 
 本轮尚未冻结。
 
 需要决定：
 
-- 一天的正式 Phase Graph 如何定义；
-- World Clock 的单位、推进方式与正文时间如何对应；
-- Morning / Daytime / Evening / Night / Settlement 是否都需要显式 phase；
-- 玩家自由剧情是否可以跨 phase、跨越大量时间；
-- Schedule 如何与 Clock、Event、人物可用性同步；
-- Event 是否允许暂停并跨日；
-- Morning Report / Planner / Social 延迟消息分别由什么 trigger 驱动；
-- Night 是否只是时间段，还是一个需要显式结算 / 事件处理的 workflow phase；
-- 教会经营的日结在何时发生；
-- 玩家连续聊天时怎样避免每条消息都机械推进固定分钟数；
-- 模型叙述中出现“几小时后”“第二天”等时间跳跃时，如何转换成受控 Lifecycle change。
+- 教会经营的最小核心循环到底是什么；
+- money / followers / reputation / church level 是否已经足够，还是需要更多核心资源；
+- 设施、岗位、教令、项目分别承担什么玩法职责；
+- NPC / 角色“上班”是纯 Schedule，还是需要岗位与能力修正；
+- 经营收益是每天统一结算，还是活动完成即时结算；
+- 教会等级如何升级，是否与剧情 milestone 联动；
+- 信徒是否只用一个数字，还是需要群体 / 类型结构；
+- 赞助、访客、委托、地区经营等是常规业务对象还是 Event Proposal；
+- 如何保证经营层提供长期目标但不变成正文主角；
+- 哪些经营结果应该触发主剧情 Event；
+- 经营失败有没有真正负反馈，以及负反馈应该多重；
+- 第一版到底做“轻量经营骨架”还是直接实现完整经营树。
