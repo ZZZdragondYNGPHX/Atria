@@ -10,8 +10,8 @@
   },
   "package": {
     "name": "Native Heavy-Frontend Reference Package",
-    "version": "0.4.0-phase4",
-    "description": "A story-first Hybrid Native reference package with complete Phase 4 application presentation.",
+    "version": "0.5.0-phase5",
+    "description": "A story-first Hybrid Native reference package with Phase 5 Phone and Communication support.",
     "author": "Atria Reference",
     "actors": [
       {
@@ -54,7 +54,7 @@
       {
         "permission": "generation",
         "required": true,
-        "reason": "Narrator, Interpreter, Planner, and World Tasks use player-selected Native model routes."
+        "reason": "Narrator, Interpreter, Planner, World, and Social Tasks use player-selected Native model routes."
       }
     ],
     "runtime": {
@@ -186,7 +186,8 @@
                       "church",
                       "schedule",
                       "opportunity",
-                      "system"
+                      "system",
+                      "communication"
                     ]
                   },
                   "origin": {
@@ -310,7 +311,8 @@
                           "church",
                           "schedule",
                           "opportunity",
-                          "system"
+                          "system",
+                          "communication"
                         ]
                       },
                       "origin": {
@@ -1381,6 +1383,716 @@
                   "ticks": 10080
                 }
               }
+            },
+            {
+              "id": "sms-threads",
+              "scopeId": "session",
+              "schemaVersion": 1,
+              "recordSchema": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "sms"
+                    ],
+                    "maxLength": 16
+                  },
+                  "thread_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "participants": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    "maxItems": 8
+                  },
+                  "sender_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "sent_at": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "unread": {
+                    "type": "boolean"
+                  },
+                  "delivery_state": {
+                    "type": "string",
+                    "enum": [
+                      "sent",
+                      "delivered",
+                      "read"
+                    ],
+                    "maxLength": 16
+                  },
+                  "provenance": {
+                    "type": "string",
+                    "enum": [
+                      "player",
+                      "model"
+                    ],
+                    "maxLength": 16
+                  }
+                },
+                "required": [
+                  "channel",
+                  "thread_id",
+                  "participants",
+                  "sender_id",
+                  "body",
+                  "sent_at",
+                  "unread",
+                  "delivery_state",
+                  "provenance"
+                ],
+                "additionalProperties": false
+              },
+              "initial": {
+                "channel": "sms",
+                "thread_id": "default",
+                "participants": [],
+                "sender_id": "player",
+                "body": "",
+                "sent_at": 0,
+                "unread": false,
+                "delivery_state": "sent",
+                "provenance": "player"
+              },
+              "commands": [
+                {
+                  "id": "send-player",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {
+                      "thread_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "participants": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "maxItems": 8
+                      },
+                      "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "sent_at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      }
+                    },
+                    "required": [
+                      "thread_id",
+                      "participants",
+                      "body",
+                      "sent_at"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "event": "communication.sms.sent",
+                  "assign": {
+                    "channel": "sms",
+                    "thread_id": {
+                      "formula": "args.thread_id"
+                    },
+                    "participants": {
+                      "formula": "args.participants"
+                    },
+                    "sender_id": "player",
+                    "body": {
+                      "formula": "args.body"
+                    },
+                    "sent_at": {
+                      "formula": "args.sent_at"
+                    },
+                    "unread": false,
+                    "delivery_state": "sent",
+                    "provenance": "player"
+                  }
+                },
+                {
+                  "id": "deliver",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {
+                      "thread_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "participants": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "maxItems": 8
+                      },
+                      "sender_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "sent_at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      }
+                    },
+                    "required": [
+                      "thread_id",
+                      "participants",
+                      "sender_id",
+                      "body",
+                      "sent_at"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "event": "communication.sms.delivered",
+                  "assign": {
+                    "channel": "sms",
+                    "thread_id": {
+                      "formula": "args.thread_id"
+                    },
+                    "participants": {
+                      "formula": "args.participants"
+                    },
+                    "sender_id": {
+                      "formula": "args.sender_id"
+                    },
+                    "body": {
+                      "formula": "args.body"
+                    },
+                    "sent_at": {
+                      "formula": "args.sent_at"
+                    },
+                    "unread": true,
+                    "delivery_state": "delivered",
+                    "provenance": "model"
+                  }
+                },
+                {
+                  "id": "mark-read",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "communication.sms.read",
+                  "assign": {
+                    "unread": false,
+                    "delivery_state": "read"
+                  }
+                }
+              ],
+              "retention": {
+                "maxItems": 256,
+                "maxLogicalBytes": 524288,
+                "keepPinned": true,
+                "keepReferenced": true
+              }
+            },
+            {
+              "id": "social",
+              "scopeId": "session",
+              "schemaVersion": 1,
+              "recordSchema": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "social"
+                    ],
+                    "maxLength": 16
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "post",
+                      "reply"
+                    ],
+                    "maxLength": 16
+                  },
+                  "author_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "parent_id": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2400
+                  },
+                  "posted_at": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "unread": {
+                    "type": "boolean"
+                  },
+                  "provenance": {
+                    "type": "string",
+                    "enum": [
+                      "player",
+                      "model"
+                    ],
+                    "maxLength": 16
+                  }
+                },
+                "required": [
+                  "channel",
+                  "kind",
+                  "author_id",
+                  "parent_id",
+                  "body",
+                  "posted_at",
+                  "unread",
+                  "provenance"
+                ],
+                "additionalProperties": false
+              },
+              "initial": {
+                "channel": "social",
+                "kind": "post",
+                "author_id": "player",
+                "parent_id": "",
+                "body": "",
+                "posted_at": 0,
+                "unread": false,
+                "provenance": "player"
+              },
+              "commands": [
+                {
+                  "id": "publish-player",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {
+                      "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2400
+                      },
+                      "posted_at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      }
+                    },
+                    "required": [
+                      "body",
+                      "posted_at"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "event": "communication.social.player-posted",
+                  "assign": {
+                    "channel": "social",
+                    "kind": "post",
+                    "author_id": "player",
+                    "parent_id": "",
+                    "body": {
+                      "formula": "args.body"
+                    },
+                    "posted_at": {
+                      "formula": "args.posted_at"
+                    },
+                    "unread": false,
+                    "provenance": "player"
+                  }
+                },
+                {
+                  "id": "deliver",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "post",
+                          "reply"
+                        ],
+                        "maxLength": 16
+                      },
+                      "author_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "parent_id": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2400
+                      },
+                      "posted_at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "author_id",
+                      "parent_id",
+                      "body",
+                      "posted_at"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "event": "communication.social.delivered",
+                  "assign": {
+                    "channel": "social",
+                    "kind": {
+                      "formula": "args.kind"
+                    },
+                    "author_id": {
+                      "formula": "args.author_id"
+                    },
+                    "parent_id": {
+                      "formula": "args.parent_id"
+                    },
+                    "body": {
+                      "formula": "args.body"
+                    },
+                    "posted_at": {
+                      "formula": "args.posted_at"
+                    },
+                    "unread": true,
+                    "provenance": "model"
+                  }
+                },
+                {
+                  "id": "mark-read",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "communication.social.read",
+                  "assign": {
+                    "unread": false
+                  }
+                }
+              ],
+              "retention": {
+                "maxItems": 256,
+                "maxLogicalBytes": 524288,
+                "keepPinned": true,
+                "keepReferenced": true
+              }
+            },
+            {
+              "id": "mail",
+              "scopeId": "session",
+              "schemaVersion": 1,
+              "recordSchema": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "mail"
+                    ],
+                    "maxLength": 16
+                  },
+                  "from_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "to_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "subject": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 5000
+                  },
+                  "delivered_at": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "unread": {
+                    "type": "boolean"
+                  },
+                  "delivery_state": {
+                    "type": "string",
+                    "enum": [
+                      "sent",
+                      "delivered",
+                      "read"
+                    ],
+                    "maxLength": 16
+                  },
+                  "provenance": {
+                    "type": "string",
+                    "enum": [
+                      "player",
+                      "template",
+                      "model"
+                    ],
+                    "maxLength": 16
+                  },
+                  "reference_kind": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "opportunity",
+                      "project"
+                    ],
+                    "maxLength": 16
+                  },
+                  "reference_id": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "channel",
+                  "from_id",
+                  "to_id",
+                  "subject",
+                  "body",
+                  "delivered_at",
+                  "unread",
+                  "delivery_state",
+                  "provenance",
+                  "reference_kind",
+                  "reference_id"
+                ],
+                "additionalProperties": false
+              },
+              "initial": {
+                "channel": "mail",
+                "from_id": "player",
+                "to_id": "office",
+                "subject": "",
+                "body": "",
+                "delivered_at": 0,
+                "unread": false,
+                "delivery_state": "sent",
+                "provenance": "player",
+                "reference_kind": "none",
+                "reference_id": ""
+              },
+              "commands": [
+                {
+                  "id": "send-player",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {
+                      "to_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "subject": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "delivered_at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      }
+                    },
+                    "required": [
+                      "to_id",
+                      "subject",
+                      "body",
+                      "delivered_at"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "event": "communication.mail.sent",
+                  "assign": {
+                    "channel": "mail",
+                    "from_id": "player",
+                    "to_id": {
+                      "formula": "args.to_id"
+                    },
+                    "subject": {
+                      "formula": "args.subject"
+                    },
+                    "body": {
+                      "formula": "args.body"
+                    },
+                    "delivered_at": {
+                      "formula": "args.delivered_at"
+                    },
+                    "unread": false,
+                    "delivery_state": "sent",
+                    "provenance": "player",
+                    "reference_kind": "none",
+                    "reference_id": ""
+                  }
+                },
+                {
+                  "id": "deliver",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {
+                      "from_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "to_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "subject": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "delivered_at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      },
+                      "provenance": {
+                        "type": "string",
+                        "enum": [
+                          "template",
+                          "model"
+                        ],
+                        "maxLength": 16
+                      },
+                      "reference_kind": {
+                        "type": "string",
+                        "enum": [
+                          "none",
+                          "opportunity",
+                          "project"
+                        ],
+                        "maxLength": 16
+                      },
+                      "reference_id": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "from_id",
+                      "to_id",
+                      "subject",
+                      "body",
+                      "delivered_at",
+                      "provenance",
+                      "reference_kind",
+                      "reference_id"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "event": "communication.mail.delivered",
+                  "assign": {
+                    "channel": "mail",
+                    "from_id": {
+                      "formula": "args.from_id"
+                    },
+                    "to_id": {
+                      "formula": "args.to_id"
+                    },
+                    "subject": {
+                      "formula": "args.subject"
+                    },
+                    "body": {
+                      "formula": "args.body"
+                    },
+                    "delivered_at": {
+                      "formula": "args.delivered_at"
+                    },
+                    "unread": true,
+                    "delivery_state": "delivered",
+                    "provenance": {
+                      "formula": "args.provenance"
+                    },
+                    "reference_kind": {
+                      "formula": "args.reference_kind"
+                    },
+                    "reference_id": {
+                      "formula": "args.reference_id"
+                    }
+                  }
+                },
+                {
+                  "id": "mark-read",
+                  "argsSchema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                  },
+                  "event": "communication.mail.read",
+                  "assign": {
+                    "unread": false,
+                    "delivery_state": "read"
+                  }
+                }
+              ],
+              "retention": {
+                "maxItems": 256,
+                "maxLogicalBytes": 524288,
+                "keepPinned": true,
+                "keepReferenced": true
+              }
             }
           ],
           "clocks": [
@@ -1397,7 +2109,47 @@
               "maxTicks": 1440
             }
           ],
-          "automations": [],
+          "automations": [
+            {
+              "id": "welcome-mail",
+              "scopeId": "session",
+              "trigger": {
+                "kind": "experience.ready"
+              },
+              "action": {
+                "kind": "task",
+                "taskId": "social",
+                "variantId": "mail-delayed",
+                "input": {
+                  "reason": "Send the one-time welcome note after the first hour of play.",
+                  "recipient_id": "player",
+                  "related_record_id": "welcome"
+                }
+              },
+              "maxCatchUp": 1
+            },
+            {
+              "id": "caretaker-check-in",
+              "scopeId": "session",
+              "trigger": {
+                "kind": "world.schedule",
+                "clockId": "game-clock",
+                "at": 540,
+                "catchUp": "latest"
+              },
+              "action": {
+                "kind": "task",
+                "taskId": "social",
+                "variantId": "sms-reply",
+                "input": {
+                  "reason": "The caretaker checks in after the morning work begins.",
+                  "recipient_id": "player",
+                  "related_record_id": "morning-check-in"
+                }
+              },
+              "maxCatchUp": 1
+            }
+          ],
           "workflows": [
             {
               "id": "church-day-cycle",
@@ -1467,7 +2219,17 @@
               ]
             }
           ],
-          "interactions": [],
+          "interactions": [
+            {
+              "id": "mail-delivery",
+              "scopeId": "session",
+              "taskId": "social",
+              "clockId": "game-clock",
+              "domainId": "mail",
+              "commandId": "deliver",
+              "maxDelay": 120
+            }
+          ],
           "retention": {
             "maxTaskResults": 16,
             "maxReceipts": 1024
@@ -1703,6 +2465,121 @@
                   "role"
                 ]
               ]
+            },
+            {
+              "id": "sms-source",
+              "kind": "application",
+              "semantic": "thread",
+              "scopeId": "session",
+              "domainId": "sms-threads",
+              "fields": [
+                [
+                  "channel"
+                ],
+                [
+                  "thread_id"
+                ],
+                [
+                  "participants"
+                ],
+                [
+                  "sender_id"
+                ],
+                [
+                  "body"
+                ],
+                [
+                  "sent_at"
+                ],
+                [
+                  "unread"
+                ],
+                [
+                  "delivery_state"
+                ],
+                [
+                  "provenance"
+                ]
+              ],
+              "channelField": "channel",
+              "participantsField": "participants"
+            },
+            {
+              "id": "social-source",
+              "kind": "application",
+              "semantic": "truth",
+              "scopeId": "session",
+              "domainId": "social",
+              "fields": [
+                [
+                  "channel"
+                ],
+                [
+                  "kind"
+                ],
+                [
+                  "author_id"
+                ],
+                [
+                  "parent_id"
+                ],
+                [
+                  "body"
+                ],
+                [
+                  "posted_at"
+                ],
+                [
+                  "unread"
+                ],
+                [
+                  "provenance"
+                ]
+              ],
+              "channelField": "channel"
+            },
+            {
+              "id": "mail-source",
+              "kind": "application",
+              "semantic": "truth",
+              "scopeId": "session",
+              "domainId": "mail",
+              "fields": [
+                [
+                  "channel"
+                ],
+                [
+                  "from_id"
+                ],
+                [
+                  "to_id"
+                ],
+                [
+                  "subject"
+                ],
+                [
+                  "body"
+                ],
+                [
+                  "delivered_at"
+                ],
+                [
+                  "unread"
+                ],
+                [
+                  "delivery_state"
+                ],
+                [
+                  "provenance"
+                ],
+                [
+                  "reference_kind"
+                ],
+                [
+                  "reference_id"
+                ]
+              ],
+              "channelField": "channel"
             }
           ],
           "views": [
@@ -1900,6 +2777,41 @@
               "knowledge": false,
               "maxItems": 8,
               "maxCharacters": 12000
+            },
+            {
+              "id": "phone",
+              "audience": "player",
+              "sources": [
+                "sms-source",
+                "social-source",
+                "mail-source"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 64,
+              "maxCharacters": 24000
+            },
+            {
+              "id": "communication_context",
+              "audience": "task",
+              "taskId": "social",
+              "sources": [
+                "sms-source",
+                "social-source",
+                "mail-source",
+                "event-context",
+                "world-context",
+                "schedule-source"
+              ],
+              "exposure": [
+                "context"
+              ],
+              "knowledge": true,
+              "memory": true,
+              "maxItems": 48,
+              "maxCharacters": 24000
             }
           ],
           "actors": [],
@@ -2261,6 +3173,349 @@
                 }
               ],
               "queuePolicy": "latest"
+            },
+            {
+              "id": "social",
+              "bindingSlotId": "story-model",
+              "executionClass": "background",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  },
+                  "recipient_id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "related_record_id": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "reason",
+                  "recipient_id",
+                  "related_record_id"
+                ],
+                "additionalProperties": false
+              },
+              "context": [
+                "input",
+                "knowledge",
+                "projection"
+              ],
+              "resultPolicy": {
+                "resultClass": "declared_app_command",
+                "sink": "app_command"
+              },
+              "variants": [
+                {
+                  "id": "sms-reply",
+                  "prompt": {
+                    "resourceId": "pprog_00000000000000000000000000000015",
+                    "revision": "phase5"
+                  },
+                  "generation": {
+                    "resourceId": "genprof_00000000000000000000000000000025",
+                    "revision": "phase5"
+                  },
+                  "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "thread_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "participants": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "maxItems": 8
+                      },
+                      "sender_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "sent_at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      }
+                    },
+                    "required": [
+                      "thread_id",
+                      "participants",
+                      "sender_id",
+                      "body",
+                      "sent_at"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "requiredCapabilities": [
+                    "generation.structured-output"
+                  ],
+                  "resultBinding": {
+                    "kind": "app.command",
+                    "domainId": "sms-threads",
+                    "commandId": "deliver"
+                  }
+                },
+                {
+                  "id": "social-reply",
+                  "prompt": {
+                    "resourceId": "pprog_00000000000000000000000000000015",
+                    "revision": "phase5"
+                  },
+                  "generation": {
+                    "resourceId": "genprof_00000000000000000000000000000025",
+                    "revision": "phase5"
+                  },
+                  "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "post",
+                          "reply"
+                        ],
+                        "maxLength": 16
+                      },
+                      "author_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "parent_id": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2400
+                      },
+                      "posted_at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "author_id",
+                      "parent_id",
+                      "body",
+                      "posted_at"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "requiredCapabilities": [
+                    "generation.structured-output"
+                  ],
+                  "resultBinding": {
+                    "kind": "app.command",
+                    "domainId": "social",
+                    "commandId": "deliver"
+                  }
+                },
+                {
+                  "id": "mail-compose",
+                  "prompt": {
+                    "resourceId": "pprog_00000000000000000000000000000015",
+                    "revision": "phase5"
+                  },
+                  "generation": {
+                    "resourceId": "genprof_00000000000000000000000000000025",
+                    "revision": "phase5"
+                  },
+                  "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "from_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "to_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "subject": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      },
+                      "delivered_at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      },
+                      "provenance": {
+                        "type": "string",
+                        "enum": [
+                          "template",
+                          "model"
+                        ],
+                        "maxLength": 16
+                      },
+                      "reference_kind": {
+                        "type": "string",
+                        "enum": [
+                          "none",
+                          "opportunity",
+                          "project"
+                        ],
+                        "maxLength": 16
+                      },
+                      "reference_id": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "from_id",
+                      "to_id",
+                      "subject",
+                      "body",
+                      "delivered_at",
+                      "provenance",
+                      "reference_kind",
+                      "reference_id"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "requiredCapabilities": [
+                    "generation.structured-output"
+                  ],
+                  "resultBinding": {
+                    "kind": "app.command",
+                    "domainId": "mail",
+                    "commandId": "deliver"
+                  }
+                },
+                {
+                  "id": "mail-delayed",
+                  "prompt": {
+                    "resourceId": "pprog_00000000000000000000000000000015",
+                    "revision": "phase5"
+                  },
+                  "generation": {
+                    "resourceId": "genprof_00000000000000000000000000000025",
+                    "revision": "phase5"
+                  },
+                  "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "recordId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "dueTick": {
+                        "type": "integer",
+                        "minimum": 540,
+                        "maximum": 540
+                      },
+                      "args": {
+                        "type": "object",
+                        "properties": {
+                          "from_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "to_id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "subject": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "body": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 5000
+                          },
+                          "delivered_at": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100000000
+                          },
+                          "provenance": {
+                            "type": "string",
+                            "enum": [
+                              "template",
+                              "model"
+                            ],
+                            "maxLength": 16
+                          },
+                          "reference_kind": {
+                            "type": "string",
+                            "enum": [
+                              "none",
+                              "opportunity",
+                              "project"
+                            ],
+                            "maxLength": 16
+                          },
+                          "reference_id": {
+                            "type": "string",
+                            "maxLength": 64
+                          }
+                        },
+                        "required": [
+                          "from_id",
+                          "to_id",
+                          "subject",
+                          "body",
+                          "delivered_at",
+                          "provenance",
+                          "reference_kind",
+                          "reference_id"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "recordId",
+                      "dueTick",
+                      "args"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "requiredCapabilities": [
+                    "generation.structured-output"
+                  ],
+                  "resultBinding": {
+                    "kind": "interaction.schedule",
+                    "interactionId": "mail-delivery"
+                  }
+                }
+              ],
+              "queuePolicy": "fifo"
             }
           ],
           "turn": {
@@ -2604,7 +3859,7 @@
           "stage.main"
         ],
         "priority": 0,
-        "body": "Use Atria Native Authority only. World is settled objective fact; Session Application owns Events, Schedule, Church Operations, Projects, and Opportunities; Lifecycle owns clocks/workflows; Timeline is canonical experienced narrative. Never emit raw patches or invent undeclared commands."
+        "body": "Use Atria Native Authority only. World is settled objective fact; Session Application owns Events, Schedule, Church Operations, Projects, Opportunities, SMS Threads, Social, and Mail; Lifecycle owns clocks/workflows; Timeline is canonical experienced narrative. Never emit raw patches or invent undeclared commands."
       }
     },
     {
@@ -2886,6 +4141,74 @@
         "generationProfileId": "genprof_00000000000000000000000000000024",
         "revision": "phase3",
         "displayName": "World Feedback Generation",
+        "sampling": {
+          "temperature": 0.55
+        },
+        "output": {
+          "maxTokens": 700
+        }
+      }
+    },
+    {
+      "resourceType": "core.prompt-module",
+      "resource": {
+        "schemaVersion": 1,
+        "promptModuleId": "pmod_00000000000000000000000000000007",
+        "revision": "phase5",
+        "displayName": "Social Communication Service",
+        "target": "system.foundation",
+        "stages": [
+          "stage.main"
+        ],
+        "priority": 0,
+        "body": "Generate only the communication payload requested by the selected Social Task Variant. Runtime has already chosen why this communication occurs, its channel and recipient, and whether delivery is immediate or scheduled. Never choose authority, domain, command, record identity, clock ownership, Event promotion, or a main-story action. Keep SMS concise, Social public-facing, and Mail formal. Return only fields allowed by the Variant schema; scheduled timing is constrained by the Host contract."
+      }
+    },
+    {
+      "resourceType": "core.prompt-program",
+      "resource": {
+        "schemaVersion": 1,
+        "promptProgramId": "pprog_00000000000000000000000000000015",
+        "revision": "phase5",
+        "displayName": "Social Program",
+        "stages": [
+          {
+            "stageId": "stage.main",
+            "moduleRefs": [
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000001",
+                "revision": "phase3"
+              },
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000002",
+                "revision": "phase3"
+              },
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000007",
+                "revision": "phase5"
+              }
+            ]
+          }
+        ],
+        "responseDirective": {}
+      }
+    },
+    {
+      "resourceType": "core.generation-profile",
+      "resource": {
+        "schemaVersion": 1,
+        "generationProfileId": "genprof_00000000000000000000000000000025",
+        "revision": "phase5",
+        "displayName": "Social Generation",
         "sampling": {
           "temperature": 0.55
         },
