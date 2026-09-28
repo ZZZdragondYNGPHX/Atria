@@ -417,6 +417,7 @@ export async function reloadGamePackage() {
                 mountReplyVariants: (element, anchor) => nextReplyController?.mount(element, anchor),
                 getSnapshot: () => nativeSessionRuntime.snapshot,
                 getApplicationRecords: lifecycleClient.getApplicationRecords,
+                getTemporalProjection: lifecycleClient.getTemporalProjection,
                 presentation: presentationClient,
                 isBusy: () => Boolean(nativeSessionRuntime.generation || nativeSessionRuntime.failed || nativeSessionRuntime.host?.isGenerating?.()),
                 isActiveTail: anchor => !nativeSessionRuntime.history && !nativeSessionRuntime.generation

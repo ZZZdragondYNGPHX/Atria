@@ -44,6 +44,7 @@ export function mountUiDocument(definition, options) {
     const context = (extra = {}) => {
         const result = { ...state.snapshot(), world: options.presentationContext ? {} : options.worldSession?.getState?.() ?? {}, data: options.data ?? {}, env: environment.get(), selectors: options.selectors?.snapshot?.() ?? {}, ...options.presentationContext, ...extra };
         result.projection = options.presentationContext ? {} : (options.sharedClient ? options.sharedClient.getProjection() : displayInformation(options.getSnapshot?.()));
+        result.temporal = options.presentationContext ? {} : options.getTemporalProjection?.() ?? {};
         result.shared = options.presentationContext ? {} : options.sharedClient?.getSnapshot() ?? {};
         result.realm = options.presentationContext ? {} : options.sharedClient?.getSnapshot()?.realm ?? options.getSnapshot?.()?.realmViews ?? {};
         result.continuity = options.presentationContext ? {} : options.getSnapshot?.()?.continuityViews ?? {};
