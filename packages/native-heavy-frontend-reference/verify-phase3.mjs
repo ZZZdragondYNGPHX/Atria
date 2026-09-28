@@ -38,7 +38,7 @@ const story = assertStudioScenario(storyRaw);
 const church = assertStudioScenario(churchRaw);
 const contract = project.package.runtime.experienceContract;
 
-assert.equal(project.package.version, '0.3.0-phase3');
+assert.equal(project.package.version, '0.4.0-phase4');
 assert.ok(project.package.capabilities.includes('knowledge'));
 assert.ok(project.package.capabilities.includes('memory'));
 assert.equal(project.package.memory, undefined);
@@ -80,7 +80,7 @@ const revisionId = 'rev_00000000000000000000000000000073';
 const lifecycle = initialLifecycle(contract.lifecycleRuntime);
 lifecycle.domains.events.records.push({
     id:'story-current', scopeId:'session', status:'active', pinned:false,
-    value:{kind:'system',origin:'composer',participants:['actor_b48a53176eb663a1af411fb6f8638d66'],location:'sanctuary',status:'active',
+    value:{kind:'system',origin:'composer',title:'Sanctuary Visitor',participants:['actor_b48a53176eb663a1af411fb6f8638d66'],location:'sanctuary',status:'active',
       premise:'A visitor arrives.',goal:'Advance the encounter.',current_beat:'narrative',resolved_beats:0,started_at:480,
       outcome_receipt_refs:[],narrative_refs:[]},
 });
