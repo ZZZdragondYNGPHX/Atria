@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "name": "phase4-compact",
+  "environment": {
+    "device": "mobile",
+    "orientation": "portrait",
+    "touch": true,
+    "keyboard": true,
+    "reducedMotion": false,
+    "width": 390,
+    "height": 844
+  },
+  "ui": {
+    "player_name": "Caretaker",
+    "section": "story",
+    "church_section": "overview"
+  },
+  "clockTick": 735,
+  "records": {
+    "events": [
+      {
+        "id": "story-current",
+        "scopeId": "session",
+        "status": "active",
+        "pinned": false,
+        "value": {
+          "kind": "system",
+          "origin": "composer",
+          "title": "Sanctuary Visitor",
+          "participants": [
+            "actor_b48a53176eb663a1af411fb6f8638d66"
+          ],
+          "location": "sanctuary",
+          "status": "active",
+          "premise": "A visitor arrives while the caretaker is closing the sanctuary.",
+          "goal": "Understand why the visitor came.",
+          "current_beat": "narrative",
+          "resolved_beats": 0,
+          "started_at": 480,
+          "outcome_receipt_refs": [],
+          "narrative_refs": []
+        }
+      }
+    ],
+    "schedule": [
+      {
+        "id": "caretaker-outreach",
+        "scopeId": "session",
+        "status": "active",
+        "pinned": false,
+        "value": {
+          "actor_id": "actor_b48a53176eb663a1af411fb6f8638d66",
+          "title": "Community outreach",
+          "start_tick": 540,
+          "end_tick": 720,
+          "policy": "background",
+          "operation_kind": "outreach",
+          "location": "market",
+          "status": "planned"
+        }
+      },
+      {
+        "id": "visitor-meeting",
+        "scopeId": "session",
+        "status": "active",
+        "pinned": false,
+        "value": {
+          "actor_id": "actor_b48a53176eb663a1af411fb6f8638d66",
+          "title": "Visitor meeting",
+          "start_tick": 780,
+          "end_tick": 840,
+          "policy": "hard",
+          "operation_kind": "meeting",
+          "location": "sanctuary",
+          "status": "planned"
+        }
+      }
+    ],
+    "church-operations": [
+      {
+        "id": "current-day",
+        "scopeId": "session",
+        "status": "active",
+        "pinned": false,
+        "value": {
+          "day_index": 1,
+          "outreach_count": 1,
+          "project_work_count": 1,
+          "expected_money_delta": 55,
+          "expected_follower_delta": 3,
+          "expected_reputation_delta": 1,
+          "settlement_status": "open"
+        }
+      }
+    ],
+    "church-projects": [
+      {
+        "id": "district-outreach",
+        "scopeId": "session",
+        "status": "active",
+        "pinned": false,
+        "value": {
+          "template_id": "district-outreach",
+          "status": "active",
+          "start_tick": 540,
+          "due_tick": 1920,
+          "progress": 25,
+          "target": 100,
+          "operation_kind": "outreach",
+          "milestone": "first-contact",
+          "assigned_actor_ids": [
+            "actor_b48a53176eb663a1af411fb6f8638d66"
+          ],
+          "cost_money": 0
+        }
+      }
+    ],
+    "opportunities": [
+      {
+        "id": "market-invitation",
+        "scopeId": "session",
+        "status": "active",
+        "pinned": false,
+        "value": {
+          "kind": "cooperation",
+          "title": "Market invitation",
+          "summary": "Local merchants invite the church to join a district event.",
+          "status": "pending",
+          "source": "market",
+          "money_delta": 0,
+          "follower_delta": 2,
+          "reputation_delta": 1,
+          "event_id": ""
+        }
+      }
+    ]
+  },
+  "timeline": [
+    {
+      "messageId": "msg_preview_story",
+      "activeVariantId": "var_preview_story",
+      "sequence": 0,
+      "role": "assistant",
+      "actorId": "actor_b48a53176eb663a1af411fb6f8638d66",
+      "content": "The caretaker finishes the last lantern and looks toward the visitor waiting at the sanctuary door."
+    }
+  ]
+}
