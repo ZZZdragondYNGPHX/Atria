@@ -4,92 +4,113 @@
 - Primary Workspace: `main`（当前仍为纯方案讨论，未创建实现分支）
 - Current stage: Discussion / Architecture
 - Source baseline: `main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
-- Plan HEAD: `docs@499d5014a1d125a0021afc38a2715a653644258d`
+- Plan HEAD: `docs@0cd2aec2ae00566c5dfe94237de582d70aba805c`
 - Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
 - Record: 尚未开始实施，不建立 Implementation Record
-- 当前 Plan 状态: Discussion Draft v0.9
+- 当前 Plan 状态: Discussion Draft v0.10
 
 ## 已写入 Plan
 
 - Package owns presentation; Host owns capabilities and authority.
-- Declarative DOM / Full CSS / Fonts / Shadow boundary.
-- Client Interaction Runtime / Package Component System / Script Sandbox.
-- Frontend Asset Graph / Remote Media / typed ImageRef / Host Media Resolver.
-- Framework Adapter / future Web Island.
-- Hard cut legacy Native UI；v3 最终唯一正式 Native UI Runtime。
-- Frontend Manifest / Feature / Permission：
-  - `runtime.experience.frontend { kind, version, entry }`；
-  - native@3 baseline；
-  - Runtime Feature 与 Permission 分离；
-  - required/optional negotiation；
-  - available/unsupported/unavailable/denied projection；
-  - permission constraints 与 permission footprint；
-  - install UI 分层；
-  - Package Traits / Runtime Features / Permissions 语义清理。
+- Declarative DOM / CSS / fonts / components / interaction / optional script.
+- Frontend Asset Graph / Remote Media / typed ImageRef.
+- Hard cut v1/v2；v3 最终唯一正式 Native UI Runtime。
+- Frontend Manifest / Runtime Features / Permissions / negotiation。
+- Frontend Host Bridge：
+  - shared semantics across Declarative / Sandbox / future Web Island；
+  - declared Binding Registry；
+  - data/action/operation/composer/media/presentation；
+  - no raw Host objects；
+  - typed receipts/errors/idempotency；
+  - no generic durable KV baseline。
 
 ## 本轮新增讨论（尚未写入 Plan；下一轮开始前先增量/覆盖更新）
 
-Frontend Host Bridge：
+Bridge Binding Manifest：
 
-- 建立独立、版本化的 `FrontendHostBridge@1`（正式命名可再定），作为 Declarative Runtime、Sandbox Script 与 future Web Island 共同的 Host 语义面。
-- Bridge 是“跨 Experience sandbox/renderer 边界的 Host protocol”，不要把 Package 内 NodeRef、timer、component state、local focus/scroll 等本地 UI 操作混进 Host Bridge。
-- Bridge transport 可不同：
-  - Native Declarative：进程内 adapter；
-  - Sandbox Script：structured message/proxy；
-  - future Web Island：postMessage / typed RPC；
-  但 method semantics、schemas、receipts/errors 必须相同。
-- Frontend 不应获得 `WorldSession` / `SessionCore` / repository / DB / raw Host objects。
-- 不建议让 Script/Web Island 通过字符串任意选择 `world.commandId`。采用 **declared bridge bindings**：
-  - Manifest/ExperienceContract 预声明 frontend 可见 read/action/operation binding IDs；
-  - binding 在 Build/Preflight 时解析到现有 World Command、Application Command、Continuity、Shared、Realm、Task、Activity 等正式 typed contract；
-  - Frontend 运行时只引用 stable binding ID，例如 `host.action.invoke("buy-item", payload)`；
-  - 未声明 binding 永远不可调用。
-- Read plane 使用 declared scoped projection，而不是 `world.getState()` / arbitrary query：
-  - `host.data.snapshot(bindingId)`
-  - `host.data.subscribe(bindingId)`
-  - 每个 binding 受现有 Exposure/Perspective/Information contract 约束；
-  - 可声明宽 projection，但必须由 Host contract 显式授权；
-  - snapshot 带 revision/cursor/version，Web Island 也复用相同 bounded update semantics。
-- Write plane 收敛为 `host.action.invoke(bindingId, input)`：
-  - binding kind 可映射 world command / application command / continuity / realm / shared 等；
-  - Authority 语义继续由底层现有 contract 决定；
-  - Bridge 不发明新的 mutation model。
-- Long-running plane 建议 `host.operation.start(bindingId, input)`：
-  - binding 映射 Model Task / Activity /其它正式长任务；
-  - 返回 opaque operation handle/id；
-  - 支持 status/progress/stream result/cancel；
-  - scheduler/backpressure/timeout/retry 仍 Host-owned。
-- Composer 保留专用 `host.composer` service：
-  - getDraft / setDraft / append / clear / focus / submit；
-  - submission 仍进入现有 Turn / Session 流程。
-- Media 保留专用 `host.media` service：
-  - resolve ImageRef/AssetRef；
-  - prefetch hint / status / release；
-  - Script Canvas 获取的是安全 media handle，不是 raw network response；
-  - Remote Media 始终经过 Resolver/permission/cache。
-- Presentation 保留 Host-only actions：
-  - fullscreen / exitFullscreen；
-  - scene/media/speech 等已有 Host Presentation 能力；
-  - Package 内 view routing、DOM focus/scroll/overlay 默认属于 Frontend Runtime 本地能力，不通过 Host Bridge。
-- Input 主要作为 Host environment/event projection；Package 使用 semantic input actions。不要让 Bridge 暴露原始 Host device object。
-- Preferences 不提供 generic localStorage：
-  - declared typed `prefs` 继续作为 baseline persistent non-authoritative state；
-  - baseline 不新增任意 durable KV；
-  - 若未来确需大缓存，可另设可驱逐、quota-controlled `frontend-cache@1`，明确不是 Authority。
-- Internal navigation/view routing 属于 Package runtime；external URL 则必须 Host-mediated，使用 scheme/origin policy + user gesture/confirm，不能直接 `window.open`。
-- Clipboard / file picker / import-export / camera / microphone 等以后通过 permissioned Host services 扩展，不作为裸 browser API。
-- Bridge request/receipt 应统一：
-  - stable requestId / operationId；
-  - completed / cancelled / rejected / failed 等状态；
-  - typed result；
-  - stable error/reasonCode；
-  - revision/conflict metadata；
-  - idempotency/retry 由 Host contract 管理，不让不同 renderer 自行发明。
-- Bridge call 失败类别至少要可区分 validation / denied / unsupported / unavailable / conflict/stale / cancelled / timeout / rate-limit / host-failure。
-- Declarative action IR 与 Script API 应调用同一 binding registry；不能形成两套 action semantics。
-- future Web Island 必须严格使用同一 RPC surface，不获得专属裸 Authority API 或额外 Host object。
-- Bridge binding declaration 应位于可在加载 UI 前完成验证的 Manifest/Experience Contract 层，而不是藏在运行时脚本里。
-- Frontend Host Bridge 的核心目标是“能力尽量广，但入口必须 typed + declared + scoped”，而不是人为减少前端能做的事。
+- 建议独立 `bridge.version: 1`，让 Host protocol 可独立于 `native@3` 前端文档演进。
+- Authoring Source 的 Bridge Registry 以三类自定义 binding 为主：
+  - `reads`
+  - `actions`
+  - `operations`
+- 不建议再做任意第四类 `services` binding table；`composer / media / presentation / external` 是固定 Host Service namespaces，其可用性由 Runtime baseline、Feature 与 Permission negotiation 决定。需要固定目标的 external link 等可编译为 action binding。
+- Authoring Manifest 不应重复抄写已有底层 contract schema。Build compiler 解析 target 后生成 **Compiled Bridge Descriptor**：
+  - normalized input/output schema；
+  - schema/contract digest；
+  - delivery/operation capabilities；
+  - idempotency/receipt policy；
+  - 前端只看到 public binding contract，不需要看到真实 World/Application command internals。
+- 建议 authoring shape：
+  ```yaml
+  bridge:
+    version: 1
+    reads:
+      - id: player-ui
+        source:
+          kind: information-view
+          id: player-display
+
+    actions:
+      - id: buy-item
+        inputSchema: ...
+        target:
+          kind: world-command
+          commandId: shop.buy
+        args: ...safe template...
+
+    operations:
+      - id: generate-profile
+        inputSchema: ...
+        target:
+          kind: task
+          taskId: profile
+          variantId: default
+        input: ...safe template...
+  ```
+- Read binding 原则：target 必须是已有 typed/bounded projection contract，而不是 raw authority。首要 adapter 可引用 existing Information View；continuity/shared/realm/temporal 等应通过其已有 projection contract 适配，避免 `getEverything()`。
+- Read delivery baseline：
+  - `snapshot()` 必须有；
+  - `subscribe()` 可选/声明；
+  - update 携带 bindingId + revision/cursor + typed payload；
+  - 初版可优先 full replace/coalesced snapshot，避免为了性能提前引入复杂 mutable patch authority；将来可在 Bridge version/feature 中增加 read-only delta。
+- Action binding：
+  - public input schema 可以与底层 args 不同；
+  - binding 可使用现有 safe value-template/expression 把 `input` 映射成 target args；
+  - Build 时验证映射输出严格满足目标 typed schema；
+  - 因此 Binding 真正成为稳定 Frontend API façade，而不仅是 command alias。
+- Action result 默认以统一 Bridge Receipt 为主，不把整个新 Authority state 塞进 action return；权威数据变化通过 read subscription 传播，避免双数据通道。
+- Operation binding：
+  - target 可映射 Task / Activity / future resumable Host operations；
+  - Build compiler materialize input/final result schema；
+  - Runtime handle 统一 queued/running/progress/partial/completed/failed/cancelled；
+  - cancel 是否支持由 compiled capability 明确；
+  - scheduler/backpressure/retry 继续 Host-owned。
+- Binding ID 应是稳定 semantic ID；同语义升级尽量保持 ID，便于 Component/Studio/AI contract 稳定。
+- **Experience-level Binding Registry 是真正的 Host 安全边界。**
+- Component-level `uses:` 定位为 least-authority dependency contract：
+  - Declarative component：compiler 默认可以从 data/action/operation refs 自动推导 `uses`，作者无需手填；可显式声明以形成可复用组件接口。
+  - Script controller：必须显式声明 `uses`；Runtime 只向该 controller 注入声明过的 binding/service handles，不提供全局 `host` 万能对象。
+  - Child/component `uses` 必须是 Experience Registry 的子集，永远不能扩大 Package 权限。
+  - 这主要防 accidental coupling、提升 component reuse / static analysis；Package 作者仍可在 Manifest 扩大自身 registry，因此它不是替代用户 Permission 的独立信任边界。
+- 普通 Package Component 默认继续遵循 Props down / Events up；无 `uses` 的组件天然是 pure presentation component。
+- Fixed Host services 对 Script component 也纳入 `uses.services` narrowing，例如 composer/media/presentation/external；Declarative IR 可由 compiler 自动推导。
+- External navigation 倾向进入 v3 baseline Host service：
+  - 只允许 declared HTTPS targets / Atria routes；
+  - user gesture；
+  - scheme/origin validation；
+  - Host 可 confirm；
+  - 不暴露 `window.open`。
+- Clipboard / file picker / import-export / camera / microphone 暂不作为 v3 Core baseline，保留 permissioned Host Service extension seam。Clipboard write 可后续作为较低风险扩展，read 单独权限。
+- future Web Island handshake seam 建议现在只冻结安全形态，不展开完整实现：
+  - 独立 Browser Realm；
+  - structured-clone messages only；
+  - Host-issued frontendInstanceId + nonce/token；
+  - first handshake negotiate bridgeVersion/features；
+  - validate source/origin/instance/nonce；
+  - per-request requestId；
+  - unmount/reload 立即 revoke；
+  - Bridge 仍只暴露同一 compiled bindings/services。
+- Binding Registry / Compiled Descriptor 应在 UI 代码执行前完整 validate，Web Island 也不得在运行时自行注册新的 Authority binding。
 
 ## 讨论工作流
 
@@ -100,22 +121,18 @@ Frontend Host Bridge：
 
 ## 下一轮建议主题
 
-先把 Frontend Host Bridge 结论写入 Plan，再讨论：
+先把 Binding Manifest 结论写入 Plan，再讨论：
 
-- Bridge Binding Manifest 的具体数据模型：
-  - reads / actions / operations / services；
-  - schema 与 binding identity；
-  - projection subscription/diff/cursor；
-  - action receipt/idempotency；
-  - task/activity streaming；
-- Package Component 如何声明/继承 Bridge access；
-- 是否允许全 Package 默认访问全部 declared bindings，或做 component-level capability narrowing；
-- external navigation / clipboard / file import-export 是否纳入 v3 baseline；
-- Web Island message protocol 的 origin/session/nonce/handshake 设计是否现在冻结 seam。
+- Canonical Native Frontend Document / Authoring Format：
+  - root/views/components/styles/state/bridge refs 的文件布局；
+  - 是否单文件还是多资源 graph；
+  - Component source syntax 与 Canonical IR；
+  - CSS/interaction/script controller 如何引用；
+  - Studio 与 AI 应操作 Source 还是 IR；
+- 或者先讨论 Script Sandbox 的具体执行模型（Worker/VM/WASM）与 JS/TS authoring pipeline。
 
 ## 不要重复
 
-- 不考虑 v1/v2 migration 或旧数据。
-- 不重建 legacy compatibility。
-- 不重复讨论远程立绘是否允许。
+- 不考虑 v1/v2 migration/兼容。
+- 不重复 Remote Media 与基础 Host Bridge。
 - 不创建实现分支或产品代码，除非用户明确批准进入实施。
