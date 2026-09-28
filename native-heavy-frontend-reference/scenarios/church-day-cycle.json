@@ -1,0 +1,277 @@
+{
+  "schemaVersion": 1,
+  "entryPointId": "entry_860c164ab18371b783b6d8c9565b392d",
+  "steps": [
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "experience.ready"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.workflows.church-day-cycle.phase",
+        "equals": "day-open"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.day_index",
+        "equals": 1
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "workflow.transition",
+        "workflowId": "church-day-cycle",
+        "transitionId": "activate-day"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.workflows.church-day-cycle.phase",
+        "equals": "active-day"
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "schedule",
+        "recordId": "caretaker-outreach",
+        "commandId": "assign",
+        "args": {
+          "actor_id": "actor_b48a53176eb663a1af411fb6f8638d66",
+          "title": "Community outreach",
+          "start_tick": 540,
+          "duration": 180,
+          "policy": "background",
+          "operation_kind": "outreach",
+          "location": "market"
+        }
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "church-operations",
+        "recordId": "current-day",
+        "commandId": "record-outreach",
+        "args": {}
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "church-projects",
+        "recordId": "district-outreach",
+        "commandId": "start",
+        "args": {
+          "template_id": "district-outreach",
+          "start_tick": 540,
+          "due_tick": 1920,
+          "target": 100,
+          "assigned_actor_ids": [
+            "actor_b48a53176eb663a1af411fb6f8638d66"
+          ],
+          "cost_money": 0,
+          "operation_kind": "outreach"
+        }
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "church-projects",
+        "recordId": "district-outreach",
+        "commandId": "advance",
+        "args": {
+          "work_units": 25
+        }
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "church-operations",
+        "recordId": "current-day",
+        "commandId": "record-project-work",
+        "args": {}
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "schedule",
+        "recordId": "caretaker-outreach",
+        "commandId": "complete",
+        "args": {}
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "church-operations",
+        "recordId": "current-day",
+        "commandId": "prepare-settlement",
+        "args": {}
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.expected_money_delta",
+        "equals": 55
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.expected_follower_delta",
+        "equals": 3
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.church-projects.records.0.value.progress",
+        "equals": 25
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "clock.advance",
+        "commandId": "advance-game-time",
+        "ticks": 960
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.clocks.game-clock",
+        "equals": 1440
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "workflow.transition",
+        "workflowId": "church-day-cycle",
+        "transitionId": "settle-worked"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.workflows.church-day-cycle.phase",
+        "equals": "day-settlement-worked"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_world_state.worlds.world_0f47cf3a197b4af1a416084443678d9c.state.church.money",
+        "equals": 175
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_world_state.worlds.world_0f47cf3a197b4af1a416084443678d9c.state.church.followers",
+        "equals": 15
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_world_state.worlds.world_0f47cf3a197b4af1a416084443678d9c.state.church.reputation",
+        "equals": 9
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_world_state.worlds.world_0f47cf3a197b4af1a416084443678d9c.state.calendar.day",
+        "equals": 2
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_world_state.worlds.world_0f47cf3a197b4af1a416084443678d9c.state.calendar.lastSettledDay",
+        "equals": 1
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "workflow.transition",
+        "workflowId": "church-day-cycle",
+        "transitionId": "settle-worked"
+      },
+      "expectError": "stale or closed"
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_world_state.worlds.world_0f47cf3a197b4af1a416084443678d9c.state.church.money",
+        "equals": 175
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "workflow.transition",
+        "workflowId": "church-day-cycle",
+        "transitionId": "next-day-worked"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.workflows.church-day-cycle.phase",
+        "equals": "day-open"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.day_index",
+        "equals": 2
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.expected_money_delta",
+        "equals": 0
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "workflow.transition",
+        "workflowId": "church-day-cycle",
+        "transitionId": "activate-day"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.workflows.church-day-cycle.phase",
+        "equals": "active-day"
+      }
+    }
+  ]
+}

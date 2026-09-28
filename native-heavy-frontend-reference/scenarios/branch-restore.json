@@ -1,0 +1,560 @@
+{
+  "schemaVersion": 1,
+  "entryPointId": "entry_860c164ab18371b783b6d8c9565b392d",
+  "steps": [
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "experience.ready"
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "workflow.transition",
+        "workflowId": "church-day-cycle",
+        "transitionId": "activate-day"
+      }
+    },
+    {
+      "kind": "checkpoint",
+      "input": "day-root"
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "schedule",
+        "recordId": "branch-a-outreach",
+        "commandId": "assign",
+        "args": {
+          "actor_id": "actor_b48a53176eb663a1af411fb6f8638d66",
+          "title": "Branch A outreach",
+          "start_tick": 540,
+          "duration": 180,
+          "policy": "background",
+          "operation_kind": "outreach",
+          "location": "market"
+        }
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "church-projects",
+        "recordId": "branch-a-project",
+        "commandId": "start",
+        "args": {
+          "template_id": "branch-a-project",
+          "start_tick": 540,
+          "due_tick": 1920,
+          "target": 100,
+          "assigned_actor_ids": [
+            "actor_b48a53176eb663a1af411fb6f8638d66"
+          ],
+          "cost_money": 0,
+          "operation_kind": "outreach"
+        }
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "church-projects",
+        "recordId": "branch-a-project",
+        "commandId": "advance",
+        "args": {
+          "work_units": 25
+        }
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "church-operations",
+        "recordId": "current-day",
+        "commandId": "record-outreach",
+        "args": {}
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "church-operations",
+        "recordId": "current-day",
+        "commandId": "record-project-work",
+        "args": {}
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "schedule",
+        "recordId": "branch-a-outreach",
+        "commandId": "complete",
+        "args": {}
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "church-operations",
+        "recordId": "current-day",
+        "commandId": "prepare-settlement",
+        "args": {}
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "sms-threads",
+        "recordId": "branch-a-sms",
+        "commandId": "send-player",
+        "args": {
+          "thread_id": "caretaker",
+          "participants": [
+            "actor_b48a53176eb663a1af411fb6f8638d66"
+          ],
+          "body": "Branch A: I will handle the market outreach.",
+          "sent_at": 480
+        }
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "social",
+        "recordId": "branch-a-social",
+        "commandId": "publish-player",
+        "args": {
+          "body": "Branch A: outreach is underway.",
+          "posted_at": 480
+        }
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "mail",
+        "recordId": "branch-a-mail",
+        "commandId": "deliver",
+        "args": {
+          "from_id": "district-office",
+          "to_id": "player",
+          "subject": "Branch A notice",
+          "body": "This notice belongs only to Branch A.",
+          "delivered_at": 480,
+          "provenance": "template",
+          "reference_kind": "none",
+          "reference_id": ""
+        }
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "events",
+        "recordId": "story-current",
+        "commandId": "open",
+        "args": {
+          "kind": "system",
+          "origin": "branch-a",
+          "title": "Branch A Visitor",
+          "participants": [
+            "actor_b48a53176eb663a1af411fb6f8638d66"
+          ],
+          "location": "market",
+          "premise": "The outreach branch leads to a visitor at the market.",
+          "goal": "Resolve the Branch A encounter.",
+          "started_at": 480
+        }
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "clock.advance",
+        "commandId": "advance-game-time",
+        "ticks": 960
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "workflow.transition",
+        "workflowId": "church-day-cycle",
+        "transitionId": "settle-worked"
+      }
+    },
+    {
+      "kind": "turn",
+      "input": {
+        "schemaVersion": 1,
+        "narrative": "Branch A closes with the caretaker returning from the market after the visitor encounter.",
+        "outcomes": [
+          {
+            "requestId": "story-outcome",
+            "interpretation": {
+              "decision": "event",
+              "eventType": "story.beat.transition",
+              "confidence": 1
+            }
+          }
+        ],
+        "diagnostics": [],
+        "projection": {
+          "schemaVersion": 1,
+          "flow": [
+            {
+              "kind": "prose",
+              "text": "Branch A closes with the caretaker returning from the market after the visitor encounter."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_world_state.worlds.world_0f47cf3a197b4af1a416084443678d9c.state.church.money",
+        "equals": 175
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_world_state.worlds.world_0f47cf3a197b4af1a416084443678d9c.state.calendar.day",
+        "equals": 2
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.clocks.game-clock",
+        "equals": 1440
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.schedule.records.0.value.title",
+        "equals": "Branch A outreach"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.church-projects.records.0.value.progress",
+        "equals": 25
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.sms-threads.records.0.value.body",
+        "equals": "Branch A: I will handle the market outreach."
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.social.records.0.value.body",
+        "equals": "Branch A: outreach is underway."
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.mail.records.0.value.subject",
+        "equals": "Branch A notice"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.events.records.0.value.title",
+        "equals": "Branch A Visitor"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "timeline.0.content",
+        "equals": "Branch A closes with the caretaker returning from the market after the visitor encounter."
+      }
+    },
+    {
+      "kind": "restore",
+      "input": "day-root"
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_world_state.worlds.world_0f47cf3a197b4af1a416084443678d9c.state.church.money",
+        "equals": 120
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_world_state.worlds.world_0f47cf3a197b4af1a416084443678d9c.state.calendar.day",
+        "equals": 1
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.clocks.game-clock",
+        "equals": 480
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.workflows.church-day-cycle.phase",
+        "equals": "active-day"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.outreach_count",
+        "equals": 0
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.project_work_count",
+        "equals": 0
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.schedule.records.length",
+        "equals": 0
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.church-projects.records.length",
+        "equals": 0
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.sms-threads.records.length",
+        "equals": 0
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.social.records.length",
+        "equals": 0
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.mail.records.length",
+        "equals": 0
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.events.records.length",
+        "equals": 0
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "timeline.length",
+        "equals": 0
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "schedule",
+        "recordId": "branch-b-meeting",
+        "commandId": "assign",
+        "args": {
+          "actor_id": "actor_b48a53176eb663a1af411fb6f8638d66",
+          "title": "Branch B sanctuary meeting",
+          "start_tick": 510,
+          "duration": 60,
+          "policy": "hard",
+          "operation_kind": "meeting",
+          "location": "sanctuary"
+        }
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "sms-threads",
+        "recordId": "branch-b-sms",
+        "commandId": "send-player",
+        "args": {
+          "thread_id": "caretaker",
+          "participants": [
+            "actor_b48a53176eb663a1af411fb6f8638d66"
+          ],
+          "body": "Branch B: meet me at the sanctuary instead.",
+          "sent_at": 480
+        }
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "events",
+        "recordId": "story-current",
+        "commandId": "open",
+        "args": {
+          "kind": "communication",
+          "origin": "branch-b-sms",
+          "title": "Branch B Sanctuary Meeting",
+          "participants": [
+            "actor_b48a53176eb663a1af411fb6f8638d66"
+          ],
+          "location": "sanctuary",
+          "premise": "The restored branch follows the sanctuary message instead of the market outreach.",
+          "goal": "Continue the restored alternate path.",
+          "started_at": 480
+        }
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "clock.advance",
+        "commandId": "advance-game-time",
+        "ticks": 30
+      }
+    },
+    {
+      "kind": "turn",
+      "input": {
+        "schemaVersion": 1,
+        "narrative": "After the restore, the caretaker meets the player at the sanctuary and the alternate branch becomes the canonical story.",
+        "outcomes": [
+          {
+            "requestId": "story-outcome",
+            "interpretation": {
+              "decision": "event",
+              "eventType": "story.beat.transition",
+              "confidence": 1
+            }
+          }
+        ],
+        "diagnostics": [],
+        "projection": {
+          "schemaVersion": 1,
+          "flow": [
+            {
+              "kind": "prose",
+              "text": "After the restore, the caretaker meets the player at the sanctuary and the alternate branch becomes the canonical story."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.clocks.game-clock",
+        "equals": 510
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.schedule.records.0.value.title",
+        "equals": "Branch B sanctuary meeting"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.sms-threads.records.0.value.body",
+        "equals": "Branch B: meet me at the sanctuary instead."
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.social.records.length",
+        "equals": 0
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.mail.records.length",
+        "equals": 0
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.church-projects.records.length",
+        "equals": 0
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.events.records.0.value.title",
+        "equals": "Branch B Sanctuary Meeting"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.events.records.0.value.current_beat",
+        "equals": "transition"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "timeline.0.content",
+        "equals": "After the restore, the caretaker meets the player at the sanctuary and the alternate branch becomes the canonical story."
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_world_state.worlds.world_0f47cf3a197b4af1a416084443678d9c.state.church.money",
+        "equals": 120
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_world_state.worlds.world_0f47cf3a197b4af1a416084443678d9c.state.calendar.day",
+        "equals": 1
+      }
+    }
+  ]
+}
