@@ -2,7 +2,7 @@
 
 Task ID: `fix/native-ci-baseline-failures`  
 Primary Workspace: `fix/native-ci-baseline-failures`  
-Status: **Implementation complete — PR CI pending**
+Status: **Merged — final main CI pending**
 
 ## Start state
 
@@ -129,3 +129,32 @@ Latest browser/test HEAD: `72ca0c9157b13b4fb2b251e79706992f766ab4e4`.
 Latest validation runs:
 - `Native Model Prompt Runtime` run `36419697797`: in progress;
 - `Atria PR Checks` run `36419697817`: Migration Guard success; Lint and Unit Tests in progress.
+
+
+## Merge and final main verification
+
+Final PR-head verification completed successfully:
+
+- PR #97 head: `72ca0c9157b13b4fb2b251e79706992f766ab4e4`;
+- `Atria PR Checks` run `36419697817`: **success**
+  - Atria Migration Guard: success
+  - Lint: success
+  - Unit Tests: success
+- `Native Model Prompt Runtime` run `36419697797`: **success**
+  - static P0–P8 / A0–A9 / N9–N10 guards: success
+  - integration Jest: success
+  - the four targeted Native browser acceptance files: success.
+
+PR #97 was merged into main:
+
+- merge commit / current main: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`;
+- integrated file set exactly matches the 12 PR files verified above;
+- no extra merge-time file changes were introduced.
+
+Repository branch cleanup workflow `36420803105` completed **success** and removed `fix/native-ci-baseline-failures`. The remote branch set has returned to the seven intended long-lived branches.
+
+Final main-side validation automatically started:
+
+- `Native Model Prompt Runtime` push run `36420802932`: in progress.
+
+Per repository workflow rules this full integration run is now the only remaining dependency. No final completion claim is made until that main run succeeds.
