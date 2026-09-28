@@ -1,9 +1,9 @@
 # Atria Handoff Pointer
 
-The authoritative live handoff has moved to the permanent `docs` branch:
+The only live repository-level handoff, when one is needed, is:
 
-`handoff/latest-handoff.md`
+`docs:HANDOFF.md`
 
-For a new development task, use current `main` as the code baseline, then fetch/read the latest handoff from `docs`.
+It may be absent when no active task requires handoff.
 
-This file intentionally contains no duplicated architecture snapshot so it cannot drift away from the dedicated documentation branch.
+For a resumed task, verify current repository state first, then read the live HANDOFF and its named Plan and Record. Do not restore current state from historical handoff paths.

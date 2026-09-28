@@ -2,56 +2,38 @@
 
 ## Product model
 
-Atria is maintained as a SillyTavern-based modified product. The active product line lives in `ZZZdragondYNGPHX/Atria`; the old Luker repository is legacy reference material.
+Atria is maintained as a SillyTavern-based modified product. The stable product line is `main`; complete repository governance is authoritative at `docs:README.md`.
 
 ## Branch roles
 
-- `main`: authoritative Atria integration branch.
-- `docs`: permanent development documentation and latest handoff.
-- `vanilla`: selected SillyTavern upstream snapshot; refresh only when needed.
-- `luker`: selected legacy Luker snapshot; refresh only when needed.
-- `feat/*`, `fix/*`, `refactor/*`, `chore/*`: temporary task branches created from current `main`.
+- `main`: stable Atria product/integration line.
+- `docs`: independent Governance, Plans, Records and optional live `HANDOFF.md`.
+- `package`: independent game/Atria Package assets.
+- `plugin`: independent standalone development tools.
+- `skills`: independent repository-agent Skills.
+- `reference/vanilla`: SillyTavern upstream/reference history.
+- `reference/luker`: legacy Luker reference history.
+- `feat/*`, `fix/*`, `refactor/*` and other justified semantic prefixes: temporary product task branches.
 
 ## Normal development flow
 
-1. Verify current `main`.
-2. Read `AGENTS.md` and the latest handoff from `docs:handoff/latest-handoff.md`.
-3. Create one temporary task branch from `main`.
+1. Verify current `main` and read the active workspace `AGENTS.md`.
+2. For a resumed/multi-stage task, read `docs:HANDOFF.md` and its named Plan/Record.
+3. Create/use the appropriate short-lived semantic branch.
 4. Implement and validate the isolated task.
-5. Write the completed implementation record to `docs`.
-6. Merge into `main`.
-7. Verify integration.
-8. Delete the completed task branch.
+5. Write/update the permanent Record under `docs:records/**`.
+6. Integrate verified product work into `main`.
+7. Verify integrated `main`.
+8. Delete the completed temporary branch and live HANDOFF when the task is complete.
 
 ## Reference branches
 
-`vanilla` and `luker` are reference-only during normal work.
-
-Use `vanilla` for SillyTavern upstream comparison, compatibility work, or deliberate upstream refreshes. Use `luker` for migration archaeology or legacy behavior comparison. Never blindly merge either reference branch into `main`.
-
-The repository provides a manual reference-sync workflow. Refresh reference branches only when needed.
+Reference and update permission are separate. Read a `reference/<project>` only when the user explicitly authorizes reference to that project, and update it only when the user explicitly authorizes its update. Never blindly merge reference history into `main`.
 
 ## Verification
 
-Select checks based on the touched surface:
-
-- JavaScript/frontend/backend: syntax, lint, targeted tests, unit/regression tests.
-- Runtime/storage/memory/orchestration: relevant unit and integration coverage.
-- Android: Android JVM tests for Kotlin/package changes; APK build when delivery/build behavior changes.
-- CI/build changes: validate the actual workflow path when practical.
-
-Do not describe unexecuted checks as passed.
+Run checks appropriate to the touched surface and report only checks actually executed. Android/device, Docker, paid-provider and real-UI validation are not implied by ordinary source validation.
 
 ## Documentation
 
-The `docs` branch is the durable development knowledge base. At the end of a completed task, record:
-
-- task goal and branch;
-- baseline and resulting commit/PR;
-- implementation summary;
-- architecture or compatibility decisions;
-- tests/checks actually run;
-- known limitations or follow-up;
-- migration/data/config impact.
-
-Long-term handoff state belongs in `docs:handoff/latest-handoff.md`, not in stale task branches.
+Plans describe intended design. Records preserve executed history. `docs:HANDOFF.md` is the single optional live recovery state. Historical handoffs are Records, not alternate live routes.
