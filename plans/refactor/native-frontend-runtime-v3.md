@@ -4,7 +4,7 @@
 
 - Task ID：`refactor/native-frontend-runtime-v3`
 - 类型：大型架构 / Native UI 重构
-- 状态：**Discussion Draft v0.5**
+- 状态：**Discussion Draft v0.6**
 - Primary Workspace（未来实现）：`main`
 - 当前阶段：方案讨论，仅更新 `docs`，尚未创建实现分支
 - 当前源码基线：`main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
@@ -573,9 +573,205 @@ frontend:
 
 高权限能力应可在安装 / 启用时向用户明确展示。
 
+
 ---
 
-## 9. 当前明确禁止 / 非目标
+## 9. Resource / CSS / Build Artifact Model
+
+### 9.1 复用现有 exact Asset 基础
+
+v3 不建立平行的“Frontend Assets 仓库”。
+
+继续复用现有 Presentation / Package 资源地基：
+
+- `AssetRef { assetId, contentHash }`；
+- Package asset identity；
+- Asset Pack；
+- eager / lazy delivery；
+- exact dependency closure；
+- content hash / immutable PackageVersion。
+
+在此基础上扩展 **Frontend Asset Graph**，覆盖：
+
+- stylesheet；
+- font；
+- image；
+- SVG；
+- cursor；
+- mask / texture；
+- script module；
+- Canvas / presentation resource。
+
+### 9.2 Package-local CSS URL
+
+作者仍应能够按正常 Web 项目习惯使用相对路径：
+
+```css
+@font-face {
+    font-family: "GameTitle";
+    src: url("../fonts/title.woff2") format("woff2");
+}
+
+.character-card {
+    background-image: url("../images/card-bg.webp");
+}
+```
+
+Build / Compiler 负责把本地 `url(...)`、本地 `@import` 等引用解析进 Frontend Asset Graph，并锁定 exact AssetRef。
+
+Production Runtime 不依赖作者机器上的相对文件系统路径。Host 将 exact asset 映射成受控的 same-origin / object URL 等 Runtime locator。
+
+### 9.3 Remote Image / Illustration Reference
+
+**远程图片链接必须作为正式能力保留。**
+
+原因是立绘、CG、背景、地图和其它大量高分辨率图片若全部内嵌到 `.atria`，会造成不必要的 Package 体积与长期本地占用。
+
+因此 Frontend Resource 模型应区分：
+
+1. **Embedded / Exact AssetRef**
+   - 内容随 PackageVersion 固定；
+   - 具有 `assetId + contentHash`；
+   - 可离线、可重复、可完整验证。
+
+2. **Remote Media Ref**
+   - 主要用于图片等惰性 Presentation Media；
+   - Package 保存 URL / metadata，而不是保存原始大文件；
+   - 由 Host-owned Media Resolver 请求和展示；
+   - 不因此向 Package Script 开放 `fetch` / WebSocket / arbitrary network。
+
+Remote Media Ref 属于 Presentation，不得成为 Authority、代码或 schema 来源。
+
+v3 应支持：
+
+- Declarative DOM 的远程 `img / picture`；
+- 角色立绘、头像、CG、背景等远程 image ref；
+- CSS 中图片型远程 `url(...)` 经过 compiler/runtime rewrite 后进入 Host Media Resolver，而不是让 stylesheet 获得任意网络权限。
+
+Remote `@import`、remote JS module、remote executable HTML 继续禁止。
+
+远程字体暂不视为与远程图片等价的默认能力；默认仍优先 Package exact font assets。
+
+Remote Media Ref 后续需要继续冻结：
+
+- HTTPS / scheme policy；
+- MIME 与文件大小限制；
+- raster / animated image / SVG 策略；
+- integrity / contentHash 可选或强制场景；
+- cache / eviction / offline fallback；
+- referer / credentials / privacy；
+- Host proxy 与 SSRF 边界；
+- broken-link fallback。
+
+### 9.4 Font
+
+目标支持至少：
+
+- WOFF2；
+- WOFF；
+- 经策略允许的 TTF / OTF；
+- variable font；
+- `font-display`；
+- `font-feature-settings`；
+- `font-variation-settings`；
+- writing mode / text orientation。
+
+字体自由度由 CSS / Package asset contract 管，不再由 Host UI theme 白名单决定。
+
+### 9.5 SVG
+
+SVG 分成两类：
+
+- **Inline Declarative SVG**：属于 Canonical DOM，由 compiler / validator 检查；
+- **External SVG Asset**：按 inert/sanitized presentation asset 处理。
+
+不得通过 SVG 获得 script、remote executable dependency、`foreignObject` 等越权执行面。
+
+Remote SVG 是否进入 Remote Media Ref 默认支持集合，后续单独冻结，不与普通 raster image 自动等同。
+
+### 9.6 Stylesheet Scope / Theme
+
+样式层级概念上分为：
+
+```text
+Experience Theme
+        ↓
+Package Global
+        ↓
+Component Scoped
+        ↓
+Instance dynamic class/data/CSS vars
+```
+
+- Experience Theme：游戏 Design System 与主题 token；
+- Package Global：reset、typography、utility；
+- Component Scoped：默认组件样式；
+- Instance Dynamic：通过 class / `data-*` / CSS custom properties 表达动态状态。
+
+Package-global 仍只在 Experience ShadowRoot 内全局。
+
+### 9.7 Native Component Styling Contract
+
+Host-owned Native Component 应提供稳定样式 API：
+
+- `::part()`；
+- CSS custom properties；
+- typed props / states；
+- 必要 slot。
+
+Package 不依赖 Native Component 私有 DOM selector。
+
+### 9.8 Build Artifact / Supply-chain Boundary
+
+Atria 安装 `.atria` 时不得运行未知的：
+
+- `npm install`
+- `pnpm install`
+- `yarn`
+- `npm run build`
+- package lifecycle scripts
+
+第三方生态依赖应在作者开发 / Build 阶段完成 resolution、bundle 或 vendoring。
+
+```text
+author source
+→ npm/Vite/framework build（作者环境）
+→ Atria pack
+→ validate + hash + dependency closure
+→ .atria
+→ Player install: validate / store / run
+```
+
+安装过程不执行第三方构建脚本。
+
+### 9.9 Framework / Web Frontend 路线
+
+v3 不把“任意 SPA bundle 直接注入 Experience DOM”作为 Native Frontend Core 的默认模式。
+
+长期建议保留三条路线：
+
+1. **Atria Native Frontend**
+   - Declarative DOM / CSS / Component / Interaction；
+   - 可选 Script Sandbox；
+   - Studio、AI Authoring、Health、Migration、static analysis 的一等路线。
+
+2. **Framework Authoring Adapter**
+   - React / Vue 等通过 Atria custom renderer / compiler adapter authoring；
+   - 最终仍落到 Canonical UI IR / Sandbox API；
+   - 依赖真实 Browser DOM 的第三方 UI 库不保证自动兼容。
+
+3. **Web Island**
+   - 面向已经存在的 React / Vue / Svelte / Vite 等预构建 Web App；
+   - 使用独立、强隔离 Browser Realm；
+   - 允许 Island 内部拥有自己的 `window/document/framework runtime`；
+   - 通过严格 CSP 与 typed message/RPC bridge 接入 Atria；
+   - 不获得 Atria Host DOM、Authority object、raw Secret 或默认任意网络权限。
+
+Web Island 是高级兼容能力，不作为绕过 Native Frontend Contract 的默认后门。
+
+---
+
+## 10. 当前明确禁止 / 非目标
 
 当前设计仍不允许：
 
@@ -593,7 +789,7 @@ frontend:
 
 ---
 
-## 10. 兼容与迁移原则（未冻结）
+## 11. 兼容与迁移原则（未冻结）
 
 Native UI v2 已经是正式能力，不应通过静默修改 `schemaVersion` 破坏现有 Package。
 
@@ -610,35 +806,23 @@ v3 应作为清晰的新 Frontend Runtime contract。
 
 ---
 
-## 11. 当前待讨论主题
+## 12. 当前待讨论主题
 
 下一轮优先讨论：
 
-### Resource / CSS / Build Artifact Model
+### Remote Media / Compatibility / Versioning
 
-- `@font-face`
-- font formats / variable fonts
-- image / SVG / cursor / mask / texture
-- CSS `url(...)`
-- Package-relative URL
-- stylesheet dependency graph
-- scoped / global / theme styles
-- CSS layers
-- Native Component `::part()`
-- animation/media assets
-- AssetRef 与 CSS URL 的解析
-- immutable dependency closure
-- build-time asset hashing
-
-以及最关键的问题：
-
-> **Atria 是否允许 Package 直接携带 React / Vue / Svelte 等现成 Web 前端的构建产物？**
-
-这将决定 Native Frontend Runtime 是只支持 Atria-native authoring，还是也成为通用 Web Frontend Host。
+- Remote Media Ref 的 URL / integrity / cache / privacy / fallback contract；
+- 大量角色立绘的 lazy load、prefetch、LRU cache 与本地占用策略；
+- Remote Media Ref 是否允许动态来自 World/Data projection；
+- v2 → v3 migration assistant；
+- manifest / frontend versioning；
+- Atria Native / Framework Adapter / Web Island 三条路线哪些进入 v3 基线；
+- Studio / AI Authoring 对三条路线的支持边界。
 
 ---
 
-## 12. 讨论流程约定
+## 13. 讨论流程约定
 
 从本企划建立后，每一轮讨论遵循：
 
