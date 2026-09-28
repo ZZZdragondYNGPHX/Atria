@@ -178,8 +178,13 @@ requirePattern(
 );
 requirePattern(
     'public/scripts/world-info.js',
-    /getSortedEntries[\s\S]{0,500}nativeSessionRuntime\.active[\s\S]{0,500}nativeSessionRuntime\.knowledgeEntries/,
-    'N10 Native World Info adapter must source candidates from pinned Native Knowledge',
+    /export async function getSortedEntries[\s\S]{0,320}nativeSessionRuntime\.active\) return \[\]/,
+    'N10 Native sessions must bypass legacy book-shaped World Info candidates',
+);
+requirePattern(
+    'public/scripts/world-info.js',
+    /getWorldInfoPrompt[\s\S]{0,700}nativeSessionRuntime\.active[\s\S]{0,500}nativeSessionRuntime\.evaluateKnowledge/,
+    'N10 Native prompt delivery must evaluate pinned Native Knowledge directly',
 );
 requirePattern(
     'public/scripts/world-info.js',
