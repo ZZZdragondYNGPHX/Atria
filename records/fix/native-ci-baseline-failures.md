@@ -73,12 +73,23 @@ Sequential integration evidence before the latest head:
 - after the P6 fix, P0–P7 and A0–A9 passed and N9 exposed the next stale assertion;
 - after the N9 fix, P0–P7, A0–A9 and N9 passed and N10 exposed the next stale assertion.
 
-Latest branch HEAD: `d7d1e8badba1a4db63a4bc23d4b21bbd782e0b9c`.
+Latest branch HEAD: `c5f477124fc926fc1349ec79cab17ec67509e5f1`.
 
 Latest validation runs:
-- `Native Model Prompt Runtime` run `36415289430`: in progress;
-- `Atria PR Checks` run `36415289660`: in progress.
+- `Native Model Prompt Runtime` run `36415682911`: in progress;
+- `Atria PR Checks` run `36415683000`: in progress.
 - Earlier `Atria PR Checks` run `36414275752` on `b5a7f935...`: **success** — Migration Guard, Lint and Unit Tests all passed, proving the Session snapshot test fix resolved the original full Unit failure.
 
 
 The N10 Library assertion was refined once more after reading the current source directly: the current Native Library contains three sections — `works`, `worlds-knowledge`, and `prompt-presets`. Skills are no longer a Library section after the Extensions/Skills UI consolidation. The N10 guard now asserts exactly those three Native sections while continuing to reject legacy Library authority adapters.
+
+
+Native World Info compatibility guards were also brought forward to the current hard-cutover architecture:
+
+- Native `getSortedEntries()` must return no legacy book-shaped candidates while a Native Session is active;
+- `getWorldInfoPrompt()` must route Native prompt selection through `nativeSessionRuntime.evaluateKnowledge()`;
+- Native Knowledge candidates must retain opaque binding/base/revision/entry identity;
+- neither Native Knowledge runtime nor Native Session projection may recreate a World Info numeric `uid`;
+- existing N10 state read/write checks still verify SessionRevision state wins over non-Native FloorState.
+
+These changes reflect current runtime behavior already covered by Native Knowledge tests/E2E; they do not change product runtime behavior.
