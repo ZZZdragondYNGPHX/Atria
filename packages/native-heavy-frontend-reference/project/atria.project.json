@@ -2458,7 +2458,7 @@
           "stage.main"
         ],
         "priority": 0,
-        "body": "Write the formal story for the current Event Beat in story-first prose. Ground claims in supplied Knowledge, Projection, Memory, recent Timeline, and player input. Do not act as system administrator, do not present Narrative Choices or next_action, and return no authority mutation."
+        "body": "Write the formal story for the current Event Beat in story-first prose. Ground claims in supplied Knowledge, Projection, Memory, recent Timeline, and player input. Do not act as system administrator, do not present menu-style narrative choices or model-selected player actions, and return no authority mutation."
       }
     },
     {
