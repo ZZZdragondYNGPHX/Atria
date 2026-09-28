@@ -8,6 +8,7 @@ on:
       - 'public/scripts/native/play-generation.js'
       - 'public/scripts/native/session-runtime.js'
       - 'public/scripts/native/experience/llm/memory-bridge.js'
+      - 'public/scripts/agents/memory/hybrid-retrieval.js'
       - 'src/native/adapters/generation-host.js'
       - 'src/native/adapters/native-session-context.js'
       - 'tests/native/package-turn-memory-bridge-g3.test.js'
@@ -36,13 +37,14 @@ jobs:
           node --check public/scripts/native/play-generation.js
           node --check public/scripts/native/session-runtime.js
           node --check public/scripts/native/experience/llm/memory-bridge.js
+          node --check public/scripts/agents/memory/hybrid-retrieval.js
           node --check src/native/adapters/generation-host.js
           node --check src/native/adapters/native-session-context.js
           node --check tests/native/package-turn-memory-bridge-g3.test.js
       - name: Lint touched modules
-        run: npx eslint public/scripts/native/play-generation.js public/scripts/native/session-runtime.js public/scripts/native/experience/llm/memory-bridge.js src/native/adapters/generation-host.js src/native/adapters/native-session-context.js tests/native/package-turn-memory-bridge-g3.test.js
+        run: npx eslint public/scripts/native/play-generation.js public/scripts/native/session-runtime.js public/scripts/native/experience/llm/memory-bridge.js public/scripts/agents/memory/hybrid-retrieval.js src/native/adapters/generation-host.js src/native/adapters/native-session-context.js tests/native/package-turn-memory-bridge-g3.test.js
       - name: Run G3 and G1 G2 targeted tests
-        run: npx jest --runInBand tests/native/package-turn-memory-bridge-g3.test.js tests/native/turn-app-outcome-g1.test.js tests/native/background-task-app-bridge-g2.test.js
+        run: npx jest --runInBand tests/native/package-turn-memory-bridge-g3.test.js tests/native/turn-app-outcome-g1.test.js tests/native/background-task-app-bridge-g2.test.js tests/memory-graph/hybrid-retrieval.test.js
       - name: Record targeted result
         if: always()
         env:
