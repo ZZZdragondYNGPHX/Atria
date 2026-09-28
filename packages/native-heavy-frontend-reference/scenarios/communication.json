@@ -171,7 +171,7 @@
       "input": {
         "kind": "app.command",
         "domainId": "events",
-        "recordId": "communication-followup",
+        "recordId": "story-current",
         "commandId": "open",
         "args": {
           "kind": "communication",
