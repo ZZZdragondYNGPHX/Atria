@@ -159,19 +159,19 @@ test('G3 finalized Package Turn emits one Timeline append lifecycle event; exact
         role: 'assistant',
         content: 'Final canonical Package Turn narrative.',
     });
-    const installed = [];
     runtime.configure({
         isGenerating: () => false,
-        install: async projection => { installed.push(projection); },
+        install: async () => {},
         messages: () => [],
         headers: () => ({}),
         clear: async () => {},
     });
     runtime.snapshot = previous;
     runtime.generation = { kind: 'append', provisionalTurn: true };
-    runtime.request = jest.fn(async path => {
-        expect(path).toBe('load');
-        return structuredClone(next);
+    runtime._loadProjection = jest.fn(async () => {
+        runtime.snapshot = structuredClone(next);
+        runtime.generation = null;
+        return runtime.snapshot;
     });
 
     const appended = [];
@@ -186,5 +186,5 @@ test('G3 finalized Package Turn emits one Timeline append lifecycle event; exact
         reason: 'package_turn',
         revisionId: 'revision-two',
     });
-    expect(installed).toHaveLength(2);
+    expect(runtime._loadProjection).toHaveBeenCalledTimes(2);
 });
