@@ -1,4 +1,4 @@
-name: Native Heavy Frontend Phase 4 Targeted Check
+name: Native Heavy Frontend Phase 5 Targeted Check
 
 on:
   push:
@@ -8,16 +8,22 @@ on:
       - 'packages/native-heavy-frontend-reference/project/**'
       - 'packages/native-heavy-frontend-reference/scenarios/church-day-cycle.json'
       - 'packages/native-heavy-frontend-reference/scenarios/story-turn.json'
+      - 'packages/native-heavy-frontend-reference/scenarios/communication.json'
       - 'packages/native-heavy-frontend-reference/previews/**'
       - 'packages/native-heavy-frontend-reference/verify-phase1.mjs'
       - 'packages/native-heavy-frontend-reference/verify-phase2.mjs'
       - 'packages/native-heavy-frontend-reference/verify-phase3.mjs'
       - 'packages/native-heavy-frontend-reference/verify-phase4.mjs'
+      - 'packages/native-heavy-frontend-reference/verify-phase5.mjs'
       - 'public/scripts/native/experience/index.js'
       - 'public/scripts/native/experience/ui/v2-values.js'
+      - 'public/scripts/native/experience/ui/v2-document.js'
       - 'public/scripts/native/experience/ui/v2-runtime.js'
+      - 'tests/game-runtime/ui-v2.test.js'
       - 'tests/game-runtime/ui-live.test.js'
       - 'tests/game-runtime/experience-ready-p4.test.js'
+      - 'tests/native/background-task-app-bridge-g2.test.js'
+      - 'tests/native/lifecycle-contract-p4.test.js'
       - 'tests/native/message-projection-contract.test.js'
       - 'tests/native/message-presentation.test.js'
       - 'tests/native/package-turn-memory-bridge-g3.test.js'
@@ -28,8 +34,8 @@ permissions:
   contents: read
 
 jobs:
-  phase4-targeted:
-    name: Phase 4 Hybrid Application and Presentation
+  phase5-targeted:
+    name: Phase 5 Phone and Communication
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -46,22 +52,26 @@ jobs:
         run: npm rebuild better-sqlite3 --ignore-scripts=false
       - name: Install test dependencies
         run: npm ci --ignore-scripts --prefix tests --no-audit --no-fund
-      - name: Syntax check Phase 4 validator
-        run: node --check packages/native-heavy-frontend-reference/verify-phase4.mjs
-      - name: Verify Package Phase 1-4
+      - name: Syntax check Phase 5 validator
+        run: node --check packages/native-heavy-frontend-reference/verify-phase5.mjs
+      - name: Verify Package Phase 1-5
         run: |
           node packages/native-heavy-frontend-reference/verify-phase1.mjs
           node packages/native-heavy-frontend-reference/verify-phase2.mjs
           node packages/native-heavy-frontend-reference/verify-phase3.mjs
           node packages/native-heavy-frontend-reference/verify-phase4.mjs
-      - name: Run Phase 4 adjacent Native regressions
+          node packages/native-heavy-frontend-reference/verify-phase5.mjs
+      - name: Run Phase 5 adjacent Native regressions
         env:
           ATRIA_DISABLE_MYSQL_TESTS: 1
           ATRIA_DISABLE_POSTGRES_TESTS: 1
         run: >-
           npm run test:unit --prefix tests -- --runInBand
+          game-runtime/ui-v2.test.js
           game-runtime/ui-live.test.js
           game-runtime/experience-ready-p4.test.js
+          native/background-task-app-bridge-g2.test.js
+          native/lifecycle-contract-p4.test.js
           native/message-projection-contract.test.js
           native/message-presentation.test.js
           native/package-turn-memory-bridge-g3.test.js
