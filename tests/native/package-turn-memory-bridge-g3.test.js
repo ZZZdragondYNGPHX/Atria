@@ -38,7 +38,10 @@ test('G3 Package Turn memory:true recalls existing Memory Graph evidence and com
         tokenCount: 18,
         assertCurrent,
     }));
-    const openSession = jest.fn(async () => ({ recallMemory }));
+    const openSession = jest.fn(async context => {
+        expect(context.nativeSnapshot).toBe(snapshot);
+        return { recallMemory };
+    });
     const result = await recallNativePackageTurnMemory({
         snapshot,
         userInput: 'Where was the bell hidden?',
