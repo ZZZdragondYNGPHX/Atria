@@ -3,7 +3,7 @@
 Updated: 2026-09-28  
 Task ID: `fix/native-ci-baseline-failures`  
 Primary Workspace: `fix/native-ci-baseline-failures`  
-Current branch HEAD: `23a2f075a970b03acdd82f808995dead60989e95`  
+Current branch HEAD: `d7d1e8badba1a4db63a4bc23d4b21bbd782e0b9c`  
 Current stage: **Implementation complete — CI pending**
 
 ## Paths
@@ -24,11 +24,10 @@ Current stage: **Implementation complete — CI pending**
 
 ## CI
 
-- `Atria PR Checks` run `36415147038`
-  - Migration Guard: success
-  - Lint: in progress
-  - Unit Tests: in progress
-- `Native Model Prompt Runtime` run `36415146954`
+- `Atria PR Checks` run `36415289660`
+  - current final-head run: in progress
+  - earlier run `36414275752`: success, including Unit Tests and Lint
+- `Native Model Prompt Runtime` run `36415289430`
   - integration: in progress
 
 Do not claim the running jobs have passed.
@@ -61,4 +60,4 @@ Do not claim the running jobs have passed.
 
 Continue `ZZZdragondYNGPHX/Atria` task `fix/native-ci-baseline-failures`.
 
-The implementation is already on `fix/native-ci-baseline-failures@23a2f075a970b03acdd82f808995dead60989e95` and PR #97 is open. Check CI runs `36415147038` and `36415146954`. Migration Guard already passed; Lint, Unit Tests, and Native Model Prompt Runtime integration were still running at the last checkpoint. If CI passes, merge PR #97, verify main, finalize `docs:records/fix/native-ci-baseline-failures.md`, delete `docs:HANDOFF.md`, and ensure the task branch is gone. If CI exposes a new failure, fix only that failure on the same branch and rerun. Do not revisit repository standardization or read reference branches.
+The implementation is already on `fix/native-ci-baseline-failures@d7d1e8badba1a4db63a4bc23d4b21bbd782e0b9c` and PR #97 is open. Check CI runs `36415289660` and `36415289430`. Migration Guard already passed; Lint, Unit Tests, and Native Model Prompt Runtime integration were still running at the last checkpoint. If CI passes, merge PR #97, verify main, finalize `docs:records/fix/native-ci-baseline-failures.md`, delete `docs:HANDOFF.md`, and ensure the task branch is gone. If CI exposes a new failure, fix only that failure on the same branch and rerun. Do not revisit repository standardization or read reference branches.
