@@ -1,158 +1,263 @@
 # HANDOFF — Native Frontend Runtime v3
 
 - Task ID: `refactor/native-frontend-runtime-v3`
-- Status: **Implementation Baseline v1.0 frozen — Ready for implementation approval**
+- Status: **Implementation Baseline v1.0 frozen — Phase 1 Ready**
 - Primary Workspace: `main`
-- Source Baseline: `main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
+- Task Branch: `refactor/native-frontend-runtime-v3`
+- Task Branch HEAD: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`
+- Main Baseline: `main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
 - Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
-- Plan Commit: `a7c56158f26c4e9c0beebb0c25fb2aa68370bf5e`
-- Implementation Branch: **not created**
-- Implementation Record: **not created**
-- Package pressure-test sample: `package@58e8241bf0624c8f0c3d97292e116143f5866159` / `native-heavy-frontend-reference`
+- Plan Commit: `7c34318ef86febb6a101d93015ab97a7f1af9fe2`
+- Record: `docs:records/refactor/native-frontend-runtime-v3.md`
+- Record Initial Commit: `5cfee803b794ffa80f55789532754eb82bd664a4`
+- Current Stage: **Phase 1 — Contract Reset / Compiler Skeleton**
+- Product Code Changes: **none yet**
+- Validation/CI: **not run yet; Phase 0 was documentation/branch preparation only**
 
-## 当前结论
+## Preparation completed
 
-Native Frontend v3 已完成多轮架构讨论、两轮 Gap Review 与 Baseline Gate。
+The architecture discussion is finished.
 
-Baseline Gate：
+Two Gap Reviews passed and the Plan is frozen as **Implementation Baseline v1.0**.
 
-**PASS WITH CLARIFICATIONS → Implementation Baseline v1.0**
+Before this handoff:
 
-冻结的总原则：
+- current remote refs were rechecked;
+- full `docs:README.md` Repository Governance was reread;
+- latest `main:AGENTS.md` was reread;
+- the task branch was created from exact current `main`;
+- the permanent multi-stage Implementation Record was created;
+- the Plan was updated from “awaiting implementation approval” to “Phase 1 Ready”;
+- no Phase 1 product code was written.
+
+## Frozen architecture summary
+
+Core principle:
 
 > **Package owns presentation. Host owns capabilities and authority.**
 
-Native v3 允许 Package 几乎完全控制自身 Presentation / Interaction：
+Native Frontend v3 includes:
 
-- semantic DOM；
-- full Package CSS / fonts；
-- Component tree；
-- layout / responsive / animation；
-- Managed 或 Headless Conversation / Composer；
-- Phone / IM / Inventory / management UI；
-- typed local/remote media；
-- Canvas；
-- optional sandboxed JS/TS Controller；
-- Localization / RTL；
-- CJK IME / mobile keyboard；
-- accessibility；
-- Session UI / SavePoint / retry/fork/recovery。
+- Authoring Source Graph → Compiler → Canonical Runtime Graph;
+- Atria-owned `.aui` SFC-like authoring;
+- Package-owned semantic DOM / CSS / fonts / components;
+- Component / Hybrid / Full as layout ownership only;
+- Shadow DOM + Visual Containment + Host System/Escape Layer;
+- typed Frontend Host Bridge v1;
+- Experience Binding Registry with Reads / Actions / Operations;
+- fixed Host services: Composer / Conversation / Session / Media / Presentation / External;
+- snapshot + bounded Collection Read;
+- Managed + Headless Conversation;
+- GenerationProjection;
+- Safe Prose AST;
+- typed dynamic style/media sinks;
+- Remote Media Catalog + External Access Permission;
+- Localization / RTL;
+- IME / VisualViewport / soft-keyboard support;
+- Accessibility environment / diagnostics / FocusScope;
+- Component/View/Root Loading/Error Boundaries;
+- Experience Epoch / stale handle revocation;
+- Frame Scheduler;
+- bounded NodeRef layout measurement / observers / pointer capture;
+- optional Script Sandbox using Supervisor Worker + isolated JS VM;
+- Canvas2D batched command buffer.
 
-继续禁止：
+Hard Cut:
 
-- Host DOM；
-- raw browser global/network/storage；
-- raw World/Session/DB objects；
-- arbitrary executable HTML/remote JS；
-- browser top-layer escape。
+- no Native UI v1/v2 migration;
+- no compatibility CSS;
+- no long-lived dual Runtime;
+- final state deletes legacy `componentModelVersion` path and old v1/v2 formal Runtime/compiler.
 
-这些是安全/Authority 边界，不再属于 Presentation 能力不足。
+Do not reopen these architectural decisions unless real implementation/test evidence proves a blocker.
 
-## Hard Cut
+## Phase 1 authoritative scope
 
-不考虑 Native UI v1/v2 用户数据或作者兼容。
+**Phase 1 — Contract Reset / Compiler Skeleton**
 
-最终实现必须：
+Implement only Phase 1 from the Plan.
 
-- 非 Text Native Experience 统一到 `native@3`；
-- 删除 legacy `componentModelVersion` selector；
-- 删除旧 v1/v2 renderer/compiler 正式路径；
-- Studio/Preview/Health/Package validation 迁移到 v3；
-- 旧 fixture/test/data 可直接改写或删除。
+Goals:
 
-不做 migration assistant、compatibility CSS、legacy manifest parser 或长期双 runtime。
+- define new Package / Experience / Frontend / Bridge schemas;
+- hard-cut legacy authoring contract where Phase 1 requires it;
+- establish minimal `.aui` parser / CST / semantic AST skeleton;
+- implement Frontend Source Index;
+- implement Canonical Frontend Index / Component IR / View IR;
+- implement exact Frontend resource graph;
+- implement Compiled Bridge Descriptor skeleton;
+- implement Source Map / Provenance;
+- wire Build / Package validation path;
+- ensure Studio Preview and Production Build use the same compiler entrypoint where Phase 1 requires;
+- installed Runtime artifacts must be compiled artifacts, not author source.
 
-## Core Architecture
+Phase 1 acceptance:
 
-已冻结：
+- a minimal `frontend.json + Main.aui` compiles through the formal compiler into an exact Runtime Graph;
+- invalid source / binding / style / resource references fail closed;
+- Preview and Build share the compiler;
+- installed Runtime only consumes compiled artifacts;
+- author TS/source/npm build scripts are not executed at install/runtime;
+- targeted tests for changed contracts/compiler/build paths pass.
 
-- Authoring Source Graph → Compiler → Canonical Runtime Graph；
-- Native `.aui` SFC-like first-class authoring；
-- small compiled Frontend Index + exact lazy resource graph；
-- Shadow DOM + Visual Containment + Host System Layer；
-- typed Frontend Host Bridge v1；
-- Experience Binding Registry：Reads / Actions / Operations；
-- fixed Host services：Composer / Conversation / Session / Media / Presentation / External；
-- snapshot + bounded Collection Read；
-- Managed + Headless Conversation；
-- GenerationProjection；
-- Safe Prose AST；
-- typed dynamic style/media sinks；
-- Remote Media Catalog + External Access Permission；
-- Frame Scheduler；
-- NodeRef measurement/resize/visibility/pointer capture；
-- optional Script Sandbox：Supervisor Worker + isolated JS VM；
-- Canvas2D batched command buffer；
-- Localization / IME / Accessibility；
-- Component/View/Root Error Boundary + Host Failure Surface；
-- Experience Epoch / stale handle revocation。
+## Phase 1 boundaries
 
-## Baseline Gate Clarifications
+Do **not** begin Phase 2.
 
-### Frame Scheduler
+Specifically do not implement full:
 
-程序化 presentation 使用 Host-driven local frame scheduler，不暴露 raw browser `requestAnimationFrame` global，也不用于 World Authority timing。
+- semantic DOM renderer;
+- complete CSS/font runtime;
+- visual containment;
+- Headless Conversation;
+- Collection Read runtime;
+- Media Resolver;
+- Localization runtime;
+- IME runtime;
+- Script VM;
+- Canvas renderer;
+- Studio visual editor.
 
-### Layout Measurement
+Phase 1 may create interfaces/schemas needed by later phases, but must not silently implement later phases.
 
-Declared NodeRef 可读取 bounded local geometry并观察 resize/visibility；不暴露真实 DOM 或 Host geometry。
+Do not read or update any `reference/*` branch unless the user explicitly authorizes that reference.
 
-### Remote Media Threat Model
+Do not merge `main` into `package`, `docs`, `plugin`, or `skills`.
 
-`remote-media` 是 External Access Permission。
+## Start procedure for the new conversation
 
-Declared MediaRef/origin 可以限制 arbitrary URL/network，但不能保证获准 origin 完全无法从请求选择/时序观察信息。
+1. Fetch/recheck real remote refs first.
+2. Read, in order:
+   - `main:AGENTS.md`
+   - `docs:README.md`
+   - `docs:HANDOFF.md`
+   - `docs:plans/refactor/native-frontend-runtime-v3.md`
+   - `docs:records/refactor/native-frontend-runtime-v3.md`
+3. Verify `refactor/native-frontend-runtime-v3` real remote HEAD.
+4. If `main` advanced after this checkpoint while the task branch still contains no task commits, fast-forward the task branch to the new `main` before implementation and record the new baseline.
+5. Work only on `refactor/native-frontend-runtime-v3`.
+6. Inspect only directly relevant contract/compiler/build/test code before editing; do not rescan every plan/record/reference.
+7. Implement Phase 1 fully, including appropriate tests and push.
+8. Ordinary failures, code decisions, merge conflicts and test failures should be handled autonomously.
+9. Do not stop until Phase 1 has a concrete tested remote HEAD, unless an actual environment stop condition applies.
 
-Install/enable UI 必须披露 remote origins；Host strip credentials/referrer，并可 proxy/cache；用户可禁用。
+## Phase 1 completion checkpoint
 
-## Implementation Phases
+At the end of Phase 1:
 
-正式开工后，所有 Phase 使用同一分支：
+- update `docs:records/refactor/native-frontend-runtime-v3.md` with:
+  - Start HEAD;
+  - End/Tested HEAD;
+  - exact implementation completed;
+  - key decisions;
+  - tests/CI actually run;
+  - known limitations;
+  - Phase 2 next target;
+- update this `HANDOFF.md`;
+- generate a direct-copy Phase 2 takeover prompt;
+- stop and wait for the user;
+- do not begin Phase 2 automatically.
 
-`refactor/native-frontend-runtime-v3`
+## Direct-copy new conversation prompt
 
-1. **Phase 1 — Contract Reset / Compiler Skeleton**
-2. **Phase 2 — Presentation Runtime / Containment**
-3. **Phase 3 — Host Bridge / Data Plane**
-4. **Phase 4 — Conversation / Session / Prose**
-5. **Phase 5 — Media / Localization / Input / Accessibility / Boundaries**
-6. **Phase 6 — Script Sandbox / Canvas**
-7. **Phase 7 — Studio / AI Authoring**
-8. **Phase 8 — Integration / Heavy Frontend Acceptance**
-9. **Phase 9 — Legacy Removal / Regression / Finalize**
+```text
+你现在正式接手我的 GitHub 项目：
 
-详细目标与验收条件以 Plan 的 Implementation Phases 为权威。
+ZZZdragondYNGPHX/Atria
 
-## Phase Execution Rule
+Task ID：
 
-用户明确批准正式开工后：
+refactor/native-frontend-runtime-v3
 
-1. 重新核对真实远端 refs；
-2. 读取最新 `main:AGENTS.md` 与 `docs:README.md`；
-3. 从最新 `main` 创建 `refactor/native-frontend-runtime-v3`；
-4. 创建 `docs:records/refactor/native-frontend-runtime-v3.md`；
-5. 开始 Phase 1。
+当前架构讨论已经完成，Implementation Baseline v1.0 已冻结。
 
-每个 Phase 完成后：
+现在正式执行：
 
-- 更新同一 Implementation Record；
-- 更新本 `HANDOFF.md`；
-- 记录 task branch HEAD / main baseline / 验证 / 未完成；
-- 生成下一阶段新对话提示词；
-- 主动停止，等待用户继续；
-- 不为各 Phase 重复创建 task branch。
+Phase 1 — Contract Reset / Compiler Skeleton
 
-## 当前停止点
+不要重新进行 Native Frontend v3 架构讨论，不要重新做 Gap Review，也不要开始 Phase 2。
 
-**方案阶段已经完成。**
+当前准备状态：
 
-现在没有 architecture blocker，也没有需要继续发散讨论的前置项。
+- main baseline：
+  191f9f951ccb23cd11d8951e539b8ff6eb8316db
+- task branch：
+  refactor/native-frontend-runtime-v3
+- task branch 当前 HEAD：
+  191f9f951ccb23cd11d8951e539b8ff6eb8316db
+- Plan：
+  docs:plans/refactor/native-frontend-runtime-v3.md
+- Plan commit：
+  7c34318ef86febb6a101d93015ab97a7f1af9fe2
+- Record：
+  docs:records/refactor/native-frontend-runtime-v3.md
+- 当前尚未修改产品代码，尚未执行 Phase 1 测试/CI。
 
-下一步只在用户明确批准“正式开工 / 开始实现 Native Frontend v3”后执行。
+开始前必须：
 
-在获得批准前：
+1. 重新 fetch / 核对真实远端 refs；
+2. 按顺序读取：
+   - main:AGENTS.md
+   - docs:README.md
+   - docs:HANDOFF.md
+   - docs:plans/refactor/native-frontend-runtime-v3.md
+   - docs:records/refactor/native-frontend-runtime-v3.md
+3. 核对 refactor/native-frontend-runtime-v3 的真实远端 HEAD；
+4. 若 main 在本 checkpoint 后前进，而 task branch 仍没有任务提交，则先将 task branch fast-forward 到最新 main，并在 Record 中更新真实 baseline；
+5. 后续只在 refactor/native-frontend-runtime-v3 上工作。
 
-- 不创建 `refactor/native-frontend-runtime-v3`；
-- 不创建 Implementation Record；
-- 不修改 `main` 产品代码；
-- 不开始 Phase 1。
+Phase 1 的权威目标与验收条件以 Plan 的 “Phase 1 — Contract Reset / Compiler Skeleton” 为准。
+
+本阶段核心范围：
+
+- 新 Package / Experience / Frontend / Bridge contract；
+- Native Frontend Source Index；
+- 最小 .aui parser / CST / semantic AST；
+- Canonical Frontend Index / View IR / Component IR；
+- exact Frontend resource graph；
+- Compiled Bridge Descriptor skeleton；
+- Source Map / Provenance；
+- Build / Package validation wiring；
+- Preview 与 Build 共享 compiler entrypoint；
+- installed Runtime 只消费 compiled artifacts。
+
+Hard Cut 已批准：
+
+- 不考虑 Native UI v1/v2 用户数据/作者兼容；
+- 不做 migration assistant；
+- 不做 compatibility CSS；
+- 最终会删除旧 componentModelVersion/v1/v2 Runtime；
+- 但 Phase 1 只做本阶段需要的 contract/compiler reset，不提前跨到最终 Legacy Removal。
+
+不要在 Phase 1 实现完整 Phase 2+ 能力，例如：
+
+- 完整 semantic DOM renderer；
+- 完整 CSS/font runtime；
+- Visual Containment；
+- Headless Conversation；
+- Collection Read runtime；
+- Remote Media Resolver；
+- Localization/IME runtime；
+- Script VM；
+- Canvas renderer；
+- Studio visual editor。
+
+普通代码错误、测试失败、常规工程选择、merge conflict 请自行分析、修改、测试、提交、推送并继续，不要因为一般技术问题停下来问我。
+
+只有在：
+- Phase 1 已完成并验证；
+- CI 进入明显耗时且下一步必须等待；
+- 必须依赖 Android/Termux 真机日志；
+- 必须依赖真实 UI 截图；
+- 或需要我本人权限/Secret/账号操作
+时主动暂停。
+
+Phase 1 完成后必须：
+
+- push tested HEAD；
+- 更新 docs:records/refactor/native-frontend-runtime-v3.md；
+- 更新 docs:HANDOFF.md；
+- 记录 Start HEAD / Tested HEAD / 验证 / 未完成；
+- 生成可直接复制到新对话的 Phase 2 接手提示词；
+- 主动停止，不开始 Phase 2。
+```
