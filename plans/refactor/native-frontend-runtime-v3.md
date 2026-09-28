@@ -1,0 +1,649 @@
+# Atria Native Frontend Runtime v3
+
+## 任务信息
+
+- Task ID：`refactor/native-frontend-runtime-v3`
+- 类型：大型架构 / Native UI 重构
+- 状态：**Discussion Draft v0.5**
+- Primary Workspace（未来实现）：`main`
+- 当前阶段：方案讨论，仅更新 `docs`，尚未创建实现分支
+- 当前源码基线：`main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
+- 当前文档基线：`docs@6f80b6d3d3ae0da43227c5c955f5762f77be6065`
+- 方案路径：`docs:plans/refactor/native-frontend-runtime-v3.md`
+
+本方案由 Native UI v2 在重前端 Package 中暴露出的 CSS、字体、DOM 与交互自由度限制触发。当前阶段不实施代码；每一轮讨论开始前，先把上一轮已形成的新增结论增量/覆盖写入本企划，再继续下一轮讨论。
+
+---
+
+## 1. 背景与当前问题
+
+当前 Native UI v2 的核心实现具有明显的 Host-owned Presentation 特征：
+
+- UI 节点类型是固定白名单；
+- props / bindings / events 是固定白名单；
+- Runtime 由 Host 创建真实 DOM；
+- Package 不能携带任意 CSS；
+- Package 字体、复杂布局、伪元素、滤镜、动画等能力受 Host 样式体系约束；
+- Native Component 主要通过 Host 提供的 slot 挂载；
+- Package 不执行任意 JS，不获得 DOM / network / storage 等浏览器能力。
+
+这一设计对“安全声明式 UI”有效，但对 Atria 的重前端游戏目标形成明显上限。
+
+本重构不以“为 v2 多加若干 CSS 属性”为目标，而是重新定义 Package Presentation 权限与 Host Authority 的边界。
+
+---
+
+## 2. 核心设计原则
+
+### 2.1 新的所有权原则
+
+Native UI v3 / Native Frontend Runtime 的核心原则调整为：
+
+> **Package owns presentation. Host owns capabilities and authority.**
+
+Package 应拥有几乎完整的游戏前端表现能力，包括：
+
+- DOM 结构；
+- CSS；
+- 字体；
+- Theme；
+- 布局；
+- 动画；
+- 响应式；
+- 自定义组件；
+- 客户端 UI 状态；
+- 交互；
+- 拖拽、手势和输入映射；
+- Canvas / 数据可视化；
+- 在受控沙箱中的前端计算。
+
+Host 继续拥有：
+
+- World / Session / Memory / Continuity / Realm / Shared 等 Authority；
+- Model / Provider / Secret；
+- Native Session / Command / Task / Activity / Composer；
+- 裸网络能力；
+- 文件系统；
+- Atria Host DOM 与系统 UI；
+- 浏览器全局环境；
+- capability negotiation、权限与安全限制。
+
+“可以任意改变按钮外观”不等于“可以执行任意权威写入”。
+
+### 2.2 Experience Mode 与前端能力解耦
+
+`Component / Hybrid / Full` 继续只表示 layout ownership，不是权限等级。
+
+Frontend Runtime 能力与 Experience Mode 正交，例如：
+
+- Component + Declarative
+- Component + Scripted
+- Hybrid + Declarative
+- Full + Scripted
+
+不得通过升级到 Full 模式来获得额外 Runtime 权限。
+
+### 2.3 Typed Authority Only 继续成立
+
+无论 Declarative Runtime 还是 Script Runtime：
+
+- Package 可以读取经过授权的 projection；
+- Package 不得裸写 World / Session / Memory / Continuity / Realm / Shared；
+- 权威修改仍必须经过 Typed Command / Activity / Task / Session Application Command / 其它正式 Host Bridge；
+- UI / Draft / Component Local State 不等于游戏事实。
+
+---
+
+## 3. Declarative DOM：从组件白名单转向安全 DOM
+
+### 3.1 目标
+
+v3 不再要求 Atria 为每一种普通 Web UI 元素重新设计专用组件。
+
+Canonical UI IR 应允许广泛的安全语义 DOM，例如：
+
+- `div / span / main / section / article / header / footer / nav / aside`
+- `p / h1-h6`
+- `ul / ol / li / dl / dt / dd`
+- `table / thead / tbody / tfoot / tr / th / td`
+- `details / summary`
+- `figure / figcaption`
+- `button / label / input / textarea / select / option`
+- `progress / meter`
+- `img / picture / source / svg`
+
+输入仍应经过结构化 compiler / validator，不以 raw HTML 字符串或 `innerHTML` 为主要 Runtime Contract。
+
+### 3.2 Attribute 模型
+
+从“允许极少数 props”转向：
+
+- 默认允许安全 HTML attributes；
+- 支持 `aria-*`；
+- 支持 `data-*`；
+- 支持 class / id / role / tabindex 等；
+- 对资源型属性进行 AssetRef / Package URL 解析；
+- 对危险导航、脚本与浏览器能力显式禁止。
+
+### 3.3 默认禁止的危险元素 / 能力
+
+基础 v3 不直接开放：
+
+- `script`
+- `iframe`
+- `object`
+- `embed`
+- remote stylesheet executable dependency
+- `meta refresh`
+- arbitrary external form action
+- `javascript:` URL
+
+外链、导航与未来网络能力必须经过 Host capability。
+
+---
+
+## 4. CSS、字体与 Presentation 隔离
+
+### 4.1 CSS 方向
+
+不再继续扩充一个“Safe Appearance 属性 DSL”来模拟 CSS。
+
+目标是允许 Package 使用接近真实 Web CSS 的能力，包括：
+
+- Flex / Grid
+- CSS Variables
+- Cascade / Layers
+- Media Query
+- Container Query
+- Pseudo-element
+- Pseudo-class
+- Transition / Animation / Keyframes
+- Filter / Backdrop Filter
+- Mask
+- Transform
+- Typography
+- Writing Mode
+- Variable Font properties
+- Package-local `url(...)`
+
+复杂样式优先放置在 Package stylesheet；inline style 可以作为局部能力存在。
+
+### 4.2 Experience Shadow Boundary
+
+每个 Experience 应具有真正的 Package Presentation 隔离边界：
+
+```text
+Atria Host DOM
+└─ Experience Surface
+   └─ Experience ShadowRoot
+      ├─ Package styles
+      ├─ Package fonts
+      ├─ Package DOM
+      └─ Package Components
+```
+
+Package-global CSS 只在本 Experience 内全局，不允许影响：
+
+- Atria Settings
+- Atria Navigation
+- Host Shell
+- 其它 Package
+- 其它 Experience
+
+### 4.3 Native Component Boundary
+
+Native Components（例如 Conversation / Composer）保持 Host-owned 内部实现，可使用独立 Shadow Boundary。
+
+Package 通过稳定接口自定义：
+
+- typed props；
+- events；
+- slots；
+- CSS custom properties；
+- `::part()`。
+
+Package 不依赖 Native Component 私有 DOM 结构。
+
+### 4.4 v3 默认视觉
+
+Runtime Contract 不再强制 Package 使用 Atria 默认字体、padding、gap、badge、button 或 input 风格。
+
+Atria Default Theme 应成为可选默认主题，而不是 Runtime Contract。
+
+---
+
+## 5. Client Interaction Runtime
+
+### 5.1 状态域
+
+至少区分：
+
+- `view`：最短寿命的 view / instance presentation state；
+- `component state`：组件实例局部状态；
+- `ui`：Experience 生命周期内 UI state；
+- `draft`：尚未提交到 Authority 的操作草稿；
+- `prefs`：Player / Device 范围的持久偏好。
+
+这些状态均不得冒充 World / Session Authority。
+
+### 5.2 Event System
+
+目标支持广泛的前端事件与标准化事件投影，包括：
+
+- click / dblclick / contextmenu
+- pointer down/up/move/enter/leave/cancel
+- keyboard
+- focus / blur
+- input / change / submit
+- scroll / wheel
+- drag / drop
+- animation / transition completion
+- touch / gesture abstraction
+- longpress / swipe / pinch
+- resize / visibility
+
+事件对象必须是安全 projection，不暴露真实 DOM 对象或 Host traversal 能力。
+
+### 5.3 Interaction Program
+
+v3 的客户端动作不能只停留在 `ui.set / ui.toggle`。
+
+需要覆盖：
+
+- condition / branch；
+- set / toggle / increment / decrement；
+- array / collection transforms；
+- open / close；
+- focus / scroll；
+- timer；
+- drag / drop；
+- input action；
+- typed Host intent。
+
+复杂 UI 不应退化为巨大 JSON DSL。Authoring 层可拥有更适合人工与 AI 编辑的 Interaction Language，再编译为 Canonical Interaction IR。
+
+### 5.4 Pure Computation
+
+允许纯函数型数据操作，例如：
+
+- map / filter / reduce / sort / group / find；
+- math；
+- string formatting；
+- collection transforms；
+- geometry / vector helpers。
+
+避免通用、隐式、可形成副作用环的 watcher/effect 模型。优先事件驱动。
+
+### 5.5 Timer
+
+支持 Experience-scoped timer：
+
+- after
+- every
+- cancel
+
+Experience dispose 时自动销毁。
+
+跨 Turn / 后台 / 世界时间逻辑继续使用现有 Temporal / Automation / Lifecycle，不由前端 timer 承担。
+
+### 5.6 Input Mapping
+
+游戏主控制优先通过语义 Input Actions：
+
+- confirm
+- cancel
+- menu
+- inventory
+- move directions
+- 自定义 action
+
+Host 将 Keyboard / Gamepad / Touch 映射为语义输入，Package 不应被迫写死设备键位。
+
+---
+
+## 6. Package Component System
+
+### 6.1 两类组件
+
+明确区分：
+
+**Package Component**
+- Package-owned DOM / CSS / local state / props / slots / events / interaction。
+
+**Native Component**
+- Host-owned implementation / security boundary / capability binding。
+
+### 6.2 数据流
+
+默认采用：
+
+> **Props down, Events up**
+
+普通 Package Component 默认只获得：
+
+- props
+- local state
+- event
+- env
+
+World / Session /其它 Host projection 应由上层显式注入，而不是所有组件默认获得整个 Runtime Context。
+
+### 6.3 Typed Component Contract
+
+Package Component 支持声明：
+
+- typed props；
+- typed emits；
+- slots / scoped slots；
+- defaults；
+- required props；
+- schemas；
+- AssetRef 等特殊类型。
+
+这样 Studio、Compiler、AI Authoring 和测试可以进行静态验证。
+
+### 6.4 Component Local State
+
+每个 Component Instance 拥有独立 local state。
+
+同一页面上的多个 `CharacterCard` 不共享自己的展开状态、tab、hover 等局部 presentation state。
+
+### 6.5 生命周期
+
+可以提供有限的 declarative lifecycle：
+
+- mount
+- unmount
+- activate
+- deactivate
+- propsChanged
+
+生命周期只能触发 Client Interaction Runtime / Sandbox Controller 能力，不成为任意 Host 代码入口。
+
+### 6.6 CSS Scope
+
+Package 总体由 Experience ShadowRoot 隔离。
+
+Package Component 默认使用 compiler-level scoped style；Theme / Design System 可以使用 Package-global style。
+
+不要求每个 Package Component 单独创建 ShadowRoot，以避免 Theme、Font、layout、overlay 与 slot 组合复杂化。
+
+### 6.7 Keyed Reconciliation / Repeat
+
+动态集合使用稳定 key 保留 Component Instance：
+
+- local state；
+- focus；
+- animation；
+- DOM identity。
+
+不需要复制完整 React Virtual DOM，但需要可靠的 keyed declarative reconciliation。
+
+### 6.8 Virtualization
+
+大型列表应支持 Host/Runtime-assisted virtualization，避免数百/数千记录全部常驻 DOM。
+
+### 6.9 Portal / Overlay
+
+Experience 内建立统一 Overlay Root，用于：
+
+- Tooltip
+- Context Menu
+- Dropdown
+- Modal
+- Toast
+- Drag Ghost
+- Floating Panel
+
+Portal 仍停留在 Experience Shadow Boundary 内。
+
+### 6.10 Authoring 与 Runtime IR 分离
+
+不要求作者长期直接手写巨大 JSON。
+
+```text
+Authoring Format / Studio / AI
+        ↓ compile
+Canonical Native UI IR
+        ↓ validate
+Native Frontend Runtime
+```
+
+Canonical IR 继续结构化，便于验证、迁移、Diff、测试与 Studio 操作。
+
+---
+
+## 7. Script Runtime
+
+### 7.1 基本立场
+
+v3 不把“Package 永远禁止 JavaScript”作为永久原则。
+
+允许可选 **Package Script Sandbox**，但禁止获得宿主 JavaScript 权限。
+
+Script Runtime 是与 Experience Mode 正交的 capability，而不是更高级模式。
+
+### 7.2 Sandbox Global
+
+Sandbox 默认不存在或禁止：
+
+- `window`
+- `document`
+- `fetch`
+- `XMLHttpRequest`
+- `WebSocket`
+- `localStorage`
+- `indexedDB`
+- `navigator`
+- `location`
+- `eval`
+- dynamic `Function`
+
+只暴露 Host 显式提供的最小安全 API。
+
+### 7.3 Script 不直接控制真实 DOM
+
+Script 使用 opaque handles，例如：
+
+- NodeRef
+- CanvasRef
+- AssetRef
+- typed Host handles
+
+NodeRef 可以执行经过允许的 presentation 操作，例如：
+
+- focus
+- scroll
+- class toggle
+- CSS variable update
+
+但不能通过 `ownerDocument`、`parentNode`、`innerHTML`、任意 selector 等方式穿透边界。
+
+### 7.4 DOM 仍由 Declarative IR 创建
+
+Script 不作为主要 UI construction API。
+
+禁止把 Runtime 变成：
+
+- `createElement`
+- `appendChild`
+- `innerHTML`
+
+动态 UI 应通过 state → declarative reconciliation 完成。
+
+Script 主要负责复杂计算、Canvas、复杂交互 controller 等 Declarative Runtime 不擅长的工作。
+
+### 7.5 Canvas
+
+可提供受控 Canvas2D capability。
+
+图像、字体等资源仍来自 Package AssetRef，不允许脚本通过网络直接加载远程资源。
+
+WebGL / WebGPU 暂不作为 v3 基线承诺，但架构不得堵死未来 capability extension。
+
+### 7.6 Host Bridge
+
+Script 的 Authority 访问必须继续使用 typed bridge，例如：
+
+- command
+- activity
+- task
+- composer
+- session application command
+- continuity / realm / shared 正式能力
+
+Sandbox 不获得 SessionCore / repository / database 等真实对象引用。
+
+### 7.7 Module System
+
+支持：
+
+- Package-local modules；
+- Atria approved standard modules；
+- 可 vendored 的 sandbox-compatible pure dependencies。
+
+禁止：
+
+- remote executable import；
+- Node built-ins；
+- 浏览器宿主依赖；
+- 动态下载并执行代码。
+
+### 7.8 资源预算
+
+Script Runtime 必须由 Host 控制：
+
+- CPU budget
+- memory budget
+- execution timeout
+- cancellation
+- message size
+- module size
+
+脚本故障不得阻塞整个 Atria Host。
+
+### 7.9 Execution Isolation
+
+实现技术暂不冻结。
+
+正式方案需要比较独立 Worker、独立 JS VM、WASM/其它隔离方案。
+
+无论具体技术为何，边界必须是：
+
+```text
+Sandbox Runtime
+    ⇅ structured messages / typed requests
+Host Bridge
+    ⇅
+Atria Native Runtime
+```
+
+而不是通过 `Object.freeze(window)` 之类的“共享 Realm 假沙箱”建立安全模型。
+
+---
+
+## 8. Frontend Capability Manifest
+
+Package 应显式声明前端能力，例如概念上：
+
+```yaml
+frontend:
+  version: 3
+  capabilities:
+    - css
+    - fonts
+    - interactions
+    - script
+    - canvas-2d
+
+  host:
+    - conversation
+    - composer
+    - fullscreen
+```
+
+未来可能扩展：
+
+- network
+- clipboard
+- audio-input
+- camera
+- webgl
+- webgpu
+
+高权限能力应可在安装 / 启用时向用户明确展示。
+
+---
+
+## 9. 当前明确禁止 / 非目标
+
+当前设计仍不允许：
+
+- Package CSS 逃逸到 Atria Host DOM；
+- Package 直接控制 Atria Settings / Navigation / Shell；
+- 裸 World / Session / Memory / Realm / Continuity 写入；
+- Package 直接拿数据库或 repository handle；
+- Package 裸文件系统；
+- Package Secret / Provider access；
+- remote executable HTML / JS dependency；
+- arbitrary browser global；
+- arbitrary Host DOM traversal；
+- 用前端 local storage 建立第二套 Game Authority；
+- 因为使用 Script Runtime 而绕过 Typed Capability Bridge。
+
+---
+
+## 10. 兼容与迁移原则（未冻结）
+
+Native UI v2 已经是正式能力，不应通过静默修改 `schemaVersion` 破坏现有 Package。
+
+v3 应作为清晰的新 Frontend Runtime contract。
+
+仍待讨论：
+
+- v2 → v3 migration assistant；
+- v2 runtime 保留周期；
+- v2 与 v3 是否同一 Package 可并存；
+- Studio 如何区分 v2 / v3；
+- Package manifest 如何声明 frontend version；
+- Legacy Safe Appearance 与 v3 CSS 的迁移策略。
+
+---
+
+## 11. 当前待讨论主题
+
+下一轮优先讨论：
+
+### Resource / CSS / Build Artifact Model
+
+- `@font-face`
+- font formats / variable fonts
+- image / SVG / cursor / mask / texture
+- CSS `url(...)`
+- Package-relative URL
+- stylesheet dependency graph
+- scoped / global / theme styles
+- CSS layers
+- Native Component `::part()`
+- animation/media assets
+- AssetRef 与 CSS URL 的解析
+- immutable dependency closure
+- build-time asset hashing
+
+以及最关键的问题：
+
+> **Atria 是否允许 Package 直接携带 React / Vue / Svelte 等现成 Web 前端的构建产物？**
+
+这将决定 Native Frontend Runtime 是只支持 Atria-native authoring，还是也成为通用 Web Frontend Host。
+
+---
+
+## 12. 讨论流程约定
+
+从本企划建立后，每一轮讨论遵循：
+
+1. 先把上一轮讨论中已经形成的新结论增量或覆盖更新到本 Plan；
+2. 若只是进一步解释而没有方案实质变化，不做机械重复；
+3. 更新完成后，再继续本轮新的设计讨论；
+4. 当前仍是讨论阶段，不创建实现分支、不写产品代码；
+5. 等用户明确批准方案进入实施后，再依据最终 Plan 拆实施阶段与正式工作分支。
