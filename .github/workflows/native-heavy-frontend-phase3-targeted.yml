@@ -30,6 +30,10 @@ on:
       - 'tests/native/turn-app-outcome-g1.test.js'
       - '.github/workflows/native-heavy-frontend-phase3-targeted.yml'
 
+  pull_request:
+    branches:
+      - package/native-heavy-frontend-reference
+
 permissions:
   contents: read
 
