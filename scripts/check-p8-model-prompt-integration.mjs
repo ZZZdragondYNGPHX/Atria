@@ -18,8 +18,18 @@ for (const guard of guards) {
 // Request-time Core only reads validated ports. The only canonical writes live
 // in P1 persistence; neither compile nor resolve may secretly provision defaults.
 const noWrites = /\b(?:saveRuntimeRoute|saveModelProfile|saveConnectionProfile|putMutable|writeFile|writeFileSync|localStorage|indexedDB)\s*(?:\(|\.)|\.library\.commit\s*\(/;
-for (const file of walk('src/native/model-prompt-runtime').filter(file => !file.endsWith('/persistence.js'))) assert.doesNotMatch(read(file), noWrites, file);
+const requestCore = walk('src/native/model-prompt-runtime').filter(file => !['/persistence.js', '/presets.js'].some(suffix => file.endsWith(suffix)));
+for (const file of requestCore) assert.doesNotMatch(read(file), noWrites, file);
 assert.doesNotMatch(read('src/native/adapters/generation-host.js'), noWrites);
+// PromptPresetStore is an authoring owner colocated with model/prompt resources,
+// not request-time Core. It may publish immutable Library revisions only through
+// the existing guarded Runtime write boundary.
+const presets = read('src/native/model-prompt-runtime/presets.js');
+assert.match(presets, /export class PromptPresetStore/);
+assert.match(presets, /withRuntimeWrite\(handle/);
+assert.match(presets, /putImmutable\(tx/);
+assert.match(presets, /putMutable\(tx/);
+assert.doesNotMatch(presets, /saveRuntimeRoute\s*\(|saveModelProfile\s*\(|saveConnectionProfile\s*\(|\.library\.commit\s*\(|localStorage|indexedDB/);
 for (const file of ['route-resolver', 'prompt-compiler', 'generation-service', 'package-freeze']) assert.doesNotMatch(read('src/native/model-prompt-runtime/' + file + '.js'), /getCurrent\s*\(|currentRevision/);
 const host = read('src/native/adapters/generation-host.js');
 assert.match(host, /native_generation_context_ambiguous/); assert.match(host, /input\.routeRef\.scope !== 'player'/);
