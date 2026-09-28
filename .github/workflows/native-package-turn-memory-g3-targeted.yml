@@ -12,6 +12,7 @@ on:
       - 'public/scripts/native/session-runtime.js'
       - 'public/scripts/native/experience/llm/memory-bridge.js'
       - 'public/scripts/agents/memory/hybrid-retrieval.js'
+      - 'public/scripts/agents/memory/main.js'
       - 'src/native/adapters/generation-host.js'
       - 'src/native/adapters/native-session-context.js'
       - 'tests/native/package-turn-memory-bridge-g3.test.js'
@@ -45,11 +46,12 @@ jobs:
           node --check public/scripts/native/session-runtime.js
           node --check public/scripts/native/experience/llm/memory-bridge.js
           node --check public/scripts/agents/memory/hybrid-retrieval.js
+          node --check public/scripts/agents/memory/main.js
           node --check src/native/adapters/generation-host.js
           node --check src/native/adapters/native-session-context.js
           node --check tests/native/package-turn-memory-bridge-g3.test.js
       - name: Lint touched modules
-        run: npx eslint public/scripts/native/play-generation.js public/scripts/native/session-runtime.js public/scripts/native/experience/llm/memory-bridge.js public/scripts/agents/memory/hybrid-retrieval.js src/native/adapters/generation-host.js src/native/adapters/native-session-context.js tests/native/package-turn-memory-bridge-g3.test.js
+        run: npx eslint public/scripts/native/play-generation.js public/scripts/native/session-runtime.js public/scripts/native/experience/llm/memory-bridge.js public/scripts/agents/memory/hybrid-retrieval.js public/scripts/agents/memory/main.js src/native/adapters/generation-host.js src/native/adapters/native-session-context.js tests/native/package-turn-memory-bridge-g3.test.js
       - name: Run G3 and G1 G2 targeted tests
         env:
           ATRIA_DISABLE_MYSQL_TESTS: 1
@@ -60,3 +62,4 @@ jobs:
           native/turn-app-outcome-g1.test.js
           native/background-task-app-bridge-g2.test.js
           memory-graph/hybrid-retrieval.test.js
+          memory-graph/source-lifecycle.test.js
