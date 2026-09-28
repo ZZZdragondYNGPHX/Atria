@@ -10,8 +10,8 @@
   },
   "package": {
     "name": "Native Heavy-Frontend Reference Package",
-    "version": "0.3.0-phase3",
-    "description": "A story-first Hybrid Native reference package built from original placeholder content.",
+    "version": "0.4.0-phase4",
+    "description": "A story-first Hybrid Native reference package with complete Phase 4 application presentation.",
     "author": "Atria Reference",
     "actors": [
       {
@@ -93,6 +93,11 @@
           },
           {
             "id": "conversation-presentation",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "message-projection",
             "version": 1,
             "required": true
           },
@@ -254,11 +259,16 @@
                       "maxLength": 128
                     },
                     "maxItems": 16
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 128
                   }
                 },
                 "required": [
                   "kind",
                   "origin",
+                  "title",
                   "participants",
                   "location",
                   "status",
@@ -284,7 +294,8 @@
                 "resolved_beats": 0,
                 "started_at": 0,
                 "outcome_receipt_refs": [],
-                "narrative_refs": []
+                "narrative_refs": [],
+                "title": ""
               },
               "commands": [
                 {
@@ -330,11 +341,17 @@
                         "type": "integer",
                         "minimum": 0,
                         "maximum": 100000000
+                      },
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
                       }
                     },
                     "required": [
                       "kind",
                       "origin",
+                      "title",
                       "participants",
                       "location",
                       "premise",
@@ -370,7 +387,10 @@
                       "formula": "args.started_at"
                     },
                     "outcome_receipt_refs": [],
-                    "narrative_refs": []
+                    "narrative_refs": [],
+                    "title": {
+                      "formula": "args.title"
+                    }
                   }
                 },
                 {
@@ -1608,6 +1628,9 @@
                   "origin"
                 ],
                 [
+                  "title"
+                ],
+                [
                   "participants"
                 ],
                 [
@@ -1659,6 +1682,11 @@
                 [
                   "church",
                   "level"
+                ],
+                [
+                  "people",
+                  "caretaker",
+                  "relationship"
                 ]
               ]
             },
@@ -1780,6 +1808,97 @@
               "knowledge": true,
               "memory": false,
               "maxItems": 48,
+              "maxCharacters": 12000
+            },
+            {
+              "id": "church_operations",
+              "audience": "player",
+              "sources": [
+                "church-operations-source"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 16,
+              "maxCharacters": 8192
+            },
+            {
+              "id": "church_projects",
+              "audience": "player",
+              "sources": [
+                "church-projects-source"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 24,
+              "maxCharacters": 12288
+            },
+            {
+              "id": "church_opportunities",
+              "audience": "player",
+              "sources": [
+                "opportunities-source"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 24,
+              "maxCharacters": 12288
+            },
+            {
+              "id": "story_event",
+              "audience": "player",
+              "sources": [
+                "event-context"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 8,
+              "maxCharacters": 8192
+            },
+            {
+              "id": "people_schedule",
+              "audience": "player",
+              "sources": [
+                "schedule-source"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 24,
+              "maxCharacters": 12288
+            },
+            {
+              "id": "people_event",
+              "audience": "player",
+              "sources": [
+                "event-context"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 8,
+              "maxCharacters": 8192
+            },
+            {
+              "id": "people_recent",
+              "audience": "player",
+              "sources": [
+                "timeline-context"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 8,
               "maxCharacters": 12000
             }
           ],
@@ -2302,12 +2421,40 @@
                 "district"
               ],
               "additionalProperties": false
+            },
+            "people": {
+              "type": "object",
+              "properties": {
+                "caretaker": {
+                  "type": "object",
+                  "properties": {
+                    "relationship": {
+                      "type": "string",
+                      "maxLength": 32,
+                      "enum": [
+                        "unfamiliar",
+                        "acquainted",
+                        "trusted"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "relationship"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "caretaker"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
             "calendar",
             "church",
-            "unlockedAreas"
+            "unlockedAreas",
+            "people"
           ],
           "additionalProperties": false
         },
@@ -2338,12 +2485,17 @@
             "sanctuary": true,
             "market": true,
             "district": false
+          },
+          "people": {
+            "caretaker": {
+              "relationship": "acquainted"
+            }
           }
         },
         "knowledgeBindingIds": [],
         "assetIds": [],
         "metadata": {
-          "referencePhase": 2,
+          "referencePhase": 4,
           "objectiveFactsOnly": true
         },
         "createdAt": 1790524800000
