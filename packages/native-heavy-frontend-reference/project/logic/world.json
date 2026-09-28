@@ -55,6 +55,31 @@
       }
     },
     {
+      "id": "church.enact-open-books",
+      "event": "church.decree.enacted",
+      "argsSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "validators": [
+        {
+          "id": "community-first-active",
+          "formula": "world.church.decrees.communityFirst == true",
+          "error": "Community First must be active first"
+        },
+        {
+          "id": "not-active",
+          "formula": "world.church.decrees.openBooks == false",
+          "error": "Open Books is already active"
+        }
+      ],
+      "assign": {
+        "church.decrees.openBooks": true
+      }
+    },
+    {
       "id": "church.promote-level",
       "event": "church.level.promoted",
       "argsSchema": {
