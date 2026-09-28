@@ -8,10 +8,10 @@
 - Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
 - Baseline: **Implementation Baseline v1.0**
 - Compatibility Strategy: **Hard Cut / Clean Break**
-- Current Stage: **Phase 1 — Contract Reset / Compiler Skeleton**
-- Status: **Completed — Phase 2 ready; stopped at phase boundary**
+- Current Stage: **Phase 2 — Presentation Runtime / Containment**
+- Status: **Completed — Phase 3 ready; stopped at phase boundary**
 - Main Baseline: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`
-- Task Branch HEAD: `3d3c7c6733fcf5f4a1f11d11f92aa3b168e624d8`
+- Task Branch HEAD: `91c45cc3b3a04346f2ac87baa73adb3215ebd6b1`
 
 This Record is the permanent implementation history for the multi-stage Native Frontend v3 refactor. Each completed Phase must append/update its checkpoint here; do not create a separate Record per Phase.
 
@@ -151,3 +151,66 @@ The Bridge descriptor remains a compile-time skeleton: identity-only mapping, cl
 
 Use `HANDOFF.md` for the direct-copy Phase 2 prompt. Stop after this checkpoint; Phase 2 requires the next explicit user instruction.
 
+
+---
+
+## Phase 2 — Presentation Runtime / Containment
+
+### Checkpoint
+
+- Start HEAD: `3d3c7c6733fcf5f4a1f11d11f92aa3b168e624d8`
+- End / Tested / Pushed HEAD: `91c45cc3b3a04346f2ac87baa73adb3215ebd6b1`
+- Commit: `feat(frontend): implement native v3 presentation runtime and containment`
+- Branch: `refactor/native-frontend-runtime-v3`; pushed to the same origin branch.
+- Main remains `191f9f951ccb23cd11d8951e539b8ff6eb8316db`.
+- Start docs HEAD: `31392d0daf7da87cf90c5a1bcd50df051a386839`.
+- User's continuation after the Phase 1 checkpoint authorized Phase 2. Fetched refs and verified clean task/docs working trees before implementation. No rebase/fast-forward was needed because the branch already contained the Phase 1 task commit.
+- Implementation Baseline v1.0 unchanged. No architecture review, no reference-branch reads, no Phase 3 implementation, no merge to main or branch deletion.
+
+### Implementation completed
+
+1. Extended the `.aui` semantic contract and compiled Component IR with typed props/emits/slots, closed state schemas, declarative expressions/interactions/lifecycle, bindings, conditions, dynamic style declarations, NodeRefs, keyed lists and virtual windows. Interaction source spans remain linked to semantic IDs.
+2. Added CSS AST compilation using `css-tree`: layers, media/container queries, pseudo-elements/classes, custom properties, Grid/Flex, keyframes/transitions, transforms, filters and exact local resource URLs. Extracted local font faces, linked family names to Experience-local identities, and retained exact resource dependency validation. WOFF2/WOFF/TTF/OTF are supported asset types.
+3. Added independent artifact checks for props/emits/slots, View targets/default root props, shared/View state conflicts, write paths, lifecycle route recursion, unique NodeRefs and list ownership. Rehashed compiled styles still undergo semantic resource validation.
+4. Added `public/scripts/native/frontend/{resources,platform,runtime}.js`: lazy hash-checked compiled resource loading; owned blob/font cleanup; semantic DOM renderer; per-instance ShadowRoots; typed props down/events up and slots; local Component/View/UI/Draft/Prefs state; form dirty/touched/error/busy state; local routing and View history; keyed reconciliation and bounded fixed-height virtualization.
+5. Every View mounts inside a Host-owned clipping/containment frame outside the Package stylesheet's ShadowRoot. Package fixed positioning and extreme z-index remain bounded by the assigned surface. Package dialog/popover/browser-top-layer entry points are absent. Overlays use local frames, background inert, initial focus, trap, restore and coordinated Escape.
+6. Full Host System Layer keeps Exit, Stop, Save and Diagnostics and gains Reload Presentation. Overlay Escape is coordinated before Full exit. Rendering failures use a Host-owned local failure surface outside Package CSS. Local route and overlay revisions discard stale asynchronous loads and release stale mounts.
+7. Added the bounded frame scheduler with cancellation and motion/visibility policy; declared NodeRef geometry, scroll metrics, resize/intersection observers, pointer capture/release and automatic revocation; responsive frame/viewport/pointer/motion/color environment projections and CSS variables.
+8. Production v3 dispatch now enters this renderer before the old selector/command path. Its resource transport uses the existing scoped exact Runtime endpoint. Account preferences reuse `createNativeUiStateStorage`; no new persistence authority was introduced. Bridge placeholders remain unavailable and never dispatch through legacy World/command fallback.
+9. Studio Preview returns only the owner-checked immutable compiled graph's files and uses the same renderer as Play. Async Preview disposal protects against late mount completion. It does not execute author source or introduce a visual editor.
+10. Added authoring notes at `src/native/authoring-examples/frontend-v3/README.md`, a reusable representative fixture, unit/integration tests and a real Edge browser smoke script.
+
+### Decisions and explicit bounds
+
+- Compiler and runtime remain data-only; no arbitrary expressions, callbacks, script execution or raw HTML. Typed local expressions and interaction actions implement Phase 2's interaction baseline.
+- CSS network-producing sinks must resolve to exact graph assets or local fragments. CSS imports, external URLs, local-font probes and unresolved/unsafe resource functions fail closed. A discovered escaped `u\72l(...)` function bypass was fixed and regression-tested. SVG escaped resource attributes and case-varied prohibited input types also fail closed.
+- Global Package styles are installed into Component ShadowRoots; inline Component styles follow them. Host registers prefixed font families and removes registrations/blob URLs on Experience disposal.
+- Component instances are capped at 512, rendered nodes at 20000, route history at 64 and overlays at 8. Lists use unique scalar keys; over 512 items require fixed-height virtualization, with a maximum declared array size of 10000. Existing message schema defaults remain 256; the shared schema validator receives the larger bound only for v3 presentation contracts.
+- NodeRefs cannot target repeated nodes in one instance. Repeated child Components have distinct instance IDs and can own their own refs. Observer subscriptions are capped/coalesced, and no NodeRef returns DOM/Host objects.
+- Lifecycle routing is rejected to avoid recursive mounts. Local user interactions own navigation. View state survives back navigation; UI/Draft state survives route changes; Component state is per instance; Prefs use existing Host account storage.
+- Preview currently transports its bounded exact compiled graph as a base64 bundle. View/Component mounting and parsing remain lazy through the same runtime resource loader; production resource transport fetches exact paths on demand.
+- Static CSS is parsed and classified; this is not arbitrary browser execution permission. Unrecognized/unparsed resource syntax is rejected rather than silently passed through.
+
+### Validation actually executed
+
+Local Windows / Node `v24.18.0`, Edge headless via repository Playwright dependency.
+
+- Existing Phase 1 compiler tests remained passing throughout the contract extension.
+- Broad Native regression: **97 suites / 1633 tests passed**, FS/SQLite included, using the existing `ATRIA_DISABLE_MYSQL_TESTS=1` and `ATRIA_DISABLE_POSTGRES_TESTS=1` switches.
+- Adjacent game-runtime regression: **50 suites / 492 tests passed**.
+- Final focused regression after the last race/contract/Preview refinements: **8 suites / 271 tests passed** (`frontend-presentation`, `frontend-v3`, `studio-service`, `runtime-http`, `studio-preview-experience`, `ui-live`, `ui-full-host`, `message-templates`).
+- Real browser `node tests/frontend/native-frontend-v3.smoke.mjs`: **6 scenarios passed**, Component/Hybrid/Full at **1440px and 390px**. Verified font registration/removal, typed local state, independent component state and emits/slots, form edits/submission, Prefs adapter, overlay initial/trap/restore/Escape, View back-state retention, NodeRef resize and real pointer capture, keyed node identity across reorder, 1000-row virtualization, Host control hit testing under hostile fixed/z-index styles, recovery, Preview parity and final cleanup. No page errors or runtime diagnostics. Inspected the rendered mobile Full screenshot. Screenshots are local evidence under `.git/frontend-v3-evidence/`, not committed artifacts.
+- Full root `npm run lint`: passed. Final changed-file and test ESLint: passed.
+- `node docker/build-lib.js`: webpack build passed, including the final tree.
+- `git diff --check`: passed. Temporary task log files removed after recording results.
+- No remote CI, Android/Termux/physical-device, MySQL/PostgreSQL, non-Edge browser or production-session end-to-end claim. Production dispatcher/resource integration is additionally covered by unit/HTTP tests; browser acceptance uses deterministic compiled fixtures.
+
+### Remaining scope / next checkpoint
+
+Phase 2 acceptance is complete. **Stop before Phase 3.**
+
+Phase 3 is **Host Bridge / Data Plane** per the Plan: Frontend Host Bridge v1, Experience Binding Registry, scoped Component uses, snapshot and Collection Reads/cursors, Actions/Operations, unified Receipt/Error, idempotency/revision guards, Experience Epoch/stale revocation and fixed prefs/environment projections. Existing descriptor binding placeholders are compile-time only; local route load revisions are not authority epochs.
+
+No Headless Conversation, Session/Prose expansion, Remote Media, Localization/IME runtime, Script VM, Canvas or Studio visual editor was implemented here. Existing installed v1/v2 code remains only for the scheduled Phase 9 removal. Do not turn that temporary retention into compatibility or migration scope.
+
+`HANDOFF.md` contains the direct-copy Phase 3 prompt and the tested checkpoint. Continue only on the next user instruction.
