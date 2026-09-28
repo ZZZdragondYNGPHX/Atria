@@ -1,0 +1,12 @@
+# Merge into your existing config; replace paths. Never commit personal settings.
+[mcp_servers.atria]
+command = "node"
+args = [
+  "/absolute/path/to/plugin-worktree/atria-mcp/src/cli.js",
+  "--repo", "/absolute/path/to/product-worktree",
+  "--url", "http://127.0.0.1:8000"
+]
+startup_timeout_sec = 30
+tool_timeout_sec = 90
+# Add --allow-writes only for an explicitly authorized development instance.
+# Add --headed to sign in manually in the isolated browser window.

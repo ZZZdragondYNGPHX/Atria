@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "atria": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/absolute/path/to/plugin-worktree/atria-mcp/src/cli.js",
+        "--repo", "/absolute/path/to/product-worktree",
+        "--url", "http://127.0.0.1:8000"
+      ]
+    }
+  }
+}
