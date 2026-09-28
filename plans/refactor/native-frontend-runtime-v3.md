@@ -4,7 +4,7 @@
 
 - Task ID：`refactor/native-frontend-runtime-v3`
 - 类型：大型架构 / Native UI 重构
-- 状态：**Discussion Draft v0.12**
+- 状态：**Discussion Draft v0.13**
 - Primary Workspace（未来实现）：`main`
 - 当前阶段：方案讨论，仅更新 `docs`，尚未创建实现分支
 - 当前源码基线：`main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
@@ -1965,29 +1965,361 @@ Core Studio / AI 能完整理解 compiled IR，但不承诺将任意视觉编辑
 
 Native `.aui` Source 是 Studio / AI first-class authoring path。
 
+
 ---
 
-## 15. 当前待讨论主题
+## 15. Script Sandbox Runtime
+
+### 15.1 Worker 不是最终 Sandbox
+
+Dedicated Worker 适合作为：
+
+- execution supervisor；
+- thread isolation；
+- runaway / hung runtime 的 hard terminate boundary。
+
+但 Worker 本身仍具有 Web APIs，因此 Package code 不直接运行在裸 Worker Global。
+
+v3 推荐：
+
+```text
+Main Frontend Runtime
+    ⇅ structured messages
+Script Sandbox Supervisor Worker
+    └ Embedded isolated JS VM
+         ├ Package compiled modules
+         ├ standard ECMAScript subset
+         └ injected scoped capabilities only
+```
+
+Worker 负责故障/线程隔离，VM 负责真正的 global/heap/capability isolation。
+
+### 15.2 VM 实现不在 Plan 阶段锁死
+
+具体实现可以在 Implementation 阶段比较：
+
+- QuickJS-like embedded engine；
+- WASM-hosted JS VM；
+- platform/native isolate；
+- 其它满足 contract 的隔离执行器。
+
+Plan 冻结的是：
+
+- 独立 heap/global；
+- capability-only injection；
+- Host 可强制中止；
+- resource budgets；
+- typed message boundary。
+
+不以 plain Worker、same-realm `Object.freeze`、Proxy-only 或同 Realm compartment 作为唯一安全边界。
+
+### 15.3 Isolation Granularity
+
+当前倾向：
+
+> **一个 active Experience 一个 Supervisor Worker + 一个 VM。**
+
+同一 Package 的多个 Controller 属于同一 Package trust domain，不为每个 Component 创建独立 VM/Worker。
+
+不同 Experience / Package 不共享 VM heap。
+
+Component-level least-authority 继续通过 `uses` 生成的 capability handles 实现。
+
+### 15.4 JS / TS Authoring Pipeline
+
+作者可使用 modern JavaScript / TypeScript Controller。
+
+Build：
+
+```text
+JS/TS Source
+→ transpile / bundle / link
+→ sandbox compatibility validation
+→ compiled Sandbox Module
+→ exact module graph + content hash
+→ .atria
+```
+
+Runtime 不执行：
+
+- TypeScript source；
+- npm lifecycle/build scripts；
+- authoring source module graph。
+
+玩家安装时不执行 dependency manager。
+
+### 15.5 Module Graph
+
+允许：
+
+- Package-local static imports；
+- vendored / bundled sandbox-compatible pure JS dependencies。
+
+v3 初版禁止：
+
+- runtime dynamic import；
+- remote import；
+- Node built-ins；
+- native addon；
+- DOM/browser-runtime dependencies；
+- hidden runtime package resolution。
+
+Static analysis 可以提前报告 `window/document/fetch/eval/dynamic import` 等明显不兼容行为，但安全边界不能依赖 lint/regex，最终权限仍由 VM capability model 保证。
+
+### 15.6 Stable Controller ABI
+
+Authoring Syntax 与 Runtime ABI 分离。
+
+Compiler 应生成稳定 Controller ABI，至少覆盖：
+
+- module load；
+- component instance create；
+- lifecycle hook invoke；
+- event invoke；
+- instance dispose；
+- module dispose。
+
+作者可以使用 TS helper / `.aui` sugar，但 Runtime 只理解 compiled ABI。
+
+### 15.7 Controller Instance Context
+
+每个挂载 Component 可以拥有独立 Controller instance。
+
+Controller 只获得：
+
+- readonly props；
+- event；
+- env；
+- component-local state handle；
+- `emit`；
+- 显式声明的 NodeRef / CanvasRef；
+- 根据 `uses` 缩权后的 reads/actions/operations；
+- 根据 `uses.services` 缩权后的 fixed Host services；
+- safe scheduler / UI clock / non-authoritative random。
+
+不获得：
+
+- global `host`；
+- real DOM；
+- `window/document`；
+- raw Authority objects；
+- filesystem/database/network ambient API。
+
+### 15.8 Script Heap 是 Ephemeral
+
+Controller/VM heap 可保存：
+
+- memoization；
+- layout cache；
+- spatial index；
+- temporary geometry/data structures。
+
+但被定义为 **ephemeral non-authoritative state**。
+
+Worker/VM 重启后可以丢失。
+
+真正必须恢复的语义状态必须存在于：
+
+- props / Host projection；
+- declared Frontend state；
+- prefs；
+-正式 Authority。
+
+因此 Script Runtime 可以被整体 kill/restart，而不破坏游戏事实。
+
+### 15.9 Crash / Recovery
+
+普通 Controller exception：
+
+- 当前 invocation 失败；
+- 产生 scoped Diagnostic；
+- 不直接崩溃 Atria Host。
+
+runaway loop / engine failure：
+
+1. Host watchdog terminate Worker；
+2. 重建 Worker/VM；
+3. 重新创建 Controller instances；
+4. 使用仍在 Host/Main Runtime 的 Frontend State / projection 恢复。
+
+连续 crash 可以由 Experience Health 标记 Script Runtime unhealthy。
+
+required script feature 无法恢复时 Experience 进入明确 failure；optional script 可以由 Package 使用 Declarative fallback。
+
+### 15.10 Async / Scheduler
+
+允许 Promise / async。
+
+Host Bridge request 本质是 async typed message。
+
+不向 Controller 提供裸 browser `setTimeout/setInterval` 作为 ambient authority；提供 Experience/instance-scoped scheduler：
+
+- after；
+- every；
+- cancel；
+- yield。
+
+Component/Controller dispose 时相关 timer/callback 自动 revoke/cancel。
+
+复杂纯计算可显式 cooperative `yield`，Host 仍保留 hard execution budget。
+
+### 15.11 Clock / Random
+
+Authority RNG / World time 永远使用 Host contract。
+
+Sandbox 只需要非权威 UI clock/random。
+
+倾向提供：
+
+- testable monotonic UI clock；
+- seeded/non-authoritative random helper。
+
+不得让 Sandbox wall clock / random 直接决定游戏 Authority。
+
+### 15.12 Resource Budgets
+
+Plan 不提前写死具体毫秒/MB，但 Runtime Contract 必须支持 Host policy 约束：
+
+- max VM heap；
+- per-invocation CPU/instruction/wall-time；
+- per-Experience script budget；
+- module/bundle bytes；
+- message payload；
+- queue depth；
+- outstanding async request；
+- operation concurrency；
+- hard terminate。
+
+Package 可以提供 workload hint，但 Host caps 永远优先。
+
+### 15.13 Message Boundary
+
+Worker/VM/Host 边界默认使用更严格的 JSON-like typed payload。
+
+不跨边界传：
+
+- Function；
+- DOM node；
+- prototype-rich object；
+- raw Host objects。
+
+ArrayBuffer / TypedArray 等高性能数据需要显式 allowlist 与 budget，不因为浏览器 structured clone 支持就默认进入 Package ABI。
+
+### 15.14 Third-party Pure JS
+
+允许 author Build 阶段 vendoring/bundle pure JS dependency。
+
+兼容要求：
+
+- 不依赖 DOM；
+- 不依赖 network；
+- 不依赖 Node built-in/native addon；
+- 能在 Sandbox ECMAScript contract 内运行。
+
+依赖真实 Browser DOM 的 UI/Chart library 不自动兼容 Native Sandbox，应通过：
+
+- Atria-native component/graphics adapter；
+- Framework Adapter；
+- future Web Island。
+
+### 15.15 Canvas2D Command Buffer
+
+Canvas2D baseline 当前倾向使用 **batched / retained Drawing Command Buffer**。
+
+不把真实 `CanvasRenderingContext2D` 注入 VM，也不把每个 draw call 单独 RPC。
+
+```text
+Controller / VM
+    ↓ build typed draw commands
+Drawing Command Buffer
+    ↓ one flush/frame
+Host
+    ↓ validate budgets/handles
+Canvas renderer
+```
+
+目标支持足够宽的 Canvas2D subset：
+
+- path；
+- stroke/fill；
+- text；
+- transform；
+- clip；
+- gradients；
+- image；
+- compositing 等适合游戏 UI 的常用能力。
+
+Image 只来自安全 MediaHandle。
+
+future 可以增加 OffscreenCanvas / graphics fast-path feature，但 Core baseline 不依赖真实 Browser Canvas object。
+
+### 15.16 WebAssembly
+
+WebAssembly 不进入 `frontend-script@1` baseline。
+
+预留 future `frontend-wasm@1`。
+
+未来 WASM 仍复用：
+
+- same Worker supervisor；
+- same Host Bridge；
+- same permission/budget model。
+
+避免 v3 Core 首版同时维护 arbitrary JS VM 与 arbitrary WASM 两种执行安全面。
+
+### 15.17 Debug / Source Map
+
+Compiled Sandbox Module 必须保留 Controller source provenance / source map。
+
+Studio 能把 stack/error 映射回：
+
+- `.ts`；
+- `.js`；
+- `.aui` controller binding。
+
+Production diagnostics 不泄漏 Host internal stack/object。
+
+Studio 可支持 Controller hot reload：重新加载 module/instances，同时尽量保留 Host-side Frontend State。
+
+### 15.18 Script 是 Declarative Runtime 的增强
+
+Script Runtime 不取代 Canonical UI：
+
+- DOM / Component tree 仍由 Canonical IR；
+- Script 修改 Frontend state；
+- emit Component events；
+- 使用 scoped NodeRef presentation handles；
+- 生成 Canvas command buffer；
+- 调用 scoped Host Bridge handles。
+
+禁止 Script 重新通过 `createElement / innerHTML / arbitrary selector` 成为主要 UI construction path。
+
+---
+
+## 16. 当前待讨论主题
 
 下一轮优先讨论：
 
-### Script Sandbox Runtime
+### Gap Review / Pressure Test
 
-- JS/TS Authoring → compile/bundle → Sandbox Module；
-- Worker / embedded JS VM / WASM-hosted engine / SES-like isolation 的取舍；
-- module graph 与第三方 pure JS dependency；
-- controller lifecycle 与 component instance；
-- scoped Bridge handles / local Component API；
-- CPU / memory / wall-time / message budgets；
-- cancellation / runaway loop / crash recovery；
-- timers / async / Promise / randomness / clock；
-- debug/source maps/diagnostics；
-- Canvas2D 采用 Host proxy 还是 retained command buffer；
-- 是否允许 WebAssembly module 作为 future/initial sandbox workload。
+用真实重前端场景逐项验证当前方案是否仍有架构缺口：
+
+- Visual Novel / AI narrative；
+- RPG inventory / equipment / character sheet；
+- Phone / IM / feed；
+- Church / management simulation；
+- Map / relationship graph / Canvas；
+- AI Task / generation progress；
+- remote portraits / CG；
+- mobile / touch / keyboard / gamepad；
+- Component / Hybrid / Full；
+- Studio / AI authoring；
+- crash / reload / offline / denied permission；
+- 检查是否遗漏 routing、animation orchestration、accessibility、localization、virtual keyboard、drag/drop、audio/video 等必须能力。
 
 ---
 
-## 16. 讨论流程约定
+## 17. 讨论流程约定
 
 从本企划建立后，每一轮讨论遵循：
 
