@@ -4,6 +4,7 @@ export { assertMessageProjection, assertTurnEnvelope, assertConversationThread }
 
 import { normalizeNativeRegexScripts } from '../../public/shared/native-regex.js';
 import { assertExperienceDataClosure } from '../../public/shared/native-experience-contract.js';
+import { assertFrontendExperience } from '../../public/shared/native-frontend-contract.js';
 import { validateSkillDeclarations } from '../../public/scripts/native/skill-declarations.js';
 import { assertNativeId } from './identity.js';
 import { assertPackageModelPromptRuntimeMetadata } from './model-prompt-runtime/contracts.js';
@@ -508,6 +509,9 @@ const PACKAGE_KEYS = new Set([
 ]);
 
 export function assertAtriaPackageManifest(value) {
+    for (const owner of [value, ...(value?.entryPoints ?? [])]) {
+        if (owner?.runtime?.experience?.frontend !== undefined) assertFrontendExperience(owner.runtime.experience);
+    }
     noLegacyIdentity(value, 'AtriaPackage');
     assertOnlyKeys(value, PACKAGE_KEYS, 'AtriaPackage');
     if (value.format !== ATRIA_PACKAGE_FORMAT) throw new TypeError(`AtriaPackage.format must be '${ATRIA_PACKAGE_FORMAT}'`);

@@ -2,10 +2,30 @@ import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
 import { lowerDeclarativeMutations } from '../../public/scripts/native/experience/logic/mutations.js';
 import { json } from '../../public/scripts/native/experience/ui/v2-values.js';
+import { assertFrontendExperience, frontendFeatureAvailability } from '../../public/shared/native-frontend-contract.js';
+import { validateFrontendGraph } from './frontend/graph.js';
+import { validateSchemaValue } from '../../public/scripts/native/experience/world/schema.js';
+
+export function validateFrontendResources(manifest, files, assets) {
+    for (const owner of [manifest, ...manifest.entryPoints]) {
+        const experience = owner.runtime?.experience;
+        if (experience?.frontend === undefined) continue;
+        const normalized = assertFrontendExperience(experience);
+        frontendFeatureAvailability(normalized.features);
+        const graph = validateFrontendGraph({ entry: normalized.frontend.entry, files, mode: normalized.mode,
+            experienceContract: manifest.runtime?.experienceContract });
+        for (const binding of graph.bridge.bindings.filter(item => item.kind === 'read')) {
+            const ref = manifest.runtime.experienceContract.dataResources.find(item => item.resourceId === binding.target.resourceId);
+            const bytes = assets?.get(ref.assetId);
+            if (!bytes || bytes.length > 2 * 1024 * 1024 || !validateSchemaValue(JSON.parse(bytes.toString('utf8')), binding.outputSchema).ok) throw new TypeError('Frontend Read projection does not match public schema');
+        }
+    }
+}
 
 // Validate before install and lower authoring-only shorthand during build. Old
 // v1 resources keep their exact source bytes and existing validation boundary.
 export function validateExperienceResources(manifest, files, assets, { lower = false } = {}) {
+    validateFrontendResources(manifest, files, assets);
     for (const voice of manifest.runtime?.experienceContract?.presentationRuntime?.voices ?? []) {
         if (!manifest.actors.some(actor => actor.actorId === voice.actorId)) throw new TypeError('Actor Voice must belong to Package');
     }

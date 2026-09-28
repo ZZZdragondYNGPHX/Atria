@@ -1,0 +1,10 @@
+<!-- Semantic node IDs survive formatting and text changes. -->
+<template>
+  <main node-id="root" class="welcome">
+    <h1 node-id="title">Atria</h1>
+    <p node-id="greeting">Package owns presentation.</p>
+  </main>
+</template>
+<style>
+.welcome { display: grid; gap: 1rem; padding: 1rem; }
+</style>

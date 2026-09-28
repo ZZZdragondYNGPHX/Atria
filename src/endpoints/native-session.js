@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { SessionCore } from '../native/session-core.js';
 import { PackageInstaller } from '../native/package-composition.js';
 import { createNativeId, assertNativeId } from '../native/identity.js';
-import { resolveNativeRuntimePackage } from '../native/runtime-descriptor.js';
+import { resolveNativeRuntimePackage, readFrontendRuntimeResource } from '../native/runtime-descriptor.js';
 import { getSessionRepo, getSavePointRepo, getPackageRepo, getAssetStore, getKnowledgeRepo } from '../storage/index.js';
 
 function services() {
@@ -180,6 +180,12 @@ export function createNativeSessionRouter(getServices = services) {
             return;
         }
         const path = String(req.body?.path || '').trim();
+        const resolved = resolveNativeRuntimePackage(opened, snapshot.session.entryPointId);
+        if (resolved.frontendGraph) {
+            const { bytes, mediaType } = readFrontendRuntimeResource(opened, resolved, path);
+            res.set({ 'Content-Type': mediaType, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, no-store' }).send(bytes);
+            return;
+        }
         if (
             !path
             || path.length > 512

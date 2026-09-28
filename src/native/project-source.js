@@ -1,4 +1,5 @@
 import { assertNativeExperienceContract } from '../../public/shared/native-experience-contract.js';
+import { assertFrontendExperience } from '../../public/shared/native-frontend-contract.js';
 import {
     ATRIA_PACKAGE_CAPABILITIES,
     ATRIA_PACKAGE_PERMISSIONS,
@@ -180,6 +181,9 @@ function assertPackageSource(value) {
     }
     if (out.runtime?.experienceContract !== undefined) {
         out.runtime.experienceContract = assertNativeExperienceContract(out.runtime.experienceContract);
+    }
+    for (const owner of [out, ...out.entryPoints]) {
+        if (owner.runtime?.experience !== undefined) assertFrontendExperience(owner.runtime.experience, { authoring: true });
     }
     return Object.freeze(out);
 }

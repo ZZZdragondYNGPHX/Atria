@@ -7,6 +7,8 @@ import {
     assertNativeRuntimeDescriptor,
 } from './authoring-contracts.js';
 import { compilePackageRuntimePlugins } from './plugin-platform.js';
+import { assertFrontendExperience, frontendFeatureAvailability } from '../../public/shared/native-frontend-contract.js';
+import { validateFrontendGraph } from './frontend/graph.js';
 
 function plain(value) {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -42,6 +44,7 @@ const EXPERIENCE_SURFACES = new Set([
 ]);
 
 function experienceRuntimeSource(value) {
+    if (value?.frontend !== undefined) return Object.freeze(assertFrontendExperience(value));
     if (!plain(value)) throw new TypeError('Native Runtime requires an explicit experience contract');
     const allowed = new Set(['mode', 'componentModelVersion', 'component', 'selectors', 'surface']);
     for (const key of Object.keys(value)) {
@@ -119,6 +122,7 @@ function runtimeSource(manifest, entryPoint) {
 
     return Object.freeze({
         experience,
+        ...(experience.frontend ? { frontendFeatures: frontendFeatureAvailability(experience.features) } : {}),
         game,
         ...(plugins.length ? { plugins } : {}),
         primaryWorldId: entryPoint.primaryWorldId
@@ -220,6 +224,7 @@ export function compileNativeRuntimeDescriptor({ packageVersion, manifest, entry
         entryPointId: entryPoint.entryPointId,
         experience: assertExperienceContract({
             mode: runtime.experience.mode,
+            ...(runtime.experience.frontend ? { frontend: runtime.experience.frontend, features: runtime.experience.features } : {}),
             ...(runtime.experience.componentModelVersion === undefined
                 ? {}
                 : { componentModelVersion: runtime.experience.componentModelVersion }),
@@ -247,9 +252,27 @@ export function resolveNativeRuntimePackage(opened, entryPointId) {
         manifest: opened.manifest,
         entryPointId,
     });
+    const experience = compiled.runtime.experience;
+    const frontendGraph = experience.frontend ? validateFrontendGraph({ entry: experience.frontend.entry, files: opened.sourceFiles,
+        mode: experience.mode, experienceContract: opened.manifest.runtime?.experienceContract }) : null;
     return Object.freeze({
         ...compiled,
+        ...(frontendGraph ? { frontendGraph } : {}),
         manifest: opened.manifest,
         packageVersion: opened.packageVersion,
     });
+}
+
+// Transport gate for native@3. Author source may exist as optional remix data,
+// but only validated compiled graph resources (and the existing game contract)
+// can be requested by an installed Runtime.
+export function readFrontendRuntimeResource(opened, resolved, path) {
+    if (!resolved.frontendGraph) throw new TypeError('Compiled Frontend graph required');
+    const ref = resolved.frontendGraph.resources.find(item => item.path === path);
+    const isIndex = path === resolved.runtime.experience.frontend.entry;
+    const isGame = [resolved.runtime.game.logic, resolved.runtime.game.observations].filter(Boolean).includes(path);
+    if (!ref && !isIndex && !isGame) throw new TypeError('Runtime cannot read Frontend author source or undeclared resource');
+    const bytes = opened.sourceFiles.get(path);
+    if (!bytes) throw new TypeError('Missing compiled Runtime resource');
+    return { bytes, mediaType: ref?.mediaType ?? 'application/json' };
 }

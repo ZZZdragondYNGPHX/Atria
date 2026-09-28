@@ -1,6 +1,7 @@
 import { ATRIA_PACKAGE_CAPABILITIES } from './contracts.js';
 import { assertNativeId } from './identity.js';
 import { assertNativeExperienceContract } from '../../public/shared/native-experience-contract.js';
+import { assertFrontendExperience } from '../../public/shared/native-frontend-contract.js';
 
 export {
     ATRIA_EXPERIENCE_CONTRACT_VERSION,
@@ -306,6 +307,7 @@ function assertContribution(value, field) {
 }
 
 export function assertExperienceContract(value) {
+    if (value?.frontend !== undefined) return Object.freeze(assertFrontendExperience(value));
     object(value, 'Experience');
     only(value, ['mode', 'componentModelVersion'], 'Experience');
     if (!ATRIA_EXPERIENCE_MODES.includes(value.mode)) {

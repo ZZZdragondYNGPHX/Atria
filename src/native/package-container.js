@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 
 import AdmZip from 'adm-zip';
+import { validateFrontendResources } from './experience-validation.js';
 
 import {
     ATRIA_PACKAGE_CAPABILITIES,
@@ -504,6 +505,7 @@ function inspectPayload(payload, header) {
     if (assets.size !== manifest.assets.length) {
         throw new Error('.atria payload contains undeclared Package assets');
     }
+    validateFrontendResources(manifest, sourceFiles, assets);
 
     return Object.freeze({
         manifest,
@@ -536,6 +538,7 @@ export function buildAtriaPackageContainer({
     assetPayloads = new Map(),
 }) {
     const manifest = assertAtriaPackageManifest(manifestInput);
+    validateFrontendResources(manifest, sourceFiles, assetPayloads);
     const payload = buildInnerPayload(manifest, sourceFiles, assetPayloads);
     if (payload.length > ATRIA_PACKAGE_CONTAINER_LIMITS.maxContainerBytes) {
         throw new Error('.atria compressed payload exceeds size limit');

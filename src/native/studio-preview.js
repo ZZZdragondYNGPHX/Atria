@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { assertNativeId } from './identity.js';
 import { inspectAtriaPackageContainer } from './package-container.js';
 import { compileNativeRuntimeDescriptor } from './runtime-descriptor.js';
+import { validateExperienceResources } from './experience-validation.js';
 
 function clonePreview(value) {
     return structuredClone(value);
@@ -20,6 +21,7 @@ export class StudioPreviewHost {
     create({ projectId, archive, entryPointId = undefined }) {
         assertNativeId(projectId, 'project', 'StudioPreview.projectId');
         const inspected = inspectAtriaPackageContainer(archive);
+        validateExperienceResources(inspected.manifest, inspected.sourceFiles, inspected.assets);
         const entryPoint = entryPointId == null
             ? inspected.manifest.entryPoints[0]
             : inspected.manifest.entryPoints.find(item => item.entryPointId === entryPointId);

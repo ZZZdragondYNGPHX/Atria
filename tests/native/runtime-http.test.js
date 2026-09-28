@@ -5,6 +5,7 @@ import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js'
 import { buildAtriaPackageContainer, createNativeId } from '../../src/native/index.js';
 import { createNativeSessionRouter } from '../../src/endpoints/native-session.js';
 import { services, sessionFixture } from './helpers/session-fixture.js';
+import { compileFrontend } from '../../src/native/frontend/compiler.js';
 
 function textFixture() {
     const fixture = sessionFixture();
@@ -55,6 +56,38 @@ function appFor(h, svc) {
 }
 
 describe('A3 Native Package -> Runtime Descriptor HTTP', () => {
+    test('v3 Runtime serves only its exact compiled graph, never optional author/remix source', async () => {
+        const h = await makeTempFsEngineHarness();
+        try {
+            const svc = services(h), fixture = textFixture();
+            const sourceFiles = new Map([
+                ['frontend.json', Buffer.from(JSON.stringify({ format: 'atria-frontend-source', version: 3, primaryView: 'main',
+                    views: [{ id: 'main', root: 'Main', surface: 'app.root' }], components: [{ id: 'Main', source: 'Main.aui' }] }))],
+                ['Main.aui', Buffer.from('<template><main node-id="root">Compiled</main></template>')],
+                ['controller.ts', Buffer.from('throw new Error("never execute")')],
+            ]);
+            const compiled = compileFrontend({ source: 'frontend.json', files: sourceFiles, mode: 'full' });
+            fixture.manifest.entryPoints[0].runtime = { experience: { mode: 'full', frontend: { kind: 'native', version: 3, entry: compiled.entry } } };
+            const { archive } = buildAtriaPackageContainer({ manifest: fixture.manifest, sourceFiles: new Map([...sourceFiles, ...compiled.files]) });
+            await svc.packageInstaller.install(h.handle, archive);
+            const view = await svc.core.create(h.handle, { packageId: fixture.manifest.packageId, packageVersionId: fixture.manifest.packageVersionId, entryPointId: fixture.entryPointId });
+            const app = appFor(h, svc), sessionId = view.session.sessionId;
+            const resolved = await request(app).post('/runtime/resolve').send({ sessionId });
+            expect(resolved.status).toBe(200);
+            expect(resolved.body.runtime.experience.frontend.entry).toBe(compiled.entry);
+            const index = await request(app).post('/runtime/resource').send({ sessionId, path: compiled.entry });
+            expect(index.status).toBe(200);
+            expect(index.body.format).toBe('atria-frontend-index');
+            for (const ref of index.body.resources) {
+                const resource = await request(app).post('/runtime/resource').send({ sessionId, path: ref.path });
+                expect(resource.status).toBe(200);
+            }
+            for (const path of ['frontend.json', 'Main.aui', 'controller.ts', '../frontend.json', 'runtime/frontend/other/index.json']) {
+                expect((await request(app).post('/runtime/resource').send({ sessionId, path })).status).toBe(400);
+            }
+        } finally { await h.cleanup(); }
+    });
+
     test('Session resolves exact PackageVersion and never follows Package current', async () => {
         const h = await makeTempFsEngineHarness();
         try {
