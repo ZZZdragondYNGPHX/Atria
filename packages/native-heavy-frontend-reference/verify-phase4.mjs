@@ -25,7 +25,7 @@ const logic = compileDeclarativeLogic(logicRaw);
 const contract = project.package.runtime.experienceContract;
 const world = project.worlds[0];
 
-assert.equal(project.package.version, '0.4.0-phase4');
+assert.equal(project.package.version, '0.5.0-phase5');
 assert.ok(contract.capabilities.some(item => item.id === 'message-projection' && item.version === 1 && item.required));
 assert.equal(contract.presentationRuntime, undefined);
 assert.equal(project.assetFiles.length, 0);
