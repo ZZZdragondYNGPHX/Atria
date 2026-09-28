@@ -4,7 +4,7 @@
 
 - Task ID：`refactor/native-frontend-runtime-v3`
 - 类型：大型架构 / Native UI 重构
-- 状态：**Discussion Draft v0.15**
+- 状态：**Discussion Draft v0.16**
 - Primary Workspace（未来实现）：`main`
 - 当前阶段：方案讨论，仅更新 `docs`，尚未创建实现分支
 - 当前源码基线：`main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
@@ -2848,24 +2848,369 @@ G-V3-1 ～ G-V3-5 均可在既有主架构内解决。
 4. ShadowRoot + Visual Containment + Host System Layer 才构成完整视觉边界；
 5. 完整静态 CSS 与严格 typed dynamic sinks 分离。
 
+
 ---
 
-## 18. 当前待讨论主题
+## 18. Gap Resolution B — G-V3-6 ～ G-V3-10
+
+### 18.1 G-V3-6 — Package Localization Runtime
+
+Package v3 使用独立、typed、exact 的 Localization Resource Graph，不复用/覆盖 Host Shell localization namespace。
+
+推荐 Source Graph：
+
+```text
+frontend/
+└ locales/
+   ├ zh-CN.json
+   ├ en.json
+   └ ja.json
+```
+
+Frontend Source Index 声明：
+
+- default locale；
+- locale catalog refs；
+- fallback policy。
+
+Build Compiler 将 authoring catalog 编译成 exact Localization Catalog / inert Message AST。
+
+Runtime 不执行任意 localization template code。
+
+Message key 使用 stable semantic ID，例如：
+
+```text
+phone.messages.empty
+church.followers.count
+```
+
+Native `.aui` first-class authoring 推荐静态 message key，便于 Studio / AI 做 missing / unused key 分析。
+
+Baseline formatting：
+
+- interpolation；
+- plural；
+- select；
+- number；
+- date/time；
+- relative time；
+- list；
+- display-name / locale helper（Host 支持时）。
+
+现实 date/time formatting 只处理明确的 date/epoch value。World logical clock 不自动等价现实日期。
+
+`env.locale` / localization projection 至少包含：
+
+- locale；
+- language；
+- direction `ltr/rtl`；
+- numbering system（可得时）；
+- calendar/timeZone（适用于现实 UI formatting）；
+- fallback chain。
+
+Locale change 是 read-only reactive environment event，不需要 reload Session Authority。
+
+Localization 只属于 Presentation，不自动改变 World / Prompt / AI narrative language。
+
+若 Package 希望 UI locale 影响模型输出，必须通过显式 Model/Prompt Context contract 注入。
+
+Fallback 顺序：
+
+1. exact locale；
+2. language fallback；
+3. Package default locale；
+4. author source/default message（contract允许时）。
+
+Studio/Build diagnostics：
+
+- missing key；
+- unused key；
+- placeholder mismatch；
+- plural/select case mismatch；
+- invalid format。
+
+Host 为 Experience root 设置合适 `lang/dir`，Package CSS 可使用 `:dir()` 等标准能力。
+
+### 18.2 G-V3-7 — IME / BeforeInput / Virtual Keyboard
+
+Native v3 Input Contract 正式支持 composition-aware input。
+
+Baseline events：
+
+- `beforeinput`；
+- `input`；
+- `compositionstart`；
+- `compositionupdate`；
+- `compositionend`；
+- key events + `isComposing`；
+- selection/caret change（仅当前声明 input）。
+
+Controlled input 必须实现 **Composition Lock**：
+
+- composition 期间 DOM composing buffer 临时拥有显示权；
+- ordinary state reconciliation 不覆盖 composing value/caret；
+- `compositionend` 后最终值同步到 declared UI/Draft state；
+- explicit reset/dispose 可以终止该 instance composition。
+
+Submit/shortcut 默认不得在 `isComposing` 时触发。
+
+现有 Composer 的 Ctrl/Cmd+Enter + `!event.isComposing` 行为作为实现地基推广到 v3 Input Runtime。
+
+支持 safe input attributes：
+
+- `inputmode`；
+- `enterkeyhint`；
+- `autocomplete`（受 Host policy）；
+- `spellcheck`；
+- type/selection constraints。
+
+Environment 扩展：
+
+- layout viewport width/height；
+- visual viewport width/height/offset；
+- keyboard/occlusion bottom inset（best-effort，可 unknown）；
+- safe-area insets。
+
+Runtime 同步 CSS vars，例如：
+
+- `--atria-visual-viewport-height`；
+- `--atria-keyboard-inset-bottom`。
+
+不把 platform-specific VirtualKeyboard / VisualViewport 对象直接暴露给 Package。
+
+Textarea autosize、focus restore、scroll-into-view 属于 local Frontend utility。
+
+### 18.3 G-V3-8 — Accessibility / Preference Environment
+
+扩展 read-only reactive environment：
+
+`env.accessibility` / `env.appearance` / `env.input` 至少包含：
+
+- reducedMotion；
+- colorScheme；
+- forcedColors；
+- contrast preference；
+- Host text/ui scale；
+- pointer/touch/hover modality；
+- keyboard/focus modality。
+
+浏览器本身可表达的条件仍允许 Package 使用标准 CSS media query。
+
+Environment Projection 主要服务：
+
+- Declarative conditions；
+- Script Controller；
+- Studio preview/scenario。
+
+Atria 不强制 Package 统一视觉，但 Compiler / Studio / Health 提供 accessibility diagnostics：
+
+- missing accessible name/label；
+- invalid heading/landmark structure；
+- invalid/contradictory ARIA；
+- keyboard-inaccessible interactive node；
+- hidden focusable node；
+- too-small touch target（warning/profile-aware）；
+- missing focus style；
+- missing reduced-motion fallback（warning）。
+
+Overlay/Modal Runtime 提供标准 FocusScope：
+
+- initial focus；
+- focus trap；
+- restore focus；
+- inert/background isolation；
+- Escape 与 Host System Layer 协调。
+
+提供 Experience-local declarative live region / `a11y.announce` helper，用于 loading/error/status，不涉及 Host Authority。
+
+Managed Native Components 保证基础 accessibility；Headless 模式由 Package 负责 DOM 语义，但仍接受同一 Studio/Health diagnostics。
+
+### 18.4 G-V3-9 — Fixed Host Session / Conversation Services
+
+正式提供固定 Host services：
+
+- `host.conversation`；
+- `host.session`；
+- `host.composer` 保持独立。
+
+`host.conversation` 负责 Conversation / Timeline UI controls：
+
+- summary/status；
+- generation status/cancel；
+- committed message collection；
+- reply alternatives；
+- retry/regenerate current tail；
+- fork from exact anchor；
+- switch branch；
+- inspect history/revision；
+- capability projection（canWrite/canRetry/canFork 等）。
+
+`host.session` 负责 Session lifecycle/recovery：
+
+- session status；
+- create/list SavePoint；
+- restore SavePoint；
+- reload/recover current session；
+- exit Experience；
+- restart current entry/session（Host policy允许时）；
+- open diagnostics。
+
+Future export/import 可以独立扩展，不作为 Core v3 首版强制。
+
+所有 branch/save/restore/retry 调用使用 exact/current revision guard。
+
+stale request 返回 typed stale/conflict receipt。
+
+restore/restart/exit 等 destructive/navigation-like action 是否需要 confirmation 由 Host policy 决定，Package 不能绕过。
+
+Script 通过 `uses.services` 获得缩权后的 fixed service handle；Declarative Compiler 自动推导。
+
+Full Host System/Escape Layer 使用相同底层 Session/Conversation service，但作为 Host privileged client，不依赖 Package `uses` 或 Package UI 是否健康。
+
+### 18.5 Experience Epoch / Stale Handle Revocation
+
+Session restore、branch switch、session reload 等会使旧 Read cursor、subscription、Controller invocation 与 async request 失效。
+
+Runtime 必须维护 **Experience Epoch / Session Revision Epoch**。
+
+Epoch 变化时：
+
+- revoke stale read handles/cursors；
+- cancel stale async read/controller requests；
+- discard late completion；
+- rebind projections；
+- remount/recreate affected Controller/View context；
+- 保留仍适用的 Host-owned prefs/environment state。
+
+Package 永远不获得 SessionCore/native runtime object。
+
+### 18.6 G-V3-10 — Loading / Error Boundary
+
+Native v3 提供 first-class declarative **Boundary** contract，不依赖 React/Suspense private semantics。
+
+至少三层：
+
+1. Component Boundary；
+2. View Boundary；
+3. mandatory Experience Root Boundary。
+
+Boundary 可以声明：
+
+- loading slot/component；
+- error slot/component；
+- content/default slot；
+- explicit retry；
+- optional timeout/escalation policy（受 Host hard caps）。
+
+Boundary 覆盖：
+
+- lazy Component/View resource load；
+- compiled style/controller resource load；
+- Controller init/invocation failure；
+- Collection/Read dependency failure；
+- required Media/resource failure；
+- local render/validation failure。
+
+普通业务/Authority Action rejection 仍返回 Bridge Receipt，由调用 UI 自己处理，不自动触发 subtree Error Boundary。
+
+Fatal Session/Authority/contract failure直接上升 Host Recovery。
+
+Error Projection 只暴露 inert safe fields：
+
+- category；
+- reasonCode；
+- retryable；
+- source semantic id；
+- diagnosticRef；
+- optional user-facing message。
+
+Production Package 不获得 Host raw stack/internal object。
+
+Source Map/Provenance 负责映射回 `.aui/.css/.ts` author source。
+
+Retry 创建新的 request/epoch；旧 completion 必须丢弃。
+
+Boundary 默认只 retry read/resource/controller load，不自动 retry Authority write，除非对应 Receipt/idempotency contract明确安全。
+
+Remote Image 优先走 Media fallback；仅 required media 且没有 fallback 时升级 Boundary。
+
+optional Script Controller failure 可以降级 Declarative fallback；required Controller failure进入最近 Boundary。
+
+### 18.7 Host-owned Experience Failure Surface
+
+如果：
+
+- Root Boundary 自身无法加载；
+- Frontend Index 无法验证；
+- Bridge preflight失败；
+- required Runtime Feature 不可用；
+- fatal Session/Authority failure；
+
+则使用位于 Package visual boundary 外的 **Host-owned Experience Failure Surface**。
+
+它必须保留：
+
+- Exit；
+- Diagnostics；
+- Retry/Reload（适用时）；
+- Recovery。
+
+Package CSS/Script 无法覆盖或禁用。
+
+### 18.8 Async Resource State
+
+Lazy resource state 使用稳定 Runtime vocabulary，例如：
+
+- idle；
+- loading；
+- ready；
+- error；
+- cancelled。
+
+支持 cancellation。
+
+不采用“throw Promise”等 framework-specific magic 作为 Canonical Runtime contract。
+
+### 18.9 Gap Resolution B 结论
+
+G-V3-6 ～ G-V3-10 可在现有主架构内解决，不需要推翻核心原则。
+
+补完后 Core v3 baseline 已覆盖：
+
+- Package localization / RTL；
+- CJK IME / mobile soft keyboard；
+- accessibility environment / diagnostics / FocusScope；
+- headless + managed Conversation；
+- Session controls / SavePoint / recovery；
+- resilient async loading / error boundary。
+
+---
+
+## 19. 当前待讨论主题
 
 下一轮优先讨论：
 
-### Resolve G-V3-6 ～ G-V3-10
+### Second Gap Review / Baseline Gate
 
-- Package Localization / locale formatting；
-- IME / beforeinput / virtual keyboard；
-- Accessibility / user preference environment；
-- Host Session / Conversation fixed controls；
-- Component/View loading + error boundaries；
-- 然后进行第二轮短 Gap Review。
+重点复核：
+
+- Audio / Video / media playback；
+- animation choreography / transition coordination；
+- local routing / navigation；
+- forms / validation / upload boundary；
+- drag/drop / clipboard / file picker；
+- performance / virtualization / large state；
+- mobile / soft keyboard / safe-area；
+- offline / cache / remote media；
+- accessibility / locale / RTL；
+- headless conversation / session recovery；
+- Component / Hybrid / Full；
+- Studio / AI authoring；
+- 是否仍存在会迫使 Runtime/Authority 边界重构的 blocker。
 
 ---
 
-## 19. 讨论流程约定
+## 20. 讨论流程约定
 
 从本企划建立后，每一轮讨论遵循：
 
