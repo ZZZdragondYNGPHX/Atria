@@ -17,7 +17,7 @@ These failures were already present on the exact main baseline before this fix.
 
 Branch: `fix/native-ci-baseline-failures`
 
-Current HEAD: `7b486249550ed0ebfff135e6bcda49acf8199790`
+Current HEAD: `72ca0c9157b13b4fb2b251e79706992f766ab4e4`
 
 Changes:
 
@@ -73,7 +73,7 @@ Sequential integration evidence before the latest head:
 - after the P6 fix, P0–P7 and A0–A9 passed and N9 exposed the next stale assertion;
 - after the N9 fix, P0–P7, A0–A9 and N9 passed and N10 exposed the next stale assertion.
 
-Latest branch HEAD: `7b486249550ed0ebfff135e6bcda49acf8199790`.
+Latest branch HEAD: `72ca0c9157b13b4fb2b251e79706992f766ab4e4`.
 
 Latest validation runs:
 - `Native Model Prompt Runtime` run `36416576425`: in progress;
@@ -113,3 +113,19 @@ Latest CI for this real remote HEAD:
 
 - `Native Model Prompt Runtime` run `36416576425`: in progress;
 - `Atria PR Checks` run `36416576243`: Migration Guard success; Lint and Unit Tests in progress.
+
+
+### Browser acceptance synchronization
+
+After the static P8 freeze and its Jest suite passed, the integration workflow reached the four legacy browser acceptance files and exposed four stale assumptions.
+
+- P4 streaming: the production Skill loop intentionally suppresses provider-round chunks until it knows which round is final, preserving the existing “only final prose is published” contract. The P4 raw Generation streaming test was unintentionally running with freshly populated Narrative Skills, so it never saw a provisional provider chunk before Stop. A test helper now explicitly sets every installed Skill's `narrative` path to `off` for this raw-streaming case only. The Skill loop contract itself is unchanged.
+- P5 Runtime: the old independent Generation Profile editor was retired when Prompt Presets became the single authoring owner. The test now verifies the historical `generation-profiles` navigation alias resolves to the current Prompt Presets surface, while Runtime route/model/connection/diagnostics behavior remains tested.
+- P6 authoring: the old loose Prompt Module/Program Library editor was retired in favor of Prompt Presets. The test now verifies the historical prompt-resource alias resolves to Prompt Presets and that existing exact Program/Generation resources are available through the migration affordance; detailed Prompt Preset authoring remains covered by `16-prompt-presets.e2e.js`, while this P6 case continues through Studio authoring/build.
+- P7 cleanup/localization: assertions were updated from removed “Product preferences only” and loose Prompt Library surfaces to the current Settings copy and Prompt Presets owner. Exact resource search still opens the owning exact resource route.
+
+Latest browser/test HEAD: `72ca0c9157b13b4fb2b251e79706992f766ab4e4`.
+
+Latest validation runs:
+- `Native Model Prompt Runtime` run `36419697797`: in progress;
+- `Atria PR Checks` run `36419697817`: Migration Guard success; Lint and Unit Tests in progress.
