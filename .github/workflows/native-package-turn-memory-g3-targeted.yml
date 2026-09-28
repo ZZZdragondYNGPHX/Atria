@@ -30,8 +30,12 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - name: Install dependencies
+      - name: Install root dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Build SQLite binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests --no-audit --no-fund
       - name: Syntax check touched modules
         run: |
           node --check public/scripts/native/play-generation.js
@@ -44,7 +48,12 @@ jobs:
       - name: Lint touched modules
         run: npx eslint public/scripts/native/play-generation.js public/scripts/native/session-runtime.js public/scripts/native/experience/llm/memory-bridge.js public/scripts/agents/memory/hybrid-retrieval.js src/native/adapters/generation-host.js src/native/adapters/native-session-context.js tests/native/package-turn-memory-bridge-g3.test.js
       - name: Run G3 and G1 G2 targeted tests
-        run: npx jest --runInBand tests/native/package-turn-memory-bridge-g3.test.js tests/native/turn-app-outcome-g1.test.js tests/native/background-task-app-bridge-g2.test.js tests/memory-graph/hybrid-retrieval.test.js
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          native/package-turn-memory-bridge-g3.test.js
+          native/turn-app-outcome-g1.test.js
+          native/background-task-app-bridge-g2.test.js
+          memory-graph/hybrid-retrieval.test.js
       - name: Record targeted result
         if: always()
         env:
