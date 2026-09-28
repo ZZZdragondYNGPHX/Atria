@@ -82,7 +82,7 @@ const snapshot = {
     revision:{revisionId,branchId},
     manifest:null,
     knowledge:null,
-    timeline:[{messageId:timelineMessageId,variantId:'var_00000000000000000000000000000074',sequence:0,role:'assistant',
+    timeline:[{messageId:timelineMessageId,activeVariantId:'var_00000000000000000000000000000074',sequence:0,role:'assistant',
       actorId:'actor_b48a53176eb663a1af411fb6f8638d66',content:'The caretaker remembers a prior visitor.'}],
     states:{
       atri_lifecycle:lifecycle,
@@ -110,7 +110,7 @@ try {
 
     const knowledgePlan = compileNativeKnowledgePlan(snapshot,{target:'narrator'});
     assert.equal(knowledgePlan.included.length,2);
-    assert.ok(knowledgePlan.included.every(item => item.authority === 'package_knowledge'));
+    assert.ok(knowledgePlan.included.every(item => item.authority === 'package_canonical'));
 
     const projected = projectInformation(snapshot,'narrator-context',{purpose:'context'});
     assert.ok(projected.items.some(item => item.sourceId === 'event-context' && item.data.current_beat === 'narrative'));
