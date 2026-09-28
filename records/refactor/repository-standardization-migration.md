@@ -330,15 +330,17 @@ On the Primary Workspace task branch:
 
 - replaced the old main-side `AGENTS.md` with the standardized local/CLI hot path;
 - added thin `CLAUDE.md`;
+- updated `FORK_MAINTENANCE.md`, `AI_HANDOFF.md`, `NEW_BUG_PROMPT.md`, `NEW_FEATURE_PROMPT.md`, and root `README.md` to the standardized branch/document routing;
 - removed the legacy `docs:handoff/latest-handoff.md` route completely;
 - routed governance-sensitive work to `docs:README.md`;
+- standardized reference naming to `reference/vanilla` / `reference/luker`;
 - retained Atria-specific product/naming/engineering boundaries without copying full Governance into main.
 
-A temporary ref-normalization workflow was added only to perform the Git ref operation, then removed. Net task-branch tree changes for this part are governance files, not a persistent migration workflow.
+A temporary ref-normalization workflow was added only to perform the Git ref operation, then removed. The final net task-branch tree diff versus unchanged `main` is limited to seven governance/routing files: `AGENTS.md`, `CLAUDE.md`, `FORK_MAINTENANCE.md`, `AI_HANDOFF.md`, `NEW_BUG_PROMPT.md`, `NEW_FEATURE_PROMPT.md`, and `README.md`.
 
 Final Phase 3 task branch HEAD:
 
-- `refactor/repository-standardization-migration@1982578c51569a7f8191f4e45a11cfdbd292dfa7`
+- `refactor/repository-standardization-migration@21133b5aa45475b78733d203d43c3dff8107706a`
 
 `main` itself remains unchanged at `86b900fd0821eff3cc9fcc23bb2ea343dc1d121b`; Phase 4 owns final task-branch integration.
 
@@ -380,7 +382,7 @@ Phase 3 repository-state validation actually performed:
 - **independent roots:** Phase 2 bootstrap roots for `docs`, `package`, `plugin`, and `skills` were each rechecked at parent count **0**; current Phase 3 tips descend only from their respective independent roots;
 - **reference history:** both normalized refs compare identical to their original commits; bare names are absent after the successful run;
 - **safety refs:** every `migration-backup/20260928/*` protection ref and `migration-source/native-heavy-frontend-reference` rechecked identical to its expected protected SHA;
-- **main local adapter:** `AGENTS.md` contains the new `docs:README.md` route and no `handoff/latest-handoff.md` route; thin `CLAUDE.md` points to `AGENTS.md`;
+- **main local adapter:** the seven-file governance/routing diff is isolated from product code; `AGENTS.md` routes governance to `docs:README.md`, thin `CLAUDE.md` points to `AGENTS.md`, and the old `docs:handoff/latest-handoff.md` route is removed from the updated task-branch governance/prompt surface;
 - **temporary workflow:** successful ref-normalization run recorded, then workflow removed from the task branch.
 
 No Atria product source behavior changed in Phase 3. No product unit suite, build, Android/Termux device test, Docker test, provider inference, or visual UI validation was required or claimed.
