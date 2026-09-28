@@ -117,6 +117,13 @@ function isNativeMemorySession(context = getContext()) {
             && context.chat.some(message => String(message?.atri_native?.messageId || '').trim()));
 }
 
+function withNativeMemorySnapshot(context = getContext()) {
+    if (!nativeSessionRuntime.active || !nativeSessionRuntime.snapshot) return context;
+    return Object.assign(Object.create(context), {
+        nativeSnapshot: nativeSessionRuntime.snapshot,
+    });
+}
+
 function getNativeMemorySessionId() {
     return String(nativeSessionRuntime.snapshot?.session?.sessionId || '').trim();
 }
@@ -8683,6 +8690,7 @@ async function ensureStoreSyncedWithChat(context) {
 }
 
 async function injectMemoryPrompts(context, payload) {
+    context = withNativeMemorySnapshot(context);
     const settings = getEffectiveSettings(context, getSettings());
     const generationType = String(payload?.type || '').trim().toLowerCase();
     context = Object.assign(Object.create(context), { memoryOsGenerationType: generationType });
@@ -16137,7 +16145,7 @@ export { processPendingMessageBatchWithLLM as _processPendingMessageBatchWithLLM
 async function refreshNativeMemoryRevisionState() {
     if (!nativeSessionRuntime.active) return;
     latestRecallSnapshot = null;
-    const runtimeContext = getContext();
+    const runtimeContext = withNativeMemorySnapshot();
     const sessionId = getNativeMemorySessionId();
     const worldState = nativeSessionRuntime.readState('atri_game_world');
     const journalEvents = Array.isArray(worldState?.journal?.events) ? worldState.journal.events : [];
@@ -16201,7 +16209,7 @@ jQuery(() => {
     onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.TIMELINE_APPENDED, event => {
         if (!nativeSessionRuntime.active) return;
         const appended = new Set(Array.isArray(event?.messageIds) ? event.messageIds : []);
-        const runtimeContext = getContext();
+        const runtimeContext = withNativeMemorySnapshot();
         const assistantFloors = (runtimeContext?.chat || [])
             .map((message, floor) => ({ message, floor }))
             .filter(({ message }) =>
