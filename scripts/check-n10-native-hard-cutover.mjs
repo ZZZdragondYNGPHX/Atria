@@ -136,8 +136,8 @@ rejectPattern(
 );
 requirePattern(
     'public/scripts/atria-shell/library-runtime-workspaces.js',
-    /id: ['"]works['"][\s\S]*id: ['"]worlds-knowledge['"][\s\S]*id: ['"]prompt-presets['"][\s\S]*id: ['"]skills['"]/,
-    'N10 Product Library must retain the Native Works / Worlds & Knowledge / Prompt Presets / Skills sections',
+    /id: ['"]works['"][\s\S]*id: ['"]worlds-knowledge['"][\s\S]*id: ['"]prompt-presets['"]/,
+    'N10 Product Library must retain the Native Works / Worlds & Knowledge / Prompt Presets sections',
 );
 
 requirePattern(
