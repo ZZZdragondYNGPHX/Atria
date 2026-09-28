@@ -29,13 +29,11 @@ const ui = compileUiDocument(uiRaw, { mode: 'hybrid' });
 const logic = compileDeclarativeLogic(logicRaw);
 const scenario = assertStudioScenario(scenarioRaw);
 
-assert.equal(project.package.version, '0.2.0-phase2');
+assert.equal(project.package.version, '0.3.0-phase3');
 assert.equal(project.assetFiles.length, 0);
 assert.equal(project.worlds.length, 1);
-assert.equal(project.package.runtime.experienceContract.taskRuntime, undefined);
 assert.equal(project.package.runtime.experienceContract.presentationRuntime, undefined);
 assert.equal(project.package.runtime.experienceContract.dataResources.length, 0);
-assert.equal(logic.interpretations.length, 0);
 assert.ok(logic.commands.some(command => command.id === 'church.settle-worked-day'));
 assert.ok(logic.commands.some(command => command.id === 'church.settle-idle-day'));
 
@@ -116,7 +114,7 @@ try {
 const serialized = JSON.stringify({ project: projectRaw, ui: uiRaw, logic: logicRaw, scenario: scenarioRaw });
 for (const forbidden of [
     'next_action', 'Curator', 'Story Compression', 'Day Compression', 'asset-pack', 'media-scene',
-    'GAL Runtime', 'Full Experience', 'interpreterTaskId', 'promptProgramId', 'knowledgeBaseId',
+    'GAL Runtime', 'Full Experience',
 ]) assert.equal(serialized.includes(forbidden), false, 'Phase 2 forbidden content leaked: ' + forbidden);
 
 console.log('Phase 2 authority/lifecycle contract, display-only Preview fixture, and church-day-cycle recorded Scenario passed.');

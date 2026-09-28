@@ -17,13 +17,10 @@ assert.equal(project.package.runtime.experience.mode, 'hybrid');
 assert.equal(project.package.runtime.experience.componentModelVersion, 2);
 assert.equal(project.package.runtime.experience.component, 'ui/main.json');
 assert.deepEqual(project.assetFiles, []);
-assert.equal(project.knowledge.length, 0);
-assert.equal(project.knowledgeBindings.length, 0);
 assert.equal(project.package.memory, undefined);
 
 const contract = project.package.runtime.experienceContract;
 assert.ok(contract);
-assert.equal(contract.taskRuntime, undefined);
 assert.equal(contract.presentationRuntime, undefined);
 
 const ui = compileUiDocument(rawUi, { mode: 'hybrid' });

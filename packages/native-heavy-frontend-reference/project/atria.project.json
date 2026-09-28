@@ -10,7 +10,7 @@
   },
   "package": {
     "name": "Native Heavy-Frontend Reference Package",
-    "version": "0.2.0-phase2",
+    "version": "0.3.0-phase3",
     "description": "A story-first Hybrid Native reference package built from original placeholder content.",
     "author": "Atria Reference",
     "actors": [
@@ -37,16 +37,26 @@
         "worldIds": [
           "world_0f47cf3a197b4af1a416084443678d9c"
         ],
-        "knowledgeBindingIds": [],
+        "knowledgeBindingIds": [
+          "kbind_00000000000000000000000000000035"
+        ],
         "primaryWorldId": "world_0f47cf3a197b4af1a416084443678d9c"
       }
     ],
     "capabilities": [
       "narrative",
       "game-runtime",
-      "world-simulation"
+      "world-simulation",
+      "knowledge",
+      "memory"
     ],
-    "permissions": [],
+    "permissions": [
+      {
+        "permission": "generation",
+        "required": true,
+        "reason": "Narrator, Interpreter, Planner, and World Tasks use player-selected Native model routes."
+      }
+    ],
     "runtime": {
       "experience": {
         "mode": "hybrid",
@@ -113,6 +123,36 @@
           },
           {
             "id": "data-projection",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "turn-contract",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "turn-envelope",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "narrative-outcome",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "model-task",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "auxiliary-task",
+            "version": 1,
+            "required": true
+          },
+          {
+            "id": "perspective",
             "version": 1,
             "required": true
           }
@@ -1417,7 +1457,46 @@
           "schemaVersion": 1,
           "sources": [
             {
-              "id": "schedule-source",
+              "id": "event-context",
+              "kind": "application",
+              "semantic": "truth",
+              "scopeId": "session",
+              "domainId": "events",
+              "fields": [
+                [
+                  "kind"
+                ],
+                [
+                  "origin"
+                ],
+                [
+                  "participants"
+                ],
+                [
+                  "location"
+                ],
+                [
+                  "status"
+                ],
+                [
+                  "premise"
+                ],
+                [
+                  "goal"
+                ],
+                [
+                  "current_beat"
+                ],
+                [
+                  "resolved_beats"
+                ],
+                [
+                  "started_at"
+                ]
+              ]
+            },
+            {
+              "id": "schedule-context",
               "kind": "application",
               "semantic": "truth",
               "scopeId": "session",
@@ -1450,7 +1529,7 @@
               ]
             },
             {
-              "id": "church-operations-source",
+              "id": "church-context",
               "kind": "application",
               "semantic": "truth",
               "scopeId": "session",
@@ -1480,7 +1559,7 @@
               ]
             },
             {
-              "id": "church-projects-source",
+              "id": "project-context",
               "kind": "application",
               "semantic": "truth",
               "scopeId": "session",
@@ -1505,6 +1584,12 @@
                   "target"
                 ],
                 [
+                  "assigned_actor_ids"
+                ],
+                [
+                  "cost_money"
+                ],
+                [
                   "operation_kind"
                 ],
                 [
@@ -1513,7 +1598,7 @@
               ]
             },
             {
-              "id": "opportunities-source",
+              "id": "opportunity-context",
               "kind": "application",
               "semantic": "truth",
               "scopeId": "session",
@@ -1523,6 +1608,9 @@
                   "kind"
                 ],
                 [
+                  "source"
+                ],
+                [
                   "title"
                 ],
                 [
@@ -1530,42 +1618,514 @@
                 ],
                 [
                   "status"
+                ],
+                [
+                  "money_delta"
+                ],
+                [
+                  "follower_delta"
+                ],
+                [
+                  "reputation_delta"
+                ],
+                [
+                  "event_id"
+                ]
+              ]
+            },
+            {
+              "id": "world-context",
+              "kind": "world",
+              "semantic": "truth",
+              "scopeId": "session",
+              "worldId": "world_0f47cf3a197b4af1a416084443678d9c",
+              "fields": [
+                [
+                  "calendar",
+                  "day"
+                ],
+                [
+                  "calendar",
+                  "last_settled_day"
+                ],
+                [
+                  "church",
+                  "money"
+                ],
+                [
+                  "church",
+                  "followers"
+                ],
+                [
+                  "church",
+                  "reputation"
+                ],
+                [
+                  "church",
+                  "level"
+                ]
+              ]
+            },
+            {
+              "id": "timeline-context",
+              "kind": "timeline",
+              "semantic": "narrative",
+              "scopeId": "session",
+              "fields": [
+                [
+                  "content"
+                ],
+                [
+                  "role"
                 ]
               ]
             }
           ],
           "views": [
             {
-              "id": "schedule",
-              "audience": "player",
+              "id": "narrator-context",
+              "audience": "task",
+              "taskId": "narrator",
               "sources": [
-                "schedule-source"
+                "event-context",
+                "world-context",
+                "schedule-context",
+                "church-context",
+                "project-context",
+                "opportunity-context",
+                "timeline-context"
               ],
               "exposure": [
-                "display"
+                "context"
               ],
-              "knowledge": false,
+              "knowledge": true,
+              "memory": true,
               "maxItems": 64,
-              "maxCharacters": 16384
+              "maxCharacters": 16000
             },
             {
-              "id": "church",
-              "audience": "player",
+              "id": "interpreter-context",
+              "audience": "task",
+              "taskId": "interpreter",
               "sources": [
-                "church-operations-source",
-                "church-projects-source",
-                "opportunities-source"
+                "event-context",
+                "world-context",
+                "timeline-context"
               ],
               "exposure": [
-                "display"
+                "context"
               ],
               "knowledge": false,
-              "maxItems": 96,
-              "maxCharacters": 24576
+              "memory": false,
+              "maxItems": 32,
+              "maxCharacters": 8000
+            },
+            {
+              "id": "planner-context",
+              "audience": "task",
+              "taskId": "planner",
+              "sources": [
+                "event-context",
+                "world-context",
+                "schedule-context",
+                "church-context",
+                "project-context",
+                "opportunity-context",
+                "timeline-context"
+              ],
+              "exposure": [
+                "context"
+              ],
+              "knowledge": true,
+              "memory": true,
+              "maxItems": 64,
+              "maxCharacters": 16000
+            },
+            {
+              "id": "world-feedback-context",
+              "audience": "task",
+              "taskId": "world-feedback",
+              "sources": [
+                "event-context",
+                "world-context",
+                "timeline-context"
+              ],
+              "exposure": [
+                "context"
+              ],
+              "knowledge": true,
+              "memory": false,
+              "maxItems": 48,
+              "maxCharacters": 12000
             }
           ],
           "actors": [],
           "graphs": []
+        },
+        "taskRuntime": {
+          "schemaVersion": 1,
+          "slots": [
+            {
+              "id": "story-model",
+              "requiredCapabilities": [
+                "generation.structured-output"
+              ]
+            }
+          ],
+          "tasks": [
+            {
+              "id": "narrator",
+              "bindingSlotId": "story-model",
+              "executionClass": "turn_blocking",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "stages": {
+                    "type": "array",
+                    "maxItems": 0,
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "required": [],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "stages"
+                ],
+                "additionalProperties": false
+              },
+              "context": [
+                "input",
+                "knowledge",
+                "projection"
+              ],
+              "resultPolicy": {
+                "resultClass": "presentation",
+                "sink": "artifact"
+              },
+              "variants": [
+                {
+                  "id": "default",
+                  "prompt": {
+                    "resourceId": "pprog_00000000000000000000000000000011",
+                    "revision": "phase3"
+                  },
+                  "generation": {
+                    "resourceId": "genprof_00000000000000000000000000000021",
+                    "revision": "phase3"
+                  },
+                  "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "schemaVersion": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1
+                      },
+                      "narrative": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 24000
+                      },
+                      "outcomes": {
+                        "type": "array",
+                        "maxItems": 0,
+                        "items": {
+                          "type": "string",
+                          "maxLength": 1
+                        }
+                      },
+                      "diagnostics": {
+                        "type": "array",
+                        "maxItems": 0,
+                        "items": {
+                          "type": "string",
+                          "maxLength": 1
+                        }
+                      }
+                    },
+                    "required": [
+                      "schemaVersion",
+                      "narrative",
+                      "outcomes",
+                      "diagnostics"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "requiredCapabilities": [
+                    "generation.structured-output"
+                  ]
+                }
+              ],
+              "queuePolicy": "fifo"
+            },
+            {
+              "id": "interpreter",
+              "bindingSlotId": "story-model",
+              "executionClass": "turn_blocking",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "narrative": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 24000
+                  },
+                  "stages": {
+                    "type": "array",
+                    "maxItems": 0,
+                    "items": {
+                      "type": "object",
+                      "properties": {},
+                      "required": [],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "narrative",
+                  "stages"
+                ],
+                "additionalProperties": false
+              },
+              "context": [
+                "input",
+                "projection"
+              ],
+              "resultPolicy": {
+                "resultClass": "world_outcome_proposal",
+                "sink": "proposal"
+              },
+              "variants": [
+                {
+                  "id": "default",
+                  "prompt": {
+                    "resourceId": "pprog_00000000000000000000000000000012",
+                    "revision": "phase3"
+                  },
+                  "generation": {
+                    "resourceId": "genprof_00000000000000000000000000000022",
+                    "revision": "phase3"
+                  },
+                  "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "decision": {
+                        "type": "string",
+                        "enum": [
+                          "event",
+                          "no_change"
+                        ],
+                        "maxLength": 16
+                      },
+                      "eventType": {
+                        "type": "string",
+                        "enum": [
+                          "story.beat.narrative",
+                          "story.beat.activity",
+                          "story.beat.task",
+                          "story.beat.transition"
+                        ],
+                        "maxLength": 64
+                      },
+                      "confidence": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "decision",
+                      "confidence"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "requiredCapabilities": [
+                    "generation.structured-output"
+                  ]
+                }
+              ],
+              "interpretation": {
+                "id": "story-outcome",
+                "instruction": "Classify only the finalized narrative's next Event Beat. Use only declared beat event types or no_change. Never emit commands, patches, numeric effects, or new world facts.",
+                "allowedEventTypes": [
+                  "story.beat.narrative",
+                  "story.beat.activity",
+                  "story.beat.task",
+                  "story.beat.transition"
+                ],
+                "confidenceThreshold": 0.7,
+                "lowConfidencePolicy": "no_change",
+                "maxParticipants": 0,
+                "maxEvidence": 0
+              },
+              "queuePolicy": "fifo"
+            },
+            {
+              "id": "planner",
+              "bindingSlotId": "story-model",
+              "executionClass": "background",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "request"
+                ],
+                "additionalProperties": false
+              },
+              "context": [
+                "input",
+                "knowledge",
+                "projection"
+              ],
+              "resultPolicy": {
+                "resultClass": "advisory",
+                "sink": "proposal"
+              },
+              "variants": [
+                {
+                  "id": "default",
+                  "prompt": {
+                    "resourceId": "pprog_00000000000000000000000000000013",
+                    "revision": "phase3"
+                  },
+                  "generation": {
+                    "resourceId": "genprof_00000000000000000000000000000023",
+                    "revision": "phase3"
+                  },
+                  "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "proposals": {
+                        "type": "array",
+                        "maxItems": 6,
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "event",
+                                "schedule"
+                              ],
+                              "maxLength": 16
+                            },
+                            "summary": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 1000
+                            },
+                            "rationale": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 1000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "summary",
+                            "rationale"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "proposals"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "requiredCapabilities": [
+                    "generation.structured-output"
+                  ]
+                }
+              ],
+              "queuePolicy": "latest"
+            },
+            {
+              "id": "world-feedback",
+              "bindingSlotId": "story-model",
+              "executionClass": "background",
+              "inputSchema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "request"
+                ],
+                "additionalProperties": false
+              },
+              "context": [
+                "input",
+                "knowledge",
+                "projection"
+              ],
+              "resultPolicy": {
+                "resultClass": "presentation",
+                "sink": "artifact"
+              },
+              "variants": [
+                {
+                  "id": "default",
+                  "prompt": {
+                    "resourceId": "pprog_00000000000000000000000000000014",
+                    "revision": "phase3"
+                  },
+                  "generation": {
+                    "resourceId": "genprof_00000000000000000000000000000024",
+                    "revision": "phase3"
+                  },
+                  "outputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "feedback": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 4000
+                      },
+                      "cues": {
+                        "type": "array",
+                        "maxItems": 6,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 500
+                        }
+                      }
+                    },
+                    "required": [
+                      "feedback",
+                      "cues"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "requiredCapabilities": [
+                    "generation.structured-output"
+                  ]
+                }
+              ],
+              "queuePolicy": "latest"
+            }
+          ],
+          "turn": {
+            "policy": "narrative-outcome",
+            "stages": [],
+            "narratorTaskId": "narrator",
+            "interpreterTaskId": "interpreter"
+          }
         }
       },
       "game": {
@@ -1766,9 +2326,399 @@
       }
     }
   ],
-  "knowledge": [],
-  "knowledgeBindings": [],
-  "resources": [],
+  "knowledge": [
+    {
+      "knowledgeBase": {
+        "knowledgeBaseId": "kb_00000000000000000000000000000031",
+        "displayName": "Reference Story Knowledge",
+        "currentRevisionId": "kbv_00000000000000000000000000000032"
+      },
+      "revision": {
+        "knowledgeRevisionId": "kbv_00000000000000000000000000000032",
+        "knowledgeBaseId": "kb_00000000000000000000000000000031",
+        "entryIds": [
+          "kentry_00000000000000000000000000000033",
+          "kentry_00000000000000000000000000000034"
+        ],
+        "metadata": {
+          "phase": "phase3"
+        }
+      },
+      "entries": [
+        {
+          "knowledgeEntryId": "kentry_00000000000000000000000000000033",
+          "enabled": true,
+          "content": "The reference setting centers on a small community sanctuary and its nearby market. The church-management layer is supporting context; the main experience remains an AI-authored story on the canonical Timeline.",
+          "discovery": {
+            "keywords": [
+              "sanctuary",
+              "market",
+              "church",
+              "community"
+            ]
+          },
+          "delivery": {
+            "target": "narrator",
+            "position": "before",
+            "priority": 20,
+            "visibility": [
+              "narrator"
+            ]
+          },
+          "metadata": {
+            "role": "setting"
+          }
+        },
+        {
+          "knowledgeEntryId": "kentry_00000000000000000000000000000034",
+          "enabled": true,
+          "content": "Caretaker is the neutral placeholder narrative anchor for the reference package. Treat the actor as a participant in the current Event, not as an administrative controller of World or Session authority.",
+          "discovery": {
+            "keywords": [
+              "Caretaker",
+              "event",
+              "story"
+            ]
+          },
+          "delivery": {
+            "target": "narrator",
+            "position": "before",
+            "priority": 30,
+            "visibility": [
+              "narrator"
+            ]
+          },
+          "metadata": {
+            "role": "character"
+          }
+        }
+      ]
+    }
+  ],
+  "knowledgeBindings": [
+    {
+      "knowledgeBindingId": "kbind_00000000000000000000000000000035",
+      "source": {
+        "kind": "project",
+        "knowledgeBaseId": "kb_00000000000000000000000000000031",
+        "knowledgeRevisionId": "kbv_00000000000000000000000000000032"
+      },
+      "enabled": true,
+      "mode": "augment",
+      "target": "narrator",
+      "visibility": [
+        "narrator"
+      ],
+      "priority": 50,
+      "metadata": {
+        "phase": "phase3"
+      }
+    }
+  ],
+  "resources": [
+    {
+      "resourceType": "core.prompt-module",
+      "resource": {
+        "schemaVersion": 1,
+        "promptModuleId": "pmod_00000000000000000000000000000001",
+        "revision": "phase3",
+        "displayName": "Native Authority Discipline",
+        "target": "system.foundation",
+        "stages": [
+          "stage.main"
+        ],
+        "priority": 0,
+        "body": "Use Atria Native Authority only. World is settled objective fact; Session Application owns Events, Schedule, Church Operations, Projects, and Opportunities; Lifecycle owns clocks/workflows; Timeline is canonical experienced narrative. Never emit raw patches or invent undeclared commands."
+      }
+    },
+    {
+      "resourceType": "core.prompt-module",
+      "resource": {
+        "schemaVersion": 1,
+        "promptModuleId": "pmod_00000000000000000000000000000002",
+        "revision": "phase3",
+        "displayName": "Knowledge and Context Discipline",
+        "target": "system.foundation",
+        "stages": [
+          "stage.main"
+        ],
+        "priority": 0,
+        "body": "Knowledge is authored setting, Projection is current committed authority, Timeline is recent player experience, and Memory is existing Atria Native recalled evidence. Do not create a second lore, memory, timeline, scheduler, or persistence system."
+      }
+    },
+    {
+      "resourceType": "core.prompt-module",
+      "resource": {
+        "schemaVersion": 1,
+        "promptModuleId": "pmod_00000000000000000000000000000003",
+        "revision": "phase3",
+        "displayName": "Story Narrator",
+        "target": "system.foundation",
+        "stages": [
+          "stage.main"
+        ],
+        "priority": 0,
+        "body": "Write the formal story for the current Event Beat in story-first prose. Ground claims in supplied Knowledge, Projection, Memory, recent Timeline, and player input. Do not act as system administrator, do not present Narrative Choices or next_action, and return no authority mutation."
+      }
+    },
+    {
+      "resourceType": "core.prompt-module",
+      "resource": {
+        "schemaVersion": 1,
+        "promptModuleId": "pmod_00000000000000000000000000000004",
+        "revision": "phase3",
+        "displayName": "Semantic Interpreter",
+        "target": "system.foundation",
+        "stages": [
+          "stage.main"
+        ],
+        "priority": 0,
+        "body": "Classify semantic outcome only from the finalized narration and current Event context. Choose only the declared event type or no_change. Never emit patches, command identifiers, numeric simulation results, or new facts."
+      }
+    },
+    {
+      "resourceType": "core.prompt-module",
+      "resource": {
+        "schemaVersion": 1,
+        "promptModuleId": "pmod_00000000000000000000000000000005",
+        "revision": "phase3",
+        "displayName": "Future Content Planner",
+        "target": "system.foundation",
+        "stages": [
+          "stage.main"
+        ],
+        "priority": 0,
+        "body": "Produce bounded proposals for future Events or Schedule content only. Proposals are advisory and do not become facts until Native runtime validation and an explicit authority path accepts them."
+      }
+    },
+    {
+      "resourceType": "core.prompt-module",
+      "resource": {
+        "schemaVersion": 1,
+        "promptModuleId": "pmod_00000000000000000000000000000006",
+        "revision": "phase3",
+        "displayName": "World Feedback",
+        "target": "system.foundation",
+        "stages": [
+          "stage.main"
+        ],
+        "priority": 0,
+        "body": "Produce bounded world feedback presentation grounded in committed World/Event facts and Knowledge. Deterministic simulation remains runtime-owned; do not claim a durable world change unless authority already records it."
+      }
+    },
+    {
+      "resourceType": "core.prompt-program",
+      "resource": {
+        "schemaVersion": 1,
+        "promptProgramId": "pprog_00000000000000000000000000000011",
+        "revision": "phase3",
+        "displayName": "Narrator Program",
+        "stages": [
+          {
+            "stageId": "stage.main",
+            "moduleRefs": [
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000001",
+                "revision": "phase3"
+              },
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000002",
+                "revision": "phase3"
+              },
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000003",
+                "revision": "phase3"
+              }
+            ]
+          }
+        ],
+        "responseDirective": {}
+      }
+    },
+    {
+      "resourceType": "core.prompt-program",
+      "resource": {
+        "schemaVersion": 1,
+        "promptProgramId": "pprog_00000000000000000000000000000012",
+        "revision": "phase3",
+        "displayName": "Interpreter Program",
+        "stages": [
+          {
+            "stageId": "stage.main",
+            "moduleRefs": [
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000001",
+                "revision": "phase3"
+              },
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000002",
+                "revision": "phase3"
+              },
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000004",
+                "revision": "phase3"
+              }
+            ]
+          }
+        ],
+        "responseDirective": {}
+      }
+    },
+    {
+      "resourceType": "core.prompt-program",
+      "resource": {
+        "schemaVersion": 1,
+        "promptProgramId": "pprog_00000000000000000000000000000013",
+        "revision": "phase3",
+        "displayName": "Planner Program",
+        "stages": [
+          {
+            "stageId": "stage.main",
+            "moduleRefs": [
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000001",
+                "revision": "phase3"
+              },
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000002",
+                "revision": "phase3"
+              },
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000005",
+                "revision": "phase3"
+              }
+            ]
+          }
+        ],
+        "responseDirective": {}
+      }
+    },
+    {
+      "resourceType": "core.prompt-program",
+      "resource": {
+        "schemaVersion": 1,
+        "promptProgramId": "pprog_00000000000000000000000000000014",
+        "revision": "phase3",
+        "displayName": "World Feedback Program",
+        "stages": [
+          {
+            "stageId": "stage.main",
+            "moduleRefs": [
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000001",
+                "revision": "phase3"
+              },
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000002",
+                "revision": "phase3"
+              },
+              {
+                "scope": "project",
+                "projectId": "project_c145c64b4b47b314045cd606cbe15aed",
+                "resourceType": "core.prompt-module",
+                "resourceId": "pmod_00000000000000000000000000000006",
+                "revision": "phase3"
+              }
+            ]
+          }
+        ],
+        "responseDirective": {}
+      }
+    },
+    {
+      "resourceType": "core.generation-profile",
+      "resource": {
+        "schemaVersion": 1,
+        "generationProfileId": "genprof_00000000000000000000000000000021",
+        "revision": "phase3",
+        "displayName": "Narrator Generation",
+        "sampling": {
+          "temperature": 0.75
+        },
+        "output": {
+          "maxTokens": 1400
+        }
+      }
+    },
+    {
+      "resourceType": "core.generation-profile",
+      "resource": {
+        "schemaVersion": 1,
+        "generationProfileId": "genprof_00000000000000000000000000000022",
+        "revision": "phase3",
+        "displayName": "Interpreter Generation",
+        "sampling": {
+          "temperature": 0
+        },
+        "output": {
+          "maxTokens": 256
+        }
+      }
+    },
+    {
+      "resourceType": "core.generation-profile",
+      "resource": {
+        "schemaVersion": 1,
+        "generationProfileId": "genprof_00000000000000000000000000000023",
+        "revision": "phase3",
+        "displayName": "Planner Generation",
+        "sampling": {
+          "temperature": 0.35
+        },
+        "output": {
+          "maxTokens": 700
+        }
+      }
+    },
+    {
+      "resourceType": "core.generation-profile",
+      "resource": {
+        "schemaVersion": 1,
+        "generationProfileId": "genprof_00000000000000000000000000000024",
+        "revision": "phase3",
+        "displayName": "World Feedback Generation",
+        "sampling": {
+          "temperature": 0.55
+        },
+        "output": {
+          "maxTokens": 700
+        }
+      }
+    }
+  ],
   "dependencies": {
     "worlds": [],
     "knowledge": [],

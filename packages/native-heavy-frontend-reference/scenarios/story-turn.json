@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "entryPointId": "entry_860c164ab18371b783b6d8c9565b392d",
+  "steps": [
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "experience.ready"
+      }
+    },
+    {
+      "kind": "lifecycle",
+      "input": {
+        "kind": "app.command",
+        "domainId": "events",
+        "recordId": "story-current",
+        "commandId": "open",
+        "args": {
+          "kind": "system",
+          "origin": "composer",
+          "participants": [
+            "actor_b48a53176eb663a1af411fb6f8638d66"
+          ],
+          "location": "sanctuary",
+          "premise": "A visitor arrives while the caretaker is closing the sanctuary.",
+          "goal": "Advance the encounter without leaving the current story.",
+          "started_at": 480
+        }
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.events.records.0.value.current_beat",
+        "equals": "narrative"
+      }
+    },
+    {
+      "kind": "turn",
+      "input": {
+        "schemaVersion": 1,
+        "narrative": "The caretaker finishes the last lantern, hears measured footsteps at the sanctuary door, and turns toward the visitor as the scene moves into its next beat.",
+        "outcomes": [
+          {
+            "requestId": "story-outcome",
+            "interpretation": {
+              "decision": "event",
+              "eventType": "story.beat.transition",
+              "confidence": 1
+            }
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.events.records.0.value.current_beat",
+        "equals": "transition"
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_lifecycle.domains.events.records.0.value.resolved_beats",
+        "equals": 1
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "timeline.0.content",
+        "equals": "The caretaker finishes the last lantern, hears measured footsteps at the sanctuary door, and turns toward the visitor as the scene moves into its next beat."
+      }
+    },
+    {
+      "kind": "assert",
+      "input": {
+        "path": "states.atri_world_state.worlds.world_0f47cf3a197b4af1a416084443678d9c.state.church.money",
+        "equals": 120
+      }
+    }
+  ]
+}

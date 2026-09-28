@@ -148,5 +148,50 @@
       }
     }
   ],
-  "interpretations": []
+  "interpretations": [
+    {
+      "eventType": "story.beat.narrative",
+      "appCommand": {
+        "domainId": "events",
+        "commandId": "advance-beat",
+        "recordId": "story-current",
+        "args": {
+          "beat": "narrative"
+        }
+      }
+    },
+    {
+      "eventType": "story.beat.activity",
+      "appCommand": {
+        "domainId": "events",
+        "commandId": "advance-beat",
+        "recordId": "story-current",
+        "args": {
+          "beat": "activity"
+        }
+      }
+    },
+    {
+      "eventType": "story.beat.task",
+      "appCommand": {
+        "domainId": "events",
+        "commandId": "advance-beat",
+        "recordId": "story-current",
+        "args": {
+          "beat": "task"
+        }
+      }
+    },
+    {
+      "eventType": "story.beat.transition",
+      "appCommand": {
+        "domainId": "events",
+        "commandId": "advance-beat",
+        "recordId": "story-current",
+        "args": {
+          "beat": "transition"
+        }
+      }
+    }
+  ]
 }
