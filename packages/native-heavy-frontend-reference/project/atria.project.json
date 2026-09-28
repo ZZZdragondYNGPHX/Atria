@@ -1457,6 +1457,144 @@
           "schemaVersion": 1,
           "sources": [
             {
+              "id": "schedule-source",
+              "kind": "application",
+              "semantic": "truth",
+              "scopeId": "session",
+              "domainId": "schedule",
+              "fields": [
+                [
+                  "actor_id"
+                ],
+                [
+                  "title"
+                ],
+                [
+                  "start_tick"
+                ],
+                [
+                  "end_tick"
+                ],
+                [
+                  "policy"
+                ],
+                [
+                  "operation_kind"
+                ],
+                [
+                  "location"
+                ],
+                [
+                  "status"
+                ]
+              ]
+            },
+            {
+              "id": "church-operations-source",
+              "kind": "application",
+              "semantic": "truth",
+              "scopeId": "session",
+              "domainId": "church-operations",
+              "fields": [
+                [
+                  "day_index"
+                ],
+                [
+                  "outreach_count"
+                ],
+                [
+                  "project_work_count"
+                ],
+                [
+                  "expected_money_delta"
+                ],
+                [
+                  "expected_follower_delta"
+                ],
+                [
+                  "expected_reputation_delta"
+                ],
+                [
+                  "settlement_status"
+                ]
+              ]
+            },
+            {
+              "id": "church-projects-source",
+              "kind": "application",
+              "semantic": "truth",
+              "scopeId": "session",
+              "domainId": "church-projects",
+              "fields": [
+                [
+                  "template_id"
+                ],
+                [
+                  "status"
+                ],
+                [
+                  "start_tick"
+                ],
+                [
+                  "due_tick"
+                ],
+                [
+                  "progress"
+                ],
+                [
+                  "target"
+                ],
+                [
+                  "operation_kind"
+                ],
+                [
+                  "milestone"
+                ],
+                [
+                  "assigned_actor_ids"
+                ],
+                [
+                  "cost_money"
+                ]
+              ]
+            },
+            {
+              "id": "opportunities-source",
+              "kind": "application",
+              "semantic": "truth",
+              "scopeId": "session",
+              "domainId": "opportunities",
+              "fields": [
+                [
+                  "kind"
+                ],
+                [
+                  "title"
+                ],
+                [
+                  "summary"
+                ],
+                [
+                  "status"
+                ],
+                [
+                  "source"
+                ],
+                [
+                  "money_delta"
+                ],
+                [
+                  "follower_delta"
+                ],
+                [
+                  "reputation_delta"
+                ],
+                [
+                  "event_id"
+                ]
+              ]
+            },
+            {
               "id": "event-context",
               "kind": "application",
               "semantic": "truth",
@@ -1492,144 +1630,6 @@
                 ],
                 [
                   "started_at"
-                ]
-              ]
-            },
-            {
-              "id": "schedule-context",
-              "kind": "application",
-              "semantic": "truth",
-              "scopeId": "session",
-              "domainId": "schedule",
-              "fields": [
-                [
-                  "actor_id"
-                ],
-                [
-                  "title"
-                ],
-                [
-                  "start_tick"
-                ],
-                [
-                  "end_tick"
-                ],
-                [
-                  "policy"
-                ],
-                [
-                  "operation_kind"
-                ],
-                [
-                  "location"
-                ],
-                [
-                  "status"
-                ]
-              ]
-            },
-            {
-              "id": "church-context",
-              "kind": "application",
-              "semantic": "truth",
-              "scopeId": "session",
-              "domainId": "church-operations",
-              "fields": [
-                [
-                  "day_index"
-                ],
-                [
-                  "outreach_count"
-                ],
-                [
-                  "project_work_count"
-                ],
-                [
-                  "expected_money_delta"
-                ],
-                [
-                  "expected_follower_delta"
-                ],
-                [
-                  "expected_reputation_delta"
-                ],
-                [
-                  "settlement_status"
-                ]
-              ]
-            },
-            {
-              "id": "project-context",
-              "kind": "application",
-              "semantic": "truth",
-              "scopeId": "session",
-              "domainId": "church-projects",
-              "fields": [
-                [
-                  "template_id"
-                ],
-                [
-                  "status"
-                ],
-                [
-                  "start_tick"
-                ],
-                [
-                  "due_tick"
-                ],
-                [
-                  "progress"
-                ],
-                [
-                  "target"
-                ],
-                [
-                  "assigned_actor_ids"
-                ],
-                [
-                  "cost_money"
-                ],
-                [
-                  "operation_kind"
-                ],
-                [
-                  "milestone"
-                ]
-              ]
-            },
-            {
-              "id": "opportunity-context",
-              "kind": "application",
-              "semantic": "truth",
-              "scopeId": "session",
-              "domainId": "opportunities",
-              "fields": [
-                [
-                  "kind"
-                ],
-                [
-                  "source"
-                ],
-                [
-                  "title"
-                ],
-                [
-                  "summary"
-                ],
-                [
-                  "status"
-                ],
-                [
-                  "money_delta"
-                ],
-                [
-                  "follower_delta"
-                ],
-                [
-                  "reputation_delta"
-                ],
-                [
-                  "event_id"
                 ]
               ]
             },
@@ -1679,16 +1679,44 @@
           ],
           "views": [
             {
+              "id": "schedule",
+              "audience": "player",
+              "sources": [
+                "schedule-source"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 64,
+              "maxCharacters": 16384
+            },
+            {
+              "id": "church",
+              "audience": "player",
+              "sources": [
+                "church-operations-source",
+                "church-projects-source",
+                "opportunities-source"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 96,
+              "maxCharacters": 24576
+            },
+            {
               "id": "narrator-context",
               "audience": "task",
               "taskId": "narrator",
               "sources": [
                 "event-context",
                 "world-context",
-                "schedule-context",
-                "church-context",
-                "project-context",
-                "opportunity-context",
+                "schedule-source",
+                "church-operations-source",
+                "church-projects-source",
+                "opportunities-source",
                 "timeline-context"
               ],
               "exposure": [
@@ -1723,10 +1751,10 @@
               "sources": [
                 "event-context",
                 "world-context",
-                "schedule-context",
-                "church-context",
-                "project-context",
-                "opportunity-context",
+                "schedule-source",
+                "church-operations-source",
+                "church-projects-source",
+                "opportunities-source",
                 "timeline-context"
               ],
               "exposure": [
