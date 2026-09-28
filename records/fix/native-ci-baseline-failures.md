@@ -17,7 +17,7 @@ These failures were already present on the exact main baseline before this fix.
 
 Branch: `fix/native-ci-baseline-failures`
 
-Current HEAD: `b5a7f9354a89d5e89944994f5a21a2155e0f072b`
+Current HEAD: `23a2f075a970b03acdd82f808995dead60989e95`
 
 Changes:
 
@@ -57,3 +57,24 @@ When CI completes:
 4. verify integrated `main`;
 5. update this Record to complete;
 6. delete `docs:HANDOFF.md` and the completed fix branch.
+
+
+### Additional stale integration guards
+
+The first fixes allowed the sequential P8 integration suite to advance and reveal four later guard assertions that had not been updated after already-merged product changes. These are guard/test synchronization fixes, not runtime behavior changes:
+
+- `scripts/check-p5-native-runtime-ui.mjs`: requires the current `prompt-presets` Library section while retaining the legacy `generation-profiles` routing alias.
+- `scripts/check-p6-native-authoring.mjs`: checks Studio's current `Review Attach exact` Library-resource path rather than the retired row-level `New revision` action.
+- `scripts/check-n9-native-product-authority.mjs`: follows the extracted Embedded Knowledge promotion component; Play must mount `mountEmbeddedKnowledgePromotion`, and the component must expose `Save to my Library` through `promoteKnowledge`.
+- `scripts/check-n10-native-hard-cutover.mjs`: requires the current four Native Library sections — Works, Worlds & Knowledge, Prompt Presets and Skills — while legacy Characters/Games/WorldInfo authority remains forbidden.
+
+Sequential integration evidence before the latest head:
+- after the P5 fix, P0–P5 passed and P6 exposed the next stale assertion;
+- after the P6 fix, P0–P7 and A0–A9 passed and N9 exposed the next stale assertion;
+- after the N9 fix, P0–P7, A0–A9 and N9 passed and N10 exposed the next stale assertion.
+
+Latest branch HEAD: `23a2f075a970b03acdd82f808995dead60989e95`.
+
+Latest validation runs:
+- `Native Model Prompt Runtime` run `36415146954`: in progress;
+- `Atria PR Checks` run `36415147038`: Migration Guard success; Lint and Unit Tests in progress.
