@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "stateVersion": 1,
+  "stateVersion": 2,
   "localState": {
     "player_name": {
       "type": "string",
@@ -33,6 +33,56 @@
         "projects",
         "opportunities"
       ]
+    },
+    "phone_section": {
+      "type": "string",
+      "default": "messages",
+      "scope": "session",
+      "enum": [
+        "messages",
+        "social",
+        "mail"
+      ]
+    },
+    "sms_draft": {
+      "type": "string",
+      "default": "",
+      "scope": "session",
+      "required": true,
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "social_draft": {
+      "type": "string",
+      "default": "",
+      "scope": "session",
+      "required": true,
+      "minLength": 1,
+      "maxLength": 2400
+    },
+    "mail_to": {
+      "type": "string",
+      "default": "community-office",
+      "scope": "session",
+      "required": true,
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "mail_subject": {
+      "type": "string",
+      "default": "",
+      "scope": "session",
+      "required": true,
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "mail_body": {
+      "type": "string",
+      "default": "",
+      "scope": "session",
+      "required": true,
+      "minLength": 1,
+      "maxLength": 5000
     }
   },
   "selectors": {
@@ -46,7 +96,10 @@
     "church_decrees_active": "ui.church_section == \"decrees\"",
     "church_projects_active": "ui.church_section == \"projects\"",
     "church_opportunities_active": "ui.church_section == \"opportunities\"",
-    "caretaker_is_leader": "world.church.positions.leader == \"actor_b48a53176eb663a1af411fb6f8638d66\""
+    "caretaker_is_leader": "world.church.positions.leader == \"actor_b48a53176eb663a1af411fb6f8638d66\"",
+    "phone_messages_active": "ui.phone_section == \"messages\"",
+    "phone_social_active": "ui.phone_section == \"social\"",
+    "phone_mail_active": "ui.phone_section == \"mail\""
   },
   "actions": {
     "confirm_opening": {
@@ -188,6 +241,203 @@
           "op": "command.dispatch",
           "commandId": "church.promote-level",
           "args": {}
+        }
+      ]
+    },
+    "phone_messages": {
+      "steps": [
+        {
+          "op": "ui.set",
+          "path": "ui.phone_section",
+          "value": "messages"
+        }
+      ]
+    },
+    "phone_social": {
+      "steps": [
+        {
+          "op": "ui.set",
+          "path": "ui.phone_section",
+          "value": "social"
+        }
+      ]
+    },
+    "phone_mail": {
+      "steps": [
+        {
+          "op": "ui.set",
+          "path": "ui.phone_section",
+          "value": "mail"
+        }
+      ]
+    },
+    "send_sms": {
+      "steps": [
+        {
+          "op": "application.command",
+          "domainId": "sms-threads",
+          "commandId": "send-player",
+          "args": {
+            "thread_id": "caretaker",
+            "participants": [
+              "player",
+              "actor_b48a53176eb663a1af411fb6f8638d66"
+            ],
+            "body": {
+              "expr": "ui.sms_draft"
+            },
+            "sent_at": {
+              "expr": "temporal.world[0].tick"
+            }
+          }
+        },
+        {
+          "op": "ui.reset",
+          "path": "ui.sms_draft"
+        }
+      ]
+    },
+    "publish_social": {
+      "steps": [
+        {
+          "op": "application.command",
+          "domainId": "social",
+          "commandId": "publish-player",
+          "args": {
+            "body": {
+              "expr": "ui.social_draft"
+            },
+            "posted_at": {
+              "expr": "temporal.world[0].tick"
+            }
+          }
+        },
+        {
+          "op": "ui.reset",
+          "path": "ui.social_draft"
+        }
+      ]
+    },
+    "send_mail": {
+      "steps": [
+        {
+          "op": "application.command",
+          "domainId": "mail",
+          "commandId": "send-player",
+          "args": {
+            "to_id": {
+              "expr": "ui.mail_to"
+            },
+            "subject": {
+              "expr": "ui.mail_subject"
+            },
+            "body": {
+              "expr": "ui.mail_body"
+            },
+            "delivered_at": {
+              "expr": "temporal.world[0].tick"
+            }
+          }
+        },
+        {
+          "op": "ui.reset",
+          "path": "ui.mail_subject"
+        },
+        {
+          "op": "ui.reset",
+          "path": "ui.mail_body"
+        }
+      ]
+    },
+    "mark_sms_read": {
+      "steps": [
+        {
+          "op": "application.command",
+          "domainId": "sms-threads",
+          "recordId": {
+            "expr": "item.id"
+          },
+          "commandId": "mark-read",
+          "args": {}
+        }
+      ]
+    },
+    "mark_social_read": {
+      "steps": [
+        {
+          "op": "application.command",
+          "domainId": "social",
+          "recordId": {
+            "expr": "item.id"
+          },
+          "commandId": "mark-read",
+          "args": {}
+        }
+      ]
+    },
+    "mark_mail_read": {
+      "steps": [
+        {
+          "op": "application.command",
+          "domainId": "mail",
+          "recordId": {
+            "expr": "item.id"
+          },
+          "commandId": "mark-read",
+          "args": {}
+        }
+      ]
+    },
+    "open_sms_event": {
+      "steps": [
+        {
+          "op": "application.command",
+          "domainId": "events",
+          "recordId": {
+            "template": "comm-{{item.id}}"
+          },
+          "commandId": "open",
+          "args": {
+            "kind": "communication",
+            "origin": {
+              "expr": "item.id"
+            },
+            "title": {
+              "template": "Message from {{item.data.sender_id}}"
+            },
+            "participants": [
+              "actor_b48a53176eb663a1af411fb6f8638d66"
+            ],
+            "location": "phone",
+            "premise": {
+              "expr": "item.data.body"
+            },
+            "goal": "Follow up on this communication in the main story.",
+            "started_at": {
+              "expr": "item.data.sent_at"
+            }
+          }
+        }
+      ]
+    },
+    "open_mail_reference": {
+      "steps": [
+        {
+          "op": "ui.set",
+          "path": "ui.section",
+          "value": "church"
+        },
+        {
+          "op": "ui.set",
+          "path": "ui.church_section",
+          "value": "projects",
+          "when": "item.data.reference_kind == \"project\""
+        },
+        {
+          "op": "ui.set",
+          "path": "ui.church_section",
+          "value": "opportunities",
+          "when": "item.data.reference_kind == \"opportunity\""
         }
       ]
     }
@@ -1332,15 +1582,443 @@
                 "id": "phone_copy",
                 "type": "text",
                 "props": {
-                  "text": "Messages, Social, and Mail are ready for future Native communication records."
+                  "text": "World-internal communication lives in Session Application. Messages, Social, and Mail stay separate from the canonical Story Timeline."
                 }
               },
               {
                 "id": "phone_status",
                 "type": "badge",
-                "props": {
-                  "text": "No unread items"
+                "bindings": {
+                  "text": {
+                    "template": "Communication records {{length(projection.phone.items)}} · unread items are marked below"
+                  }
                 }
+              },
+              {
+                "id": "phone_nav",
+                "type": "grid",
+                "children": [
+                  {
+                    "id": "phone_nav_messages",
+                    "type": "button",
+                    "props": {
+                      "text": "Messages"
+                    },
+                    "events": {
+                      "click": "phone_messages"
+                    }
+                  },
+                  {
+                    "id": "phone_nav_social",
+                    "type": "button",
+                    "props": {
+                      "text": "Social"
+                    },
+                    "events": {
+                      "click": "phone_social"
+                    }
+                  },
+                  {
+                    "id": "phone_nav_mail",
+                    "type": "button",
+                    "props": {
+                      "text": "Mail"
+                    },
+                    "events": {
+                      "click": "phone_mail"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "phone_messages_panel",
+                "type": "stack",
+                "bindings": {
+                  "hidden": {
+                    "expr": "selectors.phone_messages_active == false"
+                  }
+                },
+                "children": [
+                  {
+                    "id": "sms_heading",
+                    "type": "text",
+                    "props": {
+                      "text": "Messages · Caretaker thread"
+                    }
+                  },
+                  {
+                    "id": "sms_thread",
+                    "type": "repeat",
+                    "source": "projection.phone.items",
+                    "key": "item.id",
+                    "pageSize": 32,
+                    "emptyText": "No messages yet",
+                    "children": [
+                      {
+                        "id": "sms_record",
+                        "type": "stack",
+                        "bindings": {
+                          "hidden": {
+                            "expr": "item.data.channel != \"sms\""
+                          }
+                        },
+                        "children": [
+                          {
+                            "id": "sms_sender",
+                            "type": "text",
+                            "bindings": {
+                              "text": {
+                                "template": "{{item.data.sender_id}} · minute {{item.data.sent_at % 1440}} · {{item.data.delivery_state}}"
+                              }
+                            }
+                          },
+                          {
+                            "id": "sms_body",
+                            "type": "text",
+                            "bindings": {
+                              "text": {
+                                "template": "{{item.data.body}}"
+                              }
+                            }
+                          },
+                          {
+                            "id": "sms_unread",
+                            "type": "badge",
+                            "props": {
+                              "text": "Unread"
+                            },
+                            "bindings": {
+                              "hidden": {
+                                "expr": "item.data.unread == false"
+                              }
+                            }
+                          },
+                          {
+                            "id": "sms_mark_read",
+                            "type": "button",
+                            "props": {
+                              "text": "Mark read"
+                            },
+                            "bindings": {
+                              "hidden": {
+                                "expr": "item.data.unread == false"
+                              }
+                            },
+                            "events": {
+                              "click": "mark_sms_read"
+                            }
+                          },
+                          {
+                            "id": "sms_story",
+                            "type": "button",
+                            "props": {
+                              "text": "Open in Story"
+                            },
+                            "bindings": {
+                              "hidden": {
+                                "expr": "item.data.sender_id == \"player\""
+                              }
+                            },
+                            "events": {
+                              "click": "open_sms_event"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "sms_form",
+                    "type": "form",
+                    "events": {
+                      "submit": "send_sms"
+                    },
+                    "children": [
+                      {
+                        "id": "sms_input",
+                        "type": "textarea",
+                        "model": "ui.sms_draft",
+                        "props": {
+                          "label": "Message",
+                          "placeholder": "Write an in-world message"
+                        }
+                      },
+                      {
+                        "id": "sms_send",
+                        "type": "button",
+                        "props": {
+                          "text": "Send message",
+                          "submit": true
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "phone_social_panel",
+                "type": "stack",
+                "bindings": {
+                  "hidden": {
+                    "expr": "selectors.phone_social_active == false"
+                  }
+                },
+                "children": [
+                  {
+                    "id": "social_heading",
+                    "type": "text",
+                    "props": {
+                      "text": "Social"
+                    }
+                  },
+                  {
+                    "id": "social_feed",
+                    "type": "repeat",
+                    "source": "projection.phone.items",
+                    "key": "item.id",
+                    "pageSize": 24,
+                    "emptyText": "No social posts yet",
+                    "children": [
+                      {
+                        "id": "social_record",
+                        "type": "stack",
+                        "bindings": {
+                          "hidden": {
+                            "expr": "item.data.channel != \"social\""
+                          }
+                        },
+                        "children": [
+                          {
+                            "id": "social_author",
+                            "type": "text",
+                            "bindings": {
+                              "text": {
+                                "template": "{{item.data.author_id}} · {{item.data.kind}} · minute {{item.data.posted_at % 1440}}"
+                              }
+                            }
+                          },
+                          {
+                            "id": "social_body",
+                            "type": "text",
+                            "bindings": {
+                              "text": {
+                                "template": "{{item.data.body}}"
+                              }
+                            }
+                          },
+                          {
+                            "id": "social_unread",
+                            "type": "badge",
+                            "props": {
+                              "text": "Unread"
+                            },
+                            "bindings": {
+                              "hidden": {
+                                "expr": "item.data.unread == false"
+                              }
+                            }
+                          },
+                          {
+                            "id": "social_mark_read",
+                            "type": "button",
+                            "props": {
+                              "text": "Mark read"
+                            },
+                            "bindings": {
+                              "hidden": {
+                                "expr": "item.data.unread == false"
+                              }
+                            },
+                            "events": {
+                              "click": "mark_social_read"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "social_form",
+                    "type": "form",
+                    "events": {
+                      "submit": "publish_social"
+                    },
+                    "children": [
+                      {
+                        "id": "social_input",
+                        "type": "textarea",
+                        "model": "ui.social_draft",
+                        "props": {
+                          "label": "Post",
+                          "placeholder": "Publish a short in-world post"
+                        }
+                      },
+                      {
+                        "id": "social_publish",
+                        "type": "button",
+                        "props": {
+                          "text": "Publish",
+                          "submit": true
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "phone_mail_panel",
+                "type": "stack",
+                "bindings": {
+                  "hidden": {
+                    "expr": "selectors.phone_mail_active == false"
+                  }
+                },
+                "children": [
+                  {
+                    "id": "mail_heading",
+                    "type": "text",
+                    "props": {
+                      "text": "Mail"
+                    }
+                  },
+                  {
+                    "id": "mail_list",
+                    "type": "repeat",
+                    "source": "projection.phone.items",
+                    "key": "item.id",
+                    "pageSize": 24,
+                    "emptyText": "No mail yet",
+                    "children": [
+                      {
+                        "id": "mail_record",
+                        "type": "stack",
+                        "bindings": {
+                          "hidden": {
+                            "expr": "item.data.channel != \"mail\""
+                          }
+                        },
+                        "children": [
+                          {
+                            "id": "mail_subject_view",
+                            "type": "text",
+                            "bindings": {
+                              "text": {
+                                "template": "{{item.data.subject}} · from {{item.data.from_id}} · {{item.data.delivery_state}}"
+                              }
+                            }
+                          },
+                          {
+                            "id": "mail_body_view",
+                            "type": "text",
+                            "bindings": {
+                              "text": {
+                                "template": "{{item.data.body}}"
+                              }
+                            }
+                          },
+                          {
+                            "id": "mail_reference",
+                            "type": "text",
+                            "bindings": {
+                              "text": {
+                                "template": "Reference · {{item.data.reference_kind}} · {{item.data.reference_id}}"
+                              },
+                              "hidden": {
+                                "expr": "item.data.reference_kind == \"none\""
+                              }
+                            }
+                          },
+                          {
+                            "id": "mail_unread",
+                            "type": "badge",
+                            "props": {
+                              "text": "Unread"
+                            },
+                            "bindings": {
+                              "hidden": {
+                                "expr": "item.data.unread == false"
+                              }
+                            }
+                          },
+                          {
+                            "id": "mail_mark_read",
+                            "type": "button",
+                            "props": {
+                              "text": "Mark read"
+                            },
+                            "bindings": {
+                              "hidden": {
+                                "expr": "item.data.unread == false"
+                              }
+                            },
+                            "events": {
+                              "click": "mark_mail_read"
+                            }
+                          },
+                          {
+                            "id": "mail_open_reference",
+                            "type": "button",
+                            "props": {
+                              "text": "Open referenced business"
+                            },
+                            "bindings": {
+                              "hidden": {
+                                "expr": "item.data.reference_kind == \"none\""
+                              }
+                            },
+                            "events": {
+                              "click": "open_mail_reference"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "mail_form",
+                    "type": "form",
+                    "events": {
+                      "submit": "send_mail"
+                    },
+                    "children": [
+                      {
+                        "id": "mail_to_input",
+                        "type": "input",
+                        "model": "ui.mail_to",
+                        "props": {
+                          "label": "To",
+                          "placeholder": "Recipient"
+                        }
+                      },
+                      {
+                        "id": "mail_subject_input",
+                        "type": "input",
+                        "model": "ui.mail_subject",
+                        "props": {
+                          "label": "Subject",
+                          "placeholder": "Subject"
+                        }
+                      },
+                      {
+                        "id": "mail_body_input",
+                        "type": "textarea",
+                        "model": "ui.mail_body",
+                        "props": {
+                          "label": "Body",
+                          "placeholder": "Write an in-world mail"
+                        }
+                      },
+                      {
+                        "id": "mail_send",
+                        "type": "button",
+                        "props": {
+                          "text": "Send mail",
+                          "submit": true
+                        }
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           },
