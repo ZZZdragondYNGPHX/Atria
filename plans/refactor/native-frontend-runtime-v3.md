@@ -4,12 +4,12 @@
 
 - Task ID：`refactor/native-frontend-runtime-v3`
 - 类型：大型架构 / Native Frontend 重构
-- 状态：**Implementation Baseline v1.0 — Ready for implementation approval**
+- 状态：**Implementation Baseline v1.0 — Phase 1 Ready**
 - Primary Workspace：`main`
-- 实现分支：尚未创建；用户明确批准正式开工后创建 `refactor/native-frontend-runtime-v3`
+- 实现分支：`refactor/native-frontend-runtime-v3@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
 - Source Baseline：`main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
 - Plan：`docs:plans/refactor/native-frontend-runtime-v3.md`
-- Implementation Record：尚未创建；进入 Phase 1 后创建 `docs:records/refactor/native-frontend-runtime-v3.md`
+- Implementation Record：`docs:records/refactor/native-frontend-runtime-v3.md`（Phase 0 已建立）
 - 兼容策略：**Hard Cut / Clean Break**
 
 本 Baseline 由 Native UI v2 在真实 Heavy Frontend Package 中暴露出的 CSS、字体、DOM、交互、Conversation presentation 与复杂应用能力上限触发。经过两轮 Gap Review 后，当前方案已通过架构 Gate；后续实现不得重新退回“Host-owned fixed UI + 少量 Package appearance props”的路线。
