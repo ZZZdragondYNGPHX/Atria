@@ -4,7 +4,7 @@
 
 - Task ID：`refactor/native-frontend-runtime-v3`
 - 类型：大型架构 / Native UI 重构
-- 状态：**Discussion Draft v0.9**
+- 状态：**Discussion Draft v0.10**
 - Primary Workspace（未来实现）：`main`
 - 当前阶段：方案讨论，仅更新 `docs`，尚未创建实现分支
 - 当前源码基线：`main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
@@ -1163,29 +1163,304 @@ Host Bridge 语义必须跨 Native Declarative、Sandbox Script 与未来 Web Is
 - Web Island：未来只保证 package/permission/bridge/runtime diagnostics 与 preview，不要求 Host 理解其内部任意 framework component tree。
 
 
+
 ---
 
-## 12. 当前待讨论主题
+## 12. Frontend Host Bridge
+
+### 12.1 定位
+
+Native Frontend v3 不直接暴露 Atria 内部对象，而是暴露一个版本化、typed、declared、scoped 的 **Frontend Host Bridge**。
+
+Bridge 是跨 Frontend Runtime / Sandbox / future Web Island 边界的 Host protocol，不承载 Package 内部本地 UI 能力。
+
+Package 内部能力例如：
+
+- Component / View / UI / Draft state；
+- timer；
+- NodeRef；
+- focus / scroll；
+- overlay；
+- drag/drop；
+- Canvas drawing；
+
+属于 Frontend Runtime 本地层，不需要 Host RPC。
+
+跨到 Atria Authority / Host service 的操作才进入 Bridge。
+
+### 12.2 统一语义，不同 Transport
+
+同一 Bridge 语义服务于：
+
+- Native Declarative IR：进程内 adapter；
+- Sandbox Script：structured message / proxy；
+- future Web Island：postMessage / typed RPC。
+
+三者的 method semantics、input/output schema、receipt、error 与 permission policy 必须一致。
+
+不同 Runtime 只改变 transport / isolation，不改变 Authority API。
+
+### 12.3 Declared Binding Registry
+
+Frontend 不直接获得：
+
+- `WorldSession`；
+- `SessionCore`；
+- repository / database；
+- raw Host service object；
+- arbitrary command selector。
+
+Package 必须在 UI 激活前声明 Frontend 可访问的 Bridge Bindings。
+
+Frontend 运行时只引用 stable binding ID，例如：
+
+```text
+host.action.invoke("buy-item", payload)
+host.data.snapshot("player-ui")
+host.operation.start("battle", input)
+```
+
+Binding 在 Build / Preflight 阶段解析到现有正式 typed contract，例如：
+
+- World Command；
+- Session Application Command；
+- Continuity；
+- Shared / Realm；
+- Model Task；
+- Activity；
+- scoped Information / Projection。
+
+未声明 Binding 不可调用。
+
+### 12.4 Read Plane — `host.data`
+
+Frontend 读取 Authority 只能通过 declared scoped projection，不直接 `getState()` 或 arbitrary query。
+
+概念 API：
+
+```text
+host.data.snapshot(bindingId)
+host.data.subscribe(bindingId)
+```
+
+Read Binding 必须受既有 Exposure / Perspective / Information contract 约束。
+
+Projection 可以很宽，但必须显式声明并由 Host contract 授权。
+
+Snapshot / update 应携带足够的版本信息，例如：
+
+- binding id；
+- revision / cursor；
+- projection/schema version；
+- typed value。
+
+未来 Web Island 使用同一 bounded snapshot/update 语义。
+
+### 12.5 Write Plane — `host.action`
+
+短事务统一收敛为：
+
+```text
+host.action.invoke(bindingId, input)
+```
+
+Binding kind 可以映射：
+
+- World Command；
+- Application Command；
+- Continuity Command / Transfer；
+- Realm Command / Transfer；
+- Shared Command / Turn operation；
+- 其它已有 typed authority intent。
+
+Bridge 不引入新的 mutation/reducer/authority 模型。
+
+### 12.6 Long-running Plane — `host.operation`
+
+Task / Activity / Background Operation 等长时能力统一抽象为：
+
+```text
+host.operation.start(bindingId, input)
+```
+
+返回 opaque operation handle / id，并支持：
+
+- status；
+- progress；
+- stream / incremental result；
+- result；
+- cancel。
+
+Scheduler、backpressure、timeout、retry、provider 与 Secret 继续 Host-owned。
+
+### 12.7 Composer Service
+
+Composer 保留专用 service：
+
+- getDraft；
+- setDraft；
+- append；
+- clear；
+- focus；
+- submit。
+
+`submit` 仍进入正式 Turn / Session 流程，Frontend 不直接构造 Timeline authority。
+
+### 12.8 Media Service
+
+`host.media` 负责：
+
+- resolve AssetRef / ImageRef；
+- Remote Media Resolver；
+- prefetch hint；
+- status；
+- release / lifecycle；
+- 为 Canvas 等返回安全 MediaHandle。
+
+Script / Web Island 不获得 raw arbitrary network response。
+
+### 12.9 Host Presentation Service
+
+只把真正 Host-owned 的 Presentation 放进 Bridge，例如：
+
+- request / exit fullscreen；
+- Scene；
+- Speech；
+- 其它明确由 Host 掌控的 presentation capability。
+
+Package 内 modal、tab、tooltip、overlay、local routing、DOM focus/scroll 继续由 Frontend Runtime 自己完成。
+
+### 12.10 Input Projection
+
+Keyboard/Gamepad/Touch 的游戏主控制优先通过 semantic Input Action 事件投影给 Frontend。
+
+Bridge 不暴露 raw Host device object。
+
+低级键盘/pointer event 仍可由 Package UI Runtime 本地处理。
+
+### 12.11 Preferences / Persistence
+
+v3 baseline 不提供 generic durable KV / localStorage replacement。
+
+持久化的非权威前端状态优先使用 declared typed `prefs`。
+
+原因是 generic persistent KV 很容易被滥用成第二套：
+
+- World；
+- Quest；
+- Economy；
+- Character state。
+
+未来如确有大型前端缓存需求，可单独设计 `frontend-cache@1`：
+
+- evictable；
+- quota-controlled；
+- non-authoritative；
+- 不进入 Prompt；
+- 不作为 Save truth；
+- Host 可随时驱逐。
+
+### 12.12 External Host Services
+
+External URL 不直接使用 `window.open`，而通过 Host-mediated service：
+
+- scheme/origin policy；
+- declared binding / permission；
+- user gesture；
+- 必要时 confirm。
+
+Clipboard、File Picker、Import/Export、Camera、Microphone 等未来能力也沿用 permissioned Host Service，而不是裸 Browser API。
+
+### 12.13 Unified Receipt
+
+Bridge 对 Frontend 统一 Request / Receipt contract。
+
+概念字段包括：
+
+- requestId；
+- bindingId；
+- status；
+- typed result；
+- revision / conflict metadata；
+- diagnostics；
+- stable reasonCode。
+
+状态至少覆盖：
+
+- completed；
+- cancelled；
+- rejected；
+- failed。
+
+错误类别至少可机器区分：
+
+- validation_failed；
+- permission_denied；
+- unsupported；
+- unavailable；
+- stale_revision；
+- conflict；
+- cancelled；
+- timeout；
+- rate_limited；
+- host_failure。
+
+不同底层 Native API 可以保留自己的内部 receipt，但 Frontend Bridge 对外保持统一。
+
+### 12.14 Idempotency
+
+Bridge request 应使用稳定 requestId / operationId。
+
+Duplicate suppression、retry、uncertain commit、revision idempotency 等语义继续由 Host contract 决定，不允许 Declarative、Sandbox 与 Web Island 各自发明不同事务语义。
+
+### 12.15 统一 Registry
+
+Declarative Action IR、Sandbox Script 与 future Web Island RPC 必须访问同一个 Binding Registry。
+
+最终结构：
+
+```text
+Frontend
+├─ data.snapshot("player")
+├─ action.invoke("buy-item")
+├─ operation.start("battle")
+├─ composer.submit()
+└─ media.resolve(portrait)
+        ↓
+Frontend Host Bridge
+        ↓
+Declared Binding Registry
+        ↓
+Existing Native Runtime / Authority
+```
+
+Binding Declaration 必须位于 UI 激活前即可验证的 Manifest / Experience Contract 层，不允许藏在运行时脚本中。
+
+核心原则：
+
+> **能力可以很广，但入口必须 typed + declared + scoped。**
+
+---
+
+## 13. 当前待讨论主题
 
 下一轮优先讨论：
 
-### Frontend Host Bridge
+### Bridge Binding Manifest
 
-- 统一 Bridge namespace / version；
-- projection / snapshot / subscription；
-- command / application / continuity / shared / realm；
-- composer / task / activity；
-- media / asset resolution；
-- preferences / package-local persistence；
-- navigation / fullscreen / focus / input；
-- external navigation / clipboard / download / upload；
-- Declarative Runtime、Sandbox Script 与 future Web Island 的共同语义面；
-- Bridge request / receipt / error / cancellation contract；
-- 防止 Bridge 形成第二套 Authority。
+- `reads / actions / operations / services` 的最终 schema；
+- Binding identity、input/output schema、target contract 与 version；
+- projection snapshot/subscription/diff/cursor；
+- action receipt / idempotency / conflict；
+- task/activity operation streaming；
+- Package / View / Component 的 Binding access scope；
+- component-level `uses:` 是强制隔离、推荐文档还是可选 narrowing；
+- external navigation / clipboard / file import-export 是否纳入 v3 baseline；
+- future Web Island handshake / session / nonce seam 是否现在冻结。
 
 ---
 
-## 13. 讨论流程约定
+## 14. 讨论流程约定
 
 从本企划建立后，每一轮讨论遵循：
 
