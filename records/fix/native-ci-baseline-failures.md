@@ -96,3 +96,20 @@ These changes reflect current runtime behavior already covered by Native Knowled
 
 
 The final P8 failure was a stale directory-wide write ban: `PromptPresetStore` is an authoring owner colocated under `model-prompt-runtime/`, introduced after the freeze guard. The guard now excludes only `presets.js` from the request-time Core scan and separately requires that Preset authoring uses `withRuntimeWrite`, `putImmutable`, and `putMutable`, while still rejecting route/profile provisioning, Library commit facades, and browser persistence from that store.
+
+
+### P8 final freeze correction
+
+After N10 passed completely, the final P8 freeze exposed one more stale assumption: it scanned every file under `src/native/model-prompt-runtime/**` except `persistence.js` as request-time read-only Core. The later `PromptPresetStore` authoring module intentionally lives in that directory and publishes exact Library resource revisions.
+
+The current remote HEAD `7b486249550ed0ebfff135e6bcda49acf8199790` corrects that boundary without broadening request-time authority:
+
+- request-time model/prompt files remain subject to the no-write guard;
+- `persistence.js` and `presets.js` are the only excluded write-capable boundaries;
+- `presets.js` is separately required to be `PromptPresetStore`, use `withRuntimeWrite`, `putImmutable`, and `putMutable`;
+- it is still forbidden from Runtime Route / Model / Connection provisioning, direct Library commit, or browser storage.
+
+Latest CI for this real remote HEAD:
+
+- `Native Model Prompt Runtime` run `36416576425`: in progress;
+- `Atria PR Checks` run `36416576243`: Migration Guard success; Lint and Unit Tests in progress.
