@@ -4,10 +4,10 @@
 - Primary Workspace: `main`（当前仍为纯方案讨论，未创建实现分支）
 - Current stage: Discussion / Architecture
 - Source baseline: `main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
-- Plan HEAD: `docs@0cd2aec2ae00566c5dfe94237de582d70aba805c`
+- Plan HEAD: `docs@36938903ad4feb42c640304c32b74b60e20bbd8d`
 - Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
 - Record: 尚未开始实施，不建立 Implementation Record
-- 当前 Plan 状态: Discussion Draft v0.10
+- 当前 Plan 状态: Discussion Draft v0.11
 
 ## 已写入 Plan
 
@@ -16,101 +16,119 @@
 - Frontend Asset Graph / Remote Media / typed ImageRef.
 - Hard cut v1/v2；v3 最终唯一正式 Native UI Runtime。
 - Frontend Manifest / Runtime Features / Permissions / negotiation。
-- Frontend Host Bridge：
-  - shared semantics across Declarative / Sandbox / future Web Island；
-  - declared Binding Registry；
-  - data/action/operation/composer/media/presentation；
-  - no raw Host objects；
-  - typed receipts/errors/idempotency；
-  - no generic durable KV baseline。
+- Frontend Host Bridge。
+- Bridge Binding Manifest：
+  - independent bridge version；
+  - reads/actions/operations；
+  - Compiled Bridge Descriptor；
+  - typed projection/action/operation semantics；
+  - Experience Registry；
+  - component `uses:` narrowing；
+  - external navigation baseline；
+  - future Web Island handshake seam。
 
 ## 本轮新增讨论（尚未写入 Plan；下一轮开始前先增量/覆盖更新）
 
-Bridge Binding Manifest：
+Native Frontend Source / Canonical IR：
 
-- 建议独立 `bridge.version: 1`，让 Host protocol 可独立于 `native@3` 前端文档演进。
-- Authoring Source 的 Bridge Registry 以三类自定义 binding 为主：
-  - `reads`
-  - `actions`
-  - `operations`
-- 不建议再做任意第四类 `services` binding table；`composer / media / presentation / external` 是固定 Host Service namespaces，其可用性由 Runtime baseline、Feature 与 Permission negotiation 决定。需要固定目标的 external link 等可编译为 action binding。
-- Authoring Manifest 不应重复抄写已有底层 contract schema。Build compiler 解析 target 后生成 **Compiled Bridge Descriptor**：
-  - normalized input/output schema；
-  - schema/contract digest；
-  - delivery/operation capabilities；
-  - idempotency/receipt policy；
-  - 前端只看到 public binding contract，不需要看到真实 World/Application command internals。
-- 建议 authoring shape：
-  ```yaml
-  bridge:
-    version: 1
-    reads:
-      - id: player-ui
-        source:
-          kind: information-view
-          id: player-display
-
-    actions:
-      - id: buy-item
-        inputSchema: ...
-        target:
-          kind: world-command
-          commandId: shop.buy
-        args: ...safe template...
-
-    operations:
-      - id: generate-profile
-        inputSchema: ...
-        target:
-          kind: task
-          taskId: profile
-          variantId: default
-        input: ...safe template...
+- 明确采用 **Authoring Source Graph → Compile → Canonical Runtime Graph** 两层，不让 Runtime 直接消费作者语法。
+- Authoring Source 是人类/Studio/AI 的唯一编辑权威；Canonical IR 是 derived-readonly build artifact。
+- Studio/AI 不直接改 IR。Preview 流程必须是 Source → compile → exact preview IR → renderer，与 Production compiler 共用同一编译器。
+- 当前 v2 Studio 直接围绕 UI JSON model 编辑的方式不应延续为 v3 的唯一 authoring model。
+- Project Source 与 Installed Package Manifest 不应过载同一个 path 字段：
+  - Authoring contract 使用 `frontend.source`（正式字段可再定）指向 Source Graph descriptor；
+  - Build 后 Package Runtime 使用 `frontend.entry` 指向 Compiled Frontend Index；
+  - 两者是不同 contract，不让 installed runtime 猜“这是 source 还是 IR”。
+- 推荐 Authoring Source Graph 目录：
+  ```text
+  frontend/
+  ├─ frontend.json
+  ├─ views/
+  │  ├─ Main.aui
+  │  ├─ Inventory.aui
+  │  └─ Phone.aui
+  ├─ components/
+  │  ├─ CharacterCard.aui
+  │  ├─ StatBar.aui
+  │  └─ ChurchPanel.aui
+  ├─ styles/
+  │  ├─ theme.css
+  │  └─ global.css
+  ├─ state/
+  │  └─ state.json
+  ├─ bridge/
+  │  └─ bindings.json
+  └─ controllers/
+     └─ relationship-graph.ts
   ```
-- Read binding 原则：target 必须是已有 typed/bounded projection contract，而不是 raw authority。首要 adapter 可引用 existing Information View；continuity/shared/realm/temporal 等应通过其已有 projection contract 适配，避免 `getEverything()`。
-- Read delivery baseline：
-  - `snapshot()` 必须有；
-  - `subscribe()` 可选/声明；
-  - update 携带 bindingId + revision/cursor + typed payload；
-  - 初版可优先 full replace/coalesced snapshot，避免为了性能提前引入复杂 mutable patch authority；将来可在 Bridge version/feature 中增加 read-only delta。
-- Action binding：
-  - public input schema 可以与底层 args 不同；
-  - binding 可使用现有 safe value-template/expression 把 `input` 映射成 target args；
-  - Build 时验证映射输出严格满足目标 typed schema；
-  - 因此 Binding 真正成为稳定 Frontend API façade，而不仅是 command alias。
-- Action result 默认以统一 Bridge Receipt 为主，不把整个新 Authority state 塞进 action return；权威数据变化通过 read subscription 传播，避免双数据通道。
-- Operation binding：
-  - target 可映射 Task / Activity / future resumable Host operations；
-  - Build compiler materialize input/final result schema；
-  - Runtime handle 统一 queued/running/progress/partial/completed/failed/cancelled；
-  - cancel 是否支持由 compiled capability 明确；
-  - scheduler/backpressure/retry 继续 Host-owned。
-- Binding ID 应是稳定 semantic ID；同语义升级尽量保持 ID，便于 Component/Studio/AI contract 稳定。
-- **Experience-level Binding Registry 是真正的 Host 安全边界。**
-- Component-level `uses:` 定位为 least-authority dependency contract：
-  - Declarative component：compiler 默认可以从 data/action/operation refs 自动推导 `uses`，作者无需手填；可显式声明以形成可复用组件接口。
-  - Script controller：必须显式声明 `uses`；Runtime 只向该 controller 注入声明过的 binding/service handles，不提供全局 `host` 万能对象。
-  - Child/component `uses` 必须是 Experience Registry 的子集，永远不能扩大 Package 权限。
-  - 这主要防 accidental coupling、提升 component reuse / static analysis；Package 作者仍可在 Manifest 扩大自身 registry，因此它不是替代用户 Permission 的独立信任边界。
-- 普通 Package Component 默认继续遵循 Props down / Events up；无 `uses` 的组件天然是 pure presentation component。
-- Fixed Host services 对 Script component 也纳入 `uses.services` narrowing，例如 composer/media/presentation/external；Declarative IR 可由 compiler 自动推导。
-- External navigation 倾向进入 v3 baseline Host service：
-  - 只允许 declared HTTPS targets / Atria routes；
-  - user gesture；
-  - scheme/origin validation；
-  - Host 可 confirm；
-  - 不暴露 `window.open`。
-- Clipboard / file picker / import-export / camera / microphone 暂不作为 v3 Core baseline，保留 permissioned Host Service extension seam。Clipboard write 可后续作为较低风险扩展，read 单独权限。
-- future Web Island handshake seam 建议现在只冻结安全形态，不展开完整实现：
-  - 独立 Browser Realm；
-  - structured-clone messages only；
-  - Host-issued frontendInstanceId + nonce/token；
-  - first handshake negotiate bridgeVersion/features；
-  - validate source/origin/instance/nonce；
-  - per-request requestId；
-  - unmount/reload 立即 revoke；
-  - Bridge 仍只暴露同一 compiled bindings/services。
-- Binding Registry / Compiled Descriptor 应在 UI 代码执行前完整 validate，Web Island 也不得在运行时自行注册新的 Authority binding。
+  目录只是推荐组织，不应成为 Runtime semantic requirement。
+- `frontend.json` 是轻量 Source Graph index，声明：
+  - frontend source schema/version；
+  - views 与 surface/mount；
+  - global/theme stylesheet refs；
+  - global ui/draft/prefs state refs；
+  - bridge registry ref；
+  - optional source-level features；
+  - root/component module refs。
+- View 本质上应引用一个 root Package Component + surface/mount metadata，不另造第二套 View DOM language。
+- Package Component 建议使用 Atria-owned SFC-like authoring syntax（暂称 `.aui`，名字未冻结）：
+  - template/declarative DOM；
+  - props；
+  - emits；
+  - slots；
+  - local state/computed；
+  - interaction handlers；
+  - `uses`；
+  - optional scoped style；
+  - optional controller module ref。
+- `.aui` 是 Authoring Syntax，不是 Runtime format；Compiler 输出 Canonical Component IR。
+- 不建议继续让作者长期写巨大 JSON tree；JSON 保留给 index/schema/bridge/state 等结构化 contract。
+- 样式允许两种 authoring：
+  - 独立真实 `.css` 文件（推荐大型项目/共享 theme）；
+  - Component source 内 scoped style block（适合小组件/单文件体验）。
+  两者编译到相同 Style Graph。
+- Interaction 也允许：
+  - declarative handler colocated in Component；
+  - 可复用 interaction module；
+  - 复杂逻辑通过 optional Script Controller。
+- Script Controller source 可以使用 JS/TS authoring（具体 Sandbox pipeline 下一轮单独冻结），但 Build 后只产生 sandbox-compatible compiled module；Runtime 不直接执行 author source。
+- Global `ui/draft/prefs` state declaration集中在 Frontend Source Graph；Component local state colocated 在 Component source。
+- Bridge Registry 保持 Experience-level 独立 resource，Component 通过 `uses` 引用；不要把 Authority target declaration散落在 UI 文件里。
+- Canonical Runtime Graph 不做单一巨大 JSON。推荐小入口 + exact compiled resources：
+  ```text
+  Compiled Frontend Index
+  ├─ View IR refs
+  ├─ Component IR refs
+  ├─ Compiled Bridge Descriptor
+  ├─ Style assets
+  ├─ Sandbox controller modules
+  └─ frontend asset/media refs
+  ```
+  每个 ref 使用 exact content identity，便于 lazy load、cache、diagnostics 与 deterministic build。
+- View/Component 拆分应形成自然 lazy-loading boundary；on-demand drawer/modal/phone 等不必随主视图一次全部加载。
+- Runtime index 应足够小，activation 先校验 index/bridge/features，再按需要加载 View/Component graph。
+- Build output 可以采用稳定 logical resource ID + content hash；不要依赖作者目录路径作为 Runtime authority identity。
+- Source path 只属于 authoring/provenance；Runtime 用 exact compiled resource identity。
+- Source Map / Provenance 需要正式存在：
+  - compiled component/node/action/controller → source file/span；
+  - Build/Studio diagnostics 可以反查；
+  - Preview 错误必须指回作者文件，而不是只报 IR node。
+  Release Runtime 可不依赖 source map 执行；是否随 `.atria` 携带完整 source map 可作为 build profile。
+- Native Source 应有 stable semantic IDs，Studio structured edits 与 AI patch 尽量按 Component/Node/Binding identity 操作，不只靠行号。
+- 推荐 Studio 采用 format-preserving parser/CST（若最终使用 `.aui`），避免视觉编辑后把人工格式/注释全部洗掉。
+- Small UI 不需要第二套 Runtime：可以用一个 `frontend.json` + 一个 `Main.aui`；Component 内可 colocate style/interaction。不要为了“单文件”再创建新的 runtime contract。
+- Large UI 自然拆成 views/components/styles/controllers；所有拆分最后仍编译进同一 Canonical Runtime Graph。
+- Project/Studio source 与发布 `.atria` 建议清晰分离：
+  - Project 保留完整 Authoring Source；
+  - 发布 Package 以 Compiled Runtime Graph + exact assets 为权威；
+  - source bundle / source map 可以可选携带，用于 debug/remix，但 Runtime 永远不执行它们。
+- Framework Adapter：
+  - framework source 由 adapter/compiler 管；
+  - 输出同一 Canonical Runtime Graph；
+  - Core Studio/AI 可以完整理解 compiled IR，但不承诺把视觉编辑 round-trip 回任意 React/Vue/Svelte 原源码；
+  - Native `.aui` Source 是 Studio/AI first-class authoring path。
+- Canonical IR schema 应稳定、严格、低歧义，面向 Runtime/validator，不追求人类手写舒适度；Authoring Source 负责可读性与编辑体验。
+- 建议下一轮进一步讨论 Script Sandbox authoring/execution pipeline：TS/JS → compile/bundle → sandbox module，Worker/VM/WASM isolation，module imports，debug/source maps，CPU budget。
 
 ## 讨论工作流
 
@@ -121,18 +139,20 @@ Bridge Binding Manifest：
 
 ## 下一轮建议主题
 
-先把 Binding Manifest 结论写入 Plan，再讨论：
+先把 Source/IR 结论写入 Plan，再讨论：
 
-- Canonical Native Frontend Document / Authoring Format：
-  - root/views/components/styles/state/bridge refs 的文件布局；
-  - 是否单文件还是多资源 graph；
-  - Component source syntax 与 Canonical IR；
-  - CSS/interaction/script controller 如何引用；
-  - Studio 与 AI 应操作 Source 还是 IR；
-- 或者先讨论 Script Sandbox 的具体执行模型（Worker/VM/WASM）与 JS/TS authoring pipeline。
+- Script Sandbox 具体执行模型；
+- JS/TS authoring 与 module graph；
+- Worker vs embedded VM/WASM/SES 等隔离方案；
+- Sandbox 如何调用 component local API + scoped Bridge handles；
+- CPU/memory/time budgets；
+- controller lifecycle；
+- third-party pure JS dependencies；
+- debugging/source maps；
+- Canvas2D API 是否直接 proxy 还是 retained drawing command buffer。
 
 ## 不要重复
 
 - 不考虑 v1/v2 migration/兼容。
-- 不重复 Remote Media 与基础 Host Bridge。
+- 不重复 Remote Media、基础 Host Bridge 或 Binding Registry。
 - 不创建实现分支或产品代码，除非用户明确批准进入实施。
