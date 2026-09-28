@@ -2,7 +2,7 @@
 
 Task ID: `fix/native-ci-baseline-failures`  
 Primary Workspace: `fix/native-ci-baseline-failures`  
-Status: **Merged — final main CI pending**
+Status: **Complete**
 
 ## Start state
 
@@ -127,8 +127,8 @@ After the static P8 freeze and its Jest suite passed, the integration workflow r
 Latest browser/test HEAD: `72ca0c9157b13b4fb2b251e79706992f766ab4e4`.
 
 Latest validation runs:
-- `Native Model Prompt Runtime` run `36419697797`: in progress;
-- `Atria PR Checks` run `36419697817`: Migration Guard success; Lint and Unit Tests in progress.
+- `Native Model Prompt Runtime` run `36419697797`: **success**;
+- `Atria PR Checks` run `36419697817`: **success** — Migration Guard, Lint and Unit Tests all passed.
 
 
 ## Merge and final main verification
@@ -158,3 +158,22 @@ Final main-side validation automatically started:
 - `Native Model Prompt Runtime` push run `36420802932`: in progress.
 
 Per repository workflow rules this full integration run is now the only remaining dependency. No final completion claim is made until that main run succeeds.
+
+
+## Final completion
+
+Post-merge verification completed successfully on the integrated main:
+
+- final `main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`;
+- main push `Native Model Prompt Runtime` run `36420802932`: **success**;
+- PR-head `Atria PR Checks` run `36419697817`: **success**;
+- PR-head `Native Model Prompt Runtime` run `36419697797`: **success**;
+- merged task branch cleanup run `36420803105`: **success**;
+- completed `fix/native-ci-baseline-failures` branch removed;
+- remote branch set returned to the intended seven long-lived branches.
+
+The original baseline failures are therefore resolved on main. The final fix consists only of tests/architecture guards and browser acceptance synchronization; no unrelated product feature expansion was introduced.
+
+The live `docs:HANDOFF.md` is deleted as the final task-lifecycle cleanup step. This Record is the permanent recovery history.
+
+**Task `fix/native-ci-baseline-failures` is complete.**
