@@ -4,7 +4,7 @@
 
 - localState 用于 mount/session 局部 UI；preferences 用于 player/device 偏好。字段显式声明类型、default 与允许的 scope。游戏资源、关系、任务结果不写到 ui/prefs 代替权威状态。
 - selectors/表达式使用受限语言和允许根；不注入 JS、HTML、任意 CSS 或外部可变代码。文字和模型正文不变成可执行节点。
-- command.dispatch 引用已声明 Command；composer 操作走现有 Host Composer；activity、continuity、realm、shared 动作按各自 typed contract。simulate 不是提交结果。
+- `command.dispatch` 仅引用已声明 World Command；Session Application 写入使用 `application.command`，固定声明 `domainId` / `commandId`，可显式绑定 `recordId`，省略时由 Host 为本次 Action 生成稳定记录 ID。两者都走现有 typed authority；composer 操作走现有 Host Composer，activity、continuity、realm、shared 动作按各自 typed contract。simulate 不是提交结果。
 - 顺序 action 的失败处理、receipt 与补偿遵循现有实现。不要在网络超时后生成新 invocationId 重复扣款，也不要用补偿直接回写任意字段。
 - Opening 是受控阶段/向导，设计前进、返回、必填错误和一次提交。消息投影区分事实、叙述、诊断；不要用隐藏文本把未暴露信息送进模型。
 - 作者 Preview 中 Native conversation/composer 槽是隔离占位；Scene 需要有效 scoped Session。不得将私人 Play DOM 挪入 Preview 或 Shared。

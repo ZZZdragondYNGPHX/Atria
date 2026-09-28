@@ -42,6 +42,67 @@ test('uncertain authority failure retries the exact request and later failure re
     expect(composer.submit).toHaveBeenCalledTimes(2);
 });
 
+test('Session Application action uses the Host lifecycle client without World or Timeline authority', async () => {
+    const raw = fixture();
+    raw.actions.send = { steps: [
+        { op: 'application.command', domainId: 'messages', commandId: 'send', args: { body: { expr: 'ui.name' } } },
+        { op: 'ui.reset', path: 'ui.name' },
+    ] };
+    const lifecycle = {
+        getSnapshot: () => ({ states: { atri_lifecycle: { opening: { completed: true, values: {}, history: [] } } } }),
+        isWritable: () => true,
+        command: jest.fn(async action => ({ action })),
+    };
+    const { runtime, dispatchAction } = mount(raw, { lifecycle });
+    runtime.state.set('ui.name', 'Hello');
+    await runtime.execute('send');
+    expect(lifecycle.command).toHaveBeenCalledTimes(1);
+    expect(lifecycle.command.mock.calls[0][0]).toMatchObject({
+        kind: 'app.command', domainId: 'messages', commandId: 'send', args: { body: 'Hello' },
+    });
+    expect(lifecycle.command.mock.calls[0][0].recordId).toMatch(/^ui-[a-f0-9]{32}$/);
+    expect(runtime.state.snapshot().ui.name).toBe('');
+    expect(dispatchAction).not.toHaveBeenCalled();
+});
+
+test('Session Application action freezes command payload and record identity across uncertain retry', async () => {
+    const raw = fixture();
+    raw.actions.send = { steps: [{ op: 'application.command', domainId: 'messages', commandId: 'send', args: { body: { expr: 'ui.name' } } }] };
+    const interrupted = new Error('Transport interrupted');
+    const lifecycle = {
+        getSnapshot: () => ({ states: { atri_lifecycle: { opening: { completed: true, values: {}, history: [] } } } }),
+        isWritable: () => true,
+        command: jest.fn().mockRejectedValueOnce(interrupted).mockResolvedValue({ revision: 'next' }),
+    };
+    const { runtime } = mount(raw, { lifecycle });
+    runtime.state.set('ui.name', 'Original');
+    await expect(runtime.execute('send')).rejects.toThrow('Transport');
+    runtime.state.set('ui.name', 'Edited');
+    await runtime.execute('send');
+    expect(lifecycle.command).toHaveBeenCalledTimes(2);
+    expect(lifecycle.command.mock.calls[1][0]).toEqual(lifecycle.command.mock.calls[0][0]);
+    expect(lifecycle.command.mock.calls[1][0].args.body).toBe('Original');
+});
+
+test('Session Application action supports an explicit projected record identity and remains one authority write', () => {
+    const raw = fixture();
+    raw.actions.update = { steps: [{ op: 'application.command', domainId: 'messages', commandId: 'read',
+        recordId: { template: 'message-{{ui.name}}' }, args: {} }] };
+    const compiled = compileUiDocument(raw, { mode: 'component' });
+    expect(compiled.actions.update.steps[0].recordId.read({ ui: { name: 'one' } })).toBe('message-one');
+
+    const missing = fixture();
+    missing.actions.bad = { steps: [{ op: 'application.command', commandId: 'send', args: {} }] };
+    expect(() => compileUiDocument(missing, { mode: 'component' })).toThrow(/domainId/);
+
+    const double = fixture();
+    double.actions.bad = { steps: [
+        { op: 'application.command', domainId: 'messages', commandId: 'send', args: {} },
+        { op: 'command.dispatch', commandId: 'world-write', args: {} },
+    ] };
+    expect(() => compileUiDocument(double, { mode: 'component' })).toThrow(/one typed Command/);
+});
+
 test('remount restores declared session/player state while mount drafts reset', () => {
     const saved = new Map();
     const stateStorage = { read: (root, key, scope) => saved.get([root, key, scope].join(':')), write: (root, key, scope, value) => saved.set([root, key, scope].join(':'), value) };
