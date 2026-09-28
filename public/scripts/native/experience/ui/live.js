@@ -11,6 +11,8 @@ import { loadGamePackageJsonResource, loadExperienceData } from '../package-load
 import { compileUiDocument } from './v2-document.js';
 import { mountUiDocument } from './v2-runtime.js';
 import { json } from './v2-values.js';
+import { mountNativeFrontend } from '../../frontend/runtime.js';
+import { loadFrontendBytes } from '../package-loader.js';
 
 const EXPERIENCE_MODES = new Set(['text', 'component', 'hybrid', 'full']);
 
@@ -55,6 +57,34 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
 
     const shellFoundation = options.shell || globalThis.Atria?.shell || null;
     const nativePlayHost = options.nativePlayHost || shellFoundation?.getPlayHost?.() || null;
+    if (experience.frontend?.version === 3) {
+        const adapter = createAtriaSurfaceAdapter(documentRef, { mode, shell: shellFoundation, nativePlayHost });
+        let runtime;
+        const fullHost = mode === 'full' ? createFullGameHost(documentRef, {
+            shell: shellFoundation, nativePlayHost,
+            onExit: options.hostActions?.exitExperience,
+            onStopGeneration: options.hostActions?.stopGeneration,
+            onSave: options.hostActions?.save,
+            onDiagnostics: options.hostActions?.openDiagnostics,
+            onRecover: () => runtime?.recover(),
+            onBeforeEscape: () => runtime?.closeOverlay(),
+        }) : null;
+        const surfaceHost = createSurfaceHost({
+            resolveSurface: id => fullHost && id === 'app.root' ? fullHost.root : adapter.resolveSurface(id),
+            createElement: tag => documentRef.createElement(tag),
+        });
+        const cleanup = () => { runtime?.dispose(); surfaceHost.unmountAll(); fullHost?.dispose(); adapter.destroy(); };
+        try {
+            runtime = await mountNativeFrontend({ ...options, document: documentRef, window: options.window ?? documentRef.defaultView,
+                mode, surfaceHost, entry: experience.frontend.entry,
+                stateStorage: options.createStateStorage?.({ stateVersion: 3 }, packageState),
+                loadBytes: (path, signal) => loadFrontendBytes(packageState, path, { ...options, signal }),
+            });
+            options.assertCurrent?.(); fullHost?.activate();
+            return Object.freeze({ ...runtime, getContributions: query => contributions.list(query),
+                get recoveryActive() { return fullHost?.isActive() ?? false; }, dispose: cleanup });
+        } catch (error) { cleanup(); throw error; }
+    }
     const selectorDefinitions = [
         ...await loadGameSelectorDefinitions(packageState, {
             fetchImpl: options.fetchImpl,

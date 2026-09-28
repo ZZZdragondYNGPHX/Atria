@@ -1,10 +1,12 @@
 import { fields, identifier, list, resourcePath, FRONTEND_LIMITS } from '../../../public/shared/native-frontend-contract.js';
 import { assertNode } from './aui-parser.js';
 import { canonicalJson, hash, validateCompiledBridge } from './bridge.js';
-import { validateStyle } from './styles.js';
+import { validateCompiledStyle } from './styles.js';
+import { assertPresentationContract, valuePath } from '../../../public/shared/native-frontend-presentation.js';
 
 export function componentDependencies(ir, bridge) {
-    fields(ir, ['format', 'version', 'id', 'root', 'uses', 'styles']);
+    fields(ir, ['format', 'version', 'id', 'root', 'uses', 'styles', 'presentation']);
+    const presentation = assertPresentationContract(ir.presentation);
     if (ir.format !== 'atria-component-ir' || ir.version !== 3) throw new TypeError('Invalid Component IR');
     identifier(ir.id);
     const uses = list(ir.uses, identifier, id => id);
@@ -16,13 +18,25 @@ export function componentDependencies(ir, bridge) {
     }, id => id)) deps.add(id);
     const ids = new Set();
     let count = 0;
-    const walk = (node, depth) => {
+    const walk = (node, depth, repeated = false) => {
         if (++count > FRONTEND_LIMITS.nodes || depth > FRONTEND_LIMITS.depth) throw new TypeError('Component tree exceeds limits');
         if (typeof node === 'string') {
             if (node.length > FRONTEND_LIMITS.bytes) throw new TypeError('Text exceeds limits');
             return;
         }
         assertNode(node);
+        repeated ||= Boolean(node.each);
+        if (repeated && presentation.nodeRefs.includes(node.id)) throw new TypeError('NodeRef requires unique non-repeated node');
+        if (node.bindings?.text && node.children.length) throw new TypeError('Text binding cannot replace children');
+        if (!node.component && Object.keys(node.props ?? {}).length) throw new TypeError('Props require Component');
+        for (const id of Object.values(node.events ?? {})) if (!Object.hasOwn(presentation.interactions, id)) throw new TypeError('Unknown local interaction');
+        for (const id of Object.keys(node.styles ?? {})) if (!Object.hasOwn(presentation.dynamicStyles, id)) throw new TypeError('Undeclared dynamic style sink');
+        if (node.tag === 'slot' && !presentation.slots.includes(node.slot ?? 'default')) throw new TypeError('Undeclared Component slot');
+        if (node.bindings?.value || node.bindings?.checked) {
+            const path = node.bindings.value?.get ?? node.bindings.checked?.get;
+            valuePath(path, true);
+            if (!['input', 'textarea', 'select'].includes(node.tag)) throw new TypeError('Form model requires an input element');
+        }
         if (ids.has(node.id)) throw new TypeError('Duplicate Node identity');
         ids.add(node.id);
         for (const [key, kind] of [['read', 'read'], ['action', 'action']]) {
@@ -30,10 +44,27 @@ export function componentDependencies(ir, bridge) {
         }
         if (node.component) deps.add('component:' + node.component);
         if (node.asset) deps.add('asset:' + node.asset);
-        node.children.forEach(child => walk(child, depth + 1));
+        node.children.forEach(child => walk(child, depth + 1, repeated));
     };
     if (!ir.root || typeof ir.root !== 'object') throw new TypeError('Component requires root element');
     walk(ir.root, 0);
+    for (const id of presentation.nodeRefs) if (!ids.has(id)) throw new TypeError('Unknown declared NodeRef');
+    for (const actions of Object.values(presentation.interactions)) for (const action of actions) {
+        if (action.kind === 'emit' && !Object.hasOwn(presentation.emits, action.target)) throw new TypeError('Undeclared emit');
+        if (action.kind === 'focus' && !presentation.nodeRefs.includes(action.target)) throw new TypeError('Focus requires declared NodeRef');
+        if (action.kind === 'set' || action.kind === 'toggle') {
+            const [scope, ...path] = valuePath(action.target, true);
+            let schema = presentation.state[scope]?.schema;
+            if (scope === 'component' && !schema) throw new TypeError('Undeclared Component state');
+            if (schema) {
+                for (const key of path) schema = schema?.properties?.[key];
+                if (!schema || (action.kind === 'toggle' && schema.type !== 'boolean')) throw new TypeError('Invalid state write target');
+            }
+        }
+    }
+    // Lifecycle must not recursively mount/reroute itself. Explicit user
+    // interactions own routing; lifecycle remains local presentation work.
+    for (const id of Object.values(presentation.lifecycle)) if (presentation.interactions[id].some(action => /^(view\.|overlay\.)/.test(action.kind))) throw new TypeError('Lifecycle cannot navigate');
     return [...deps].sort();
 }
 
@@ -48,7 +79,7 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
     };
     const json = path => JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(read(path)));
     const index = json(entry);
-    fields(index, ['format', 'version', 'primaryView', 'resources']);
+    fields(index, ['format', 'version', 'primaryView', 'resources', 'globalStyles']);
     if (index.format !== 'atria-frontend-index' || index.version !== 3) throw new TypeError('Runtime requires compiled Frontend Index');
     const prefix = entry.slice(0, entry.lastIndexOf('/') + 1) + 'resources/';
     let totalBytes = 0;
@@ -66,6 +97,7 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
         return ref;
     });
     const refs = new Map(resources.map(ref => [ref.id, ref]));
+    list(index.globalStyles ?? [], id => { if (refs.get(id)?.kind !== 'style') throw new TypeError('Unknown global style'); return id; }, id => id);
     const bridgeRef = refs.get('bridge');
     if (!bridgeRef || !refs.has('provenance') || refs.get(index.primaryView)?.kind !== 'view') throw new TypeError('Incomplete Frontend graph');
     const bridge = json(bridgeRef.path);
@@ -93,11 +125,9 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
                 || (['hybrid', 'full'].includes(mode) && ir.surface !== 'app.root')) throw new TypeError('Invalid View surface');
             dependencies = ['component:' + ir.root];
         } else if (ref.kind === 'style') {
-            fields(ir, ['format', 'css']);
-            if (ir.format !== 'atria-style') throw new TypeError('Invalid Style IR');
-            dependencies = validateStyle(ir.css).map(id => 'asset:' + id).sort();
+            dependencies = validateCompiledStyle(ir).map(id => 'asset:' + id).sort();
         } else if (ref.kind === 'asset') {
-            if (!['image/png', 'image/jpeg', 'image/webp', 'font/woff', 'font/woff2'].includes(ref.mediaType)) throw new TypeError('Unsupported compiled asset');
+            if (!['image/png', 'image/jpeg', 'image/webp', 'font/woff', 'font/woff2', 'font/ttf', 'font/otf'].includes(ref.mediaType)) throw new TypeError('Unsupported compiled asset');
         } else if (ref.kind === 'provenance') {
             fields(ir, ['format', 'version', 'spans', 'sources']);
             if (ir.format !== 'atria-frontend-provenance' || ir.version !== 1 || !Array.isArray(ir.spans) || ir.spans.length > FRONTEND_LIMITS.nodes * 4) throw new TypeError('Invalid Source Map');
@@ -112,6 +142,64 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
             }
         }
         if (canonicalJson(dependencies) !== canonicalJson(ref.dependencies)) throw new TypeError('Frontend dependency closure mismatch');
+    }
+    const components = new Map(resources.filter(ref => ref.kind === 'component').map(ref => [ref.id.slice(10), json(ref.path)]));
+    const sharedState = {};
+    for (const component of components.values()) for (const scope of ['ui', 'draft', 'prefs']) {
+        const declaration = component.presentation?.state?.[scope];
+        if (!declaration) continue;
+        if (sharedState[scope] && canonicalJson(sharedState[scope]) !== canonicalJson(declaration)) throw new TypeError('Conflicting shared state declaration');
+        sharedState[scope] = declaration;
+    }
+    for (const ir of components.values()) {
+        const contract = assertPresentationContract(ir.presentation);
+        for (const actions of Object.values(contract.interactions)) for (const action of actions) {
+            if (['view.push', 'view.replace', 'overlay.open'].includes(action.kind) && refs.get('view:' + action.target)?.kind !== 'view') throw new TypeError('Unknown route View');
+        }
+        const walk = node => {
+            if (typeof node === 'string') return;
+            if (node.component) {
+                const child = assertPresentationContract(components.get(node.component).presentation);
+                for (const key of Object.keys(node.props ?? {})) if (!Object.hasOwn(child.props, key)) throw new TypeError('Undeclared Component prop');
+                for (const [key, value] of Object.entries(child.props)) if (!Object.hasOwn(value, 'default') && !Object.hasOwn(node.props ?? {}, key)) throw new TypeError('Missing required Component prop');
+                for (const key of Object.keys(node.events ?? {})) if (!Object.hasOwn(child.emits, key)) throw new TypeError('Undeclared Component event');
+                for (const content of node.children) {
+                    if (typeof content === 'string' && !content.trim()) continue;
+                    if (!child.slots.includes(content.attributes?.slot ?? 'default')) throw new TypeError('Undeclared supplied Component slot');
+                }
+            }
+            node.children.forEach(walk);
+        };
+        walk(ir.root);
+    }
+    for (const ref of resources.filter(ref => ref.kind === 'view')) {
+        const view = json(ref.path), root = components.get(view.root), reachable = new Set();
+        const collect = id => { if (reachable.has(id)) return; reachable.add(id); refs.get('component:' + id).dependencies.filter(dep => dep.startsWith('component:')).forEach(dep => collect(dep.slice(10))); };
+        collect(view.root);
+        const state = { ...sharedState };
+        for (const id of reachable) {
+            const declaration = components.get(id).presentation?.state?.view;
+            if (!declaration) continue;
+            if (state.view && canonicalJson(state.view) !== canonicalJson(declaration)) throw new TypeError('Conflicting View state declaration');
+            state.view = declaration;
+        }
+        for (const prop of Object.values(root.presentation?.props ?? {})) if (!Object.hasOwn(prop, 'default')) throw new TypeError('View root requires default props');
+        for (const id of reachable) {
+            const contract = assertPresentationContract(components.get(id).presentation);
+            const checkWrite = target => {
+                const [scope, ...path] = valuePath(target, true);
+                let schema = (scope === 'component' ? contract.state.component : state[scope])?.schema;
+                for (const key of path) schema = schema?.properties?.[key];
+                if (!schema) throw new TypeError('Undeclared state write path');
+            };
+            for (const actions of Object.values(contract.interactions)) for (const action of actions) if (['set', 'toggle'].includes(action.kind)) checkWrite(action.target);
+            const walk = node => {
+                if (typeof node === 'string') return;
+                for (const sink of ['value', 'checked']) if (node.bindings?.[sink]) checkWrite(node.bindings[sink].get);
+                node.children.forEach(walk);
+            };
+            walk(components.get(id).root);
+        }
     }
     return { index, resources, bridge };
 }

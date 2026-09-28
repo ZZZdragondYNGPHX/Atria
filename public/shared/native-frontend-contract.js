@@ -81,7 +81,7 @@ export function assertFrontendSourceIndex(value) {
     const resources = (items, style) => list(items ?? [], item => {
         fields(item, style ? ['id', 'source'] : ['id', 'source', 'mediaType']);
         identifier(item.id); resourcePath(item.source);
-        if (style ? !item.source.endsWith('.css') : !['image/png', 'image/jpeg', 'image/webp', 'font/woff', 'font/woff2'].includes(item.mediaType)) throw new TypeError('Unsupported Frontend resource type');
+        if (style ? !item.source.endsWith('.css') : !['image/png', 'image/jpeg', 'image/webp', 'font/woff', 'font/woff2', 'font/ttf', 'font/otf'].includes(item.mediaType)) throw new TypeError('Unsupported Frontend resource type');
         return { ...item };
     });
     if (value.bridge !== undefined) resourcePath(value.bridge);

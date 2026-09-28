@@ -1,21 +1,8 @@
 import { FRONTEND_LIMITS, identifier, fields, list } from '../../../public/shared/native-frontend-contract.js';
-
-const TAGS = new Set('div span main section article aside header footer nav p h1 h2 h3 h4 h5 h6 ul ol li button label input textarea select option form fieldset legend table thead tbody tr th td img figure figcaption strong em small br hr component'.split(' '));
-const ATTRS = new Set('id class title role aria-label aria-labelledby aria-describedby aria-hidden aria-live tabindex type name value placeholder disabled checked selected multiple required min max step rows cols alt width height for inputmode enterkeyhint autocomplete spellcheck'.split(' '));
-const VOID = new Set(['input', 'img', 'br', 'hr']);
+import { assertPresentationNode, assertPresentationContract, VOID_TAGS } from '../../../public/shared/native-frontend-presentation.js';
 
 export function assertNode(node) {
-    fields(node, ['id', 'tag', 'attributes', 'children', 'read', 'action', 'component', 'asset']);
-    identifier(node.id);
-    if (!TAGS.has(node.tag)) throw new TypeError('Unsupported semantic element: ' + node.tag);
-    fields(node.attributes, [...ATTRS], 'DOM attributes');
-    if (Object.values(node.attributes).some(value => typeof value !== 'string' || value.length > 4096)) throw new TypeError('Invalid DOM attribute');
-    if (node.tag === 'input' && ['file', 'image'].includes(node.attributes.type)) throw new TypeError('Unsupported input type');
-    for (const key of ['read', 'action', 'component', 'asset']) if (node[key] !== undefined) identifier(node[key]);
-    if ((node.tag === 'component') !== (node.component !== undefined)) throw new TypeError('Invalid Component reference');
-    if (node.asset !== undefined && node.tag !== 'img') throw new TypeError('Asset sink requires img');
-    if (!Array.isArray(node.children) || (VOID.has(node.tag) && node.children.length)) throw new TypeError('Invalid element children');
-    return node;
+    return assertPresentationNode(node);
 }
 
 function decode(text) {
@@ -46,10 +33,12 @@ export function parseAui(source, file) {
     if (!template) throw new TypeError('AUI requires template');
     const contractBlock = blocks.find(block => block.kind === 'contract');
     const contract = contractBlock ? JSON.parse(contractBlock.content) : {};
-    fields(contract, ['uses'], 'Component contract');
+    fields(contract, ['uses', 'props', 'emits', 'slots', 'state', 'interactions', 'lifecycle', 'nodeRefs', 'dynamicStyles'], 'Component contract');
     const uses = list(contract.uses ?? [], identifier, item => item);
+    const { uses: _uses, ...presentationSource } = contract;
+    const presentation = assertPresentationContract(presentationSource);
     const roots = [], stack = [], ids = new Set();
-    const token = /<!--[\s\S]*?-->|<\/[a-z][a-z0-9]*\s*>|<[a-z][a-z0-9]*(?:\s+[a-z][a-z0-9:-]*\s*=\s*(?:"[^"<]*"|'[^'<]*'))*\s*\/?>|[^<]+/gy;
+    const token = /<!--[\s\S]*?-->|<\/[a-zA-Z][a-zA-Z0-9]*\s*>|<[a-zA-Z][a-zA-Z0-9]*(?:\s+[a-zA-Z][a-zA-Z0-9:-]*\s*=\s*(?:"[^"<]*"|'[^'<]*'))*\s*\/?>|[^<]+/gy;
     offset = 0;
     let count = 0;
     while (offset < template.content.length) {
@@ -65,9 +54,9 @@ export function parseAui(source, file) {
             spans.find(span => span.kind === 'node' && span.id === open.id).end = end;
         } else if (raw.startsWith('<')) {
             if (++count > FRONTEND_LIMITS.nodes || stack.length >= FRONTEND_LIMITS.depth) throw new TypeError('Template exceeds limits');
-            const tag = /^<([a-z][a-z0-9]*)/.exec(raw)[1];
+            const tag = /^<([a-zA-Z][a-zA-Z0-9]*)/.exec(raw)[1];
             const attrs = Object.create(null);
-            for (const attr of raw.matchAll(/([a-z][a-z0-9:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+            for (const attr of raw.matchAll(/([a-zA-Z][a-zA-Z0-9:-]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
                 if (Object.hasOwn(attrs, attr[1])) throw new TypeError('Duplicate template attribute');
                 attrs[attr[1]] = decode(attr[2] ?? attr[3]);
             }
@@ -76,7 +65,19 @@ export function parseAui(source, file) {
             ids.add(id);
             const node = { id, tag, attributes: {}, children: [] };
             for (const [name, value] of Object.entries(attrs)) {
-                const special = { 'read': 'read', 'on:click': 'action', 'ref': 'component', 'asset': 'asset' }[name];
+                if (name.startsWith('on:')) {
+                    if (name === 'on:click' && !Object.hasOwn(presentation.interactions, value) && tag !== 'component') node.action = value;
+                    else (node.events ??= {})[name.slice(3)] = value;
+                    continue;
+                }
+                const group = { bind: 'bindings', prop: 'props', style: 'styles' }[name.split(':')[0]];
+                if (group && name.includes(':')) { (node[group] ??= {})[name.split(':')[1]] = { get: value }; continue; }
+                if (name === 'if') { node.condition = { get: value }; continue; }
+                if (name === 'each') { node.each = { get: value }; continue; }
+                if (name === 'item-key') { node.key = value; continue; }
+                if (name === 'window-size') { node.windowSize = Number(value); continue; }
+                if (name === 'row-height') { node.rowHeight = Number(value); continue; }
+                const special = { read: 'read', ref: 'component', asset: 'asset', 'slot-name': 'slot' }[name];
                 if (special) node[special] = value;
                 else node.attributes[name] = value;
             }
@@ -84,7 +85,8 @@ export function parseAui(source, file) {
             (stack.at(-1)?.children ?? roots).push(node);
             spans.push({ kind: 'node', id, file, start, end });
             if (node.action) spans.push({ kind: 'interaction', id: id + '.click', file, start, end });
-            if (!raw.endsWith('/>') && !VOID.has(tag)) stack.push(node);
+            for (const event of Object.keys(node.events ?? {})) spans.push({ kind: 'interaction', id: id + '.' + event, file, start, end });
+            if (!raw.endsWith('/>') && !VOID_TAGS.has(tag)) stack.push(node);
         } else {
             if (raw.includes('{{') || raw.includes('${')) throw new TypeError('Expressions require typed bindings; raw evaluation is unsupported');
             if (!stack.length) {
@@ -94,5 +96,5 @@ export function parseAui(source, file) {
     }
     if (stack.length || roots.length !== 1) throw new TypeError('Template must contain exactly one balanced root');
     const style = blocks.find(block => block.kind === 'style');
-    return { cst: { source, blocks }, ast: { root: roots[0], uses }, spans, style };
+    return { cst: { source, blocks }, ast: { root: roots[0], uses, presentation }, spans, style };
 }

@@ -61,6 +61,7 @@
         "cors": "^2.8.5",
         "crc": "^4.3.2",
         "csrf-sync": "^4.2.1",
+        "css-tree": "^3.2.1",
         "cytoscape": "^3.30.4",
         "diff-match-patch": "^1.0.5",
         "diff2html": "^3.4.56",

@@ -1014,9 +1014,17 @@ export class StudioService {
         if (!preview) throw new TypeError('Preview unavailable');
         const experience = preview.runtime?.experience;
         const path = experience?.frontend?.entry ?? experience?.component;
-        const bytes = path ? new Map(preview.sourceFiles).get(path) : null;
+        const files = new Map(preview.sourceFiles);
+        const bytes = path ? files.get(path) : null;
+        const model = bytes ? JSON.parse(Buffer.from(bytes).toString('utf8')) : null;
+        const compiledFiles = experience?.frontend?.version === 3
+            ? Object.fromEntries([...new Set([path, ...model.resources.map(ref => ref.path)])].map(resource => {
+                const value = files.get(resource);
+                if (!value) throw new TypeError('Preview compiled resource unavailable');
+                return [resource, Buffer.from(value).toString('base64')];
+            })) : undefined;
         return { previewId, packageVersionId: preview.packageVersionId, experience,
-            model: bytes ? JSON.parse(Buffer.from(bytes).toString('utf8')) : null };
+            model, ...(compiledFiles ? { compiledFiles } : {}) };
     }
 
     closePreview(handle, previewId) {

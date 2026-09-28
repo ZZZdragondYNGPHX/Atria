@@ -46,7 +46,7 @@ export function compileDataSchema(raw, depth = 0, budget = { nodes: 0 }) {
     if (raw.type === 'array' || raw.type === 'string') {
         const min = raw.type === 'array' ? 'minItems' : 'minLength';
         const max = raw.type === 'array' ? 'maxItems' : 'maxLength';
-        const limit = raw.type === 'array' ? 256 : 65536;
+        const limit = raw.type === 'array' ? (budget.maxArrayItems ?? 256) : 65536;
         integerBound(raw[max], 0, limit, 'message schema ' + max);
         if (raw[min] !== undefined) integerBound(raw[min], 0, raw[max], 'message schema ' + min);
         if (raw.type === 'array') schema.items = compileDataSchema(raw.items, depth + 1, budget);

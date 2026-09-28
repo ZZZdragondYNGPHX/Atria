@@ -84,8 +84,12 @@ describe('A1 Native StudioService authoring boundary', () => {
             const model = { format: 'atria-frontend-source', version: 3, primaryView: 'main', views: [{ id: 'main', root: 'Main', surface: 'chat.footer' }], components: [{ id: 'Main', source: 'Main.aui' }] };
             const created = await service.createProject(h.handle, source, { files: new Map([['frontend.json', Buffer.from(JSON.stringify(model))], ['Main.aui', Buffer.from('<template><p node-id="hello">Pinned</p></template>')]]) });
             const result = await service.previewProject(h.handle, source.project.projectId, { baseRevision: created.revision.revision });
-            const pinned = service.getPreviewUi(h.handle, result.preview.previewId).model;
+            const snapshot = service.getPreviewUi(h.handle, result.preview.previewId);
+            const pinned = snapshot.model;
             expect(pinned.format).toBe('atria-frontend-index');
+            expect(Object.keys(snapshot.compiledFiles).sort()).toEqual([snapshot.experience.frontend.entry, ...new Set(pinned.resources.map(ref => ref.path))].sort());
+            expect(JSON.parse(Buffer.from(snapshot.compiledFiles[snapshot.experience.frontend.entry], 'base64'))).toEqual(pinned);
+            expect(snapshot.compiledFiles['Main.aui']).toBeUndefined();
             await projectStore.writeFile(h.handle, source.project.projectId, 'Main.aui', Buffer.from('<template><p node-id="hello">Edited</p></template>'));
             expect(service.getPreviewUi(h.handle, result.preview.previewId).model).toEqual(pinned);
             expect(() => service.getPreviewUi('other', result.preview.previewId)).toThrow(/unavailable/);

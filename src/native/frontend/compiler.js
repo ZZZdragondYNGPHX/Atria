@@ -1,7 +1,7 @@
 import { assertFrontendExperience, assertFrontendSourceIndex, FRONTEND_LIMITS, resourcePath } from '../../../public/shared/native-frontend-contract.js';
 import { parseAui } from './aui-parser.js';
 import { canonicalJson, compileBridge, hash } from './bridge.js';
-import { validateStyle } from './styles.js';
+import { validateStyle, compileStyle, linkStyle } from './styles.js';
 import { validateFrontendGraph, componentDependencies } from './graph.js';
 
 export function compileFrontend({ source, files, mode, namespace = 'package', experienceContract = {} }) {
@@ -21,7 +21,7 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
     const index = assertFrontendSourceIndex(JSON.parse(readText(source)));
     const base = source.includes('/') ? source.slice(0, source.lastIndexOf('/') + 1) : '';
     const resolve = path => resourcePath(base + path);
-    const output = new Map(), resources = [], provenance = [];
+    const output = new Map(), resources = [], provenance = [], pendingStyles = [];
     const prefix = 'runtime/frontend/' + namespace;
     const emit = (id, kind, value, dependencies = [], mediaType = 'application/json') => {
         const bytes = Buffer.isBuffer(value) ? value : Buffer.from(canonicalJson(value));
@@ -49,7 +49,7 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
     for (const asset of index.assets) emit('asset:' + asset.id, 'asset', read(resolve(asset.source)), [], asset.mediaType);
     for (const style of index.styles) {
         const file = resolve(style.source), css = readText(file);
-        emit('style:' + style.id, 'style', { format: 'atria-style', css }, styleDependencies(css, file));
+        pendingStyles.push({ id: 'style:' + style.id, css, dependencies: styleDependencies(css, file) });
         provenance.push({ kind: 'style', id: style.id, file, start: 0, end: css.length });
     }
     for (const component of index.components) {
@@ -62,11 +62,11 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
         if (parsed.style) {
             const id = 'style:component.' + component.id;
             const css = parsed.style.content;
-            emit(id, 'style', { format: 'atria-style', css }, styleDependencies(css, file, parsed.style.contentStart));
+            pendingStyles.push({ id, css, dependencies: styleDependencies(css, file, parsed.style.contentStart) });
             styles.push(id);
             provenance.push({ kind: 'style', id, file, start: parsed.style.contentStart, end: parsed.style.end });
         }
-        const ir = { format: 'atria-component-ir', version: 3, id: component.id, root: parsed.ast.root, uses: parsed.ast.uses, styles };
+        const ir = { format: 'atria-component-ir', version: 3, id: component.id, root: parsed.ast.root, uses: parsed.ast.uses, styles, presentation: parsed.ast.presentation };
         // Declarative uses are inferred; explicit declarations may narrow future
         // controller handles but can never manufacture a registry entry.
         const inferred = new Set(ir.uses);
@@ -91,9 +91,11 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
         if (['hybrid', 'full'].includes(mode) && view.surface !== 'app.root') throw new TypeError('Stage View must use app.root');
         emit('view:' + view.id, 'view', { format: 'atria-view-ir', version: 3, ...view }, ['component:' + view.root]);
     }
+    const fontNames = [...new Set(pendingStyles.flatMap(style => compileStyle(style.css).fonts.map(font => font.family)))].sort();
+    for (const style of pendingStyles) emit(style.id, 'style', linkStyle(style.css, fontNames), style.dependencies);
     emit('provenance', 'provenance', { format: 'atria-frontend-provenance', version: 1, spans: provenance,
         sources: [...consumed].sort().map(file => ({ file, contentHash: hash(files.get(file)) })) });
-    const compiled = { format: 'atria-frontend-index', version: 3, primaryView: 'view:' + index.primaryView,
+    const compiled = { format: 'atria-frontend-index', version: 3, primaryView: 'view:' + index.primaryView, globalStyles: index.styles.map(style => 'style:' + style.id),
         resources: resources.sort((a, b) => a.id < b.id ? -1 : 1) };
     const entry = prefix + '/index.json';
     output.set(entry, Buffer.from(canonicalJson(compiled)));

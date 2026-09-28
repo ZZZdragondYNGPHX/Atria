@@ -120,6 +120,11 @@ export async function loadGamePackageTextResource(packageState, relativePath, op
     return response.text();
 }
 
+export async function loadFrontendBytes(packageState, path, options = {}) {
+    const response = await postJson('runtime/resource', { sessionId: sessionIdOf(packageState), path }, options);
+    return new Uint8Array(await response.arrayBuffer());
+}
+
 export async function loadGamePackageJsonResource(packageState, relativePath, options = {}) {
     const sessionId = sessionIdOf(packageState);
     const path = String(relativePath || '').trim();

@@ -1010,7 +1010,10 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 canvas.className = 'atria-studio-preview-canvas';
                 body.append(canvas);
                 state.previewMount?.dispose();
-                state.previewMount = mountStudioPreviewUi(documentRef, canvas, exact.model, exact.experience.mode);
+                const mounted = await mountStudioPreviewUi(documentRef, canvas, exact.model, exact.experience.mode, undefined,
+                    { entry: exact.experience.frontend?.entry, files: exact.compiledFiles });
+                if (state.disposed || state.preview?.previewId !== previewId || !canvas.isConnected) { mounted.dispose(); return; }
+                state.previewMount = mounted;
             } catch (error) {
                 body.append(panel(documentRef, 'error', 'Preview render failed', error?.message || String(error)));
             }
