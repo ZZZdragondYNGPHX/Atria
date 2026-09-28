@@ -2,130 +2,252 @@
 
 - Task ID: `refactor/native-frontend-runtime-v3`
 - Primary Workspace: `main`（当前仍为纯方案讨论，未创建实现分支）
-- Current stage: Discussion / Architecture
+- Current stage: Discussion / Architecture / Gap Review
 - Source baseline: `main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
-- Plan HEAD: `docs@09f59e9bc0114a4c07c2b0e6f8f29940687a5930`
+- Package pressure-test sample: `package@58e8241bf0624c8f0c3d97292e116143f5866159` / `native-heavy-frontend-reference`
+- Plan HEAD: `docs@6a704ecd18436c82cd8973e317c0ccbefac84b53`
 - Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
 - Record: 尚未开始实施，不建立 Implementation Record
-- 当前 Plan 状态: Discussion Draft v0.12
+- 当前 Plan 状态: Discussion Draft v0.13
 
 ## 已写入 Plan
 
 - Package owns presentation; Host owns capabilities and authority.
-- Declarative DOM / CSS / fonts / components / interaction / optional script.
+- Declarative DOM / CSS / fonts / components / interaction.
 - Frontend Asset Graph / Remote Media / typed ImageRef.
 - Hard cut v1/v2；v3 最终唯一正式 Native UI Runtime。
 - Frontend Manifest / Runtime Features / Permissions / negotiation。
 - Frontend Host Bridge + Bridge Binding Manifest。
-- Native Frontend Source Graph / Canonical Runtime Graph：
-  - Source 是 Studio/AI/human authoring authority；
-  - IR derived-readonly；
-  - `.aui` SFC-like native authoring；
-  - compiled index/resource graph；
-  - lazy View/Component loading；
-  - source maps/provenance；
-  - native source first-class；framework adapter compile to same IR。
+- Source Graph / `.aui` / Canonical Runtime Graph / Source Map。
+- Script Sandbox：
+  - Supervisor Worker + isolated JS VM；
+  - JS/TS build pipeline；
+  - scoped handles；
+  - ephemeral heap / crash recovery；
+  - resource budgets；
+  - Canvas2D command buffer；
+  - WASM future seam。
 
-## 本轮新增讨论（尚未写入 Plan；下一轮开始前先增量/覆盖更新）
+## 本轮 Gap Review / Pressure Test（尚未写入 Plan；下一轮开始前先增量/覆盖更新）
 
-Script Sandbox Runtime：
+真实样本与场景：
 
-- **Worker 只作为 execution supervisor / thread isolation，不作为最终 security sandbox。**
-  - Dedicated Worker 可从 Host 侧立即 terminate，适合处理 runaway loop / hung runtime；
-  - 但 WorkerGlobalScope 本身仍有 fetch/XHR/WebSocket/IndexedDB 等 Web API，因此 Package code 不能直接运行在裸 Worker global。
-- 推荐基线架构：
-  ```text
-  Main Frontend Runtime
-      ⇅ structured messages
-  Script Sandbox Supervisor Worker
-      └ Embedded isolated JS VM
-           ├ Package compiled modules
-           ├ standard ECMAScript subset
-           └ injected scoped capabilities only
-  ```
-- JS VM 具体供应商/实现暂不冻结。Implementation 阶段可比较 QuickJS-like embedded engine、WASM-hosted JS VM、平台原生 isolate 等；Plan 冻结的是安全/资源 contract，不把产品架构绑死到单个第三方库。
-- 不以 plain Worker、same-realm `Object.freeze`、仅 Proxy、或同 Realm SES-like compartment 作为唯一安全边界。它们可以成为 defense-in-depth / developer tooling，但 baseline 必须具备独立 heap/global + Host 可强制中止的执行边界。
-- **一个 active Experience 一个 Worker + 一个 VM** 为当前倾向：
-  - 同一 Package 内多个 Controller 属于同一信任域，无需每组件单独 VM；
-  - Component-level `uses` 仍通过 capability-handle injection 实现 least-authority；
-  - 不同 Experience/Package 不共享 VM heap。
-- JS/TS Authoring：
-  - 作者可写 modern JS/TypeScript controller；
-  - Build 阶段 transpile/bundle/link；
-  - Runtime 只加载 compiled sandbox modules；
-  - 不运行 TS/source/npm build script；
-  - 生成 exact module graph + content hashes + source maps。
-- Module graph：
-  - 允许 package-local static imports；
-  - 允许 vendored/bundled sandbox-compatible pure JS dependency；
-  - runtime dynamic import 初版禁止；
-  - remote import 永久不作为 baseline；
-  - Node built-ins / DOM/browser module / native addon 不可用；
-  - dependency 安装与 bundling 发生在作者 Build 环境，不发生在玩家安装时。
-- Build static analysis 可以提前发现明显 `window/document/fetch/eval/dynamic import` 等不支持用法，但 Runtime VM 的能力边界才是最终 authority；不能把安全性建立在 lint/regex 上。
-- Compiled Controller ABI 与 Authoring Syntax 分离：
-  - author TS/JS 可以通过 helper/SFC sugar 编写；
-  - compiler 统一成稳定 Controller ABI；
-  - ABI 至少支持 module load、component instance create、hook/event invoke、instance dispose、module dispose。
-- Controller instance：
-  - 每个挂载 Component 可以有自己的 controller instance；
-  - controller 获得 readonly props/event/env；
-  - 获得 Component-local state handle；
-  - 获得 `emit`；
-  - 获得 safe NodeRef/CanvasRef（仅显式声明节点）；
-  - 获得根据 `uses` 缩权后的 read/action/operation/fixed-service handles；
-  - 不获得 global `host`、真实 DOM 或 Authority object。
-- Controller JS heap 可以保存临时 cache/算法对象，但被定义为 **ephemeral non-authoritative**：
-  - Sandbox Worker 重启时允许丢失；
-  - 语义上必须能从 props + declared frontend state + Host projection 重建；
-  - 游戏事实/必须持久的 UI preference 不得只存在 JS closure/heap。
-- 这允许脚本层独立故障恢复：普通 JS exception 只失败当前 invocation；runaway/engine failure 时 Host terminate Worker，重建 VM/controller instances，继续使用未丢失的 Declarative DOM 与 Frontend State。
-- 若重复 crash，可由 Experience Health 禁用 Script Runtime/报告 required-feature failure，而不让整个 Atria Host 崩溃。
-- Async model：
-  - Promise/async 可以存在；
-  - Host Bridge request 是 async typed message；
-  - 不给裸 `setTimeout/setInterval` 作为 ambient browser API，优先注入 Experience-scoped scheduler/timer handle；
-  - controller dispose 时 timer/pending callback 自动 revoke/cancel；
-  - 支持显式 cooperative `yield`，供复杂纯计算分片，避免长任务抢占 UI。
-- Clock/random：
-  - 游戏 Authority RNG/World time 永远走 Host contract；
-  - Sandbox 只需要 non-authoritative UI clock/random；
-  - 倾向由 Host/Sandbox Runtime 提供可测试的 monotonic clock + seeded/non-authoritative random service，而不是让 wall clock/random 影响 Authority。
-- Resource budgets 不在 Plan 中先写死毫秒/MB 数值，但 contract 必须支持 Host policy：
-  - max VM heap；
-  - per-invocation CPU/instruction/wall-time budget；
-  - per-Experience total script budget；
-  - message payload / queue budget；
-  - module / bundle bytes；
-  - async outstanding request limit；
-  - operation/concurrency limit；
-  - hard terminate path。
-  Package 可提供 workload hint，但 Host caps 优先。
-- Bridge/message boundary 使用更严格的 JSON-like/structured-clone-safe typed payload；不跨边界传 Function、DOM node、prototype-rich object。可对 ArrayBuffer/TypedArray 等性能数据做明确 allowlist，而不是默认开放所有 transferable。
-- Third-party pure JS：
-  - 可以 vendoring/bundle；
-  - 必须在无 DOM/network/Node built-in 的 sandbox contract 下工作；
-  - 依赖真实 browser DOM 的图表/UI library 不自动兼容 Native Sandbox，应使用 Framework Adapter 改写、Atria graphics shim 或未来 Web Island。
-- Canvas2D 当前倾向采用 **retained/batched Drawing Command Buffer**，不把真实 CanvasRenderingContext2D 注入 VM，也不做“每一个 draw call 一次 RPC”：
-  - Controller 在 VM 内构造 typed drawing commands；
-  - 一次 frame/flush 批量发送；
-  - Host 验证预算、Asset/Media handles 后执行；
-  - 可支持 paths/text/images/transforms/clips/gradients 等足够宽的 Canvas2D subset；
-  - image 只能来自 safe MediaHandle；
-  - future 可增加 OffscreenCanvas/graphics fast-path feature，但 baseline 不依赖真实 browser Canvas object。
-- WebAssembly 不进入 `frontend-script@1` baseline：
-  - 预留 future `frontend-wasm@1`；
-  - 将来仍必须在同一 Worker supervisor / Host Bridge / budgets 下；
-  - 避免 v3 首版同时维护 JS VM + arbitrary WASM 两种执行安全面。
-- Debug：
-  - compiled sandbox module 必须保留 controller/source map provenance；
-  - Studio 能把 stack/error 指回 `.ts/.js/.aui`；
-  - production diagnostics 不泄漏 Host internals；
-  - Studio 可以做 controller hot reload：重建 sandbox module/instance，同时尽量保留 Host-side Frontend State。
-- Script Runtime 与 Declarative Runtime 的关系继续是“增强而非替代”：
-  - DOM/Component tree 仍由 Canonical IR；
-  - Script 修改 state / emits / NodeRef presentation handles / Canvas command buffer；
-  - 禁止 script createElement/innerHTML/任意 selector 重新成为主要 UI construction path。
+- `native-heavy-frontend-reference` 当前包含 Story / Church / Schedule / Phone / People，SMS/Social/Mail、教会经营、Temporal、Application Command、AI Turn 等，且现有 D2 已明确记录 UI v2 styling/semantics 限制。
+- 以 Visual Novel、RPG、Phone/IM、Church、关系图/地图、AI Task、Remote Portrait、移动端、Component/Hybrid/Full、Studio/AI、Crash/Offline/Denied 等场景逐项压力测试。
+
+### 已覆盖良好，无新增架构缺口
+
+- 自定义视觉/布局/字体/动画：Full CSS + DOM + Component System。
+- RPG inventory/equipment/character sheet：Component + keyed list + drag/drop + typed actions；大型集合需下面新增 Collection Read。
+- Church/经营：Bridge reads/actions + Application/World authority 足够。
+- 关系图/地图/Canvas：Script Sandbox + Canvas command buffer 足够；WebGL/WASM 可后续。
+- AI Task：Operation binding + progress/partial/cancel 足够。
+- Remote portraits/CG：typed ImageRef + Remote Media Resolver + cache/fallback 足够。
+- Component/Hybrid/Full 布局 ownership：总体模型成立。
+- Crash/Script restart：Host-side state + ephemeral VM 模型成立。
+- Permission denied/offline：capability projection + fallback 模型成立。
+
+### Gaps found — 需要下一轮正式解决
+
+#### G-V3-1 — Headless Conversation / Composer / Session Presentation
+
+当前方案仍偏向“Host Native Component + ::part()”，这不足以满足“几乎完全前端修改权限”。
+
+重前端作者必须能够二选一：
+
+1. mount Host-managed `<atria-conversation>/<atria-composer>`；
+2. 使用 **headless Host conversation/session service + projection** 完全自行渲染聊天/消息/Composer UI。
+
+需要新增/冻结的 Host surface：
+
+- canonical conversation/thread/message projection；
+- streaming/provisional/final generation state；
+- reply variant / branch presentation；
+- retry / regenerate / select variant 等正式 Host actions；
+- generation cancel/status；
+- Composer draft/submit 可由 Package-owned textarea/input 驱动；
+- Message Projection / structured blocks / canonical prose 的安全呈现数据。
+
+Package 自绘 Conversation 仍不能自行写 Timeline；所有提交、retry、branch、variant 都走 typed Host service。
+
+#### G-V3-2 — Safe Rich Text / Prose Rendering
+
+AI narrative 若只给 raw string，Package 要自己把 Markdown/structured prose 变 DOM，会逼 Script 回到 DOM parser/rendering。
+
+需要 Native v3 baseline 提供：
+
+- safe Prose/RichText AST，或
+- Host-owned prose compiler + declarative `rich-text/prose` presentation primitive。
+
+禁止把 raw model HTML / unsanitized Markdown HTML 直接注入 DOM。
+
+这也应支持 canonical prose、Message Blocks 与 Package custom CSS。
+
+#### G-V3-3 — Collection Read / Query / Pagination
+
+现有 `host.data.snapshot(bindingId)` 对长期 Phone/IM、邮件、社交、inventory、日志等大集合不够。
+
+Read Binding 需要至少两种形态：
+
+- scalar/snapshot read；
+- bounded collection/query read。
+
+Collection Read 概念能力：
+
+- declared query schema；
+- page size hard bound；
+- stable sort/order；
+- cursor/keyset pagination；
+- optional filter/search fields；
+- result schema + nextCursor；
+- optional subscription/invalidation token。
+
+例如：
+
+`host.data.query("sms-thread", { threadId, cursor, limit })`
+
+Host 仍决定 query contract，不开放 arbitrary database query。
+
+Virtualization 解决 DOM 数量，Collection Read 解决数据量；两者缺一不可。
+
+#### G-V3-4 — Surface Visual Containment / Top Layer
+
+Shadow DOM 只隔离 selector/style inheritance，不能单独保证 Package 视觉不会覆盖 Host UI。
+
+需要正式 **Surface Visual Containment Contract**：
+
+- Component/Hybrid surface 必须有 Host-owned paint/layout/stacking containment；
+- Experience CSS 的 `position: fixed`、z-index 等不能逃出授权 surface；
+- raw browser top-layer（modal `dialog.showModal`、popover 等）不能成为越过 Host 的旁路；
+- Modal/Drawer/Tooltip/ContextMenu 使用 Experience Overlay Root / declared surface；
+- Full 可以拥有 app stage，但 Atria 必须保留不可被 Package CSS/DOM 覆盖的 Host System/Escape Layer（exit/save/stop generation/diagnostics/recovery）。
+
+这是安全 + 可恢复性边界，不只是 CSS 风格问题。
+
+#### G-V3-5 — Dynamic Resource Binding 必须 Typed
+
+静态 CSS remote image URL 可在 Build 时收集；但动态 style/string → URL 会形成网络/隐私旁路。
+
+需要冻结：
+
+- runtime dynamic media binding 只能接受 typed `ImageRef/MediaRef`；
+- 禁止任意 string → CSS `url(...)` / MediaRef cast；
+- Script 不能根据任意 projection 数据拼 remote URL；
+- dynamic RemoteImageRef 必须来自 Host/Package declared typed resource contract并再次经过 permission/origin policy；
+- CSS custom property dynamic binding需要 typed value categories，默认不能承载 arbitrary URL/token stream。
+
+这样 Remote Media 不会成为数据外传通道。
+
+#### G-V3-6 — Localization / Locale / Text Formatting
+
+当前 v3 只谈了 CSS/字体，没有正式 Package localization runtime。
+
+Native v3 baseline 需要：
+
+- Host locale / language / direction / timezone/preferences projection；
+- Package localization resource graph；
+- stable message key；
+- interpolation；
+- plural/select；
+- number/date/time/list formatting；
+- RTL / writing-direction；
+- locale fallback；
+- Studio missing-key/unused-key diagnostics。
+
+作者不应把所有本地化字符串硬编码进 Component。
+
+#### G-V3-7 — IME / BeforeInput / Virtual Keyboard
+
+中文/日文/韩文输入和移动端输入需要正式前端输入 contract，不可只靠 generic `input/change`。
+
+需要：
+
+- `beforeinput`；
+- compositionstart/update/end；
+- selection/caret-safe controlled input semantics；
+- 不在 IME composition 中错误提交/覆盖 value；
+- VisualViewport / virtual-keyboard occlusion projection；
+- safe-area + keyboard inset；
+- textarea autosize/focus restoration。
+
+这属于 Native v3 baseline，而不是浏览器偶然行为。
+
+#### G-V3-8 — Accessibility / User Preference Environment
+
+Declarative DOM 已允许 ARIA，但 Runtime baseline 还需明确环境与工具支持：
+
+- reduced motion；
+- contrast / forced-colors / color-scheme；
+- text scale / zoom；
+- pointer/touch modality；
+- keyboard focus visibility；
+- semantic heading/label/aria validation；
+- touch target diagnostics；
+- live-region / announcement pattern；
+- focus trap/restore for Experience modal overlay。
+
+Package 可以完全自定义视觉，但不能因为自由度提高就失去 Atria 的可访问性诊断。
+
+#### G-V3-9 — Host Session / Conversation Control Services
+
+Full/Hybrid 重前端除了普通 game actions，还会需要正式 Host-level controls：
+
+- save / savepoint；
+- exit Experience；
+- retry/regenerate；
+- branch/fork；
+- select reply variant；
+- stop generation；
+- diagnostics / recovery；
+- restart/new session（按 Host policy）。
+
+这些不能通过 generic World Action 伪装。
+
+建议新增固定 `host.session` / `host.conversation` service（名称待定），底层复用既有 Session/Timeline/Reply Variant/Host Action contract。
+
+#### G-V3-10 — Component/View Error & Loading Boundary
+
+Lazy View、Remote Media、Script Controller、Read query 都会异步失败。
+
+Native v3 需要 declarative loading/error boundary：
+
+- View/Component loading fallback；
+- async component/resource failure fallback；
+- retry hook；
+- error isolation；
+- failed child 不必导致整个 Experience blank；
+- error diagnostic 仍带 source provenance。
+
+这不是 React 式框架依赖，而是重前端 Runtime 的基本韧性能力。
+
+### 非 blocker / future seam
+
+当前压力测试未要求 Core v3 首版必须支持：
+
+- arbitrary WebGL/WebGPU；
+- pointer lock；
+- raw network client；
+- arbitrary filesystem；
+- camera/microphone；
+- WASM；
+- Service Worker；
+- browser history/deep-link routing；
+- true DOM-owning React/Vue SPA（future Web Island）。
+
+### Gap Review 结论
+
+当前架构主方向成立，但**还不能直接冻结 Implementation Baseline**。
+
+至少先正式解决 G-V3-1 ～ G-V3-10，其中最高优先级是：
+
+1. Headless Conversation/Session services；
+2. Collection Read；
+3. Surface Visual Containment；
+4. Typed dynamic resource binding；
+5. Localization + IME；
+6. Host session controls / error boundaries。
+
+解决后再进行第二次较短 Gap Review；若无新架构级缺口，再冻结 Implementation Baseline 和 Phase 拆分。
 
 ## 讨论工作流
 
@@ -136,27 +258,18 @@ Script Sandbox Runtime：
 
 ## 下一轮建议主题
 
-先把 Script Sandbox 结论写入 Plan，再做一轮完整 **Gap Review / Pressure Test**，重点用真实重前端场景反推缺口：
+先把本轮 Gap Review 写入 Plan，然后集中解决 G-V3-1 ～ G-V3-4：
 
-- 视觉小说 / AI 剧情；
-- RPG inventory / equipment / character sheet；
-- Phone/IM；
-- Church/经营模拟；
-- 大型地图/关系图/Canvas；
-- AI Task/生成中状态；
-- remote portraits；
-- mobile/touch/gamepad；
-- Full standalone game shell；
-- Component chat enhancement；
-- Hybrid chat game；
-- Studio/AI authoring；
-- crash/reload/offline/permission denied；
-- 检查是否还有必须开放而当前方案遗漏的前端能力。
+- Headless Conversation / Composer / Session；
+- Safe Prose / RichText；
+- Collection Read / query / cursor；
+- Surface Visual Containment / Host System Layer；
+- Dynamic Media typing。
 
-若 Gap Review 没有新的架构级缺口，再准备把 Discussion Draft 收敛成 Implementation Baseline，并拆实施阶段。
+再下一轮解决 Localization / IME / Accessibility / Error Boundary / Host Session Controls。
 
 ## 不要重复
 
 - 不考虑 v1/v2 migration/兼容。
-- 不重复 Remote Media、基础 Host Bridge、Binding Registry、Source Graph。
+- 不重复 Script Sandbox、Remote Media、Bridge/Binding/Source Graph 已冻结基础。
 - 不创建实现分支或产品代码，除非用户明确批准进入实施。
