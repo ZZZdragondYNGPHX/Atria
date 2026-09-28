@@ -18,7 +18,7 @@
     {
       "kind": "assert",
       "input": {
-        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.dayIndex",
+        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.day_index",
         "equals": 1
       }
     },
@@ -130,14 +130,14 @@
     {
       "kind": "assert",
       "input": {
-        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.expectedMoneyDelta",
+        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.expected_money_delta",
         "equals": 55
       }
     },
     {
       "kind": "assert",
       "input": {
-        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.expectedFollowerDelta",
+        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.expected_follower_delta",
         "equals": 3
       }
     },
@@ -247,14 +247,14 @@
     {
       "kind": "assert",
       "input": {
-        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.dayIndex",
+        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.day_index",
         "equals": 2
       }
     },
     {
       "kind": "assert",
       "input": {
-        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.expectedMoneyDelta",
+        "path": "states.atri_lifecycle.domains.church-operations.records.0.value.expected_money_delta",
         "equals": 0
       }
     },
