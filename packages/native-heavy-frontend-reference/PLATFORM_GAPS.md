@@ -164,3 +164,17 @@ MySQL / Postgres 在 targeted Jest 中显式禁用；未运行真实 provider、
 
 因此 G3 已满足 Implementation Baseline v1.0 的平台前置要求，**Phase 3 可以正式关闭并进入 Phase 4 交接；G3 不再是 blocker。**
 
+
+---
+
+## G4 — UI v2 Read-only Temporal Projection
+
+**状态：Satisfied / integrated in `main@6052a6d47b13d74be24c412a69527bd445dcc55c`; synced into Package via PR #90 / `3a60d365b9726d6c1b35ae98c649f3c7238f2a08`.**
+
+Phase 4 Schedule 必须展示连续 Lifecycle Game Clock 的当前时间，但 UI v2 原先没有只读 Temporal root。把 Clock 镜像进 World 或 Session Application 会制造第二时间事实源，因此不能在 Package 内通过状态复制规避。
+
+Core 最小修复只把现有 Host `getTemporalProjection()` 暴露为 UI v2 的只读 `temporal` root，并通过 Experience activation 传入；没有新增 Clock、数据库、scheduler、Lifecycle mutation 或 raw patch。
+
+Targeted run `36381685191`：**success**，覆盖 `game-runtime/ui-live.test.js` 与 `game-runtime/experience-ready-p4.test.js` 以及 touched module syntax checks。正式记录：`docs:feat/native-ui-temporal-projection.md`。
+
+Package Phase 4 只使用该 read-only projection 显示 Game Clock；Schedule records 仍来自现有 Session Application + Information Runtime。
