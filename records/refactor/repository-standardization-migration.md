@@ -2,7 +2,7 @@
 
 Task ID: `refactor/repository-standardization-migration`  
 Primary Workspace: `refactor/repository-standardization-migration`  
-Status: **Phase 3 complete; Phase 4 not started**
+Status: **Complete — Phase 4 verification / cleanup finished**
 
 ## Phase 1 — Audit / Mapping / Safety
 
@@ -400,3 +400,169 @@ The only execution correction was the temporary ref-normalization workflow imple
 Phase 4 must begin from fresh remote verification and is responsible for final repository-wide verification, integrating the main-side task branch, and only then removing superseded migration/temporary refs and other confirmed obsolete state.
 
 Do **not** clean `migration-backup/20260928/*` or `migration-source/*` before Phase 4 verification.
+
+
+## Phase 4 — Verification / Cleanup
+
+### Start state
+
+Phase 4 resumed from the Phase 3 checkpoint and first re-verified live remote refs:
+
+- `main@86b900fd0821eff3cc9fcc23bb2ea343dc1d121b`;
+- task branch `refactor/repository-standardization-migration@21133b5aa45475b78733d203d43c3dff8107706a`;
+- `docs@4e5844d10e817051df3620ff9842fd5e5b8e37f4` initially, then `docs@cdc4e598cbbdaf7323b0fb5ecbd63cbf1664535c` after the Phase 4 CI checkpoint handoff refresh;
+- `package@0f40217ea451b91fdc8327e5a661c813d9d12142`;
+- `plugin@5bbf79fca1c68273f7e2c770ed66d80482dc341b`;
+- `skills@db3410039d22967b7dc440c9b618594e363a864a`;
+- `reference/vanilla@e07c9e2af1b52f6b0f3dedbd5cc47db78f715ccc`;
+- `reference/luker@91ae97aed557be9439317a67d0ec516f7512fe2e`.
+
+All migration safety/source refs were still present and exact before any cleanup.
+
+### Final replacement-state verification
+
+Verification was repeated before integration and cleanup.
+
+Docs:
+
+- old protected docs snapshot contains 245 tracked blobs;
+- excluding the intentionally replaced old root `README.md`, **244 / 244** legacy blobs exist in current docs at exact blob SHA;
+- semantic classification remains **15 Plans / 229 Records**;
+- all **35** legacy handoff files remain durable historical Records under `records/**/legacy-handoffs/**`;
+- no stale old top-level docs categories remain;
+- authoritative Governance, branch-local `AGENTS.md`, thin `CLAUDE.md`, Web adapter, Plan/Record templates and live root HANDOFF lifecycle were all present before final HANDOFF deletion.
+
+Independent roots:
+
+- `docs` bootstrap root `f69c3fa1345a65bbce3a1fef8405576b0422d97c` has zero parents and the current docs history descends from it;
+- `package` bootstrap root `e4950f5127f39b5be093428786f8af9410fd78bc` has zero parents and the current package history descends from it;
+- `plugin` bootstrap root `7453144395832f3a315f4694649be9af9fe1f9b1` has zero parents and the current plugin history descends from it;
+- `skills` bootstrap root `087ae0ccb5ecacd48b7490ed0b1d0faaaba44c6e` has zero parents and the current skills history descends from it.
+
+Workspace boundaries:
+
+- Package top level contains only workspace governance plus `native-heavy-frontend-reference/`;
+- no copied product roots such as `src/`, `public/`, `android-app/`, `tests/`, `default/` or product `plugins/` exist in `package`;
+- `plugin` contains only `README.md`, `AGENTS.md`, and thin `CLAUDE.md`;
+- `skills` contains only `README.md`, `AGENTS.md`, thin `CLAUDE.md`, and `SKILLS.md`;
+- Atria runtime `main:default/skills/**` and product `main:plugins/**` remain in main.
+
+Package:
+
+- **19 / 19** Package source files match the protected source at exact path + blob SHA;
+- target-only additions are the Package workspace/game `README.md` and `releases/README.md`;
+- no historical `.atria` existed in the source and none was fabricated.
+
+References:
+
+- bare `vanilla` and `luker` remained absent;
+- `reference/vanilla` remained exactly `e07c9e2af1b52f6b0f3dedbd5cc47db78f715ccc`;
+- `reference/luker` remained exactly `91ae97aed557be9439317a67d0ec516f7512fe2e`;
+- reference contents were not read during Phase 4.
+
+Main-side task diff:
+
+- the task branch was 12 commits ahead / 0 behind the Phase 4 start main;
+- net tree changes remained exactly seven governance/routing files:
+  `AGENTS.md`, `AI_HANDOFF.md`, `CLAUDE.md`, `FORK_MAINTENANCE.md`, `NEW_BUG_PROMPT.md`, `NEW_FEATURE_PROMPT.md`, and `README.md`;
+- no Atria product feature/source file was changed by the migration branch.
+
+### Integration CI and baseline comparison
+
+Opened PR **#96** — `refactor(repo): standardize repository governance routing`.
+
+PR validation:
+
+- `Atria Migration Guard`: **success**;
+- `Lint`: **success**;
+- Unit Tests: **1 failed / 10,278 total**;
+- Native Model Prompt Runtime integration: **failure**.
+
+The two failures were explicitly compared against the already-current `main@86b900fd0821eff3cc9fcc23bb2ea343dc1d121b` workflow history before integration.
+
+They were exact baseline failures already present on main:
+
+- PR Unit Tests run `36410078873` failed `native/model-prompt-runtime-p4.test.js` with `Native Package Turn Memory recall requires a Session snapshot`;
+- baseline main run `36387441026` failed the same test with the same error and the same 1 failed / 10,277 passed result;
+- PR Native Model Prompt Runtime run `36410078927` failed the P2 generation-core guard on `src/native/adapters/generation-host.js`;
+- baseline main run `36387417708` failed the same guard on the same file and rule.
+
+Because the migration branch changes none of the implicated product/test files and reproduces no new CI failure relative to the exact main baseline, these were recorded as **pre-existing main failures, not migration regressions**. No unrelated Native product fix was added to this repository-governance migration.
+
+### Main integration
+
+PR #96 was merged with expected head:
+
+- task head: `21133b5aa45475b78733d203d43c3dff8107706a`;
+- merge commit / final integrated main: `c697532c6a4d54530de023cd65e4c1721efe97b2`.
+
+Post-merge verification:
+
+- old main `86b900fd0821eff3cc9fcc23bb2ea343dc1d121b` -> integrated main changes exactly the same seven governance/routing files;
+- integrated main is one merge commit ahead of the task branch with **zero file differences**;
+- no product source change was introduced by the merge.
+
+GitHub automatically deleted the merged task branch `refactor/repository-standardization-migration`.
+
+### Final cleanup
+
+After integrated-main verification passed, an isolated temporary cleanup branch was created from the verified main solely to execute exact-ref cleanup without adding a temporary workflow commit to main:
+
+- temporary branch: `chore/repository-standardization-final-cleanup`;
+- cleanup workflow commit: `cf2281e25e007a611b502b932f09bb5829026c37`;
+- workflow run: **36413628107 — success**.
+
+The workflow first verified the exact replacement-state SHAs for `main`, `docs`, `package`, `plugin`, `skills`, `reference/vanilla`, and `reference/luker`, and verified the obsolete bare reference names and completed task branch were absent.
+
+Only then it deleted:
+
+- `migration-backup/20260928/main`;
+- `migration-backup/20260928/docs`;
+- `migration-backup/20260928/docs-phase1`;
+- `migration-backup/20260928/package-native-heavy-frontend-reference`;
+- `migration-backup/20260928/chore-native-heavy-frontend-phase5-validation`;
+- `migration-backup/20260928/vanilla`;
+- `migration-backup/20260928/luker`;
+- `migration-source/native-heavy-frontend-reference`;
+- stale `chore/native-heavy-frontend-phase5-validation`.
+
+The temporary cleanup branch then deleted itself.
+
+### Final branch model
+
+After cleanup the remote branch list contains exactly the intended seven long-lived branches:
+
+- `main@c697532c6a4d54530de023cd65e4c1721efe97b2`;
+- `docs` — independent documentation/governance root;
+- `package@0f40217ea451b91fdc8327e5a661c813d9d12142`;
+- `plugin@5bbf79fca1c68273f7e2c770ed66d80482dc341b`;
+- `skills@db3410039d22967b7dc440c9b618594e363a864a`;
+- `reference/vanilla@e07c9e2af1b52f6b0f3dedbd5cc47db78f715ccc`;
+- `reference/luker@91ae97aed557be9439317a67d0ec516f7512fe2e`.
+
+No `migration-backup/20260928/*`, `migration-source/*`, stale Native validation branch, completed migration task branch, or cleanup branch remains.
+
+### Final validation / limitations
+
+The repository-standardization migration completion criteria are satisfied:
+
+- standardized long-lived branch model is real;
+- docs/package/plugin/skills remain independent roots;
+- docs lifecycle and Web/Local adapter separation are normalized;
+- migrated documentation and Package source were losslessly verified;
+- reference histories/names are preserved exactly;
+- all temporary migration protection/source state is removed after replacement-state proof;
+- no reference content was read without authorization;
+- no Atria product functionality was expanded.
+
+No new product build, Android/Termux/device, provider inference, or visual UI validation is claimed for Phase 4. The two product CI failures observed during PR integration were verified as exact pre-existing failures on the Phase 4 main baseline and are outside this migration's product scope.
+
+### Plan delta
+
+No substantive Plan change occurred in Phase 4. The approved migration architecture remained frozen.
+
+### Completion
+
+**Task `refactor/repository-standardization-migration` is complete.**
+
+The live `docs:HANDOFF.md` is deleted as the final documentation-lifecycle cleanup step; permanent recovery history is this Record.
