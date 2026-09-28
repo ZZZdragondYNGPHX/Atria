@@ -1,26 +1,27 @@
 # Atria
 
-Atria is a **SillyTavern-based modified role-playing product** focused on extending the upstream foundation with richer memory, multi-agent orchestration, workspace tooling, generation/runtime improvements and Atria-specific UX.
-
-Atria succeeds the former **Atria** product line. The project remains intentionally based on SillyTavern rather than attempting a ground-up rewrite.
+Atria is a **SillyTavern-based modified role-playing product** focused on richer memory, orchestration, authoring/runtime, storage tooling and Atria-specific UX.
 
 ## Branch model
 
-- `main` — active Atria product line.
-- `vanilla` — SillyTavern upstream reference snapshot; update only when upstream comparison/synchronization is needed.
-- `luker` — legacy Luker reference snapshot; update only when migration/reference work is needed.
-- `docs` — long-lived planning, architecture, handoff and completed-work documentation.
-- `feat/*`, `fix/*`, `refactor/*`, `chore/*` — temporary task branches.
+- `main` — stable Atria product/source line.
+- `docs` — independent Repository Governance, Plans, Records and optional live `HANDOFF.md`.
+- `package` — independent long-lived game/Atria Package assets.
+- `plugin` — independent long-lived standalone tools.
+- `skills` — independent long-lived repository-agent Skills.
+- `reference/vanilla` — SillyTavern upstream/reference history.
+- `reference/luker` — legacy Luker reference history.
+- `feat/*`, `fix/*`, `refactor/*` and other justified semantic prefixes — short-lived product task branches.
+
+Complete repository governance is authoritative at `docs:README.md`.
 
 ## Development model
 
-New product work starts from `main`. SillyTavern changes are inspected through `vanilla` and selectively adapted rather than blindly merged. Luker code is retained only as legacy/reference material on the `luker` branch after migration.
+New product work starts from current `main` on a short-lived semantic task branch. A specific `reference/<project>` is read only under explicit reference authorization and updated only under separate explicit update authorization.
 
-New Atria-owned modules should prefer concise `atri_*` naming (for example, `atri_memory`). Existing Atria internal identifiers may remain temporarily when they are part of compatibility-sensitive paths, storage keys, APIs, Android package names or persisted data.
+`docs`, `package`, `plugin`, and `skills` are isolated long-lived workspaces; do not merge `main` into them for convenience.
 
-## Current inherited capabilities
-
-The initial Atria baseline inherits the current Atria implementation, including its multi-agent orchestration, Memory OS / memory graph, workspace/agent tooling, generation lifecycle changes, storage extensions, Android integration and other SillyTavern modifications. These systems will be progressively reworked under the Atria product namespace.
+New Atria-owned modules should prefer concise `atri_*` naming where practical while preserving real upstream/compatibility-sensitive contracts.
 
 ## Upstream
 
