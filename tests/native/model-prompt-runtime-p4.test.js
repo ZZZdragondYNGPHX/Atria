@@ -297,8 +297,13 @@ describe('P4 Native Play publication uses the existing lifecycle', () => {
     });
     test('P3 Package Turn uses provisional Host finalize rather than publishing a second assistant', async () => {
         const f = hostFixture();
-        f.runtime.snapshot = { session: { sessionId: 'session', packageId: 'package' }, revision: { revisionId: 'revision' },
-            manifest: { runtime: { experienceContract: { taskRuntime: { turn: { policy: 'narrative-outcome' } } } } } };
+        f.runtime.snapshot = {
+            session: { sessionId: 'session', packageId: 'package', packageVersionId: 'package-version' },
+            revision: { revisionId: 'revision', branchId: 'branch' },
+            timeline: [],
+            states: {},
+            manifest: { runtime: { experienceContract: { taskRuntime: { turn: { policy: 'narrative-outcome' } } } } },
+        };
         f.runtime.markProvisionalTurn = () => f.events.push('provisional');
         f.runtime.acceptOperationSnapshot = async () => f.events.push('accepted');
         const executeOperation = jest.fn(async () => ({ timeline: [{ content: 'Finalized' }] }));
