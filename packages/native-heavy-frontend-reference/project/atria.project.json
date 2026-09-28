@@ -3266,7 +3266,8 @@
                   "resultBinding": {
                     "kind": "app.command",
                     "domainId": "sms-threads",
-                    "commandId": "deliver"
+                    "commandId": "deliver",
+                    "recordId": "caretaker-check-in"
                   }
                 },
                 {
