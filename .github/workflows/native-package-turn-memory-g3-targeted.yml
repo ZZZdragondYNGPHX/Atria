@@ -18,7 +18,7 @@ on:
       - '.github/workflows/native-package-turn-memory-g3-targeted.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   g3-targeted:
@@ -51,22 +51,12 @@ jobs:
       - name: Lint touched modules
         run: npx eslint public/scripts/native/play-generation.js public/scripts/native/session-runtime.js public/scripts/native/experience/llm/memory-bridge.js public/scripts/agents/memory/hybrid-retrieval.js src/native/adapters/generation-host.js src/native/adapters/native-session-context.js tests/native/package-turn-memory-bridge-g3.test.js
       - name: Run G3 and G1 G2 targeted tests
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
         run: >-
           npm run test:unit --prefix tests -- --runInBand
           native/package-turn-memory-bridge-g3.test.js
           native/turn-app-outcome-g1.test.js
           native/background-task-app-bridge-g2.test.js
           memory-graph/hybrid-retrieval.test.js
-      - name: Record targeted result
-        if: always()
-        env:
-          JOB_STATUS: ${{ job.status }}
-          RUN_ID: ${{ github.run_id }}
-          HEAD_SHA: ${{ github.sha }}
-        run: |
-          printf '{"status":"%s","runId":"%s","headSha":"%s"}\n' "$JOB_STATUS" "$RUN_ID" "$HEAD_SHA" > .g3-targeted-result.json
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .g3-targeted-result.json
-          git commit -m "ci(native): record G3 targeted result" || exit 0
-          git push origin HEAD:feat/native-package-turn-memory-bridge
