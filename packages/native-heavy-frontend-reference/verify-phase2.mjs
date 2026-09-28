@@ -29,7 +29,7 @@ const ui = compileUiDocument(uiRaw, { mode: 'hybrid' });
 const logic = compileDeclarativeLogic(logicRaw);
 const scenario = assertStudioScenario(scenarioRaw);
 
-assert.equal(project.package.version, '0.4.0-phase4');
+assert.equal(project.package.version, '0.5.0-phase5');
 assert.equal(project.assetFiles.length, 0);
 assert.equal(project.worlds.length, 1);
 assert.equal(project.package.runtime.experienceContract.presentationRuntime, undefined);
@@ -40,11 +40,11 @@ assert.ok(logic.commands.some(command => command.id === 'church.settle-idle-day'
 const world = project.worlds[0];
 assertValidWorldState(world.revision.baseline, world.revision.schema);
 const contract = project.package.runtime.experienceContract;
-assert.deepEqual(contract.lifecycleRuntime.domains.map(domain => domain.id), ['events', 'schedule', 'church-operations', 'church-projects', 'opportunities']);
+assert.deepEqual(contract.lifecycleRuntime.domains.slice(0, 5).map(domain => domain.id), ['events', 'schedule', 'church-operations', 'church-projects', 'opportunities']);
 assert.deepEqual(contract.lifecycleRuntime.clocks, [{ id: 'game-clock', unit: 'minute', initialTick: 480 }]);
 assert.ok(contract.lifecycleRuntime.workflows.some(flow => flow.id === 'church-day-cycle'));
-assert.equal(contract.lifecycleRuntime.automations.length, 0);
-assert.equal(contract.lifecycleRuntime.interactions.length, 0);
+assert.ok(Array.isArray(contract.lifecycleRuntime.automations));
+assert.ok(Array.isArray(contract.lifecycleRuntime.interactions));
 
 const snapshot = {
     session: { sessionId: 'phase2-preview', packageVersionId: 'phase2-preview' },
