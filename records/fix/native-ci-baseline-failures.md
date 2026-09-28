@@ -17,7 +17,7 @@ These failures were already present on the exact main baseline before this fix.
 
 Branch: `fix/native-ci-baseline-failures`
 
-Current HEAD: `23a2f075a970b03acdd82f808995dead60989e95`
+Current HEAD: `7b486249550ed0ebfff135e6bcda49acf8199790`
 
 Changes:
 
@@ -73,11 +73,11 @@ Sequential integration evidence before the latest head:
 - after the P6 fix, P0–P7 and A0–A9 passed and N9 exposed the next stale assertion;
 - after the N9 fix, P0–P7, A0–A9 and N9 passed and N10 exposed the next stale assertion.
 
-Latest branch HEAD: `c5f477124fc926fc1349ec79cab17ec67509e5f1`.
+Latest branch HEAD: `7b486249550ed0ebfff135e6bcda49acf8199790`.
 
 Latest validation runs:
-- `Native Model Prompt Runtime` run `36415682911`: in progress;
-- `Atria PR Checks` run `36415683000`: in progress.
+- `Native Model Prompt Runtime` run `36416576425`: in progress;
+- `Atria PR Checks` run `36416576243`: Migration Guard success; Lint and Unit Tests in progress.
 - Earlier `Atria PR Checks` run `36414275752` on `b5a7f935...`: **success** — Migration Guard, Lint and Unit Tests all passed, proving the Session snapshot test fix resolved the original full Unit failure.
 
 
@@ -93,3 +93,6 @@ Native World Info compatibility guards were also brought forward to the current 
 - existing N10 state read/write checks still verify SessionRevision state wins over non-Native FloorState.
 
 These changes reflect current runtime behavior already covered by Native Knowledge tests/E2E; they do not change product runtime behavior.
+
+
+The final P8 failure was a stale directory-wide write ban: `PromptPresetStore` is an authoring owner colocated under `model-prompt-runtime/`, introduced after the freeze guard. The guard now excludes only `presets.js` from the request-time Core scan and separately requires that Preset authoring uses `withRuntimeWrite`, `putImmutable`, and `putMutable`, while still rejecting route/profile provisioning, Library commit facades, and browser persistence from that store.
