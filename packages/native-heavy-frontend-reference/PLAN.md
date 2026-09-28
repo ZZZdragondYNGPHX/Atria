@@ -4,7 +4,7 @@
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
-> 当前阶段：Phase 3 — Narrative Runtime + Knowledge 已完成并验证；已停止在 Phase 4 — Hybrid Application Completion 之前。
+> 当前阶段：Phase 4 — Hybrid Application Completion 已完成并验证；已停止在 Phase 5 — Phone / Communication 之前。
 
 ## 1. 项目目标
 
@@ -3121,12 +3121,12 @@ G1 / G2 不允许在 `package/native-heavy-frontend-reference` 中直接修改 A
 - Architecture discussion：**完成**
 - Implementation Baseline：**v1.0**
 - Main audit baseline：`35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`
-- Current integrated main：`698aec1ee5d366ed4e36b5b696c432793dad5e17`
+- Current integrated main：`6052a6d47b13d74be24c412a69527bd445dcc55c`
 - Package branch：`package/native-heavy-frontend-reference`
-- Platform prerequisites：**G1 / G2 / G3 已合入 main 并完成 Package 侧确认**
-- Package implementation：**Phase 1–3 完成并通过 Package 定向验证**
-- Platform blocker：**无 Phase 3 blocker；G3 已满足**
-- Next Package step：**Phase 4 — Hybrid Application Completion；本轮不得提前开始**
+- Platform prerequisites：**G1 / G2 / G3 / G4 已合入 main 并完成 Package 侧确认**
+- Package implementation：**Phase 1–4 完成并通过 Package 定向验证**
+- Platform blocker：**无 Phase 4 blocker；G4 read-only Temporal Projection 已满足**
+- Next Package step：**Phase 5 — Phone / Communication；本轮不得提前开始**
 
 
 ## 22. Implementation Progress
@@ -3354,5 +3354,94 @@ Phase 3 仍保持冻结边界：
 
 Phase 4 只按既有冻结计划进入 Church 完整页面、Schedule 时间轴、People、Story Header / Context Rail / Sheet、Story / Scene text presentation、display-only Message Projection 与 desktop / compact Preview fixtures。
 
-**本轮停止在 Phase 3 完成状态，不开始 Phase 4，也不把 Package 合并进 main。**
+**Phase 3 历史记录到此结束；Phase 4 完成记录见 22.4。**
 
+
+
+### 22.4 Phase 4 — Hybrid Application Completion
+
+**状态：完成并验证。已停止在 Phase 5 — Phone / Communication 之前。**
+
+实施基线：
+
+- Package branch：`package/native-heavy-frontend-reference`；
+- Phase 4 tested HEAD：`7cc7ac54f3da8673d3a315cac86228b2dbaf1dfa`；
+- Phase 4 final GitHub Actions run：`36384030713`；
+- G4 Core：`feat/native-ui-temporal-projection`，PR #89 合入 `main@6052a6d47b13d74be24c412a69527bd445dcc55c`；
+- main → Package G4 sync：PR #90，merge commit `3a60d365b9726d6c1b35ae98c649f3c7238f2a08`；
+- Package 专用验证：`verify-phase1.mjs`、`verify-phase2.mjs`、`verify-phase3.mjs`、`verify-phase4.mjs`；
+- Preview fixtures：`previews/phase4-desktop.json`、`previews/phase4-compact.json`。
+
+已完成：
+
+- Church 从 Phase 2 只读壳升级为完整页面，包含 Overview / Facilities / Decrees / Projects / Opportunities 五个二级区；
+- Overview 保留 World Authority 的 Level / Money / Followers / Reputation，并显示 Today’s Assignments、Active Projects、Pending Opportunities；
+- Facilities / Decrees 的确定性操作继续使用现有 typed World Commands；新增 Open Books 独立 typed World mutation，不经过模型，也没有 raw patch；
+- Projects / Opportunities 继续只读取现有 Session Application + Information Runtime，不复制第二业务状态；
+- Schedule 使用现有 Lifecycle `game-clock` 的只读 Temporal Projection 展示当前时间，并用 Session Application schedule records 构成时间轴；
+- People 页面展示 Caretaker 身份 / Position、World relationship、当前 Event、Schedule 与 recent canonical Timeline information；
+- Story 顶部实现 Current Event Header，只展示 title / location / participants / player-facing goal/premise，不暴露内部 Event ID / currentBeat / workflow phase；
+- desktop Story 增加轻量 Context Rail；compact/mobile 使用 Context Sheet；两者只展示当前人物、相关事实及支持应用快捷入口，不复制经营 Dashboard；
+- Story / Scene presentation 继续共享同一 canonical prose；active Event 仅改变 Header / text-first presentation，不建立第二 Narrative storage、GAL Runtime 或 visual script；
+- Message Projection 增加 `scene_marker` display-only block，使用 commit-time immutable data；无 Authority action、无 message-local mutable UI、不会进入未来 Prompt；
+- `story-turn` recorded fixture 增加 Event player-facing title 与 display-only Message Projection，同时保留 G1 App outcome、canonical Timeline 与 G3 Memory 生命周期；
+- desktop 1440×900 / compact 390×844 Preview fixtures 使用同一 World / Session App / Lifecycle 权威快照验证信息架构；
+- Phone 仍保持 Phase 1 壳，不提前实现 SMS / Social / Mail；这些严格留给 Phase 5。
+
+#### G4 — UI v2 Read-only Temporal Projection
+
+Phase 4 审计发现 Schedule 需要显示当前连续 Game Clock，但 UI v2 原先没有只读 Temporal root。把 Clock 镜像进 World 或 Session Application 会违反“一个事实只属于一个 Authority”，因此按平台 Gap 流程在独立 Core feat 中补齐。
+
+G4 最小修复：
+
+- UI v2 expression roots 增加只读 `temporal`；
+- live runtime 从已有 Host `getTemporalProjection()` 注入；
+- Experience activation 复用既有 Lifecycle client getter；
+- 没有新增 Clock、数据库、scheduler、Lifecycle mutation、raw patch 或 Package 时间缓存。
+
+G4 targeted run `36381685191`：**success**。Package 侧随后通过 PR #90 同步该 main 变化。详细记录见 `PLATFORM_GAPS.md#G4` 与 `docs:feat/native-ui-temporal-projection.md`。
+
+Authority / Presentation 决策：
+
+1. World 仍只保存已结算客观事实；People relationship 是 World fact，Events / Schedule / Church Operations / Projects / Opportunities 仍属于 Session Application。
+2. Game Clock 仍只有 Lifecycle Authority；UI 只读 `temporal` projection，不持久化第二时间。
+3. Church 确定性 World 操作继续走 `command.dispatch → typed World Command`；Phase 4 没有伪造 UI → Session App raw command seam。
+4. Story Header / Context Rail / Sheet / Message Projection 都是 Projection / Presentation，不进入 Authority。
+5. canonical prose 仍是 Timeline 唯一正文；Scene presentation 和 display block 不创建第二正文。
+6. 主剧情继续只通过 Native Composer 自由输入；没有 Narrative Choice / `next_action` / Quick Choice。
+7. v1 继续没有背景、CG、Audio、立绘、Asset Pack、GAL Runtime 或 Full Experience。
+8. Phase 1–3 的 G1 / G2 / G3、Memory、Knowledge、`church-day-cycle` 与 `story-turn` Authority 语义均未重做。
+
+验证记录：
+
+- 最终 run：`36384030713`；
+- job：`Phase 4 Hybrid Application and Presentation`；
+- 结论：**success**；
+- Phase 1 targeted validator：**PASS**；
+- Phase 2 Authority/Lifecycle + recorded `church-day-cycle`：**PASS**；
+- Phase 3 Narrative/Knowledge/G3 Memory + recorded `story-turn`：**PASS**；
+- Phase 4 Church / Schedule / People / Story Header / Context Rail / Sheet：**PASS**；
+- Story / Scene text presentation + display-only Message Projection：**PASS**；
+- desktop / compact Preview fixtures：**PASS**；
+- adjacent Native regressions：**6 / 6 suites，156 / 156 tests PASS**；
+- suites：`game-runtime/ui-live`、`game-runtime/experience-ready-p4`、`native/message-projection-contract`、`native/message-presentation`、`native/package-turn-memory-bridge-g3`、`native/turn-app-outcome-g1`；
+- `providerCalls = 0`；
+- MySQL / Postgres 在 targeted run 中显式禁用；
+- 未运行无关全仓测试、全仓 lint、Android、Docker 或真实付费 provider；
+- 已知早于 G3 的 `Native Model Prompt Runtime` architecture-guard：`generation-host → public/scripts`，仍未作为 Phase 4 回归处理，也未扩大范围修改。
+
+实现过程中修复的普通验证问题：
+
+- Open Books mutation 初始复用了已有 Decree event identity，触发 Declarative Logic collision；改为独立 `church.decree.open-books.enacted`；
+- Church 页面重构一度移除 Phase 2 的 `church_status` 只读摘要，已恢复以保持回归；
+- Phase 4 forbidden-content validator 最初把 Prompt 中“禁止 narrative choices”的文字误判为 Choice 功能，已改为结构化 UI/action guard。
+
+下一阶段严格为：
+
+> **Phase 5 — Phone / Communication**
+
+Phase 5 只按冻结范围进入 SMS Thread、Social、Mail、Phone input、unread / notification、G2 background Task → App Command / scheduled delivery、Communication → Event bridge 与 recorded `communication` Scenario。
+
+不得在 Phase 5 重做 Phase 1–4，也不得添加 Curator / Story Compression / Day Compression、Package Memory Store、第二 Timeline、第二 scheduler、媒体 Asset Pack、立绘、GAL Runtime 或 Full Experience。
+
+**本轮停止在 Phase 4 完成状态，不开始 Phase 5，也不合并或删除长期 Package 分支。**
