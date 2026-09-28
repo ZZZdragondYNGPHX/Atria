@@ -10,8 +10,15 @@ import {
     buildProjectPackage,
 } from '../../src/native/index.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
+import { recallNativePackageTurnMemory } from '../../public/scripts/native/experience/llm/memory-bridge.js';
 import { compileNativeContextPlan } from '../../public/scripts/native/context-compiler.js';
 import { compileNativeKnowledgePlan } from '../../public/scripts/native/knowledge-runtime.js';
+import {
+    NATIVE_SESSION_LIFECYCLE,
+    onNativeSessionLifecycle,
+    resetNativeSessionLifecycleForTesting,
+} from '../../public/scripts/native/session-lifecycle.js';
+import { NativeSessionRuntime } from '../../public/scripts/native/session-runtime.js';
 import { projectInformation } from '../../public/shared/native-information-runtime.js';
 import { initialLifecycle } from '../../src/native/lifecycle-authority.js';
 import { assertStudioScenario, runStudioArchiveScenario } from '../../src/native/studio-scenario.js';
@@ -117,14 +124,102 @@ try {
     const projected = projectInformation(snapshot,'narrator-context',{purpose:'context'});
     assert.ok(projected.items.some(item => item.sourceId === 'event-context' && item.data.current_beat === 'narrative'));
 
+    let memoryOpenCalls = 0;
+    let memoryRecallCalls = 0;
+    let memoryCurrentChecks = 0;
+    const memoryText = 'A recalled visitor once asked the caretaker for shelter.';
+    const fakeMemoryApi = {
+        async openSession(context) {
+            memoryOpenCalls += 1;
+            assert.equal(context.nativeSnapshot, snapshot);
+            return {
+                async recallMemory(query) {
+                    memoryRecallCalls += 1;
+                    assert.ok(query.includes('Where did the earlier visitor ask for shelter?'));
+                    return {
+                        evidence:[{
+                            id:'phase3-reference-memory',
+                            content:memoryText,
+                            sourceMessageIds:[timelineMessageId],
+                        }],
+                        assertCurrent() {
+                            memoryCurrentChecks += 1;
+                        },
+                    };
+                },
+            };
+        },
+    };
+    const recalled = await recallNativePackageTurnMemory({
+        snapshot,
+        userInput:'Where did the earlier visitor ask for shelter?',
+        informationTaskId:'narrator',
+        context:{},
+        memoryApi:fakeMemoryApi,
+    });
+    assert.equal(recalled.status,'recalled');
+    assert.equal(memoryOpenCalls,1);
+    assert.equal(memoryRecallCalls,1);
+    assert.equal(memoryCurrentChecks,2);
+    assert.equal(recalled.evidence.length,1);
+    assert.equal(recalled.evidence[0].sourceRefs[0].messageId,timelineMessageId);
+
     const contextPlan = await compileNativeContextPlan(snapshot,{
         modelContextLimit:16000,responseReserve:1000,informationTaskId:'narrator',
-        memoryEvidence:[{memoryId:'native-memory-1',content:'A recalled visitor once asked for shelter.',
-          sourceRefs:[{kind:'timeline',messageId:timelineMessageId,branchId,revisionId}]}],
+        memoryEvidence:recalled.evidence,
     });
     assert.ok(contextPlan.included.some(item => item.lane === 'knowledge'));
-    assert.ok(contextPlan.included.some(item => item.lane === 'memory' && item.metadata?.memoryId === 'native-memory-1'));
+    assert.ok(contextPlan.included.some(item => item.lane === 'memory'
+        && item.metadata?.memoryId === recalled.evidence[0].memoryId
+        && item.content.includes(memoryText)));
     assert.ok(contextPlan.included.some(item => item.lane === 'current_state_event' && item.content.includes('current_beat')));
+
+    const disabledSnapshot = structuredClone(snapshot);
+    const disabledView = disabledSnapshot.manifest.runtime.experienceContract.informationRuntime.views.find(view => view.taskId === 'narrator');
+    disabledView.memory = false;
+    let disabledOpenCalls = 0;
+    const denied = await recallNativePackageTurnMemory({
+        snapshot:disabledSnapshot,
+        userInput:'Do not recall memory.',
+        informationTaskId:'narrator',
+        context:{},
+        memoryApi:{async openSession(){ disabledOpenCalls += 1; return {recallMemory:async()=>({})}; }},
+    });
+    assert.equal(denied.status,'denied');
+    assert.equal(disabledOpenCalls,0);
+    const deniedPlan = await compileNativeContextPlan(disabledSnapshot,{
+        modelContextLimit:16000,responseReserve:1000,informationTaskId:'narrator',
+        memoryEvidence:recalled.evidence,
+    });
+    assert.equal(deniedPlan.included.some(item => item.lane === 'memory'),false);
+
+    for (const [label, mutate] of [
+        ['hidden timeline', evidence => { evidence[0].sourceRefs[0].messageId = 'msg_hidden'; }],
+        ['stale revision', evidence => { evidence[0].sourceRefs[0].revisionId = 'rev_stale'; }],
+        ['foreign branch', evidence => { evidence[0].sourceRefs[0].branchId = 'br_foreign'; }],
+    ]) {
+        const evidence = structuredClone(recalled.evidence);
+        mutate(evidence);
+        const rejected = await compileNativeContextPlan(snapshot,{
+            modelContextLimit:16000,responseReserve:1000,informationTaskId:'narrator',
+            memoryEvidence:evidence,
+        });
+        assert.equal(
+            rejected.included.some(item => item.lane === 'memory' && item.content.includes(memoryText)),
+            false,
+            label + ' memory evidence entered Narrator Context',
+        );
+    }
+
+    const unavailable = await recallNativePackageTurnMemory({
+        snapshot,
+        userInput:'Memory service unavailable.',
+        informationTaskId:'narrator',
+        context:{},
+        memoryApi:{},
+    });
+    assert.equal(unavailable.status,'unavailable');
+    assert.deepEqual(unavailable.evidence,[]);
 
     const storyResult = await runStudioArchiveScenario(built.archive, story);
     assert.equal(storyResult.status,'passed',JSON.stringify(storyResult,null,2));
@@ -132,10 +227,61 @@ try {
     assert.equal(storyResult.persisted,false);
     assert.equal(storyResult.evidence.timelineEntries,1);
 
+    resetNativeSessionLifecycleForTesting();
+    const runtime = new NativeSessionRuntime();
+    const previousSnapshot = structuredClone(snapshot);
+    const finalizedSnapshot = structuredClone(snapshot);
+    const finalizedNarrative = storyRaw.steps.find(step => step.kind === 'turn').input.narrative;
+    finalizedSnapshot.revision = {...finalizedSnapshot.revision,revisionId:'rev_00000000000000000000000000000075'};
+    finalizedSnapshot.timeline.push({
+        messageId:'msg_00000000000000000000000000000076',
+        activeVariantId:'var_00000000000000000000000000000077',
+        sequence:1,
+        role:'assistant',
+        actorId:'actor_b48a53176eb663a1af411fb6f8638d66',
+        content:finalizedNarrative,
+    });
+    finalizedSnapshot.states.atri_lifecycle.domains.events.records[0].value.current_beat = 'transition';
+    finalizedSnapshot.states.atri_lifecycle.domains.events.records[0].value.resolved_beats = 1;
+    runtime.configure({
+        isGenerating:() => false,
+        install:async () => {},
+        messages:() => [],
+        headers:() => ({}),
+        clear:async () => {},
+    });
+    runtime.snapshot = previousSnapshot;
+    runtime.generation = {kind:'append',provisionalTurn:true};
+    runtime._loadProjection = async () => {
+        runtime.snapshot = structuredClone(finalizedSnapshot);
+        runtime.generation = null;
+        return runtime.snapshot;
+    };
+    const observed = [];
+    const offTimeline = onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.TIMELINE_APPENDED,event => {
+        observed.push({
+            event,
+            narrative:runtime.snapshot.timeline.at(-1)?.content,
+            eventBeat:runtime.snapshot.states.atri_lifecycle.domains.events.records[0].value.current_beat,
+            worldMoney:runtime.snapshot.states.atri_world_state.worlds['world_0f47cf3a197b4af1a416084443678d9c'].state.church.money,
+        });
+    });
+    await runtime.acceptOperationSnapshot(finalizedSnapshot,{turn:true});
+    await runtime.acceptOperationSnapshot(finalizedSnapshot,{turn:true});
+    offTimeline();
+    resetNativeSessionLifecycleForTesting();
+    assert.equal(observed.length,1);
+    assert.deepEqual(observed[0].event.messageIds,['msg_00000000000000000000000000000076']);
+    assert.equal(observed[0].event.reason,'package_turn');
+    assert.equal(observed[0].narrative,finalizedNarrative);
+    assert.equal(observed[0].eventBeat,'transition');
+    assert.equal(observed[0].worldMoney,120);
+
     const churchResult = await runStudioArchiveScenario(built.archive, church);
     assert.equal(churchResult.status,'passed',JSON.stringify(churchResult,null,2));
     assert.equal(churchResult.providerCalls,0);
 } finally {
+    resetNativeSessionLifecycleForTesting();
     await h.cleanup();
 }
 
@@ -145,5 +291,6 @@ for (const forbidden of [
     'GAL Runtime','Full Experience','atri_custom_memory','save-slot','<script','regex html',
 ]) assert.equal(serialized.includes(forbidden),false,'Phase 3 forbidden content leaked: '+forbidden);
 
-console.log('Phase 3 Narrative Runtime + Knowledge targeted validation: PASS');
+console.log('Phase 3 Narrative Runtime + Knowledge + G3 Memory Bridge targeted validation: PASS');
 console.log('story-turn: recorded Native narrative-outcome -> G1 App outcome -> Event Beat -> Timeline; providerCalls=0');
+console.log('memory: fake Atria recall -> Package Narrator Context; memory:false/hidden/stale/foreign fail closed; finalized lifecycle replay deduped');
