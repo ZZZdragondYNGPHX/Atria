@@ -29,7 +29,7 @@ const ui = compileUiDocument(uiRaw, { mode: 'hybrid' });
 const logic = compileDeclarativeLogic(logicRaw);
 const scenario = assertStudioScenario(scenarioRaw);
 
-assert.equal(project.package.version, '0.3.0-phase3');
+assert.equal(project.package.version, '0.4.0-phase4');
 assert.equal(project.assetFiles.length, 0);
 assert.equal(project.worlds.length, 1);
 assert.equal(project.package.runtime.experienceContract.presentationRuntime, undefined);
