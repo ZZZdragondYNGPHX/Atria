@@ -1,0 +1,1824 @@
+# R7 — Atria Game-first Shell Redesign
+
+## Status
+
+- Phase: **R0–R7 integrated into `main`; R7 archived**
+- Repository: `ZZZdragondYNGPHX/Atria`
+- Former R0-R6 frozen branch: `refactor/game-runtime-architecture` — archived and deleted after integration
+- R6 final validated HEAD: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
+- R6 validation: **Game Runtime Dev Checks #340**, run `35559636615`, success
+- Former R7 implementation branch: `refactor/atria-game-first-shell-redesign` — archived and deleted after integration
+- R7 branch base: `26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
+- R7A final validated HEAD: `5fbc216d907aa80c434093b444b977919b19c885`
+- R7A validation: **R7 Shell Dev Checks #43**, run `35569965553`, success
+- R7B final validated HEAD: `a2ec6478ff2846069dc780f35813b159a21b597a`
+- R7B validation: **R7 Shell Dev Checks #52**, run `35572544216`, success
+- R7C final validated HEAD: `6e0f3e1439f731df88bf5ba04d9a6d8ba2f7c81a`
+- R7C validation: **R7 Shell Dev Checks #71**, run `35574765675`, success
+- R7D final validated HEAD: `e4403dbbe19d81649a6c2d9ad75f01413ac89e6a`
+- R7D validation: **R7 Shell Dev Checks #96**, run `35578147672`, success
+- R7E final validated HEAD: `f76bdad7de08a7405cd36e908f312ac8c7bf0463`
+- R7E validation: **R7 Shell Dev Checks #119**, run `35582312859`, success
+- R7F final validated HEAD: `f8f516ba23ce8f4dbc3df8998cee301e043aace4`
+- R7F validation: **R7 Shell Dev Checks #133**, run `35585151542`, success
+- R7G final validated HEAD: `7d4207aec9974d0ae697afe517494e70866c0a39`
+- R7G validation: **R7 Shell Dev Checks #152**, run `35588313656`, success
+- R7H final validated HEAD: `f03e42106d1ac1c158cab316b1e834670a5c5c5b`
+- R7H / final R7 validation: **R7 Shell Dev Checks #160**, run `35594944832`, success
+- Final integration-hardening HEAD: `afba7b29f6c50fd9a60f6ecb69febfa998bee201`
+- Integration PR: **#79 — refactor: integrate Atria Game Runtime and Game-first Shell R0-R7**
+- Final PR validation:
+  - **Atria PR Checks #757**, run `35604801399`: success
+  - **Workspace UI #179**, run `35604801405`: success
+  - **Immersive Experience #29**, run `35604801465`: success
+  - **Worldbook Performance Foundation #370**, run `35604801455`: success
+- Merged `main`: `1f199764baf7ef87743d52d865d0eb02ae72702d`
+- Final R7 tree / merged-main tree: `1508b001388837aac047fb37f78c4ed693677af1` — identical
+- Post-merge cleanup: **Cleanup merged task branches #76**, run `35606015494`: success
+- Both long-running refactor branches were deleted after merge; `main` is now authoritative.
+- R7 is based directly on the complete R0-R6 branch and therefore preserves the full Master Refactor history.
+
+R7 is the final host/product-shell phase of the Atria Game Runtime Architecture Refactor. R0-R6 runtime contracts are preserved unless a concrete R7 integration defect requires a targeted correction.
+
+## Final integration result
+
+R0–R7 is now part of `main`. The integration-hardening commits after R7H were limited to final test/CI compatibility and one Popup lifecycle race discovered by real-host Chromium:
+
+- legacy World Info / Extensions / Character test helpers were routed through the authoritative R7H Shell/WorkspaceHost contracts;
+- PR database services use dynamic host ports, and storage scratch-restore tests consume the same resolved connection URL;
+- `sendMessageAndAwaitReply()` returns to Play before using the one native Composer;
+- a detached-dialog `showModal()` race in `popup.js` is guarded by dialog lifecycle state;
+- mobile World Info acceptance assertions now validate the embedded compact layout contract instead of retired drawer geometry.
+
+No second Conversation, Composer, router, settings store, plugin manager, World/Turn authority, or package Host was introduced during integration hardening.
+
+The merge commit has the exact same tree as the final validated R7 branch head, so the integration introduced no additional content delta beyond the validated branch.
+
+---
+
+## R7A validated checkpoint
+
+R7A — Design System & Shell Foundation is complete and validated.
+
+Validated implementation baseline:
+
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `5fbc216d907aa80c434093b444b977919b19c885`
+- Workflow: **R7 Shell Dev Checks #43**
+- Run: `35569965553`
+- Focused Unit / Lint / Namespace Guard: success
+- Expanded / Compact Browser Smoke: success
+
+R7A established:
+
+- semantic `--atri-*` token bridge and neutral host styling;
+- the required Atria Shell primitives and layout patterns;
+- AppShell with Navigation Rail, Bottom Navigation, Global Bar, Focus Area, Stage, Workspace, Context Dock, transient surfaces and Host Recovery layer;
+- Compact / Medium / Expanded environment semantics;
+- shared Command Registry rendered as desktop Command Palette and mobile Command Sheet;
+- a temporary R7 preview gate using `?atriaShell=1` / `atria.shell.preview`;
+- normal-startup Shell initialization without introducing a second application runtime;
+- browser-level validation that R7A does not clone or move the native Conversation / Composer before R7B.
+
+R7A also hardened several host compatibility edges exposed by real-browser validation:
+
+- post-visible Select2 enhancement now consistently uses the canonical jQuery instance and fails soft when unavailable;
+- responsive autocomplete refresh guards uninitialized widgets;
+- the initial static preloader is guaranteed to disappear by the `APP_READY` boundary;
+- Backgrounds jQuery UI hash tabs remain local on URLs carrying the R7 preview query instead of accidentally loading a second full application document;
+- Shell roots and transient surfaces own explicit dynamic-viewport geometry on Compact layouts;
+- Shell primitives now honor the HTML `hidden` contract consistently.
+
+These are compatibility fixes discovered while validating the new host. They do not change the R0-R6 Game Runtime architecture.
+
+## R7B validated checkpoint
+
+R7B — Play / Native Conversation Host is complete and validated.
+
+Validated implementation baseline:
+
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `a2ec6478ff2846069dc780f35813b159a21b597a`
+- Workflow: **R7 Shell Dev Checks #52**
+- Run: `35572544216`
+- **R7B Focused Unit and Lint**: success
+- **R7B Expanded Compact Native Play Browser Smoke**: success
+- Atria namespace guard: success
+- Android / Docker: not run; R7B only changes browser/frontend host ownership and those builds remain opt-in.
+
+R7B established the first real Play ownership migration without creating a second conversation runtime:
+
+- the audited native hierarchy remains `#sheld -> #chat + #form_sheld -> #send_form -> #send_textarea`;
+- the Shell reparents the **one real `#sheld` subtree** into `#atria-stage` through the Atria Native Play Host;
+- `#chat`, `#form_sheld`, `#send_form` and `#send_textarea` retain identity, listeners, jQuery data and runtime state;
+- mount records the original DOM position and unmount restores the exact original `#sheld` node instead of recreating it;
+- the temporary R7 preview gate remains authoritative for staged migration;
+- Shell teardown restores Native Play before removing the Shell;
+- Stage-owned CSS neutralizes the old body-level absolute `#sheld` geometry only while mounted in the Native Play Host;
+- Immersive remains a Native presentation mode inside the Play Host and no longer reclaims viewport/layout ownership from Stage;
+- the existing R4 Surface adapter continues to insert native component anchors relative to the same real `#sheld / #form_sheld` nodes;
+- existing Full Game Host behavior still hides/restores the real Native Host while Host Recovery remains outside package-owned Full UI;
+- no additional Timeline, Composer, generation source, message state machine or World/Turn authority was introduced.
+
+Real-browser coverage proves continuity of the native action paths after reparenting:
+
+- Send;
+- Stop generation and send-after-stop recovery;
+- Continue;
+- user edit;
+- assistant edit;
+- Delete;
+- Swipe;
+- Regenerate;
+- Branch;
+- History;
+- Search;
+- Expanded and Compact Shell ownership;
+- staged preview unmount/remount with the exact same native node identities;
+- R4 native component composition;
+- Immersive coexistence;
+- Full Host Recovery coexistence.
+
+## R7C validated checkpoint
+
+R7C — Game Surface Integration is complete and validated.
+
+Validated implementation baseline:
+
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `6e0f3e1439f731df88bf5ba04d9a6d8ba2f7c81a`
+- Workflow: **R7 Shell Dev Checks #71**
+- Run: `35574765675`
+- **R7C Focused Unit and Lint**: success
+- **R7C Expanded Compact Game Surface Browser Smoke**: success
+- Atria namespace guard: success
+- Android / Docker: not run; R7C changes browser/frontend host ownership only and those builds remain opt-in.
+
+R7C integrated the complete R4 Game Surface system under the R7 Shell without changing the three Game UI modes:
+
+- `component`, `hybrid`, and `full` remain the only Game Runtime UI modes;
+- Component keeps the stable R4 Surface API and continues to augment Native Play through compatibility surfaces around the one real Conversation/Composer;
+- the R7B Native Play Host now owns the coordination seam for native-component reparent/restore and Stage ownership;
+- Hybrid `app.root` resolves to a semantic Shell Stage surface and acquires a Stage lease while composing the exact same native `#chat` and `#send_form` nodes;
+- native component composition delegates to the Native Play Host when Shell ownership is active, preventing R4 and R7B from maintaining competing reparent histories;
+- `sidebar.right` can resolve to the Shell Context Dock and `drawer` / `modal` can resolve to the Shell transient layer while native chat/composer surfaces preserve their stable R4 contract;
+- Full mounts its package-owned root inside `#atria-stage`, suppresses Native Play through the Stage ownership contract, and never takes ownership of the AppShell;
+- Full recovery chrome mounts in the Shell Host Recovery layer, outside the package-owned root, so Exit / Stop / Disable / Diagnostics remain Host-authoritative;
+- non-Shell fallback behavior remains available for staged compatibility while the R7 preview gate is active;
+- legacy CardApp now becomes a recoverable **Legacy Full Stage Surface** under the Shell, with Host-owned Exit / Stop / Diagnostics recovery and the historical in-`#sheld` path retained only as fallback;
+- Immersive remains a presentation contract and can remain enabled across Component / Hybrid / Full lifecycle changes without becoming a fourth Game UI mode or taking Stage ownership;
+- mount failure and normal dispose both release Stage ownership and restore Native Play/native node identity deterministically;
+- no duplicate Conversation, Composer, generation source, message/history state machine, World/Event/Turn authority, or package Host was introduced.
+
+R7C browser validation covers both Expanded and Compact hosts and proves:
+
+- Narrative-only Play remains the baseline when no Game Surface owns Stage;
+- Component mounts through the stable Surface contract without taking Stage;
+- Hybrid takes Stage while composing the single native Conversation and Composer;
+- Full owns Stage while AppShell navigation/Command and Host Recovery remain outside package ownership;
+- Full Stop reaches the existing native generation control;
+- Full mount failure restores the Host;
+- Legacy CardApp mounts and exits as a recoverable Stage surface;
+- Immersive coexists with Component / Hybrid / Full ownership;
+- `#chat`, `#send_form`, and `#send_textarea` remain unique and preserve identity through transitions.
+
+## R7D validated checkpoint
+
+R7D — Desktop / Mobile Navigation is complete and validated.
+
+Validated implementation baseline:
+
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `e4403dbbe19d81649a6c2d9ad75f01413ac89e6a`
+- Workflow: **R7 Shell Dev Checks #96**
+- Run: `35578147672`
+- **R7D Focused Unit and Lint**: success
+- **R7D Expanded Medium Compact Navigation Browser Smoke**: success
+- Atria namespace guard: success
+- Android / Docker: not run; R7D changed Web/JS/CSS navigation only and reused the existing native Android Back policy without Kotlin changes.
+
+R7D established one Shell navigation authority instead of parallel desktop/mobile/page states:
+
+- added a single Navigation Authority for primary domain route, route history, breadcrumb, child route and context presentation state;
+- Desktop Navigation Rail, Compact Bottom Navigation and shared `navigate.*` Command Registry actions all enter that same authority;
+- browser `history.pushState` / `popstate` now participate in Atria route transitions and route restore;
+- route state persists through browser Back / Forward and reload without creating a second page router;
+- primary domains remain exactly Play / Library / Studio / Agents / Runtime;
+- Settings / Plugins / Diagnostics remain global utilities rather than becoming primary domains;
+- staged legacy Character Library triggers adapt into the Atria Library route while the old shell remains available for compatibility until R7H;
+- Stage / Workspace presentation follows route state while R7E-R7G feature controllers remain intentionally unmigrated.
+
+R7D unified responsive context presentation:
+
+- Context Dock and Context Sheet are two responsive presentations of the same context state and same content slot;
+- Expanded / Medium render the current context through Dock;
+- Compact reparents that one context slot into the shared Context Sheet instead of duplicating it;
+- Context Sheet continues to use the standard Closed / Peek / Half / Full states;
+- switching viewport does not create a second context state machine;
+- the R7C `sidebar.right` Surface seam now opens the semantic context presentation when mounted.
+
+R7D established the ordered Web Back Resolver while preserving the existing Android native policy:
+
+- Web Back resolves keyboard / modal-popover / Context Sheet / Command surface / generation interruption / detail route / Full Game / Immersive / workspace child / previous Atria route / legacy fallback in order;
+- Android Kotlin was not modified: the existing native Back policy still gives Web first refusal, then uses WebView history, then app-exit confirmation;
+- Full Game Escape remains above Immersive and does not transfer Host ownership to the package;
+- Immersive retains its own transient-first / exit behavior;
+- Escape consumes one Shell layer at a time instead of closing stacked layers in one key event.
+
+Responsive hardening completed in R7D:
+
+- Expanded, Medium and Compact navigation are browser-tested;
+- Compact Bottom Navigation hides while the soft keyboard is open;
+- the Shell follows measured `visualViewport` height instead of being forced back to full `100dvh` by a minimum-height constraint;
+- safe-area left/right/bottom placement is respected by Shell transient surfaces;
+- Command Palette / Command Sheet continue to share one registry and differ only by presentation.
+
+R7C ownership remained intact through R7D navigation transitions:
+
+- Narrative Play remains the native baseline;
+- Hybrid and Full keep their Stage leases while primary routes change and release them deterministically;
+- Full still owns Stage, never Host;
+- Legacy CardApp remains a recoverable Legacy Full Stage Surface;
+- Immersive remains presentation-only;
+- `#chat`, `#send_form`, and `#send_textarea` remain unique throughout route, Back and responsive transitions.
+
+### R7E validated checkpoint
+
+R7E — First-class Workspaces is complete and validated.
+
+Validated implementation baseline:
+
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `f76bdad7de08a7405cd36e908f312ac8c7bf0463`
+- Workflow: **R7 Shell Dev Checks #119**
+- Run: `35582312859`
+- **R7E Focused Unit and Lint**: success
+- **R7E First-class Workspaces Browser Smoke**: success
+- Atria namespace guard: success
+- Android / Docker: not run; R7E changed Web/JS/CSS Workspace hosting only and did not modify Kotlin/native Back behavior.
+
+R7E established one explicit Workspace integration seam:
+
+```text
+R7D Navigation Authority
+        ↓
+Workspace route
+        ↓
+Atria WorkspaceHost
+        ↓
+Workspace Adapter
+        ↓
+Existing Controller / DOM / Runtime
+```
+
+Implementation result:
+
+- added `public/scripts/atria-shell/workspace-host.js` as the Shell-owned mount/unmount/lifecycle seam;
+- WorkspaceHost subscribes to the existing R7D Navigation Authority and does not create a second top-level router;
+- route changes, Command Registry workspace commands, browser history and legacy-entry adapters all converge on that same authority;
+- Context Dock and Compact Context Sheet remain the R7D context state/presentation system; WorkspaceHost only supplies auxiliary context content;
+- route-signature dedup prevents Context-only changes from remounting Workspace controllers.
+
+Agents / Memory:
+
+- the existing Orchestrator Workspace controller remains authoritative;
+- `#agent-memory-workspace` can now mount either in its staged legacy product shell or inside `#atria-workspace`;
+- Orchestration / Run / Memory / Agent Diagnostics remain views of the same existing controller/runtime;
+- embedded section changes use R7D child routes instead of a parallel top-level Agents router;
+- existing run state, presets, Memory Graph, persistence and controller ports remain unchanged;
+- Compact embedded layout was hardened so the existing Workspace content cannot overlap/intercept the bottom sub-navigation.
+
+Game Studio:
+
+- the existing R6 CardApp/Atria Game Studio controller is reused directly;
+- Project Navigator, CodeMirror, structured editors, Simulation, AI Builder, Git/diff and `.atria` build/import remain the same engine/controller;
+- the Studio controller now supports an embedded mount root inside the Shell Workspace while preserving legacy body-host fallback outside preview;
+- close, import/restore reopen and dispose paths preserve the original Studio lifecycle/session ownership;
+- no second Studio engine or project state was introduced.
+
+World Info:
+
+- the existing real `#WorldInfo` controller/root is reparented into the Shell Workspace rather than cloned;
+- existing `#world_popup`, Library/Entries/Global UI, entry editor, selection, persistence and callbacks remain authoritative;
+- legacy drawer positioning is neutralized only while embedded;
+- unmount restores the exact original `#WorldInfo` node and legacy placement.
+
+Diagnostics:
+
+- the existing Diagnostics controller now supports either its historical popup host or a first-class Shell Workspace container;
+- guided incidents, startup diagnostics, frontend/backend logs and export logic remain unchanged;
+- Diagnostics remains a **Global Utility**, represented through a Workspace child route, not a sixth Primary Domain.
+
+Compatibility entry behavior:
+
+- staged legacy Agents/Memory entry points route into the first-class Agents Workspace when the R7 preview Shell is active;
+- legacy World Info and Diagnostics triggers adapt into the same WorkspaceHost/Navigation Authority;
+- non-preview/legacy compatibility behavior remains available for staged migration;
+- R7H remains responsible for final legacy-shell retirement.
+
+R7C/R7D ownership remained intact:
+
+- Narrative Play, Component, Hybrid, Full, Legacy CardApp and Immersive contracts are unchanged;
+- Workspace transitions do not acquire or clear Game Stage leases;
+- `#chat`, `#send_form` and `#send_textarea` remain unique;
+- Narrative Play restores normally after leaving workspaces;
+- Context Sheet remains a real transient layer above Compact Workspace content and intentionally intercepts interactions until dismissed.
+
+Authoritative browser validation covers:
+
+- Agents Workspace opening from the Agents route;
+- Memory reusing the existing Agents controller and R7D child history;
+- Game Studio using the existing Studio controller;
+- World Info reparenting through the first-class Workspace seam;
+- Diagnostics opening as a Global Utility Workspace;
+- legacy World Info / Diagnostics entry adaptation;
+- Expanded / Medium / Compact Workspace behavior;
+- Context Dock -> Context Sheet node reuse;
+- browser Back through workspace child routes;
+- Workspace dispose/reopen without orphan roots;
+- return to Narrative Play;
+- R7A-R7D Shell/Game Surface regressions;
+- unique native Conversation/Composer nodes throughout.
+
+### R7F validated checkpoint
+
+R7F — Library & Runtime is complete and validated.
+
+Validated implementation baseline:
+
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `f8f516ba23ce8f4dbc3df8998cee301e043aace4`
+- Workflow: **R7 Shell Dev Checks #133**
+- Run: `35585151542`
+- **R7F Focused Unit and Lint**: success
+- **R7F Library Runtime Browser Smoke**: success
+- Atria namespace guard: success
+- Android / Docker: not run; R7F changed Web/JS/CSS only and did not modify Kotlin/native Back behavior.
+
+R7F preserved the R7D/R7E ownership chain:
+
+```text
+Navigation Authority
+        ↓
+WorkspaceHost
+        ↓
+Library / Runtime Domain Workspace
+        ↓
+Existing Controller / State / Persistence
+```
+
+Library implementation:
+
+- **Characters** reparents the exact existing `#right-nav-panel` Character controller into WorkspaceHost and restores the same node on dispose;
+- Character list, selection, create/import/edit/duplicate/delete, tags, avatar, character-bound resources and lifecycle remain owned by the existing Character system;
+- Character detail navigation uses R7D child/detail routes rather than creating a Library router or duplicate selection state;
+- **Games** is a discovery/management projection over existing character-bound Game Packages and `game.json`; it does not create a Game database or duplicate Game Studio;
+- Game entries can return to Play or open the existing R6 Game Studio for authoring;
+- **Worlds & Knowledge** continues to mount the same R7E World Info controller/root and remains one World Info authority;
+- **Skills** reuses the existing Skill Manager/controller and `context.skills.*` persistence through an embedded Workspace presentation while keeping compatibility popup flows for nested operations.
+
+Runtime implementation:
+
+- **Overview** is a read-only projection over the current Game Runtime, Runtime Role, Connection Manager and retrieval state;
+- **Roles** edits the existing R5 `game-runtime` model-role configuration through `getModelRuntimeConfig` / `setRuntimeRoleConfig`; no second Runtime Role store exists;
+- Runtime Role connection choices are constrained to the existing Chat Completion connection-profile resolver used by `generateTask({ apiPresetName })`;
+- **Connections** reparents the existing Connection Manager controller/root and preserves `extension_settings.connectionManager.profiles` as the only profile authority;
+- **Retrieval** uses that same Connection Manager controller/profile store for embedding/rerank and the existing EmbeddingService path;
+- **Model / Prompt Presets** projects the existing PresetManager authorities and keeps provider-specific deep forms behind compatibility entry points rather than rebuilding them;
+- Agent presets remain owned by Agents; character-bound preset ownership remains unchanged.
+
+Navigation / compatibility:
+
+- Library sections are Characters / Games / Worlds & Knowledge / Skills;
+- Runtime sections are Overview / Roles / Connections / Model / Prompt Presets / Retrieval;
+- all local routes use the R7D Navigation Authority and browser history;
+- WorkspaceHost remains the only first-class feature mount seam;
+- legacy Character, World Info, API/Connection, preset and Skills entry points forward into R7 routes only while preview Shell owns navigation;
+- non-preview compatibility behavior remains available for R7H;
+- Context Dock / Context Sheet remain the existing R7D presentation/state authority.
+
+R7B/R7C ownership remains intact:
+
+- Library/Runtime pages never acquire Stage ownership;
+- Full Game remains the only Game Surface that owns Stage;
+- Hybrid / Full / Immersive contracts were not changed;
+- Narrative Play restores normally after Workspace transitions;
+- `#chat`, `#send_form` and `#send_textarea` remain unique and preserve identity.
+
+Authoritative validation covers:
+
+- Library / Characters real-controller reuse and reversible reparenting;
+- Games discovery without opening/duplicating Studio;
+- Worlds & Knowledge through the R7E World Info seam;
+- embedded Skills through the existing Skill Manager;
+- Runtime Overview / Roles / Connections / Presets / Retrieval;
+- Connection Manager identity across Connections <-> Retrieval;
+- R7D child route / browser Back behavior;
+- Command Registry entries for R7F workspaces;
+- legacy Character / World Info / API / preset entry adaptation;
+- Expanded and Compact Library/Runtime browser paths;
+- Workspace dispose/reopen with no nested orphan controller roots;
+- return to Narrative Play;
+- prior R7A-R7E regression coverage;
+- one live `#chat`, `#send_form`, and `#send_textarea`.
+
+### R7G validated checkpoint
+
+R7G — Plugins & Settings Reclassification is complete and validated.
+
+Validated implementation baseline:
+
+- Branch: `refactor/atria-game-first-shell-redesign`
+- HEAD: `7d4207aec9974d0ae697afe517494e70866c0a39`
+- Workflow: **R7 Shell Dev Checks #152**
+- Run: `35588313656`
+- **R7G Focused Unit and Lint**: success
+- **R7G Plugins Settings Browser Smoke**: success
+- Atria namespace guard: success
+- Android / Docker: not run; R7G changed Web/JS/CSS and one browser Account-controller mount seam only, with no Kotlin/native Back or Docker changes.
+
+R7G preserved the existing authority chain:
+
+```text
+Global Utility
+        ↓
+R7D Navigation Authority
+        ↓
+R7E WorkspaceHost
+        ↓
+R7G Utility Adapter
+        ↓
+Existing Controller / DOM / State / Persistence
+```
+
+Plugins implementation:
+
+- **Plugins** remains a Global Utility rather than becoming a sixth Primary Domain;
+- product-level third-party classification uses the existing extension discovery/type model: `third-party/*` and existing `local` / `global` extension types are treated as third-party Plugins;
+- Atria built-ins such as Game Runtime, Game Studio, Orchestrator/Agents, Memory Graph, World Info, Skills, Diagnostics and Connection Manager are not surfaced as third-party Plugins merely because some live under `public/scripts/extensions/`;
+- the existing frontend extension loader, manifest registry, activation lifecycle, hooks and install/update/delete flows remain authoritative;
+- enable/disable uses the existing `extension_settings.disabledExtensions` plus existing `enableExtension` / `disableExtension` / `saveSettings` persistence; no second Plugin state store exists;
+- existing `#extensions_settings` / `#extensions_settings2` DOM is reparented only into a collapsed **Extension compatibility settings** surface and restored exactly on dispose;
+- the existing advanced extension manager and install entry remain compatibility/deep-management flows;
+- backend **server plugins** remain a separate server-managed plugin-loader surface; R7G does not merge their runtime/state with frontend extensions or invent browser-side enable/disable state for them.
+
+Settings implementation:
+
+- **Settings** remains a Global Utility and is intentionally narrower than the inherited SillyTavern User Settings drawer;
+- primary Settings IA exposes Appearance, Language, Accessibility, Interface & Behavior, with MovingUI explicitly retained as compatibility during R7G;
+- the exact real `#user-settings-block` is reparented into a collapsed **Advanced & compatibility settings** form rather than cloned or reimplemented;
+- the existing theme/power-user controls, `SettingsRepo` / settings document, `power_user`, language `localStorage` behavior and existing controller listeners remain authoritative;
+- Account controls are hidden from the Settings compatibility form while embedded because Account is its own Global Utility;
+- Runtime Roles, Connections, Presets and Retrieval remain owned by R7F Runtime and are not reclassified as Settings;
+- Agents/Memory, Skills, World Info and Diagnostics remain with their existing domain/utility ownership.
+
+Account implementation:
+
+- **Account** remains a separate Global Utility, not a Settings tab;
+- the existing `public/scripts/user.js` account controller remains authoritative for `currentUser`, account enablement/admin state, identity changes, password operations, settings snapshots, Backup & Sync and Storage Management;
+- `openUserProfile()` gained a narrow embedded-container seam while preserving its existing popup behavior for non-Shell callers;
+- no second user/account state, authentication state or account-storage mechanism was introduced.
+
+Navigation / compatibility:
+
+- Plugins / Settings / Account use `utility.plugins`, `utility.settings`, and `utility.account` child routes under the existing R7D Navigation Authority;
+- WorkspaceHost remains the only first-class Utility mount seam;
+- browser Back and Command Registry navigation use the existing R7D route/history model;
+- legacy Extensions, User Settings and Account triggers forward into the matching Utility only while preview Shell owns navigation;
+- legacy API / Connection and AI preset entry points continue forwarding to **Runtime**, preserving the R7F ownership boundary;
+- non-preview drawers, popup anchors and third-party compatibility DOM remain intact for R7H;
+- Context Dock / Compact Context Sheet remain the existing R7D context authority;
+- Expanded / Medium / Compact layouts use one utility/controller tree rather than separate desktop/mobile implementations.
+
+R7B/R7C ownership remains intact:
+
+- Utility workspaces never acquire Stage ownership;
+- Full Game continues to own Stage, never Host;
+- Narrative Play, Component, Hybrid, Full, Legacy CardApp and Immersive contracts are unchanged;
+- utility switching/disposal restores reparented legacy DOM and leaves no orphan Utility root;
+- `#chat`, `#send_form` and `#send_textarea` remain unique.
+
+Authoritative validation covers:
+
+- Plugins Global Utility and Command navigation;
+- real third-party Plugin classification while Atria built-ins stay excluded;
+- existing enable/disable persistence;
+- extension compatibility settings reparent/restore;
+- Settings Global Utility with the same real language/theme/power-user DOM and no duplicate settings store;
+- Account Global Utility through the same account controller;
+- Runtime/API compatibility ownership;
+- legacy Extensions / User Settings / Account trigger forwarding;
+- browser Back;
+- Expanded and Compact Utility flows plus the prior Medium/navigation regression matrix;
+- dispose/reopen and return to Narrative Play;
+- R7A-R7F browser regressions;
+- one live `#chat`, `#send_form`, and `#send_textarea`.
+
+### R7H entry condition
+
+R7H starts from the validated R7G HEAD above on the **same long-running R7 branch**. Do not create a separate R7H branch and do not merge to `main` until R7H/final R7 validation is complete.
+
+R7H is **Legacy Shell Retirement & Final Hardening**.
+
+R7H owns final retirement of obsolete shell launchers/chrome from the normal product path, compatibility-anchor isolation, MovingUI ownership hardening, safe stale-shell CSS cleanup, frontend/plugin guidance updates, preview-gate retirement/cutover decisions, and final R0-R7 regression/performance validation.
+
+Do not reopen R7A-R7G unless R7H exposes a concrete integration defect.
+
+
+
+
+---
+
+## 1. Product goal
+
+Atria 1.0 is not defined primarily as a chat application, a game launcher, or an IDE.
+
+The product model is:
+
+> **Atria is an Interactive Runtime Host.**
+
+Atria hosts narrative cards, Game Packages, conversation, world/runtime state, agents, memory, model roles, authoring workspaces and diagnostics through one coherent host.
+
+The guiding product principle is:
+
+> **Game-first, not Game-only.**
+
+Narrative-only cards remain first-class and must not require authors to understand Game Runtime. The redesign changes the host information architecture, not the requirement that every experience become a game.
+
+R7 is not a cosmetic reskin. Its purpose is to replace the inherited SillyTavern-era product shell — chat center + top icon strip + drawers + extension bucket — with an Atria-native runtime host.
+
+---
+
+## 2. Information architecture
+
+### 2.1 Primary product domains
+
+Atria 1.0 has five primary destinations:
+
+1. **Play**
+   - current Character / Game / Session;
+   - Stage;
+   - Conversation Timeline;
+   - Composer;
+   - current Session Runtime;
+   - Immersive presentation.
+
+2. **Library**
+   - Characters;
+   - Games / Game Packages;
+   - Worlds & Knowledge;
+   - Skills.
+
+3. **Studio**
+   - Character Project authoring;
+   - Game Project / Game Studio authoring;
+   - project context determines the authoring mode.
+
+4. **Agents**
+   - Orchestration;
+   - Runs;
+   - Memory;
+   - Agent Presets.
+
+5. **Runtime**
+   - Overview;
+   - Runtime Roles;
+   - Connections;
+   - Model / Prompt Presets;
+   - Retrieval / Embedding / Rerank.
+
+### 2.2 Global utilities
+
+The following are Shell-level utilities rather than primary destinations:
+
+- Command / Search;
+- Diagnostics;
+- Plugins;
+- Settings;
+- Account.
+
+A capability may be a first-class Atria capability without requiring a permanent primary-navigation slot.
+
+### 2.3 World concepts remain separated
+
+Do not collapse unrelated "World" concepts into one backend or one giant page.
+
+- **World Info / Lorebooks / Knowledge** -> Library / Worlds & Knowledge.
+- **World Runtime state/events/branch/session** -> Play / Session Inspector.
+- **World Schema / Initial State / Commands / Rules** -> Studio / Game Project.
+
+The UI may cross-link these areas, but their runtime semantics remain distinct.
+
+### 2.4 Presets follow their owning domain
+
+Do not create another universal "Preset Center".
+
+- Agent presets -> Agents.
+- Model / prompt presets -> Runtime.
+- Themes -> Settings.
+- Character/project-specific configuration -> the owning Library/Studio context.
+
+---
+
+## 3. Stage, Timeline and Workspace model
+
+The new host distinguishes three concepts:
+
+```text
+App Shell
+├ Stage
+│  └ current interactive experience
+├ Timeline
+│  └ history / user input / assistant output / swipe / branch / turn lineage
+└ Workspace
+   └ authoring / management / debugging / configuration
+```
+
+### 3.1 Stage
+
+Stage is the current experience surface. It may present a Narrative Card, Component UI, Hybrid Game Surface or Full Game Surface.
+
+### 3.2 Timeline
+
+Conversation Timeline remains a core native/runtime component and preserves:
+
+- user messages;
+- AI responses;
+- history;
+- edit;
+- swipe;
+- branch;
+- regenerate;
+- retry;
+- turn lineage.
+
+Timeline is not guaranteed to occupy the center of the screen. Its visual state may be:
+
+- Primary;
+- Embedded;
+- Docked;
+- Sheet;
+- Hidden-by-default but host-accessible.
+
+### 3.3 Workspace
+
+A Workspace is a task environment for authoring, managing, configuring or debugging.
+
+Primary Workspaces are Shell routes, not fixed overlays on top of chat.
+
+Examples:
+
+- Agents Workspace;
+- Studio Workspace;
+- Runtime Workspace;
+- Library Workspace.
+
+Temporary content such as Sheet, Modal, Popover and Command Palette remains transient.
+
+---
+
+## 4. Conversation / Game Surface model
+
+### 4.1 Runtime UI modes remain unchanged
+
+R7 does not introduce a fourth Game Runtime UI mode.
+
+R4 remains authoritative:
+
+- `component`
+- `hybrid`
+- `full`
+
+Narrative Cards without a Game UI are the Host default narrative presentation, not a new Game Runtime mode.
+
+### 4.2 Presentation semantics
+
+- **Narrative Card**: Timeline-primary.
+- **Component**: conversation-first plus Game UI augmentation.
+- **Hybrid**: Game-first surface with native Conversation / Composer composition available.
+- **Full**: package fully owns Stage content.
+
+### 4.3 Full owns Stage, not Atria
+
+A Full Game Package never owns the entire Atria application.
+
+Atria Host retains:
+
+- navigation/recovery authority;
+- Timeline availability;
+- stop generation;
+- Diagnostics;
+- exit Game UI;
+- disable broken package;
+- global Command access.
+
+The existing R4 Full recovery controls evolve into a formal **Host Recovery Layer**.
+
+### 4.4 Native component composition
+
+R4 native components remain the single source of truth:
+
+- `conversation`
+- `composer`
+
+Do not create duplicate Timeline or Composer implementations for the new shell.
+
+Hybrid/Full packages may continue to mount native components into supported slots. Unmount restores the original native nodes.
+
+### 4.5 Timeline action semantics
+
+R7 exposes the R5 turn semantics clearly.
+
+**Rewrite Narrative**
+- authoritative World State unchanged;
+- committed Events unchanged;
+- same outcome/attempt;
+- prose regenerated.
+
+**Retry Turn**
+- new attempt/outcome branch;
+- commands/events/world state may differ.
+
+Game-linked historical user edits become **Edit & Retry from here**, not silent mutation of already committed facts.
+
+Timeline presentation must distinguish:
+
+- Narrative Variant;
+- Outcome Variant.
+
+### 4.6 Timeline Action Resolver
+
+Host Timeline actions resolve by record type:
+
+```text
+User action
+  -> Timeline Action Resolver
+     -> ordinary narrative/chat record -> native chat action
+     -> Game-linked turn -> Game Turn Controller action
+```
+
+This applies to edit/delete/retry/rewrite/variant switching and prevents DOM presentation from becoming a second state authority.
+
+---
+
+## 5. Desktop architecture
+
+The desktop host is:
+
+```text
+Navigation Rail
++ Global Bar
++ Focus Area
++ Context Dock
++ Transient Layer
++ Host Recovery Layer
+```
+
+### 5.1 Navigation Rail
+
+Primary destinations:
+
+- Play
+- Library
+- Studio
+- Agents
+- Runtime
+
+Third-party plugins do not receive uncontrolled primary-navigation placement.
+
+### 5.2 Global Bar
+
+The Global Bar answers:
+
+- where am I?
+- what is currently running?
+- is there a problem?
+- what global action do I need?
+
+It contains:
+
+- contextual breadcrumb/title;
+- compact current status;
+- Runtime Status Cluster;
+- Command/Search;
+- Diagnostics;
+- Settings/Account access.
+
+It is not a replacement for the old top strip of every feature button.
+
+### 5.3 Focus Area
+
+One primary focus surface at a time:
+
+- Play -> Stage;
+- Agents -> Agents Workspace;
+- Studio -> Studio Workspace;
+- Runtime -> Runtime Workspace;
+- Library -> Library Workspace.
+
+Quick **Peek** can expose context without route change. **Open** changes the primary Workspace route.
+
+### 5.4 Context Dock
+
+Dock is the shared desktop auxiliary container. Inspector is a Dock content type, not the Dock itself.
+
+Possible panels include:
+
+- Timeline;
+- Inspector;
+- World;
+- Runtime;
+- Notes;
+- selected Agent/tool/memory evidence.
+
+Official layout states remain deliberately limited. Do not create an unrestricted IDE window manager.
+
+Timeline standard desktop states:
+
+- Primary;
+- Right Dock;
+- Bottom Dock;
+- Hidden.
+
+### 5.5 Composer
+
+The primary conversation Composer belongs to Play/Stage context. It is not global shell chrome.
+
+Studio/Agents/Runtime may have their own domain-specific input surfaces, but those are not the native Play Composer.
+
+### 5.6 Command Palette
+
+Desktop provides a shared Command Registry rendered as a Command Palette, e.g. Ctrl/Cmd+K.
+
+Navigation answers "where"; Commands answer "what".
+
+Plugins may extend Commands without polluting primary navigation.
+
+### 5.7 Focus, Immersive and Full are distinct
+
+- **Focus** = reduction of host chrome.
+- **Immersive** = presentation mode.
+- **Full** = Game Package Stage ownership.
+
+They may combine, but they must never be stored or implemented as one boolean.
+
+---
+
+## 6. Mobile architecture
+
+Mobile is not a scaled-down desktop drawer shell.
+
+### 6.1 Primary navigation
+
+Compact layout uses Bottom Navigation:
+
+- Play
+- Library
+- Studio
+- Agents
+- Runtime
+
+Focus/Full/Immersive may temporarily reduce normal chrome, while a Host Handle keeps Atria recoverable.
+
+### 6.2 Stage-first Play
+
+Play prioritizes Stage.
+
+Narrative Cards remain Timeline-primary.
+
+Hybrid/Full use Context Sheets for auxiliary Timeline/Inspector/World/Runtime surfaces.
+
+### 6.3 Timeline Sheet
+
+Standard states:
+
+- Closed;
+- Peek;
+- Half;
+- Full.
+
+Do not persist arbitrary free-form heights as product layout state.
+
+### 6.4 Context Sheets
+
+Inspector, World, Runtime Peek and similar contextual UI use the shared Sheet primitive.
+
+At one navigation level, only one primary Context Sheet should be active. Switching context replaces the current Sheet instead of stacking uncontrolled layers.
+
+### 6.5 Mobile Composer
+
+- Narrative: visible by default.
+- Component: normally visible.
+- Hybrid: may use a compact native Composer.
+- Full: hidden by default unless package embeds the native Composer or user opens Host Input.
+
+### 6.6 Keyboard/safe area
+
+The Shell owns keyboard-aware responsive behavior using visual viewport, dynamic viewport units and safe-area contracts.
+
+When keyboard input is active, navigation/context chrome may reduce so Stage does not collapse into an unusable strip.
+
+### 6.7 Mobile Workspaces
+
+Workspaces use page + local navigation/drill-down rather than desktop multi-pane compression.
+
+Studio mobile prioritizes:
+
+- Project;
+- Editor;
+- Preview;
+- AI;
+- Simulation;
+
+as focused views rather than pretending to fit the full desktop IDE simultaneously.
+
+### 6.8 Command Sheet
+
+Mobile uses the same Command Registry as desktop but renders it as a Command Sheet.
+
+### 6.9 Android Back
+
+R7 establishes a Shell Back Resolver.
+
+General priority:
+
+1. Modal / Popover;
+2. Context Sheet;
+3. Command Sheet;
+4. drill-down/detail page;
+5. Full Game Host Escape;
+6. Immersive exit;
+7. Workspace child route;
+8. previous Atria route;
+9. applicable WebView history;
+10. app-exit confirmation.
+
+Full Game defaults to a Host Escape surface instead of one accidental Back press immediately terminating the Full UI.
+
+Immersive keeps its existing transient-layer-first then exit behavior.
+
+---
+
+## 7. Core capability promotion
+
+### 7.1 Agents and Memory
+
+Agent Orchestration and Memory are first-class Atria capabilities.
+
+They leave the product path:
+
+`Extensions -> Agent & Memory -> Open Workspace`
+
+and become:
+
+```text
+Agents
+├ Orchestration
+├ Runs
+├ Memory
+└ Presets
+```
+
+Existing engine/runtime/persistence implementations remain reusable.
+
+The existing Agents "Diagnostics" concept should become **Run Trace** or equivalent so "Diagnostics" consistently means the global observability product.
+
+### 7.2 Skills
+
+Skills are primary Library assets:
+
+`Library -> Skills`
+
+Agents and presets link contextually to assigned skills rather than making Skills an Agent-only subsystem.
+
+### 7.3 Studio
+
+Studio is a first-class product domain, not an Extension entry.
+
+Project type selects the authoring experience:
+
+- Narrative Card -> Character Authoring;
+- Game Package -> Atria Game Studio.
+
+R6 Project Navigator, structured editors, Simulation, AI Builder and native `.atria` pipeline remain authoritative.
+
+### 7.4 Runtime
+
+Runtime becomes first-class.
+
+Its Overview makes Runtime Roles understandable at a glance, including:
+
+- role;
+- primary connection/model;
+- health;
+- fallback state;
+- disabled/not configured state.
+
+Deep pages include Roles, Connections, Model/Prompt Presets and Retrieval.
+
+Provider-specific legacy forms may initially be mounted through a compatibility adapter instead of being rewritten wholesale.
+
+### 7.5 Immersive
+
+Primary action moves to Play/Stage presentation controls.
+
+Settings retains only Immersive defaults/preferences.
+
+### 7.6 Diagnostics
+
+Diagnostics becomes a Shell-level utility.
+
+It remains quiet when healthy and surfaces contextually on failures.
+
+Deep links may connect incidents to Agents, Plugins, Studio and Runtime.
+
+---
+
+## 8. Extensions / Plugins reclassification
+
+### 8.1 Product name and meaning
+
+User-facing "Extensions" becomes **Plugins**.
+
+Plugins means installable/updatable/enableable/disableable/removable third-party functionality.
+
+### 8.2 Implementation is not product classification
+
+Atria-owned functionality may continue to use the existing extension loader internally without appearing as a Plugin.
+
+```text
+implementation type != product classification
+```
+
+Atria core includes Game Runtime, Agents, Memory, Studio, World Workspace, Diagnostics and Immersive regardless of their current loading directory.
+
+### 8.3 Built-in feature compatibility
+
+Legacy built-in feature settings that do not warrant first-class Workspace status may temporarily live under Settings / Built-in Features / Advanced while reusing existing setting nodes.
+
+### 8.4 Legacy plugin settings
+
+Third-party plugins that append settings into legacy extension containers remain supported through a formal **Legacy Plugin Settings Surface**.
+
+### 8.5 Legacy extension menu
+
+Existing extension-menu actions remain reachable through a compatibility surface. The long-term host extension path should move toward stable APIs such as:
+
+- registerCommand;
+- registerWorkspace;
+- registerSettingsPage;
+- registerContextAction.
+
+R7 need not force all third-party plugins to migrate immediately.
+
+---
+
+## 9. Settings scope
+
+Settings should contain application-level preferences rather than become a miscellaneous feature bucket.
+
+Target categories include:
+
+- Appearance;
+- Language;
+- Accessibility;
+- Input / Hotkeys;
+- Notifications where applicable;
+- Storage / Sync;
+- Account;
+- Privacy;
+- Built-in Features;
+- Advanced.
+
+Diagnostics, Agent configuration, core Runtime configuration, World management and primary Immersive action are not normal Settings destinations.
+
+---
+
+## 10. Atria 1.0 Design System
+
+R7 Design System is defined as:
+
+> **Tokens + Primitives + Patterns + AI Development Rules**
+
+### 10.1 Visual role
+
+Atria Host is neutral, modern and low-interference.
+
+Game/Character content may be visually expressive. The Host should not impose a permanent RPG, cyberpunk, visual-novel or launcher aesthetic.
+
+### 10.2 Theme bridge
+
+Existing SillyTavern/SmartTheme values remain compatibility inputs.
+
+```text
+SmartTheme / user theme
+ -> Legacy Theme Adapter
+ -> Atria semantic tokens
+ -> Atria components
+```
+
+New Atria components consume `--atri-*` tokens rather than directly treating SmartTheme variables as their public design API.
+
+### 10.3 Token categories
+
+Define consistent semantic tokens for:
+
+- text;
+- background/canvas;
+- surfaces/raised/overlay;
+- borders;
+- accent;
+- success/warning/danger;
+- focus;
+- typography;
+- spacing;
+- radius;
+- elevation;
+- motion;
+- responsive environment;
+- safe areas.
+
+### 10.4 Typography
+
+Use semantic roles rather than arbitrary `mainFontSize +/- value` calculations:
+
+- Display;
+- Title;
+- Heading;
+- Subheading;
+- Body;
+- Body Small;
+- Caption;
+- Mono.
+
+Narrative prose and dense Workspace UI may use different approved density/typography patterns.
+
+### 10.5 Spacing, radius and density
+
+Use a small shared spacing scale instead of per-feature arbitrary pixel values.
+
+Radius semantics:
+
+- sm;
+- md;
+- lg;
+- pill.
+
+Density:
+
+- comfortable;
+- compact.
+
+### 10.6 Elevation
+
+Prefer semantic layers:
+
+- Canvas;
+- Surface;
+- Raised;
+- Overlay;
+
+instead of every nested block acquiring another border.
+
+### 10.7 Interaction states
+
+Components define:
+
+- rest;
+- hover where the device supports hover;
+- active;
+- selected;
+- focus-visible;
+- disabled;
+- loading;
+- error.
+
+Touch UI must not rely on hover.
+
+### 10.8 Motion
+
+Standard motion categories:
+
+- fast;
+- normal;
+- slow.
+
+All non-essential motion respects reduced-motion preferences.
+
+### 10.9 Responsive modes
+
+Product responsive semantics are:
+
+- **Compact**
+- **Medium**
+- **Expanded**
+
+Exact pixel breakpoints are selected during implementation using real viewport/E2E evidence rather than frozen arbitrarily in this plan.
+
+---
+
+## 11. Required host primitives
+
+R7 should establish reusable Atria-native primitives at least for:
+
+- AppShell;
+- NavigationRail;
+- BottomNavigation;
+- GlobalBar;
+- ContextBar;
+- FocusArea;
+- Stage;
+- Workspace;
+- Dock;
+- Sheet;
+- Inspector;
+- Timeline;
+- Composer;
+- CommandPalette;
+- CommandSheet;
+- RuntimeCard;
+- StatusChip;
+- Toolbar;
+- SegmentedControl;
+- SplitPane;
+- EmptyState;
+- ErrorState;
+- LoadingState;
+- HostRecovery.
+
+Reusable patterns should include at least:
+
+- list-detail;
+- master-detail;
+- editor workspace;
+- runtime status;
+- incident list-detail;
+- mobile drill-down.
+
+The design system is intended to become the default target for future Codex/AI frontend work.
+
+---
+
+## 12. Technology boundary
+
+R7 does **not** use the shell redesign as a reason to migrate the entire frontend to React/Vue or another framework.
+
+Continue using the current DOM/ES-module/controller stack and compatibility jQuery where needed.
+
+Build stable DOM primitives, class/data contracts and controller APIs.
+
+Do not introduce Shadow DOM everywhere. Use namespaced Atria components/tokens by default and isolate only where isolation materially helps.
+
+---
+
+## 13. Legacy DOM and compatibility boundaries
+
+### 13.1 Preserve stateful native anchors
+
+R7 does not require deletion/renaming of these internal compatibility anchors:
+
+- `#sheld`
+- `#chat`
+- `#form_sheld`
+- `#send_form`
+- `#send_textarea`
+
+They currently act as an internal ABI for message actions, reasoning, macros, vectors, autocomplete, audio, tests and R4 native-component composition.
+
+The product relationship changes so they live under the Atria Stage rather than defining the entire application.
+
+### 13.2 Reparent, do not duplicate
+
+Hard rule:
+
+> **Reparent, don't duplicate.**
+
+Maintain:
+
+- one Conversation DOM;
+- one Composer DOM;
+- one generation source of truth;
+- one authoritative existing Workspace controller for each feature.
+
+Do not create a second chat/timeline and synchronize it with `#chat`.
+
+Do not create a second Composer and synchronize it with `#send_form`.
+
+### 13.3 Compatibility Islands
+
+Legacy host nodes may remain temporarily as Compatibility Hosts, including old Character, World Info, API/provider settings, User Settings and extension setting containers.
+
+New Workspaces can mount/reparent the existing real nodes while progressively removing old drawer geometry/chrome.
+
+### 13.4 MovingUI
+
+Atria 1.0 Shell does not participate in legacy MovingUI geometry.
+
+MovingUI may remain for legacy compatibility islands, but it cannot own AppShell, Stage, Navigation, Dock or Workspace layout.
+
+### 13.5 Legacy CardApp
+
+Existing CardApp remains supported as a **Legacy Full Stage Surface**.
+
+It may own Stage presentation but not the Atria Host.
+
+Host Recovery remains available so a broken CardApp cannot permanently trap the user.
+
+### 13.6 Surface API
+
+R4 Surface / Native Component contracts remain stable.
+
+R7 upgrades the old DOM-bound adapter into a semantic Host Surface Registry.
+
+Target semantic mapping:
+
+- `app.root` -> Stage root;
+- `chat.header` -> Timeline header region;
+- `chat.footer` -> Timeline footer region;
+- `composer.before` -> Composer pre-action region;
+- `composer.after` -> Composer post-action region;
+- `sidebar.right` -> Context Dock;
+- `drawer` -> Host transient/Sheet surface;
+- `modal` -> Modal layer.
+
+`sidebar.left` must never grant Game Packages ownership of Atria primary navigation.
+
+---
+
+## 14. Migration strategy
+
+R7 is not a big-bang rewrite.
+
+Principles:
+
+1. **Preserve stateful internals, replace product shell.**
+2. **Reparent, don't duplicate.**
+3. **Promote Atria core; isolate legacy/plugin compatibility.**
+4. **Migrate in independently verifiable slices.**
+5. **R7 exit removes the old product architecture, not necessarily every old DOM ID.**
+
+A temporary development gate may allow legacy/new shell comparison during implementation, but R7 must exit with the Atria Shell authoritative. Do not ship two permanent product shells.
+
+---
+
+## 15. Phased implementation plan
+
+### R7A — Design System & Shell Foundation
+
+Build:
+
+- semantic tokens/theme adapter;
+- shared primitives;
+- AppShell;
+- Navigation;
+- Global/Context Bar;
+- FocusArea;
+- Dock;
+- Sheet;
+- Command Registry/Palette/Sheet;
+- responsive environment.
+
+Exit:
+- stable Expanded and Compact shell fixtures;
+- no major product feature migration required yet.
+
+### R7B — Play / Native Conversation Host
+
+Move the existing native conversation stack into the new Stage:
+
+- `#sheld`;
+- `#chat`;
+- `#form_sheld`;
+- `#send_form`.
+
+Preserve:
+
+- send;
+- stop;
+- continue;
+- edit;
+- delete;
+- swipe;
+- regenerate;
+- branch;
+- history/search behavior.
+
+Exit:
+- Narrative Card flows work under the new Host without duplicated chat/composer state.
+
+Implementation result — **complete (2026-09-21)**:
+
+- Native Play ownership reparents the one real `#sheld` subtree into Shell Stage;
+- native Conversation/Composer identity and original parent-child relationships are preserved;
+- deterministic staged unmount restores the exact original nodes/position;
+- native send/stop/continue/edit/delete/swipe/regenerate/branch/history/search paths remain authoritative;
+- R4 native-component surface anchors continue to compose with the moved subtree;
+- Immersive remains a presentation layer inside Stage ownership;
+- Full Game Host can still temporarily hide/restore the Native Host while Host Recovery stays outside package ownership;
+- no duplicate Timeline, Composer, generation state or message/history state was introduced;
+- validation: **R7 Shell Dev Checks #52**, run `35572544216`, HEAD `a2ec6478ff2846069dc780f35813b159a21b597a`, success.
+
+### R7C — Game Surface Integration
+
+Integrate:
+
+- Component;
+- Hybrid;
+- Full;
+- native Conversation/Composer slots;
+- Host Surface Registry;
+- legacy CardApp;
+- Host Recovery;
+- Immersive.
+
+Exit:
+- Narrative + Component + Hybrid + Full + legacy CardApp operate under the new Shell.
+
+Implementation result — **complete (2026-09-21)**:
+
+- Native Play Host is the single coordinator for Stage leases and native Conversation/Composer reparent/restore under the Shell;
+- Component retains stable R4 compatibility surfaces and does not claim Stage;
+- Hybrid `app.root` resolves to Stage and composes the one real `#chat` / `#send_form` through the Play Host ownership seam;
+- Full package root lives inside Stage while recovery controls live in Host Recovery; Full never owns AppShell;
+- semantic Shell mappings are available for Context Dock and transient drawer/modal surfaces without breaking the stable Surface IDs;
+- legacy CardApp operates as a recoverable Legacy Full Stage Surface under Shell ownership, with historical fallback outside Shell;
+- Immersive remains presentation-only and does not become a Game UI mode or Stage owner;
+- failure/dispose paths restore Native Play and leave no duplicate native IDs or package roots;
+- Expanded/Compact real-browser smoke and focused unit/lint/namespace validation pass at `6e0f3e1439f731df88bf5ba04d9a6d8ba2f7c81a` via **R7 Shell Dev Checks #71**, run `35574765675`.
+
+### R7D — Desktop / Mobile Navigation
+
+Make the new shell authoritative for:
+
+- Desktop Navigation Rail;
+- Mobile Bottom Navigation;
+- routes/history;
+- Context Dock;
+- Context Sheet;
+- Command surfaces;
+- Android Back Resolver;
+- keyboard/safe-area behavior;
+- Compact/Medium/Expanded layouts.
+
+Exit:
+- primary navigation no longer depends on old top-bar/drawer navigation.
+
+Implementation result — **complete (2026-09-21)**:
+
+- one Navigation Authority owns primary domain, child route, breadcrumb, browser-history index and responsive context state;
+- Navigation Rail, Bottom Navigation and `navigate.*` commands all dispatch through that authority;
+- browser Back / Forward and reload restore the matching Atria route without parallel page state;
+- Context Dock and Compact Context Sheet reuse the same state/content slot;
+- the ordered Web Back Resolver integrates Shell transients, generation interruption, Full Game, Immersive, child routes and Atria route history before native WebView fallback;
+- existing Android `BackNavigationPolicy` remains unchanged because its Web-first / WebView-history / exit-confirmation layering already matches R7D needs;
+- Compact keyboard-open mode hides Bottom Navigation and follows measured visual-viewport height;
+- safe-area-aware transient placement is preserved;
+- Hybrid / Full Stage ownership and unique native Conversation / Composer survive route transitions;
+- staged legacy Character Library entry adapts into the Atria Library route while R7H retirement remains deferred;
+- validation: **R7 Shell Dev Checks #96**, run `35578147672`, HEAD `e4403dbbe19d81649a6c2d9ad75f01413ac89e6a`, success.
+
+### R7E — First-class Workspaces
+
+**Complete and validated.**
+
+R7E integrated existing controllers through the Shell-owned WorkspaceHost without duplicating engines:
+
+- Agents / Memory -> existing Orchestrator Workspace controller;
+- Game Studio -> existing R6 Studio controller;
+- World Info -> existing `#WorldInfo` controller/root;
+- Diagnostics -> existing Diagnostics controller;
+- legacy staged entries -> R7D Navigation Authority adapters;
+- Context -> existing Dock / Sheet presentation state.
+
+Exit result:
+
+- these Atria core capabilities can be opened as first-class Shell workspaces and no longer require Extensions/User Settings/drawers as their primary staged-Shell path;
+- validation: **R7 Shell Dev Checks #119**, run `35582312859`, HEAD `f76bdad7de08a7405cd36e908f312ac8c7bf0463`, success.
+
+### R7F — Library & Runtime
+
+Implementation result — **complete (2026-09-21)**:
+
+- Library is first-class through Characters / Games / Worlds & Knowledge / Skills;
+- Runtime is first-class through Overview / Roles / Connections / Model / Prompt Presets / Retrieval;
+- Characters, World Info, Skills and Connection Manager reuse their existing controllers/state/persistence;
+- Games is a projection over existing character-bound Game Packages and does not duplicate Studio;
+- Runtime Overview and Roles project/edit the existing R5 Game Runtime configuration;
+- Presets continue through the existing PresetManager and character/project ownership rules;
+- Retrieval continues through Connection Manager embedding/rerank profiles and existing retrieval services;
+- legacy entries adapt into R7D routes while preview Shell is active;
+- no second router, Character database, Game database, World Info engine, Skill runtime, Runtime Role store, Connection store, Preset store, Conversation, Composer or Stage authority was introduced.
+
+Exit result:
+
+- primary Character/World/Skill/Game and Runtime tasks are reachable through the new IA;
+- validation: **R7 Shell Dev Checks #133**, run `35585151542`, HEAD `f8f516ba23ce8f4dbc3df8998cee301e043aace4`, success.
+
+### R7G — Plugins & Settings Reclassification
+
+Implementation result — **complete and validated**:
+
+- Plugins is a Global Utility for true third-party frontend extensions, using existing extension discovery/manifests and `local/global` classification;
+- Atria built-ins are excluded from the third-party Plugin product bucket even when physically implemented under `public/scripts/extensions/`;
+- enable/disable remains owned by `extension_settings.disabledExtensions` and the existing extension lifecycle/persistence;
+- existing extension settings DOM is retained behind a compatibility surface instead of becoming the new product IA;
+- backend server plugins remain a distinct existing server-plugin-loader surface;
+- Settings is narrowed to user/application preferences and reparents the real User Settings form only as an advanced/compatibility form;
+- Account is an independent Global Utility and reuses the existing account controller/state;
+- legacy Extensions / User Settings / Account launchers forward through R7D Navigation Authority while preview is active;
+- API / Connection / preset compatibility entries remain owned by R7F Runtime;
+- no second router, Plugin store, Settings store, Account state, extension loader, Conversation, Composer or Stage authority was introduced.
+
+Exit result:
+
+- Atria core no longer lives conceptually in the third-party Plugins/Extensions bucket;
+- Plugins / Settings / Account have explicit ownership while legacy compatibility anchors remain available for R7H;
+- validation: **R7 Shell Dev Checks #152**, run `35588313656`, HEAD `7d4207aec9974d0ae697afe517494e70866c0a39`, success.
+
+### R7H — Legacy Shell Retirement & Final Hardening
+
+Implementation result — **complete and validated**:
+
+- Atria Shell is now the normal default Host; the staged `?atriaShell=1` / `atria.shell.preview` gate is fully retired from production and R7 test contracts;
+- an explicit `?atriaShellRecovery=legacy` recovery/debug contract remains available for host failures without becoming a second normal product shell;
+- legacy top-bar/drawer launchers are retired from normal product IA while stateful controller roots and third-party extension anchors remain in the DOM as compatibility ABI;
+- `#top-bar` / `#top-settings-holder` chrome is hidden only while Atria Shell owns the Host; controller roots such as Character, World Info, API, User Settings and extension settings remain reusable through WorkspaceHost/utility adapters;
+- compatibility anchors are explicitly marked and may be reparented without cloning or changing identity;
+- MovingUI is blocked from applying persisted geometry, resizing or drag ownership to nodes currently owned by `#atria-app-shell`; it remains available only for legacy compatibility islands;
+- MovingUI is no longer a first-class Settings category in the Atria product IA and remains accessible through the advanced/compatibility Settings form;
+- stale legacy shell CSS was audited conservatively: rules still required by recovery, compatibility controllers, responsive World Info and the native Conversation/Composer were retained; Atria-mounted geometry is owned by `atria-shell.css`;
+- frontend/plugin guidance now documents that old launchers/drawer geometry are compatibility details rather than product-navigation APIs;
+- R7 browser fixtures and shared character helpers now route through WorkspaceHost while Shell is mounted, with legacy drawer fallback only for recovery/non-Shell cases;
+- no second router, Shell, Conversation, Composer, generation source, Settings store, Plugin store, Account state, Stage authority or Game Runtime authority was introduced.
+
+Final validation:
+
+- Branch: `refactor/atria-game-first-shell-redesign`
+- Final validated HEAD: `f03e42106d1ac1c158cab316b1e834670a5c5c5b`
+- Workflow: **R7 Shell Dev Checks #160**
+- Run: `35594944832`
+- Result: **success**
+- R7H focused unit/lint: success
+- Atria Namespace Guard: success
+- complete R7 real-browser smoke: success
+- complete Node unit regression with MySQL 8.4 / PostgreSQL 16 CI services: success
+- frontend library build: success
+- retired preview-gate residual guard: success
+- Android/Docker builds were not run because R7H did not modify Android Kotlin/native Back bridge or Docker delivery surfaces.
+
+Exit result:
+
+- Atria Shell is authoritative across Expanded / Medium / Compact and all Primary Domains / Global Utilities;
+- old SillyTavern shell chrome is no longer the normal product navigation architecture;
+- legacy DOM remains only where required as controller/plugin compatibility ABI;
+- R0-R7 is ready for final integration into `main`.
+
+---
+
+## 16. Testing strategy
+
+R7 verification is capability-focused, not screenshot-only.
+
+### 16.1 Conversation
+
+Cover:
+
+- send;
+- stop;
+- continue;
+- edit;
+- delete;
+- swipe;
+- regenerate;
+- branch;
+- history/search;
+- generation interruption.
+
+### 16.2 Game Runtime
+
+Cover:
+
+- Narrative;
+- Component;
+- Hybrid;
+- Full;
+- native Conversation mount/restore;
+- native Composer mount/restore;
+- Rewrite Narrative;
+- Retry Turn;
+- Outcome/Narrative variants;
+- Host Recovery;
+- broken-package escape/disable.
+
+### 16.3 Workspaces
+
+Cover:
+
+- Library;
+- Studio;
+- Agents;
+- Runtime;
+- Diagnostics;
+- World/Knowledge;
+- Skills.
+
+### 16.4 Responsive/navigation
+
+Cover:
+
+- Compact;
+- Medium;
+- Expanded;
+- portrait;
+- landscape;
+- keyboard-open;
+- safe-area behavior;
+- route restore;
+- Dock;
+- Sheet;
+- Command Palette/Sheet;
+- Android Back;
+- Immersive escape;
+- Full Game escape.
+
+### 16.5 Plugin compatibility
+
+Maintain fixtures for:
+
+- legacy extension settings mount;
+- legacy extension menu actions;
+- popup/modal;
+- chat API;
+- generation API;
+- plugin enable/disable/settings persistence.
+
+### 16.6 Broader checks
+
+R7 final validation should include:
+
+- focused shell/component tests;
+- frontend smoke/E2E for major host paths;
+- Game Runtime R4/R5/R6 regression;
+- ESLint;
+- complete Node unit suite;
+- frontend build.
+
+Android/Docker builds remain opt-in under repository policy unless R7 actually changes the relevant native/build surface or the user explicitly requests them.
+
+---
+
+## 17. Performance constraints
+
+R7 must not make startup materially worse by eager-loading every Workspace.
+
+Preserve/extend lazy loading.
+
+Track important boundaries such as:
+
+- Shell bootstrap;
+- first visible;
+- Play ready;
+- Workspace route switch;
+- Timeline/Dock open;
+- Sheet open.
+
+Large Studio, Diagnostics Expert, Agent graph and similar modules should load only when their product route or feature requires them.
+
+---
+
+## 18. In scope
+
+R7 includes:
+
+- host information architecture;
+- desktop shell;
+- mobile shell;
+- Design System;
+- Stage/Timeline/Workspace composition;
+- Context Dock/Sheet;
+- Command system;
+- core Workspace promotion;
+- Agent/Memory promotion;
+- Runtime UX;
+- Plugins reclassification;
+- Settings slimming;
+- compatibility adapters;
+- Surface Registry;
+- Host Recovery;
+- Android Back shell contract;
+- responsive host behavior;
+- frontend regression/performance coverage.
+
+---
+
+## 19. Out of scope
+
+R7 does not reopen these areas without a concrete shell-integration defect:
+
+- R0-R6 runtime semantics;
+- new Game UI modes;
+- World Runtime redesign;
+- Agent engine redesign;
+- Memory engine redesign;
+- `.atria` package format redesign;
+- Game Studio core feature rewrite;
+- wholesale Agent/Memory directory relocation;
+- React/Vue full-project migration;
+- deletion of every legacy DOM ID;
+- full rewrite of every provider-specific settings form;
+- mandatory immediate migration of every third-party plugin;
+- unrestricted IDE-style free window management;
+- speculative large-world Entity Store work.
+
+---
+
+## 20. Exit criteria
+
+R7 is complete when:
+
+### Product
+- desktop and mobile visibly use an Atria-native host rather than inherited top icon + drawer chat IA;
+- Play/Library/Studio/Agents/Runtime form a coherent product;
+- Narrative Cards remain first-class;
+- Component/Hybrid/Full feel native to the same host;
+- Atria core features no longer require Extensions/User Settings drawers as their primary entry.
+
+### Architecture
+- Atria Shell/Stage/Workspace/Dock/Sheet/Timeline/Runtime/Plugins are the public host architecture;
+- legacy SillyTavern DOM is an implementation/compatibility detail;
+- Conversation and Composer remain single source of truth;
+- Game Packages continue to target stable Surface/Native Component contracts.
+
+### Compatibility
+- Narrative Card workflows remain intact;
+- PNG/JSON/CharX interchange remains supported;
+- native `.atria` remains supported;
+- legacy CardApp remains recoverable;
+- high-value plugin settings/menu/API paths remain usable through compatibility surfaces.
+
+### Validation
+- major desktop/mobile host paths pass focused frontend smoke/E2E;
+- Game Runtime integration regression passes;
+- Node unit suite passes;
+- ESLint passes;
+- frontend build passes;
+- performance checks show no unjustified eager-load/startup regression.
+
+---
+
+## 21. Branch, merge and archive policy
+
+R0-R6 are frozen at:
+
+`refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`
+
+R7 uses the independent branch:
+
+`refactor/atria-game-first-shell-redesign`
+
+created directly from that exact R6 validated HEAD.
+
+During R7:
+
+- do not continue feature development on `refactor/game-runtime-architecture`;
+- do not merge `refactor/game-runtime-architecture` into `main`;
+- do not merge R7 into `main` before R7 completion;
+- do not delete either long-running branch.
+
+Because R7 is based on the full R0-R6 branch history, the final R7 validated branch contains the complete R0-R7 Master Refactor.
+
+Final integration is therefore:
+
+```text
+R7 final validated branch
+  -> main
+```
+
+Do **not** separately merge the frozen R0-R6 branch into `main`.
+
+After the final R7 result is merged and verified, archive/clean up:
+
+- `refactor/game-runtime-architecture`;
+- `refactor/atria-game-first-shell-redesign`;
+
+according to repository policy.
+
+---
+
+## 22. Current implementation state
+
+As of the R7G handoff:
+
+- R0-R6 remain frozen and validated at `refactor/game-runtime-architecture@26692b80aaa073e2442f5ed23b3f082ef25b3e2c`;
+- R7A is complete and validated at `5fbc216d907aa80c434093b444b977919b19c885`;
+- R7B is complete and validated at `a2ec6478ff2846069dc780f35813b159a21b597a`;
+- R7C is complete and validated at `6e0f3e1439f731df88bf5ba04d9a6d8ba2f7c81a`;
+- R7D is complete and validated at `e4403dbbe19d81649a6c2d9ad75f01413ac89e6a`;
+- R7E is complete and validated at `f76bdad7de08a7405cd36e908f312ac8c7bf0463`;
+- R7F is complete and validated at `f8f516ba23ce8f4dbc3df8998cee301e043aace4`;
+- R7G is complete and validated at `7d4207aec9974d0ae697afe517494e70866c0a39`;
+- authoritative R7G validation is **R7 Shell Dev Checks #152**, run `35588313656`, success;
+- R7H — Legacy Shell Retirement & Final Hardening is complete and validated at `f03e42106d1ac1c158cab316b1e834670a5c5c5b`;
+- authoritative final R7 validation is **R7 Shell Dev Checks #160**, run `35594944832`, success;
+- the complete R0-R7 implementation is ready for final PR integration into `main`;
+- keep both long-running refactor branches until main integration CI passes and merged main is verified.
