@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - feat/native-package-turn-memory-bridge
+  pull_request:
+    branches:
+      - main
     paths:
       - 'public/scripts/native/play-generation.js'
       - 'public/scripts/native/session-runtime.js'
