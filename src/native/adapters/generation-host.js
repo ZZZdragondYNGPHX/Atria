@@ -3,7 +3,7 @@ import { GenerationService } from '../model-prompt-runtime/generation-service.js
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { createNativeSessionContextAdapter } from './native-session-context.js';
-import { assertInformationActorAvailable, informationDefinition } from '../../../public/shared/native-information-runtime.js';
+import { assertInformationActorAvailable, informationDefinition, informationContext } from '../../../public/shared/native-information-runtime.js';
 import { immutable, ProviderFailure, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { assertTaskValue } from '../../../public/shared/native-task-contract.js';
@@ -18,6 +18,9 @@ const fail = code => { throw Object.assign(new Error(code), { code }); };
 function normalizeHostMemoryEvidence(value, snapshot) {
     if (value === undefined) return [];
     if (!Array.isArray(value) || value.length > 32) fail('native_turn_memory_evidence_invalid');
+    const turn = snapshot.manifest.runtime?.experienceContract?.taskRuntime?.turn;
+    const information = informationContext(snapshot, { kind: 'narrator' }, turn?.narratorTaskId);
+    if (value.length && !information?.memory) fail('native_turn_memory_evidence_denied');
     const messageIds = new Set((snapshot.timeline || []).map(item => String(item.messageId || '')));
     return value.map((raw, index) => {
         if (!raw || typeof raw !== 'object' || Array.isArray(raw)
