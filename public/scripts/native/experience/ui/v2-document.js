@@ -6,7 +6,7 @@ import { fields, id, json, text, valueTemplate, expression, UI_ROOTS } from './v
 const TYPES = ['container', 'stack', 'grid', 'scroll', 'separator', 'text', 'badge', 'progress', 'button', 'details', 'form', 'input', 'textarea', 'select', 'checkbox', 'range', 'repeat', 'native-slot', 'scene', 'media-cue', 'speech-cue'];
 const OPS = {
     'ui.set': ['path', 'value'], 'ui.toggle': ['path'], 'ui.reset': ['path'],
-    'command.dispatch': ['commandId', 'args'], 'command.simulate': ['commandId', 'args'],
+    'command.dispatch': ['commandId', 'args'], 'command.simulate': ['commandId', 'args'], 'application.command': ['domainId', 'commandId', 'args'],
     'composer.set': ['value'], 'composer.append': ['value'], 'composer.clear': [], 'composer.focus': [], 'composer.submit': [],
     'surface.open': ['view'], 'surface.close': ['view'],
     'action.compensate': ['actionId'],
@@ -47,14 +47,16 @@ export function compileUiDocument(raw, { mode, message = false, actionPolicy = '
         let writes = 0;
         const steps = action.steps.map(step => {
             if (!Object.hasOwn(OPS, step?.op)) throw new Error('Unknown Action operation');
-            fields(step, ['op', 'when', ...OPS[step.op]], 'Action step');
+            fields(step, ['op', 'when', ...OPS[step.op], ...(step.op === 'application.command' ? ['recordId'] : [])], 'Action step');
             if (message && !step.op.startsWith('ui.') && (actionPolicy === 'ui-only' || (step.op !== 'command.dispatch' && !step.op.startsWith('composer.')))) throw new Error('Message actionPolicy disallows ' + step.op);
             for (const required of OPS[step.op]) if (step[required] === undefined && required !== 'args') throw new Error('Missing Action field ' + required);
             if (step.path !== undefined) statePath(step.path);
             if (step.commandId !== undefined && (typeof step.commandId !== 'string' || !/^[a-z][a-z0-9._-]{0,63}$/.test(step.commandId))) throw new Error('Invalid command id');
-            if (['command.dispatch', 'action.compensate'].includes(step.op) || step.op.startsWith('activity.') || step.op.startsWith('continuity.') || step.op.startsWith('realm.') || step.op.startsWith('shared.')) writes++;
+            if (step.domainId !== undefined && (typeof step.domainId !== 'string' || !/^[a-z][a-z0-9._-]{0,63}$/.test(step.domainId))) throw new Error('Invalid application domain id');
+            if (['command.dispatch', 'application.command', 'action.compensate'].includes(step.op) || step.op.startsWith('activity.') || step.op.startsWith('continuity.') || step.op.startsWith('realm.') || step.op.startsWith('shared.')) writes++;
             return Object.freeze({ ...step, when: step.when === undefined ? null : expression(step.when, roots),
-                value: step.value === undefined ? null : valueTemplate(step.value, roots), args: valueTemplate(step.args ?? {}, roots) });
+                value: step.value === undefined ? null : valueTemplate(step.value, roots), args: valueTemplate(step.args ?? {}, roots),
+                ...(step.recordId === undefined ? {} : { recordId: valueTemplate(step.recordId, roots) }) });
         });
         if (writes > 1) throw new Error('Use one typed Command for atomic authority writes');
         if (action.compensation !== undefined && (!/^[a-z][a-z0-9._-]{0,63}$/.test(action.compensation) || !steps.some(step => step.op === 'command.dispatch'))) throw new Error('Compensation requires a typed Command');
