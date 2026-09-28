@@ -11,6 +11,18 @@ on:
       - 'packages/native-heavy-frontend-reference/verify-phase1.mjs'
       - 'packages/native-heavy-frontend-reference/verify-phase2.mjs'
       - 'packages/native-heavy-frontend-reference/verify-phase3.mjs'
+      - 'public/scripts/native/play-generation.js'
+      - 'public/scripts/native/session-runtime.js'
+      - 'public/scripts/native/experience/llm/memory-bridge.js'
+      - 'public/scripts/agents/memory/hybrid-retrieval.js'
+      - 'public/scripts/agents/memory/main.js'
+      - 'src/native/adapters/generation-host.js'
+      - 'src/native/adapters/native-session-context.js'
+      - 'tests/native/package-turn-memory-bridge-g3.test.js'
+      - 'tests/native/turn-app-outcome-g1.test.js'
+      - 'tests/native/background-task-app-bridge-g2.test.js'
+      - 'tests/memory-graph/hybrid-retrieval.test.js'
+      - 'tests/memory-graph/source-lifecycle.test.js'
       - '.github/workflows/native-heavy-frontend-phase3-targeted.yml'
 
 permissions:
@@ -18,7 +30,7 @@ permissions:
 
 jobs:
   phase3-targeted:
-    name: Phase 3 Narrative Knowledge and Story Turn
+    name: Phase 3 Narrative Knowledge Memory and Story Turn
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -29,11 +41,26 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - name: Install dependencies
+      - name: Install root dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Build SQLite binding
+        run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - name: Install test dependencies
+        run: npm ci --ignore-scripts --prefix tests --no-audit --no-fund
       - name: Verify Phase 1 shell regression
         run: node packages/native-heavy-frontend-reference/verify-phase1.mjs
       - name: Verify Phase 2 authority lifecycle regression
         run: node packages/native-heavy-frontend-reference/verify-phase2.mjs
-      - name: Verify Phase 3 narrative knowledge and recorded story-turn
+      - name: Verify Phase 3 narrative knowledge memory and recorded story-turn
         run: node packages/native-heavy-frontend-reference/verify-phase3.mjs
+      - name: Run G3 Memory and G1 G2 targeted regressions
+        env:
+          ATRIA_DISABLE_MYSQL_TESTS: 1
+          ATRIA_DISABLE_POSTGRES_TESTS: 1
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand
+          native/package-turn-memory-bridge-g3.test.js
+          native/turn-app-outcome-g1.test.js
+          native/background-task-app-bridge-g2.test.js
+          memory-graph/hybrid-retrieval.test.js
+          memory-graph/source-lifecycle.test.js
