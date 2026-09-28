@@ -4,7 +4,7 @@ const read = path => readFileSync(path, 'utf8');
 const ui = read('public/scripts/native/runtime-workspace.js');
 const domain = read('public/scripts/atria-shell/library-runtime-workspaces.js');
 for (const section of ['routes', 'models', 'connections', 'retrieval', 'diagnostics']) assert.match(domain, new RegExp('id: \'' + section + '\''));
-assert.match(domain, /id: 'generation-profiles'/);
+assert.match(domain, /id: 'prompt-presets'/);\nassert.match(domain, /generation-profiles/);
 for (const source of [ui, domain, read('public/scripts/native/runtime-client.js'), read('public/scripts/native/prompt-runtime-controls.js')]) {
     assert.doesNotMatch(source, /getPresetManager|connectionManager|oai_settings|power_user|localStorage|sessionStorage|indexedDB|rm_api_block|AdvancedFormatting|left-nav-panel/);
 }
