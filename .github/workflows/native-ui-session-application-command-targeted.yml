@@ -10,6 +10,15 @@ on:
       - 'tests/game-runtime/ui-v2.test.js'
       - 'default/skills/global/atri-native-ui-authoring/references/ui.md'
       - '.github/workflows/native-ui-session-application-command-targeted.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'public/scripts/native/experience/ui/v2-document.js'
+      - 'public/scripts/native/experience/ui/v2-runtime.js'
+      - 'tests/game-runtime/ui-v2.test.js'
+      - 'default/skills/global/atri-native-ui-authoring/references/ui.md'
+      - '.github/workflows/native-ui-session-application-command-targeted.yml'
 
 permissions:
   contents: read
