@@ -3,46 +3,59 @@
 Updated: 2026-09-28  
 Task ID: `refactor/repository-standardization-migration`  
 Primary Workspace: `refactor/repository-standardization-migration`  
-Current task branch HEAD: `054efd2167497049d0c0ef0bd415e520cb39c026`  
-Current stage: **Phase 2 complete — stop before Phase 3**
+Current task branch HEAD: `1982578c51569a7f8191f4e45a11cfdbd292dfa7`  
+Current stage: **Phase 3 complete — stop before Phase 4**
 
 ## Authoritative task documents
 
+- Governance: `docs:README.md`
 - Plan: `docs:plans/architecture/repository-standardization-migration.md`
 - Record: `docs:records/refactor/repository-standardization-migration.md`
 - Live Handoff: `docs:HANDOFF.md`
 - Approved construction spec: `standardized-project-restructuring-spec-v1.0.md` v1.0
-- Reference implementation: `ZZZdragondYNGPHX/Standardized-project`
 
-The live `docs` branch was rebuilt as a parentless root during Phase 2. Verify its current remote HEAD directly on resume; do not use an embedded docs SHA as a substitute for repository truth.
+The final docs closure commit contains this HANDOFF itself. On resume, verify the actual remote `docs` HEAD directly; do not use an embedded docs SHA as a substitute for repository truth.
 
-## Phase 1–2 completed
+## Phase 1–3 completed
 
-- audited actual Atria refs, ancestry, docs topology and Package payload;
-- verified the standardized reference repository;
-- created Phase 1 migration backup refs;
-- created `refactor/repository-standardization-migration`;
-- created the formal migration Plan and cumulative Record;
-- created `migration-backup/20260928/docs-phase1` before rebuilding docs;
-- created parentless `package`, `plugin`, and `skills` bootstrap commits;
-- resolved the Git ref namespace conflict by preserving the Package source at `migration-source/native-heavy-frontend-reference` plus the existing backup, then deleting only the old conflicting `package/native-heavy-frontend-reference` ref;
-- ref-swap workflow run `36405204457` succeeded;
-- removed the temporary ref-swap workflow;
-- rebuilt `docs` as a parentless migration-control root containing this Plan, Record and single HANDOFF.
+- audited actual refs, docs topology and Package payload;
+- created and preserved migration safety refs;
+- rebuilt `docs/package/plugin/skills` from parentless independent roots;
+- preserved the original Package branch source at `migration-source/native-heavy-frontend-reference`;
+- semantically migrated all useful legacy docs into standardized `plans/**` / `records/**`;
+- installed authoritative Repository Governance, local adapters, Web adapter and templates;
+- migrated all 19 Package-specific files into `package:native-heavy-frontend-reference/**` with exact blob identity;
+- established the per-game `releases/` mechanism without inventing historical `.atria`;
+- established `plugin` workspace governance without moving product `main:plugins/**`;
+- established `skills:SKILLS.md` and workspace governance without moving Atria Runtime Skills;
+- updated main-side `AGENTS.md` and added thin `CLAUDE.md` on the task branch;
+- normalized bare `vanilla/luker` names to `reference/vanilla` and `reference/luker` with exact history;
+- removed the temporary reference-normalization workflow after successful execution;
+- completed Phase 3 content/boundary validation.
 
 ## Current factual refs
 
-- `main` = `86b900fd0821eff3cc9fcc23bb2ea343dc1d121b`
-- task branch = `054efd2167497049d0c0ef0bd415e520cb39c026`
-- `package` bootstrap root = `e4950f5127f39b5be093428786f8af9410fd78bc`
-- `plugin` bootstrap root = `7453144395832f3a315f4694649be9af9fe1f9b1`
-- `skills` bootstrap root = `087ae0ccb5ecacd48b7490ed0b1d0faaaba44c6e`
-- Package migration source = `migration-source/native-heavy-frontend-reference@b3b6c4f01729325a789c92a15cc6946e1a97603a`
-- stale validation branch = `chore/native-heavy-frontend-phase5-validation@b09addf9a4c6eadc47b748a53433475242bbc286`
-- bare `vanilla` = `e07c9e2af1b52f6b0f3dedbd5cc47db78f715ccc`
-- bare `luker` = `91ae97aed557be9439317a67d0ec516f7512fe2e`
+Verify these against the remote at Phase 4 start:
 
-## Safety refs — do not delete yet
+- `main` = `86b900fd0821eff3cc9fcc23bb2ea343dc1d121b`
+- task branch = `1982578c51569a7f8191f4e45a11cfdbd292dfa7`
+- Package = `0f40217ea451b91fdc8327e5a661c813d9d12142`
+- Plugin = `5bbf79fca1c68273f7e2c770ed66d80482dc341b`
+- Skills = `db3410039d22967b7dc440c9b618594e363a864a`
+- `reference/vanilla` = `e07c9e2af1b52f6b0f3dedbd5cc47db78f715ccc`
+- `reference/luker` = `91ae97aed557be9439317a67d0ec516f7512fe2e`
+- Package migration source = `migration-source/native-heavy-frontend-reference@b3b6c4f01729325a789c92a15cc6946e1a97603a`
+- stale validation branch still retained = `chore/native-heavy-frontend-phase5-validation@b09addf9a4c6eadc47b748a53433475242bbc286`
+
+Docs semantic content checkpoint before this closure commit:
+
+- `docs@5467b59cb3dbc889c79504cd8baffb3997b40620`
+
+Again: the actual docs tip is the later closure commit containing this HANDOFF/Record update; verify it remotely.
+
+## Safety refs — still required
+
+Do not delete until Phase 4 verification succeeds:
 
 - `migration-backup/20260928/main`
 - `migration-backup/20260928/docs`
@@ -51,55 +64,72 @@ The live `docs` branch was rebuilt as a parentless root during Phase 2. Verify i
 - `migration-backup/20260928/chore-native-heavy-frontend-phase5-validation`
 - `migration-backup/20260928/vanilla`
 - `migration-backup/20260928/luker`
+- `migration-source/native-heavy-frontend-reference`
 
-Keep all until Phase 4 verification succeeds.
+All were rechecked unchanged during Phase 3.
 
-## Important boundaries
+## Phase 3 validation evidence
 
-- Phase 3 is content/governance migration, not product feature work.
-- Do not merge `main` into `docs/package/plugin/skills`.
-- Do not move Atria runtime Skills under `main:default/skills/**` into the repository-agent `skills` workspace.
-- Do not treat product `main:plugins/**` as standalone-tool `plugin` content.
-- Do not read reference branch contents unless separately authorized; rename/migrate ref identity without contaminating history.
-- Legacy docs source must be read from the protected old-docs refs and semantically classified, not blindly copied.
-- Package content source is now `migration-source/native-heavy-frontend-reference`, not the removed old ref name.
+- legacy docs: **244 / 244** migrated non-root-README blobs matched exact source SHA;
+- semantic result: **15 Plans / 229 Records** from legacy material;
+- old handoffs: **35 / 35** preserved only as historical Record material;
+- Package payload: **19 / 19** exact source blobs;
+- Package has release mechanism, no fabricated historical `.atria`, no copied product root;
+- Plugin does not contain `main:plugins/**`;
+- Skills does not contain `main:default/skills/**`;
+- Phase 2 roots for docs/package/plugin/skills rechecked with **0 parents**;
+- reference normalization workflow run `36407675928` = **success**;
+- normalized reference refs compare identical to old commit identities; bare names are gone;
+- main task `AGENTS.md` no longer contains the old handoff route.
 
-## Phase 3 only — next target
+No product build/test, Android/Termux/device, Docker, provider, or real UI validation was run or claimed because Phase 3 changed repository content/governance rather than Atria product behavior.
 
-1. verify current remote refs and parentless roots;
-2. read this HANDOFF, Plan and cumulative Record;
-3. migrate useful legacy docs into standardized `plans/**` / `records/**`;
-4. install final `docs:README.md`, `AGENTS.md`, thin `CLAUDE.md`, and `WEB-PERSISTENT-PROMPT.md`;
-5. migrate the 19 Package-specific files into `package:native-heavy-frontend-reference/**` and create its `releases/` mechanism without inventing a historical `.atria`;
-6. install final package/plugin/skills workspace governance files;
-7. establish `skills:SKILLS.md` routing only for actual repository-agent Skills;
-8. update main-side `AGENTS.md` / add thin `CLAUDE.md` on the task branch, removing stale old-handoff routing;
-9. migrate bare reference names to `reference/vanilla` and `reference/luker` while preserving exact commit history and without reading reference contents;
-10. validate migrated content completeness;
-11. update this same Record and HANDOFF;
-12. stop before Phase 4.
+## Phase 4 only — next target
+
+1. fetch/verify every relevant remote ref again;
+2. read `docs:README.md`, this HANDOFF, the migration Plan and cumulative Record;
+3. verify final long-lived workspace trees/boundaries and independent-root ancestry end-to-end;
+4. verify normalized reference names/history without using reference contents unless separately authorized;
+5. verify docs lifecycle/adapters/templates and Package content/release mechanism;
+6. inspect remaining superseded governance/temporary branch state and determine exact cleanup set;
+7. integrate the verified main-side task branch into `main`;
+8. verify integrated `main`;
+9. only after all verification passes, remove confirmed obsolete task/migration refs and other superseded state;
+10. finalize the same Record;
+11. delete live `docs:HANDOFF.md` because the migration task is then complete.
+
+Phase 4 cleanup must not start before its verification gate passes.
 
 ## Do not repeat
 
-- do not redo Phase 1 audit;
-- do not recreate existing backup/source refs;
+- do not redo Phase 1 audit/mapping;
+- do not rebuild the parentless roots;
+- do not repeat legacy-doc semantic migration;
+- do not re-copy the 19 Package files;
+- do not recreate the reference-normalization workflow;
 - do not reimplement Package Phase 1–6 or G1–G5;
-- do not recreate the Phase 2 ref-swap workflow;
-- do not start final cleanup/deletion of safety refs;
-- do not begin product feature work.
+- do not move `main:plugins/**` into `plugin`;
+- do not move `main:default/skills/**` into `skills`;
+- do not read reference contents without explicit reference authorization;
+- do not remove migration backups/source before Phase 4 verification;
+- do not expand Atria product functionality.
 
 ## New-chat bootstrap prompt
 
-Continue the repository-wide standardization migration for `ZZZdragondYNGPHX/Atria`.
+Continue `ZZZdragondYNGPHX/Atria` Task ID `refactor/repository-standardization-migration`.
 
-Task ID: `refactor/repository-standardization-migration`.
+Phase 1–3 are complete. Execute **Phase 4 — Verification / Cleanup only**.
 
-Phase 1 and Phase 2 are complete. Continue **Phase 3 — Migrate Content and Governance only**. Do not redo the audits/root bootstrap and do not start Phase 4 cleanup.
+Primary Workspace: `refactor/repository-standardization-migration`  
+Current recorded task HEAD: `1982578c51569a7f8191f4e45a11cfdbd292dfa7`
 
-Verify remote refs first, then read:
+Before doing anything, fetch/verify the real remote refs, then read:
+
+- `docs:README.md`
 - `docs:HANDOFF.md`
 - `docs:plans/architecture/repository-standardization-migration.md`
 - `docs:records/refactor/repository-standardization-migration.md`
-- the approved construction spec if available.
 
-Use `migration-backup/20260928/docs-phase1` / `migration-backup/20260928/docs` as legacy docs sources and `migration-source/native-heavy-frontend-reference` as the Package source. Preserve all safety refs. Do not read reference contents unless explicitly authorized. Finish Phase 3, update Record/HANDOFF, then stop.
+Phase 3 already completed semantic docs migration, Package 19/19 migration, package/plugin/skills governance, `SKILLS.md`, main-side AGENTS/CLAUDE, and exact-history `reference/vanilla` / `reference/luker` normalization. Reference normalization workflow run `36407675928` succeeded and the temporary workflow was removed.
+
+Do not repeat those migrations. Do not read reference contents unless separately authorized. Preserve every `migration-backup/20260928/*` and `migration-source/*` until Phase 4 verification passes. Then perform only the cleanup/integration justified by the verified state, finalize the same Record, delete live HANDOFF, and finish the migration.
