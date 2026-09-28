@@ -4,7 +4,7 @@
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
-> 当前阶段：Phase 3 Package 侧实现与非 Memory 定向验证已完成；被 G3 — Package Turn → Atria Memory Bridge 阻塞，Phase 4 未开始。
+> 当前阶段：Phase 3 — Narrative Runtime + Knowledge 已完成并验证；已停止在 Phase 4 — Hybrid Application Completion 之前。
 
 ## 1. 项目目标
 
@@ -3121,11 +3121,12 @@ G1 / G2 不允许在 `package/native-heavy-frontend-reference` 中直接修改 A
 - Architecture discussion：**完成**
 - Implementation Baseline：**v1.0**
 - Main audit baseline：`35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`
+- Current integrated main：`698aec1ee5d366ed4e36b5b696c432793dad5e17`
 - Package branch：`package/native-heavy-frontend-reference`
-- Platform prerequisites：**G1 / G2 已合入 main 并完成 Package 侧确认**
-- Package implementation：**Phase 1–2 完成；Phase 3 Package 侧实现完成并通过非 Memory 定向验证，但尚未完成平台验收**
-- Platform blocker：**G3 — Package Turn → Atria Memory Bridge（Open）**
-- Next Package step：**先解决 G3 并回到本 Package 完成 Memory 端到端验证；Phase 4 尚未开始**
+- Platform prerequisites：**G1 / G2 / G3 已合入 main 并完成 Package 侧确认**
+- Package implementation：**Phase 1–3 完成并通过 Package 定向验证**
+- Platform blocker：**无 Phase 3 blocker；G3 已满足**
+- Next Package step：**Phase 4 — Hybrid Application Completion；本轮不得提前开始**
 
 
 ## 22. Implementation Progress
@@ -3272,16 +3273,17 @@ Phase 3 必须复用 Phase 1–2 已冻结的 UI 与 Authority/Lifecycle，不�
 
 ### 22.3 Phase 3 — Narrative Runtime + Knowledge
 
-**状态：Package 侧实现完成，非 Memory 定向验证通过；平台前置 G3 阻塞，Phase 3 尚未完成。不得开始 Phase 4。**
+**状态：完成并验证。已停止在 Phase 4 — Hybrid Application Completion 之前。**
 
 实施基线：
 
 - Package branch：`package/native-heavy-frontend-reference`；
-- main 基线仍为 `35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`，本阶段开始时确认 main 未前移；
 - Phase 3 主实现：`e8b70c72b9722c8f9317939d317c3d6d86fff3b7`；
 - Native evidence fixture 修正：`584ae338ac020405ce9c013482b19e9d0cdcfd65`；
 - 保留标识 / World projection / Phase 2 display projection / recorded permission fixture 修正最终落到 `68905cde84bab2fe6b74a3f208bfe7906634bd73`；
-- G3 平台缺口记录：`PLATFORM_GAPS.md`；
+- G3 integrated main：`698aec1ee5d366ed4e36b5b696c432793dad5e17`；
+- main → Package merge：PR #88，merge commit `09fd8ff0c3ecdb03040516c8f781271838f5c1f7`；
+- G3 Core tested HEAD：`1f59ff7957a080f76d802e1d758054d1c2438f2c`，run `36376721567`；
 - recorded Scenario：`scenarios/story-turn.json`；
 - Package 专用验证：`verify-phase1.mjs`、`verify-phase2.mjs`、`verify-phase3.mjs`。
 
@@ -3304,43 +3306,53 @@ Package 侧已完成：
 - 场景中 World 教会资金保持不变，证明 Beat 进度没有误写 World；
 - Phase 1 shell、Phase 2 Authority/Lifecycle 与 `church-day-cycle` 均保持回归通过。
 
-验证记录：
+#### G3 — Package Turn → Atria Memory Bridge：已满足
 
-- GitHub Actions run：`36374127773`；
-- job：`Phase 3 Narrative Knowledge and Story Turn`；
+G3 没有在 Package 内实现 workaround，而是复用已进入 main 的 Atria Memory Graph 与 Native Memory lifecycle。Package 当前 Narrator Information View 原本已经正确声明 `memory: true`，因此项目 contract 无需调整；本轮只升级验证层。
+
+Package Phase 3 Memory 验证证明：
+
+1. `story-turn` 所使用的 Narrator Information View 在 `memory: true` 下，通过真实 `recallNativePackageTurnMemory()` 调用 fake/in-memory Atria Memory API；
+2. recall evidence 带当前 Timeline / Branch / Revision provenance，并实际进入 `compileNativeContextPlan(... informationTaskId: 'narrator')` 的 Memory lane，而不是只验证 API 被调用；
+3. 将同一实际 Package snapshot 的 Narrator view 改为 `memory: false` 后，Memory API 不被调用，伪造 evidence 也不会进入 Context；
+4. hidden Timeline、stale Revision、foreign Branch evidence 均被 Context compiler 拒绝；
+5. Memory unavailable 按既有 graceful policy 返回 unavailable，不建立 Package fallback store；
+6. finalized canonical Narrative 通过现有 `TIMELINE_APPENDED` Package Turn lifecycle 边界发布，listener 在该边界可观察已提交 Narrative、`atri_lifecycle` App state 与 `atri_world_state` World state；
+7. 同一 finalized snapshot replay 不产生第二次 Timeline append，避免重复 ingestion；
+8. G1 narrative-outcome → App Command 与 G2 background Task → App Command 定向回归继续通过。
+
+最终验证记录：
+
+- GitHub Actions run：`36378377773`；
+- tested HEAD：`122396cbf9f4a139feaf5add66e4f707615f94a0`；
+- job：`Phase 3 Memory Final Validation`；
 - 结论：**success**；
 - Phase 1 shell regression：**PASS**；
 - Phase 2 Authority / Lifecycle / `church-day-cycle` regression：**PASS**；
-- Phase 3 Project / Task / Prompt / Knowledge / Context contract：**PASS**；
+- Phase 3 Project / Task / Prompt / Knowledge / Context / Memory contract：**PASS**；
 - recorded `story-turn` Scenario：**PASS**；
-- Scenario mode：`recorded-or-mock`；
+- Package fake/in-memory recall → Narrator Context：**PASS**；
+- `memory:false` / hidden Timeline / stale Revision / foreign Branch fail-closed：**PASS**；
+- finalized lifecycle / authoritative App+World state observation / replay dedupe：**PASS**；
+- G3 / G1 / G2 / Memory Graph targeted suites：**5 / 5 PASS，134 / 134 tests PASS**；
 - `providerCalls = 0`；
-- 未运行无关全仓测试、全仓 lint、Android、Docker 或真实 provider。
+- MySQL / Postgres 在 targeted Jest 中显式禁用，使用 FS / SQLite / local fixtures；
+- 未运行无关全仓测试、全仓 lint、Android、Docker 或真实 provider；
+- 临时 Phase 3 Memory final workflow 与结果 marker 已在成功后删除。
 
-#### G3 阻塞 — Atria Memory 仍缺真正的 Package Turn bridge
+Phase 3 仍保持冻结边界：
 
-静态与生产路径审计证明：
+- 不新增 Curator / Story Compression / Day Compression；
+- 不新增 Package Memory Store、第二数据库、第二 Timeline、第二 scheduler 或 Package Memory Task；
+- Memory route / retrieval / provider / Secret / cancellation / budget 继续属于 Host/player；
+- 不改变 G1 / G2 authority semantics；
+- 不合并或删除长期 Package 分支。
 
-1. Play 检测到 `taskRuntime.turn` 后，`runNativePlayGeneration()` 优先调用 `/api/native/generation/turn`；
-2. 该路径进入 `NativeGenerationHost.executeTurn()/prepareTurn()`；
-3. 现有 `createMemoryRecallBridge()` / `createPostTurnMemoryIngestion()` 位于 `createGameLlmRuntime().completeFreeTextTurn()` 链；
-4. Package Turn 不进入该链；
-5. `InformationRuntime.views[].memory = true` 只授权已有 `memoryEvidence`，`compileNativeContextPlan()` 仍需要 Host 显式提供 evidence；
-6. 当前 `NativeGenerationHost` 没有调用现有 Memory Graph recall，也没有向 Task Context adapter 提供 `memoryEvidence`。
+下一阶段严格为：
 
-所以当前 Package 只能声明正确的 Memory exposure，不能真正完成冻结要求的：
+> **Phase 4 — Hybrid Application Completion**
 
-`Atria Memory recall → Narrator Context → finalized Turn → Atria Memory ingestion`
+Phase 4 只按既有冻结计划进入 Church 完整页面、Schedule 时间轴、People、Story Header / Context Rail / Sheet、Story / Scene text presentation、display-only Message Projection 与 desktop / compact Preview fixtures。
 
-Package 内实现 recall Task、Curator、摘要数据库或自建 Memory 会违反 Baseline，因此没有添加 workaround。该缺口已正式登记为 **G3 — Package Turn → Atria Memory Bridge**。
-
-Phase 3 完成条件：
-
-- G3 必须在 Atria Core / Host 侧以现有 Memory 能力的 bridge 解决；
-- 合入最新 main 后，本长期 Package 分支按长期分支规则同步 main；
-- 重新执行 Phase 1–3 定向验证；
-- 增加/确认真实 Package Turn Memory fake/in-memory 验证，证明 `memory: true` 能进入 Narrator Context、`memory: false` fail closed、stale provenance 被拒绝、finalized Turn 复用现有 ingestion 且 retry 不重复；
-- 之后才能将 Phase 3 标记为完成并进入 Phase 4。
-
-**当前不得开始 Phase 4，也不得把 Package 合并进 main。**
+**本轮停止在 Phase 3 完成状态，不开始 Phase 4，也不把 Package 合并进 main。**
 
