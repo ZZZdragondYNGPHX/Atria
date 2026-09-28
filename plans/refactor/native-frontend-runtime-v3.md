@@ -4,7 +4,7 @@
 
 - Task ID：`refactor/native-frontend-runtime-v3`
 - 类型：大型架构 / Native UI 重构
-- 状态：**Discussion Draft v0.8**
+- 状态：**Discussion Draft v0.9**
 - Primary Workspace（未来实现）：`main`
 - 当前阶段：方案讨论，仅更新 `docs`，尚未创建实现分支
 - 当前源码基线：`main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
@@ -542,36 +542,215 @@ Atria Native Runtime
 
 ---
 
-## 8. Frontend Capability Manifest
+## 8. Frontend Manifest / Feature / Permission Model
 
-Package 应显式声明前端能力，例如概念上：
+### 8.1 Frontend Runtime Identity
+
+v3 不再使用 `componentModelVersion: 3` 表达现代前端。核心 Runtime 身份由 `runtime.experience.frontend` 决定。
+
+概念形态：
 
 ```yaml
-frontend:
-  version: 3
-  capabilities:
-    - css
-    - fonts
-    - interactions
-    - script
-    - canvas-2d
-
-  host:
-    - conversation
-    - composer
-    - fullscreen
+runtime:
+  experience:
+    mode: hybrid
+    frontend:
+      kind: native
+      version: 3
+      entry: ui/main.frontend.json
 ```
 
-未来可能扩展：
+其中：
 
-- network
-- clipboard
-- audio-input
-- camera
-- webgl
-- webgpu
+- `mode`：只表达 layout ownership；
+- `frontend.kind`：选择 Runtime family；
+- `frontend.version`：选择该 Runtime contract 版本；
+- `frontend.entry`：选择 Frontend entry resource。
 
-高权限能力应可在安装 / 启用时向用户明确展示。
+`frontend.kind/version` 本身即构成 Core Runtime compatibility，不再重复声明 `native-frontend@3` feature。
+
+未来 Runtime kind 只考虑：
+
+- `native`；
+- future `web-island`。
+
+React / Vue / Svelte 等属于 authoring/build technology，不成为 Runtime kind。
+
+### 8.2 Native Frontend v3 Baseline
+
+`native@3` 应直接保证以下基础能力，不拆成大量可选 Feature：
+
+- Declarative DOM；
+- Full Package CSS；
+- local font；
+- Package Component；
+- props / emits / slots；
+- Interaction Runtime；
+- responsive / environment；
+- local / view / component / draft / prefs state；
+- keyed reconciliation；
+- Native Component / typed Host Bridge；
+- Frontend AssetRef / ImageRef 基础；
+- Canvas2D（当前倾向纳入 baseline，最终实现前可再核对平台成本）。
+
+这样 `native@3` 本身就是完整前端平台，而不是一串碎片 feature 的集合。
+
+### 8.3 Runtime Features
+
+只有真正正交、改变 Runtime 或安全模型的子系统进入 versioned Feature，例如：
+
+- `frontend-script@1`；
+- `remote-media@1`；
+- future `webgl@1`；
+- future `webgpu@1`；
+- future host-mediated `network-client@1`。
+
+Feature 回答：
+
+> Host 是否实现并能提供某一技术 API。
+
+Feature 不等于用户授权。
+
+### 8.4 Permissions
+
+Permission 回答：
+
+> Package 是否被允许触及外部网络、用户设备/数据或其它敏感 Host 能力。
+
+典型 Permission：
+
+- `remote-media`；
+- `network`；
+- `clipboard-read`；
+- `clipboard-write`；
+- `camera`；
+- `microphone`。
+
+`frontend-script` 在严格 Sandbox 内只属于 Runtime Feature，不因为“存在 JavaScript”本身变成用户敏感 Permission。
+
+`canvas-2d` 也通常属于 Runtime baseline/Feature，而不是 Permission。
+
+### 8.5 Feature / Permission 双层例子
+
+`remote-media` 同时具有两个维度：
+
+1. Host 必须支持 `remote-media@1` Feature；
+2. Package 必须拥有与声明 origin constraints 匹配的 `remote-media` Permission。
+
+Manifest 概念形态：
+
+```yaml
+runtime:
+  experience:
+    mode: hybrid
+    frontend:
+      kind: native
+      version: 3
+      entry: ui/main.frontend.json
+
+    features:
+      - id: frontend-script
+        version: 1
+        required: true
+
+      - id: remote-media
+        version: 1
+        required: false
+
+permissions:
+  - permission: remote-media
+    required: false
+    reason: Load character illustrations
+    constraints:
+      origins:
+        - https://cdn.example.com
+```
+
+### 8.6 Required / Optional Negotiation
+
+Feature：
+
+- required + unsupported/unavailable → Preflight fail；Experience 不启动；
+- optional + unsupported/unavailable → Experience 可以启动，但 Host 必须投影明确状态，Package 必须提供显式 fallback/guard。
+
+Permission：
+
+- required + denied → activation fail，并展示稳定拒绝原因；
+- optional + denied → Experience 继续运行，Host 投影 denied，Package 自己使用 fallback。
+
+禁止 Host 对 optional feature 猜测“自动降级”。Host 负责报告事实，Package 负责体验分支。
+
+### 8.7 Capability Projection
+
+Frontend Runtime 应获得统一、只读的 capability / permission projection。状态至少区分：
+
+- `available`；
+- `unsupported`：Host 没有实现；
+- `unavailable`：Host 实现但当前设备/环境无法提供；
+- `denied`：技术可用但权限/策略拒绝。
+
+状态应包含稳定 `reasonCode` 和可用 version/constraints，不把这些状态写进 World Authority。
+
+### 8.8 Permission Constraints
+
+Permission constraints 属于 Host-validated Manifest Contract。
+
+例如 Remote Media：
+
+```yaml
+permissions:
+  - permission: remote-media
+    constraints:
+      origins:
+        - https://cdn.game.example
+        - https://images.game.example
+```
+
+静态 RemoteImageRef 在 Build/validation 时验证 origin；动态 ImageRef 在 Runtime 再次验证实际 URL。
+
+Permission grant 属于 Host-owned state，不得存进 Package UI State、World 或其它 Package-controlled Authority。
+
+PackageVersion 更新若扩大 Permission footprint，必须重新授权；缩小 Permission footprint 不得扩大已有 grant。
+
+### 8.9 安装 / 启用 UI
+
+UI 应区分三类信息：
+
+1. **Runtime profile**
+   - Native Frontend v3；
+   - future Web Island。
+
+2. **Technical features**
+   - Sandboxed frontend scripts；
+   - future WebGPU 等。
+
+3. **External / sensitive permissions**
+   - Remote Media origins；
+   - Network；
+   - Clipboard；
+   - Camera；
+   - Microphone。
+
+不要把 CSS、字体、普通 Component 等 baseline 能力伪装成危险权限。
+
+### 8.10 Capability Vocabulary Cleanup
+
+当前仓库同时存在 Package capabilities、Package permissions、Experience capabilities、Package Runtime capabilities、Host Plugin capabilities 等多套“capability”命名。
+
+Hard cut 实施阶段应至少在 Frontend / Runtime contract 范围内清理语义：
+
+- **Package Traits**：描述 Package 是什么/包含什么，如 narrative / game / memory / knowledge；
+- **Runtime Features**：描述 Host 要实现什么版本化技术能力；
+- **Permissions**：描述 Package 被允许访问什么敏感/外部资源。
+
+不借本任务重构与 Frontend 无关的全部 Native persistence/storage contract。
+
+### 8.11 Schema Versioning
+
+由于采用 hard cut，Package / Runtime Descriptor / Experience envelope 可以在需要时同步提升 schema version。
+
+是否提升由新字段模型是否因此更清晰决定，不为旧数据保留旧 shape 或旧 schema number。
+
 
 
 ---
@@ -990,15 +1169,19 @@ Host Bridge 语义必须跨 Native Declarative、Sandbox Script 与未来 Web Is
 
 下一轮优先讨论：
 
-### Frontend Manifest / Capability Negotiation
+### Frontend Host Bridge
 
-- 新 `runtime.experience.frontend` 的最终字段模型；
-- 是否借 hard cut 同步提升 Runtime / Experience envelope schema；
-- `native-frontend / remote-media / frontend-script / canvas-2d / web-island` capability 的版本关系；
-- required / optional capability negotiation；
-- Host 不支持或用户禁用 capability 时的 fail / degrade / fallback 规则；
-- Script Sandbox、Declarative Runtime、未来 Web Island 共用的 Frontend Host Bridge API；
-- 安装时哪些前端能力需要作为用户可见权限。
+- 统一 Bridge namespace / version；
+- projection / snapshot / subscription；
+- command / application / continuity / shared / realm；
+- composer / task / activity；
+- media / asset resolution；
+- preferences / package-local persistence；
+- navigation / fullscreen / focus / input；
+- external navigation / clipboard / download / upload；
+- Declarative Runtime、Sandbox Script 与 future Web Island 的共同语义面；
+- Bridge request / receipt / error / cancellation contract；
+- 防止 Bridge 形成第二套 Authority。
 
 ---
 
