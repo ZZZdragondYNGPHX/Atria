@@ -270,7 +270,13 @@ export async function recallNativePackageTurnMemory(options = {}) {
         return Object.freeze({ status: 'unavailable', evidence: Object.freeze([]), query });
     }
 
-    const result = await session.recallMemory(query, { signal: options.signal });
+    let result;
+    try {
+        result = await session.recallMemory(query, { signal: options.signal });
+    } catch (error) {
+        if (options.signal?.aborted || error?.name === 'AbortError') throw error;
+        return Object.freeze({ status: 'unavailable', evidence: Object.freeze([]), query });
+    }
     result?.assertCurrent?.();
 
     const visibleMessages = new Set(
@@ -279,40 +285,40 @@ export async function recallNativePackageTurnMemory(options = {}) {
             .map(item => String(item.recordId || ''))
             .filter(Boolean),
     );
-    const sourceMessageIds = [...new Set(
-        (Array.isArray(result?.sourceMessageIds) ? result.sourceMessageIds : [])
-            .map(id => String(id || '').trim())
-            .filter(id => id && visibleMessages.has(id)),
-    )].slice(0, MAX_REFERENCES);
-    const content = truncate(result?.content ?? result?.text ?? '', MAX_MEMORY_CONTENT_CHARS).trim();
-    if (!content || !sourceMessageIds.length) {
-        return Object.freeze({
-            status: content ? 'unproven' : 'empty',
-            evidence: Object.freeze([]),
-            query,
-        });
-    }
-
-    result?.assertCurrent?.();
+    const rawEvidence = Array.isArray(result?.evidence) && result.evidence.length
+        ? result.evidence
+        : [{
+            id: 'recall',
+            content: result?.content ?? result?.text ?? '',
+            sourceMessageIds: result?.sourceMessageIds ?? [],
+        }];
     const branchId = String(snapshot.revision.branchId || '');
     const revisionId = String(snapshot.revision.revisionId || '');
-    const evidence = Object.freeze([deepFreeze({
-        memoryId: 'package-turn:' + revisionId,
-        content,
-        sourceRefs: sourceMessageIds.map(messageId => ({
-            kind: 'timeline',
-            messageId,
-            branchId,
-            revisionId,
-        })),
-        ...(Number.isFinite(Number(result?.tokenCount ?? result?.tokens))
-            ? { tokenCount: Number(result.tokenCount ?? result.tokens) }
-            : {}),
-        source: {
-            kind: 'memory_graph',
-            selected: (Array.isArray(result?.selected) ? result.selected : []).slice(0, MAX_REFERENCES).map(String),
-        },
-    })]);
-
-    return Object.freeze({ status: 'recalled', evidence, query });
+    const evidence = [];
+    for (const [index, item] of rawEvidence.slice(0, 32).entries()) {
+        const content = truncate(item?.content ?? '', MAX_MEMORY_CONTENT_CHARS).trim();
+        const sourceMessageIds = [...new Set(
+            (Array.isArray(item?.sourceMessageIds) ? item.sourceMessageIds : [])
+                .map(id => String(id || '').trim())
+                .filter(id => id && visibleMessages.has(id)),
+        )].slice(0, MAX_REFERENCES);
+        if (!content || !sourceMessageIds.length) continue;
+        evidence.push(deepFreeze({
+            memoryId: 'package-turn:' + revisionId + ':' + String(item?.id || index),
+            content,
+            sourceRefs: sourceMessageIds.map(messageId => ({
+                kind: 'timeline',
+                messageId,
+                branchId,
+                revisionId,
+            })),
+            source: { kind: 'memory_graph', selectedId: String(item?.id || '') },
+        }));
+    }
+    result?.assertCurrent?.();
+    return Object.freeze({
+        status: evidence.length ? 'recalled' : (String(result?.text ?? result?.content ?? '').trim() ? 'unproven' : 'empty'),
+        evidence: Object.freeze(evidence),
+        query,
+    });
 }
