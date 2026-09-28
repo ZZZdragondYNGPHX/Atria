@@ -38,7 +38,7 @@ const story = assertStudioScenario(storyRaw);
 const church = assertStudioScenario(churchRaw);
 const contract = project.package.runtime.experienceContract;
 
-assert.equal(project.package.version, '0.4.0-phase4');
+assert.equal(project.package.version, '0.5.0-phase5');
 assert.ok(project.package.capabilities.includes('knowledge'));
 assert.ok(project.package.capabilities.includes('memory'));
 assert.equal(project.package.memory, undefined);
