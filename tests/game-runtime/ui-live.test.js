@@ -94,6 +94,20 @@ describe('A4 Native Experience Runtime activation', () => {
         expect(session.recoveryActive).toBe(mode === 'full');
         await session.dispose(); expect(document.getElementById('atri-ui-label')).toBeNull(); playHost.unmount();
     });
+    test('v2 Hybrid UI reads the Host temporal projection without duplicating clock authority', async () => {
+        const { playHost, shellFoundation } = shellFixture();
+        const packageState = state('hybrid'); packageState.runtime.experience.componentModelVersion = 2; delete packageState.runtime.experience.surface;
+        const raw = { schemaVersion: 2, stateVersion: 1, views: [{ id: 'main', mount: 'always', surface: 'app.root', root: {
+            id: 'clock', type: 'text', bindings: { text: { template: 'Game clock {{temporal.world[0].tick}}' } },
+        } }] };
+        const getTemporalProjection = jest.fn(() => ({ world: [{ clockId: 'game-clock', tick: 615 }],
+            logical: { revisionId: 'r', sequence: 4 }, wall: { epochMs: 1234 }, activity: null }));
+        const session = await activateNativeExperienceRuntime(packageState, worldSession(), { document, shell: shellFoundation, nativePlayHost: playHost,
+            getTemporalProjection, fetchImpl: resourceFetch({ 'ui/main.json': raw }) });
+        expect(document.getElementById('atri-ui-clock').textContent).toBe('Game clock 615');
+        expect(getTemporalProjection).toHaveBeenCalled();
+        await session.dispose(); playHost.unmount();
+    });
     test.each(['component', 'hybrid', 'full'])('P2 message projection and Conversation presentation share the %s Host', async mode => {
         const { playHost, shellFoundation } = shellFixture();
         const fixture = JSON.parse(readFileSync(new URL('../native/fixtures/message-projection-v2.json', import.meta.url)));
