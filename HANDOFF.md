@@ -1,263 +1,139 @@
 # HANDOFF — Native Frontend Runtime v3
 
 - Task ID: `refactor/native-frontend-runtime-v3`
-- Status: **Implementation Baseline v1.0 frozen — Phase 1 Ready**
+- Status: **Phase 1 complete — Phase 2 ready, not started**
 - Primary Workspace: `main`
 - Task Branch: `refactor/native-frontend-runtime-v3`
-- Task Branch HEAD: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`
-- Main Baseline: `main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
+- Start HEAD / Main Baseline: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`
+- Tested / Pushed HEAD: `3d3c7c6733fcf5f4a1f11d11f92aa3b168e624d8`
 - Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
-- Plan Commit: `7c34318ef86febb6a101d93015ab97a7f1af9fe2`
+- Frozen Plan Commit: `7c34318ef86febb6a101d93015ab97a7f1af9fe2`
 - Record: `docs:records/refactor/native-frontend-runtime-v3.md`
-- Record Initial Commit: `5cfee803b794ffa80f55789532754eb82bd664a4`
-- Current Stage: **Phase 1 — Contract Reset / Compiler Skeleton**
-- Product Code Changes: **none yet**
-- Validation/CI: **not run yet; Phase 0 was documentation/branch preparation only**
+- Architecture: **Implementation Baseline v1.0 unchanged**
+- Completed Stage: **Phase 1 — Contract Reset / Compiler Skeleton**
+- Next Stage: **Phase 2 — Presentation Runtime / Containment**
 
-## Preparation completed
+## Completed
 
-The architecture discussion is finished.
+Phase 1 product implementation is committed and pushed. No merge to main, no task-branch deletion, no Phase 2 implementation.
 
-Two Gap Reviews passed and the Plan is frozen as **Implementation Baseline v1.0**.
+- Strict native@3 source/installed Experience schemas; legacy Project Source authoring shape rejected.
+- Frontend Source Index, minimal .aui parser with preserved raw CST and semantic IDs.
+- Canonical Component/View IR and exact hash-addressed resource graph.
+- Compiled Bridge Descriptor v1 skeleton linked to existing Package Data/Lifecycle/Task contracts.
+- Source/provenance digests and component/node/interaction/style spans; source-aware diagnostics.
+- Shared formal Project Build compiler for Build, Studio Preview and Agent Review.
+- Validation at container build/inspection/install/runtime resolution; no install-time compilation.
+- Runtime HTTP access limited to exact compiled graph and existing declared game resources; author/remix source remains inaccessible.
+- Minimal v3 source example and curated authoring catalog references.
 
-Before this handoff:
+Entry modules:
+- `public/shared/native-frontend-contract.js`
+- `src/native/frontend/compiler.js`
+- `src/native/frontend/aui-parser.js`
+- `src/native/frontend/graph.js`
+- `src/native/frontend/bridge.js`
+- `src/native/frontend/styles.js`
+- `src/native/experience-validation.js`
+- `src/native/runtime-descriptor.js`
+- `src/native/authoring-examples/frontend-v3/`
+- `tests/native/frontend-v3.test.js`
 
-- current remote refs were rechecked;
-- full `docs:README.md` Repository Governance was reread;
-- latest `main:AGENTS.md` was reread;
-- the task branch was created from exact current `main`;
-- the permanent multi-stage Implementation Record was created;
-- the Plan was updated from “awaiting implementation approval” to “Phase 1 Ready”;
-- no Phase 1 product code was written.
+## Validation
 
-## Frozen architecture summary
+- Native regression: **96 suites / 1602 tests passed**, FS/SQLite included; MySQL/PostgreSQL excluded with existing repository environment switches.
+- Final focused regression after last refinements: **8 suites / 62 tests passed**.
+- Full root ESLint and final changed-file/test ESLint: passed.
+- Frontend library webpack build via `node docker/build-lib.js`: passed.
+- `git diff --check`: passed.
+- No remote CI, Android/Termux, external DB or browser-rendering evidence claimed.
+- Initial environment/test-fixture failures and their fixes are recorded in the permanent Record.
 
-Core principle:
+## Decisions and limits to preserve
 
-> **Package owns presentation. Host owns capabilities and authority.**
+Package owns presentation; Host owns capabilities and authority. Do not reopen the architecture or repeat Gap Review.
 
-Native Frontend v3 includes:
+Source Index component/view IDs and explicit .aui `node-id` values are semantic identity. Compiled resources use logical ID + exact hash; source paths are provenance, not authority identity. Index paths currently use `runtime/frontend/<package-or-entrypoint>/index.json`.
 
-- Authoring Source Graph → Compiler → Canonical Runtime Graph;
-- Atria-owned `.aui` SFC-like authoring;
-- Package-owned semantic DOM / CSS / fonts / components;
-- Component / Hybrid / Full as layout ownership only;
-- Shadow DOM + Visual Containment + Host System/Escape Layer;
-- typed Frontend Host Bridge v1;
-- Experience Binding Registry with Reads / Actions / Operations;
-- fixed Host services: Composer / Conversation / Session / Media / Presentation / External;
-- snapshot + bounded Collection Read;
-- Managed + Headless Conversation;
-- GenerationProjection;
-- Safe Prose AST;
-- typed dynamic style/media sinks;
-- Remote Media Catalog + External Access Permission;
-- Localization / RTL;
-- IME / VisualViewport / soft-keyboard support;
-- Accessibility environment / diagnostics / FocusScope;
-- Component/View/Root Loading/Error Boundaries;
-- Experience Epoch / stale handle revocation;
-- Frame Scheduler;
-- bounded NodeRef layout measurement / observers / pointer capture;
-- optional Script Sandbox using Supervisor Worker + isolated JS VM;
-- Canvas2D batched command buffer.
+The parser is deliberately minimal: template, optional JSON contract/uses, optional style; static safe semantic elements, component refs, read/action links and exact asset links. Unsupported syntax fails closed. This is the Phase 1 compiler skeleton, not a complete DOM/CSS runtime.
 
-Hard Cut:
+Bridge mapping is identity-only and compile-time. Action/Operation output is a closed empty payload placeholder with receipt-policy metadata. Actual Bridge services/receipts/mapping/epochs/Collection Read belong to Phase 3. Required unimplemented Frontend Features fail closed; optional ones carry unsupported/reasonCode.
 
-- no Native UI v1/v2 migration;
-- no compatibility CSS;
-- no long-lived dual Runtime;
-- final state deletes legacy `componentModelVersion` path and old v1/v2 formal Runtime/compiler.
+The existing container source storage namespace is retained physically, but native@3 Runtime only consumes validated compiled graph resources. Author TS/source/npm scripts are never executed by the added build/install/runtime paths.
 
-Do not reopen these architectural decisions unless real implementation/test evidence proves a blocker.
+Old installed v1/v2 code is temporarily retained for Phase 9 removal, not a new compatibility promise. No v3-to-v2 lowering exists. Full Studio controls/editor and bundled authoring skill migration remain scheduled later. Existing legacy Studio UI controls cannot author v3; source APIs, examples and Build/Preview already support it.
 
-## Phase 1 authoritative scope
+There is no v3 visual renderer yet. Phase 1 Preview exposes compiled artifacts; implementing actual rendering is the next phase.
 
-**Phase 1 — Contract Reset / Compiler Skeleton**
+## Next scope — Phase 2 only
 
-Implement only Phase 1 from the Plan.
+Follow the Plan's Phase 2 section:
+- semantic DOM renderer and complete CSS/font pipeline;
+- ShadowRoot + Visual Containment and Host System/Escape Layer;
+- Component props/emits/slots and View mount/lazy loading;
+- local/View/Component/Draft/Prefs state;
+- interaction baseline, overlays/FocusScope, local routing/forms;
+- Frame Scheduler and bounded NodeRef measurement/observer/pointer capture;
+- responsive Environment foundation.
 
-Goals:
+Acceptance: Component/Hybrid/Full custom DOM/CSS/fonts; fixed/z-index/top-layer containment; Full Host System Layer; mobile/desktop responsive evidence; keyed list/virtualization foundation.
 
-- define new Package / Experience / Frontend / Bridge schemas;
-- hard-cut legacy authoring contract where Phase 1 requires it;
-- establish minimal `.aui` parser / CST / semantic AST skeleton;
-- implement Frontend Source Index;
-- implement Canonical Frontend Index / Component IR / View IR;
-- implement exact Frontend resource graph;
-- implement Compiled Bridge Descriptor skeleton;
-- implement Source Map / Provenance;
-- wire Build / Package validation path;
-- ensure Studio Preview and Production Build use the same compiler entrypoint where Phase 1 requires;
-- installed Runtime artifacts must be compiled artifacts, not author source.
+Do not silently start Phase 3+ (full Bridge runtime, Headless Conversation, Collection Read, Remote Media, Localization/IME, Script VM, Canvas) or Phase 7 visual editor. Do not read/update reference branches without explicit authorization.
 
-Phase 1 acceptance:
+## Resume procedure
 
-- a minimal `frontend.json + Main.aui` compiles through the formal compiler into an exact Runtime Graph;
-- invalid source / binding / style / resource references fail closed;
-- Preview and Build share the compiler;
-- installed Runtime only consumes compiled artifacts;
-- author TS/source/npm build scripts are not executed at install/runtime;
-- targeted tests for changed contracts/compiler/build paths pass.
+1. Fetch real refs and inspect working tree. Protect unrelated changes.
+2. Read AGENTS.md, docs:README.md, this HANDOFF, the Plan and same Record.
+3. Use the existing task branch; current baseline has Phase 1 task commits, so do not blindly reset/fast-forward it to main.
+4. Inspect directly relevant compiler/IR/runtime code and tests; do not re-review the architecture.
+5. Implement and validate only Phase 2 when the user authorizes it.
+6. End Phase 2 with tested/pushed HEAD, the same Record, live HANDOFF and Phase 3 prompt; stop.
 
-## Phase 1 boundaries
+The provided local directory was initially empty and was restored by cloning the specified repository. A new managed worktree was used for docs; the invalid adjacent old docs checkout was not altered.
 
-Do **not** begin Phase 2.
-
-Specifically do not implement full:
-
-- semantic DOM renderer;
-- complete CSS/font runtime;
-- visual containment;
-- Headless Conversation;
-- Collection Read runtime;
-- Media Resolver;
-- Localization runtime;
-- IME runtime;
-- Script VM;
-- Canvas renderer;
-- Studio visual editor.
-
-Phase 1 may create interfaces/schemas needed by later phases, but must not silently implement later phases.
-
-Do not read or update any `reference/*` branch unless the user explicitly authorizes that reference.
-
-Do not merge `main` into `package`, `docs`, `plugin`, or `skills`.
-
-## Start procedure for the new conversation
-
-1. Fetch/recheck real remote refs first.
-2. Read, in order:
-   - `main:AGENTS.md`
-   - `docs:README.md`
-   - `docs:HANDOFF.md`
-   - `docs:plans/refactor/native-frontend-runtime-v3.md`
-   - `docs:records/refactor/native-frontend-runtime-v3.md`
-3. Verify `refactor/native-frontend-runtime-v3` real remote HEAD.
-4. If `main` advanced after this checkpoint while the task branch still contains no task commits, fast-forward the task branch to the new `main` before implementation and record the new baseline.
-5. Work only on `refactor/native-frontend-runtime-v3`.
-6. Inspect only directly relevant contract/compiler/build/test code before editing; do not rescan every plan/record/reference.
-7. Implement Phase 1 fully, including appropriate tests and push.
-8. Ordinary failures, code decisions, merge conflicts and test failures should be handled autonomously.
-9. Do not stop until Phase 1 has a concrete tested remote HEAD, unless an actual environment stop condition applies.
-
-## Phase 1 completion checkpoint
-
-At the end of Phase 1:
-
-- update `docs:records/refactor/native-frontend-runtime-v3.md` with:
-  - Start HEAD;
-  - End/Tested HEAD;
-  - exact implementation completed;
-  - key decisions;
-  - tests/CI actually run;
-  - known limitations;
-  - Phase 2 next target;
-- update this `HANDOFF.md`;
-- generate a direct-copy Phase 2 takeover prompt;
-- stop and wait for the user;
-- do not begin Phase 2 automatically.
-
-## Direct-copy new conversation prompt
+## Direct-copy Phase 2 takeover prompt
 
 ```text
-你现在正式接手我的 GitHub 项目：
+接手本地 Atria 仓库 ZZZdragondYNGPHX/Atria。
+Task: refactor/native-frontend-runtime-v3
 
-ZZZdragondYNGPHX/Atria
+现在执行 Phase 2 — Presentation Runtime / Containment。
+Implementation Baseline v1.0 已冻结；不要重讨论架构、不要重做 Gap Review、不要开始 Phase 3。
 
-Task ID：
+Phase 1 已完成并 push：
+- Start HEAD / main baseline: 191f9f951ccb23cd11d8951e539b8ff6eb8316db
+- Tested task HEAD: 3d3c7c6733fcf5f4a1f11d11f92aa3b168e624d8
+- 工作分支: refactor/native-frontend-runtime-v3
+- Plan: docs:plans/refactor/native-frontend-runtime-v3.md
+- Record: docs:records/refactor/native-frontend-runtime-v3.md
+- live handoff: docs:HANDOFF.md
 
-refactor/native-frontend-runtime-v3
+开始前 git fetch --all --prune，核对真实 refs/dirty changes；
+依次读 AGENTS.md、docs:README.md、HANDOFF、Plan、Record。
+沿用同一任务分支，保护无关变更。已有 Phase 1 提交，不要直接重置到 main。
+本地优先 Git/文件系统/测试/构建，不绕远程 API 模拟网页流程。
 
-当前架构讨论已经完成，Implementation Baseline v1.0 已冻结。
+Phase 1 已有 Source Index、.aui CST/AST、Component/View IR、exact graph、
+Bridge Descriptor skeleton、Provenance、Build/Preview 共用 compiler、
+installed graph validation 与 HTTP author-source 拒绝路径。
+测试：Native 96 suites/1602 tests；最终聚焦 8 suites/62 tests；lint 与 webpack 通过。
+外部 DB、Android/Termux、浏览器渲染、远程 CI 尚无本阶段验证。
 
-现在正式执行：
+Phase 2 以 Plan 对应章节为唯一权威：
+semantic DOM renderer、完整 CSS/font pipeline、ShadowRoot + Visual Containment、
+Host System/Escape Layer、props/emits/slots、View mount/lazy load、
+Local/View/Component/Draft/Prefs state、Interaction baseline、
+Overlay/FocusScope、routing/forms、Frame Scheduler、
+NodeRef measurement/observer/pointer capture、responsive Environment。
+完成 Component/Hybrid/Full、containment、mobile/desktop、keyed list/virtualization 验收。
 
-Phase 1 — Contract Reset / Compiler Skeleton
+Hard Cut 已批准；不做 v1/v2 迁移/兼容，不将 v3 IR 降级为旧 renderer。
+不提前实施 Phase 3+ Bridge runtime、Headless Conversation、Collection Read、
+Remote Media、Localization/IME、Script VM、Canvas 或 Studio visual editor。
+普通实现问题、测试失败自行修复并继续。
 
-不要重新进行 Native Frontend v3 架构讨论，不要重新做 Gap Review，也不要开始 Phase 2。
-
-当前准备状态：
-
-- main baseline：
-  191f9f951ccb23cd11d8951e539b8ff6eb8316db
-- task branch：
-  refactor/native-frontend-runtime-v3
-- task branch 当前 HEAD：
-  191f9f951ccb23cd11d8951e539b8ff6eb8316db
-- Plan：
-  docs:plans/refactor/native-frontend-runtime-v3.md
-- Plan commit：
-  7c34318ef86febb6a101d93015ab97a7f1af9fe2
-- Record：
-  docs:records/refactor/native-frontend-runtime-v3.md
-- 当前尚未修改产品代码，尚未执行 Phase 1 测试/CI。
-
-开始前必须：
-
-1. 重新 fetch / 核对真实远端 refs；
-2. 按顺序读取：
-   - main:AGENTS.md
-   - docs:README.md
-   - docs:HANDOFF.md
-   - docs:plans/refactor/native-frontend-runtime-v3.md
-   - docs:records/refactor/native-frontend-runtime-v3.md
-3. 核对 refactor/native-frontend-runtime-v3 的真实远端 HEAD；
-4. 若 main 在本 checkpoint 后前进，而 task branch 仍没有任务提交，则先将 task branch fast-forward 到最新 main，并在 Record 中更新真实 baseline；
-5. 后续只在 refactor/native-frontend-runtime-v3 上工作。
-
-Phase 1 的权威目标与验收条件以 Plan 的 “Phase 1 — Contract Reset / Compiler Skeleton” 为准。
-
-本阶段核心范围：
-
-- 新 Package / Experience / Frontend / Bridge contract；
-- Native Frontend Source Index；
-- 最小 .aui parser / CST / semantic AST；
-- Canonical Frontend Index / View IR / Component IR；
-- exact Frontend resource graph；
-- Compiled Bridge Descriptor skeleton；
-- Source Map / Provenance；
-- Build / Package validation wiring；
-- Preview 与 Build 共享 compiler entrypoint；
-- installed Runtime 只消费 compiled artifacts。
-
-Hard Cut 已批准：
-
-- 不考虑 Native UI v1/v2 用户数据/作者兼容；
-- 不做 migration assistant；
-- 不做 compatibility CSS；
-- 最终会删除旧 componentModelVersion/v1/v2 Runtime；
-- 但 Phase 1 只做本阶段需要的 contract/compiler reset，不提前跨到最终 Legacy Removal。
-
-不要在 Phase 1 实现完整 Phase 2+ 能力，例如：
-
-- 完整 semantic DOM renderer；
-- 完整 CSS/font runtime；
-- Visual Containment；
-- Headless Conversation；
-- Collection Read runtime；
-- Remote Media Resolver；
-- Localization/IME runtime；
-- Script VM；
-- Canvas renderer；
-- Studio visual editor。
-
-普通代码错误、测试失败、常规工程选择、merge conflict 请自行分析、修改、测试、提交、推送并继续，不要因为一般技术问题停下来问我。
-
-只有在：
-- Phase 1 已完成并验证；
-- CI 进入明显耗时且下一步必须等待；
-- 必须依赖 Android/Termux 真机日志；
-- 必须依赖真实 UI 截图；
-- 或需要我本人权限/Secret/账号操作
-时主动暂停。
-
-Phase 1 完成后必须：
-
-- push tested HEAD；
-- 更新 docs:records/refactor/native-frontend-runtime-v3.md；
-- 更新 docs:HANDOFF.md；
-- 记录 Start HEAD / Tested HEAD / 验证 / 未完成；
-- 生成可直接复制到新对话的 Phase 2 接手提示词；
-- 主动停止，不开始 Phase 2。
+Phase 2 完成后：
+完成适当本地测试/构建与必要真实浏览器验证，push tested HEAD；
+更新同一 docs Record 和 HANDOFF，记录 Start/Tested HEAD、验证、决策、剩余项；
+生成 Phase 3 接手提示词；停止，不开始 Phase 3。
 ```
