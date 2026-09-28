@@ -59,7 +59,6 @@
         "args": {
           "thread_id": "caretaker",
           "participants": [
-            "player",
             "actor_b48a53176eb663a1af411fb6f8638d66"
           ],
           "body": "I will be at the sanctuary this morning.",
@@ -138,7 +137,6 @@
         "payload": {
           "thread_id": "caretaker",
           "participants": [
-            "player",
             "actor_b48a53176eb663a1af411fb6f8638d66"
           ],
           "sender_id": "actor_b48a53176eb663a1af411fb6f8638d66",
