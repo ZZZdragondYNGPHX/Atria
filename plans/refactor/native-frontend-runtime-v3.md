@@ -4,7 +4,7 @@
 
 - Task ID：`refactor/native-frontend-runtime-v3`
 - 类型：大型架构 / Native UI 重构
-- 状态：**Discussion Draft v0.11**
+- 状态：**Discussion Draft v0.12**
 - Primary Workspace（未来实现）：`main`
 - 当前阶段：方案讨论，仅更新 `docs`，尚未创建实现分支
 - 当前源码基线：`main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
@@ -1679,28 +1679,315 @@ Binding Registry 与 Compiled Bridge Descriptor 必须在任何 Frontend Script 
 
 运行时代码只能消费已验证 contract，不能通过动态注册扩大权限。
 
+
 ---
 
-## 14. 当前待讨论主题
+## 14. Native Frontend Source / Canonical Runtime Graph
+
+### 14.1 Authoring Source 与 Runtime IR 分离
+
+Native Frontend v3 明确采用：
+
+```text
+Authoring Source Graph
+    ↓ compile
+Canonical Runtime Graph
+    ↓ validate
+Native Frontend Runtime
+```
+
+Authoring Source 是人类、Studio、AI 的唯一编辑权威。
+
+Canonical IR / Runtime Graph 是 **derived-readonly build artifact**，面向 Runtime、validator、cache、hash 与安装验证，不追求人类直接手写体验。
+
+Studio / AI 不直接修改 IR。
+
+Preview 必须走：
+
+```text
+Source
+→ Production Compiler
+→ exact preview IR
+→ Production Renderer
+```
+
+不得为 Studio 单独维护第二套 UI compiler/renderer 语义。
+
+### 14.2 Project Source 与 Installed Runtime Contract 分离
+
+Project Authoring Contract 与发布后 Package Runtime Contract 不复用同一个 path 字段。
+
+概念上：
+
+- Authoring Project 使用 `frontend.source` 指向 Source Graph descriptor；
+- Build 后 Installed Package 使用 `frontend.entry` 指向 Compiled Frontend Index。
+
+正式字段名后续可调整，但 Runtime 不应猜测一个文件是 author source 还是 compiled IR。
+
+### 14.3 推荐 Source Graph 目录
+
+Studio 默认生成结构可以类似：
+
+```text
+frontend/
+├─ frontend.json
+├─ views/
+│  ├─ Main.aui
+│  ├─ Inventory.aui
+│  └─ Phone.aui
+├─ components/
+│  ├─ CharacterCard.aui
+│  ├─ StatBar.aui
+│  └─ ChurchPanel.aui
+├─ styles/
+│  ├─ theme.css
+│  └─ global.css
+├─ state/
+│  └─ state.json
+├─ bridge/
+│  └─ bindings.json
+└─ controllers/
+   └─ relationship-graph.ts
+```
+
+目录结构是推荐组织，不是 Runtime semantic requirement。Compiler 依据 Source Graph refs 解析工程。
+
+### 14.4 `frontend.json` 作为轻量 Source Index
+
+`frontend.json` 不承载整个 UI tree，只声明 Source Graph 入口，例如：
+
+- frontend source schema/version；
+- Views 与 surface/mount；
+- root component refs；
+- global/theme stylesheet refs；
+- global `ui/draft/prefs` state refs；
+- Bridge Registry ref；
+- optional source-level feature refs。
+
+View 本质是：
+
+> Surface / Mount metadata + Root Package Component。
+
+不再创建独立于 Package Component 的第二套 View DOM language。
+
+### 14.5 Atria-owned Component Authoring Syntax
+
+建议提供 Atria-owned SFC-like authoring syntax，暂称 `.aui`，名称尚未冻结。
+
+一个 Component Source 可以自然 colocate：
+
+- template / Declarative DOM；
+- typed props；
+- emits；
+- slots / scoped slots；
+- component local state；
+- computed values；
+- declarative interaction handlers；
+- `uses`；
+- optional scoped CSS；
+- optional Sandbox Controller ref。
+
+`.aui` 只属于 Authoring Layer。Compiler 输出 Canonical Component IR。
+
+不再要求作者长期手写巨大 JSON tree；JSON 更适合 index、schema、state、bridge 等严格结构化 contract。
+
+### 14.6 Style Authoring
+
+样式同时允许：
+
+1. 独立真实 `.css` 文件；
+2. Component Source 内 scoped style block。
+
+大型项目的 Theme / Global / shared style 推荐独立 CSS；小组件可以单文件 colocate。
+
+两者最终编译进入同一个 Style Graph。
+
+### 14.7 Interaction / Controller Authoring
+
+交互复杂度按层次递增：
+
+```text
+Static Component
+→ Declarative Interaction
+→ Shared Interaction Module
+→ Sandbox Script Controller
+```
+
+简单交互 colocate 在 Component Source。
+
+复杂算法、Canvas、图布局等可以绑定 optional JS/TS Controller。
+
+Runtime 不直接执行 author source；Controller 必须 Build 为 sandbox-compatible compiled module。
+
+### 14.8 State Authoring
+
+Experience-global：
+
+- `ui`；
+- `draft`；
+- `prefs`；
+
+集中在 Frontend Source Graph 中声明。
+
+Component local state 与 Component Source colocate。
+
+这样保持此前定义的 state lifetime / authority separation。
+
+### 14.9 Bridge Registry 独立
+
+Experience-level Bridge Binding Registry 保持独立 source resource。
+
+Component 只通过 `uses` 消费 Binding。
+
+Authority target declaration 不散落进 Component template/controller source。
+
+即：
+
+```text
+Bridge Registry = 定义 Host API
+Component uses = 消费 Host API
+```
+
+### 14.10 Canonical Runtime Graph
+
+Build output 不做单一巨大 JSON。
+
+推荐结构：
+
+```text
+Compiled Frontend Index
+├─ View IR refs
+├─ Component IR refs
+├─ Compiled Bridge Descriptor
+├─ Style assets
+├─ Sandbox controller modules
+└─ Frontend asset/media refs
+```
+
+每个 Runtime resource 使用 stable logical identity + exact content identity/hash。
+
+Source path 只用于 authoring/provenance，不作为 Runtime authority identity。
+
+### 14.11 Lazy Loading / Code Splitting
+
+View / Component / Controller 边界天然形成 lazy-loading boundary。
+
+例如 on-demand drawer/modal/Phone/Church View 不必随 primary view 一次加载。
+
+Runtime activation：
+
+1. 加载/验证小型 Frontend Index；
+2. preflight Bridge/features/permissions；
+3. 加载 primary View；
+4. 按需加载其它 exact Component/View/Controller resources。
+
+不需要引入不可解释的自动 bundler chunk identity 作为 Runtime contract。
+
+### 14.12 Source Map / Provenance
+
+Compiler 必须建立正式的 Source Map / Provenance：
+
+- compiled component → source file/span；
+- node → source span；
+- interaction/action → source span；
+- controller compiled module → TS/JS source；
+- style diagnostic → source CSS/style block。
+
+Studio Preview / Build / Health diagnostics 必须优先指回作者 Source，而不是只报 IR node。
+
+Release Runtime 不依赖 Source Map 执行。
+
+完整 source/source map 是否随 `.atria` 发布可以由 build profile 决定。
+
+### 14.13 Stable Semantic IDs
+
+Native Source 应支持 stable semantic identities。
+
+Studio 与 AI 的 structured edits 应优先按：
+
+- Component ID；
+- Node ID；
+- Binding ID；
+- Interaction ID；
+
+定位，而不是只依赖行号。
+
+如果 `.aui` 最终采用文本语法，Studio 推荐使用 format-preserving CST + semantic AST，尽量保留人工注释、排版与文件组织。
+
+### 14.14 Small / Large Project 同一 Contract
+
+不建立“Simple UI / Advanced UI”两套 Runtime。
+
+小型 UI 可以只有：
+
+```text
+frontend.json
+views/Main.aui
+```
+
+并把 style/interaction colocate。
+
+大型 UI 自然拆成多 View / Component / Style / Controller。
+
+最终全部编译为同一 Canonical Runtime Graph。
+
+### 14.15 Project 与 Release
+
+Project / Repository 保存完整 Authoring Source。
+
+正式 `.atria` Runtime Authority 默认是：
+
+- compiled Frontend Index；
+- compiled Component/View IR；
+- compiled styles；
+- sandbox modules；
+- exact embedded assets；
+- Remote Media refs；
+- Compiled Bridge Descriptor。
+
+Author Source / comments / authoring layout 不属于 Runtime Authority。
+
+Source bundle / Source Map 可以作为 optional debug/remix artifact 携带，但 Runtime 永远不执行 Source。
+
+### 14.16 Framework Adapter
+
+Framework Adapter 负责：
+
+```text
+React / Vue / Svelte authoring
+→ Adapter / Compiler
+→ Canonical Runtime Graph
+```
+
+Core Runtime 不关心作者使用何种 framework。
+
+Core Studio / AI 能完整理解 compiled IR，但不承诺将任意视觉编辑无损 round-trip 回 React/Vue/Svelte 原源码。
+
+Native `.aui` Source 是 Studio / AI first-class authoring path。
+
+---
+
+## 15. 当前待讨论主题
 
 下一轮优先讨论：
 
-### Native Frontend Source / Canonical IR
+### Script Sandbox Runtime
 
-- `frontend.entry` 指向什么；
-- Source 是否采用单一 descriptor + 多资源 graph；
-- views / components / styles / state / interaction / controller 的文件布局；
-- Component Authoring Syntax 与 Canonical IR 的关系；
-- CSS scope / imports / assets 如何绑定；
-- Script Controller 如何与 Component Source 绑定；
-- Studio / AI 修改 Source 还是 IR；
-- Build output 是否把 Canonical IR 作为 Package 内正式 Runtime asset；
-- Source map / diagnostics / provenance；
-- 小型 UI 是否允许单文件 authoring，大型 UI 如何自然拆分。
+- JS/TS Authoring → compile/bundle → Sandbox Module；
+- Worker / embedded JS VM / WASM-hosted engine / SES-like isolation 的取舍；
+- module graph 与第三方 pure JS dependency；
+- controller lifecycle 与 component instance；
+- scoped Bridge handles / local Component API；
+- CPU / memory / wall-time / message budgets；
+- cancellation / runaway loop / crash recovery；
+- timers / async / Promise / randomness / clock；
+- debug/source maps/diagnostics；
+- Canvas2D 采用 Host proxy 还是 retained command buffer；
+- 是否允许 WebAssembly module 作为 future/initial sandbox workload。
 
 ---
 
-## 15. 讨论流程约定
+## 16. 讨论流程约定
 
 从本企划建立后，每一轮讨论遵循：
 
