@@ -259,7 +259,10 @@ export async function recallNativePackageTurnMemory(options = {}) {
         return Object.freeze({ status: 'denied', evidence: Object.freeze([]), query: '' });
     }
 
-    const context = options.context || globalThis.Atria?.getContext?.() || null;
+    const baseContext = options.context || globalThis.Atria?.getContext?.() || null;
+    const context = baseContext && snapshot
+        ? Object.assign(Object.create(baseContext), { nativeSnapshot: snapshot })
+        : baseContext;
     const memoryApi = options.memoryApi || context?.getCapabilityApi?.('memory-graph') || null;
     const query = nativeTurnMemoryQuery(snapshot, options.userInput, information);
     if (!memoryApi || typeof memoryApi.openSession !== 'function') {
