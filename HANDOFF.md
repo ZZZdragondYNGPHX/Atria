@@ -3,7 +3,7 @@
 Updated: 2026-09-28  
 Task ID: `fix/native-ci-baseline-failures`  
 Primary Workspace: `fix/native-ci-baseline-failures`  
-Current branch HEAD: `7b486249550ed0ebfff135e6bcda49acf8199790`  
+Current branch HEAD: `72ca0c9157b13b4fb2b251e79706992f766ab4e4`  
 Current stage: **Implementation complete — CI pending**
 
 ## Paths
@@ -24,11 +24,11 @@ Current stage: **Implementation complete — CI pending**
 
 ## CI
 
-- `Atria PR Checks` run `36416576243`
+- `Atria PR Checks` run `36419697817`
   - Migration Guard: success
   - Lint: in progress
   - Unit Tests: in progress
-- `Native Model Prompt Runtime` run `36416576425`
+- `Native Model Prompt Runtime` run `36419697797`
   - integration: in progress
 
 Do not claim the running jobs have passed.
@@ -61,4 +61,4 @@ Do not claim the running jobs have passed.
 
 Continue `ZZZdragondYNGPHX/Atria` task `fix/native-ci-baseline-failures`.
 
-The implementation is already on `fix/native-ci-baseline-failures@7b486249550ed0ebfff135e6bcda49acf8199790` and PR #97 is open. Check CI runs `36416576243` and `36416576425`. Migration Guard already passed; Lint, Unit Tests, and Native Model Prompt Runtime integration were still running at the last checkpoint. If CI passes, merge PR #97, verify main, finalize `docs:records/fix/native-ci-baseline-failures.md`, delete `docs:HANDOFF.md`, and ensure the task branch is gone. If CI exposes a new failure, fix only that failure on the same branch and rerun. Do not revisit repository standardization or read reference branches.
+The implementation is already on `fix/native-ci-baseline-failures@72ca0c9157b13b4fb2b251e79706992f766ab4e4` and PR #97 is open. Check CI runs `36419697817` and `36419697797`. Migration Guard already passed; Lint, Unit Tests, and Native Model Prompt Runtime integration were still running at the last checkpoint. If CI passes, merge PR #97, verify main, finalize `docs:records/fix/native-ci-baseline-failures.md`, delete `docs:HANDOFF.md`, and ensure the task branch is gone. If CI exposes a new failure, fix only that failure on the same branch and rerun. Do not revisit repository standardization or read reference branches.
