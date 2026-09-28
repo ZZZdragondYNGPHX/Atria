@@ -1,0 +1,40 @@
+name: Normalize repository reference branch names
+
+on:
+  push:
+    branches:
+      - refactor/repository-standardization-migration
+    paths:
+      - .github/workflows/repository-standardization-reference-normalize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify normalized refs and remove superseded bare refs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          remote="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          expected_vanilla="e07c9e2af1b52f6b0f3dedbd5cc47db78f715ccc"
+          expected_luker="91ae97aed557be9439317a67d0ec516f7512fe2e"
+
+          actual_vanilla="$(git ls-remote --heads "$remote" refs/heads/reference/vanilla | cut -f1)"
+          actual_luker="$(git ls-remote --heads "$remote" refs/heads/reference/luker | cut -f1)"
+
+          test "$actual_vanilla" = "$expected_vanilla"
+          test "$actual_luker" = "$expected_luker"
+
+          if git ls-remote --exit-code --heads "$remote" refs/heads/vanilla >/dev/null 2>&1; then
+            git push "$remote" --delete vanilla
+          fi
+
+          if git ls-remote --exit-code --heads "$remote" refs/heads/luker >/dev/null 2>&1; then
+            git push "$remote" --delete luker
+          fi
