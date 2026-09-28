@@ -53,4 +53,4 @@
 
 以下属于治理敏感操作：长期分支创建/删除/重命名、工作空间结构变化、Plan/Record/HANDOFF 生命周期变化、reference 体系变化、跨多个长期工作空间的迁移、修改治理文件或新增资产类型。
 
-遇到这些操作时以 `docs:README.md` 为完整权威，不从旧的 `docs:handoff/latest-handoff.md` 或历史 handoff 路径恢复实时状态。
+遇到这些操作时以 `docs:README.md` 为完整权威，不从历史 handoff 路径恢复实时状态。
