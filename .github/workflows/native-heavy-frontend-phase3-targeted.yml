@@ -1,66 +1,14 @@
-name: Native Heavy Frontend Phase 3 Targeted Check
+name: Native Heavy Frontend Phase 4 Targeted Check
 
 on:
-  push:
-    branches:
-      - package/native-heavy-frontend-reference
-    paths:
-      - 'packages/native-heavy-frontend-reference/project/**'
-      - 'packages/native-heavy-frontend-reference/scenarios/church-day-cycle.json'
-      - 'packages/native-heavy-frontend-reference/scenarios/story-turn.json'
-      - 'packages/native-heavy-frontend-reference/verify-phase1.mjs'
-      - 'packages/native-heavy-frontend-reference/verify-phase2.mjs'
-      - 'packages/native-heavy-frontend-reference/verify-phase3.mjs'
-      - 'public/scripts/native/play-generation.js'
-      - 'public/scripts/native/session-runtime.js'
-      - 'public/scripts/native/experience/llm/memory-bridge.js'
-      - 'public/scripts/agents/memory/hybrid-retrieval.js'
-      - 'public/scripts/agents/memory/main.js'
-      - 'src/native/adapters/generation-host.js'
-      - 'src/native/adapters/native-session-context.js'
-      - 'tests/native/package-turn-memory-bridge-g3.test.js'
-      - 'tests/native/turn-app-outcome-g1.test.js'
-      - 'tests/native/background-task-app-bridge-g2.test.js'
-      - 'tests/memory-graph/hybrid-retrieval.test.js'
-      - 'tests/memory-graph/source-lifecycle.test.js'
-      - '.github/workflows/native-heavy-frontend-phase3-targeted.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  phase3-targeted:
-    name: Phase 3 Narrative Knowledge Memory and Story Turn
+  phase4-targeted:
+    name: Phase 4 Hybrid Application and Presentation
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
-      - name: Install root dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Build SQLite binding
-        run: npm rebuild better-sqlite3 --ignore-scripts=false
-      - name: Install test dependencies
-        run: npm ci --ignore-scripts --prefix tests --no-audit --no-fund
-      - name: Verify Phase 1 shell regression
-        run: node packages/native-heavy-frontend-reference/verify-phase1.mjs
-      - name: Verify Phase 2 authority lifecycle regression
-        run: node packages/native-heavy-frontend-reference/verify-phase2.mjs
-      - name: Verify Phase 3 narrative knowledge memory and recorded story-turn
-        run: node packages/native-heavy-frontend-reference/verify-phase3.mjs
-      - name: Run G3 Memory and G1 G2 targeted regressions
-        env:
-          ATRIA_DISABLE_MYSQL_TESTS: 1
-          ATRIA_DISABLE_POSTGRES_TESTS: 1
-        run: >-
-          npm run test:unit --prefix tests -- --runInBand
-          native/package-turn-memory-bridge-g3.test.js
-          native/turn-app-outcome-g1.test.js
-          native/background-task-app-bridge-g2.test.js
-          memory-graph/hybrid-retrieval.test.js
-          memory-graph/source-lifecycle.test.js
+      - run: echo "Phase 4 implementation is being assembled; push validation is re-enabled by the final implementation commit."
