@@ -73,8 +73,12 @@ Sequential integration evidence before the latest head:
 - after the P6 fix, P0–P7 and A0–A9 passed and N9 exposed the next stale assertion;
 - after the N9 fix, P0–P7, A0–A9 and N9 passed and N10 exposed the next stale assertion.
 
-Latest branch HEAD: `23a2f075a970b03acdd82f808995dead60989e95`.
+Latest branch HEAD: `d7d1e8badba1a4db63a4bc23d4b21bbd782e0b9c`.
 
 Latest validation runs:
-- `Native Model Prompt Runtime` run `36415146954`: in progress;
-- `Atria PR Checks` run `36415147038`: Migration Guard success; Lint and Unit Tests in progress.
+- `Native Model Prompt Runtime` run `36415289430`: in progress;
+- `Atria PR Checks` run `36415289660`: in progress.
+- Earlier `Atria PR Checks` run `36414275752` on `b5a7f935...`: **success** — Migration Guard, Lint and Unit Tests all passed, proving the Session snapshot test fix resolved the original full Unit failure.
+
+
+The N10 Library assertion was refined once more after reading the current source directly: the current Native Library contains three sections — `works`, `worlds-knowledge`, and `prompt-presets`. Skills are no longer a Library section after the Extensions/Skills UI consolidation. The N10 guard now asserts exactly those three Native sections while continuing to reject legacy Library authority adapters.
