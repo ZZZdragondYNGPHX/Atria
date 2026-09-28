@@ -24,7 +24,8 @@
           "location": "sanctuary",
           "premise": "A visitor arrives while the caretaker is closing the sanctuary.",
           "goal": "Advance the encounter without leaving the current story.",
-          "started_at": 480
+          "started_at": 480,
+          "title": "Sanctuary Visitor"
         }
       }
     },
@@ -50,7 +51,26 @@
             }
           }
         ],
-        "diagnostics": []
+        "diagnostics": [],
+        "projection": {
+          "schemaVersion": 1,
+          "flow": [
+            {
+              "kind": "prose",
+              "text": "The caretaker finishes the last lantern, hears measured footsteps at the sanctuary door, and turns toward the visitor as the scene moves into its next beat."
+            },
+            {
+              "kind": "block",
+              "id": "scene-state",
+              "type": "scene_marker",
+              "version": 1,
+              "data": {
+                "label": "Scene beat advanced",
+                "detail": "Sanctuary · transition"
+              }
+            }
+          ]
+        }
       }
     },
     {
