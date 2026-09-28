@@ -1,0 +1,45 @@
+name: Native Package Turn Memory G3 Targeted Check
+
+on:
+  push:
+    branches:
+      - feat/native-package-turn-memory-bridge
+    paths:
+      - 'public/scripts/native/play-generation.js'
+      - 'public/scripts/native/session-runtime.js'
+      - 'public/scripts/native/experience/llm/memory-bridge.js'
+      - 'src/native/adapters/generation-host.js'
+      - 'src/native/adapters/native-session-context.js'
+      - 'tests/native/package-turn-memory-bridge-g3.test.js'
+      - '.github/workflows/native-package-turn-memory-g3-targeted.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  g3-targeted:
+    name: G3 Memory Bridge and G1 G2 Regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Syntax check touched modules
+        run: |
+          node --check public/scripts/native/play-generation.js
+          node --check public/scripts/native/session-runtime.js
+          node --check public/scripts/native/experience/llm/memory-bridge.js
+          node --check src/native/adapters/generation-host.js
+          node --check src/native/adapters/native-session-context.js
+          node --check tests/native/package-turn-memory-bridge-g3.test.js
+      - name: Lint touched modules
+        run: npx eslint public/scripts/native/play-generation.js public/scripts/native/session-runtime.js public/scripts/native/experience/llm/memory-bridge.js src/native/adapters/generation-host.js src/native/adapters/native-session-context.js tests/native/package-turn-memory-bridge-g3.test.js
+      - name: Run G3 and G1 G2 targeted tests
+        run: npx jest --runInBand tests/native/package-turn-memory-bridge-g3.test.js tests/native/turn-app-outcome-g1.test.js tests/native/background-task-app-bridge-g2.test.js
