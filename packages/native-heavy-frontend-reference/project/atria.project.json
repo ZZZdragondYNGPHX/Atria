@@ -224,11 +224,11 @@
                   "status",
                   "premise",
                   "goal",
-                  "currentBeat",
-                  "resolvedBeats",
-                  "startedAt",
-                  "outcomeReceiptRefs",
-                  "narrativeRefs"
+                  "current_beat",
+                  "resolved_beats",
+                  "started_at",
+                  "outcome_receipt_refs",
+                  "narrative_refs"
                 ],
                 "additionalProperties": false
               },
@@ -299,7 +299,7 @@
                       "location",
                       "premise",
                       "goal",
-                      "startedAt"
+                      "started_at"
                     ],
                     "additionalProperties": false
                   },
@@ -388,8 +388,8 @@
                       }
                     },
                     "required": [
-                      "outcomeReceiptRefs",
-                      "narrativeRefs"
+                      "outcome_receipt_refs",
+                      "narrative_refs"
                     ],
                     "additionalProperties": false
                   },
@@ -490,12 +490,12 @@
                   }
                 },
                 "required": [
-                  "actorId",
+                  "actor_id",
                   "title",
-                  "startTick",
-                  "endTick",
+                  "start_tick",
+                  "end_tick",
                   "policy",
-                  "operationKind",
+                  "operation_kind",
                   "location",
                   "status"
                 ],
@@ -563,12 +563,12 @@
                       }
                     },
                     "required": [
-                      "actorId",
+                      "actor_id",
                       "title",
-                      "startTick",
+                      "start_tick",
                       "duration",
                       "policy",
-                      "operationKind",
+                      "operation_kind",
                       "location"
                     ],
                     "additionalProperties": false
@@ -714,13 +714,13 @@
                   }
                 },
                 "required": [
-                  "dayIndex",
-                  "outreachCount",
-                  "projectWorkCount",
-                  "expectedMoneyDelta",
-                  "expectedFollowerDelta",
-                  "expectedReputationDelta",
-                  "settlementStatus"
+                  "day_index",
+                  "outreach_count",
+                  "project_work_count",
+                  "expected_money_delta",
+                  "expected_follower_delta",
+                  "expected_reputation_delta",
+                  "settlement_status"
                 ],
                 "additionalProperties": false
               },
@@ -892,15 +892,15 @@
                   }
                 },
                 "required": [
-                  "templateId",
+                  "template_id",
                   "status",
-                  "startTick",
-                  "dueTick",
+                  "start_tick",
+                  "due_tick",
                   "progress",
                   "target",
-                  "assignedActorIds",
-                  "costMoney",
-                  "operationKind",
+                  "assigned_actor_ids",
+                  "cost_money",
+                  "operation_kind",
                   "milestone"
                 ],
                 "additionalProperties": false
@@ -970,13 +970,13 @@
                       }
                     },
                     "required": [
-                      "templateId",
-                      "startTick",
-                      "dueTick",
+                      "template_id",
+                      "start_tick",
+                      "due_tick",
                       "target",
-                      "assignedActorIds",
-                      "costMoney",
-                      "operationKind"
+                      "assigned_actor_ids",
+                      "cost_money",
+                      "operation_kind"
                     ],
                     "additionalProperties": false
                   },
@@ -1020,7 +1020,7 @@
                       }
                     },
                     "required": [
-                      "workUnits"
+                      "work_units"
                     ],
                     "additionalProperties": false
                   },
@@ -1142,10 +1142,10 @@
                   "title",
                   "summary",
                   "status",
-                  "moneyDelta",
-                  "followerDelta",
-                  "reputationDelta",
-                  "eventId"
+                  "money_delta",
+                  "follower_delta",
+                  "reputation_delta",
+                  "event_id"
                 ],
                 "additionalProperties": false
               },
@@ -1211,9 +1211,9 @@
                       "source",
                       "title",
                       "summary",
-                      "moneyDelta",
-                      "followerDelta",
-                      "reputationDelta"
+                      "money_delta",
+                      "follower_delta",
+                      "reputation_delta"
                     ],
                     "additionalProperties": false
                   },
@@ -1283,7 +1283,7 @@
                       }
                     },
                     "required": [
-                      "eventId"
+                      "event_id"
                     ],
                     "additionalProperties": false
                   },
@@ -1424,22 +1424,22 @@
               "domainId": "schedule",
               "fields": [
                 [
-                  "actorId"
+                  "actor_id"
                 ],
                 [
                   "title"
                 ],
                 [
-                  "startTick"
+                  "start_tick"
                 ],
                 [
-                  "endTick"
+                  "end_tick"
                 ],
                 [
                   "policy"
                 ],
                 [
-                  "operationKind"
+                  "operation_kind"
                 ],
                 [
                   "location"
@@ -1457,25 +1457,25 @@
               "domainId": "church-operations",
               "fields": [
                 [
-                  "dayIndex"
+                  "day_index"
                 ],
                 [
-                  "outreachCount"
+                  "outreach_count"
                 ],
                 [
-                  "projectWorkCount"
+                  "project_work_count"
                 ],
                 [
-                  "expectedMoneyDelta"
+                  "expected_money_delta"
                 ],
                 [
-                  "expectedFollowerDelta"
+                  "expected_follower_delta"
                 ],
                 [
-                  "expectedReputationDelta"
+                  "expected_reputation_delta"
                 ],
                 [
-                  "settlementStatus"
+                  "settlement_status"
                 ]
               ]
             },
@@ -1487,16 +1487,16 @@
               "domainId": "church-projects",
               "fields": [
                 [
-                  "templateId"
+                  "template_id"
                 ],
                 [
                   "status"
                 ],
                 [
-                  "startTick"
+                  "start_tick"
                 ],
                 [
-                  "dueTick"
+                  "due_tick"
                 ],
                 [
                   "progress"
@@ -1505,7 +1505,7 @@
                   "target"
                 ],
                 [
-                  "operationKind"
+                  "operation_kind"
                 ],
                 [
                   "milestone"
