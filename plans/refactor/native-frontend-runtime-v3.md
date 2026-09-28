@@ -4,7 +4,7 @@
 
 - Task ID：`refactor/native-frontend-runtime-v3`
 - 类型：大型架构 / Native UI 重构
-- 状态：**Discussion Draft v0.6**
+- 状态：**Discussion Draft v0.7**
 - Primary Workspace（未来实现）：`main`
 - 当前阶段：方案讨论，仅更新 `docs`，尚未创建实现分支
 - 当前源码基线：`main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
@@ -663,6 +663,111 @@ Remote Media Ref 后续需要继续冻结：
 - Host proxy 与 SSRF 边界；
 - broken-link fallback。
 
+#### 9.3.1 Typed ImageRef
+
+大量角色立绘、头像、CG、背景等不应退化为“一个任意 URL 字符串”。UI / Data / World projection 可使用 typed `ImageRef`，至少支持：
+
+```text
+ImageRef
+├─ EmbeddedAssetRef
+├─ PinnedRemoteImageRef
+└─ LiveRemoteImageRef
+```
+
+其中：
+
+- Embedded：图片内容包含于 Package exact closure；
+- Pinned Remote：Package 不携带图片字节，但声明 URL + expected content hash / integrity，用于固定版本立绘；
+- Live Remote：只声明远程 locator，可用于允许服务端内容变化的头像、动态图源或生成内容，仅属于 mutable Presentation。
+
+Remote Image 永远不得成为 Authority、规则、schema 或 executable code 的事实来源。
+
+#### 9.3.2 Responsive Sources
+
+ImageRef 可以声明多分辨率 source，例如 thumbnail / medium / full 或 width/DPR 候选。Host 根据：
+
+- 实际渲染尺寸；
+- viewport / DPR；
+- device / memory；
+- network policy；
+
+选择合适资源，避免角色列表为小尺寸缩略图下载 2K/4K 原图。
+
+#### 9.3.3 Lazy Load / Prefetch / Cache
+
+Remote Media 默认安装时不下载大图。加载策略由 Runtime + Host 控制：
+
+- critical；
+- visible；
+- prefetch；
+- lazy。
+
+Package 可以给出 hint，但不能强制长期占用本地空间。
+
+Host 应拥有可驱逐的 Remote Media Cache（例如 LRU / quota based）。缓存属于非权威可再生数据，可在存储压力、Package 删除、策略变化时驱逐。
+
+玩家 / Host 决定缓存预算；Package 不得声明不可驱逐的巨量远程媒体缓存。
+
+#### 9.3.4 Offline / Fallback
+
+Remote Image 可声明轻量 fallback，例如 Embedded placeholder。离线或远端失败时优先：
+
+1. 已缓存的有效 remote resource；
+2. embedded fallback / placeholder；
+3. Host 标准 missing-media UI。
+
+因此 Package 可以保持很小，同时仍具备离线可理解性。
+
+#### 9.3.5 `remote-media` Capability
+
+远程 Presentation Media 与 arbitrary network 必须是两个不同权限：
+
+- `remote-media`：允许 Host 为声明的媒体引用加载图片等 Presentation resource；
+- `network`：未来如存在，才表示更广泛的 Host-mediated 网络能力。
+
+声明 `remote-media` 不向 Sandbox Script 提供 `fetch`、WebSocket 或 raw socket。
+
+Package / install UI 应能够展示声明的远程媒体来源域，便于用户理解隐私与联网行为。
+
+#### 9.3.6 Host-owned Media Resolver
+
+Remote Image 不应直接把裸 URL 无条件交给浏览器。推荐经 Host Media Resolver：
+
+```text
+RemoteImageRef
+    ↓
+Host Media Resolver
+    ├ scheme / host policy
+    ├ redirect bounds
+    ├ MIME validation
+    ├ byte / dimension budget
+    ├ credentials stripping
+    ├ referrer policy
+    ├ optional integrity verification
+    ├ cache / eviction
+    └ decode / Runtime locator
+        ↓
+UI
+```
+
+若未来使用 Server-side proxy/fetch，必须拒绝 localhost、loopback、private/link-local、cloud metadata 等目标并防止重定向绕过，避免 Remote Media 形成 SSRF。
+
+#### 9.3.7 Remote Media 与 CSS
+
+CSS 中的远程图片型 `url(...)` 可以保留作者体验，但 Build/Runtime 必须把它识别为 Remote Media Ref 并经过 Resolver。
+
+这不扩展到：
+
+- remote `@import`；
+- remote JavaScript；
+- remote executable HTML；
+- 默认 remote font；
+- 任意 CSS-triggered network endpoint。
+
+最终资源原则调整为：
+
+> **所有可执行资源与权威依赖必须进入 exact dependency closure；Presentation Media 可以是 Embedded Exact Asset，也可以是受 Host 管理的 Remote Media Ref。**
+
 ### 9.4 Font
 
 目标支持至少：
@@ -810,15 +915,14 @@ v3 应作为清晰的新 Frontend Runtime contract。
 
 下一轮优先讨论：
 
-### Remote Media / Compatibility / Versioning
+### Compatibility / Versioning / Frontend Routes
 
-- Remote Media Ref 的 URL / integrity / cache / privacy / fallback contract；
-- 大量角色立绘的 lazy load、prefetch、LRU cache 与本地占用策略；
-- Remote Media Ref 是否允许动态来自 World/Data projection；
-- v2 → v3 migration assistant；
-- manifest / frontend versioning；
-- Atria Native / Framework Adapter / Web Island 三条路线哪些进入 v3 基线；
-- Studio / AI Authoring 对三条路线的支持边界。
+- v2 → v3 migration assistant 与 runtime coexistence；
+- manifest / frontend contract versioning；
+- v2 Package 生命周期与 deprecation 策略；
+- Atria Native / Framework Adapter / Web Island 三条路线哪些进入 v3 baseline；
+- Native Component / Host Bridge 在三条路线中的一致性；
+- Studio / AI Authoring / Health 对三条路线的支持边界。
 
 ---
 
