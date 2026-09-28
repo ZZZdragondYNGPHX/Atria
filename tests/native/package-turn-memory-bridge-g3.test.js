@@ -50,7 +50,7 @@ test('G3 Package Turn memory:true recalls existing Memory Graph evidence and com
     expect(recallMemory).toHaveBeenCalledTimes(1);
     expect(assertCurrent).toHaveBeenCalledTimes(2);
     expect(result.evidence).toEqual([expect.objectContaining({
-        memoryId: 'package-turn:revision-one',
+        memoryId: 'package-turn:revision-one:recall',
         content: expect.stringContaining('Pier Seven'),
         sourceRefs: [{
             kind: 'timeline',
@@ -93,6 +93,27 @@ test('G3 memory:false is a hard authorization gate and does not call Memory Grap
     }];
     const plan = await compileNativeContextPlan(snapshot, budget({ memoryEvidence: evidence }));
     expect(JSON.stringify(plan.included)).not.toContain('MUST NOT APPEAR');
+
+    snapshot.manifest.runtime.experienceContract.taskRuntime = {
+        schemaVersion: 1,
+        slots: [],
+        tasks: [],
+        turn: { policy: 'authority-first', stages: [] },
+    };
+    const host = new NativeGenerationHost({
+        sessionCore: { load: jest.fn(async () => snapshot) },
+        persistence: { listRuntimeRoutes: jest.fn(async () => [{
+            runtimeRouteId: 'route-test',
+            role: 'role.narrator',
+            fallbackRouteRefs: [],
+        }]) },
+    });
+    await expect(host.executeTurn('alice', {
+        sessionId: snapshot.session.sessionId,
+        revisionId: snapshot.revision.revisionId,
+        invocationId: 'g3-denied',
+        hostMemoryEvidence: evidence,
+    })).rejects.toMatchObject({ code: 'native_turn_memory_evidence_denied' });
 });
 
 test.each([
