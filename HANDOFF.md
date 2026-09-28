@@ -4,72 +4,37 @@
 - Primary Workspace: `main`（当前仍为纯方案讨论，未创建实现分支）
 - Current stage: Discussion / Architecture
 - Source baseline: `main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
-- Plan HEAD: `docs@f79e2c13a4b3dcb83da5cec8bf9412ecd2096d2e`
+- Plan HEAD: `docs@5fe09a88b6389ed18be3eb712f86675cfefea5e2`
 - Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
 - Record: 尚未开始实施，不建立 Implementation Record
-- 当前 Plan 状态: Discussion Draft v0.7
+- 当前 Plan 状态: Discussion Draft v0.8
 
-## 已写入 Plan
+## 已冻结/写入 Plan
 
-- Native UI v2 限制与 Package Presentation / Host Authority 核心边界。
-- Declarative DOM / Full CSS / Fonts / Experience Shadow boundary。
-- Client Interaction Runtime。
-- Package Component System。
-- Optional Script Sandbox。
-- Frontend Capability Manifest。
-- Frontend Asset Graph / Build Artifact / Framework/Web Island 路线。
-- Remote Media / typed ImageRef：
-  - Embedded / Pinned Remote / Live Remote；
-  - responsive sources；
-  - lazy / prefetch；
-  - Host-controlled LRU/quota cache；
-  - offline fallback；
-  - `remote-media` 与 arbitrary `network` 分权；
-  - Host Media Resolver；
-  - CSS remote image rewrite；
-  - executable/authority dependency exact closure 与 remote Presentation Media 分离。
+- Package owns presentation; Host owns capabilities and authority.
+- Declarative DOM / Full CSS / Fonts / Shadow boundary.
+- Client Interaction Runtime.
+- Package Component System.
+- Optional Script Sandbox.
+- Frontend Capability Manifest.
+- Frontend Asset Graph / Remote Media / typed ImageRef / Host Media Resolver.
+- Framework Adapter / future Web Island 路线。
+- **Hard cut legacy Native UI**：
+  - 不做 v1/v2 migration assistant；
+  - 不做 compatibility CSS；
+  - 不长期并存旧 renderer；
+  - 不保留 legacy manifest parsing；
+  - 现有开发期 fixture / Package / test data 可直接重建、改写或删除；
+  - 重构最终目标是 v3 成为唯一 Native Frontend runtime。
 
-## 本轮新增讨论（尚未写入 Plan；下一轮开始前先增量/覆盖更新）
+## 关键版本方向
 
-Compatibility / Versioning 方向：
-
-- v3 不应伪装成 `componentModelVersion: 3`；当前设计已超出 Component Model，应建立独立 Frontend Runtime contract。
-- `Component / Hybrid / Full` 继续只表示 layout ownership，与 Frontend Runtime version/kind 正交。
-- 建议 manifest 概念形态：
-  ```yaml
-  runtime:
-    experience:
-      mode: hybrid
-      frontend:
-        kind: native
-        version: 3
-        entry: ui/main...
-  ```
-  旧 v1/v2 继续使用现有 `componentModelVersion/component/selectors/surface` 字段。
-- 同一个 active EntryPoint 只能选择一个 frontend engine/version；同一 Package 可以为不同 EntryPoint 携带不同 generation 的 frontend resources。
-- v1/v2 Package 必须原样继续运行，不允许 open/save 或安装时静默升级。
-- v2 → v3 migration 必须是显式 ChangeSet / 新 PackageVersion；已安装 immutable PackageVersion 不原地改写。
-- Migration 分级：
-  1. 可机械迁移：node tree、local UI state、preferences、selectors、actions、views/surfaces、native slots 等；
-  2. 需要审阅：appearance、复杂 interaction、Opening/state lifetime 等；
-  3. 无安全等价映射时必须保留诊断并要求作者手工处理。
-- 为保证视觉兼容，迁移器可以生成 `v2-compat.css`（或等价 compatibility style artifact）固化旧 Host UI 的视觉，而不是让迁移结果继续依赖未来 Host 默认样式。
-- v3 的引入本身不要求立即提升 `ExperienceContract.schemaVersion`；应继续维持“envelope version 与 feature capability version 独立”，只有 envelope shape 真正破坏兼容时才升 schema。
-- 建议新增 required capability：`native-frontend@3`；可选能力分别版本化，例如 `remote-media@1`、`frontend-script@1`、`canvas-2d@1`。未来 `web-island@1` 独立。
-- Runtime 真正需要区分的 frontend kind 倾向只有：
-  - `native`
-  - 未来 `web-island`
-  Framework Adapter 属于 authoring/build layer，最终编译成 `native@3`，不制造第三套 Runtime。
-- 当前倾向的 v3 baseline：
-  1. Atria Native Frontend v3：正式核心 baseline；
-  2. Framework Adapter：正式 authoring extension point，但不阻塞 Core v3 Runtime 首版；
-  3. Web Island：架构保留并定义 capability seam，但不作为 Core v3 首版完成条件，后续单独阶段实施。
-- Host Bridge 语义必须跨 Native declarative、Sandbox Script、未来 Web Island 保持一致；不能出现 Web Island 专属裸 Authority API。
-- Studio / AI / Health：
-  - Native v3 为一等结构化支持；
-  - Framework Adapter 编译后可落到 Canonical IR，因此可获得大部分分析能力；
-  - Web Island 只能保证权限、manifest、bridge、运行预览与边界诊断，不承诺像 Native v3 一样进行完整结构化可视编辑。
-- v2 暂不设硬删除时间；新建项目在 v3 稳定后可默认 v3，旧 v1/v2 runtime 继续兼容，正式 deprecation 需另行批准。
+- v3 不再伪装为单纯 `componentModelVersion: 3`，使用独立 `frontend` contract。
+- `Component / Hybrid / Full` 继续只是 layout ownership。
+- Runtime kind 倾向仅有 `native` 与未来 `web-island`。
+- React / Vue / Svelte 属于 authoring/build technology，Framework Adapter 编译到 Native Frontend。
+- 由于不需要兼容旧数据，是否提升 Experience / Runtime envelope schema 完全按新架构整洁度决定。
+- implementation 完成时可删除旧 Native UI v1/v2 runtime/compiler/tests 与 legacy declaration。
 
 ## 讨论工作流
 
@@ -78,19 +43,19 @@ Compatibility / Versioning 方向：
 2. 再继续本轮新主题；
 3. 当前仍不开始实施，直到用户明确批准进入开发。
 
-## 下一轮建议主题
+## 下一轮主题
 
-先把本轮 Compatibility / Versioning 结论写入 Plan，再继续：
-
-- Frontend Manifest 的最终字段模型；
-- v2 → v3 Migration Assistant 的精确映射矩阵；
-- v3 Runtime capability negotiation / fallback / unsupported-host UX；
-- Script Sandbox 与 Native/Web Island Bridge 的统一 API surface；
-- 是否需要把 Remote Media、Script、Canvas、Web Island 做成安装时用户可见权限等级。
+Frontend Manifest / Capability Negotiation：
+- `runtime.experience.frontend` 最终字段；
+- envelope schema 是否同步 hard cut；
+- capabilities 与 permissions 分层；
+- required / optional / fallback；
+- unsupported host 与 user-denied 的行为；
+- Native Declarative / Script / future Web Island 共用 Host Bridge；
+- 安装 UI 应展示哪些权限。
 
 ## 不要重复
 
-- 不要重新讨论 Native UI v2 当前 CSS/字体限制。
-- 不要重新建立 Package Presentation / Host Authority 基本边界。
-- 不要重复讨论远程立绘为什么必须支持；已冻结。
+- 不考虑 v1/v2 用户数据、作者生态、Package migration 或长期兼容。
+- 不要重建旧数据迁移方案。
 - 不要创建实现分支或代码，除非用户明确批准进入实施。
