@@ -4,7 +4,7 @@
 
 - Task ID：`refactor/native-frontend-runtime-v3`
 - 类型：大型架构 / Native UI 重构
-- 状态：**Discussion Draft v0.14**
+- 状态：**Discussion Draft v0.15**
 - Primary Workspace（未来实现）：`main`
 - 当前阶段：方案讨论，仅更新 `docs`，尚未创建实现分支
 - 当前源码基线：`main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
@@ -2515,25 +2515,357 @@ Native v3 需要 declarative loading/error boundary：
 
 完成后再进行一次较短的第二轮 Gap Review，再决定是否进入 Implementation Baseline。
 
+
 ---
 
-## 17. 当前待讨论主题
+## 17. Gap Resolution A — G-V3-1 ～ G-V3-5
+
+### 17.1 G-V3-1 — Managed + Headless Conversation
+
+Conversation / Composer 采用双轨：
+
+1. **Managed**：Host 提供 ready-to-use Native Components，例如 `<atria-conversation>` / `<atria-composer>`；
+2. **Headless**：Package 使用同一底层 Conversation / Composer / Session Projection + typed Host services，自行渲染全部 DOM / CSS。
+
+Managed Component 必须成为 Headless Service 的官方/reference client，而不是另一套聊天逻辑。
+
+两条路线共享：
+
+- authority；
+- branch/revision；
+- generation；
+- reply alternatives；
+- composer submit；
+- conversation collection；
+- message projection。
+
+复用现有：
+
+- `MessageProjection`；
+- `ConversationThread`；
+- Session projection；
+- Reply Variant / branch graph。
+
+不创建第二 Timeline / Conversation store。
+
+Headless Conversation 至少提供：
+
+- conversation/session summary；
+- committed message collection query；
+- active branch/revision/tail identity；
+- generation projection；
+- reply alternative / branch metadata；
+- retry / regenerate / fork / switch / inspect 等 typed controls；
+- generation status/cancel；
+- history metadata。
+
+Reply alternatives 延续 Native 语义：
+
+> 同一 predecessor 下不同 committed assistant messages / branch lineage。
+
+不复活 legacy Swipe authority。
+
+### 17.2 GenerationProjection
+
+Headless Conversation 明确区分：
+
+- committed Timeline Message；
+- ephemeral `GenerationProjection`。
+
+GenerationProjection 至少具有：
+
+- `idle`；
+- `preparing`；
+- `streaming`；
+- `finalizing`；
+- `cancelling`；
+- `failed`。
+
+以及：
+
+- generation/request identity；
+- provisional presentation prose/text；
+- started/updated metadata；
+- cancel availability。
+
+Streaming/provisional 内容只属于 Presentation。
+
+final commit 后，正式消息通过 committed Conversation Collection 出现。
+
+### 17.3 Composer
+
+`host.composer` 继续是独立 fixed service。
+
+Package-owned input/textarea 可以绑定：
+
+- draft；
+- set/append/clear；
+- focus；
+- submit。
+
+`submit` 进入正式 Turn / Session authority；Headless UI 不直接 append Timeline。
+
+Component / Hybrid / Full 都可以自由选择 Managed 或 Headless Conversation。
+
+### 17.4 G-V3-2 — Safe Prose / RichText
+
+在现有 `MessageProjection.flow = prose/block` 地基上增加 versioned **Prose AST / Prose Document**。
+
+Canonical message content 继续是 authoritative narrative text。
+
+Prose AST 是 inert Presentation Projection，不成为第二份 Narrative Truth。
+
+推荐 AST 使用：
+
+- canonical content span/range；
+- 或经过严格验证的 exact textual mapping。
+
+Baseline semantic nodes：
+
+- paragraph；
+- line break；
+- emphasis；
+- strong；
+- heading；
+- quote；
+- ordered/unordered list；
+- code/pre；
+- safe link；
+- inline semantic mark。
+
+禁止：
+
+- raw HTML；
+- script/style；
+- iframe/embed；
+- arbitrary DOM payload。
+
+Safe link 继续走 Host External Navigation policy。
+
+Native Declarative Runtime 提供 `prose/rich-text` primitive，把 AST 展开成 **Experience-owned semantic DOM**，因此 Package CSS 可以完全控制正文视觉。
+
+Managed Conversation 和 Headless Conversation 使用同一 Prose AST。
+
+Message Block 继续保持独立 typed block，不并入 Prose AST。
+
+Markdown 等输入必须：
+
+```text
+raw prose/markdown
+→ Host bounded parser/compiler
+→ Prose AST
+→ Experience semantic DOM
+```
+
+不得让 Package 执行 unsanitized Markdown→HTML。
+
+### 17.5 G-V3-3 — Collection Read
+
+Bridge Read 正式分为：
+
+- snapshot read；
+- collection read。
+
+Collection Binding 必须声明：
+
+- public query schema；
+- typed item schema；
+- hard max page size；
+- stable/canonical ordering；
+- allowed filter/search fields；
+- source projection/query adapter；
+- optional live/invalidation policy。
+
+概念 API：
+
+```text
+data.page(bindingId, query)
+```
+
+返回至少：
+
+- bindingId；
+- source revision/snapshot identity；
+- query fingerprint；
+- items；
+- nextCursor；
+- optional previousCursor；
+- hasMore；
+- optional invalidation token。
+
+Cursor 是 Host opaque token，并绑定：
+
+- binding；
+- source revision/branch；
+- normalized query/order。
+
+Frontend 不可解析、修改或伪造 cursor。
+
+Revision/query 改变导致 cursor 失效时返回稳定 `stale_cursor` reasonCode。
+
+初版不引入通用 mutable collection patch。
+
+优先：
+
+- invalidation；
+- tail/anchor refresh；
+- coalesced refetch。
+
+Conversation/IM 可以有 declared live-tail optimization，但仍属于 Collection Read contract。
+
+Virtualization 负责 DOM 规模；Collection Read 负责 Host→Frontend 数据规模。
+
+### 17.6 G-V3-4 — Surface Visual Containment
+
+完整 Experience visual boundary 定义为：
+
+```text
+Shadow DOM Isolation
++
+Host-owned Visual Containment
++
+Host System/Escape Layer
+```
+
+ShadowRoot 负责 selector/style namespace。
+
+Visual Containment Layer 负责：
+
+- containing block；
+- paint containment；
+- independent stacking context；
+- clipping/overflow policy；
+- Host-defined surface bounds。
+
+Component/Hybrid 中 Package 的：
+
+- `position: fixed/absolute`；
+- z-index；
+- filter/transform；
+
+只能在授权 Visual Surface 内产生效果。
+
+Native Frontend 不允许 Package 直接使用 Browser Top Layer escalation：
+
+- `dialog.showModal`；
+- raw popover/top-layer API；
+- Package-controlled fullscreen。
+
+Modal / Drawer / Tooltip / ContextMenu / Toast / Floating UI 使用 Experience Overlay Root / declared Host surface。
+
+Full mode：
+
+- Package 拥有 Full Stage；
+- Host System/Escape Layer 永远位于 Package boundary 外；
+- Package CSS/DOM/Script 不可访问或覆盖。
+
+Host System Layer 至少保留：
+
+- Exit；
+- Stop Generation；
+- Save/Savepoint；
+- Diagnostics；
+- Recovery。
+
+当前 `full-host.js` recovery controls 可作为实现地基，但 v3 将其提升为正式 Runtime Contract。
+
+Escape/recovery gesture 属于 Host capture path，Package 不能永久吞掉最后恢复入口。
+
+### 17.7 G-V3-5 — Typed Dynamic Media / Style Values
+
+静态 CSS 保持接近完整 Web CSS。
+
+Runtime dynamic style/resource sinks 则严格 typed。
+
+Dynamic style categories 至少包括：
+
+- number；
+- integer；
+- length；
+- percentage；
+- angle；
+- color；
+- opacity；
+- typed transform parameters；
+- closed enum/token；
+- ImageRef / MediaRef。
+
+如果 CSS custom property 可由 Runtime 动态绑定，Source/Compiler 必须声明 value type。
+
+Authority/Script 的任意 string/token stream 不得直接流入未声明的 CSS custom property/resource sink。
+
+动态 media sink 只接受 typed `ImageRef/MediaRef`，不接受 plain URL string。
+
+### 17.8 Remote Media Identity
+
+Frontend/Script 不允许任意构造：
+
+```text
+RemoteImageRef { url: arbitraryString }
+```
+
+Remote media identity 分为：
+
+1. **DeclaredRemoteMediaRef**
+   - 在 Package Data / Frontend Media Catalog 中由 Build 预声明和验证；
+2. **HostIssuedMediaRef**
+   - 由受控 Host Operation（未来图像生成、用户选择等）签发 opaque identity。
+
+大量角色立绘可以进入 lightweight Remote Media Catalog：
+
+- mediaId；
+- URL/source candidates；
+- optional integrity；
+- dimensions/MIME；
+- loading/cache hints；
+- fallback。
+
+图片字节仍不需要打进 `.atria`。
+
+World/Application dynamic state 只保存/投影 `mediaId/ImageRef`，不保存可执行 URL 字符串。
+
+Live mutable remote images 继续支持，但 locator 必须来自 declared catalog 或 Host-issued ref。
+
+“mutable”表示远端内容可以变化，不表示 Frontend 可以动态构造 URL。
+
+Media Resolver 继续执行：
+
+- origin permission；
+- cache；
+- integrity；
+- redirect/MIME/size；
+- privacy/SSRF policy。
+
+### 17.9 Gap Resolution A 结论
+
+G-V3-1 ～ G-V3-5 均可在既有主架构内解决。
+
+核心强化：
+
+1. Managed UI 与 Headless Service 共用同一 Host contract；
+2. Prose 是 typed inert AST，不是 raw HTML；
+3. Read Plane 同时支持 bounded snapshot + bounded collection；
+4. ShadowRoot + Visual Containment + Host System Layer 才构成完整视觉边界；
+5. 完整静态 CSS 与严格 typed dynamic sinks 分离。
+
+---
+
+## 18. 当前待讨论主题
 
 下一轮优先讨论：
 
-### Resolve G-V3-1 ～ G-V3-5
+### Resolve G-V3-6 ～ G-V3-10
 
-- Managed vs Headless Conversation/Composer；
-- Headless message/generation/reply-variant projection；
-- Safe Prose/RichText AST；
-- Collection Read/query/cursor contract；
-- Surface Visual Containment / Host System Layer；
-- Typed dynamic CSS/media values；
-- Remote Media anti-exfiltration boundary。
+- Package Localization / locale formatting；
+- IME / beforeinput / virtual keyboard；
+- Accessibility / user preference environment；
+- Host Session / Conversation fixed controls；
+- Component/View loading + error boundaries；
+- 然后进行第二轮短 Gap Review。
 
 ---
 
-## 18. 讨论流程约定
+## 19. 讨论流程约定
 
 从本企划建立后，每一轮讨论遵循：
 
