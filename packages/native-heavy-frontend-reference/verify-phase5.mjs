@@ -121,7 +121,7 @@ const world = project.worlds[0];
 const state = initialLifecycle(lifecycle);
 state.domains['sms-threads'].records.push({
     id: 'sms-one', scopeId: 'session', status: 'active', pinned: false, createdLogicalTime: 1, updatedLogicalTime: 1,
-    value: { channel: 'sms', thread_id: 'caretaker', participants: ['player', 'actor_b48a53176eb663a1af411fb6f8638d66'],
+    value: { channel: 'sms', thread_id: 'caretaker', participants: ['actor_b48a53176eb663a1af411fb6f8638d66'],
         sender_id: 'actor_b48a53176eb663a1af411fb6f8638d66', body: 'Preview SMS', sent_at: 540, unread: true, delivery_state: 'delivered', provenance: 'model' },
 });
 state.domains.social.records.push({
