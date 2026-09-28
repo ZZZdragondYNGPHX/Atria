@@ -92,3 +92,87 @@ Atria 已有 Lifecycle Trigger/Workflow/Automation、background Task、durable T
 **状态：Deferred / non-blocking for v1. Do not implement now.**
 
 UI v2 conversation profile 支持 `default / novel / dialogue`，但当前是静态 UI Document 配置。理想状态是 Event Projection 可自动选择 Story/Dialogue profile；v1 已决定使用统一 profile + Event Header + canonical prose + text-first layout，因此 D1 不属于 G1/G2 feat 范围，未来加入立绘或更强 Scene Presentation 时再审计。
+
+---
+
+## G3 — Package Turn → Atria Memory Bridge
+
+**状态：Open / Phase 3 blocking. Package-side workaround forbidden.**
+
+### 当前能力与缺口
+
+Atria 已存在正式 Memory Graph、Native Memory recall bridge 与 post-turn authoritative Memory ingestion：
+
+- `public/scripts/native/experience/llm/memory-bridge.js` 通过现有 `memory-graph` capability 做 branch/revision-aware recall；
+- `public/scripts/native/experience/llm/memory-ingestion.js` 将已提交事件与最终 Narrative 交给现有 Atria Memory；
+- `createGameLlmRuntime().completeFreeTextTurn()` 会执行 recall → Narrative → Memory ingestion。
+
+但 Package 声明 `experienceContract.taskRuntime.turn` 后，Play 主路径在 `public/scripts/native/play-generation.js` 中优先执行：
+
+`Composer → /api/native/generation/turn → NativeGenerationHost.executeTurn()`
+
+该路径不会进入 `game.submitFreeText()` / `createGameLlmRuntime().completeFreeTextTurn()`。
+
+同时：
+
+- `NativeGenerationHost.executeTurn()/prepareTurn()` 使用 Package Task Runtime 完成 Narrator / Interpreter；
+- `createNativeSessionContextAdapter()` 当前只把 Session snapshot 与 `informationTaskId` 交给 `compileNativeContextPlan()`；
+- scoped Information View 的 `memory: true` 只是**允许**已有 Memory evidence 进入 Context；
+- `compileNativeContextPlan()` 实际接收 Memory 的入口是显式 `memoryEvidence`；
+- 当前 Package Turn Host 没有调用现有 `memory-graph` recall，也没有给 Context compiler 提供 `memoryEvidence`；
+- Package Turn finalize 后也没有进入现有 `createPostTurnMemoryIngestion()` 路径。
+
+因此 Phase 3 可以声明正确的 Memory exposure，却不能仅靠 Package contract 真正完成：
+
+`Atria Memory recall → Narrator Context → finalized Turn → Atria Memory ingestion`
+
+若在 Package 内自建 recall Task、Curator、摘要库或 Memory Store，会直接违反 Implementation Baseline v1.0。
+
+### 可复现证据
+
+1. 在带 `taskRuntime.turn` 的 Native Package 中发送普通 Composer Turn；
+2. `runNativePlayGeneration()` 命中 Package Turn 分支并调用 `executeNativeOperation('turn', ...)`；
+3. 服务端进入 `NativeGenerationHost.executeTurn()` / `prepareTurn()`；
+4. Narrator Task Context 可以得到 Information Projection / Knowledge，但 Host 没有调用 `createMemoryRecallBridge()`，也没有向 `compileNativeContextPlan()` 提供 `memoryEvidence`；
+5. 同一次 Turn 不会经过 `createGameLlmRuntime().completeFreeTextTurn()` 中现有的 recall/finalizeMemory 链。
+
+这不是 G1/G2 能力缺失，也不是 Package schema/Scenario 写法问题。
+
+### 需要的能力
+
+把现有 Atria Memory 以 Host-owned bridge 接到 Package Turn，而不是增加 Package Memory 系统。
+
+至少需要：
+
+- Package Turn 在 Narrator Context 编译前可调用现有 Atria Memory recall；
+- recall 结果必须转换为现有 Native Context `memoryEvidence`，并继续服从 Information View 的 `memory: true/false`、可见 Timeline provenance、branch/revision freshness 与 budget；
+- stale branch/revision、不可见来源或无 provenance 的 Memory 必须 fail closed / 被过滤；
+- finalized canonical Narrative 与已提交 authoritative facts 通过现有 Atria Memory ingestion 进入 Memory，不复制第二套 store；
+- retry / replay / stale Turn 不得重复 ingestion；
+- Host 继续拥有 Memory 配置、retrieval route、provider、Secret 与取消；
+- Package 只能声明是否允许 Memory exposure，不能指定任意 Memory 数据或绕过玩家设置；
+- 原有 Game LLM Memory bridge 行为保持兼容。
+
+### 最小验收
+
+- `taskRuntime.turn` + Narrator Information View `memory: true` 时，可通过 fake/in-memory Memory API 看到合法 recall evidence 进入 Narrator Context；
+- `memory: false` 时同一 evidence 不进入 Context；
+- hidden Timeline provenance、旧 Revision、其他 Branch evidence 不进入 Context；
+- Narrator/Interpreter 的 authority 边界不变，Memory 不能成为事实 Authority；
+- finalized Turn 可调用现有 Memory ingestion，retry 不重复写；
+- Memory API unavailable 时 Turn 可按既有 graceful policy 工作，不创建 Package fallback store；
+- G1 narrative-outcome → App Command 原子提交继续通过；
+- 不调用真实付费 provider。
+
+优先检查：
+
+- `public/scripts/native/play-generation.js`
+- `src/native/adapters/generation-host.js`
+- `src/native/adapters/native-session-context.js`
+- `public/scripts/native/context-compiler.js`
+- `public/shared/native-information-runtime.js`
+- `public/scripts/native/experience/llm/memory-bridge.js`
+- `public/scripts/native/experience/llm/memory-ingestion.js`
+
+Phase 3 在 G3 合入 `main` 并由 Package 重新验证前不得标记完成，也不得开始 Phase 4。
+
