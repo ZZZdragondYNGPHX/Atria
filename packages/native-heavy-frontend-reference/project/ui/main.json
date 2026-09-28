@@ -794,6 +794,15 @@
                     ]
                   },
                   {
+                    "id": "church_status",
+                    "type": "badge",
+                    "bindings": {
+                      "text": {
+                        "template": "Authority records {{length(projection.church.items)}}"
+                      }
+                    }
+                  },
+                  {
                     "id": "church_promotion",
                     "type": "badge",
                     "props": {
