@@ -264,3 +264,16 @@ G5 没有：
 
 因此 Phase 5 可以让玩家 Phone input 合法进入 Session Application，同时继续保持 World / Session Application / Lifecycle / Timeline 的冻结 Authority split。
 
+
+## D2 — Package presentation styling and semantics
+
+**Status: observed limitation, not implemented by the 2026-09-28 frontend refactor.**
+
+Verified against `main@c697532c6a4d54530de023cd65e4c1721efe97b2`:
+
+- UI v2 rejects Package `style`, `className`, typography, heading-level and grid-ratio props. Appearance belongs to the Host's `--atri-*` tokens and Native component CSS.
+- The Package cannot declare `aria-current` or a custom tab pattern. The refactor uses visible current-section labels, disabled current actions and labeled native selects instead.
+- Native `details` summaries inherit Host hit areas; Package data alone cannot enforce a 44px summary target or semantic headings. Buttons/inputs use the Host's existing minimum-height and focus styling.
+- Form busy/error/retry feedback belongs to Native Action Runtime. The refactor reuses it and does not invent Package business-busy state.
+
+This refactor intentionally does not inject CSS, render an alternate HTML application, or expand product APIs. A distinctive art direction with custom typography, unequal columns, stronger visual hierarchy or additional semantic accessibility requires a separately scoped Native product capability change. Do not present a specially styled test page as the installed Package UI.

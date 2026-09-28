@@ -458,14 +458,14 @@
             "id": "opening_title",
             "type": "text",
             "props": {
-              "text": "Begin a new story"
+              "text": "Welcome to the sanctuary"
             }
           },
           {
             "id": "opening_copy",
             "type": "text",
             "props": {
-              "text": "Choose the name used by this reference session. Story is the default home."
+              "text": "A visitor is waiting. Choose your name, then begin your story with the Caretaker. You can explore the church and your messages as the day unfolds."
             }
           },
           {
@@ -474,14 +474,14 @@
             "model": "ui.player_name",
             "props": {
               "label": "Your name",
-              "placeholder": "Traveler"
+              "placeholder": "What should the Caretaker call you?"
             }
           },
           {
             "id": "opening_submit",
             "type": "button",
             "props": {
-              "text": "Enter Story",
+              "text": "Begin story",
               "submit": true
             }
           }
@@ -500,7 +500,7 @@
             "id": "app_title",
             "type": "text",
             "props": {
-              "text": "Native Heavy-Frontend Reference"
+              "text": "Sanctuary"
             }
           },
           {
@@ -520,6 +520,30 @@
                 },
                 "events": {
                   "click": "show_story"
+                },
+                "bindings": {
+                  "hidden": {
+                    "expr": "ui.section == \"story\""
+                  }
+                }
+              },
+              {
+                "id": "desktop_story_current",
+                "type": "button",
+                "props": {
+                  "text": "Story (current)",
+                  "disabled": true
+                },
+                "bindings": {
+                  "hidden": {
+                    "expr": "ui.section != \"story\""
+                  },
+                  "ariaLabel": {
+                    "template": "Story, current section"
+                  }
+                },
+                "events": {
+                  "click": "show_story"
                 }
               },
               {
@@ -527,6 +551,30 @@
                 "type": "button",
                 "props": {
                   "text": "Church"
+                },
+                "events": {
+                  "click": "show_church"
+                },
+                "bindings": {
+                  "hidden": {
+                    "expr": "ui.section == \"church\""
+                  }
+                }
+              },
+              {
+                "id": "desktop_church_current",
+                "type": "button",
+                "props": {
+                  "text": "Church (current)",
+                  "disabled": true
+                },
+                "bindings": {
+                  "hidden": {
+                    "expr": "ui.section != \"church\""
+                  },
+                  "ariaLabel": {
+                    "template": "Church, current section"
+                  }
                 },
                 "events": {
                   "click": "show_church"
@@ -540,6 +588,30 @@
                 },
                 "events": {
                   "click": "show_schedule"
+                },
+                "bindings": {
+                  "hidden": {
+                    "expr": "ui.section == \"schedule\""
+                  }
+                }
+              },
+              {
+                "id": "desktop_schedule_current",
+                "type": "button",
+                "props": {
+                  "text": "Schedule (current)",
+                  "disabled": true
+                },
+                "bindings": {
+                  "hidden": {
+                    "expr": "ui.section != \"schedule\""
+                  },
+                  "ariaLabel": {
+                    "template": "Schedule, current section"
+                  }
+                },
+                "events": {
+                  "click": "show_schedule"
                 }
               },
               {
@@ -547,6 +619,30 @@
                 "type": "button",
                 "props": {
                   "text": "Phone"
+                },
+                "events": {
+                  "click": "show_phone"
+                },
+                "bindings": {
+                  "hidden": {
+                    "expr": "ui.section == \"phone\""
+                  }
+                }
+              },
+              {
+                "id": "desktop_phone_current",
+                "type": "button",
+                "props": {
+                  "text": "Phone (current)",
+                  "disabled": true
+                },
+                "bindings": {
+                  "hidden": {
+                    "expr": "ui.section != \"phone\""
+                  },
+                  "ariaLabel": {
+                    "template": "Phone, current section"
+                  }
                 },
                 "events": {
                   "click": "show_phone"
@@ -560,44 +656,79 @@
                 },
                 "events": {
                   "click": "show_people"
+                },
+                "bindings": {
+                  "hidden": {
+                    "expr": "ui.section == \"people\""
+                  }
+                }
+              },
+              {
+                "id": "desktop_people_current",
+                "type": "button",
+                "props": {
+                  "text": "People (current)",
+                  "disabled": true
+                },
+                "bindings": {
+                  "hidden": {
+                    "expr": "ui.section != \"people\""
+                  },
+                  "ariaLabel": {
+                    "template": "People, current section"
+                  }
+                },
+                "events": {
+                  "click": "show_people"
                 }
               }
             ]
           },
           {
-            "id": "compact_nav",
-            "type": "select",
-            "model": "ui.section",
-            "props": {
-              "label": "Section",
-              "options": [
-                {
-                  "value": "story",
-                  "label": "Story"
-                },
-                {
-                  "value": "church",
-                  "label": "Church"
-                },
-                {
-                  "value": "schedule",
-                  "label": "Schedule"
-                },
-                {
-                  "value": "phone",
-                  "label": "Phone"
-                },
-                {
-                  "value": "people",
-                  "label": "People"
-                }
-              ]
-            },
+            "id": "compact_nav_wrapper",
+            "type": "stack",
             "bindings": {
               "hidden": {
                 "expr": "env.device == \"desktop\""
               }
-            }
+            },
+            "children": [
+              {
+                "id": "compact_nav",
+                "type": "select",
+                "model": "ui.section",
+                "props": {
+                  "label": "Section",
+                  "options": [
+                    {
+                      "value": "story",
+                      "label": "Story"
+                    },
+                    {
+                      "value": "church",
+                      "label": "Church"
+                    },
+                    {
+                      "value": "schedule",
+                      "label": "Schedule"
+                    },
+                    {
+                      "value": "phone",
+                      "label": "Phone"
+                    },
+                    {
+                      "value": "people",
+                      "label": "People"
+                    }
+                  ]
+                },
+                "bindings": {
+                  "hidden": {
+                    "expr": "env.device == \"desktop\""
+                  }
+                }
+              }
+            ]
           },
           {
             "id": "story_page",
@@ -613,46 +744,43 @@
                 "type": "stack",
                 "children": [
                   {
-                    "id": "story_church_glance",
-                    "type": "text",
-                    "bindings": {
-                      "text": {
-                        "template": "Church · Lv {{world.church.level}} · Money {{world.church.money}} · Followers {{world.church.followers}} · Reputation {{world.church.reputation}}"
+                    "id": "story_status_line",
+                    "type": "grid",
+                    "children": [
+                      {
+                        "id": "story_clock",
+                        "type": "badge",
+                        "bindings": {
+                          "text": {
+                            "template": "Day {{world.calendar.day}} / {{floor((temporal.world[0].tick % 1440) / 600)}}{{floor((temporal.world[0].tick % 1440) / 60) % 10}}:{{floor((temporal.world[0].tick % 60) / 10)}}{{temporal.world[0].tick % 10}}"
+                          }
+                        }
+                      },
+                      {
+                        "id": "story_free_badge",
+                        "type": "badge",
+                        "props": {
+                          "text": "Your story"
+                        },
+                        "bindings": {
+                          "hidden": {
+                            "expr": "length(projection.story_event.items) > 0"
+                          }
+                        }
+                      },
+                      {
+                        "id": "story_scene_badge",
+                        "type": "badge",
+                        "props": {
+                          "text": "In this scene"
+                        },
+                        "bindings": {
+                          "hidden": {
+                            "expr": "length(projection.story_event.items) == 0"
+                          }
+                        }
                       }
-                    }
-                  },
-                  {
-                    "id": "story_free_badge",
-                    "type": "badge",
-                    "props": {
-                      "text": "Story · Free Narrative"
-                    },
-                    "bindings": {
-                      "hidden": {
-                        "expr": "length(projection.story_event.items) > 0"
-                      }
-                    }
-                  },
-                  {
-                    "id": "story_scene_badge",
-                    "type": "badge",
-                    "props": {
-                      "text": "Scene Presentation · Canonical Prose"
-                    },
-                    "bindings": {
-                      "hidden": {
-                        "expr": "length(projection.story_event.items) == 0"
-                      }
-                    }
-                  },
-                  {
-                    "id": "story_clock",
-                    "type": "badge",
-                    "bindings": {
-                      "text": {
-                        "template": "Day {{world.calendar.day}} · Game Clock minute {{temporal.world[0].tick % 1440}}"
-                      }
-                    }
+                    ]
                   },
                   {
                     "id": "story_event_header",
@@ -660,7 +788,7 @@
                     "source": "projection.story_event.items",
                     "key": "item.id",
                     "pageSize": 4,
-                    "emptyText": "No active event",
+                    "emptyText": "There is no active scene. Write in the story below to begin.",
                     "children": [
                       {
                         "id": "story_event_card",
@@ -685,22 +813,37 @@
                             }
                           },
                           {
-                            "id": "story_event_premise",
-                            "type": "text",
-                            "bindings": {
-                              "text": {
-                                "template": "{{item.data.premise}}"
+                            "id": "story_scene_details",
+                            "type": "details",
+                            "props": {
+                              "label": "Scene notes"
+                            },
+                            "children": [
+                              {
+                                "id": "story_scene_details_body",
+                                "type": "stack",
+                                "children": [
+                                  {
+                                    "id": "story_event_premise",
+                                    "type": "text",
+                                    "bindings": {
+                                      "text": {
+                                        "template": "{{item.data.premise}}"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "id": "story_event_participants",
+                                    "type": "text",
+                                    "bindings": {
+                                      "text": {
+                                        "template": "Participants {{length(item.data.participants)}}"
+                                      }
+                                    }
+                                  }
+                                ]
                               }
-                            }
-                          },
-                          {
-                            "id": "story_event_participants",
-                            "type": "text",
-                            "bindings": {
-                              "text": {
-                                "template": "Participants {{length(item.data.participants)}}"
-                              }
-                            }
+                            ]
                           }
                         ]
                       }
@@ -714,7 +857,7 @@
               },
               {
                 "id": "story_layout",
-                "type": "grid",
+                "type": "stack",
                 "children": [
                   {
                     "id": "story_stream",
@@ -728,28 +871,43 @@
                         }
                       }
                     ]
-                  },
+                  }
+                ]
+              },
+              {
+                "id": "composer_slot",
+                "type": "native-slot",
+                "props": {
+                  "component": "composer"
+                }
+              },
+              {
+                "id": "desktop_context",
+                "type": "details",
+                "bindings": {
+                  "hidden": {
+                    "expr": "env.device != \"desktop\""
+                  }
+                },
+                "children": [
                   {
-                    "id": "desktop_context",
+                    "id": "desktop_context_body",
                     "type": "stack",
-                    "bindings": {
-                      "hidden": {
-                        "expr": "env.device != \"desktop\""
-                      }
-                    },
                     "children": [
                       {
-                        "id": "desktop_context_title",
+                        "id": "story_church_glance",
                         "type": "text",
-                        "props": {
-                          "text": "Context"
+                        "bindings": {
+                          "text": {
+                            "template": "Church · Lv {{world.church.level}} · Money {{world.church.money}} · Followers {{world.church.followers}} · Reputation {{world.church.reputation}}"
+                          }
                         }
                       },
                       {
                         "id": "desktop_context_person",
                         "type": "text",
                         "props": {
-                          "text": "Current person · Caretaker"
+                          "text": "With you: Caretaker"
                         }
                       },
                       {
@@ -766,7 +924,7 @@
                         "type": "text",
                         "bindings": {
                           "text": {
-                            "template": "Schedule · {{length(projection.schedule.items)}} active/planned records"
+                            "template": "{{length(projection.schedule.items)}} plans on your schedule"
                           }
                         }
                       },
@@ -827,13 +985,16 @@
                       }
                     ]
                   }
-                ]
+                ],
+                "props": {
+                  "label": "Around you"
+                }
               },
               {
                 "id": "compact_context",
                 "type": "details",
                 "props": {
-                  "label": "Context"
+                  "label": "Around you"
                 },
                 "bindings": {
                   "hidden": {
@@ -842,74 +1003,73 @@
                 },
                 "children": [
                   {
-                    "id": "compact_context_person",
-                    "type": "text",
-                    "props": {
-                      "text": "Current person · Caretaker"
-                    }
-                  },
-                  {
-                    "id": "compact_context_relationship",
-                    "type": "text",
-                    "bindings": {
-                      "text": {
-                        "template": "Relationship · {{world.people.caretaker.relationship}}"
-                      }
-                    }
-                  },
-                  {
-                    "id": "compact_context_schedule",
-                    "type": "text",
-                    "bindings": {
-                      "text": {
-                        "template": "Schedule · {{length(projection.schedule.items)}} active/planned records"
-                      }
-                    }
-                  },
-                  {
-                    "id": "compact_context_actions",
-                    "type": "grid",
+                    "id": "compact_context_body",
+                    "type": "stack",
                     "children": [
                       {
-                        "id": "compact_context_church",
-                        "type": "button",
+                        "id": "compact_context_person",
+                        "type": "text",
                         "props": {
-                          "text": "Church"
-                        },
-                        "events": {
-                          "click": "show_church"
+                          "text": "With you: Caretaker"
                         }
                       },
                       {
-                        "id": "compact_context_schedule_button",
-                        "type": "button",
-                        "props": {
-                          "text": "Schedule"
-                        },
-                        "events": {
-                          "click": "show_schedule"
+                        "id": "compact_context_relationship",
+                        "type": "text",
+                        "bindings": {
+                          "text": {
+                            "template": "Relationship · {{world.people.caretaker.relationship}}"
+                          }
                         }
                       },
                       {
-                        "id": "compact_context_people",
-                        "type": "button",
-                        "props": {
-                          "text": "People"
-                        },
-                        "events": {
-                          "click": "show_people"
+                        "id": "compact_context_schedule",
+                        "type": "text",
+                        "bindings": {
+                          "text": {
+                            "template": "{{length(projection.schedule.items)}} plans on your schedule"
+                          }
                         }
+                      },
+                      {
+                        "id": "compact_context_actions",
+                        "type": "grid",
+                        "children": [
+                          {
+                            "id": "compact_context_church",
+                            "type": "button",
+                            "props": {
+                              "text": "Church"
+                            },
+                            "events": {
+                              "click": "show_church"
+                            }
+                          },
+                          {
+                            "id": "compact_context_schedule_button",
+                            "type": "button",
+                            "props": {
+                              "text": "Schedule"
+                            },
+                            "events": {
+                              "click": "show_schedule"
+                            }
+                          },
+                          {
+                            "id": "compact_context_people",
+                            "type": "button",
+                            "props": {
+                              "text": "People"
+                            },
+                            "events": {
+                              "click": "show_people"
+                            }
+                          }
+                        ]
                       }
                     ]
                   }
                 ]
-              },
-              {
-                "id": "composer_slot",
-                "type": "native-slot",
-                "props": {
-                  "component": "composer"
-                }
               }
             ]
           },
@@ -933,7 +1093,7 @@
                 "id": "church_summary",
                 "type": "text",
                 "props": {
-                  "text": "Long-term facts stay in World Authority; daily operations, projects, and opportunities stay in Session Application."
+                  "text": "Care for the sanctuary, support its people, and make room for what comes next."
                 }
               },
               {
@@ -948,6 +1108,30 @@
                     },
                     "events": {
                       "click": "church_overview"
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.church_section == \"overview\""
+                      }
+                    }
+                  },
+                  {
+                    "id": "church_nav_overview_current",
+                    "type": "button",
+                    "props": {
+                      "text": "Overview (current)",
+                      "disabled": true
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.church_section != \"overview\""
+                      },
+                      "ariaLabel": {
+                        "template": "Overview, current section"
+                      }
+                    },
+                    "events": {
+                      "click": "church_overview"
                     }
                   },
                   {
@@ -955,6 +1139,30 @@
                     "type": "button",
                     "props": {
                       "text": "Facilities"
+                    },
+                    "events": {
+                      "click": "church_facilities"
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.church_section == \"facilities\""
+                      }
+                    }
+                  },
+                  {
+                    "id": "church_nav_facilities_current",
+                    "type": "button",
+                    "props": {
+                      "text": "Facilities (current)",
+                      "disabled": true
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.church_section != \"facilities\""
+                      },
+                      "ariaLabel": {
+                        "template": "Facilities, current section"
+                      }
                     },
                     "events": {
                       "click": "church_facilities"
@@ -968,6 +1176,30 @@
                     },
                     "events": {
                       "click": "church_decrees"
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.church_section == \"decrees\""
+                      }
+                    }
+                  },
+                  {
+                    "id": "church_nav_decrees_current",
+                    "type": "button",
+                    "props": {
+                      "text": "Decrees (current)",
+                      "disabled": true
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.church_section != \"decrees\""
+                      },
+                      "ariaLabel": {
+                        "template": "Decrees, current section"
+                      }
+                    },
+                    "events": {
+                      "click": "church_decrees"
                     }
                   },
                   {
@@ -975,6 +1207,30 @@
                     "type": "button",
                     "props": {
                       "text": "Projects"
+                    },
+                    "events": {
+                      "click": "church_projects"
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.church_section == \"projects\""
+                      }
+                    }
+                  },
+                  {
+                    "id": "church_nav_projects_current",
+                    "type": "button",
+                    "props": {
+                      "text": "Projects (current)",
+                      "disabled": true
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.church_section != \"projects\""
+                      },
+                      "ariaLabel": {
+                        "template": "Projects, current section"
+                      }
                     },
                     "events": {
                       "click": "church_projects"
@@ -988,6 +1244,81 @@
                     },
                     "events": {
                       "click": "church_opportunities"
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.church_section == \"opportunities\""
+                      }
+                    }
+                  },
+                  {
+                    "id": "church_nav_opportunities_current",
+                    "type": "button",
+                    "props": {
+                      "text": "Opportunities (current)",
+                      "disabled": true
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.church_section != \"opportunities\""
+                      },
+                      "ariaLabel": {
+                        "template": "Opportunities, current section"
+                      }
+                    },
+                    "events": {
+                      "click": "church_opportunities"
+                    }
+                  }
+                ],
+                "bindings": {
+                  "hidden": {
+                    "expr": "env.device != \"desktop\""
+                  }
+                }
+              },
+              {
+                "id": "church_compact_nav_wrapper",
+                "type": "stack",
+                "bindings": {
+                  "hidden": {
+                    "expr": "env.device == \"desktop\""
+                  }
+                },
+                "children": [
+                  {
+                    "id": "church_compact_nav",
+                    "type": "select",
+                    "model": "ui.church_section",
+                    "props": {
+                      "label": "Church section",
+                      "options": [
+                        {
+                          "value": "overview",
+                          "label": "Overview"
+                        },
+                        {
+                          "value": "facilities",
+                          "label": "Facilities"
+                        },
+                        {
+                          "value": "decrees",
+                          "label": "Decrees"
+                        },
+                        {
+                          "value": "projects",
+                          "label": "Projects"
+                        },
+                        {
+                          "value": "opportunities",
+                          "label": "Opportunities"
+                        }
+                      ]
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "env.device == \"desktop\""
+                      }
                     }
                   }
                 ]
@@ -1007,7 +1338,7 @@
                     "children": [
                       {
                         "id": "church_level",
-                        "type": "text",
+                        "type": "badge",
                         "bindings": {
                           "text": {
                             "template": "Level {{world.church.level}}"
@@ -1016,7 +1347,7 @@
                       },
                       {
                         "id": "church_money",
-                        "type": "text",
+                        "type": "badge",
                         "bindings": {
                           "text": {
                             "template": "Money {{world.church.money}}"
@@ -1025,7 +1356,7 @@
                       },
                       {
                         "id": "church_followers",
-                        "type": "text",
+                        "type": "badge",
                         "bindings": {
                           "text": {
                             "template": "Followers {{world.church.followers}}"
@@ -1034,7 +1365,7 @@
                       },
                       {
                         "id": "church_reputation",
-                        "type": "text",
+                        "type": "badge",
                         "bindings": {
                           "text": {
                             "template": "Reputation {{world.church.reputation}}"
@@ -1048,7 +1379,7 @@
                     "type": "badge",
                     "bindings": {
                       "text": {
-                        "template": "Authority records {{length(projection.church.items)}}"
+                        "template": "Daily operations: {{length(projection.church_operations.items)}}"
                       }
                     }
                   },
@@ -1080,80 +1411,104 @@
                     }
                   },
                   {
-                    "id": "church_assignments_title",
-                    "type": "text",
-                    "props": {
-                      "text": "Today’s Assignments"
-                    }
-                  },
-                  {
-                    "id": "church_assignments",
-                    "type": "repeat",
-                    "source": "projection.schedule.items",
-                    "key": "item.id",
-                    "pageSize": 8,
-                    "emptyText": "No assignments",
+                    "id": "church_overview_sections",
+                    "type": "grid",
                     "children": [
                       {
-                        "id": "church_assignment",
-                        "type": "text",
-                        "bindings": {
-                          "text": {
-                            "template": "{{item.data.title}} · {{item.data.status}} · {{item.data.location}}"
+                        "id": "church_today",
+                        "type": "stack",
+                        "children": [
+                          {
+                            "id": "church_assignments_title",
+                            "type": "text",
+                            "props": {
+                              "text": "Today’s Assignments"
+                            }
+                          },
+                          {
+                            "id": "church_assignments",
+                            "type": "repeat",
+                            "source": "projection.schedule.items",
+                            "key": "item.id",
+                            "pageSize": 4,
+                            "emptyText": "No assignments yet. Check your schedule as the day unfolds.",
+                            "children": [
+                              {
+                                "id": "church_assignment",
+                                "type": "text",
+                                "bindings": {
+                                  "text": {
+                                    "template": "{{item.data.title}} · {{item.data.status}} · {{item.data.location}}"
+                                  }
+                                }
+                              }
+                            ]
                           }
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "id": "church_active_projects_title",
-                    "type": "text",
-                    "props": {
-                      "text": "Active Projects"
-                    }
-                  },
-                  {
-                    "id": "church_active_projects",
-                    "type": "repeat",
-                    "source": "projection.church_projects.items",
-                    "key": "item.id",
-                    "pageSize": 8,
-                    "emptyText": "No active projects",
-                    "children": [
+                        ]
+                      },
                       {
-                        "id": "church_active_project",
-                        "type": "text",
-                        "bindings": {
-                          "text": {
-                            "template": "{{item.data.template_id}} · {{item.data.progress}}/{{item.data.target}} · {{item.data.status}}"
+                        "id": "church_projects_glance",
+                        "type": "stack",
+                        "children": [
+                          {
+                            "id": "church_active_projects_title",
+                            "type": "text",
+                            "props": {
+                              "text": "Active Projects"
+                            }
+                          },
+                          {
+                            "id": "church_active_projects",
+                            "type": "repeat",
+                            "source": "projection.church_projects.items",
+                            "key": "item.id",
+                            "pageSize": 4,
+                            "emptyText": "No active projects. New projects will appear as your story develops.",
+                            "children": [
+                              {
+                                "id": "church_active_project",
+                                "type": "text",
+                                "bindings": {
+                                  "text": {
+                                    "template": "{{item.data.template_id}} · {{item.data.progress}}/{{item.data.target}} · {{item.data.status}}"
+                                  }
+                                }
+                              }
+                            ]
                           }
-                        }
-                      }
-                    ]
-                  },
-                  {
-                    "id": "church_pending_opportunities_title",
-                    "type": "text",
-                    "props": {
-                      "text": "Pending Opportunities"
-                    }
-                  },
-                  {
-                    "id": "church_pending_opportunities",
-                    "type": "repeat",
-                    "source": "projection.church_opportunities.items",
-                    "key": "item.id",
-                    "pageSize": 8,
-                    "emptyText": "No pending opportunities",
-                    "children": [
+                        ]
+                      },
                       {
-                        "id": "church_pending_opportunity",
-                        "type": "text",
-                        "bindings": {
-                          "text": {
-                            "template": "{{item.data.title}} · {{item.data.status}}"
+                        "id": "church_opportunities_glance",
+                        "type": "stack",
+                        "children": [
+                          {
+                            "id": "church_pending_opportunities_title",
+                            "type": "text",
+                            "props": {
+                              "text": "Pending Opportunities"
+                            }
+                          },
+                          {
+                            "id": "church_pending_opportunities",
+                            "type": "repeat",
+                            "source": "projection.church_opportunities.items",
+                            "key": "item.id",
+                            "pageSize": 4,
+                            "emptyText": "No opportunities are waiting for a decision.",
+                            "children": [
+                              {
+                                "id": "church_pending_opportunity",
+                                "type": "text",
+                                "bindings": {
+                                  "text": {
+                                    "template": "{{item.data.title}} · {{item.data.status}}"
+                                  }
+                                }
+                              }
+                            ]
                           }
-                        }
+                        ]
                       }
                     ]
                   }
@@ -1203,7 +1558,7 @@
                     "id": "facility_outreach_available",
                     "type": "text",
                     "props": {
-                      "text": "Outreach Desk · Cost 80 · unlocks stronger outreach capacity"
+                      "text": "Outreach Desk costs 80 money and strengthens your outreach capacity."
                     },
                     "bindings": {
                       "hidden": {
@@ -1215,7 +1570,7 @@
                     "id": "facility_outreach_build",
                     "type": "button",
                     "props": {
-                      "text": "Build Outreach Desk"
+                      "text": "Build Outreach Desk for 80"
                     },
                     "events": {
                       "click": "build_outreach_desk"
@@ -1226,6 +1581,21 @@
                       },
                       "disabled": {
                         "expr": "world.church.money < 80"
+                      }
+                    }
+                  },
+                  {
+                    "id": "facility_funds_hint",
+                    "type": "text",
+                    "props": {
+                      "text": ""
+                    },
+                    "bindings": {
+                      "text": {
+                        "template": "You need {{80 - world.church.money}} more money to build the Outreach Desk."
+                      },
+                      "hidden": {
+                        "expr": "world.church.money >= 80 || world.church.facilities.outreachDesk == true"
                       }
                     }
                   }
@@ -1263,7 +1633,7 @@
                     "id": "decree_community_copy",
                     "type": "text",
                     "props": {
-                      "text": "Community First · requires Reputation 9"
+                      "text": "Community First prioritizes the people around the sanctuary. Requires 9 reputation."
                     },
                     "bindings": {
                       "hidden": {
@@ -1305,7 +1675,7 @@
                     "id": "decree_open_books_copy",
                     "type": "text",
                     "props": {
-                      "text": "Open Books · requires Community First"
+                      "text": "Open Books builds on Community First. Enact Community First to unlock it."
                     },
                     "bindings": {
                       "hidden": {
@@ -1328,6 +1698,21 @@
                       },
                       "disabled": {
                         "expr": "world.church.decrees.communityFirst == false"
+                      }
+                    }
+                  },
+                  {
+                    "id": "decree_reputation_hint",
+                    "type": "text",
+                    "props": {
+                      "text": ""
+                    },
+                    "bindings": {
+                      "text": {
+                        "template": "Reach 9 reputation to enact Community First. Current reputation: {{world.church.reputation}}."
+                      },
+                      "hidden": {
+                        "expr": "world.church.reputation >= 9 || world.church.decrees.communityFirst == true"
                       }
                     }
                   }
@@ -1354,8 +1739,8 @@
                     "type": "repeat",
                     "source": "projection.church_projects.items",
                     "key": "item.id",
-                    "pageSize": 12,
-                    "emptyText": "No projects",
+                    "pageSize": 6,
+                    "emptyText": "No projects yet. Progress from the story will appear here.",
                     "children": [
                       {
                         "id": "project_card",
@@ -1375,7 +1760,7 @@
                             "type": "text",
                             "bindings": {
                               "text": {
-                                "template": "Progress {{item.data.progress}} / {{item.data.target}} · due tick {{item.data.due_tick}}"
+                                "template": "Progress {{item.data.progress}} / {{item.data.target}} / due Day {{floor(item.data.due_tick / 1440) + 1}} at {{floor((item.data.due_tick % 1440) / 600)}}{{floor((item.data.due_tick % 1440) / 60) % 10}}:{{floor((item.data.due_tick % 60) / 10)}}{{item.data.due_tick % 10}}"
                               }
                             }
                           },
@@ -1388,6 +1773,9 @@
                             "bindings": {
                               "value": {
                                 "expr": "min(100, round(item.data.progress * 100 / max(1, item.data.target)))"
+                              },
+                              "ariaLabel": {
+                                "template": "Project progress: {{item.data.progress}} of {{item.data.target}}"
                               }
                             }
                           }
@@ -1418,8 +1806,8 @@
                     "type": "repeat",
                     "source": "projection.church_opportunities.items",
                     "key": "item.id",
-                    "pageSize": 12,
-                    "emptyText": "No opportunities",
+                    "pageSize": 6,
+                    "emptyText": "No pending opportunities. Return to the story to see what happens next.",
                     "children": [
                       {
                         "id": "opportunity_card",
@@ -1481,7 +1869,7 @@
                 "type": "badge",
                 "bindings": {
                   "text": {
-                    "template": "Day {{world.calendar.day}} · Game Clock minute {{temporal.world[0].tick % 1440}}"
+                    "template": "Day {{world.calendar.day}} / {{floor((temporal.world[0].tick % 1440) / 600)}}{{floor((temporal.world[0].tick % 1440) / 60) % 10}}:{{floor((temporal.world[0].tick % 60) / 10)}}{{temporal.world[0].tick % 10}}"
                   }
                 }
               },
@@ -1489,7 +1877,7 @@
                 "id": "schedule_copy",
                 "type": "text",
                 "props": {
-                  "text": "The timeline uses the Host Lifecycle clock. Confirmed actions remain Session Application records; no duplicate time state is stored here."
+                  "text": "Your plans for the day. Times follow the story clock, not your device clock."
                 }
               },
               {
@@ -1497,7 +1885,7 @@
                 "type": "badge",
                 "bindings": {
                   "text": {
-                    "template": "Scheduled records {{length(projection.schedule.items)}}"
+                    "template": "Scheduled activities: {{length(projection.schedule.items)}}"
                   }
                 }
               },
@@ -1506,8 +1894,8 @@
                 "type": "repeat",
                 "source": "projection.schedule.items",
                 "key": "item.id",
-                "pageSize": 24,
-                "emptyText": "No scheduled items",
+                "pageSize": 8,
+                "emptyText": "Your schedule is clear. New plans will appear as the story develops.",
                 "children": [
                   {
                     "id": "schedule_record",
@@ -1527,7 +1915,7 @@
                         "type": "text",
                         "bindings": {
                           "text": {
-                            "template": "Day {{floor(item.data.start_tick / 1440) + 1}} · minute {{item.data.start_tick % 1440}}–{{item.data.end_tick % 1440}}"
+                            "template": "Day {{floor(item.data.start_tick / 1440) + 1}} / {{floor((item.data.start_tick % 1440) / 600)}}{{floor((item.data.start_tick % 1440) / 60) % 10}}:{{floor((item.data.start_tick % 60) / 10)}}{{item.data.start_tick % 10}} to Day {{floor(item.data.end_tick / 1440) + 1}} / {{floor((item.data.end_tick % 1440) / 600)}}{{floor((item.data.end_tick % 1440) / 60) % 10}}:{{floor((item.data.end_tick % 60) / 10)}}{{item.data.end_tick % 10}}"
                           }
                         }
                       },
@@ -1557,7 +1945,7 @@
                 "id": "schedule_due_note",
                 "type": "text",
                 "props": {
-                  "text": "Due interactions appear here when declared by later communication features; Phase 4 does not create a second scheduler."
+                  "text": "Messages and invitations are in Phone. Explore them without leaving your story behind."
                 }
               }
             ]
@@ -1582,7 +1970,7 @@
                 "id": "phone_copy",
                 "type": "text",
                 "props": {
-                  "text": "World-internal communication lives in Session Application. Messages, Social, and Mail stay separate from the canonical Story Timeline."
+                  "text": "Keep in touch with the Caretaker and your community. Unread items are marked below."
                 }
               },
               {
@@ -1590,7 +1978,7 @@
                 "type": "badge",
                 "bindings": {
                   "text": {
-                    "template": "Communication records {{length(projection.phone.items)}} · unread items are marked below"
+                    "template": "Messages: {{length(projection.phone_messages.items)}} / Posts: {{length(projection.phone_social.items)}} / Mail: {{length(projection.phone_mail.items)}}"
                   }
                 }
               },
@@ -1606,6 +1994,30 @@
                     },
                     "events": {
                       "click": "phone_messages"
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.phone_section == \"messages\""
+                      }
+                    }
+                  },
+                  {
+                    "id": "phone_nav_messages_current",
+                    "type": "button",
+                    "props": {
+                      "text": "Messages (current)",
+                      "disabled": true
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.phone_section != \"messages\""
+                      },
+                      "ariaLabel": {
+                        "template": "Messages, current section"
+                      }
+                    },
+                    "events": {
+                      "click": "phone_messages"
                     }
                   },
                   {
@@ -1613,6 +2025,30 @@
                     "type": "button",
                     "props": {
                       "text": "Social"
+                    },
+                    "events": {
+                      "click": "phone_social"
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.phone_section == \"social\""
+                      }
+                    }
+                  },
+                  {
+                    "id": "phone_nav_social_current",
+                    "type": "button",
+                    "props": {
+                      "text": "Social (current)",
+                      "disabled": true
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.phone_section != \"social\""
+                      },
+                      "ariaLabel": {
+                        "template": "Social, current section"
+                      }
                     },
                     "events": {
                       "click": "phone_social"
@@ -1626,6 +2062,73 @@
                     },
                     "events": {
                       "click": "phone_mail"
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.phone_section == \"mail\""
+                      }
+                    }
+                  },
+                  {
+                    "id": "phone_nav_mail_current",
+                    "type": "button",
+                    "props": {
+                      "text": "Mail (current)",
+                      "disabled": true
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "ui.phone_section != \"mail\""
+                      },
+                      "ariaLabel": {
+                        "template": "Mail, current section"
+                      }
+                    },
+                    "events": {
+                      "click": "phone_mail"
+                    }
+                  }
+                ],
+                "bindings": {
+                  "hidden": {
+                    "expr": "env.device != \"desktop\""
+                  }
+                }
+              },
+              {
+                "id": "phone_compact_nav_wrapper",
+                "type": "stack",
+                "bindings": {
+                  "hidden": {
+                    "expr": "env.device == \"desktop\""
+                  }
+                },
+                "children": [
+                  {
+                    "id": "phone_compact_nav",
+                    "type": "select",
+                    "model": "ui.phone_section",
+                    "props": {
+                      "label": "Phone channel",
+                      "options": [
+                        {
+                          "value": "messages",
+                          "label": "Messages"
+                        },
+                        {
+                          "value": "social",
+                          "label": "Social"
+                        },
+                        {
+                          "value": "mail",
+                          "label": "Mail"
+                        }
+                      ]
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "env.device == \"desktop\""
+                      }
                     }
                   }
                 ]
@@ -1643,34 +2146,84 @@
                     "id": "sms_heading",
                     "type": "text",
                     "props": {
-                      "text": "Messages · Caretaker thread"
+                      "text": "Conversation with the Caretaker"
+                    }
+                  },
+                  {
+                    "id": "phone_messages_limit",
+                    "type": "text",
+                    "props": {
+                      "text": "This is a limited view of the channel. Older or longer records may not be included."
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "projection.phone_messages.truncated == false"
+                      }
                     }
                   },
                   {
                     "id": "sms_thread",
                     "type": "repeat",
-                    "source": "projection.phone.items",
+                    "source": "projection.phone_messages.items",
                     "key": "item.id",
-                    "pageSize": 32,
-                    "emptyText": "No messages yet",
+                    "pageSize": 8,
+                    "emptyText": "No messages yet. Write to the Caretaker below.",
                     "children": [
                       {
                         "id": "sms_record",
                         "type": "stack",
-                        "bindings": {
-                          "hidden": {
-                            "expr": "item.data.channel != \"sms\""
-                          }
-                        },
+                        "bindings": {},
                         "children": [
                           {
-                            "id": "sms_sender",
-                            "type": "text",
-                            "bindings": {
-                              "text": {
-                                "template": "{{item.data.sender_id}} · minute {{item.data.sent_at % 1440}} · {{item.data.delivery_state}}"
+                            "id": "sms_sender_line",
+                            "type": "grid",
+                            "children": [
+                              {
+                                "id": "sms_sender_you",
+                                "type": "badge",
+                                "props": {
+                                  "text": "You"
+                                },
+                                "bindings": {
+                                  "hidden": {
+                                    "expr": "item.data.sender_id != \"player\""
+                                  }
+                                }
+                              },
+                              {
+                                "id": "sms_sender_caretaker",
+                                "type": "badge",
+                                "props": {
+                                  "text": "Caretaker"
+                                },
+                                "bindings": {
+                                  "hidden": {
+                                    "expr": "item.data.sender_id != \"actor_b48a53176eb663a1af411fb6f8638d66\""
+                                  }
+                                }
+                              },
+                              {
+                                "id": "sms_sender_other",
+                                "type": "badge",
+                                "props": {
+                                  "text": "Community"
+                                },
+                                "bindings": {
+                                  "hidden": {
+                                    "expr": "item.data.sender_id == \"player\" || item.data.sender_id == \"actor_b48a53176eb663a1af411fb6f8638d66\""
+                                  }
+                                }
+                              },
+                              {
+                                "id": "sms_sender",
+                                "type": "text",
+                                "bindings": {
+                                  "text": {
+                                    "template": "{{floor((item.data.sent_at % 1440) / 600)}}{{floor((item.data.sent_at % 1440) / 60) % 10}}:{{floor((item.data.sent_at % 60) / 10)}}{{item.data.sent_at % 10}} / {{item.data.delivery_state}}"
+                                  }
+                                }
                               }
-                            }
+                            ]
                           },
                           {
                             "id": "sms_body",
@@ -1744,6 +2297,15 @@
                         }
                       },
                       {
+                        "id": "sms_draft_count",
+                        "type": "text",
+                        "bindings": {
+                          "text": {
+                            "template": "{{length(ui.sms_draft)}} / 2000 characters"
+                          }
+                        }
+                      },
+                      {
                         "id": "sms_send",
                         "type": "button",
                         "props": {
@@ -1772,30 +2334,80 @@
                     }
                   },
                   {
+                    "id": "phone_social_limit",
+                    "type": "text",
+                    "props": {
+                      "text": "This is a limited view of the channel. Older or longer records may not be included."
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "projection.phone_social.truncated == false"
+                      }
+                    }
+                  },
+                  {
                     "id": "social_feed",
                     "type": "repeat",
-                    "source": "projection.phone.items",
+                    "source": "projection.phone_social.items",
                     "key": "item.id",
-                    "pageSize": 24,
-                    "emptyText": "No social posts yet",
+                    "pageSize": 8,
+                    "emptyText": "No community posts yet. Share the first update below.",
                     "children": [
                       {
                         "id": "social_record",
                         "type": "stack",
-                        "bindings": {
-                          "hidden": {
-                            "expr": "item.data.channel != \"social\""
-                          }
-                        },
+                        "bindings": {},
                         "children": [
                           {
-                            "id": "social_author",
-                            "type": "text",
-                            "bindings": {
-                              "text": {
-                                "template": "{{item.data.author_id}} · {{item.data.kind}} · minute {{item.data.posted_at % 1440}}"
+                            "id": "social_author_line",
+                            "type": "grid",
+                            "children": [
+                              {
+                                "id": "social_author_you",
+                                "type": "badge",
+                                "props": {
+                                  "text": "You"
+                                },
+                                "bindings": {
+                                  "hidden": {
+                                    "expr": "item.data.author_id != \"player\""
+                                  }
+                                }
+                              },
+                              {
+                                "id": "social_author_caretaker",
+                                "type": "badge",
+                                "props": {
+                                  "text": "Caretaker"
+                                },
+                                "bindings": {
+                                  "hidden": {
+                                    "expr": "item.data.author_id != \"actor_b48a53176eb663a1af411fb6f8638d66\""
+                                  }
+                                }
+                              },
+                              {
+                                "id": "social_author_other",
+                                "type": "badge",
+                                "props": {
+                                  "text": "Community"
+                                },
+                                "bindings": {
+                                  "hidden": {
+                                    "expr": "item.data.author_id == \"player\" || item.data.author_id == \"actor_b48a53176eb663a1af411fb6f8638d66\""
+                                  }
+                                }
+                              },
+                              {
+                                "id": "social_author",
+                                "type": "text",
+                                "bindings": {
+                                  "text": {
+                                    "template": "{{floor((item.data.posted_at % 1440) / 600)}}{{floor((item.data.posted_at % 1440) / 60) % 10}}:{{floor((item.data.posted_at % 60) / 10)}}{{item.data.posted_at % 10}} / {{item.data.kind}}"
+                                  }
+                                }
                               }
-                            }
+                            ]
                           },
                           {
                             "id": "social_body",
@@ -1854,6 +2466,15 @@
                         }
                       },
                       {
+                        "id": "social_draft_count",
+                        "type": "text",
+                        "bindings": {
+                          "text": {
+                            "template": "{{length(ui.social_draft)}} / 2400 characters"
+                          }
+                        }
+                      },
+                      {
                         "id": "social_publish",
                         "type": "button",
                         "props": {
@@ -1882,28 +2503,45 @@
                     }
                   },
                   {
+                    "id": "phone_mail_limit",
+                    "type": "text",
+                    "props": {
+                      "text": "This is a limited view of the channel. Older or longer records may not be included."
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "projection.phone_mail.truncated == false"
+                      }
+                    }
+                  },
+                  {
                     "id": "mail_list",
                     "type": "repeat",
-                    "source": "projection.phone.items",
+                    "source": "projection.phone_mail.items",
                     "key": "item.id",
-                    "pageSize": 24,
-                    "emptyText": "No mail yet",
+                    "pageSize": 8,
+                    "emptyText": "Your mailbox is empty. You can write a letter below.",
                     "children": [
                       {
                         "id": "mail_record",
                         "type": "stack",
-                        "bindings": {
-                          "hidden": {
-                            "expr": "item.data.channel != \"mail\""
-                          }
-                        },
+                        "bindings": {},
                         "children": [
                           {
                             "id": "mail_subject_view",
                             "type": "text",
                             "bindings": {
                               "text": {
-                                "template": "{{item.data.subject}} · from {{item.data.from_id}} · {{item.data.delivery_state}}"
+                                "template": "{{item.data.subject}}"
+                              }
+                            }
+                          },
+                          {
+                            "id": "mail_delivery",
+                            "type": "text",
+                            "bindings": {
+                              "text": {
+                                "template": "{{floor((item.data.delivered_at % 1440) / 600)}}{{floor((item.data.delivered_at % 1440) / 60) % 10}}:{{floor((item.data.delivered_at % 60) / 10)}}{{item.data.delivered_at % 10}} / {{item.data.delivery_state}}"
                               }
                             }
                           },
@@ -1913,18 +2551,6 @@
                             "bindings": {
                               "text": {
                                 "template": "{{item.data.body}}"
-                              }
-                            }
-                          },
-                          {
-                            "id": "mail_reference",
-                            "type": "text",
-                            "bindings": {
-                              "text": {
-                                "template": "Reference · {{item.data.reference_kind}} · {{item.data.reference_id}}"
-                              },
-                              "hidden": {
-                                "expr": "item.data.reference_kind == \"none\""
                               }
                             }
                           },
@@ -1959,7 +2585,7 @@
                             "id": "mail_open_reference",
                             "type": "button",
                             "props": {
-                              "text": "Open referenced business"
+                              "text": "View related project or opportunity"
                             },
                             "bindings": {
                               "hidden": {
@@ -1969,52 +2595,112 @@
                             "events": {
                               "click": "open_mail_reference"
                             }
+                          },
+                          {
+                            "id": "mail_metadata",
+                            "type": "details",
+                            "props": {
+                              "label": "Letter details"
+                            },
+                            "children": [
+                              {
+                                "id": "mail_metadata_body",
+                                "type": "stack",
+                                "children": [
+                                  {
+                                    "id": "mail_address",
+                                    "type": "text",
+                                    "bindings": {
+                                      "text": {
+                                        "template": "From {{item.data.from_id}} / to {{item.data.to_id}}"
+                                      }
+                                    }
+                                  },
+                                  {
+                                    "id": "mail_reference",
+                                    "type": "text",
+                                    "bindings": {
+                                      "text": {
+                                        "template": "Reference · {{item.data.reference_kind}} · {{item.data.reference_id}}"
+                                      },
+                                      "hidden": {
+                                        "expr": "item.data.reference_kind == \"none\""
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
                           }
                         ]
                       }
                     ]
                   },
                   {
-                    "id": "mail_form",
-                    "type": "form",
-                    "events": {
-                      "submit": "send_mail"
+                    "id": "mail_compose",
+                    "type": "details",
+                    "props": {
+                      "label": "Write a letter"
                     },
                     "children": [
                       {
-                        "id": "mail_to_input",
-                        "type": "input",
-                        "model": "ui.mail_to",
-                        "props": {
-                          "label": "To",
-                          "placeholder": "Recipient"
-                        }
-                      },
-                      {
-                        "id": "mail_subject_input",
-                        "type": "input",
-                        "model": "ui.mail_subject",
-                        "props": {
-                          "label": "Subject",
-                          "placeholder": "Subject"
-                        }
-                      },
-                      {
-                        "id": "mail_body_input",
-                        "type": "textarea",
-                        "model": "ui.mail_body",
-                        "props": {
-                          "label": "Body",
-                          "placeholder": "Write an in-world mail"
-                        }
-                      },
-                      {
-                        "id": "mail_send",
-                        "type": "button",
-                        "props": {
-                          "text": "Send mail",
-                          "submit": true
-                        }
+                        "id": "mail_compose_body",
+                        "type": "stack",
+                        "children": [
+                          {
+                            "id": "mail_form",
+                            "type": "form",
+                            "events": {
+                              "submit": "send_mail"
+                            },
+                            "children": [
+                              {
+                                "id": "mail_to_input",
+                                "type": "input",
+                                "model": "ui.mail_to",
+                                "props": {
+                                  "label": "To",
+                                  "placeholder": "Recipient"
+                                }
+                              },
+                              {
+                                "id": "mail_subject_input",
+                                "type": "input",
+                                "model": "ui.mail_subject",
+                                "props": {
+                                  "label": "Subject",
+                                  "placeholder": "Subject"
+                                }
+                              },
+                              {
+                                "id": "mail_body_input",
+                                "type": "textarea",
+                                "model": "ui.mail_body",
+                                "props": {
+                                  "label": "Body",
+                                  "placeholder": "Write an in-world mail"
+                                }
+                              },
+                              {
+                                "id": "mail_draft_count",
+                                "type": "text",
+                                "bindings": {
+                                  "text": {
+                                    "template": "{{length(ui.mail_body)}} / 5000 characters"
+                                  }
+                                }
+                              },
+                              {
+                                "id": "mail_send",
+                                "type": "button",
+                                "props": {
+                                  "text": "Send mail",
+                                  "submit": true
+                                }
+                              }
+                            ]
+                          }
+                        ]
                       }
                     ]
                   }
@@ -2039,47 +2725,53 @@
                 }
               },
               {
-                "id": "people_identity",
-                "type": "text",
-                "props": {
-                  "text": "Caretaker"
-                }
-              },
-              {
-                "id": "people_role",
-                "type": "badge",
-                "props": {
-                  "text": "Church leader · Narrative anchor"
-                },
-                "bindings": {
-                  "hidden": {
-                    "expr": "selectors.caretaker_is_leader == false"
+                "id": "people_profile",
+                "type": "stack",
+                "children": [
+                  {
+                    "id": "people_identity",
+                    "type": "text",
+                    "props": {
+                      "text": "Caretaker"
+                    }
+                  },
+                  {
+                    "id": "people_role",
+                    "type": "badge",
+                    "props": {
+                      "text": "Church leader"
+                    },
+                    "bindings": {
+                      "hidden": {
+                        "expr": "selectors.caretaker_is_leader == false"
+                      }
+                    }
+                  },
+                  {
+                    "id": "people_relationship",
+                    "type": "text",
+                    "bindings": {
+                      "text": {
+                        "template": "Relationship · {{world.people.caretaker.relationship}}"
+                      }
+                    }
                   }
-                }
-              },
-              {
-                "id": "people_relationship",
-                "type": "text",
-                "bindings": {
-                  "text": {
-                    "template": "Relationship · {{world.people.caretaker.relationship}}"
-                  }
-                }
+                ]
               },
               {
                 "id": "people_current_title",
                 "type": "text",
                 "props": {
-                  "text": "Current status"
+                  "text": "Where they are now"
                 }
               },
               {
                 "id": "people_current",
                 "type": "repeat",
-                "source": "projection.people_event.items",
+                "source": "projection.story_event.items",
                 "key": "item.id",
                 "pageSize": 4,
-                "emptyText": "Not currently in an Event",
+                "emptyText": "No active event with the Caretaker. Continue the story to meet them.",
                 "children": [
                   {
                     "id": "people_current_event",
@@ -2096,51 +2788,59 @@
                 "id": "people_schedule_title",
                 "type": "text",
                 "props": {
-                  "text": "Today schedule"
+                  "text": "Today’s plans"
                 }
               },
               {
                 "id": "people_schedule",
                 "type": "repeat",
-                "source": "projection.people_schedule.items",
+                "source": "projection.schedule.items",
                 "key": "item.id",
                 "pageSize": 12,
-                "emptyText": "No scheduled work",
+                "emptyText": "The Caretaker has no plans on the schedule.",
                 "children": [
                   {
                     "id": "people_schedule_item",
                     "type": "text",
                     "bindings": {
                       "text": {
-                        "template": "{{item.data.title}} · minute {{item.data.start_tick % 1440}}–{{item.data.end_tick % 1440}} · {{item.data.status}}"
+                        "template": "{{item.data.title}} / {{floor((item.data.start_tick % 1440) / 600)}}{{floor((item.data.start_tick % 1440) / 60) % 10}}:{{floor((item.data.start_tick % 60) / 10)}}{{item.data.start_tick % 10}}–{{floor((item.data.end_tick % 1440) / 600)}}{{floor((item.data.end_tick % 1440) / 60) % 10}}:{{floor((item.data.end_tick % 60) / 10)}}{{item.data.end_tick % 10}} / {{item.data.status}}"
                       }
                     }
                   }
                 ]
               },
               {
-                "id": "people_recent_title",
-                "type": "text",
+                "id": "people_story_notes",
+                "type": "details",
                 "props": {
-                  "text": "Relevant recent information"
-                }
-              },
-              {
-                "id": "people_recent",
-                "type": "repeat",
-                "source": "projection.people_recent.items",
-                "key": "item.id",
-                "pageSize": 4,
-                "emptyText": "No recent narrative information",
+                  "label": "From your story"
+                },
                 "children": [
                   {
-                    "id": "people_recent_item",
-                    "type": "text",
-                    "bindings": {
-                      "text": {
-                        "template": "{{item.data.content}}"
+                    "id": "people_story_notes_body",
+                    "type": "stack",
+                    "children": [
+                      {
+                        "id": "people_recent",
+                        "type": "repeat",
+                        "source": "projection.people_recent.items",
+                        "key": "item.id",
+                        "pageSize": 4,
+                        "emptyText": "Your shared story will appear here as it unfolds.",
+                        "children": [
+                          {
+                            "id": "people_recent_item",
+                            "type": "text",
+                            "bindings": {
+                              "text": {
+                                "template": "{{item.data.content}}"
+                              }
+                            }
+                          }
+                        ]
                       }
-                    }
+                    ]
                   }
                 ]
               }

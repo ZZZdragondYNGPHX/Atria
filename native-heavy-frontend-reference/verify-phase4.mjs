@@ -35,7 +35,7 @@ assert.ok(eventDomain.recordSchema.required.includes('title'));
 assert.ok(eventDomain.commands.find(item => item.id === 'open').argsSchema.required.includes('title'));
 assert.ok(logic.commands.some(command => command.id === 'church.enact-open-books'));
 
-for (const id of ['church_operations', 'church_projects', 'church_opportunities', 'story_event', 'people_schedule', 'people_event', 'people_recent']) {
+for (const id of ['church_operations', 'church_projects', 'church_opportunities', 'story_event', 'people_recent']) {
     const view = contract.informationRuntime.views.find(item => item.id === id);
     assert.ok(view, 'Missing Phase 4 Information View ' + id);
     assert.deepEqual(view.exposure, ['display']);
@@ -136,7 +136,7 @@ for (const fixture of [desktopFixture, compactFixture]) {
     assert.equal(ctx.projection.church_opportunities.items.length, 1);
     assert.equal(ctx.projection.people_recent.items.length, 1);
 
-    assert.equal(text('story_clock', ctx), 'Day 1 · Game Clock minute ' + (fixture.clockTick % 1440));
+    assert.equal(text('story_clock', ctx), 'Day 1 / ' + String(Math.floor(fixture.clockTick % 1440 / 60)).padStart(2, '0') + ':' + String(fixture.clockTick % 60).padStart(2, '0'));
     const eventCtx = { ...ctx, item: ctx.projection.story_event.items[0], index: 0 };
     assert.equal(text('story_event_title', eventCtx), 'Sanctuary Visitor');
     assert.equal(text('people_relationship', ctx), 'Relationship · acquainted');
@@ -144,9 +144,9 @@ for (const fixture of [desktopFixture, compactFixture]) {
     const scheduleCtx = { ...ctx, ui: { ...ctx.ui, section: 'schedule' }, selectors: {} };
     for (const [id, selector] of Object.entries(ui.selectors)) scheduleCtx.selectors[id] = selector.read(scheduleCtx);
     assert.equal(hidden('schedule_page', scheduleCtx), false);
-    assert.equal(text('schedule_clock', scheduleCtx), 'Day 1 · Game Clock minute ' + (fixture.clockTick % 1440));
+    assert.equal(text('schedule_clock', scheduleCtx), 'Day 1 / ' + String(Math.floor(fixture.clockTick % 1440 / 60)).padStart(2, '0') + ':' + String(fixture.clockTick % 60).padStart(2, '0'));
     const scheduleItemCtx = { ...scheduleCtx, item: scheduleCtx.projection.schedule.items[0], index: 0 };
-    assert.match(text('schedule_record_time', scheduleItemCtx), /Day 1 · minute 540/);
+    assert.match(text('schedule_record_time', scheduleItemCtx), /Day 1 \/ 09:00/);
 
     const churchCtx = { ...ctx, ui: { ...ctx.ui, section: 'church' }, selectors: {} };
     for (const [id, selector] of Object.entries(ui.selectors)) churchCtx.selectors[id] = selector.read(churchCtx);

@@ -6,7 +6,7 @@
     "packageId": "pkg_747746f9c66b7539f97bfa1fecbb761e",
     "displayName": "Native Heavy-Frontend Reference",
     "createdAt": 1790524800000,
-    "updatedAt": 1790580780000
+    "updatedAt": 1790594592883
   },
   "package": {
     "name": "Native Heavy-Frontend Reference Package",
@@ -2736,32 +2736,6 @@
               "maxCharacters": 8192
             },
             {
-              "id": "people_schedule",
-              "audience": "player",
-              "sources": [
-                "schedule-source"
-              ],
-              "exposure": [
-                "display"
-              ],
-              "knowledge": false,
-              "maxItems": 24,
-              "maxCharacters": 12288
-            },
-            {
-              "id": "people_event",
-              "audience": "player",
-              "sources": [
-                "event-context"
-              ],
-              "exposure": [
-                "display"
-              ],
-              "knowledge": false,
-              "maxItems": 8,
-              "maxCharacters": 8192
-            },
-            {
               "id": "people_recent",
               "audience": "player",
               "sources": [
@@ -2807,6 +2781,45 @@
               "knowledge": true,
               "memory": true,
               "maxItems": 48,
+              "maxCharacters": 24000
+            },
+            {
+              "id": "phone_messages",
+              "audience": "player",
+              "sources": [
+                "sms-source"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 64,
+              "maxCharacters": 24000
+            },
+            {
+              "id": "phone_social",
+              "audience": "player",
+              "sources": [
+                "social-source"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 64,
+              "maxCharacters": 24000
+            },
+            {
+              "id": "phone_mail",
+              "audience": "player",
+              "sources": [
+                "mail-source"
+              ],
+              "exposure": [
+                "display"
+              ],
+              "knowledge": false,
+              "maxItems": 64,
               "maxCharacters": 24000
             }
           ],

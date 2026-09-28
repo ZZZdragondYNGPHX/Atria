@@ -84,8 +84,8 @@ const uiContext = {
     shared: {}, realm: {}, continuity: {}, form: {}, item: {}, index: 0, event: {},
 };
 assert.equal(findNode('church_money').bindings.text.read(uiContext), 'Money 120');
-assert.equal(findNode('church_status').bindings.text.read(uiContext), 'Authority records 1');
-assert.equal(findNode('schedule_status').bindings.text.read(uiContext), 'Scheduled records 1');
+assert.equal(findNode('church_status').bindings.text.read(uiContext), 'Daily operations: 1');
+assert.equal(findNode('schedule_status').bindings.text.read(uiContext), 'Scheduled activities: 1');
 
 const h = await makeTempFsEngine();
 try {
