@@ -170,9 +170,12 @@ for (const fixture of [desktopFixture, compactFixture]) {
 
 const serialized = JSON.stringify({ project: projectRaw, ui: uiRaw, logic: logicRaw, story: storyRaw }).toLowerCase();
 for (const forbidden of [
-    'next_action', 'narrative choice', 'curator', 'story compression', 'day compression',
+    'next_action', 'quick_choice', 'curator', 'story compression', 'day compression',
     'asset-pack', 'media-scene', 'gal runtime', 'full experience', '<script', 'regex html',
 ]) assert.equal(serialized.includes(forbidden), false, 'Phase 4 forbidden content leaked: ' + forbidden);
+for (const id of [...Object.keys(ui.actions), ...byId.keys()]) {
+    assert.equal(/(^|[-_])choice($|[-_])/.test(id), false, 'Narrative Choice UI leaked: ' + id);
+}
 
 assert.equal(world.revision.baseline.people.caretaker.relationship, 'acquainted');
 
