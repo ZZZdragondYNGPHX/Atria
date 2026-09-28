@@ -90,7 +90,9 @@ assert.equal(findNode('schedule_status').bindings.text.read(uiContext), 'Schedul
 const h = await makeTempFsEngine();
 try {
     const projectStore = new ProjectStore({ directoriesByHandle: () => h.dirs });
-    await projectStore.create(h.handle, projectRaw, {
+    const recordedProjectRaw = structuredClone(projectRaw);
+    recordedProjectRaw.package.permissions = recordedProjectRaw.package.permissions.map(item => item.permission === 'generation' ? { ...item, required: false } : item);
+    await projectStore.create(h.handle, recordedProjectRaw, {
         files: new Map([
             ['ui/main.json', Buffer.from(JSON.stringify(uiRaw, null, 2) + '\n')],
             ['logic/world.json', Buffer.from(JSON.stringify(logicRaw, null, 2) + '\n')],
