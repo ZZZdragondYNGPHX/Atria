@@ -202,6 +202,22 @@ export function mountUiDocument(definition, options) {
                         throw error;
                     }
                     receipts.set(actionId, result); results.push(result);
+                } else if (step.op === 'application.command') {
+                    if (!options.lifecycle || options.presentationContext || request.opening) throw new Error('Session Application Host unavailable for this surface');
+                    attempt.applicationCommand ||= {
+                        kind: 'app.command',
+                        domainId: step.domainId,
+                        commandId: step.commandId,
+                        recordId: step.recordId?.read(ctx) ?? ('ui-' + Array.from(globalThis.crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')),
+                        args: json(step.args.read(ctx)),
+                    };
+                    attempts.set(actionId, attempt);
+                    try {
+                        results.push(await options.lifecycle.command(attempt.applicationCommand));
+                    } catch (error) {
+                        if (error.status >= 400 && error.status < 500) attempts.delete(actionId);
+                        throw error;
+                    }
                 } else if (step.op === 'command.simulate') results.push(await options.worldSession.simulateCommandInternal(step.commandId, json(step.args.read(ctx))));
                 else if (step.op === 'action.compensate') {
                     const receipt = receipts.get(step.actionId) || options.worldSession.getActionReceipts().findLast(item => item.actionId === step.actionId && item.compensation);
