@@ -1418,7 +1418,6 @@
                   },
                   "body": {
                     "type": "string",
-                    "minLength": 1,
                     "maxLength": 2000
                   },
                   "sent_at": {
@@ -1651,7 +1650,6 @@
                   },
                   "body": {
                     "type": "string",
-                    "minLength": 1,
                     "maxLength": 2400
                   },
                   "posted_at": {
@@ -1843,12 +1841,10 @@
                   },
                   "subject": {
                     "type": "string",
-                    "minLength": 1,
                     "maxLength": 200
                   },
                   "body": {
                     "type": "string",
-                    "minLength": 1,
                     "maxLength": 5000
                   },
                   "delivered_at": {
