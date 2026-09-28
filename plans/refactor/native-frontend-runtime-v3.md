@@ -4,7 +4,7 @@
 
 - Task ID：`refactor/native-frontend-runtime-v3`
 - 类型：大型架构 / Native UI 重构
-- 状态：**Discussion Draft v0.7**
+- 状态：**Discussion Draft v0.8**
 - Primary Workspace（未来实现）：`main`
 - 当前阶段：方案讨论，仅更新 `docs`，尚未创建实现分支
 - 当前源码基线：`main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`
@@ -894,20 +894,95 @@ Web Island 是高级兼容能力，不作为绕过 Native Frontend Contract 的�
 
 ---
 
-## 11. 兼容与迁移原则（未冻结）
+## 11. Hard Cut / Clean Break
 
-Native UI v2 已经是正式能力，不应通过静默修改 `schemaVersion` 破坏现有 Package。
+本项目当前没有需要保护的真实用户、第三方作者生态或历史 Package 数据，因此本重构明确采用 **hard cut**，不为 Native UI v1/v2 建立向后兼容负担。
 
-v3 应作为清晰的新 Frontend Runtime contract。
+### 11.1 不做兼容层
 
-仍待讨论：
+明确不实施：
 
-- v2 → v3 migration assistant；
-- v2 runtime 保留周期；
-- v2 与 v3 是否同一 Package 可并存；
-- Studio 如何区分 v2 / v3；
-- Package manifest 如何声明 frontend version；
-- Legacy Safe Appearance 与 v3 CSS 的迁移策略。
+- v1/v2 → v3 Migration Assistant；
+- `v2-compat.css`；
+- legacy renderer 与 v3 renderer 长期并存；
+- legacy PackageVersion 自动迁移；
+- legacy manifest 字段兼容解析；
+- v1/v2 deprecation 周期；
+- 为旧 Studio 文档建立 round-trip 兼容；
+- 为旧数据保留双写 / fallback 路径。
+
+现有开发期 Package / fixture / test data 如需继续使用，可以随实现阶段直接重建、改写或删除。
+
+### 11.2 v3 成为唯一 Native Frontend Contract
+
+重构完成后的目标状态：
+
+- 非 `text` Experience 统一使用新的 `frontend` contract；
+- 删除 `componentModelVersion` 作为现代 Runtime selector；
+- 删除旧 `component / selectors / surface` legacy runtime declaration；
+- 删除 Native UI v1/v2 renderer、compiler 与只为旧 schema 服务的 compatibility path；
+- Studio、Preview、Health、Package validation 直接以新 Frontend Runtime 为唯一 Native UI authoring/runtime 基线。
+
+实现期间允许短暂保留旧代码作为开发对照，但最终完成条件是旧 Runtime 已从正式执行路径移除，而不是“新旧都能跑”。
+
+### 11.3 Versioning 只服务未来演进
+
+v3 的版本体系不再被旧数据约束。
+
+仍然保留清晰的独立版本边界，因为它们对未来演进有价值：
+
+- Experience / Runtime envelope version；
+- Native Frontend contract version；
+- individual capability version；
+- Script / Remote Media / Canvas / Web Island 等独立 capability version。
+
+是否提升现有 `ExperienceContract.schemaVersion`，由新的最终字段模型是否构成更清晰的 breaking contract 决定；不再因为“兼容旧 v1/v2”而避免升级。
+
+### 11.4 Frontend Runtime 与 Experience Mode
+
+`Component / Hybrid / Full` 继续只表示 layout ownership。
+
+新的非 Text Experience 概念形态倾向为：
+
+```yaml
+runtime:
+  experience:
+    mode: hybrid
+    frontend:
+      kind: native
+      version: 3
+      entry: ui/main.frontend.json
+```
+
+正式字段名与 schemaVersion 在后续 Manifest 讨论中冻结。
+
+### 11.5 Runtime kinds
+
+Runtime 层只需要考虑：
+
+- `native`：Atria Native Frontend；
+- future `web-island`：独立 Browser Realm。
+
+React / Vue / Svelte 等属于 authoring/build technology，不成为 Runtime kind。
+
+Framework Adapter 最终编译到 Native Frontend Contract。
+
+### 11.6 v3 Baseline
+
+当前倾向：
+
+1. **Atria Native Frontend v3**：Core baseline；
+2. **Framework Adapter extension point**：进入架构与 authoring contract，但不要求所有框架 adapter 在 Core 首版完成；
+3. **Web Island seam**：在架构中预留独立 capability/bridge，不作为 Core v3 首版完成条件。
+
+Host Bridge 语义必须跨 Native Declarative、Sandbox Script 与未来 Web Island 保持一致，Web Island 不获得专属裸 Authority API。
+
+### 11.7 Studio / AI / Health
+
+- Native Frontend v3：完整结构化 authoring / preview / health / AI editing；
+- Framework Adapter：编译到 Canonical IR 后获得对应 Runtime 分析能力；
+- Web Island：未来只保证 package/permission/bridge/runtime diagnostics 与 preview，不要求 Host 理解其内部任意 framework component tree。
+
 
 ---
 
@@ -915,14 +990,15 @@ v3 应作为清晰的新 Frontend Runtime contract。
 
 下一轮优先讨论：
 
-### Compatibility / Versioning / Frontend Routes
+### Frontend Manifest / Capability Negotiation
 
-- v2 → v3 migration assistant 与 runtime coexistence；
-- manifest / frontend contract versioning；
-- v2 Package 生命周期与 deprecation 策略；
-- Atria Native / Framework Adapter / Web Island 三条路线哪些进入 v3 baseline；
-- Native Component / Host Bridge 在三条路线中的一致性；
-- Studio / AI Authoring / Health 对三条路线的支持边界。
+- 新 `runtime.experience.frontend` 的最终字段模型；
+- 是否借 hard cut 同步提升 Runtime / Experience envelope schema；
+- `native-frontend / remote-media / frontend-script / canvas-2d / web-island` capability 的版本关系；
+- required / optional capability negotiation；
+- Host 不支持或用户禁用 capability 时的 fail / degrade / fallback 规则；
+- Script Sandbox、Declarative Runtime、未来 Web Island 共用的 Frontend Host Bridge API；
+- 安装时哪些前端能力需要作为用户可见权限。
 
 ---
 
