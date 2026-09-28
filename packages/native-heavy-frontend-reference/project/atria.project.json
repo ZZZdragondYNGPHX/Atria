@@ -1585,12 +1585,12 @@
       "world": {
         "worldId": "world_0f47cf3a197b4af1a416084443678d9c",
         "displayName": "Haven District",
-        "currentRevisionId": "worldRevision_96c699e6d26547a58b59de8a98ce2f0e",
+        "currentRevisionId": "worldv_96c699e6d26547a58b59de8a98ce2f0e",
         "createdAt": 1790524800000,
         "updatedAt": 1790524800000
       },
       "revision": {
-        "worldRevisionId": "worldRevision_96c699e6d26547a58b59de8a98ce2f0e",
+        "worldRevisionId": "worldv_96c699e6d26547a58b59de8a98ce2f0e",
         "worldId": "world_0f47cf3a197b4af1a416084443678d9c",
         "schema": {
           "type": "object",
