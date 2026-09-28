@@ -56,7 +56,7 @@
     },
     {
       "id": "church.enact-open-books",
-      "event": "church.decree.enacted",
+      "event": "church.decree.open-books.enacted",
       "argsSchema": {
         "type": "object",
         "properties": {},
