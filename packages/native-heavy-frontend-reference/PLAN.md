@@ -4,7 +4,7 @@
 > 分支：`package/native-heavy-frontend-reference`  
 > 基线：`main@35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`  
 > 资产目录：`packages/native-heavy-frontend-reference/`  
-> 当前阶段：Phase 1 已完成并验证；已停止在 Phase 2 — Authority + Lifecycle + Church Core 之前。
+> 当前阶段：Phase 2 已完成并验证；已停止在 Phase 3 — Narrative Runtime + Knowledge 之前。
 
 ## 1. 项目目标
 
@@ -3123,8 +3123,8 @@ G1 / G2 不允许在 `package/native-heavy-frontend-reference` 中直接修改 A
 - Main audit baseline：`35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`
 - Package branch：`package/native-heavy-frontend-reference`
 - Platform prerequisites：**G1 / G2 已合入 main 并完成 Package 侧确认**
-- Package implementation：**Phase 1 完成**
-- Next Package step：**Phase 2 — Authority + Lifecycle + Church Core**
+- Package implementation：**Phase 1–2 完成**
+- Next Package step：**Phase 3 — Narrative Runtime + Knowledge**
 
 
 ## 22. Implementation Progress
@@ -3190,3 +3190,81 @@ Phase 1 明确未实现：
 > **Phase 2 — Authority + Lifecycle + Church Core**
 
 Phase 2 开始前应读取最新 `main:AGENTS.md`、`main:FORK_MAINTENANCE.md`、本 PLAN、`PLATFORM_GAPS.md` 与 Phase 1 handoff；不得重复 Phase 1 shell，也不得提前进入 Phase 3 Narrative Runtime。
+
+
+### 22.2 Phase 2 — Authority + Lifecycle + Church Core
+
+**状态：完成并验证。停止在 Phase 3 之前。**
+
+实施基线：
+
+- Package branch：`package/native-heavy-frontend-reference`；
+- main 基线保持 `35bc587bb78fd6a7c0fc4fc418d99c7315f5af8b`，Phase 2 期间 main 未前移；
+- Phase 2 核心实现提交：`778da8cc9459fe1df10ac6e256e97c7a8b49c477`；
+- 最终 Authority/Scenario 修正后验证提交：`051bff9a1a3c4e79caf3df3c2a20e8c1543476a3`；
+- 临时 Phase 2 CI workflow 已在验证成功后删除：`53dcfe9e24219a435fd0d4c6d95c2043f5df2c71`；
+- Project Source：`packages/native-heavy-frontend-reference/project/atria.project.json`；
+- World logic：`packages/native-heavy-frontend-reference/project/logic/world.json`；
+- UI Source：`packages/native-heavy-frontend-reference/project/ui/main.json`；
+- recorded Scenario：`packages/native-heavy-frontend-reference/scenarios/church-day-cycle.json`；
+- Package 专用验证：`verify-phase1.mjs` + `verify-phase2.mjs`。
+
+已完成：
+
+- 建立正式 World schema，并只保存已成立的客观 / 结算事实；
+- 建立 Session Application 五个 typed Domain：`events`、`schedule`、`church-operations`、`church-projects`、`opportunities`；
+- Event Domain 包含 frozen Event Instance 最小字段，Beat 仅作为运行语义，不生成预写正文；
+- Schedule 支持 hard / soft / background policy 与 typed lifecycle commands；
+- Church Operations / Projects / Opportunities 按 Session App 过程域实现；
+- 建立连续 `game-clock`，初始 tick 480，并声明 `advance-game-time`；
+- 建立 `church-day-cycle`：DAY OPEN → ACTIVE DAY → DAY SETTLEMENT → NEXT DAY；
+- DAY OPEN 通过 Session App command 初始化当日经营记录；DAY SETTLEMENT 通过 World typed command 原子提交结算事实；
+- 教会核心资源保持 `money / followers / reputation / level`，普通数值由确定性规则计算；
+- promotion 只产生 `promotionAvailable`，不会自动升级 level；升级必须显式执行 typed World Command；
+- `church.purchase-outreach-desk`、`church.enact-community-first`、`church.promote-level`、worked/idle settlement 等规则进入 declarative World logic；
+- Church / Schedule Phase 1 壳层已接入 Native Information Runtime 的 display-only Projection；UI 未绕过 Session App Authority 写业务状态；
+- recorded `church-day-cycle` Scenario 覆盖 Day Open、排班、background outreach、Project 推进、Clock、Day Settlement、World 结算、重复 settlement 防重与 Next Day 重开。
+
+Authority / Lifecycle 决策：
+
+1. **World 只保存已结算客观事实；Events / Schedule / Church Operations / Projects / Opportunities 保持在 Session Application。**
+2. Local UI State 仍只保存 section / draft / expanded 等界面状态，不承担业务数据库。
+3. 所有业务变化必须经过声明过的 typed App Command / World Command；模型输出、UI 与 Projection 均不得裸写状态。
+4. Day Settlement 使用 World command 的 guard 保持幂等；重复 settlement 不会再次增加资源。
+5. Phase 2 的 Church / Schedule UI 仅做读取 Projection。当前 UI v2 的 `command.dispatch` 是 World Command 路径，因此没有用它伪装 Session App mutation；完整交互留给 Phase 4。
+6. 未修改 Atria Core，未实现 G1 / G2 workaround；G1 / G2 继续直接使用 main 已有能力。
+7. 未提前进入 Narrator / Interpreter、Prompt Program / Knowledge、Atria Memory 或其他 Phase 3 内容。
+
+验证记录：
+
+- GitHub Actions run：`36369822887`；
+- job：`Phase 2 Authority Lifecycle and Scenario`；
+- 结论：**success**；
+- Phase 1 shell regression：**PASS**；
+- Phase 2 Authority / Lifecycle contract：**PASS**；
+- display-only Preview fixture：**PASS**；
+- production recorded `church-day-cycle` Scenario：**PASS**；
+- Scenario 使用 `recorded-or-mock`，`providerCalls = 0`，不持久化测试 Session；
+- 生产 `assertAtriaProjectSource`、UI v2 compile、World schema / declarative logic、Studio Scenario runner 均进入实际验证链；
+- 未运行无关全仓测试、全仓 lint、Android、Docker、真实 provider，也未运行 Phase 3–6 Scenario。
+
+Phase 2 明确未实现：
+
+- Narrator / Interpreter；
+- narrative-outcome 正文链与 AI Event Beat 推进；
+- Planner / World Task；
+- Prompt Programs / Knowledge / Context Projection 内容；
+- Atria Memory 接入；
+- `story-turn` Scenario；
+- Narrative Choice / `next_action`；
+- Curator / Story Compression / Day Compression；
+- Package 自建 Memory / Save Slot；
+- 背景 / 表情 / CG / Audio / 立绘 / Asset Pack；
+- GAL Runtime / Full Experience；
+- Atria Core 修改。
+
+下一阶段严格为：
+
+> **Phase 3 — Narrative Runtime + Knowledge**
+
+Phase 3 必须复用 Phase 1–2 已冻结的 UI 与 Authority/Lifecycle，不得搬移事实归属、重建第二套状态或重做 `church-day-cycle`。只进入 Narrator / Interpreter、narrative-outcome + G1 App outcome、Event Beat 推进、Planner / World Task、Prompt Programs / shared Modules、Knowledge / Context Projection、Atria Memory 与 recorded `story-turn` Scenario。
