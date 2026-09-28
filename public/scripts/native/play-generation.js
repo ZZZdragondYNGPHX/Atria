@@ -1,4 +1,5 @@
 import { executeNativeGeneration, executeNativeOperation } from './generation-client.js';
+import { recallNativePackageTurnMemory } from './experience/llm/memory-bridge.js';
 
 // Keep publication on NativeSessionRuntime's existing Draft/Revision boundary.
 export async function runNativePlayGeneration({ runtime, type, signal, input = '', quietPrompt = '', host, execute = executeNativeGeneration, executeOperation = executeNativeOperation }) {
@@ -15,11 +16,19 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
         const game = host.gameApi?.();
         if (runtime.snapshot?.manifest?.runtime?.experienceContract?.taskRuntime?.turn && !['quiet', 'impersonate'].includes(originalType)) {
             if (originalType === 'continue') throw new Error('Package Turn continuation requires an explicit new Turn');
-            runtime.markProvisionalTurn();
             const context = host.context?.() ?? globalThis.Atria?.getContext?.();
+            const turn = runtime.snapshot.manifest.runtime.experienceContract.taskRuntime.turn;
+            const memory = await recallNativePackageTurnMemory({
+                context,
+                snapshot: runtime.snapshot,
+                userInput: input,
+                signal,
+                informationTaskId: turn.narratorTaskId || null,
+            });
+            runtime.markProvisionalTurn();
             const slotBindings = context?.capabilitySettings?.atri_task_bindings?.[runtime.snapshot.session.packageId] ?? {};
             const result = await executeOperation('turn', { slotBindings, userInput: input,
-                invocationId: 'turn-' + crypto.randomUUID() }, { abortSignal: signal, onChunk: host.onChunk,
+                invocationId: 'turn-' + crypto.randomUUID(), hostMemoryEvidence: memory.evidence }, { abortSignal: signal, onChunk: host.onChunk,
                 source: { sessionId: runtime.snapshot.session.sessionId, revisionId: runtime.snapshot.revision.revisionId } });
             await runtime.acceptOperationSnapshot(result, { turn: true });
             return result.timeline.at(-1)?.content ?? '';

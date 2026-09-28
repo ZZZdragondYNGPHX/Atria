@@ -362,12 +362,15 @@ export async function retrieveMemory(snapshot, query, { service, profile, rerank
         ? [doc.factId] : doc.kind === 'relation' ? doc.supports.map(ref => ref.factId) : []);
     if (accessed.length && snapshot.recordAccess) { await snapshot.recordAccess(accessed); guard(); }
     const selectedDocuments = result.candidates.filter(doc => composition.selected.includes(doc.id));
-    const selectedEpisodeIds = [...new Set(selectedDocuments.flatMap(doc => doc.episodeIds || []))];
-    const sourceMessageIds = [...new Set(selectedEpisodeIds.flatMap(id =>
-        Array.isArray(snapshot.state?.episodes?.[id]?.messageIds)
-            ? snapshot.state.episodes[id].messageIds
-            : []))];
-    return { ...composition, plan: result.plan, diagnostics, sourceMessageIds,
+    const evidence = selectedDocuments.map(doc => {
+        const sourceMessageIds = [...new Set((doc.episodeIds || []).flatMap(id =>
+            Array.isArray(snapshot.state?.episodes?.[id]?.messageIds)
+                ? snapshot.state.episodes[id].messageIds
+                : []))].filter(Boolean);
+        return { id: doc.id, content: String(doc.text || ''), sourceMessageIds };
+    });
+    const sourceMessageIds = [...new Set(evidence.flatMap(item => item.sourceMessageIds))];
+    return { ...composition, plan: result.plan, diagnostics, sourceMessageIds, evidence,
         metrics: { corpusSize: corpus.documents.length, candidates: result.candidates.length, selected: composition.selected.length,
             corpusMs: corpusReady - started, vectorMs: vectorsReady - corpusReady, totalMs: performance.now() - started },
         providers: corpus.providers.map(provider => ({ providerId: provider.providerId, status: provider.status })), assertCurrent: guard };

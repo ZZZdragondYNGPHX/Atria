@@ -11,6 +11,7 @@ export function createNativeSessionContextAdapter({ readSnapshot, options = {} }
         const { source, snapshot } = await readSnapshot(request, resolved);
         const plan = await compileNativeContextPlan(immutable(snapshot), {
             ...config, countTokens, providers: contextPorts,
+            memoryEvidence: config.memoryEvidence ?? [],
             modelContextLimit: resolved.model.limits.contextTokens,
             responseReserve: resolved.generation.output.maxTokens ?? resolved.model.limits.outputTokens,
         });

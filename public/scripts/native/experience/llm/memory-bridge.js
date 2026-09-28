@@ -1,4 +1,5 @@
 import { cloneGameLlmValue } from './clone.js';
+import { informationContext } from '../../../../shared/native-information-runtime.js';
 
 const MAX_QUERY_CHARS = 12000;
 const MAX_MEMORY_CONTENT_CHARS = 48000;
@@ -222,5 +223,105 @@ export function createMemoryRecallBridge(options = {}) {
                 query,
             });
         },
+    });
+}
+
+
+function nativeTurnMemoryQuery(snapshot, userInput, information) {
+    const parts = [];
+    const input = String(userInput ?? '').trim();
+    if (input) parts.push('User input: ' + truncate(input, 3000));
+    const visible = Array.isArray(information?.projection?.items)
+        ? information.projection.items.slice(-24).map(item => ({
+            id: item.id,
+            semantic: item.semantic,
+            data: item.data,
+        }))
+        : [];
+    if (visible.length) parts.push('Current visible context: ' + stringifyCompact(visible, 8000));
+    return truncate(parts.join('\n') || 'Current Native package turn', MAX_QUERY_CHARS);
+}
+
+/**
+ * Host-only Package Turn recall bridge. The Package never receives the Memory API
+ * and never chooses evidence. The existing Information Runtime grant decides
+ * whether recall is allowed; the Context compiler still performs final
+ * visibility/branch/revision/budget admission on the returned evidence.
+ */
+export async function recallNativePackageTurnMemory(options = {}) {
+    const snapshot = options.snapshot;
+    if (!snapshot?.session || !snapshot?.revision || !Array.isArray(snapshot.timeline)) {
+        throw new Error('Native Package Turn Memory recall requires a Session snapshot');
+    }
+    const target = { kind: 'narrator' };
+    const information = informationContext(snapshot, target, options.informationTaskId);
+    if (!information?.memory) {
+        return Object.freeze({ status: 'denied', evidence: Object.freeze([]), query: '' });
+    }
+
+    const baseContext = options.context || globalThis.Atria?.getContext?.() || null;
+    const context = baseContext && snapshot
+        ? Object.assign(Object.create(baseContext), { nativeSnapshot: snapshot })
+        : baseContext;
+    const memoryApi = options.memoryApi || context?.getCapabilityApi?.('memory-graph') || null;
+    const query = nativeTurnMemoryQuery(snapshot, options.userInput, information);
+    if (!memoryApi || typeof memoryApi.openSession !== 'function') {
+        return Object.freeze({ status: 'unavailable', evidence: Object.freeze([]), query });
+    }
+    const session = await memoryApi.openSession(context);
+    if (!session || typeof session.recallMemory !== 'function') {
+        return Object.freeze({ status: 'unavailable', evidence: Object.freeze([]), query });
+    }
+
+    let result;
+    try {
+        result = await session.recallMemory(query, { signal: options.signal });
+    } catch (error) {
+        if (options.signal?.aborted || error?.name === 'AbortError') throw error;
+        return Object.freeze({ status: 'unavailable', evidence: Object.freeze([]), query });
+    }
+    result?.assertCurrent?.();
+
+    const visibleMessages = new Set(
+        (information.projection?.items ?? [])
+            .filter(item => item.variantId)
+            .map(item => String(item.recordId || ''))
+            .filter(Boolean),
+    );
+    const rawEvidence = Array.isArray(result?.evidence) && result.evidence.length
+        ? result.evidence
+        : [{
+            id: 'recall',
+            content: result?.content ?? result?.text ?? '',
+            sourceMessageIds: result?.sourceMessageIds ?? [],
+        }];
+    const branchId = String(snapshot.revision.branchId || '');
+    const revisionId = String(snapshot.revision.revisionId || '');
+    const evidence = [];
+    for (const [index, item] of rawEvidence.slice(0, 32).entries()) {
+        const content = truncate(item?.content ?? '', MAX_MEMORY_CONTENT_CHARS).trim();
+        const sourceMessageIds = [...new Set(
+            (Array.isArray(item?.sourceMessageIds) ? item.sourceMessageIds : [])
+                .map(id => String(id || '').trim())
+                .filter(id => id && visibleMessages.has(id)),
+        )].slice(0, MAX_REFERENCES);
+        if (!content || !sourceMessageIds.length) continue;
+        evidence.push(deepFreeze({
+            memoryId: 'package-turn:' + revisionId + ':' + String(item?.id || index),
+            content,
+            sourceRefs: sourceMessageIds.map(messageId => ({
+                kind: 'timeline',
+                messageId,
+                branchId,
+                revisionId,
+            })),
+            source: { kind: 'memory_graph', selectedId: String(item?.id || '') },
+        }));
+    }
+    result?.assertCurrent?.();
+    return Object.freeze({
+        status: evidence.length ? 'recalled' : (String(result?.text ?? result?.content ?? '').trim() ? 'unproven' : 'empty'),
+        evidence: Object.freeze(evidence),
+        query,
     });
 }

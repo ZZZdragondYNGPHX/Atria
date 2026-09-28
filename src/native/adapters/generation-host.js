@@ -3,7 +3,7 @@ import { GenerationService } from '../model-prompt-runtime/generation-service.js
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { createNativeSessionContextAdapter } from './native-session-context.js';
-import { assertInformationActorAvailable, informationDefinition } from '../../../public/shared/native-information-runtime.js';
+import { assertInformationActorAvailable, informationDefinition, informationContext } from '../../../public/shared/native-information-runtime.js';
 import { immutable, ProviderFailure, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { assertTaskValue } from '../../../public/shared/native-task-contract.js';
@@ -14,6 +14,42 @@ import { createGameLlmRuntime } from '../../../public/scripts/native/experience/
 import { assertTurnEnvelope } from '../../../public/shared/native-message-contract.js';
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
+
+function normalizeHostMemoryEvidence(value, snapshot) {
+    if (value === undefined) return [];
+    if (!Array.isArray(value) || value.length > 32) fail('native_turn_memory_evidence_invalid');
+    const turn = snapshot.manifest.runtime?.experienceContract?.taskRuntime?.turn;
+    const information = informationContext(snapshot, { kind: 'narrator' }, turn?.narratorTaskId);
+    if (value.length && !information?.memory) fail('native_turn_memory_evidence_denied');
+    const messageIds = new Set((snapshot.timeline || []).map(item => String(item.messageId || '')));
+    return value.map((raw, index) => {
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)
+            || Object.keys(raw).some(key => !['memoryId', 'content', 'sourceRefs', 'tokenCount', 'source'].includes(key))) {
+            fail('native_turn_memory_evidence_invalid');
+        }
+        const memoryId = String(raw.memoryId || ('memory-' + index)).trim();
+        const content = String(raw.content || '').trim();
+        if (!memoryId || memoryId.length > 160 || !content || content.length > 48000
+            || !Array.isArray(raw.sourceRefs) || !raw.sourceRefs.length || raw.sourceRefs.length > 64) {
+            fail('native_turn_memory_evidence_invalid');
+        }
+        const sourceRefs = raw.sourceRefs.map(ref => {
+            if (!ref || typeof ref !== 'object' || Array.isArray(ref)
+                || Object.keys(ref).some(key => !['kind', 'messageId', 'branchId', 'revisionId'].includes(key))
+                || ref.kind !== 'timeline'
+                || typeof ref.messageId !== 'string' || !messageIds.has(ref.messageId)
+                || ref.branchId !== snapshot.revision.branchId
+                || ref.revisionId !== snapshot.revision.revisionId) {
+                fail('native_turn_memory_evidence_stale');
+            }
+            return { kind: 'timeline', messageId: ref.messageId,
+                branchId: ref.branchId, revisionId: ref.revisionId };
+        });
+        const tokenCount = Number(raw.tokenCount);
+        return { memoryId, content, sourceRefs,
+            ...(Number.isFinite(tokenCount) && tokenCount >= 0 && tokenCount <= 32768 ? { tokenCount: Math.floor(tokenCount) } : {}) };
+    });
+}
 const ROLES = new Set(['narrator', 'intent_resolver', 'event_interpreter', 'orchestrator', 'studio', 'memory', 'search']);
 
 export function selectNativeRuntimeRoute(routeList, role, routeRef) {
@@ -61,7 +97,7 @@ export class NativeGenerationHost {
     async executeTurn(handle, input, signal, onChunk) {
         input = immutable(input);
         if (typeof input.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,96}$/.test(input.invocationId)
-            || Object.keys(input).some(key => !['sessionId', 'revisionId', 'invocationId', 'requestId', 'userInput', 'stageInputs', 'variants', 'slotBindings', 'routeRef'].includes(key))) fail('native_turn_request_invalid');
+            || Object.keys(input).some(key => !['sessionId', 'revisionId', 'invocationId', 'requestId', 'userInput', 'stageInputs', 'variants', 'slotBindings', 'routeRef', 'hostMemoryEvidence'].includes(key))) fail('native_turn_request_invalid');
         const { requestId: _requestId, ...turnRequest } = input;
         const requestHash = hashNativeDocument(turnRequest);
         const base = await this.sessionCore.load(handle, input.sessionId);
@@ -85,7 +121,7 @@ export class NativeGenerationHost {
             if (!lane) fail('native_task_binding_missing');
             lanes.push(lane);
         }
-        const lanePlan = {};
+        const lanePlan = { memoryEvidence: normalizeHostMemoryEvidence(input.hostMemoryEvidence, base) };
         const resources = (await Promise.all(lanes.map(lane => this.executionResources(handle, lane, input.sessionId, lanePlan)))).flat();
         let expectedRevisionId = input.revisionId;
         const operation = nativeTaskScheduler.submit({ owner: handle, kind: 'turn',
@@ -376,7 +412,7 @@ export class NativeGenerationHost {
         if (snapshot) assertInformationActorAvailable(snapshot, taskPlan?.task.id);
         if (informationDefinition(snapshot) && input.messages?.length) fail('native_information_unscoped_messages');
         const nativeContext = snapshot ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
-            options: { informationTaskId: taskPlan?.task.id } }) : null;
+            options: { informationTaskId: taskPlan?.task.id, memoryEvidence: lanePlan?.memoryEvidence ?? [] } }) : null;
         const skills = this.skillRepository && isNarrativeSkillInvocation(input.role, taskPlan, runtime)
             ? await prepareNarrativeSkills({ repository: this.skillRepository(handle), settings: (await this.extensions.settings(handle)).value,
                 context: snapshot ? { packageId: snapshot.session.packageId, packageVersionId: snapshot.session.packageVersionId,
@@ -395,6 +431,7 @@ export class NativeGenerationHost {
             const exposed = taskPlan ? selected.items.filter(item => {
                 const context = taskPlan.task.context;
                 if (item.id.startsWith('projection:')) return context.includes('projection');
+                if (item.id.startsWith('memory:')) return true;
                 return item.kind === 'context.history' ? context.includes('history')
                     : item.id.startsWith('knowledge:') ? context.includes('knowledge')
                         : item.id === 'state:atri_world_state' && context.includes('world');

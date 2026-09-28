@@ -364,8 +364,18 @@ export class NativeSessionRuntime {
         if (this.history || snapshot.session.sessionId !== this.snapshot?.session.sessionId
             || snapshot.revision.branchId !== this.snapshot.revision.branchId) throw new Error('Native operation scope changed');
         if (this.generation && !turn) return snapshot;
+        const previous = this.snapshot;
         // Reload the current committed authority, never install a late stale reply.
-        return this._loadProjection(snapshot.session.sessionId, { acceptGuard });
+        const next = await this._loadProjection(snapshot.session.sessionId, { acceptGuard });
+        if (turn) {
+            const previousIds = new Set((previous?.timeline ?? []).map(item => item.messageId));
+            const appended = (next.timeline ?? []).filter(item => !previousIds.has(item.messageId)).map(item => item.messageId);
+            if (appended.length) {
+                await this._emit(NATIVE_SESSION_LIFECYCLE.TIMELINE_APPENDED, next, previous, { messageIds: appended, reason: 'package_turn' });
+                await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { messageIds: appended, reason: 'package_turn' });
+            }
+        }
+        return next;
     }
 
     markProvisionalTurn() {
