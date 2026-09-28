@@ -56,6 +56,7 @@ test('real load integration emits Ready only after mounted UI, then accepts its 
     expect(globalThis.fetch).toHaveBeenCalledTimes(2); expect(session.refresh).toHaveBeenCalledTimes(2);
     expect(api['game-runtime'].getApplicationRecords).toEqual(expect.any(Function));
     expect(api['game-runtime'].getTemporalProjection).toEqual(expect.any(Function));
+    expect(mount.mock.calls[0][2].getTemporalProjection).toEqual(expect.any(Function));
 });
 
 test('UI failure does not emit Ready or start automation', async () => {
