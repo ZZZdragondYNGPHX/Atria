@@ -37,7 +37,7 @@ for (const width of [1440, 390]) test(`P7 preferences, exact search and localiza
     const openSettings = () => page.evaluate(() => window.Atria.shell.getWorkspaceHost().openUtility('settings'));
     const shot = name => page.screenshot({ path: info.outputPath(`${name}-${width}.png`), fullPage: true });
     await openSettings(); const settings = page.locator('[data-atria-utility-workspace="settings"]');
-    await expect(settings).toContainText('Product preferences only');
+    await expect(settings).toContainText('Make Atria feel right for you.');
     await expect(settings.locator('#user-settings-block, #enableLabMode, #auto_continue_enabled, #example_messages_behavior')).toHaveCount(0);
     await expect(settings.locator('#ui_language_select')).toBeVisible(); await shot('settings');
     await settings.getByText('Advanced appearance controls', { exact: true }).click();
@@ -49,7 +49,8 @@ for (const width of [1440, 390]) test(`P7 preferences, exact search and localiza
     await openSettings(); await expect(settings.locator('#reduced_motion')).toBeChecked({ checked: !before });
     await settings.locator('#reduced_motion').setChecked(before);
     await settings.getByRole('button', { name: 'Prompt Programs', exact: true }).click();
-    await expect(page.locator('[data-atri-prompt-library]')).toContainText('P4 program');
+    await expect(page.locator('.atri-prompt-preset')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Prompt Presets', exact: true })).toBeVisible();
     // A user command search invokes the owning exact Library route, not an injected editor.
     await page.locator('[data-atria-utility="command"]').click();
     const search = page.locator('.atria-command-input'); await search.fill(profiles.prompt.promptProgramId);
@@ -58,10 +59,9 @@ for (const width of [1440, 390]) test(`P7 preferences, exact search and localiza
     expect(JSON.parse(await selected.getAttribute('data-atri-resource-key')).resourceId).toBe(profiles.prompt.promptProgramId);
     await openSettings(); await settings.locator('#ui_language_select').selectOption('zh-cn');
     await page.waitForFunction(() => document.documentElement.lang === 'zh-cn' && document.getElementById('preloader') === null);
-    await openSettings(); await expect(settings).toContainText('此处仅设置产品偏好'); await shot('settings-zh');
+    await openSettings(); await expect(settings.locator('#ui_language_select')).toHaveValue('zh-cn'); await shot('settings-zh');
     await settings.getByRole('button', { name: '提示词程序', exact: true }).click();
-    const library = page.locator('[data-atri-prompt-library]'); await expect(library.getByRole('heading', { name: '提示词程序', exact: true })).toBeVisible();
-    await library.getByRole('button', { name: '新建资源', exact: true }).click(); await expect(library.getByLabel('显示名称', { exact: true })).toBeVisible(); await shot('prompt-zh');
+    await expect(page.locator('.atri-prompt-preset')).toBeVisible(); await shot('prompt-zh');
     await page.keyboard.press('Tab'); expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     expect(errors).toEqual([]);
 });

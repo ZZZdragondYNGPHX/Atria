@@ -136,8 +136,8 @@ rejectPattern(
 );
 requirePattern(
     'public/scripts/atria-shell/library-runtime-workspaces.js',
-    /id: ['"]works['"][\s\S]*id: ['"]worlds-knowledge['"][\s\S]*id: ['"]skills['"]/,
-    'N10 Product Library must retain only Native Works / Worlds & Knowledge / Skills sections',
+    /id: ['"]works['"][\s\S]*id: ['"]worlds-knowledge['"][\s\S]*id: ['"]prompt-presets['"]/,
+    'N10 Product Library must retain the Native Works / Worlds & Knowledge / Prompt Presets sections',
 );
 
 requirePattern(
@@ -178,8 +178,13 @@ requirePattern(
 );
 requirePattern(
     'public/scripts/world-info.js',
-    /getSortedEntries[\s\S]{0,500}nativeSessionRuntime\.active[\s\S]{0,500}nativeSessionRuntime\.knowledgeEntries/,
-    'N10 Native World Info adapter must source candidates from pinned Native Knowledge',
+    /export async function getSortedEntries[\s\S]{0,320}nativeSessionRuntime\.active\) return \[\]/,
+    'N10 Native sessions must bypass legacy book-shaped World Info candidates',
+);
+requirePattern(
+    'public/scripts/world-info.js',
+    /getWorldInfoPrompt[\s\S]{0,700}nativeSessionRuntime\.active[\s\S]{0,500}nativeSessionRuntime\.evaluateKnowledge/,
+    'N10 Native prompt delivery must evaluate pinned Native Knowledge directly',
 );
 requirePattern(
     'public/scripts/world-info.js',
@@ -193,13 +198,18 @@ requirePattern(
 );
 requirePattern(
     'public/scripts/native/knowledge-runtime.js',
-    /uid: item\.sourceEntryIndex[\s\S]{0,1400}atri_native:[\s\S]{0,500}knowledgeBindingId[\s\S]{0,300}knowledgeBaseId[\s\S]{0,300}knowledgeRevisionId[\s\S]{0,300}knowledgeEntryId/,
-    'N10 World Info numeric uid may exist only as ABI projection beside opaque Native Knowledge identity',
+    /identity:\s*\[[\s\S]{0,500}binding\.knowledgeBindingId[\s\S]{0,300}binding\.source\.knowledgeBaseId[\s\S]{0,300}binding\.source\.knowledgeRevisionId[\s\S]{0,300}entry\.knowledgeEntryId/,
+    'N10 Native Knowledge candidates must retain opaque binding/base/revision/entry identity',
 );
-requirePattern(
+rejectPattern(
+    'public/scripts/native/knowledge-runtime.js',
+    /(?:^|[,{]\s*)uid\s*:/m,
+    'N10 Native Knowledge runtime must not recreate World Info numeric uid identity',
+);
+rejectPattern(
     'public/scripts/native/session-projection.js',
-    /uid: entries\.length[\s\S]{0,900}atri_native:[\s\S]{0,260}knowledgeBindingId[\s\S]{0,260}knowledgeEntryId/,
-    'N10 compatibility projection uid must remain subordinate to opaque Native Knowledge identity',
+    /(?:^|[,{]\s*)uid\s*:/m,
+    'N10 Native Session projection must not manufacture World Info numeric uid identity',
 );
 
 console.log(`N10 Native hard-cutover residual guard passed (${nativeAuthorityFiles.length} authority files scanned).`);

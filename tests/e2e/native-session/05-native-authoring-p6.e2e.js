@@ -42,47 +42,17 @@ for (const width of [1440, 390]) test(`Library and Studio authoring at ${width}p
     await page.route('**/api/horde/status', route => route.fulfill({ json: { ok: false } }));
     await awaitMainUI(page, server.baseURL);
     const shot = name => page.screenshot({ path: info.outputPath(`${name}-${width}.png`), fullPage: true });
+    // Prompt resources now have one Library owner: Prompt Presets. Historical
+    // prompt-module/program aliases must route there without restoring the retired
+    // loose-resource authoring surface.
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('prompt-modules'));
-    const library = page.locator('[data-atri-prompt-library]');
-    await expect(library).toContainText('P4 module');
-    const original = library.locator('article').filter({ has: page.getByRole('heading', { name: 'Packaged Module', exact: true }) }).filter({ hasText: 'Read-only original' });
-    await expect(original).toContainText('Read-only original'); await expect(original.getByRole('button', { name: 'New revision' })).toHaveCount(0);
-    await original.getByRole('button', { name: 'Used By', exact: true }).click(); await expect(original.getByRole('status')).toContainText('Packaged Prompt'); await shot('library');
-    await library.getByRole('button', { name: 'New resource', exact: true }).click();
-    await openPromptSections(page, 'identity');
-    await library.getByLabel('Display name', { exact: true }).fill('Library module ' + width);
-    await openPromptSections(page, 'module');
-    await library.getByLabel('Prompt body', { exact: true }).fill('Write clear dialogue.');
-    await library.getByRole('button', { name: 'Advanced editor', exact: true }).click();
-    await expect(library.getByLabel('Resource JSON — conditions, parameters, provenance')).toBeVisible();
-    await library.getByRole('button', { name: 'Simple editor', exact: true }).click();
-    await expect(library.getByLabel('Prompt body', { exact: true })).toHaveValue('Write clear dialogue.'); await shot('module-editor');
-    await page.route('**/api/native/generation/resources', route => route.request().method() === 'POST' ? route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ error: 'synthetic-save-failure' }) }) : route.continue());
-    await library.getByRole('button', { name: 'Save revision' }).click();
-    await expect(library.getByRole('alert')).toContainText('synthetic-save-failure'); await shot('save-failure');
-    await page.unroute('**/api/native/generation/resources');
-    await library.getByRole('button', { name: 'Save revision' }).click();
-    await expect(page.getByRole('status').filter({ hasText: 'Saved immutable Library revision' })).toBeVisible(); await page.getByRole('button', { name: 'Back to resources', exact: true }).click();
-    await expect(library).toContainText('Library module ' + width);
-    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('prompt-programs'));
-    await library.getByRole('button', { name: 'New resource', exact: true }).click();
-    await openPromptSections(page, 'identity');
-    await library.getByLabel('Display name', { exact: true }).fill('Authored Program ' + width);
-    await openPromptSections(page, 'stages', 'stage:stage.main');
-    await library.getByLabel('Module for stage 1', { exact: true }).selectOption({ index: 1 });
-    await library.getByRole('button', { name: 'Add module', exact: true }).click();
-    await library.getByRole('button', { name: 'Add stage', exact: true }).click();
-    await library.locator('.atri-prompt-stages > details > fieldset').nth(1).getByRole('button', { name: 'Move stage up' }).click();
-    await expect(library.getByLabel('Stage ID 1', { exact: true })).toHaveValue('stage.step2');
-    await library.locator('.atri-prompt-stages > details > fieldset').nth(0).getByRole('button', { name: 'Remove stage' }).click();
-    await openPromptSections(page, 'response');
-    await library.getByLabel('Response Directive', { exact: true }).fill('Respond concisely.'); await shot('program-editor');
-    await library.getByRole('button', { name: 'Save revision' }).click(); await page.getByRole('button', { name: 'Back to resources', exact: true }).click();
-    await library.locator('article').filter({ has: page.getByRole('heading', { name: 'Packaged Prompt', exact: true }) }).getByRole('button', { name: 'Fork to Library' }).click();
-    await library.getByRole('button', { name: 'Reload resources' }).click(); await expect(library).toContainText('Packaged Prompt Fork');
-    await library.locator('article').filter({ has: page.getByRole('heading', { name: 'P4 program', exact: true }) }).getByRole('button', { name: 'Derive to Library' }).click();
-    await expect(library).toContainText('Created independent Library resource');
-    await library.getByRole('button', { name: 'Reload resources' }).click(); await expect(library).toContainText('P4 program Derivative');
+    await expect(page.getByRole('heading', { name: 'Prompt Presets', exact: true })).toBeVisible();
+    const migration = page.getByText('Existing resources — migrate into an independent preset', { exact: true });
+    await expect(migration).toBeVisible(); await migration.click();
+    await page.getByRole('button', { name: 'Choose existing resources', exact: true }).click();
+    await expect(page.getByRole('combobox', { name: 'Prompt Programs', exact: true })).toContainText('P4 program');
+    await expect(page.getByRole('combobox', { name: 'Generation Profiles', exact: true })).toContainText('P4 generation');
+    await shot('library-owner');
     const projectId = createNativeId('project');
     const source = { format: 'atria-project-source', schemaVersion: 1,
         project: { projectId, packageId: createNativeId('package'), displayName: 'P6 Studio ' + width, createdAt: 10, updatedAt: 10 },

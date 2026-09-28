@@ -4,11 +4,22 @@ import { fileURLToPath } from 'node:url';
 import { findArchitectureViolations } from './check-p0-model-prompt-runtime-architecture.mjs';
 
 export function checkP2Source(path, source) {
-    // P3's host adapter may bridge the existing Native Context Compiler. This is
-    // a single exact import exception, not permission for Core/browser dependencies.
-    const boundarySource = path === 'src/native/adapters/native-session-context.js'
-        ? source.replace("import { compileNativeContextPlan } from '../../../public/scripts/native/context-compiler.js';", '')
-        : source;
+    // Host adapters may bridge exact, audited dual-host Native modules. These
+    // are path+import exceptions only; every other public/scripts dependency
+    // remains forbidden so the P0/P2 Core boundary cannot widen accidentally.
+    let boundarySource = source;
+    if (path === 'src/native/adapters/native-session-context.js') {
+        boundarySource = boundarySource.replace(
+            "import { compileNativeContextPlan } from '../../../public/scripts/native/context-compiler.js';",
+            '',
+        );
+    }
+    if (path === 'src/native/adapters/generation-host.js') {
+        boundarySource = boundarySource.replace(
+            "import { createGameLlmRuntime } from '../../../public/scripts/native/experience/llm/runtime.js';",
+            '',
+        );
+    }
     const violations = findArchitectureViolations(boundarySource);
     if (/\b(?:getCurrent|saveConnectionProfile|saveModelProfile|saveRuntimeRoute|putMutable|putImmutable)\s*\(/.test(source)) {
         violations.push('P2 execution must only read exact existing authorities');
@@ -47,6 +58,16 @@ function run() {
         if (!checkP2Source(core + 'route-resolver.js', fixture).length) throw new Error('P2 negative self-test failed');
     }
     if (checkP2Source(core + 'route-resolver.js', 'library.getExact(handle, ref);').length) throw new Error('P2 positive self-test failed');
+    const gameRuntimeBridge = "import { createGameLlmRuntime } from '../../../public/scripts/native/experience/llm/runtime.js';";
+    if (checkP2Source('src/native/adapters/generation-host.js', gameRuntimeBridge).length) {
+        throw new Error('P2 exact Native Game LLM Runtime bridge self-test failed');
+    }
+    if (!checkP2Source('src/native/adapters/generation-host.js', "import { generateTask } from '../../../public/scripts/st-context.js';").length) {
+        throw new Error('P2 Host adapter boundary self-test failed to reject a legacy browser facade');
+    }
+    if (!checkP2Source(core + 'route-resolver.js', gameRuntimeBridge).length) {
+        throw new Error('P2 exact bridge exception leaked outside generation-host');
+    }
     console.log('P2 Generation Core architecture guard and mutation self-tests passed.');
 }
 

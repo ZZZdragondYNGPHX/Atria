@@ -73,8 +73,13 @@ requirePattern(
 );
 requirePattern(
     'public/scripts/native/play-controls.js',
-    /Save to my Library/,
-    'Embedded Knowledge promotion seam is missing',
+    /mountEmbeddedKnowledgePromotion[\s\S]*binding, host:/,
+    'Embedded Knowledge promotion mount seam is missing',
+);
+requirePattern(
+    'public/scripts/native/embedded-knowledge-promotion.js',
+    /Save to my Library[\s\S]*promoteKnowledge/,
+    'Embedded Knowledge promotion action is missing',
 );
 requirePattern(
     'public/css/atria-shell.css',

@@ -244,3 +244,42 @@ export async function openPromptSections(page, ...keys) {
         if (await summary.count()) await summary.click();
     }
 }
+
+
+/**
+ * Keep generation-focused browser tests on the direct Native streaming path.
+ * Narrative Skills intentionally suppress provider-round chunks until the Skill
+ * loop has proven which round is final, so tests for raw Generation streaming
+ * must opt out of that separate capability.
+ */
+export async function disableNarrativeSkills(page) {
+    return page.evaluate(async () => {
+        const headers = window.Atria.getContext().getRequestHeaders();
+        const [skillsResponse, settingsResponse] = await Promise.all([
+            fetch('/api/skills?scope=all', { headers }),
+            fetch('/api/native/extensions/settings', { headers }),
+        ]);
+        if (!skillsResponse.ok || !settingsResponse.ok) throw new Error('Native Skill test setup failed');
+        const skillPayload = await skillsResponse.json();
+        const skills = Array.isArray(skillPayload) ? skillPayload : (skillPayload.entries || []);
+        const settings = await settingsResponse.json();
+        const { skillEntryKey } = await import('/shared/extension-contract.js');
+        const value = structuredClone(settings.value);
+        value.skills ||= {};
+        for (const entry of skills) {
+            const key = skillEntryKey(entry);
+            const previous = value.skills[key] || {};
+            value.skills[key] = {
+                ...previous,
+                paths: { ...(previous.paths || {}), narrative: 'off' },
+            };
+        }
+        const saved = await fetch('/api/native/extensions/settings', {
+            method: 'PUT',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value, expectedRevision: settings.revision }),
+        });
+        if (!saved.ok) throw new Error('Native Skill test settings update failed');
+        return skills.length;
+    });
+}

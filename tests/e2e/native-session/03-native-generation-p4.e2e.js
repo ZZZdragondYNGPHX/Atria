@@ -8,7 +8,7 @@ import { createNativeId } from '../../../src/native/identity.js';
 import { seedGenerationProfiles } from '../../native/helpers/generation-fixture.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { awaitMainUI } from '../_lib/page.js';
-import { seedNativeSessionDataRoot, createAndOpenNativeSession } from './_helpers.js';
+import { seedNativeSessionDataRoot, createAndOpenNativeSession, disableNarrativeSkills } from './_helpers.js';
 
 let server; let provider; let seeded;
 test.describe.configure({ mode: 'serial' });
@@ -50,6 +50,7 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
         page.on('pageerror', error => errors.push(error.message));
         await page.addInitScript(() => localStorage.setItem('language', 'en'));
         await awaitMainUI(page, server.baseURL);
+        await disableNarrativeSkills(page);
         await createAndOpenNativeSession(page, seeded.start);
         const composer = page.locator('[data-atria-composer="native"]');
         await expect(composer).toBeVisible();
