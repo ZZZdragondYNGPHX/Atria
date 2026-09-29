@@ -508,6 +508,12 @@ export async function reloadGamePackage() {
     return currentPackage;
 }
 
+// Presentation refresh is asynchronous in v3. Neither a sync render failure nor
+// a rejected Bridge refresh may escape a committed lifecycle event or replay it.
+function refreshCurrentUi() {
+    try { void Promise.resolve(currentUiSession?.refresh?.()).catch(error => console.error('Native UI revision refresh failed', error)); } catch (error) { console.error('Native UI revision refresh failed', error); }
+}
+
 async function syncCurrentWorldRevision() {
     const session = currentWorldSession;
     if (!session || currentPackage.descriptor?.experienceContract?.lifecycleRuntime
@@ -515,7 +521,7 @@ async function syncCurrentWorldRevision() {
 
     try {
         const result = await session.syncBranch();
-        currentUiSession?.refresh?.();
+        refreshCurrentUi();
         return result;
     } catch (error) {
         if (session !== currentWorldSession) return null;
@@ -751,7 +757,7 @@ eventSource.on(eventTypes.CHAT_CHANGED, () => {
 onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, () => {
     // acceptOperationSnapshot installs the canonical projection and emits this
     // event too. Its own lifecycle write must not remount or recursively ready.
-    if (lifecycleClient.acceptingSnapshot) { presentationClient.refresh(); currentUiSession?.refresh?.(); return; }
+    if (lifecycleClient.acceptingSnapshot) { presentationClient.refresh(); refreshCurrentUi(); return; }
     return reloadGamePackage();
 });
 onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, async () => {
@@ -777,7 +783,7 @@ onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, event => {
     // A presentation failure must not turn a successful authority commit into
     // a failed write or trigger an automatic duplicate transaction.
     void currentReplyController?.invalidate().catch(error => console.error('Native reply refresh failed', error));
-    try { currentUiSession?.refresh?.(); } catch (error) { console.error('Native UI revision refresh failed', error); }
+    refreshCurrentUi();
 });
 for (const lifecycle of [
     NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED,

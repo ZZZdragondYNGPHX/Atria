@@ -68,11 +68,12 @@ for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844
         await page.locator('.atria-dock__close:visible, .atria-sheet-close:visible').click();
         await composer.getByRole('textbox', { name: 'Message', exact: true }).fill('Stop this request');
         await composer.getByRole('button', { name: 'Send', exact: true }).click();
-        await expect(page.locator('[data-atria-draft="true"]')).toContainText('Uncommitted streaming draft');
+        await expect(page.locator('[data-atria-generation-projection]')).toContainText('Uncommitted streaming draft');
+        await expect(page.locator('[data-atria-conversation="native"]')).not.toContainText('Uncommitted streaming draft');
         await page.screenshot({ path: resolve(directory, `stream-${viewport.width}.png`), fullPage: true });
         await composer.getByRole('button', { name: 'Stop', exact: true }).click();
         await expect(composer.getByRole('button', { name: 'Send', exact: true })).toBeVisible();
-        await expect(page.locator('[data-atria-draft="true"]')).toHaveCount(0);
+        await expect(page.locator('[data-atria-generation-projection]')).toBeHidden();
         expect(await page.evaluate(() => window.Atria.nativeSessionRuntime.snapshot.timeline.some(item => item.content?.includes('Uncommitted streaming draft')))).toBe(false);
         await page.screenshot({ path: resolve(directory, `stopped-${viewport.width}.png`), fullPage: true });
         expect(errors).toEqual([]);

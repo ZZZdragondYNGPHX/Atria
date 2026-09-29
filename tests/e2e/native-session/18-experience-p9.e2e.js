@@ -98,7 +98,9 @@ for (const width of [1440, 320]) test(`P9 Studio v3 exact preview and production
     await page.evaluate(() => document.querySelector('[data-atria-studio-resource="ui"]').click());
     const editor = page.locator('[data-atria-frontend-editor]');
     await expect(editor).toBeVisible();
-    await editor.getByLabel('Source Graph', { exact: true }).selectOption(await editor.locator('select[aria-label="Source Graph"] option').evaluateAll(options => options.find(option => option.textContent.includes('component · Main')).value));
+    const componentOption = editor.locator('select[aria-label="Source Graph"] option').filter({ hasText: 'component · Main' });
+    await expect(componentOption).toHaveCount(1);
+    await editor.getByLabel('Source Graph', { exact: true }).selectOption(await componentOption.getAttribute('value'));
     await expect(editor.getByLabel('Native source', { exact: true })).toHaveValue(aui);
     expect((await editor.boundingBox()).x).toBeGreaterThanOrEqual(0);
     expect(await editor.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);

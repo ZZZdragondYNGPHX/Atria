@@ -15,7 +15,7 @@ test('no formal runtime/compiler, Studio or authoring Skill points to legacy UI'
     for (const path of ['src/native/runtime-descriptor.js', 'src/native/authoring-contracts.js', 'src/native/experience-validation.js', 'src/native/session-core.js', 'src/native/lifecycle-authority.js', 'public/scripts/native/experience/ui/live.js', 'public/scripts/native/studio-workspace.js', 'public/scripts/native/studio-preview-ui.js', 'default/skills/global/atri-native-ui-authoring/SKILL.md']) {
         expect(read(path)).not.toMatch(/componentModelVersion|compileUiDocument|mountUiDocument|compileExperienceComponentModel/);
     }
-    expect(listAuthoringReferences().references.map(ref => ref.id)).not.toEqual(expect.arrayContaining(['ui-document', 'ui-actions', 'example-ui-v2']));
+    for (const id of ['ui-document', 'ui-actions', 'example-ui-v2']) expect(listAuthoringReferences().references.map(ref => ref.id)).not.toContain(id);
     expect(read('public/scripts/native/studio-preview-ui.js')).toContain('mountNativeFrontend');
     expect(read('public/scripts/native/shared-client.js')).not.toMatch(/mountUiDocument|frontendHttpTransport/);
 });

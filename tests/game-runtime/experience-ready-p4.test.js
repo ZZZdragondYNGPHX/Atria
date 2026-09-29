@@ -10,7 +10,7 @@ const copy = value => structuredClone(value);
 const flush = async () => { for (let index = 0; index < 50; index++) await Promise.resolve(); };
 const gate = () => { let resolve; const promise = new Promise(done => { resolve = done; }); return { promise, resolve }; };
 const snapshot = () => ({ session: { sessionId: 's', packageId: 'p', packageVersionId: 'v', entryPointId: 'e' },
-    revision: { revisionId: 'r', branchId: 'b' }, timeline: [], states: { atri_lifecycle: { opening: { completed: false } } } });
+    revision: { revisionId: 'r', branchId: 'b' }, timeline: [], states: { atri_lifecycle: { scopes: { scene: { status: 'active', epoch: 0 } } } } });
 const native = { active: false, snapshot: null, host: { isGenerating: () => false },
     acceptOperationSnapshot: jest.fn(async value => { native.snapshot = value; await emitNativeSessionLifecycle(EVENTS.SESSION_LOADED, { sessionId: value.session.sessionId, branchId: value.revision.branchId }); }) };
 let presentationRuntime;
@@ -73,7 +73,7 @@ test('superseded mount is disposed, and only its replacement may emit Ready', as
     expect(oldUi.dispose).toHaveBeenCalledTimes(1); expect(ready).toHaveBeenCalledTimes(1); expect(globalThis.fetch).toHaveBeenCalledTimes(2);
 });
 
-test('closing view cancels a pending load and leaves durable Opening untouched', async () => {
+test('closing view cancels a pending load and leaves Session authority untouched', async () => {
     const pendingMount = gate(); mount.mockImplementationOnce(() => pendingMount.promise);
     const loading = experience.reloadGamePackage(); await flush();
     const saved = copy(native.snapshot); await api['game-runtime'].exitUi();
@@ -113,4 +113,23 @@ test('runtime initialization failure releases its prepared Presentation Host', a
     expect(experience.getGamePackageState().status).toBe('invalid');
     expect(() => api['game-runtime'].getPresentationCapabilities()).toThrow('native_presentation_stale');
     expect(ready).not.toHaveBeenCalled();
+});
+
+
+test.each(['sync', 'async'])('v3 %s presentation failure cannot reject a committed lifecycle event or replay authority', async kind => {
+    const session = ui(); const failure = new Error('presentation unavailable');
+    session.refresh.mockImplementation(() => { if (kind === 'sync') throw failure; return Promise.reject(failure); });
+    mount.mockResolvedValueOnce(session);
+    const report = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+        await experience.reloadGamePackage(); await flush();
+        const committed = copy(native.snapshot); globalThis.fetch.mockClear();
+        await expect(emitNativeSessionLifecycle(EVENTS.REVISION_COMMITTED, { stateNamespaces: ['atri_lifecycle'] })).resolves.not.toThrow();
+        await flush();
+        expect(native.snapshot).toEqual(committed);
+        expect(globalThis.fetch).not.toHaveBeenCalled();
+        expect(loadPackage).toHaveBeenCalledTimes(1);
+        expect(ready).toHaveBeenCalledTimes(1);
+        expect(report).toHaveBeenCalledWith('Native UI revision refresh failed', failure);
+    } finally { report.mockRestore(); }
 });

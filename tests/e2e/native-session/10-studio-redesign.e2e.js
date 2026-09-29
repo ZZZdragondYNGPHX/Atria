@@ -98,7 +98,9 @@ for (const width of [1440, 900, 320]) test(`Studio review, source, UI, conflict 
     await navigate('UI');
     const ui = center.locator('[data-atria-frontend-editor]');
     await expect(ui).toBeVisible();
-    await ui.getByLabel('Source Graph', { exact: true }).selectOption(await ui.locator('select[aria-label="Source Graph"] option').evaluateAll(options => options.find(option => option.textContent.includes('component · Main')).value));
+    const componentOption = ui.locator('select[aria-label="Source Graph"] option').filter({ hasText: 'component · Main' });
+    await expect(componentOption).toHaveCount(1);
+    await ui.getByLabel('Source Graph', { exact: true }).selectOption(await componentOption.getAttribute('value'));
     const nativeSource = ui.getByLabel('Native source', { exact: true });
     await expect(nativeSource).toHaveValue(/The stars are waiting/);
     const original = await nativeSource.inputValue();
@@ -111,7 +113,7 @@ for (const width of [1440, 900, 320]) test(`Studio review, source, UI, conflict 
     expect((await center.getByLabel('Source editor', { exact: true }).boundingBox()).height).toBeGreaterThanOrEqual(compact ? 240 : 300);
     await page.route('**/api/native/studio/projects/*/source?*', route => route.fulfill({ status: 503, json: { message: 'Source is temporarily unavailable' } }));
     await center.getByRole('button', { name: 'Reload file' }).click();
-    await expect(center.getByRole('alert')).toContainText('temporarily unavailable');
+    await expect(center.getByRole('alert')).toContainText('The operation could not finish. Refresh its current state before trying again.');
     await expect(center.getByRole('button', { name: 'Review Source Change' })).toBeDisabled(); await shot('source-error');
     await page.unroute('**/api/native/studio/projects/*/source?*');
     await center.getByRole('button', { name: 'Reload file' }).click();
@@ -135,7 +137,7 @@ for (const width of [1440, 900, 320]) test(`Studio review, source, UI, conflict 
     // Failure may surface in Output, but the Agent draft must survive switching back.
     if (compact) await nav.getByRole('button', { name: 'AI', exact: true }).click();
     await expect(agent.getByLabel('Project Agent intent')).toHaveValue('Improve the welcome text');
-    await expect(agent.getByRole('alert')).toContainText('temporarily unavailable'); await shot('agent-error');
+    await expect(agent.getByRole('alert')).toContainText('The operation could not finish. Refresh its current state before trying again.'); await shot('agent-error');
     await page.unroute('**/api/native/studio/projects/*/agent/tasks');
     await page.keyboard.press('Escape');
     await navigate('Build'); await center.getByRole('button', { name: 'Run Preflight' }).click();

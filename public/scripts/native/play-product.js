@@ -238,7 +238,6 @@ export function mountAtriaPlayProduct({
             const id = text(entry.messageId);
             const node = existing.get(id) || messageNode(documentRef, snapshot, entry);
             existing.delete(id);
-            if (id === '__draft') node.dataset.atriaDraft = 'true';
             const body = node.querySelector('.atria-play-message__body');
             if (body.dataset.canonicalText !== text(entry.content)) { renderSafeProse(body, text(entry.content), { openExternal: openHostExternal }); body.dataset.canonicalText = text(entry.content); }
             if (!node.querySelector('[data-atria-message-blocks]')) {
