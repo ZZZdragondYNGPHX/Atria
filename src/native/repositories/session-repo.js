@@ -728,11 +728,13 @@ export class SessionRepo {
         }));
     }
 
-    async delete(handle, sessionId) {
+    async delete(handle, sessionId, { expectedRevisionId } = {}) {
         assertWritable();
         const session = await this.get(handle, sessionId);
         if (!session) return false;
         return this.continuity.lock(handle, session.packageId, () => withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
+            const current = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
+            if (expectedRevisionId !== undefined && current?.headRevisionId !== expectedRevisionId) throw new ConflictError('native_session_delete_conflict');
             const root = await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.playerContinuity, handle, packageId: session.packageId });
             const continuity = root && await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.playerContinuityRevision, handle, packageId: session.packageId, revisionId: root.revisionId });
             const realmRoot = await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.realm, handle, packageId: session.packageId });

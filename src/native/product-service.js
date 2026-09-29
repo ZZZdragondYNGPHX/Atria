@@ -323,8 +323,8 @@ export class NativeProductService {
         return this._sessions.rename(handle, sessionId, input);
     }
 
-    async deleteWork(handle, packageId) {
-        return this._packages.delete(handle, packageId);
+    async deleteWork(handle, packageId, options = {}) {
+        return withNativeResourceWrite(handle, 'package:' + packageId, () => this._packages.delete(handle, packageId, options));
     }
 
     preflightPackage(archive) {
@@ -786,8 +786,8 @@ export class NativeProductService {
         return this._core.restoreSavePoint(handle, sessionId, saveId, { expectedRevisionId });
     }
 
-    async deleteSession(handle, sessionId) {
-        return this._sessions.delete(handle, sessionId);
+    async deleteSession(handle, sessionId, options = {}) {
+        return this._sessions.delete(handle, sessionId, options);
     }
 
     async promoteEmbeddedKnowledge(handle, sessionId, options) {

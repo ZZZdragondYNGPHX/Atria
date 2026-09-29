@@ -128,7 +128,7 @@ export function createNativeProductRouter(getServices = services) {
         res.json(await product.startWork(handle, req.params.packageId, req.body || {}));
     }));
     router.delete('/works/:packageId', route(async (req, res, { product }, handle) => {
-        res.json({ deleted: await product.deleteWork(handle, req.params.packageId) });
+        res.json({ deleted: await product.deleteWork(handle, req.params.packageId, { baseVersionId: req.body?.baseVersionId }) });
     }));
 
     router.post('/packages/preflight', route(async (req, res, { product }, handle) => {
@@ -272,7 +272,7 @@ export function createNativeProductRouter(getServices = services) {
         res.json(await product.promoteEmbeddedKnowledge(handle, req.params.sessionId, req.body || {}));
     }));
     router.delete('/sessions/:sessionId', route(async (req, res, { product }, handle) => {
-        res.json({ deleted: await product.deleteSession(handle, req.params.sessionId) });
+        res.json({ deleted: await product.deleteSession(handle, req.params.sessionId, { expectedRevisionId: req.body?.expectedRevisionId }) });
     }));
 
     router.get('/projects', route(async (_req, res, { product }, handle) => {

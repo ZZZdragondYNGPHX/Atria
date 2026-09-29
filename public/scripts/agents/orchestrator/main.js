@@ -1,3 +1,4 @@
+import { createDelegatedRunApi } from './delegated-run.js';
 import { clearNativePresetNames } from '../../native/agent-settings.js';
 import { executeFirstPartyGeneration, firstPartyStreamingEnabled, streamFirstPartyGeneration, nativePromptUiActive } from '../../native/generation-compat.js';
 // SPDX-License-Identifier: AGPL-3.0-or-later
@@ -125,7 +126,20 @@ function getGameRuntimeBridge() {
 // exposure contract documented in register-custom-tool.js: ES-module import
 // (Layer 1), getCapabilityApi (Layer 2), and ctx (Layer 3) all resolve to the
 // same function references.
+const delegatedRunApi = createDelegatedRunApi({
+    getPreset: id => getWorkspaceLibrary(getSettings()).presets.find(preset => preset.id === id),
+    getScope: () => ({ sessionId: nativeSessionRuntime.snapshot?.session?.sessionId ?? null,
+        revisionId: nativeSessionRuntime.snapshot?.revision?.revisionId ?? null,
+        branchId: nativeSessionRuntime.snapshot?.revision?.branchId ?? null }),
+    getContext,
+    generate: ({ effect, definition }) => executeFirstPartyGeneration(getContext(), 'orchestrator', {
+        nativeRouteRef: definition.modelProfile?.nativeRouteRef,
+        taskMessages: effect.messages, abortSignal: effect.signal,
+    }),
+});
+
 registerCapabilityApi(MODULE_NAME, {
+    ...delegatedRunApi,
     recordMemoryRecall,
     getGameRuntimeMode: context => getSettings().enabled ? getGameRuntimeBridge().getMode(context) : '',
     runGameGuidance: input => getGameRuntimeBridge().runGuidance(input),

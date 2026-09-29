@@ -260,9 +260,11 @@ export class PackageRepo {
         });
     }
 
-    async delete(handle, packageId) {
+    async delete(handle, packageId, { baseVersionId } = {}) {
         assertWritable();
         return this._engine.withTransaction(handle, async (tx) => {
+            const current = await getNativeDocument(tx, this._packageKey(handle, packageId));
+            if (baseVersionId !== undefined && current?.currentVersionId !== baseVersionId) throw new ConflictError('native_package_delete_conflict');
             const sessions = await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.session, handle });
             const references = sessions
                 .filter(record => record.doc?.packageId === packageId)
