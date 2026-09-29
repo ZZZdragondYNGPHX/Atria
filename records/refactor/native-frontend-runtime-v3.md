@@ -11,7 +11,7 @@
 - Current Stage: **Phase 9 — Legacy Removal / Regression / Finalize**
 - Status: **Implementation pushed; final regression / CI / integration in progress**
 - Main Baseline: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`
-- Task Branch HEAD: `a066fdd1303ec722160a8f975bc77ae04a345897`
+- Task Branch HEAD: `06b8f4e5ab0d7f03eb4d42cd6b4a44df0467d1eb`
 
 This Record is the permanent implementation history for the multi-stage Native Frontend v3 refactor. Each completed Phase must append/update its checkpoint here; do not create a separate Record per Phase.
 
@@ -1155,3 +1155,48 @@ delete remote/local task branch and live HANDOFF. No physical IME/soft keyboard,
 Android/Termux device or external media/provider E2E claim. Prior Phase 8 evidence
 boundaries are retained; Linux Chromium/storage evidence will be recorded only
 if the associated CI actually passes.
+
+
+### Final regression follow-up — 06b8f4e5
+
+- Follow-up pushed: `06b8f4e5ab0d7f03eb4d42cd6b4a44df0467d1eb`.
+  Catch both sync and rejected async v3 refresh failures outside committed
+  lifecycle events; added no-replay/no-failed-commit tests. Removed dead draft
+  message marker. Browser tests now inspect separate Generation Projection,
+  not a provisional entry in committed Conversation. Studio tests await source
+  options and expect existing sanitized errors (not raw server text).
+- Final completed local full batch (before the two added refresh tests):
+  **801 suites passed, 2 failed, 7 skipped; 9126 tests passed, 1 failed, 92 skipped**.
+  Both failures were Termux Bash guards resolving the Windows Store bash stub;
+  rerun with installed Git Bash in PATH: **2 suites / 22 tests passed**, no product
+  or test modification. This is not an Android/Termux device run. The full batch
+  was not repeated after PATH correction or final follow-up; affected checks ran
+  separately. Native folder: 104 suites/1749 tests; adjacent game-runtime,
+  atria-shell and memory-graph folders: 137 suites/1032 tests, all passed.
+- Final changed-code focus: **3 suites / 20 tests passed**, covering Play product,
+  refresh lifecycle and hard-cut contracts; changed JS lint and diff check passed.
+  Root lint and webpack build also passed during follow-up (before removal of one
+  dead marker line; its affected Play test and changed-file lint passed afterward).
+- Corrected Shell Edge: desktop/mobile layout/recovery **2 passed**, Health/Shared
+  **1 passed**, Studio Preview/Scenario at 1440/320 **2 passed**. Full Studio
+  authoring/Review/conflict/recovery at 1440/900/320 plus Chinese/accessibility
+  **4 passed** before user interruption; the remaining project-list/loading/
+  retry/create test was separately rerun and **1 passed**. These are all 10 cases
+  from the three rewritten Shell E2E files, but not one uninterrupted green batch.
+- Native generation/Studio human takeover Edge **4 passed**, 1440/390, after the
+  streaming selector fix. The earlier already-started local P4 run still loaded
+  the old selector and failed; the new run passed. This uses a synthetic loopback
+  provider, not an external provider/model. Stream mobile screenshot inspected;
+  no provisional text was present in committed Conversation or Timeline.
+- Remote evidence on `a066fdd1303ec722160a8f975bc77ae04a345897`:
+  - PR Checks run **36565678359** passed: **810 suites / 10175 tests**, including
+    service-backed MySQL/PostgreSQL as configured, root lint and migration guard.
+  - Native v3 PR run **36565678465** and push run **36565671676** passed:
+    **246 suites / 2807 tests**, guards, Linux Chromium Heavy 6 + Studio 2.
+  - Model Prompt run **36565678355** passed its unit/build/lint checks but failed
+    one browser case at the stale draft selector (8 passed, 3 not run). Artifact
+    inspection proved the text was correctly in separate Generation Projection.
+    Do not describe that run as successful. The correction is in 06b8f4e5.
+- New exact-head remote runs pending: PR **36567427028**, Native v3 PR
+  **36567426990** / push **36567420904**, Model Prompt **36567426994**.
+  No merge or branch/HANDOFF cleanup before those gates finish.
