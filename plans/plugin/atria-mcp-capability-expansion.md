@@ -2181,3 +2181,107 @@ During the design discussion phase:
 3. the Plan records design intent and boundaries, not implementation history;
 4. implementation and permanent verification history will use `records/plugin/**` once implementation starts;
 5. the `plugin` implementation remains unchanged until the design is sufficiently frozen or the user explicitly starts implementation.
+
+
+## Appendix A — Phase 1 implementation kickoff prompt
+
+The following prompt is the approved handoff text for starting Phase 1 in a fresh implementation conversation/client. Re-check all remote refs before acting; recorded hashes are checkpoints, not authority.
+
+```text
+继续 ZZZdragondYNGPHX/Atria 的 Atria MCP Capability Expansion。
+
+Task ID:
+plugin/atria-mcp-capability-expansion
+
+Primary Workspace:
+plugin
+
+Approved Plan:
+docs:plans/plugin/atria-mcp-capability-expansion.md
+Status: Approved Implementation Plan v1.0
+
+当前记录 checkpoint（开始前必须重新核对真实远端 refs）：
+main@191f9f951ccb23cd11d8951e539b8ff6eb8316db
+plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225
+
+当前只执行：
+Phase 1 — MCP Kernel / Repository Observation
+
+不要开始 Phase 2，不要修改 Atria main 产品源码，不要创建 feat/mcp-development-authority。
+
+开始前：
+1. fetch / 核对真实远端 main、plugin、docs；
+2. 读取最新 plugin:AGENTS.md；
+3. 读取最新 docs:README.md；
+4. 读取最新 docs:plans/plugin/atria-mcp-capability-expansion.md；
+5. 检查 docs:HANDOFF.md。若它仍属于其他活跃任务，不得覆盖、替换或删除；明确记录该治理阻塞。若 HANDOFF 槽已释放，则按 Governance 为本多阶段任务建立本任务 live HANDOFF。
+6. Phase 1 真正开始实现时创建并持续更新：
+   docs:records/plugin/atria-mcp-capability-expansion.md
+
+Phase 1 只做 Plugin：
+plugin:atria-mcp/
+
+Phase 1 目标：
+- Semantic Action Registry kernel；
+- 四级 risk executor 基础骨架，但本阶段不开放真实产品 mutation；
+- Policy Ceiling 表示；
+- ephemeral Receipt Store 基础设施；
+- repository-wide tree/read/search；
+- Git status/diff/log/show/blame 只读证据；
+- safe non-ignored untracked development file 可读；
+- bounded development artifact list/read/search/image/inspect；
+- 独立 RepositoryAccessPolicy；
+- Sensitive path/content policy；
+- 保持 Secret、用户数据、dataRoot、symlink/traversal 边界。
+
+v0.2.0 最终公开工具面已经冻结为 18 个；Phase 1 可以按阶段逐步迁移内部实现，但不得私自增加 per-domain 顶层 MCP tools。
+最终公开工具：
+atri_status
+atri_capabilities
+atri_reference
+atri_repo
+atri_git
+atri_artifact
+atri_api
+atri_diagnose_snapshot
+atri_browser_open
+atri_browser_observe
+atri_browser_screenshot
+atri_browser_interact
+atri_browser_diagnostics
+atri_browser_close
+atri_read
+atri_interact
+atri_mutate
+atri_destructive
+
+迁移是 breaking cutover：
+- 不长期保留 atri_source_read / atri_source_search 等 legacy aliases；
+- confirm=true 最终删除；
+- --allow-writes / ATRIA_ALLOW_WRITES 最终删除；
+- atri_api 最终只做 Native discovery/detail/read，不可成为产品写入逃生通道。
+但 Phase 1 不要提前实现 Phase 4 的可信审批/Lease mutation 行为。
+
+验证要求至少覆盖：
+- tracked root/config/docs/source 可读；
+- safe untracked 可读；
+- ignored artifact 必须走 artifact policy；
+- product/user data 不因位于 repo 下而可由 repo tool 读取；
+- .env / credentials / Secret / keystore 等 hard deny/redact；
+- historical Git diff/show 同样应用 sensitive policy；
+- traversal / symlink escape 拒绝；
+- Git evidence bounded；
+- 顶层 MCP tool surface 不出现未经 Plan 批准的 per-domain tools。
+
+这是正式多阶段任务：
+完成 Phase 1 后必须停止，不得继续 Phase 2。
+结束前：
+- 跑适当 Plugin unit/integration tests；
+- commit/push plugin；
+- 更新同一 Plugin Record；
+- 若 live HANDOFF 槽属于本任务则更新 HANDOFF；
+- 更新 Plan 仅限方案发生实质变化时；
+- 给出 Phase 1 End/Tested HEAD、验证结果、已知限制；
+- 生成可直接复制的新对话 Phase 2 接手提示词；
+- 停止。
+```
