@@ -4,14 +4,16 @@
 
 - Task ID: `refactor/native-frontend-runtime-v3`
 - Primary Workspace: `main`
-- Task Branch: `refactor/native-frontend-runtime-v3`
+- Task Branch: `refactor/native-frontend-runtime-v3` (merged; local/remote branches deleted)
 - Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
 - Baseline: **Implementation Baseline v1.0**
 - Compatibility Strategy: **Hard Cut / Clean Break**
 - Current Stage: **Phase 9 — Legacy Removal / Regression / Finalize**
-- Status: **Implementation pushed; final regression / CI / integration in progress**
+- Status: **Complete — Phases 1–9 integrated, verified and cleaned up**
 - Main Baseline: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`
-- Task Branch HEAD: `06b8f4e5ab0d7f03eb4d42cd6b4a44df0467d1eb`
+- Final Tested Task HEAD: `a15423efea3010e0afe0151d351c25252183d496`
+- Final Main HEAD: `c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`
+- Pull Request: #98 (merged)
 
 This Record is the permanent implementation history for the multi-stage Native Frontend v3 refactor. Each completed Phase must append/update its checkpoint here; do not create a separate Record per Phase.
 
@@ -1200,3 +1202,88 @@ if the associated CI actually passes.
 - New exact-head remote runs pending: PR **36567427028**, Native v3 PR
   **36567426990** / push **36567420904**, Model Prompt **36567426994**.
   No merge or branch/HANDOFF cleanup before those gates finish.
+
+### Final recovery follow-up — a15423efe
+
+- Resumed from actual pushed `06b8f4e5ab0d7f03eb4d42cd6b4a44df0467d1eb`,
+  not the older Phase 8 chat summary. Both task/docs refs matched origin. Two
+  uncommitted task-related files contained temporary tracing and a Worker
+  readiness assertion; no unrelated changes or active test process were present.
+- Exact 06b8f4e5 CI: PR Checks **36567427028** passed (810 suites / 10177 tests);
+  Model Prompt **36567426994** passed (301 suites / 3384 tests plus browser);
+  Native push **36567420904** passed. Native PR **36567426990** passed core but
+  failed the final Full/mobile browser scenario after VM restart: Worker creation
+  was observed before async recovery initialization had completed.
+- Kept the stronger readiness condition: require the cleared Canvas to be drawn
+  again after the scoped People read before sending the next user event. This
+  waits for observable recovery and does not weaken the retained state assertion.
+- Local reproduction with the existing temporary trace also caught a separate
+  real race: reload aborts an in-flight status poll with a DOMException whose
+  code is numeric. Error normalization called startsWith on that number, then
+  forwarded an obsolete poll failure into the replacement presentation.
+- `a15423efea3010e0afe0151d351c25252183d496` normalizes only string error codes
+  and drops rejected status polls after their captured generation is revoked.
+  Current-generation transport failures still reject with a public stable code.
+  Shared error normalization also handles null/non-string codes. No write retry,
+  authority change, new epoch source or broad suppression of live failures.
+  Removed temporary trace output from product and browser test before commit.
+- Actual local verification: Bridge client/Host **2 suites / 34 tests passed**,
+  including six new cancellation/non-string error cases; Script VM/supervisor
+  **26 tests passed** during diagnosis. Final Heavy Edge **6 scenarios passed**,
+  all providerCalls=0, after the fix. Changed JS ESLint, smoke syntax and staged
+  diff checks passed. Full local regression was not repeated for this small fix.
+- Pushed follow-up triggers exact-head runs: PR Checks **36570318387**, Native PR
+  **36570318091** / push **36570310337**, Model Prompt **36570318260**. Their final
+  outcomes and the integration checkpoint follow below once verified.
+
+### Exact final task-head gates and main integration
+
+All merge gates succeeded on `a15423efea3010e0afe0151d351c25252183d496`:
+
+| Workflow | Run | Verified result |
+| --- | --- | --- |
+| PR Checks | 36570318387 | 810 suites / 10183 tests; configured MySQL/PostgreSQL services, lint and migration guard passed |
+| Native v3 PR | 36570318091 | 246 suites / 2815 tests; Hard Cut guards; Chromium Heavy 6 + Studio 2 passed |
+| Native v3 push | 36570310337 | Core and browser jobs passed |
+| Model Prompt | 36570318260 | 301 suites / 3390 tests; lint/build; all 12 Chromium E2E cases passed |
+
+- PR #98 merged at **2026-09-29T12:57:42Z** after all eight reported checks were
+  successful. Merge was pinned with `--match-head-commit` to the tested task head.
+- Main merge HEAD: `c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`.
+- Fetched main and switched the product worktree to local tracking `main`.
+  Verified task-head ancestry and an identical Git tree (no source delta from
+  the tested task commit). No reset, squash or untested source modification.
+- Post-merge local verification: Native Frontend Hard Cut guard passed;
+  frontend-hard-cut + frontend-bridge-client **2 suites / 22 tests passed**.
+- Repository cleanup workflow **36571668854** passed and removed the remote
+  task branch. Post-merge Native **36571669074** and Model Prompt **36571669023**
+  results are recorded in the final checkpoint below.
+
+
+### Final completion checkpoint — 2026-09-29
+
+**Phase 9 and the complete Native Frontend Runtime v3 task are complete.**
+
+- Post-merge Native v3 run **36571669074** succeeded, both core/Hard Cut and
+  Heavy/Studio Chromium jobs. Post-merge Model Prompt **36571669023** succeeded:
+  **301 suites / 3390 tests and all 12 browser E2E cases**. Both run on final
+  main `c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`.
+- Final main has no source differences from tested task head
+  `a15423efea3010e0afe0151d351c25252183d496`; its merge preserves the task history.
+  PR exact-head full regression passed **810 suites / 10183 tests** and associated
+  Native regression **246 suites / 2815 tests** before merge. Counts overlap and
+  should not be summed into a unique test total.
+- Remote task branch deletion by the repository was verified with ls-remote;
+  pruned its tracking ref and deleted the merged local task branch. Product
+  worktree is on tracking main. The independent docs worktree is retained.
+- Updated this same permanent Record and removed live HANDOFF at completion.
+  Frozen Plan / Baseline v1.0 unchanged; no new Plan, parallel Record, reference
+  access, formal Package upgrade, or merge of main into a long-lived workspace.
+- Final validation boundaries remain: Windows Edge plus Linux Chromium, synthetic
+  composition/keyboard viewport, deterministic Heavy model/media seams and local
+  loopback providers in generation E2E. No physical IME/soft keyboard, real
+  Android/Termux device or live external provider/media-server evidence is claimed.
+  Local full-run environment failures and all repaired CI failures remain above;
+  the final successful remote runs do not rewrite that history.
+- No remaining task implementation or integration checkpoint. Future formal
+  Package upgrades or device/external-service acceptance are separate work.
