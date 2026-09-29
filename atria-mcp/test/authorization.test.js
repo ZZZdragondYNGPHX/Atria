@@ -100,6 +100,22 @@ test('Build evaluation receipt binds exact normalized operations, base, Preview 
     assert.equal(fingerprint({ a: 1, b: 2 }), fingerprint({ b: 2, a: 1 }));
 });
 
+test('Session invalid message/branch is rejected by pure guards before approval or mutation', async () => {
+    let approvals = 0, mutations = 0;
+    const serverBootId = randomUUID();
+    const response = data => ({ ok: () => true, status: () => 200, headers: () => ({ 'content-type': 'application/json', 'x-atria-server-boot-id': serverBootId }), body: async () => Buffer.from(JSON.stringify(data)), dispose: async () => {} });
+    const browser = { config: { url: 'http://localhost', timeout: 1000, maxResponseBytes: 1048576 }, start: async () => {}, runtimeIdentity: async () => ({ serverBootId, mutationGuards: 1 }),
+        context: { request: { get: async () => response({ token: 'csrf-private' }), fetch: async (url, options) => {
+            if (url.endsWith('/load')) return response({ session: { sessionId: 'session_x' }, revision: { revisionId: options.data.revisionId ?? 'r1', branchId: 'b1' }, timeline: [] });
+            if (url.endsWith('/sessions/session_x')) return response({ branches: [] });
+            mutations++; throw Error('must not write');
+        } } } };
+    const registry = registerMutationActions(new ActionRegistry(), browser), executor = new RiskExecutor(registry, new PolicyCeiling(registry, registry.ids()), { approve: async () => { approvals++; } });
+    await assert.rejects(executor.execute('MUTATE', { action: 'chat.branch.fork', input: { sessionId: 'session_x', expectedRevisionId: 'r1', revisionId: 'history', messageId: 'missing' } }), /Message/);
+    await assert.rejects(executor.execute('MUTATE', { action: 'chat.branch.switch', input: { sessionId: 'session_x', expectedRevisionId: 'r1', branchId: 'missing' } }), /Branch/);
+    assert.equal(approvals, 0); assert.equal(mutations, 0);
+});
+
 test('real browser fixed Memory writes require current boot and exact graph, reject stale/unknown dispatch', async t => {
     const runtime = { version: 1, serverBootId: randomUUID(), processStartedAt: Date.now(), appVersion: 'test', mutationGuards: 1,
         source: { algorithm: 'atria-source-v1', revision: null, branch: null, workspaceId: null, fingerprint: null, reasons: [] } };

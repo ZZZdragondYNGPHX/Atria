@@ -42,6 +42,17 @@ export function registerMutationActions(registry, browser) {
     const sessionGuard = async i => {
         const response = await read('POST', session + '/load', { sessionId: i.sessionId });
         if (response.data.revision.revisionId !== i.expectedRevisionId) throw new Error('Session revision conflict.');
+        let targetSnapshot = response.data;
+        if (i.revisionId && i.revisionId !== i.expectedRevisionId) {
+            const historical = await read('POST', session + '/load', { sessionId: i.sessionId, revisionId: i.revisionId });
+            if (historical.serverBootId !== response.serverBootId) throw new Error('Server changed during Session guard.');
+            targetSnapshot = historical.data;
+        }
+        if (i.messageId && !targetSnapshot.timeline.some(message => message.messageId === i.messageId)) throw new Error('Message is not in the reviewed Session revision.');
+        if (i.branchId) {
+            const detail = await read('GET', `${product}/sessions/${i.sessionId}`);
+            if (!detail.data.branches.some(branch => branch.branchId === i.branchId)) throw new Error('Branch is not in the target Session.');
+        }
         return { target: { sessionId: i.sessionId }, serverBootId: response.serverBootId, identity: snapshotIdentity(response.data) };
     };
     const add = (action, risk, authority, shape, guard, run, effects = []) => registry.register({ version: 1, id: action, domain: action.split('.')[0],
