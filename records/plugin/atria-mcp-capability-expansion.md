@@ -68,3 +68,59 @@ Environment: Windows, Node.js v24.18.0, npm 11.16.0. Browser fixture used instal
 - Artifact inspect is identity-only (size/hash/extension), not archive manifest validation. Fixed roots and limits are documented in the plugin README.
 - No Source ↔ Runtime ↔ Browser match is established yet. Do not claim source-current verification from Phase 1 screenshots.
 - Approved Plan is unchanged. Next authorized stage in a new conversation is Phase 2 only; first fetch/recheck remote refs and revalidate current main authorities. HANDOFF retains the exact continuation prompt.
+
+## Phase 2 — Runtime Provenance / Fixed Capability Adapters
+
+Status: **Complete; pushed; stopped before Phase 3** (2026-09-29).
+
+### Actual checkpoints and revalidation
+
+- Start plugin: `8cf6275239860a915d2444d62b05019d8674a6d5`.
+- End / tested plugin: `038f061223684c9e36ad3340dd08d8a295d625bf` (pushed to `origin/plugin`).
+- Product main baseline: `c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`, unchanged by this phase.
+- Product auxiliary branch / tested HEAD: `feat/mcp-development-authority@46d717dd177d2825d420ab21d53f13968f645afe` (pushed; not merged into main).
+- Start docs: `5a3c2204b55187ca0f2e04d973eb89f5981006eb`. This Record and live HANDOFF are updated together; use actual remote docs HEAD on resume.
+- Initial fetch confirmed the supplied main/plugin checkpoints; main, plugin and docs worktrees were clean. Read current plugin AGENTS, full Governance, task HANDOFF, approved Plan and this Record. HANDOFF still belonged to this task and was preserved.
+- Rechecked actual main `/version`, startup-store/startup-timing, diagnostics, Native Session/Studio/Frontend and the first-party browser capability APIs. Canonical `serverBootId` and process start existed, but no direct current identity bound them to full revision and startup source-content identity. Only after confirming that gap, created a managed independent product worktree from the verified main and selected the specified feature branch.
+- Reused existing plugin/docs worktrees; caller's original product checkout and branch remained unchanged. No reference branch access, no main-to-plugin merge, no product source copied into plugin. Product branch is intentionally retained for later phases, per the multi-stage Plan.
+
+### Delivered
+
+- Product: one `GET /api/diagnostics/runtime-identity` on the existing private diagnostics mount, with `Cache-Control: private, no-store`. Launcher captures identity once before importing server-main. Requests return detached snapshots and never recompute startup source bytes.
+- Identity reuses canonical `serverBootId` and startup-store process timestamp, adds app version, full revision/branch, hashed workspace identity and versioned source fingerprint/uncertainty. Product responses carry `X-Atria-Server-Boot-Id` so MCP can bind the actually loaded main document, not merely a subsequent API request. No second boot ID or new Frontend/Studio authority.
+- `atria-source-v1`: full HEAD plus sorted path/index-mode/raw-content-hash manifest of tracked source in explicit runtime source roots; bounded double scan, regular-file/junction checks, detectable ignored and non-ignored runtime untracked uncertainty. Product and plugin independently implement the wire protocol; MCP never imports or executes configured checkout code. Raw CRLF/LF differences intentionally change identity. Fingerprint is source evidence, not identity of dependencies, runtime config or user data.
+- Plugin compares `EXACT`, `SOURCE_CHANGED_SINCE_RUNTIME_START`, `CONTENT_MATCH_DIFFERENT_WORKSPACE`, `DIFFERENT_REVISION`, `UNVERIFIABLE`. Older/unavailable/unauthenticated identity and incomplete evidence remain unverifiable without disabling observation. Status can fetch identity without starting a browser.
+- Browser open/reload binds document response boot ID to current authenticated runtime identity. Status cannot silently recapture it. Server restart gives `STALE`; reload/open gives `CURRENT`. Real main-document navigation invalidates binding; same-document SPA history/hash navigation preserves it. Also fixed empty transient iframe URL handling found by the new browser fixture.
+- Status, browser evidence and screenshot text carry provenance. Native GET responses include their own boot ID/timestamp. Screenshot capture reports scoped identity changes across the capture interval; unmeasured intervals are explicitly labelled. Source match is never a substitute for scoped authoring proof.
+- Passive, bounded projection of fixed existing Native Frontend/Studio responses keeps Experience Session/Epoch/revision/descriptor identity separate from Project/baseRevision/Workspace/normalized operations fingerprint/evaluation status/Preview/PackageVersion/entryPoint/package hash. Preview UI observation must match the same Preview and PackageVersion. These are last-observed authority responses, not a live scope freshness assertion; unavailable fields stay unavailable. No arbitrary Host Bridge dispatch or second Preview/evaluation/Source Graph implementation.
+- Internal fixed browser adapters: `memory.schema.scope` → `memory-graph.getSchemaScopeInfo`; `agents.presets.list` → `orchestrator.listWorkspacePresets`; `game.loaded.identity` → browser-loaded `game-runtime.getPackageState` projection. Strict input/output schemas, READ risk, availability rules, literal capability/method accesses, output projection/redaction, size/time limits and browser/Experience provenance guards. No model-provided JS/module/window/property-chain/capability/method dispatch; no vector recall, model calls or mutation.
+- Fixed adapters are infrastructure only; Registry remains empty until Phase 3 owns full READ registration. Exactly 18 public tools, GET-only `atri_api`, no legacy aliases/confirm/write switch, no Lease or approval implementation. Committed Timeline and ephemeral GenerationProjection boundary unchanged.
+- Updated plugin README/guide and opt-in real-product verifier for the current phase, including clean disposable-checkout source-change and separate-checkout revision comparison options.
+
+### Actual validation
+
+Environment: Windows, Node.js v24.18.0, npm 11.16.0, installed Microsoft Edge via `ATRIA_TEST_BROWSER_CHANNEL=msedge`.
+
+- Plugin final HEAD: `npm test` **24/24 passed**, zero skips, including exact 18-tool MCP stdio contract, Phase 1 regression coverage, fingerprints/revisions/untracked uncertainty, fixed dispatch/schema/redaction checks, independent Epoch/Preview comparisons, passive response capture bounds and real Edge fixture stale/reload/SPA-history behavior.
+- `npm run check`: all ten source modules passed. `node --check scripts/verify-atria.js`, working and staged `git diff --check`: passed. Final provenance/integration targeted run also passed 7/7 before the final all-test run.
+- Product: Jest `logging/source-identity.test.js`, `logging/diagnostics-api.test.js`, `logging/diagnostics-mounting.test.js`, `logging/startup-store.test.js`: **4 suites, 17/17 tests passed**. Covers source mutation/staging/deletion/untracked/ignored/junction behavior, canonical identity fallback, private diagnostics integration and startup regressions.
+- Product targeted ESLint passed for `server.js`, `src/server-main.js`, `src/endpoints/diagnostics.js`, `src/logging/source-identity.js`, `src/logging/runtime-identity.js`.
+- Real `npm run test:atria` passed at final plugin `038f061223684c9e36ad3340dd08d8a295d625bf` against product `46d717dd177d2825d420ab21d53f13968f645afe`, with fresh disposable data and a real Edge page. Verified Source/Server `EXACT`, loaded-page `CURRENT`, tracked package.json temporary whitespace change → `SOURCE_CHANGED_SINCE_RUNTIME_START` while startup fingerprint remained immutable, restore → `EXACT`, independent existing product checkout at `cfe7ee99a` → `DIFFERENT_REVISION`, actual server restart with page retained → `STALE`, reload → `CURRENT`.
+- Final real startup fingerprint: `0b77352e33f8bbd6db79558b34f2f925cb79ff04eb40200ac42caf71ce82d05f`; app `2.7.0`. Boot changed from `b0ea665f-11cc-45c0-bfce-bac77b8e260b` to `7cb68509-ae07-4eb1-bc07-d30f388f31c1` with the same startup source fingerprint. These are historical test evidence, not current runtime state.
+- Real product returned 163 discovered routes, 23 authoring references and 200 for Studio project observation. Required frontend core bundle 200; real product webpack startup build succeeded after dependency repair. Captured desktop and 390×844 mobile screenshots; visually inspected the desktop shell/onboarding. No onboarding action or product data mutation was sent through MCP. Final local ignored evidence: `atria-mcp/.artifacts/atria-1790693175148/`; no runtime data/logs/screenshots/binaries committed.
+- Expected diagnostic noise during deliberate restart includes websocket-ticket connection refusals; startup timing request aborts also occurred. This is not a zero-error browser session or a complete UI flow test.
+
+### Failures resolved and limits
+
+- Initial regression test expected the Phase 1 unavailable placeholder; migrated the assertion to the new provenance document.
+- Browser fixture exposed a transient empty iframe URL; it now fails filtering safely rather than throwing.
+- First real provenance run passed identity assertions but its UI had 404 bundles because the reused dependency tree lacked QuickJS packages. This was not accepted as healthy product UI evidence. Removed only the verified dependency junction and ran isolated `npm ci --ignore-scripts --no-audit --no-fund` in the product worktree (924 packages); did not modify the caller's dependencies or package manifests. The verifier now requires the core bundle to return 200.
+- Healthy product startup then exposed SPA history navigation invalidating the document binding. Corrected invalidation to actual main-document requests, added a browser regression test, and reran final real integration successfully.
+- Missing identity, untracked uncertainty, scope Epoch/Preview changes and fixed adapters have fixture/unit coverage. Real active Session Epoch invalidation, real Studio Workspace/evaluation/Preview binding and real Memory/Orchestrator product scenarios have **not** been exercised. They remain integration work for the owning later phases; this phase does not claim full Native Frontend v3 verification.
+- No full product Jest suite, Android/device checks, deployment or final main integration performed. No Phase 3 implementation or Phase 4 mutation/approval work begun. Approved Plan v1.1 remains unchanged.
+
+### Remote state / next checkpoint
+
+- Plugin and product feature commits pushed. GitHub queried for both exact HEADs: **zero check-runs, zero commit statuses, combined state `pending`**. No remote CI pass claimed. Product workflows do not automatically run on this feature push; no PR or manual broad workflow was created for this phase.
+- Main remains at the verified baseline. Product feature is not merged or deleted at this phase boundary. Preserve/reuse it for later task stages.
+- Same Record and task-owned live HANDOFF updated. Next stage is **Phase 3 — Full Read Authority**, only on a new explicit continuation. Fetch all real refs before resuming; keep the exact 18-tool surface and preference for stronger server authority.
