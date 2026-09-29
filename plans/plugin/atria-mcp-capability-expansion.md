@@ -3,7 +3,7 @@
 **Task ID:** `plugin/atria-mcp-capability-expansion`  
 **Primary Workspace:** `plugin`  
 **Plan Workspace:** `docs`  
-**Status:** Discussion Draft v0.6  
+**Status:** Discussion Draft v0.7  
 **Current implementation baseline:** `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`  
 **Implementation path:** `plugin:atria-mcp/`
 
@@ -667,7 +667,141 @@ Useful fields include:
 Receipts are the preferred basis for narrow cleanup leases such as "remove only test messages/Projects created by this MCP session", rather than heuristic ownership guesses.
 
 
-## 13. Diagnostic workflow target
+
+
+## 13. Build / Studio semantic model
+
+MCP Build/Studio operations should reuse Atria's existing revisioned authoring authority rather than expose a second direct-edit protocol.
+
+### 13.1 Read surface
+
+The accepted read direction includes semantic tools such as:
+
+- `atri_build_list`;
+- `atri_build_get`;
+- `atri_build_revision`;
+- `atri_build_files`;
+- `atri_build_read`;
+- `atri_build_history`;
+- `atri_build_diff`;
+- `atri_build_resources`;
+- `atri_build_resource_closure`;
+- `atri_build_validate`;
+- `atri_build_preflight`;
+- preview inventory/detail reads where useful.
+
+Build/Studio reads must preserve exact Project/revision identity.
+
+### 13.2 Workspace-first mutation
+
+Normal Build mutation should use Atria Authoring Workspace/Operation semantics.
+
+The preferred flow is:
+
+`baseRevision -> operations -> workspace -> inspect/evaluate -> user authorization -> executeWorkspace -> ChangeSet/resultingRevision`.
+
+Structured/domain authoring operations are preferred. Low-level source operations such as `source.write`, `source.move` and `source.delete` remain fallback operation types rather than the primary top-level MCP editing interface.
+
+### 13.3 Prepare / inspect / evaluate / apply
+
+Candidate semantic workflow:
+
+- `atri_build_change_prepare` — construct/normalize an in-memory Workspace proposal;
+- `atri_build_change_inspect` — inspect exact before/after change fingerprints without persisting;
+- `atri_build_change_evaluate` — use Studio evaluation to temporarily apply, validate, preview and simulate, then restore the Project;
+- `atri_build_change_apply` — execute the already-reviewed Workspace through Studio authority and return a ChangeSet/new revision.
+
+Risk classification is semantic rather than HTTP-method based:
+
+- prepare: no persistent side effect;
+- inspect: READ;
+- evaluate: INTERACT because it creates temporary runtime/preview state but restores Project source;
+- apply: MUTATE.
+
+### 13.4 Evaluate-before-apply binding
+
+The preferred safe path requires a successful evaluation receipt before apply.
+
+The evaluation receipt should bind at least:
+
+- projectId;
+- baseRevision;
+- workspaceId;
+- normalized operations fingerprint/hash;
+- validation result;
+- preview/simulation evidence where applicable.
+
+Apply must re-check that the Project baseRevision and normalized operation set still match the evaluated proposal. Any change fails closed and requires re-evaluation.
+
+This prevents a reviewed/evaluated proposal from drifting before execution.
+
+### 13.5 Preview and simulation
+
+Preview is a first-class MCP verification capability.
+
+Candidate tools:
+
+- `atri_build_preview_create`;
+- `atri_build_preview_get`;
+- `atri_build_preview_close`;
+- `atri_build_simulate`.
+
+Preview results are temporary/non-persisted and should compose with browser snapshot/screenshot/resize/diagnostics tools for real UI verification.
+
+Simulation is INTERACT by default and may carry external-effect metadata if a particular simulation path invokes configured model/provider services.
+
+### 13.6 Validation/preflight are semantically read-only
+
+Operations such as validation and preflight remain READ-class even when implemented as POST endpoints because they do not intentionally mutate Project authority.
+
+MCP risk classification must be based on product semantics, not HTTP verbs.
+
+### 13.7 Project history and source delete
+
+Studio Project-local Git history makes source writes/moves/deletes revisioned and recoverable.
+
+Therefore source deletion inside an applied Workspace is normally:
+
+- MUTATE;
+- marked high-impact;
+- not automatically classified as DESTRUCTIVE.
+
+Deleting the entire Project remains DESTRUCTIVE.
+
+Project deletion must retain current baseRevision/conflict protection.
+
+### 13.8 MCP-created temporary Projects
+
+`atri_build_create` may create test/minimal-reproduction Projects under MUTATE authorization.
+
+Operation receipts should identify Projects created by the current MCP session so a narrow cleanup lease can safely permit deletion of only those Projects without granting permission to delete pre-existing user Projects.
+
+### 13.9 Build/package artifacts
+
+Building a Project may produce a large `.atria` archive.
+
+MCP should not return the entire archive as model-context base64 by default.
+
+A semantic build result should prefer bounded metadata such as:
+
+- project/revision identity;
+- manifest;
+- PackageVersion identity;
+- preflight result;
+- archive size/hash/file name.
+
+Actual artifact transfer should use a dedicated artifact/download path only when explicitly needed.
+
+### 13.10 External Project Agent remains a separate domain
+
+Atria's internal ProjectAgentService is not the default mutation path for an external Claude/Codex client using MCP.
+
+External AI should normally use `atri_build_*` directly against Studio authority.
+
+The internal Atria Project Agent remains a separate `atri_agent_*` product domain and should only be driven when the user explicitly wants that agent workflow, avoiding unnecessary AI-inside-AI delegation.
+
+
+## 14. Diagnostic workflow target
 
 A successful end-state workflow should allow an AI to move through evidence such as:
 
@@ -681,7 +815,7 @@ For chat/generation issues it should support:
 
 `Session/message state -> relevant runtime/config -> authorized test message -> generation/UI result -> diagnostics -> source diagnosis -> authorized cleanup when requested`
 
-## 14. Non-goals currently frozen
+## 15. Non-goals currently frozen
 
 This expansion is not intended to:
 
@@ -692,12 +826,12 @@ This expansion is not intended to:
 - bypass Native Session, Studio/ProjectStore, Library, Package or other Atria ownership rules;
 - grant unattended destructive control over user data.
 
-## 15. Open design topics
+## 16. Open design topics
 
 The following remain intentionally unresolved and should be settled through further discussion before implementation planning:
 
 - concrete representation/storage of the accepted capability policy and leases;
-- detailed action semantics within each accepted product domain;
+- detailed action semantics for remaining accepted product domains, especially Library, Package/Work, Memory, Agents, Settings and Connections;
 - the exact threshold for promoting a generic Native API operation into a dedicated semantic MCP tool;
 - detailed artifact roots/types and bounded inspection rules;
 - detailed client UX/naming for branch-derived message cleanup and re-entry;
@@ -706,7 +840,7 @@ The following remain intentionally unresolved and should be settled through furt
 - audit/evidence returned for authorized actions;
 - compatibility and migration strategy from the current `--allow-writes` switch.
 
-## 16. Discussion workflow
+## 17. Discussion workflow
 
 During the design discussion phase:
 
