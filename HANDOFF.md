@@ -2,72 +2,50 @@
 
 Task ID: `plugin/atria-mcp-capability-expansion`
 Primary Workspace: `plugin`
-Status: **Phase 5 complete and pushed; stopped before Phase 6**
+Status: **Phase 6 verification checkpoint; acceptance open; final integration not authorized by passed acceptance yet**
 Plan: `plans/plugin/atria-mcp-capability-expansion.md`
 Record: `records/plugin/atria-mcp-capability-expansion.md`
 
 ## Actual checkpoints
 
-- Plugin / final exact-HEAD integration: `1dfcc35f673f3b4db031355ab061558ca9c1569a`, pushed.
-- Product / final exact-HEAD integration: `feat/mcp-development-authority@b2709b5af2664b05f6bd32a05a06097a3e98bd6f`, pushed, retained, not merged.
-- Main: `c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`, unchanged.
-- Docs pre-phase HEAD: `5dd13e2d1a9e6f657fe6b0b05f098ae37b4a1780`; fetch and use actual latest docs HEAD.
-- Reused existing plugin/docs/product worktrees. Original checkout untouched. No main-to-plugin merge or reference access.
+- Plugin: `fbdc372ee05556394d244ab84dac8457954aa7f9`, pushed.
+- Product: `feat/mcp-development-authority@b2709b5af2664b05f6bd32a05a06097a3e98bd6f`, pushed, retained, not merged.
+- Remote main: `c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`, unchanged. Local main is older; use actual remote refs.
+- Docs pre-round: `85498fb111a10c97dc00c044175e5acf9c74063e`; fetch actual latest HEAD.
+- Same existing plugin/product/docs worktrees reused. Original checkout unchanged on its frontend branch. No reference contents accessed.
 
-## Completed and verified
+## Completed this round
 
-Phases 1–5 complete. Registry: **152 actions = 109 READ / 27 MUTATE / 8 INTERACT / 8 DESTRUCTIVE**; exactly 18 public tools. Native authority remains preferred. Phase 4 policy/elicitation/lease/receipt and safe mutations remain intact.
+Phases 1–5 are not repeated. Still **152 actions = 109 READ / 27 MUTATE / 8 INTERACT / 8 DESTRUCTIVE**, exactly 18 tools. No new capability scope.
 
-Phase 5 adds one-use destructive approval; exact Session/Project/Work/Library revision deletion; guarded Memory node/relation deletion; Session/Project `.owned` cleanup requiring current-instance successful creation receipt, same boot, exact ID and original creation revision. Modified objects require fresh ordinary one-shot deletion. No force bypass, broader destructive lease, Library root delete or PackageVersion physical delete surface.
+Real populated Native Memory exposed and fixed a post-write scope defect: ordinary owning commits advance revision and may temporarily unload game presentation. Prefer existing Native Session runtime Session/branch/revision identity; preserve exact pre-write guards; compare stable ownership after success, record observedAfterTarget, and recheck boot/document. Missing Native identity, actual branch drift and boot changes fail closed/indeterminate. No arbitrary JS or parallel persistence authority.
 
-Package flow: safe artifact capture or Studio build -> inspect -> preflight -> trusted review receipt -> separately approved install. Exact bytes/hash/version/base/grants/preflight binding, 4 handles / 16 MiB each / 15 minutes. Bytes remain internal. Normal Studio HTTP build response bound remains 1 MiB. Product base-version install guard is reused.
+- Plugin full 43/43 before final Native scope refinement; final affected authorization/high-risk 13/13 after it. Syntax: 15 modules + 3 verifier scripts; diff checks passed.
+- Product 8 suites/82 tests plus 2 suites/10 tests passed. Includes Epoch/Preview, GenerationProjection/Conversation separation and Agent escalation denial. No product code changed this round; no full suite or Android/device claim.
+- Real Atria + Edge verifier now exercises exact evaluation Preview production rendering at 1440x1000 and 390x844, actual Source Graph editor evaluation/Preview, same-process Epoch revocation, populated Memory reads/create/edit/relation/compact/delete, stale graph rejection and persisted cleanup after reload.
+- Final committed-head integration **passed** against the two implementation HEADs above: 24 stdio semantic receipts plus 9 real Memory harness receipts; persisted cleanup-after-reload and populated read assertions; 165 routes; Source/Server EXACT, tracked source changed state, different revision, restart STALE/reload CURRENT. Final ignored evidence: `atria-mcp/.artifacts/atria-1790701433642/`. Owned disposable runtime/data/config/browser/client state cleaned. This is not acceptance of the missing human/provider/Claude evidence below.
+- Real Codex 0.148.0 app-server passes startup, exact 18 tools, executor schema, status/capabilities/Session READ and JPEG image content. No model turn; client uses isolated config and local unavailable provider. Initial default-provider prewarm 401 is explicitly recorded, not a model completion.
+- Claude Code 2.1.283 actual health Connected. Claude tool-call/schema/image handling remains unverified.
+- Current desktop Atria MCP is still Phase 5 READ-only, configured to the original frontend checkout; runtime identity unavailable, mutation unavailable. It does not provide the requested final human-approval evidence.
+- Both implementation HEADs have 0 check-runs/0 statuses, combined pending. No CI pass.
 
-Explicit `agent.run.start` supports **delegated-node**, one selected real preset node through existing AgentRuntime and durable checkpoints. Up to eight exact Memory create/edit/relation-upsert/compact operations, once each; Preset ∩ Product ∩ MCP ceiling/parent approval. No destructive/web/arbitrary extension tool/nested Agent delegation or automatic Memory recall. Child actions re-enter the existing risk executor and link run/step/effect receipts to the parent; uncertainty propagates. Step/context/deadline bounds and request cancellation are implemented; these are not a monetary-spend cap. Provider usage/cost are reported when available, otherwise null.
+## Remaining acceptance / environment gate
 
-Product changes are limited to transaction-level optional Session/Work delete conflict checks, existing package write queue, `highRiskGuards:1` and the attenuated Orchestrator port adapter. No new compiler/frontend/persistence authority.
+Do not call the task or Phase 6 complete. Outstanding Plan 21.5/21.8/21.9/21.12 evidence:
 
-- Plugin full suite **43/43**, zero skips; final affected high-risk suite **5/5** after uncertainty propagation. Do not claim the full suite was rerun after that last adjustment.
-- Product initial **6 suites / 35 tests**; final affected delegated-run + Memory guarded-session **2 suites / 6 tests**. Targeted ESLint, plugin 15-module syntax, verifier syntax and diff checks passed.
-- Final exact-HEAD disposable Atria + Edge integration passed: 165 routes, Source/Server EXACT, restart STALE/reload CURRENT. **23 successful receipts**, including Package build/review/install, stale-review rejection, referenced Work rejection, Library revision deletion, owned Session/Project cleanup and ordinary Session/Work deletion.
-- Final ignored evidence: `atria-mcp/.artifacts/atria-1790699829676/`; owned runtime/browser/temp data/config cleaned. Shell desktop/narrow captures are not active Preview UI proof.
-- Trusted approvals use deterministic test-client form elicitation, not actual client human approval UX. Agent Runtime uses deterministic injected providers in product tests; browser delegation and populated Memory deletion use real Edge fixtures. Real Atria Memory/Orchestrator/game browser reads remain idle/empty. No paid provider call, full product suite or Android/device check.
-- Both final implementation HEADs: **0 check-runs / 0 statuses, combined pending**. No CI pass claimed.
+1. Actual client human form elicitation, decline/accept UX against the intended disposable runtime; deterministic approvals are not human UX proof.
+2. Claude-specific exact tool discovery, schema consumption, READ and screenshot behavior beyond CLI health.
+3. Configured provider-backed send/regenerate/reenter/stop, recall/embedding and populated injection, live selected-node Agent/model/Memory parent-child run. No paid provider or user secrets were used. Current Agent evidence remains deterministic product/Edge fixture coverage.
+4. Close or explicitly approve acceptance changes for remaining gaps before final integration. Environment limits are documented, not silently accepted as passing.
 
-## Next objective and frozen boundaries
+After acceptance passes: integrate the retained product branch into actual latest main, revalidate plugin against integrated main, finalize this same Record, remove this live HANDOFF, delete the temporary product branch. Do not merge main into plugin/docs. No final merge/cleanup was performed here.
 
-Next only on explicit continuation: **Phase 6 — Integration / Security / Native Frontend v3 Verification**.
+## Frozen boundaries and cleanup
 
-Read current refs/dirty state first, then current plugin AGENTS, full docs README, this HANDOFF, Plan and same Record. Do not repeat Phases 1–5. Keep the same Record/live HANDOFF slot. Confirm any remaining acceptance coverage against actual implementation rather than treating directional candidate actions as already exposed.
+Preserve exact serverBootId, independent Source/Server/Browser and Experience/Project/Workspace/Preview provenance, last-observed labels, immutable committed Conversation, and ephemeral GenerationProjection. Native generic API remains GET-only. No force/legacy/allow-writes/confirm/arbitrary JS escape hatch. Agent remains delegated-node and at most eight exact non-destructive Memory operations with strict capability intersection; no automatic full preset/nesting/web/deletion.
 
-Phase 6 must address real client protocol/approval usability and security coverage, live/populated product scenarios where available, Native Frontend v3 Experience Epoch and rendered Workspace/evaluation/Preview provenance, end-to-end Agent/model/Memory evidence and documented limits. Paid-provider/authentication/device-only evidence must be reported honestly; fixtures do not substitute for it. Agent privilege-escalation and Package boundary tests already pass and must stay passing.
+Verifier cleans owned runtime/data/config/browser/client state. Evidence remains ignored. Deletion of ignored `.artifacts/client-protocol` generated inspection files was rejected by automatic command policy (`blocked by policy`); files remain uncommitted, no bypass attempted.
 
-Keep exactly 18 tools and canonical `serverBootId`; no legacy aliases/confirm/allow-writes, arbitrary JS/capability dispatch or generic writes via `atri_api`. Source/Server/Browser and Experience/Project/Workspace/Preview remain independent. Last-observed is not current exact. Reuse Native Frontend v3/Studio Source Graph, frontend.patch, evaluation, Preview and Experience Epoch. Build is semantic namespace; Frontend Host Bridge is not MCP Browser Capability Bridge. Committed Conversation/Timeline is immutable; GenerationProjection is ephemeral.
+## Resume prompt
 
-Product feature stays separate until Phase 6's final integration criteria are satisfied. Then follow the approved final merge/revalidation/cleanup lifecycle; do not merge main into plugin/docs. This Phase 5 round stops here.
-
-## Copyable new-conversation prompt
-
-```text
-继续 Atria MCP Capability Expansion。
-Task ID: plugin/atria-mcp-capability-expansion
-Primary Workspace: plugin
-只执行 Phase 6 — Integration / Security / Native Frontend v3 Verification。
-
-先 fetch 核对 refs/dirty state，读取最新 plugin:AGENTS.md、docs:README.md、docs:HANDOFF.md、
-docs:plans/plugin/atria-mcp-capability-expansion.md 和同一 docs:records/plugin/atria-mcp-capability-expansion.md。
-当前 checkpoint：
-plugin@1dfcc35f673f3b4db031355ab061558ca9c1569a
-feat/mcp-development-authority@b2709b5af2664b05f6bd32a05a06097a3e98bd6f
-main@c936b0aa4c42cf5711f40ae4a00f5fc3432813dc
-docs 使用真实最新 HEAD。
-复用工作树和同一 Record/HANDOFF，不重做 Phases 1–5，不访问未授权 reference。
-
-Phase 5 已推送：152 actions（109 READ / 27 MUTATE / 8 INTERACT / 8 DESTRUCTIVE），18 public tools；one-shot destructive、原始创建 revision 绑定 owned cleanup、Package artifact/preflight/review/install、选定 preset 节点的受限 Agent delegation 和 parent/child receipts。
-Agent 仅 delegated-node + 最多八个精确 Memory 非破坏操作；没有自动 full-preset/nested Agent/web/删除授权。
-Plugin full 43/43，最终 affected 5/5；产品初始6 suites/35 tests，最终affected 2 suites/6 tests。
-最终两 HEAD 真实 Atria+Edge 集成通过，23条成功回执；0 check-runs/0 statuses，不能称 CI 通过。
-审批是 deterministic trusted test-client，Agent provider 是注入测试，真实 Memory/Orchestrator browser 仍 idle/empty。付费 provider、实际客户端人工审批、populated Memory、active Epoch、渲染的 Workspace/evaluation/Preview 仍须真实验证或明确记录环境限制。
-
-保持既有 authority、严格权限交集、exact serverBootId 与独立 provenance，generic Native GET-only；没有 force/legacy/任意JS逃生通道。
-先按 Plan/Record 核对并完成 Phase 6 acceptance，再执行最终产品集成与验证、同一 Record 完结和 HANDOFF/临时产品分支清理；不能提前宣称整项任务完成。
-```
+继续 Atria MCP Capability Expansion，Task ID plugin/atria-mcp-capability-expansion，Primary Workspace plugin。只继续 Phase 6 acceptance，不重做 Phases 1–5。先 fetch，核对 refs/dirty state，再读最新 plugin:AGENTS.md、docs:README.md、docs:HANDOFF.md、同一 Plan/Record。Plugin checkpoint fbdc372ee05556394d244ab84dac8457954aa7f9；产品分支 b2709b5af2664b05f6bd32a05a06097a3e98bd6f；remote main c936b0aa4c42cf5711f40ae4a00f5fc3432813dc；docs 用真实最新 HEAD。读取 Phase 6 已有真实 Native Preview/Epoch/populated Memory/Codex 协议证据，优先补齐实际客户端人工审批、Claude tool execution 和真实 provider/Agent/recall 链路。未关闭 acceptance 前不合并、不删除 HANDOFF/产品分支、不宣称完成。复用工作树，不访问 reference，保留权限与 provenance 边界。
