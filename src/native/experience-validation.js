@@ -15,9 +15,10 @@ export function validateFrontendResources(manifest, files, assets) {
         const graph = validateFrontendGraph({ entry: normalized.frontend.entry, files, mode: normalized.mode,
             experienceContract: manifest.runtime?.experienceContract });
         for (const binding of graph.bridge.bindings.filter(item => item.kind === 'read')) {
+            if (!binding.target.resourceId) continue;
             const ref = manifest.runtime.experienceContract.dataResources.find(item => item.resourceId === binding.target.resourceId);
             const bytes = assets?.get(ref.assetId);
-            if (!bytes || bytes.length > 2 * 1024 * 1024 || !validateSchemaValue(JSON.parse(bytes.toString('utf8')), binding.outputSchema).ok) throw new TypeError('Frontend Read projection does not match public schema');
+            if (!bytes || bytes.length > 2 * 1024 * 1024 || !validateSchemaValue(JSON.parse(bytes.toString('utf8')), binding.collection ? { type: 'array', items: binding.outputSchema, maxItems: 10000 } : binding.outputSchema).ok) throw new TypeError('Frontend Read projection does not match public schema');
         }
     }
 }

@@ -1,3 +1,4 @@
+import { bridgeReceipt, bridgeDescriptorDigest } from '../../public/shared/native-frontend-bridge.js';
 import { describe, expect, test, jest } from '@jest/globals';
 import { JSDOM } from 'jsdom';
 import { presentationFixture } from './helpers/frontend-presentation-fixture.js';
@@ -83,7 +84,7 @@ describe('Native Frontend v3 presentation', () => {
         const runtime = await activateNativeExperienceRuntime({ sessionId: 'session', runtime: { experience: { mode: 'component', frontend: { kind: 'native', version: 3, entry: build.entry } } } },
             { getState() { throw new Error('Authority fallback forbidden'); }, dispatchCommandInternal() { throw new Error('Authority fallback forbidden'); } }, {
                 ...env, nativePlayHost: { resolveHostSurface: () => env.document.getElementById('surface') },
-                fetchImpl: async (url, options) => { calls.push(JSON.parse(options.body).path); const bytes = build.files.get(calls.at(-1)); return { ok: true, arrayBuffer: async () => bytes }; },
+                fetchImpl: async (url, options) => { if (url.endsWith('/frontend/open')) return { ok: true, json: async () => bridgeReceipt({ epoch: 'test-epoch', revision: 'test-revision', data: { descriptorDigest: await bridgeDescriptorDigest({ format: 'atria-compiled-bridge', version: 1, bindings: [] }) } }) }; calls.push(JSON.parse(options.body).path); const bytes = build.files.get(calls.at(-1)); return { ok: true, arrayBuffer: async () => bytes }; },
             });
         expect(calls).toContain(build.entry); expect(runtime.getInstances().length).toBe(3);
         expect(calls.some(path => path.endsWith('.aui'))).toBe(false); await runtime.dispose(); env.dom.window.close();

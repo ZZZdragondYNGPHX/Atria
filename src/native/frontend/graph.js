@@ -50,6 +50,7 @@ export function componentDependencies(ir, bridge) {
     walk(ir.root, 0);
     for (const id of presentation.nodeRefs) if (!ids.has(id)) throw new TypeError('Unknown declared NodeRef');
     for (const actions of Object.values(presentation.interactions)) for (const action of actions) {
+        if (/^(read|action|operation)\./.test(action.kind) && (!uses.includes(action.target) || !bridge.bindings.some(binding => binding.id === action.target && binding.kind === action.kind.split('.')[0]))) throw new TypeError('Invalid interaction Binding kind or scope');
         if (action.kind === 'emit' && !Object.hasOwn(presentation.emits, action.target)) throw new TypeError('Undeclared emit');
         if (action.kind === 'focus' && !presentation.nodeRefs.includes(action.target)) throw new TypeError('Focus requires declared NodeRef');
         if (action.kind === 'set' || action.kind === 'toggle') {

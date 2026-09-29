@@ -1,3 +1,4 @@
+import { invalidateFrontendEpoch } from './frontend/epoch.js';
 import { applyRealm, realmDefinition, reconcileRealm, loadRealm } from './realm-authority.js';
 import { activityNarrative, publishActivities } from './activity-authority.js';
 import { assertInformationClosure } from '../../public/shared/native-information-contract.js';
@@ -370,6 +371,7 @@ export class SessionCore {
             updatedAt: Math.max(Date.now(), base.session.updatedAt) });
         const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
             entries, variants, branches, expectedRevisionId: base.session.headRevisionId });
+        if (branchId !== base.session.activeBranchId) invalidateFrontendEpoch(handle, session.sessionId);
         const continuity = continuityDefinition(base) ? await this._continuity.load(handle, base.session.packageId) : null;
         return loadRealm(this, handle, { ...snapshot, manifest: base.manifest, entryPoint: base.entryPoint,
             ...(continuityDefinition(base) ? { externalEffects: continuityEffects(continuity, base.session.sessionId), continuityRevisionId: continuity?.revisionId ?? null, continuityViews: continuityDisplay(base, continuity) } : {}),
@@ -709,6 +711,7 @@ export class SessionCore {
             current.session.headRevisionId === save.revisionId
             && current.session.activeBranchId === save.branchId
         ) {
+            invalidateFrontendEpoch(handle, sessionId);
             return current;
         }
 

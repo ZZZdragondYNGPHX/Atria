@@ -6,7 +6,7 @@ export const DOM_TAGS = new Set('div span main section article aside header foot
 export const VOID_TAGS = new Set(['input', 'img', 'br', 'hr', 'col']);
 export const DOM_ATTRIBUTES = new Set('id class title role tabindex type name value placeholder disabled checked selected multiple required min max step rows cols alt width height for inputmode enterkeyhint autocomplete spellcheck hidden open dir lang draggable slot colspan rowspan scope datetime viewBox d fill stroke stroke-width cx cy r rx ry x y x1 y1 x2 y2 points transform opacity offset stop-color stop-opacity preserveAspectRatio clip-path fill-rule stroke-linecap stroke-linejoin'.split(' '));
 export const EVENTS = new Set('click dblclick contextmenu pointerdown pointerup pointermove pointerenter pointerleave pointercancel keydown keyup focus blur focusin focusout input change submit scroll wheel dragstart drag dragend dragenter dragleave dragover drop animationstart animationend animationiteration transitionend longpress swipe pinch'.split(' '));
-const ROOTS = ['component', 'view', 'ui', 'draft', 'prefs', 'props', 'event', 'item', 'env', 'form'];
+const ROOTS = ['component', 'view', 'ui', 'draft', 'prefs', 'props', 'event', 'item', 'env', 'form', 'bridge'];
 const presentationSchema = schema => compileDataSchema(schema, 0, { nodes: 0, maxArrayItems: 10000 });
 const WRITABLE = ['component', 'view', 'ui', 'draft', 'prefs'];
 export function valuePath(path, writable = false) {
@@ -20,6 +20,7 @@ export function expression(value, depth = 0) {
     if (depth > 16) throw new TypeError('Expression depth exceeded');
     if (value === null || ['string', 'boolean', 'number'].includes(typeof value)) return value;
     if (Array.isArray(value)) { if (value.length > 256) throw new TypeError('Expression budget'); return value.map(item => expression(item, depth + 1)); }
+    if (value?.object !== undefined) { fields(value, ['object']); fields(value.object, Object.keys(value.object)); for (const [key, item] of Object.entries(value.object)) { identifier(key); expression(item, depth + 1); } return value; }
     if (value?.get !== undefined) { fields(value, ['get']); valuePath(value.get); return value; }
     if (value?.op !== undefined) {
         fields(value, ['op', 'args']);
@@ -32,7 +33,18 @@ export function expression(value, depth = 0) {
 export function evaluate(value, context) {
     if (Array.isArray(value)) return value.map(item => evaluate(item, context));
     if (!value || typeof value !== 'object') return value;
-    if (value.get) return valuePath(value.get).reduce((current, key) => current != null && Object.hasOwn(current, key) ? current[key] : undefined, context);
+    if (value.object) return Object.fromEntries(Object.entries(value.object).map(([key, item]) => [key, evaluate(item, context)]));
+    if (value.get) {
+        const path = valuePath(value.get);
+        const select = (current, key) => current != null && Object.hasOwn(current, key) ? current[key] : undefined;
+        if (path[0] === 'bridge') {
+            for (let end = path.length; end > 1; end--) {
+                const id = path.slice(1, end).join('.');
+                if (Object.hasOwn(context.bridge ?? {}, id)) return path.slice(end).reduce(select, context.bridge[id]);
+            }
+        }
+        return path.reduce(select, context);
+    }
     const args = value.args.map(item => evaluate(item, context));
     switch (value.op) {
         case 'add': return args.reduce((a, b) => Number(a) + Number(b), 0);
@@ -76,9 +88,11 @@ export function assertPresentationContract(value = {}) {
     out.interactions = record(value.interactions ?? {}, actions => {
         if (!Array.isArray(actions) || actions.length > 32) throw new TypeError('Interaction budget exceeded');
         return actions.map(action => {
-            fields(action, ['kind', 'target', 'value']);
+            fields(action, ['kind', 'target', 'value', 'cursor', 'operationId']);
+            if (action.cursor !== undefined) expression(action.cursor);
+            if (action.operationId !== undefined) expression(action.operationId);
             if (['set', 'toggle'].includes(action.kind)) valuePath(action.target, true);
-            else if (['emit', 'view.push', 'view.replace', 'overlay.open', 'focus'].includes(action.kind)) identifier(action.target);
+            else if (['emit', 'view.push', 'view.replace', 'overlay.open', 'focus', 'read.snapshot', 'read.page', 'action.invoke', 'operation.start', 'operation.cancel'].includes(action.kind)) identifier(action.target);
             else if (!['view.back', 'overlay.close'].includes(action.kind)) throw new TypeError('Unknown presentation action');
             if (action.value !== undefined) expression(action.value);
             if (action.kind === 'set' && action.value === undefined) throw new TypeError('Set requires a value');

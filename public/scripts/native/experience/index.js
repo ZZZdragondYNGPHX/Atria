@@ -416,6 +416,12 @@ export async function reloadGamePackage() {
                 realm: next.descriptor.experienceContract?.sharedRuntime?.realm ? load.client.realmCommand : null,
                 mountReplyVariants: (element, anchor) => nextReplyController?.mount(element, anchor),
                 getSnapshot: () => nativeSessionRuntime.snapshot,
+                onBridgeRevision: async () => {
+                    const sessionId = nativeSessionRuntime.snapshot?.session.sessionId;
+                    if (!sessionId || nativeSessionRuntime.history || nativeSessionRuntime.generation) return;
+                    const snapshot = await nativeSessionRuntime.request('load', { sessionId });
+                    if (nativeSessionRuntime.snapshot?.session.sessionId === sessionId) await nativeSessionRuntime.acceptOperationSnapshot(snapshot);
+                },
                 getApplicationRecords: lifecycleClient.getApplicationRecords,
                 getTemporalProjection: lifecycleClient.getTemporalProjection,
                 presentation: presentationClient,

@@ -108,7 +108,7 @@ describe('Native Frontend v3 compiler skeleton', () => {
         const outputSchema = { type: 'object', properties: {}, additionalProperties: false };
         const source = { version: 1, bindings: [
             { id: 'save', kind: 'action', target: { domainId: 'notes', commandId: 'save' }, inputSchema: contract.lifecycleRuntime.domains[0].commands[0].argsSchema, outputSchema },
-            { id: 'summary', kind: 'operation', target: { taskId: 'summarize' }, inputSchema: contract.taskRuntime.tasks[0].inputSchema, outputSchema },
+            { id: 'summary', kind: 'operation', target: { taskId: 'summarize' }, inputSchema: contract.taskRuntime.tasks[0].inputSchema, outputSchema: contract.taskRuntime.tasks[0].variants[0].outputSchema },
         ] };
         const compiled = compileBridge(source, contract);
         expect(() => validateCompiledBridge(compiled, contract)).not.toThrow();

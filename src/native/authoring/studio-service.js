@@ -1023,8 +1023,17 @@ export class StudioService {
                 if (!value) throw new TypeError('Preview compiled resource unavailable');
                 return [resource, Buffer.from(value).toString('base64')];
             })) : undefined;
+        const bridgeProjections = {};
+        if (compiledFiles) {
+            const ref = model.resources.find(item => item.kind === 'bridge');
+            const descriptor = JSON.parse(Buffer.from(files.get(ref.path)).toString('utf8'));
+            for (const binding of descriptor.bindings.filter(item => item.kind === 'read')) {
+                const resource = preview.manifest.runtime.experienceContract.dataResources.find(item => item.resourceId === binding.target.resourceId);
+                bridgeProjections[binding.id] = resource ? JSON.parse(Buffer.from(preview.assets.get(resource.assetId)).toString('utf8')) : [];
+            }
+        }
         return { previewId, packageVersionId: preview.packageVersionId, experience,
-            model, ...(compiledFiles ? { compiledFiles } : {}) };
+            model, ...(compiledFiles ? { compiledFiles, bridgeProjections } : {}) };
     }
 
     closePreview(handle, previewId) {

@@ -1,3 +1,4 @@
+import { frontendHttpTransport } from '../../frontend/bridge.js';
 import { mountConversationPresentation } from '../../message-presentation.js';
 import { loadGameSelectorDefinitions } from './declarative.js';
 import { createPackageRuntimeContributionRegistry } from './plugin-contributions.js';
@@ -77,6 +78,7 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
         try {
             runtime = await mountNativeFrontend({ ...options, document: documentRef, window: options.window ?? documentRef.defaultView,
                 mode, surfaceHost, entry: experience.frontend.entry,
+                bridgeTransport: options.bridgeTransport ?? frontendHttpTransport({ sessionId: packageState.sessionId, fetchImpl: options.fetchImpl, headers: options.headers }),
                 stateStorage: options.createStateStorage?.({ stateVersion: 3 }, packageState),
                 loadBytes: (path, signal) => loadFrontendBytes(packageState, path, { ...options, signal }),
             });

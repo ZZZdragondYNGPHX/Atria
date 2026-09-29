@@ -1,3 +1,4 @@
+import { createFrontendBridge } from './bridge.js';
 import { assertPresentationContract, assertPresentationNode, assertValue, evaluate, valuePath, styleValue } from '../../../shared/native-frontend-presentation.js';
 import { createFrontendResources } from './resources.js';
 import { createFrameScheduler, createPresentationEnvironment, createNodeHandle, focusable } from './platform.js';
@@ -14,13 +15,19 @@ export async function mountNativeFrontend(options) {
     const instances = new Map(), shared = {}, declarations = {}, views = [], overlays = [];
     let sequence = 0, disposed = false, renderCancel = null, rendering = false, rerender = false, navigation = 0, overlayRevision = 0, nodeCount = 0;
     const diagnostic = error => {
+        if (disposed) return;
         options.onDiagnostic?.({ reasonCode: 'frontend_presentation_failed', message: error.message });
         const view = overlays.at(-1) ?? views.at(-1);
         if (view) { view.failure.hidden = false; view.failureText.textContent = 'Presentation error: ' + error.message; }
     };
+    let recovering = null;
+    const bridge = await createFrontendBridge({ descriptor: await resources.json('bridge', 'bridge'), transport: options.bridgeTransport,
+        onEpoch: () => { void recover().catch(diagnostic); }, onRevision: options.onBridgeRevision,
+        fixed: { prefs: () => shared.prefs ?? {}, environment: () => views.at(-1)?.environment.get() ?? {} } }).catch(error => { scheduler.dispose(); resources.dispose(); throw error; });
+    const bridgeTimer = options.bridgeTransport ? window.setInterval(() => { void bridge.refresh().catch(diagnostic); }, 1000) : null;
     const active = () => !disposed;
     const context = (instance, item, event = {}) => ({ ...Object.fromEntries(['ui', 'draft', 'prefs'].map(scope => [scope, shared[scope] ?? {}])),
-        component: instance.state, view: instance.view.state, props: instance.props, item, event, env: instance.view.environment.get(), form: instance.form });
+        bridge: instance.bridgeState, component: instance.state, view: instance.view.state, props: instance.props, item, event, env: instance.view.environment.get(), form: instance.form });
     function requestRender() {
         if (disposed) return;
         if (rendering) { rerender = true; return; }
@@ -70,7 +77,18 @@ export async function mountNativeFrontend(options) {
         for (const action of actions) {
             if (disposed || instance.disposed) return;
             const ctx = context(instance, item, event), value = action.value === undefined ? undefined : evaluate(action.value, ctx);
-            if (action.kind === 'set') write(instance, action.target, value);
+            if (/^(read|action|operation)\./.test(action.kind)) {
+                if (/^(action|operation)\./.test(action.kind) && action.kind !== 'operation.cancel' && ['queued', 'running', 'progress'].includes(instance.bridgeState[action.target]?.status)) continue;
+                const cursor = action.cursor ? evaluate(action.cursor, ctx) : undefined, operationId = action.operationId ? evaluate(action.operationId, ctx) : undefined;
+                const method = { 'read.snapshot': 'snapshot', 'read.page': 'page', 'action.invoke': 'invoke', 'operation.start': 'start', 'operation.cancel': 'cancel' }[action.kind];
+                instance.bridgeState[action.target] = { status: 'running', data: instance.bridgeState[action.target]?.data ?? null }; requestRender();
+                const result = method === 'cancel' ? await instance.bridge.cancel(action.target, operationId)
+                    : await instance.bridge[method](action.target, value ?? {}, { cursor });
+                if (!instance.disposed && !disposed && result.error?.code !== 'bridge_epoch_stale') {
+                    instance.bridgeState[action.target] = result; requestRender();
+                    if (action.kind === 'operation.start' && result.ok) instance.cleanups.add(instance.bridge.watchOperation(action.target, result.operationId, next => { if (!instance.disposed) { instance.bridgeState[action.target] = next; requestRender(); } }));
+                }
+            } else if (action.kind === 'set') write(instance, action.target, value);
             else if (action.kind === 'toggle') write(instance, action.target, !evaluate({ get: action.target }, ctx));
             else if (action.kind === 'emit') {
                 if (!instance.contract.emits[action.target]) throw new TypeError('Undeclared emit');
@@ -103,12 +121,13 @@ export async function mountNativeFrontend(options) {
         const host = document.createElement('atri-component'); host.style.display = 'block'; host.dataset.component = id;
         const shadow = host.attachShadow({ mode: 'open' });
         const instance = { id: 'instance.' + (++sequence), ir, contract, view, host, shadow, props: propsFor(contract, props),
-            state: clone(contract.state.component?.initial ?? {}), form: { dirty: {}, touched: {}, errors: {}, busy: false }, nodes: new Map(), handles: new Map(), pointers: new Set(), cleanups: new Set(), onEmit, disposed: false };
+            bridgeState: Object.fromEntries(ir.uses.map(id => [id, null])), state: clone(contract.state.component?.initial ?? {}), form: { dirty: {}, touched: {}, errors: {}, busy: false }, nodes: new Map(), handles: new Map(), pointers: new Set(), cleanups: new Set(), onEmit, disposed: false };
+        instance.bridge = bridge.scope(ir.id, ir.uses);
         instances.set(instance.id, instance);
         instance.dispose = () => {
             if (instance.disposed) return;
             if (instance.mounted) { void lifecycle(instance, 'deactivate'); void lifecycle(instance, 'unmount'); }
-            instance.disposed = true;
+            instance.disposed = true; instance.bridge.dispose();
             instance.cleanups.forEach(clean => clean()); instance.cleanups.clear();
             instance.handles.forEach(handle => handle.dispose()); instance.handles.clear(); instances.delete(instance.id); host.remove();
         };
@@ -167,6 +186,10 @@ export async function mountNativeFrontend(options) {
             if (instance.view.ready) await activateInstance(childInstance);
         }
         for (const child of definition.children) children.push(await createBlock(child, instance, item, childInstance?.host ?? node));
+        if (definition.read) {
+            const stop = instance.bridge.subscribe(definition.read, {}, result => { instance.bridgeState[definition.read] = result; requestRender(); });
+            disposers.push(stop);
+        }
         function listen(event, handler) { node.addEventListener(event, handler); disposers.push(() => node.removeEventListener(event, handler)); }
         if (definition.tag === 'form') listen('submit', event => event.preventDefault());
         if (definition.tag === 'a') listen('click', event => event.preventDefault());
@@ -194,6 +217,11 @@ export async function mountNativeFrontend(options) {
             listen('input', change); listen('change', change);
             listen('blur', () => { instance.form.touched[definition.id] = true; requestRender(); });
         }
+        if (definition.action) listen('click', () => {
+            if (instance.bridgeState[definition.action]?.status === 'running') return;
+            instance.bridgeState[definition.action] = { status: 'running' }; requestRender();
+            void instance.bridge.invoke(definition.action, {}).then(result => { if (!instance.disposed) { instance.bridgeState[definition.action] = result; requestRender(); } });
+        });
         for (const [event, interaction] of Object.entries(definition.events ?? {})) {
             if (definition.component) continue;
             listen(event, e => {
@@ -245,10 +273,10 @@ export async function mountNativeFrontend(options) {
                 node.style.setProperty(declaration.property, styleValue(declaration, evaluate(expr, ctx)));
             }
             if (definition.read || definition.action) {
-                // Phase 3 provides scoped Bridge execution. Never call legacy
-                // WorldSession/command dispatch as a presentation fallback.
-                node.dataset.bridgeStatus = 'unavailable';
-                if (definition.action && 'disabled' in node) node.disabled = true;
+                const result = instance.bridgeState[definition.read ?? definition.action];
+                node.dataset.bridgeStatus = result?.status ?? 'loading';
+                if (definition.read && !definition.bindings?.text && !definition.children.length) node.textContent = result?.ok ? (typeof result.data === 'object' ? JSON.stringify(result.data) : String(result.data)) : result?.error?.code ?? 'Loading…';
+                if (definition.action && 'disabled' in node) node.disabled = result?.status === 'running';
             }
             await childInstance?.update(readProps());
             for (const child of children) await child.update(item);
@@ -268,7 +296,7 @@ export async function mountNativeFrontend(options) {
         const rowDef = { ...definition }; delete rowDef.each; delete rowDef.key; delete rowDef.windowSize; delete rowDef.rowHeight;
         async function update(nextItem = item) {
             if (gone) return; item = nextItem;
-            const values = evaluate(definition.each, context(instance, item));
+            const values = evaluate(definition.each, context(instance, item)) ?? (definition.each.get?.startsWith('bridge.') ? [] : undefined);
             if (!Array.isArray(values) || values.length > 10000) throw new TypeError('Bounded array required for keyed list');
             const keys = values.map(value => value?.[definition.key]);
             if (keys.some(key => !['string', 'number'].includes(typeof key)) || new Set(keys).size !== keys.length) throw new TypeError('Unique stable list keys required');
@@ -378,10 +406,24 @@ export async function mountNativeFrontend(options) {
         synchronizeInert();
         (focusable(view.content)[0] ?? view.frame).focus(); return view.id;
     }
-    try { await navigate(resources.index.primaryView.slice(5)); } catch (error) { disposed = true; scheduler.dispose(); resources.dispose(); throw error; }
-    return Object.freeze({ mode: options.mode, status: 'active', refresh: requestRender, getContributions: () => [], getRenderReceipts: () => [],
+    async function recover() {
+        if (disposed) return;
+        if (recovering) return recovering;
+        recovering = (async () => {
+            const id = views.at(-1)?.id ?? resources.index.primaryView.slice(5);
+            ++navigation; ++overlayRevision;
+            [...overlays, ...views].reverse().forEach(disposeView); overlays.length = 0; views.length = 0;
+            for (const key of Object.keys(shared)) delete shared[key];
+            for (const key of Object.keys(declarations)) delete declarations[key];
+            await bridge.reload();
+            if (!disposed) await navigate(id);
+        })().finally(() => { recovering = null; });
+        return recovering;
+    }
+    try { await navigate(resources.index.primaryView.slice(5)); } catch (error) { disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scheduler.dispose(); resources.dispose(); throw error; }
+    return Object.freeze({ mode: options.mode, status: 'active', refresh() { requestRender(); return bridge.refresh(); }, getContributions: () => [], getRenderReceipts: () => [],
         navigate, back, openOverlay, closeOverlay,
-        async recover() { await navigate(views.at(-1)?.id ?? resources.index.primaryView.slice(5), true); },
+        recover,
         getState() { return clone({ ...shared, view: views.at(-1)?.state ?? {} }); },
         setState(scope, path, value) { const root = views.at(-1)?.root; if (!root || !active()) throw new Error('Frontend unavailable'); write(root, scope + '.' + path, value); },
         getNodeRef(instanceId, nodeId) {
@@ -391,6 +433,6 @@ export async function mountNativeFrontend(options) {
         },
         getInstances() { return [...instances.values()].map(instance => ({ id: instance.id, componentId: instance.ir.id })); },
         scheduler: Object.freeze({ frame: scheduler.frame }),
-        dispose() { if (disposed) return; ++navigation; [...overlays, ...views].reverse().forEach(disposeView); disposed = true; scheduler.dispose(); resources.dispose(); instances.clear(); },
+        dispose() { if (disposed) return; ++navigation; [...overlays, ...views].reverse().forEach(disposeView); disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scheduler.dispose(); resources.dispose(); instances.clear(); },
     });
 }

@@ -75,6 +75,7 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
             if (node.action) inferred.add(node.action);
             node.children.filter(child => typeof child !== 'string').forEach(walk);
         };
+        for (const actions of Object.values(ir.presentation.interactions)) for (const action of actions) if (/^(read|action|operation)\./.test(action.kind)) inferred.add(action.target);
         walk(ir.root); ir.uses = [...inferred].sort();
         let dependencies;
         try { dependencies = componentDependencies(ir, bridge); } catch (cause) {

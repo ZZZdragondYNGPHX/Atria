@@ -1,3 +1,6 @@
+import { frontendBridgeService } from '../native/frontend/host-bridge.js';
+import { bridgeReceipt, publicBridgeError } from '../../public/shared/native-frontend-bridge.js';
+import { fields } from '../../public/shared/native-frontend-contract.js';
 import { SharedAuthority } from '../native/shared-authority.js';
 import { inspectExperienceHealth, previewExperienceRepair, applyExperienceRepair } from '../native/experience-health.js';
 import { deliverNativeAsset } from '../native/asset-delivery.js';
@@ -7,7 +10,7 @@ import { SessionCore } from '../native/session-core.js';
 import { PackageInstaller } from '../native/package-composition.js';
 import { createNativeId, assertNativeId } from '../native/identity.js';
 import { resolveNativeRuntimePackage, readFrontendRuntimeResource } from '../native/runtime-descriptor.js';
-import { getSessionRepo, getSavePointRepo, getPackageRepo, getAssetStore, getKnowledgeRepo } from '../storage/index.js';
+import { getSessionRepo, getSavePointRepo, getPackageRepo, getAssetStore, getKnowledgeRepo, getSettingsRepo } from '../storage/index.js';
 
 function services() {
     const assets = getAssetStore();
@@ -36,6 +39,28 @@ export function createNativeSessionRouter(getServices = services) {
             response.status(status).json({ error: error.code || (status === 400 ? 'native_invalid_command' : 'native_session_failed') });
         }
     };
+    const frontendRoute = operation => route(async (req, res, services, handle) => {
+        res.set('Cache-Control', 'private, no-store');
+        try { await operation(req, res, services, handle); } catch (error) { res.json(bridgeReceipt({ status: 'failed', error: publicBridgeError(error) })); }
+    });
+    router.post('/frontend/open', frontendRoute(async (req, res, services, handle) => {
+        fields(req.body, ['sessionId', 'previous']);
+        res.json(await frontendBridgeService.open(services, handle, req.body.sessionId, req.body.previous));
+    }));
+    router.post('/frontend/close', frontendRoute(async (req, res, _services, handle) => {
+        fields(req.body, ['epoch']); frontendBridgeService.close(handle, req.body.epoch);
+        res.json(bridgeReceipt());
+    }));
+    router.post('/frontend/request', frontendRoute(async (req, res, services, handle) => {
+        services = { ...services,
+            getGenerationHost: services.getGenerationHost ?? (async () => (await import('./native-generation.js')).getNativeGenerationHost()),
+            taskBindings: services.taskBindings ?? (async (owner, packageId) => {
+                const settings = await getSettingsRepo().get(owner);
+                return (settings?.atri_capabilities ?? settings?.extension_settings)?.atri_task_bindings?.[packageId] ?? {};
+            }),
+        };
+        res.json(await frontendBridgeService.request(services, handle, req.body));
+    }));
     router.post('/health', route(async (req, res, { core }, handle) => {
         res.set('Cache-Control', 'private, no-store').json(await inspectExperienceHealth(core, handle, req.body.sessionId));
     }));
