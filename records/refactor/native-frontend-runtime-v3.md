@@ -8,10 +8,10 @@
 - Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
 - Baseline: **Implementation Baseline v1.0**
 - Compatibility Strategy: **Hard Cut / Clean Break**
-- Current Stage: **Phase 3 — Host Bridge / Data Plane**
-- Status: **Completed — Phase 4 ready; stopped at phase boundary**
+- Current Stage: **Phase 4 — Conversation / Session / Prose**
+- Status: **Completed — Phase 5 ready; stopped at phase boundary**
 - Main Baseline: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`
-- Task Branch HEAD: `0d6fb049940a7ad460e70ef0badc8fd2412fb439`
+- Task Branch HEAD: `d96bb5cfcf7690a382961058873c183e965d7298`
 
 This Record is the permanent implementation history for the multi-stage Native Frontend v3 refactor. Each completed Phase must append/update its checkpoint here; do not create a separate Record per Phase.
 
@@ -388,3 +388,156 @@ No Phase 4+ implementation was started. Remote Media, Localization/IME, Script
 VM/Canvas and Studio visual editing remain later phases. Hard Cut remains
 approved; temporary v1/v2 retention is still scheduled for Phase 9 removal, not
 compatibility or migration scope. `HANDOFF.md` holds the Phase 4 takeover prompt.
+
+
+## Phase 4 — Conversation / Session / Prose
+
+### Checkpoint
+
+- Date: **2026-09-29**.
+- Start HEAD: `0d6fb049940a7ad460e70ef0badc8fd2412fb439`.
+- End / Tested / Pushed HEAD: `d96bb5cfcf7690a382961058873c183e965d7298`.
+- Start docs HEAD: `b588ba994b34357065cd60e94e3031e1ce4648a7`.
+- Main baseline unchanged: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`.
+- Status: **Phase 4 complete. Phase 5 is not started.**
+- Implementation Baseline v1.0 unchanged; no Gap Review, reference reads,
+  compatibility/migration, main merge or branch cleanup.
+
+### Actual start
+
+Ran `git fetch --all --prune` before inspecting refs. The product and existing
+`native-v3-docs` worktrees were clean, each one commit behind origin. Fast-forwarded
+the existing task branch and docs worktree to their Phase 3 remote commits.
+No task commit was reset to main and no unrelated checkout was modified. Read
+AGENTS, complete Governance, live HANDOFF, frozen Plan and this same Record.
+
+### Implementation
+
+1. Added a closed, shared fixed Host catalogue in
+   `public/shared/native-frontend-host.js`. Compiler and installed graph checks
+   resolve `host.composer`, `host.conversation` and `host.session` targets against
+   exact kinds/input/output schemas and existing scoped Bridge descriptors.
+   There is no arbitrary service-method dispatch or raw database adapter.
+2. Added SessionCore-backed fixed-service adapters in
+   `src/native/frontend/host-services.js`: committed messages, exact inspection,
+   branch lineage, reply alternatives, status/tail, SavePoint listing/creation,
+   retry/fork/switch/restore. Replies share a predecessor across committed branch
+   lineage; no mutable Swipe/Variant semantics were introduced. Collections
+   reuse bounded filtering/order/pages and opaque cursors. Cursor identity now
+   also fingerprints the source projection, covering SavePoint changes that do
+   not publish a Session revision.
+3. Browser-local fixed services require server authorization of the installed
+   Component scope/schema/revision before invoking the existing Host adapter.
+   Local actions use bounded Epoch/binding-scoped idempotency receipts; mapped
+   input and public results retain Bridge validation. Preview remains read-only.
+4. Managed Play now consumes shared Headless message/Message Block projections
+   and the same Composer contract. Package-owned Full/Hybrid DOM uses normal
+   Bridge reads, keyed Components and CSS without Host message DOM selectors.
+   Composer get/set/append/clear/focus/submit and generation cancel/regenerate
+   reuse the existing Native generation entrypoint and Task scheduler.
+5. GenerationProjection is ephemeral: idle/preparing/streaming/finalizing/
+   cancelling/failed, bounded provisional text and a public failure code. Managed
+   streaming lives outside committed message nodes. Late chunks after completion
+   or branch change are discarded. Committed messages arrive via Collection Read.
+   Typed cancellation remains usable while a submit interaction is awaiting its
+   generation, without generally enabling concurrent form submissions.
+6. Save/retry/fork/switch/restore have exact revision guards. Full Host Save now
+   propagates its revision through Product/SaveSystem into SessionCore. SavePoint
+   references the guarded immutable revision. Branch/restore/reload recovery
+   revokes handles and remounts presentation. `synchronizeFrontendEpoch` reloads
+   the existing Managed runtime after a server-side branch change, stops obsolete
+   generation and discards its Draft without persisting it on the new branch.
+   Same-branch active generation is not stopped just to reload presentation.
+7. Added `public/shared/native-safe-prose.js`: deterministic bounded canonical
+   text-to-AST mapping with exact source ranges, paragraph/break/emphasis/strong/
+   heading/quote/list/code/pre/link/semantic-mark nodes. Validation recomputes the
+   exact mapping. `bind:prose` expands inert semantic DOM inside Package ownership;
+   raw HTML remains literal text. Safe links pass through a shared Host external
+   navigation policy with confirmation and no package-owned href/opener.
+8. Message Blocks remain separate typed immutable projection entries. Compiled
+   `host.conversation.blocks` targets pin each block type's closed data schema;
+   SessionCore validates it at commit/load. Unknown types/extra fields fail.
+   Block collections expose typed data and message/flow anchors for normal
+   Package Components and separately declared guarded actions. Managed Play
+   provides inert semantic cards; custom card presentation remains Package-owned.
+9. Host Failure Surface includes reload plus configured stop/diagnostics/exit
+   actions outside Package CSS. Failed rebind after disposing old Views retains
+   an independent Host retry panel. Session status/diagnostics/recover/exit are
+   fixed targets; restart is policy-denied unless the Host explicitly provides
+   both confirmation and restart handlers.
+10. Expanded authoring notes and added executable Conversation fixtures, boundary
+    tests, Safe Prose tests, Managed/Epoch regressions and a real Edge smoke script.
+
+### Decisions and bounds
+
+- Fixed capabilities are declared typed targets, not a global Host object or a
+  second binding interpreter. Existing Application/Task Lifecycle intent checks
+  are unchanged. Only the newly authorized fixed adapter extends read sources.
+- No new durable authority, Timeline store, scheduler or provider transport.
+  `projectConversation`/`projectMessageBlocks` are inert downstream projections.
+- Local Composer/Generation control is authorized by the installed server scope
+  and then handled by the existing browser Host. Server-only invocation of those
+  targets fails closed. No fabricated remote generation state is returned.
+- Collection subscriptions refresh the first page on committed revision changes;
+  explicit cursors navigate later pages. Local Generation/Draft and SavePoint
+  observations reuse bounded polling. Packages own page-navigation presentation.
+- Prose supports a deliberately bounded Markdown-like subset, not arbitrary
+  Markdown/HTML: 65536 source characters, 4096 nodes and bounded inline nesting.
+  It does not mutate canonical content or absorb Message Blocks.
+- Message Block schemas are pinned by the exact compiled blocks binding; custom
+  Component props still undergo their own declared schema checks. Block content
+  does not manufacture commands. Managed fallback cards are inert.
+- Missing fixed Preview projections return `bridge_projection_unavailable`;
+  Preview writes return `bridge_preview_readonly`. No fake Session authority.
+- Restart capability is explicitly policy-denied by default. This is the Plan's
+  Host-policy boundary, not an automatic Session reset implementation.
+- Local route revision remains distinct from authority Experience Epoch.
+
+### Validation actually executed
+
+Local Windows, **Node v24.18.0** (read from the current environment; Phase 3's
+recorded version was v24.16.0), **Edge headless**. FS and SQLite included; existing
+`ATRIA_DISABLE_MYSQL_TESTS=1` / `ATRIA_DISABLE_POSTGRES_TESTS=1` excluded external DBs.
+
+- Broad Native run: **101 suites / 1671 tests passed**. This preceded the last
+  Managed Epoch synchronization/cancellation refinements, which received the
+  final focused verification below; do not label that earlier broad count as a
+  fresh full-suite run after every last edit.
+- Adjacent game-runtime + atria-shell: **105 suites / 730 tests passed**.
+- Final tested-tree focused run: **8 suites / 157 tests passed**:
+  `session-projection`, `frontend-conversation`, `frontend-prose`,
+  `frontend-presentation`, `model-prompt-runtime-p4`, `frontend-bridge-client`,
+  `frontend-bridge`, `native-play-product`.
+- New fixed-service tests use real FS-backed SessionCore: committed pagination,
+  schema/scope/CAS/idempotency, no-op restore Epoch revocation, retry alternatives,
+  branch switch/inspect/fork, SavePoint, and block commit/load rejection. Added
+  Managed synchronization regression runs against both FS and SQLite.
+- `node tests/frontend/native-frontend-conversation.smoke.mjs`: **6 scenarios**,
+  Component/Hybrid/Full at 1440px and 390px, passed on the final tree. Validates
+  Package-owned Conversation without Host message nodes, separate streaming,
+  semantic Prose/literal HTML, typed Message Blocks, exact SavePoint, cancellation
+  during pending submit, rebind/recovery, injected recovery failure with usable
+  Host retry surface, Preview read-only behavior and disposal. No page errors or
+  unexpected diagnostics. Inspected the mobile Full screenshot.
+- Existing Bridge and presentation Edge scripts: **6 + 6 scenarios passed**,
+  preserving Phase 2/3 rendering, containment, controls, data-plane and Preview.
+- Full root lint passed after fixing formatting findings; final changed-code/test
+  lint passed. Final `node docker/build-lib.js` webpack build passed.
+- Working-tree/staged `git diff --check` passed. Temporary log/JSON test outputs
+  removed after recording totals; local screenshots stay under `.git/` only.
+- Generation boundary tests use deterministic local HTTP fixtures/doubles; browser
+  provisional generation/submit/cancel use a deterministic Host adapter. No new
+  real-provider E2E, remote CI, production-user Session, physical device,
+  Android/Termux, MySQL/PostgreSQL or non-Edge browser claim.
+
+### Remaining scope / next checkpoint
+
+**Phase 4 acceptance is complete. Stop before Phase 5.**
+
+Phase 5 is **Media / Localization / Input / Accessibility / Boundaries**. Its Plan
+section alone defines scope: Frontend Media Catalog, exact audio/video/image,
+Remote/HostIssued MediaRef resolver/cache/fallback/privacy, localization/RTL,
+IME Composition Lock, VisualViewport/keyboard inset, accessibility projections
+and Error/Loading Boundaries. No Phase 5+ code was started. No Script VM, Canvas,
+Studio visual editing or Phase 9 cleanup was pulled forward. HANDOFF contains
+current refs and the direct-copy Phase 5 takeover prompt.
