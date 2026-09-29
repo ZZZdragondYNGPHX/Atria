@@ -33,6 +33,7 @@ function makeApp({ admin = false, handle = 'alice', incidentStore, logStore, sta
         startupStore,
         provenanceRegistry,
         versionProvider: async () => ({ pkgVersion: '2.7.0', gitRevision: 'abc', gitBranch: 'main' }),
+        runtimeIdentityProvider: () => ({ version: 1, serverBootId: 'canonical-test-boot', source: { reasons: ['fixture'] } }),
         requestInspectorProvider: () => [{
             id: 'inspect-1',
             requestId: 'req-1',
@@ -59,6 +60,12 @@ function makeApp({ admin = false, handle = 'alice', incidentStore, logStore, sta
 }
 
 describe('diagnostics API', () => {
+    test('current runtime identity is read-only, non-cached and uses its existing provider', async () => {
+        const result = await request(makeApp()).get('/api/diagnostics/runtime-identity').expect(200);
+        expect(result.headers['cache-control']).toBe('private, no-store');
+        expect(result.body.serverBootId).toBe('canonical-test-boot');
+        await request(makeApp()).post('/api/diagnostics/runtime-identity').expect(404);
+    });
     let logStore;
     let incidentStore;
     let startupStore;

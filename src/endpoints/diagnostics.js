@@ -1,4 +1,5 @@
 import express from 'express';
+import { getRuntimeIdentity } from '../logging/runtime-identity.js';
 
 import { getVersion } from '../util.js';
 import { isRequestAdmin } from '../users.js';
@@ -58,9 +59,14 @@ export function createDiagnosticsRouter({
     startupStore = startupSessionStore,
     provenanceRegistry = runtimeProvenanceRegistry,
     versionProvider = getVersion,
+    runtimeIdentityProvider = getRuntimeIdentity,
     requestInspectorProvider = getBufferForHandle,
 } = {}) {
     const router = express.Router();
+
+    router.get('/runtime-identity', (_request, response) => {
+        response.set('Cache-Control', 'private, no-store').json(runtimeIdentityProvider());
+    });
 
     router.get('/modules', (_request, response) => {
         response.json({

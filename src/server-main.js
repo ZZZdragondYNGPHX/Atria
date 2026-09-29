@@ -79,6 +79,7 @@ import hostWhitelistMiddleware from './middleware/hostWhitelist.js';
 import userCssMiddleware from './middleware/userCss.js';
 import { storageErrorHandler } from './middleware/storage-errors.js';
 import { markStartupMilestone, startStartupPhase } from './startup-timing.js';
+import { serverBootId } from './logging/startup-store.js';
 import { createLazyRouter } from './middleware/lazy-router.js';
 import {
     getVersion,
@@ -162,6 +163,10 @@ http.globalAgent = new http.Agent({ keepAlive: cliArgs.enableKeepAlive });
 https.globalAgent = new https.Agent({ keepAlive: cliArgs.enableKeepAlive });
 
 const app = express();
+app.use((_request, response, next) => {
+    response.set('X-Atria-Server-Boot-Id', serverBootId);
+    next();
+});
 // Root for Atria-shipped scaffolding (e.g. bundled skills under
 // default/skills/global/). Endpoints that consume bundled content read it
 // via req.app.get('atriaDefaultRoot') so tests can override per-request.

@@ -11,6 +11,8 @@ globalThis.COMMAND_LINE_ARGS = cliArgs;
 process.chdir(serverDirectory);
 
 try {
+    const { initializeRuntimeIdentity } = await import('./src/logging/runtime-identity.js');
+    await initializeRuntimeIdentity();
     await import('./src/server-main.js');
 } catch (error) {
     console.error('A critical error has occurred while starting the server:', error?.stack || error);
