@@ -34,7 +34,7 @@ test('stdio exact 18-tool/schema contract, legacy rejection and Phase 1 fail-clo
     }
     const status = unpack(await call('atri_status'));
     assert.equal(status.productMutationAvailable, false); assert.equal(status.browser.started, false); assert.equal(status.runtimeSourceMatch, 'UNVERIFIABLE');
-    assert.equal(unpack(await call('atri_capabilities')).result.total, 0);
+    assert.ok(unpack(await call('atri_capabilities')).result.total >= 90);
     assert.equal(unpack(await call('atri_diagnose_snapshot')).status.provenance.server, null);
     assert.equal((await client.listResources()).resources.length, 2);
     assert.match((await client.readResource({ uri: 'atria://guide' })).contents[0].text, /Review -> Apply/);

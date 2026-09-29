@@ -10,7 +10,7 @@ export function loadConfig(argv = process.argv.slice(2), env = process.env) {
         version: { type: 'boolean' },
     } });
     if (values.help || values.version) return values;
-    if (env.ATRIA_ALLOW_WRITES !== undefined) throw new Error('ATRIA_ALLOW_WRITES has been removed; Phase 2 is read-only.');
+    if (env.ATRIA_ALLOW_WRITES !== undefined) throw new Error('ATRIA_ALLOW_WRITES has been removed; Phase 3 is read-only.');
     const url = new URL(values.url ?? env.ATRIA_URL ?? 'http://127.0.0.1:8000');
     const allowRemote = values['allow-remote'] ?? env.ATRIA_ALLOW_REMOTE === '1';
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password

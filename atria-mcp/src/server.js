@@ -7,13 +7,15 @@ import { RepositoryObservation } from './repository.js';
 import { ActionRegistry, PolicyCeiling, RiskExecutor, ReceiptStore, RISKS } from './kernel.js';
 import { Provenance } from './provenance.js';
 import { BROWSER_ADAPTERS } from './capability-bridge.js';
+import { registerReadActions, diagnosticSnapshot } from './read-authority.js';
 
-export const GUIDE = `Atria MCP 0.2.0 — Phase 2 provenance and fixed adapter infrastructure.
+export const GUIDE = `Atria MCP 0.2.0 — Phase 3 Full Read Authority.
 Start with atri_status. Use atri_repo for tree/read/search, atri_git for read-only
 Git evidence and atri_artifact for bounded development artifacts. Discover Native
 APIs with atri_api operation=list/detail/read; only GET requests are available.
-Use atri_capabilities for exact semantic descriptors/schemas. Phase 2 does not
-implement product semantic actions, trusted approvals, leases or product mutations.
+Use atri_capabilities for exact READ descriptors/schemas and declared network/cost effects.
+Use atri_read for fixed semantic reads, including reviewed POST-shaped read authorities.
+Trusted approvals, leases and product mutations remain unavailable.
 Edit source and run builds using the client's normal development tools.
 Use atri_browser_open/observe/screenshot/diagnostics for actual browser evidence.
 Source ↔ Runtime ↔ Browser identity can be EXACT, mismatched or UNVERIFIABLE: do not claim that
@@ -48,7 +50,7 @@ export async function createServer(config) {
         const stable = captured === JSON.stringify([browser.documentGeneration, browser.scopedEvidence]);
         return { ...result, provenance: identity, evidenceInterval: captured === null ? 'NOT_MEASURED' : stable ? 'STABLE' : 'SCOPE_CHANGED_DURING_CAPTURE' };
     };
-    const registry = new ActionRegistry();
+    const registry = registerReadActions(new ActionRegistry(), browser);
     const ceiling = new PolicyCeiling(registry);
     const executor = new RiskExecutor(registry, ceiling);
     const receipts = new ReceiptStore();
@@ -69,13 +71,13 @@ export async function createServer(config) {
     };
     const status = async () => { const identity = await provenance.snapshot(); return { product: await catalog.status(), origin: config.url,
         browser: { started: Boolean(browser.context), headed: config.headed, channel: config.channel ?? 'chromium' },
-        policyCeiling: ceiling.describe(), phase: 2, productMutationAvailable: false,
+        policyCeiling: ceiling.describe(), phase: 3, productMutationAvailable: false,
         authenticationStateLoaded: Boolean(config.storageState), runtimeSourceMatch: identity.runtimeSourceMatch,
-        provenance: identity, fixedBrowserAdapters: BROWSER_ADAPTERS, adaptersRegistered: false }; };
+        provenance: identity, fixedBrowserAdapters: BROWSER_ADAPTERS, adaptersRegistered: true }; };
     tool('atri_status', 'Configured source/server/browser provenance and separate observed Experience/Preview scopes.', {}, async () => text(await status()));
-    tool('atri_capabilities', 'Search semantic registry or retrieve exact action descriptor/schema. Product actions are not yet registered in Phase 2.', {
+    tool('atri_capabilities', 'Search READ semantic registry or retrieve exact action descriptor/schema, authority and external effects.', {
         action: bounded().optional(), query: z.string().max(200).default(''), domain: bounded().optional(), risk: z.enum(RISKS).optional(), ...page,
-    }, async args => text({ policyCeiling: ceiling.describe(), result: registry.discover(args), phase: 2 }));
+    }, async args => text({ policyCeiling: ceiling.describe(), result: registry.discover(args), phase: 3 }));
     tool('atri_repo', 'Repository-wide tracked and safe non-ignored untracked tree/read/literal search. Product/user data and secrets denied independently of gitignore.', {
         operation: z.enum(['tree', 'read', 'search']), ...files,
     }, async args => text(await (args.operation === 'tree' ? repository.list(args) : args.operation === 'read' ? repository.read(args) : repository.search(args))));
@@ -114,11 +116,7 @@ export async function createServer(config) {
         const response = await browser.request({ path: '/api/native/extensions/catalog' + (id ? '/' + id : ''), query: id ? { offset, limit } : { query } });
         return { ...text(await observed(response)), ...(!response.ok ? { isError: true } : {}) };
     });
-    tool('atri_diagnose_snapshot', 'Local/browser provenance snapshot; full product diagnostics remain Phase 3.', {}, async () => text({
-        status: await status(), browser: browser.diagnostics(),
-        productDiagnostics: { status: 'unavailable', reason: 'Phase 3' },
-        activeAuthorityIdentity: { status: 'unavailable', reason: 'Product adapters not implemented' },
-    }));
+    tool('atri_diagnose_snapshot', 'Compose source/server/browser provenance and bounded product diagnostics; scoped evidence remains last-observed.', {}, async () => text(await diagnosticSnapshot(executor, status, browser)));
     tool('atri_browser_open', 'Open/reload isolated Atria page. For manual authentication use --headed.', {
         path: bounded(2000).default('/'), reload: z.boolean().default(false), width: z.number().int().min(280).max(2560).optional(),
         height: z.number().int().min(240).max(2160).optional(), waitFor: bounded().optional(),
@@ -139,13 +137,13 @@ export async function createServer(config) {
         const image = await browser.screenshot(args);
         return { content: [{ type: 'image', data: image.bytes.toString('base64'), mimeType: image.mimeType }, ...text(await observed({}, captured)).content] };
     });
-    tool('atri_browser_interact', 'Phase 2 permits observation scrolling only; click/fill/press/select fail closed until authorization exists.', {
+    tool('atri_browser_interact', 'Phase 3 permits observation scrolling only; click/fill/press/select fail closed until authorization exists.', {
         action: z.enum(['click', 'fill', 'press', 'select', 'scroll']), selector: bounded().optional(), value: z.string().max(12000).optional(), frame,
         x: z.number().int().min(-4000).max(4000).default(0), y: z.number().int().min(-4000).max(4000).default(600),
     }, async args => text(await observed(await browser.act(args))), 'INTERACT');
     tool('atri_browser_diagnostics', 'Read/clear only MCP-owned ephemeral browser diagnostics, never product logs.', { clear: z.boolean().default(false) }, async ({ clear }) => text(await observed(browser.diagnostics(clear))));
     tool('atri_browser_close', 'Close only the MCP-owned browser and discard its ephemeral state.', {}, async () => { await browser.close(); return text({ closed: true }); });
-    for (const risk of RISKS) tool('atri_' + risk.toLowerCase(), `Execute registered ${risk} action with exact risk matching. Phase 2 has no product action adapters.`, {
+    for (const risk of RISKS) tool('atri_' + risk.toLowerCase(), `Execute registered ${risk} action with exact risk matching. Only READ actions are enabled.`, {
         action: bounded(), input: z.record(z.string(), z.json()).default({}),
     }, async args => text(await executor.execute(risk, args)), risk);
     server.registerResource('atria-guide', 'atria://guide', { description: 'Workflow and authority boundaries', mimeType: 'text/plain' }, async uri => ({ contents: [{ uri: uri.href, mimeType: 'text/plain', text: GUIDE }] }));

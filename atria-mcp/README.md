@@ -1,6 +1,6 @@
-# Atria MCP 0.2.0 — Phase 2
+# Atria MCP 0.2.0 — Phase 3
 
-独立 stdio 开发工具，位于 `plugin:atria-mcp/`。读取 Atria checkout、Git 和开发产物，并提供 Native GET、隔离浏览器观察、Source/Server/Browser provenance 与固定 Browser Capability adapter 基础。完整 READ catalog 属于 Phase 3；审批/Lease 和产品 mutation 尚未实现。
+独立 stdio 开发工具，位于 `plugin:atria-mcp/`。提供 repository/Git/开发产物观察、完整 READ semantic catalog、诊断快照、Native GET 与隔离浏览器证据。审批/Lease 和产品 mutation 尚未实现。
 
 ## 启动与客户端
 
@@ -47,7 +47,15 @@ node /absolute/path/to/plugin-worktree/atria-mcp/src/cli.js --repo /absolute/pat
 | `atri_mutate` | MUTATE executor，未开放 |
 | `atri_destructive` | DESTRUCTIVE executor，未开放 |
 
-Phase 2 Registry 仍无产品 action。固定 browser adapters 仅为内部基础，不存在通用 dispatch tool；Phase 3 按 owning authority 注册 READ actions。Kernel 覆盖 descriptor schema、精确 risk 匹配、Policy Ceiling 固定 action-ID 快照和有界 ephemeral Receipt Store；MCP 关闭后 receipts 消失，不写产品持久化。
+Phase 3 Registry 覆盖 Session/Chat、Build/Studio、Library、Work/Package、Memory、Agents、Settings、Connections/Models/Routes、Diagnostics 和 browser-owned game projections。用 `atri_capabilities` 按 domain/query 搜索，再取精确 action schema。所有 action 都只通过 `atri_read`；其它 risk executor 继续失败关闭。Policy Ceiling 固定 action-ID 快照，不给未来 action 自动授权。
+
+例如 `atri_read(action="build.frontend.inspect", input={projectId,baseRevision})` 复用正式 Source Graph；`chat.read` 读取不可变 Timeline；`build.preview.get` 读取已有 Preview，绝不创建 Preview。`atri_diagnose_snapshot` 合并独立诊断读取，逐项保留 unavailable/HTTP permission status 和各自 boot/time；不是原子快照。
+
+固定 HTTP adapters 可以调用经过审计的 POST 形状读取；保留产品 CSRF/auth/admin/ownership/revision 校验，不重试写入，不开放任意路径。Settings 使用不播种/迁移的 scoped authority；`settings.get` 必须指定非根 path，catalog/search 返回路径与类型。Generation configuration 使用独立 authority。Secret inventory 仅投影 `secretId`/`label`。
+
+HTTP 输出先脱敏再分页；`outputOffset`/`outputLimit` 与 contentHash 可用于检查分次响应是否变化，JSON 片段明确标记，不冒充完整结构。响应最大 1 MiB，过大应缩小范围。Studio source base64 先解码为 UTF-8 再过滤；二进制只给 metadata。Bundle inspection/preflight 只返回引用/依赖/冲突，不转储 archive 内容。
+
+Memory vector search/recall 与 connection probe 是 READ，但描述符明确标出 provider network/`mayIncurCost`。probe 只能选择现有 ConnectionProfile ID，不接受凭据或任意 endpoint。这些调用不会由诊断快照自动触发。
 
 ## 仓库与产物边界
 
@@ -70,7 +78,7 @@ Phase 2 Registry 仍无产品 action。固定 browser adapters 仅为内部基�
 
 旧 `atri_source_read/search` → `atri_repo`；`atri_api_list/detail/request` → `atri_api`；`atri_browser_snapshot/wait/resize` → `atri_browser_observe`。没有 callable legacy aliases。
 
-`confirm` 字段、`--allow-writes`、`ATRIA_ALLOW_WRITES` 已删除，旧输入拒绝。通用 API 不接受 method/body，不允许 POST/PUT/PATCH/DELETE。真实产品操作必须等待后续 semantic adapters 与可信授权阶段；不能通过点击绕过。
+`confirm` 字段、`--allow-writes`、`ATRIA_ALLOW_WRITES` 已删除，旧输入拒绝。通用 API 不接受 method/body，不允许 POST/PUT/PATCH/DELETE。真实产品写操作必须等待可信授权阶段；不能通过点击绕过。
 
 ## 验证与证据
 
@@ -89,7 +97,7 @@ $env:ATRIA_COMPARE_REPO = '<other-product-checkout>'
 npm run test:atria
 ```
 
-本项目是 JavaScript；没有独立 lint/typecheck 脚本。`check` 做语法检查；tests 包含 runtime Zod/schema、MCP stdio surface 和实际浏览器 fixture。`test:atria` 创建独立临时 dataRoot，保留页面重启自有 server 并验证 stale/reload，不创建 Studio/Session 数据。仅当上述 source-change opt-in 开启时短暂改动源码；检测到并发改动时拒绝覆盖。证据写入 ignored `.artifacts/`，清理临时 runtime。是否实际执行及结果以任务 Record 为准。
+本项目是 JavaScript；没有独立 lint/typecheck 脚本。`check` 做语法检查；tests 包含 runtime Zod/schema、MCP stdio surface 和实际浏览器 fixture。`test:atria` 创建独立临时 dataRoot，保留页面重启自有 server 并验证 stale/reload，通过独立测试 setup 创建 disposable Studio/Session/Preview 数据；这些准备操作不经过 MCP，MCP 只执行 READ。仅当上述 source-change opt-in 开启时短暂改动源码；检测到并发改动时拒绝覆盖。证据写入 ignored `.artifacts/`，清理临时 runtime。是否实际执行及结果以任务 Record 为准。
 
 ## Provenance 与固定 adapters
 
@@ -101,8 +109,8 @@ Source/Server 状态为 `EXACT`、`SOURCE_CHANGED_SINCE_RUNTIME_START`、`CONTEN
 
 页面 open/reload 将主文档响应中的 `X-Atria-Server-Boot-Id` 与当前 authenticated identity 核对后捕获；后续 status 不改写它。Server restart 后 freshness 为 `STALE`，重新 open/reload 才能恢复 `CURRENT`。额外导航、缺失/不一致 header 或缺失 identity 为 `UNVERIFIABLE`。status 无需启动浏览器。截图附带文本 provenance；`SCOPE_CHANGED_DURING_CAPTURE` 不能用于 scoped 验证。Native GET 结果另附该响应的 boot ID 和时间，应核对其与 provenance.server 一致。
 
-Experience 与 Preview 通过固定 Native Frontend/Studio 响应的被动观察独立记录，只投影身份字段；不调用任意 Host Bridge binding。Experience 保留 Session/Epoch/revision/descriptor digest；Studio 保留 Project/baseRevision/Workspace、规范化 response operations 摘要、Preview/PackageVersion、entryPoint 和已有 package hash。`uiLoaded` 只表示观察到同一 Preview/PackageVersion 的 UI 响应。所有这些是 **last observed**，不是当前作用域已完整验证的声明；缺失 epoch、evaluation 或 authoring identity 不会由 server/source match 补齐。后续 Phase 3/4 使用这些 identity 做 freshness 与 receipts 绑定。
+Experience 与 Preview 通过固定 Native Frontend/Studio 响应的被动观察独立记录，只投影身份字段；不调用任意 Host Bridge binding。Experience 保留 Session/Epoch/revision/descriptor digest；Studio 保留 Project/baseRevision/Workspace、规范化 response operations 摘要、Preview/PackageVersion、entryPoint 和已有 package hash。`uiLoaded` 只表示观察到同一 Preview/PackageVersion 的 UI 响应。所有这些是 **last observed**，不是当前作用域已完整验证的声明；缺失 epoch、evaluation 或 authoring identity 不会由 server/source match 补齐。后续 Phase 4 使用这些 identity 做 freshness 与 receipts 绑定。
 
-固定 Browser Capability Bridge 当前只有内部 `memory.schema.scope`、`agents.presets.list`、`game.loaded.identity` adapters，对应 literal `memory-graph.getSchemaScopeInfo`、`orchestrator.listWorkspacePresets` 与浏览器实际加载的 `game-runtime.getPackageState`。每项都有 strict input/output schema、READ risk、availability 和字段投影/脱敏/字节上限。不能传 capability/method/JS/module/window 属性链；不桥接有更强 server authority 的 Session/Studio API，不发起召回/模型调用或任意写操作。
+固定 Browser Capability Bridge 仅桥接没有更强 server authority 的 Memory、Orchestrator 与 selected game-runtime projection；literal capability/method 调用、严格输入、输出过滤/上限、document/Session scope 变化检查。不能传 capability/method/JS/module/window 属性链。Memory 使用已加载 store 的只读 factory；未加载时明确不可用，不创建写 session。观察 recall 禁止持久化来源 reconciliation 与访问计数。Orchestrator 复用工作台运行投影，含 timeline/model/tool/recall/cost/diagnostics，缺失值不推断。
 
 Build 仍是语义命名空间，Native Studio 是 owning authority；复用 Native Frontend v3 Source Graph、diagnostics、`frontend.patch`、evaluation、Preview、Experience Epoch。Frontend Host Bridge 不等同于 MCP Browser Capability Bridge。Committed Conversation/Timeline 不可变，GenerationProjection 是 ephemeral presentation。

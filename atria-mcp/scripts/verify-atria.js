@@ -13,6 +13,8 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { redact } from '../src/policy.js';
 import { SourceCatalog } from '../src/catalog.js';
 import { readSourceIdentity, compareSource } from '../src/provenance.js';
+import { randomUUID } from 'node:crypto';
+import { request as playwrightRequest } from 'playwright';
 
 const toolRoot = fileURLToPath(new URL('../', import.meta.url));
 const repo = process.env.ATRIA_REPO;
@@ -92,9 +94,79 @@ try {
     assert.equal(reference.status, 200);
     const projects = json(await call('atri_api', { operation: 'read', path: '/api/native/studio/projects' }));
     assert.equal(projects.status, 200);
+    const read = async (action, input = {}) => {
+        const result = json(await call('atri_read', { action, input }));
+        assert.equal(result.ok, true, action + ': ' + JSON.stringify(result));
+        return result.data;
+    };
+    const semantic = {};
+    for (const action of ['session.list', 'build.project.list', 'library.list', 'work.list', 'generation.configuration', 'connection.secrets', 'settings.catalog', 'diagnostics.modules', 'diagnostics.incidents', 'diagnostics.startup.list']) {
+        semantic[action] = await read(action);
+    }
+    // Test setup uses the normal product APIs only against this owned disposable
+    // runtime. No mutation tool is added to MCP or used by the tested READ surface.
+    const setup = await playwrightRequest.newContext();
+    const post = async (path, data) => {
+        const csrf = await setup.get(origin + '/csrf-token');
+        const { token } = await csrf.json(); await csrf.dispose();
+        const response = await setup.post(origin + path, { data, headers: { 'x-csrf-token': token } });
+        try { const value = await response.json(); assert.equal(response.ok(), true, path + ': ' + JSON.stringify(value)); return value; }
+        finally { await response.dispose(); }
+    };
+    try {
+        const uid = prefix => prefix + '_' + randomUUID().replaceAll('-', '');
+        const projectId = uid('project'), packageId = uid('pkg'), entryPointId = uid('entry');
+        const source = { format: 'atria-project-source', schemaVersion: 1,
+            project: { projectId, packageId, displayName: 'MCP Read Fixture', createdAt: 10, updatedAt: 10 },
+            package: { name: 'MCP Read Fixture', version: '1.0.0', actors: [], capabilities: ['narrative', 'game-runtime'], permissions: [],
+                runtime: { experience: { mode: 'full', frontend: { kind: 'native', version: 3, source: 'frontend/index.json' } } },
+                entryPoints: [{ entryPointId, displayName: 'Main', actorIds: [], worldIds: [], knowledgeBindingIds: [] }] },
+            worlds: [], knowledge: [], knowledgeBindings: [], dependencies: { worlds: [], knowledge: [], knowledgeBindings: [] }, assetFiles: [] };
+        const files = [{ path: 'frontend/index.json', content: JSON.stringify({ format: 'atria-frontend-source', version: 3, primaryView: 'main', views: [{ id: 'main', root: 'Main', surface: 'app.root' }], components: [{ id: 'Main', source: 'Main.aui' }] }) },
+            { path: 'frontend/Main.aui', content: '<template><main node-id="root"><p node-id="message">MCP READ Fixture</p></main></template>' }];
+        await post('/api/native/studio/projects', { source, files });
+        const revision = await read('build.project.revision', { projectId });
+        const baseRevision = revision.revision;
+        semantic.frontend = await read('build.frontend.inspect', { projectId, baseRevision });
+        assert.equal(semantic.frontend.status, 'passed');
+        const stale = json(await call('atri_read', { action: 'build.frontend.inspect', input: { projectId, baseRevision: 'stale' } }));
+        assert.equal(stale.ok, false); assert.equal(stale.status, 409);
+        semantic.source = await read('build.source.read', { projectId, path: 'frontend/Main.aui' });
+        assert.match(semantic.source.content, /MCP READ Fixture/);
+        semantic.validation = await read('build.validate', { projectId });
+        semantic.preflight = await read('build.preflight', { projectId, baseRevision });
+        await read('build.history', { projectId });
+        await read('build.resource.closure', { projectId });
+        const preview = await post(`/api/native/studio/projects/${projectId}/preview`, { baseRevision });
+        semantic.preview = await read('build.preview.get', { previewId: preview.preview.previewId });
+        await read('build.preview.list', { projectId });
+        const built = await post(`/api/native/studio/projects/${projectId}/build`, { baseRevision });
+        await post('/api/native/product/packages/install', { data: built.data, grantedPermissions: [] });
+        const started = await post(`/api/native/product/works/${packageId}/start`, { entryPointId });
+        const sessionId = started.session.sessionId;
+        semantic.session = await read('session.get', { sessionId });
+        await read('chat.read', { sessionId }); await read('chat.history', { sessionId }); await read('chat.branches', { sessionId });
+        await read('session.saves', { sessionId }); await read('session.runtime', { sessionId });
+        const packageVersionId = semantic.session.session.packageVersionId;
+        await read('package.version.get', { packageId, packageVersionId });
+        await read('library.exact', { ref: { resourceType: 'core.package', resourceId: packageId, revision: packageVersionId } });
+        assert.equal((await read('build.project.revision', { projectId })).revision, baseRevision, 'READ did not mutate Project source');
+        semantic.projectId = projectId; semantic.baseRevision = baseRevision; semantic.sessionId = sessionId;
+    } finally { await setup.dispose(); }
+    semantic.diagnosticSnapshot = json(await call('atri_diagnose_snapshot'));
     await call('atri_browser_open', { width: 1440, height: 1000 });
-    // Phase 2 cannot dismiss onboarding or create/alter Studio projects.
+    // The MCP browser only observes; disposable fixture setup was performed separately.
     const desktop = json(await call('atri_browser_observe'));
+    semantic.browserCapabilities = {};
+    for (const action of ['memory.schema.scope', 'memory.injection', 'memory.recall.last', 'agents.presets.list', 'agents.run.get', 'agents.checkpoints', 'game.loaded.identity', 'game.llm.status']) {
+        let result;
+        for (let attempt = 0; attempt < 6; attempt++) {
+            result = await client.callTool({ name: 'atri_read', arguments: { action, input: {} } });
+            if (!result.isError) break;
+            await delay(500);
+        }
+        semantic.browserCapabilities[action] = { available: !result.isError, result: json(result) };
+    }
     assert.equal(desktop.provenance.browserFreshness, 'CURRENT');
     assert.equal(desktop.provenance.runtimeSourceMatch, 'EXACT');
     await writeFile(join(artifacts, 'desktop-snapshot.json'), JSON.stringify(desktop, null, 2));
@@ -143,9 +215,10 @@ try {
         mobileViewport: mobile.viewport, runtimeSourceMatch: status.runtimeSourceMatch,
         provenanceChecks: { changedSource, differentRevision, restart: restarted.provenance.browserFreshness, reload: reloaded.provenance.browserFreshness },
         runtime: status.provenance.server, restartedRuntime: reloaded.provenance.server,
-        scope: 'Phase 2 real source/server/browser provenance; no real Session Epoch or Studio Preview scenario exercised', diagnostics, artifacts };
+        scope: 'Phase 3 real READ actions with disposable Session/Studio Native v3 Preview setup; no mutation through MCP', semantic, diagnostics, artifacts };
     await writeFile(join(artifacts, 'summary.json'), JSON.stringify(summary, null, 2));
-    console.log(JSON.stringify(summary, null, 2));
+    console.log(JSON.stringify({ source: summary.source, routes: summary.routes, runtimeSourceMatch: summary.runtimeSourceMatch,
+        provenanceChecks: summary.provenanceChecks, readIntegration: 'passed', browserCapabilities: Object.fromEntries(Object.entries(semantic.browserCapabilities).map(([key, value]) => [key, value.available])), artifacts }, null, 2));
 } finally {
     await client?.close();
     await stopServer();

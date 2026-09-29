@@ -16,7 +16,7 @@ export function safeUrl(value, base) {
 }
 
 export function denyMutation() {
-    throw new Error('Product mutation and UI interaction are unavailable in Phase 2.');
+    throw new Error('Product mutation and UI interaction are unavailable in Phase 3.');
 }
 
 export function redactText(value) {
