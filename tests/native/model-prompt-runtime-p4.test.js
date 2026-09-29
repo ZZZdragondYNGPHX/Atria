@@ -28,6 +28,16 @@ test('P3 HTTP task/turn and operation endpoints retain authenticated ownership',
     expect(host.executeTurn.mock.calls[0][0]).toBe('alice');
     host.executeTask.mockImplementationOnce(async (_owner, _input, _signal, onChunk) => { onChunk({ operationId: 'detached' }); return {}; });
     expect((await supertest(app).post('/generation/task/start').set('x-user', 'alice').send({}).expect(202)).body.operationId).toBe('detached');
+    await supertest(app).post('/generation/turn/start').send({}).expect(401);
+    let finishTurn;
+    host.executeTurn.mockImplementationOnce(async (owner, _input, signal, onChunk) => {
+        expect(owner).toBe('alice'); expect(signal).toBeUndefined();
+        onChunk({ operationId: 'detached-turn' });
+        await new Promise(resolve => { finishTurn = resolve; });
+        return { finalized: true };
+    });
+    expect((await supertest(app).post('/generation/turn/start').set('x-user', 'alice').send({}).expect(202)).body.operationId).toBe('detached-turn');
+    finishTurn();
     let finish;
     const operation = nativeTaskScheduler.submit({ owner: 'alice', kind: 'auxiliary_task', anchor: {}, executionClass: 'background', resources: [],
         key: 'p3-http', fingerprint: 'same', fresh: async () => true, run: () => new Promise(resolve => { finish = resolve; }), finalize: async value => value });

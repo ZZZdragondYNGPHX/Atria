@@ -70,13 +70,15 @@ export function createNativeGenerationRouter(getHost = services) {
             res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_lifecycle_execution_failed' });
         }
     });
-    router.post('/task/start', async (req, res) => {
+    router.post(['/task/start', '/turn/start'], async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);
         // Explicit detached work survives view closure, but not Host restart.
         // Its final result still enters the existing revision-backed Session.
         try {
-            const result = await getHost().executeTask(handle, req.body, undefined, chunk => {
+            const host = getHost();
+            const execute = req.path === '/turn/start' ? host.executeTurn.bind(host) : host.executeTask.bind(host);
+            const result = await execute(handle, req.body, undefined, chunk => {
                 if (!res.headersSent && chunk.operationId) res.status(202).json({ operationId: chunk.operationId });
             });
             if (!res.headersSent) res.json(result);
@@ -324,13 +326,14 @@ export function createNativeGenerationRouter(getHost = services) {
                 await visit(candidate);
             }
             if (method) return response.json(await host.persistence[method](handle, request.body, {
+                expectedFingerprint: request.headers['if-match'],
                 validate: async route => {
                     for (const ref of [route.promptProgramRef, route.generationProfileRef]) if (ref.scope === 'library') await host.library.getExact(handle, ref);
                     await presets(host).assertPair(handle, route.promptProgramRef, route.generationProfileRef);
                 },
             }));
             return response.sendStatus(404);
-        } catch (error) { response.status(400).json({ error: error.code === 'native_runtime_fallback_role' ? error.code : 'native_generation_configuration_invalid' }); }
+        } catch (error) { response.status(error.code === 'native_generation_configuration_conflict' ? 409 : 400).json({ error: ['native_runtime_fallback_role', 'native_generation_configuration_conflict'].includes(error.code) ? error.code : 'native_generation_configuration_invalid' }); }
     });
     router.post(['/execute', '/preview', '/task', '/turn'], async (request, response) => {
         const handle = request.user?.profile?.handle;

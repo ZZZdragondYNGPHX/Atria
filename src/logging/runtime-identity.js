@@ -13,7 +13,7 @@ export function initializeRuntimeIdentity() {
     initialization ??= (async () => {
         let appVersion = null;
         try { appVersion = JSON.parse(await readFile(path.join(serverDirectory, 'package.json'), 'utf8')).version; } catch { /* reported as unavailable */ }
-        startupIdentity = { version: 1, serverBootId, processStartedAt: getCurrentServerStartupSnapshot().createdAt,
+        startupIdentity = { version: 1, serverBootId, mutationGuards: 1, processStartedAt: getCurrentServerStartupSnapshot().createdAt,
             appVersion, source: await captureSourceIdentity(serverDirectory) };
     })();
     return initialization;

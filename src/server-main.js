@@ -163,8 +163,12 @@ http.globalAgent = new http.Agent({ keepAlive: cliArgs.enableKeepAlive });
 https.globalAgent = new https.Agent({ keepAlive: cliArgs.enableKeepAlive });
 
 const app = express();
-app.use((_request, response, next) => {
+app.use((request, response, next) => {
     response.set('X-Atria-Server-Boot-Id', serverBootId);
+    if (request.headers['x-atria-expected-server-boot-id'] !== undefined
+        && request.headers['x-atria-expected-server-boot-id'] !== serverBootId) {
+        return response.status(409).json({ error: 'native_server_boot_conflict' });
+    }
     next();
 });
 // Root for Atria-shipped scaffolding (e.g. bundled skills under

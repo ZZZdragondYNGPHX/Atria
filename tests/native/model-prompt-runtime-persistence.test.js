@@ -6,6 +6,23 @@ import {
     createNativeId,
 } from '../../src/native/index.js';
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
+import { hashNativeDocument } from '../../src/native/repositories/common.js';
+
+test('runtime configuration optional fingerprint rejects stale create/update inside the write queue', async () => {
+    const h = await makeTempFsEngine();
+    try {
+        const persistence = new NativeModelPromptPersistence({ engine: h.engine });
+        const connection = connectionProfile();
+        const empty = hashNativeDocument(null);
+        await persistence.saveConnectionProfile(h.handle, connection, { expectedFingerprint: empty });
+        await expect(persistence.saveConnectionProfile(h.handle, connection, { expectedFingerprint: empty })).rejects.toMatchObject({ code: 'native_generation_configuration_conflict' });
+        const expectedFingerprint = hashNativeDocument(connection);
+        const candidates = await Promise.allSettled(['first', 'second'].map(displayName => persistence.saveConnectionProfile(h.handle, { ...connection, displayName }, { expectedFingerprint })));
+        expect(candidates.filter(item => item.status === 'fulfilled')).toHaveLength(1);
+        expect(candidates.filter(item => item.status === 'rejected')).toHaveLength(1);
+        expect((await persistence.getConnectionProfile(h.handle, connection.connectionProfileId)).displayName).toBe('first');
+    } finally { await h.cleanup(); }
+});
 
 function moduleResource({
     id = createNativeId('promptModule'),

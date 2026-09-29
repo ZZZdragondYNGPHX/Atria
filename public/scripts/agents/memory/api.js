@@ -58,7 +58,18 @@ import {
     removeCharacterAdvancedOverride,
 } from './character-overrides.js';
 
-export async function openSession(context) {
+function graphIdentity(store, context) {
+    const read = getMemoryGraphReadApi(structuredClone(store), context);
+    return { schema: read.getSchema(), nodes: read.listNodes({ activeOnly: false }), edges: read.listEdges({ excludeInternal: false }) };
+}
+const sessionWrites = new Map();
+async function serializeSessionWrite(key, run) {
+    const pending = (sessionWrites.get(key) || Promise.resolve()).catch(() => {}).then(run);
+    sessionWrites.set(key, pending);
+    try { return await pending; } finally { if (sessionWrites.get(key) === pending) sessionWrites.delete(key); }
+}
+
+export async function openSession(context, { expectedGraph = undefined } = {}) {
     if (!context || typeof context !== 'object') return null;
     let chatKey;
     let store;
@@ -71,24 +82,34 @@ export async function openSession(context) {
         return null;
     }
     if (!store) return null;
+    const assertGraph = () => {
+        if (expectedGraph !== undefined && JSON.stringify(graphIdentity(store, context)) !== JSON.stringify(expectedGraph)) {
+            throw new Error('Memory graph changed since review');
+        }
+    };
+    assertGraph();
     const sourceTicket = await captureMemorySourceSession(context);
+    assertGraph();
     const read = getMemoryGraphReadApi(store, context);
     // Source-guarded writes stay private until persistence succeeds. A rejected
     // late tool result must not leak an unbound node into the shared read cache.
-    const writeStore = sourceTicket ? structuredClone(store) : store;
+    const isolated = Boolean(sourceTicket) || expectedGraph !== undefined;
+    const writeStore = isolated ? structuredClone(store) : store;
     let beforeStore = structuredClone(writeStore);
     const write = getMemoryGraphWriteApi(writeStore, context, {
-        onCommit: async (currentStore) => {
+        onCommit: currentStore => serializeSessionWrite(chatKey, async () => {
             try {
                 assertMemorySourceSession(sourceTicket, context);
+                assertGraph();
                 await commitSessionMutation(context, chatKey, beforeStore, currentStore);
-                if (sourceTicket) Object.assign(store, structuredClone(currentStore));
+                if (isolated) Object.assign(store, structuredClone(currentStore));
                 beforeStore = structuredClone(currentStore);
+                if (expectedGraph !== undefined) expectedGraph = graphIdentity(store, context);
             } catch (error) {
-                if (sourceTicket) Object.assign(writeStore, structuredClone(beforeStore));
+                if (isolated) Object.assign(writeStore, structuredClone(beforeStore));
                 throw error;
             }
-        },
+        }),
     });
     // Curated surface for the agent / third-party consumer. The 16 methods
     // below are the recall + write hot path. Lower-level read accessors
@@ -154,6 +175,10 @@ async function withReadApi(context) {
 registerCapabilityApi('memory-graph', {
     getWorkspacePorts: getMemoryWorkspacePorts,
     openSession,
+    openGuardedSession: (context, expectedGraph) => {
+        if (!expectedGraph || !Array.isArray(expectedGraph.nodes) || !Array.isArray(expectedGraph.edges)) throw new TypeError('Exact Memory graph required');
+        return openSession(context, { expectedGraph });
+    },
     // Observation must not capture a write-session ticket or reconcile/persist
     // provenance as a side effect. Reuse the existing frozen read factory.
     openReadSession: context => {

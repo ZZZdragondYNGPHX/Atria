@@ -255,16 +255,21 @@ export class NativeModelPromptPersistence {
         }));
     }
 
-    async _save(handle, kind, idField, id, value) {
+    async _save(handle, kind, idField, id, value, expectedFingerprint = undefined) {
         assertWritable();
-        return this._engine.withTransaction(handle, tx => putMutable(
-            tx,
-            playerKey(kind, handle, idField, id),
-            value,
-        ));
+        return this._engine.withTransaction(handle, async tx => {
+            const key = playerKey(kind, handle, idField, id);
+            if (expectedFingerprint !== undefined) {
+                const current = await getNativeDocument(tx, key);
+                if (!/^[a-f0-9]{64}$/.test(expectedFingerprint) || hashNativeDocument(current ?? null) !== expectedFingerprint) {
+                    throw new ConflictError('native_generation_configuration_conflict');
+                }
+            }
+            return putMutable(tx, key, value);
+        });
     }
 
-    async saveConnectionProfile(handle, value) {
+    async saveConnectionProfile(handle, value, { expectedFingerprint } = {}) {
         const profile = assertConnectionProfile(value);
         return withRuntimeWrite(handle, () => this._save(
             handle,
@@ -272,6 +277,7 @@ export class NativeModelPromptPersistence {
             'connectionProfileId',
             profile.connectionProfileId,
             profile,
+            expectedFingerprint,
         ));
     }
 
@@ -290,7 +296,7 @@ export class NativeModelPromptPersistence {
             .map(assertConnectionProfile));
     }
 
-    async saveModelProfile(handle, value) {
+    async saveModelProfile(handle, value, { expectedFingerprint } = {}) {
         return withRuntimeWrite(handle, async () => {
             const profile = assertModelProfile(value);
             const connection = await this.getConnectionProfile(handle, profile.connectionProfileRef.connectionProfileId);
@@ -305,6 +311,7 @@ export class NativeModelPromptPersistence {
                 'modelProfileId',
                 profile.modelProfileId,
                 profile,
+                expectedFingerprint,
             );
         });
     }
@@ -324,7 +331,7 @@ export class NativeModelPromptPersistence {
             .map(assertModelProfile));
     }
 
-    async saveRuntimeRoute(handle, value, { validate = async () => {} } = {}) {
+    async saveRuntimeRoute(handle, value, { validate = async () => {}, expectedFingerprint } = {}) {
         return withRuntimeWrite(handle, async () => {
             const route = assertRuntimeRoute(value);
             await validate(route);
@@ -354,6 +361,7 @@ export class NativeModelPromptPersistence {
                 'runtimeRouteId',
                 route.runtimeRouteId,
                 route,
+                expectedFingerprint,
             );
         });
     }
