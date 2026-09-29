@@ -3,7 +3,7 @@
 **Task ID:** `plugin/atria-mcp-capability-expansion`  
 **Primary Workspace:** `plugin`  
 **Plan Workspace:** `docs`  
-**Status:** Discussion Draft v0.2  
+**Status:** Discussion Draft v0.3  
 **Current implementation baseline:** `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`  
 **Implementation path:** `plugin:atria-mcp/`
 
@@ -177,18 +177,55 @@ The authorization model is now frozen at four semantic risk classes:
 
 A browser click is not intrinsically low-risk: a click can invoke a destructive product action. Important/high-risk product operations should therefore prefer semantic MCP tools whose annotations reflect their real meaning rather than hiding that meaning behind a generic browser click.
 
-### 6.2 Two-gate authorization
+### 6.2 Authorization model
 
-A side-effecting capability should require both:
+A side-effecting capability is governed by three independent gates:
 
-- server/session-level enablement for the relevant capability class/domain; and
-- explicit per-operation approval represented in the actual tool call.
+1. **MCP capability policy**
+   - determines which domain/risk class this MCP session is eligible to invoke;
+   - replaces the long-term idea of one global `--allow-writes` switch.
 
-The existing broad `--allow-writes + confirm=true` pattern is directionally correct, but the final design should consider capability-scoped enablement rather than making one switch implicitly authorize every writable Atria domain.
+2. **AI-client/user approval**
+   - the client must obtain actual user approval at the appropriate scope;
+   - a model-supplied boolean is not by itself proof of human authorization.
 
-Possible capability groups for later discussion include chat actions, Studio actions, Library actions and destructive actions.
+3. **Atria authority**
+   - Atria still performs authentication, CSRF, permission, revision/conflict and domain validation;
+   - MCP authorization never bypasses product authority.
 
-A successful operation must still pass Atria's own authentication, CSRF, permission, revision/conflict and domain validation. MCP authorization never bypasses Atria authority.
+Supported approval scopes should include:
+
+- **one-shot**: one exact operation/target;
+- **session**: a bounded class of operations for the current AI/MCP session;
+- **domain-session**: for example Chat=MUTATE while Build=READ;
+- **narrow destructive lease**: a tightly scoped temporary permission, such as deleting only messages or temporary Projects created by the current MCP session.
+
+There should be no permanent blanket MUTATE/DESTRUCTIVE grant that silently covers future tools.
+
+DESTRUCTIVE operations default to one-shot approval. A destructive lease is allowed only when its scope is objectively enforceable by MCP/product identity, not merely described in natural language.
+
+### 6.3 Side-effect metadata
+
+Risk class and external side effects are separate dimensions.
+
+Generation-triggering or otherwise externally consequential actions remain MUTATE but should expose metadata such as:
+
+- `externalEffect: generation`;
+- `mayIncurCost: true`;
+- other bounded external-effect descriptors when useful.
+
+Examples include chat send/regenerate and Agent runs that invoke configured model providers.
+
+### 6.4 Browser interaction is not an authorization escape hatch
+
+Browser observation operations such as open/wait/snapshot/screenshot/resize/scroll remain READ where they only observe state.
+
+Generic browser click/fill/press/select is INTERACT-capable but may activate a product operation whose actual semantics are MUTATE or DESTRUCTIVE. Therefore:
+
+- generic browser interaction must not be used to bypass a semantic tool's stricter authorization;
+- when an important product operation has a semantic MCP tool, the semantic tool is preferred;
+- broad UI-automation authorization must be explicit and must not silently grant DESTRUCTIVE authority;
+- high-risk browser interactions should remain individually approvable unless the user explicitly grants a bounded automation scope.
 
 ## 7. Chat / message capability direction
 
@@ -309,13 +346,13 @@ This expansion is not intended to:
 
 The following remain intentionally unresolved and should be settled through further discussion before implementation planning:
 
-- exact capability-group and authorization UX, including per-action versus scoped/session authorization;
+- concrete representation/storage of the accepted capability policy and leases;
 - detailed action semantics within each accepted product domain;
 - the exact threshold for promoting a generic Native API operation into a dedicated semantic MCP tool;
 - exact Git/repository read surface and limits;
 - edit/regenerate/delete semantics for message history;
-- handling of generation cost/external-provider side effects;
-- whether browser interaction should share the same capability groups as semantic product actions;
+- detailed client presentation of generation cost/external-provider side-effect metadata;
+- exact enforcement mechanics for semantic-operation precedence over generic browser interaction;
 - audit/evidence returned for authorized actions;
 - compatibility and migration strategy from the current `--allow-writes` switch.
 
