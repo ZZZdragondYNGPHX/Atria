@@ -3,7 +3,7 @@
 **Task ID:** `plugin/atria-mcp-capability-expansion`  
 **Primary Workspace:** `plugin`  
 **Plan Workspace:** `docs`  
-**Status:** Discussion Draft v0.13  
+**Status:** Discussion Draft v0.14  
 **Current implementation baseline:** `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`  
 **Implementation path:** `plugin:atria-mcp/`
 
@@ -1721,7 +1721,129 @@ When implementation begins:
 - final completion cleans the live HANDOFF after all verification/integration work is complete.
 
 
-## 20. Diagnostic workflow target
+
+
+## 20. Migration to MCP v0.2.0 surface
+
+The existing 0.1.0 MCP surface is replaced through a deliberate breaking migration rather than carrying long-lived legacy tool aliases.
+
+### 20.1 Breaking cutover
+
+The public MCP tool surface should cut directly to the consolidated architecture.
+
+Do not keep deprecated public aliases for the old per-function tool names merely for compatibility.
+
+Internal implementation helpers may be reused during migration, but `listTools()` should expose only the current supported surface for that phase/version.
+
+### 20.2 Target fixed tool surface
+
+The accepted target is 18 top-level MCP tools:
+
+1. `atri_status`
+2. `atri_capabilities`
+3. `atri_reference`
+4. `atri_repo`
+5. `atri_git`
+6. `atri_artifact`
+7. `atri_api`
+8. `atri_diagnose_snapshot`
+9. `atri_browser_open`
+10. `atri_browser_observe`
+11. `atri_browser_screenshot`
+12. `atri_browser_interact`
+13. `atri_browser_diagnostics`
+14. `atri_browser_close`
+15. `atri_read`
+16. `atri_interact`
+17. `atri_mutate`
+18. `atri_destructive`
+
+The exact operation enums/schemas within the grouped tools remain implementation detail governed by the frozen domain design and Action Registry.
+
+### 20.3 Legacy mapping
+
+Public legacy mappings are documented rather than kept as callable aliases.
+
+Examples:
+
+- `atri_source_read/search` -> `atri_repo`;
+- `atri_api_list/detail` -> `atri_api`;
+- Native GET reads -> `atri_api` or semantic `atri_read`;
+- Native writes -> semantic risk executors;
+- `atri_browser_resize/wait/snapshot` -> `atri_browser_observe`;
+- `confirm=true` -> removed in favor of trusted approval/Lease;
+- `--allow-writes` -> removed in favor of Policy Ceiling + approval/Lease.
+
+### 20.4 Generic Native API becomes read-oriented
+
+The consolidated `atri_api` remains a Native discovery/detail/read observation tool.
+
+It is not a general POST/PUT/PATCH/DELETE escape hatch.
+
+Important product mutations must execute through registered semantic actions and the matching risk executor.
+
+### 20.5 Browser consolidation
+
+Browser lifecycle remains explicit.
+
+`atri_browser_observe` groups compatible observation operations such as:
+
+- snapshot;
+- wait;
+- resize.
+
+Navigation/open, screenshot image output, interaction, diagnostics and close remain separate because they have meaningfully different lifecycles/output types.
+
+Browser interaction remains subject to capability policy and cannot bypass a known semantic product action's stronger authorization.
+
+### 20.6 Remove model-supplied confirmation
+
+The v0.2.0 input schemas should not include legacy `confirm` fields.
+
+Unexpected legacy confirmation parameters should fail normal schema validation rather than being silently ignored.
+
+The old `requireWrite(config, confirmed)` model should be retired.
+
+### 20.7 Replace `--allow-writes`
+
+The old `--allow-writes` / `ATRIA_ALLOW_WRITES` switch is removed from the final v0.2.0 design.
+
+The preferred operator policy experience is intentionally simple:
+
+- default/read-only policy;
+- development policy that makes approved INTERACT/MUTATE/DESTRUCTIVE actions eligible for user approval but does not auto-grant them;
+- optional explicit custom policy file/profile for tighter or specialized deployments.
+
+A development policy is an approval ceiling, not a blanket write grant.
+
+### 20.8 Versioning
+
+The redesigned protocol/tool surface should advance the Plugin package from `0.1.0` to `0.2.0`.
+
+The version change communicates the deliberate breaking MCP API redesign while the tool remains pre-1.0/private development infrastructure.
+
+### 20.9 Prompt/docs/examples migration
+
+The migration must update in the same implementation lifecycle:
+
+- README tool tables and examples;
+- Claude/Codex example configuration where needed;
+- `atria_verify_change` prompt;
+- Guide/resource descriptions;
+- all tests and helper fixtures referring to old tool names or legacy write confirmation.
+
+The new verification prompt should require Source ↔ Runtime ↔ Browser identity to be established before claiming a current source change was runtime/UI verified.
+
+### 20.10 Tool-count architecture lock
+
+Tests should enforce the intended compact tool surface.
+
+The target v0.2.0 contract should assert the 18 registered top-level tools and reject accidental proliferation of per-domain public tools such as `atri_chat_*`, `atri_build_*` or `atri_memory_*` unless a later approved Plan explicitly changes the public surface.
+
+Semantic domain growth belongs in the Action Registry by default, not in new top-level MCP tool registrations.
+
+
+## 21. Diagnostic workflow target
 
 A successful end-state workflow should allow an AI to move through evidence such as:
 
@@ -1735,7 +1857,7 @@ For chat/generation issues it should support:
 
 `Session/message state -> relevant runtime/config -> authorized test message -> generation/UI result -> diagnostics -> source diagnosis -> authorized cleanup when requested`
 
-## 21. Non-goals currently frozen
+## 22. Non-goals currently frozen
 
 This expansion is not intended to:
 
@@ -1746,12 +1868,12 @@ This expansion is not intended to:
 - bypass Native Session, Studio/ProjectStore, Library, Package or other Atria ownership rules;
 - grant unattended destructive control over user data.
 
-## 22. Open design topics
+## 23. Open design topics
 
 The following remain intentionally unresolved and should be settled through further discussion before implementation planning:
 
 - concrete representation/storage of the accepted capability policy and leases;
-- migration/compatibility strategy from the current 15-tool MCP surface to the consolidated registry/executor surface;
+- final Definition of Done and acceptance matrix for freezing design and starting implementation;
 - the exact threshold for promoting a generic Native API operation into a dedicated semantic MCP tool;
 - detailed artifact roots/types and bounded inspection rules;
 - detailed client UX/naming for branch-derived message cleanup and re-entry;
@@ -1760,7 +1882,7 @@ The following remain intentionally unresolved and should be settled through furt
 - audit/evidence returned for authorized actions;
 - compatibility and migration strategy from the current `--allow-writes` switch.
 
-## 23. Discussion workflow
+## 24. Discussion workflow
 
 During the design discussion phase:
 
