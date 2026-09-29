@@ -3,9 +3,10 @@
 **Task ID:** `plugin/atria-mcp-capability-expansion`  
 **Primary Workspace:** `plugin`  
 **Plan Workspace:** `docs`  
-**Status:** Discussion Draft v0.14  
+**Status:** Approved Implementation Plan v1.0  
 **Current implementation baseline:** `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`  
-**Implementation path:** `plugin:atria-mcp/`
+**Implementation path:** `plugin:atria-mcp/`  
+**Design state:** Frozen for implementation; changes require explicit user approval and Plan update.
 
 ## 1. Purpose
 
@@ -1843,7 +1844,296 @@ The target v0.2.0 contract should assert the 18 registered top-level tools and r
 Semantic domain growth belongs in the Action Registry by default, not in new top-level MCP tool registrations.
 
 
-## 21. Diagnostic workflow target
+
+
+## 21. Definition of Done / Acceptance Matrix
+
+The capability expansion is complete only when every required acceptance layer below is satisfied. Passing a lower layer does not substitute for evidence from a higher layer.
+
+### 21.1 Architecture / contract acceptance
+
+The v0.2.0 public surface must contain exactly the 18 approved top-level MCP tools.
+
+Architecture tests must reject accidental public proliferation such as per-domain `atri_chat_*`, `atri_build_*`, `atri_memory_*` or equivalent bypass tools unless a later approved Plan changes the public surface.
+
+Every semantic product action must be registered through the Action Registry and provide the required descriptor metadata:
+
+- stable action id;
+- risk;
+- owning authority;
+- input schema;
+- external-effect metadata;
+- guards;
+- approval/lease policy;
+- availability.
+
+Executor/risk mismatches must fail closed:
+
+- READ only through `atri_read`;
+- INTERACT only through `atri_interact`;
+- MUTATE only through `atri_mutate`;
+- DESTRUCTIVE only through `atri_destructive`.
+
+The generic Native API observation surface must not execute product POST/PUT/PATCH/DELETE mutations.
+
+### 21.2 Security / authorization acceptance
+
+Secret values must remain unavailable through all relevant surfaces, including:
+
+- repository reads;
+- Git history/diff/show;
+- artifacts;
+- Settings;
+- Connections;
+- Diagnostics;
+- semantic actions;
+- Browser Capability Bridge;
+- errors;
+- receipts.
+
+Opaque Secret references/labels may remain visible.
+
+Capability Lease tests must prove that:
+
+- the model cannot mint a lease;
+- the model cannot alter lease grants/scope/expiry;
+- expired leases fail;
+- exhausted max-use leases fail;
+- target-scope mismatches fail;
+- MCP-instance mismatches fail;
+- historical broad grants do not silently authorize actions added later.
+
+DESTRUCTIVE authorization defaults to one-shot approval.
+
+Narrow destructive cleanup must verify object provenance through MCP instance/receipt identity rather than names or model claims.
+
+Known high-risk semantic product operations must not be bypassable through generic browser interaction.
+
+### 21.3 Repository / Git acceptance
+
+Verification must prove:
+
+- tracked repository content is readable within policy;
+- safe non-ignored untracked development files are readable;
+- ignored development artifacts are accessible only through the bounded artifact policy;
+- user/product data is not exposed merely because it lives under the checkout;
+- traversal and symlink escape are blocked;
+- historical Git reads apply sensitive-content policy;
+- sensitive content remains blocked/redacted independently of `.gitignore`.
+
+### 21.4 Runtime identity acceptance
+
+Real integration must exercise at least:
+
+- configured source = runtime startup source = current browser -> exact/current;
+- tracked source changed after runtime start -> source-changed state;
+- configured source and runtime at different revision/content -> different-revision state;
+- server restarted while browser remains loaded -> stale-page state;
+- insufficient provenance -> unverifiable.
+
+`UNVERIFIABLE` must never be silently presented as a match.
+
+Verification prompts/reports must not claim a current source change was runtime/UI verified unless the required identity relationship is established.
+
+### 21.5 Chat / Session acceptance
+
+Real product verification must cover representative:
+
+- send;
+- regenerate/retry;
+- re-enter;
+- restart-from;
+- branch fork/switch;
+- remove-from-active cleanup;
+- generation stop;
+- save/restore;
+- Session deletion.
+
+MCP must not introduce in-place mutation of committed Native Timeline history.
+
+Active cleanup may derive/switch branches while preserving historical evidence.
+
+### 21.6 Build / Studio acceptance
+
+Verification must cover representative:
+
+- Project/source/revision reads;
+- history/diff;
+- validation/preflight;
+- Workspace prepare/inspect;
+- evaluation;
+- Preview/Simulation;
+- apply.
+
+Evaluation must restore Project source rather than persist its temporary mutation.
+
+An evaluation receipt reviewed against base revision A must fail closed if the Project changes to B before apply.
+
+### 21.7 Library / Package / Work acceptance
+
+Verification must cover representative:
+
+- exact Library revisions;
+- references / Used By;
+- resource revision creation;
+- Package-original -> Library fork;
+- Work exact installed versions;
+- Session pinned PackageVersion diagnosis;
+- Package preflight and permission/capability diff;
+- install/update;
+- base-version conflict;
+- delete/reference blockers.
+
+MCP must preserve immutable PackageVersion semantics; Work edits derive a new exact PackageVersion rather than altering an old one.
+
+No force-delete path may bypass product blockers.
+
+### 21.8 Memory acceptance
+
+Verification must cover representative:
+
+- schema;
+- node/graph inspection;
+- keyword/name lookup;
+- recall;
+- actual last injection projection;
+- node create/edit;
+- relation upsert/delete;
+- compaction;
+- node deletion.
+
+A stale targeted Memory edit using an old fingerprint/revision identity must fail instead of silently overwriting a newer mutation.
+
+### 21.9 Agent acceptance
+
+Agent observation must expose the approved runtime evidence surface.
+
+Delegated authority must be proven as:
+
+`Preset capabilities ∩ Product capabilities ∩ MCP Lease`.
+
+A test must demonstrate that a Preset which permits a higher-risk tool cannot use it when the MCP/user lease denies that capability.
+
+Agent receipts must allow tracing a semantic mutation back to the Agent run/step/tool invocation responsible for it.
+
+### 21.10 Settings / Connections / Diagnostics acceptance
+
+Settings writes must use bounded patch/concurrency semantics rather than whole-document replacement for ordinary changes.
+
+Connection probes must use Secret references internally without returning Secret values.
+
+Runtime configuration deletion must preserve reference blockers.
+
+Diagnostics must preserve user/Admin visibility boundaries.
+
+Atria-owned log clearing is DESTRUCTIVE; MCP-owned ephemeral diagnostic-buffer clearing remains distinct.
+
+`atri_diagnose_snapshot` must explicitly represent unavailable/permission-denied/not-applicable evidence rather than silently omitting missing categories.
+
+### 21.11 Real integration / UX acceptance
+
+The real-product verifier must run against:
+
+- a real Atria process from the configured product checkout;
+- fresh/disposable dataRoot/config;
+- real product auth/CSRF behavior;
+- real Chromium/compatible browser context;
+- representative Studio/Session/Memory/Diagnostics paths.
+
+Responsive evidence must include at least:
+
+- desktop 1440x1000;
+- narrow/mobile 390x844.
+
+The verifier should persist bounded evidence such as:
+
+- summary JSON;
+- runtime identity evidence;
+- screenshots;
+- diagnostic snapshot;
+- representative operation receipts;
+- runtime log.
+
+The run must clean up temporary Sessions/Projects/test assets/runtime data/browser state/leases/ephemeral receipts without touching personal developer data.
+
+### 21.12 Client compatibility acceptance
+
+At minimum, the supported Claude Code and Codex MCP configurations must be checked for:
+
+- connection/startup;
+- discovery of the exact 18-tool surface;
+- `atri_status`;
+- capability discovery;
+- executor schema consumption;
+- screenshot image-content compatibility where supported.
+
+A stochastic end-to-end model benchmark is not a correctness requirement; protocol/tool-schema usability is.
+
+### 21.13 Phase stop gates
+
+Each implementation phase has its own formal stop gate.
+
+A later phase must not begin merely because code for the previous phase exists.
+
+Representative examples:
+
+- Phase 3 cannot advance to mutation work until real READ integration is verified;
+- Phase 4 cannot advance to high-risk/destructive work while Lease/authorization bypass tests fail;
+- Phase 5 cannot advance to finalization while Agent privilege-escalation or Package destructive-boundary tests fail.
+
+At every phase boundary, persist verified state in the Plugin Record and live HANDOFF before stopping.
+
+### 21.14 Final completion criteria
+
+The task is complete only when all of the following are true:
+
+1. v0.2.0 exact 18-tool public surface is frozen and verified;
+2. all planned semantic domains/actions are registered;
+3. Policy / Lease / Receipt enforcement is complete;
+4. Source / Runtime / Browser identity is complete;
+5. Secret-boundary adversarial tests pass;
+6. all destructive actions use safety + approval boundaries;
+7. Agent delegation cannot escalate privilege;
+8. Plugin unit/fixture/integration suites pass;
+9. real disposable Atria integration passes;
+10. required product-side feature branch changes are integrated into `main`;
+11. Plugin is revalidated against the final integrated `main`;
+12. README / resources / prompt / examples match the implementation;
+13. the permanent Plugin Record is complete;
+14. this task's live HANDOFF is deleted at completion;
+15. the temporary product development branch is deleted after verified integration.
+
+No completion claim may be made while any required item above remains unresolved.
+
+## 22. Implementation kickoff state
+
+Design discussion is complete and frozen as **Approved Implementation Plan v1.0**.
+
+Implementation has **not** started yet.
+
+Reserved implementation-history path:
+
+- `docs:records/plugin/atria-mcp-capability-expansion.md`
+
+The Record should be created when Phase 1 implementation actually begins, not retroactively during design-only work.
+
+The repository currently has a live `docs:HANDOFF.md` owned by another active task. This task must not overwrite it. When implementation begins, create/use the single live HANDOFF for this task only after the existing live handoff is no longer active or the repository owner explicitly transfers that slot.
+
+Primary implementation workspace:
+
+- long-lived `plugin` workspace;
+- implementation root: `plugin:atria-mcp/`.
+
+Product-side temporary branch for the targeted authorities required by later phases:
+
+- `feat/mcp-development-authority`.
+
+Do not create that product branch during design-only finalization; create it when the first product-side implementation phase actually needs it.
+
+Phase 1 remains Plugin-only and begins from the actual then-current `plugin` HEAD, after re-reading current `plugin:AGENTS.md`, this approved Plan and any live task handoff applicable at that time.
+
+
+## 23. Diagnostic workflow target
 
 A successful end-state workflow should allow an AI to move through evidence such as:
 
@@ -1857,7 +2147,7 @@ For chat/generation issues it should support:
 
 `Session/message state -> relevant runtime/config -> authorized test message -> generation/UI result -> diagnostics -> source diagnosis -> authorized cleanup when requested`
 
-## 22. Non-goals currently frozen
+## 24. Non-goals currently frozen
 
 This expansion is not intended to:
 
@@ -1868,7 +2158,7 @@ This expansion is not intended to:
 - bypass Native Session, Studio/ProjectStore, Library, Package or other Atria ownership rules;
 - grant unattended destructive control over user data.
 
-## 23. Open design topics
+## 25. Post-freeze implementation decisions
 
 The following remain intentionally unresolved and should be settled through further discussion before implementation planning:
 
@@ -1882,7 +2172,7 @@ The following remain intentionally unresolved and should be settled through furt
 - audit/evidence returned for authorized actions;
 - compatibility and migration strategy from the current `--allow-writes` switch.
 
-## 24. Discussion workflow
+## 26. Discussion / change-control workflow
 
 During the design discussion phase:
 
