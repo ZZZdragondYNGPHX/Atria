@@ -3,7 +3,7 @@
 **Task ID:** `plugin/atria-mcp-capability-expansion`  
 **Primary Workspace:** `plugin`  
 **Plan Workspace:** `docs`  
-**Status:** Discussion Draft v0.1  
+**Status:** Discussion Draft v0.2  
 **Current implementation baseline:** `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`  
 **Implementation path:** `plugin:atria-mcp/`
 
@@ -151,23 +151,31 @@ All operations with side effects require user authorization.
 
 ### 6.1 Risk classes
 
-The design should distinguish at least:
+The authorization model is now frozen at four semantic risk classes:
 
 1. **READ**
    - observation only;
-   - available by default within allowed scope.
+   - available by default within allowed scope;
+   - examples: repository/source reads, Build source reads, Session/message reads, screenshots and diagnostics.
 
-2. **INTERACTIVE_WRITE**
-   - intentional product actions with side effects but not primarily destructive;
-   - examples: send message, regenerate, form interaction, create a disposable verification preview;
+2. **INTERACT**
+   - UI or product-state interaction that is normally recoverable and is primarily used for navigation/verification;
+   - examples: navigation, view switching and bounded UI interaction;
+   - requires explicit authorization when the action has side effects.
+
+3. **MUTATE**
+   - intentionally changes Atria product state without being primarily destructive;
+   - examples: send message, regenerate, edit message, modify a Studio project or trigger other approved product actions;
    - requires explicit authorization.
 
-3. **DESTRUCTIVE_WRITE**
-   - deletes or destructively replaces user/product state;
-   - examples: delete message, delete Session, delete Project, destructive Library operations;
+4. **DESTRUCTIVE**
+   - deletes or destructively replaces product/user state;
+   - examples: delete message, delete Session, delete Project or destructive Library operations;
    - requires a stronger explicit authorization boundary.
 
-"Sending a message" should not be classified as destructive merely because it is a write. It may nevertheless trigger paid model generation or other external effects, so it must never be treated as a free read operation.
+"Sending a message" is MUTATE rather than DESTRUCTIVE. It may trigger paid model generation or other external effects, so it is never treated as a free read operation.
+
+A browser click is not intrinsically low-risk: a click can invoke a destructive product action. Important/high-risk product operations should therefore prefer semantic MCP tools whose annotations reflect their real meaning rather than hiding that meaning behind a generic browser click.
 
 ### 6.2 Two-gate authorization
 
@@ -201,7 +209,58 @@ These operations must go through Atria's Session/message authority rather than e
 
 For generation-triggering operations, useful result metadata should expose non-secret execution identity/status where the product can provide it, such as session/message/generation identifiers and status. Provider credentials and secrets remain redacted.
 
-## 8. Security boundaries retained
+## 8. Product-domain coverage and tool architecture
+
+### 8.1 Product-domain coverage
+
+The target MCP is accepted as an Atria-wide development bridge rather than a narrowly scoped source/Build debugger.
+
+Subject to each domain's authority and security boundaries, the intended coverage includes:
+
+| Domain | Default observation target | Authorized operation direction |
+| --- | --- | --- |
+| Repository / Git | tracked tree, files, search, status, diff, history and commit evidence | no source-code writes through MCP |
+| Browser / UI | page structure, screenshots, frames, diagnostics and responsive state | bounded navigation and interaction |
+| Chat / Session | sessions, messages, generation/runtime state | send, regenerate, edit, delete, create/switch where supported |
+| Build / Studio | projects, sources, revisions, history, diffs, validation and preview state | create/modify/execute/delete through Studio authority |
+| Library | resources, revisions, references and closure | attach/fork/update/delete through Library authority |
+| Package / Work | manifests, exact versions, dependencies, contributions and permission/status evidence | bounded install/uninstall/activation-style operations through Package authority |
+| Memory | entries/graph/search/diagnostic evidence exposed by product authority | approved mutation/cleanup through Memory authority |
+| Agents | orchestration/task/run/diagnostic evidence | approved run/cancel/task/config operations |
+| Settings | non-secret settings and provider/model metadata | approved ordinary settings mutation |
+| Connections | provider/connection existence, capabilities and non-secret status | approved testing/configuration while never returning credential values |
+| Diagnostics | product/runtime health, warnings/errors and bounded diagnostic evidence | bounded maintenance actions such as clearing MCP-owned diagnostic buffers |
+
+This table is directional rather than a claim that every operation already exists in current product APIs.
+
+### 8.2 Two-layer MCP tool architecture
+
+The tool surface is accepted as two complementary layers.
+
+**Generic foundation**
+
+- `atri_api_*`
+- `atri_repo_*`
+- `atri_git_*`
+- `atri_browser_*`
+
+The foundation preserves broad discoverability and prevents MCP from becoming blind whenever Atria adds a new Native endpoint or repository surface.
+
+**Semantic product tools**
+
+- `atri_chat_*`
+- `atri_build_*`
+- `atri_library_*`
+- `atri_package_*`
+- `atri_memory_*`
+- `atri_agent_*`
+- other high-frequency or high-risk domain tools where semantics materially improve correctness or authorization.
+
+Not every Native endpoint should become an individual MCP tool. Dedicated semantic tools are preferred when an operation is frequent, multi-step, easy to misuse through generic APIs, costly, or security/destruction sensitive.
+
+For important destructive or state-changing operations, semantic tools should be preferred over performing the same action through generic browser interaction, because the tool name/schema/annotations can accurately expose the action's risk.
+
+## 9. Security boundaries retained
 
 Capability expansion does not imply access to credentials or unrelated local-machine state.
 
@@ -221,7 +280,7 @@ Continue to block or redact, as applicable:
 
 Browser screenshots, DOM/accessibility text and product free text may themselves contain user content. Development/synthetic data remains the preferred verification environment.
 
-## 9. Diagnostic workflow target
+## 10. Diagnostic workflow target
 
 A successful end-state workflow should allow an AI to move through evidence such as:
 
@@ -235,7 +294,7 @@ For chat/generation issues it should support:
 
 `Session/message state -> relevant runtime/config -> authorized test message -> generation/UI result -> diagnostics -> source diagnosis -> authorized cleanup when requested`
 
-## 10. Non-goals currently frozen
+## 11. Non-goals currently frozen
 
 This expansion is not intended to:
 
@@ -246,13 +305,13 @@ This expansion is not intended to:
 - bypass Native Session, Studio/ProjectStore, Library, Package or other Atria ownership rules;
 - grant unattended destructive control over user data.
 
-## 11. Open design topics
+## 12. Open design topics
 
 The following remain intentionally unresolved and should be settled through further discussion before implementation planning:
 
-- the complete domain/action matrix: Chat, Session, Build/Studio, Library, Package, Memory, Agents, Settings and other Native domains;
-- exact capability-group and authorization UX;
-- which actions deserve dedicated semantic MCP tools versus generic discovered Native API access;
+- exact capability-group and authorization UX, including per-action versus scoped/session authorization;
+- detailed action semantics within each accepted product domain;
+- the exact threshold for promoting a generic Native API operation into a dedicated semantic MCP tool;
 - exact Git/repository read surface and limits;
 - edit/regenerate/delete semantics for message history;
 - handling of generation cost/external-provider side effects;
@@ -260,7 +319,7 @@ The following remain intentionally unresolved and should be settled through furt
 - audit/evidence returned for authorized actions;
 - compatibility and migration strategy from the current `--allow-writes` switch.
 
-## 12. Discussion workflow
+## 13. Discussion workflow
 
 During the design discussion phase:
 
