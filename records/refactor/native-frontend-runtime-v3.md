@@ -837,3 +837,126 @@ Preview using the same Compiler/Renderer, source diagnostics, AI semantic patch
 surface, permission/feature visibility and accessibility/localization/Health.
 Do not edit derived IR, create a second Preview runtime, repeat architecture
 review, or begin Phase 8. HANDOFF contains the direct-copy Phase 7 prompt.
+
+---
+
+## Phase 7 — Studio / AI Authoring
+
+### Checkpoint and start state
+
+- Start HEAD: `99018afb750fc651c0d00f4d56a5bb946b8408e7`.
+- End / Tested / Pushed HEAD: `c401a27d40d4a1b376f377ec97450f239c129c8b`.
+- Commit: `feat(studio): add native frontend source and semantic authoring`.
+- Branch: `refactor/native-frontend-runtime-v3`; main baseline remains
+  `191f9f951ccb23cd11d8951e539b8ff6eb8316db`.
+- Began with `git fetch --all --prune`. Task and docs worktrees were clean and
+  matched their remote refs. There was no local main branch; origin/main matched
+  the declared baseline. Reused both existing worktrees without resetting or
+  merging main. Read AGENTS, Governance, HANDOFF, frozen Plan and this Record.
+- Implementation Baseline v1.0 unchanged. No reference reads, architecture/Gap
+  Review redo, Phase 8 work, main integration or task-branch deletion.
+
+### Implementation completed
+
+1. Native Studio's UI destination now opens a native@3 source editor. Experience
+   selection, Source Graph browsing, raw .aui/JSON/CSS/JS/TS editing, source diffs,
+   source diagnostic navigation and existing Review/ChangeSet flow are integrated.
+   The Experience form now declares native@3 source/features; a new frontend gets
+   a minimal index/Main.aui proposal in the same Workspace, without overwriting
+   existing files. Legacy runtime removal remains Phase 9.
+2. Source Graph projects View roots, Component contracts, Nodes, state scopes,
+   interactions, scoped/global styles, Bridge bindings, locale messages, media,
+   binary assets and static Controller modules. Multiple Experience owners are
+   selectable. Binary entries are read-only. Derived Runtime IR is never the
+   authoring model. State remains the established Component contract scopes;
+   no alternate state document authority was introduced.
+3. Added frontend.patch through existing StudioService inspection/evaluation/
+   execution. AUI CST spans target stable Component/Node IDs. Strict JSON uses
+   TypeScript's existing JSON CST for offsets only. Node attributes/text and
+   JSON value spans preserve unrelated comments, whitespace, quotes and blocks.
+   Source drafts preserve CRLF even though browser textareas normalize to LF.
+   Duplicate JSON keys, mixed-content text replacement, identity rewrites,
+   unknown/ambiguous IDs, prototype paths and stale source hashes fail closed.
+4. Every semantic proposal retains the Workspace project revision and a source
+   SHA-256. Multiple operations on one file resolve sequentially against current
+   source while checking the same pinned Workspace baseline hash. Existing
+   transactional validation/rollback publishes no partial invalid source. No new
+   persistence, raw DB access or generic durable KV was added.
+5. Added authenticated read-only frontend inspection and Workspace evaluation
+   HTTP/client seams. Inspection overlays bounded drafts in memory and invokes
+   the formal Compiler before Build. Draft and structured Preview use existing
+   evaluateWorkspace -> Build -> StudioPreviewHost -> production Renderer and
+   read-only Preview Bridge. Source/revision remain unchanged by evaluation.
+   Preview selects an EntryPoint that actually uses the chosen frontend; unused
+   package-level declarations cannot silently preview another override.
+6. Source diagnostics now retain file/span/line/column through AUI parsing,
+   compiler failures and ChangeSet contracts. CSS, Bridge, localization, missing
+   resources and JS/TS diagnostics navigate to source; existing accessibility /
+   localization advice is mapped via provenance. Health continues to consume
+   the same compiler diagnostics. Feature/permission closure was factored from
+   installed validation and reused, rather than approximated in Studio.
+7. Feature status/reason codes, required flags, permission declarations and remote
+   origins are visible. Declarations are not consent. Existing Preview/Host
+   permission denial/fallback, typed targets, uses scopes, Operation intent,
+   revision guards, Authority Epoch revocation and Session authority remain intact.
+8. Project Agent exposes atri_agent_frontend_graph and atri_agent_frontend_patch,
+   with discovery hashes and semantic targets. Proposals still require a Plan,
+   force agent origin, pin Task revision, dry-run through Workspace validation /
+   Preview and stop at human Review. It gains no commit capability. Updated the
+   existing authoring reference catalog, system guidance and frontend-v3 README.
+9. Late UI results are discarded after edits/selection/disposal. Preview mounts
+   and server Preview handles are released. Existing Studio tokens/styles and
+   labelled controls are reused; source areas and diagnostics fit mobile widths.
+
+### Verification actually executed
+
+Windows / **Node v24.16.0** / Edge headless. FS and SQLite included. Existing
+ATRIA_DISABLE_MYSQL_TESTS / ATRIA_DISABLE_POSTGRES_TESTS switches exclude external
+DB services.
+
+- Broad Jest `native` pattern: **117 suites / 1815 tests passed**. This run
+  overlapped/followed early implementation but preceded the final Studio entry,
+  source diagnostic and async/UI refinements; it is not a final-commit full rerun.
+- Focused Studio/Authoring/Compiler/Script/Media/Agent regression:
+  **8 suites / 160 tests passed**.
+- Adjacent Studio workspace, Project Agent UI and Source editor:
+  **3 suites / 12 tests passed**, before the added Experience-form test.
+- Later compiler/media/source-authoring/Studio-workspace regression:
+  **4 suites / 74 tests passed**.
+- Final source-authoring + Studio-workspace suites: **2 suites / 25 tests passed**
+  on the final source. These cover formal dry-run Preview, atomic rollback,
+  multi-patch baseline hashes, stale revisions, source positions, typed feature
+  closure, AI Review lock and native@3 starter proposals.
+- Final real Edge at **1440px and 390px**: semantic Node edit, real authenticated
+  Studio evaluation, production Renderer Preview, invalid-source rejection,
+  diagnostic navigation, retained drafts/CRLF, source Review, unchanged project
+  revision and disposal. Inspected mobile screenshots using production Studio
+  CSS. Harness uses a temporary FS ProjectStore and real compiler/service/HTTP
+  path; no provider is called. Screenshots remain only in ignored local evidence.
+- Root npm lint passed; final changed-code/test ESLint, webpack build and staged
+  diff checks passed. No generated bundles, runtime data or credentials committed.
+
+Limits: source validation is explicitly requested, not on every keystroke.
+Structured editors change existing semantic targets; larger structural insertion,
+deletion or mixed-content changes use the existing source workflow. Full JSON
+value/style replacement necessarily reformats/replaces that selected block.
+Some graph-wide diagnostics locate the file/block rather than an exact token.
+Accessibility advice is not certification. Browser evidence covers this editor
+and formal Preview rather than a complete external-provider product session.
+No remote CI, physical IME/soft keyboard, Android/Termux/device, other browser,
+external media server, real-provider E2E, MySQL or PostgreSQL validation claim.
+
+### Remaining scope / next checkpoint
+
+**Phase 7 acceptance complete. Stop before Phase 8.**
+
+Phase 8 — **Integration / Heavy Frontend Acceptance** follows the unchanged Plan:
+representative Story/Headless Conversation, Phone/SMS/Social/Mail, Church/management,
+Schedule, People/Character, Remote Portrait, Collection pagination, AI Operation,
+Canvas relationships, Component/Hybrid/Full, mobile/touch/IME and offline/denied/
+recovery acceptance. Keep deterministic providerCalls at zero, verify package
+build/install/preflight and Session/Authority/Memory/Lifecycle adjacency.
+
+Use main-workspace test fixtures; do not merge main into package. No reference
+branch access is implied. Do not begin Phase 9 removal or final main integration.
+The live HANDOFF contains the exact Tested HEAD and direct-copy Phase 8 prompt.
