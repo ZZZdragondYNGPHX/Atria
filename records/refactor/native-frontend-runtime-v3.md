@@ -8,10 +8,10 @@
 - Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
 - Baseline: **Implementation Baseline v1.0**
 - Compatibility Strategy: **Hard Cut / Clean Break**
-- Current Stage: **Phase 6 — Script Sandbox / Canvas**
-- Status: **Completed — Phase 7 ready; stopped at phase boundary**
+- Current Stage: **Phase 9 — Legacy Removal / Regression / Finalize**
+- Status: **Implementation pushed; final regression / CI / integration in progress**
 - Main Baseline: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`
-- Task Branch HEAD: `99018afb750fc651c0d00f4d56a5bb946b8408e7`
+- Task Branch HEAD: `a066fdd1303ec722160a8f975bc77ae04a345897`
 
 This Record is the permanent implementation history for the multi-stage Native Frontend v3 refactor. Each completed Phase must append/update its checkpoint here; do not create a separate Record per Phase.
 
@@ -1066,3 +1066,92 @@ then perform final main integration and task-branch cleanup. Preserve Source-onl
 authoring, formal compiler/renderer semantics, typed targets/revision guards,
 Lifecycle intent, Epoch revocation and Host authority. The live HANDOFF contains
 the new exact refs and a direct-copy Phase 9 prompt.
+
+
+## Phase 9 — Legacy Removal / Regression / Finalize
+
+### Checkpoint and start state
+
+- Start HEAD: `7ac92cca563942017ab06da47800e6d0d2a5b722`.
+- Main baseline: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`.
+- Implementation pushed: `a066fdd1303ec722160a8f975bc77ae04a345897`.
+- PR: **#98**; final regression/CI still in progress at this checkpoint.
+- Initial fetch/prune confirmed exact user-supplied refs and clean product/docs
+  worktrees. Existing task branch and docs worktree retained; no reference reads,
+  Package upgrades, main merge or task-branch deletion yet. Baseline unchanged.
+
+### Implementation and decisions
+
+1. Removed v1/v2 renderer/compiler, selector/runtime loaders, Message template
+   interpreter, Studio structured-UI/migration helpers and Preview fallback.
+   Native manifest/descriptor/browser gates now reject old selectors and only
+   admit native@3 for non-Text. Removed unused manifest/EntryPoint `ui` payload.
+   Text resource transport now permits only declared game resources.
+2. Extracted the existing bounded JSON/schema validators into shared data-only
+   modules. Session Message Block validation uses pinned v3 Bridge schemas at
+   commit and reopen; existing corruption, batch atomicity, fork/save/restore and
+   newer-Package pinning tests were rewritten rather than discarded.
+3. Removed the pinned-v2 Opening interpreter (including its generic durable UI
+   setup values), old capability/workflow node and UI-only tests. Author wizards
+   through v3 Source/forms and formal typed Application/Workflow commands; no
+   compatibility authority or automatic writes were introduced. Lifecycle
+   intent/outbox, revision checks, task receipts and independent authorities stay.
+4. Host SceneCue playback retains exact Media assets, inert captions, explicit
+   speech, scope/revision safety and cleanup without invoking a Package compiler.
+   Shared participation retains authenticated Host turn controls and scoped
+   projection display, not owner Session Bridge privileges or private Play DOM.
+   The frozen v3 Bridge has no Shared participant target; this cleanup does not
+   invent one or claim Package-authored Shared presentation support.
+5. Removed dead CSS/fixtures/tests; rewrote adjacent Host, transport, contract,
+   Studio and shell tests. Preserved Atria runtime plugins and Skills. Updated
+   bundled Native UI authoring/verification guidance and examples in place to
+   Source-only v3. Existing workflow/guard entry points now target v3; a Native
+   Frontend v3 CI workflow covers associated regression and Heavy/Studio browser.
+6. Full regression exposed system Git add's same-size/restored-mtime stat-cache
+   miss, relevant to Studio Source commits. Rehash tracked content using Git's
+   own attributes after staging additions/deletions. The first attempt put
+   renormalization before deletion staging and failed; corrected order passes
+   all 8 existing builtin/system Git tests. No user repo/index reset is involved.
+7. Legacy shell E2E helper assumed a local untracked config.yaml; it now falls
+   back to committed default/config.yaml like unit setup. Source Graph E2E
+   selection must await asynchronous options before reading their value.
+
+### Validation history (actual, not final-completion claims)
+
+Windows / Node v24.16.0 / FS+SQLite. Local MySQL/PostgreSQL excluded with existing
+switches. No external model provider was called by deterministic acceptance.
+
+- Initial moving-tree associated run: 231 suites passed / 27 failed; 2700 tests
+  passed / 36 failed. Old imports/selectors and deleted test files caused expected
+  failures (some files were removed while this diagnostic inventory was running).
+- First repaired focus: 16 suites passed / 3 failed; 486 tests passed / 9 failed.
+  Remaining failures were synchronous pre-build rejection assertions, retired
+  capability expectations and a Scene test still calling the removed renderer.
+- Corrected focus: **7 suites / 283 tests passed**.
+- Additional hard-cut/HTTP/Shared focus: **3 suites / 12 tests passed**; Git's
+  first attempted fix separately failed 2 tests. Corrected Git: **1 suite / 8
+  tests passed**.
+- Heavy Edge **6 scenarios passed**, three layouts x 1440/390; installed graph,
+  typed panels, Task, synthetic touch/IME, media, boundaries, Canvas/VM recovery;
+  providerCalls=0. Studio authoring Edge **2 scenarios passed**, 1440/390.
+  Phone mobile, Full Canvas desktop and Studio mobile screenshots inspected.
+- Root lint passed. Final changed JS lint, changed mjs syntax checks, all **20**
+  Native/A0–A9 guard scripts, workflow YAML parse and staged diff check passed.
+  An initial blanket mjs ESLint used a non-module parser; corrected validation
+  used Node syntax/execution. A trailing EOF blank line was removed before commit.
+- Webpack build via `node docker/build-lib.js` passed (webpack 5.106.1).
+- First full local run and second shell E2E were interrupted by the user; neither
+  is a completed full run. The former exposed the Git defect above. Initial
+  shell E2E failed before tests due to config; the next hit stale old UI assertions.
+- Retried Shell Edge has passed desktop/mobile layout/recovery and authenticated
+  Health/Shared controls. Studio option-loading race was identified and repaired;
+  remaining E2E, final full local run and remote CI are pending.
+
+### Pending finalization
+
+Complete final local regression and remote PR/Native v3/Model Prompt checks;
+record exact evidence/heads and any limits. Only then merge and verify main,
+delete remote/local task branch and live HANDOFF. No physical IME/soft keyboard,
+Android/Termux device or external media/provider E2E claim. Prior Phase 8 evidence
+boundaries are retained; Linux Chromium/storage evidence will be recorded only
+if the associated CI actually passes.
