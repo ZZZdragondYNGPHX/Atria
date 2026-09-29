@@ -47,11 +47,10 @@ export class ReceiptStore {
         this.maxEntries = maxEntries; this.ttlMs = ttlMs; this.now = now; this.instanceId = instanceId;
     }
     prune() { for (const [id, item] of this.#receipts) if (item.expiresAt <= this.now()) this.#receipts.delete(id); }
-    put(evidence) {
+    put(evidence, receiptId = randomUUID()) {
         this.prune();
         const clean = redact(structuredClone(evidence));
         if (JSON.stringify(clean).length > 30000) throw new Error('Receipt exceeds limit.');
-        const receiptId = randomUUID();
         const receipt = { ...clean, ...(Array.isArray(clean.created) ? { created: clean.created.map(item => ({ ...item, mcpInstanceId: this.instanceId, creatingReceiptId: receiptId })) } : {}),
             version: 1, receiptId, mcpInstanceId: this.instanceId, issuedAt: this.now(), expiresAt: this.now() + this.ttlMs };
         this.#receipts.set(receipt.receiptId, receipt);
@@ -83,9 +82,14 @@ export class RiskExecutor {
             if (d.guards.length || d.approval !== 'none' || leaseId) throw new Error('Invalid READ authorization.');
             return redact(item.outputSchema.parse(await item.handler(parsed)));
         }
-        if (risk === 'DESTRUCTIVE') throw new Error('Destructive execution is unavailable in Phase 4.');
         if (!item.guard || !d.guards.length) throw new Error('Missing authority guards.');
         const startedAt = new Date(this.now()).toISOString();
+        const executionReceiptId = randomUUID();
+        if (action === 'agent.run.start') for (const op of parsed.operations) {
+            const child = this.registry.get(op.action);
+            if (!this.ceiling.allows(op.action) || child.detail.risk !== 'MUTATE') throw new Error('Delegated action exceeds Policy Ceiling');
+            child.inputSchema.parse(op.input);
+        }
         const before = await item.guard(parsed, { receipts: this.receipts });
         const provenance = await this.provenance();
         if (JSON.stringify(redact({ before, provenance })).length > 12000) throw new Error('Guard evidence exceeds receipt bound; narrow target.');
@@ -95,12 +99,12 @@ export class RiskExecutor {
             && value.expiresAt > this.now() && value.remaining > 0;
         if (leaseId && !valid(lease)) throw new Error('Invalid, expired, exhausted or mismatched Capability Lease.');
         if (!lease) {
-            if (!this.approve) throw new Error('Trusted client approval unavailable; no operation executed.');
-            const decision = await this.approve(redact({ action, risk, authority: d.authority, externalEffects: d.externalEffects,
+            if (!this.approve && !context.delegated) throw new Error('Trusted client approval unavailable; no operation executed.');
+            const decision = context.delegated ? { action: 'accept', content: { authorize: true, uses: 1 } } : await this.approve(redact({ action, risk, authority: d.authority, externalEffects: d.externalEffects,
                 input: parsed, before, provenance, binding, scope: 'Exact action, normalized input, target and server boot only' }), context);
             if (decision?.action !== 'accept' || decision.content?.authorize !== true) throw new Error('User approval declined or cancelled.');
             const uses = decision.content?.uses ?? 1;
-            if (!Number.isInteger(uses) || uses < 1 || uses > 20) throw new Error('Invalid trusted approval scope.');
+            if (!Number.isInteger(uses) || uses < 1 || uses > (risk === 'DESTRUCTIVE' ? 1 : 20)) throw new Error('Invalid trusted approval scope.');
             // Mint only here, after a trusted round trip. No public lease creation API.
             for (const [id, value] of this.#leases) if (value.expiresAt <= this.now() || value.remaining <= 0) this.#leases.delete(id);
             if (this.#leases.size >= 100) throw new Error('Lease limit reached.');
@@ -115,18 +119,36 @@ export class RiskExecutor {
         context.signal?.throwIfAborted();
         lease.remaining--;
         let result = null, error = null, status = 'succeeded';
+        const childReceiptIds = [];
+        let childRunning = false;
         try {
-            result = redact(item.outputSchema.parse(await item.handler(parsed, { before: checked, receipts: this.receipts, signal: context.signal })));
+            const used = new Set();
+            const executeChild = async (index, attribution) => {
+                const op = action === 'agent.run.start' && parsed.operations?.[index];
+                if (childRunning || !op || used.has(index) || lease.expiresAt <= this.now()) throw new Error('Delegated operation absent, spent or expired');
+                if (!['READ', 'MUTATE'].includes(this.registry.get(op.action).detail.risk) || op.action.startsWith('agent.')) throw new Error('Delegation cannot escalate risk or nest agents');
+                used.add(index);
+                childRunning = true;
+                try {
+                    const childResult = await this.#execute(this.registry.get(op.action).detail.risk, { action: op.action, input: op.input },
+                        { signal: context.signal, delegated: { ...attribution, parentReceiptId: executionReceiptId } });
+                    if (childResult.receipt) childReceiptIds.push(childResult.receipt.receiptId);
+                    return childResult;
+                } finally { childRunning = false; }
+            };
+            result = redact(item.outputSchema.parse(await item.handler(parsed, { before: checked, receipts: this.receipts, signal: context.signal, executeChild, executionReceiptId })));
             if (result?.ok === false) status = result?.partial === true ? 'indeterminate' : 'rejected';
         } catch (cause) { status = 'indeterminate'; error = redact(cause.message); }
         // Never automatically retry an uncertain operation. Output/schema/transport failures can follow a committed write.
         const evidence = result?.receiptEvidence ?? {};
         const boundedEvidence = value => JSON.stringify(value ?? null).length <= 6000 ? value ?? null : { contentHash: fingerprint(value), omitted: 'Large evidence; inspect owning authority' };
         const receipt = this.receipts.put({ action, risk, status, startedAt, endedAt: new Date(this.now()).toISOString(),
-            target: before.target, before, after: boundedEvidence(evidence.after), created: evidence.created ?? [], changed: evidence.changed ?? [], deleted: [],
+            target: before.target, before, after: boundedEvidence(evidence.after), created: evidence.created ?? [], changed: evidence.changed ?? [], deleted: evidence.deleted ?? [],
             externalEffects: d.externalEffects, recovery: evidence.recovery ?? 'Inspect owning authority before retrying; no automatic rollback.',
-            evaluation: evidence.evaluation ?? null, parentReceiptId: parsed.evaluationReceiptId ?? null,
-            provenance: { serverBootId: before.serverBootId, review: provenance, ...(evidence.provenance ?? {}) }, error });
+            evaluation: evidence.evaluation ?? null, packageReview: evidence.packageReview ?? null,
+            delegation: evidence.delegation ?? null, childReceiptIds,
+            parentReceiptId: context.delegated?.parentReceiptId ?? evidence.parentReceiptId ?? parsed.evaluationReceiptId ?? parsed.reviewReceiptId ?? null,
+            provenance: { serverBootId: before.serverBootId, review: provenance, attribution: context.delegated ?? null, ...(evidence.provenance ?? {}) }, error }, executionReceiptId);
         return { result, receipt, lease: { leaseId: lease.leaseId, remaining: lease.remaining, expiresAt: lease.expiresAt }, ...(error ? { error } : {}) };
     }
 }

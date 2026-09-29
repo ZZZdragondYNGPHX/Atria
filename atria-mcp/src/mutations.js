@@ -131,7 +131,7 @@ export function registerMutationActions(registry, browser) {
         const setup = await read('GET', `${product}/works/${i.packageId}/resource-setup`, { entryPointId: i.entryPointId });
         return { target: { packageId: i.packageId, packageVersionId: i.packageVersionId, entryPointId: i.entryPointId }, serverBootId: r.serverBootId, manifestHash: fingerprint(r.data.manifest), setupHash: fingerprint(setup.data) };
     }, (i, { before }) => write('POST', `${product}/works/${i.packageId}/start`, { packageVersionId: i.packageVersionId, entryPointId: i.entryPointId, displayTitle: i.displayTitle }, before,
-        data => ({ ...sessionEvidence(data), created: [{ kind: 'session', id: data.session.sessionId }] })));
+        data => ({ ...sessionEvidence(data), created: [{ kind: 'session', id: data.session.sessionId, initialRevision: data.revision.revisionId }] })));
 
     add('build.project.create', 'MUTATE', 'Native Studio ProjectStore', { source: json, files: z.array(z.strictObject({ path, content: text, encoding: z.literal('utf8').default('utf8') })).max(32).default([]) },
         async i => {
@@ -140,7 +140,7 @@ export function registerMutationActions(registry, browser) {
             if (existing.status !== 404) throw new Error('Project must be absent before creation.');
             return { target: { projectId }, serverBootId: await boot(), sourceFingerprint: fingerprint(i) };
         },
-        (i, { before }) => write('POST', studio + '/projects', i, before, data => ({ created: [{ kind: 'project', id: i.source.project.projectId }], after: { projectId: i.source.project.projectId, contentHash: fingerprint(data) } })));
+        (i, { before }) => write('POST', studio + '/projects', i, before, data => ({ created: [{ kind: 'project', id: i.source.project.projectId, initialRevision: data.revision.revision }], after: { projectId: i.source.project.projectId, contentHash: fingerprint(data) } })));
     const workspaceGuard = async (i, context, requireEvaluation = false) => {
         const w = i.workspace; const guard = await projectGuard(w);
         const inspected = await read('POST', projectPath(w) + '/workspaces/inspect', w);

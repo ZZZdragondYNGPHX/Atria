@@ -122,7 +122,7 @@ test('real browser fixed Memory writes require current boot and exact graph, rej
     const http = await httpFixture({ runtime, script: `const nodes=[];
       globalThis.Atria={getContext:()=>({chatId:'chat',getCapabilityApi:name=>({
         'memory-graph':{openReadSession:()=>({getSchema:()=>({}),listNodes:()=>nodes,listEdges:()=>[]}),
-          openGuardedSession:async(_context,expected)=>{if(JSON.stringify(expected.nodes)!==JSON.stringify(nodes))throw Error('stale');return {createNode:async(input)=>{nodes.push({id:'n1',...input});return {id:'n1'}}}}},
+          openGuardedSession:async(_context,expected)=>{if(JSON.stringify(expected.nodes)!==JSON.stringify(nodes))throw Error('stale');return {deleteNode:async(input)=>{const index=nodes.findIndex(n=>n.id===input.id);if(index<0)throw Error('missing');nodes.splice(index,1);return {ok:true}},deleteLinks:async()=>({removed:1}),createNode:async(input)=>{nodes.push({id:'n1',...input});return {id:'n1'}}}}},
         'game-runtime':{getPackageState:()=>({sessionId:'s1'}),getWorldBranchIdentity:()=>({branchId:'b1',revisionId:'r1'})}
       })[name]})};` }); t.after(http.close);
     const browser = new AtriaBrowser({ url: http.origin, timeout: 3000, maxResponseBytes: 1048576, channel: process.env.ATRIA_TEST_BROWSER_CHANNEL }); t.after(() => browser.close());
@@ -140,6 +140,13 @@ test('real browser fixed Memory writes require current boot and exact graph, rej
     assert.equal(result.receipt.status, 'succeeded'); assert.equal(result.receipt.created[0].id, 'n1');
     await assert.rejects(executor.execute('MUTATE', args), /Stale Memory/); assert.equal(approvals, 1);
     await assert.rejects(executor.execute('MUTATE', { ...args, action: 'memory.delete' }), /Unknown/);
+    const fresh = await executor.execute('READ', { action: 'memory.mutation.inspect' });
+    const deleted = await executor.execute('DESTRUCTIVE', { action: 'memory.node.delete', input: { target: fresh.target, graphHash: fresh.graphHash, operation: { id: 'n1' } } });
+    assert.equal(deleted.receipt.status, 'succeeded'); assert.equal(deleted.receipt.deleted[0].id, 'n1');
+    const empty = await executor.execute('READ', { action: 'memory.mutation.inspect' });
+    const relationDeleted = await executor.execute('DESTRUCTIVE', { action: 'memory.relation.delete', input: { target: empty.target, graphHash: empty.graphHash,
+        operation: { source: { id: 'a' }, target: { id: 'b' }, relation: 'knows' } } });
+    assert.equal(relationDeleted.receipt.status, 'succeeded');
     http.setRuntime({ ...runtime, serverBootId: randomUUID() });
     await assert.rejects(executor.execute('MUTATE', args), /Stale browser/);
 });

@@ -6,6 +6,8 @@ import { redact } from './policy.js';
 const id = z.string().min(1).max(256);
 const fields = z.record(z.string().max(128), z.json()).refine(v => JSON.stringify(v).length <= 16000);
 const shapes = {
+    'memory.node.delete': { id },
+    'memory.relation.delete': { source: z.strictObject({ id }), target: z.strictObject({ id }), relation: id, direction: z.enum(['outgoing', 'incoming', 'bidirectional']).optional() },
     'memory.node.create': { type: id, title: z.string().max(2000), fields },
     'memory.node.edit': { id, title: z.string().max(2000).optional(), setFields: fields, clearFields: z.array(id).max(30).default([]) },
     'memory.relation.upsert': { source: z.strictObject({ id }), links: z.array(z.strictObject({ target: z.strictObject({ id }), relation: id, direction: z.enum(['outgoing', 'incoming', 'bidirectional']).optional() })).min(1).max(30) },
@@ -37,6 +39,8 @@ async function bridge(browser, action, input = {}, expected = null) {
         if (!write || JSON.stringify(target) !== JSON.stringify(await scope())) throw new Error('Memory source session unavailable');
         let result;
         switch (action) {
+            case 'memory.node.delete': result = await write.deleteNode(input); break;
+            case 'memory.relation.delete': result = await write.deleteLinks(input); break;
             case 'memory.node.create': result = await write.createNode(input); break;
             case 'memory.node.edit': result = await write.editNode(input); break;
             case 'memory.relation.upsert': result = await write.upsertLinks(input); break;
@@ -58,7 +62,7 @@ export function registerMemoryMutations(registry, browser) {
     registry.register({ version: 1, id: 'memory.mutation.inspect', domain: 'memory', title: 'Loaded Memory exact mutation fingerprint', risk: 'READ',
         authority: 'Memory loaded read factory', adapter: 'fixed-browser', externalEffects: [], guards: [], approval: 'none', availability: { available: true, reason: 'Loaded guarded Memory capability required' } },
     z.strictObject({}), z.json(), async () => { const serverBootId = await current(); return { ...await bridge(browser, 'inspect'), serverBootId }; });
-    for (const [action, shape] of Object.entries(shapes)) registry.register({ version: 1, id: action, domain: 'memory', title: action, risk: 'MUTATE',
+    for (const [action, shape] of Object.entries(shapes)) registry.register({ version: 1, id: action, domain: 'memory', title: action, risk: action.endsWith('.delete') ? 'DESTRUCTIVE' : 'MUTATE',
         authority: 'Memory guarded source session / persistence', adapter: 'fixed-browser', externalEffects: ['memory-persistence'],
         guards: ['browser-server-boot', 'current-memory-target', 'graph-fingerprint', 'source-session', 'double-check'], approval: 'trusted-approval-required',
         availability: { available: true, reason: 'Loaded guarded Memory capability, exact graph hash, policy and trusted approval' } },
@@ -67,7 +71,8 @@ export function registerMemoryMutations(registry, browser) {
         if (await current() !== before.serverBootId || browser.documentGeneration !== before.documentGeneration) throw new Error('Browser changed before Memory execution');
         const value = redact(await bridge(browser, action, i.operation, { graphHash: i.graphHash, target: i.target }));
         return { ok: value?.ok !== false && !value?.error, value, receiptEvidence: { after: value,
-            created: value?.id || value?.rollupNodeId ? [{ kind: 'memory-node', id: value.id ?? value.rollupNodeId }] : [],
+            deleted: action.endsWith('.delete') ? [{ kind: action, ...i.operation }] : [],
+            created: !action.endsWith('.delete') && (value?.id || value?.rollupNodeId) ? [{ kind: 'memory-node', id: value.id ?? value.rollupNodeId }] : [],
             provenance: { documentGeneration: before.documentGeneration, memoryTarget: before.target,
                 experienceEvidence: 'Memory source/branch guard; no Frontend Host Bridge handle or exact Experience Epoch claim' } } };
     }, async i => {

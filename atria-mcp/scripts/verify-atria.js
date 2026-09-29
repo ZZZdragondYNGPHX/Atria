@@ -32,7 +32,7 @@ await new Promise(resolve => reserve.close(resolve));
 const origin = `http://127.0.0.1:${port}`;
 const config = join(scratch, 'config.yaml');
 const policyPath = join(scratch, 'mcp-policy.json');
-const mutationActions = ['build.frontend.evaluate', 'build.change.apply', 'build.preview.close', 'build.simulate', 'session.rename', 'session.save', 'session.restore', 'chat.branch.fork', 'chat.branch.switch', 'work.start', 'settings.patch', 'connection.update', 'library.world.revision.create'];
+const mutationActions = ['build.package.create', 'package.install.review', 'package.install', 'build.project.create', 'build.project.delete.owned', 'session.delete', 'session.delete.owned', 'work.delete', 'library.revision.delete', 'build.frontend.evaluate', 'build.change.apply', 'build.preview.close', 'build.simulate', 'session.rename', 'session.save', 'session.restore', 'chat.branch.fork', 'chat.branch.switch', 'work.start', 'settings.patch', 'connection.update', 'library.world.revision.create'];
 await writeFile(policyPath, JSON.stringify({ version: 1, actionIds: mutationActions }));
 await writeFile(config, await readFile(join(catalog.root, 'default', 'config.yaml')));
 let server;
@@ -195,7 +195,7 @@ try {
         const fork = await mutate('mutate', 'chat.branch.fork', { sessionId, expectedRevisionId: snapshot.revision.revisionId, revisionId: snapshot.revision.revisionId });
         snapshot = await read('session.snapshot', { sessionId });
         await mutate('mutate', 'session.restore', { sessionId, expectedRevisionId: snapshot.revision.revisionId, saveId: saved.result.data.saveId });
-        await mutate('mutate', 'work.start', { packageId, packageVersionId, entryPointId, displayTitle: 'MCP Work start' });
+        const ownedSession = await mutate('mutate', 'work.start', { packageId, packageVersionId, entryPointId, displayTitle: 'MCP Work start' });
         await post('/api/settings/patch', { operations: [{ op: 'add', path: '/font_scale', value: 1 }] });
         await mutate('mutate', 'settings.patch', { path: 'font_scale', expected: 1, value: 1.2 });
         assert.equal((await read('settings.get', { path: 'font_scale' })).value, 1.2);
@@ -212,6 +212,25 @@ try {
         const csrfForBoot = await setup.get(origin + '/csrf-token'); const bootCsrf = (await csrfForBoot.json()).token; await csrfForBoot.dispose();
         const rejectedBoot = await setup.post(origin + `/api/native/product/sessions/${sessionId}/save`, { data: {}, headers: { 'x-csrf-token': bootCsrf, 'x-atria-expected-server-boot-id': randomUUID() } });
         assert.equal(rejectedBoot.status(), 409); await rejectedBoot.dispose();
+        const blockedWork = await client.callTool({ name: 'atri_destructive', arguments: { action: 'work.delete', input: { packageId, baseVersionId: packageVersionId } } });
+        assert.equal(blockedWork.isError, true);
+        const builtHandle = await mutate('interact', 'build.package.create', { projectId, baseRevision: afterRevision });
+        const artifactId = builtHandle.result.artifact.artifactId;
+        const preflightInstall = json(await call('atri_read', { action: 'package.install.preflight', input: { artifactId } }));
+        const reviewed = await mutate('interact', 'package.install.review', { artifactId, preflightHash: preflightInstall.preflightHash, grantedPermissions: [] });
+        await mutate('mutate', 'package.install', { artifactId, reviewReceiptId: reviewed.receipt.receiptId });
+        const staleInstall = await client.callTool({ name: 'atri_mutate', arguments: { action: 'package.install', input: { artifactId, reviewReceiptId: reviewed.receipt.receiptId } } });
+        assert.equal(staleInstall.isError, true);
+        await mutate('destructive', 'library.revision.delete', { ref: { scope: 'library', resourceType: 'core.world', resourceId: world.worldId, revision: createdRevision.result.data.worldRevisionId } });
+        await mutate('destructive', 'session.delete.owned', { sessionId: ownedSession.result.data.session.sessionId,
+            expectedRevisionId: ownedSession.result.data.revision.revisionId, creatingReceiptId: ownedSession.receipt.receiptId });
+        const finalSnapshot = await read('session.snapshot', { sessionId });
+        await mutate('destructive', 'session.delete', { sessionId, expectedRevisionId: finalSnapshot.revision.revisionId });
+        await mutate('destructive', 'work.delete', { packageId, baseVersionId: preflightInstall.target.packageVersionId });
+        const tempSource = structuredClone(source); tempSource.project.projectId = uid('project'); tempSource.project.packageId = uid('pkg');
+        const ownedProject = await mutate('mutate', 'build.project.create', { source: tempSource, files });
+        await mutate('destructive', 'build.project.delete.owned', { projectId: tempSource.project.projectId,
+            baseRevision: ownedProject.result.data.revision.revision, creatingReceiptId: ownedProject.receipt.receiptId });
         semantic.projectId = projectId; semantic.baseRevision = baseRevision; semantic.sessionId = sessionId;
     } finally { await setup.dispose(); }
     semantic.diagnosticSnapshot = json(await call('atri_diagnose_snapshot'));
@@ -276,7 +295,7 @@ try {
         mobileViewport: mobile.viewport, runtimeSourceMatch: status.runtimeSourceMatch,
         provenanceChecks: { changedSource, differentRevision, restart: restarted.provenance.browserFreshness, reload: reloaded.provenance.browserFreshness },
         runtime: status.provenance.server, restartedRuntime: reloaded.provenance.server,
-        scope: 'Phase 4 disposable READ + guarded Studio/Session/Work mutations with deterministic trusted test-client approval', semantic, diagnostics, artifacts };
+        scope: 'Phase 5 disposable Package review/install, destructive cleanup + prior READ/mutations with deterministic trusted test-client approval', semantic, diagnostics, artifacts };
     await writeFile(join(artifacts, 'summary.json'), JSON.stringify(summary, null, 2));
     console.log(JSON.stringify({ source: summary.source, routes: summary.routes, runtimeSourceMatch: summary.runtimeSourceMatch,
         provenanceChecks: summary.provenanceChecks, readIntegration: 'passed', browserCapabilities: Object.fromEntries(Object.entries(semantic.browserCapabilities).map(([key, value]) => [key, value.available])), artifacts }, null, 2));

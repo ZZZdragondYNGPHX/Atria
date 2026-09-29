@@ -1,6 +1,6 @@
-# Atria MCP 0.2.0 — Phase 4
+# Atria MCP 0.2.0 — Phase 5
 
-独立 stdio 开发工具，位于 `plugin:atria-mcp/`。提供广泛观察与显式批准的非破坏性产品操作。默认 READ；写入由精确 Policy Ceiling、可信客户端审批、短期 Lease、双重 guards 和 Receipt 共同约束。
+独立 stdio 开发工具，位于 `plugin:atria-mcp/`。提供广泛观察与显式批准的产品操作。默认 READ；写入由精确 Policy Ceiling、可信客户端审批、短期 Lease、双重 guards 和 Receipt 共同约束。
 
 ## 启动与客户端
 
@@ -46,7 +46,7 @@ node /absolute/path/to/plugin-worktree/atria-mcp/src/cli.js --repo /absolute/pat
 | `atri_read` | READ semantic executor |
 | `atri_interact` | INTERACT executor，可信批准的 evaluation / Preview / simulation / generation stop |
 | `atri_mutate` | MUTATE executor，可信批准的非破坏性语义操作 |
-| `atri_destructive` | DESTRUCTIVE executor，未开放 |
+| `atri_destructive` | DESTRUCTIVE executor，one-shot 审批与精确删除 guards |
 
 Registry 覆盖 Session/Chat、Build/Studio、Library、Work/Package、Memory、Agents、Settings、Connections/Models/Routes、Diagnostics 和 browser-owned game projections。用 `atri_capabilities` 按 domain/query 搜索，再取精确 action schema；executor risk 必须完全匹配。Policy Ceiling 固定 action-ID 快照，不给未来 action 自动授权。
 
@@ -69,7 +69,7 @@ Lease 绑定当前 MCP instance、精确 action、规范化输入、目标和 `s
 - Library：World/Knowledge 新 immutable revision；旧版本保留，产品核对 baseRevisionId。Work start 要求 exact PackageVersion/EntryPoint。
 - Memory：先 `memory.mutation.inspect` 获得 loaded graph fingerprint/target，再批准 create/edit/relation upsert/compact。固定 bridge 调用现有 source-guarded write session，克隆草稿、队列内检查图状态。无任意方法/JS/batch dispatch；缺少 loaded scope 拒绝执行。该证据属于 Memory source/branch，不证明 Frontend Epoch exactness。
 
-每次执行在审批前后检查 authority。源/runtime 不一致可被明确审阅，Receipt 保留独立身份而不冒充匹配。结果包含 ephemeral Receipt：`succeeded`、`rejected` 或 `indeterminate`。最后一种表示超时、输出或传输错误可能发生在写入之后，必须先观察产品，不能自动重试。大响应只返回 hash/metadata，详情通过 READ 获取。DESTRUCTIVE、Package install、Agent delegation 属于 Phase 5，尚未开放。通用浏览器 click/fill/press/select 仍拒绝，避免绕过语义风险。
+每次执行在审批前后检查 authority。源/runtime 不一致可被明确审阅，Receipt 保留独立身份而不冒充匹配。结果包含 ephemeral Receipt：`succeeded`、`rejected` 或 `indeterminate`。最后一种表示超时、输出或传输错误可能发生在写入之后，必须先观察产品，不能自动重试。大响应只返回 hash/metadata，详情通过 READ 获取。Phase 5 开放 one-shot DESTRUCTIVE、Package review/install 和受限 Agent delegation。通用浏览器 click/fill/press/select 仍拒绝，避免绕过语义风险。
 
 例如 `atri_read(action="build.frontend.inspect", input={projectId,baseRevision})` 复用正式 Source Graph；`chat.read` 读取不可变 Timeline；`build.preview.get` 读取已有 Preview，绝不创建 Preview。`atri_diagnose_snapshot` 合并独立诊断读取，逐项保留 unavailable/HTTP permission status 和各自 boot/time；不是原子快照。
 
@@ -131,8 +131,20 @@ Source/Server 状态为 `EXACT`、`SOURCE_CHANGED_SINCE_RUNTIME_START`、`CONTEN
 
 页面 open/reload 将主文档响应中的 `X-Atria-Server-Boot-Id` 与当前 authenticated identity 核对后捕获；后续 status 不改写它。Server restart 后 freshness 为 `STALE`，重新 open/reload 才能恢复 `CURRENT`。额外导航、缺失/不一致 header 或缺失 identity 为 `UNVERIFIABLE`。status 无需启动浏览器。截图附带文本 provenance；`SCOPE_CHANGED_DURING_CAPTURE` 不能用于 scoped 验证。Native GET 结果另附该响应的 boot ID 和时间，应核对其与 provenance.server 一致。
 
-Experience 与 Preview 通过固定 Native Frontend/Studio 响应的被动观察独立记录，只投影身份字段；不调用任意 Host Bridge binding。Experience 保留 Session/Epoch/revision/descriptor digest；Studio 保留 Project/baseRevision/Workspace、规范化 response operations 摘要、Preview/PackageVersion、entryPoint 和已有 package hash。`uiLoaded` 只表示观察到同一 Preview/PackageVersion 的 UI 响应。所有这些是 **last observed**，不是当前作用域已完整验证的声明；缺失 epoch、evaluation 或 authoring identity 不会由 server/source match 补齐。后续 Phase 4 使用这些 identity 做 freshness 与 receipts 绑定。
+Experience 与 Preview 通过固定 Native Frontend/Studio 响应的被动观察独立记录，只投影身份字段；不调用任意 Host Bridge binding。Experience 保留 Session/Epoch/revision/descriptor digest；Studio 保留 Project/baseRevision/Workspace、规范化 response operations 摘要、Preview/PackageVersion、entryPoint 和已有 package hash。`uiLoaded` 只表示观察到同一 Preview/PackageVersion 的 UI 响应。所有这些是 **last observed**，不是当前作用域已完整验证的声明；缺失 epoch、evaluation 或 authoring identity 不会由 server/source match 补齐。授权执行器使用这些 identity 做 freshness 与 receipts 绑定。
 
 固定 Browser Capability Bridge 仅桥接没有更强 server authority 的 Memory、Orchestrator 与 selected game-runtime projection；literal capability/method 调用、严格输入、输出过滤/上限、document/Session scope 变化检查。不能传 capability/method/JS/module/window 属性链。Memory 使用已加载 store 的只读 factory；未加载时明确不可用，不创建写 session。观察 recall 禁止持久化来源 reconciliation 与访问计数。Orchestrator 复用工作台运行投影，含 timeline/model/tool/recall/cost/diagnostics，缺失值不推断。
 
 Build 仍是语义命名空间，Native Studio 是 owning authority；复用 Native Frontend v3 Source Graph、diagnostics、`frontend.patch`、evaluation、Preview、Experience Epoch。Frontend Host Bridge 不等同于 MCP Browser Capability Bridge。Committed Conversation/Timeline 不可变，GenerationProjection 是 ephemeral presentation。
+
+## Phase 5 高风险操作
+
+- `session.delete` / `build.project.delete` 要求精确 revision；`work.delete` 先展示并检查依赖 Sessions，产品事务仍会拒绝引用或版本冲突。`library.revision.delete` 使用正式 delete-safety，不能删除当前/被引用的 revision。无 force 或单独 PackageVersion 物理删除接口。
+- `memory.node.delete` / `memory.relation.delete` 通过现有 guarded Memory session；必须匹配已加载作用域与 graph hash。
+- 所有 DESTRUCTIVE 审批严格一次使用。`.owned` Session/Project cleanup 还要求同一 MCP 实例、同一 serverBootId、成功创建回执、精确对象 ID 和原始创建 revision。修改过的对象必须重新使用普通 one-shot 删除流程，不按名称推断所有权。旧 Phase 4 缺少创建 revision 的回执不能用于此窄范围清理。
+- Package 流程：`package.artifact.capture` 从已有安全 artifact roots 获取 `.atria`，或 `build.package.create` 经 Studio 生成 → `package.artifact.inspect` → `package.install.preflight` → `package.install.review` → `package.install`。review 与 install 都走可信审批，绑定同一 archive hash、版本、权限、preflight 和当前 baseVersion；漂移必须重新 review。archive bytes 仅保留在内部，最多 4 个/每个 16 MiB，15 分钟过期；Studio build 响应仍受普通 transport 1 MiB 限制。
+- `agent.delegation.inspect` 读取选定 preset/node；`agent.run.start` 仅在用户明确要求内部 Agent 工作流时使用。当前模式 `delegated-node` 运行一个显式选定节点，复用 AgentRuntime 和既有 durable checkpoint store，不隐式执行完整 preset 图。最多 8 个精确 Memory create/edit/relation-upsert/compact 操作，每个一次，preset 工具与产品 capability、MCP ceiling 和用户批准 envelope 取交集。拒绝 deletion、web、任意工具、参数替换及嵌套 Agent。
+- Agent 有 1–8 steps、256–16000 context budget、1–60 秒 deadline，MCP request cancellation 会停止 Runtime；没有金额预算承诺。model/tool/Memory evidence、每次 provider usage、可用时的 cost，以及 parent/child receipt + run/step/effect attribution 一并返回。未知 token/cost 明确为 null，不估作零；无自动 Memory recall。费用仍以 provider 实际计费为准。
+- Lease、回执、artifact handles 随 MCP 实例结束失效；Agent durable checkpoint 归原 Orchestrator 所有。无法确认的中间效果保留 indeterminate 回执且不自动重试。
+
+Phase 5 的 deterministic provider/浏览器 fixture 不是付费模型或实际客户端人工审批 UX 证据。真实产品与 fixture 验证范围以同一任务 Record 为准；产品 feature 尚未合入 main。
