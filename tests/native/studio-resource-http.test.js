@@ -16,6 +16,12 @@ function appFor(studio) {
 }
 
 describe('A2 Native Studio resource HTTP surface', () => {
+    test('exact Library reads retain authenticated owner and exact ref', async () => {
+        const ref = { resourceType: 'core.world', resourceId: 'world_x', revision: 'worldv_x' };
+        const studio = { getLibraryResource: jest.fn(async () => ({ ref, immutable: true })) };
+        expect((await request(appFor(studio)).post('/library/resources/exact').send({ ref })).body.ref).toEqual(ref);
+        expect(studio.getLibraryResource).toHaveBeenCalledWith('resource-user', ref);
+    });
     test('exposes read-only Registry/Library/Graph discovery for Studio and Project Agent', async () => {
         const studio = {
             getResourceRegistry: jest.fn(() => ({ graphMode: 'derived-readonly', descriptors: [] })),

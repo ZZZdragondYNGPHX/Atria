@@ -136,6 +136,10 @@ export function createNativeStudioRouter(getServices = services) {
         }));
     }));
 
+    router.post('/library/resources/exact', route(async (req, res, { studio }, handle) => {
+        res.json(await studio.getLibraryResource(handle, req.body?.ref));
+    }));
+
     router.get('/resources/graph', route(async (_req, res, { studio }, handle) => {
         res.json(await studio.getResourceGraph(handle));
     }));

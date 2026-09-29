@@ -63,8 +63,8 @@ export function resolveMemoryEntity(context, name, type) {
 export function writeMemoryBatch(context, batch, ticket) {
     return configuredLifecycle.writeBatch(context, batch.facts || [], batch.graph || [], ticket);
 }
-export function getMemoryRetrievalSnapshot(context) {
-    return configuredLifecycle.retrievalSnapshot(context);
+export function getMemoryRetrievalSnapshot(context, options) {
+    return configuredLifecycle.retrievalSnapshot(context, options);
 }
 
 /** Runtime I/O is injected so lifecycle/race tests use the same production path. */
@@ -124,7 +124,7 @@ export function createSourceLifecycle({
         return next.finally(() => { if (queues.get(key) === next) queues.delete(key); });
     }
 
-    async function transaction(context, run, validate = () => {}, validateStored = null) {
+    async function transaction(context, run, validate = () => {}, validateStored = null, readOnly = false) {
         const scope = session(context);
         return enqueue(scope.key, async () => {
             scope.assertLive();
@@ -164,6 +164,7 @@ export function createSourceLifecycle({
             scope.assertLive();
             validate();
             validateSources();
+            if (readOnly) return output;
             if (before !== JSON.stringify(state)) {
                 const saved = await context.updateChatState(namespace, currentState => {
                     scope.assertLive();
@@ -396,7 +397,7 @@ export function createSourceLifecycle({
         return transaction(context, (state, scope) => resolveEntity(state, scope.chat, name, type));
     }
 
-    async function retrievalSnapshot(context) {
+    async function retrievalSnapshot(context, { readOnly = false } = {}) {
         if (!enabled(context)) throw new Error('Memory OS is disabled');
         const scope = session(context);
         const content = () => JSON.stringify(scope.chat.map(message => [message[SOURCE_ID_FIELD], sourceContent(message)]));
@@ -404,18 +405,20 @@ export function createSourceLifecycle({
         const epoch = epochs.get(scope.key) || 0;
         const providerVersion = JSON.stringify(readProviders(context));
         const externalVersion = JSON.stringify(readExternalSources(context));
-        const state = await transaction(context, state => state);
+        const state = await transaction(context, state => state, () => {}, null, readOnly);
+        const cachedVersion = JSON.stringify(cache.get(scope.key));
         let version = JSON.stringify(state);
         const assertCurrent = () => {
             scope.assertLive();
             if (!enabled(getContext()) || original !== content() || epoch !== (epochs.get(scope.key) || 0)
                 || providerVersion !== JSON.stringify(readProviders(context))
                 || externalVersion !== JSON.stringify(readExternalSources(context))
-                || version !== JSON.stringify(cache.get(scope.key))) throw abort();
+                || (readOnly ? cachedVersion : version) !== JSON.stringify(cache.get(scope.key))) throw abort();
         };
         assertCurrent();
         const recordAccess = async ids => {
             assertCurrent();
+            if (readOnly) return;
             const updated = await transaction(context, ledger => {
                 for (const id of new Set(ids)) {
                     const fact = ledger.facts?.[id];

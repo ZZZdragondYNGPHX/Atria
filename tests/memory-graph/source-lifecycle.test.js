@@ -39,6 +39,15 @@ function fixture() {
 }
 
 describe('Memory OS production source lifecycle', () => {
+    test('observation recall neither persists reconciliation nor access counts and still revokes stale sources', async () => {
+        const f = fixture();
+        const snapshot = await f.lifecycle.retrievalSnapshot(f.context, { readOnly: true });
+        await snapshot.recordAccess(['fact']);
+        expect(f.context.updateChatState).not.toHaveBeenCalled();
+        expect(f.disk.size).toBe(0);
+        f.context.chat[1].mes = 'Changed';
+        expect(() => snapshot.assertCurrent()).toThrow('changed');
+    });
     test('manual corrections persist atomically and reject an outdated inspector', async () => {
         const f = fixture();
         const snapshot = await f.lifecycle.retrievalSnapshot(f.context);

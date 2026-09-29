@@ -8,7 +8,7 @@ import { nativeSessionRuntime } from '../../native/session-runtime.js';
 
 export async function recallHybridMemory(context, query, options = {}) {
     const settings = options.settings || getEffectiveSettings(context, context.capabilitySettings?.memory_graph || {});
-    const snapshot = await getMemoryRetrievalSnapshot(context);
+    const snapshot = await getMemoryRetrievalSnapshot(context, { readOnly: options.readOnly === true });
     const existing = options.accountExistingState ? existingStatePrompt(context, settings) : '';
     const sourceGuard = snapshot.assertCurrent;
     snapshot.assertCurrent = () => {

@@ -52,6 +52,7 @@ import {
     recordMemoryRecall,
 } from './run-state/store.js';
 import { openWorkspace, configureWorkspace, destroyWorkspace, initWorkspace as initRunPanel } from './workspace/panel.js';
+import { workspaceRunView } from '../../lib/agent-workspace/projection.js';
 import { resolveWorkspaceProfile, getWorkspaceLibrary } from './workspace/host-presets.js';
 import { createPresetAuthoring } from './workspace/authoring.js';
 import { createMemoryWorkspace } from './workspace/memory.js';
@@ -131,6 +132,13 @@ registerCapabilityApi(MODULE_NAME, {
     runGameDirector: input => getGameRuntimeBridge().runDirector(input),
     listRuntimeCheckpoints,
     cancelRuntimeCheckpoint,
+    getRunObservation: (selection = {}) => {
+        const run = getCurrentRun();
+        if (selection.runId && selection.runId !== run?.runId) throw new Error('Run selection changed');
+        const { memoryUsers: _memoryUsers, ...view } = workspaceRunView(run, selection);
+        return { ...view, chatKey: run?.chatKey ?? null, tokensSpent: run?.tokensSpent ?? null, cost: run?.cost ?? null,
+            finalText: run?.finalText ?? null, error: run?.error ?? null };
+    },
     registerOrchestrationTool,
     unregisterOrchestrationTool,
     listExtensionTools,

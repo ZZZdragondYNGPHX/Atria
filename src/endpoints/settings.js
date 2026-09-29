@@ -9,6 +9,7 @@ import { getConfigValue, generateTimestamp, removeOldBackups } from '../util.js'
 import { getAllUserHandles, getUserDirectories } from '../users.js';
 import { getFileNameValidationFunction } from '../middleware/validateFileName.js';
 import { getSettingsRepo, getPresetRepo, getNamedDocRepo, getWorldInfoRepo } from '../storage/index.js';
+import { observeSettings } from '../settings-observation.js';
 import { applyJsonPatch } from '../storage/repositories/json-patch.js';
 import { NotFoundError, PatchTestFailedError, PatchMissingParentError, UnsupportedPatchOpError } from '../storage/errors.js';
 
@@ -298,6 +299,15 @@ function getLatestBackup(userDirectories, handle) {
 }
 
 export const router = express.Router();
+
+router.post('/observe', async (request, response) => {
+    const handle = request.user?.profile?.handle;
+    if (!handle) return response.sendStatus(401);
+    try {
+        if (Object.keys(request.body || {}).some(key => !['operation', 'path', 'query', 'offset', 'limit'].includes(key))) throw new TypeError('Invalid fields');
+        response.set('Cache-Control', 'private, no-store').json(observeSettings(await getSettingsRepo().get(handle), request.body));
+    } catch { response.status(400).json({ error: 'settings_observation_invalid' }); }
+});
 
 router.post('/patch', async function (request, response) {
     try {

@@ -39,6 +39,7 @@ import {
 } from './external-api.js';
 import {
     getMemoryWorkspacePorts,
+    getMemoryStore,
     ensureMemoryStoreLoaded,
     resolveChatKeyForSession,
     commitSessionMutation,
@@ -153,6 +154,17 @@ async function withReadApi(context) {
 registerCapabilityApi('memory-graph', {
     getWorkspacePorts: getMemoryWorkspacePorts,
     openSession,
+    // Observation must not capture a write-session ticket or reconcile/persist
+    // provenance as a side effect. Reuse the existing frozen read factory.
+    openReadSession: context => {
+        const store = getMemoryStore(context);
+        return store ? getMemoryGraphReadApi(structuredClone(store), context) : null;
+    },
+    previewRecall: (context, query) => recallHybridMemory(context, query, { readOnly: true }),
+    getLoadedRecallProjection: context => {
+        const value = getMemoryStore(context)?.lastRecallProjection;
+        return value ? structuredClone({ at: value.at, blocks: { corePacket: value.blocks?.corePacket ?? '', focusPacket: value.blocks?.focusPacket ?? '' } }) : null;
+    },
     listFacts: (context, options) => listMemoryFacts(context, options),
     applyAuthoritativeFacts: (context, input) => writeAuthoritativeMemoryFacts(
         context,
