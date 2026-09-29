@@ -14,7 +14,7 @@ import { registerAgentDelegation } from './agent-delegation.js';
 import { registerHighRiskActions, PackageArtifacts } from './high-risk.js';
 import { registerMemoryMutations } from './memory-mutations.js';
 
-export const GUIDE = `Atria MCP 0.2.0 — Phase 5 High-risk Operations, Package and Delegation.
+export const GUIDE = `Atria MCP 0.2.0 — Phase 6 Integration and Security Verification.
 Start with atri_status. Use atri_repo for tree/read/search, atri_git for read-only
 Git evidence and atri_artifact for bounded development artifacts. Discover Native
 APIs with atri_api operation=list/detail/read; only GET requests are available.
@@ -91,13 +91,13 @@ export async function createServer(config) {
     };
     const status = async () => { const identity = await provenance.snapshot(); return { product: await catalog.status(), origin: config.url,
         browser: { started: Boolean(browser.context), headed: config.headed, channel: config.channel ?? 'chromium' },
-        policyCeiling: ceiling.describe(), phase: 5, productMutationAvailable: Boolean(policy && server.server.getClientCapabilities()?.elicitation?.form),
+        policyCeiling: ceiling.describe(), phase: 6, productMutationAvailable: Boolean(policy && server.server.getClientCapabilities()?.elicitation?.form),
         authenticationStateLoaded: Boolean(config.storageState), runtimeSourceMatch: identity.runtimeSourceMatch,
         provenance: identity, fixedBrowserAdapters: BROWSER_ADAPTERS, adaptersRegistered: true }; };
     tool('atri_status', 'Configured source/server/browser provenance and separate observed Experience/Preview scopes.', {}, async () => text(await status()));
     tool('atri_capabilities', 'Search semantic registry or retrieve exact action descriptor/schema, authority, guards and external effects.', {
         action: bounded().optional(), query: z.string().max(200).default(''), domain: bounded().optional(), risk: z.enum(RISKS).optional(), ...page,
-    }, async args => text({ policyCeiling: ceiling.describe(), result: registry.discover(args), phase: 5 }));
+    }, async args => text({ policyCeiling: ceiling.describe(), result: registry.discover(args), phase: 6 }));
     tool('atri_repo', 'Repository-wide tracked and safe non-ignored untracked tree/read/literal search. Product/user data and secrets denied independently of gitignore.', {
         operation: z.enum(['tree', 'read', 'search']), ...files,
     }, async args => text(await (args.operation === 'tree' ? repository.list(args) : args.operation === 'read' ? repository.read(args) : repository.search(args))));

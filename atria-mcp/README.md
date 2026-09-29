@@ -36,7 +36,7 @@ node /absolute/path/to/plugin-worktree/atria-mcp/src/cli.js --repo /absolute/pat
 | `atri_git` | `status` / `diff` / `log` / `show` / `blame` |
 | `atri_artifact` | `list` / `read` / `search` / `image` / `inspect` |
 | `atri_api` | `list` / `detail` / `read`；只允许发现的 Native GET |
-| `atri_diagnose_snapshot` | 本地/浏览器证据；尚未实现的产品类别明确 unavailable |
+| `atri_diagnose_snapshot` | 独立产品/本地/浏览器证据；缺失或无权限的类别明确标注 |
 | `atri_browser_open` | 打开/刷新隔离页面 |
 | `atri_browser_observe` | `snapshot` / `wait` / `resize` |
 | `atri_browser_screenshot` | bounded JPEG MCP image |
@@ -147,4 +147,14 @@ Build 仍是语义命名空间，Native Studio 是 owning authority；复用 Nat
 - Agent 有 1–8 steps、256–16000 context budget、1–60 秒 deadline，MCP request cancellation 会停止 Runtime；没有金额预算承诺。model/tool/Memory evidence、每次 provider usage、可用时的 cost，以及 parent/child receipt + run/step/effect attribution 一并返回。未知 token/cost 明确为 null，不估作零；无自动 Memory recall。费用仍以 provider 实际计费为准。
 - Lease、回执、artifact handles 随 MCP 实例结束失效；Agent durable checkpoint 归原 Orchestrator 所有。无法确认的中间效果保留 indeterminate 回执且不自动重试。
 
-Phase 5 的 deterministic provider/浏览器 fixture 不是付费模型或实际客户端人工审批 UX 证据。真实产品与 fixture 验证范围以同一任务 Record 为准；产品 feature 尚未合入 main。
+deterministic provider/浏览器 fixture 不是付费模型或实际客户端人工审批 UX 证据。真实产品与 fixture 验证范围以同一任务 Record 为准。
+
+## Phase 6 验收
+
+`test:atria` 额外运行真实 Native Frontend v3 验证：同一进程的 Experience Epoch 撤销、evaluation receipt 对应精确 Preview 的 production renderer、实际 Source Graph editor 的临时 evaluation/Preview，以及桌面/窄屏截图。真实加载的 Native Memory 覆盖节点读写、keyword/name 查找、relation、compaction、过期 fingerprint 拒绝和清理后 reload。测试挂载现有产品组件；不代表完整 shell 导航或所有 Script/Media 场景。测试 harness 的固定 JS 只用于准备和验证一次性环境，未开放为 MCP capability。
+
+Memory 写前保持 exact revision/graph guards；写后允许 owning transaction 正常推进 revision，并记录 observedAfterTarget，仍严格检查 Session/branch/document/serverBootId。Native Session runtime 是作用域 authority，不能用提交时短暂卸载的 game presentation 推翻它。写后 observed revision 不代表不存在其它同分支 writer。
+
+可选设置 `ATRIA_VERIFY_CODEX_EXE`、`ATRIA_VERIFY_CLAUDE_EXE` 为已安装客户端的 executable 绝对路径。Codex 在一次性配置和 ephemeral protocol session 中验证 18 tools、schema、status、discovery、READ 与 JPEG image content；不发送 model turn，provider 指向本地不可用地址。Claude Code 使用一次性配置执行真实 `mcp get` 连接检查；该命令不证明工具执行或人工审批。两者都不修改个人客户端配置。
+
+证据分别写入 `clients.json`、`native-ui.json`、`summary.json` 和截图；测试结束清理自有运行时、数据、浏览器及临时客户端配置。人工 elicitation、真实 provider、Agent 与 Memory 的最终端到端覆盖必须按 Record 的具体证据判断，不能由启动成功、测试 provider 或空状态读取推断。Phase 6 字段表示当前验证阶段，不是任务已完成声明。

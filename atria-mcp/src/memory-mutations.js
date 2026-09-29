@@ -21,8 +21,19 @@ async function bridge(browser, action, input = {}, expected = null) {
         const api = context?.getCapabilityApi?.('memory-graph');
         const game = context?.getCapabilityApi?.('game-runtime');
         if (!api?.openReadSession || !api?.openGuardedSession) throw new Error('Guarded Memory capability unavailable');
-        const scope = async () => ({ chatId: context.chatId ?? null, sessionId: (await game?.getPackageState?.())?.sessionId ?? null,
-            branch: await game?.getWorldBranchIdentity?.() ?? null });
+        const scope = async () => {
+            // Native Session owns Memory persistence. The game presentation may
+            // temporarily unload during an ordinary revision commit; it cannot
+            // replace this stronger owning identity with a transient null.
+            const runtime = globalThis.Atria?.nativeSessionRuntime;
+            const snapshot = runtime?.active ? runtime.snapshot : null;
+            const sessionId = snapshot?.session?.sessionId;
+            if (runtime?.active && (!sessionId || !snapshot.revision?.branchId || !snapshot.revision?.revisionId)) throw new Error('Native Memory identity unavailable');
+            return { chatId: globalThis.Atria?.getContext?.()?.chatId ?? null,
+                sessionId: sessionId ?? (await game?.getPackageState?.())?.sessionId ?? null,
+                branch: sessionId ? { sessionId, branchId: snapshot.revision?.branchId, revisionId: snapshot.revision?.revisionId }
+                    : await game?.getWorldBranchIdentity?.() ?? null };
+        };
         const target = await scope();
         if (!target.chatId && !target.sessionId) throw new Error('Loaded Memory target required');
         const read = await api.openReadSession(context);
@@ -47,8 +58,15 @@ async function bridge(browser, action, input = {}, expected = null) {
             case 'memory.compact': result = await write.compactNodes(input); break;
             default: throw new Error('Unknown fixed Memory operation');
         }
-        if (JSON.stringify(target) !== JSON.stringify(await scope())) throw new Error('Scope changed during Memory write; inspect authority');
-        return result;
+        const afterTarget = await scope();
+        // The owning persistence transaction advances the Native revision on a
+        // successful write. Keep exact revision checks before the write, but
+        // compare stable ownership after it; this is observed revision evidence,
+        // not a claim that no subsequent same-branch writer has run.
+        const ownership = value => ({ ...value, branch: value.branch && typeof value.branch === 'object'
+            ? Object.fromEntries(Object.entries(value.branch).filter(([key]) => key !== 'revisionId')) : value.branch });
+        if (JSON.stringify(ownership(target)) !== JSON.stringify(ownership(afterTarget))) throw new Error('Scope changed during Memory write; inspect authority');
+        return { value: result, afterTarget };
     }, { action, input, expected });
 }
 
@@ -69,11 +87,13 @@ export function registerMemoryMutations(registry, browser) {
     z.strictObject({ graphHash: z.string().regex(/^[a-f0-9]{64}$/), target: z.strictObject({ chatId: z.union([z.string(), z.number(), z.null()]), sessionId: id.nullable(), branch: z.json() }), operation: z.strictObject(shape) }), z.json(),
     async (i, { before }) => {
         if (await current() !== before.serverBootId || browser.documentGeneration !== before.documentGeneration) throw new Error('Browser changed before Memory execution');
-        const value = redact(await bridge(browser, action, i.operation, { graphHash: i.graphHash, target: i.target }));
+        const committed = redact(await bridge(browser, action, i.operation, { graphHash: i.graphHash, target: i.target }));
+        if (await current() !== before.serverBootId || browser.documentGeneration !== before.documentGeneration) throw new Error('Browser changed during Memory execution; inspect authority');
+        const value = committed.value;
         return { ok: value?.ok !== false && !value?.error, value, receiptEvidence: { after: value,
             deleted: action.endsWith('.delete') ? [{ kind: action, ...i.operation }] : [],
             created: !action.endsWith('.delete') && (value?.id || value?.rollupNodeId) ? [{ kind: 'memory-node', id: value.id ?? value.rollupNodeId }] : [],
-            provenance: { documentGeneration: before.documentGeneration, memoryTarget: before.target,
+            provenance: { documentGeneration: before.documentGeneration, memoryTarget: before.target, observedAfterTarget: committed.afterTarget,
                 experienceEvidence: 'Memory source/branch guard; no Frontend Host Bridge handle or exact Experience Epoch claim' } } };
     }, async i => {
         const serverBootId = await current(); const documentGeneration = browser.documentGeneration;

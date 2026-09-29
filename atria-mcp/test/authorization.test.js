@@ -119,11 +119,11 @@ test('Session invalid message/branch is rejected by pure guards before approval 
 test('real browser fixed Memory writes require current boot and exact graph, reject stale/unknown dispatch', async t => {
     const runtime = { version: 1, serverBootId: randomUUID(), processStartedAt: Date.now(), appVersion: 'test', mutationGuards: 1,
         source: { algorithm: 'atria-source-v1', revision: null, branch: null, workspaceId: null, fingerprint: null, reasons: [] } };
-    const http = await httpFixture({ runtime, script: `const nodes=[];
-      globalThis.Atria={getContext:()=>({chatId:'chat',getCapabilityApi:name=>({
+    const http = await httpFixture({ runtime, script: `const nodes=[]; let revision=1, branch='b1';
+      globalThis.Atria={nativeSessionRuntime:{active:true,get snapshot(){return {session:{sessionId:'s1'},revision:{branchId:branch,revisionId:'r'+revision}}}},getContext:()=>({chatId:'chat',getCapabilityApi:name=>({
         'memory-graph':{openReadSession:()=>({getSchema:()=>({}),listNodes:()=>nodes,listEdges:()=>[]}),
-          openGuardedSession:async(_context,expected)=>{if(JSON.stringify(expected.nodes)!==JSON.stringify(nodes))throw Error('stale');return {deleteNode:async(input)=>{const index=nodes.findIndex(n=>n.id===input.id);if(index<0)throw Error('missing');nodes.splice(index,1);return {ok:true}},deleteLinks:async()=>({removed:1}),createNode:async(input)=>{nodes.push({id:'n1',...input});return {id:'n1'}}}}},
-        'game-runtime':{getPackageState:()=>({sessionId:'s1'}),getWorldBranchIdentity:()=>({branchId:'b1',revisionId:'r1'})}
+          openGuardedSession:async(_context,expected)=>{if(JSON.stringify(expected.nodes)!==JSON.stringify(nodes))throw Error('stale');return {deleteNode:async(input)=>{const index=nodes.findIndex(n=>n.id===input.id);if(index<0)throw Error('missing');nodes.splice(index,1);return {ok:true}},deleteLinks:async()=>({removed:1}),createNode:async(input)=>{nodes.push({id:'n1',...input});revision++;if(globalThis.switchBranchAfterWrite)branch='b2';return {id:'n1'}}}}},
+        'game-runtime':{getPackageState:()=>revision===1?{sessionId:'s1'}:null,getWorldBranchIdentity:()=>revision===1?{branchId:branch,revisionId:'r'+revision}:null}
       })[name]})};` }); t.after(http.close);
     const browser = new AtriaBrowser({ url: http.origin, timeout: 3000, maxResponseBytes: 1048576, channel: process.env.ATRIA_TEST_BROWSER_CHANNEL }); t.after(() => browser.close());
     await browser.open();
@@ -138,6 +138,7 @@ test('real browser fixed Memory writes require current boot and exact graph, rej
     const args = { action: 'memory.node.create', input: { target: inspected.target, graphHash: inspected.graphHash, operation: { type: 'event', title: 'test', fields: {} } } };
     const result = await executor.execute('MUTATE', args);
     assert.equal(result.receipt.status, 'succeeded'); assert.equal(result.receipt.created[0].id, 'n1');
+    assert.equal(result.receipt.provenance.observedAfterTarget.branch.revisionId, 'r2', 'Normal owning commit advances revision');
     await assert.rejects(executor.execute('MUTATE', args), /Stale Memory/); assert.equal(approvals, 1);
     await assert.rejects(executor.execute('MUTATE', { ...args, action: 'memory.delete' }), /Unknown/);
     const fresh = await executor.execute('READ', { action: 'memory.mutation.inspect' });
@@ -147,6 +148,19 @@ test('real browser fixed Memory writes require current boot and exact graph, rej
     const relationDeleted = await executor.execute('DESTRUCTIVE', { action: 'memory.relation.delete', input: { target: empty.target, graphHash: empty.graphHash,
         operation: { source: { id: 'a' }, target: { id: 'b' }, relation: 'knows' } } });
     assert.equal(relationDeleted.receipt.status, 'succeeded');
-    http.setRuntime({ ...runtime, serverBootId: randomUUID() });
+    await browser.page.evaluate(() => { globalThis.switchBranchAfterWrite = true; });
+    const beforeSwitch = await executor.execute('READ', { action: 'memory.mutation.inspect' });
+    const switched = await executor.execute('MUTATE', { ...args, input: { ...args.input, target: beforeSwitch.target, graphHash: beforeSwitch.graphHash } });
+    assert.equal(switched.receipt.status, 'indeterminate', 'Actual branch drift remains denied after effect');
+    await browser.page.evaluate(() => { globalThis.switchBranchAfterWrite = false; });
+    const beforeRestart = await executor.execute('READ', { action: 'memory.mutation.inspect' });
+    const evaluate = browser.page.evaluate.bind(browser.page);
+    browser.page.evaluate = async (fn, input) => {
+        const value = await evaluate(fn, input);
+        if (input?.action === 'memory.node.create') http.setRuntime({ ...runtime, serverBootId: randomUUID() });
+        return value;
+    };
+    const restarted = await executor.execute('MUTATE', { ...args, input: { ...args.input, target: beforeRestart.target, graphHash: beforeRestart.graphHash } });
+    assert.equal(restarted.receipt.status, 'indeterminate', 'Boot change during write cannot report success');
     await assert.rejects(executor.execute('MUTATE', args), /Stale browser/);
 });

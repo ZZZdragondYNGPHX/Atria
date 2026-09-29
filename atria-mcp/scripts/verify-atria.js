@@ -17,6 +17,8 @@ import { readSourceIdentity, compareSource } from '../src/provenance.js';
 import { randomUUID } from 'node:crypto';
 import { fingerprint } from '../src/kernel.js';
 import { request as playwrightRequest } from 'playwright';
+import { verifyNativeUi } from './verify-native-ui.js';
+import { verifyClients } from './verify-clients.js';
 
 const toolRoot = fileURLToPath(new URL('../', import.meta.url));
 const repo = process.env.ATRIA_REPO;
@@ -63,6 +65,7 @@ async function startServer() {
 }
 try {
     await startServer();
+    const clientCompatibility = await verifyClients({ repo: catalog.root, origin, scratch, artifacts });
     const bundle = await fetch(origin + '/lib.core.bundle.js', { signal: AbortSignal.timeout(15000) });
     assert.equal(bundle.status, 200, 'Real frontend bundle must be available before claiming a product UI smoke');
     await bundle.body?.cancel();
@@ -181,6 +184,12 @@ try {
         const evaluated = await mutate('interact', 'build.frontend.evaluate', { workspace });
         assert.equal((await read('build.project.revision', { projectId })).revision, baseRevision, 'Evaluation restored source');
         assert.match((await read('build.source.read', { projectId, path: 'frontend/Main.aui' })).content, /MCP READ Fixture/);
+        semantic.nativeUi = await verifyNativeUi({ origin, repo: catalog.root, artifacts, projectId, baseRevision, sessionId, workspace,
+            evaluation: evaluated.receipt.evaluation,
+            fork: async () => {
+                const current = await read('session.snapshot', { sessionId });
+                await mutate('mutate', 'chat.branch.fork', { sessionId, expectedRevisionId: current.revision.revisionId, revisionId: current.revision.revisionId });
+            } });
         const applied = await mutate('mutate', 'build.change.apply', { workspace, evaluationReceiptId: evaluated.receipt.receiptId });
         assert.match((await read('build.source.read', { projectId, path: 'frontend/Main.aui' })).content, /MCP REVIEWED Fixture/);
         const staleApply = await client.callTool({ name: 'atri_mutate', arguments: { action: 'build.change.apply', input: { workspace, evaluationReceiptId: evaluated.receipt.receiptId } } });
@@ -295,7 +304,7 @@ try {
         mobileViewport: mobile.viewport, runtimeSourceMatch: status.runtimeSourceMatch,
         provenanceChecks: { changedSource, differentRevision, restart: restarted.provenance.browserFreshness, reload: reloaded.provenance.browserFreshness },
         runtime: status.provenance.server, restartedRuntime: reloaded.provenance.server,
-        scope: 'Phase 5 disposable Package review/install, destructive cleanup + prior READ/mutations with deterministic trusted test-client approval', semantic, diagnostics, artifacts };
+        scope: 'Phase 6 disposable security, Native Frontend v3 renderer/editor/Epoch and client protocol verification; deterministic approvals are not human UX evidence', clientCompatibility, semantic, diagnostics, artifacts };
     await writeFile(join(artifacts, 'summary.json'), JSON.stringify(summary, null, 2));
     console.log(JSON.stringify({ source: summary.source, routes: summary.routes, runtimeSourceMatch: summary.runtimeSourceMatch,
         provenanceChecks: summary.provenanceChecks, readIntegration: 'passed', browserCapabilities: Object.fromEntries(Object.entries(semantic.browserCapabilities).map(([key, value]) => [key, value.available])), artifacts }, null, 2));
