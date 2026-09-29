@@ -10,6 +10,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import assert from 'node:assert/strict';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { redact } from '../src/policy.js';
 import { SourceCatalog } from '../src/catalog.js';
 
 const toolRoot = fileURLToPath(new URL('../', import.meta.url));
@@ -47,14 +48,14 @@ try {
     }
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('ATRIA_')));
     const transport = new StdioClientTransport({ command: process.execPath,
-        args: [join(toolRoot, 'src', 'cli.js'), '--repo', catalog.root, '--url', origin, '--allow-writes'], env, stderr: 'pipe' });
+        args: [join(toolRoot, 'src', 'cli.js'), '--repo', catalog.root, '--url', origin, ...(process.env.ATRIA_TEST_BROWSER_CHANNEL ? ['--browser-channel', process.env.ATRIA_TEST_BROWSER_CHANNEL] : [])], env, stderr: 'pipe' });
     transport.stderr.on('data', bytes => { stderr += bytes; });
     client = new Client({ name: 'atria-real-product-smoke', version: '1.0.0' });
     await client.connect(transport);
     const call = async (name, args = {}) => {
         const result = await client.callTool({ name, arguments: args }, undefined, { timeout: 90000 });
         if (result.isError) {
-            for (const diagnosticTool of ['atri_browser_snapshot', 'atri_browser_diagnostics', 'atri_browser_screenshot']) {
+            for (const diagnosticTool of ['atri_browser_observe', 'atri_browser_diagnostics', 'atri_browser_screenshot']) {
                 try {
                     const evidence = await client.callTool({ name: diagnosticTool, arguments: {} });
                     const image = evidence.content?.find(item => item.type === 'image');
@@ -68,57 +69,32 @@ try {
     };
     const json = result => JSON.parse(result.content.find(item => item.type === 'text').text);
     const status = json(await call('atri_status'));
-    const routes = json(await call('atri_api_list', { limit: 100 }));
+    const routes = json(await call('atri_api', { operation: 'list', limit: 100 }));
     const refs = json(await call('atri_reference'));
     assert.equal(refs.status, 200);
     assert.ok(refs.data.references.some(item => item.id === 'browser-extension-sdk'));
     const reference = json(await call('atri_reference', { id: 'browser-extension-sdk', limit: 2000 }));
     assert.equal(reference.status, 200);
-    const projects = json(await call('atri_api_request', { path: '/api/native/studio/projects' }));
+    const projects = json(await call('atri_api', { operation: 'read', path: '/api/native/studio/projects' }));
     assert.equal(projects.status, 200);
     await call('atri_browser_open', { width: 1440, height: 1000 });
-    const onboarding = json(await call('atri_browser_wait', { selector: '.atri-onboarding-dialog[open]', timeout: 60000 }));
-    await writeFile(join(artifacts, 'onboarding-snapshot.json'), JSON.stringify(onboarding, null, 2));
-    await call('atri_browser_interact', { action: 'fill', selector: '.atri-onboarding-dialog[open] .popup-input', value: 'MCP Verification', confirm: true });
-    await call('atri_browser_interact', { action: 'click', selector: '.atri-onboarding-dialog[open] .popup-button-ok', confirm: true });
-    await call('atri_browser_wait', { selector: '.atri-onboarding-dialog[open]', state: 'hidden', timeout: 60000 });
-    const desktop = json(await call('atri_browser_wait', { selector: '#atria-app-shell', timeout: 60000 }));
+    // Phase 1 cannot dismiss onboarding or create/alter Studio projects.
+    const desktop = json(await call('atri_browser_observe'));
     await writeFile(join(artifacts, 'desktop-snapshot.json'), JSON.stringify(desktop, null, 2));
     const saveImage = async name => {
-        const result = await call('atri_browser_screenshot');
-        const image = result.content.find(item => item.type === 'image');
+        const image = (await call('atri_browser_screenshot')).content.find(item => item.type === 'image');
         assert.equal(image.mimeType, 'image/jpeg');
         await writeFile(join(artifacts, name + '.jpg'), Buffer.from(image.data, 'base64'));
     };
     await saveImage('desktop');
-    // Navigate the actual product UI, without page.evaluate or private browser state.
-    const studioButton = '[data-atria-primitive="NavigationRail"] [data-atria-domain="build"]';
-    await call('atri_browser_interact', { action: 'click', selector: studioButton, confirm: true });
-    await call('atri_browser_wait', { selector: '[data-atria-build-projects="true"]' });
-    await call('atri_browser_interact', { action: 'click', selector: '[data-atria-build-projects="true"] details > summary', confirm: true });
-    await call('atri_browser_interact', { action: 'fill', selector: '[data-atria-build-projects="true"] details input', value: 'MCP Visual Verification', confirm: true });
-    await call('atri_browser_interact', { action: 'click', selector: '[data-atria-build-projects="true"] details button[data-variant="primary"]', confirm: true });
-    const studio = json(await call('atri_browser_wait', { selector: '.atria-studio-workspace' }));
-    assert.match(studio.accessibility, /MCP Visual Verification/);
-    const createdProjects = json(await call('atri_api_request', { path: '/api/native/studio/projects' }));
-    const records = createdProjects.data;
-    assert.ok(Array.isArray(records) && records.length === 1);
-    const projectId = (records[0].project ?? records[0]).projectId;
-    const validation = json(await call('atri_api_request', { method: 'POST', path: '/api/native/studio/projects/' + projectId + '/validate', body: {}, confirm: true }));
-    assert.equal(validation.status, 200);
-    await writeFile(join(artifacts, 'studio-snapshot.json'), JSON.stringify(studio, null, 2));
-    await saveImage('studio-desktop');
-    const mobile = json(await call('atri_browser_resize', { width: 390, height: 844 }));
-    assert.match(mobile.accessibility, /MCP Visual Verification/);
+    const mobile = json(await call('atri_browser_observe', { operation: 'resize', width: 390, height: 844 }));
     await writeFile(join(artifacts, 'mobile-snapshot.json'), JSON.stringify(mobile, null, 2));
     await saveImage('mobile');
-    // Reload is a separate check, after responsive evidence of the same Studio state.
-    await call('atri_browser_open', { reload: true, waitFor: '#atria-app-shell' });
     const diagnostics = json(await call('atri_browser_diagnostics'));
     await call('atri_browser_close');
     const summary = { source: status.product, routes: routes.total, unsupported: routes.unsupported,
         references: refs.data.references.length, projectsStatus: projects.status, desktopTitle: desktop.title,
-        mobileViewport: mobile.viewport, createdProjectId: projectId, csrfValidationStatus: validation.status, diagnostics, artifacts };
+        mobileViewport: mobile.viewport, runtimeSourceMatch: status.runtimeSourceMatch, scope: 'Phase 1 observation only; no Studio/Session mutation or provenance verification', diagnostics, artifacts };
     await writeFile(join(artifacts, 'summary.json'), JSON.stringify(summary, null, 2));
     console.log(JSON.stringify(summary, null, 2));
 } finally {
@@ -129,8 +105,8 @@ try {
         await Promise.race([exited, delay(10000)]);
         if (server.exitCode === null) server.kill('SIGKILL');
     }
-    await writeFile(join(artifacts, 'runtime.log'), log);
-    if (stderr) await writeFile(join(artifacts, 'mcp-stderr.log'), stderr);
+    await writeFile(join(artifacts, 'runtime.log'), redact(log));
+    if (stderr) await writeFile(join(artifacts, 'mcp-stderr.log'), redact(stderr));
     const target = await realpath(scratch);
     if (dirname(target).toLowerCase() !== (await realpath(tmpdir())).toLowerCase() || !basename(target).startsWith('atria-mcp-runtime-')) throw new Error('Unsafe runtime cleanup path');
     await rm(target, { recursive: true, force: true, maxRetries: 8, retryDelay: 250 });

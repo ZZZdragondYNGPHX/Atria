@@ -13,7 +13,7 @@ async function stop() {
 try {
     const config = loadConfig();
     if (config.help) process.stdout.write(HELP);
-    else if (config.version) process.stdout.write('0.1.0\n');
+    else if (config.version) process.stdout.write('0.2.0\n');
     else {
         runtime = await createServer(config);
         process.once('SIGINT', () => { void stop().finally(() => process.exit(0)); });

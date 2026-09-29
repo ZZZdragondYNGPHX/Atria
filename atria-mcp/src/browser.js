@@ -1,5 +1,5 @@
 import { chromium } from 'playwright';
-import { safeUrl, apiUrl, requireWrite, redact, diagnosticUrl } from './policy.js';
+import { safeUrl, apiUrl, denyMutation, redact, diagnosticUrl } from './policy.js';
 
 function safeMessage(value) {
     return String(value).replace(/Bearer\s+[^\s"']+/gi, 'Bearer [REDACTED]')
@@ -82,7 +82,7 @@ export class AtriaBrowser {
 
     frame(index = 0) {
         const frame = this.frames()[index];
-        if (!frame) throw new Error('Unknown frame index. Read atri_browser_snapshot for the current frame list.');
+        if (!frame) throw new Error('Unknown frame index. Read atri_browser_observe for the current frame list.');
         return frame;
     }
 
@@ -123,50 +123,23 @@ export class AtriaBrowser {
         return { bytes, mimeType: 'image/jpeg', url: diagnosticUrl(this.page.url()) };
     }
 
-    async act({ action, selector, value, frame = 0, confirm, x = 0, y = 600 }) {
-        if (action !== 'scroll') requireWrite(this.config, confirm);
+    async act({ action, frame = 0, x = 0, y = 600 }) {
+        if (action !== 'scroll') denyMutation();
+        if (frame !== 0) throw new Error('Scroll operates on the main viewport.');
         await this.readyPage();
-        if (action === 'scroll') {
-            if (frame !== 0) throw new Error('Scroll operates on the main viewport. Use a frame selector screenshot for embedded content.');
-            await this.page.mouse.move(300, 300);
-            await this.page.mouse.wheel(x, y);
-        } else {
-            if (!selector) throw new Error('This action requires a selector from the current page evidence.');
-            const target = this.frame(frame).locator(selector);
-            if (action === 'click') await target.click();
-            else if (action === 'fill') {
-                if ((await target.getAttribute('type'))?.toLowerCase() === 'password') throw new Error('Enter passwords manually in the headed browser; do not send credentials through MCP.');
-                await target.fill(value ?? '');
-            } else if (action === 'press') {
-                if ((await target.getAttribute('type'))?.toLowerCase() === 'password') throw new Error('Interact with password fields manually in the headed browser.');
-                await target.press(value ?? 'Enter');
-            }
-            else if (action === 'select') await target.selectOption(value ?? '');
-            else throw new Error('Unsupported browser action.');
-        }
+        await this.page.mouse.move(300, 300);
+        await this.page.mouse.wheel(x, y);
         return this.snapshot({ frame });
     }
 
-    async csrf() {
-        const response = await this.context.request.get(this.config.url + '/csrf-token', { maxRedirects: 0, timeout: this.config.timeout });
-        try {
-            if (!response.ok()) throw new Error('CSRF initialization failed. Open Atria and log in manually with --headed.');
-            const body = await response.json();
-            if (typeof body.token !== 'string') throw new Error('Atria did not return a CSRF token. Keep CSRF enabled and check the configured runtime.');
-            return body.token;
-        } finally { await response.dispose(); }
-    }
-
-    async request({ method = 'GET', path, query, body, confirm }) {
+    async request({ method = 'GET', path, query, body }) {
         const url = apiUrl(this.config, path, query);
-        if (method !== 'GET') requireWrite(this.config, confirm);
+        if (method !== 'GET') denyMutation();
         if (method === 'GET' && body !== undefined) throw new Error('GET requests cannot carry a body.');
-        if (body !== undefined && Buffer.byteLength(JSON.stringify(body)) > this.config.maxResponseBytes) throw new Error('Request body exceeds 1 MiB.');
         await this.start();
         const headers = { Accept: 'application/json' };
-        if (method !== 'GET') headers['x-csrf-token'] = await this.csrf();
         const response = await this.context.request.fetch(url.href, {
-            method, headers, ...(body === undefined ? {} : { data: body }),
+            method: 'GET', headers,
             maxRedirects: 0, timeout: this.config.timeout,
         });
         try {

@@ -3,14 +3,16 @@ import assert from 'node:assert/strict';
 import { symlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { loadConfig } from '../src/config.js';
-import { apiUrl, safeUrl, requireWrite, redact, routeMatches } from '../src/policy.js';
+import { apiUrl, safeUrl, denyMutation, redact, routeMatches } from '../src/policy.js';
 import { SourceCatalog } from '../src/catalog.js';
 import { productFixture } from './helpers.js';
 
 test('configuration defaults are local, explicit and secret-free', () => {
     const config = loadConfig(['--repo', '.'], {});
     assert.equal(config.url, 'http://127.0.0.1:8000');
-    assert.equal(config.allowWrites, false);
+    assert.deepEqual(config.dataRoots, []);
+    assert.throws(() => loadConfig(['--repo', '.', '--allow-writes'], {}));
+    assert.throws(() => loadConfig(['--repo', '.'], { ATRIA_ALLOW_WRITES: '1' }));
     assert.equal(config.headed, false);
     assert.throws(() => loadConfig([], {}), /ATRIA_REPO/);
     for (const url of ['https://example.com', 'file:///tmp/a', 'http://user:pass@localhost', 'http://localhost/prefix', 'http://localhost/?token=secret']) {
@@ -30,10 +32,10 @@ test('API paths cannot escape Native, traverse, encode separators or access secr
     assert.equal(safeUrl('/#studio', config.url).origin, config.url);
 });
 
-test('writes need both operator opt-in and per-call confirmation', () => {
-    assert.throws(() => requireWrite({ allowWrites: false }, true));
-    assert.throws(() => requireWrite({ allowWrites: true }, false));
-    assert.doesNotThrow(() => requireWrite({ allowWrites: true }, true));
+test('Phase 1 never enables legacy writes', () => {
+    assert.throws(() => denyMutation({ allowWrites: false }, true));
+    assert.throws(() => denyMutation({ allowWrites: true }, false));
+    assert.throws(() => denyMutation({ allowWrites: true }, true));
 });
 
 test('route matching and nested credential redaction are bounded in scope', () => {

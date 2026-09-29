@@ -1,10 +1,10 @@
-const SENSITIVE_KEY = /^(?:authorization|cookie|set-cookie|password|passwd|token|csrfToken|accessToken|refreshToken|api[_-]?key|secret|secretValue|credentials)$/i;
+const SENSITIVE_KEY = /^(?:authorization|cookie|set-cookie|password|passwd|token|csrfToken|accessToken|refreshToken|api[_-]?key|secret|secretValue|credentials|clientSecret|privateKey|access_token|refresh_token|csrf_token)$/i;
 
 export function redact(value) {
     if (Array.isArray(value)) return value.map(redact);
     if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value)
-        .map(([key, item]) => [key, SENSITIVE_KEY.test(key) ? '[REDACTED]' : redact(item)]));
-    return value;
+        .map(([key, item]) => [key, (SENSITIVE_KEY.test(key) || /(?:api[_-]?key|password|passwd|client[_-]?secret|private[_-]?key|access[_-]?token|refresh[_-]?token)$/i.test(key)) ? '[REDACTED]' : redact(item)]));
+    return typeof value === 'string' ? redactText(value) : value;
 }
 
 export function safeUrl(value, base) {
@@ -15,9 +15,18 @@ export function safeUrl(value, base) {
     return url;
 }
 
-export function requireWrite(config, confirmed) {
-    if (!config.allowWrites) throw new Error('Write/interaction tools are disabled. Restart with --allow-writes only for a trusted development instance.');
-    if (confirmed !== true) throw new Error('This operation requires confirm=true after the user approves the intended change.');
+export function denyMutation() {
+    throw new Error('Product mutation and UI interaction are unavailable in Phase 1.');
+}
+
+export function redactText(value) {
+    if (/(?:api[_-]?key|password|passwd|token|secret|credential|authorization|cookie)["']?\s*:\s*(?:[>|]|\r?\n[ \t]+)/i.test(value)) return '[REDACTED SENSITIVE MULTILINE CONTENT]';
+    return value
+        .replace(/-----BEGIN [^-]*(?:PRIVATE KEY|OPENSSH)[^-]*-----[\s\S]*?(?:-----END [^-]+-----|$)/g, '[REDACTED PRIVATE KEY]')
+        .replace(/Bearer\s+[^\s"']+/gi, 'Bearer [REDACTED]')
+        .replace(/((?:[\w-]*(?:api[_-]?key|password|passwd|token|secret|credential|authorization|cookie)[\w-]*)["']?\s*[:=]\s*)(?:"[^"\r\n]*"|'[^'\r\n]*'|[^\s,;\r\n}]+)/gi, '$1[REDACTED]')
+        .replace(/\b(?:sk-[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[A-Z0-9]{16})\b/g, '[REDACTED]')
+        .replace(/([a-z][a-z0-9+.-]*:\/\/)[^\s/@]+:[^\s/@]+@/gi, '$1[REDACTED]@');
 }
 
 export function apiUrl(config, path, query = {}) {
