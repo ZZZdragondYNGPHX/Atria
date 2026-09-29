@@ -3,7 +3,7 @@
 **Task ID:** `plugin/atria-mcp-capability-expansion`  
 **Primary Workspace:** `plugin`  
 **Plan Workspace:** `docs`  
-**Status:** Discussion Draft v0.12  
+**Status:** Discussion Draft v0.13  
 **Current implementation baseline:** `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`  
 **Implementation path:** `plugin:atria-mcp/`
 
@@ -1583,7 +1583,145 @@ Semantic executors should follow a common fail-closed sequence:
 Guard state must be checked again after approval because product state may have changed while waiting for the user.
 
 
-## 19. Diagnostic workflow target
+
+
+## 19. Implementation phase plan
+
+This is a formal multi-stage Plugin task with `plugin` as the Primary Workspace.
+
+Atria product changes are made only where a product-owned authority is genuinely required. Product implementation uses one temporary `main`-derived feature branch across all product phases rather than creating a new product branch for each phase.
+
+The Plugin workspace remains isolated; `main` is never merged into `plugin`. Integration uses an independent product worktree/runtime.
+
+### Phase 1 — MCP Kernel / Repository Observation
+
+**Primary implementation:** `plugin:atria-mcp/`
+
+Goals:
+
+- introduce the Semantic Action Registry kernel;
+- introduce four risk executors as inactive/read-only-safe infrastructure;
+- introduce Policy Ceiling representation;
+- introduce ephemeral Receipt Store infrastructure;
+- implement repository-wide tree/read/search;
+- implement read-only Git status/diff/log/show/blame evidence;
+- implement safe untracked development-file visibility;
+- implement bounded development-artifact discovery/read/inspect;
+- implement independent RepositoryAccessPolicy and sensitive-path/content filtering.
+
+No real product mutation is enabled in this phase.
+
+User-visible outcome: AI can understand the complete Atria development checkout, current working-tree changes and development artifacts rather than only selected source folders.
+
+### Phase 2 — Runtime Provenance / Browser Capability Bridge
+
+**Implementation:** product temporary feature branch + `plugin:atria-mcp/`
+
+Product-side goals:
+
+- add a formal reusable RuntimeIdentity/provenance authority;
+- include runtimeBootId, startup timestamp, version/full revision/branch and startup source-content identity where available;
+- expose enough non-secret provenance to establish Source ↔ Runtime identity;
+- add only genuinely missing first-party capability surfaces required for MCP; do not duplicate already sufficient Memory/game-runtime/Orchestrator authorities.
+
+Plugin-side goals:
+
+- compare configured Source Identity with Runtime Identity;
+- track Runtime ↔ Browser freshness;
+- implement exact/mismatch/unverifiable states;
+- implement a fixed schema-validated Browser Capability Bridge for approved first-party capability methods;
+- prohibit arbitrary JavaScript evaluation/dynamic capability dispatch.
+
+User-visible outcome: MCP can prove whether the source it is reading, the server it is observing and the browser page it is inspecting correspond to the same runtime generation.
+
+### Phase 3 — Full Read Authority
+
+**Primary implementation:** `plugin:atria-mcp/`
+
+Goals:
+
+- populate READ semantic actions for Chat/Session;
+- Build/Studio;
+- Library;
+- Package/Work;
+- Memory;
+- Agents;
+- Settings;
+- Connections/Models/Routes;
+- Diagnostics;
+- add the high-level diagnostic snapshot;
+- preserve product auth/admin/ownership boundaries;
+- keep Secrets opaque.
+
+No persistent product mutation is enabled yet.
+
+User-visible outcome: MCP can inspect nearly every Atria development/product state relevant to diagnosing a bug without bypassing product authority.
+
+### Phase 4 — Authorization / Receipts / Safe Mutations
+
+**Implementation:** `plugin:atria-mcp/` plus targeted product authority additions only where required.
+
+Goals:
+
+- implement Policy Ceiling enforcement;
+- implement trusted user approval integration;
+- implement server-minted Capability Leases;
+- implement unified Operation Receipts;
+- implement double guard/preflight/concurrency validation;
+- retire model-supplied `confirm=true`;
+- enable non-destructive INTERACT/MUTATE actions, including approved Chat, Build, Settings, Runtime configuration, Library revision, Work start, Memory and preview/simulation operations.
+
+User-visible outcome: after explicit authorization, AI can reproduce, operate and verify real Atria behavior rather than only observe it.
+
+### Phase 5 — High-risk Operations / Package / Agent Delegation
+
+**Implementation:** `plugin:atria-mcp/` plus targeted product authority changes where required.
+
+Goals:
+
+- enable DESTRUCTIVE semantic actions with one-shot/narrow cleanup authorization;
+- implement machine-verifiable MCP-created-object cleanup scopes;
+- implement Package artifact handles and Preflight -> Review -> Install;
+- implement Work/Project/Session/Library destructive flows without force bypass;
+- implement delegated Agent capability envelopes;
+- bind Agent semantic mutations to parent/child receipts;
+- surface model/tool/Memory/token/cost evidence for Agent runs.
+
+User-visible outcome: high-risk product workflows become available without weakening the earlier authority/approval model.
+
+### Phase 6 — Integration / Security / Final Verification
+
+No new capability scope should be added in this phase.
+
+Goals include adversarial verification of:
+
+- stale approvals and state races;
+- revision/baseVersion conflicts;
+- runtime restart and stale-browser detection;
+- tracked/untracked source identity;
+- Secret/path/history leakage;
+- Package update races;
+- destructive reference blockers;
+- delegated Agent privilege escalation;
+- receipt/cleanup ownership;
+- browser semantic-action bypass attempts.
+
+Run real Atria integration against disposable development data with the configured product worktree/runtime and real browser evidence, including representative desktop/narrow viewport flows.
+
+Only after product-side changes are fully verified should the product feature branch merge into `main`. Plugin integration is then revalidated against the final integrated `main`.
+
+### Multi-stage documentation lifecycle
+
+When implementation begins:
+
+- create and continuously update `docs:records/plugin/atria-mcp-capability-expansion.md`;
+- create/refresh the single live `docs:HANDOFF.md` for this task;
+- keep the same Plugin Primary Workspace and same product temporary branch through all phases;
+- after each formal phase: verify, persist/push, update Record/HANDOFF, provide the next-phase handoff prompt, and stop;
+- final completion cleans the live HANDOFF after all verification/integration work is complete.
+
+
+## 20. Diagnostic workflow target
 
 A successful end-state workflow should allow an AI to move through evidence such as:
 
@@ -1597,7 +1735,7 @@ For chat/generation issues it should support:
 
 `Session/message state -> relevant runtime/config -> authorized test message -> generation/UI result -> diagnostics -> source diagnosis -> authorized cleanup when requested`
 
-## 20. Non-goals currently frozen
+## 21. Non-goals currently frozen
 
 This expansion is not intended to:
 
@@ -1608,12 +1746,12 @@ This expansion is not intended to:
 - bypass Native Session, Studio/ProjectStore, Library, Package or other Atria ownership rules;
 - grant unattended destructive control over user data.
 
-## 21. Open design topics
+## 22. Open design topics
 
 The following remain intentionally unresolved and should be settled through further discussion before implementation planning:
 
 - concrete representation/storage of the accepted capability policy and leases;
-- implementation phase split between Atria main authorities and plugin/atria-mcp;
+- migration/compatibility strategy from the current 15-tool MCP surface to the consolidated registry/executor surface;
 - the exact threshold for promoting a generic Native API operation into a dedicated semantic MCP tool;
 - detailed artifact roots/types and bounded inspection rules;
 - detailed client UX/naming for branch-derived message cleanup and re-entry;
@@ -1622,7 +1760,7 @@ The following remain intentionally unresolved and should be settled through furt
 - audit/evidence returned for authorized actions;
 - compatibility and migration strategy from the current `--allow-writes` switch.
 
-## 22. Discussion workflow
+## 23. Discussion workflow
 
 During the design discussion phase:
 
