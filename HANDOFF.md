@@ -1,132 +1,152 @@
 # HANDOFF — Native Frontend Runtime v3
 
 - Task: `refactor/native-frontend-runtime-v3`
-- Status: **Phase 2 complete — Phase 3 ready, not started**
+- Primary Workspace: `main`
+- Status: **Phase 3 complete — Phase 4 ready, not started**
 - Architecture: **Implementation Baseline v1.0 unchanged**
 - Task branch: `refactor/native-frontend-runtime-v3`
 - Main baseline: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`
-- Phase 2 Start HEAD: `3d3c7c6733fcf5f4a1f11d11f92aa3b168e624d8`
-- Phase 2 Tested / Pushed HEAD: `91c45cc3b3a04346f2ac87baa73adb3215ebd6b1`
+- Phase 3 Start HEAD: `91c45cc3b3a04346f2ac87baa73adb3215ebd6b1`
+- Phase 3 Tested / Pushed HEAD: `0d6fb049940a7ad460e70ef0badc8fd2412fb439`
 - Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
 - Record: `docs:records/refactor/native-frontend-runtime-v3.md`
-- Completed: **Phase 2 — Presentation Runtime / Containment**
-- Next: **Phase 3 — Host Bridge / Data Plane**
+- Completed: **Phase 3 — Host Bridge / Data Plane**
+- Next: **Phase 4 — Conversation / Session / Prose**
 
 ## Current implementation
 
-Phase 1 established Source Index, `.aui` CST/AST, canonical Component/View IR,
-exact hash-addressed graph, Bridge Descriptor skeleton, provenance and the shared
-Build/Preview compiler plus container/install/runtime validation.
+Phases 1–2 established the Source Index / `.aui` CST/AST / canonical IR / exact
+compiled graph / shared Build+Preview compiler, then the shared Play+Preview
+renderer, CSS/font pipeline, containment, local state/interactions, forms/routes,
+overlays, Frame Scheduler, NodeRef, responsive environment and keyed lists.
 
-Phase 2 adds the actual semantic renderer for Component/Hybrid/Full; CSS AST and
-local-font pipeline; per-component ShadowRoots inside Host-owned visual
-containment; typed props/emits/slots and local state; lazy View mounts, routes,
-forms, overlays/FocusScope; frame scheduler, bounded NodeRefs and responsive
-environment; keyed reconciliation and fixed-height virtualization.
+Phase 3 turns the Bridge skeleton into the executable v1 data plane:
 
-Play and Studio Preview use the same renderer. Production v3 enters before the
-legacy selector/command path. Preview sends only the owner-checked immutable
-compiled graph. Runtime never executes author `.aui`, TS, source or npm scripts.
+- Installed Experience Registry and scoped Component handles; declarative `uses`
+  inference; target/schema/descriptor identity checks and closed safe mapping.
+- Snapshot and bounded Collection Reads from exact Package Data and the existing
+  Application projection, with opaque query/revision/order/Epoch-bound cursors.
+- Typed Application Actions via SessionCore, scoped idempotency and strict CAS.
+- Typed Task Operations via the existing Generation Host/Task scheduler, with
+  Host-owned saved slot bindings, status/cancel/replay and schema-checked completed
+  payloads. No raw provider stream, secret or authority snapshot is returned.
+- Shared versioned Receipt/Error protocol, copied fixed Prefs/environment
+  projections, same compiled semantics for declarative and future Script callers.
+- Experience Epoch independent of local route revision. Branch publication,
+  restore (including no-op restore), reload/disposal revoke handles and async
+  work. Late responses, stale queries and superseded opens cannot repopulate it.
+- Play uses authenticated installed-graph endpoints. Preview shares the compiled
+  client/schema/query layer with immutable owner-checked projections and returns
+  `bridge_preview_readonly` for writes. It never simulates a second authority.
 
-Full Host controls retain Exit/Stop/Save/Diagnostics and add Reload Presentation.
-Overlay Escape is coordinated before Full exit. Late local route/overlay loads
-are discarded, and disposed Preview mounts cannot reattach.
+Key paths:
 
-Entry modules:
-
-- `public/shared/native-frontend-presentation.js`
-- `public/scripts/native/frontend/resources.js`
-- `public/scripts/native/frontend/platform.js`
-- `public/scripts/native/frontend/runtime.js`
-- `public/scripts/native/experience/ui/live.js`
-- `src/native/frontend/{aui-parser,compiler,graph,styles,bridge}.js`
-- `public/scripts/native/studio-preview-ui.js`
-- `src/native/authoring/studio-service.js`
+- `src/native/frontend/{bridge,host-bridge,epoch,compiler,graph}.js`
+- `public/shared/native-frontend-bridge.js`
+- `public/scripts/native/frontend/{bridge,preview-bridge,runtime}.js`
+- `src/endpoints/native-session.js`
+- `src/native/session-core.js`
+- `public/scripts/native/experience/{index,ui/live}.js`
 - `src/native/authoring-examples/frontend-v3/README.md`
-- `tests/native/frontend-presentation.test.js`
-- `tests/native/helpers/frontend-presentation-fixture.js`
-- `tests/frontend/native-frontend-v3.smoke.mjs`
+- `tests/native/frontend-bridge{,-client}.test.js`
+- `tests/native/helpers/frontend-bridge-fixture.js`
+- `tests/frontend/native-frontend-bridge.smoke.mjs`
 
 ## Validation
 
-- Native regression: **97 suites / 1633 tests passed**, FS/SQLite included;
-  MySQL/PostgreSQL excluded using existing environment switches.
-- Adjacent game-runtime: **50 suites / 492 tests passed**.
-- Final focused regression: **8 suites / 271 tests passed** after final refinements.
-- Real Edge browser: **6 scenarios**, Component/Hybrid/Full at 1440px/390px.
-  Covers local state, components, forms, fonts, overlay focus/Escape, routes,
-  NodeRef resize/pointer capture, keyed identity, 1000-row virtualization,
-  hostile fixed/z-index containment, Full controls/recovery, Preview and disposal.
-- Full root lint, final changed-file/test lint, webpack and diff check passed.
-- No remote CI, physical-device/Android/Termux, external DB or non-Edge evidence.
-  Browser tests use compiled fixtures; production dispatcher and HTTP integration
-  also have local automated coverage.
+Local Windows / Node v24.16.0 / Edge headless only:
+
+- All **99 Native suites** passed across resumed batches: 43 successful suites
+  before interruption plus the remaining **56 suites / 499 tests**, with distinct
+  path coverage checked. No invented aggregate for the interrupted Jest process.
+- game-runtime: **50 suites / 492 tests passed**.
+- Final focused: **11 suites / 307 tests passed**, including **27 new Bridge tests**.
+- Edge: six Bridge scenarios and six existing presentation scenarios, each across
+  Component/Hybrid/Full at 1440px and 390px. Typed real local SessionCore Action,
+  subscription, pagination, recovery, read-only Preview and Phase 2 regressions.
+  Mobile Full Bridge screenshot inspected; no page errors/runtime diagnostics.
+- Full root lint, final changed-code/test lint, final webpack and diff checks pass.
+- Fresh-clone SQLite binding was initially missing because install scripts are
+  disabled by repository policy. Rebuilt only `better-sqlite3`, verified an
+  in-memory query, then resumed FS/SQLite validation. `.npmrc` was not changed.
+- MySQL/PostgreSQL excluded using the existing environment switches. No remote
+  CI, physical device/Android/Termux, other browser, real-provider Operation E2E
+  or production-user Session claim. See the Record for exact evidence and bounds.
 
 ## Decisions to preserve
 
-Package owns presentation; Host owns capabilities and authority. Do not reopen
-architecture or repeat Gap Review. Hard Cut remains approved. Old installed
-v1/v2 code is temporarily retained for Phase 9, with no v3 lowering/migration.
+Package owns presentation; Host owns capabilities and authority. Baseline v1.0
+and Hard Cut are frozen. Do not reopen architecture, repeat Gap Review or add
+v1/v2 compatibility/migration. Temporary old runtime code remains for Phase 9.
 
-CSS resources resolve to exact graph assets. Fonts use Host-owned prefixed
-FontFace registrations. Dynamic sinks are declared and typed. No raw browser
-DOM/callback/global access is exposed to Packages. Package browser top-layer
-APIs are absent; local overlays remain in the authorized surface.
+Current Bridge source adapters are `package-data@1` and `application@1` only.
+Collections use unique ascending scalar order, declared equality filters and
+literal substring search; no raw DB query. Action targets fix domain/command /
+record identity; mapping is only public input paths or schema-checked constants.
+Operation output is the selected Task variant's public schema. Lifecycle-intent
+requirements stay enforced by the typed target; frontend bindings cannot bypass
+an Application-command-sink Task's durable intent requirement.
 
-Component state is per instance; View state is retained in route history;
-UI/Draft state is Experience-local; Prefs reuse existing Host account settings.
-Lifecycle cannot route recursively. Lists require stable scalar keys; large
-lists use fixed-height virtual windows. NodeRefs identify unique non-repeated
-nodes within one component instance and return bounded geometry, not DOM.
+Idempotency is scoped to Epoch + binding; no automatic stale-write rebase/retry.
+Already accepted transactions are not rolled back by presentation disposal, but
+late UI completion is discarded and new mounts reread committed projections.
 
-Budgets: 512 component instances, 20000 rendered nodes, 64 route entries,
-8 overlays, 10000 declared array items; lists over 512 items require virtualization.
+Read subscriptions and Operation observers use bounded polling, not a new durable
+authority/event store. Limits: 128 Experiences/service, 30-minute token lifetime,
+256 write keys, 512 cursors, 64 Operations/Experience; 64 read subscriptions and
+64 Operation observers/Component; collections at most 10000 source items and
+256 items/page. Exhaustion and unknown protocol/schema identities fail closed.
 
-The Bridge descriptor is still a compile-time skeleton with identity mapping and
-closed empty Action/Operation output placeholders. Runtime `read`/action links
-remain unavailable and never fall back to old World/command dispatch.
-Phase 2's local route revisions do not implement authority Experience Epoch.
+Local route changes are not authority Epoch changes. Recovery resets local
+Component/View/UI/Draft state and reloads declared Prefs from the existing Host
+account adapter. Future Script must reuse the existing scoped compiled handle
+layer, not obtain a global Host object or independent binding interpreter.
 
 ## Next phase only
 
-Phase 3 follows the Plan's own section: Frontend Host Bridge v1; Experience
-Binding Registry; scoped Component `uses`; snapshot Read; Collection Read/cursor;
-Action; Operation; unified Receipt/Error; idempotency/revision guards; Experience
-Epoch/stale revocation; fixed prefs/environment projections.
+Phase 4 follows the Plan's own section:
 
-Acceptance: undeclared Binding denied, stale cursor/query/revision fail closed,
-collection pagination through formal services rather than raw DB, authority
-writes only through typed targets, late completion discarded on Epoch change,
-and shared compiled binding semantics for declarative and future Script callers.
+- Managed Conversation/Composer migration to one Headless contract;
+- committed message Collection and GenerationProjection;
+- reply alternative and branch controls;
+- fixed `host.composer`, `host.conversation`, `host.session`;
+- Safe Prose AST and Message Block integration;
+- save/reload/recovery/diagnostics and Host Failure Surface.
 
-Do not implement Phase 4+ Conversation/Session/Prose, Remote Media,
-Localization/IME, Script VM, Canvas or Studio visual editor. No reference branch
-may be read/updated without separate explicit authorization.
+Acceptance: Managed/Headless semantics agree for the same Session; streaming never
+masquerades as committed Timeline; retry/fork/switch/save/restore have revision
+guards; raw HTML cannot enter Prose; Full/Hybrid can present Conversation without
+Host-owned message DOM.
+
+No Phase 4 implementation has started. Do not jump into Phase 5+ Remote Media,
+Localization/IME, Script VM/Canvas or Studio visual editor. No reference branch
+may be read or updated without separate explicit authorization.
 
 ## Resume and stop procedure
 
-Fetch real refs, inspect dirty changes and read AGENTS.md, docs:README.md, this
-HANDOFF, the Plan and the same Record. Reuse the existing task branch; it already
-has task commits, so do not reset it to main. Protect unrelated local changes.
-Use direct local Git, files, search, tests and builds. Reuse the existing docs
-worktree if available. Do not touch the unrelated invalid adjacent old checkout.
+Fetch real refs and inspect dirty changes. Read AGENTS.md, docs:README.md, this
+HANDOFF, the Plan and the same Record. Reuse the existing task branch and docs
+worktree; never reset task commits to main. Protect unrelated checkouts/changes.
+Use local Git/files/search/tests/builds, not remote API simulations of Web flows.
+The former empty-directory issue is resolved; this checkout now has the tested
+Phase 3 task branch.
 
-Only begin Phase 3 when the user asks to continue. Complete its local validation,
-push the tested HEAD, update the same Record and HANDOFF, generate the Phase 4
-prompt and stop at that boundary. No merge/main cleanup at this intermediate stage.
+Only begin Phase 4 on the next user instruction. Complete its implementation and
+local validation, push tested HEAD, append the same Record and refresh HANDOFF,
+generate the Phase 5 prompt, then stop. No merge/main cleanup at this checkpoint.
 
-## Direct-copy Phase 3 takeover prompt
+## Direct-copy Phase 4 takeover prompt
 
 ```text
 接手本地 Atria 仓库 ZZZdragondYNGPHX/Atria。
 Task: refactor/native-frontend-runtime-v3
 
-现在执行 Phase 3 — Host Bridge / Data Plane。
-Implementation Baseline v1.0 已冻结；不要重新讨论架构、重做 Gap Review 或开始 Phase 4。
+现在执行 Phase 4 — Conversation / Session / Prose。
+Implementation Baseline v1.0 已冻结；不要重新讨论架构、重做 Gap Review 或开始 Phase 5。
 
-Phase 2 已完成并 push：
-- Phase 2 Start HEAD: 3d3c7c6733fcf5f4a1f11d11f92aa3b168e624d8
-- Tested task HEAD: 91c45cc3b3a04346f2ac87baa73adb3215ebd6b1
+Phase 3 已完成并 push：
+- Phase 3 Start HEAD: 91c45cc3b3a04346f2ac87baa73adb3215ebd6b1
+- Tested task HEAD: 0d6fb049940a7ad460e70ef0badc8fd2412fb439
 - main baseline: 191f9f951ccb23cd11d8951e539b8ff6eb8316db
 - 工作分支: refactor/native-frontend-runtime-v3
 - Plan: docs:plans/refactor/native-frontend-runtime-v3.md
@@ -135,36 +155,38 @@ Phase 2 已完成并 push：
 
 开始前 git fetch --all --prune，核对真实 refs / working tree；
 依次读取 AGENTS.md、docs:README.md、HANDOFF、Plan、同一 Record。
-沿用任务分支，保护无关 dirty changes；已有任务提交，不要重置到 main。
+沿用任务分支和已有 docs worktree，保护无关 dirty changes；不要重置到 main。
 本地优先直接 Git、文件系统、搜索、测试、构建，不绕远程 API 模拟网页流程。
 
-已有 Source Index、.aui CST/AST、canonical IR、exact graph、Bridge skeleton、
-provenance、Build/Preview 共用 compiler、installed graph/resource 验证。
-Phase 2 已有共享 Play/Preview renderer、CSS/font pipeline、ShadowRoot 与 containment、
-props/emits/slots、局部状态、forms/routes/overlays、Frame Scheduler、NodeRef、
-responsive environment、keyed list/virtualization、Full Host controls/recovery。
-说明见 src/native/authoring-examples/frontend-v3/README.md。
+Phase 1–2 compiler/renderer/containment/local presentation 基础已经完成。
+Phase 3 已有可执行 Frontend Host Bridge v1、Experience Registry、scoped uses、
+Snapshot/Collection Read、opaque cursor、typed Application Action/Task Operation、
+统一 Receipt/Error、safe mapping、idempotency/CAS、Experience Epoch 和 stale revocation、
+Prefs/environment fixed projections；Play/Preview 共用 compiled semantics。
+入口说明见 src/native/authoring-examples/frontend-v3/README.md。
 
-Phase 3 以 Plan 对应章节为唯一权威：
-Frontend Host Bridge v1、Experience Binding Registry、scoped Component uses、
-snapshot Read、Collection Read/cursor、Action、Operation、unified Receipt/Error、
-idempotency/revision guards、Experience Epoch/stale revocation、prefs/environment fixed projections。
-未声明 Binding 不可调用；stale cursor/query/revision fail closed；
-Collection 不读 raw DB；Authority write 只经正式 typed target；
-Epoch 变化丢弃 late completion；Declarative 与未来 Script 共用 compiled semantics。
+Phase 4 以 Plan 对应章节为唯一权威：
+Managed Conversation/Composer 迁移到统一 Headless contract；committed message collection；
+GenerationProjection；Reply alternative / branch controls；
+host.composer / host.conversation / host.session；Safe Prose AST；Message Block integration；
+SavePoint/reload/recovery/diagnostics；Host Failure Surface。
+同一 Session 的 Managed/Headless 语义一致；streaming 不冒充 committed Timeline；
+retry/fork/switch/save/restore 必须有 revision guard；raw HTML 不进入 Prose；
+Full/Hybrid 自绘 Conversation 不依赖 Host-owned message DOM。
 
-Bridge 当前仍是 compile-time skeleton，read/action UI 不可用且无 legacy fallback。
+不要新增平行 authority 或绕开 typed target。复用现有 Bridge/SessionCore/Task scheduler。
+当前 Bridge collection 只经 Package Data/Application adapter；不要裸读 raw DB。
+现有 Operation 的 Lifecycle intent 要求继续保留；不能绕过正式 target 的限制。
 不要把 Phase 2 local route revision 当成 authority Epoch。
-Hard Cut 已批准，不做 v1/v2 兼容/迁移，不新增平行 authority。
-不要提前实施 Phase 4+ Conversation/Session/Prose、Remote Media、Localization/IME、
-Script VM、Canvas 或 Studio visual editor。不要未经授权读取 reference 分支。
-普通技术问题、测试失败和常规实现决策自行修复并推进。
+Hard Cut 已批准，不做 v1/v2 兼容/迁移，不提前实施 Phase 5+。
+不要未经授权读取 reference 分支。普通技术问题、测试失败和常规决策自行修复并推进。
 
-验证基线：Native 97 suites/1633 tests；game-runtime 50 suites/492 tests；
-最终聚焦 8 suites/271 tests；Edge 六组桌面/移动场景；lint/webpack/diff check 通过。
-MySQL/PostgreSQL 用现有开关排除；不声称 remote CI、真机或其他浏览器已验证。
+验证基线：Native 99 suites 分批全部通过；game-runtime 50 suites/492 tests；
+最终聚焦 11 suites/307 tests；Edge 6 个 Bridge + 6 个 presentation 场景；
+lint/webpack/diff check 通过。Node v24.16.0；FS/SQLite 已验证。
+MySQL/PostgreSQL 用现有开关排除；不声称 remote CI、真机、其他浏览器或真实 provider E2E。
 
-Phase 3 完成后：完成适当本地测试/构建并 push tested HEAD；
-更新同一 docs Record 和 HANDOFF，记录 Start/Tested HEAD、验证、关键决策、剩余项；
-生成 Phase 4 接手提示词；停止，不开始 Phase 4。
+Phase 4 完成后：适当本地测试/构建并 push tested HEAD；
+更新同一 Record 和 HANDOFF，记录 Start/Tested HEAD、验证、关键决策、剩余项；
+生成 Phase 5 接手提示词；停止，不开始 Phase 5。
 ```

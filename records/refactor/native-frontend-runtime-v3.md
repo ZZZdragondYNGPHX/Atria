@@ -8,10 +8,10 @@
 - Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
 - Baseline: **Implementation Baseline v1.0**
 - Compatibility Strategy: **Hard Cut / Clean Break**
-- Current Stage: **Phase 2 — Presentation Runtime / Containment**
-- Status: **Completed — Phase 3 ready; stopped at phase boundary**
+- Current Stage: **Phase 3 — Host Bridge / Data Plane**
+- Status: **Completed — Phase 4 ready; stopped at phase boundary**
 - Main Baseline: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`
-- Task Branch HEAD: `91c45cc3b3a04346f2ac87baa73adb3215ebd6b1`
+- Task Branch HEAD: `0d6fb049940a7ad460e70ef0badc8fd2412fb439`
 
 This Record is the permanent implementation history for the multi-stage Native Frontend v3 refactor. Each completed Phase must append/update its checkpoint here; do not create a separate Record per Phase.
 
@@ -214,3 +214,177 @@ Phase 3 is **Host Bridge / Data Plane** per the Plan: Frontend Host Bridge v1, E
 No Headless Conversation, Session/Prose expansion, Remote Media, Localization/IME runtime, Script VM, Canvas or Studio visual editor was implemented here. Existing installed v1/v2 code remains only for the scheduled Phase 9 removal. Do not turn that temporary retention into compatibility or migration scope.
 
 `HANDOFF.md` contains the direct-copy Phase 3 prompt and the tested checkpoint. Continue only on the next user instruction.
+
+
+## Phase 3 — Host Bridge / Data Plane
+
+### Checkpoint
+
+- Date: **2026-09-29**.
+- Start HEAD: `91c45cc3b3a04346f2ac87baa73adb3215ebd6b1`.
+- End / Tested / Pushed HEAD: `0d6fb049940a7ad460e70ef0badc8fd2412fb439`.
+- Start docs HEAD: `3a1f9c799159098c6c10608e14c3df46d9c3c12c`.
+- Main baseline remains `191f9f951ccb23cd11d8951e539b8ff6eb8316db`.
+- Status: **Phase 3 complete. Phase 4 is not started.**
+- Implementation Baseline v1.0 unchanged; no Gap Review, reference-branch reads,
+  v1/v2 migration, merge to main or task-branch deletion.
+
+### Actual local start and execution
+
+The configured checkout directory was empty, not a Git repository. The remote
+refs exactly matched the supplied Phase 2 and main HEADs. A separate old local
+copy had unrelated dirty changes and a deleted-branch fetch restriction; its
+files/configuration were not modified. The existing remote task branch was
+cloned into the empty directory and fetched/pruned before implementation. No
+existing task commit was reset or discarded. A separate worktree tracks the
+existing `docs` branch; product and document histories remain isolated.
+
+The clone lacked commit identity. Repository-local identity was set to the same
+account/noreply identity already used by the Phase 1/2 commits; global Git
+configuration was not changed.
+
+### Implementation completed
+
+- `src/native/frontend/bridge.js` compiles and revalidates the versioned Registry:
+  stable IDs, public input/output schemas, target contract/schema digests,
+  identity or field/constant-only input mapping, source adapter, requirements,
+  receipt and idempotency policy. Required mapped arguments cannot originate
+  from optional input fields. Operation output is the exact selected Task
+  variant schema; a void Application command returns an actual Receipt with
+  an empty public data payload, not an authority snapshot.
+- `public/shared/native-frontend-bridge.js` defines shared data/schema validation,
+  mapping, deterministic Collection projection, descriptor identity and unified
+  Receipt/Error validation. Browser/server/Preview do not define alternate
+  binding semantics or expose raw services.
+- `src/native/frontend/host-bridge.js` opens an authenticated, installed-graph
+  Experience Registry and validates Component `uses` on every binding call.
+  `/api/native/session/frontend/{open,request,close}` returns private/no-store
+  versioned receipts; user-supplied descriptors, targets, unknown bindings and
+  incorrect scopes are rejected. Generation Host construction is lazy and only
+  reached after the declared Operation target has been authorized.
+- Snapshot and Collection sources are exact Package Data assets or the existing
+  `projectApplication` service. Application items expose only `{id,value}` under
+  the declared schema. Collections have bounded pages, unique ascending scalar
+  ordering, declared equality filters/literal search and opaque cursor tokens
+  bound to binding/query/revision/order/Epoch. No raw database query adapter.
+- Actions call `SessionCore.applyLifecycleCommand` with typed Application args,
+  CAS revision and a Host-generated scoped invocation identity. Concurrent same
+  key requests share one result; changed input/method/revision under the same
+  idempotency key fails. Authority state changes return through Read projections.
+- Operations call the existing `NativeGenerationHost.executeTask`; saved Host
+  Task slot bindings choose routes. Existing Task scheduler/provider/secret,
+  retries, cancellation and finalization remain authoritative. Public status is
+  queued/running/progress/completed/failed/cancelled, with only schema-checked
+  completed Task output exposed. Lifecycle-intent-required Tasks cannot bypass
+  that target's checks. No raw provider stream or snapshot becomes public data.
+- `public/scripts/native/frontend/bridge.js` provides the single compiled scoped
+  handle API for declarative callers and future Script transports. It validates
+  opening descriptor identity and every receipt, enforces input/output schemas,
+  exposes copied fixed Prefs/environment projections and revokes stale queries,
+  pending requests, subscriptions and Operation observers. No Script VM added.
+- Compiler inference covers bridge interactions. Runtime supports snapshot
+  shorthand/subscriptions, Collection page/cursor interactions, Action/Operation
+  calls and read-only `bridge.<bindingId>` result state. Typed object expressions
+  construct public inputs; namespaced result paths resolve the longest declared
+  binding identity. Local array rendering distinguishes no page from stale data.
+- Experience Epoch is separate from local route revision. SessionCore emits
+  invalidation after branch publication and on a no-op restore. Reload/disposal
+  revoke the Experience; late completions and superseded opens cannot repopulate
+  it. Recovery remounts Component/View state and reloads declared Prefs through
+  the existing Host account adapter. Presentation-only mounts also recover
+  correctly without creating a transport or legacy authority fallback.
+- Studio Preview adds immutable, owner-checked read projections, sharing the
+  compiled client/schema/query semantics. Package Data uses exact Preview assets;
+  Application collections start empty. Writes return `bridge_preview_readonly`,
+  not a parallel simulated authority. Play invokes the installed Registry.
+- Authoring syntax and limits are documented in
+  `src/native/authoring-examples/frontend-v3/README.md`.
+
+### Decisions / bounded behavior
+
+- Current adapters deliberately target existing Package Data, Application
+  projections/commands and declared Model Tasks. Conversation, Session and Prose
+  services are the next phase, not hidden legacy dispatch paths in this one.
+- Read subscriptions and Operation observers poll formal Host projections at a
+  bounded cadence. No new durable state, authority repository or event bus was
+  added. Bridge receipt/cursor caches are transient, with process restarts
+  invalidating tokens instead of restoring stale handles.
+- Limits: 128 active Experiences per service, 30-minute token lifetime, 256 write
+  receipt keys, 512 cursors and 64 Operations per Experience; 64 read
+  subscriptions and 64 Operation observers per Component. Collections are at
+  most 10000 source items and 256 items/page. Exhaustion fails closed; concurrent
+  opens recheck the retention cap after asynchronous package loading.
+- Idempotency keys are scoped to Epoch + binding. A new Epoch does not silently
+  replay a revoked handle or rebase its old revision. Already accepted short
+  transactions are not rolled back by presentation cancellation; late UI
+  delivery is discarded and the replacement Experience rereads authority.
+- No optional fixed Host service is user-registerable. Prefs retain the existing
+  account persistence adapter; environment retains the Phase 2 Host projection.
+- Test/build outputs, native dependencies and screenshots were not committed.
+
+### Validation actually executed
+
+Local Windows, **Node v24.16.0**, real **Edge headless** through the repository's
+Playwright dependency. No remote CI claim.
+
+- New Bridge boundary/client tests: **27 tests**, including real FS-backed
+  SessionCore commits, schema/mapping/digest/version rejection, Component scopes,
+  idempotency and CAS, Collection cursor/query/revision guards, typed Task output,
+  Operation cancel/replay, non-cooperative late completion, restore/switch/reload,
+  superseded opens, unsubscribe races, immutable fixed projections and Preview.
+- Native regression: **all 99 distinct suites passed across resumed batches**.
+  The first post-dependency-repair run completed 43 suites before a user/client
+  interruption stopped the process without a Jest aggregate. Those successful
+  suites were preserved as evidence; only the remaining 56 suites were run
+  again (**56 suites / 499 tests passed**, JSON results recorded locally).
+  The two path sets were checked for no overlap and complete 99-suite coverage.
+  FS/SQLite included; existing `ATRIA_DISABLE_MYSQL_TESTS=1` and
+  `ATRIA_DISABLE_POSTGRES_TESTS=1` switches excluded external DBs.
+- Initial Native regression exposed a fresh-clone dependency problem, not a
+  claimed pass: `.npmrc` intentionally disables dependency install scripts, so
+  `better-sqlite3` had no native binding. Only that locked dependency was rebuilt
+  with scripts explicitly enabled, and an in-memory `select 1` succeeded. The
+  repository npm policy/configuration was not changed. Verification resumed only
+  after the repair; the failing pre-repair run is not completion evidence.
+- Adjacent game-runtime: **50 suites / 492 tests passed**.
+- Final focused regression after the final epoch/recovery refinements:
+  **11 suites / 307 tests passed** (`frontend-bridge-client`, `frontend-bridge`,
+  `frontend-v3`, `frontend-presentation`, `studio-service`, `runtime-http`,
+  `session-runtime-http`, `studio-preview-experience`, `ui-live`, `ui-full-host`,
+  `message-templates`).
+- `node tests/frontend/native-frontend-bridge.smoke.mjs`: **6 scenarios passed**,
+  Component/Hybrid/Full at 1440px and 390px. Real local SessionCore-backed typed
+  Action, snapshot subscription refresh, two-page Collection, recovery/rebind,
+  draft reset, Preview read-only errors and cleanup; no page errors/diagnostics.
+  The harness uses a deterministic local owner/service transport. Production
+  authenticated router behavior is separately covered by HTTP tests.
+- `node tests/frontend/native-frontend-v3.smoke.mjs`: **6 scenarios passed** at the
+  same layouts/sizes, preserving Phase 2 state/components/fonts/forms/overlays,
+  NodeRef/virtualization/containment/Full controls/Preview/disposal behavior.
+  This caught and regression-tested a presentation-only reload revocation bug.
+- Inspected the rendered mobile Full Bridge screenshot. Screenshots remain
+  local under `.git/frontend-v3-bridge-evidence/` and `.git/frontend-v3-evidence/`.
+- Full root `npm run lint`: passed; final changed-code/test ESLint: passed.
+- Final `node docker/build-lib.js`: webpack compiled successfully.
+- Staged and working-tree `git diff --check`: passed.
+- New Operation boundary tests use deterministic Generation Host doubles; the
+  existing Native generation/scheduler tests also remain in the regression.
+  No new real-provider/secret/network end-to-end claim, production-user Session,
+  remote CI, physical device, Android/Termux, MySQL/PostgreSQL or non-Edge claim.
+
+### Remaining scope / next checkpoint
+
+**Phase 3 acceptance is complete. Stop before Phase 4.**
+
+Phase 4 is **Conversation / Session / Prose**, using the Plan's own section:
+Managed/Headless Conversation and Composer parity, committed message collection,
+GenerationProjection, reply alternative/branch controls, fixed composer /
+conversation / session services, Safe Prose AST, Message Block integration,
+save/reload/recovery/diagnostics and Host Failure Surface. Streaming must not
+become committed Timeline; retry/fork/switch/save/restore require revision guards;
+raw HTML must not enter Prose.
+
+No Phase 4+ implementation was started. Remote Media, Localization/IME, Script
+VM/Canvas and Studio visual editing remain later phases. Hard Cut remains
+approved; temporary v1/v2 retention is still scheduled for Phase 9 removal, not
+compatibility or migration scope. `HANDOFF.md` holds the Phase 4 takeover prompt.
