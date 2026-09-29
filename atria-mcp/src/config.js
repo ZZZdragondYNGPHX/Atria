@@ -7,10 +7,11 @@ export function loadConfig(argv = process.argv.slice(2), env = process.env) {
         headed: { type: 'boolean' }, 'browser-channel': { type: 'string' },
         'allow-remote': { type: 'boolean' },
         'storage-state': { type: 'string' }, help: { type: 'boolean', short: 'h' },
+        policy: { type: 'string' },
         version: { type: 'boolean' },
     } });
     if (values.help || values.version) return values;
-    if (env.ATRIA_ALLOW_WRITES !== undefined) throw new Error('ATRIA_ALLOW_WRITES has been removed; Phase 3 is read-only.');
+    if (env.ATRIA_ALLOW_WRITES !== undefined) throw new Error('ATRIA_ALLOW_WRITES has been removed; use exact action policy and trusted approval.');
     const url = new URL(values.url ?? env.ATRIA_URL ?? 'http://127.0.0.1:8000');
     const allowRemote = values['allow-remote'] ?? env.ATRIA_ALLOW_REMOTE === '1';
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password
@@ -33,6 +34,7 @@ export function loadConfig(argv = process.argv.slice(2), env = process.env) {
         headed: values.headed ?? env.ATRIA_HEADED === '1', channel,
         dataRoots: values['data-root'] ? [resolve(values['data-root'])] : [],
         allowRemote, storageState: storageState ? resolve(storageState) : undefined,
+        policyFile: values.policy ? resolve(values.policy) : undefined,
         timeout: 15000, maxResponseBytes: 1024 * 1024,
     };
 }
@@ -47,6 +49,7 @@ export const HELP = `Atria MCP 0.2.0 — local stdio server (Node.js >=22)
   --data-root <path>         Additional runtime-owned directory to exclude from evidence
   --allow-remote             Permit an explicitly configured remote HTTPS origin
   --storage-state <file>     Explicit Playwright authentication state (never committed)
+  --policy <file>            JSON {"version":1,"actionIds":[...]} eligibility, never approval
   --help / --version
 
 Equivalent environment: ATRIA_REPO, ATRIA_URL, ATRIA_HEADED=1,

@@ -13,7 +13,7 @@
   },
   "scripts": {
     "start": "node src/cli.js",
-    "check": "node --check src/cli.js && node --check src/server.js && node --check src/catalog.js && node --check src/browser.js && node --check src/policy.js && node --check src/config.js && node --check src/kernel.js && node --check src/repository.js && node --check src/provenance.js && node --check src/capability-bridge.js && node --check src/read-authority.js",
+    "check": "node --check src/cli.js && node --check src/server.js && node --check src/catalog.js && node --check src/browser.js && node --check src/policy.js && node --check src/config.js && node --check src/kernel.js && node --check src/repository.js && node --check src/provenance.js && node --check src/capability-bridge.js && node --check src/read-authority.js && node --check src/mutations.js && node --check src/memory-mutations.js",
     "test": "node --test test/*.test.js",
     "test:integration": "node --test test/integration.test.js",
     "test:atria": "node scripts/verify-atria.js"

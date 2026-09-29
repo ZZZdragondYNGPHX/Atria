@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { z } from 'zod';
 import { redact } from './policy.js';
 export const RISKS = Object.freeze(['READ', 'INTERACT', 'MUTATE', 'DESTRUCTIVE']);
@@ -12,12 +12,12 @@ const descriptorSchema = z.strictObject({
 });
 export class ActionRegistry {
     #actions = new Map();
-    register(descriptor, inputSchema, outputSchema, handler) {
+    register(descriptor, inputSchema, outputSchema, handler, guard = null) {
         const parsed = descriptorSchema.parse(descriptor);
         if (this.#actions.has(parsed.id)) throw new Error('Duplicate action ID.');
         if (parsed.risk !== 'READ' && parsed.approval === 'none') throw new Error('Side effects require approval metadata.');
         const detail = { ...parsed, inputSchema: z.toJSONSchema(inputSchema), outputSchema: z.toJSONSchema(outputSchema) };
-        this.#actions.set(parsed.id, { detail: structuredClone(detail), inputSchema, outputSchema, handler });
+        this.#actions.set(parsed.id, { detail: structuredClone(detail), inputSchema, outputSchema, handler, guard });
         return this;
     }
     get(id) { const item = this.#actions.get(id); if (!item) throw new Error('Unknown semantic action.'); return { ...item, detail: structuredClone(item.detail) }; }
@@ -38,7 +38,7 @@ export class PolicyCeiling {
         this.#ids = new Set(actionIds);
     }
     allows(id) { return this.#ids.has(id); }
-    describe() { return { version: 1, profile: 'read-only', eligibleActionIds: [...this.#ids], approvalGrants: false }; }
+    describe() { return { version: 1, profile: 'exact-action-ids', eligibleActionIds: [...this.#ids], approvalGrants: false }; }
 }
 export class ReceiptStore {
     #receipts = new Map();
@@ -51,7 +51,9 @@ export class ReceiptStore {
         this.prune();
         const clean = redact(structuredClone(evidence));
         if (JSON.stringify(clean).length > 30000) throw new Error('Receipt exceeds limit.');
-        const receipt = { ...clean, version: 1, receiptId: randomUUID(), mcpInstanceId: this.instanceId, issuedAt: this.now(), expiresAt: this.now() + this.ttlMs };
+        const receiptId = randomUUID();
+        const receipt = { ...clean, ...(Array.isArray(clean.created) ? { created: clean.created.map(item => ({ ...item, mcpInstanceId: this.instanceId, creatingReceiptId: receiptId })) } : {}),
+            version: 1, receiptId, mcpInstanceId: this.instanceId, issuedAt: this.now(), expiresAt: this.now() + this.ttlMs };
         this.#receipts.set(receipt.receiptId, receipt);
         while (this.#receipts.size > this.maxEntries) this.#receipts.delete(this.#receipts.keys().next().value);
         return structuredClone(receipt);
@@ -60,15 +62,77 @@ export class ReceiptStore {
     clear() { this.#receipts.clear(); }
 }
 export class RiskExecutor {
-    constructor(registry, ceiling) { this.registry = registry; this.ceiling = ceiling; }
-    async execute(risk, { action, input = {} }) {
+    #leases = new Map();
+    #running = false;
+    constructor(registry, ceiling, { receipts = new ReceiptStore(), approve = null, now = Date.now, provenance = async () => null } = {}) {
+        this.registry = registry; this.ceiling = ceiling; this.receipts = receipts; this.approve = approve; this.now = now; this.provenance = provenance;
+    }
+    clear() { this.#leases.clear(); }
+    async execute(risk, args, context = {}) {
+        if (this.#running) throw new Error('Executor busy.');
+        this.#running = true;
+        try { return await this.#execute(risk, args, context); } finally { this.#running = false; }
+    }
+    async #execute(risk, { action, input = {}, leaseId }, context) {
         const item = this.registry.get(action), d = item.detail;
         if (d.risk !== risk) throw new Error('Executor risk mismatch.');
         if (!d.availability.available) throw new Error('Action unavailable: ' + d.availability.reason);
         if (!this.ceiling.allows(action)) throw new Error('Policy Ceiling denied.');
         const parsed = item.inputSchema.parse(input);
-        // READ may have declared provider cost/network effects. It never grants mutations.
-        if (risk !== 'READ' || d.guards.length || d.approval !== 'none') throw new Error('Action requires later-phase authorization/guard infrastructure.');
-        return redact(item.outputSchema.parse(await item.handler(parsed)));
+        if (risk === 'READ') {
+            if (d.guards.length || d.approval !== 'none' || leaseId) throw new Error('Invalid READ authorization.');
+            return redact(item.outputSchema.parse(await item.handler(parsed)));
+        }
+        if (risk === 'DESTRUCTIVE') throw new Error('Destructive execution is unavailable in Phase 4.');
+        if (!item.guard || !d.guards.length) throw new Error('Missing authority guards.');
+        const startedAt = new Date(this.now()).toISOString();
+        const before = await item.guard(parsed, { receipts: this.receipts });
+        const provenance = await this.provenance();
+        if (JSON.stringify(redact({ before, provenance })).length > 12000) throw new Error('Guard evidence exceeds receipt bound; narrow target.');
+        const binding = fingerprint({ action, risk, input: parsed, target: before.target, serverBootId: before.serverBootId });
+        let lease = leaseId && this.#leases.get(leaseId);
+        const valid = value => value && value.binding === binding && value.instanceId === this.receipts.instanceId
+            && value.expiresAt > this.now() && value.remaining > 0;
+        if (leaseId && !valid(lease)) throw new Error('Invalid, expired, exhausted or mismatched Capability Lease.');
+        if (!lease) {
+            if (!this.approve) throw new Error('Trusted client approval unavailable; no operation executed.');
+            const decision = await this.approve(redact({ action, risk, authority: d.authority, externalEffects: d.externalEffects,
+                input: parsed, before, provenance, binding, scope: 'Exact action, normalized input, target and server boot only' }), context);
+            if (decision?.action !== 'accept' || decision.content?.authorize !== true) throw new Error('User approval declined or cancelled.');
+            const uses = decision.content?.uses ?? 1;
+            if (!Number.isInteger(uses) || uses < 1 || uses > 20) throw new Error('Invalid trusted approval scope.');
+            // Mint only here, after a trusted round trip. No public lease creation API.
+            for (const [id, value] of this.#leases) if (value.expiresAt <= this.now() || value.remaining <= 0) this.#leases.delete(id);
+            if (this.#leases.size >= 100) throw new Error('Lease limit reached.');
+            lease = { leaseId: randomUUID(), instanceId: this.receipts.instanceId, binding, remaining: uses, expiresAt: this.now() + 300000 };
+            this.#leases.set(lease.leaseId, lease);
+        }
+        context.signal?.throwIfAborted();
+        const checked = await item.guard(parsed, { receipts: this.receipts });
+        if (fingerprint(before) !== fingerprint(checked)) throw new Error('Authority changed after approval; review again.');
+        if (fingerprint(provenance) !== fingerprint(await this.provenance())) throw new Error('Provenance changed after approval; review again.');
+        if (!valid(lease)) throw new Error('Capability Lease expired before execution.');
+        context.signal?.throwIfAborted();
+        lease.remaining--;
+        let result = null, error = null, status = 'succeeded';
+        try {
+            result = redact(item.outputSchema.parse(await item.handler(parsed, { before: checked, receipts: this.receipts, signal: context.signal })));
+            if (result?.ok === false) status = result?.partial === true ? 'indeterminate' : 'rejected';
+        } catch (cause) { status = 'indeterminate'; error = redact(cause.message); }
+        // Never automatically retry an uncertain operation. Output/schema/transport failures can follow a committed write.
+        const evidence = result?.receiptEvidence ?? {};
+        const boundedEvidence = value => JSON.stringify(value ?? null).length <= 6000 ? value ?? null : { contentHash: fingerprint(value), omitted: 'Large evidence; inspect owning authority' };
+        const receipt = this.receipts.put({ action, risk, status, startedAt, endedAt: new Date(this.now()).toISOString(),
+            target: before.target, before, after: boundedEvidence(evidence.after), created: evidence.created ?? [], changed: evidence.changed ?? [], deleted: [],
+            externalEffects: d.externalEffects, recovery: evidence.recovery ?? 'Inspect owning authority before retrying; no automatic rollback.',
+            evaluation: evidence.evaluation ?? null, parentReceiptId: parsed.evaluationReceiptId ?? null,
+            provenance: { serverBootId: before.serverBootId, review: provenance, ...(evidence.provenance ?? {}) }, error });
+        return { result, receipt, lease: { leaseId: lease.leaseId, remaining: lease.remaining, expiresAt: lease.expiresAt }, ...(error ? { error } : {}) };
     }
+}
+
+export function fingerprint(value) {
+    const canonical = item => Array.isArray(item) ? item.map(canonical) : item && typeof item === 'object'
+        ? Object.fromEntries(Object.keys(item).sort().map(key => [key, canonical(item[key])])) : item;
+    return createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex');
 }

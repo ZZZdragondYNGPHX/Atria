@@ -116,7 +116,7 @@ test('registry schema, immutable descriptors, ceiling snapshots and exact four-r
     for (const risk of RISKS.slice(1)) {
         await assert.rejects(executor.execute(risk, { action: 'fixture.' + risk.toLowerCase(), input: { value: 1 } }), /Ceiling/);
         const generous = new RiskExecutor(registry, new PolicyCeiling(registry, registry.ids()));
-        await assert.rejects(generous.execute(risk, { action: 'fixture.' + risk.toLowerCase(), input: { value: 1 } }), /later-phase/);
+        await assert.rejects(generous.execute(risk, { action: 'fixture.' + risk.toLowerCase(), input: { value: 1 } }), /Missing authority guards|unavailable in Phase 4/);
     }
     const detail = registry.discover({ action: 'fixture.read' }); detail.risk = 'MUTATE';
     assert.equal(registry.discover({ action: 'fixture.read' }).risk, 'READ');

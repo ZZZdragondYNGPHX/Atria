@@ -1,6 +1,6 @@
-# Atria MCP 0.2.0 — Phase 3
+# Atria MCP 0.2.0 — Phase 4
 
-独立 stdio 开发工具，位于 `plugin:atria-mcp/`。提供 repository/Git/开发产物观察、完整 READ semantic catalog、诊断快照、Native GET 与隔离浏览器证据。审批/Lease 和产品 mutation 尚未实现。
+独立 stdio 开发工具，位于 `plugin:atria-mcp/`。提供广泛观察与显式批准的非破坏性产品操作。默认 READ；写入由精确 Policy Ceiling、可信客户端审批、短期 Lease、双重 guards 和 Receipt 共同约束。
 
 ## 启动与客户端
 
@@ -21,6 +21,7 @@ node /absolute/path/to/plugin-worktree/atria-mcp/src/cli.js --repo /absolute/pat
 | `--allow-remote` | `ATRIA_ALLOW_REMOTE=1` | 显式允许远端 HTTPS origin |
 | `--storage-state` | `ATRIA_STORAGE_STATE` | 显式测试登录态；工具不导出凭据 |
 | `--data-root` | — | 额外排除的运行时数据目录，绝对路径 |
+| `--policy` | — | 启动时读取精确 action ID JSON；只定义资格，不代表用户批准 |
 
 默认排除 `data/` 等用户状态目录，读取根 `config.yaml` / `config.yml` 中的YAML `dataRoot` 标量（解析异常则拒绝观察）仅用于增加排除项，绝不输出配置正文。每次观察重新读取并保留此前排除项；historical show/diff/blame 也考虑相关 revision 的配置。若 runtime 使用自定义配置位置/CLI dataRoot，操作者必须用 `--data-root` 显式指定。MCP 无法仅凭任意目录名推断全部外部运行时存储位置。
 
@@ -43,11 +44,32 @@ node /absolute/path/to/plugin-worktree/atria-mcp/src/cli.js --repo /absolute/pat
 | `atri_browser_diagnostics` | MCP 自有 ephemeral browser buffer |
 | `atri_browser_close` | 关闭自有浏览器 |
 | `atri_read` | READ semantic executor |
-| `atri_interact` | INTERACT executor，未开放 |
-| `atri_mutate` | MUTATE executor，未开放 |
+| `atri_interact` | INTERACT executor，可信批准的 evaluation / Preview / simulation / generation stop |
+| `atri_mutate` | MUTATE executor，可信批准的非破坏性语义操作 |
 | `atri_destructive` | DESTRUCTIVE executor，未开放 |
 
-Phase 3 Registry 覆盖 Session/Chat、Build/Studio、Library、Work/Package、Memory、Agents、Settings、Connections/Models/Routes、Diagnostics 和 browser-owned game projections。用 `atri_capabilities` 按 domain/query 搜索，再取精确 action schema。所有 action 都只通过 `atri_read`；其它 risk executor 继续失败关闭。Policy Ceiling 固定 action-ID 快照，不给未来 action 自动授权。
+Registry 覆盖 Session/Chat、Build/Studio、Library、Work/Package、Memory、Agents、Settings、Connections/Models/Routes、Diagnostics 和 browser-owned game projections。用 `atri_capabilities` 按 domain/query 搜索，再取精确 action schema；executor risk 必须完全匹配。Policy Ceiling 固定 action-ID 快照，不给未来 action 自动授权。
+
+## 可信授权与非破坏性操作
+
+默认配置保持只读。要启用具体操作，将 `--policy /absolute/path/to/policy.json` 加入启动参数，例如：
+
+```json
+{"version":1,"actionIds":["build.frontend.evaluate","build.change.apply","build.preview.close"]}
+```
+
+客户端必须支持 MCP **form elicitation**，并将服务器审批表单作为可信用户交互；工具参数中的布尔值不算审批。不支持该通道时保持写入关闭，不依据客户端名称推断审批能力。表单展示准确输入、目标、authority、风险、成本/网络效果、guards 与独立 provenance。仅客户端返回 `accept` 且用户勾选授权才 mint Lease。
+
+Lease 绑定当前 MCP instance、精确 action、规范化输入、目标和 `serverBootId`，用户可选择 1–20 次，五分钟失效；默认为一次。调用方只可回传 opaque `leaseId`，不能写 grants、scope 或 expiry。没有跨 action/domain 的宽泛授权；重启清空 Lease/Receipt。产品需报告 `mutationGuards: 1`；不支持最终请求 boot guard 的旧产品只能观察。
+
+- Build：`build.change.prepare/inspect` 为 READ。提交固定 Workspace（origin=`plugin/atria-mcp`），经批准调用 `build.frontend.evaluate` 或 `build.change.evaluate`，临时应用、验证、生成正式 Preview，再恢复源。`build.change.apply` 必须携带同实例有效 evaluation receipt；重新核对 baseRevision、规范化 operations、change fingerprints 与 Preview exact version。支持正式 `frontend.patch`、受限 source fallback 与 resource attach/fork/update。`build.preview.create/close` 和 `build.simulate` 使用现有 Studio authority；simulation 为隔离 recorded/mock runner。
+- Session：rename、save/restore、branch fork/switch、restart/remove-from-active 均保留历史。后两者要求明确选择将保留内容的 coherent `revisionId`。`chat.retry.prepare` 只派生 retry boundary；`chat.regenerate/reenter` 派生 branch 后启动生成，失败时 branch 仍可能已改变。`chat.send` 使用 Native turn scheduler，返回 operationId 后通过 `generation.status/stop` 查询/停止；GenerationProjection 不是 committed Timeline。
+- Settings：仅明确列出的普通 UI scalar settings，现有值 test + replace，不开放根替换或 Agent/Memory/credentials 配置路径。
+- Runtime：`runtime.parameters.update` 复用正式参数 guards；`connection/model/route.update` 使用 Native 配置 authority 与锁内 SHA-256 canonical JSON expected fingerprint，新增对象使用 `SHA256("null")`。仅 opaque Secret refs，无凭据值。
+- Library：World/Knowledge 新 immutable revision；旧版本保留，产品核对 baseRevisionId。Work start 要求 exact PackageVersion/EntryPoint。
+- Memory：先 `memory.mutation.inspect` 获得 loaded graph fingerprint/target，再批准 create/edit/relation upsert/compact。固定 bridge 调用现有 source-guarded write session，克隆草稿、队列内检查图状态。无任意方法/JS/batch dispatch；缺少 loaded scope 拒绝执行。该证据属于 Memory source/branch，不证明 Frontend Epoch exactness。
+
+每次执行在审批前后检查 authority。源/runtime 不一致可被明确审阅，Receipt 保留独立身份而不冒充匹配。结果包含 ephemeral Receipt：`succeeded`、`rejected` 或 `indeterminate`。最后一种表示超时、输出或传输错误可能发生在写入之后，必须先观察产品，不能自动重试。大响应只返回 hash/metadata，详情通过 READ 获取。DESTRUCTIVE、Package install、Agent delegation 属于 Phase 5，尚未开放。通用浏览器 click/fill/press/select 仍拒绝，避免绕过语义风险。
 
 例如 `atri_read(action="build.frontend.inspect", input={projectId,baseRevision})` 复用正式 Source Graph；`chat.read` 读取不可变 Timeline；`build.preview.get` 读取已有 Preview，绝不创建 Preview。`atri_diagnose_snapshot` 合并独立诊断读取，逐项保留 unavailable/HTTP permission status 和各自 boot/time；不是原子快照。
 
@@ -78,7 +100,7 @@ Memory vector search/recall 与 connection probe 是 READ，但描述符明确�
 
 旧 `atri_source_read/search` → `atri_repo`；`atri_api_list/detail/request` → `atri_api`；`atri_browser_snapshot/wait/resize` → `atri_browser_observe`。没有 callable legacy aliases。
 
-`confirm` 字段、`--allow-writes`、`ATRIA_ALLOW_WRITES` 已删除，旧输入拒绝。通用 API 不接受 method/body，不允许 POST/PUT/PATCH/DELETE。真实产品写操作必须等待可信授权阶段；不能通过点击绕过。
+`confirm` 字段、`--allow-writes`、`ATRIA_ALLOW_WRITES` 已删除，旧输入拒绝。通用 API 不接受 method/body，不允许 POST/PUT/PATCH/DELETE。真实产品写操作只能经过语义执行器与可信授权；不能通过点击绕过。
 
 ## 验证与证据
 
@@ -97,7 +119,7 @@ $env:ATRIA_COMPARE_REPO = '<other-product-checkout>'
 npm run test:atria
 ```
 
-本项目是 JavaScript；没有独立 lint/typecheck 脚本。`check` 做语法检查；tests 包含 runtime Zod/schema、MCP stdio surface 和实际浏览器 fixture。`test:atria` 创建独立临时 dataRoot，保留页面重启自有 server 并验证 stale/reload，通过独立测试 setup 创建 disposable Studio/Session/Preview 数据；这些准备操作不经过 MCP，MCP 只执行 READ。仅当上述 source-change opt-in 开启时短暂改动源码；检测到并发改动时拒绝覆盖。证据写入 ignored `.artifacts/`，清理临时 runtime。是否实际执行及结果以任务 Record 为准。
+本项目是 JavaScript；没有独立 lint/typecheck 脚本。`check` 做语法检查；tests 包含 runtime Zod/schema、MCP stdio surface 和实际浏览器 fixture。`test:atria` 创建独立临时 dataRoot，通过独立 setup 准备 fixture，然后运行 READ 与批准的 Studio/Session/Work 操作。审批由 deterministic test client 经真实 MCP elicitation 应答，不是人类审批 UX 证据；不会调用付费 provider。验证重启 stale/reload；source-change opt-in 才短暂改动源码。证据写入 ignored `.artifacts/`，清理临时 runtime。是否实际执行及结果以任务 Record 为准。
 
 ## Provenance 与固定 adapters
 

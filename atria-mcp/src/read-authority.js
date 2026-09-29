@@ -114,12 +114,12 @@ function boundedOutput(action, authority, response, input) {
 }
 
 // This transport is private. Only fixed, reviewed definitions above can reach it.
-async function requestAuthority(browser, method, path, input = {}) {
+export async function requestAuthority(browser, method, path, input = {}, guards = {}) {
     const url = safeUrl(path, browser.config.url);
     if (/[?#%]/.test(path)) throw new Error('Invalid fixed authority path.');
     await browser.start();
     const headers = { Accept: 'application/json', 'Cache-Control': 'no-cache' };
-    if (method === 'POST') {
+    if (method !== 'GET') {
         const csrf = await browser.context.request.get(browser.config.url + '/csrf-token', { maxRedirects: 0, timeout: browser.config.timeout });
         try {
             if (!csrf.ok() || !(csrf.headers()['content-type'] ?? '').includes('json')) throw new Error('CSRF unavailable; authenticate manually.');
@@ -130,7 +130,9 @@ async function requestAuthority(browser, method, path, input = {}) {
             headers['x-csrf-token'] = token;
         } finally { await csrf.dispose(); }
     } else for (const [key, value] of Object.entries(input)) if (value !== undefined) url.searchParams.set(key, String(value));
-    const response = await browser.context.request.fetch(url.href, { method, headers, ...(method === 'POST' ? { data: input } : {}), maxRedirects: 0, timeout: browser.config.timeout });
+    if (guards.serverBootId) headers['x-atria-expected-server-boot-id'] = guards.serverBootId;
+    if (guards.expectedFingerprint) headers['if-match'] = guards.expectedFingerprint;
+    const response = await browser.context.request.fetch(url.href, { method, headers, ...(method !== 'GET' ? { data: input } : {}), maxRedirects: 0, timeout: browser.config.timeout });
     try {
         const status = response.status();
         if (status >= 300 && status < 400) throw new Error('Authority redirect blocked.');

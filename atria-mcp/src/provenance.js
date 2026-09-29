@@ -13,6 +13,7 @@ export const sourceSchema = z.strictObject({ algorithm: z.literal('atria-source-
     revision: z.string().regex(/^[a-f0-9]{40,64}$/).nullable(), branch: id.nullable(), workspaceId: digest.nullable(),
     fingerprint: digest.nullable(), reasons: z.array(id).max(20) });
 export const runtimeSchema = z.strictObject({ version: z.literal(1), serverBootId: z.string().uuid(),
+    mutationGuards: z.literal(1).optional(),
     processStartedAt: z.number().positive(), appVersion: id.nullable(), source: sourceSchema });
 
 // Independent protocol implementation: no code imports/execution from the
