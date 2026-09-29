@@ -175,3 +175,58 @@ Environment: Windows, Node.js v24.18.0, installed Edge via `ATRIA_TEST_BROWSER_C
 - Live paid-provider probe/vector/recall, populated Memory graph/injection, executing Agent traces, active Experience Epoch revocation and rendered Workspace/evaluation/Preview binding remain unverified end-to-end. Current evidence distinguishes product/unit/fixture coverage from real server READ and idle browser flows.
 - Missing older endpoints/capabilities fail without storage fallback. Cross-call paging may change; compare hashes. Unlabelled secrets in free text retain the documented best-effort redaction limitation.
 - Plan v1.1 unchanged. Same Record/live HANDOFF updated; product feature retained separately from main. Next stage only on explicit continuation: **Phase 4 — Authorization / Receipts / Safe Mutations**, stopping before Phase 5.
+
+## Phase 4 — Authorization / Receipts / Safe Mutations
+
+Status: **Complete; pushed; stopped before Phase 5** (2026-09-30 Asia/Shanghai).
+
+### Actual checkpoints
+
+- Start plugin: `4d8cbb9da376b3417f47e6f3e23d9eba09b1c1ae`; final / real-integration-tested plugin: `f420640d299ceb3fda48a9f49c85f2b4c0c6cc0e`, pushed.
+- Plugin implementation commits: `f56ce880d571dbc479c739ac64235642e1b2e1b4`, `b5ba42cccd59500cfd4314ed913bf43f9524b936`, `f420640d299ceb3fda48a9f49c85f2b4c0c6cc0e`.
+- Start product: `defeaabacd918966f3fda6f3be3dcb2a789deebd`; final / real-integration-tested `feat/mcp-development-authority@da284bc51db1f10cfb82fe7444b2f1087a3a9a6e`, pushed, retained, not merged.
+- Main unchanged: `c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`. Docs start: `e8bf4dbae3b28dd1d0d150812138d2d5d7bd5c23`; use actual latest docs HEAD on resume.
+- Fetched and verified clean existing plugin/docs/product worktrees and supplied checkpoints. Read current plugin AGENTS, full Governance, task-owned HANDOFF, frozen Plan v1.1 and this Record. Reused worktrees; no main-to-plugin merge, reference access or original-checkout changes. Final fetch confirmed docs live slot still belongs to this task.
+
+### Authorization, Lease and Receipt
+
+- Registry now has **136 actions: 105 READ / 25 MUTATE / 6 INTERACT / 0 DESTRUCTIVE**. Exactly 18 public tools remain. Three new READ helpers prepare/inspect Build changes and inspect the loaded Memory mutation target.
+- Startup `--policy` accepts only versioned exact action IDs. Default remains READ. Runtime availability and risk/schema checks remain separate from the policy ceiling.
+- Trusted approval uses MCP form elicitation, presenting exact normalized input, target, authority, risk, effects and provenance. Explicit authorization is false by default; unsupported clients fail closed. Model-provided input is never approval. No legacy aliases/confirm/allow-writes, arbitrary JS/capability dispatch or generic Native write escape hatch; `atri_api` remains Native GET-only.
+- Private server-minted leases bind MCP instance, exact action/risk/payload/target/serverBootId, expire after five minutes and have explicit 1–20 uses. Invalid/expired/exhausted leases fail rather than silently reapprove. Execution is serialized; guards and provenance run before and after approval, cancellation is honored, and a use is consumed before execution.
+- Ephemeral bounded/redacted receipts record succeeded/rejected/indeterminate outcomes, before/after evidence, effects and recovery. Uncertain transport/partial composite execution is not automatically retried or rolled back. Server-owned receipt/created-object identity cannot be supplied by the model. Receipt retention is one hour / at most 100 entries.
+- Source/Server/Browser evidence stays independent from scoped Experience/Project/Workspace/Preview evidence. Last-observed is explicitly not current exact proof.
+
+### Controlled operations and owning authority
+
+- Session rename/save/restore and Chat branch fork/switch/restart/remove-active use existing revision/branch authority and retain historical committed Timeline. Historical revision, message and branch membership are checked before approval. Send uses the owning detached turn scheduler; regenerate/reenter compose a branch boundary and generation, reporting partial completion as indeterminate. GenerationProjection remains ephemeral.
+- Work start binds exact version/entrypoint and resource setup. Build Project create checks absence. Build prepare/inspect accepts a fixed Workspace operation schema; evaluate/frontend.evaluate reuse formal Native Studio evaluation and its temporary-change restoration.
+- Build apply requires this MCP instance's successful evaluation receipt, matching baseRevision, Workspace, normalized operations, inspected changes, current Preview/version and boot. Evaluation receipts include validation/hash and Preview descriptor identity. No ad-hoc compiler, Source Graph, frontend.patch or Preview authority was introduced. Preview create/close and isolated recorded/mock simulation use existing services.
+- Settings patch is restricted to eight ordinary scalar keys with test/replace concurrency. Runtime parameters use existing prompt-controls; Connection/Model/Route updates use fixed config authority, opaque Secret references and expected fingerprints. Library World/Knowledge create immutable revisions, including the nullable initial revision.
+- Memory node create/edit, relation upsert and compact use literal fixed browser calls and the already loaded owning graph. Guards bind current document, same-origin/current boot, Session/branch and canonical graph hash; the product guarded session rechecks under its write queue. Native relation directions are outgoing/incoming/bidirectional. No Frontend Host Bridge handle or arbitrary browser code is exposed.
+- Minimal product additions: canonical boot mismatch middleware and `mutationGuards:1`; authenticated detached `/turn/start` through existing scheduler; optional config If-Match verified in serialized persistence; optional guarded Memory sessions with isolated drafts, source-ticket checks and queued-commit rejection/rollback. Existing callers remain compatible. Native server remains preferred; no parallel storage/authority was created.
+
+### Actual validation and resolved failures
+
+- Plugin full suite **37/37**, zero skips, after the main authorization/receipt implementation. Final affected authorization suite **8/8** after the last Memory enum and Session target-preflight changes. The full suite was not rerun after adding that eighth test; no 38/38 claim.
+- Coverage includes exact 18-tool stdio, missing/declined/cancelled approvals, guard/provenance drift, lease instance/payload/expiry/use binding, concurrency, receipt ownership, uncertain results, forged/stale Build evaluation, invalid Session targets before approval, and real Edge Memory fixtures with stale graph/boot rejection.
+- Plugin 13-module syntax check, verifier syntax, working/staged diff checks passed.
+- Product **6 targeted suites / 91 tests** passed: model-prompt-runtime-persistence, memory-graph/guarded-session, memory-graph/source-lifecycle, native/frontend-authoring, model-prompt-runtime-p4 and logging/source-identity. Targeted ESLint on five implementation files and three test files plus diff checks passed.
+- Initial disposable integration caught null title versus empty-string concurrency mismatch; corrected the nullable Session contract. Final review corrected Memory relation direction to the native enum and added explicit historical Session target checks. A targeted test invocation without the Edge environment failed because bundled Chromium was absent; explicit installed msedge rerun passed without downloading a browser.
+
+### Final exact-HEAD real integration
+
+- `npm run test:atria` passed against the final plugin/product HEADs above, using installed Edge and fresh disposable Atria data/config; product tracked tree was clean. 165 routes discovered, frontend core bundle available, Source/Server EXACT.
+- Fourteen successful MCP operation receipts: build.frontend.evaluate, build.change.apply, build.preview.close, build.simulate, session.rename, session.save, chat.branch.fork, session.restore, work.start, settings.patch, two library.world.revision.create and two connection.update.
+- Real Source Graph-selected frontend.patch evaluation restored the original source; apply changed the exact intended text; stale apply and mismatched server boot were rejected. Existing Session/Library/Studio READ checks were preserved.
+- Approval roundtrip used real stdio MCP form elicitation with deterministic acceptance by the trusted test client. This proves protocol execution, **not human approval UX in Codex/Claude Code**. Connection configuration used a non-contacted example.invalid endpoint and an opaque reference; no paid provider call.
+- Eight browser READs succeeded for Memory scope/injection/last recall, Orchestrator presets/idle run/checkpoints and game identity/status. These remain **idle/empty** evidence. Populated Memory mutation is covered by product tests and a real-browser fixture, not a populated real Atria end-to-end flow.
+- Source fingerprint `5dd6413fc5c5420439c3e2de3d2a4d7c00341883915fc74a41c4669891f0084e`; actual server restart changed boot `bc0d5d6d-d21a-4e37-9993-0453a8771596` to `8946112b-45fd-41cc-8f81-459d5e9c7891`; retained page became STALE, reload CURRENT. Historical evidence only. Source-change/different-checkout opt-in checks were not repeated in Phase 4.
+- Desktop 1440×1000 and narrow 390×844 shell captures retained under ignored `atria-mcp/.artifacts/atria-1790698052908/`. Owned runtime/browser/temp data/config were cleaned up. No test data, logs, screenshots or generated binaries committed. Expected restart websocket failures/startup timing aborts remain; no zero-error UI claim.
+
+### CI, limits and next checkpoint
+
+- Final plugin and product HEADs each have **0 GitHub check-runs / 0 commit statuses**, combined state pending. **No CI pass claimed.** No PR, main merge, full product suite or Android/device validation.
+- Live paid-provider send/regenerate/reenter/probe/vector/recall, populated real Memory, executing Agent, active Experience Epoch changes, rendered Workspace/evaluation/Preview UI and actual client human approval UX remain unverified end-to-end. API/fixture/unit evidence must not be upgraded to these claims.
+- Approved Plan v1.1 unchanged. Same Record and task-owned live HANDOFF refreshed. Product feature stays separate. Phase 5 has not begun.
+- Next explicit continuation: **Phase 5 — High-risk Operations / Package / Agent Delegation** only; preserve Phase 4 authorization/receipt/guard authority, verify destructive scope and Agent escalation boundaries, persist the same Record/HANDOFF, and stop before Phase 6.
