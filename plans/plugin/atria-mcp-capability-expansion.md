@@ -3,7 +3,7 @@
 **Task ID:** `plugin/atria-mcp-capability-expansion`  
 **Primary Workspace:** `plugin`  
 **Plan Workspace:** `docs`  
-**Status:** Discussion Draft v0.10  
+**Status:** Discussion Draft v0.11  
 **Current implementation baseline:** `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`  
 **Implementation path:** `plugin:atria-mcp/`
 
@@ -1278,7 +1278,128 @@ Legacy/general API areas such as Settings, Chats, Characters and other user-stat
 Capability expansion happens by adding controlled authorities, not by removing the generic API boundary.
 
 
-## 17. Diagnostic workflow target
+
+
+## 17. MCP tool-surface consolidation
+
+The final MCP surface should not expose one top-level MCP tool per product action.
+
+The preferred design is a compact fixed tool set backed by a typed Semantic Action Registry.
+
+### 17.1 Semantic Action Registry
+
+Atria product actions are registered under stable semantic IDs such as:
+
+- `chat.send`;
+- `chat.regenerate`;
+- `build.source.read`;
+- `build.change.evaluate`;
+- `build.change.apply`;
+- `library.revision.create`;
+- `library.revision.delete`;
+- `package.install.preflight`;
+- `package.install`;
+- `memory.node.edit`;
+- `memory.node.delete`;
+- `agent.run.start`;
+- `agent.run.stop`;
+- `settings.patch`;
+- `connection.probe`;
+- `diagnostics.incident.create`.
+
+Every registered action has explicit metadata including domain, semantic risk, owning authority, schemas, side effects, availability and applicable safety/concurrency requirements.
+
+This remains a strongly typed semantic product layer. It is not equivalent to arbitrary endpoint dispatch.
+
+### 17.2 Four risk executors
+
+Semantic product actions are invoked through four fixed MCP tools:
+
+- `atri_read`;
+- `atri_interact`;
+- `atri_mutate`;
+- `atri_destructive`.
+
+The selected executor must match the registered action risk class.
+
+Examples:
+
+- `atri_read(action="build.source.read", ...)`;
+- `atri_mutate(action="chat.send", ...)`;
+- `atri_destructive(action="session.delete", ...)`.
+
+A lower-risk executor cannot invoke a higher-risk action, and a destructive action cannot be hidden inside `atri_mutate`.
+
+The executor tools can therefore expose accurate MCP read-only/destructive annotations while the Action Registry carries the finer Atria-specific policy.
+
+### 17.3 Capability discovery
+
+`atri_capabilities` is the semantic discovery surface.
+
+It should support:
+
+- full-text/action-ID search;
+- domain filtering;
+- risk filtering;
+- exact action detail/schema lookup;
+- availability/reason reporting.
+
+The model should discover relevant actions on demand rather than receiving the entire product action catalog in every prompt.
+
+### 17.4 Development/browser tools remain first-class
+
+Not every capability belongs in the semantic executors.
+
+Repository/Git/artifact/API observation and browser instrumentation remain dedicated MCP tools because they have distinct execution/input/output models.
+
+The target fixed surface is approximately:
+
+- `atri_status`;
+- `atri_capabilities`;
+- `atri_reference`;
+- repository/Git/artifact/native-API observation tools;
+- `atri_diagnose_snapshot`;
+- focused browser lifecycle/observation/interaction tools;
+- four semantic risk executors.
+
+The exact final count may vary, but the target is roughly the high teens rather than dozens of per-action MCP tools.
+
+### 17.5 Repository and API consolidation
+
+Source read/search should evolve toward a repository-oriented tool surface capable of tree/read/search rather than preserving the historical narrow source-only vocabulary as the only entry point.
+
+The generic Native API foundation should support discovery/detail/read-oriented requests, but it should not remain a generic state-changing escape hatch once semantic actions exist.
+
+Important product writes must flow through the Semantic Action Registry so authorization/risk/receipt rules cannot be bypassed through arbitrary POST/PUT/DELETE endpoint calls.
+
+### 17.6 Browser stays separate
+
+Browser navigation, observation, screenshots and interaction remain dedicated `atri_browser_*` instrumentation rather than being folded into semantic product executors.
+
+Browser is an observation/verification device with Playwright-specific concerns such as selectors, frames, viewport, image output and navigation lifecycle.
+
+It must still obey the previously frozen rule that generic UI interaction cannot bypass stricter semantic authorization for recognized product operations.
+
+### 17.7 Registry as policy center
+
+The Action Registry is not merely a tool-count optimization.
+
+It becomes the shared source of truth for:
+
+- action identity and schema;
+- risk classification;
+- authorization requirements;
+- side-effect/cost metadata;
+- product authority ownership;
+- concurrency/evaluation/reference-safety requirements;
+- capability-lease checks;
+- delegated Agent authority;
+- operation-receipt metadata/audit.
+
+This keeps authorization behavior consistent across domains rather than duplicating custom policy in dozens of independent MCP tools.
+
+
+## 18. Diagnostic workflow target
 
 A successful end-state workflow should allow an AI to move through evidence such as:
 
@@ -1292,7 +1413,7 @@ For chat/generation issues it should support:
 
 `Session/message state -> relevant runtime/config -> authorized test message -> generation/UI result -> diagnostics -> source diagnosis -> authorized cleanup when requested`
 
-## 18. Non-goals currently frozen
+## 19. Non-goals currently frozen
 
 This expansion is not intended to:
 
@@ -1303,12 +1424,12 @@ This expansion is not intended to:
 - bypass Native Session, Studio/ProjectStore, Library, Package or other Atria ownership rules;
 - grant unattended destructive control over user data.
 
-## 19. Open design topics
+## 20. Open design topics
 
 The following remain intentionally unresolved and should be settled through further discussion before implementation planning:
 
 - concrete representation/storage of the accepted capability policy and leases;
-- final MCP tool-surface consolidation, naming, grouping and discovery strategy;
+- concrete Semantic Action Descriptor schema, capability-lease representation and operation-receipt format;
 - the exact threshold for promoting a generic Native API operation into a dedicated semantic MCP tool;
 - detailed artifact roots/types and bounded inspection rules;
 - detailed client UX/naming for branch-derived message cleanup and re-entry;
@@ -1317,7 +1438,7 @@ The following remain intentionally unresolved and should be settled through furt
 - audit/evidence returned for authorized actions;
 - compatibility and migration strategy from the current `--allow-writes` switch.
 
-## 20. Discussion workflow
+## 21. Discussion workflow
 
 During the design discussion phase:
 
