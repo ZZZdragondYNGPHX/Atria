@@ -8,10 +8,10 @@
 - Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
 - Baseline: **Implementation Baseline v1.0**
 - Compatibility Strategy: **Hard Cut / Clean Break**
-- Current Stage: **Phase 4 — Conversation / Session / Prose**
-- Status: **Completed — Phase 5 ready; stopped at phase boundary**
+- Current Stage: **Phase 6 — Script Sandbox / Canvas**
+- Status: **Completed — Phase 7 ready; stopped at phase boundary**
 - Main Baseline: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`
-- Task Branch HEAD: `d96bb5cfcf7690a382961058873c183e965d7298`
+- Task Branch HEAD: `99018afb750fc651c0d00f4d56a5bb946b8408e7`
 
 This Record is the permanent implementation history for the multi-stage Native Frontend v3 refactor. Each completed Phase must append/update its checkpoint here; do not create a separate Record per Phase.
 
@@ -686,3 +686,154 @@ Use the current compiler/renderer/typed Bridge/Frame Scheduler/NodeRefs/media an
 boundary seams. VM restart must preserve Authority; Canvas accepts safe Media
 handles only. No implementation of Phase 6 or Phase 7+ has started. Live HANDOFF
 contains the next-stage direct-copy prompt and the current exact refs.
+
+---
+
+## Phase 6 — Script Sandbox / Canvas
+
+### Checkpoint and start state
+
+- Start HEAD: `cfe7ee99aa96bba7d351f95fea05a8bc4264f42a`.
+- End / Tested / Pushed HEAD: `99018afb750fc651c0d00f4d56a5bb946b8408e7`.
+- Commit: `feat(frontend): implement isolated script runtime and canvas buffers`.
+- Task branch remains `refactor/native-frontend-runtime-v3`; no main merge or
+  branch deletion. Main baseline remains `191f9f951ccb23cd11d8951e539b8ff6eb8316db`.
+- Began with `git fetch --all --prune`; both task and existing docs worktrees
+  were clean. Fast-forwarded the local task from `0d6fb0499` to Phase 5 and docs
+  from `b588ba994` to `384fd59afd2cfa440e02ee2bfba6faec13c0fb9c`.
+- Read AGENTS, full Governance, HANDOFF, frozen Plan and this Record in order.
+  No reference branch was read, no Gap Review or architecture redesign occurred,
+  and no Phase 7 implementation was started. Baseline v1.0 remains unchanged.
+
+### Implementation completed
+
+1. Added strict `.aui` Controller declarations and `script:<ComponentId>` exact
+   artifacts. TypeScript transpiles author JS/TS to strict ES2020 CommonJS; a
+   package-local static linker bundles explicit relative `.js`/`.ts` modules.
+   Artifacts contain code, closed import links, original source digests and
+   per-module source maps. Source budgets, graph cycles, dynamic imports, bare/
+   remote/Node dependencies and forbidden runtime globals fail closed. Installed
+   validation independently checks syntax and closure, including rehashed input.
+   The existing Build/Preview/install/Runtime-resource path is reused; consumed
+   author modules are removed from Runtime output and never executed by install.
+2. Selected QuickJS `0.32.0` (the pinned quickjs-emscripten adapter and embedded
+   browser release variant) inside a dedicated Supervisor Worker. Worker thread
+   failure/termination and VM guest heap/global isolation have separate roles.
+   There is no browser-realm eval of Package code. Guest dynamic function
+   constructors are removed, including async/generator constructor escape paths;
+   browser/network/storage/DOM/WASM APIs are not injected. Host-internal WASM
+   implements the VM and does not expose the future `frontend-wasm` capability.
+3. Added Controller `init/event/update` ABI with readonly snapshots, schema-checked
+   component state, declared emits, Component `uses` Bridge handles, scoped fixed
+   services, safe NodeRefs, opaque MediaHandles, UI clock/random, timer/frame/yield.
+   All reads/actions/operations reuse the existing typed Bridge; actions retain
+   target/schema/revision/idempotency checks and Tasks retain their existing
+   Lifecycle/SessionCore scheduler authority. Script receives no raw DB or KV.
+4. Added guest heap/stack, cooperative execution and hard Worker watchdog limits,
+   aggregate Experience execution accounting, static module/message/queue limits,
+   outstanding async and live-operation quotas. Operation reservations count
+   before asynchronous starts complete. Main serializes Worker messages, drops
+   stale generation completions, and terminates a stuck Worker independently.
+5. Budget/engine failures rebuild at most twice from Host-held props/component
+   state. Worker restart does not reload SessionCore, alter Authority Epoch or
+   replay pending writes. Recovery init/continuations cannot invoke Actions,
+   Operations or parent emits; new user events carry bounded, revocable intent
+   tokens through async continuations. Existing authoritative Tasks remain under
+   their original Host lifecycle. Optional failures/resource unavailability keep
+   declarative fallback; ordinary required exceptions use local/root boundaries;
+   repeated required engine/budget failure escalates to the Host View surface.
+6. Added semantic Canvas nodes and retained/batched Drawing Command Buffers.
+   Host validates the complete command batch and opaque image handles, coalesces
+   frames with the existing scheduler and enforces an Experience pixel quota.
+   No raw Canvas context, per-draw-call RPC, URL image sink or readback enters the
+   VM. Map/relationship layout and animation use package-local pure algorithms.
+   Media acquisition requires an allowed `host.media.resolve` Read and uses the
+   existing exact/remote/fallback policy. Media permission changes clear handles
+   and already-drawn buffers; VM revocation releases pointer capture and images.
+7. Runtime exceptions map to TS/JS source file/line/column, including the first
+   relevant vendor stack frame. Compile errors also carry source coordinates.
+   `/atria-script.bundle.js` is a normal webpack entry with source/dependency
+   fingerprint caching and prebuilt-bundle completeness checks. No generated
+   engine bytes or other binaries are committed.
+8. Documented authoring/ABI/budgets/recovery in the existing frontend-v3 README.
+   Added compiler/VM/supervisor tests, real SessionCore Bridge and formal package
+   roundtrip cases, representative fixtures, and real Edge browser scenarios.
+   An unmodified installed third-party `droll` pure JS algorithm is copied into
+   an in-memory package-local vendor module by the test, compiled and executed
+   in QuickJS; this is not merely an authored algorithm labeled third-party.
+
+### Decisions, bounds and deliberate limits
+
+- Host policy: 16 simultaneous Controllers, 8 MiB guest heap + 256 KiB guest
+  stack per Controller; 40ms cooperative invocation deadline, 1s hard Worker
+  watchdog, 10s cold engine/module startup watchdog; 2s reported execution per
+  10s Experience window. Native VM operations can outlast an interrupt checkpoint
+  but remain terminable by the Worker watchdog. Guest heap bounds do not include
+  browser/Worker/WASM implementation overhead.
+- 64 modules / 512 KiB source and compiled-code budgets; 128 KiB messages/batches;
+  64 queue entries; 32 outstanding async requests; 4 live/pending Operations per
+  Controller. No new operation scheduler or durable authority was introduced.
+- Canvas: 2048 commands, 2048px per dimension, 32 save levels, at most 16 active
+  surfaces and 8M retained pixels per Experience. Closed finite-number commands,
+  hex colors and bounded text; no arbitrary context call, gradients, pixel
+  readback, WebGL or Package WASM. These bounds cover the representative map and
+  relationship/animation acceptance without opening later extension scope.
+- Scripts use explicit file-extension imports and a default Controller object.
+  JS/TS transpilation is not full TS semantic type-checking. Unsupported modules
+  fail at compile/install rather than falling back to ambient browser execution.
+- Node ABI currently exposes measure and owned pointer capture/release. Frames
+  return `{time, animation}` using the existing visibility/reduced-motion policy;
+  authors should honor `animation: false`. Props changes trigger `update`; other
+  callbacks/settlements receive current presentation snapshots.
+- VM restarts preserve Host component state and Bridge scope, not guest heap.
+  Automatic replay is blocked. The latest 64 user-event intents are retained per
+  generation. Live Operations continue to count until terminal status is observed;
+  rebuilding a VM does not silently cancel or reissue an authoritative Task.
+- MediaHandles contain no URL/bytes, and requests/handles/buffers are revoked on
+  VM/media changes independently of Authority Epoch. Source maps refer to source
+  paths and digests without embedding original author text in Runtime maps.
+
+### Verification actually executed
+
+Local Windows / **Node v24.16.0** / Edge headless. This environment's Node version
+differs from the earlier Phase 5 environment; no claim of v24.18.0 was carried over.
+
+- Broad Jest pattern `native`: **116 suites / 1790 tests passed**, FS and SQLite
+  included; MySQL/PostgreSQL excluded with the existing environment switches.
+- Adjacent `game-runtime`, `atria-shell`, webpack cache and startup telemetry:
+  **108 suites / 743 tests passed**.
+- Subsequent focused compile/Script/Bridge/Media regression:
+  **4 suites / 90 tests passed**. Broad runs preceded the final small media
+  revocation, optional-resource fallback, diagnostic and pointer cleanup changes;
+  this Record does not claim a full rerun on the final commit.
+- After final budget assertions: complete Script suite **26 tests passed** on
+  the final source. This includes unmodified `droll`, actual QuickJS runaway and
+  heap exhaustion, constructor escapes, message/outstanding caps, hard watchdog,
+  async revocation, restart/fallback, Operation reservations and Canvas quotas.
+- Final Edge Script smoke: **12 scenarios passed**: six Component/Hybrid/Full at
+  1440px/390px, plus entry/vendor source mapping, scoped Node/Media denial,
+  optional repeated failure, optional missing resource and real image-handle
+  drawing/revocation. Inspected the rendered mobile Full relationship map.
+- Adjacent Edge: **6 presentation + 6 Bridge + 6 Conversation + 6 Phase 5 media**
+  scenarios passed. Phase 5 initially failed because detached-canvas recording
+  emitted a header-only WebM on this headless Chromium (`DEMUXER_ERROR_COULD_NOT_OPEN`).
+  The test fixture now attaches the canvas, waits for MediaRecorder start, and
+  paints changing frames before stop; the complete six-scenario rerun passed.
+  No product video decoder behavior was changed to hide the failure.
+- Root `npm run lint`, final changed-code/test ESLint, final webpack build and
+  staged `git diff --check` passed. Task-only diagnostic script/logs cleaned up;
+  screenshots remain local, ignored evidence. No generated binary was staged.
+- No remote CI, physical IME/soft keyboard, Android/Termux/device, other browser,
+  production-user Session, external media-server or real-provider E2E claim.
+  Media/bridge smoke uses deterministic fixtures and real browser rendering.
+
+### Remaining scope / next checkpoint
+
+**Phase 6 acceptance complete. Stop before Phase 7.**
+
+Phase 7 — **Studio / AI Authoring**: follow the unchanged Plan for native `.aui`
+editing, format-preserving structured edits, Source Graph/editor surfaces,
+Preview using the same Compiler/Renderer, source diagnostics, AI semantic patch
+surface, permission/feature visibility and accessibility/localization/Health.
+Do not edit derived IR, create a second Preview runtime, repeat architecture
+review, or begin Phase 8. HANDOFF contains the direct-copy Phase 7 prompt.
