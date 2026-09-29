@@ -5,16 +5,18 @@ import { AtriaBrowser } from './browser.js';
 import { apiUrl, routeMatches, redact } from './policy.js';
 import { RepositoryObservation } from './repository.js';
 import { ActionRegistry, PolicyCeiling, RiskExecutor, ReceiptStore, RISKS } from './kernel.js';
+import { Provenance } from './provenance.js';
+import { BROWSER_ADAPTERS } from './capability-bridge.js';
 
-export const GUIDE = `Atria MCP 0.2.0 — Phase 1 repository observation and kernel.
+export const GUIDE = `Atria MCP 0.2.0 — Phase 2 provenance and fixed adapter infrastructure.
 Start with atri_status. Use atri_repo for tree/read/search, atri_git for read-only
 Git evidence and atri_artifact for bounded development artifacts. Discover Native
 APIs with atri_api operation=list/detail/read; only GET requests are available.
-Use atri_capabilities for exact semantic descriptors/schemas. Phase 1 does not
+Use atri_capabilities for exact semantic descriptors/schemas. Phase 2 does not
 implement product semantic actions, trusted approvals, leases or product mutations.
 Edit source and run builds using the client's normal development tools.
 Use atri_browser_open/observe/screenshot/diagnostics for actual browser evidence.
-Source ↔ Runtime ↔ Browser identity is UNVERIFIABLE in Phase 1: do not claim that
+Source ↔ Runtime ↔ Browser identity can be EXACT, mismatched or UNVERIFIABLE: do not claim that
 current source changes were runtime/UI verified without an established identity chain.
 Native Session owns committed immutable Timeline; GenerationProjection is ephemeral.
 Build is the semantic namespace; Native Studio owns source/revisions/frontend graph,
@@ -39,6 +41,13 @@ export async function createServer(config) {
     // Discovery parses raw checked-in code internally; externally returned source uses the shared policy.
     catalog.read = (path, startLine = 1, lineCount = 120) => repository.read({ path, startLine, lineCount });
     const browser = new AtriaBrowser(config);
+    const provenance = new Provenance(config.repo, browser);
+    const observed = async (result, captured = null) => {
+        await Promise.all([...browser.pendingEvidence]);
+        const identity = await provenance.snapshot();
+        const stable = captured === JSON.stringify([browser.documentGeneration, browser.scopedEvidence]);
+        return { ...result, provenance: identity, evidenceInterval: captured === null ? 'NOT_MEASURED' : stable ? 'STABLE' : 'SCOPE_CHANGED_DURING_CAPTURE' };
+    };
     const registry = new ActionRegistry();
     const ceiling = new PolicyCeiling(registry);
     const executor = new RiskExecutor(registry, ceiling);
@@ -58,15 +67,15 @@ export async function createServer(config) {
             queue = pending.catch(() => {}); return pending;
         });
     };
-    const status = async () => ({ product: await catalog.status(), origin: config.url,
+    const status = async () => { const identity = await provenance.snapshot(); return { product: await catalog.status(), origin: config.url,
         browser: { started: Boolean(browser.context), headed: config.headed, channel: config.channel ?? 'chromium' },
-        policyCeiling: ceiling.describe(), phase: 1, productMutationAvailable: false,
-        authenticationStateLoaded: Boolean(config.storageState), runtimeSourceMatch: 'UNVERIFIABLE',
-        runtimeIdentityReason: 'Runtime/source/browser binding is deferred to Phase 2; canonical serverBootId will be reused.' });
-    tool('atri_status', 'Configured checkout, browser and Phase 1 availability; no runtime identity claim.', {}, async () => text(await status()));
-    tool('atri_capabilities', 'Search semantic registry or retrieve exact action descriptor/schema. Product actions are not yet registered in Phase 1.', {
+        policyCeiling: ceiling.describe(), phase: 2, productMutationAvailable: false,
+        authenticationStateLoaded: Boolean(config.storageState), runtimeSourceMatch: identity.runtimeSourceMatch,
+        provenance: identity, fixedBrowserAdapters: BROWSER_ADAPTERS, adaptersRegistered: false }; };
+    tool('atri_status', 'Configured source/server/browser provenance and separate observed Experience/Preview scopes.', {}, async () => text(await status()));
+    tool('atri_capabilities', 'Search semantic registry or retrieve exact action descriptor/schema. Product actions are not yet registered in Phase 2.', {
         action: bounded().optional(), query: z.string().max(200).default(''), domain: bounded().optional(), risk: z.enum(RISKS).optional(), ...page,
-    }, async args => text({ policyCeiling: ceiling.describe(), result: registry.discover(args), phase: 1 }));
+    }, async args => text({ policyCeiling: ceiling.describe(), result: registry.discover(args), phase: 2 }));
     tool('atri_repo', 'Repository-wide tracked and safe non-ignored untracked tree/read/literal search. Product/user data and secrets denied independently of gitignore.', {
         operation: z.enum(['tree', 'read', 'search']), ...files,
     }, async args => text(await (args.operation === 'tree' ? repository.list(args) : args.operation === 'read' ? repository.read(args) : repository.search(args))));
@@ -96,42 +105,47 @@ export async function createServer(config) {
         apiUrl(config, args.path, args.parameters);
         if (!result.routes.some(r => r.method === 'GET' && !r.blocked && routeMatches(r.path, args.path))) throw new Error('Not a discovered permitted Native GET route.');
         const response = await browser.request({ path: args.path, query: args.parameters });
-        return { ...text(response), ...(!response.ok ? { isError: true } : {}) };
+        return { ...text(await observed(response)), ...(!response.ok ? { isError: true } : {}) };
     });
     tool('atri_reference', 'Read Atria-owned authenticated Native authoring contracts; omit id to search directory.', {
         id: z.string().regex(/^[a-z0-9-]+$/).max(100).optional(), query: z.string().max(200).default(''), offset: page.offset,
         limit: z.number().int().min(1).max(24000).default(12000),
     }, async ({ id, query, offset, limit }) => {
         const response = await browser.request({ path: '/api/native/extensions/catalog' + (id ? '/' + id : ''), query: id ? { offset, limit } : { query } });
-        return { ...text(response), ...(!response.ok ? { isError: true } : {}) };
+        return { ...text(await observed(response)), ...(!response.ok ? { isError: true } : {}) };
     });
-    tool('atri_diagnose_snapshot', 'Phase 1 local/browser snapshot; product diagnostics and provenance explicitly unavailable until their owning phases.', {}, async () => text({
+    tool('atri_diagnose_snapshot', 'Local/browser provenance snapshot; full product diagnostics remain Phase 3.', {}, async () => text({
         status: await status(), browser: browser.diagnostics(),
-        runtimeIdentity: { status: 'unavailable', reason: 'Phase 2' }, productDiagnostics: { status: 'unavailable', reason: 'Phase 3' },
+        productDiagnostics: { status: 'unavailable', reason: 'Phase 3' },
         activeAuthorityIdentity: { status: 'unavailable', reason: 'Product adapters not implemented' },
     }));
     tool('atri_browser_open', 'Open/reload isolated Atria page. For manual authentication use --headed.', {
         path: bounded(2000).default('/'), reload: z.boolean().default(false), width: z.number().int().min(280).max(2560).optional(),
         height: z.number().int().min(240).max(2160).optional(), waitFor: bounded().optional(),
-    }, async args => text(await browser.open(args)));
+    }, async args => text(await observed(await browser.open(args))));
     tool('atri_browser_observe', 'Snapshot, wait or resize the MCP-owned browser; use screenshots for rendered appearance.', {
         operation: z.enum(['snapshot', 'wait', 'resize']).default('snapshot'), frame, selector: bounded().default('body'),
         state: z.enum(['visible', 'hidden', 'attached', 'detached']).default('visible'), timeout: z.number().int().min(1).max(60000).default(30000),
         width: z.number().int().min(280).max(2560).optional(), height: z.number().int().min(240).max(2160).optional(),
     }, async args => {
         if (args.operation === 'resize' && (!args.width || !args.height)) throw new Error('Resize requires width and height.');
-        return text(await browser[args.operation](args));
+        return text(await observed(await browser[args.operation](args)));
     });
     tool('atri_browser_screenshot', 'Return bounded JPEG screenshot of viewport or selector/frame.', {
         frame, selector: bounded().optional(), fullPage: z.boolean().default(false),
-    }, async args => { const image = await browser.screenshot(args); return { content: [{ type: 'image', data: image.bytes.toString('base64'), mimeType: image.mimeType }] }; });
-    tool('atri_browser_interact', 'Phase 1 permits observation scrolling only; click/fill/press/select fail closed until authorization exists.', {
+    }, async args => {
+        await browser.readyPage();
+        const captured = JSON.stringify([browser.documentGeneration, browser.scopedEvidence]);
+        const image = await browser.screenshot(args);
+        return { content: [{ type: 'image', data: image.bytes.toString('base64'), mimeType: image.mimeType }, ...text(await observed({}, captured)).content] };
+    });
+    tool('atri_browser_interact', 'Phase 2 permits observation scrolling only; click/fill/press/select fail closed until authorization exists.', {
         action: z.enum(['click', 'fill', 'press', 'select', 'scroll']), selector: bounded().optional(), value: z.string().max(12000).optional(), frame,
         x: z.number().int().min(-4000).max(4000).default(0), y: z.number().int().min(-4000).max(4000).default(600),
-    }, async args => text(await browser.act(args)), 'INTERACT');
-    tool('atri_browser_diagnostics', 'Read/clear only MCP-owned ephemeral browser diagnostics, never product logs.', { clear: z.boolean().default(false) }, async ({ clear }) => text(browser.diagnostics(clear)));
+    }, async args => text(await observed(await browser.act(args))), 'INTERACT');
+    tool('atri_browser_diagnostics', 'Read/clear only MCP-owned ephemeral browser diagnostics, never product logs.', { clear: z.boolean().default(false) }, async ({ clear }) => text(await observed(browser.diagnostics(clear))));
     tool('atri_browser_close', 'Close only the MCP-owned browser and discard its ephemeral state.', {}, async () => { await browser.close(); return text({ closed: true }); });
-    for (const risk of RISKS) tool('atri_' + risk.toLowerCase(), `Execute registered ${risk} action with exact risk matching. Phase 1 has no product action adapters.`, {
+    for (const risk of RISKS) tool('atri_' + risk.toLowerCase(), `Execute registered ${risk} action with exact risk matching. Phase 2 has no product action adapters.`, {
         action: bounded(), input: z.record(z.string(), z.json()).default({}),
     }, async args => text(await executor.execute(risk, args)), risk);
     server.registerResource('atria-guide', 'atria://guide', { description: 'Workflow and authority boundaries', mimeType: 'text/plain' }, async uri => ({ contents: [{ uri: uri.href, mimeType: 'text/plain', text: GUIDE }] }));

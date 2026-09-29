@@ -35,7 +35,7 @@ export {router};`);
     } };
 }
 
-export async function httpFixture() {
+export async function httpFixture({ runtime = null, script = '' } = {}) {
     let writes = 0;
     let redirects = 0;
     const html = `<!doctype html><html><head><title>Atria MCP fixture</title><style>
@@ -47,10 +47,12 @@ body{font:18px system-ui;background:#142125;color:#e9f6f2;margin:32px}button,inp
 <button id="show" onclick="document.querySelector('#result').textContent='Changed frontend visible'">Show change</button><p id="result">Initial frontend</p>
 <iframe title="Preview" srcdoc="<h2>Embedded Atria preview fixture</h2><button id='frame-button' onclick='this.textContent=&quot;Frame changed&quot;'>Update frame</button>"></iframe>
 <a id="external" href="https://example.invalid/">External navigation</a></main>
-<script>console.warn('fixture warning token=do-not-leak');fetch('/missing');</script></body></html>`;
+<script>console.warn('fixture warning token=do-not-leak');fetch('/missing');${script}</script></body></html>`;
     const server = createServer(async (req, res) => {
         const url = new URL(req.url, 'http://127.0.0.1');
         const json = (status, data) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(data)); };
+        if (runtime) res.setHeader('X-Atria-Server-Boot-Id', runtime.serverBootId);
+        if (url.pathname === '/api/diagnostics/runtime-identity') return json(runtime ? 200 : 404, runtime ?? {});
         if (url.pathname === '/') { res.writeHead(200, { 'content-type': 'text/html' }); return res.end(html); }
         if (url.pathname === '/login') { res.setHeader('set-cookie', 'auth=fixture-user; HttpOnly; SameSite=Strict; Path=/'); return json(200, { ok: true }); }
         if (url.pathname === '/csrf-token') { res.setHeader('set-cookie', 'csrfSession=fixture-session; HttpOnly; SameSite=Strict; Path=/'); return json(200, { token: 'fixture-token' }); }
@@ -73,7 +75,7 @@ body{font:18px system-ui;background:#142125;color:#e9f6f2;margin:32px}button,inp
         json(404, { error: 'not_found' });
     });
     await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-    return { origin: `http://127.0.0.1:${server.address().port}`, stats: () => ({ writes, redirects }), close: async () => {
+    return { origin: `http://127.0.0.1:${server.address().port}`, setRuntime: value => { runtime = value; }, stats: () => ({ writes, redirects }), close: async () => {
         server.closeAllConnections(); await new Promise(resolve => server.close(resolve));
     } };
 }

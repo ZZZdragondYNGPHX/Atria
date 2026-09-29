@@ -1,6 +1,6 @@
 // Opt-in real-product smoke. Starts the configured Atria checkout with fresh,
 // disposable data; never opens or copies the developer's personal data directory.
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { createServer } from 'node:net';
 import { mkdtemp, mkdir, readFile, writeFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -12,6 +12,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { redact } from '../src/policy.js';
 import { SourceCatalog } from '../src/catalog.js';
+import { readSourceIdentity, compareSource } from '../src/provenance.js';
 
 const toolRoot = fileURLToPath(new URL('../', import.meta.url));
 const repo = process.env.ATRIA_REPO;
@@ -31,7 +32,13 @@ let server;
 let client;
 let log = '';
 let stderr = '';
-try {
+async function stopServer() {
+    if (!server || server.exitCode !== null) return;
+    const exited = new Promise(resolve => server.once('exit', resolve));
+    server.kill(); await Promise.race([exited, delay(10000)]);
+    if (server.exitCode === null) { server.kill('SIGKILL'); await exited; }
+}
+async function startServer() {
     server = spawn(process.execPath, [join(catalog.root, 'server.js'), `--port=${port}`,
         `--dataRoot=${join(scratch, 'data')}`, `--configPath=${config}`, '--browserLaunchEnabled=false',
         '--listen=false', '--whitelist=127.0.0.1', '--disableCsrf=false'], {
@@ -46,6 +53,12 @@ try {
         if (Date.now() > deadline) throw new Error(`Atria readiness timed out: ${log.slice(-8000)}`);
         await delay(500);
     }
+}
+try {
+    await startServer();
+    const bundle = await fetch(origin + '/lib.core.bundle.js', { signal: AbortSignal.timeout(15000) });
+    assert.equal(bundle.status, 200, 'Real frontend bundle must be available before claiming a product UI smoke');
+    await bundle.body?.cancel();
     const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('ATRIA_')));
     const transport = new StdioClientTransport({ command: process.execPath,
         args: [join(toolRoot, 'src', 'cli.js'), '--repo', catalog.root, '--url', origin, ...(process.env.ATRIA_TEST_BROWSER_CHANNEL ? ['--browser-channel', process.env.ATRIA_TEST_BROWSER_CHANNEL] : [])], env, stderr: 'pipe' });
@@ -69,6 +82,8 @@ try {
     };
     const json = result => JSON.parse(result.content.find(item => item.type === 'text').text);
     const status = json(await call('atri_status'));
+    assert.equal(status.runtimeSourceMatch, 'EXACT', JSON.stringify(status.provenance));
+    assert.equal(status.provenance.browserFreshness, 'UNVERIFIABLE');
     const routes = json(await call('atri_api', { operation: 'list', limit: 100 }));
     const refs = json(await call('atri_reference'));
     assert.equal(refs.status, 200);
@@ -78,8 +93,10 @@ try {
     const projects = json(await call('atri_api', { operation: 'read', path: '/api/native/studio/projects' }));
     assert.equal(projects.status, 200);
     await call('atri_browser_open', { width: 1440, height: 1000 });
-    // Phase 1 cannot dismiss onboarding or create/alter Studio projects.
+    // Phase 2 cannot dismiss onboarding or create/alter Studio projects.
     const desktop = json(await call('atri_browser_observe'));
+    assert.equal(desktop.provenance.browserFreshness, 'CURRENT');
+    assert.equal(desktop.provenance.runtimeSourceMatch, 'EXACT');
     await writeFile(join(artifacts, 'desktop-snapshot.json'), JSON.stringify(desktop, null, 2));
     const saveImage = async name => {
         const image = (await call('atri_browser_screenshot')).content.find(item => item.type === 'image');
@@ -90,21 +107,48 @@ try {
     const mobile = json(await call('atri_browser_observe', { operation: 'resize', width: 390, height: 844 }));
     await writeFile(join(artifacts, 'mobile-snapshot.json'), JSON.stringify(mobile, null, 2));
     await saveImage('mobile');
+    let changedSource = 'not requested', differentRevision = 'not requested';
+    if (process.env.ATRIA_VERIFY_SOURCE_CHANGE === '1') {
+        const dirty = execFileSync('git', ['-C', catalog.root, 'status', '--porcelain'], { encoding: 'utf8' });
+        assert.equal(dirty, '', 'Source mutation verification requires a clean disposable checkout');
+        const target = join(catalog.root, 'package.json'), original = await readFile(target), changed = Buffer.concat([original, Buffer.from('\n')]);
+        await writeFile(target, changed);
+        try {
+            const evidence = json(await call('atri_status'));
+            assert.equal(evidence.runtimeSourceMatch, 'SOURCE_CHANGED_SINCE_RUNTIME_START');
+            assert.equal(evidence.provenance.server.source.fingerprint, status.provenance.server.source.fingerprint, 'Startup identity is immutable');
+            changedSource = evidence.runtimeSourceMatch;
+        } finally {
+            assert.deepEqual(await readFile(target), changed, 'Concurrent source change detected; refusing to overwrite it');
+            await writeFile(target, original);
+        }
+        assert.equal(json(await call('atri_status')).runtimeSourceMatch, 'EXACT');
+    }
+    if (process.env.ATRIA_COMPARE_REPO) {
+        differentRevision = compareSource(await readSourceIdentity(process.env.ATRIA_COMPARE_REPO), status.provenance.server);
+        assert.equal(differentRevision, 'DIFFERENT_REVISION');
+    }
+    await stopServer(); await startServer();
+    const restarted = json(await call('atri_status'));
+    assert.notEqual(restarted.provenance.server.serverBootId, status.provenance.server.serverBootId);
+    assert.equal(restarted.provenance.browserFreshness, 'STALE');
+    assert.equal(restarted.runtimeSourceMatch, 'EXACT');
+    await call('atri_browser_open', { reload: true });
+    const reloaded = json(await call('atri_status'));
+    assert.equal(reloaded.provenance.browserFreshness, 'CURRENT');
     const diagnostics = json(await call('atri_browser_diagnostics'));
     await call('atri_browser_close');
     const summary = { source: status.product, routes: routes.total, unsupported: routes.unsupported,
         references: refs.data.references.length, projectsStatus: projects.status, desktopTitle: desktop.title,
-        mobileViewport: mobile.viewport, runtimeSourceMatch: status.runtimeSourceMatch, scope: 'Phase 1 observation only; no Studio/Session mutation or provenance verification', diagnostics, artifacts };
+        mobileViewport: mobile.viewport, runtimeSourceMatch: status.runtimeSourceMatch,
+        provenanceChecks: { changedSource, differentRevision, restart: restarted.provenance.browserFreshness, reload: reloaded.provenance.browserFreshness },
+        runtime: status.provenance.server, restartedRuntime: reloaded.provenance.server,
+        scope: 'Phase 2 real source/server/browser provenance; no real Session Epoch or Studio Preview scenario exercised', diagnostics, artifacts };
     await writeFile(join(artifacts, 'summary.json'), JSON.stringify(summary, null, 2));
     console.log(JSON.stringify(summary, null, 2));
 } finally {
     await client?.close();
-    if (server && server.exitCode === null) {
-        const exited = new Promise(resolve => server.once('exit', resolve));
-        server.kill();
-        await Promise.race([exited, delay(10000)]);
-        if (server.exitCode === null) server.kill('SIGKILL');
-    }
+    await stopServer();
     await writeFile(join(artifacts, 'runtime.log'), redact(log));
     if (stderr) await writeFile(join(artifacts, 'mcp-stderr.log'), redact(stderr));
     const target = await realpath(scratch);

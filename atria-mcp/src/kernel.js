@@ -38,7 +38,7 @@ export class PolicyCeiling {
         this.#ids = new Set(actionIds);
     }
     allows(id) { return this.#ids.has(id); }
-    describe() { return { version: 1, profile: 'phase-1-read-only', eligibleActionIds: [...this.#ids], approvalGrants: false }; }
+    describe() { return { version: 1, profile: 'read-only', eligibleActionIds: [...this.#ids], approvalGrants: false }; }
 }
 export class ReceiptStore {
     #receipts = new Map();
@@ -67,7 +67,7 @@ export class RiskExecutor {
         if (!d.availability.available) throw new Error('Action unavailable: ' + d.availability.reason);
         if (!this.ceiling.allows(action)) throw new Error('Policy Ceiling denied.');
         const parsed = item.inputSchema.parse(input);
-        // No approval/lease implementation or product mutation in Phase 1.
+        // No approval/lease implementation or product mutation in Phase 2.
         if (risk !== 'READ' || d.guards.length || d.externalEffects.length || d.approval !== 'none') throw new Error('Action requires later-phase authorization/guard infrastructure.');
         return redact(item.outputSchema.parse(await item.handler(parsed)));
     }
