@@ -51,8 +51,8 @@ jobs:
           atria-shell/command-registry.test.js
           atria-shell/structure.test.js
           game-runtime/ui-host-surfaces.test.js
-          game-runtime/ui-native-components.test.js
-          game-runtime/ui-live.test.js
+          native/frontend-conversation.test.js
+          native/frontend-presentation.test.js
           game-runtime/ui-full-host.test.js
           native/session-projection.test.js
           native/session-runtime-http.test.js
@@ -80,7 +80,7 @@ jobs:
           public/scripts/atria-shell/utility-workspaces.js
           public/scripts/atria-shell/workspace-host.js
           public/scripts/native/experience/ui/host-surfaces.js
-          public/scripts/native/experience/ui/native-components.js
+          public/scripts/native/frontend/conversation.js
           public/scripts/native/play-controls.js
           public/scripts/native/play-product.js
           public/scripts/native/studio-workspace.js

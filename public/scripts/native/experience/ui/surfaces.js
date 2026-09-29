@@ -1,6 +1,6 @@
-import { EXPERIENCE_SURFACES } from './component-model.js';
+import { FRONTEND_SURFACES } from '../../../../shared/native-frontend-contract.js';
 
-export const GAME_SURFACES = EXPERIENCE_SURFACES;
+export const GAME_SURFACES = FRONTEND_SURFACES;
 
 const SURFACE_SET = new Set(GAME_SURFACES);
 const MOUNT_ID_PATTERN = /^[a-z][a-z0-9._-]{0,63}$/;

@@ -1,7 +1,4 @@
-import { loadNativeGamePackage, loadGamePackageJsonResource, loadExperienceData } from './experience/package-loader.js';
-import { compileUiDocument } from './experience/ui/v2-document.js';
-import { mountUiDocument } from './experience/ui/v2-runtime.js';
-import { createIsolatedExperienceSlots } from './isolated-experience-slots.js';
+import { loadNativeGamePackage } from './experience/package-loader.js';
 
 // Host-owned, mount-scoped HTTP transport. It holds only a disposable display
 // projection; the canonical Session and permission checks stay on the server.
@@ -69,27 +66,18 @@ export function createNativeSharedClient({ owner, sessionId, fetchImpl = (...arg
             const selected = snapshot.packageContentHash;
             const state = await loadNativeGamePackage(sessionId, options); current();
             if (!state.active || state.descriptor?.packageContentHash !== selected || snapshot?.packageContentHash !== selected) throw new Error('native_shared_package_changed');
-            const data = await loadExperienceData(state, options); current();
-            const document = state.runtime.experience.component ? await loadGamePackageJsonResource(state, state.runtime.experience.component, options) : null; current();
-            return { state, data, document };
+            return { state };
         },
         dispose() { controller.abort(); ++sequence; snapshot = null; pending = null; onProjection(null); },
     });
 }
 
-// Reuse the production v2 renderer; no participant-side World/Session clone.
-// The Host chooses DOM surfaces, connection and refresh cadence. P9 owns lobby UI.
+// Shared participation stays in the Host's scoped projection / turn controls.
+// It must not mount a Package renderer with the owner's Session capabilities.
 export async function mountNativeSharedExperience(options) {
-    let mounted = null;
-    const client = createNativeSharedClient({ ...options, onProjection: value => { mounted?.refresh(); options.onProjection?.(value); } });
+    const client = createNativeSharedClient(options);
     try {
         await client.refresh(); const selected = await client.loadPackage();
-        if (selected.document) {
-            const definition = compileUiDocument(selected.document, { mode: selected.state.runtime.experience.mode });
-            mounted = mountUiDocument(definition, { document: options.document, window: options.window, surfaceHost: options.surfaceHost,
-                nativePlayHost: createIsolatedExperienceSlots(options.document, true),
-                environmentRoot: options.environmentRoot, stateStorage: options.stateStorage, data: selected.data, sharedClient: client, realm: client.realmCommand });
-        }
-        return Object.freeze({ client, packageState: selected.state, refresh: client.refresh, dispose() { mounted?.dispose(); mounted = null; client.dispose(); } });
-    } catch (error) { mounted?.dispose(); mounted = null; client.dispose(); throw error; }
+        return Object.freeze({ client, packageState: selected.state, refresh: client.refresh, dispose: client.dispose });
+    } catch (error) { client.dispose(); throw error; }
 }

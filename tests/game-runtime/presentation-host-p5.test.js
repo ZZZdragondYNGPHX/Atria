@@ -5,10 +5,6 @@ import { jest } from '@jest/globals';
 import { createHash, webcrypto } from 'node:crypto';
 import { createNativeLifecycleClient } from '../../public/scripts/native/lifecycle-client.js';
 import { createNativePresentationClient } from '../../public/scripts/native/presentation-client.js';
-import { activateNativeExperienceRuntime } from '../../public/scripts/native/experience/ui/live.js';
-import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
-import { mountUiDocument } from '../../public/scripts/native/experience/ui/v2-runtime.js';
-import { createSurfaceHost } from '../../public/scripts/native/experience/ui/surfaces.js';
 const clients = []; const mounts = [];
 const bytes = new Uint8Array([1, 2, 3, 4]);
 const asset = { assetId: 'asset_' + 'a'.repeat(32), contentHash: createHash('sha256').update(bytes).digest('hex'), size: 4, mediaType: 'image/png' };
@@ -49,10 +45,10 @@ beforeEach(() => {
 afterEach(() => { mounts.splice(0).forEach(item => item.dispose()); clients.splice(0).forEach(item => item.dispose()); jest.restoreAllMocks(); document.body.replaceChildren(); });
 function mount(client) {
     const root = document.createElement('section'); document.body.append(root);
-    const raw = { schemaVersion: 2, stateVersion: 1, localState: {}, preferences: {}, actions: {}, views: [{ id: 'main', surface: 'chat.footer', mount: 'always', root: { id: 'stage', type: 'scene', props: { sceneId: 'stage' } } }] };
-    const ui = mountUiDocument(compileUiDocument(raw, { mode: 'component' }), { document, window, presentation: client, surfaceHost: createSurfaceHost({ resolveSurface: () => root }) }); mounts.push(ui); return root;
+    const scene = document.createElement('section'); scene.className = 'test-scene'; root.append(scene);
+    const ui = client.mountScene(scene, 'stage'); mounts.push(ui); return root;
 }
-test('Scene IR uses actual v2 renderer, exact assets and inert captions; speech has a visible activation button', async () => {
+test('Host SceneCue adapter uses, exact assets and inert captions; speech has a visible activation button', async () => {
     const f = fixture(); await f.client.prepare(f.packageState); const root = mount(f.client); await flush();
     expect(root.querySelector('img').alt).toBe('Harbor view'); expect(root.querySelector('img').src).toContain('contentHash=' + ref.contentHash);
     expect(root.textContent).toContain('Harbor'); expect(root.querySelector('button').textContent).toBe(speech.text);
@@ -101,7 +97,7 @@ test('restart requires explicit resume and no elapsed value derives from mount/W
 });
 test('fullscreen/focus are bounded to mounted scenes and restore prior focus on dispose', async () => {
     const f = fixture(); await f.client.prepare(f.packageState); const before = document.createElement('button'); document.body.append(before); before.focus(); const root = mount(f.client);
-    const scene = root.querySelector('.atri-ui-scene'); scene.requestFullscreen = jest.fn(async () => {}); f.client.focus('stage'); expect(document.activeElement).toBe(root.querySelector('button'));
+    const scene = root.querySelector('.test-scene'); scene.requestFullscreen = jest.fn(async () => {}); f.client.focus('stage'); expect(document.activeElement).toBe(root.querySelector('button'));
     await f.client.fullscreen('stage'); expect(scene.requestFullscreen).toHaveBeenCalledTimes(1);
     window.navigator.userActivation.isActive = false; await expect(f.client.fullscreen('stage')).rejects.toThrow('activation'); f.client.dispose(); expect(document.activeElement).toBe(before);
 });
@@ -113,33 +109,9 @@ test('responsive/reduced-motion projection and gamepad edge/deadzone samples rem
     Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 }); window.dispatchEvent(new Event('resize'));
     expect(f.client.getCapabilities().environment.device).toBe('mobile'); expect(f.lifecycle.command).not.toHaveBeenCalled();
 });
-test('Package UI cannot instantiate private media primitives or two Activity authority writes', () => {
-    const raw = { schemaVersion: 2, stateVersion: 1, localState: {}, preferences: {}, actions: {}, views: [{ id: 'main', surface: 'chat.footer', mount: 'always', root: { id: 'media', type: 'media-cue', props: { cue: media } } }] };
-    expect(() => compileUiDocument(raw, { mode: 'component' })).toThrow('Host-owned');
-    raw.views[0].root = { id: 'root', type: 'text', props: { text: 'ok' } };
-    raw.actions.twice = { steps: [{ op: 'activity.start', args: {} }, { op: 'activity.cancel', args: {} }] };
-    expect(() => compileUiDocument(raw, { mode: 'component' })).toThrow('one typed Command');
-});
 
-test('real Experience activation mounts Scene through the existing v2 SurfaceHost and disposes it', async () => {
-    const f = fixture(); await f.client.prepare(f.packageState);
-    document.body.innerHTML = '<main id="sheld"><div id="chat"></div><div id="form_sheld"><form id="send_form"></form></div></main>';
-    const definition = { schemaVersion: 2, stateVersion: 1, localState: {}, preferences: {}, actions: {},
-        views: [{ id: 'main', surface: 'chat.footer', mount: 'always', root: { id: 'stage', type: 'scene', props: { sceneId: 'stage' } } }] };
-    const state = { ...f.packageState, sessionId: 's', runtime: { experience: { mode: 'component', componentModelVersion: 2, component: 'ui/main.json' } } };
-    const fetchImpl = jest.fn(async () => ({ ok: true, json: async () => definition }));
-    const live = await activateNativeExperienceRuntime(state, null, { document, window, shell: {}, presentation: f.client, fetchImpl });
-    mounts.push(live); await flush();
-    expect(fetchImpl).toHaveBeenCalledWith('/api/native/session/runtime/resource', expect.objectContaining({ method: 'POST' }));
-    const scene = document.querySelector('[data-atria-game-host-surface="chat.footer"] .atri-ui-scene');
-    expect(scene.querySelector('img').alt).toBe('Harbor view');
-    expect(scene.querySelector('.atri-ui-text').textContent).toBe('Harbor');
-    expect(scene.querySelector('button').textContent).toBe(speech.text);
-    expect(f.lifecycle.command).not.toHaveBeenCalled();
-    await live.dispose();
-    expect(document.querySelector('.atri-ui-scene')).toBeNull();
-    expect(() => f.client.presentScene('stage')).toThrow('not_mounted');
-});
+
+
 
 test('temporal projection receives the real Activity identity and elapsed sample', async () => {
     const f = fixture(); await f.client.prepare(f.packageState);
@@ -155,7 +127,7 @@ test('temporal projection receives the real Activity identity and elapsed sample
 test('scope invalidation exits owned fullscreen and restores the pre-scene focus', async () => {
     const f = fixture(); await f.client.prepare(f.packageState);
     const before = document.createElement('button'); document.body.append(before); before.focus();
-    const scene = mount(f.client).querySelector('.atri-ui-scene'); let fullscreenElement = null;
+    const scene = mount(f.client).querySelector('.test-scene'); let fullscreenElement = null;
     Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => fullscreenElement });
     document.exitFullscreen = jest.fn(async () => { fullscreenElement = null; });
     scene.requestFullscreen = async () => { fullscreenElement = scene; };
@@ -165,7 +137,7 @@ test('scope invalidation exits owned fullscreen and restores the pre-scene focus
 });
 test('a fullscreen request resolving after dispose is exited rather than orphaned', async () => {
     const f = fixture(); await f.client.prepare(f.packageState);
-    const scene = mount(f.client).querySelector('.atri-ui-scene'); let resolve; let fullscreenElement = null;
+    const scene = mount(f.client).querySelector('.test-scene'); let resolve; let fullscreenElement = null;
     Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => fullscreenElement });
     document.exitFullscreen = jest.fn(async () => { fullscreenElement = null; });
     scene.requestFullscreen = () => new Promise(done => { resolve = () => { fullscreenElement = scene; done(); }; });

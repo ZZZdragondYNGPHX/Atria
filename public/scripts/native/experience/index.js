@@ -511,7 +511,7 @@ export async function reloadGamePackage() {
 async function syncCurrentWorldRevision() {
     const session = currentWorldSession;
     if (!session || currentPackage.descriptor?.experienceContract?.lifecycleRuntime
-        || currentPackage.runtime?.experience?.componentModelVersion === 2) return reloadGamePackage();
+        || currentPackage.runtime?.experience?.frontend?.version === 3) return reloadGamePackage();
 
     try {
         const result = await session.syncBranch();
@@ -773,7 +773,7 @@ onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, event => {
             void Promise.resolve().then(() => lifecycleClient.pump()).catch(error => console.warn(`[${MODULE_NAME}] Lifecycle pump deferred`, error));
         }, 0);
     }
-    if (currentPackage.runtime?.experience?.componentModelVersion !== 2) return;
+    if (currentPackage.runtime?.experience?.frontend?.version !== 3) return;
     // A presentation failure must not turn a successful authority commit into
     // a failed write or trigger an automatic duplicate transaction.
     void currentReplyController?.invalidate().catch(error => console.error('Native reply refresh failed', error));

@@ -1,9 +1,9 @@
+import { minimalFrontend } from './helpers/frontend-fixture.js';
 import { describe, expect, test } from '@jest/globals';
 import { readFileSync } from 'node:fs';
 
 import {
     ATRIA_AUTHORING_SCHEMA_VERSION,
-    ATRIA_COMPONENT_MODEL_VERSION,
     ATRIA_EXPERIENCE_MODES,
     ATRIA_EXPERIENCE_CAPABILITIES,
     assertNativeExperienceContract,
@@ -44,8 +44,8 @@ describe('P0 Experience contract foundation', () => {
         expect(assertNativeRuntimeDescriptor(runtimeDescriptor({ experienceContract: contract })).experienceContract).toEqual(contract);
     });
 
-    test('all 32 vocabulary entries distinguish reserved versions from implemented support', () => {
-        expect(Object.keys(ATRIA_EXPERIENCE_CAPABILITIES)).toHaveLength(32);
+    test('remaining authority vocabulary entries distinguish reserved versions from implemented support', () => {
+        expect(Object.keys(ATRIA_EXPERIENCE_CAPABILITIES)).toHaveLength(30);
         for (const [id, definition] of Object.entries(ATRIA_EXPERIENCE_CAPABILITIES)) {
             for (const version of definition.versions) {
                 const value = { schemaVersion: 1, capabilities: [{ id, version, required: true }], dataResources: [] };
@@ -87,11 +87,9 @@ describe('P0 Experience contract foundation', () => {
         expect(() => assertNativeExperienceContract({ ...experienceFixture(), [key]: {} })).toThrow(/unsupported field/);
     });
 
-    test('Component v2 is explicit and never silently upgrades v1', () => {
-        for (const mode of ['component', 'hybrid', 'full']) {
-            expect(assertExperienceContract({ mode, componentModelVersion: 1 })).toEqual({ mode, componentModelVersion: 1 });
-            expect(assertExperienceContract({ mode, componentModelVersion: 2 })).toEqual({ mode, componentModelVersion: 2 });
-            expect(() => assertExperienceContract({ mode, componentModelVersion: 3 })).toThrow(/must be 1 or 2/);
+    test('Hard Cut rejects legacy selectors in every non-Text layout', () => {
+        for (const mode of ['component', 'hybrid', 'full']) for (const version of [1, 2, 3]) {
+            expect(() => assertExperienceContract({ mode, componentModelVersion: version })).toThrow();
         }
     });
 });
@@ -135,20 +133,18 @@ describe('A0 Experience contract', () => {
         expect(ATRIA_EXPERIENCE_MODES).toEqual(['text', 'component', 'hybrid', 'full']);
         expect(assertExperienceContract({ mode: 'text' })).toEqual({ mode: 'text' });
         for (const mode of ['component', 'hybrid', 'full']) {
-            expect(assertExperienceContract({
-                mode,
-                componentModelVersion: ATRIA_COMPONENT_MODEL_VERSION,
-            })).toEqual({ mode, componentModelVersion: 1 });
+            const { experience } = minimalFrontend(mode);
+            expect(assertExperienceContract(experience)).toEqual(experience);
         }
     });
 
-    test('does not infer or duplicate the shared Component Model', () => {
-        expect(() => assertExperienceContract({ mode: 'component' })).toThrow(/componentModelVersion/);
+    test('does not infer a missing Frontend or allow it in Text', () => {
+        expect(() => assertExperienceContract({ mode: 'component' })).toThrow(/Frontend/);
         expect(() => assertExperienceContract({
             mode: 'text',
             componentModelVersion: 1,
-        })).toThrow(/must not own/);
-        expect(() => assertExperienceContract({ mode: 'legacy' })).toThrow(/must be one of/);
+        })).toThrow(/unsupported field/);
+        expect(() => assertExperienceContract({ mode: 'legacy' })).toThrow(/Invalid Experience mode/);
     });
 });
 

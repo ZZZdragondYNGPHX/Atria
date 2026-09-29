@@ -42,7 +42,7 @@ test.each(names)('%s installs with resolvable, bounded supporting files and path
 });
 
 test('all referenced catalog topics are current readable contracts', async () => {
-    const ids = ['project', 'package', 'capabilities', 'ui-document', 'ui-actions', 'messages', 'tasks', 'lifecycle', 'presentation', 'information', 'content', 'continuity', 'shared', 'scenario'];
+    const ids = ['project', 'package', 'capabilities', 'frontend', 'frontend-aui', 'frontend-bridge', 'messages', 'tasks', 'lifecycle', 'presentation', 'information', 'content', 'continuity', 'shared', 'scenario'];
     const catalog = listAuthoringReferences();
     for (const id of ids) {
         expect(catalog.references.some(item => item.id === id)).toBe(true);
@@ -69,7 +69,7 @@ test('mocked Studio model reads references, proposes compiler-valid v3 and reach
     next.package.runtime = { experience: { mode: 'component', frontend: { kind: 'native', version: 3, source: 'frontend.json' } } };
     const rounds = [
         [['atri_agent_list_skills', {}], ['atri_agent_skill_files', { name: names[1] }]],
-        [['atri_agent_read_skill', { name: names[1], path: 'references/ui.md' }], ['atri_agent_read_skill', { name: names[1], path: 'examples/ui.json' }], ['atri_agent_api_catalog', { query: 'ui' }]],
+        [['atri_agent_read_skill', { name: names[1], path: 'references/ui.md' }], ['atri_agent_read_skill', { name: names[1], path: 'examples/frontend.json' }], ['atri_agent_api_catalog', { query: 'ui' }]],
         [['atri_agent_api_read', { id: 'frontend' }], ['atri_agent_set_plan', { summary: 'Add local UI', steps: [{ id: 'ui', title: 'Add local UI', impact: 'low' }] }]],
         [['atri_agent_project_save', { source: next, stepId: 'ui' }], ['atri_agent_source_write', { path: 'frontend.json', content: ui, encoding: 'utf8', stepId: 'ui' }], ['atri_agent_source_write', { path: 'Main.aui', content: aui, encoding: 'utf8', stepId: 'ui' }]],
         [['atri_agent_prepare_review', { simulationOptions: { scenario } }]],
@@ -99,7 +99,7 @@ test('mocked Studio model reads references, proposes compiler-valid v3 and reach
     };
     try {
         const result = await runNativeStudioAgentTask({ projectId, taskId: task.taskId });
-        expect(reads).toEqual(['references/ui.md', 'examples/ui.json']);
+        expect(reads).toEqual(['references/ui.md', 'examples/frontend.json']);
         expect(result.task.status).toBe('review');
         expect(result.task.validation.status).toBe('passed');
         expect(result.task.simulation.status).toBe('completed');

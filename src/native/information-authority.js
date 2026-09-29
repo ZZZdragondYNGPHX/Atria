@@ -1,4 +1,4 @@
-import { fields } from '../../public/scripts/native/experience/ui/v2-values.js';
+import { fields } from '../../public/shared/native-values.js';
 import { informationList, boundedInformationText, INFORMATION_LIMITS } from '../../public/shared/native-information-contract.js';
 import { projectInformation, assertInformationAnchor, isInformationRollupCurrent } from '../../public/shared/native-information-runtime.js';
 import { CONTEXT_DERIVED_NAMESPACE, normalizeContextDerivedState, assertNarrativeArtifact, NARRATIVE_LEVELS } from '../../public/scripts/native/context-derived.js';

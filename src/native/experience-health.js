@@ -1,6 +1,6 @@
 import { hashNativeDocument } from './repositories/common.js';
 import { prepareLifecycle } from './lifecycle-authority.js';
-import { fields as checkFields, json } from '../../public/scripts/native/experience/ui/v2-values.js';
+import { fields as checkFields, json } from '../../public/shared/native-values.js';
 import { assertNativeId } from './identity.js';
 import { ConflictError } from '../storage/errors.js';
 import { CONTINUITY_SESSION_NAMESPACE } from '../../public/shared/native-continuity-contract.js';

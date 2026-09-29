@@ -4,31 +4,7 @@ import { TextEncoder } from 'node:util';
 import { serialize, deserialize } from 'node:v8';
 globalThis.TextEncoder ??= TextEncoder;
 globalThis.structuredClone ??= value => deserialize(serialize(value));
-import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
-import { mountUiDocument } from '../../public/scripts/native/experience/ui/v2-runtime.js';
-import { createSurfaceHost } from '../../public/scripts/native/experience/ui/surfaces.js';
 import { createNativeLifecycleClient } from '../../public/scripts/native/lifecycle-client.js';
-
-const documentFixture = () => ({ schemaVersion: 2, stateVersion: 1, localState: {}, preferences: {},
-    actions: { claim: { steps: [{ op: 'continuity.command', args: { domainId: 'unlocks', recordId: 'perk', commandId: 'unlock', args: {}, expectedContinuityRevisionId: { expr: 'continuity.vault.revisionId' } } }] } },
-    views: [{ id: 'main', surface: 'chat.footer', mount: 'always', root: { id: 'count', type: 'text', bindings: { text: { expr: 'length(continuity.vault.records)' } } } }] });
-
-test('existing renderer reads only declared Continuity display projections and sends typed actions through Host', async () => {
-    const snapshot = { revision: { revisionId: 'r1' }, continuityViews: { vault: { revisionId: 'c1', records: [{ id: 'a', value: { text: 'Owned' } }] } } };
-    const root = document.createElement('section'); document.body.append(root);
-    const continuity = jest.fn(async () => snapshot);
-    const mounted = mountUiDocument(compileUiDocument(documentFixture(), { mode: 'component' }), { document, window,
-        getSnapshot: () => snapshot, continuity, worldSession: { getRevision: () => 'r1' }, surfaceHost: createSurfaceHost({ resolveSurface: () => root }) });
-    expect(root.textContent).toBe('1');
-    await mounted.execute('claim'); expect(continuity).toHaveBeenCalledWith({ kind: 'command', domainId: 'unlocks', recordId: 'perk', commandId: 'unlock', args: {}, expectedContinuityRevisionId: 'c1' });
-    snapshot.continuityViews.vault.records = []; mounted.refresh(); expect(root.textContent).toBe('0');
-    mounted.dispose(); expect(root.textContent).toBe(''); await expect(mounted.execute('claim')).rejects.toThrow(/disposed/); root.remove();
-});
-test('one-write ceiling includes Continuity, and historical Message blocks cannot write player authority', () => {
-    const raw = documentFixture(); raw.actions.claim.steps.push({ op: 'command.dispatch', commandId: 'mint', args: {} });
-    expect(() => compileUiDocument(raw, { mode: 'component' })).toThrow(/one typed Command/);
-    expect(() => compileUiDocument(documentFixture(), { mode: 'component', message: true, actionPolicy: 'active-tail' })).toThrow();
-});
 
 function fixture() {
     const contract = { lifecycleRuntime: { domains: [] }, continuityRuntime: { schemaVersion: 1 }, taskRuntime: { tasks: [] } };

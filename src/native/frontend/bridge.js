@@ -3,7 +3,7 @@ import { canonicalBridgeJson as canonicalJson } from '../../../public/shared/nat
 import { taskId } from '../../../public/shared/native-task-contract.js';
 import { createHash } from 'node:crypto';
 import { fields, identifier, list } from '../../../public/shared/native-frontend-contract.js';
-import { compileDataSchema } from '../../../public/scripts/native/experience/ui/message-templates.js';
+import { compileDataSchema } from '../../../public/shared/native-data-schema.js';
 import { validateSchemaValue } from '../../../public/scripts/native/experience/world/schema.js';
 
 export { canonicalJson };

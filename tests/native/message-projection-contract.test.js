@@ -1,3 +1,5 @@
+import { compileFrontend } from '../../src/native/frontend/compiler.js';
+import { fixedHostTarget } from '../../public/shared/native-frontend-host.js';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { afterEach, beforeEach, describe, expect, test } from '@jest/globals';
@@ -174,18 +176,29 @@ describe('P2 TurnEnvelope and Conversation Thread', () => {
     });
 });
 
+function projectedFrontend(maximum = 100) {
+    const dataSchema = { type: 'object', properties: { label: { type: 'string', minLength: 1, maxLength: 80 }, value: { type: 'integer', minimum: 0, maximum } }, required: ['label', 'value'], additionalProperties: false };
+    const target = { service: 'host.conversation', method: 'blocks', blockType: 'status' };
+    const outputSchema = fixedHostTarget(target, dataSchema).outputSchema;
+    const files = new Map([
+        ['frontend.json', Buffer.from(JSON.stringify({ format: 'atria-frontend-source', version: 3, primaryView: 'main', bridge: 'bridge.json', views: [{ id: 'main', root: 'Main', surface: 'chat.header' }], components: [{ id: 'Main', source: 'Main.aui' }] }))],
+        ['Main.aui', Buffer.from('<template><main node-id="root"><output node-id="status" read="status" /></main></template>')],
+        ['bridge.json', Buffer.from(JSON.stringify({ version: 1, bindings: [{ id: 'status', kind: 'read', target, inputSchema: { type: 'object', properties: {}, additionalProperties: false }, outputSchema, collection: { pageSize: 16, orderBy: 'id', filters: [], search: [] } }] }))],
+    ]);
+    const compiled = compileFrontend({ source: 'frontend.json', files, mode: 'component' });
+    return { experience: { mode: 'component', frontend: { kind: 'native', version: 3, entry: compiled.entry } }, files: new Map([...files, ...compiled.files]) };
+}
+
 async function installProjectedFixture(h, { entryOverride = false, initialTimeline } = {}) {
     const fixture = sessionFixture();
     if (initialTimeline) fixture.manifest.entryPoints[0].initialTimeline = initialTimeline;
-    const { document } = JSON.parse(readFileSync(new URL('./fixtures/message-projection-v2.json', import.meta.url), 'utf8'));
-    const experience = { mode: 'component', componentModelVersion: 2, component: 'ui/messages.json' };
+    const { experience, files: sourceFiles } = projectedFrontend();
     fixture.manifest.runtime = { experience };
     if (entryOverride) {
         fixture.manifest.runtime.experience = { mode: 'text' };
         fixture.manifest.entryPoints[0].runtime = { experience };
     }
     const svc = services(h);
-    const sourceFiles = new Map([['ui/messages.json', Buffer.from(JSON.stringify(document))]]);
     const { archive } = buildAtriaPackageContainer({ manifest: fixture.manifest, sourceFiles, assetPayloads: new Map() });
     await svc.packageInstaller.install(h.handle, archive);
     return { ...svc, ...fixture, sourceFiles, start: { packageId: fixture.manifest.packageId, packageVersionId: fixture.manifest.packageVersionId, entryPointId: fixture.entryPointId } };
@@ -313,20 +326,18 @@ describe.each(HARNESS)('P2 committed projection - %s', (_name, make) => {
         await expect(f.core.load(h.handle, last.sessionId)).rejects.toThrow(/canonical/);
     });
 
-    test('prose-only projection accepts legacy packages; blocks require pinned v2', async () => {
+    test('prose-only projection accepts Text; blocks require a pinned Frontend graph', async () => {
         const f = await installFixture(h); const first = await f.core.create(h.handle, f.start);
         expect(first.variants[0]).not.toHaveProperty('projection');
         const view = await f.core.appendTimeline(h.handle, first.session.sessionId, { role: 'user', content: 'AB', projection: proseOnly() });
         expect(view.variants.at(-1).projection).toEqual(proseOnly());
-        await expect(f.core.appendTimeline(h.handle, first.session.sessionId, { role: 'assistant', envelope: turn() })).rejects.toThrow(/pinned UI Document v2/);
+        await expect(f.core.appendTimeline(h.handle, first.session.sessionId, { role: 'assistant', envelope: turn() })).rejects.toThrow(/pinned Native Frontend graph/);
         expect((await services(h).core.load(h.handle, first.session.sessionId)).revision).toEqual(view.revision);
     });
 
     test('an installed newer template never replaces the Session pinned template', async () => {
         const f = await installProjectedFixture(h); const first = await f.core.create(h.handle, f.start);
-        const files = new Map(f.sourceFiles); const doc = JSON.parse(files.get('ui/messages.json').toString());
-        doc.messageBlocks.status.dataSchema.properties.value.maximum = 1;
-        files.set('ui/messages.json', Buffer.from(JSON.stringify(doc)));
+        const { files } = projectedFrontend(1);
         const manifest = { ...f.manifest, packageVersionId: createNativeId('packageVersion'), version: '2.0.0' };
         await f.packageInstaller.install(h.handle, buildAtriaPackageContainer({ manifest, sourceFiles: files, assetPayloads: new Map() }).archive);
         const view = await f.core.appendTimeline(h.handle, first.session.sessionId, { role: 'assistant', content: 'AB', projection: projected() });

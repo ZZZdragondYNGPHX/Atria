@@ -1,5 +1,5 @@
 import { loadGamePackageJsonResource, loadExperienceData } from '../package-loader.js';
-import { json } from '../ui/v2-values.js';
+import { json } from '../../../../shared/native-values.js';
 import { compileDeclarativeLogic } from './declarative.js';
 
 export async function loadGameLogicDefinition(packageState, options = {}) {

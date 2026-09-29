@@ -2,21 +2,18 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { ATRIA_EXPERIENCE_CAPABILITIES } from '../public/shared/native-experience-contract.js';
 import { assertPresentationRuntime, assertSceneCueIR } from '../public/shared/native-presentation-contract.js';
-import { compileUiDocument } from '../public/scripts/native/experience/ui/v2-document.js';
 
 for (const id of ['activity', 'media-scene', 'asset-pack', 'safe-presentation', 'host-presentation-input']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, [1]);
 for (const id of ['experience-health']) assert.deepEqual(ATRIA_EXPERIENCE_CAPABILITIES[id].supported, id === 'studio-authoring' ? [2] : [1]);
 const definition = assertPresentationRuntime({ schemaVersion: 1, activities: [], scenes: [], assetPacks: [], voices: [], host: [] });
 assert(Object.isFrozen(definition));
 assert.throws(() => assertSceneCueIR({ schemaVersion: 1, cues: [{ id: 'scene', kind: 'caption', text: 'caption', html: '<script></script>' }] }, definition));
-assert.throws(() => compileUiDocument({ schemaVersion: 2, stateVersion: 1, localState: {}, preferences: {}, actions: {},
-    views: [{ id: 'main', surface: 'chat.footer', mount: 'always', root: { id: 'media', type: 'media-cue', props: { cue: {} } } }] }, { mode: 'component' }), /Host-owned/);
 const read = path => readFileSync(path, 'utf8');
 for (const path of ['public/shared/native-presentation-contract.js', 'public/scripts/native/presentation-client.js', 'src/native/activity-authority.js']) {
     assert.doesNotMatch(read(path), /\beval\s*\(|new\s+Function\s*\(|\binnerHTML\b|\blocalStorage\b|\bindexedDB\b|\b(?:putMutable|putImmutable|writeFile)\s*\(|new\s+SessionCore\s*\(/, path);
 }
 const client = read('public/scripts/native/presentation-client.js');
-assert.match(client, /mountUiDocument\(definition/);
+assert.match(client, /root.className = 'atri-host-scene'/);
 assert.match(client, /lifecycle\.command\(pending\)/);
 assert.match(client, /assertSceneCueIR\(ir/);
 assert.match(client, /getActivityProjection/);

@@ -16,7 +16,7 @@ const native = { active: false, snapshot: null, host: { isGenerating: () => fals
 let presentationRuntime;
 const packageState = () => ({ status: 'ready', active: true, sessionId: 's',
     descriptor: { ...native.snapshot.session, experience: { mode: 'component' }, experienceContract: { lifecycleRuntime: { schemaVersion: 1 }, ...(presentationRuntime ? { presentationRuntime } : {}) } },
-    runtime: { experience: { mode: 'component', componentModelVersion: 2 } }, errors: [] });
+    runtime: { experience: { mode: 'component', frontend: { kind: 'native', version: 3, entry: 'runtime/frontend/index.json' }, features: [] } }, errors: [] });
 const loadPackage = jest.fn(async sessionId => sessionId ? packageState() : { status: 'none', active: false, errors: [] });
 const ui = () => ({ dispose: jest.fn(async () => {}), refresh: jest.fn() });
 const mount = jest.fn(async () => ui());

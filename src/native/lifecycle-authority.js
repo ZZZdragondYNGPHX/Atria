@@ -2,9 +2,7 @@ import { prepareActivity, validateActivities } from './activity-authority.js';
 import { prepareInformationRollup } from './information-authority.js';
 import { validateInformationState } from '../../public/shared/native-information-runtime.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
-import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
-import { fieldErrors } from '../../public/scripts/native/experience/ui/v2-state.js';
-import { fields, json } from '../../public/scripts/native/experience/ui/v2-values.js';
+import { fields } from '../../public/shared/native-values.js';
 import { assertTaskValue, taskId } from '../../public/shared/native-task-contract.js';
 import { LIFECYCLE_STATE_NAMESPACE as NS } from '../../public/shared/native-lifecycle-contract.js';
 import { hashNativeDocument } from './repositories/common.js';
@@ -22,7 +20,6 @@ export function initialLifecycle(definition) {
         scopes: Object.fromEntries(definition.scopes.map(scope => [scope.id, { status: 'active', epoch: 0 }])),
         domains: Object.fromEntries(definition.domains.map(domain => [domain.id, { records: [] }])),
         workflows: Object.fromEntries(definition.workflows.map(flow => [flow.id, { phase: flow.initial, instance: 0, status: 'active', entered: false }])),
-        opening: { completed: false, step: null, history: [], values: {}, variant: null },
         ready: false, automations: {}, outbox: [], interactions: [], receipts: [], taskTombstones: [] };
 }
 
@@ -56,7 +53,7 @@ export function validateLifecycle(base) {
     for (const receipt of state.receipts) if (!invocation(receipt.invocationId) || receipt.kind !== 'authority') throw new TypeError('Invalid lifecycle receipt');
     validateActivities(base);
     validateInformationState(base);
-    if (typeof state.ready !== 'boolean' || typeof state.opening.completed !== 'boolean') throw new TypeError('Invalid lifecycle barrier');
+    if (typeof state.ready !== 'boolean') throw new TypeError('Invalid lifecycle barrier');
 }
 
 // A conservative reference walk protects retained records even before P6's richer
@@ -212,7 +209,6 @@ export async function prepareLifecycle(base, installed, action) {
             active(state, flow.scopeId);
             const node = flow.nodes.find(item => item.id === current.phase);
             if (node.kind === 'wait_until' && state.clocks[node.wait.clockId] < node.wait.tick) throw new TypeError('Workflow temporal wait is not due');
-            if (node.kind === 'opening' && !state.opening.completed) throw new TypeError('Workflow Opening is not complete');
             if (node.kind === 'model_task' && (!current.taskInvocationId || !candidate.states.atri_task_results?.records.some(item => item.invocationId === current.taskInvocationId))) throw new TypeError('Workflow Task is not complete');
             if (node.kind === 'action' && !current.entered) throw new TypeError('Workflow Action is not complete');
             current.phase = edge.to; current.instance++; current.entered = false; delete current.taskInvocationId;
@@ -327,104 +323,10 @@ export async function prepareLifecycle(base, installed, action) {
         prepareInformationRollup(candidate, action);
     } else if (action.kind.startsWith('activity.')) {
         await prepareActivity(candidate, action, { apply, addOutbox, events });
-    } else if (action.kind.startsWith('opening.')) {
-        const draft = await prepareOpening(candidate, installed, action, state, events);
-        if (draft) drafts.push(draft);
     } else if (['app.command', 'workflow.transition'].includes(action.kind)) await apply(action);
     else throw new TypeError('Undeclared lifecycle command');
     compactLifecycle(candidate, state, { pruneInteractions: action.kind === 'retention.compact' });
     return { states: candidate.states, events, taskResolution, drafts };
-}
-
-function openingContext(base, installed, definition, values, preferences = {}) {
-    const ui = Object.fromEntries(Object.entries(definition.localState).map(([key, field]) => [key, copy(field.default)]));
-    for (const [key, value] of Object.entries(values)) {
-        if (!Object.hasOwn(definition.localState, key)) throw new TypeError('Unknown Opening setup field');
-        fieldErrors(definition.localState[key], value); ui[key] = value;
-    }
-    const prefs = Object.fromEntries(Object.entries(definition.preferences).map(([key, field]) => [key, copy(field.default)]));
-    for (const [key, value] of Object.entries(preferences)) {
-        if (!Object.hasOwn(definition.preferences, key) || fieldErrors(definition.preferences[key], value).length) throw new TypeError('Invalid Opening preference');
-        prefs[key] = value;
-    }
-    const data = {};
-    for (const ref of installed.manifest.runtime.experienceContract.dataResources) {
-        const bytes = installed.assets.get(ref.assetId); if (!bytes || bytes.length > 2 * 1024 * 1024) throw new TypeError('Missing Package Data');
-        const keys = ref.resourceId.split('.'); let target = data;
-        for (const key of keys.slice(0, -1)) { target[key] ??= {}; target = target[key]; }
-        target[keys.at(-1)] = JSON.parse(bytes.toString('utf8'));
-    }
-    const primary = base.states.atri_world_state.primaryWorldId;
-    const ctx = { ui, prefs, world: base.states.atri_world_state.worlds[primary]?.state ?? {}, data, env: {}, form: { ...ui } };
-    const evaluating = new Set();
-    ctx.selectors = {};
-    for (const [key, expression] of Object.entries(definition.selectors)) Object.defineProperty(ctx.selectors, key, { enumerable: true, get() {
-        if (evaluating.has(key)) throw new TypeError('Cyclic Opening selector');
-        evaluating.add(key); try { return expression.read(ctx); } finally { evaluating.delete(key); }
-    } });
-    return ctx;
-}
-function validOpeningFields(definition, step, ctx) {
-    for (const path of step.fields) {
-        const key = path.slice(3);
-        if (fieldErrors(definition.localState[key], ctx.ui[key]).length) throw new TypeError('Invalid Opening fields');
-    }
-}
-async function prepareOpening(base, installed, action, state, events) {
-    const experience = installed.entryPoint.runtime?.experience ?? installed.manifest.runtime?.experience;
-    const bytes = installed.sourceFiles.get(experience?.component);
-    if (experience?.componentModelVersion !== 2 || !bytes || bytes.length > 2 * 1024 * 1024) throw new TypeError('Pinned Opening Document required');
-    const definition = compileUiDocument(JSON.parse(bytes.toString('utf8')), { mode: experience.mode });
-    if (!definition.opening) throw new TypeError('Opening is not declared');
-    if (state.opening.completed) throw new TypeError('Opening is complete');
-    const oldStep = state.opening.step ?? definition.opening.initial;
-    if (action.kind === 'opening.progress') {
-        fields(action, ['kind', 'step', 'history', 'values', 'variant'], 'Opening progress');
-        if (!definition.opening.steps.some(step => step.id === action.step) || !Array.isArray(action.history) || action.history.length > 64
-            || action.history.some(id => !definition.opening.steps.some(step => step.id === id)) || action.variant !== null && action.variant !== undefined) throw new TypeError('Invalid Opening progress');
-        const values = json(action.values); const ctx = openingContext(base, installed, definition, values);
-        const oldHistory = state.opening.history;
-        if (action.step !== oldStep) {
-            const back = oldHistory.at(-1) === action.step && JSON.stringify(action.history) === JSON.stringify(oldHistory.slice(0, -1));
-            const from = definition.opening.steps.find(step => step.id === oldStep);
-            const forward = JSON.stringify(action.history) === JSON.stringify([...oldHistory, oldStep])
-                && from.next.find(edge => edge.when.read(ctx) === true)?.to === action.step;
-            if (!back && !forward) throw new TypeError('Opening transition is not allowed');
-            if (forward) validOpeningFields(definition, from, ctx);
-        } else if (JSON.stringify(action.history) !== JSON.stringify(oldHistory)) throw new TypeError('Opening history mismatch');
-        state.opening = { completed: false, step: action.step, history: copy(action.history), values: copy(values), variant: null };
-    } else if (action.kind === 'opening.complete') {
-        fields(action, ['kind', 'confirmation', 'submission', 'preferences'], 'Opening complete');
-        const ctx = openingContext(base, installed, definition, state.opening.values, action.preferences === undefined ? {} : json(action.preferences));
-        validOpeningFields(definition, definition.opening.steps.find(step => step.id === oldStep), ctx);
-        const confirm = definition.actions[definition.opening.confirmAction];
-        if (confirm.constraints.some(rule => rule.status === 'blocked' && rule.when.read(ctx) === true)) throw new TypeError('Opening confirmation is blocked');
-        let expectedCommand = null; let composer = null; let expectedSubmission = null;
-        for (const step of confirm.steps) {
-            if (step.when && step.when.read(ctx) !== true) continue;
-            const value = step.value?.read(ctx);
-            if (step.op.startsWith('ui.')) {
-                const [root, key] = step.path.split('.'); const field = root === 'ui' ? definition.localState[key] : definition.preferences[key];
-                ctx[root][key] = step.op === 'ui.set' ? value : step.op === 'ui.toggle' ? !ctx[root][key] : copy(field.default);
-                fieldErrors(field, ctx[root][key]);
-            } else if (step.op === 'command.dispatch') expectedCommand = { commandId: step.commandId, args: json(step.args.read(ctx)) };
-            else if (step.op === 'action.compensate') throw new TypeError('Opening requires a declared confirmation Command');
-            else if (step.op === 'composer.set') composer = value;
-            else if (step.op === 'composer.clear') composer = '';
-            else if (step.op === 'composer.append') { if (composer === null) throw new TypeError('Opening requires a declared Composer draft'); composer += value; } else if (step.op === 'composer.submit') {
-                if (expectedSubmission || typeof composer !== 'string' || !composer.trim()) throw new TypeError('Opening requires one declared Composer submission');
-                expectedSubmission = { text: composer.trim() };
-            }
-        }
-        if (hashNativeDocument(expectedCommand) !== hashNativeDocument(action.confirmation ?? null)
-            || hashNativeDocument(expectedSubmission) !== hashNativeDocument(action.submission ?? null)) throw new TypeError('Opening confirmation does not match pinned Action');
-        if (expectedCommand) {
-            Object.assign(base.states, await prepareTaskAuthority(base, installed, { command: { id: expectedCommand.commandId, args: expectedCommand.args } }));
-            events.push({ type: 'opening.confirmed', commandId: expectedCommand.commandId });
-        }
-        state.opening.completed = true; state.opening.values = copy(ctx.ui);
-        if (expectedSubmission) return { role: 'user', content: expectedSubmission.text };
-    } else throw new TypeError('Unknown Opening operation');
 }
 
 export function projectApplication(base, domainId) {

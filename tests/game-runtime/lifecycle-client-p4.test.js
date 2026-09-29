@@ -85,7 +85,7 @@ test.each(['history', 'generation', 'failed'])('%s prevents writes and automatic
 test('authenticated lifecycle command retries exact invocation, payload and expected revision', async () => {
     const f = fixture(); await loaded(f); f.fetchImpl.mockClear();
     const actual = f.fetchImpl.getMockImplementation(); f.fetchImpl.mockRejectedValueOnce(new Error('lost response')).mockImplementation(actual);
-    const action = { kind: 'opening.complete', confirmation: { commandId: 'choose', args: { name: 'A' } } };
+    const action = { kind: 'app.command', domainId: 'notes', commandId: 'save', recordId: 'main', args: { text: 'A' } };
     await expect(f.client.command(action)).rejects.toThrow('lost response');
     await expect(f.client.command({ kind: 'pump' })).rejects.toThrow('retry_pending');
     await f.client.command(action);

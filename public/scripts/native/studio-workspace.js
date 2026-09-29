@@ -15,15 +15,13 @@ import {
     createAtriaStatePanel,
 } from '../atria-shell/primitives.js';
 import { translateShellText } from '../atria-shell/localization.js';
-import { compileStudioUi, mountStudioPreviewUi } from './studio-preview-ui.js';
-import { previewStudioUiMigration } from './studio-ui-migration.js';
+import { mountStudioPreviewUi } from './studio-preview-ui.js';
 import { presentationNegotiation } from './host-capabilities.js';
 import {
     createHumanOrigin,
     createAuthoringOperation,
     createStudioNativeId,
     createStudioWorkspace,
-    experienceComponentPath,
     experienceFromProject,
     patchProjectSource,
     projectSaveOperation,
@@ -32,7 +30,6 @@ import {
 } from './studio-authoring.js';
 import { nativeStudioClient } from './studio-client.js';
 import { mountNativeStudioAgent } from './studio-agent.js';
-import { mountStructuredUiEditor } from './studio-ui-editor.js';
 import { mountFrontendEditor } from './studio-frontend-editor.js';
 import { assertFrontendExperience, resourcePath } from '../../shared/native-frontend-contract.js';
 
@@ -877,40 +874,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             else state.structuredEditor = mounted;
             return;
         }
-        const componentPath = experienceComponentPath(state.source);
-        body.append(heading(documentRef, 'UI Components', 'Compose the interface, adjust its structure and bindings, then review your changes.'));
-        if (experience.mode === 'text' || !componentPath) {
-            body.append(panel(documentRef, 'empty', 'Text Experience', 'Switch Experience to Component, Hybrid or Full before authoring Structured UI.'));
-            return;
-        }
-        try {
-            const file = await nativeStudioClient.readSource(projectId, componentPath);
-            const model = JSON.parse(decodeUtf8(file.content));
-            compileStudioUi(model, experience.mode, experience.componentModelVersion ?? 1);
-            if (model.schemaVersion !== 2) body.append(button(documentRef, 'Review UI v2 migration', () => {
-                const migration = previewStudioUiMigration(model, experience);
-                const source = patchProjectSource(state.source, next => {
-                    const entry = next.package.entryPoints[0];
-                    if (entry.runtime?.experience) entry.runtime.experience = migration.experience;
-                    else next.package.runtime.experience = migration.experience;
-                });
-                return stageOperations([projectSaveOperation(projectId, source), sourceWriteOperation(componentPath, JSON.stringify(migration.model, null, 2))], 'Migrate static UI to version 2');
-            }));
-            const hostNode = documentRef.createElement('div');
-            body.append(hostNode);
-            state.structuredEditor?.dispose();
-            state.structuredEditor = mountStructuredUiEditor({
-                document: documentRef,
-                root: hostNode,
-                initialModel: model,
-                mode: experience.mode,
-                onStage: nextModel => stageOperations([
-                    sourceWriteOperation(componentPath, JSON.stringify(nextModel, null, 2)),
-                ], 'Update Atria Structured UI'),
-            });
-        } catch (error) {
-            body.append(panel(documentRef, 'error', 'Structured UI unavailable', error?.message || String(error)));
-        }
+        body.append(panel(documentRef, 'empty', 'Text Experience', 'Switch Experience to Component, Hybrid or Full before authoring Structured UI.'));
     }
 
     function attachedRevision(item) {
@@ -992,10 +956,6 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     async function renderSource(body) {
         body.append(heading(documentRef, 'Source', 'Edit project files directly, then review the proposed changes before applying.'));
         await mountSourceEditor({ document: documentRef, root: body, projectId, stageOperations,
-            validateStructured: (path, value) => {
-                const experiences = [state.source.package.runtime?.experience, ...state.source.package.entryPoints.map(entry => entry.runtime?.experience)].filter(Boolean);
-                for (const experience of experiences) if (experience.mode !== 'text' && experience.component === path) compileStudioUi(value, experience.mode, experience.componentModelVersion ?? 1);
-            },
         });
     }
 

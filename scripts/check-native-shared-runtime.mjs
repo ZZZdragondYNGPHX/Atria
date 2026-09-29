@@ -19,5 +19,5 @@ assert.match(read('src/native/realm-authority.js'), /applyContinuity\(core/);
 assert.match(read('src/native/session-core.js'), /reconcileRealm\(base, states/);
 assert.match(read('src/native/session-snapshot.js'), /'atri_realm_transfers', 'atri_shared'/);
 assert.match(read('src/native/continuity-authority.js'), /base\.externalEffects\?\.some/);
-assert.match(read('public/scripts/native/experience/ui/v2-runtime.js'), /options\.sharedClient\.getProjection/);
+assert.match(read('public/scripts/native/shared-session-ui.js'), /value\.projection/);
 console.log('P8 guard passed: authenticated Shared ACL, scoped projections, deterministic typed Turn, independent Realm, reused Saga and renderer; P9 Host capabilities integrated');

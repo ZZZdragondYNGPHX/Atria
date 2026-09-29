@@ -4,8 +4,6 @@ import { invalidateFrontendEpoch } from './frontend/epoch.js';
 import { applyRealm, realmDefinition, reconcileRealm, loadRealm } from './realm-authority.js';
 import { activityNarrative, publishActivities } from './activity-authority.js';
 import { assertInformationClosure } from '../../public/shared/native-information-contract.js';
-import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
-import { validateMessageBlocks } from '../../public/scripts/native/experience/ui/message-templates.js';
 import { assertMessageProjection, assertTurnEnvelope } from '../../public/shared/native-message-contract.js';
 import { normalizeNativeRegexScripts } from '../../public/shared/native-regex.js';
 import { assertPackagedWorldSnapshot } from './world-knowledge.js';
@@ -24,7 +22,7 @@ import { ACTION_RECEIPTS_NAMESPACE, assertActionRequest, actionReceipts, assertC
 import { TASK_STATE_NAMESPACE, assertTaskValue, assertSemanticOutcome } from '../../public/shared/native-task-contract.js';
 import { prepareTaskAuthority, validateTaskRecords } from './task-authority.js';
 import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle, prepareDeclaredTaskResult } from './lifecycle-authority.js';
-import { fields } from '../../public/scripts/native/experience/ui/v2-values.js';
+import { fields } from '../../public/shared/native-values.js';
 import { applyContinuity, continuityDefinition, continuityDisplay, continuityEffects, projectContinuity, reconcileOwnership } from './continuity-authority.js';
 
 // Projection is a first-class immutable Variant field, never Timeline metadata.
@@ -301,11 +299,7 @@ export class SessionCore {
             }
             return;
         }
-        if (experience?.componentModelVersion !== 2) throw new TypeError('Message blocks require pinned UI Document v2');
-        const bytes = installed.sourceFiles.get(experience.component);
-        if (!bytes || bytes.length > 2 * 1024 * 1024) throw new TypeError('Missing or oversized pinned UI Document v2');
-        const definition = compileUiDocument(JSON.parse(bytes.toString('utf8')), { mode: experience.mode });
-        for (const variant of projected) validateMessageBlocks(definition, variant.projection);
+        throw new TypeError('Message blocks require a pinned Native Frontend graph');
     }
 
     async _publish(handle, base, options = {}) {

@@ -1,3 +1,4 @@
+import { assertFrontendExperience } from '../../../shared/native-frontend-contract.js';
 import { assertSupportedExperienceContract } from '../../../shared/native-experience-contract.js';
 
 export const GAME_PACKAGE_STATUS = Object.freeze({
@@ -83,6 +84,8 @@ export async function loadNativeGamePackage(session, options = {}) {
                 errors: ['Native Runtime Descriptor response is invalid'],
             });
         }
+
+        if (JSON.stringify(assertFrontendExperience(runtime.experience)) !== JSON.stringify(assertFrontendExperience(descriptor.experience))) throw new TypeError('Native Frontend identity mismatch');
 
         if (descriptor.experienceContract !== undefined) {
             assertSupportedExperienceContract(descriptor.experienceContract);

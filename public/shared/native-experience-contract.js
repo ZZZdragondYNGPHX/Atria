@@ -10,7 +10,6 @@ import { assertContinuityRuntime } from './native-continuity-contract.js';
 // implementation, permission grant, runtime role, or state namespace.
 export const ATRIA_EXPERIENCE_CONTRACT_VERSION = 1;
 export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
-    ['component-model', [1, 2], [1, 2]],
     ['local-ui-state', [1], [1]],
     ['player-preference-state', [1], [1]],
     ['package-data', [1], [1]],
@@ -23,7 +22,6 @@ export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
     ['turn-envelope', [1], [1]],
     ['narrative-outcome', [1], [1]],
     ['runtime-automation', [1], [1]],
-    ['opening', [1], [1]],
     ['reply-variant', [1], [1]],
     ['conversation-presentation', [1], [1]],
     ['host-presentation-input', [1], [1]],
@@ -65,8 +63,8 @@ function list(value, label, validate, key) {
     return Object.freeze(result);
 }
 
-// Independent schema boundary: Component Model v1 remains v1; future document,
-// action, turn, task and authority bodies require their own strict contracts.
+// Independent authority contracts retain their own strict versions. Frontend
+// presentation is native@3 Core, not a legacy Component Model capability.
 // No generic config/extension/persistence/exposure payload belongs in this seam.
 export function assertNativeExperienceContract(value) {
     fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime', 'presentationRuntime', 'informationRuntime', 'contentRuntime', 'continuityRuntime', 'sharedRuntime'], 'ExperienceContract');

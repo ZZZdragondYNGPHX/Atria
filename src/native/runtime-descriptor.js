@@ -31,63 +31,8 @@ function runtimeJsonPath(value, field) {
     return path;
 }
 
-const EXPERIENCE_SURFACES = new Set([
-    'app.root',
-    'chat.header',
-    'chat.footer',
-    'composer.before',
-    'composer.after',
-    'sidebar.left',
-    'sidebar.right',
-    'drawer',
-    'modal',
-]);
-
 function experienceRuntimeSource(value) {
-    if (value?.frontend !== undefined) return Object.freeze(assertFrontendExperience(value));
-    if (!plain(value)) throw new TypeError('Native Runtime requires an explicit experience contract');
-    const allowed = new Set(['mode', 'componentModelVersion', 'component', 'selectors', 'surface']);
-    for (const key of Object.keys(value)) {
-        if (!allowed.has(key)) throw new TypeError(`Native Runtime experience contains unsupported field '${key}'`);
-    }
-
-    const contract = assertExperienceContract({
-        mode: value.mode,
-        ...(value.componentModelVersion === undefined ? {} : { componentModelVersion: value.componentModelVersion }),
-    });
-    if (contract.mode === 'text') {
-        if (value.component !== undefined || value.selectors !== undefined || value.surface !== undefined) {
-            throw new TypeError('Text Experience must not declare Component Model resources');
-        }
-        return contract;
-    }
-
-    if (value.component === undefined) {
-        throw new TypeError(contract.mode + ' Experience requires a declarative component resource');
-    }
-    if (contract.componentModelVersion === 2) {
-        if (value.surface !== undefined) throw new TypeError('Component v2 surfaces belong to document views');
-        return Object.freeze({ ...contract,
-            component: runtimeJsonPath(value.component, 'Native Runtime experience.component'),
-            ...(value.selectors === undefined ? {} : { selectors: runtimeJsonPath(value.selectors, 'Native Runtime experience.selectors') }),
-        });
-    }
-    const surface = String(value.surface || 'app.root').trim();
-    if (!EXPERIENCE_SURFACES.has(surface)) {
-        throw new TypeError(`Native Runtime experience.surface '${surface}' is unsupported`);
-    }
-    if (['hybrid', 'full'].includes(contract.mode) && surface !== 'app.root') {
-        throw new TypeError(contract.mode + ' Experience must own the app.root stage surface');
-    }
-
-    return Object.freeze({
-        ...contract,
-        component: runtimeJsonPath(value.component, 'Native Runtime experience.component'),
-        ...(value.selectors === undefined ? {} : {
-            selectors: runtimeJsonPath(value.selectors, 'Native Runtime experience.selectors'),
-        }),
-        surface,
-    });
+    return Object.freeze(assertFrontendExperience(value));
 }
 
 function gameRuntimeSource(value) {
@@ -222,13 +167,7 @@ export function compileNativeRuntimeDescriptor({ packageVersion, manifest, entry
         packageVersionId: packageVersion.packageVersionId,
         packageContentHash: packageVersion.packageContentHash,
         entryPointId: entryPoint.entryPointId,
-        experience: assertExperienceContract({
-            mode: runtime.experience.mode,
-            ...(runtime.experience.frontend ? { frontend: runtime.experience.frontend, features: runtime.experience.features } : {}),
-            ...(runtime.experience.componentModelVersion === undefined
-                ? {}
-                : { componentModelVersion: runtime.experience.componentModelVersion }),
-        }),
+        experience: assertExperienceContract(runtime.experience),
         capabilities: manifest.capabilities,
         ...(experienceContract === undefined ? {} : { experienceContract }),
         resources: compileResources(manifest, entryPoint),

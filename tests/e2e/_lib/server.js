@@ -19,7 +19,7 @@ import { reservePort } from './ports.js';
 
 const REPO_ROOT = resolve(import.meta.dirname, '../../..');
 const SEED_DATA = resolve(REPO_ROOT, 'data');
-const SEED_CONFIG = resolve(REPO_ROOT, 'config.yaml');
+const SEED_CONFIG = existsSync(resolve(REPO_ROOT, 'config.yaml')) ? resolve(REPO_ROOT, 'config.yaml') : resolve(REPO_ROOT, 'default/config.yaml');
 const SCRATCH_ROOT = resolve(REPO_ROOT, 'tests/.e2e-scratch');
 
 const READY_TIMEOUT_MS = 60_000;

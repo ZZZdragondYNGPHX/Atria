@@ -66,16 +66,15 @@ jobs:
           game-runtime/declarative.test.js
           game-runtime/declarative-observations.test.js
           game-runtime/ui-surfaces.test.js
-          game-runtime/ui-selectors.test.js
-          game-runtime/ui-component.test.js
-          game-runtime/ui-declarative.test.js
-          game-runtime/ui-native-components.test.js
+          native/frontend-bridge.test.js
+          native/frontend-presentation.test.js
+          native/frontend-bridge-client.test.js
+          native/frontend-conversation.test.js
           game-runtime/ui-environment.test.js
           game-runtime/ui-full-host.test.js
           game-runtime/ui-immersive.test.js
           game-runtime/ui-host-surfaces.test.js
-          game-runtime/ui-package.test.js
-          game-runtime/ui-live.test.js
+          native/runtime-http.test.js
           game-runtime/formula.test.js
           game-runtime/rng.test.js
           game-runtime/world-package.test.js

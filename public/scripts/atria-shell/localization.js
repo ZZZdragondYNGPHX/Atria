@@ -99,7 +99,6 @@ export const SHELL_TEXT_KEYS = Object.freeze({
     'Scenario fixture': 'atria.experience.p9.51',
     'Load scenario fixture': 'atria.experience.p9.52',
     'Stage scenario fixture': 'atria.experience.p9.53',
-    'Review UI v2 migration': 'atria.experience.p9.54',
     'Field label': 'atria.experience.p9.55',
     'New component type': 'atria.experience.p9.56',
     'Add component': 'atria.experience.p9.57',

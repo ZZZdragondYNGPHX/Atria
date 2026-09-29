@@ -248,6 +248,7 @@ export function assertActor(value) {
 }
 
 export function assertEntryPoint(value) {
+    if (value?.ui !== undefined) throw new TypeError('EntryPoint UI must use Native Frontend Source');
     if (value?.runtime?.experienceContract !== undefined) {
         throw new TypeError('experienceContract belongs to Package.runtime and cannot be overridden by an EntryPoint');
     }
@@ -288,7 +289,6 @@ export function assertEntryPoint(value) {
     for (const key of [
         'initialStateOverlay',
         'initialTimeline',
-        'ui',
         'runtime',
         'recommendations',
         'orchestration',
@@ -500,7 +500,6 @@ const PACKAGE_KEYS = new Set([
     'runtime',
     'orchestration',
     'memory',
-    'ui',
     'skills',
     'presets',
     'processors',
@@ -511,7 +510,7 @@ const PACKAGE_KEYS = new Set([
 
 export function assertAtriaPackageManifest(value) {
     for (const owner of [value, ...(value?.entryPoints ?? [])]) {
-        if (owner?.runtime?.experience?.frontend !== undefined) assertFrontendExperience(owner.runtime.experience);
+        if (owner?.runtime?.experience !== undefined) assertFrontendExperience(owner.runtime.experience);
     }
     noLegacyIdentity(value, 'AtriaPackage');
     assertOnlyKeys(value, PACKAGE_KEYS, 'AtriaPackage');
@@ -687,7 +686,6 @@ export function assertAtriaPackageManifest(value) {
         'author',
         'orchestration',
         'memory',
-        'ui',
         'skills',
         'presets',
         'processors',

@@ -175,7 +175,13 @@ class SimpleGitClient {
 
     /** @param {string} dir */
     async addAll(dir) {
-        await simpleGit({ baseDir: dir }).add('-A');
+        const sg = simpleGit({ baseDir: dir });
+        // Rehash tracked source even when size/mtime (and coarse Windows ctime)
+        // match the index. Ordinary add -A can otherwise miss a same-second edit.
+        // Stage new files/deletions first: renormalize cannot stat deleted paths.
+        // Rehashing then uses the repository's own attributes and ignore rules.
+        await sg.add('-A');
+        await sg.raw(['add', '--renormalize', '--all']);
     }
 
     /**
@@ -186,7 +192,7 @@ class SimpleGitClient {
      */
     async commitIfChanged(dir, message) {
         const sg = simpleGit({ baseDir: dir });
-        await sg.add('-A');
+        await this.addAll(dir);
         const status = await sg.status();
         if (status.files.length === 0) return false;
         await sg.commit(message);

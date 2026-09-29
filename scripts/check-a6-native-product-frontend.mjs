@@ -49,9 +49,9 @@ requirePattern(
     'A6 must isolate the old conversation DOM as an internal generation ABI',
 );
 requirePattern(
-    'public/scripts/native/experience/ui/native-components.js',
-    /data-atria-native-product-component="conversation"[\s\S]*data-atria-native-product-component="composer"/,
-    'A6 Native Component Registry must compose Atria product Conversation/Composer',
+    'public/scripts/native/frontend/conversation.js',
+    /createHeadlessConversation/,
+    'Native Frontend must use the Host Conversation/Composer service',
 );
 
 requirePattern(

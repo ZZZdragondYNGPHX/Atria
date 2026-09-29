@@ -1,7 +1,6 @@
-import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
 import { lowerDeclarativeMutations } from '../../public/scripts/native/experience/logic/mutations.js';
-import { json } from '../../public/scripts/native/experience/ui/v2-values.js';
+import { json } from '../../public/shared/native-values.js';
 import { assertFrontendExperience, frontendFeatureAvailability } from '../../public/shared/native-frontend-contract.js';
 import { validateFrontendGraph } from './frontend/graph.js';
 import { validateSchemaValue } from '../../public/scripts/native/experience/world/schema.js';
@@ -39,8 +38,7 @@ export function validateFrontendCapabilities(normalized, graph, files, permissio
     }
 }
 
-// Validate before install and lower authoring-only shorthand during build. Old
-// v1 resources keep their exact source bytes and existing validation boundary.
+// Validate the formal graph before install; lower game shorthand only during Build.
 export function validateExperienceResources(manifest, files, assets, { lower = false } = {}) {
     validateFrontendResources(manifest, files, assets);
     for (const voice of manifest.runtime?.experienceContract?.presentationRuntime?.voices ?? []) {
@@ -48,13 +46,6 @@ export function validateExperienceResources(manifest, files, assets, { lower = f
     }
     const logicPaths = new Set();
     for (const entry of manifest.entryPoints) {
-        const experience = entry.runtime?.experience ?? manifest.runtime?.experience;
-        if (experience?.componentModelVersion === 2) {
-            if (experience.surface !== undefined) throw new TypeError('Component v2 surfaces belong to document views');
-            const bytes = files.get(experience.component);
-            if (!bytes || bytes.length > 2 * 1024 * 1024) throw new TypeError('Missing or oversized UI Document v2');
-            compileUiDocument(JSON.parse(bytes.toString('utf8')), { mode: experience.mode });
-        }
         const logic = entry.runtime?.game?.logic ?? manifest.runtime?.game?.logic;
         if (logic) logicPaths.add(logic);
     }

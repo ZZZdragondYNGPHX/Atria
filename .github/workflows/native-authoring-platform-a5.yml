@@ -49,9 +49,9 @@ jobs:
           native/session-core.contract.test.js
           native/session-projection.test.js
           game-runtime/plugin-contributions.test.js
-          game-runtime/ui-live.test.js
-          game-runtime/ui-package.test.js
-          game-runtime/ui-component-model.test.js
+          native/frontend-presentation.test.js
+          native/runtime-http.test.js
+          native/frontend-v3.test.js
           skills/scope.test.js
       - name: Run A5 residual guard
         run: node scripts/check-a5-plugin-skill-platform.mjs

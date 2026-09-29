@@ -1,4 +1,4 @@
-# Native Frontend v3 authoring — Phases 2–8
+# Native Frontend v3 authoring — Phases 2–9
 
 `frontend.json` identifies Views, Components, global styles and exact assets.
 Each `.aui` file contains one `<template>`, optional JSON `<contract>` and optional
@@ -697,3 +697,33 @@ Composition events and keyboard viewport in this harness are synthetic. Physical
 IME, real soft keyboard, Android/Termux and external media/provider acceptance
 need separate device/service evidence. These fixtures are Core tests, not a
 release or upgrade of any asset in the independent `package` workspace.
+
+## Phase 9 — Hard Cut / final regression
+
+Non-Text Native Experiences accept only `native@3`. The v1/v2 compiler, renderer,
+component/selectors/surface manifest fields, version selector, Studio migration
+and old Preview/Message template execution have been removed. Old documents fail
+closed; no migration or compatibility renderer is shipped. Reusable bounded data
+validators now live in `public/shared/native-values.js` and `native-data-schema.js`.
+Message Blocks are checked against the pinned v3 Bridge block schema at commit
+and reload. Text resource delivery permits only its declared game resources.
+
+The old pinned-UI Opening interpreter and its generic durable setup values are
+also removed. Author wizard presentation in Source state/forms and submit facts
+through declared typed Application/Workflow commands; do not store UI drafts as
+Session authority. Existing Lifecycle intent/outbox, revision checks and receipts
+are unchanged. Host SceneCue playback retains its closed media/caption/speech
+adapter, exact assets, scope checks and cleanup; it is not a Package UI compiler.
+
+Shared participation uses the existing authenticated Host turn controls and
+scoped projection display. It does not execute Package UI with the owner's
+Session Bridge or borrow local Play DOM. The frozen v3 Bridge has no Shared
+participant target: no new capability or parallel authority is implied by this
+cleanup. Shared/Realm/Continuity business services and Atria runtime plugins and
+Skills remain product assets. The bundled UI authoring Skill now uses v3 Source.
+
+`node scripts/check-a4-experience-runtime.mjs` is the existing workflow entry
+point for the v3 Hard Cut guard. `tests/native/frontend-hard-cut.test.js` rejects
+legacy/mismatched runtime identities and guards removed execution paths. The
+Native Frontend v3 workflow runs associated regressions plus Heavy/Studio browser
+acceptance; the repository PR workflow remains the full unit/storage CI gate.

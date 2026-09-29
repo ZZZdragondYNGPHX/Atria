@@ -72,15 +72,17 @@ export function mountSharedSessionPanel({ document, root, runtime, request = nat
         const selected = credentials();
         const result = await mount({ ...selected, document, window: document.defaultView,
             headers: () => globalThis.Atria?.getContext?.()?.getRequestHeaders?.() ?? {},
-            environmentRoot: canvas,
-            surfaceHost: { mount(surface) {
-                const container = document.createElement('section'); container.dataset.sharedSurface = surface; canvas.append(container);
-                return { container, unmount: () => container.remove() };
-            } },
             onProjection(value) {
                 if (!current() || selected.owner !== credentials().owner || selected.sessionId !== credentials().sessionId) return;
                 snapshot = value;
-                if (!value) { canvas.replaceChildren(); turnControls.replaceChildren(); }
+                canvas.replaceChildren();
+                if (!value) turnControls.replaceChildren();
+                else {
+                    const projection = document.createElement('pre');
+                    projection.className = 'atri-shared-projection';
+                    projection.textContent = JSON.stringify(value.projection, null, 2);
+                    canvas.append(projection);
+                }
                 status.textContent = value ? `${t(value.role)} · ${value.seatId} · ${t(value.turn?.status ?? 'Ready')}` : t('Disconnected');
             } });
         if (!current() || selected.owner !== credentials().owner || selected.sessionId !== credentials().sessionId) { result.dispose(); return; }

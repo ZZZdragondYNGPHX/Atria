@@ -1,4 +1,4 @@
-import { json, fields } from './experience/ui/v2-values.js';
+import { json, fields } from '../../shared/native-values.js';
 
 export const CONTEXT_DERIVED_NAMESPACE = 'atri_context_derived';
 export const CONTEXT_DERIVED_SCHEMA_VERSION = 1;

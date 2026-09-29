@@ -192,8 +192,7 @@ export function createNativeSessionRouter(getServices = services) {
         if (!opened || opened.packageVersion.packageContentHash !== snapshot.session.packageContentHash) {
             throw new TypeError('Native Runtime PackageVersion content mismatch');
         }
-        // Runtime v1 executes only host-validated declarative resources. Do not
-        // provide an executable JS/module transport from package source.
+        // Exact Package Data remains separate from the compiled Frontend graph.
         if (req.body?.resourceId !== undefined) {
             const resolved = resolveNativeRuntimePackage(opened, snapshot.session.entryPointId);
             const ref = resolved.descriptor.experienceContract?.dataResources.find(item => item.resourceId === req.body.resourceId);
@@ -222,6 +221,7 @@ export function createNativeSessionRouter(getServices = services) {
         ) {
             throw new TypeError('Native Runtime resource path must be a safe declarative .json path');
         }
+        if (![resolved.runtime.game.logic, resolved.runtime.game.observations].filter(Boolean).includes(path)) throw new TypeError('Undeclared Text Runtime resource');
         const bytes = opened.sourceFiles.get(path);
         if (!bytes) {
             const error = new Error('Native Runtime Package resource not found');

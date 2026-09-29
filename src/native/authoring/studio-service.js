@@ -1047,7 +1047,7 @@ export class StudioService {
         const preview = this._previewHost.get(previewId);
         if (!preview) throw new TypeError('Preview unavailable');
         const experience = preview.runtime?.experience;
-        const path = experience?.frontend?.entry ?? experience?.component;
+        const path = experience?.frontend?.entry;
         const files = new Map(preview.sourceFiles);
         const bytes = path ? files.get(path) : null;
         const model = bytes ? JSON.parse(Buffer.from(bytes).toString('utf8')) : null;

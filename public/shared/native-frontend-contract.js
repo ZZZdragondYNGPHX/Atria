@@ -1,6 +1,7 @@
 import { ASSET_TYPES } from './native-frontend-media.js';
 // Native Frontend v3: data-only contracts shared by compiler and consumers.
 export const FRONTEND_VERSION = 3;
+export const FRONTEND_SURFACES = Object.freeze(['app.root', 'chat.header', 'chat.footer', 'composer.before', 'composer.after', 'sidebar.left', 'sidebar.right', 'drawer', 'modal']);
 export const BRIDGE_VERSION = 1;
 export const FRONTEND_LIMITS = Object.freeze({ bytes: 2 * 1024 * 1024, totalBytes: 32 * 1024 * 1024, resources: 256, nodes: 4096, depth: 64 });
 
@@ -76,7 +77,7 @@ export function assertFrontendSourceIndex(value) {
     const views = list(value.views, item => {
         fields(item, ['id', 'root', 'surface']); identifier(item.id); identifier(item.root);
         if (!components.some(component => component.id === item.root)) throw new TypeError('Unknown View root Component');
-        if (!['app.root', 'chat.header', 'chat.footer', 'composer.before', 'composer.after', 'sidebar.left', 'sidebar.right', 'drawer', 'modal'].includes(item.surface)) throw new TypeError('Unknown View surface');
+        if (!FRONTEND_SURFACES.includes(item.surface)) throw new TypeError('Unknown View surface');
         return { ...item };
     });
     if (!views.some(view => view.id === value.primaryView)) throw new TypeError('Unknown Primary View');

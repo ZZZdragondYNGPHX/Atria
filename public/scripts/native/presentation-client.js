@@ -1,7 +1,4 @@
 import { assertSceneCue, assertSceneCueIR } from '../../shared/native-presentation-contract.js';
-import { compileUiDocument } from './experience/ui/v2-document.js';
-import { mountUiDocument } from './experience/ui/v2-runtime.js';
-import { createSurfaceHost } from './experience/ui/surfaces.js';
 import { createResponsiveEnvironment } from './experience/ui/environment.js';
 import { detectPresentationCapabilities } from './host-capabilities.js';
 
@@ -10,12 +7,12 @@ const key = ref => ref.assetId + ':' + ref.contentHash;
 const identity = snapshot => [snapshot?.session?.sessionId, snapshot?.revision?.branchId, snapshot?.session?.packageVersionId].join(':');
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 
-// A mount-scoped Host adapter. All scene nodes use mountUiDocument, all facts use
+// A mount-scoped Host SceneCue adapter (not a Package UI renderer). All facts use
 // lifecycle.command, and all narrative jobs use its existing outbox/scheduler.
 export function createNativePresentationClient({ runtime, lifecycle, document: doc = globalThis.document,
     window: win = globalThis.window, fetchImpl = (...args) => fetch(...args), headers = () => ({}),
     now = () => performance.now(), voicePreferences = () => ({}), saveVoicePreference = () => {} } = {}) {
-    let session = null; let serial = 0;
+    let session = null;
     const snapshot = () => runtime.snapshot;
     function current(token = session) {
         if (!token || token !== session || token.disposed || identity(snapshot()) !== token.identity || runtime.history) fail('native_presentation_stale');
@@ -136,16 +133,25 @@ export function createNativePresentationClient({ runtime, lifecycle, document: d
         scope(handle.scene.scopeId, handle.epoch, token);
         const normalized = assertSceneCueIR(ir, token.definition, { assets: token.assets, attachments: approvedAttachments() });
         const lastClear = normalized.cues.findLastIndex(item => item.kind === 'clear');
-        const children = normalized.cues.slice(lastClear + 1).map((value, index) => ({ id: 'cue_' + index,
-            type: value.kind === 'caption' ? 'text' : value.kind === 'speech' ? 'speech-cue' : 'media-cue',
-            props: value.kind === 'caption' ? { text: value.text } : { cue: value } }));
-        const definition = compileUiDocument({ schemaVersion: 2, stateVersion: 1, localState: {}, preferences: {}, actions: {},
-            views: [{ id: 'scene', surface: 'chat.footer', mount: 'always', root: { id: 'scene_root', type: 'stack', children } }] }, { mode: 'component', hostScene: true });
         stopScene(handle);
-        handle.runtime = mountUiDocument(definition, { document: doc, window: win, presentation: api,
-            instanceId: 'scene-' + (++serial), environmentRoot: handle.container,
-            surfaceHost: createSurfaceHost({ resolveSurface: () => handle.container }), onDiagnostic: diagnostic => receipt(token, diagnostic) });
+        const root = doc.createElement('div'); root.className = 'atri-host-scene';
+        const cleanups = [];
+        try {
+            for (const value of normalized.cues.slice(lastClear + 1)) {
+                const element = doc.createElement({ caption: 'p', speech: 'button', image: 'img', audio: 'audio', video: 'video' }[value.kind]);
+                if (value.kind === 'caption') element.textContent = value.text;
+                else if (value.kind === 'speech') {
+                    element.type = 'button'; element.textContent = value.text;
+                    const click = () => { try { speak(value); } catch (error) { receipt(token, { code: error.code ?? 'native_speech_unavailable' }); } };
+                    element.addEventListener('click', click); cleanups.push(() => element.removeEventListener('click', click));
+                } else cleanups.push(bindMedia(element, value, diagnostic => receipt(token, diagnostic)));
+                root.append(element);
+            }
+            handle.container.append(root);
+            handle.runtime = { dispose() { cleanups.forEach(cleanup => cleanup()); root.remove(); } };
+        } catch (error) { cleanups.forEach(cleanup => cleanup()); root.remove(); throw error; }
     }
+
     function mountScene(container, sceneId) {
         const token = current(); const scene = token.definition.scenes.find(item => item.id === sceneId);
         if (!token.ready || !scene) fail('native_scene_unavailable');

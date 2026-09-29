@@ -1,5 +1,5 @@
 import { fields, identifier, list, FRONTEND_LIMITS } from './native-frontend-contract.js';
-import { compileDataSchema } from '../scripts/native/experience/ui/message-templates.js';
+import { compileDataSchema } from './native-data-schema.js';
 import { validateSchemaValue } from '../scripts/native/experience/world/schema.js';
 
 export const DOM_TAGS = new Set('div span main section article aside header footer nav p h1 h2 h3 h4 h5 h6 ul ol li dl dt dd button label input textarea select option optgroup form fieldset legend table caption colgroup col thead tbody tfoot tr th td img picture figure figcaption strong em small b i u s sub sup pre code blockquote abbr address time br hr details summary progress meter output a svg g path rect circle ellipse line polyline polygon text tspan defs linearGradient radialGradient stop clipPath mask title desc use component slot audio video canvas'.split(' '));

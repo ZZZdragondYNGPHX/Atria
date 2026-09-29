@@ -1,5 +1,5 @@
-import { fields, json, text } from '../scripts/native/experience/ui/v2-values.js';
-import { compileDataSchema } from '../scripts/native/experience/ui/message-templates.js';
+import { fields, json, text } from './native-values.js';
+import { compileDataSchema } from './native-data-schema.js';
 import { validateSchemaValue } from '../scripts/native/experience/world/schema.js';
 import { normalizeEventInterpretationRequest, validateEventInterpretation } from '../scripts/native/experience/llm/event-interpreter.js';
 import { assertOutcomeShape } from './native-message-contract.js';

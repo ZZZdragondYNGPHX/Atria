@@ -13,7 +13,6 @@ export {
 
 export const ATRIA_AUTHORING_SCHEMA_VERSION = 1;
 export const ATRIA_EXPERIENCE_MODES = Object.freeze(['text', 'component', 'hybrid', 'full']);
-export const ATRIA_COMPONENT_MODEL_VERSION = 1;
 export const ATRIA_RESOURCE_GRAPH_MODE = 'derived-readonly';
 export const ATRIA_RESOURCE_AUTHORITIES = Object.freeze(['project-source', 'native-library', 'plugin-source']);
 export const ATRIA_RESOURCE_CAPABILITIES = Object.freeze([
@@ -307,25 +306,7 @@ function assertContribution(value, field) {
 }
 
 export function assertExperienceContract(value) {
-    if (value?.frontend !== undefined) return Object.freeze(assertFrontendExperience(value));
-    object(value, 'Experience');
-    only(value, ['mode', 'componentModelVersion'], 'Experience');
-    if (!ATRIA_EXPERIENCE_MODES.includes(value.mode)) {
-        throw new TypeError('Experience.mode must be one of: ' + ATRIA_EXPERIENCE_MODES.join(', '));
-    }
-    if (value.mode === 'text') {
-        if (value.componentModelVersion !== undefined) {
-            throw new TypeError('Text Experience must not own the shared Component Model');
-        }
-        return Object.freeze({ mode: 'text' });
-    }
-    if (![1, 2].includes(value.componentModelVersion)) {
-        throw new TypeError('Experience.componentModelVersion must be 1 or 2 for ' + value.mode);
-    }
-    return Object.freeze({
-        mode: value.mode,
-        componentModelVersion: value.componentModelVersion,
-    });
+    return Object.freeze(assertFrontendExperience(value));
 }
 
 export function assertResourceDescriptor(value) {

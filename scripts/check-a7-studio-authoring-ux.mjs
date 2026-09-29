@@ -59,23 +59,8 @@ requirePattern(
     'A7 mobile Studio views must be independent layouts rather than desktop compression',
 );
 
-requirePattern(
-    'public/scripts/native/studio-ui-editor.js',
-    /\['design',\s*'structure',\s*'bindings',\s*'source'\]/,
-    'A7 Structured UI must provide Design / Structure / Bindings / Source',
-);
-requirePattern(
-    'public/scripts/native/studio-preview-ui.js',
-    /compileExperienceComponentModel[\s\S]*renderExperienceComponentModel/,
-    'A7 visual UI editor must consume the shared A4 Component Model',
-);
-requirePattern('public/scripts/native/studio-ui-editor.js', /compileStudioUi[\s\S]*mountStudioPreviewUi/, 'P9 editor must use the shared versioned preview adapter');
-requirePattern('public/scripts/native/studio-preview-ui.js', /compileUiDocument[\s\S]*mountUiDocument/, 'P9 preview must use the production v2 compiler and renderer');
-rejectPattern(
-    'public/scripts/native/studio-ui-editor.js',
-    /innerHTML|DOMParser|eval\s*\(|new Function|javascript:/,
-    'A7 must not implement arbitrary HTML/JS visual-designer round-tripping',
-);
+requirePattern('public/scripts/native/studio-frontend-editor.js', /frontend.patch/, 'Studio must stage semantic Source patches');
+requirePattern('public/scripts/native/studio-preview-ui.js', /mountNativeFrontend/, 'Preview must use the production v3 renderer');
 
 requirePattern(
     'public/scripts/native/studio-workspace.js',

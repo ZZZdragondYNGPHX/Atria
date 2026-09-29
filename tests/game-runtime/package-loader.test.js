@@ -108,7 +108,7 @@ describe('A3 Native Game Runtime loader', () => {
     test('activates non-Text descriptors in A4 without changing Native identity', async () => {
         const componentDescriptor = {
             ...descriptor,
-            experience: { mode: 'component', componentModelVersion: 1 },
+            experience: { mode: 'component', frontend: { kind: 'native', version: 3, entry: 'runtime/frontend/index.json' }, features: [] },
         };
         const fetchImpl = jest.fn(async () => response({
             body: {
@@ -116,9 +116,7 @@ describe('A3 Native Game Runtime loader', () => {
                 runtime: {
                     experience: {
                         mode: 'component',
-                        componentModelVersion: 1,
-                        component: 'ui/main.json',
-                        surface: 'app.root',
+                        frontend: { kind: 'native', version: 3, entry: 'runtime/frontend/index.json' }, features: [],
                     },
                     game: {},
                     primaryWorldId: null,

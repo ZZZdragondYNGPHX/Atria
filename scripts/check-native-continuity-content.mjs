@@ -23,5 +23,5 @@ assert.match(read('src/native/content-composition.js'), /composeContent\(baseByt
 assert.match(read('src/native/continuity-authority.js'), /transfer\.prepared/);
 assert.match(read('src/native/continuity-authority.js'), /transfer\.compensated/);
 assert.match(read('src/native/adapters/generation-host.js'), /!preflight && snapshot\.externalEffects/);
-assert.match(read('public/scripts/native/experience/ui/v2-document.js'), /step\.op\.startsWith\('continuity\.'\)/);
+assert.match(read('public/scripts/native/lifecycle-client.js'), /continuityCommand/);
 console.log('P7 guard passed: exact Base/add-on proof, typed Community and Continuity, independent Native revisions, ownership reconciliation, recoverable Saga, existing renderer/Host, P9 Host capabilities integrated');

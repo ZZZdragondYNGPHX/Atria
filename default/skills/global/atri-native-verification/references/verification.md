@@ -2,7 +2,7 @@
 
 ## 1. 编译与精确 Preview
 
-用现有 Studio Workspace 的 validation、Package build 和 exact preview archive。Preview 必须固定构建版本，后续 Source 编辑不能悄悄改变已显示结果。v1/v2 使用生产 renderer。作者界面的 conversation/composer 是隔离占位，Scene 没有有效 scoped Session 就不能模拟真实 Play。
+用现有 Studio Workspace 的 validation、Package build 和 exact preview archive。Preview 必须固定构建版本，后续 Source 编辑不能悄悄改变已显示结果。native@3 使用正式 Compiler/Renderer 和 readonly Preview transport；不得借用私人 Play DOM 或模拟真实 Session 写权限。
 
 ## 2. Scenario（catalog: scenario）
 
@@ -18,7 +18,7 @@ Task 使用真实结果应用流程的 recorded payload；$pending 只解析唯�
 
 ## 4. 相关回归
 
-- UI：输入/局部动作、Opening、消息 action policy、320px 无横向溢出、焦点和卸载。
+- UI：输入/局部动作、声明式表单、Message Block typed schema、320px 无横向溢出、焦点和卸载。
 - Activity：fact-before-Narrator、迟到结果、取消/恢复、assets 精确校验。
 - Information：exposure 与 Actor scope，Rollup 来源与过期。
 - Player/Realm：publication 边界、reservation、幂等 receipt、Session restore 不回滚独立账本。

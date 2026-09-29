@@ -54,7 +54,7 @@
 .atria-studio-activity { min-height: 0; min-width: 0; display: grid; grid-template-rows: 44px minmax(0, 1fr); border-top: 1px solid var(--atri-separator); background: var(--atri-surface-1); overflow: hidden; }
 .atria-studio-activity-tabs, .atria-studio-editor-tabs { display: flex; gap: 4px; align-items: center; padding: 4px 12px; border-bottom: 1px solid var(--atri-separator); }
 .atria-studio-editor-tabs { flex-wrap: wrap; }
-.atria-studio-ui-editor, .atria-studio-editor-host { min-width: 0; max-width: 100%; }
+.atria-studio-editor-host { min-width: 0; max-width: 100%; }
 .atria-studio-editor-host textarea { width: 100%; min-width: 0; box-sizing: border-box; }
 .atria-native-studio .atria-studio-activity-tabs button, .atria-native-studio .atria-studio-editor-tabs button { background: transparent; font-size: var(--atri-text-footnote); }
 .atria-native-studio .atria-studio-activity-tabs button[data-active="true"], .atria-native-studio .atria-studio-editor-tabs button[data-active="true"] { color: var(--atri-accent-text); background: var(--atri-accent-soft); }

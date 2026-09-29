@@ -1,5 +1,5 @@
-import { fields } from '../scripts/native/experience/ui/v2-values.js';
-import { compileDataSchema } from '../scripts/native/experience/ui/message-templates.js';
+import { fields } from './native-values.js';
+import { compileDataSchema } from './native-data-schema.js';
 import { assertLifecycleJson } from './native-lifecycle-contract.js';
 import { assertTaskValue, taskId } from './native-task-contract.js';
 
