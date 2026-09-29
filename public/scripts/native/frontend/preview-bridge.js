@@ -1,4 +1,5 @@
 import { bridgeReceipt, bridgeValue, bridgeFailure, publicBridgeError, projectBridgeCollection, bridgeDescriptorDigest } from '../../../shared/native-frontend-bridge.js';
+import { fixedHostTarget } from '../../../shared/native-frontend-host.js';
 
 // Immutable, owner-checked Preview projections. No fake authority writer and no
 // legacy fallback. The same compiled schemas, queries and receipt contract apply.
@@ -14,6 +15,11 @@ export function previewBridgeTransport({ descriptor, projections = {}, scopes })
                 if (closed || request.epoch !== epoch) throw bridgeFailure('bridge_epoch_stale');
                 if (request.method === 'status') return receipt({});
                 if (!binding || !scopes[request.componentId]?.includes(binding.id)) throw bridgeFailure('bridge_binding_denied');
+                if (request.method === 'host.authorize' && ['host.media', 'host.presentation'].includes(binding.target.service)) {
+                    if (!fixedHostTarget(binding.target).local) throw bridgeFailure('bridge_method_denied');
+                    if (request.revision !== 'preview') throw bridgeFailure('bridge_revision_stale');
+                    bridgeValue(request.input, binding.inputSchema); return receipt({});
+                }
                 if (binding.kind !== 'read') throw bridgeFailure('bridge_preview_readonly');
                 if (request.revision !== 'preview') throw bridgeFailure('bridge_revision_stale');
                 const input = bridgeValue(request.input, binding.inputSchema);

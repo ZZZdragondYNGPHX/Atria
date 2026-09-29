@@ -70,14 +70,14 @@ export function parseAui(source, file) {
                     else (node.events ??= {})[name.slice(3)] = value;
                     continue;
                 }
-                const group = { bind: 'bindings', prop: 'props', style: 'styles' }[name.split(':')[0]];
+                const group = { bind: 'bindings', prop: 'props', style: 'styles', arg: 'messageArgs' }[name.split(':')[0]];
                 if (group && name.includes(':')) { (node[group] ??= {})[name.split(':')[1]] = { get: value }; continue; }
                 if (name === 'if') { node.condition = { get: value }; continue; }
                 if (name === 'each') { node.each = { get: value }; continue; }
                 if (name === 'item-key') { node.key = value; continue; }
                 if (name === 'window-size') { node.windowSize = Number(value); continue; }
                 if (name === 'row-height') { node.rowHeight = Number(value); continue; }
-                const special = { read: 'read', ref: 'component', asset: 'asset', 'slot-name': 'slot' }[name];
+                const special = { read: 'read', ref: 'component', asset: 'asset', media: 'media', message: 'message', boundary: 'boundary', 'slot-name': 'slot' }[name];
                 if (special) node[special] = value;
                 else node.attributes[name] = value;
             }

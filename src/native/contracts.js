@@ -48,6 +48,7 @@ export const ATRIA_PACKAGE_PERMISSIONS = Object.freeze([
     'runtime-tools',
     'world-write',
     'network',
+    'remote-media',
     'clipboard',
     'asset-access',
 ]);

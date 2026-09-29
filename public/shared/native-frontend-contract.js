@@ -1,3 +1,4 @@
+import { ASSET_TYPES } from './native-frontend-media.js';
 // Native Frontend v3: data-only contracts shared by compiler and consumers.
 export const FRONTEND_VERSION = 3;
 export const BRIDGE_VERSION = 1;
@@ -43,6 +44,7 @@ export function assertFeatures(value = []) {
 // not confuse accepting a versioned declaration with providing that feature.
 export function frontendFeatureAvailability(features) {
     return assertFeatures(features).map(feature => {
+        if (feature.id === 'remote-media' && feature.version === 1) return { ...feature, status: 'available', reasonCode: 'frontend_feature_available' };
         if (feature.required) throw new TypeError('Unsupported required Frontend feature: ' + feature.id + '@' + feature.version);
         return { ...feature, status: 'unsupported', reasonCode: 'frontend_feature_not_implemented' };
     });
@@ -64,7 +66,7 @@ export function assertFrontendExperience(value, { authoring = false } = {}) {
 }
 
 export function assertFrontendSourceIndex(value) {
-    fields(value, ['format', 'version', 'primaryView', 'views', 'components', 'styles', 'assets', 'bridge']);
+    fields(value, ['format', 'version', 'primaryView', 'views', 'components', 'styles', 'assets', 'bridge', 'media', 'localization']);
     if (value.format !== 'atria-frontend-source' || value.version !== 3) throw new TypeError('Invalid Frontend Source Index');
     const components = list(value.components, item => {
         fields(item, ['id', 'source']); identifier(item.id); resourcePath(item.source);
@@ -81,9 +83,9 @@ export function assertFrontendSourceIndex(value) {
     const resources = (items, style) => list(items ?? [], item => {
         fields(item, style ? ['id', 'source'] : ['id', 'source', 'mediaType']);
         identifier(item.id); resourcePath(item.source);
-        if (style ? !item.source.endsWith('.css') : !['image/png', 'image/jpeg', 'image/webp', 'font/woff', 'font/woff2', 'font/ttf', 'font/otf'].includes(item.mediaType)) throw new TypeError('Unsupported Frontend resource type');
+        if (style ? !item.source.endsWith('.css') : !ASSET_TYPES.includes(item.mediaType)) throw new TypeError('Unsupported Frontend resource type');
         return { ...item };
     });
-    if (value.bridge !== undefined) resourcePath(value.bridge);
+    for (const key of ['bridge', 'media', 'localization']) if (value[key] !== undefined) resourcePath(value[key]);
     return { ...value, views, components, styles: resources(value.styles, true), assets: resources(value.assets, false) };
 }

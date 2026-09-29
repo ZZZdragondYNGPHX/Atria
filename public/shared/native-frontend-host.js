@@ -8,6 +8,8 @@ const id = string(128), text = string(65536), number = { type: 'integer', minimu
 export const MESSAGE_SCHEMA = hostObject({ messageId: id, sequence: number, role: string(16), content: text, actorId: id, predecessorId: id, branchId: id, revisionId: id });
 export const SESSION_SCHEMA = hostObject({ sessionId: id, branchId: id, revisionId: id, tailMessageId: id });
 export const GENERATION_SCHEMA = hostObject({ state: { ...string(16), enum: ['idle', 'preparing', 'streaming', 'finalizing', 'cancelling', 'failed'] }, text, error: string(128) });
+export const MEDIA_REF_SCHEMA = hostObject({ kind: { ...string(16), enum: ['exact', 'declared', 'host'] }, id: string(64) });
+const localeSchema = hostObject({ locale: string(64), direction: { ...string(3), enum: ['ltr', 'rtl'] } });
 export const BRANCH_SCHEMA = hostObject({ branchId: id, parentBranchId: id, revisionId: id, predecessorId: id });
 const saveSchema = hostObject({ saveId: id, revisionId: id, branchId: id, displayName: string(256), createdAt: number });
 const rows = items => ({ type: 'array', items, maxItems: 10000 });
@@ -16,6 +18,10 @@ const action = (inputSchema = HOST_EMPTY, local = false, outputSchema = HOST_EMP
 // Closed Host-owned target catalogue. These are capabilities, never arbitrary
 // method dispatch; both authoring and installed graph validation use this table.
 const targets = {
+    'host.media.resolve': { ...read(hostObject({ ref: MEDIA_REF_SCHEMA, status: { ...string(16), enum: ['available', 'denied', 'unavailable'] }, reasonCode: string(128) }), true), inputSchema: hostObject({ ref: MEDIA_REF_SCHEMA, type: { ...string(8), enum: ['image', 'audio', 'video'] } }) },
+    'host.presentation.locale': read(localeSchema, true),
+    'host.presentation.setLocale': action(hostObject({ locale: string(64) }), true, localeSchema),
+    'host.presentation.announce': action(hostObject({ text: string(4096) }), true),
     'host.conversation.messages': read(MESSAGE_SCHEMA, false, true),
     'host.conversation.status': read(SESSION_SCHEMA),
     'host.conversation.branches': read(BRANCH_SCHEMA, false, true),

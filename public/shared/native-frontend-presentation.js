@@ -2,10 +2,10 @@ import { fields, identifier, list, FRONTEND_LIMITS } from './native-frontend-con
 import { compileDataSchema } from '../scripts/native/experience/ui/message-templates.js';
 import { validateSchemaValue } from '../scripts/native/experience/world/schema.js';
 
-export const DOM_TAGS = new Set('div span main section article aside header footer nav p h1 h2 h3 h4 h5 h6 ul ol li dl dt dd button label input textarea select option optgroup form fieldset legend table caption colgroup col thead tbody tfoot tr th td img picture figure figcaption strong em small b i u s sub sup pre code blockquote abbr address time br hr details summary progress meter output a svg g path rect circle ellipse line polyline polygon text tspan defs linearGradient radialGradient stop clipPath mask title desc use component slot'.split(' '));
+export const DOM_TAGS = new Set('div span main section article aside header footer nav p h1 h2 h3 h4 h5 h6 ul ol li dl dt dd button label input textarea select option optgroup form fieldset legend table caption colgroup col thead tbody tfoot tr th td img picture figure figcaption strong em small b i u s sub sup pre code blockquote abbr address time br hr details summary progress meter output a svg g path rect circle ellipse line polyline polygon text tspan defs linearGradient radialGradient stop clipPath mask title desc use component slot audio video'.split(' '));
 export const VOID_TAGS = new Set(['input', 'img', 'br', 'hr', 'col']);
-export const DOM_ATTRIBUTES = new Set('id class title role tabindex type name value placeholder disabled checked selected multiple required min max step rows cols alt width height for inputmode enterkeyhint autocomplete spellcheck hidden open dir lang draggable slot colspan rowspan scope datetime viewBox d fill stroke stroke-width cx cy r rx ry x y x1 y1 x2 y2 points transform opacity offset stop-color stop-opacity preserveAspectRatio clip-path fill-rule stroke-linecap stroke-linejoin'.split(' '));
-export const EVENTS = new Set('click dblclick contextmenu pointerdown pointerup pointermove pointerenter pointerleave pointercancel keydown keyup focus blur focusin focusout input change submit scroll wheel dragstart drag dragend dragenter dragleave dragover drop animationstart animationend animationiteration transitionend longpress swipe pinch'.split(' '));
+export const DOM_ATTRIBUTES = new Set('boundary-loading boundary-error boundary-retry controls loop muted preload playsinline id class title role tabindex type name value placeholder disabled checked selected multiple required min max step rows cols alt width height for inputmode enterkeyhint autocomplete spellcheck hidden open dir lang draggable slot colspan rowspan scope datetime viewBox d fill stroke stroke-width cx cy r rx ry x y x1 y1 x2 y2 points transform opacity offset stop-color stop-opacity preserveAspectRatio clip-path fill-rule stroke-linecap stroke-linejoin'.split(' '));
+export const EVENTS = new Set('click dblclick contextmenu pointerdown pointerup pointermove pointerenter pointerleave pointercancel keydown keyup focus blur focusin focusout beforeinput compositionstart compositionupdate compositionend input change submit scroll wheel dragstart drag dragend dragenter dragleave dragover drop animationstart animationend animationiteration transitionend longpress swipe pinch'.split(' '));
 const ROOTS = ['component', 'view', 'ui', 'draft', 'prefs', 'props', 'event', 'item', 'env', 'form', 'bridge'];
 const presentationSchema = schema => compileDataSchema(schema, 0, { nodes: 0, maxArrayItems: 10000 });
 const WRITABLE = ['component', 'view', 'ui', 'draft', 'prefs'];
@@ -93,7 +93,7 @@ export function assertPresentationContract(value = {}) {
             if (action.operationId !== undefined) expression(action.operationId);
             if (['set', 'toggle'].includes(action.kind)) valuePath(action.target, true);
             else if (['emit', 'view.push', 'view.replace', 'overlay.open', 'focus', 'read.snapshot', 'read.page', 'action.invoke', 'operation.start', 'operation.cancel'].includes(action.kind)) identifier(action.target);
-            else if (!['view.back', 'overlay.close'].includes(action.kind)) throw new TypeError('Unknown presentation action');
+            else if (!['view.back', 'overlay.close', 'locale.set', 'announce'].includes(action.kind)) throw new TypeError('Unknown presentation action');
             if (action.value !== undefined) expression(action.value);
             if (action.kind === 'set' && action.value === undefined) throw new TypeError('Set requires a value');
             return action;
@@ -128,7 +128,7 @@ export function styleValue(declaration, value) {
     throw new TypeError('Invalid typed style value');
 }
 export function assertPresentationNode(node) {
-    fields(node, ['id', 'tag', 'attributes', 'children', 'read', 'action', 'component', 'asset', 'bindings', 'events', 'props', 'styles', 'each', 'key', 'windowSize', 'rowHeight', 'condition', 'slot']);
+    fields(node, ['id', 'tag', 'attributes', 'children', 'read', 'action', 'component', 'asset', 'bindings', 'events', 'props', 'styles', 'each', 'key', 'windowSize', 'rowHeight', 'condition', 'slot', 'media', 'message', 'messageArgs', 'boundary']);
     identifier(node.id);
     if (!DOM_TAGS.has(node.tag)) throw new TypeError('Unsupported semantic element: ' + node.tag);
     if (!node.attributes || Array.isArray(node.attributes)) throw new TypeError('Invalid DOM attributes');
@@ -137,12 +137,17 @@ export function assertPresentationNode(node) {
         if (['fill', 'stroke', 'clip-path'].includes(name) && (value.includes('\\') || (/url\s*\(/i.test(value) && !/^url\(#[a-zA-Z][\w-]*\)$/.test(value)))) throw new TypeError('SVG resource must be local fragment');
     }
     if (node.tag === 'input' && ['file', 'image'].includes(node.attributes.type?.toLowerCase())) throw new TypeError('Unsupported input type');
-    for (const key of ['read', 'action', 'component', 'asset', 'slot']) if (node[key] !== undefined) identifier(node[key]);
+    for (const key of ['read', 'action', 'component', 'asset', 'slot', 'media', 'message']) if (node[key] !== undefined) identifier(node[key]);
     if ((node.tag === 'component') !== (node.component !== undefined)) throw new TypeError('Invalid Component reference');
-    if (node.asset !== undefined && node.tag !== 'img') throw new TypeError('Asset sink requires img');
+    if (node.asset !== undefined && !['img', 'audio', 'video'].includes(node.tag)) throw new TypeError('Asset sink requires image/audio/video');
+    if (node.media && (node.tag !== 'img' || node.asset || node.bindings?.media)) throw new TypeError('Invalid declared media sink');
+    if (node.bindings?.media && (!['img', 'audio', 'video'].includes(node.tag) || node.asset)) throw new TypeError('Invalid typed media sink');
+    if (node.message && (node.children.length || node.bindings?.text || node.bindings?.prose)) throw new TypeError('Localized message owns text');
+    for (const [key, expr] of Object.entries(node.messageArgs ?? {})) { identifier(key); expression(expr); }
+    if (node.boundary !== undefined && !['local', 'required'].includes(node.boundary)) throw new TypeError('Invalid Boundary');
     if (!Array.isArray(node.children) || node.children.length > FRONTEND_LIMITS.nodes || (VOID_TAGS.has(node.tag) && node.children.length)) throw new TypeError('Invalid element children');
     for (const [name, value] of Object.entries(node.bindings ?? {})) {
-        if (!['text', 'prose', 'value', 'checked', 'disabled', 'hidden', 'class', 'title', 'aria-label'].includes(name)) throw new TypeError('Unsupported binding sink');
+        if (!['media', 'text', 'prose', 'value', 'checked', 'disabled', 'hidden', 'class', 'title', 'aria-label'].includes(name)) throw new TypeError('Unsupported binding sink');
         expression(value);
         if (name === 'prose' && (node.children.length || node.bindings.text)) throw new TypeError('Prose owns its inert children');
     }

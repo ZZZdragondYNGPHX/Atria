@@ -42,7 +42,7 @@ describe('Native Frontend v3 compiler skeleton', () => {
         const result = compile(files), graph = validate(result);
         expect([...result.files]).toEqual([...compile(files).files]);
         expect(graph.index.primaryView).toBe('view:main');
-        expect(graph.resources.map(ref => ref.kind).sort()).toEqual(['bridge', 'component', 'provenance', 'style', 'view']);
+        expect(graph.resources.map(ref => ref.kind).sort()).toEqual(['bridge', 'component', 'diagnostics', 'provenance', 'style', 'view']);
         const cst = parseAui(template, 'Main.aui');
         expect(cst.cst.source).toBe(template);
         const span = cst.spans.find(item => item.id === 'greeting');

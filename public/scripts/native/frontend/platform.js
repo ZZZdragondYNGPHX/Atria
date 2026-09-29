@@ -16,24 +16,43 @@ export function createFrameScheduler(window, document) {
     };
 }
 
-export function createPresentationEnvironment(window, frame, changed) {
-    const cleanups = [], queries = ['(prefers-reduced-motion: reduce)', '(prefers-color-scheme: dark)', '(pointer: coarse)', '(hover: hover)', '(forced-colors: active)'];
+export function createPresentationEnvironment(window, frame, changed, host = {}) {
+    const cleanups = [], queries = ['(prefers-reduced-motion: reduce)', '(prefers-color-scheme: dark)', '(pointer: coarse)', '(hover: hover)', '(forced-colors: active)', '(prefers-contrast: more)', '(prefers-contrast: less)'];
     const media = queries.map(query => window.matchMedia?.(query));
-    let current;
+    let current, modality = 'keyboard';
+    const listen = (target, event, handler) => { target?.addEventListener(event, handler); cleanups.push(() => target?.removeEventListener(event, handler)); };
+    const probe = frame.ownerDocument.createElement('div');
+    probe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
+    (frame.shadowRoot ?? frame).append(probe); cleanups.push(() => probe.remove());
     function update() {
         const rect = frame.getBoundingClientRect();
-        current = { width: rect.width, height: rect.height, viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
+        const visual = window.visualViewport;
+        const visualHeight = visual?.height ?? window.innerHeight, visualTop = visual?.offsetTop ?? 0;
+        const safeArea = window.getComputedStyle(probe);
+        current = { locale: host.locale?.() ?? 'en', direction: host.direction?.() ?? 'ltr', inputModality: modality,
+            visualViewportWidth: visual?.width ?? window.innerWidth, visualViewportHeight: visualHeight,
+            visualViewportTop: visualTop, visualViewportLeft: visual?.offsetLeft ?? 0,
+            visualViewportScale: visual?.scale ?? 1,
+            occlusionBottom: Math.max(0, window.innerHeight - visualHeight - visualTop),
+            keyboardInset: (visual?.scale ?? 1) === 1 ? Math.max(0, window.innerHeight - visualHeight - visualTop) : 0,
+            ...Object.fromEntries(['Top', 'Right', 'Bottom', 'Left'].map(edge => ['safeArea' + edge, Math.max(0, Math.min(4096, parseFloat(safeArea['padding' + edge]) || 0))])),
+            contrast: media[5]?.matches ? 'more' : media[6]?.matches ? 'less' : 'no-preference',
+            textScale: Math.max(0.5, Math.min(3, host.textScale ?? 1)), uiScale: Math.max(0.5, Math.min(3, host.uiScale ?? 1)),
+            width: rect.width, height: rect.height, viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
             orientation: window.innerWidth > window.innerHeight ? 'landscape' : 'portrait', device: window.innerWidth < 600 ? 'mobile' : 'desktop',
             reducedMotion: Boolean(media[0]?.matches), dark: Boolean(media[1]?.matches), touch: Boolean(media[2]?.matches), hover: Boolean(media[3]?.matches), forcedColors: Boolean(media[4]?.matches) };
-        for (const [key, value] of Object.entries(current)) if (typeof value === 'number') frame.style.setProperty('--atria-' + key.replace(/[A-Z]/g, letter => '-' + letter.toLowerCase()), value + 'px');
+        for (const [key, value] of Object.entries(current)) if (typeof value === 'number') frame.style.setProperty('--atria-' + key.replace(/[A-Z]/g, letter => '-' + letter.toLowerCase()), String(value) + (key.endsWith('Scale') ? '' : 'px'));
         for (const edge of ['top', 'right', 'bottom', 'left']) frame.style.setProperty('--atria-safe-area-' + edge, 'env(safe-area-inset-' + edge + ', 0px)');
         changed?.(current);
     }
+    listen(window.visualViewport, 'resize', update); listen(window.visualViewport, 'scroll', update);
+    listen(frame, 'keydown', () => { modality = 'keyboard'; update(); });
+    listen(frame, 'pointerdown', event => { modality = event.pointerType === 'touch' ? 'touch' : 'pointer'; update(); });
     window.addEventListener('resize', update); cleanups.push(() => window.removeEventListener('resize', update));
     for (const query of media) { query?.addEventListener('change', update); cleanups.push(() => query?.removeEventListener('change', update)); }
     const observer = window.ResizeObserver ? new window.ResizeObserver(update) : null;
     observer?.observe(frame); update();
-    return { get: () => ({ ...current }), dispose() { observer?.disconnect(); cleanups.forEach(clean => clean()); } };
+    return { get: () => ({ ...current }), update, dispose() { observer?.disconnect(); cleanups.forEach(clean => clean()); } };
 }
 
 export function createNodeHandle(node, boundary, { window, scheduler, active, pointers }) {

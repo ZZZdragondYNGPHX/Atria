@@ -14,6 +14,13 @@ export function validateFrontendResources(manifest, files, assets) {
         frontendFeatureAvailability(normalized.features);
         const graph = validateFrontendGraph({ entry: normalized.frontend.entry, files, mode: normalized.mode,
             experienceContract: manifest.runtime?.experienceContract });
+        const mediaRef = graph.resources.find(ref => ref.kind === 'media');
+        if (mediaRef) {
+            const catalog = JSON.parse(files.get(mediaRef.path).toString('utf8'));
+            const permission = manifest.permissions.find(item => item.permission === 'remote-media');
+            const feature = normalized.features.find(item => item.id === 'remote-media' && item.version === 1);
+            if (!permission || !feature || (catalog.required && (!permission.required || !feature.required))) throw new TypeError('Frontend media requires matching remote-media feature and External Access Permission');
+        }
         for (const binding of graph.bridge.bindings.filter(item => item.kind === 'read')) {
             if (!binding.target.resourceId) continue;
             const ref = manifest.runtime.experienceContract.dataResources.find(item => item.resourceId === binding.target.resourceId);

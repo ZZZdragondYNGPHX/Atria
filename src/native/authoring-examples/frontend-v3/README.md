@@ -1,4 +1,4 @@
-# Native Frontend v3 authoring — Phases 2–3
+# Native Frontend v3 authoring — Phases 2–5
 
 `frontend.json` identifies Views, Components, global styles and exact assets.
 Each `.aui` file contains one `<template>`, optional JSON `<contract>` and optional
@@ -227,8 +227,8 @@ unit suites and `tests/frontend/native-frontend-bridge.smoke.mjs` demonstrate ty
 inputs, snapshot subscriptions, pagination, scope/revision/epoch errors, real
 SessionCore Action publication, Operation lifecycle, recovery and Preview parity.
 
-The following section adds Phase 4 Conversation/Session/Prose. Remote Media,
-Localization/IME, Script VM, Canvas and Studio visual editing remain later phases.
+The following section adds Phase 4 Conversation/Session/Prose. Phase 5 below adds Media, Localization/IME and Boundaries. Script VM, Canvas
+and Studio visual editing remain later phases.
 
 ## Phase 4 — Conversation, Session and Safe Prose
 
@@ -323,3 +323,150 @@ plus configured stop/diagnostics/exit actions; a failed recovery retains a Host
 panel even after old Views are disposed. Preview shares schemas and rendering,
 uses supplied immutable projections, and rejects writes. Missing fixed Preview
 projections return `bridge_projection_unavailable`, not a simulated Session.
+
+## Phase 5 — Media, localization, input and boundaries
+
+Source Index `media` and `localization` fields name JSON resources relative to the
+index, like `bridge`. The compiler emits exact, hash-checked catalogs and advisory
+`diagnostics` resources; install repeats semantic validation. Remote bytes are
+never fetched by build or included in `.atria`.
+
+### Media and External Access Permission
+
+```json
+{
+  "version": 1,
+  "required": false,
+  "entries": [{
+    "mediaId": "portrait.hero",
+    "sources": [{"url": "https://images.example/hero.png"}],
+    "mediaType": "image/png", "width": 512, "height": 768,
+    "loading": "lazy", "cache": "session", "fallback": "portraitFallback"
+  }]
+}
+```
+
+A Package with a catalog must declare both `remote-media@1` in Experience features
+and `remote-media` in Package permissions. A required catalog requires both
+corresponding declarations to be required. Optional remote media starts denied;
+the independent Host panel lists all origins, explains IP/image-selection/timing
+exposure, and offers enable/disable. Required catalog consent is checked before
+activation. Consent is per Experience and is never controlled by Package state.
+Installation consent alone does not silently enable network requests.
+
+`<img node-id="hero" media="portrait.hero" alt="Hero" />` resolves a fixed catalog
+entry. Dynamic `bind:media="item.portrait"` accepts a mediaId string or a closed
+`{kind:"exact"|"declared"|"host",id}` MediaRef. An URL, extra field or unknown
+identity is rejected. `asset="id"` binds exact images, audio or video. Asset MIME
+must match the element. Audio/video use native controls and metadata preload;
+there is no Package autoplay, raw playback API or remote audio/video capability.
+Playback pauses on visibility loss and resources are released on disposal.
+
+Remote sources require canonical HTTPS without credentials/fragments. PNG, JPEG,
+WebP, GIF and AVIF are supported. Each entry has at most four candidates and a
+mandatory exact image fallback; optional `integrity` is a lowercase SHA-256 hex
+hash. Direct browser CORS requests omit credentials/referrer, reject redirects,
+and use `cache: no-store`. Origins must support CORS; no server-side raw proxy or
+ambient network API is introduced. Host fetch injection is a trusted integration
+seam, never Package code. A browser decode failure also uses the exact fallback.
+The native image loading hint remains advisory; remote resolution is bounded.
+
+The resolver keeps at most 64 remote entries (2 MiB each), eight in-flight loads
+and a 15-second deadline per candidate. It shares pending/session-cache loads,
+evicts released entries, and revokes `cache:"none"` entries on release. Denied,
+offline, MIME/integrity/size failure and budget exhaustion return safe reason codes
+with fallback. Disabled/disposed/recovered Experiences abort requests and revoke
+remote object URLs. Exact media retains the existing 2 MiB/resource and 32 MiB
+graph budgets. Large catalogs can have 10000 identities within the graph budget.
+
+Only Host code may issue opaque HostIssuedMediaRefs (`runtime.issueMedia`) within
+the disclosed origins, with a catalog-backed fallback. Issued references expire
+on recovery. Scoped `host.media.resolve` is a closed typed Read returning only
+reference/status/reasonCode, never an URL, Blob, DOM node or fetch capability.
+For DOM rendering, the renderer alone receives the resolved object URL.
+
+### Package localization and RTL
+
+```json
+{
+  "version": 1, "defaultLocale": "en",
+  "catalogs": {
+    "en": {"direction": "ltr", "messages": {
+      "greeting": ["Hello ", {"arg": "name", "format": "text"}],
+      "count": {"arg": "count", "format": "plural", "cases": {
+        "one": "One item", "other": [{"arg":"count","format":"number"}, " items"]
+      }}
+    }},
+    "ar": {"direction": "rtl", "messages": {"greeting": "مرحبا"}}
+  }
+}
+```
+
+`<h1 node-id="greeting" message="greeting" arg:name="ui.name" />` uses a stable
+message key and typed interpolation paths. Messages are literal strings, bounded
+arrays, or closed formatting tokens, never executable templates/HTML. Formats:
+`text`, `plural` (including `=N` cases), `select`, `number`, `date`, `time`,
+`relative` (declared unit), `list`. Date/time formatting uses UTC for deterministic
+presentation. Locale fallback walks BCP-47 parents then the default; missing
+messages use the default catalog, then their visible key with a diagnostic.
+
+`locale.set` takes a locale in its `value`; `announce` takes bounded text. Host
+integration also exposes `setLocale`/`announce`, and scoped fixed targets
+`host.presentation.locale`, `setLocale`, `announce`. These retain the existing
+Bridge scope/schema/revision/idempotency checks. Preview authorizes these pure
+presentation targets, without authorizing Session writes. Locale updates `lang`,
+`dir` and environment in place, retaining DOM, local state, Composer and Session
+Authority. It does not change model generation language or Experience Epoch.
+
+### IME, viewport and accessibility
+
+Controlled values use Composition Lock: ordinary reconciliation waits while an
+input composes, preserving the buffer, caret, keyed ancestors and node identity.
+Composition end publishes the final typed local value and resumes rendering.
+`beforeinput`, `compositionstart/update/end`, `input` and keyboard events expose
+bounded `data`, `inputType`, `isComposing`, selectionStart/End. Submit/key actions
+are suppressed during composition. Existing safe input attributes remain usable.
+
+Environment adds VisualViewport geometry/scale, safe-area values, bottom
+occlusion, keyboard inset, input modality, contrast preference and Host text/UI
+scale. Numeric values have matching `--atria-*` CSS variables (scales unitless).
+Keyboard inset estimates layout/visual viewport occlusion at scale 1; it is not a
+physical keyboard sensor. Host content provides bottom scroll padding and reveals
+the focused control when occlusion increases. Packages can use the same variables
+for their own fixed composers. Listeners/observers are disposed with the View.
+
+Compiler diagnostics address names/labels, alt text, heading/landmark, role review,
+keyboard access, hidden focus, focus styling and reduced-motion fallback.
+`runtime.getDiagnostics()` adds rendered touch-target checks. Exact diagnostics
+are available to Studio Preview and existing Experience Health; they are advisory
+and do not alter authority. The Host-owned local live region serves `announce`.
+Existing Overlay FocusScope continues initial focus, trap, restore, inert and
+Escape behavior. Full visual editing remains Phase 7.
+
+### Component, View and Root boundaries
+
+Components and media receive local boundaries by default. Other subtrees can use
+`boundary="local"`, with `boundary-loading`, `boundary-error`, `boundary-retry`
+text attributes. Content remains semantic declarative DOM. `boundary="required"`
+also treats media decode failure as a local error. Status is exposed as
+`data-boundary-status="loading|content|error"`; fallback includes a retry button.
+
+Resource/style failures, child lifecycle/invocation exceptions, read failures and
+local rendering/schema errors remain in the affected boundary. Retry recreates
+that subtree and read subscriptions with a new request epoch, preserving sibling
+state and suppressing late completion. It never automatically replays an Action
+or Operation. Business rejections remain Bridge Receipts. Controller VM failures
+will use this boundary seam in Phase 6; no VM is implemented here.
+
+Root/View load errors retain the independent Host failure/recovery surface. Public
+errors contain safe category/reasonCode/retryable/sourceId/diagnosticRef/message,
+without transport exceptions or private URLs. Fatal Bridge/preflight/authority
+failures retain the existing Host failure path. Boundary/route/media request
+revisions are local cancellation tokens and never substitute for Authority Epoch.
+
+Executable coverage: `frontend-platform.test.js`,
+`helpers/frontend-platform-fixture.js`, and
+`tests/frontend/native-frontend-platform.smoke.mjs`. The browser harness generates
+a tiny WebM locally, validates real media decode, and uses deterministic remote
+responses plus synthetic composition/viewport events. It does not claim a real
+IME, physical soft keyboard, provider or external image-server E2E.

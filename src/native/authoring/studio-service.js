@@ -1034,7 +1034,7 @@ export class StudioService {
             }
         }
         return { previewId, packageVersionId: preview.packageVersionId, experience,
-            model, ...(compiledFiles ? { compiledFiles, bridgeProjections } : {}) };
+            model, ...(compiledFiles ? { compiledFiles, bridgeProjections, frontendDiagnostics: (() => { const ref = model.resources.find(item => item.kind === 'diagnostics'); return ref ? JSON.parse(Buffer.from(files.get(ref.path)).toString('utf8')) : []; })() } : {}) };
     }
 
     closePreview(handle, previewId) {

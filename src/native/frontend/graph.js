@@ -1,3 +1,5 @@
+import { ASSET_TYPES, assertMediaCatalog } from '../../../public/shared/native-frontend-media.js';
+import { assertLocalization } from '../../../public/shared/native-frontend-localization.js';
 import { fields, identifier, list, resourcePath, FRONTEND_LIMITS } from '../../../public/shared/native-frontend-contract.js';
 import { assertNode } from './aui-parser.js';
 import { canonicalJson, hash, validateCompiledBridge } from './bridge.js';
@@ -86,9 +88,9 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
     let totalBytes = 0;
     const resources = list(index.resources, ref => {
         fields(ref, ['id', 'kind', 'path', 'contentHash', 'size', 'mediaType', 'dependencies']);
-        if (!['view', 'component', 'bridge', 'style', 'asset', 'provenance'].includes(ref.kind)) throw new TypeError('Invalid Frontend resource kind');
-        if (['bridge', 'provenance'].includes(ref.kind) ? ref.id !== ref.kind : typeof ref.id !== 'string' || !ref.id.startsWith(ref.kind + ':')) throw new TypeError('Invalid resource identity');
-        if (!['bridge', 'provenance'].includes(ref.kind)) identifier(ref.id.slice(ref.kind.length + 1));
+        if (!['view', 'component', 'bridge', 'style', 'asset', 'provenance', 'media', 'localization', 'diagnostics'].includes(ref.kind)) throw new TypeError('Invalid Frontend resource kind');
+        if (['bridge', 'provenance', 'media', 'localization', 'diagnostics'].includes(ref.kind) ? ref.id !== ref.kind : typeof ref.id !== 'string' || !ref.id.startsWith(ref.kind + ':')) throw new TypeError('Invalid resource identity');
+        if (!['bridge', 'provenance', 'media', 'localization', 'diagnostics'].includes(ref.kind)) identifier(ref.id.slice(ref.kind.length + 1));
         if (!/^[a-f0-9]{64}$/.test(ref.contentHash) || ref.path !== prefix + ref.contentHash + (ref.mediaType === 'application/json' ? '.json' : '.bin')) throw new TypeError('Invalid exact resource path');
         const bytes = read(ref.path);
         totalBytes += bytes.length;
@@ -128,7 +130,14 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
         } else if (ref.kind === 'style') {
             dependencies = validateCompiledStyle(ir).map(id => 'asset:' + id).sort();
         } else if (ref.kind === 'asset') {
-            if (!['image/png', 'image/jpeg', 'image/webp', 'font/woff', 'font/woff2', 'font/ttf', 'font/otf'].includes(ref.mediaType)) throw new TypeError('Unsupported compiled asset');
+            if (!ASSET_TYPES.includes(ref.mediaType)) throw new TypeError('Unsupported compiled asset');
+        } else if (ref.kind === 'media') {
+            assertMediaCatalog(ir, refs); dependencies = [...new Set(ir.entries.map(entry => 'asset:' + entry.fallback))].sort();
+        } else if (ref.kind === 'localization') {
+            assertLocalization(ir);
+        } else if (ref.kind === 'diagnostics') {
+            if (!Array.isArray(ir) || ir.length > 4096) throw new TypeError('Invalid Frontend diagnostics');
+            for (const item of ir) { fields(item, ['category', 'reasonCode', 'sourceId']); if (Object.values(item).some(value => typeof value !== 'string' || value.length > 256)) throw new TypeError('Invalid diagnostic'); }
         } else if (ref.kind === 'provenance') {
             fields(ir, ['format', 'version', 'spans', 'sources']);
             if (ir.format !== 'atria-frontend-provenance' || ir.version !== 1 || !Array.isArray(ir.spans) || ir.spans.length > FRONTEND_LIMITS.nodes * 4) throw new TypeError('Invalid Source Map');
@@ -159,6 +168,9 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
         }
         const walk = node => {
             if (typeof node === 'string') return;
+            if (node.media && !json(refs.get('media')?.path).entries.some(entry => entry.mediaId === node.media)) throw new TypeError('Unknown declared MediaRef');
+            if (node.message && !refs.has('localization')) throw new TypeError('Missing localization catalog');
+            if (node.asset && !refs.get('asset:' + node.asset)?.mediaType.startsWith((node.tag === 'img' ? 'image' : node.tag) + '/')) throw new TypeError('Asset sink MIME mismatch');
             if (node.component) {
                 const child = assertPresentationContract(components.get(node.component).presentation);
                 for (const key of Object.keys(node.props ?? {})) if (!Object.hasOwn(child.props, key)) throw new TypeError('Undeclared Component prop');

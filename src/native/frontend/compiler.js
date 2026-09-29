@@ -1,3 +1,6 @@
+import { assertMediaCatalog } from '../../../public/shared/native-frontend-media.js';
+import { assertLocalization } from '../../../public/shared/native-frontend-localization.js';
+import { frontendDiagnostics } from './diagnostics.js';
 import { assertFrontendExperience, assertFrontendSourceIndex, FRONTEND_LIMITS, resourcePath } from '../../../public/shared/native-frontend-contract.js';
 import { parseAui } from './aui-parser.js';
 import { canonicalJson, compileBridge, hash } from './bridge.js';
@@ -21,7 +24,8 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
     const index = assertFrontendSourceIndex(JSON.parse(readText(source)));
     const base = source.includes('/') ? source.slice(0, source.lastIndexOf('/') + 1) : '';
     const resolve = path => resourcePath(base + path);
-    const output = new Map(), resources = [], provenance = [], pendingStyles = [];
+    const output = new Map(), resources = [], provenance = [], pendingStyles = [], compiledComponents = [];
+    let localization;
     const prefix = 'runtime/frontend/' + namespace;
     const emit = (id, kind, value, dependencies = [], mediaType = 'application/json') => {
         const bytes = Buffer.isBuffer(value) ? value : Buffer.from(canonicalJson(value));
@@ -47,6 +51,11 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
     emit('bridge', 'bridge', bridge);
     if (index.bridge) provenance.push({ kind: 'bridge', id: 'bridge', file: resolve(index.bridge), start: 0, end: readText(resolve(index.bridge)).length });
     for (const asset of index.assets) emit('asset:' + asset.id, 'asset', read(resolve(asset.source)), [], asset.mediaType);
+    if (index.media) {
+        const catalog = assertMediaCatalog(JSON.parse(readText(resolve(index.media))), new Map(resources.map(ref => [ref.id, ref])));
+        emit('media', 'media', catalog, catalog.entries.map(entry => 'asset:' + entry.fallback));
+    }
+    if (index.localization) { localization = assertLocalization(JSON.parse(readText(resolve(index.localization)))); emit('localization', 'localization', localization); }
     for (const style of index.styles) {
         const file = resolve(style.source), css = readText(file);
         pendingStyles.push({ id: 'style:' + style.id, css, dependencies: styleDependencies(css, file) });
@@ -84,7 +93,7 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
             error.source = { file, start: 0, end: parsed.cst.source.length };
             throw error;
         }
-        emit('component:' + component.id, 'component', ir, dependencies);
+        emit('component:' + component.id, 'component', ir, dependencies); compiledComponents.push(ir);
         provenance.push({ kind: 'component', id: component.id, file, start: 0, end: parsed.cst.source.length });
         provenance.push(...parsed.spans.map(span => ({ ...span, componentId: component.id })));
     }
@@ -94,6 +103,7 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
     }
     const fontNames = [...new Set(pendingStyles.flatMap(style => compileStyle(style.css).fonts.map(font => font.family)))].sort();
     for (const style of pendingStyles) emit(style.id, 'style', linkStyle(style.css, fontNames), style.dependencies);
+    emit('diagnostics', 'diagnostics', frontendDiagnostics(compiledComponents, localization, pendingStyles));
     emit('provenance', 'provenance', { format: 'atria-frontend-provenance', version: 1, spans: provenance,
         sources: [...consumed].sort().map(file => ({ file, contentHash: hash(files.get(file)) })) });
     const compiled = { format: 'atria-frontend-index', version: 3, primaryView: 'view:' + index.primaryView, globalStyles: index.styles.map(style => 'style:' + style.id),
