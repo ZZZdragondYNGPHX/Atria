@@ -1,8 +1,9 @@
+import { resolveNativeRuntimePackage } from './runtime-descriptor.js';
+import { bridgeValue } from '../../public/shared/native-frontend-bridge.js';
+import { invalidateFrontendEpoch } from './frontend/epoch.js';
 import { applyRealm, realmDefinition, reconcileRealm, loadRealm } from './realm-authority.js';
 import { activityNarrative, publishActivities } from './activity-authority.js';
 import { assertInformationClosure } from '../../public/shared/native-information-contract.js';
-import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
-import { validateMessageBlocks } from '../../public/scripts/native/experience/ui/message-templates.js';
 import { assertMessageProjection, assertTurnEnvelope } from '../../public/shared/native-message-contract.js';
 import { normalizeNativeRegexScripts } from '../../public/shared/native-regex.js';
 import { assertPackagedWorldSnapshot } from './world-knowledge.js';
@@ -21,7 +22,7 @@ import { ACTION_RECEIPTS_NAMESPACE, assertActionRequest, actionReceipts, assertC
 import { TASK_STATE_NAMESPACE, assertTaskValue, assertSemanticOutcome } from '../../public/shared/native-task-contract.js';
 import { prepareTaskAuthority, validateTaskRecords } from './task-authority.js';
 import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle, prepareDeclaredTaskResult } from './lifecycle-authority.js';
-import { fields } from '../../public/scripts/native/experience/ui/v2-values.js';
+import { fields } from '../../public/shared/native-values.js';
 import { applyContinuity, continuityDefinition, continuityDisplay, continuityEffects, projectContinuity, reconcileOwnership } from './continuity-authority.js';
 
 // Projection is a first-class immutable Variant field, never Timeline metadata.
@@ -287,11 +288,18 @@ export class SessionCore {
         if (installed.packageVersion.packageContentHash !== session.packageContentHash
             || installed.packageVersion.version !== session.packageVersion) throw new Error('Session PackageVersion dependency mismatch');
         const experience = installed.entryPoint.runtime?.experience ?? installed.manifest.runtime?.experience;
-        if (experience?.componentModelVersion !== 2) throw new TypeError('Message blocks require pinned UI Document v2');
-        const bytes = installed.sourceFiles.get(experience.component);
-        if (!bytes || bytes.length > 2 * 1024 * 1024) throw new TypeError('Missing or oversized pinned UI Document v2');
-        const definition = compileUiDocument(JSON.parse(bytes.toString('utf8')), { mode: experience.mode });
-        for (const variant of projected) validateMessageBlocks(definition, variant.projection);
+        if (experience?.frontend?.version === 3) {
+            const graph = resolveNativeRuntimePackage(installed, session.entryPointId).frontendGraph;
+            const bindings = graph.bridge.bindings.filter(binding => binding.target.service === 'host.conversation' && binding.target.method === 'blocks');
+            for (const variant of projected) for (const block of assertMessageProjection(variant.projection, variant.content).flow) {
+                if (block.kind !== 'block') continue;
+                const targets = bindings.filter(binding => binding.target.blockType === block.type);
+                if (!targets.length) throw new TypeError('Undeclared v3 Message Block type');
+                for (const binding of targets) bridgeValue(block.data, binding.outputSchema.properties.data);
+            }
+            return;
+        }
+        throw new TypeError('Message blocks require a pinned Native Frontend graph');
     }
 
     async _publish(handle, base, options = {}) {
@@ -370,6 +378,7 @@ export class SessionCore {
             updatedAt: Math.max(Date.now(), base.session.updatedAt) });
         const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
             entries, variants, branches, expectedRevisionId: base.session.headRevisionId });
+        if (branchId !== base.session.activeBranchId) invalidateFrontendEpoch(handle, session.sessionId);
         const continuity = continuityDefinition(base) ? await this._continuity.load(handle, base.session.packageId) : null;
         return loadRealm(this, handle, { ...snapshot, manifest: base.manifest, entryPoint: base.entryPoint,
             ...(continuityDefinition(base) ? { externalEffects: continuityEffects(continuity, base.session.sessionId), continuityRevisionId: continuity?.revisionId ?? null, continuityViews: continuityDisplay(base, continuity) } : {}),
@@ -694,7 +703,19 @@ export class SessionCore {
         return this._publish(handle, { ...source, session: current.session }, { graph: current.graph });
     }
 
-    async createSavePoint(handle, sessionId, { revisionId, kind = 'manual', displayName } = {}) {
+    async listSavePoints(handle, sessionId) {
+        await this.load(handle, sessionId);
+        return this._saves.list(handle, sessionId);
+    }
+
+    async createSavePoint(handle, sessionId, { revisionId, expectedRevisionId, kind = 'manual', displayName } = {}) {
+        // Exact revision is immutable; guarded frontend saves never capture a
+        // newer HEAD accidentally even if publication races the SavePoint write.
+        if (expectedRevisionId !== undefined) {
+            await this._current(handle, sessionId, expectedRevisionId);
+            if (revisionId !== undefined && revisionId !== expectedRevisionId) throw new TypeError('Save revision must match guard');
+            revisionId = expectedRevisionId;
+        }
         const source = await this.load(handle, sessionId, { revisionId });
         return this._saves.create(handle, { saveId: createNativeId('savePoint'), sessionId,
             branchId: source.revision.branchId, revisionId: source.revision.revisionId, kind, createdAt: Date.now(),
@@ -709,6 +730,7 @@ export class SessionCore {
             current.session.headRevisionId === save.revisionId
             && current.session.activeBranchId === save.branchId
         ) {
+            invalidateFrontendEpoch(handle, sessionId);
             return current;
         }
 

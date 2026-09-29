@@ -1,4 +1,4 @@
-import { fields } from '../../public/scripts/native/experience/ui/v2-values.js';
+import { fields } from '../../public/shared/native-values.js';
 import { assertTaskValue } from '../../public/shared/native-task-contract.js';
 
 const copy = value => structuredClone(value);

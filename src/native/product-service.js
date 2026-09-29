@@ -775,10 +775,10 @@ export class NativeProductService {
         return this._saveSystem.importSave(handle, archive, options);
     }
 
-    async createSave(handle, sessionId, { kind = 'manual', displayName = undefined } = {}) {
-        if (kind === 'quick') return this._saveSystem.quickSave(handle, sessionId, { displayName });
-        if (kind === 'manual') return this._saveSystem.manualSave(handle, sessionId, { displayName });
-        if (kind === 'auto') return this._saveSystem.autoSave(handle, sessionId, { displayName });
+    async createSave(handle, sessionId, { kind = 'manual', displayName = undefined, expectedRevisionId } = {}) {
+        if (kind === 'quick') return this._saveSystem.quickSave(handle, sessionId, { displayName, expectedRevisionId });
+        if (kind === 'manual') return this._saveSystem.manualSave(handle, sessionId, { displayName, expectedRevisionId });
+        if (kind === 'auto') return this._saveSystem.autoSave(handle, sessionId, { displayName, expectedRevisionId });
         throw new TypeError('Native Product save kind must be auto, quick, or manual');
     }
 

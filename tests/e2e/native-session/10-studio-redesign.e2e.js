@@ -38,11 +38,11 @@ async function seedProject(page, width) {
     const source = {
         format: 'atria-project-source', schemaVersion: 1,
         project: { projectId, packageId: createNativeId('package'), displayName: 'The Observatory ' + width, createdAt: 10, updatedAt: 10 },
-        package: { name: 'The Observatory', version: '1.0.0', actors: [], capabilities: ['narrative', 'game-runtime'], permissions: [], entryPoints: [{ entryPointId: createNativeId('entryPoint'), displayName: 'Arrival at the observatory', actorIds: [], worldIds: [], knowledgeBindingIds: [], runtime: { experience: { mode: 'component', componentModelVersion: 1, component: 'ui/main.json', selectors: 'ui/selectors.json', surface: 'app.root' } } }] },
+        package: { name: 'The Observatory', version: '1.0.0', actors: [], capabilities: ['narrative', 'game-runtime'], permissions: [], entryPoints: [{ entryPointId: createNativeId('entryPoint'), displayName: 'Arrival at the observatory', actorIds: [], worldIds: [], knowledgeBindingIds: [], runtime: { experience: { mode: 'component', frontend: { kind: 'native', version: 3, source: 'frontend.json' } } } }] },
         resources: [], worlds: [], knowledge: [], knowledgeBindings: [], assetFiles: [], dependencies: { worlds: [], knowledge: [], knowledgeBindings: [], assets: [], resources: [] },
     };
-    const model = { id: 'observatory', type: 'container', children: [{ id: 'welcome', type: 'text', props: { text: 'The stars are waiting.' } }] };
-    await request(page, 'projects', { source, files: [{ path: 'ui/main.json', content: JSON.stringify(model) }, { path: 'ui/selectors.json', content: '[]' }] });
+    const index = { format: 'atria-frontend-source', version: 3, primaryView: 'main', views: [{ id: 'main', root: 'Main', surface: 'chat.footer' }], components: [{ id: 'Main', source: 'Main.aui' }] };
+    await request(page, 'projects', { source, files: [{ path: 'frontend.json', content: JSON.stringify(index) }, { path: 'Main.aui', content: '<template><main node-id="root"><p node-id="welcome">The stars are waiting.</p></main></template>' }] });
     await page.evaluate(projectId => window.Atria.shell.getWorkspaceHost().openBuild(projectId), projectId);
     await expect(page.locator('[data-atria-studio-view="overview"]')).toBeVisible();
     return projectId;
@@ -96,28 +96,16 @@ for (const width of [1440, 900, 320]) test(`Studio review, source, UI, conflict 
     await page.keyboard.press('Escape');
     await expect(toolbar.getByRole('button', { name: 'Inspector', exact: true })).toBeFocused();
     await navigate('UI');
-    const ui = center.locator('[data-atria-studio-ui-editor]');
-    await expect(ui).toContainText('The stars are waiting.');
-    await shot('ui-design');
-    await ui.locator('[data-atria-component-id="welcome"]').click();
-    await ui.getByLabel('Component text', { exact: true }).fill('The sky is clear.');
-    await ui.getByRole('button', { name: 'Structure', exact: true }).click();
-    await ui.getByRole('button', { name: 'Design', exact: true }).click();
-    await expect(ui.getByLabel('Component text', { exact: true })).toHaveValue('The sky is clear.');
-    await expect(ui.getByRole('button', { name: 'Stage UI Change' })).toBeDisabled();
-    await ui.getByRole('button', { name: 'Apply Properties' }).click();
-    await ui.getByRole('button', { name: 'Source', exact: true }).click();
-    const source = ui.getByLabel('Structured UI source JSON');
-    const original = await source.inputValue();
-    await source.fill('{ broken source');
-    await ui.getByRole('button', { name: 'Apply Source', exact: true }).click();
-    await expect(source).toHaveValue('{ broken source');
-    await expect(ui.getByRole('alert')).toBeFocused();
-    await expect(ui.getByRole('button', { name: 'Stage UI Change' })).toBeDisabled();
-    await shot('ui-source-error');
-    await source.fill(original.replace('The stars are waiting.', 'The sky is clear.'));
-    await ui.getByRole('button', { name: 'Apply Source', exact: true }).click();
-    await ui.getByRole('button', { name: 'Stage UI Change' }).click(); await apply();
+    const ui = center.locator('[data-atria-frontend-editor]');
+    await expect(ui).toBeVisible();
+    const componentOption = ui.locator('select[aria-label="Source Graph"] option').filter({ hasText: 'component · Main' });
+    await expect(componentOption).toHaveCount(1);
+    await ui.getByLabel('Source Graph', { exact: true }).selectOption(await componentOption.getAttribute('value'));
+    const nativeSource = ui.getByLabel('Native source', { exact: true });
+    await expect(nativeSource).toHaveValue(/The stars are waiting/);
+    const original = await nativeSource.inputValue();
+    await nativeSource.fill(original.replace('The stars are waiting.', 'The sky is clear.'));
+    await ui.getByRole('button', { name: 'Review source changes', exact: true }).click(); await apply();
     await toolbar.getByRole('button', { name: 'Preview', exact: true }).click();
     await expect(center.locator('.atria-studio-preview-canvas')).toContainText('The sky is clear.'); await shot('preview');
     await navigate('Source');
@@ -125,7 +113,7 @@ for (const width of [1440, 900, 320]) test(`Studio review, source, UI, conflict 
     expect((await center.getByLabel('Source editor', { exact: true }).boundingBox()).height).toBeGreaterThanOrEqual(compact ? 240 : 300);
     await page.route('**/api/native/studio/projects/*/source?*', route => route.fulfill({ status: 503, json: { message: 'Source is temporarily unavailable' } }));
     await center.getByRole('button', { name: 'Reload file' }).click();
-    await expect(center.getByRole('alert')).toContainText('temporarily unavailable');
+    await expect(center.getByRole('alert')).toContainText('The operation could not finish. Refresh its current state before trying again.');
     await expect(center.getByRole('button', { name: 'Review Source Change' })).toBeDisabled(); await shot('source-error');
     await page.unroute('**/api/native/studio/projects/*/source?*');
     await center.getByRole('button', { name: 'Reload file' }).click();
@@ -149,7 +137,7 @@ for (const width of [1440, 900, 320]) test(`Studio review, source, UI, conflict 
     // Failure may surface in Output, but the Agent draft must survive switching back.
     if (compact) await nav.getByRole('button', { name: 'AI', exact: true }).click();
     await expect(agent.getByLabel('Project Agent intent')).toHaveValue('Improve the welcome text');
-    await expect(agent.getByRole('alert')).toContainText('temporarily unavailable'); await shot('agent-error');
+    await expect(agent.getByRole('alert')).toContainText('The operation could not finish. Refresh its current state before trying again.'); await shot('agent-error');
     await page.unroute('**/api/native/studio/projects/*/agent/tasks');
     await page.keyboard.press('Escape');
     await navigate('Build'); await center.getByRole('button', { name: 'Run Preflight' }).click();

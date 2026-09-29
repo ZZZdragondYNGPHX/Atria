@@ -1,4 +1,4 @@
-import { fields, json, text } from '../scripts/native/experience/ui/v2-values.js';
+import { fields, json, text } from './native-values.js';
 import { taskId } from './native-task-contract.js';
 import { assertLifecycleJson } from './native-lifecycle-contract.js';
 

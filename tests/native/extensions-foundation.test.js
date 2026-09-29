@@ -5,7 +5,7 @@ import express from 'express';
 import request from 'supertest';
 import { listAuthoringReferences, readAuthoringReference } from '../../src/native/authoring-reference.js';
 import { buildProjectAgentTools } from '../../src/native/project-agent.js';
-import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
+import { compileFrontend } from '../../src/native/frontend/compiler.js';
 import { assertStudioScenario } from '../../src/native/studio-scenario.js';
 import { ExtensionsStore } from '../../src/native/extensions-store.js';
 import { readExternalExtension } from '../../src/native/extension-install.js';
@@ -27,8 +27,8 @@ test('AI catalog resolves all shipped references, paginates and rejects arbitrar
     expect(buildProjectAgentTools({ descriptors: [] }).map(x => x.function.name)).toEqual(expect.arrayContaining(['atri_agent_api_catalog', 'atri_agent_api_read']));
 });
 test('shipped examples compile through production contracts', async () => {
-    const ui = JSON.parse((await readAuthoringReference({ id: 'example-ui-v2' })).content);
-    expect(() => compileUiDocument(ui, { mode: 'component' })).not.toThrow();
+    const files = new Map([['frontend.json', Buffer.from((await readAuthoringReference({ id: 'example-frontend-v3' })).content)], ['Main.aui', Buffer.from((await readAuthoringReference({ id: 'example-aui-v3' })).content)]]);
+    expect(() => compileFrontend({ source: 'frontend.json', files, mode: 'component' })).not.toThrow();
     const scenario = JSON.parse((await readAuthoringReference({ id: 'example-scenario' })).content);
     expect(assertStudioScenario(scenario).steps).toHaveLength(2);
 });

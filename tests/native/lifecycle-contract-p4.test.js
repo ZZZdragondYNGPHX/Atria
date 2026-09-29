@@ -50,8 +50,8 @@ describe('P4 shared lifecycle declarations', () => {
         expect(assertLifecycleRuntime(empty())).toEqual(empty());
     });
     test('supports exactly the four P4 additions, retaining existing and reserved capabilities', () => {
-        const supported = ['component-model', 'local-ui-state', 'player-preference-state', 'package-data', 'composer', 'action',
-            'declarative-mutation', 'message-projection', 'turn-contract', 'turn-envelope', 'narrative-outcome', 'opening',
+        const supported = ['local-ui-state', 'player-preference-state', 'package-data', 'composer', 'action',
+            'declarative-mutation', 'message-projection', 'turn-contract', 'turn-envelope', 'narrative-outcome',
             'reply-variant', 'conversation-presentation', 'auxiliary-task', 'model-task',
             'session-application', 'temporal', 'runtime-automation', 'workflow'];
         expect(Object.entries(ATRIA_EXPERIENCE_CAPABILITIES).filter(([, value]) => value.supported.length).map(([id]) => id)).toEqual(expect.arrayContaining(supported));
@@ -298,7 +298,7 @@ describe('P4 typed temporal, automation and workflow actions', () => {
         fixture.taskRuntime.tasks[0].resultPolicy = { resultClass: 'turn_context', sink: 'turn' };
         expect(() => validate(fixture)).toThrow(/durable P3 sink/);
     });
-    test.each(['opening', 'automation_gate', 'projection'])('accepts inert %s workflow nodes', kind => {
+    test.each(['automation_gate', 'projection'])('accepts inert %s workflow nodes', kind => {
         const fixture = lifecycleFixture(); fixture.lifecycleRuntime.workflows[0].nodes[0].kind = kind;
         expect(validate(fixture).workflows[0].nodes[0].kind).toBe(kind);
     });

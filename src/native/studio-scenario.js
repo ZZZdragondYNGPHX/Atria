@@ -8,7 +8,7 @@ import { AssetStore, PackageRepo, SessionRepo, SavePointRepo, KnowledgeRepo } fr
 import { PackageInstaller, buildProjectPackage } from './package-composition.js';
 import { SessionCore } from './session-core.js';
 import { SharedAuthority } from './shared-authority.js';
-import { fields, json } from '../../public/scripts/native/experience/ui/v2-values.js';
+import { fields, json } from '../../public/shared/native-values.js';
 
 // A scenario runs the real installed Package and SessionCore in an ephemeral
 // Host. It never imports a player's save, credentials, or external ledgers.

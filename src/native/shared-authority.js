@@ -1,5 +1,5 @@
 import { randomBytes, createHash } from 'node:crypto';
-import { fields as valueFields } from '../../public/scripts/native/experience/ui/v2-values.js';
+import { fields as valueFields } from '../../public/shared/native-values.js';
 import { assertLifecycleJson } from '../../public/shared/native-lifecycle-contract.js';
 import { assertTaskValue, taskId } from '../../public/shared/native-task-contract.js';
 import { actorAvailability, projectInformation } from '../../public/shared/native-information-runtime.js';

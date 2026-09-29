@@ -1,3 +1,4 @@
+import { minimalFrontend } from './helpers/frontend-fixture.js';
 import { describe, expect, test } from '@jest/globals';
 
 import {
@@ -60,9 +61,7 @@ describe('A3 Native Runtime Descriptor compiler', () => {
         for (const mode of ['text', 'component', 'hybrid', 'full']) {
             const f = fixture({
                 manifest: { runtime: { experienceContract } },
-                entryPoint: { runtime: { experience: mode === 'text' ? { mode } : {
-                    mode, componentModelVersion: 1, component: 'ui/main.json',
-                } } },
+                entryPoint: { runtime: { experience: minimalFrontend(mode).experience } },
             });
             expect(compileNativeRuntimeDescriptor(f).descriptor.experienceContract).toEqual(experienceContract);
             expect(compileNativeRuntimeDescriptor(f).runtime).not.toHaveProperty('experienceContract');
@@ -123,90 +122,23 @@ describe('A3 Native Runtime Descriptor compiler', () => {
         });
     });
 
-    test('derives A4 Component/Hybrid/Full runtime resources while keeping Descriptor experience minimal', () => {
-        for (const mode of ['component', 'hybrid', 'full']) {
-            const f = fixture({
-                entryPoint: {
-                    runtime: {
-                        experience: {
-                            mode,
-                            componentModelVersion: 1,
-                            component: 'ui/main.json',
-                            selectors: 'ui/selectors.json',
-                            surface: 'app.root',
-                        },
-                        game: { logic: 'logic/main.json' },
-                    },
-                },
-            });
-            const result = compileNativeRuntimeDescriptor({
-                packageVersion: f.packageVersion,
-                manifest: f.manifest,
-                entryPointId: f.entryPointId,
-            });
-
-            expect(result.descriptor.experience).toEqual({
-                mode,
-                componentModelVersion: 1,
-            });
-            expect(result.runtime.experience).toEqual({
-                mode,
-                componentModelVersion: 1,
-                component: 'ui/main.json',
-                selectors: 'ui/selectors.json',
-                surface: 'app.root',
-            });
-        }
+    test.each(['component', 'hybrid', 'full'])('derives only native@3 runtime identity for %s', mode => {
+        const { experience } = minimalFrontend(mode);
+        const f = fixture({ entryPoint: { runtime: { experience, game: { logic: 'logic/main.json' } } } });
+        const result = compileNativeRuntimeDescriptor(f);
+        expect(result.descriptor.experience).toEqual(experience);
+        expect(result.runtime.experience).toEqual(experience);
     });
 
-    test('A4 experience resources fail closed for missing, executable, or invalid stage definitions', () => {
-        const missing = fixture({
-            entryPoint: {
-                runtime: {
-                    experience: { mode: 'component', componentModelVersion: 1 },
-                },
-            },
-        });
-        expect(() => compileNativeRuntimeDescriptor({
-            packageVersion: missing.packageVersion,
-            manifest: missing.manifest,
-            entryPointId: missing.entryPointId,
-        })).toThrow(/requires a declarative component resource/);
-
-        const executable = fixture({
-            entryPoint: {
-                runtime: {
-                    experience: {
-                        mode: 'component',
-                        componentModelVersion: 1,
-                        component: 'ui/main.js',
-                    },
-                },
-            },
-        });
-        expect(() => compileNativeRuntimeDescriptor({
-            packageVersion: executable.packageVersion,
-            manifest: executable.manifest,
-            entryPointId: executable.entryPointId,
-        })).toThrow(/declarative \.json/);
-
-        const invalidHybridSurface = fixture({
-            entryPoint: {
-                runtime: {
-                    experience: {
-                        mode: 'hybrid',
-                        componentModelVersion: 1,
-                        component: 'ui/main.json',
-                        surface: 'sidebar.left',
-                    },
-                },
-            },
-        });
-        expect(() => compileNativeRuntimeDescriptor({
-            packageVersion: invalidHybridSurface.packageVersion,
-            manifest: invalidHybridSurface.manifest,
-            entryPointId: invalidHybridSurface.entryPointId,
-        })).toThrow(/app.root stage surface/);
+    test.each([
+        { mode: 'component' },
+        { mode: 'component', componentModelVersion: 1, component: 'ui.json' },
+        { mode: 'component', componentModelVersion: 2, component: 'ui.json' },
+        { mode: 'hybrid', frontend: { kind: 'native', version: 3, entry: 'ui/main.js' } },
+        { ...minimalFrontend('hybrid').experience, surface: 'sidebar.left' },
+    ])('rejects missing/legacy/executable runtime declarations: %j', experience => {
+        const f = fixture({ entryPoint: { runtime: { experience } } });
+        expect(() => compileNativeRuntimeDescriptor(f)).toThrow();
     });
 
     test('requires explicit experience instead of inferring from old UI/runtime fields', () => {
@@ -215,7 +147,7 @@ describe('A3 Native Runtime Descriptor compiler', () => {
             packageVersion: f.packageVersion,
             manifest: f.manifest,
             entryPointId: f.entryPointId,
-        })).toThrow(/explicit experience/);
+        })).toThrow(/Experience must be an object/);
     });
 
     test('rejects retired package-authority fields and executable runtime source paths', () => {

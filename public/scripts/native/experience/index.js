@@ -1,3 +1,4 @@
+import { openHostExternal } from '../frontend/external.js';
 export { createNativeSharedClient, mountNativeSharedExperience } from '../shared-client.js';
 import { createNativePresentationClient } from '../presentation-client.js';
 import { createReplyVariantController } from '../reply-variants.js';
@@ -296,7 +297,7 @@ async function saveCurrentGameSession() {
         || '',
     ).trim();
     if (!sessionId) throw new Error('No active Native Session to save');
-    return nativeProductClient.createSave(sessionId, { kind: 'quick' });
+    return nativeProductClient.createSave(sessionId, { kind: 'quick', expectedRevisionId: nativeSessionRuntime.snapshot?.revision?.revisionId });
 }
 
 async function disableCurrentPackageForSession() {
@@ -416,6 +417,13 @@ export async function reloadGamePackage() {
                 realm: next.descriptor.experienceContract?.sharedRuntime?.realm ? load.client.realmCommand : null,
                 mountReplyVariants: (element, anchor) => nextReplyController?.mount(element, anchor),
                 getSnapshot: () => nativeSessionRuntime.snapshot,
+                onBridgeEpoch: () => nativeSessionRuntime.synchronizeFrontendEpoch({ stopGeneration: stopCurrentGeneration }),
+                onBridgeRevision: async () => {
+                    const sessionId = nativeSessionRuntime.snapshot?.session.sessionId;
+                    if (!sessionId || nativeSessionRuntime.history || nativeSessionRuntime.generation) return;
+                    const snapshot = await nativeSessionRuntime.request('load', { sessionId });
+                    if (nativeSessionRuntime.snapshot?.session.sessionId === sessionId) await nativeSessionRuntime.acceptOperationSnapshot(snapshot);
+                },
                 getApplicationRecords: lifecycleClient.getApplicationRecords,
                 getTemporalProjection: lifecycleClient.getTemporalProjection,
                 presentation: presentationClient,
@@ -449,6 +457,7 @@ export async function reloadGamePackage() {
                     stopGeneration: stopCurrentGeneration,
                     save: saveCurrentGameSession,
                     openDiagnostics: openGameDiagnostics,
+                    openExternal: openHostExternal,
                 },
             }).then(async session => {
                 try { load.assertCurrent(); return session; } catch (error) { await session.dispose(); throw error; }
@@ -499,14 +508,20 @@ export async function reloadGamePackage() {
     return currentPackage;
 }
 
+// Presentation refresh is asynchronous in v3. Neither a sync render failure nor
+// a rejected Bridge refresh may escape a committed lifecycle event or replay it.
+function refreshCurrentUi() {
+    try { void Promise.resolve(currentUiSession?.refresh?.()).catch(error => console.error('Native UI revision refresh failed', error)); } catch (error) { console.error('Native UI revision refresh failed', error); }
+}
+
 async function syncCurrentWorldRevision() {
     const session = currentWorldSession;
     if (!session || currentPackage.descriptor?.experienceContract?.lifecycleRuntime
-        || currentPackage.runtime?.experience?.componentModelVersion === 2) return reloadGamePackage();
+        || currentPackage.runtime?.experience?.frontend?.version === 3) return reloadGamePackage();
 
     try {
         const result = await session.syncBranch();
-        currentUiSession?.refresh?.();
+        refreshCurrentUi();
         return result;
     } catch (error) {
         if (session !== currentWorldSession) return null;
@@ -742,7 +757,7 @@ eventSource.on(eventTypes.CHAT_CHANGED, () => {
 onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, () => {
     // acceptOperationSnapshot installs the canonical projection and emits this
     // event too. Its own lifecycle write must not remount or recursively ready.
-    if (lifecycleClient.acceptingSnapshot) { presentationClient.refresh(); currentUiSession?.refresh?.(); return; }
+    if (lifecycleClient.acceptingSnapshot) { presentationClient.refresh(); refreshCurrentUi(); return; }
     return reloadGamePackage();
 });
 onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, async () => {
@@ -764,11 +779,11 @@ onNativeSessionLifecycle(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, event => {
             void Promise.resolve().then(() => lifecycleClient.pump()).catch(error => console.warn(`[${MODULE_NAME}] Lifecycle pump deferred`, error));
         }, 0);
     }
-    if (currentPackage.runtime?.experience?.componentModelVersion !== 2) return;
+    if (currentPackage.runtime?.experience?.frontend?.version !== 3) return;
     // A presentation failure must not turn a successful authority commit into
     // a failed write or trigger an automatic duplicate transaction.
     void currentReplyController?.invalidate().catch(error => console.error('Native reply refresh failed', error));
-    try { currentUiSession?.refresh?.(); } catch (error) { console.error('Native UI revision refresh failed', error); }
+    refreshCurrentUi();
 });
 for (const lifecycle of [
     NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED,

@@ -1,5 +1,3 @@
-import { compileGameSelectorDefinitions } from './declarative.js';
-
 const PACKAGE_PLAY_TYPES = new Set([
     'ui.component',
     'play.selector',
@@ -70,18 +68,6 @@ export function createPackageRuntimeContributionRegistry(runtimePlugins = []) {
                 .filter(record => !query.pluginId || record.pluginId === query.pluginId)
                 .filter(record => !query.type || record.type === query.type)
                 .map(record => record));
-        },
-        selectorDefinitions() {
-            const definitions = [];
-            for (const record of records) {
-                if (record.type !== 'play.selector') continue;
-                const raw = record.config.selectors;
-                if (!Array.isArray(raw)) {
-                    throw new Error('play.selector contribution requires config.selectors');
-                }
-                definitions.push(...compileGameSelectorDefinitions(raw));
-            }
-            return definitions;
         },
     });
 }

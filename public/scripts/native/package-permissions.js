@@ -7,6 +7,7 @@ const explanations = {
     generation: ['Model generation', 'The Work requests generation through your configured Runtime routes.'],
     'runtime-tools': ['Runtime tools', 'The Work declares tools that can participate in its runtime.'],
     'world-write': ['World changes', 'The Work declares changes to its Native world state.'],
+    'remote-media': ['Remote images', 'External image sites can observe your IP address, image choices and request timing. Review the declared origins when enabling images; you can disable them in the Experience.'],
     network: ['Network access', 'The Work declares network capability. Review its origin before accepting.'],
     clipboard: ['Clipboard access', 'The Work declares clipboard capability.'],
     'asset-access': ['Asset access', 'The Work declares access to its runtime assets.'],

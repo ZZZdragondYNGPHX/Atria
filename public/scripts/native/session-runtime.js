@@ -84,6 +84,7 @@ export class NativeSessionRuntime {
         this.failed = false;
         this.history = false;
         this.generation = null;
+        this.generationProjection = { state: 'idle', text: '', error: '' };
         this.stagedStates = {};
         this.lastContextPlan = null;
     }
@@ -352,6 +353,7 @@ export class NativeSessionRuntime {
         this.history = revisionId !== undefined;
         this.failed = false;
         this.generation = null;
+        this.generationProjection = { state: 'idle', text: '', error: '' };
         this.lastContextPlan = null;
         await this.host.install(projectNativeSession(snapshot));
         await this._emit(NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, snapshot, null, {
@@ -394,6 +396,22 @@ export class NativeSessionRuntime {
         return this._loadProjection(sessionId, { revisionId });
     }
 
+    async synchronizeFrontendEpoch({ stopGeneration } = {}) {
+        if (!this.active || this.history) return;
+        const sessionId = this.snapshot.session.sessionId;
+        const next = await this.request('load', { sessionId });
+        if (this.snapshot?.session.sessionId !== sessionId) return;
+        if (next.revision.branchId !== this.snapshot.revision.branchId) {
+            // The branch was already published by SessionCore. Discard the old
+            // presentation Draft by loading authority; never persist it here.
+            stopGeneration?.();
+            await this.queue.catch(() => {});
+            if (this.snapshot?.session.sessionId === sessionId) await this._loadProjection(sessionId, { acceptGuard: () => this.snapshot?.session.sessionId === sessionId });
+        } else if (!this.generation && next.revision.revisionId !== this.snapshot.revision.revisionId) {
+            await this.acceptOperationSnapshot(next);
+        }
+    }
+
     async reload() {
         if (!this.active) throw new Error('No Native Session is open');
         if (this.host.isGenerating()) throw new Error('Stop generation before reloading Native Session');
@@ -412,6 +430,7 @@ export class NativeSessionRuntime {
         this.failed = false;
         this.history = false;
         this.generation = null;
+        this.generationProjection = { state: 'idle', text: '', error: '' };
         this.lastContextPlan = null;
         this._clearStagedStates();
         await this.host.clear();
@@ -428,8 +447,10 @@ export class NativeSessionRuntime {
 
         // A user turn is a committed boundary before assistant generation.
         // This guarantees Retry can later locate an exact post-user Revision.
+        const requestedRevision = this.snapshot.revision.revisionId;
         await this.persist();
         this._assertBarrier();
+        if (type === 'regenerate' && this.snapshot.revision.revisionId !== requestedRevision) throw new Error('Native retry revision changed');
 
         if (type === 'regenerate') {
             const target = this.snapshot.timeline.at(-1);
@@ -517,6 +538,7 @@ export class NativeSessionRuntime {
         if (['', '...'].includes(continuation.trim())) {
             const aborted = this.generation;
             this.generation = null;
+            this.generationProjection = { state: 'idle', text: '', error: '' };
             this._clearStagedStates();
             await this.host.install(projectNativeSession(this.snapshot));
             await this._emit(NATIVE_SESSION_LIFECYCLE.DRAFT_ABORTED, this.snapshot, this.snapshot, {
@@ -551,6 +573,7 @@ export class NativeSessionRuntime {
             });
             this.snapshot = next;
             this.generation = null;
+            this.generationProjection = { state: 'idle', text: '', error: '' };
             this._clearStagedStates();
             await this.host.install(projectNativeSession(next));
             const appended = next.timeline.slice(previous.timeline.length).map(item => item.messageId);
@@ -597,6 +620,7 @@ export class NativeSessionRuntime {
                 // Revision, so discard the draft and reinstall canonical
                 // SessionState instead of publishing a state-only Revision.
                 this.generation = null;
+                this.generationProjection = { state: 'idle', text: '', error: '' };
                 this._clearStagedStates();
                 await this.host.install(projectNativeSession(this.snapshot));
                 await this._emit(NATIVE_SESSION_LIFECYCLE.DRAFT_ABORTED, this.snapshot, this.snapshot, {
@@ -679,6 +703,7 @@ export class NativeSessionRuntime {
         if (this.generation) {
             const aborted = this.generation;
             this.generation = null;
+            this.generationProjection = { state: 'idle', text: '', error: '' };
             this._clearStagedStates();
             await this.host.install(projectNativeSession(this.snapshot));
             await this._emit(NATIVE_SESSION_LIFECYCLE.DRAFT_ABORTED, this.snapshot, this.snapshot, {
@@ -705,6 +730,7 @@ export class NativeSessionRuntime {
         this.snapshot = next;
         this.history = false;
         this.generation = null;
+        this.generationProjection = { state: 'idle', text: '', error: '' };
         await this.host.install(projectNativeSession(next));
         await this._emit(NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED, next, previous, { reason: 'runtime-attempt' });
         await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { reason: 'runtime-attempt' });
@@ -733,6 +759,7 @@ export class NativeSessionRuntime {
         this.snapshot = next;
         this.history = false;
         this.generation = null;
+        this.generationProjection = { state: 'idle', text: '', error: '' };
         await this.host.install(projectNativeSession(next));
         await this._emit(NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED, next, previous, { reason: 'fork' });
         await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { reason: 'fork' });
@@ -779,6 +806,7 @@ export class NativeSessionRuntime {
         this.snapshot = next;
         this.history = false;
         this.generation = null;
+        this.generationProjection = { state: 'idle', text: '', error: '' };
         await this.host.install(projectNativeSession(next));
         await this._emit(NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED, next, previous, { reason: 'switch' });
         await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_COMMITTED, next, previous, { reason: 'switch' });
@@ -796,6 +824,7 @@ export class NativeSessionRuntime {
         this.snapshot = next;
         this.history = false;
         this.generation = null;
+        this.generationProjection = { state: 'idle', text: '', error: '' };
         await this.host.install(projectNativeSession(next));
         await this._emit(NATIVE_SESSION_LIFECYCLE.REVISION_RESTORED, next, previous, { saveId });
         await this._emit(NATIVE_SESSION_LIFECYCLE.BRANCH_ACTIVATED, next, previous, { reason: 'restore', saveId });

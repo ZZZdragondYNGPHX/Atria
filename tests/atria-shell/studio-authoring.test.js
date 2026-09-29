@@ -4,11 +4,9 @@ import {
     createAuthoringOperation,
     createHumanOrigin,
     createStudioWorkspace,
-    flattenComponentTree,
     patchProjectSource,
     projectSaveOperation,
     sourceWriteOperation,
-    updateComponentNode,
 } from '../../public/scripts/native/studio-authoring.js';
 
 function ids() {
@@ -58,7 +56,7 @@ describe('A7 Studio authoring helpers', () => {
         }));
     });
 
-    test('structured project patches and component edits are immutable round trips', () => {
+    test('structured project patches are immutable round trips', () => {
         const source = { package: { name: 'Before' } };
         const patched = patchProjectSource(source, next => {
             next.package.name = 'After';
@@ -66,17 +64,6 @@ describe('A7 Studio authoring helpers', () => {
         expect(source.package.name).toBe('Before');
         expect(patched.package.name).toBe('After');
 
-        const model = {
-            id: 'root',
-            type: 'container',
-            children: [{ id: 'label', type: 'text', props: { text: 'Before' } }],
-        };
-        const next = updateComponentNode(model, 'label', node => ({
-            ...node,
-            props: { ...node.props, text: 'After' },
-        }));
-        expect(model.children[0].props.text).toBe('Before');
-        expect(next.children[0].props.text).toBe('After');
-        expect(flattenComponentTree(next).map(item => item.id)).toEqual(['root', 'label']);
+
     });
 });

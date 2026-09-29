@@ -68,7 +68,7 @@ test('P9 Play Health repair and authenticated fixed-seat Shared Host controls', 
 });
 
 
-for (const width of [1440, 320]) test(`P9 Studio v2 exact preview and production Scenario at ${width}px`, async ({ page }, info) => {
+for (const width of [1440, 320]) test(`P9 Studio v3 exact preview and production Scenario at ${width}px`, async ({ page }, info) => {
     test.setTimeout(150000);
     await page.setViewportSize({ width, height: 1000 });
     await page.addInitScript(() => localStorage.setItem('language', 'en'));
@@ -80,32 +80,28 @@ for (const width of [1440, 320]) test(`P9 Studio v2 exact preview and production
         format: 'atria-project-source', schemaVersion: 1,
         project: { projectId, packageId: createNativeId('package'), displayName: 'P9 Observatory', createdAt: 1, updatedAt: 1 },
         package: { name: 'P9 Observatory', version: '1.0.0', actors: [], capabilities: ['narrative', 'game-runtime'], permissions: [],
-            runtime: { experience: { mode: 'component', componentModelVersion: 2, component: 'ui.json' },
+            runtime: { experience: { mode: 'component', frontend: { kind: 'native', version: 3, source: 'frontend.json' } },
                 experienceContract: { schemaVersion: 1, capabilities: [{ id: 'studio-authoring', version: 2, required: true }], dataResources: [], lifecycleRuntime } },
             entryPoints: [{ entryPointId: createNativeId('entryPoint'), displayName: 'Arrival', actorIds: [], worldIds: [], knowledgeBindingIds: [] }] },
         resources: [], worlds: [], knowledge: [], knowledgeBindings: [], assetFiles: [], dependencies: { worlds: [], knowledge: [], knowledgeBindings: [], assets: [], resources: [] },
     };
-    const ui = { schemaVersion: 2, stateVersion: 1, localState: { name: { type: 'string', default: '' } },
-        actions: { fill: { steps: [{ op: 'ui.set', path: 'ui.name', value: 'Atria' }] } },
-        views: [{ id: 'main', surface: 'chat.footer', mount: 'always', root: { id: 'root', type: 'container', children: [
-            { id: 'title', type: 'text', props: { text: 'Welcome to the observatory' } },
-            { id: 'name', type: 'input', model: 'ui.name', props: { label: 'Explorer' } },
-            { id: 'fill', type: 'button', props: { text: 'Fill name' }, events: { click: 'fill' } },
-        ] } }] };
-    await page.evaluate(async ({ source, ui }) => {
+    const ui = { format: 'atria-frontend-source', version: 3, primaryView: 'main', views: [{ id: 'main', root: 'Main', surface: 'chat.footer' }], components: [{ id: 'Main', source: 'Main.aui' }] };
+    const contract = { state: { draft: { schema: { type: 'object', properties: { name: { type: 'string', maxLength: 80 } }, required: ['name'], additionalProperties: false }, initial: { name: '' } } }, interactions: { fill: [{ kind: 'set', target: 'draft.name', value: 'Atria' }] } };
+    const aui = '<template><main node-id="root"><h1 node-id="title">Welcome to the observatory</h1><label node-id="label" for="name">Explorer</label><input node-id="name" id="name" bind:value="draft.name" /><button node-id="fill" on:click="fill">Fill name</button></main></template><contract>' + JSON.stringify(contract) + '</contract>';
+    await page.evaluate(async ({ source, ui, aui }) => {
         const res = await fetch('/api/native/studio/projects', { method: 'POST', headers: window.Atria.getContext().getRequestHeaders(),
-            body: JSON.stringify({ source, files: [{ path: 'ui.json', content: JSON.stringify(ui) }] }) });
+            body: JSON.stringify({ source, files: [{ path: 'frontend.json', content: JSON.stringify(ui) }, { path: 'Main.aui', content: aui }] }) });
         if (!res.ok) throw new Error(await res.text());
         await window.Atria.shell.getWorkspaceHost().openBuild(source.project.projectId);
-    }, { source, ui });
+    }, { source, ui, aui });
     await expect(page.locator('[data-atria-studio-view="overview"]')).toBeVisible();
     await page.evaluate(() => document.querySelector('[data-atria-studio-resource="ui"]').click());
-    const editor = page.locator('[data-atria-studio-ui-editor]');
+    const editor = page.locator('[data-atria-frontend-editor]');
     await expect(editor).toBeVisible();
-    await editor.getByRole('button', { name: 'Fill name', exact: true }).click();
-    // Design clicks select the authored node; the preview page exercises local interaction.
-    await editor.getByRole('button', { name: 'Document', exact: true }).click();
-    await expect(editor.getByLabel('View surface')).toHaveValue('chat.footer');
+    const componentOption = editor.locator('select[aria-label="Source Graph"] option').filter({ hasText: 'component · Main' });
+    await expect(componentOption).toHaveCount(1);
+    await editor.getByLabel('Source Graph', { exact: true }).selectOption(await componentOption.getAttribute('value'));
+    await expect(editor.getByLabel('Native source', { exact: true })).toHaveValue(aui);
     expect((await editor.boundingBox()).x).toBeGreaterThanOrEqual(0);
     expect(await editor.evaluate(node => node.scrollWidth <= node.clientWidth + 1)).toBe(true);
     await page.screenshot({ path: info.outputPath(`studio-document-${width}.png`), fullPage: true });

@@ -15,15 +15,13 @@ import {
     createAtriaStatePanel,
 } from '../atria-shell/primitives.js';
 import { translateShellText } from '../atria-shell/localization.js';
-import { compileStudioUi, mountStudioPreviewUi } from './studio-preview-ui.js';
-import { previewStudioUiMigration } from './studio-ui-migration.js';
+import { mountStudioPreviewUi } from './studio-preview-ui.js';
 import { presentationNegotiation } from './host-capabilities.js';
 import {
     createHumanOrigin,
     createAuthoringOperation,
     createStudioNativeId,
     createStudioWorkspace,
-    experienceComponentPath,
     experienceFromProject,
     patchProjectSource,
     projectSaveOperation,
@@ -32,7 +30,8 @@ import {
 } from './studio-authoring.js';
 import { nativeStudioClient } from './studio-client.js';
 import { mountNativeStudioAgent } from './studio-agent.js';
-import { mountStructuredUiEditor } from './studio-ui-editor.js';
+import { mountFrontendEditor } from './studio-frontend-editor.js';
+import { assertFrontendExperience, resourcePath } from '../../shared/native-frontend-contract.js';
 
 const STUDIO_VIEWS = Object.freeze([
     ['overview', 'Overview'],
@@ -801,29 +800,34 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         const current = experienceFromProject(state.source);
         body.append(heading(documentRef, 'Experience', 'Choose how readers experience this work. Component, hybrid and full modes use your project interface.'));
         const mode = selectInput(documentRef, current.mode || 'text', ['text', 'component', 'hybrid', 'full'], 'Experience mode');
-        const component = textInput(documentRef, current.component || 'ui/main.json', 'Component source path');
-        const selectors = textInput(documentRef, current.selectors || 'ui/selectors.json', 'Selector source path');
-        const surface = textInput(documentRef, current.surface || 'app.root', 'Experience surface');
+        const frontend = textInput(documentRef, current.frontend?.source || 'frontend/index.json', 'Frontend source index');
+        const features = documentRef.createElement('textarea'); features.className = 'text_pole'; features.value = JSON.stringify(current.features || [], null, 2); features.setAttribute('aria-label', translateShellText('Runtime features'));
         body.append(
             field(documentRef, 'Mode', mode),
-            field(documentRef, 'Component', component),
-            field(documentRef, 'Selectors', selectors),
-            field(documentRef, 'Surface', surface),
-            actionRow(documentRef, button(documentRef, 'Review Changes', () => {
+            field(documentRef, 'Frontend source index', frontend),
+            field(documentRef, 'Runtime features', features),
+            actionRow(documentRef, button(documentRef, 'Review Changes', async () => {
+                const experience = assertFrontendExperience(mode.value === 'text' ? { mode: 'text' } : {
+                    mode: mode.value, frontend: { kind: 'native', version: 3, source: frontend.value }, features: JSON.parse(features.value),
+                }, { authoring: true });
                 const next = patchProjectSource(state.source, source => {
                     const target = source.package.entryPoints[0];
                     target.runtime = { ...(target.runtime || {}) };
-                    target.runtime.experience = mode.value === 'text'
-                        ? { mode: 'text' }
-                        : {
-                            mode: mode.value,
-                            componentModelVersion: 1,
-                            component: component.value,
-                            selectors: selectors.value,
-                            surface: surface.value,
-                        };
+                    target.runtime.experience = experience;
                 });
-                return stageProject(next, 'Update Native Experience');
+                const operations = [projectSaveOperation(projectId, next)];
+                if (mode.value !== 'text') {
+                    const files = await nativeStudioClient.listSources(projectId);
+                    if (!files.some(file => file.path === frontend.value)) {
+                        const base = frontend.value.includes('/') ? frontend.value.slice(0, frontend.value.lastIndexOf('/') + 1) : '';
+                        const componentPath = resourcePath(base + 'Main.aui');
+                        if (files.some(file => file.path === componentPath)) throw new Error('Main.aui already exists. Create a source index for it in Source before changing Experience.');
+                        operations.push(sourceWriteOperation(frontend.value, JSON.stringify({ format: 'atria-frontend-source', version: 3, primaryView: 'main',
+                            views: [{ id: 'main', root: 'Main', surface: mode.value === 'component' ? 'chat.footer' : 'app.root' }], components: [{ id: 'Main', source: 'Main.aui' }] }, null, 2)));
+                        operations.push(sourceWriteOperation(componentPath, '<template>\n  <main node-id="root"><h1 node-id="title">New Experience</h1></main>\n</template>\n'));
+                    }
+                }
+                return stageOperations(operations, 'Update Native Experience');
             }, { primary: true })),
         );
     }
@@ -860,40 +864,17 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
 
     async function renderUi(body) {
         const experience = experienceFromProject(state.source);
-        const componentPath = experienceComponentPath(state.source);
-        body.append(heading(documentRef, 'UI Components', 'Compose the interface, adjust its structure and bindings, then review your changes.'));
-        if (experience.mode === 'text' || !componentPath) {
-            body.append(panel(documentRef, 'empty', 'Text Experience', 'Switch Experience to Component, Hybrid or Full before authoring Structured UI.'));
+        if (experience.frontend?.version === 3) {
+            body.append(heading(documentRef, 'Native Frontend', 'Browse source identities, edit native components and inspect compiler diagnostics before Build.'));
+            state.structuredEditor?.dispose();
+            const entry = state.source.package.entryPoints?.[0];
+            const mounted = await mountFrontendEditor({ document: documentRef, root: body, projectId,
+                ownerId: entry?.runtime?.experience?.frontend ? entry.entryPointId : 'package', baseRevision: state.revision.revision, stageOperations });
+            if (state.disposed || !body.isConnected) mounted.dispose();
+            else state.structuredEditor = mounted;
             return;
         }
-        try {
-            const file = await nativeStudioClient.readSource(projectId, componentPath);
-            const model = JSON.parse(decodeUtf8(file.content));
-            compileStudioUi(model, experience.mode, experience.componentModelVersion ?? 1);
-            if (model.schemaVersion !== 2) body.append(button(documentRef, 'Review UI v2 migration', () => {
-                const migration = previewStudioUiMigration(model, experience);
-                const source = patchProjectSource(state.source, next => {
-                    const entry = next.package.entryPoints[0];
-                    if (entry.runtime?.experience) entry.runtime.experience = migration.experience;
-                    else next.package.runtime.experience = migration.experience;
-                });
-                return stageOperations([projectSaveOperation(projectId, source), sourceWriteOperation(componentPath, JSON.stringify(migration.model, null, 2))], 'Migrate static UI to version 2');
-            }));
-            const hostNode = documentRef.createElement('div');
-            body.append(hostNode);
-            state.structuredEditor?.dispose();
-            state.structuredEditor = mountStructuredUiEditor({
-                document: documentRef,
-                root: hostNode,
-                initialModel: model,
-                mode: experience.mode,
-                onStage: nextModel => stageOperations([
-                    sourceWriteOperation(componentPath, JSON.stringify(nextModel, null, 2)),
-                ], 'Update Atria Structured UI'),
-            });
-        } catch (error) {
-            body.append(panel(documentRef, 'error', 'Structured UI unavailable', error?.message || String(error)));
-        }
+        body.append(panel(documentRef, 'empty', 'Text Experience', 'Switch Experience to Component, Hybrid or Full before authoring Structured UI.'));
     }
 
     function attachedRevision(item) {
@@ -975,10 +956,6 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     async function renderSource(body) {
         body.append(heading(documentRef, 'Source', 'Edit project files directly, then review the proposed changes before applying.'));
         await mountSourceEditor({ document: documentRef, root: body, projectId, stageOperations,
-            validateStructured: (path, value) => {
-                const experiences = [state.source.package.runtime?.experience, ...state.source.package.entryPoints.map(entry => entry.runtime?.experience)].filter(Boolean);
-                for (const experience of experiences) if (experience.mode !== 'text' && experience.component === path) compileStudioUi(value, experience.mode, experience.componentModelVersion ?? 1);
-            },
         });
     }
 
@@ -1010,7 +987,10 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 canvas.className = 'atria-studio-preview-canvas';
                 body.append(canvas);
                 state.previewMount?.dispose();
-                state.previewMount = mountStudioPreviewUi(documentRef, canvas, exact.model, exact.experience.mode);
+                const mounted = await mountStudioPreviewUi(documentRef, canvas, exact.model, exact.experience.mode, undefined,
+                    { entry: exact.experience.frontend?.entry, files: exact.compiledFiles, bridgeProjections: exact.bridgeProjections });
+                if (state.disposed || state.preview?.previewId !== previewId || !canvas.isConnected) { mounted.dispose(); return; }
+                state.previewMount = mounted;
             } catch (error) {
                 body.append(panel(documentRef, 'error', 'Preview render failed', error?.message || String(error)));
             }

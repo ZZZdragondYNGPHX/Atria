@@ -1,7 +1,7 @@
 import { projectInformation, queryInformationGraph, actorAvailability } from '../../shared/native-information-runtime.js';
 import { NATIVE_SESSION_LIFECYCLE, emitNativeSessionLifecycle } from './session-lifecycle.js';
 
-const ACTIONS = new Set(['information.rollup', 'activity.start', 'activity.pause', 'activity.resume', 'activity.settle', 'activity.cancel', 'opening.progress', 'opening.complete', 'experience.ready', 'pump', 'scope.transition', 'app.command', 'clock.advance', 'workflow.transition', 'retention.compact', 'interaction.schedule', 'interaction.cancel', 'workflow.cancel', 'scheduled.cancel', 'app.pin']);
+const ACTIONS = new Set(['information.rollup', 'activity.start', 'activity.pause', 'activity.resume', 'activity.settle', 'activity.cancel', 'experience.ready', 'pump', 'scope.transition', 'app.command', 'clock.advance', 'workflow.transition', 'retention.compact', 'interaction.schedule', 'interaction.cancel', 'workflow.cancel', 'scheduled.cancel', 'app.pin']);
 const clone = value => structuredClone(value);
 const failure = (code, message = code) => Object.assign(new Error(message), { code });
 const identity = snapshot => [snapshot?.session?.sessionId, snapshot?.revision?.branchId, snapshot?.session?.packageVersionId, snapshot?.session?.entryPointId, snapshot?.session?.packageContentHash].join(':');

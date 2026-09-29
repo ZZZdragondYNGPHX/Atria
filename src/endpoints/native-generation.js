@@ -361,3 +361,5 @@ export function createNativeGenerationRouter(getHost = services) {
 }
 
 export const router = createNativeGenerationRouter();
+
+export const getNativeGenerationHost = services;

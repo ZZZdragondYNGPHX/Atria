@@ -54,7 +54,7 @@
 .atria-studio-activity { min-height: 0; min-width: 0; display: grid; grid-template-rows: 44px minmax(0, 1fr); border-top: 1px solid var(--atri-separator); background: var(--atri-surface-1); overflow: hidden; }
 .atria-studio-activity-tabs, .atria-studio-editor-tabs { display: flex; gap: 4px; align-items: center; padding: 4px 12px; border-bottom: 1px solid var(--atri-separator); }
 .atria-studio-editor-tabs { flex-wrap: wrap; }
-.atria-studio-ui-editor, .atria-studio-editor-host { min-width: 0; max-width: 100%; }
+.atria-studio-editor-host { min-width: 0; max-width: 100%; }
 .atria-studio-editor-host textarea { width: 100%; min-width: 0; box-sizing: border-box; }
 .atria-native-studio .atria-studio-activity-tabs button, .atria-native-studio .atria-studio-editor-tabs button { background: transparent; font-size: var(--atri-text-footnote); }
 .atria-native-studio .atria-studio-activity-tabs button[data-active="true"], .atria-native-studio .atria-studio-editor-tabs button[data-active="true"] { color: var(--atri-accent-text); background: var(--atri-accent-soft); }
@@ -147,6 +147,14 @@
 .atri-asset-form textarea { width: 100%; min-height: 100px; }
 
 .atri-source-editor { min-width: 0; }
+[data-atria-frontend-editor] { display: grid; gap: 16px; }
+[data-atria-frontend-editor] > section { display: grid; gap: 12px; min-width: 0; }
+[data-atria-frontend-editor] p { margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
+[data-atria-frontend-editor] h4 { margin: 8px 0; }
+.atria-native-studio [data-atria-frontend-editor] textarea { width: 100%; min-height: 120px; font-family: var(--atri-font-mono); }
+.atria-native-studio [data-atria-frontend-editor] .atria-studio-editor__textarea { min-height: 320px; }
+[data-atria-frontend-editor] .atri-library-button { white-space: normal; overflow-wrap: anywhere; text-align: start; }
+[data-atria-frontend-editor] .atria-studio-preview-canvas { min-height: 240px; }
 .atri-source-editor > textarea { display: block; width: 100%; min-height: 320px; font-family: var(--atri-font-mono); }
 .atri-source-diff pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; }
 

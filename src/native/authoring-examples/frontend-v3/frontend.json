@@ -1,0 +1,7 @@
+{
+  "format": "atria-frontend-source",
+  "version": 3,
+  "primaryView": "main",
+  "views": [{ "id": "main", "root": "Main", "surface": "app.root" }],
+  "components": [{ "id": "Main", "source": "Main.aui" }]
+}

@@ -3,7 +3,7 @@ import { describe, expect, test } from '@jest/globals';
 import { createPackageRuntimeContributionRegistry } from '../../public/scripts/native/experience/ui/plugin-contributions.js';
 
 describe('A5 Play package contribution registry', () => {
-    test('compiles declarative selector contributions without executable package code', () => {
+    test('retains inert plugin contribution metadata without a legacy selector runtime', () => {
         const registry = createPackageRuntimeContributionRegistry([{
             pluginId: 'plugin.runtime',
             version: '1.0.0',
@@ -14,10 +14,7 @@ describe('A5 Play package contribution registry', () => {
                 config: { selectors: [{ id: 'plugin.hp', formula: 'world.hp + 1' }] },
             }],
         }]);
-        const definitions = registry.selectorDefinitions();
-        expect(definitions).toHaveLength(1);
-        expect(definitions[0].id).toBe('plugin.hp');
-        expect(definitions[0].select({ hp: 4 })).toBe(5);
+        expect(registry).not.toHaveProperty('selectorDefinitions');
         expect(registry.list({ type: 'play.selector' })).toHaveLength(1);
     });
 

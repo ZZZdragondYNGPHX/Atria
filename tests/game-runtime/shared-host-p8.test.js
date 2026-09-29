@@ -5,18 +5,11 @@ import { serialize, deserialize } from 'node:v8';
 globalThis.TextEncoder ??= TextEncoder;
 globalThis.structuredClone ??= value => deserialize(serialize(value));
 import { createNativeSharedClient, mountNativeSharedExperience } from '../../public/scripts/native/shared-client.js';
-import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
-import { mountUiDocument } from '../../public/scripts/native/experience/ui/v2-runtime.js';
-import { createSurfaceHost } from '../../public/scripts/native/experience/ui/surfaces.js';
 import { taskId } from '../../public/shared/native-task-contract.js';
 
 const snapshot = (revisionId = 'r1') => ({ kind: 'shared-session', sessionId: 'session', packageContentHash: 'exact', seatId: 'seat1',
     revisionId, accessRevisionId: 'a1', cursor: revisionId, projection: { pov: { items: [{ data: { text: 'Visible' } }] } }, realm: {}, turn: { id: 'turn' } });
 const response = value => ({ ok: true, json: async () => value });
-const definition = () => ({ schemaVersion: 2, stateVersion: 1, localState: {}, preferences: {},
-    actions: { submit: { steps: [{ op: 'shared.submit', args: { turnId: { expr: 'shared.turn.id' }, ruleId: 'save', args: { text: 'Ready' } } }] } },
-    views: [{ id: 'main', surface: 'chat.footer', mount: 'always', root: { id: 'count', type: 'text', bindings: { text: { expr: 'length(projection.pov.items)' } } } }] });
-
 test('default Shared invocation remains a valid Task identifier when UUID begins with a digit', async () => {
     const prior = Object.getOwnPropertyDescriptor(crypto, 'randomUUID');
     Object.defineProperty(crypto, 'randomUUID', { configurable: true, value: () => '12345678-1234-1234-1234-123456789abc' });
@@ -32,17 +25,7 @@ test('default Shared invocation remains a valid Task identifier when UUID begins
     }
 });
 
-test('existing v2 renderer consumes remote granted projections and invokes typed Shared actions', async () => {
-    const root = document.createElement('section'); document.body.append(root);
-    const fetchImpl = jest.fn(async () => response(snapshot()));
-    const client = createNativeSharedClient({ owner: 'host', sessionId: 'session', fetchImpl, headers: () => ({ 'X-CSRF-Token': 'host-only' }), invocationId: () => 'invoke' });
-    await client.refresh();
-    const mounted = mountUiDocument(compileUiDocument(definition(), { mode: 'component' }), { document, window, sharedClient: client,
-        surfaceHost: createSurfaceHost({ resolveSurface: () => root }) });
-    expect(root.textContent).toBe('1'); await mounted.execute('submit');
-    expect(JSON.parse(fetchImpl.mock.calls.at(-1)[1].body)).toMatchObject({ owner: 'host', sessionId: 'session', action: { kind: 'turn.submit', turnId: 'turn', expectedRevisionId: 'r1', expectedAccessRevisionId: 'a1' } });
-    client.dispose(); mounted.dispose(); root.remove(); expect(() => client.getSnapshot()).toThrow(/disposed/);
-});
+
 test('uncertain sends retry exact invocation and anchors; known conflict allows resync', async () => {
     const fetchImpl = jest.fn(async () => response(snapshot()));
     const client = createNativeSharedClient({ owner: 'host', sessionId: 'session', fetchImpl, invocationId: () => 'invoke' });
@@ -71,38 +54,22 @@ test('late out-of-order and disposed responses cannot replace the projection', a
     fetchImpl.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })); const pending = client.refresh(); client.dispose(); finish(response(snapshot('r3')));
     await expect(pending).rejects.toThrow(/disposed/);
 });
-test('Shared and Realm actions retain the existing single authority write ceiling', () => {
-    const raw = definition(); raw.actions.submit.steps.push({ op: 'realm.command', args: {} });
-    expect(() => compileUiDocument(raw, { mode: 'component' })).toThrow();
-});
 
-test('Shared mount resolves the exact Package through existing loader and renderer without a private World clone', async () => {
-    const root = document.createElement('section'); document.body.append(root);
-    const fetchImpl = jest.fn(async path => {
-        if (path.endsWith('/snapshot')) return response(snapshot());
-        if (path.endsWith('/resolve')) return response({ descriptor: { format: 'atria-native-runtime-descriptor', schemaVersion: 1,
-            entryPointId: 'entry', packageContentHash: 'exact', experience: { mode: 'component' } }, runtime: { experience: { mode: 'component', componentModelVersion: 2, component: 'ui/main.json' } } });
-        return response(definition());
-    });
-    const mounted = await mountNativeSharedExperience({ owner: 'host', sessionId: 'session', fetchImpl, document, window,
-        surfaceHost: createSurfaceHost({ resolveSurface: () => root }), worldSession: { getState: () => ({ private: 'never forwarded' }) } });
-    expect(root.textContent).toBe('1');
+
+
+
+
+
+test('Shared participation loads exact native@3 metadata without owner Bridge, Package DOM or private Session state', async () => {
+    const experience = { mode: 'component', frontend: { kind: 'native', version: 3, entry: 'runtime/frontend/index.json' } };
+    const descriptor = { format: 'atria-native-runtime-descriptor', entryPointId: 'entry', packageContentHash: 'exact', experience };
+    const fetchImpl = jest.fn(async url => response(url.endsWith('/runtime/resolve') ? { descriptor, runtime: { experience } } : snapshot()));
+    const onProjection = jest.fn();
+    const mounted = await mountNativeSharedExperience({ owner: 'host', sessionId: 'session', fetchImpl, onProjection });
+    expect(mounted.packageState.runtime.experience).toEqual(experience);
+    expect(mounted.client.getProjection()).toEqual(snapshot().projection);
+    expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual(['/api/native/session/shared/snapshot', '/api/native/session/runtime/resolve']);
     expect(JSON.parse(fetchImpl.mock.calls[1][1].body).sharedOwner).toBe('host');
-    expect(JSON.parse(fetchImpl.mock.calls[2][1].body).path).toBe('ui/main.json');
-    mounted.dispose(); expect(root.textContent).toBe(''); root.remove();
-});
-
-test('P9 remote Native slots cannot reparent a local private conversation', async () => {
-    const privateRoot = document.createElement('div'); const node = document.createElement('div'); node.dataset.atriaNativeProductComponent = 'conversation'; node.textContent = 'private transcript'; privateRoot.append(node); document.body.append(privateRoot);
-    const root = document.createElement('section'); document.body.append(root);
-    const raw = definition(); raw.views[0].surface = 'app.root'; raw.views[0].root = { id: 'slot', type: 'native-slot', props: { component: 'conversation' } };
-    const fetchImpl = jest.fn(async path => {
-        if (path.endsWith('/snapshot')) return response(snapshot());
-        if (path.endsWith('/resolve')) return response({ descriptor: { format: 'atria-native-runtime-descriptor', schemaVersion: 1,
-            entryPointId: 'entry', packageContentHash: 'exact', experience: { mode: 'full' } }, runtime: { experience: { mode: 'full', componentModelVersion: 2, component: 'ui/main.json' } } });
-        return response(raw);
-    });
-    const mounted = await mountNativeSharedExperience({ owner: 'host', sessionId: 'session', fetchImpl, document, window, surfaceHost: createSurfaceHost({ resolveSurface: () => root }) });
-    expect(node.parentElement).toBe(privateRoot); expect(root.textContent).not.toContain('private transcript');
-    mounted.dispose(); root.remove(); privateRoot.remove();
+    mounted.dispose(); expect(onProjection).toHaveBeenLastCalledWith(null);
+    expect(() => mounted.client.getProjection()).toThrow(/disposed/);
 });

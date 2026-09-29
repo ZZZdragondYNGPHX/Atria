@@ -1,5 +1,5 @@
-import { fields, json } from '../scripts/native/experience/ui/v2-values.js';
-import { compileDataSchema } from '../scripts/native/experience/ui/message-templates.js';
+import { fields, json } from './native-values.js';
+import { compileDataSchema } from './native-data-schema.js';
 import { taskId } from './native-task-contract.js';
 
 export const PRESENTATION_LIMITS = Object.freeze({ packBytes: 536870912, eagerBytes: 67108864, cueCount: 64, activityCount: 64 });

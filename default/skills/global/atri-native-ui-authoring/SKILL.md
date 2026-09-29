@@ -1,18 +1,18 @@
 ---
 name: atri-native-ui-authoring
-description: 创建或修改 Atria Native Component Model v2 界面、局部状态、偏好、typed actions、Opening 和消息呈现；通过真实编译器与 Studio Review 交付。
+description: 创建或修改 Atria Native Frontend v3 Source、组件、局部状态与 typed Bridge 交互，通过正式 Compiler、Preview 和 Studio Review 交付。
 metadata:
   author: Atria Team
-  version: 1.0.0
+  version: 2.0.0
   atria-paths: studio,agents
 ---
 
-# Native UI v2
+# Native Frontend v3
 
-先判断当前文档是 v1 还是 v2，保留现有体验模式。不要通过改一个版本号把动态 v1 文档冒充 v2。
-
-- 通过当前 API catalog 读取 `ui-document`、`ui-actions`、`capabilities`；涉及消息时加读 `messages`。使用其明确支持的节点、surface、绑定和动作字段。
-- 阅读 [UI 权威与交互边界](references/ui.md)。把 UI 草稿与游戏事实分开；同一 action 最多一个权威写入，其余步骤不能偷偷绕过该上限。
-- 从 [可编译的局部交互示例](examples/ui.json) 开始验证：输入修改本地名称，按钮填入示例值。它不需要模型、World 或网络，也不提交游戏事实。
-- 将文档作为独立 UI Source 文件，Project runtime.experience 指向该文件并明确 componentModelVersion: 2。按当前契约配齐使用的 capability 和资源闭包，使用既有 Studio 提案、编译、Preview、Review。
-- 验证空状态、错误、禁用、键盘/焦点、320px 窄屏、恢复后状态与挂载释放。只报告实际执行的验证；不把静态作者 Preview 当作可操作的真实 Session。
+- 读取 API catalog 的 `frontend-authoring`、`frontend-guide`、`frontend`、`frontend-aui` 和 `frontend-bridge`；需要消息时读取 `messages`。
+- 只编辑 Authoring Source：`frontend.json`、`.aui`、style、bridge 等 Source Graph 文件。IR 是 derived-readonly，Preview 与 Production 使用同一 Compiler/Renderer。
+- 阅读 [UI 权威与交互边界](references/ui.md)。Package owns presentation；Host owns capabilities and authority。
+- 使用 [Source Index](examples/frontend.json) 和 [Native SFC](examples/Main.aui) 验证最小闭环。Project 的 `runtime.experience.frontend` 使用 `kind: native`、`version: 3`、`source: frontend/frontend.json`；合并既有 runtime，不覆盖其他声明。
+- 保留 Component/Hybrid/Full 布局所有权；Text 不拥有 Frontend。拒绝旧版 UI，不做兼容或隐式迁移。
+- 使用既有 Studio proposal、Build、Preview、human Review；按 semantic ID 修改 Source，保留注释与格式。
+- 验证 loading/empty/error/disabled、键盘/焦点、窄屏、IME、恢复与 dispose。只报告实际执行的证据，Preview 不是可写的真实 Session。

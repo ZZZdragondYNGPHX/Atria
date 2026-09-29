@@ -38,7 +38,7 @@ jobs:
         run: >-
           npm run test:unit --prefix tests -- --runInBand
           atria-shell/studio-authoring.test.js
-          atria-shell/studio-ui-editor.test.js
+          native/frontend-authoring.test.js
           atria-shell/studio-workspace-a7.test.js
           atria-shell/native-product-workspaces.test.js
           atria-shell/workspace-host.test.js
@@ -49,7 +49,7 @@ jobs:
           native/resource-graph.test.js
           native/library-authoring.test.js
           native/studio-preview-experience.test.js
-          game-runtime/ui-component-model.test.js
+          native/frontend-v3.test.js
           native/plugin-platform.test.js
           native/native-skill-platform.test.js
       - name: Run A7 residual guard
@@ -70,10 +70,10 @@ jobs:
           npx eslint
           public/scripts/native/studio-client.js
           public/scripts/native/studio-authoring.js
-          public/scripts/native/studio-ui-editor.js
+          public/scripts/native/studio-frontend-editor.js
           public/scripts/native/studio-workspace.js
           tests/atria-shell/studio-authoring.test.js
-          tests/atria-shell/studio-ui-editor.test.js
+          tests/native/frontend-authoring.test.js
           tests/atria-shell/studio-workspace-a7.test.js
           tests/atria-shell/native-product-workspaces.test.js
       - name: Run full root lint

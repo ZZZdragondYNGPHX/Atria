@@ -103,44 +103,6 @@ export function experienceFromProject(source) {
     return entryPoint?.runtime?.experience || source?.package?.runtime?.experience || { mode: 'text' };
 }
 
-export function experienceComponentPath(source) {
-    const experience = experienceFromProject(source);
-    return experience?.mode === 'text' ? null : (experience.component || null);
-}
-
-export function flattenComponentTree(root) {
-    const output = [];
-    function visit(node, parentId = null, depth = 0, index = 0) {
-        if (!node || typeof node !== 'object') return;
-        output.push({ node, id: node.id, parentId, depth, index });
-        const children = Array.isArray(node.children) ? node.children : [];
-        children.forEach((child, childIndex) => visit(child, node.id, depth + 1, childIndex));
-    }
-    if (root?.schemaVersion === 2) root.views.forEach(view => visit(view.root));
-    else visit(root);
-    return output;
-}
-
-export function updateComponentNode(root, componentId, updater) {
-    const next = cloneJson(root);
-    let found = false;
-    function visit(node) {
-        if (!node || typeof node !== 'object') return;
-        if (node.id === componentId) {
-            const replacement = updater(cloneJson(node));
-            for (const key of Object.keys(node)) delete node[key];
-            Object.assign(node, cloneJson(replacement));
-            found = true;
-            return;
-        }
-        for (const child of Array.isArray(node.children) ? node.children : []) visit(child);
-    }
-    if (next?.schemaVersion === 2) next.views.forEach(view => visit(view.root));
-    else visit(next);
-    if (!found) throw new Error(formatProductText('Component not found: ${0}', [componentId]));
-    return next;
-}
-
 export function resourceReferenceForNode(node) {
     if (!node?.resourceType || !node?.resourceId) return null;
     const scope = String(node.scope || '').split('/');

@@ -1,3 +1,4 @@
+import { assertFrontendExperience } from '../../../shared/native-frontend-contract.js';
 import { assertSupportedExperienceContract } from '../../../shared/native-experience-contract.js';
 
 export const GAME_PACKAGE_STATUS = Object.freeze({
@@ -84,6 +85,8 @@ export async function loadNativeGamePackage(session, options = {}) {
             });
         }
 
+        if (JSON.stringify(assertFrontendExperience(runtime.experience)) !== JSON.stringify(assertFrontendExperience(descriptor.experience))) throw new TypeError('Native Frontend identity mismatch');
+
         if (descriptor.experienceContract !== undefined) {
             assertSupportedExperienceContract(descriptor.experienceContract);
         }
@@ -118,6 +121,11 @@ export async function loadGamePackageTextResource(packageState, relativePath, op
         throw new Error('Native Game Runtime resource did not provide text content');
     }
     return response.text();
+}
+
+export async function loadFrontendBytes(packageState, path, options = {}) {
+    const response = await postJson('runtime/resource', { sessionId: sessionIdOf(packageState), path }, options);
+    return new Uint8Array(await response.arrayBuffer());
 }
 
 export async function loadGamePackageJsonResource(packageState, relativePath, options = {}) {

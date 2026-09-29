@@ -1,5 +1,7 @@
+import { minimalFrontend } from '../../native/helpers/frontend-fixture.js';
 
 import { test, expect } from '@playwright/test';
+if (process.env.PW_NATIVE_CHANNEL) test.use({ channel: process.env.PW_NATIVE_CHANNEL });
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { seedNativeSessionDataRoot, createAndOpenNativeSession } from '../native-session/_helpers.js';
 
@@ -39,20 +41,15 @@ async function integrity(page) {
     })).toBe(true);
 }
 async function activate(page, mode, broken = false) {
-    return page.evaluate(async ({ mode, broken }) => {
+    const fixture = minimalFrontend(mode);
+    const resources = Object.fromEntries([...fixture.files].map(([path, bytes]) => [path, bytes.toString('base64')]));
+    return page.evaluate(async ({ mode, broken, resources, experience }) => {
         const { activateNativeExperienceRuntime } = await import('/scripts/native/experience/ui/live.js');
         const native = window.Atria.nativeSessionRuntime.snapshot;
-        const component = mode === 'component'
-            ? { id: 'hud', type: 'text', props: { text: 'Harbour · Tide rising' } }
-            : { id: 'game-root', type: 'container', children: [
-                { id: 'title', type: 'text', props: { text: 'The harbour crossing' } },
-                { id: 'conversation-slot', type: 'native-slot', props: { component: broken ? 'unknown' : 'conversation' } },
-                { id: 'composer-slot', type: 'native-slot', props: { component: 'composer' } },
-            ] };
         const state = { sessionId: native.session.sessionId,
             descriptor: { packageId: native.session.packageId, packageVersionId: native.session.packageVersionId,
-                entryPointId: native.session.entryPointId, experience: { mode, componentModelVersion: 1 } },
-            runtime: { experience: { mode, componentModelVersion: 1, component: 'ui/main.json', surface: mode === 'component' ? 'chat.header' : 'app.root' } },
+                entryPointId: native.session.entryPointId, experience },
+            runtime: { experience },
         };
         try {
             window.gameExperience = await activateNativeExperienceRuntime(state, {
@@ -60,12 +57,13 @@ async function activate(page, mode, broken = false) {
                 dispatchCommandInternal: async () => ({ status: 'committed' }),
                 simulateCommandInternal: async () => ({ status: 'simulated' }),
             }, { document, window, shell: window.Atria.shell,
-                fetchImpl: async () => ({ ok: true, status: 200, json: async () => component }),
+                bridgeTransport: (await import('/scripts/native/frontend/preview-bridge.js')).previewBridgeTransport({ descriptor: { format: 'atria-compiled-bridge', version: 1, bindings: [] }, scopes: { Main: [] } }),
+                fetchImpl: async (_url, init) => ({ ok: true, status: 200, arrayBuffer: async () => broken ? new Uint8Array() : Uint8Array.from(atob(resources[JSON.parse(init.body).path]), c => c.charCodeAt(0)) }),
                 hostActions: { exitExperience: () => { window.gameCalls.exit++; }, stopGeneration: () => { window.gameCalls.stop++; } },
             });
             return '';
         } catch (error) { return error.message; }
-    }, { mode, broken });
+    }, { mode, broken, resources, experience: fixture.experience });
 }
 async function dispose(page) {
     await page.evaluate(async () => { await window.gameExperience?.dispose(); window.gameExperience = null; });
@@ -76,12 +74,11 @@ for (const width of [1440, 390]) {
         await open(page, width);
         await integrity(page);
         expect(await activate(page, 'component')).toBe('');
-        await expect(page.locator('[data-atria-product-surface="chat.header"]')).toContainText('Tide rising');
+        await expect(page.locator('[data-atria-product-surface="chat.footer"]').getByText('Native Frontend', { exact: true })).toBeVisible();
         await integrity(page);
         await dispose(page);
         expect(await activate(page, 'hybrid')).toBe('');
-        await expect(page.locator('[data-atria-component-id="conversation-slot"] [data-atria-conversation]')).toBeVisible();
-        await expect(page.locator('[data-atria-component-id="composer-slot"] [data-atria-composer]')).toBeVisible();
+        await expect(page.locator('[data-atria-frontend-boundary]').getByText('Native Frontend', { exact: true })).toBeVisible();
         expect(await page.evaluate(() => window.Atria.shell.getPlayHost().getStageOwner())).toBe('game-runtime:hybrid');
         await integrity(page);
         await page.evaluate(() => window.Atria.immersive.setEnabled(true, { useFullscreen: false, persist: false, syncNative: false }));
@@ -109,7 +106,7 @@ for (const width of [1440, 390]) {
         await page.screenshot({ path: info.outputPath(`full-${width}.png`) });
         await integrity(page);
         await dispose(page);
-        expect(await activate(page, 'full', true)).toMatch(/native|component/i);
+        expect(await activate(page, 'full', true)).toMatch(/native|component|resource|integrity|hash|graph|json/i);
         expect(await page.evaluate(() => window.Atria.shell.getPlayHost().getStageOwner())).toBeNull();
         await expect(page.locator('#atria-game-full-root')).toHaveCount(0);
         await expect(page.locator('#atria-game-full-recovery')).toHaveCount(0);

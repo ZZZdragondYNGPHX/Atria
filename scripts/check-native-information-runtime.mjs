@@ -23,5 +23,5 @@ assert.match(read('src/native/lifecycle-authority.js'), /prepareInformationRollu
 assert.match(read('src/native/session-core.js'), /Information derived state requires typed lifecycle publication/);
 assert.match(read('public/scripts/native/context-compiler.js'), /informationContext\(snapshot, target/);
 assert.match(read('src/native/adapters/generation-host.js'), /native_information_unscoped_messages/);
-assert.match(read('public/scripts/native/experience/ui/v2-runtime.js'), /displayInformation\(options\.getSnapshot/);
+assert.match(read('public/scripts/native/lifecycle-client.js'), /getInformationProjection/);
 console.log('P6 information guard passed: scoped projections, bounded graph, Truth/Belief separation, typed derived rollups, one Context/renderer/Session, P9 Host capabilities integrated');

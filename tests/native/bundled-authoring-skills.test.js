@@ -6,7 +6,7 @@ import { importBundledSkills } from '../../src/skills/bundled.js';
 import { createSkillRepository } from '../../src/skills/repository.js';
 import { resolveSkillInvocation } from '../../public/shared/skill-invocation.js';
 import { listAuthoringReferences, readAuthoringReference } from '../../src/native/authoring-reference.js';
-import { compileUiDocument } from '../../public/scripts/native/experience/ui/v2-document.js';
+import { compileFrontend } from '../../src/native/frontend/compiler.js';
 import { runNativeStudioAgentTask } from '../../public/scripts/native/studio-agent.js';
 import { runStudioScenario } from '../../src/native/studio-scenario.js';
 import { createGitClient } from '../../src/git/client.js';
@@ -42,7 +42,7 @@ test.each(names)('%s installs with resolvable, bounded supporting files and path
 });
 
 test('all referenced catalog topics are current readable contracts', async () => {
-    const ids = ['project', 'package', 'capabilities', 'ui-document', 'ui-actions', 'messages', 'tasks', 'lifecycle', 'presentation', 'information', 'content', 'continuity', 'shared', 'scenario'];
+    const ids = ['project', 'package', 'capabilities', 'frontend', 'frontend-aui', 'frontend-bridge', 'messages', 'tasks', 'lifecycle', 'presentation', 'information', 'content', 'continuity', 'shared', 'scenario'];
     const catalog = listAuthoringReferences();
     for (const id of ids) {
         expect(catalog.references.some(item => item.id === id)).toBe(true);
@@ -50,12 +50,13 @@ test('all referenced catalog topics are current readable contracts', async () =>
     }
 });
 
-test('mocked Studio model reads bundled references, proposes compiler-valid v2 and reaches real Review without committing', async () => {
+test('mocked Studio model reads references, proposes compiler-valid v3 and reaches real Review without committing', async () => {
     const example = async (name, file) => JSON.parse(await readFile(join(defaultRoot, 'skills/global', name, 'examples', file), 'utf8'));
     const source = await example(names[0], 'project.json');
-    const ui = await example(names[1], 'ui.json');
+    const ui = (await readAuthoringReference({ id: 'example-frontend-v3' })).content;
+    const aui = (await readAuthoringReference({ id: 'example-aui-v3' })).content;
     const scenario = await example(names[4], 'scenario.json');
-    expect(compileUiDocument(ui, { mode: 'component' }).views).toHaveLength(1);
+    expect(compileFrontend({ source: 'frontend.json', files: new Map([['frontend.json', Buffer.from(ui)], ['Main.aui', Buffer.from(aui)]]), mode: 'component' }).entry).toContain('index.json');
     const projectStore = new ProjectStore({ directoriesByHandle: () => h.dirs });
     const studio = new StudioService({ projectStore, worldRepo: new WorldRepo({ engine: h.engine }), knowledgeRepo: new KnowledgeRepo({ engine: h.engine }),
         assetStore: new AssetStore({ engine: h.engine, directoriesByHandle: () => h.dirs }), gitClient: createGitClient({ backend: 'builtin' }),
@@ -65,13 +66,12 @@ test('mocked Studio model reads bundled references, proposes compiler-valid v2 a
     const projectId = source.project.projectId;
     const task = await agent.createTask(h.handle, projectId, { intent: 'Create a local UI using the bundled Native authoring Skill', baseRevision: created.revision.revision });
     const next = structuredClone(source); next.package.capabilities.push('game-runtime');
-    next.package.runtime = { experience: { mode: 'component', componentModelVersion: 2, component: 'ui.json' }, experienceContract: { schemaVersion: 1,
-        capabilities: [{ id: 'component-model', version: 2, required: true }, { id: 'local-ui-state', version: 1, required: true }, { id: 'action', version: 2, required: true }], dataResources: [] } };
+    next.package.runtime = { experience: { mode: 'component', frontend: { kind: 'native', version: 3, source: 'frontend.json' } } };
     const rounds = [
         [['atri_agent_list_skills', {}], ['atri_agent_skill_files', { name: names[1] }]],
-        [['atri_agent_read_skill', { name: names[1], path: 'references/ui.md' }], ['atri_agent_read_skill', { name: names[1], path: 'examples/ui.json' }], ['atri_agent_api_catalog', { query: 'ui' }]],
-        [['atri_agent_api_read', { id: 'ui-document' }], ['atri_agent_set_plan', { summary: 'Add local UI', steps: [{ id: 'ui', title: 'Add local UI', impact: 'low' }] }]],
-        [['atri_agent_project_save', { source: next, stepId: 'ui' }], ['atri_agent_source_write', { path: 'ui.json', content: JSON.stringify(ui), encoding: 'utf8', stepId: 'ui' }]],
+        [['atri_agent_read_skill', { name: names[1], path: 'references/ui.md' }], ['atri_agent_read_skill', { name: names[1], path: 'examples/frontend.json' }], ['atri_agent_api_catalog', { query: 'ui' }]],
+        [['atri_agent_api_read', { id: 'frontend' }], ['atri_agent_set_plan', { summary: 'Add local UI', steps: [{ id: 'ui', title: 'Add local UI', impact: 'low' }] }]],
+        [['atri_agent_project_save', { source: next, stepId: 'ui' }], ['atri_agent_source_write', { path: 'frontend.json', content: ui, encoding: 'utf8', stepId: 'ui' }], ['atri_agent_source_write', { path: 'Main.aui', content: aui, encoding: 'utf8', stepId: 'ui' }]],
         [['atri_agent_prepare_review', { simulationOptions: { scenario } }]],
     ];
     const previousFetch = globalThis.fetch, previousAtria = globalThis.Atria;
@@ -99,7 +99,7 @@ test('mocked Studio model reads bundled references, proposes compiler-valid v2 a
     };
     try {
         const result = await runNativeStudioAgentTask({ projectId, taskId: task.taskId });
-        expect(reads).toEqual(['references/ui.md', 'examples/ui.json']);
+        expect(reads).toEqual(['references/ui.md', 'examples/frontend.json']);
         expect(result.task.status).toBe('review');
         expect(result.task.validation.status).toBe('passed');
         expect(result.task.simulation.status).toBe('completed');

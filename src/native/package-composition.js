@@ -1,5 +1,6 @@
 import { freezePackagePromptPrograms } from './model-prompt-runtime/package-freeze.js';
 import { validateExperienceResources } from './experience-validation.js';
+import { compileProjectFrontends } from './frontend/compiler.js';
 import { createHash } from 'node:crypto';
 import { composeContent, contentDigest, readCommunity, validateContentComposition } from './content-composition.js';
 
@@ -69,8 +70,10 @@ export async function buildProjectPackage({
     idFactory = createNativeId,
 }) {
     if (!projectStore) throw new TypeError('buildProjectPackage requires ProjectStore');
-    const source = await projectStore.get(handle, projectId);
-    if (!source) throw new Error('Studio Project not found: ' + projectId);
+    const authorSource = await projectStore.get(handle, projectId);
+    if (!authorSource) throw new Error('Studio Project not found: ' + projectId);
+    const frontendBuild = compileProjectFrontends(authorSource.package, await projectStore.readBuildFiles(handle, projectId));
+    const source = { ...authorSource, package: frontendBuild.packageSource };
 
     const closure = await resolveProjectDependencyClosure({
         handle,
@@ -160,7 +163,7 @@ export async function buildProjectPackage({
         assets: [...assetPayloads.values()].map(item => item.ref),
     });
 
-    const sourceFiles = await projectStore.readBuildFiles(handle, projectId);
+    const sourceFiles = frontendBuild.files;
     validateExperienceResources(manifest, sourceFiles, new Map([...assetPayloads].map(([key, item]) => [key, item.bytes])), { lower: true });
     const container = buildAtriaPackageContainer({
         manifest,

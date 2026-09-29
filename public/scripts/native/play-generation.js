@@ -4,9 +4,24 @@ import { recallNativePackageTurnMemory } from './experience/llm/memory-bridge.js
 // Keep publication on NativeSessionRuntime's existing Draft/Revision boundary.
 export async function runNativePlayGeneration({ runtime, type, signal, input = '', quietPrompt = '', host, execute = executeNativeGeneration, executeOperation = executeNativeOperation }) {
     if (signal?.aborted) throw Object.assign(new Error('Native generation cancelled'), { code: 'generation_cancelled' });
+    runtime.generationProjection = { state: 'preparing', text: '', error: '' };
+    let observing = true;
+    let anchor = { sessionId: runtime.snapshot?.session?.sessionId, branchId: runtime.snapshot?.revision?.branchId };
+    const ownsProjection = () => observing && runtime.snapshot?.session?.sessionId === anchor.sessionId && runtime.snapshot?.revision?.branchId === anchor.branchId;
+    const originalChunk = host.onChunk;
+    host = { ...host, onChunk: chunk => {
+        if (!signal?.aborted && ownsProjection()) {
+            runtime.generationProjection = { state: 'streaming', text: String(chunk.text ?? runtime.generationProjection.text).slice(0, 65536), error: '' };
+            originalChunk?.(chunk);
+        }
+    } };
+    const cancel = () => { if (!ownsProjection()) return; runtime.generationProjection = { ...runtime.generationProjection, state: 'cancelling' }; };
+    signal?.addEventListener('abort', cancel, { once: true });
     const originalType = type;
-    const generationType = await runtime.prepareGeneration(type);
+    let generationType;
     try {
+        generationType = await runtime.prepareGeneration(type);
+        anchor = { sessionId: runtime.snapshot?.session?.sessionId, branchId: runtime.snapshot?.revision?.branchId };
         await host.started?.(generationType);
         if ([undefined, 'normal'].includes(originalType) && input.trim()) {
             await host.submitUser(input);
@@ -30,6 +45,7 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
             const result = await executeOperation('turn', { slotBindings, userInput: input,
                 invocationId: 'turn-' + crypto.randomUUID(), hostMemoryEvidence: memory.evidence }, { abortSignal: signal, onChunk: host.onChunk,
                 source: { sessionId: runtime.snapshot.session.sessionId, revisionId: runtime.snapshot.revision.revisionId } });
+            runtime.generationProjection.state = 'finalizing';
             await runtime.acceptOperationSnapshot(result, { turn: true });
             return result.timeline.at(-1)?.content ?? '';
         }
@@ -63,11 +79,18 @@ export async function runNativePlayGeneration({ runtime, type, signal, input = '
         if (originalType === 'quiet') return result.assistantText;
         if (originalType === 'impersonate') { await host.impersonate?.(result.assistantText); return result.assistantText; }
         if (!result.assistantText?.trim()) throw new Error('Native generation returned empty text');
+        runtime.generationProjection.state = 'finalizing';
         await host.commitAssistant(generationType, result.assistantText);
         await runtime.persist();
         return result.assistantText;
     } catch (error) {
-        await runtime.finalizeStoppedGeneration();
+        if (ownsProjection()) await runtime.finalizeStoppedGeneration();
+        if (ownsProjection()) runtime.generationProjection = { state: signal?.aborted ? 'idle' : 'failed', text: '', error: signal?.aborted ? '' : 'generation_failed' };
         throw error;
-    } finally { await host.ended?.(generationType); }
+    } finally {
+        signal?.removeEventListener('abort', cancel);
+        if (ownsProjection() && runtime.generationProjection.state !== 'failed') runtime.generationProjection = { state: 'idle', text: '', error: '' };
+        observing = false;
+        await host.ended?.(generationType);
+    }
 }

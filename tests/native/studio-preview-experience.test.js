@@ -1,3 +1,4 @@
+import { minimalFrontend } from './helpers/frontend-fixture.js';
 import { describe, expect, test } from '@jest/globals';
 
 import {
@@ -22,32 +23,9 @@ describe('A4 Native Studio Experience preview', () => {
         for (const mode of ['text', 'component', 'hybrid', 'full']) {
             const fixture = sessionFixture();
             fixture.manifest.capabilities = [...fixture.manifest.capabilities, 'game-runtime'];
-            fixture.manifest.entryPoints[0] = {
-                ...fixture.manifest.entryPoints[0],
-                runtime: {
-                    experience: mode === 'text'
-                        ? { mode: 'text' }
-                        : {
-                            mode,
-                            componentModelVersion: 1,
-                            component: 'ui/main.json',
-                            selectors: 'ui/selectors.json',
-                            surface: 'app.root',
-                        },
-                },
-            };
-
-            const built = buildAtriaPackageContainer({
-                manifest: fixture.manifest,
-                sourceFiles: new Map([
-                    ['ui/main.json', Buffer.from(JSON.stringify({
-                        id: 'root',
-                        type: 'container',
-                    }))],
-                    ['ui/selectors.json', Buffer.from('[]')],
-                ]),
-                assetPayloads: new Map(),
-            });
+            const { experience, files } = minimalFrontend(mode);
+            fixture.manifest.entryPoints[0].runtime = { experience };
+            const built = buildAtriaPackageContainer({ manifest: fixture.manifest, sourceFiles: files, assetPayloads: new Map() });
 
             const preview = host.create({
                 projectId: createNativeId('project'),
@@ -58,21 +36,8 @@ describe('A4 Native Studio Experience preview', () => {
             expect(preview.persisted).toBe(false);
             expect(preview).not.toHaveProperty('sessionId');
             expect(preview).not.toHaveProperty('branchId');
-            expect(preview.descriptor.experience).toEqual(
-                mode === 'text'
-                    ? { mode: 'text' }
-                    : { mode, componentModelVersion: 1 },
-            );
-            const expectedRuntimeExperience = mode === 'text'
-                ? { mode: 'text' }
-                : {
-                    mode,
-                    componentModelVersion: 1,
-                    component: 'ui/main.json',
-                    selectors: 'ui/selectors.json',
-                    surface: 'app.root',
-                };
-            expect(preview.runtime.experience).toEqual(expectedRuntimeExperience);
+            expect(preview.descriptor.experience).toEqual(experience);
+            expect(preview.runtime.experience).toEqual(experience);
         }
 
         expect(host.list()).toHaveLength(4);

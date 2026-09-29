@@ -4,6 +4,7 @@ export { assertMessageProjection, assertTurnEnvelope, assertConversationThread }
 
 import { normalizeNativeRegexScripts } from '../../public/shared/native-regex.js';
 import { assertExperienceDataClosure } from '../../public/shared/native-experience-contract.js';
+import { assertFrontendExperience } from '../../public/shared/native-frontend-contract.js';
 import { validateSkillDeclarations } from '../../public/scripts/native/skill-declarations.js';
 import { assertNativeId } from './identity.js';
 import { assertPackageModelPromptRuntimeMetadata } from './model-prompt-runtime/contracts.js';
@@ -47,6 +48,7 @@ export const ATRIA_PACKAGE_PERMISSIONS = Object.freeze([
     'runtime-tools',
     'world-write',
     'network',
+    'remote-media',
     'clipboard',
     'asset-access',
 ]);
@@ -246,6 +248,7 @@ export function assertActor(value) {
 }
 
 export function assertEntryPoint(value) {
+    if (value?.ui !== undefined) throw new TypeError('EntryPoint UI must use Native Frontend Source');
     if (value?.runtime?.experienceContract !== undefined) {
         throw new TypeError('experienceContract belongs to Package.runtime and cannot be overridden by an EntryPoint');
     }
@@ -286,7 +289,6 @@ export function assertEntryPoint(value) {
     for (const key of [
         'initialStateOverlay',
         'initialTimeline',
-        'ui',
         'runtime',
         'recommendations',
         'orchestration',
@@ -498,7 +500,6 @@ const PACKAGE_KEYS = new Set([
     'runtime',
     'orchestration',
     'memory',
-    'ui',
     'skills',
     'presets',
     'processors',
@@ -508,6 +509,9 @@ const PACKAGE_KEYS = new Set([
 ]);
 
 export function assertAtriaPackageManifest(value) {
+    for (const owner of [value, ...(value?.entryPoints ?? [])]) {
+        if (owner?.runtime?.experience !== undefined) assertFrontendExperience(owner.runtime.experience);
+    }
     noLegacyIdentity(value, 'AtriaPackage');
     assertOnlyKeys(value, PACKAGE_KEYS, 'AtriaPackage');
     if (value.format !== ATRIA_PACKAGE_FORMAT) throw new TypeError(`AtriaPackage.format must be '${ATRIA_PACKAGE_FORMAT}'`);
@@ -682,7 +686,6 @@ export function assertAtriaPackageManifest(value) {
         'author',
         'orchestration',
         'memory',
-        'ui',
         'skills',
         'presets',
         'processors',

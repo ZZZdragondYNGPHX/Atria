@@ -101,6 +101,7 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
         ['stop', 'Stop generation', options.onStopGeneration],
         ['save', 'Save', options.onSave],
         ['diagnostics', 'Diagnostics', options.onDiagnostics],
+        ['recovery', 'Reload presentation', options.onRecover],
     ];
 
     const recoveryPanel = documentRef.createElement('details');
@@ -145,6 +146,9 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
     const onEscape = event => {
         if (!active || event.key !== 'Escape') return;
         if (event.defaultPrevented) return;
+        if (options.onBeforeEscape?.()) {
+            event.preventDefault(); event.stopImmediatePropagation(); return;
+        }
         if (documentRef.querySelector('dialog[open]')) return;
         if (recoveryPanel.open) {
             recoveryPanel.open = false;

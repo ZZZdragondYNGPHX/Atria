@@ -1,10 +1,11 @@
 import { hashNativeDocument } from './repositories/common.js';
 import { prepareLifecycle } from './lifecycle-authority.js';
-import { fields as checkFields, json } from '../../public/scripts/native/experience/ui/v2-values.js';
+import { fields as checkFields, json } from '../../public/shared/native-values.js';
 import { assertNativeId } from './identity.js';
 import { ConflictError } from '../storage/errors.js';
 import { CONTINUITY_SESSION_NAMESPACE } from '../../public/shared/native-continuity-contract.js';
 import { REALM_TRANSFER_NAMESPACE } from '../../public/shared/native-shared-contract.js';
+import { resolveNativeRuntimePackage } from './runtime-descriptor.js';
 
 function fields(value, allowed, label) {
     try { checkFields(value, allowed, label); } catch (error) { throw new TypeError(error.message); }
@@ -28,6 +29,13 @@ export async function inspectExperienceHealth(core, handle, sessionId) {
     const contract = base.manifest.runtime?.experienceContract;
     const state = base.states.atri_lifecycle;
     const diagnostics = [];
+    const experience = base.manifest.entryPoints.find(entry => entry.entryPointId === base.session.entryPointId)?.runtime?.experience ?? base.manifest.runtime?.experience;
+    if (experience?.frontend?.version === 3) {
+        const installed = await core._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+        const graph = resolveNativeRuntimePackage(installed, base.session.entryPointId).frontendGraph;
+        const ref = graph.resources.find(item => item.kind === 'diagnostics');
+        if (ref) for (const item of JSON.parse(installed.sourceFiles.get(ref.path).toString('utf8'))) diagnostics.push({ code: item.reasonCode, severity: 'warning', sourceId: item.sourceId, remediation: 'Review the Frontend source accessibility or localization diagnostic.' });
+    }
     if (state && !state.ready) diagnostics.push({ code: 'experience.not_ready', severity: 'info', remediation: 'Complete Opening and configure required Task bindings.' });
     for (const effect of base.externalEffects ?? []) if (effect.status === 'prepared') diagnostics.push({
         code: 'transfer.prepared', severity: 'error', authority: effect.authority ?? 'player', intentId: effect.intentId,

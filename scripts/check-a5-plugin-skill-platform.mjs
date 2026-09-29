@@ -44,7 +44,7 @@ requirePattern(
 );
 requirePattern(
     'public/scripts/native/experience/ui/live.js',
-    /createPackageRuntimeContributionRegistry[\s\S]*selectorDefinitions/,
+    /createPackageRuntimeContributionRegistry[\s\S]*contributions.list/,
     'A5 Experience Runtime must consume host-validated package Play contributions',
 );
 rejectPattern(

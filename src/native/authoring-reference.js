@@ -5,11 +5,16 @@ import { ATRIA_EXPERIENCE_CAPABILITIES } from '../../public/shared/native-experi
 // Curated identifiers resolve to current, checked-in compiler contracts. Never
 // interpret an AI-supplied path as a filesystem path.
 const definitions = [
+    ['frontend-authoring', 'Native v3 Studio Source Graph and format-preserving semantic patches', 'src/native/frontend/authoring.js'],
+    ['frontend-guide', 'Native v3 authoring, controller and Studio guide', 'src/native/authoring-examples/frontend-v3/README.md'],
+    ['frontend', 'Native Frontend v3 Source Index and source/compiled Experience contracts', 'public/shared/native-frontend-contract.js'],
+    ['frontend-aui', 'Native .aui compiler skeleton, supported syntax and stable semantic IDs', 'src/native/frontend/aui-parser.js'],
+    ['frontend-bridge', 'Frontend Host Bridge v1 typed target linker and compiled descriptor', 'src/native/frontend/bridge.js'],
+    ['example-frontend-v3', 'Minimal native@3 frontend.json accepted by Project Build and Preview', 'src/native/authoring-examples/frontend-v3/frontend.json'],
+    ['example-aui-v3', 'Minimal native@3 Main.aui accepted by the formal compiler', 'src/native/authoring-examples/frontend-v3/Main.aui'],
     ['project', 'Project Source, Package identity, resources and authoring operations', 'src/native/authoring-contracts.js'],
     ['package', 'Package manifest, permissions and immutable closure', 'src/native/contracts.js'],
     ['capabilities', 'Native Experience capability names, versions and declaration closure', 'public/shared/native-experience-contract.js'],
-    ['ui-document', 'UI v2 views, local state, preferences, selectors, Opening and conversation', 'public/scripts/native/experience/ui/v2-document.js'],
-    ['ui-actions', 'UI v2 typed actions and single authority write rules', 'public/scripts/native/experience/ui/v2-document.js'],
     ['messages', 'Message projection, Turn envelope and narrative-only presentation', 'public/shared/native-message-contract.js'],
     ['tasks', 'Model Tasks, result policy, binding slots and variants', 'public/shared/native-task-contract.js'],
     ['lifecycle', 'App domains, commands, retention, scopes, workflows and logical time', 'public/shared/native-lifecycle-contract.js'],
@@ -22,7 +27,6 @@ const definitions = [
     ['prompt-resources', 'Typed Prompt Program, Module and Generation Profile resources', 'src/native/model-prompt-runtime/resources.js'],
     ['browser-extensions', 'Browser extension installation, SDK v1, scopes and lifecycle example', 'src/native/authoring-examples/browser-extension.md'],
     ['browser-extension-sdk', 'Executable browser SDK v1 helpers and typed Native adapters', 'public/scripts/native/extension-sdk.js'],
-    ['example-ui-v2', 'Minimal Component UI v2 document accepted by the production compiler', 'src/native/authoring-examples/ui-v2.json'],
     ['example-scenario', 'Minimal non-mutating Studio Scenario fixture', 'src/native/authoring-examples/scenario.json'],
 ];
 

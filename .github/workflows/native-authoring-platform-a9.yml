@@ -53,8 +53,8 @@ jobs:
           game-runtime/package-loader.test.js
           game-runtime/world-session.test.js
           game-runtime/logic-runtime.test.js
-          game-runtime/ui-component-model.test.js
-          game-runtime/ui-live.test.js
+          native/frontend-v3.test.js
+          native/frontend-presentation.test.js
           game-runtime/ui-full-host.test.js
           atria-shell/native-play-host.test.js
           atria-shell/native-play-product.test.js
@@ -103,7 +103,7 @@ jobs:
           tests/game-runtime/helpers/session-world-adapter.js
           tests/game-runtime/logic-runtime.test.js
           tests/game-runtime/r3-exit-matrix.test.js
-          tests/game-runtime/ui-component.test.js
+          tests/native/frontend-presentation.test.js
           tests/game-runtime/logic-rules-integration.test.js
           tests/game-runtime/declarative.test.js
       - name: Run complete Node regression

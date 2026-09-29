@@ -1,12 +1,12 @@
-import { fields, json } from '../scripts/native/experience/ui/v2-values.js';
-import { compileDataSchema } from '../scripts/native/experience/ui/message-templates.js';
+import { fields, json } from './native-values.js';
+import { compileDataSchema } from './native-data-schema.js';
 import { compileDeclarativeLogic } from '../scripts/native/experience/logic/declarative.js';
 import { assertTaskRuntime, assertTaskValue, taskId } from './native-task-contract.js';
 
 export const LIFECYCLE_STATE_NAMESPACE = 'atri_lifecycle';
 
 const MAX_BYTES = 1048576;
-const NODE_KINDS = ['user_gate', 'opening', 'model_task', 'wait_until', 'action', 'automation_gate', 'projection', 'terminal'];
+const NODE_KINDS = ['user_gate', 'model_task', 'wait_until', 'action', 'automation_gate', 'projection', 'terminal'];
 
 function integer(value, min, max = Number.MAX_SAFE_INTEGER) {
     if (!Number.isSafeInteger(value) || value < min || value > max) throw new TypeError('Lifecycle integer out of bounds');

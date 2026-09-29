@@ -18,6 +18,7 @@ const WRITE_TOOL_NAMES = new Set([
     'atri_agent_resource_update',
     'atri_agent_resource_fork',
     'atri_agent_source_write',
+    'atri_agent_frontend_patch',
     'atri_agent_source_move',
     'atri_agent_source_delete',
 ]);
@@ -107,7 +108,9 @@ export function buildProjectAgentTools(registry) {
     });
 
     return Object.freeze([
-        tool({ name: 'atri_agent_api_catalog', description: 'Discover current Atria Native capabilities and authoritative authoring references, including UI v2, Tasks, Scene, information, continuity, Shared/Realm and Scenario. Read-only.', parameters: objectSchema({ query: { type: 'string' } }) }),
+        tool({ name: 'atri_agent_frontend_graph', description: 'Inspect native@3 Source Graph, semantic IDs, source hashes, diagnostics and feature/permission declarations. Never edit derived IR.', parameters: objectSchema({ ownerId: { type: 'string' } }) }),
+        tool({ name: 'atri_agent_frontend_patch', description: 'Propose a format-preserving frontend.patch. First inspect frontend_graph. Component edits address contract JSON path (state/props/uses/interactions); Node edits use field=text or an AUI attribute, null removes an attribute; Binding/View edits use JSON path; style uses string value; message uses locale. Pin contentHash from graph. Human review and formal compiler validation remain required.', parameters: objectSchema({ stepId: { type: 'string' }, ownerId: { type: 'string' }, kind: { type: 'string', enum: ['component', 'node', 'binding', 'view', 'style', 'state', 'interaction', 'message'] }, id: { type: 'string' }, componentId: { type: 'string' }, locale: { type: 'string' }, field: { type: 'string' }, path: { type: 'array', items: { type: 'string' } }, value: {}, contentHash: { type: 'string' } }, ['kind', 'id', 'value', 'contentHash']) }),
+        tool({ name: 'atri_agent_api_catalog', description: 'Discover current Atria Native capabilities and authoritative authoring references, including Native Frontend v3, Tasks, Scene, information, continuity, Shared/Realm and Scenario. Read-only.', parameters: objectSchema({ query: { type: 'string' } }) }),
         tool({ name: 'atri_agent_api_read', description: 'Read a paginated current compiler contract or tested example by catalog id. Follow nextOffset for complete reference; never guess unsupported fields.', parameters: objectSchema({ id: { type: 'string' }, offset: { type: 'integer', minimum: 0 }, limit: { type: 'integer', minimum: 1, maximum: 24000 } }, ['id']) }),
         tool({
             name: 'atri_agent_set_plan',
@@ -555,6 +558,10 @@ export class ProjectAgentService {
                 origin,
             });
             operation = await this._studio.prepareAuthoringOperation(handle, task.projectId, operation);
+        } else if (toolName === 'atri_agent_frontend_patch') {
+            const { stepId: _stepId, ...input } = args;
+            operation = assertAuthoringOperation({ operationId: operationId(this._idFactory), operationType: STUDIO_SOURCE_OPERATION_TYPES.frontendPatch,
+                target: { resourceType: 'core.project', resourceId: task.projectId }, input, origin });
         } else if (toolName === 'atri_agent_source_write') {
             operation = assertAuthoringOperation({
                 operationId: operationId(this._idFactory),
@@ -814,6 +821,7 @@ export class ProjectAgentService {
         }
 
         this._ensureMutable(task);
+        if (toolName === 'atri_agent_frontend_graph') return this._studio.inspectFrontend(handle, projectId, { ownerId: args.ownerId, baseRevision: task.baseRevision });
         if (toolName === 'atri_agent_api_catalog') return listAuthoringReferences(args.query);
         if (toolName === 'atri_agent_api_read') return readAuthoringReference(args);
         if (toolName === 'atri_agent_get_project') {
