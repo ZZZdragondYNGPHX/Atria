@@ -230,3 +230,57 @@ Status: **Complete; pushed; stopped before Phase 5** (2026-09-30 Asia/Shanghai).
 - Live paid-provider send/regenerate/reenter/probe/vector/recall, populated real Memory, executing Agent, active Experience Epoch changes, rendered Workspace/evaluation/Preview UI and actual client human approval UX remain unverified end-to-end. API/fixture/unit evidence must not be upgraded to these claims.
 - Approved Plan v1.1 unchanged. Same Record and task-owned live HANDOFF refreshed. Product feature stays separate. Phase 5 has not begun.
 - Next explicit continuation: **Phase 5 — High-risk Operations / Package / Agent Delegation** only; preserve Phase 4 authorization/receipt/guard authority, verify destructive scope and Agent escalation boundaries, persist the same Record/HANDOFF, and stop before Phase 6.
+
+
+## Phase 5 — High-risk Operations / Package / Agent Delegation
+
+Status: **Complete; pushed; stopped before Phase 6** (2026-09-30 Asia/Shanghai).
+
+### Actual checkpoints
+
+- Start plugin: `f420640d299ceb3fda48a9f49c85f2b4c0c6cc0e`; end plugin: `1dfcc35f673f3b4db031355ab061558ca9c1569a`, pushed.
+- Start product: `da284bc51db1f10cfb82fe7444b2f1087a3a9a6e`; end `feat/mcp-development-authority`: `b2709b5af2664b05f6bd32a05a06097a3e98bd6f`, pushed, retained, not merged.
+- Main remains `c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`. Docs start: `5dd13e2d1a9e6f657fe6b0b05f098ae37b4a1780`.
+- Fetched first, verified clean plugin/product/docs worktrees and current refs, read plugin AGENTS, full Governance, task-owned HANDOFF, Plan and same Record. Reused all existing worktrees; no reference reads, main-to-plugin merge or original checkout edits. Re-fetch before push confirmed unchanged docs live slot and base refs.
+
+### Destructive authorization and cleanup
+
+- Registry: **152 actions = 109 READ / 27 MUTATE / 8 INTERACT / 8 DESTRUCTIVE**. Exactly 18 public tools; canonical `serverBootId`, Native GET-only `atri_api`, fixed browser calls and default READ ceiling retained.
+- DESTRUCTIVE approvals have exactly one use. Multi-use destructive requests fail closed. Receipt deletion evidence is now populated. There is no broader repeatable destructive lease or natural-language cleanup predicate.
+- Added exact Session deletion, revision-guarded Studio Project deletion, Work deletion with dependent Session checks, and formal Library revision delete-safety/deletion. Work reference blockers remain enforced by the owning transaction; no force or separate PackageVersion physical-delete action.
+- Session/Project `.owned` cleanup additionally requires a successful current-instance creating receipt, same server boot, exact object ID and original creation revision. Creation receipts now record that revision. Changed objects use ordinary one-shot deletion with fresh review; old receipts lacking the creation revision cannot authorize owned cleanup.
+- Memory node/relation deletion uses the existing loaded graph fingerprint/source-guarded write session and DESTRUCTIVE executor. No generic Memory mutation batch or arbitrary capability method dispatch.
+- Minimal product changes add optional expected Session revision and Work base-version checks inside existing owning transactions; Work service uses the existing package write queue. Runtime identity declares `highRiskGuards:1`. Older unguarded product runtimes fail closed. Existing callers remain compatible.
+
+### Package artifacts and install
+
+- Instance-owned `.atria` handles capture only safe development artifact roots or a formal Studio build result. Bytes remain internal, at most four handles / 16 MiB each / 15-minute TTL; no filesystem or archive payload is exposed through model-selected generic writes. Studio build retains the ordinary 1 MiB HTTP response bound.
+- `package.artifact.inspect -> package.install.preflight -> package.install.review -> package.install` binds archive hash, package/exact version, installed base, permission grants and normalized full preflight (permission/capability diffs and pinned Sessions).
+- Review produces a trusted, instance-owned receipt. Install independently requests approval, rereads preflight and requires the same review and base. Product install already rechecks baseVersion within the owning package write queue; reused unchanged. Wrong/expired handles, forged reviews, permission mismatch and base/preflight drift fail before effects.
+- PackageVersion immutable semantics and existing product authorization/CSRF boundaries remain intact.
+
+### Explicit Agent delegation
+
+- `agent.delegation.inspect` / `agent.run.start` expose the bounded **delegated-node** mode: one explicitly selected node from a real Workspace preset, through existing `compileWorkspacePreset`, capability intersection, `AgentRegistry`, `AgentRuntime`, Native generation and Orchestrator durable checkpoint store. This does not implicitly execute the full preset graph.
+- Envelope contains exact task/preset/node/scope, at most eight fixed Memory create/edit/relation-upsert/compact inputs, step/context/deadline limits. Each operation is usable once. Preset tools and node/product capabilities intersect with exact MCP Policy Ceiling and the parent trusted approval. No deletion, web, arbitrary extension tool, substituted tool arguments or nested Agent authority.
+- Internal browser callback is instance/run-nonce/main-frame/document/boot bound. It accepts only an operation index; actual action/input comes from the approved envelope. Child effects re-enter the existing risk executor, revalidate authority, and mint separate receipts. Concurrent/duplicate/unknown operations fail closed. Child uncertainty makes the parent indeterminate and is never automatically retried.
+- Parent/child receipt IDs bind run/step/effect attribution. Evidence includes model calls, tool results, Memory effects, provider usage per call and cost when available; unavailable accounting is null. Automatic Memory recall is disabled. Existing durable checkpoints remain product-owned; no parallel execution/persistence engine.
+- Bounds are 1–8 steps, 256–16000 context budget and 1–60 seconds. MCP request cancellation invokes live Runtime stop. These are execution bounds, not a guaranteed monetary/token-spend cap; no live paid provider was invoked during verification.
+
+### Actual verification
+
+- Plugin full suite **43/43**, zero skips, including exact 18-tool stdio contract, existing observation/provenance coverage, one-shot deletion, forged/failed/wrong-boot/wrong-object cleanup, Package hash/grants/review/base drift, and delegated policy/once-only boundaries.
+- Final affected high-risk suite **5/5** after uncertainty propagation was added. Real Edge bridge fixture proves exact semantic child execution, parent/child attribution, rejection of unknown/replayed indices and forbidden destructive delegation; uncertain child effect produces an indeterminate parent. Real Edge Memory fixture exercises guarded node/relation deletion. This is fixture evidence, not populated live Atria Memory.
+- Product initial **6 targeted suites / 35 tests**: native/mcp-high-risk, orchestrator/delegated-run, native/product-service, native/product-http, native/package-build-install, logging/source-identity. After durable checkpoint hookup, affected delegated-run + Memory guarded-session **2 suites / 6 tests** passed. Preset deletion/web privilege escalation, substituted args, replay, product capability denial, Session drift, cancellation and context exhaustion are covered using deterministic injected providers.
+- Plugin 15-module syntax check, verifier syntax, targeted product ESLint and working/staged diff checks passed. No full product suite, Android/device check or final integration into main.
+- Resolved initial MCP startup failure caused by a Zod transform that cannot become JSON Schema; replaced with explicit duplicate-grant validation. Initial real integration correctly refused EXACT while the new runtime file was untracked; staged the task-owned source and reran successfully rather than weakening provenance.
+- Pre-commit real disposable Atria + installed Edge integration passed with **23 successful operation receipts**: prior Phase 4 operations plus Studio Package build, Package review/install, old-review rejection, referenced Work rejection, Library revision deletion, owned Session cleanup, ordinary Session deletion, Work deletion and owned Project create/cleanup. Uses real authenticated HTTP/CSRF and deterministic trusted MCP form elicitation, not human approval UX.
+
+### CI, limits and next checkpoint
+
+- Both final implementation HEADs pushed. Each has **0 check-runs / 0 commit statuses**, combined `pending`. **No CI pass claimed.** Product feature remains separate from main; no PR/merge/deletion performed.
+- Phase 5 adds narrowly scoped destructive flows, not every potential destructive action described directionally in the Plan. Library root deletion, arbitrary Agent tools/full-preset graph execution and blanket destructive leases are not exposed; the implemented flows retain owning safety boundaries.
+- Real paid-provider Agent/generation/recall, populated real Memory, active Experience Epoch, rendered Workspace/evaluation/Preview UI and actual Codex/Claude human approval UX remain Phase 6 verification obligations. Existing shell captures and deterministic tests must not be upgraded to those claims.
+- Final exact-HEAD `npm run test:atria` passed against plugin `1dfcc35f673f3b4db031355ab061558ca9c1569a` and clean product `b2709b5af2664b05f6bd32a05a06097a3e98bd6f`. Discovered 165 routes; all 23 operation receipts succeeded. Source/Server EXACT; actual restart STALE; reload CURRENT. Final ignored evidence: `atria-mcp/.artifacts/atria-1790699829676/`. Owned runtime/browser/disposable data/config were cleaned. Source-change/different-checkout opt-ins were not repeated.
+- Desktop 1440×1000 and narrow 390×844 captures remain shell evidence, not active Preview UI proof. The eight real browser Memory/Orchestrator/game READs remain idle/empty. Expected restart websocket diagnostics do not imply zero-error UI acceptance.
+- Approved Plan v1.1 unchanged. Same Record/live HANDOFF refreshed with final integration evidence and the Phase 6 continuation prompt. Stopped before Phase 6.
