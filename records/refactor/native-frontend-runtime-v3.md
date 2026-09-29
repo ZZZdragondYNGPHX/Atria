@@ -541,3 +541,148 @@ IME Composition Lock, VisualViewport/keyboard inset, accessibility projections
 and Error/Loading Boundaries. No Phase 5+ code was started. No Script VM, Canvas,
 Studio visual editing or Phase 9 cleanup was pulled forward. HANDOFF contains
 current refs and the direct-copy Phase 5 takeover prompt.
+
+
+## Phase 5 — Media / Localization / Input / Accessibility / Boundaries
+
+### Checkpoint
+
+- Date: **2026-09-29**.
+- Start HEAD: `d96bb5cfcf7690a382961058873c183e965d7298`.
+- End / Tested / Pushed HEAD: `cfe7ee99aa96bba7d351f95fea05a8bc4264f42a`.
+- Start docs HEAD: `b0d20b79f6ce1024a7858eec8ea2025bdfcb18d5`.
+- Main baseline unchanged: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`.
+- Status: **Phase 5 complete. Stop before Phase 6.**
+- Implementation Baseline v1.0 unchanged. No Gap Review, reference reads,
+  compatibility/migration, main merge, new long-lived workspace or branch cleanup.
+
+### Actual start
+
+Ran `git fetch --all --prune`; task/main/docs refs matched the supplied checkpoint
+and their remote tracking refs. The product worktree and existing `native-v3-docs`
+worktree were clean. Continued the same task branch and docs checkout, without
+resetting or creating another worktree. Read local instructions, full Governance,
+live HANDOFF, frozen Plan and the existing Record.
+
+### Implementation and decisions
+
+1. Added shared closed Media Catalog / MediaRef contracts. Compiler emits exact
+   media/localization/diagnostic resources and installation revalidates the graph,
+   fallback closure, MIME sinks and matching `remote-media@1` feature plus
+   `remote-media` External Access Permission. Required catalog requirements must
+   match required feature/permission declarations. Large portrait catalogs contain
+   metadata only; no remote bytes are downloaded during build or packaging.
+2. Exact assets now include image/audio/video formats. Renderer supports native
+   audio/video controls, metadata preload, playsInline, visibility/hidden pause
+   and disposal. No Package autoplay or remote audio/video expansion. Existing
+   exact hash verification and resource byte budgets remain authoritative.
+3. Added the Host-only media resolver: declared identities or opaque Host-issued
+   handles, canonical HTTPS sources, no runtime URL sink, candidate fallback,
+   optional SHA-256 integrity, response MIME and bounded streamed bytes. Browser
+   CORS fetch uses credentials omit, no-referrer, redirect error and no-store.
+   The Host enable UI discloses origins and IP/selection/timing exposure; optional
+   access starts denied, required access checks consent before activation, and
+   users can disable it. Denied/offline/invalid/budget/decode failures use exact
+   fallback. Disabling/recovery/disposal aborts requests and revokes remote URLs.
+4. Resolver caches are ephemeral and non-authoritative: shared pending/session
+   entries, reference release, eviction of idle entries, and release-time revoke
+   for cache none. Limits: 64 remote entries, 2 MiB each, eight concurrent requests,
+   15-second candidate deadlines; catalog up to 10000 IDs within graph budgets.
+   Host-issued references stay within disclosed origins and expire on recovery.
+   Direct browser CORS is the implementation; no raw server proxy or new network
+   authority was introduced. Loading hints remain advisory.
+5. Added inert Package localization catalogs: stable keys, argument interpolation,
+   plural/select, Intl number/date/time/relative/list formatting, BCP-47 parent
+   fallback, default-message fallback, missing/unused diagnostics and explicit
+   RTL. Locale updates lang/dir/environment in place without remounting state,
+   reloading Session Authority or changing generation language. Date/time uses
+   UTC. Message output is text, never HTML or an executable template.
+6. Added closed typed `host.media.resolve` and `host.presentation.locale`,
+   `setLocale`, `announce` targets through existing Bridge scope/schema/revision/
+   idempotency authorization. Resolve returns reference/status/reasonCode, never
+   network URLs or DOM capabilities. Pure presentation targets are supported in
+   Preview; Session writes remain read-only. Local locale/announce interactions
+   share the same presentation implementation.
+7. Controlled input now holds a Composition Lock: ordinary reconciliation waits
+   during composition, preserving buffers, caret and keyed ancestors; composition
+   end publishes the final typed value. Added beforeinput/composition events and
+   bounded data/inputType/selection/isComposing projections. Submit/key actions
+   cannot accidentally submit the unfinished CJK composition.
+8. Environment now includes VisualViewport geometry/scale, numeric safe areas,
+   bottom occlusion, keyboard inset, input modality, contrast and Host text/UI
+   scale, with CSS variables. Host content adds scroll padding and reveals the
+   focused control on increased occlusion. Keyboard inset is a scale-1 viewport
+   estimate, not a physical keyboard detector. Listeners/probes are disposed.
+9. Compiler advisory diagnostics cover names/labels, image alt, heading/landmark,
+   role/ARIA review, keyboard access, hidden focus, focus styles and reduced-motion
+   fallback. Runtime adds rendered touch-target checks. Exact diagnostics appear
+   in Studio Preview and existing Experience Health; a real installed Session
+   test verifies they do not mutate revision or block healthy authority. Added an
+   Experience-local live region. Existing Overlay FocusScope remains in use.
+10. Child Components and media have local loading/error/retry boundaries. Explicit
+    subtree boundaries can supply loading/error/retry text; required media decode
+    can fail locally. Style/resource, lifecycle/invocation, read and local render
+    failures stay scoped. Retry revokes local request completion and rebuilds only
+    that subtree/read subscriptions, retaining siblings and never automatically
+    replaying authority Actions/Operations. Root/View load failure retains the
+    independent Host recovery surface. Error projections remove raw transport
+    details. The callback seam is ready for Phase 6 controllers; no VM was added.
+11. Updated the authoring entrypoint and added the executable Phase 5 fixture,
+    compiler/resolver/renderer/Health tests and Edge smoke harness. The harness
+    generates a small WebM at runtime, rather than committing a binary artifact.
+
+All preceding authority invariants remain: no raw DB reads, alternate Session or
+Timeline store/scheduler, unrestricted service dispatch, Operation Lifecycle
+bypass, streaming-as-committed, unsafe Prose HTML or route-as-Authority-Epoch.
+
+### Validation actually executed
+
+Windows, **Node v24.18.0**, **Edge headless**. FS and SQLite included; existing
+`ATRIA_DISABLE_MYSQL_TESTS=1` and `ATRIA_DISABLE_POSTGRES_TESTS=1` exclude external DBs.
+
+- Broad Native: **102 suites / 1693 tests passed**. This preceded the final small
+  Boundary/environment/diagnostic refinements and extra test cases; it is not
+  represented as a second full-suite run on the final commit.
+- Adjacent game-runtime + atria-shell: **105 suites / 730 tests passed**.
+- Final product-code focused: **7 suites / 123 tests passed**: frontend-platform,
+  frontend-v3, frontend-presentation, frontend-bridge-client,
+  frontend-conversation, studio-service, studio-health-p9.
+- Then added one installed-Session Health assertion and reran its complete
+  Phase 5 suite: **22 tests passed**. No product code changed after that focused
+  seven-suite run. This is the final Phase 5 test file on the tested commit.
+- Final Edge: **6 Phase 5 + 6 Conversation + 6 Bridge + 6 presentation scenarios**,
+  Component/Hybrid/Full at 1440px and 390px. Phase 5 covers real exact image/audio/
+  video resources, generated WebM decode, denied/offline fallback and privacy
+  options, child resource retry, composition buffer/caret, RTL node preservation,
+  live announce, input above simulated keyboard occlusion, Preview and disposal.
+  Inspected the mobile Full screenshot; corrected Host panel layout so remote
+  permission disclosure and Experience controls remain independently usable.
+- Root lint passed; final changed JS/MJS/test lint passed. Final webpack build
+  (`node docker/build-lib.js`) succeeded. Working-tree/staged diff checks passed.
+- Product implementation was committed and pushed as the exact Tested HEAD above.
+  No generated bundles, credentials, local paths or runtime data were committed.
+  Temporary result/log files removed after recording evidence; screenshots remain
+  only in ignored `.git/frontend-v3-platform-evidence/` and existing evidence dirs.
+
+Limits: browser remote responses are deterministic fixtures, not external-server
+E2E. Composition and keyboard occlusion use synthetic browser events/projections;
+no physical CJK IME, device soft keyboard, Android/Termux or other-browser claim.
+No real-provider E2E, production-user Session, remote CI, MySQL/PostgreSQL or
+persistent privacy proxy/cache claim. Accessibility diagnostics are advisory,
+not a full accessibility certification. No Script VM/Canvas was implemented.
+
+### Remaining scope / next checkpoint
+
+**Phase 5 acceptance is complete. Stop before Phase 6.**
+
+Phase 6 — **Script Sandbox / Canvas** is governed by the existing Plan: Supervisor
+Worker, isolated JS VM adapter, JS/TS compile/bundle and static exact module graph,
+Controller ABI/scoped handles, CPU/memory/message/outstanding-work budgets,
+scheduler/timer/frame/yield, crash/restart recovery, Canvas2D retained/batched
+command buffers and source-mapped diagnostics. No window/document/fetch/storage
+exposure, raw DOM authority, generic durable KV or new Session authority.
+
+Use the current compiler/renderer/typed Bridge/Frame Scheduler/NodeRefs/media and
+boundary seams. VM restart must preserve Authority; Canvas accepts safe Media
+handles only. No implementation of Phase 6 or Phase 7+ has started. Live HANDOFF
+contains the next-stage direct-copy prompt and the current exact refs.
