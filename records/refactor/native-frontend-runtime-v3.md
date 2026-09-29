@@ -960,3 +960,109 @@ build/install/preflight and Session/Authority/Memory/Lifecycle adjacency.
 Use main-workspace test fixtures; do not merge main into package. No reference
 branch access is implied. Do not begin Phase 9 removal or final main integration.
 The live HANDOFF contains the exact Tested HEAD and direct-copy Phase 8 prompt.
+
+---
+
+## Phase 8 — Integration / Heavy Frontend Acceptance
+
+### Checkpoint and start state
+
+- Start HEAD: `c401a27d40d4a1b376f377ec97450f239c129c8b`.
+- End / Tested / Pushed HEAD: `7ac92cca563942017ab06da47800e6d0d2a5b722`.
+- Commit: `test(frontend): add integrated heavy runtime acceptance`.
+- Branch remains `refactor/native-frontend-runtime-v3`; main baseline remains
+  `191f9f951ccb23cd11d8951e539b8ff6eb8316db`.
+- Began with `git fetch --all --prune`. Task and existing docs worktrees were
+  clean and matched remote refs. There is no local main branch; origin/main is
+  the stated baseline. Reused both worktrees without resetting or merging main.
+- Read local AGENTS, full Governance, HANDOFF, frozen Plan and same Record.
+  Implementation Baseline v1.0 is unchanged. No reference read, Package upgrade,
+  architecture/Gap Review redo, Phase 9 removal or final integration occurred.
+
+### Implementation and acceptance completed
+
+1. Added a representative district fixture to the main test system, composed of
+   six native@3 Views: Story, Phone (SMS/Social/Mail), Church stores, Schedule,
+   People and Relations. One installed Package and Session serve all panels.
+   Typed Application commands seed and mutate six domain projections; 25 People
+   records use opaque eight-row collection pages. Package CSS, Components,
+   local routing and shared Draft state use only the formal v3 semantics.
+2. The shared harness creates a Project, invokes formal Build, installs/reopens
+   its archive and reads browser resources through the installed hash-checked
+   Runtime resource API. Tests compare formal Preview resources/runtime with
+   installed resources, reject author-source reads and missing/unsupported
+   required features, and confirm three layout modes use the same semantics.
+3. Integrated Headless/Managed committed projection equality, literal HTML in
+   Safe Prose, separate provisional narration, cross-panel typed writes, scope
+   denial, once-only receipt replay, stale revisions/cursors and SavePoint restore.
+   Restore revokes old handles; local navigation does not change Authority.
+   Business writes and AI summary never insert provisional Timeline messages.
+4. AI Operation uses real NativeGenerationHost.executeTask, existing Task
+   scheduler, typed output validation and SessionCore result finalization. Only
+   model execution is replaced by a deterministic function. A fail-on-send
+   provider guard remains at zero calls. The result is one durable typed Task
+   artifact, not an emulated authority or an external-provider E2E claim.
+5. The relationship Controller reads the same scoped People collection in
+   QuickJS and draws names through retained Canvas buffers. Runaway recovery
+   preserves Host component state and Session revision without replaying writes
+   or changing Authority Epoch. Remote portraits use a declared origin, denied/
+   offline fallback and privacy options; browser network interception rejects
+   any external request. Local resource failure retries through the existing
+   section boundary. Full retains the existing Host recovery controls.
+6. Browser flows cover touch-emulated navigation, composed CJK input with caret/
+   node retention, simulated keyboard viewport, Draft retention across routes,
+   and explicit presentation recovery that clears Draft but rereads committed
+   business state. Mobile Phone/People/relationship screenshots were inspected.
+7. Adjacent regression exposed Phase 7 Studio localization omissions. Added 24
+   keys to both zh-cn and zh-tw and translated the Runtime features accessibility
+   label via the existing Shell localization function. No new localization
+   mechanism or runtime authority was introduced. Documented fixture boundaries
+   and execution in the frontend-v3 authoring README.
+
+### Verification actually executed
+
+Windows / Node **v24.16.0**, real headless Edge. FS/SQLite covered; external
+MySQL/PostgreSQL excluded with existing environment switches.
+
+- Focused Heavy integration: **1 suite / 12 tests passed**, three modes.
+- Broad Jest `native`: **118 suites / 1827 tests passed**, including Session,
+  Authority, Memory, Lifecycle, Studio, Health and package regressions.
+- Adjacent `game-runtime|atria-shell|memory-graph`: **148 suites passed; 1 suite
+  failed**, 1307 tests passed / 1 failed. The failure was missing Studio Chinese
+  translations. After fixing, localization coverage **1 suite / 4 tests passed**;
+  Studio workspace **1 suite / 3 tests passed**. The whole 149-suite batch was
+  not rerun after the fix.
+- Later focused Heavy + localization: **2 suites / 16 tests passed**. That
+  invocation also included an incorrect Studio test path and reported an ENOENT
+  suite failure; the correct `atria-shell/studio-workspace-a7.test.js` was then
+  run separately and all 3 tests passed. No product failure was suppressed.
+- Final Heavy Edge: **6 scenarios passed**, Component/Hybrid/Full at 1440px and
+  touch-emulated 390px, including the final People-backed Canvas assertion;
+  every scenario asserts providerCalls=0 and zero external browser requests.
+- Adjacent Studio authoring Edge: **2 scenarios passed**, 1440px and 390px,
+  semantic edit, formal Preview, invalid-source diagnostics, retained drafts,
+  human Review, unchanged revision and disposal.
+- Root npm lint passed; final changed-code/test ESLint, webpack Node API build
+  and staged diff checks passed. The webpack CLI is not installed, so build used
+  the existing webpack API without installing any dependency.
+- Broad runs began before final fixture refinements/localization fix. Later
+  focused tests, final browser and changed-file checks cover those changes;
+  this is not a claim that all broad suites reran on the final commit.
+
+### Bounds and next checkpoint
+
+**Phase 8 deterministic Core acceptance complete. Stop before Phase 9.**
+
+No physical IME/soft keyboard, real Android/Termux device, other browser, external
+media server, live provider or remote CI run is claimed. IME events and keyboard
+viewport are synthetic; remote images use a deterministic resolver. Local browser
+screenshots are ignored evidence, not committed assets. This fixture is not the
+independent `package` workspace's formal Heavy Frontend release.
+
+Next is Phase 9 — Legacy Removal / Regression / Finalize, strictly following the
+existing Plan: remove v1/v2 formal runtime/compiler/selector plumbing, old Studio/
+Preview paths and dead assets; execute associated tests and required CI; only
+then perform final main integration and task-branch cleanup. Preserve Source-only
+authoring, formal compiler/renderer semantics, typed targets/revision guards,
+Lifecycle intent, Epoch revocation and Host authority. The live HANDOFF contains
+the new exact refs and a direct-copy Phase 9 prompt.

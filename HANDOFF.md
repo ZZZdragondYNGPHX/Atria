@@ -2,114 +2,108 @@
 
 - Task: `refactor/native-frontend-runtime-v3`
 - Primary Workspace: `main`
-- Status: **Phase 7 complete — Phase 8 ready, not started**
+- Status: **Phase 8 complete — Phase 9 ready, not started**
 - Architecture: **Implementation Baseline v1.0 unchanged**
 - Task branch: `refactor/native-frontend-runtime-v3`
 - Main baseline: `191f9f951ccb23cd11d8951e539b8ff6eb8316db`
-- Phase 7 Start HEAD: `99018afb750fc651c0d00f4d56a5bb946b8408e7`
-- Phase 7 Tested / Pushed HEAD: `c401a27d40d4a1b376f377ec97450f239c129c8b`
+- Phase 8 Start HEAD: `c401a27d40d4a1b376f377ec97450f239c129c8b`
+- Phase 8 Tested / Pushed HEAD: `7ac92cca563942017ab06da47800e6d0d2a5b722`
 - Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
 - Record: `docs:records/refactor/native-frontend-runtime-v3.md`
-- Next: **Phase 8 — Integration / Heavy Frontend Acceptance**
+- Next: **Phase 9 — Legacy Removal / Regression / Finalize**
 
 ## Current implementation
 
-Phases 1–6 established the canonical compiler/resource graph, renderer and visual
-containment, local presentation, typed/scoped Bridge, Managed/Headless Conversation,
-Session projections/revision guards, Prose, Media, localization, input/environment,
-boundaries/recovery, isolated QuickJS Worker VM and retained Canvas buffers.
+Phases 1–7 established the compiler/exact resource graph, production Renderer,
+containment, typed Bridge, Session/Conversation/Prose, Media/localization/input,
+boundaries/recovery, QuickJS Supervisor Worker and Canvas, and source-only Studio/
+AI authoring using the existing Workspace/Task/human Review flow.
 
-Phase 7 integrates native@3 authoring into Studio. The Experience form declares
-source/features and proposes safe minimal source files for new frontends. The UI
-editor browses Experience-owned Source Graph entries and edits .aui, contracts,
-Nodes, state scopes, interactions, View metadata, styles, Bridge and localization.
-It exposes feature support/reason codes, permission declarations and remote origins.
+Phase 8 adds one representative native@3 district fixture in the main test system:
+Story/Headless Conversation, Phone/SMS/Social/Mail, Church stores, Schedule,
+People/Character, remote portraits, collection pages, AI summary and a People-
+backed Canvas relationship graph. Six Views share one installed Package/Session.
+Formal Project Build -> install/reopen -> hash-checked Runtime resources powers
+browser acceptance; Preview resources/runtime are checked against installed data.
+No formal Package was upgraded and no reference branch was read.
 
-Source edits are the only editable authority. frontend.patch resolves semantic IDs
-using AUI/JSON CST spans and preserves unrelated comments/format/CRLF. Proposals
-pin source hashes and the existing Workspace revision. Multiple patches to one
-file share the baseline hash and apply in order. Invalid source rolls back.
+AI acceptance keeps real executeTask/scheduler/typed finalization/SessionCore;
+only model execution is deterministic. Fail-on-send providerCalls remains zero.
+Provisional narration is separate from committed messages. Cross-panel writes,
+stale cursors/revisions, SavePoint restore, scoped reads, denied/offline portraits,
+local retry, Draft retention, VM restart and presentation recovery are exercised.
+VM restart retains component state and Session revision and does not replay writes.
 
-Read-only draft inspection invokes the formal Compiler. Preview reuses existing
-Workspace evaluation, Build, StudioPreviewHost and the production Renderer with
-read-only Preview Bridge. It does not create a Play Session or persist drafts.
-Diagnostics retain source coordinates through parser/compiler/ChangeSet. The
-feature/permission closure validator is shared with installed validation.
+Adjacent regression found missing Phase 7 Studio zh-cn/zh-tw copy. Both catalogs
+now contain 24 new keys; Runtime features uses the existing localization function
+for its accessibility label. No other product behavior or architecture changed.
 
-Project Agent has atri_agent_frontend_graph and atri_agent_frontend_patch. It still
-requires Plan/Task revision, forces agent origin, evaluates through Workspace and
-stops at human Review. No new commit, DB, KV, Session or Task authority exists.
+Key Phase 8 paths:
 
-Key paths:
-
-- `src/native/frontend/{authoring,source-edits,aui-parser,compiler}.js`
-- `src/native/authoring/studio-service.js`
-- `src/native/{project-agent,authoring-contracts,authoring-reference,experience-validation}.js`
-- `src/endpoints/native-studio.js`
-- `public/scripts/native/{studio-frontend-editor,studio-workspace,studio-client,studio-agent}.js`
-- `src/native/authoring-examples/frontend-v3/README.md` (Phase 7 usage)
-- `tests/native/frontend-authoring.test.js` and authoring fixture
-- `tests/frontend/native-frontend-authoring.smoke.mjs`
+- `tests/native/helpers/frontend-heavy-fixture.js`
+- `tests/native/helpers/frontend-heavy-harness.js`
+- `tests/native/frontend-heavy.test.js`
+- `tests/frontend/native-frontend-heavy.smoke.mjs`
+- `src/native/authoring-examples/frontend-v3/README.md` (Phase 8 usage/limits)
+- `public/locales/{zh-cn,zh-tw}.json`
+- `public/scripts/native/studio-workspace.js`
 
 ## Validation and limits
 
-Windows / **Node v24.16.0** / Edge headless; FS and SQLite included.
+Windows / Node **v24.16.0** / Edge headless; FS and SQLite included.
 
-- Broad Native: **117 suites / 1815 tests passed**.
-- Focused Studio/Compiler/Script/Media/Agent: **8 suites / 160 tests passed**.
-- Adjacent Studio/Agent UI/Source: **3 suites / 12 tests passed**.
-- Later compiler/media/source/Studio: **4 suites / 74 tests passed**.
-- Final source-authoring + Studio-workspace: **2 suites / 25 tests passed**.
-- Final real Edge: **1440px and 390px**, semantic edit, authenticated service / HTTP,
-  formal Preview renderer, invalid-source diagnostics, source navigation, CRLF/draft
-  retention, Review, unchanged project revision and disposal. Mobile inspected.
-- Root lint, final changed-code/test lint, final webpack and staged diff checks pass.
-- Broad regression preceded final small refinements. Do not claim a complete rerun
-  on final commit. Record details ordering. MySQL/PostgreSQL excluded by switches.
-- No remote CI, physical IME/keyboard, Android/Termux/device, other browser,
-  external-media-server or real-provider E2E claim. Browser harness is a temporary
-  FS ProjectStore with deterministic source and no provider calls.
-
-Validation is on demand. Larger structural additions/deletions and mixed-content
-replacement use Source workflow; structured edits target existing semantic IDs.
-Whole JSON/style replacement intentionally changes that selected value/block.
-Some graph diagnostics locate a file/block rather than one token. Accessibility
-advice is not certification. Legacy renderer removal remains Phase 9.
-
-Phase 6 VM bounds/recovery remain as recorded: QuickJS guest heap, worker hard
-termination, bounded modules/messages/async work/Operations, safe Node/Media handles
-and batched Canvas. VM restarts preserve Host component state and Session Authority;
-recovery cannot replay writes. Local generation tokens are not Authority Epochs.
+- Native broad: **118 suites / 1827 tests passed**.
+- Heavy focused: **1 suite / 12 tests passed**.
+- Adjacent game-runtime/atria-shell/memory-graph: **148 suites passed, 1 failed**
+  (1307 tests passed / 1 failed). The failure was missing Studio localization.
+  After the fix: localization **1/4** and Studio workspace **1/3** passed.
+- Later Heavy + localization: **2/16 passed**. An extra wrong Studio test path
+  produced ENOENT; the correct Studio workspace path then passed separately.
+- Final Heavy Edge: **6 scenarios**, Component/Hybrid/Full × 1440px/390px;
+  touch emulation, synthetic CJK IME/keyboard viewport, media fallback/retry,
+  People-backed Canvas/VM recovery, formal installed graph; providerCalls=0.
+- Adjacent Studio authoring Edge: **2 scenarios** at 1440px/390px passed.
+- Root lint, final changed-file/test ESLint, final webpack API build and staged
+  diff checks passed. No dependency installation or generated assets committed.
+- Broad runs began before final fixture/localization refinements; later focused
+  checks cover changes. Do not claim a final-commit broad rerun. Full details and
+  failed-then-fixed validation history are in the same Record.
+- No remote CI, physical IME/keyboard, real Android/Termux/device, other browser,
+  external media server, live provider, MySQL or PostgreSQL validation claim.
+  Browser fixture has fixed test ownership and deterministic Host generation/media
+  seams; it is not a live external-service product session.
 
 ## Preserve decisions and next checkpoint
 
 - Baseline v1.0 / Hard Cut frozen. No architecture/Gap Review redo or reference reads.
-- Source -> formal Compiler -> derived-readonly Runtime IR. No second Preview semantics.
+- Source -> formal Compiler -> derived-readonly Runtime IR; no second Preview semantics.
 - Package owns presentation; Host owns capabilities and authority.
-- Preserve uses, typed targets, revisions, idempotency, Operation Lifecycle intent,
+- Preserve typed targets, revisions, idempotency, Operation Lifecycle intent,
   SessionCore, Frame Scheduler and Authority Epoch revocation.
 - Streaming is not committed Timeline; raw HTML never enters Prose.
-- No raw DB, generic durable KV or parallel authority; route/media/boundary/VM
-  generations remain local. Never silently replay writes after recovery.
+- No raw DB, generic durable KV or parallel authority. Route/media/boundary/VM
+  generations are local. VM recovery cannot silently replay writes.
+- `package` is independent; never merge main into it or upgrade its assets as part
+  of this Core task. `main:default/skills/**` and `main:plugins/**` are product assets.
 
-Only start Phase 8 on a new user instruction. Follow the Plan's representative
-heavy frontend acceptance in the main test/fixture system. Do not merge main into
-package or read reference branches without specific authorization. Do not start
-Phase 9 or final integration. Reuse the task branch and existing docs worktree;
-fetch and inspect real refs and working trees before proceeding.
+Only start Phase 9 on new user instruction. Follow the Plan's Phase 9 section for
+legacy removal, associated full regression/required CI, final integration and
+cleanup. Reuse the current task branch and docs worktree. Do not treat historical
+Phase summaries as final runtime truth: inspect real refs and code. Keep this
+HANDOFF live until final task completion; retain all prior phases in the Record.
 
-## Direct-copy Phase 8 takeover prompt
+## Direct-copy Phase 9 takeover prompt
 
 ```text
 接手本地 Atria 仓库 ZZZdragondYNGPHX/Atria。
 Task: refactor/native-frontend-runtime-v3
 
-现在执行 Phase 8 — Integration / Heavy Frontend Acceptance。
-Implementation Baseline v1.0 已冻结；不要重新讨论架构、重做 Gap Review 或开始 Phase 9。
+现在执行 Phase 9 — Legacy Removal / Regression / Finalize。
+Implementation Baseline v1.0 已冻结；不要重新讨论架构或重做 Gap Review。
 
-Phase 7 已完成并 push：
-- Phase 7 Start HEAD: 99018afb750fc651c0d00f4d56a5bb946b8408e7
-- Tested task HEAD: c401a27d40d4a1b376f377ec97450f239c129c8b
+Phase 8 已完成并 push：
+- Phase 8 Start HEAD: c401a27d40d4a1b376f377ec97450f239c129c8b
+- Tested task HEAD: 7ac92cca563942017ab06da47800e6d0d2a5b722
 - main baseline: 191f9f951ccb23cd11d8951e539b8ff6eb8316db
 - 工作分支: refactor/native-frontend-runtime-v3
 - Plan: docs:plans/refactor/native-frontend-runtime-v3.md
@@ -121,22 +115,19 @@ Phase 7 已完成并 push：
 沿用任务分支和已有 docs worktree，保护无关 dirty changes；不要重置到 main。
 优先本地 Git、文件系统、搜索、测试、构建，不绕远程 API 模拟网页流程。
 
-Phase 1–6 compiler/renderer/containment/local presentation/typed Bridge、
-Managed/Headless Conversation/Session/Prose、Media/localization/input/environment、
-Boundaries/recovery、QuickJS Supervisor Worker/isolated VM、exact JS/TS graph、
-Controller ABI/budgets、Canvas2D buffers 和 source maps 已完成。
-Phase 7 已完成 native .aui/Source Graph/structured editors、CST semantic patches、
-正式 Compiler/Renderer Preview、source diagnostics、feature/permission visibility、
-AI frontend_graph/frontend_patch 与现有 Task/Workspace/human Review 接入。
-使用 src/native/authoring-examples/frontend-v3/README.md 的 Phase 6–7 说明。
+Phase 1–7 的 Compiler/Renderer/Bridge/Session/Media/QuickJS/Canvas/Studio/AI
+已完成。Phase 8 在 main 测试体系新增组合 Heavy fixture，正式 Project Build、
+install/reopen 与 installed resource API 接真实 SessionCore、Task scheduler。
+覆盖 Story/Headless、Phone/SMS/Social/Mail、Church、Schedule、People、Remote
+Portrait、分页、AI Operation、People-backed Canvas、三种布局及恢复。
+使用 src/native/authoring-examples/frontend-v3/README.md 的 Phase 6–8 说明。
 
-Phase 8 以 Plan 对应章节为唯一权威。使用 main 测试/fixture 体系中的代表性
-Heavy Frontend 验证 Story/Headless Conversation、Phone/SMS/Social/Mail、Church/经营、
-Schedule、People/Character、Remote Portrait、Collection pagination、AI Operation、
-Canvas 关系图、Component/Hybrid/Full、mobile/touch/IME、offline/denied/recovery。
-Deterministic tests 的 providerCalls 必须保持 0；验证 Desktop/Mobile 关键 E2E、
-Package build/install/preflight 与 Session/Authority/Memory/Lifecycle 相邻回归。
-package 是独立长期 workspace，不把 main merge 进去；不要提前升级正式 Package。
+Phase 9 以 Plan 对应章节为唯一权威：删除 Native UI v1/v2 正式 Runtime/compiler、
+legacy manifest/componentModelVersion plumbing；删除/改写旧 Studio/Preview paths；
+清理 dead CSS/fixtures/tests；关联全量测试和必要 CI；更新同一 Record；完成验证后
+才最终 merge main、验证 main、删除任务分支并删除 live HANDOFF。Hard Cut 已批准，
+不做 v1/v2 兼容、迁移或长期双 renderer。不要误删 Atria 产品 runtime skills/plugins。
+package 是独立长期 workspace，不把 main merge 进去，不提前升级正式 Package。
 未经分别明确授权，不读取或更新 reference 分支。
 
 复用现有 Studio/Authoring/Preview/Health、typed Bridge/SessionCore/Task/Frame/Media。
@@ -144,18 +135,20 @@ package 是独立长期 workspace，不把 main merge 进去；不要提前升�
 保留 Operation Lifecycle intent、正式 target、revision guards、Epoch revocation；
 streaming 不冒充 committed Timeline，raw HTML 不进入 Prose；
 local route/media/boundary/VM generation 不作为 Authority Epoch。
-VM 重启保持 Host component state/Session Authority；禁止自动重放写入。
+VM 重启保持 Host component state/Session Authority，禁止自动重放写入。
 Studio 只改 Source，IR derived-readonly；Preview/Production 不建立第二套语义。
-Hard Cut 已批准，不做 v1/v2 兼容/迁移。普通问题、失败和常规决策自行修复推进。
+普通问题、失败、merge conflict 和常规决策自行修复推进。
 
-Phase 7 实测：Native 117 suites/1815 tests；聚焦 8/160；相邻 Studio UI 3/12；
-后续聚焦 4/74；最终 authoring/workspace 2/25；Edge 1440px 和 390px 作者链路通过；
-lint/webpack/diff checks 通过；Node v24.16.0，FS/SQLite。
+Phase 8 实测：Native 118 suites/1827 tests；Heavy 1/12；相邻广泛回归
+148 suites 通过、1 个本地化 suite 失败（1307 tests 通过/1 失败），补齐 Studio
+zh-cn/zh-tw 词条后 localization 1/4、Studio workspace 1/3 通过；后续 Heavy+
+localization 2/16。曾使用错误 Studio 测试路径产生 ENOENT，已改正确路径验证。
+最终 Heavy Edge 6 场景（三布局 × 1440/390）及 Studio Edge 2 场景通过，
+providerCalls=0；lint/webpack/diff checks 通过。Node v24.16.0，FS/SQLite。
 广泛回归早于最终少量修复，不声称最终 commit 重跑全量。
 未做 physical IME/soft keyboard、真机、其他浏览器、external provider/media E2E
-或 remote CI；MySQL/PostgreSQL 用现有开关排除。
+或 remote CI；MySQL/PostgreSQL 用现有开关排除。保留这些证据边界。
 
-Phase 8 完成后：适当本地验证并 push tested HEAD；
-更新同一 Record 和 HANDOFF，记录 Start/Tested HEAD、验证、关键决策、剩余项；
-生成 Phase 9 接手提示词；停止，不开始 Phase 9，不提前 merge main 或删除任务分支。
+完成 Phase 9 后按 Governance 完成最终集成、验证、Record 与清理；
+若遇真正设备/权限/外部证据阻塞，更新同一 Record 和 live HANDOFF 后清楚交接。
 ```
