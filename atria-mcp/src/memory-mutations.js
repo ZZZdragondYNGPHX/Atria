@@ -8,7 +8,7 @@ const fields = z.record(z.string().max(128), z.json()).refine(v => JSON.stringif
 const shapes = {
     'memory.node.create': { type: id, title: z.string().max(2000), fields },
     'memory.node.edit': { id, title: z.string().max(2000).optional(), setFields: fields, clearFields: z.array(id).max(30).default([]) },
-    'memory.relation.upsert': { source: z.strictObject({ id }), links: z.array(z.strictObject({ target: z.strictObject({ id }), relation: id, direction: z.enum(['out', 'in', 'both']).optional() })).min(1).max(30) },
+    'memory.relation.upsert': { source: z.strictObject({ id }), links: z.array(z.strictObject({ target: z.strictObject({ id }), relation: id, direction: z.enum(['outgoing', 'incoming', 'bidirectional']).optional() })).min(1).max(30) },
     'memory.compact': { type: id, childIds: z.array(id).min(1).max(30), summary: z.string().min(1).max(8000), fields },
 };
 

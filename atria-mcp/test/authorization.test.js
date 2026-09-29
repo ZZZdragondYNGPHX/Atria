@@ -112,6 +112,10 @@ test('real browser fixed Memory writes require current boot and exact graph, rej
     const browser = new AtriaBrowser({ url: http.origin, timeout: 3000, maxResponseBytes: 1048576, channel: process.env.ATRIA_TEST_BROWSER_CHANNEL }); t.after(() => browser.close());
     await browser.open();
     const registry = registerMemoryMutations(new ActionRegistry(), browser);
+    const links = registry.get('memory.relation.upsert').inputSchema;
+    const linkInput = { graphHash: 'a'.repeat(64), target: { chatId: 'chat', sessionId: 's1', branch: null }, operation: { source: { id: 'a' }, links: [{ target: { id: 'b' }, relation: 'mentions', direction: 'outgoing' }] } };
+    assert.equal(links.safeParse(linkInput).success, true);
+    linkInput.operation.links[0].direction = 'out'; assert.equal(links.safeParse(linkInput).success, false);
     let approvals = 0;
     const executor = new RiskExecutor(registry, new PolicyCeiling(registry, registry.ids()), { approve: async () => { approvals++; return { action: 'accept', content: { authorize: true } }; } });
     const inspected = await executor.execute('READ', { action: 'memory.mutation.inspect' });
