@@ -3,7 +3,7 @@
 **Task ID:** `plugin/atria-mcp-capability-expansion`  
 **Primary Workspace:** `plugin`  
 **Plan Workspace:** `docs`  
-**Status:** Discussion Draft v0.3  
+**Status:** Discussion Draft v0.4  
 **Current implementation baseline:** `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`  
 **Implementation path:** `plugin:atria-mcp/`
 
@@ -317,7 +317,99 @@ Continue to block or redact, as applicable:
 
 Browser screenshots, DOM/accessibility text and product free text may themselves contain user content. Development/synthetic data remains the preferred verification environment.
 
-## 10. Diagnostic workflow target
+
+
+## 10. Runtime/source/browser identity and verification provenance
+
+Atria MCP must not assume that the configured source checkout, the running Atria server and the currently loaded browser page are the same build merely because they share a repository or Git HEAD.
+
+### 10.1 Three identities
+
+MCP should track three independent identities:
+
+1. **Configured Source Identity**
+   - the checkout MCP is reading;
+   - includes full Git HEAD, branch and current source-content fingerprint;
+   - reflects relevant tracked working-tree changes and detectable runtime-relevant untracked uncertainty.
+
+2. **Runtime Identity**
+   - the Atria server instance currently serving the configured origin;
+   - includes an immutable per-process `runtimeBootId`, startup timestamp, app version, full revision/branch where available, and a startup source fingerprint;
+   - should be exposed by Atria as a small non-secret product provenance authority rather than as an MCP-only backdoor.
+
+3. **Browser-loaded Runtime Identity**
+   - the runtime identity observed when the MCP-owned browser last opened/reloaded the Atria page;
+   - lets MCP detect a stale page after the server restarts or the page otherwise outlives its runtime.
+
+### 10.2 Source fingerprint
+
+Git HEAD alone is insufficient because the runtime may have started before uncommitted tracked changes were made.
+
+The source fingerprint should therefore derive from the committed base plus current runtime-relevant tracked content. The intended property is:
+
+- same HEAD + same tracked runtime-relevant content => same fingerprint;
+- same HEAD + modified tracked runtime-relevant content => different fingerprint.
+
+The design should avoid unnecessarily hashing the entire repository when Git identity already covers unchanged tracked content.
+
+Runtime-relevant untracked files must prevent a false `EXACT` claim unless their contents are safely incorporated into identity. A simple safe fallback is `UNVERIFIABLE` with an explicit reason until untracked handling is fully supported.
+
+### 10.3 Match states
+
+A boolean match is insufficient. The accepted direction includes states such as:
+
+- `EXACT` — configured source content matches the runtime startup source identity;
+- `SOURCE_CHANGED_SINCE_RUNTIME_START` — same base checkout/revision but current source content has changed since startup;
+- `CONTENT_MATCH_DIFFERENT_WORKSPACE` — content identity matches even if filesystem/workspace identity differs;
+- `DIFFERENT_REVISION` — configured source and runtime are clearly based on different revisions/content;
+- `UNVERIFIABLE` — identity cannot be established strongly enough, including cases with unresolved runtime-relevant untracked files or missing build provenance.
+
+Workspace paths may be used as local auxiliary evidence but are not authoritative identity because equivalent source can live at different paths or machines.
+
+### 10.4 Runtime boot identity
+
+Every Atria server process should have a unique `runtimeBootId`.
+
+This distinguishes a real restart from a runtime that merely reports the same Git revision. It also lets the browser layer determine whether its currently loaded page belongs to the current runtime generation.
+
+### 10.5 Browser freshness
+
+MCP should separately report:
+
+- Source ↔ Runtime identity;
+- Runtime ↔ Browser freshness.
+
+If the Atria server restarts after the MCP browser loaded a page, the browser state becomes stale until reload/open establishes the new runtime identity.
+
+The strongest verification condition is:
+
+`Source = Runtime` and `Browser = current Runtime`.
+
+### 10.6 Mismatch behavior
+
+Identity mismatch must not disable ordinary observation.
+
+MCP may still read APIs, messages, screenshots, diagnostics or perform separately authorized product operations against a mismatched/older runtime when that is the user's intent.
+
+The restriction is evidentiary:
+
+- MCP must not claim that the currently configured source change has been runtime/UI verified when source/runtime/browser identity is mismatched or unverifiable;
+- prompts such as `atria_verify_change` must surface this limitation explicitly.
+
+### 10.7 Evidence binding
+
+Important semantic operations and verification evidence should attach bounded runtime provenance where practical, for example:
+
+- `runtimeBootId`;
+- source/runtime fingerprint or revision identity;
+- relevant timestamp/status.
+
+This is especially useful for chat-generation tests, Build validation, Agent runs, screenshots and diagnostic captures.
+
+The current Atria `/version` endpoint already exposes package version and Git revision/branch/commit metadata and can serve as a baseline, but it is not by itself sufficient for exact runtime/source identity.
+
+
+## 11. Diagnostic workflow target
 
 A successful end-state workflow should allow an AI to move through evidence such as:
 
@@ -331,7 +423,7 @@ For chat/generation issues it should support:
 
 `Session/message state -> relevant runtime/config -> authorized test message -> generation/UI result -> diagnostics -> source diagnosis -> authorized cleanup when requested`
 
-## 11. Non-goals currently frozen
+## 12. Non-goals currently frozen
 
 This expansion is not intended to:
 
@@ -342,21 +434,21 @@ This expansion is not intended to:
 - bypass Native Session, Studio/ProjectStore, Library, Package or other Atria ownership rules;
 - grant unattended destructive control over user data.
 
-## 12. Open design topics
+## 13. Open design topics
 
 The following remain intentionally unresolved and should be settled through further discussion before implementation planning:
 
 - concrete representation/storage of the accepted capability policy and leases;
 - detailed action semantics within each accepted product domain;
 - the exact threshold for promoting a generic Native API operation into a dedicated semantic MCP tool;
-- exact Git/repository read surface and limits;
+- exact Git/repository read surface and limits, including safe handling of untracked files, config, logs and generated/build artifacts;
 - edit/regenerate/delete semantics for message history;
 - detailed client presentation of generation cost/external-provider side-effect metadata;
 - exact enforcement mechanics for semantic-operation precedence over generic browser interaction;
 - audit/evidence returned for authorized actions;
 - compatibility and migration strategy from the current `--allow-writes` switch.
 
-## 13. Discussion workflow
+## 14. Discussion workflow
 
 During the design discussion phase:
 
