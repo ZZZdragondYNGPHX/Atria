@@ -3,10 +3,12 @@
 **Task ID:** `plugin/atria-mcp-capability-expansion`  
 **Primary Workspace:** `plugin`  
 **Plan Workspace:** `docs`  
-**Status:** Approved Implementation Plan v1.0  
+**Status:** Approved Implementation Plan v1.1 — Post-Frontend-Refactor Revalidated  
 **Current implementation baseline:** `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`  
+**Product revalidation baseline:** `main@c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`  
+**Revalidation source docs baseline:** `docs@d540d35b74f5f3cbcc8eee1ea0565e8164b6ff7f`  
 **Implementation path:** `plugin:atria-mcp/`  
-**Design state:** Frozen for implementation; changes require explicit user approval and Plan update.
+**Design state:** Frozen for implementation after 2026-09-29 revalidation; material changes require explicit user approval and Plan update.
 
 ## 1. Purpose
 
@@ -27,7 +29,10 @@ The long-term mental model is:
 
 > Atria MCP is the AI's Atria-specific eyes, diagnostic instruments and controlled product-operation bridge. Normal coding tools remain responsible for editing source and running the general development toolchain.
 
+
 ## 2. Existing baseline
+
+The Plugin implementation baseline remains `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`. No MCP implementation work has occurred since the original design freeze.
 
 The current MCP already provides:
 
@@ -42,6 +47,42 @@ The current MCP already provides:
 - explicit secret/credential endpoint blocking and output redaction.
 
 The current baseline is useful for frontend verification and many runtime bugs, but its repository-read surface is intentionally narrower than the desired end state and its product-operation model is still coarse.
+
+### 2.1 Post-Frontend-Refactor revalidation baseline
+
+This Plan was revalidated on 2026-09-29 against:
+
+- `main@c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`;
+- `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`;
+- pre-update `docs@d540d35b74f5f3cbcc8eee1ea0565e8164b6ff7f`;
+- completed Native Frontend Runtime v3 Plan/Record.
+
+The product baseline has materially advanced since the prior MCP design baseline `main@191f9f951ccb23cd11d8951e539b8ff6eb8316db`.
+
+Native Frontend Runtime v3 is now the formal non-Text frontend path and provides:
+
+- Source-only Studio authoring with a compiled exact Runtime Graph;
+- Preview and Production on the same compiler/renderer semantics;
+- a versioned Frontend Host Bridge with typed Reads / Actions / Operations;
+- exact binding schemas/digests, revision guards, idempotency and Bridge receipts;
+- fixed Host Conversation / Session / Media / Presentation / External services;
+- separate committed Conversation and ephemeral GenerationProjection semantics;
+- Experience Epoch revocation for stale handles/cursors/async completion;
+- Native Frontend Source Graph inspection, source-addressable diagnostics and semantic `frontend.patch` authoring;
+- formal Studio evaluation/Preview paths that restore Project source after temporary evaluation;
+- Script Sandbox / Canvas / Media / recovery diagnostics under Host-owned authority.
+
+The broader product also already has a per-process `serverBootId` in the existing startup diagnostics authority. This satisfies the unique process-boot identity requirement in substance. MCP must reuse that canonical identity instead of adding a second synonymous `runtimeBootId`.
+
+Important remaining provenance gap: the product does not yet expose one direct current-runtime identity document that binds `serverBootId` to a full Git revision plus a startup-time source-content fingerprint. Existing `/version`, startup sessions and diagnostics provenance are useful evidence but are not by themselves sufficient to prove Source ↔ Runtime exactness after the checkout changes.
+
+The revalidation therefore changes the amount and placement of work, but not the core MCP philosophy:
+
+- Phase 2 product work is reduced;
+- Native Frontend v3 / Studio authorities should be reused rather than duplicated;
+- the fixed Browser Capability Bridge remains necessary only for first-party browser capability APIs that do not have an equivalent stable server authority;
+- the fixed 18-tool MCP surface and Descriptor / Policy Ceiling / Lease / Receipt model remain appropriate.
+
 
 ## 3. Agreed product philosophy
 
@@ -113,26 +154,50 @@ The existing source-oriented tools may remain as convenient semantic shortcuts r
 
 Sensitive/local data such as `.env*`, credentials, Secret storage, caches, node_modules, arbitrary data roots and paths outside the configured product checkout remain outside the default repository-read authority.
 
+
 ## 5. Build / Studio observation direction
 
-The current Atria product already exposes Native Studio reads including project listing, project metadata, source listing, individual source reads, revisions, history and diffs.
+The current Atria product exposes a substantially richer formal Native Studio authority than the original Plan baseline.
 
-Atria MCP can reach these through generic discovered Native API access today.
+Current authority includes:
 
-The intended design is to consider first-class Build/Studio read tools so an AI can reliably perform common tasks without first rediscovering the generic endpoint sequence.
+- Project listing/detail and exact revision identity;
+- source listing/read plus revisioned source write/move/delete fallback operations;
+- Project history and diff;
+- Resource Graph, references, closure and delete-safety;
+- Workspace create/inspect/execute with exact `baseRevision`;
+- Project validation, preflight, build and simulation;
+- Preview create/list/detail/close;
+- Native Frontend v3 Source Graph inspection;
+- Source-addressable Frontend diagnostics;
+- formal Frontend Workspace evaluation that temporarily applies the reviewed Workspace, validates/builds a Preview and restores Project source;
+- format-preserving semantic `frontend.patch` operations over Authoring Source.
 
-Candidate semantic tools include:
+MCP should treat **Build** as the stable user-facing semantic namespace while recording **Native Studio** as the owning product authority in each Action Descriptor. There is no need to rename the public semantic domain merely to mirror internal endpoint/service names.
 
-- `atri_build_projects`;
-- `atri_build_project`;
-- `atri_build_files`;
-- `atri_build_read`;
-- `atri_build_history`;
-- `atri_build_diff`;
-- `atri_build_validation`;
-- preview/status-oriented reads where justified.
+Representative READ action IDs include:
 
-These tools must wrap the existing Studio authority rather than read project storage directly.
+- `build.project.list`;
+- `build.project.get`;
+- `build.project.revision`;
+- `build.source.list`;
+- `build.source.read`;
+- `build.history`;
+- `build.diff`;
+- `build.resources`;
+- `build.resource.closure`;
+- `build.validate`;
+- `build.preflight`;
+- `build.frontend.inspect`;
+- `build.preview.list`;
+- `build.preview.get`.
+
+Representative INTERACT/MUTATE flows are defined later in the Build / Studio semantic model.
+
+These remain semantic Action Registry entries, not new top-level `atri_build_*` MCP tools.
+
+Build/Studio tools must wrap the existing Studio authority rather than read Project storage directly.
+
 
 ## 6. Authorized product interaction
 
@@ -320,96 +385,142 @@ Browser screenshots, DOM/accessibility text and product free text may themselves
 
 
 
+
 ## 10. Runtime/source/browser identity and verification provenance
 
-Atria MCP must not assume that the configured source checkout, the running Atria server and the currently loaded browser page are the same build merely because they share a repository or Git HEAD.
+Native Frontend v3 makes it important to distinguish two related but different provenance chains. MCP must not collapse them.
 
-### 10.1 Three identities
+### 10.1 Product checkout / server / browser-shell provenance
 
-MCP should track three independent identities:
+The first chain verifies the Atria product itself:
 
-1. **Configured Source Identity**
+1. **Configured Product Source Identity**
    - the checkout MCP is reading;
-   - includes full Git HEAD, branch and current source-content fingerprint;
-   - reflects relevant tracked working-tree changes and detectable runtime-relevant untracked uncertainty.
+   - full Git HEAD/branch plus a current source-content fingerprint;
+   - relevant tracked working-tree state and detectable runtime-relevant untracked uncertainty.
 
-2. **Runtime Identity**
-   - the Atria server instance currently serving the configured origin;
-   - includes an immutable per-process `runtimeBootId`, startup timestamp, app version, full revision/branch where available, and a startup source fingerprint;
-   - should be exposed by Atria as a small non-secret product provenance authority rather than as an MCP-only backdoor.
+2. **Server Runtime Identity**
+   - the currently running Atria server process;
+   - canonical boot identity is the existing product `serverBootId`;
+   - includes process startup timestamp, app version, full revision/branch and startup source-content identity where available.
 
-3. **Browser-loaded Runtime Identity**
-   - the runtime identity observed when the MCP-owned browser last opened/reloaded the Atria page;
-   - lets MCP detect a stale page after the server restarts or the page otherwise outlives its runtime.
+3. **Browser-loaded Server Identity**
+   - the Server Runtime Identity captured when the MCP-owned page last opened/reloaded;
+   - lets MCP detect a browser page that survived a server restart.
 
-### 10.2 Source fingerprint
+MCP must not introduce a second product boot identity named `runtimeBootId` when `serverBootId` already provides the required per-process uniqueness. Client-facing MCP output may describe it generically as a runtime boot identity, but product identity is canonicalized to `serverBootId`.
+
+### 10.2 Product source fingerprint
 
 Git HEAD alone is insufficient because the runtime may have started before uncommitted tracked changes were made.
 
-The source fingerprint should therefore derive from the committed base plus current runtime-relevant tracked content. The intended property is:
+The source fingerprint should derive from the committed base plus current runtime-relevant tracked content. The intended property is:
 
 - same HEAD + same tracked runtime-relevant content => same fingerprint;
 - same HEAD + modified tracked runtime-relevant content => different fingerprint.
 
-The design should avoid unnecessarily hashing the entire repository when Git identity already covers unchanged tracked content.
+Runtime-relevant untracked files must prevent a false `EXACT` claim unless their contents are safely incorporated into identity. A safe fallback is `UNVERIFIABLE` with an explicit reason.
 
-Runtime-relevant untracked files must prevent a false `EXACT` claim unless their contents are safely incorporated into identity. A simple safe fallback is `UNVERIFIABLE` with an explicit reason until untracked handling is fully supported.
+The server must capture its startup source identity once; recomputing the current checkout later cannot prove what bytes the process actually started from.
 
-### 10.3 Match states
+### 10.3 Existing product authority and remaining product gap
 
-A boolean match is insufficient. The accepted direction includes states such as:
+Current product authority already provides:
 
-- `EXACT` — configured source content matches the runtime startup source identity;
-- `SOURCE_CHANGED_SINCE_RUNTIME_START` — same base checkout/revision but current source content has changed since startup;
-- `CONTENT_MATCH_DIFFERENT_WORKSPACE` — content identity matches even if filesystem/workspace identity differs;
-- `DIFFERENT_REVISION` — configured source and runtime are clearly based on different revisions/content;
-- `UNVERIFIABLE` — identity cannot be established strongly enough, including cases with unresolved runtime-relevant untracked files or missing build provenance.
+- `/version` app/Git revision/branch metadata;
+- per-process `serverBootId` and process-start timing in the startup diagnostics subsystem;
+- persisted/inspectable startup sessions that bind client startup evidence to `serverBootId` and version metadata;
+- product diagnostics provenance for extensions/server plugins/external services.
 
-Workspace paths may be used as local auxiliary evidence but are not authoritative identity because equivalent source can live at different paths or machines.
+These are reusable and must not be duplicated.
 
-### 10.4 Runtime boot identity
+The remaining Phase 2 product addition should be minimal: expose one authenticated/non-secret **current runtime identity** view through an existing product diagnostics/version authority, binding at least:
 
-Every Atria server process should have a unique `runtimeBootId`.
+- `serverBootId`;
+- process startup timestamp;
+- app version;
+- full Git revision and branch where available;
+- startup source fingerprint and any uncertainty reason.
 
-This distinguishes a real restart from a runtime that merely reports the same Git revision. It also lets the browser layer determine whether its currently loaded page belongs to the current runtime generation.
+The existing diagnostics provenance registry is module/service provenance, not a substitute for checkout/runtime source identity.
+
+### 10.4 Match states
+
+A boolean match is insufficient. Product Source ↔ Server Runtime comparison includes states such as:
+
+- `EXACT`;
+- `SOURCE_CHANGED_SINCE_RUNTIME_START`;
+- `CONTENT_MATCH_DIFFERENT_WORKSPACE`;
+- `DIFFERENT_REVISION`;
+- `UNVERIFIABLE`.
+
+Workspace paths are auxiliary evidence only.
 
 ### 10.5 Browser freshness
 
-MCP should separately report:
+MCP separately reports:
 
-- Source ↔ Runtime identity;
-- Runtime ↔ Browser freshness.
+- Product Source ↔ Server Runtime identity;
+- Server Runtime ↔ Browser-loaded Server Runtime freshness.
 
-If the Atria server restarts after the MCP browser loaded a page, the browser state becomes stale until reload/open establishes the new runtime identity.
+If the server restarts after the MCP browser loaded a page, the page is stale until reload/open captures the new `serverBootId`.
 
-The strongest verification condition is:
+The strongest product-code verification condition remains:
 
-`Source = Runtime` and `Browser = current Runtime`.
+`Product Source = Server Runtime` and `Browser = current Server Runtime`.
 
-### 10.6 Mismatch behavior
+### 10.6 Native Frontend v3 Experience provenance
+
+Native Frontend v3 adds a second, nested provenance plane for a running Experience.
+
+An **Experience Epoch** is not a server boot identity. It is a Session/frontend-lifetime identity that changes when operations such as restore, branch switch or reload invalidate scoped frontend handles.
+
+Where relevant, MCP evidence should preserve:
+
+- Session id;
+- branch/revision identity;
+- exact PackageVersion/package content identity;
+- frontend kind/version;
+- Experience Epoch;
+- compiled Bridge/runtime descriptor digest where exposed.
+
+A stale Experience Epoch must invalidate frontend-scoped evidence even when the server `serverBootId` is unchanged.
+
+### 10.7 Studio Project / Preview provenance
+
+Studio Preview verifies authoring content, not just product checkout source.
+
+For Preview-driven verification MCP should bind:
+
+`Project baseRevision -> Workspace/operations fingerprint -> evaluation -> Preview -> compiled PackageVersion/runtime descriptor -> browser evidence`.
+
+Useful exact evidence includes:
+
+- projectId/baseRevision;
+- workspaceId + normalized operations fingerprint;
+- validation result;
+- previewId;
+- exact preview packageVersionId/package content identity where exposed;
+- entryPoint/frontend version;
+- descriptor/Bridge identity;
+- browser surface/viewport evidence.
+
+Native Frontend v3 already supplies most of this authority. MCP should wrap it in evaluation/operation receipts rather than add a parallel product provenance store.
+
+### 10.8 Mismatch behavior and evidence binding
 
 Identity mismatch must not disable ordinary observation.
 
-MCP may still read APIs, messages, screenshots, diagnostics or perform separately authorized product operations against a mismatched/older runtime when that is the user's intent.
+MCP may still read APIs/messages/screenshots/diagnostics or perform separately authorized actions against a mismatched runtime when that is the user's intent. The restriction is evidentiary: it must not claim that a current source or authoring change was verified against runtime/UI evidence whose applicable provenance chain is mismatched or unverifiable.
 
-The restriction is evidentiary:
+Important evidence/receipts should bind the relevant identities separately:
 
-- MCP must not claim that the currently configured source change has been runtime/UI verified when source/runtime/browser identity is mismatched or unverifiable;
-- prompts such as `atria_verify_change` must surface this limitation explicitly.
-
-### 10.7 Evidence binding
-
-Important semantic operations and verification evidence should attach bounded runtime provenance where practical, for example:
-
-- `runtimeBootId`;
-- source/runtime fingerprint or revision identity;
-- relevant timestamp/status.
-
-This is especially useful for chat-generation tests, Build validation, Agent runs, screenshots and diagnostic captures.
-
-The current Atria `/version` endpoint already exposes package version and Git revision/branch/commit metadata and can serve as a baseline, but it is not by itself sufficient for exact runtime/source identity.
-
-
+- `serverBootId` for server-process provenance;
+- source/runtime revision/fingerprint;
+- Session revision/branch;
+- Experience Epoch when frontend-scoped;
+- Studio Project/Workspace/Preview identities when Preview-scoped;
+- timestamp/status.
 
 
 ## 11. Repository read and development-artifact policy
@@ -670,120 +781,106 @@ Receipts are the preferred basis for narrow cleanup leases such as "remove only 
 
 
 
+
 ## 13. Build / Studio semantic model
 
-MCP Build/Studio operations should reuse Atria's existing revisioned authoring authority rather than expose a second direct-edit protocol.
+MCP Build/Studio operations reuse Atria's existing revisioned Studio authority and Native Frontend v3 authoring/Preview paths. MCP must not expose a second direct-edit or second frontend compiler protocol.
 
 ### 13.1 Read surface
 
-The accepted read direction includes semantic tools such as:
+The accepted READ direction includes semantic actions for:
 
-- `atri_build_list`;
-- `atri_build_get`;
-- `atri_build_revision`;
-- `atri_build_files`;
-- `atri_build_read`;
-- `atri_build_history`;
-- `atri_build_diff`;
-- `atri_build_resources`;
-- `atri_build_resource_closure`;
-- `atri_build_validate`;
-- `atri_build_preflight`;
-- preview inventory/detail reads where useful.
+- Project list/detail/revision;
+- source list/read;
+- history/diff;
+- Resource Graph/references/closure/delete-safety;
+- validation/preflight;
+- Preview inventory/detail;
+- Native Frontend Source Graph/diagnostics/features/permissions/remote origins through `build.frontend.inspect`;
+- compiled Preview UI/runtime identity where exposed.
 
-Build/Studio reads must preserve exact Project/revision identity.
+All reads preserve exact Project/revision identity.
 
 ### 13.2 Workspace-first mutation
 
-Normal Build mutation should use Atria Authoring Workspace/Operation semantics.
+Normal Build mutation uses Atria Authoring Workspace/Operation semantics:
 
-The preferred flow is:
+`baseRevision -> operations -> workspace -> inspect/evaluate -> authorization -> executeWorkspace -> ChangeSet/resultingRevision`.
 
-`baseRevision -> operations -> workspace -> inspect/evaluate -> user authorization -> executeWorkspace -> ChangeSet/resultingRevision`.
+Structured/domain authoring operations are preferred.
 
-Structured/domain authoring operations are preferred. Low-level source operations such as `source.write`, `source.move` and `source.delete` remain fallback operation types rather than the primary top-level MCP editing interface.
+Native Frontend v3 adds `frontend.patch` as a formal Workspace operation for semantic Source edits. MCP should use it for Component/Node/Binding/View/style/state/interaction/message edits when applicable.
+
+Low-level `source.write`, `source.move` and `source.delete` remain bounded fallback operation types rather than the primary semantic editing interface.
 
 ### 13.3 Prepare / inspect / evaluate / apply
 
-Candidate semantic workflow:
+Representative semantic actions:
 
-- `atri_build_change_prepare` — construct/normalize an in-memory Workspace proposal;
-- `atri_build_change_inspect` — inspect exact before/after change fingerprints without persisting;
-- `atri_build_change_evaluate` — use Studio evaluation to temporarily apply, validate, preview and simulate, then restore the Project;
-- `atri_build_change_apply` — execute the already-reviewed Workspace through Studio authority and return a ChangeSet/new revision.
+- `build.change.prepare` — normalize/construct a Workspace proposal;
+- `build.change.inspect` — exact before/after fingerprints without persistence;
+- `build.change.evaluate` — temporary Studio evaluation and validation, optionally composing formal Frontend Preview and/or simulation, then restoring Project source;
+- `build.change.apply` — execute the reviewed Workspace through Studio authority.
 
-Risk classification is semantic rather than HTTP-method based:
+Native Frontend-specific convenience actions may include:
 
-- prepare: no persistent side effect;
-- inspect: READ;
-- evaluate: INTERACT because it creates temporary runtime/preview state but restores Project source;
-- apply: MUTATE.
+- `build.frontend.inspect` — READ Source Graph/diagnostics against an exact base revision and bounded drafts;
+- `build.frontend.evaluate` — INTERACT wrapper over the formal Frontend evaluation path;
+- `build.preview.get` / `build.preview.close`;
+- `build.simulate`.
 
-### 13.4 Evaluate-before-apply binding
+These are Action Registry entries, not additional top-level MCP tools.
 
-The preferred safe path requires a successful evaluation receipt before apply.
+### 13.4 Evaluation-before-apply binding
 
-The evaluation receipt should bind at least:
+A successful evaluation remains the preferred safe path before apply.
+
+The MCP evaluation receipt binds product evidence rather than requiring a new durable product receipt format. It should bind at least:
 
 - projectId;
 - baseRevision;
 - workspaceId;
 - normalized operations fingerprint/hash;
+- exact change fingerprints;
 - validation result;
-- preview/simulation evidence where applicable.
+- Preview identity/runtime descriptor when created;
+- simulation evidence when requested.
 
-Apply must re-check that the Project baseRevision and normalized operation set still match the evaluated proposal. Any change fails closed and requires re-evaluation.
-
-This prevents a reviewed/evaluated proposal from drifting before execution.
+Apply re-checks the exact current Project base revision and normalized operation set. Existing Studio revision guards remain authoritative. Any drift fails closed and requires re-evaluation.
 
 ### 13.5 Preview and simulation
 
-Preview is a first-class MCP verification capability.
+Preview is a first-class verification capability.
 
-Candidate tools:
+Current product authority already supports Preview create/list/detail/close and a compiled Native Frontend v3 Preview produced from the same compiler/renderer semantics as Production.
 
-- `atri_build_preview_create`;
-- `atri_build_preview_get`;
-- `atri_build_preview_close`;
-- `atri_build_simulate`.
+Preview evidence should compose with browser snapshot/screenshot/resize/diagnostics, while retaining the Project/Workspace/Preview provenance chain defined in section 10.
 
-Preview results are temporary/non-persisted and should compose with browser snapshot/screenshot/resize/diagnostics tools for real UI verification.
-
-Simulation is INTERACT by default and may carry external-effect metadata if a particular simulation path invokes configured model/provider services.
+Simulation is INTERACT by default and carries external-effect metadata if a particular simulation path invokes configured model/provider services.
 
 ### 13.6 Validation/preflight are semantically read-only
 
-Operations such as validation and preflight remain READ-class even when implemented as POST endpoints because they do not intentionally mutate Project authority.
+Validation and preflight remain READ-class even when implemented with POST-shaped product APIs because they do not intentionally mutate Project authority.
 
-MCP risk classification must be based on product semantics, not HTTP verbs.
+Risk classification follows product semantics, not HTTP verbs.
 
 ### 13.7 Project history and source delete
 
 Studio Project-local Git history makes source writes/moves/deletes revisioned and recoverable.
 
-Therefore source deletion inside an applied Workspace is normally:
-
-- MUTATE;
-- marked high-impact;
-- not automatically classified as DESTRUCTIVE.
-
-Deleting the entire Project remains DESTRUCTIVE.
-
-Project deletion must retain current baseRevision/conflict protection.
+Source deletion inside an applied Workspace is normally MUTATE/high-impact rather than automatically DESTRUCTIVE. Deleting the entire Project is DESTRUCTIVE and retains current revision/conflict protection.
 
 ### 13.8 MCP-created temporary Projects
 
-`atri_build_create` may create test/minimal-reproduction Projects under MUTATE authorization.
+MCP may create test/minimal-reproduction Projects under MUTATE authorization.
 
-Operation receipts should identify Projects created by the current MCP session so a narrow cleanup lease can safely permit deletion of only those Projects without granting permission to delete pre-existing user Projects.
+Receipts identify Projects created by the current MCP instance/workflow so a narrow cleanup lease can safely delete only those Projects.
 
 ### 13.9 Build/package artifacts
 
 Building a Project may produce a large `.atria` archive.
 
-MCP should not return the entire archive as model-context base64 by default.
-
-A semantic build result should prefer bounded metadata such as:
+MCP returns bounded metadata by default:
 
 - project/revision identity;
 - manifest;
@@ -791,17 +888,29 @@ A semantic build result should prefer bounded metadata such as:
 - preflight result;
 - archive size/hash/file name.
 
-Actual artifact transfer should use a dedicated artifact/download path only when explicitly needed.
+Large archive transfer uses an explicit artifact path rather than model-context base64.
 
-### 13.10 External Project Agent remains a separate domain
+### 13.10 External Project Agent remains separate
 
-Atria's internal ProjectAgentService is not the default mutation path for an external Claude/Codex client using MCP.
+Atria ProjectAgentService is not the default mutation path for external Claude/Codex using MCP.
 
-External AI should normally use `atri_build_*` directly against Studio authority.
+External AI normally uses Build/Studio semantic actions directly. Project Agent remains a separate Agent domain invoked only when the user explicitly requests that workflow.
 
-The internal Atria Project Agent remains a separate `atri_agent_*` product domain and should only be driven when the user explicitly wants that agent workflow, avoiding unnecessary AI-inside-AI delegation.
+### 13.11 Native Frontend v3 authority consequence
 
+The following product-side work that the original MCP design might otherwise have required is already provided by current `main`:
 
+- formal Source Graph inspection;
+- source-level Frontend diagnostics;
+- semantic frontend Source patching;
+- exact compiled frontend runtime graph/descriptor;
+- formal Preview create/get/close;
+- temporary frontend evaluation with source restoration;
+- versioned Frontend Host Bridge receipts/idempotency/revision guards;
+- Experience Epoch stale-handle revocation;
+- Script/Media/Frontend recovery boundaries.
+
+MCP should adapt to these authorities. It must not add parallel Main-side frontend debug/mutation protocols merely for MCP.
 
 
 ## 14. Library + Package / Work semantic model
@@ -987,15 +1096,25 @@ Memory and Agents currently own substantial first-party runtime authority in the
 
 MCP should preserve those authorities instead of duplicating their state models.
 
+
 ### 15.1 Fixed Browser Capability Bridge
 
-MCP may bridge selected first-party browser capabilities through a fixed, schema-validated allowlist.
+A fixed Browser Capability Bridge remains necessary, but its scope is narrower after Native Frontend v3.
 
-Examples include methods exposed through:
+It may bridge selected first-party browser capability methods that do not have an equivalent stable server authority, including explicitly allowlisted methods from:
 
 - `Atria.getContext().getCapabilityApi('memory-graph')`;
 - `Atria.getContext().getCapabilityApi('orchestrator')`;
-- other future first-party capability APIs explicitly admitted by policy.
+- selected `Atria.getContext().getCapabilityApi('game-runtime')` methods where browser/runtime ownership is real and no stronger server authority exists.
+
+Server-owned Native Session, Studio, Library/Package, Diagnostics and Native Frontend v3 endpoints are preferred whenever they already express the required authority.
+
+The Native Frontend v3 **Frontend Host Bridge** and this MCP **Browser Capability Bridge** are different layers:
+
+- Frontend Host Bridge is Package Frontend ↔ Host typed product authority;
+- Browser Capability Bridge is MCP ↔ selected first-party browser capability API adaptation.
+
+MCP must not expose arbitrary Frontend Host Bridge binding dispatch as a generic product-operation escape hatch. It may inspect/verify the formal bridge/runtime where useful, while product mutations continue through the most direct owning authority and MCP Action Registry.
 
 This bridge is not arbitrary JavaScript evaluation.
 
@@ -1007,9 +1126,10 @@ MCP must not expose:
 - dynamic function construction;
 - arbitrary capability-name/method dispatch.
 
-Every bridged method must have an explicit tool schema, risk class and output filter.
+Every bridged method has an explicit schema, risk class, availability rule and output filter.
 
-Bridge evidence is browser/runtime-bound and should include runtime/browser provenance where practical.
+Bridge evidence is browser/runtime-bound and should include `serverBootId` plus applicable Session/Experience provenance where practical.
+
 
 ### 15.2 Memory read surface
 
@@ -1227,26 +1347,30 @@ Deleting these resources is DESTRUCTIVE.
 
 Existing Atria reference/conflict validation remains authoritative; MCP must not provide force deletion when a profile is still referenced.
 
+
 ### 16.7 Diagnostics read surface
 
 Diagnostics is a first-class MCP domain.
 
-The semantic direction includes:
+Current product authority already includes:
 
-- overview;
-- modules/ownership metadata;
-- bounded log query where product authorization permits;
-- incidents list/detail/export;
+- overview/modules/ownership metadata;
+- bounded log query and log clearing under product authorization;
+- incidents list/detail/export/create-from-recent;
 - startup sessions/detail/compare;
-- runtime provenance;
+- per-process `serverBootId` embedded in startup diagnostic sessions;
+- runtime provenance records for extensions/server plugins/external services;
 - Atria-owned health/diagnostic evidence.
 
 Browser diagnostics remain separate:
 
 - `atri_browser_diagnostics` describes the MCP-owned browser/page;
-- `atri_diag_*` describes Atria product-owned diagnostic authority.
+- product Diagnostics actions describe Atria-owned diagnostic authority.
 
 MCP should commonly correlate both.
+
+The current diagnostics module/service provenance registry must not be mistaken for checkout/runtime exact-source provenance. Exact Source ↔ Runtime verification still requires the current runtime identity addition defined in section 10.
+
 
 ### 16.8 Diagnostic snapshot
 
@@ -1294,6 +1418,8 @@ Atria product actions are registered under stable semantic IDs such as:
 - `chat.send`;
 - `chat.regenerate`;
 - `build.source.read`;
+- `build.frontend.inspect`;
+- `build.frontend.evaluate`;
 - `build.change.evaluate`;
 - `build.change.apply`;
 - `library.revision.create`;
@@ -1363,7 +1489,7 @@ The target fixed surface is approximately:
 - focused browser lifecycle/observation/interaction tools;
 - four semantic risk executors.
 
-The exact final count may vary, but the target is roughly the high teens rather than dozens of per-action MCP tools.
+The final v0.2.0 public count is frozen at the 18 tools listed in section 20. Semantic-domain growth belongs in the Action Registry rather than new per-domain top-level tools unless a later approved Plan changes that contract.
 
 ### 17.5 Repository and API consolidation
 
@@ -1446,7 +1572,10 @@ Guard classes include, where applicable:
 - prior evaluation receipt;
 - reference/delete safety;
 - exact artifact/content identity;
-- runtime/browser identity requirements.
+- product Source ↔ Server Runtime identity requirements;
+- Browser-loaded `serverBootId` freshness;
+- Session revision/branch and Native Frontend Experience Epoch where applicable;
+- Studio Project/Workspace/Preview compiled-artifact identity where applicable.
 
 Examples:
 
@@ -1524,7 +1653,9 @@ A common receipt shape should support:
 - before/after authority identity;
 - created/changed/deleted objects;
 - external effects;
-- runtime/source/browser provenance;
+- product source/server/browser provenance, using canonical `serverBootId`;
+- Session/branch/revision and Experience Epoch where applicable;
+- Project/Workspace/Preview/compiled-artifact provenance where applicable;
 - recovery/reversibility information;
 - parent/child receipt linkage.
 
@@ -1586,11 +1717,14 @@ Guard state must be checked again after approval because product state may have 
 
 
 
+
 ## 19. Implementation phase plan
 
-This is a formal multi-stage Plugin task with `plugin` as the Primary Workspace.
+This remains a formal six-stage Plugin task with `plugin` as the Primary Workspace.
 
-Atria product changes are made only where a product-owned authority is genuinely required. Product implementation uses one temporary `main`-derived feature branch across all product phases rather than creating a new product branch for each phase.
+The 2026-09-29 revalidation does **not** add another phase. It reduces Phase 2 product work and moves Native Frontend v3 adaptation into the existing read/mutation/integration phases.
+
+Atria product changes are made only where a product-owned authority is genuinely missing. Product implementation uses one temporary `main`-derived feature branch across all product phases that actually require product changes.
 
 The Plugin workspace remains isolated; `main` is never merged into `plugin`. Integration uses an independent product worktree/runtime.
 
@@ -1610,30 +1744,34 @@ Goals:
 - implement bounded development-artifact discovery/read/inspect;
 - implement independent RepositoryAccessPolicy and sensitive-path/content filtering.
 
-No real product mutation is enabled in this phase.
+No real product mutation is enabled. No `main` product change is required.
 
 User-visible outcome: AI can understand the complete Atria development checkout, current working-tree changes and development artifacts rather than only selected source folders.
 
-### Phase 2 — Runtime Provenance / Browser Capability Bridge
+### Phase 2 — Runtime Provenance / Fixed Capability Adapters
 
-**Implementation:** product temporary feature branch + `plugin:atria-mcp/`
+**Implementation:** `plugin:atria-mcp/` plus the product temporary feature branch only for the remaining runtime-identity gap.
+
+This phase is materially smaller than in v1.0.
 
 Product-side goals:
 
-- add a formal reusable RuntimeIdentity/provenance authority;
-- include runtimeBootId, startup timestamp, version/full revision/branch and startup source-content identity where available;
-- expose enough non-secret provenance to establish Source ↔ Runtime identity;
-- add only genuinely missing first-party capability surfaces required for MCP; do not duplicate already sufficient Memory/game-runtime/Orchestrator authorities.
+- reuse the existing per-process `serverBootId`; do not invent a parallel `runtimeBootId`;
+- expose a direct current runtime identity through the existing version/diagnostics authority;
+- bind `serverBootId`, process start, app version, full revision/branch and startup source fingerprint/uncertainty;
+- add no new Native Frontend/Studio capability that current `main` already provides.
 
 Plugin-side goals:
 
-- compare configured Source Identity with Runtime Identity;
-- track Runtime ↔ Browser freshness;
+- compare configured Product Source with Server Runtime;
+- capture Browser-loaded `serverBootId` and detect stale pages after restart;
 - implement exact/mismatch/unverifiable states;
-- implement a fixed schema-validated Browser Capability Bridge for approved first-party capability methods;
+- represent Native Frontend Experience Epoch as a separate scoped freshness identity;
+- represent Studio Project/Workspace/Preview provenance separately from product checkout provenance;
+- implement a fixed schema-validated Browser Capability Bridge only for approved Memory/Orchestrator/selected game-runtime methods with no stronger server authority;
 - prohibit arbitrary JavaScript evaluation/dynamic capability dispatch.
 
-User-visible outcome: MCP can prove whether the source it is reading, the server it is observing and the browser page it is inspecting correspond to the same runtime generation.
+User-visible outcome: MCP can prove which product source/server/browser generation it is observing and can also bind frontend/Preview evidence to the exact Session or authoring artifact that produced it.
 
 ### Phase 3 — Full Read Authority
 
@@ -1642,7 +1780,7 @@ User-visible outcome: MCP can prove whether the source it is reading, the server
 Goals:
 
 - populate READ semantic actions for Chat/Session;
-- Build/Studio;
+- Build/Studio, including Frontend Source Graph, diagnostics and Preview identity;
 - Library;
 - Package/Work;
 - Memory;
@@ -1650,17 +1788,19 @@ Goals:
 - Settings;
 - Connections/Models/Routes;
 - Diagnostics;
+- selected game-runtime read projections;
 - add the high-level diagnostic snapshot;
 - preserve product auth/admin/ownership boundaries;
-- keep Secrets opaque.
+- keep Secrets opaque;
+- prefer stable server authorities over the Browser Capability Bridge whenever both exist.
 
 No persistent product mutation is enabled yet.
 
-User-visible outcome: MCP can inspect nearly every Atria development/product state relevant to diagnosing a bug without bypassing product authority.
+User-visible outcome: MCP can inspect nearly every Atria development/product state relevant to diagnosing a bug, including current Native Frontend v3 authoring/runtime evidence, without bypassing product authority.
 
 ### Phase 4 — Authorization / Receipts / Safe Mutations
 
-**Implementation:** `plugin:atria-mcp/` plus targeted product authority additions only where required.
+**Implementation:** `plugin:atria-mcp/` plus targeted product authority additions only if a real gap is demonstrated.
 
 Goals:
 
@@ -1670,13 +1810,16 @@ Goals:
 - implement unified Operation Receipts;
 - implement double guard/preflight/concurrency validation;
 - retire model-supplied `confirm=true`;
-- enable non-destructive INTERACT/MUTATE actions, including approved Chat, Build, Settings, Runtime configuration, Library revision, Work start, Memory and preview/simulation operations.
+- enable non-destructive INTERACT/MUTATE actions for approved Chat, Build, Settings, Runtime configuration, Library revision, Work start, Memory and Preview/Simulation operations;
+- support Native Frontend v3 `frontend.patch` through normal Studio Workspace semantics;
+- bind Build evaluation receipts to exact Project/Workspace/change/Preview evidence;
+- preserve Experience Epoch and Session revision guards for frontend-scoped actions.
 
-User-visible outcome: after explicit authorization, AI can reproduce, operate and verify real Atria behavior rather than only observe it.
+User-visible outcome: after explicit authorization, AI can reproduce, operate and verify real Atria behavior without a second frontend or persistence authority.
 
 ### Phase 5 — High-risk Operations / Package / Agent Delegation
 
-**Implementation:** `plugin:atria-mcp/` plus targeted product authority changes where required.
+**Implementation:** `plugin:atria-mcp/` plus targeted product authority changes only where current authorities are insufficient.
 
 Goals:
 
@@ -1690,16 +1833,22 @@ Goals:
 
 User-visible outcome: high-risk product workflows become available without weakening the earlier authority/approval model.
 
-### Phase 6 — Integration / Security / Final Verification
+### Phase 6 — Integration / Security / Native Frontend v3 Verification
 
-No new capability scope should be added in this phase.
+No new capability scope is added in this phase.
 
 Goals include adversarial verification of:
 
 - stale approvals and state races;
 - revision/baseVersion conflicts;
-- runtime restart and stale-browser detection;
-- tracked/untracked source identity;
+- server restart and stale-browser detection using `serverBootId`;
+- tracked/untracked product source identity;
+- Native Frontend Experience Epoch revocation;
+- Project baseRevision / Workspace / Preview provenance drift;
+- Frontend Source Graph/diagnostic/semantic-patch flows;
+- formal Preview using the production compiler/renderer contract;
+- GenerationProjection versus committed Conversation separation;
+- Script/Media/Frontend diagnostics and recovery evidence where exposed;
 - Secret/path/history leakage;
 - Package update races;
 - destructive reference blockers;
@@ -1707,9 +1856,9 @@ Goals include adversarial verification of:
 - receipt/cleanup ownership;
 - browser semantic-action bypass attempts.
 
-Run real Atria integration against disposable development data with the configured product worktree/runtime and real browser evidence, including representative desktop/narrow viewport flows.
+Run real Atria integration against disposable development data with the configured product worktree/runtime and real browser evidence, including representative desktop/narrow viewport flows and Native Frontend v3 Studio Preview.
 
-Only after product-side changes are fully verified should the product feature branch merge into `main`. Plugin integration is then revalidated against the final integrated `main`.
+Only after any product-side changes are fully verified should the product feature branch merge into `main`. Plugin integration is then revalidated against the final integrated `main`.
 
 ### Multi-stage documentation lifecycle
 
@@ -1717,11 +1866,9 @@ When implementation begins:
 
 - create and continuously update `docs:records/plugin/atria-mcp-capability-expansion.md`;
 - create/refresh the single live `docs:HANDOFF.md` for this task;
-- keep the same Plugin Primary Workspace and same product temporary branch through all phases;
+- keep the same Plugin Primary Workspace and same product temporary branch through phases that require it;
 - after each formal phase: verify, persist/push, update Record/HANDOFF, provide the next-phase handoff prompt, and stop;
 - final completion cleans the live HANDOFF after all verification/integration work is complete.
-
-
 
 
 ## 20. Migration to MCP v0.2.0 surface
@@ -1921,19 +2068,24 @@ Verification must prove:
 - historical Git reads apply sensitive-content policy;
 - sensitive content remains blocked/redacted independently of `.gitignore`.
 
+
 ### 21.4 Runtime identity acceptance
 
 Real integration must exercise at least:
 
-- configured source = runtime startup source = current browser -> exact/current;
-- tracked source changed after runtime start -> source-changed state;
-- configured source and runtime at different revision/content -> different-revision state;
-- server restarted while browser remains loaded -> stale-page state;
-- insufficient provenance -> unverifiable.
+- configured Product Source = server startup source = current browser-loaded `serverBootId` -> exact/current;
+- tracked Product Source changed after runtime start -> source-changed state;
+- configured Product Source and runtime at different revision/content -> different-revision state;
+- server restarted while browser remains loaded -> stale-page state by changed `serverBootId`;
+- insufficient startup source provenance -> unverifiable;
+- Experience Epoch changes while the server process remains the same -> frontend-scoped stale evidence without falsely reporting a server restart;
+- Studio Preview evidence bound to exact Project baseRevision + Workspace fingerprint + preview/compiled artifact identity.
 
 `UNVERIFIABLE` must never be silently presented as a match.
 
-Verification prompts/reports must not claim a current source change was runtime/UI verified unless the required identity relationship is established.
+Verification reports must distinguish product checkout/runtime provenance from Project/Preview provenance and must not claim a current source/authoring change was runtime/UI verified unless the applicable chain is established.
+
+
 
 ### 21.5 Chat / Session acceptance
 
@@ -1951,7 +2103,11 @@ Real product verification must cover representative:
 
 MCP must not introduce in-place mutation of committed Native Timeline history.
 
+Native Frontend v3 verification must also prove that provisional/streaming GenerationProjection is not treated as a committed Timeline/Conversation message and that branch/restore/reload invalidates stale frontend Experience Epoch state as designed.
+
 Active cleanup may derive/switch branches while preserving historical evidence.
+
+
 
 ### 21.6 Build / Studio acceptance
 
@@ -1959,15 +2115,22 @@ Verification must cover representative:
 
 - Project/source/revision reads;
 - history/diff;
+- Resource Graph/reference/closure reads;
 - validation/preflight;
 - Workspace prepare/inspect;
-- evaluation;
-- Preview/Simulation;
+- Native Frontend Source Graph inspection and source-addressable diagnostics;
+- semantic `frontend.patch` proposal;
+- formal frontend evaluation;
+- Preview create/detail/close using the production compiler/renderer contract;
+- Simulation;
 - apply.
 
 Evaluation must restore Project source rather than persist its temporary mutation.
 
 An evaluation receipt reviewed against base revision A must fail closed if the Project changes to B before apply.
+
+A Native Frontend v3 Preview receipt must bind the exact Workspace/change fingerprint and compiled Preview identity; browser evidence from another Preview or stale Experience must not satisfy that receipt.
+
 
 ### 21.7 Library / Package / Work acceptance
 
@@ -2016,6 +2179,7 @@ A test must demonstrate that a Preset which permits a higher-risk tool cannot us
 
 Agent receipts must allow tracing a semantic mutation back to the Agent run/step/tool invocation responsible for it.
 
+
 ### 21.10 Settings / Connections / Diagnostics acceptance
 
 Settings writes must use bounded patch/concurrency semantics rather than whole-document replacement for ordinary changes.
@@ -2030,6 +2194,10 @@ Atria-owned log clearing is DESTRUCTIVE; MCP-owned ephemeral diagnostic-buffer c
 
 `atri_diagnose_snapshot` must explicitly represent unavailable/permission-denied/not-applicable evidence rather than silently omitting missing categories.
 
+Runtime identity evidence must reuse the product's canonical `serverBootId`. Existing startup-session/module provenance may be composed into the snapshot, but must not be mislabeled as startup source-content identity unless the exact runtime identity authority supplies that evidence.
+
+
+
 ### 21.11 Real integration / UX acceptance
 
 The real-product verifier must run against:
@@ -2038,7 +2206,8 @@ The real-product verifier must run against:
 - fresh/disposable dataRoot/config;
 - real product auth/CSRF behavior;
 - real Chromium/compatible browser context;
-- representative Studio/Session/Memory/Diagnostics paths.
+- representative Studio/Session/Memory/Diagnostics paths;
+- representative Native Frontend v3 Source Graph/evaluation/Preview path.
 
 Responsive evidence must include at least:
 
@@ -2048,13 +2217,15 @@ Responsive evidence must include at least:
 The verifier should persist bounded evidence such as:
 
 - summary JSON;
-- runtime identity evidence;
+- Product Source/Server/Browser runtime identity evidence;
+- Project/Workspace/Preview provenance evidence;
 - screenshots;
 - diagnostic snapshot;
 - representative operation receipts;
 - runtime log.
 
 The run must clean up temporary Sessions/Projects/test assets/runtime data/browser state/leases/ephemeral receipts without touching personal developer data.
+
 
 ### 21.12 Client compatibility acceptance
 
@@ -2105,32 +2276,41 @@ The task is complete only when all of the following are true:
 
 No completion claim may be made while any required item above remains unresolved.
 
+
 ## 22. Implementation kickoff state
 
-Design discussion is complete and frozen as **Approved Implementation Plan v1.0**.
+Post-Frontend-Refactor revalidation is complete and this document is frozen as **Approved Implementation Plan v1.1**.
 
-Implementation has **not** started yet.
+Implementation has **not** started.
+
+Revalidated source checkpoints:
+
+- `main@c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`;
+- `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`;
+- pre-update docs baseline `docs@d540d35b74f5f3cbcc8eee1ea0565e8164b6ff7f`.
+
+Recorded hashes are checkpoints only; implementation must re-check remote refs.
 
 Reserved implementation-history path:
 
-- `docs:records/plugin/atria-mcp-capability-expansion.md`
+- `docs:records/plugin/atria-mcp-capability-expansion.md`.
 
-The Record should be created when Phase 1 implementation actually begins, not retroactively during design-only work.
+The Record is created when Phase 1 implementation actually begins, not retroactively during this design-only revalidation.
 
-The repository currently has a live `docs:HANDOFF.md` owned by another active task. This task must not overwrite it. When implementation begins, create/use the single live HANDOFF for this task only after the existing live handoff is no longer active or the repository owner explicitly transfers that slot.
+At revalidation time there is **no live `docs:HANDOFF.md`**. Phase 1 should re-check this before creating the task's live HANDOFF; if another task has acquired the slot by then, it must not be overwritten.
 
 Primary implementation workspace:
 
 - long-lived `plugin` workspace;
 - implementation root: `plugin:atria-mcp/`.
 
-Product-side temporary branch for the targeted authorities required by later phases:
+Product-side temporary branch, if still required when Phase 2 reaches the remaining runtime-identity gap:
 
 - `feat/mcp-development-authority`.
 
-Do not create that product branch during design-only finalization; create it when the first product-side implementation phase actually needs it.
+Do not create that product branch during Phase 1. Phase 1 remains Plugin-only.
 
-Phase 1 remains Plugin-only and begins from the actual then-current `plugin` HEAD, after re-reading current `plugin:AGENTS.md`, this approved Plan and any live task handoff applicable at that time.
+Phase 2 should first verify that the current-runtime identity gap still exists at its then-current `main`; if current product authority has filled it by then, do not create product code merely to match this historical checkpoint.
 
 
 ## 23. Diagnostic workflow target
@@ -2158,19 +2338,27 @@ This expansion is not intended to:
 - bypass Native Session, Studio/ProjectStore, Library, Package or other Atria ownership rules;
 - grant unattended destructive control over user data.
 
-## 25. Post-freeze implementation decisions
 
-The following remain intentionally unresolved and should be settled through further discussion before implementation planning:
+## 25. Post-revalidation frozen decisions
 
-- concrete representation/storage of the accepted capability policy and leases;
-- final Definition of Done and acceptance matrix for freezing design and starting implementation;
-- the exact threshold for promoting a generic Native API operation into a dedicated semantic MCP tool;
-- detailed artifact roots/types and bounded inspection rules;
-- detailed client UX/naming for branch-derived message cleanup and re-entry;
-- detailed client presentation of generation cost/external-provider side-effect metadata;
-- exact enforcement mechanics for semantic-operation precedence over generic browser interaction;
-- audit/evidence returned for authorized actions;
-- compatibility and migration strategy from the current `--allow-writes` switch.
+The 2026-09-29 audit freezes these clarifications:
+
+- the six implementation phases are retained; no seventh migration/adaptation phase is added;
+- Phase 2 is reduced because `serverBootId`, Native Frontend v3 Host Bridge, Studio Frontend inspection/evaluation/Preview, Experience Epoch and frontend diagnostics already exist;
+- `serverBootId` is the canonical product process-boot identity; MCP does not require a duplicate `runtimeBootId` field;
+- one minimal product runtime-identity addition remains planned unless the then-current product has already supplied direct startup source fingerprint/full revision binding;
+- the MCP Browser Capability Bridge is limited to explicitly allowlisted first-party browser capability APIs without a stronger server authority;
+- Native Frontend v3 Frontend Host Bridge is a distinct product protocol and is not treated as the MCP Browser Capability Bridge;
+- Build remains the semantic action namespace while Native Studio remains the owning authority;
+- Native Frontend Source Graph/diagnostics/`frontend.patch`/evaluation/Preview are reused directly rather than reimplemented for MCP;
+- committed Conversation/Timeline remains immutable; GenerationProjection remains ephemeral and separate;
+- the public v0.2.0 surface remains exactly 18 top-level MCP tools;
+- Action Descriptor / Policy Ceiling / Capability Lease / Operation Receipt remain the authorization architecture;
+- Studio evaluation receipts are MCP receipts that bind existing exact Studio evidence; a duplicate durable product receipt subsystem is not required;
+- implementation details such as internal policy-file serialization, client-specific elicitation UX and artifact root tables may be resolved during their owning phase without reopening these architectural boundaries.
+
+Any later material change to these decisions requires another explicit Plan update.
+
 
 ## 26. Discussion / change-control workflow
 
@@ -2185,38 +2373,53 @@ During the design discussion phase:
 
 ## Appendix A — Phase 1 implementation kickoff prompt
 
-The following prompt is the approved handoff text for starting Phase 1 in a fresh implementation conversation/client. Re-check all remote refs before acting; recorded hashes are checkpoints, not authority.
+The following prompt is the post-revalidation draft for starting Phase 1 in a fresh implementation conversation/client. Re-check all remote refs before acting; recorded hashes are checkpoints, not authority.
 
 ```text
 继续 ZZZdragondYNGPHX/Atria 的 Atria MCP Capability Expansion。
 
-Task ID:
+Task ID：
 plugin/atria-mcp-capability-expansion
 
-Primary Workspace:
+Primary Workspace：
 plugin
 
-Approved Plan:
+Approved Plan：
 docs:plans/plugin/atria-mcp-capability-expansion.md
-Status: Approved Implementation Plan v1.0
+Status：Approved Implementation Plan v1.1 — Post-Frontend-Refactor Revalidated
 
-当前记录 checkpoint（开始前必须重新核对真实远端 refs）：
-main@191f9f951ccb23cd11d8951e539b8ff6eb8316db
+审计完成时 checkpoint（开始前必须重新核对真实远端 refs）：
+main@c936b0aa4c42cf5711f40ae4a00f5fc3432813dc
 plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225
 
 当前只执行：
 Phase 1 — MCP Kernel / Repository Observation
 
-不要开始 Phase 2，不要修改 Atria main 产品源码，不要创建 feat/mcp-development-authority。
+不要开始 Phase 2。
+不要修改 Atria main 产品源码。
+不要创建 feat/mcp-development-authority。
+不要提前实现 Native Frontend v3 / Runtime Provenance / Browser Capability Bridge。
+不要把 main merge 到 plugin。
 
 开始前：
-1. fetch / 核对真实远端 main、plugin、docs；
+1. fetch / 核对真实远端 main、plugin、docs HEAD；
 2. 读取最新 plugin:AGENTS.md；
 3. 读取最新 docs:README.md；
 4. 读取最新 docs:plans/plugin/atria-mcp-capability-expansion.md；
-5. 检查 docs:HANDOFF.md。若它仍属于其他活跃任务，不得覆盖、替换或删除；明确记录该治理阻塞。若 HANDOFF 槽已释放，则按 Governance 为本多阶段任务建立本任务 live HANDOFF。
+5. 检查 docs:HANDOFF.md：
+   - 若不存在，按 Governance 为本多阶段任务创建 live HANDOFF；
+   - 若已属于其他活跃任务，不得覆盖、替换或删除，记录该治理阻塞并只完成当前可完成工作；
 6. Phase 1 真正开始实现时创建并持续更新：
    docs:records/plugin/atria-mcp-capability-expansion.md
+
+已完成的前置审计结论必须保留：
+- Native Frontend Runtime v3 已进入 main，不要为 MCP 重建第二套 Frontend/Studio authority；
+- 产品已有 canonical serverBootId；
+- Phase 2 只剩“直接 current runtime identity + startup source fingerprint/full revision binding”等必要缺口，且必须到 Phase 2 再按当时 main 复核；
+- Frontend Host Bridge 与 MCP Browser Capability Bridge 是不同层；
+- Browser Capability Bridge 后续只用于没有更强 server authority 的 allowlisted Memory / Orchestrator / selected game-runtime browser APIs；
+- Build 继续作为 semantic action namespace，Native Studio 是 owning authority；
+- v0.2.0 顶层 MCP surface 仍固定为 18 tools。
 
 Phase 1 只做 Plugin：
 plugin:atria-mcp/
@@ -2234,8 +2437,7 @@ Phase 1 目标：
 - Sensitive path/content policy；
 - 保持 Secret、用户数据、dataRoot、symlink/traversal 边界。
 
-v0.2.0 最终公开工具面已经冻结为 18 个；Phase 1 可以按阶段逐步迁移内部实现，但不得私自增加 per-domain 顶层 MCP tools。
-最终公开工具：
+v0.2.0 最终公开工具面冻结为 18 个：
 atri_status
 atri_capabilities
 atri_reference
@@ -2255,33 +2457,34 @@ atri_interact
 atri_mutate
 atri_destructive
 
-迁移是 breaking cutover：
+Phase 1 可以按阶段迁移内部实现，但不得私自增加 per-domain 顶层 MCP tools。
+
+Breaking cutover 约束：
 - 不长期保留 atri_source_read / atri_source_search 等 legacy aliases；
 - confirm=true 最终删除；
 - --allow-writes / ATRIA_ALLOW_WRITES 最终删除；
-- atri_api 最终只做 Native discovery/detail/read，不可成为产品写入逃生通道。
-但 Phase 1 不要提前实现 Phase 4 的可信审批/Lease mutation 行为。
+- atri_api 最终只做 Native discovery/detail/read，不可成为产品写入逃生通道；
+- Phase 1 不提前实现 Phase 4 的可信审批/Lease mutation 行为。
 
-验证要求至少覆盖：
-- tracked root/config/docs/source 可读；
-- safe untracked 可读；
-- ignored artifact 必须走 artifact policy；
-- product/user data 不因位于 repo 下而可由 repo tool 读取；
-- .env / credentials / Secret / keystore 等 hard deny/redact；
-- historical Git diff/show 同样应用 sensitive policy；
-- traversal / symlink escape 拒绝；
-- Git evidence bounded；
-- 顶层 MCP tool surface 不出现未经 Plan 批准的 per-domain tools。
+Phase 1 验证至少覆盖：
+- exact 18-tool registration architecture 可以逐步落位但不得出现意外 per-domain public tools；
+- tracked repository tree/read/search；
+- safe untracked file read；
+- Git status/diff/log/show/blame；
+- bounded artifact policy；
+- sensitive path/content denial + redaction；
+- traversal/symlink escape denial；
+- product/user data 与 repository evidence 边界；
+- legacy source-tool migration相关测试；
+- Plugin 自身 lint/test/type/schema checks（按仓库实际提供的脚本执行）。
 
-这是正式多阶段任务：
-完成 Phase 1 后必须停止，不得继续 Phase 2。
-结束前：
-- 跑适当 Plugin unit/integration tests；
+Phase 1 完成后：
 - commit/push plugin；
-- 更新同一 Plugin Record；
-- 若 live HANDOFF 槽属于本任务则更新 HANDOFF；
-- 更新 Plan 仅限方案发生实质变化时；
-- 给出 Phase 1 End/Tested HEAD、验证结果、已知限制；
-- 生成可直接复制的新对话 Phase 2 接手提示词；
-- 停止。
+- 更新同一份 docs Record；
+- 更新本任务 live HANDOFF；
+- 记录 plugin HEAD、main baseline、实际验证/CI；
+- 给出 Phase 2 接手提示词；
+- 停止，不自动开始 Phase 2。
+
+不要声称未实际执行的测试、构建、CI、浏览器或 UI 验证通过。
 ```
