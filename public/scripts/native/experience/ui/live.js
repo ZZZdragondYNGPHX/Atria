@@ -1,3 +1,4 @@
+import { createHeadlessConversation } from '../../frontend/conversation.js';
 import { frontendHttpTransport } from '../../frontend/bridge.js';
 import { mountConversationPresentation } from '../../message-presentation.js';
 import { loadGameSelectorDefinitions } from './declarative.js';
@@ -78,6 +79,7 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
         try {
             runtime = await mountNativeFrontend({ ...options, document: documentRef, window: options.window ?? documentRef.defaultView,
                 mode, surfaceHost, entry: experience.frontend.entry,
+                hostServices: options.hostServices ?? createHeadlessConversation({ runtime: () => globalThis.Atria?.nativeSessionRuntime, composer: options.composer ?? nativePlayHost?.product?.composerApi, generate: type => globalThis.Atria?.getContext?.()?.generate?.(type), stop: options.hostActions?.stopGeneration, actions: options.hostActions }),
                 bridgeTransport: options.bridgeTransport ?? frontendHttpTransport({ sessionId: packageState.sessionId, fetchImpl: options.fetchImpl, headers: options.headers }),
                 stateStorage: options.createStateStorage?.({ stateVersion: 3 }, packageState),
                 loadBytes: (path, signal) => loadFrontendBytes(packageState, path, { ...options, signal }),

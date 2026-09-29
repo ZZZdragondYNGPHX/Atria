@@ -1,3 +1,4 @@
+import { renderSafeProse } from '../../../shared/native-safe-prose.js';
 import { createFrontendBridge } from './bridge.js';
 import { assertPresentationContract, assertPresentationNode, assertValue, evaluate, valuePath, styleValue } from '../../../shared/native-frontend-presentation.js';
 import { createFrontendResources } from './resources.js';
@@ -20,8 +21,9 @@ export async function mountNativeFrontend(options) {
         const view = overlays.at(-1) ?? views.at(-1);
         if (view) { view.failure.hidden = false; view.failureText.textContent = 'Presentation error: ' + error.message; }
     };
-    let recovering = null;
-    const bridge = await createFrontendBridge({ descriptor: await resources.json('bridge', 'bridge'), transport: options.bridgeTransport,
+    let recovering = null, recoveryFailure = null;
+    const bridgeDescriptor = await resources.json('bridge', 'bridge');
+    const bridge = await createFrontendBridge({ descriptor: bridgeDescriptor, transport: options.bridgeTransport, hostServices: options.hostServices,
         onEpoch: () => { void recover().catch(diagnostic); }, onRevision: options.onBridgeRevision,
         fixed: { prefs: () => shared.prefs ?? {}, environment: () => views.at(-1)?.environment.get() ?? {} } }).catch(error => { scheduler.dispose(); resources.dispose(); throw error; });
     const bridgeTimer = options.bridgeTransport ? window.setInterval(() => { void bridge.refresh().catch(diagnostic); }, 1000) : null;
@@ -161,7 +163,7 @@ export async function mountNativeFrontend(options) {
         let item = initialItem, childInstance = null, gone = false;
         const node = definition.tag === 'component' ? document.createElement('div') : SVG.has(definition.tag)
             ? document.createElementNS('http://www.w3.org/2000/svg', definition.tag) : document.createElement(definition.tag);
-        const disposers = [], children = [];
+        const disposers = [], children = []; let proseText = null;
         const dispose = () => {
             if (gone) return; gone = true; --nodeCount; childInstance?.dispose(); children.forEach(child => child.dispose()); disposers.forEach(clean => clean());
             if (instance.nodes.get(definition.id) === node) instance.nodes.delete(definition.id); node.remove(); instance.cleanups.delete(dispose);
@@ -226,9 +228,13 @@ export async function mountNativeFrontend(options) {
             if (definition.component) continue;
             listen(event, e => {
                 if (event === 'submit') { e.preventDefault(); if (!node.checkValidity()) { node.reportValidity(); return; } }
-                if (instance.form.busy) return;
-                instance.form.busy = true;
-                void run(instance, interaction, item, eventValue(e)).catch(diagnostic).finally(() => { instance.form.busy = false; requestRender(); });
+                const interrupt = instance.contract.interactions[interaction]?.every(action => {
+                    const target = bridgeDescriptor.bindings.find(binding => binding.id === action.target)?.target;
+                    return action.kind === 'action.invoke' && target?.service === 'host.conversation' && target.method === 'cancel';
+                });
+                if (instance.form.busy && !interrupt) return;
+                if (!interrupt) instance.form.busy = true;
+                void run(instance, interaction, item, eventValue(e)).catch(diagnostic).finally(() => { if (!interrupt) instance.form.busy = false; requestRender(); });
             });
         }
         // Gesture events contain only bounded presentation values; no authority.
@@ -265,7 +271,7 @@ export async function mountNativeFrontend(options) {
             if (definition.condition) node.hidden = !evaluate(definition.condition, ctx);
             for (const [sink, expr] of Object.entries(definition.bindings ?? {})) {
                 const value = evaluate(expr, ctx);
-                if (sink === 'text') { if (children.length) throw new TypeError('Text binding cannot replace declared children'); node.textContent = String(value ?? ''); } else if (sink === 'value') { if (node.value !== String(value ?? '')) node.value = String(value ?? ''); } else if (['checked', 'disabled', 'hidden'].includes(sink)) node[sink] = Boolean(value);
+                if (sink === 'prose') { const text = String(value ?? ''); if (proseText !== text) { renderSafeProse(node, text, { openExternal: options.hostActions?.openExternal }); proseText = text; } } else if (sink === 'text') { if (children.length) throw new TypeError('Text binding cannot replace declared children'); node.textContent = String(value ?? ''); } else if (sink === 'value') { if (node.value !== String(value ?? '')) node.value = String(value ?? ''); } else if (['checked', 'disabled', 'hidden'].includes(sink)) node[sink] = Boolean(value);
                 else node.setAttribute(sink, String(value ?? ''));
             }
             for (const [id, expr] of Object.entries(definition.styles ?? {})) {
@@ -350,8 +356,13 @@ export async function mountNativeFrontend(options) {
         failure.hidden = true; failure.setAttribute('role', 'alert');
         failure.style.cssText = 'position:absolute;inset:0 auto auto 0;z-index:2;background:Canvas;color:CanvasText;padding:12px;max-width:100%;box-sizing:border-box';
         retry.type = 'button'; retry.textContent = 'Reload presentation';
-        retry.onclick = () => { void navigate(id, true).catch(diagnostic); };
-        failure.append(failureText, retry); shell.append(failure);
+        retry.onclick = () => { void recover().catch(diagnostic); };
+        failure.append(failureText, retry);
+        for (const [label, handler] of [['Stop', options.hostActions?.stopGeneration], ['Diagnostics', options.hostActions?.openDiagnostics], ['Exit', options.hostActions?.exitExperience]]) {
+            if (!handler) continue; const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
+            button.onclick = () => { void Promise.resolve().then(handler).catch(diagnostic); }; failure.append(button);
+        }
+        shell.append(failure);
         const view = { id, frame, content, overlayRoot, failure, failureText, mount, state: {}, restoredState: state, declaration: null, root: null, disposed: false, returnFocus: deepFocus() };
         view.environment = createPresentationEnvironment(window, frame, requestRender);
         if (overlay) {
@@ -415,9 +426,23 @@ export async function mountNativeFrontend(options) {
             [...overlays, ...views].reverse().forEach(disposeView); overlays.length = 0; views.length = 0;
             for (const key of Object.keys(shared)) delete shared[key];
             for (const key of Object.keys(declarations)) delete declarations[key];
+            await options.onBridgeEpoch?.();
             await bridge.reload();
-            if (!disposed) await navigate(id);
-        })().finally(() => { recovering = null; });
+            if (!disposed) { await navigate(id); recoveryFailure?.unmount(); recoveryFailure = null; }
+        })().catch(async error => {
+            if (!disposed && !views.length && !recoveryFailure) {
+                const view = await resources.json('view:' + resources.index.primaryView.slice(5), 'view');
+                recoveryFailure = options.surfaceHost.mount(view.surface, 'native-v3.failure');
+                const panel = document.createElement('section'); panel.setAttribute('role', 'alert');
+                panel.textContent = 'Presentation recovery failed. ';
+                for (const [label, handler] of [['Reload presentation', recover], ['Stop', options.hostActions?.stopGeneration], ['Diagnostics', options.hostActions?.openDiagnostics], ['Exit', options.hostActions?.exitExperience]]) {
+                    if (!handler) continue; const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
+                    button.onclick = () => { void Promise.resolve().then(handler).catch(diagnostic); }; panel.append(button);
+                }
+                recoveryFailure.container.append(panel);
+            }
+            throw error;
+        }).finally(() => { recovering = null; });
         return recovering;
     }
     try { await navigate(resources.index.primaryView.slice(5)); } catch (error) { disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scheduler.dispose(); resources.dispose(); throw error; }
@@ -433,6 +458,6 @@ export async function mountNativeFrontend(options) {
         },
         getInstances() { return [...instances.values()].map(instance => ({ id: instance.id, componentId: instance.ir.id })); },
         scheduler: Object.freeze({ frame: scheduler.frame }),
-        dispose() { if (disposed) return; ++navigation; [...overlays, ...views].reverse().forEach(disposeView); disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scheduler.dispose(); resources.dispose(); instances.clear(); },
+        dispose() { if (disposed) return; recoveryFailure?.unmount(); ++navigation; [...overlays, ...views].reverse().forEach(disposeView); disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scheduler.dispose(); resources.dispose(); instances.clear(); },
     });
 }

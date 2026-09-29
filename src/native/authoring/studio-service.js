@@ -1028,6 +1028,7 @@ export class StudioService {
             const ref = model.resources.find(item => item.kind === 'bridge');
             const descriptor = JSON.parse(Buffer.from(files.get(ref.path)).toString('utf8'));
             for (const binding of descriptor.bindings.filter(item => item.kind === 'read')) {
+                if (binding.target.service && !binding.collection) continue;
                 const resource = preview.manifest.runtime.experienceContract.dataResources.find(item => item.resourceId === binding.target.resourceId);
                 bridgeProjections[binding.id] = resource ? JSON.parse(Buffer.from(preview.assets.get(resource.assetId)).toString('utf8')) : [];
             }

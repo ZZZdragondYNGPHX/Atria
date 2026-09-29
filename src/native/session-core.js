@@ -1,3 +1,5 @@
+import { resolveNativeRuntimePackage } from './runtime-descriptor.js';
+import { bridgeValue } from '../../public/shared/native-frontend-bridge.js';
 import { invalidateFrontendEpoch } from './frontend/epoch.js';
 import { applyRealm, realmDefinition, reconcileRealm, loadRealm } from './realm-authority.js';
 import { activityNarrative, publishActivities } from './activity-authority.js';
@@ -288,6 +290,17 @@ export class SessionCore {
         if (installed.packageVersion.packageContentHash !== session.packageContentHash
             || installed.packageVersion.version !== session.packageVersion) throw new Error('Session PackageVersion dependency mismatch');
         const experience = installed.entryPoint.runtime?.experience ?? installed.manifest.runtime?.experience;
+        if (experience?.frontend?.version === 3) {
+            const graph = resolveNativeRuntimePackage(installed, session.entryPointId).frontendGraph;
+            const bindings = graph.bridge.bindings.filter(binding => binding.target.service === 'host.conversation' && binding.target.method === 'blocks');
+            for (const variant of projected) for (const block of assertMessageProjection(variant.projection, variant.content).flow) {
+                if (block.kind !== 'block') continue;
+                const targets = bindings.filter(binding => binding.target.blockType === block.type);
+                if (!targets.length) throw new TypeError('Undeclared v3 Message Block type');
+                for (const binding of targets) bridgeValue(block.data, binding.outputSchema.properties.data);
+            }
+            return;
+        }
         if (experience?.componentModelVersion !== 2) throw new TypeError('Message blocks require pinned UI Document v2');
         const bytes = installed.sourceFiles.get(experience.component);
         if (!bytes || bytes.length > 2 * 1024 * 1024) throw new TypeError('Missing or oversized pinned UI Document v2');
@@ -696,7 +709,19 @@ export class SessionCore {
         return this._publish(handle, { ...source, session: current.session }, { graph: current.graph });
     }
 
-    async createSavePoint(handle, sessionId, { revisionId, kind = 'manual', displayName } = {}) {
+    async listSavePoints(handle, sessionId) {
+        await this.load(handle, sessionId);
+        return this._saves.list(handle, sessionId);
+    }
+
+    async createSavePoint(handle, sessionId, { revisionId, expectedRevisionId, kind = 'manual', displayName } = {}) {
+        // Exact revision is immutable; guarded frontend saves never capture a
+        // newer HEAD accidentally even if publication races the SavePoint write.
+        if (expectedRevisionId !== undefined) {
+            await this._current(handle, sessionId, expectedRevisionId);
+            if (revisionId !== undefined && revisionId !== expectedRevisionId) throw new TypeError('Save revision must match guard');
+            revisionId = expectedRevisionId;
+        }
         const source = await this.load(handle, sessionId, { revisionId });
         return this._saves.create(handle, { saveId: createNativeId('savePoint'), sessionId,
             branchId: source.revision.branchId, revisionId: source.revision.revisionId, kind, createdAt: Date.now(),

@@ -227,5 +227,99 @@ unit suites and `tests/frontend/native-frontend-bridge.smoke.mjs` demonstrate ty
 inputs, snapshot subscriptions, pagination, scope/revision/epoch errors, real
 SessionCore Action publication, Operation lifecycle, recovery and Preview parity.
 
-Conversation/Session/Prose expansion, Remote Media, Localization/IME, Script VM,
-Canvas and the Studio visual editor remain in their scheduled later phases.
+The following section adds Phase 4 Conversation/Session/Prose. Remote Media,
+Localization/IME, Script VM, Canvas and Studio visual editing remain later phases.
+
+## Phase 4 — Conversation, Session and Safe Prose
+
+Fixed services are closed Bridge targets, not a global Host object. Declare a
+normal binding with `target: { service: "host.conversation", method: "messages" }`.
+The Host-owned catalogue and exact public schemas are exported by
+`public/shared/native-frontend-host.js` (`fixedHostTarget`). Input/output schemas
+must match that target; compiler inference still supplies Component `uses`.
+No target name is interpreted as an arbitrary service method or database query.
+
+| Service | Read methods | Action methods |
+| --- | --- | --- |
+| `host.composer` | `get` | `set`, `append`, `clear`, `focus`, `submit` |
+| `host.conversation` | `messages`, `status`, `branches`, `alternatives`, `inspect`, `generation`, `blocks` | `retry`, `regenerate`, `fork`, `switch`, `cancel` |
+| `host.session` | `status`, `saves`, `diagnostics` | `save`, `restore`, `reload`, `recover`, `exit`, `restart` |
+
+`messages`, `branches`, `alternatives`, `blocks` and `saves` require a Collection
+binding. Use `sequence` for message order, `branchId` for branches, `messageId`
+for alternatives, `id` for blocks, and `saveId` for saves. Collections retain the
+existing page/query budgets and opaque cursors. Cursor identity includes the
+source projection as well as revision/query/Epoch, so a SavePoint list change
+also invalidates its old cursors. `inspect` takes an exact `revisionId` and reads
+committed historical messages without activating that revision. `status` reports
+Session/branch/revision/tail IDs, never an authority snapshot.
+
+Example Package-owned conversation (inside a declared Component):
+
+```html
+<main node-id="conversation" read="messages">
+  <article node-id="message" each="bridge.messages.data" item-key="messageId">
+    <p node-id="role" bind:text="item.role" />
+    <div node-id="narrative" bind:prose="item.content" />
+  </article>
+</main>
+```
+
+`read="messages"` subscribes to the first page and refreshes on committed revision
+changes. Explicit `read.page` interactions supply its opaque cursor for later
+pages. A revision change resets subscribed collections to the first page;
+packages own page-navigation presentation and selection. No Host message DOM,
+legacy message selector, or Swipe object is needed in Full/Hybrid.
+
+`generation` is a separate, bounded ephemeral projection with `state`, `text`,
+and a public `error` code. States are idle/preparing/streaming/finalizing/
+cancelling/failed. It is never returned as a committed message or included in
+message paging. Managed Play consumes the same projection helpers and Composer
+contract. Submit and regenerate continue through the existing Native generation
+entrypoint/SessionCore/Task scheduler; cancellation uses the existing stop path.
+Provider settings, credentials, raw Task streams and authority snapshots are not
+exposed. Generation finalization publishes messages through the committed read.
+
+All Actions use the Bridge revision guard and scoped idempotency receipts. Local
+Composer/Generation/Session handlers additionally require the installed server
+scope's authorization and the active runtime's exact revision. `retry` forks the
+current assistant tail back to the coherent post-user boundary; `regenerate`
+uses the existing retry-and-generate path. Alternatives are committed assistant
+messages sharing a predecessor across branch lineage, not mutable Variants.
+Restore, switch, fork, retry, reload and recovery revoke old Experience handles;
+late completions cannot populate a replacement View. SavePoint creation captures
+the exact guarded immutable revision, including through the Full Host Save action.
+`restart` fails with `bridge_policy_denied` unless a Host explicitly configures a
+confirmation and restart handler. It never silently resets the Session.
+
+### Safe Prose and Message Blocks
+
+`bind:prose` owns its element's children; do not combine it with `bind:text` or
+static children. The shared parser derives an inert AST from canonical text,
+with exact source ranges and deterministic mapping validation. Baseline syntax:
+paragraphs/blank line breaks, `*emphasis*`, `**strong**`, headings, quotes,
+ordered/unordered lists, inline/fenced code, `==semantic marks==`, safe links.
+There is no HTML parser or raw AST/DOM injection. HTML-looking input is literal
+text. Links invoke Host External Navigation policy, with no package-owned `href`
+or direct browser navigation. Budgets: 65536 source characters, 4096 nodes,
+bounded inline nesting. Exceeding them fails closed; canonical text is not edited.
+
+Message Blocks remain independent immutable `MessageProjection.flow` entries.
+Declare a `blocks` collection target with `blockType`, and an output schema equal
+to `fixedHostTarget(target, dataSchema).outputSchema`. Its closed `dataSchema`
+is pinned by the compiled graph and rechecked by SessionCore at commit/load.
+Unknown types and extra data fields fail closed. Rows expose `id`, `messageId`,
+`sequence` (flow position), `type`, `version`, and typed `data`. Package Components
+can receive that data as declared props or use it in keyed declarative lists.
+No block data is interpreted as Prose, markup, expressions or a command. Any
+interactive block action still requires a separately declared typed Bridge target
+and its normal revision guard. Managed Play uses inert semantic block cards;
+Package Components own custom card presentation. The executable fixture is
+`tests/native/helpers/frontend-conversation-fixture.js`.
+
+Reload/recovery recreates presentation state and scopes while preserving Session
+Authority. The Host failure panel remains outside Package CSS and offers reload,
+plus configured stop/diagnostics/exit actions; a failed recovery retains a Host
+panel even after old Views are disposed. Preview shares schemas and rendering,
+uses supplied immutable projections, and rejects writes. Missing fixed Preview
+projections return `bridge_projection_unavailable`, not a simulated Session.

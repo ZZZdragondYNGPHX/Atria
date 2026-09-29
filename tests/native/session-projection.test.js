@@ -75,6 +75,23 @@ describe.each(CONTRACT_HARNESSES)('N4 immutable runtime projection - $name', ({ 
         return messages.at(-1);
     }
 
+    test('Frontend authority Epoch synchronizes Managed projection without persisting an old branch Draft', async () => {
+        await appendUser('question');
+        const old = runtime.snapshot;
+        runtime.generation = { kind: 'append' };
+        runtime.generationProjection = { state: 'streaming', text: 'not committed', error: '' };
+        messages.push({ name: 'Actor', is_user: false, is_system: false, mes: 'not committed', extra: {} });
+        let stops = 0;
+        await runtime.synchronizeFrontendEpoch({ stopGeneration: () => stops++ });
+        expect(stops).toBe(0); expect(runtime.generationProjection.state).toBe('streaming');
+        const fork = await f.core.forkBranch(h.handle, old.session.sessionId, { expectedRevisionId: old.revision.revisionId });
+        await runtime.synchronizeFrontendEpoch({ stopGeneration: () => stops++ });
+        expect(stops).toBe(1); expect(runtime.snapshot.revision.revisionId).toBe(fork.revision.revisionId);
+        expect(runtime.generation).toBeNull(); expect(runtime.generationProjection.state).toBe('idle');
+        expect(messages.some(message => message.mes === 'not committed')).toBe(false);
+        expect((await f.core.load(h.handle, old.session.sessionId)).revision.revisionId).toBe(fork.revision.revisionId);
+    });
+
     test('N7 derived publication stages with Draft and degrades stale async work without failing Session', async () => {
         const sourceRevisionId = runtime.snapshot.revision.revisionId;
         const sourceMessage = runtime.snapshot.timeline[0];

@@ -1,3 +1,4 @@
+import { fixedHostTarget } from '../../../public/shared/native-frontend-host.js';
 import { canonicalBridgeJson as canonicalJson } from '../../../public/shared/native-frontend-bridge.js';
 import { taskId } from '../../../public/shared/native-task-contract.js';
 import { createHash } from 'node:crypto';
@@ -45,7 +46,12 @@ export function compileBridge(source = { version: 1, bindings: [] }, experienceC
         fields(binding, ['id', 'kind', 'target', 'inputSchema', 'outputSchema', 'mapping', 'collection'], 'Binding');
         identifier(binding.id);
         let targetContract, targetInput, outputSchema;
-        if (binding.kind === 'read') {
+        if (binding.target.service) {
+            targetContract = fixedHostTarget(binding.target, binding.outputSchema?.properties?.data);
+            if (targetContract.kind !== binding.kind || Boolean(binding.collection) !== targetContract.collection && targetContract.kind === 'read') throw new TypeError('Fixed Host target kind/collection mismatch');
+            targetInput = binding.collection ? binding.inputSchema : targetContract.inputSchema;
+            outputSchema = targetContract.outputSchema;
+        } else if (binding.kind === 'read') {
             if (binding.target.resourceId) {
                 fields(binding.target, ['resourceId'], 'Read target');
                 targetContract = experienceContract.dataResources?.find(item => item.resourceId === binding.target.resourceId);
@@ -95,7 +101,7 @@ export function compileBridge(source = { version: 1, bindings: [] }, experienceC
             for (const key of c.search ?? []) if (outputSchema.properties?.[key]?.type !== 'string') throw new TypeError('Invalid search field');
         }
         return { ...binding, contractDigest: hash(canonicalJson(targetContract)), schemaDigest: hash(canonicalJson({ inputSchema: binding.inputSchema, outputSchema })),
-            mapping, ...(binding.kind === 'read' ? { readPolicy: { mode: binding.collection ? 'collection' : 'snapshot', sourceAdapter: binding.target.resourceId ? 'package-data@1' : 'application@1', invalidation: 'revision' } } : {}), requirements: { features: [], permissions: [] }, receiptPolicy: 'bridge-receipt-v1', idempotencyPolicy: 'host-owned' };
+            mapping, ...(binding.kind === 'read' ? { readPolicy: { mode: binding.collection ? 'collection' : 'snapshot', sourceAdapter: binding.target.service ? 'host-fixed@1' : binding.target.resourceId ? 'package-data@1' : 'application@1', invalidation: 'revision' } } : {}), requirements: { features: [], permissions: [] }, receiptPolicy: 'bridge-receipt-v1', idempotencyPolicy: 'host-owned' };
     }, binding => binding.id);
     return { format: 'atria-compiled-bridge', version: 1, bindings };
 }

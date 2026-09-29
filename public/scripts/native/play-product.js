@@ -1,3 +1,6 @@
+import { openHostExternal } from './frontend/external.js';
+import { createHeadlessConversation } from './frontend/conversation.js';
+import { renderSafeProse } from '../../shared/native-safe-prose.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import {
     NATIVE_SESSION_LIFECYCLE,
@@ -34,7 +37,7 @@ function messageNode(documentRef, snapshot, entry) {
 
     const body = documentRef.createElement('div');
     body.className = 'atria-play-message__body';
-    body.textContent = text(entry?.content);
+    renderSafeProse(body, text(entry?.content), { openExternal: openHostExternal });
 
     article.append(header, body);
     return article;
@@ -225,10 +228,9 @@ export function mountAtriaPlayProduct({
         }
         // Reconcile projection nodes; streaming must not replace committed prose,
         // disrupt a text selection, or drag a reader away from an earlier turn.
-        const entries = [...(snapshot.timeline || [])];
-        if (generating() && draftText) {
-            entries.push({ messageId: '__draft', role: 'assistant', content: draftText });
-        }
+        const entries = headless.messages(), messageBlocks = headless.blocks();
+        const generation = headless.generation();
+        const provisional = generation.text || draftText;
         const existing = new Map([...conversation.querySelectorAll('[data-atria-message-id]')]
             .map(node => [node.dataset.atriaMessageId, node]));
         conversation.querySelector('.atria-play-conversation__empty')?.remove();
@@ -238,10 +240,27 @@ export function mountAtriaPlayProduct({
             existing.delete(id);
             if (id === '__draft') node.dataset.atriaDraft = 'true';
             const body = node.querySelector('.atria-play-message__body');
-            if (body.textContent !== text(entry.content)) body.textContent = text(entry.content);
+            if (body.dataset.canonicalText !== text(entry.content)) { renderSafeProse(body, text(entry.content), { openExternal: openHostExternal }); body.dataset.canonicalText = text(entry.content); }
+            if (!node.querySelector('[data-atria-message-blocks]')) {
+                const blocks = messageBlocks.filter(block => block.messageId === entry.messageId);
+                const blockRoot = documentRef.createElement('section'); blockRoot.dataset.atriaMessageBlocks = 'true';
+                for (const block of blocks) {
+                    const card = documentRef.createElement('article'), title = documentRef.createElement('h4'), data = documentRef.createElement('dl');
+                    card.dataset.blockType = block.type; card.dataset.blockId = block.id; title.textContent = block.type;
+                    for (const [key, value] of Object.entries(block.data)) {
+                        const label = documentRef.createElement('dt'), detail = documentRef.createElement('dd'); label.textContent = key;
+                        detail.textContent = typeof value === 'string' ? value : JSON.stringify(value); data.append(label, detail);
+                    }
+                    card.append(title, data); blockRoot.append(card);
+                }
+                node.append(blockRoot);
+            }
             if (conversation.children[index] !== node) conversation.insertBefore(node, conversation.children[index] || null);
         });
         for (const node of existing.values()) node.remove();
+        provisionalNode.hidden = !generating() || !provisional;
+        provisionalNode.textContent = provisional;
+        provisionalNode.dataset.generationState = generation.state;
         if (!entries.length) {
             const empty = documentRef.createElement('div');
             empty.className = 'atria-play-conversation__empty';
@@ -273,8 +292,9 @@ export function mountAtriaPlayProduct({
     }
 
     let submitting = false;
-    async function submitDraft() {
+    async function submitDraft({ revision } = {}) {
         const runtime = activeRuntime();
+        if (revision && runtime?.snapshot?.revision?.revisionId !== revision) throw new Error('Composer revision changed');
         const value = textarea.value.trim();
         if (submitting || generating()) throw new Error(tl('Generation is already running.'));
         if (!value || !runtimeWritable(runtime)) throw new Error(tl('Native Composer is not ready.'));
@@ -305,10 +325,10 @@ export function mountAtriaPlayProduct({
     function submit(event) {
         event.preventDefault();
         if (generating()) {
-            globalThis.Atria?.getContext?.()?.stopGeneration?.();
+            void headless.invoke({ service: 'host.conversation', method: 'cancel' }, {}, activeRuntime()?.snapshot?.revision?.revisionId).catch(error => { composerStatus.textContent = error.message; });
             return;
         }
-        void submitDraft().catch(error => { composerStatus.textContent = error.message; });
+        void headless.invoke({ service: 'host.composer', method: 'submit' }, {}, activeRuntime()?.snapshot?.revision?.revisionId).catch(error => { composerStatus.textContent = error.message; });
     }
 
     composer.addEventListener('submit', submit);
@@ -340,6 +360,17 @@ export function mountAtriaPlayProduct({
         ['composer', composerComponent],
     ]);
 
+    const composerApi = Object.freeze({
+        getDraft: () => textarea.value,
+        setDraft(value) { if (typeof value !== 'string' || value.length > 65536) throw new Error('Invalid Composer draft'); textarea.value = value; resizeInput(); },
+        appendDraft(value) { this.setDraft(textarea.value + value); },
+        clearDraft() { textarea.value = ''; resizeInput(); },
+        focus() { textarea.focus(); }, submit: submitDraft, submitCommitted,
+    });
+    const headless = createHeadlessConversation({ runtime: activeRuntime, composer: composerApi, generate: type => globalThis.Atria?.getContext?.()?.generate?.(type), stop: () => globalThis.Atria?.getContext?.()?.stopGeneration?.() });
+    const provisionalNode = documentRef.createElement('aside');
+    provisionalNode.dataset.atriaGenerationProjection = 'true'; provisionalNode.setAttribute('role', 'status');
+    conversationComponent.append(provisionalNode);
     render();
 
     return Object.freeze({
@@ -347,15 +378,8 @@ export function mountAtriaPlayProduct({
         conversation,
         composer,
         textarea,
-        composerApi: Object.freeze({
-            getDraft: () => textarea.value,
-            setDraft(value) { if (typeof value !== 'string' || value.length > 65536) throw new Error('Invalid Composer draft'); textarea.value = value; resizeInput(); },
-            appendDraft(value) { if (typeof value !== 'string' || textarea.value.length + value.length > 65536) throw new Error('Invalid Composer draft'); textarea.value += value; resizeInput(); },
-            clearDraft() { textarea.value = ''; resizeInput(); },
-            focus() { textarea.focus(); },
-            submit: submitDraft,
-            submitCommitted,
-        }),
+        composerApi,
+        headless,
         sessionHeader,
         getComponent(id) {
             return components.get(String(id || '').trim()) || null;

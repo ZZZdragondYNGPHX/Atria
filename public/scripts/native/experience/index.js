@@ -1,3 +1,4 @@
+import { openHostExternal } from '../frontend/external.js';
 export { createNativeSharedClient, mountNativeSharedExperience } from '../shared-client.js';
 import { createNativePresentationClient } from '../presentation-client.js';
 import { createReplyVariantController } from '../reply-variants.js';
@@ -296,7 +297,7 @@ async function saveCurrentGameSession() {
         || '',
     ).trim();
     if (!sessionId) throw new Error('No active Native Session to save');
-    return nativeProductClient.createSave(sessionId, { kind: 'quick' });
+    return nativeProductClient.createSave(sessionId, { kind: 'quick', expectedRevisionId: nativeSessionRuntime.snapshot?.revision?.revisionId });
 }
 
 async function disableCurrentPackageForSession() {
@@ -416,6 +417,7 @@ export async function reloadGamePackage() {
                 realm: next.descriptor.experienceContract?.sharedRuntime?.realm ? load.client.realmCommand : null,
                 mountReplyVariants: (element, anchor) => nextReplyController?.mount(element, anchor),
                 getSnapshot: () => nativeSessionRuntime.snapshot,
+                onBridgeEpoch: () => nativeSessionRuntime.synchronizeFrontendEpoch({ stopGeneration: stopCurrentGeneration }),
                 onBridgeRevision: async () => {
                     const sessionId = nativeSessionRuntime.snapshot?.session.sessionId;
                     if (!sessionId || nativeSessionRuntime.history || nativeSessionRuntime.generation) return;
@@ -455,6 +457,7 @@ export async function reloadGamePackage() {
                     stopGeneration: stopCurrentGeneration,
                     save: saveCurrentGameSession,
                     openDiagnostics: openGameDiagnostics,
+                    openExternal: openHostExternal,
                 },
             }).then(async session => {
                 try { load.assertCurrent(); return session; } catch (error) { await session.dispose(); throw error; }

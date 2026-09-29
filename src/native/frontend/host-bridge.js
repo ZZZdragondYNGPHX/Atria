@@ -1,3 +1,5 @@
+import { fixedHostTarget } from '../../../public/shared/native-frontend-host.js';
+import { readFixedHost, writeFixedHost } from './host-services.js';
 import { onFrontendEpochInvalidated } from './epoch.js';
 import { randomUUID } from 'node:crypto';
 import { fields } from '../../../public/shared/native-frontend-contract.js';
@@ -58,6 +60,12 @@ export class FrontendBridgeService {
             binding = state.graph.bridge.bindings.find(item => item.id === request.bindingId);
             if (!binding || !state.scopes.get(request.componentId)?.has(binding.id)) throw bridgeFailure('bridge_binding_denied');
             const receipt = values => bridgeReceipt({ bindingId: binding.id, epoch: state.epoch, revision: base.revision.revisionId, schemaDigest: binding.schemaDigest, ...values });
+            if (request.method === 'host.authorize') {
+                if (!binding.target.service || !fixedHostTarget(binding.target, binding.outputSchema?.properties?.data).local) throw bridgeFailure('bridge_method_denied');
+                if (request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
+                bridgeValue(request.input ?? {}, binding.inputSchema);
+                return receipt({});
+            }
             if (['operation.get', 'operation.cancel'].includes(request.method)) {
                 const op = state.operations.get(request.operationId);
                 if (!op || op.bindingId !== binding.id || binding.kind !== 'operation') throw bridgeFailure('bridge_operation_denied');
@@ -78,15 +86,16 @@ export class FrontendBridgeService {
                 return await result;
             }
             if (request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
-            const values = binding.target.resourceId
+            const values = binding.target.service ? await readFixedHost(services.core, owner, state, base, binding, mapBridgeInput(binding, input)) : binding.target.resourceId
                 ? JSON.parse(state.installed.assets.get(state.installed.manifest.runtime.experienceContract.dataResources.find(ref => ref.resourceId === binding.target.resourceId).assetId).toString('utf8'))
                 : projectApplication(base, binding.target.domainId).map(({ id, value }) => ({ id, value }));
+            if (state.revoked) throw bridgeFailure('bridge_epoch_stale');
             if (!binding.collection) {
                 if (request.method !== 'read.snapshot' || request.cursor) throw bridgeFailure('bridge_method_denied');
                 return receipt({ data: bridgeValue(values, binding.outputSchema) });
             }
             if (request.method !== 'read.page' || !Array.isArray(values) || values.length > 10000) throw bridgeFailure('bridge_method_denied');
-            const query = hash(canonicalJson({ input, binding: binding.id, order: binding.collection.orderBy }));
+            const query = hash(canonicalJson({ input, binding: binding.id, order: binding.collection.orderBy, source: hash(canonicalJson(values)) }));
             let offset = 0;
             if (request.cursor) {
                 const cursor = state.cursors.get(request.cursor);
@@ -108,6 +117,10 @@ export class FrontendBridgeService {
     }
     async write(services, state, binding, request, input, base, receipt) {
         const mapped = mapBridgeInput(binding, input);
+        if (binding.target.service) {
+            if (request.method !== 'action.invoke') throw bridgeFailure('bridge_method_denied');
+            return receipt(await writeFixedHost(services.core, state.owner, state, binding, mapped, request.revision));
+        }
         const invocationId = 'fb:' + hash(canonicalJson({ epoch: state.epoch, binding: binding.id, key: request.idempotencyKey }));
         if (binding.kind === 'action' && request.method === 'action.invoke') {
             const snapshot = await services.core.applyLifecycleCommand(state.owner, state.sessionId, { type: 'lifecycle', invocationId,

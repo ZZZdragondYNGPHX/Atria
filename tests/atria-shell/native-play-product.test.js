@@ -154,11 +154,12 @@ describe('A6 Atria-native Play product', () => {
         await flush();
         expect(product.conversation.firstElementChild).toBe(first);
         expect(product.conversation.scrollTop).toBe(40);
-        expect(product.conversation.querySelector('[data-atria-draft]').textContent).toContain('An unfinished reply');
+        expect(product.root.querySelector('[data-atria-generation-projection]').textContent).toContain('An unfinished reply');
         expect(runtime.snapshot.timeline).toHaveLength(2);
         document.body.dataset.generating = 'false';
         await flush();
         expect(product.conversation.querySelector('[data-atria-draft]')).toBeNull();
+        expect(product.root.querySelector('[data-atria-generation-projection]').hidden).toBe(true);
         delete document.body.dataset.generating;
         product.dispose();
     });

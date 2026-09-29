@@ -142,8 +142,9 @@ export function assertPresentationNode(node) {
     if (node.asset !== undefined && node.tag !== 'img') throw new TypeError('Asset sink requires img');
     if (!Array.isArray(node.children) || node.children.length > FRONTEND_LIMITS.nodes || (VOID_TAGS.has(node.tag) && node.children.length)) throw new TypeError('Invalid element children');
     for (const [name, value] of Object.entries(node.bindings ?? {})) {
-        if (!['text', 'value', 'checked', 'disabled', 'hidden', 'class', 'title', 'aria-label'].includes(name)) throw new TypeError('Unsupported binding sink');
+        if (!['text', 'prose', 'value', 'checked', 'disabled', 'hidden', 'class', 'title', 'aria-label'].includes(name)) throw new TypeError('Unsupported binding sink');
         expression(value);
+        if (name === 'prose' && (node.children.length || node.bindings.text)) throw new TypeError('Prose owns its inert children');
     }
     for (const [event, id] of Object.entries(node.events ?? {})) { if (node.tag !== 'component' && !EVENTS.has(event)) throw new TypeError('Unsupported event'); identifier(event); identifier(id); }
     for (const record of [node.props ?? {}, node.styles ?? {}]) for (const [id, value] of Object.entries(record)) { identifier(id); expression(value); }
