@@ -804,7 +804,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         body.append(heading(documentRef, 'Experience', 'Choose how readers experience this work. Component, hybrid and full modes use your project interface.'));
         const mode = selectInput(documentRef, current.mode || 'text', ['text', 'component', 'hybrid', 'full'], 'Experience mode');
         const frontend = textInput(documentRef, current.frontend?.source || 'frontend/index.json', 'Frontend source index');
-        const features = documentRef.createElement('textarea'); features.className = 'text_pole'; features.value = JSON.stringify(current.features || [], null, 2); features.setAttribute('aria-label', 'Runtime features');
+        const features = documentRef.createElement('textarea'); features.className = 'text_pole'; features.value = JSON.stringify(current.features || [], null, 2); features.setAttribute('aria-label', translateShellText('Runtime features'));
         body.append(
             field(documentRef, 'Mode', mode),
             field(documentRef, 'Frontend source index', frontend),

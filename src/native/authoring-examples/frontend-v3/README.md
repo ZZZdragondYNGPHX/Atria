@@ -1,4 +1,4 @@
-# Native Frontend v3 authoring — Phases 2–7
+# Native Frontend v3 authoring — Phases 2–8
 
 `frontend.json` identifies Views, Components, global styles and exact assets.
 Each `.aui` file contains one `<template>`, optional JSON `<contract>` and optional
@@ -659,3 +659,41 @@ Validation is on demand rather than keystroke-triggered. Structured changes and
 raw drafts are compiled before Review; final application validates again and rolls
 back failures. General graph-level errors may point to a source file/block rather
 than one token. Accessibility diagnostics are advisory, not certification.
+
+## Phase 8 — Integrated district acceptance
+
+`tests/native/helpers/frontend-heavy-fixture.js` composes six Views in one
+native@3 Package: Story, Phone (SMS/Social/Mail), Church stores, Schedule, People
+and a Canvas relationship map. Domain records are seeded and changed through
+typed SessionCore Application commands. People uses opaque eight-row pages over
+25 residents; the QuickJS Controller reads the same scoped People collection.
+Remote portraits use a declared origin and exact fallback, never bundled remote
+image bytes. Package-owned CSS, Components, local routing and shared Draft state
+require no v2 style or semantic adaptation.
+
+The shared acceptance harness builds a real Project, installs the archive and
+serves hash-checked installed Runtime resources. Preview is compared against that
+same graph. AI summary retains real `NativeGenerationHost.executeTask`, scheduler,
+typed result validation and SessionCore finalization; only model execution is a
+deterministic test double. A fail-on-send provider guard asserts `providerCalls=0`.
+This is not evidence of external-provider execution.
+
+- `tests/native/frontend-heavy.test.js`: Component/Hybrid/Full Build/Preview/
+  install/feature preflight, scoped writes, revision and cursor guards, Managed/
+  Headless projection equality, Task completion, SavePoint restore and revocation.
+- `tests/frontend/native-frontend-heavy.smoke.mjs`: real Edge desktop (1440px)
+  and touch-emulated mobile (390px), business panels, safe Prose, provisional
+  narration separation, AI summary, pagination, remote denied/offline/fallback,
+  local section retry, Canvas/Worker restart, Draft retention and presentation
+  recovery without write replay. Full uses the existing Host recovery controls.
+
+Run the Jest suite from `tests` with `npm run test:unit:serial --
+--runTestsByPath native/frontend-heavy.test.js`. From the repository root, run
+`node tests/frontend/native-frontend-heavy.smoke.mjs` with frontend bundles built.
+`ATRIA_BROWSER_CHANNEL` can select another installed Chromium channel. Browser
+evidence is ignored under `.git/frontend-v3-heavy-evidence`.
+
+Composition events and keyboard viewport in this harness are synthetic. Physical
+IME, real soft keyboard, Android/Termux and external media/provider acceptance
+need separate device/service evidence. These fixtures are Core tests, not a
+release or upgrade of any asset in the independent `package` workspace.
