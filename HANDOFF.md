@@ -2,43 +2,41 @@
 
 Task ID: `plugin/atria-mcp-capability-expansion`
 Primary Workspace: `plugin`
-Status: **Phase 2 complete and pushed; stopped before Phase 3**
+Status: **Phase 3 complete and pushed; stopped before Phase 4**
 Plan: `plans/plugin/atria-mcp-capability-expansion.md`
 Record: `records/plugin/atria-mcp-capability-expansion.md`
 
 ## Actual checkpoints
 
-- Plugin / tested HEAD: `plugin@038f061223684c9e36ad3340dd08d8a295d625bf` (pushed).
-- Auxiliary product branch / tested HEAD: `feat/mcp-development-authority@46d717dd177d2825d420ab21d53f13968f645afe` (pushed, retained, not merged).
-- Main baseline: `main@c936b0aa4c42cf5711f40ae4a00f5fc3432813dc` (unchanged).
-- Docs pre-phase baseline: `5a3c2204b55187ca0f2e04d973eb89f5981006eb`; use actual latest remote docs HEAD on resume.
-- Clean existing plugin/docs worktrees reused. Product feature created only after then-current main revalidation confirmed missing direct startup-source-bound runtime identity. No main-to-plugin merge; caller's original product checkout unchanged.
+- Plugin / real-integration-tested HEAD: `4d8cbb9da376b3417f47e6f3e23d9eba09b1c1ae`, pushed.
+- Product / real-integration-tested HEAD: `feat/mcp-development-authority@defeaabacd918966f3fda6f3be3dcb2a789deebd`, pushed, retained, not merged.
+- Main baseline: `c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`, unchanged.
+- Docs pre-phase baseline: `55690046979aea005391595bb265932a5c3f161d`; use actual latest remote docs HEAD on resume.
+- Existing plugin/docs/product worktrees reused; caller's original checkout unchanged. No main-to-plugin merge or reference access.
 
 ## Completed and verified
 
-Phase 1 remains complete. Phase 2 adds the minimal product diagnostics runtime identity and document boot header, independent plugin source fingerprint protocol, Source/Server comparison, page restart/reload freshness and separate last-observed Experience/Project/Workspace/Preview evidence. Three fixed internal browser adapters exist with schemas, literal dispatch, availability and output filtering; Registry READ population belongs to Phase 3.
+Phases 1–3 complete. Registry has **102 READ actions** (76 fixed HTTP / 26 fixed browser); exactly 18 public tools. High-level snapshot composes independent evidence with explicit missing/permission results. `atri_api` remains Native GET-only; reviewed POST reads are private adapters with CSRF/auth/ownership/admin checks. No mutation, trusted approval or Lease enabled.
 
-- Plugin final HEAD: `npm test` **24/24**, syntax checks, verifier syntax, Git diff checks passed.
-- Product: **4 targeted Jest suites / 17 tests**, targeted ESLint and diff checks passed.
-- Real disposable Atria + Edge integration at the exact plugin/product HEADs passed: EXACT/CURRENT, tracked source changed after startup, different revision checkout, actual restart with stale page, reload restoring CURRENT. Desktop/mobile screenshots captured; desktop shell/onboarding visually inspected. Source changes restored; owned runtime and temporary data cleaned up.
-- Product frontend startup build succeeded after isolated dependency installation repaired missing QuickJS packages. Earlier broken-bundle run is not UI-pass evidence. SPA history false invalidation and transient empty frame URL were fixed and regression-tested.
-- GitHub queried at both implementation HEADs: zero check-runs and zero commit statuses; combined pending. **No remote CI pass claimed.** No PR or broad manual CI created this phase.
+Minimal product additions reuse existing authority: pure scoped SettingsRepo observation (legacy `/get` can seed data), Library getExact route, Orchestrator workspace run projection, loaded Memory read factory/last projection and non-persisting observation recall. No second frontend, Memory, agent or provenance store.
 
-## Remaining work and frozen boundaries
+- Plugin full suite **30/30**, final affected suites **12/12**, 11-module syntax/verifier syntax/diff passed.
+- Product **5 targeted suites / 124 tests**, targeted ESLint/diff passed.
+- Real final-HEAD disposable Atria + Edge passed EXACT, stale/reload, Studio source/revision/validation/preflight/Source Graph/stale-base rejection/Preview API, Session/Timeline/history/branches/saves/runtime and exact PackageVersion/Library reads. Separate fixture setup wrote only owned temporary data; MCP only read, preserving Project revision.
+- Eight real browser READ adapters succeeded for Memory scope/injection/last recall, Orchestrator presets/idle run/checkpoints and game identity/LLM status. These are **idle/empty** results, not populated Memory or executing Agent evidence.
+- Desktop/narrow shell captures exist; no rendered active Preview/Experience UI pass. Paid-provider probe/vector/recall, populated Memory, executing Agent traces, active Epoch changes and Workspace/evaluation/Preview UI remain later integration obligations.
+- Both implementation HEADs: zero GitHub check-runs/statuses, combined pending. **No CI pass claimed.** No full product suite or Android/device check.
+- Owned runtime/browser/temp data cleaned up; ignored evidence remains in `atria-mcp/.artifacts/atria-1790694878994/`.
 
-- **Phase 3 only next:** Full READ semantic actions for Chat/Session, Build/Studio, Library, Package/Work, Memory, Agents, Settings, Connections/Models/Routes, Diagnostics and selected browser-owned runtime projections; high-level diagnostic snapshot and actual READ integration. Do not start Phase 4.
-- Registry is intentionally empty at this checkpoint. Internal adapters `memory.schema.scope`, `agents.presets.list`, `game.loaded.identity` are infrastructure, not a generic dispatch tool. Register through the existing exact-risk executor/ceiling; prefer stronger server authority.
-- Canonical `serverBootId` only. Startup identity is immutable; status must not recompute it or silently refresh browser-loaded boot identity.
-- Keep Source/Server/Browser and Experience/Project/Workspace/Preview separate. Scoped evidence is last-observed, not a current freshness assertion. Missing authoring identities remain unknown. Source EXACT does not prove dependencies/config/user data identity or active Preview correctness.
-- Native Frontend v3 / Studio own Source Graph, diagnostics, frontend.patch, evaluation, Preview and Experience Epoch. Build remains the semantic namespace. Frontend Host Bridge and MCP Browser Capability Bridge are distinct.
-- Exactly 18 public tools. No legacy aliases, confirm, allow-writes or arbitrary JS/capability dispatch. `atri_api` remains discovered Native GET-only. No trusted approval/Lease or product mutation implemented.
-- Committed Conversation/Timeline is immutable; GenerationProjection is ephemeral presentation.
-- Real active Session Epoch invalidation, Studio Workspace/evaluation/Preview, Memory/Orchestrator scenarios are not yet verified. These currently have scoped fixture/unit or adapter tests, not real product-flow evidence. No Android or full product-suite pass claimed.
-- Reuse the retained product branch/worktree; do not merge it into main until the Plan's integration stage. Do not merge main into plugin.
+## Next objective and frozen boundaries
 
-## Resume requirements
+Next: **Phase 4 only — Authorization / Receipts / Safe Mutations**. Do not begin Phase 5.
 
-Fetch main/plugin/docs/product-feature refs and inspect dirty state. Read latest plugin AGENTS, complete docs README, this HANDOFF, approved Plan and the same Record. Reuse suitable worktrees and preserve unrelated changes. HANDOFF belongs to this task; never overwrite it if another task has acquired the live slot. Do not repeat Phases 1/2 or reopen frozen design.
+Implement trusted authorization, server-minted leases, exact policy/risk/target guards, receipts and approved non-destructive operations. Reuse registered authorities and the same feature. Recheck guards after approval. A model-provided confirm value is not approval. No legacy aliases, confirm/allow-writes, arbitrary JS/capability dispatch or generic Native write escape hatch.
+
+Canonical `serverBootId` only. Source/Server/Browser and Experience/Project/Workspace/Preview are independent; last-observed scope evidence does not prove current exact identity. Preserve Native Frontend v3/Studio Source Graph, diagnostics, frontend.patch, formal evaluation, Preview and Experience Epoch. Build stays the semantic namespace. Frontend Host Bridge differs from MCP Browser Capability Bridge. Committed Conversation/Timeline is immutable; GenerationProjection is ephemeral. Product feature stays separate from main until the final integration gate.
+
+Fetch/check refs and dirty state first. Read latest plugin AGENTS, full docs README, this HANDOFF, Plan and same Record. Do not repeat Phases 1–3. Refresh this same Record/HANDOFF only while its live slot belongs to this task. After Phase 4 validation/commit/push/CI reporting and docs, provide Phase 5 handoff and stop.
 
 ## Copyable new-conversation prompt
 
@@ -49,25 +47,22 @@ Primary Workspace: plugin
 Approved Plan: docs:plans/plugin/atria-mcp-capability-expansion.md
 Status: Approved Implementation Plan v1.1 — Post-Frontend-Refactor Revalidated
 
-Phase 2 已完成并推送；当前只执行 Phase 3 — Full Read Authority，不开始 Phase 4。
-必须先 fetch 并核对真实远端 refs 与 dirty state：
-plugin@038f061223684c9e36ad3340dd08d8a295d625bf
-feat/mcp-development-authority@46d717dd177d2825d420ab21d53f13968f645afe
+Phase 3 已完成并推送；当前只执行 Phase 4 — Authorization / Receipts / Safe Mutations，不开始 Phase 5。
+先 fetch 并核对真实远端 refs 与 dirty state：
+plugin@4d8cbb9da376b3417f47e6f3e23d9eba09b1c1ae
+feat/mcp-development-authority@defeaabacd918966f3fda6f3be3dcb2a789deebd
 main@c936b0aa4c42cf5711f40ae4a00f5fc3432813dc
 docs 使用真实最新 HEAD。
 
-读取最新 plugin:AGENTS.md、docs:README.md、docs:HANDOFF.md、上述 Plan 与 docs:records/plugin/atria-mcp-capability-expansion.md。沿用同一 Record/live HANDOFF；若 HANDOFF 已属于其它活跃任务，不得覆盖。
+读取最新 plugin:AGENTS.md、docs:README.md、docs:HANDOFF.md、上述 Plan 与 docs:records/plugin/atria-mcp-capability-expansion.md。沿用同一 Record/live HANDOFF；若 HANDOFF 属于其它任务，不得覆盖。复用现有 plugin/docs 与独立产品工作树，不将 main merge 到 plugin，不提前合并产品 feature。
 
-复用现有 plugin/docs 与独立产品工作树。feat/mcp-development-authority 已有必要的只读 current runtime identity/startup fingerprint/full revision binding，保留且未合并；不要新建重复产品 authority，不将 main merge 到 plugin。
+Phase 3 已有 102 READ actions（76 HTTP / 26 browser）与 high-level snapshot。优先 Native server authority；fixed bridge 只用于 Memory/Orchestrator/selected browser-owned game-runtime。产品已有 pure scoped Settings observation、既有 Library exact route、Orchestrator 工作台 projection、Memory loaded read factory 与不持久化的 observation recall。不要重复实现。
 
-Phase 3 实现 Plan 的完整 READ semantic catalog 和 high-level diagnostic snapshot，优先现有 Native server authority；只有没有更强 server authority 的 allowlisted Memory/Orchestrator/selected game-runtime 浏览器 APIs 才使用固定 bridge。现有三个内部 adapters 尚未注册公共 READ actions。
-
-保留 canonical serverBootId，禁止 runtimeBootId。Source/Server/Browser 与 Experience/Project/Workspace/Preview provenance 独立；last-observed scoped evidence 不能冒充当前 exact 验证。
-复用 Native Frontend v3/Studio 正式 authority，Build 保持语义命名空间。不重建 Source Graph、diagnostics、frontend.patch、evaluation、Preview、Experience Epoch。Frontend Host Bridge 不等于 MCP Browser Capability Bridge。
+严格保留 18 public tools、canonical serverBootId；禁止 runtimeBootId、legacy aliases/confirm/allow-writes、任意 JS/capability dispatch。atri_api 仍只允许 Native GET。按 Plan 实现可信审批、Lease、Receipt、审批前后双重 guards 和受控非破坏性操作。
+Source/Server/Browser 与 Experience/Project/Workspace/Preview provenance 独立；last-observed 不能冒充当前 exact。复用 Native Frontend v3/Studio 正式 Source Graph、diagnostics、frontend.patch、evaluation、Preview、Experience Epoch；Build 保持语义命名空间；Frontend Host Bridge 不等于 MCP Browser Capability Bridge。
 Committed Conversation/Timeline 不可变；GenerationProjection 是 ephemeral presentation。
-公开 MCP surface 严格 18 tools；不恢复 legacy aliases/confirm/allow-writes；atri_api 只允许 Native GET，不允许任意 JS/capability dispatch；不提前实现 Phase 4 approval/Lease/mutation。
 
-Phase 2 验证：Plugin 24/24；产品定向 4 suites/17 tests；语法/ESLint/Git diff；真实 disposable Atria+Edge 的 source/server/browser EXACT、源码变化、不同 revision、重启 stale、reload current 均通过。真实 active Session Epoch、Studio Preview/Workspace、Memory/Orchestrator 场景未验证。两实施 HEAD 均无 check-run/status，不能声称 CI 通过。
+验证：Plugin 30/30、最终定向 12/12；产品 5 suites/124 tests；语法/ESLint/diff；最终 HEAD 真实 disposable Atria+Edge READ 集成通过。Memory/Orchestrator browser 证据仅 idle/empty；付费 provider、非空 Memory、执行中 Agent、active Epoch、Workspace/evaluation/Preview UI 仍未真体验证。两实施 HEAD 无 check-run/status，不能声称 CI 通过。
 
-Phase 3 完成后按 Governance 验证、commit/push，更新同一 Record/HANDOFF，记录实际 HEAD/baseline/验证与 CI，提供 Phase 4 接手提示词并停止。
+Phase 4 完成后按 Governance 验证、commit/push、记录真实 HEAD/baseline/CI，更新同一 Record/HANDOFF，给 Phase 5 接手提示词并停止。
 ```

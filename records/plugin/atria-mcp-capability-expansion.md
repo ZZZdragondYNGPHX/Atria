@@ -124,3 +124,54 @@ Environment: Windows, Node.js v24.18.0, npm 11.16.0, installed Microsoft Edge vi
 - Plugin and product feature commits pushed. GitHub queried for both exact HEADs: **zero check-runs, zero commit statuses, combined state `pending`**. No remote CI pass claimed. Product workflows do not automatically run on this feature push; no PR or manual broad workflow was created for this phase.
 - Main remains at the verified baseline. Product feature is not merged or deleted at this phase boundary. Preserve/reuse it for later task stages.
 - Same Record and task-owned live HANDOFF updated. Next stage is **Phase 3 — Full Read Authority**, only on a new explicit continuation. Fetch all real refs before resuming; keep the exact 18-tool surface and preference for stronger server authority.
+
+## Phase 3 — Full Read Authority
+
+Status: **Complete; pushed; stopped before Phase 4** (2026-09-29).
+
+### Actual checkpoints
+
+- Start plugin: `038f061223684c9e36ad3340dd08d8a295d625bf`; end / real-integration-tested plugin: `4d8cbb9da376b3417f47e6f3e23d9eba09b1c1ae`, pushed.
+- Start product feature: `46d717dd177d2825d420ab21d53f13968f645afe`; end / real-integration-tested `feat/mcp-development-authority`: `defeaabacd918966f3fda6f3be3dcb2a789deebd`, pushed, retained, not merged.
+- Main remains `c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`.
+- Docs start: `55690046979aea005391595bb265932a5c3f161d`; use real latest remote docs HEAD on resume.
+- Initial fetch/dirty checks confirmed supplied refs and clean existing plugin/docs/product worktrees. Read current AGENTS, full Governance, task-owned HANDOFF, Plan and this Record. Reused worktrees; no main-to-plugin merge, reference access or caller-checkout changes. Re-fetched before push; no concurrent ref changes.
+
+### Delivered and authority decisions
+
+- **102 READ actions**: 76 fixed HTTP and 26 fixed browser adapters. Exactly 18 public tools. Descriptors provide schemas, owning authority, risk, external effects and runtime prerequisites. Exact-ID Policy Ceiling is created after registration. No approval/Lease/mutation implementation.
+- Native reads cover Session inventory/detail/snapshot/saves/health/runtime, immutable Timeline/history/branches, generation status; Build Project/source/revision/history/diff/resource closure/validation/preflight, Native Frontend v3 Source Graph/diagnostics and existing Preview compiled identity; Library inventory/exact/graph/references/Used By/delete-safety/bundle inspection/fork preflight; Work/version/dependencies/resource setup; Generation configuration/resources/presets/retrieval, Connections/Models/Routes, opaque Secret references, scoped Settings, Diagnostics and ProjectAgent task/context.
+- Reviewed POST-shaped reads use a private fixed transport with actual CSRF/auth/ownership/admin checks, blocked redirects, response limits, and per-response `serverBootId`/timestamp. `atri_api` remains discovered Native GET-only; no model-selectable method/path/capability/JS dispatch.
+- Outputs are redacted before bounded paging; fragments include content hashes and cannot claim an atomic snapshot. Studio source base64 is decoded before filtering; non-UTF-8 output is metadata-only. Bundle inspection/preflight keeps payloads internal and returns references/dependencies/conflicts.
+- `connection.probe` resolves an existing ConnectionProfile ID through Native Generation; no model-supplied credentials or arbitrary endpoint. Secret inventory projects only opaque ID/label. Probe/vector/recall declare network/possible-cost effects separately from READ risk; snapshots do not invoke them automatically.
+- High-level snapshot composes source/server/browser identity, browser failures, modules/logs/incidents/startup/provenance and independent last-observed Experience/Preview evidence. Missing/permission-denied evidence remains explicit. Reads are not atomic and do not prove current exact scoped identity.
+- Fixed browser reads cover Memory scope/schema/nodes/edges/candidates/briefs/expansion/keyword/vector/name/compaction candidates/injection/last projection/observation recall; Orchestrator preset inventory/bindings/run/graph/timeline/model/tool/recall/diagnostics/token/cost/checkpoints; browser-loaded game identity/LLM status/presentation. Persisted preset/binding reads prefer SettingsRepo. LLM status is explicitly not GenerationProjection or committed Conversation.
+- Browser dispatch remains literal with strict inputs, bounded/redacted/paged output, Set-to-array injection projection and document/Session/branch/observed Experience change checks. Last-observed scoped evidence never becomes a current exact claim. Non-empty Memory reads require an already loaded owning store.
+
+### Minimal product gaps filled on the retained feature
+
+- Legacy Settings `/get` can seed/migrate state. Added authenticated pure `/api/settings/observe` over SettingsRepo: scoped catalog/get/search, no seeding, secret/generation-configuration exclusions, root-dump rejection and path/type-only search.
+- Exposed existing Native Library `getExact` through Studio HTTP; no new Library store or resolution logic.
+- Exposed existing Orchestrator `workspaceRunView(getCurrentRun())`, rejecting stale requested run IDs; no second run store or execution mechanism.
+- Existing Memory write-session/source reconciliation/recall access accounting can persist changes. Added loaded-store read factory/last projection and observation recall through existing lifecycle. Read-only snapshots skip persistence/cache publication/access accounting while preserving source guards; normal write/recall paths retain their behavior.
+- Canonical `serverBootId` and startup identity are preserved. No new Frontend Host Bridge, Source Graph, diagnostics compiler, frontend.patch, evaluation, Preview or Experience Epoch authority.
+
+### Actual verification
+
+Environment: Windows, Node.js v24.18.0, installed Edge via `ATRIA_TEST_BROWSER_CHANNEL=msedge`.
+
+- Plugin full suite **30/30**, zero skips. After final naming/metadata/scoped-check adjustments, affected read-authority/unit suites **12/12**. Includes exact 18-tool stdio, fixed risk/path/CSRF, opaque references, decode-before-redaction, paging, injection Sets, real Edge scope drift and earlier repository/provenance regressions.
+- `npm run check`: all 11 modules; verifier syntax and working/staged diff checks passed.
+- Product targeted Jest **5 suites / 124 tests**: settings-observation, native/studio-resource-http, memory-graph/source-lifecycle, memory-graph/read-api, orchestrator/run-state-store. New coverage proves pure Settings, authenticated exact Library delegation and non-persisting observation recall with stale-source rejection. Targeted ESLint passed on all seven touched implementation modules; diff checks passed.
+- Real disposable Atria + Edge READ integration passed first against staged implementation and then against the exact final plugin/product HEADs above with clean product checkout. Final run discovered 164 routes/23 references; frontend core bundle returned 200.
+- Separate test setup created disposable Project/Package/Session/Preview through normal product APIs. MCP only read them: Studio source/revision/history/closure/validation/preflight, Source Graph, stale baseRevision rejection (409), exact compiled Preview, PackageVersion/Library exact, Session detail/Timeline/history/branches/saves/runtime. Project revision remained unchanged after READ.
+- Real browser reads succeeded for memory.schema.scope, memory.injection, memory.recall.last, agents.presets.list, agents.run.get, agents.checkpoints, game.loaded.identity and game.llm.status. These were **idle/empty** results: global scope, empty injection/checkpoints, null recall, built-in presets, idle run/game. They do not prove populated Memory or executing Agent scenarios.
+- Final Source/Server `EXACT`; actual restart -> browser `STALE`; reload -> `CURRENT`. Source fingerprint `feb27484b24cc365c26da539888c5aeeb081ed0e79fa5bce7a6c1c5a56698f38`. Boot changed from `7227a3c7-8a23-43ad-b67d-8b85ceeaab64` to `513401d3-dc87-4447-9736-ca8d2ec1bed1`. Historical evidence only.
+- Captured desktop 1440×1000 and narrow 390×844 shell evidence, not a rendered active Preview/Experience flow. Final ignored evidence: `atria-mcp/.artifacts/atria-1790694878994/`. Owned runtime/browser/temp dataRoot/config cleaned up; no data/logs/screenshots/generated bundles committed. Expected restart websocket failures remain; no zero-error UI claim.
+
+### Remote CI, limits and next checkpoint
+
+- Both implementation HEADs pushed. Each has **0 GitHub check-runs, 0 commit statuses**, combined `pending`. **No CI pass claimed.** No PR/manual broad workflow, full product suite or Android/device validation.
+- Live paid-provider probe/vector/recall, populated Memory graph/injection, executing Agent traces, active Experience Epoch revocation and rendered Workspace/evaluation/Preview binding remain unverified end-to-end. Current evidence distinguishes product/unit/fixture coverage from real server READ and idle browser flows.
+- Missing older endpoints/capabilities fail without storage fallback. Cross-call paging may change; compare hashes. Unlabelled secrets in free text retain the documented best-effort redaction limitation.
+- Plan v1.1 unchanged. Same Record/live HANDOFF updated; product feature retained separately from main. Next stage only on explicit continuation: **Phase 4 — Authorization / Receipts / Safe Mutations**, stopping before Phase 5.
