@@ -3,7 +3,7 @@
 **Task ID:** `plugin/atria-mcp-capability-expansion`  
 **Primary Workspace:** `plugin`  
 **Plan Workspace:** `docs`  
-**Status:** Discussion Draft v0.11  
+**Status:** Discussion Draft v0.12  
 **Current implementation baseline:** `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`  
 **Implementation path:** `plugin:atria-mcp/`
 
@@ -1399,7 +1399,191 @@ It becomes the shared source of truth for:
 This keeps authorization behavior consistent across domains rather than duplicating custom policy in dozens of independent MCP tools.
 
 
-## 18. Diagnostic workflow target
+
+
+## 18. Semantic action contracts: Descriptor, Lease and Receipt
+
+The Semantic Action Registry is governed by three explicit contracts:
+
+- Action Descriptor — what an action is and how it may execute;
+- Capability Lease — what the user has authorized for this MCP instance/session;
+- Operation Receipt — what actually happened.
+
+These replace the current coarse `--allow-writes + confirm=true` model.
+
+### 18.1 Action Descriptor
+
+Every registered semantic action must have a versioned descriptor containing at least:
+
+- stable action id;
+- domain/title;
+- semantic risk class;
+- owning authority/adapter;
+- input/output schema;
+- external-effect metadata;
+- required guards;
+- approval/lease characteristics;
+- availability requirements.
+
+The action id determines its authority. The model cannot choose or override the implementation authority.
+
+Example authorities include:
+
+- Native Session;
+- Native Studio;
+- Native Library/Product;
+- fixed Browser Capability Bridge for Memory/Orchestrator.
+
+### 18.2 Guard metadata
+
+Descriptors should declare execution guards rather than relying on ad-hoc per-tool behavior.
+
+Guard classes include, where applicable:
+
+- optimistic concurrency / expected revision;
+- preflight;
+- prior evaluation receipt;
+- reference/delete safety;
+- exact artifact/content identity;
+- runtime/browser identity requirements.
+
+Examples:
+
+- Chat send requires expected Session revision;
+- Build apply requires base revision + matching evaluation receipt;
+- Package install requires reviewed artifact/preflight + base PackageVersion;
+- Library destructive actions require delete/reference safety;
+- Memory targeted edits should use stale-state/fingerprint protection where practical.
+
+If a product guard already proves an action invalid, MCP should fail before asking the user for approval.
+
+### 18.3 Policy Ceiling
+
+The MCP server has a maximum capability policy for the lifetime of that server instance.
+
+The Policy Ceiling determines which actions/scopes are ever eligible to execute and replaces the long-term role of one global `--allow-writes` switch.
+
+Default policy is READ-oriented.
+
+A future explicit policy file/profile may define allowed action sets by risk/domain/scope, but newly added actions must not silently inherit broad historical grants.
+
+### 18.4 Capability Lease
+
+A Capability Lease is server-minted, opaque authorization state produced from a real user approval path.
+
+A lease may bind:
+
+- exact action IDs;
+- target/object scope such as Session/Project IDs;
+- maximum uses;
+- issuance/expiry;
+- MCP instance identity;
+- narrow machine-verifiable ownership conditions such as objects created by specific receipts.
+
+Leases are not model-authored policy documents.
+
+The model may carry a `leaseId`, but cannot modify the lease's grants/scope/expiry.
+
+Domain shortcuts, if supported in UX, must expand to a fixed current action-ID set at lease issuance so future actions do not silently inherit old authorization.
+
+### 18.5 Approval channel
+
+The preferred user-approval mechanism is a trusted MCP/client round-trip approval/elicitation mechanism when available.
+
+The current model-supplied `confirm=true` pattern is not considered proof of human approval and should be retired.
+
+When a trusted round-trip approval channel is unavailable:
+
+- use the server Policy Ceiling plus the client's own tool-approval mechanism for one-shot execution where appropriate;
+- do not mint broader session/domain leases from an untrusted model boolean;
+- do not fall back to pretending `confirm=true` is equivalent to human consent.
+
+### 18.6 Destructive leases
+
+DESTRUCTIVE operations default to one-shot approval.
+
+Broader destructive leases are allowed only for objectively enforceable narrow cleanup scopes, for example:
+
+- Sessions created by this MCP instance;
+- Projects created by specific MCP receipts;
+- other objects whose origin can be cryptographically/structurally tied to MCP receipts.
+
+Natural-language-only scopes such as "delete test things" are insufficient for destructive authority.
+
+### 18.7 Operation Receipt
+
+INTERACT, MUTATE and DESTRUCTIVE semantic actions should emit a versioned Operation Receipt where practical.
+
+A common receipt shape should support:
+
+- receipt id/version;
+- action id/risk/status;
+- start/end timestamps;
+- target identity;
+- before/after authority identity;
+- created/changed/deleted objects;
+- external effects;
+- runtime/source/browser provenance;
+- recovery/reversibility information;
+- parent/child receipt linkage.
+
+Sensitive credentials/Secrets must never enter receipts.
+
+### 18.8 Receipt ownership and cleanup
+
+Receipts should identify MCP provenance more strongly than a simple boolean.
+
+Useful origin fields include:
+
+- MCP instance id;
+- parent receipt id;
+- creating receipt id for created objects.
+
+This enables narrow cleanup leases to verify exactly which objects were created by the current MCP workflow.
+
+### 18.9 Agent receipt composition
+
+Agent-run receipts may reference child receipt IDs for semantic actions performed by the Agent.
+
+This enables traceability from:
+
+`Agent Run -> step/tool call -> semantic mutation receipt -> exact changed object`
+
+without duplicating all child details into the parent receipt.
+
+### 18.10 Receipt lifetime
+
+Receipts and leases are ephemeral MCP-instance state by default.
+
+When the stdio MCP process ends:
+
+- active leases expire;
+- ephemeral receipts/evaluation handles expire unless explicitly persisted by a future design.
+
+Persistent product evidence should be promoted deliberately into Atria-owned diagnostic/Incident authority rather than automatically writing every MCP operation into product data.
+
+### 18.11 Unified executor sequence
+
+Semantic executors should follow a common fail-closed sequence:
+
+1. resolve Action Descriptor;
+2. require executor risk to match descriptor risk;
+3. check action availability;
+4. enforce server Policy Ceiling;
+5. validate input schema;
+6. perform product guard/preflight/concurrency checks;
+7. resolve a valid Capability Lease;
+8. if absent, request trusted user approval where supported;
+9. re-check guards after approval;
+10. execute only through the owning authority;
+11. redact/filter output;
+12. mint Operation Receipt;
+13. return result + receipt.
+
+Guard state must be checked again after approval because product state may have changed while waiting for the user.
+
+
+## 19. Diagnostic workflow target
 
 A successful end-state workflow should allow an AI to move through evidence such as:
 
@@ -1413,7 +1597,7 @@ For chat/generation issues it should support:
 
 `Session/message state -> relevant runtime/config -> authorized test message -> generation/UI result -> diagnostics -> source diagnosis -> authorized cleanup when requested`
 
-## 19. Non-goals currently frozen
+## 20. Non-goals currently frozen
 
 This expansion is not intended to:
 
@@ -1424,12 +1608,12 @@ This expansion is not intended to:
 - bypass Native Session, Studio/ProjectStore, Library, Package or other Atria ownership rules;
 - grant unattended destructive control over user data.
 
-## 20. Open design topics
+## 21. Open design topics
 
 The following remain intentionally unresolved and should be settled through further discussion before implementation planning:
 
 - concrete representation/storage of the accepted capability policy and leases;
-- concrete Semantic Action Descriptor schema, capability-lease representation and operation-receipt format;
+- implementation phase split between Atria main authorities and plugin/atria-mcp;
 - the exact threshold for promoting a generic Native API operation into a dedicated semantic MCP tool;
 - detailed artifact roots/types and bounded inspection rules;
 - detailed client UX/naming for branch-derived message cleanup and re-entry;
@@ -1438,7 +1622,7 @@ The following remain intentionally unresolved and should be settled through furt
 - audit/evidence returned for authorized actions;
 - compatibility and migration strategy from the current `--allow-writes` switch.
 
-## 21. Discussion workflow
+## 22. Discussion workflow
 
 During the design discussion phase:
 
