@@ -25,7 +25,7 @@ export async function createFrontendBridge({ descriptor, transport, onEpoch = ()
     async function exchange(method, body) {
         if (!transport) return failure('bridge_preview_readonly');
         const controller = new AbortController(); aborts.add(controller);
-        try { return assertBridgeReceipt(await transport[method](body, controller.signal)); } catch (error) { throw bridgeFailure(error.code?.startsWith('bridge_') ? error.code : 'bridge_transport_failed'); } finally { aborts.delete(controller); }
+        try { return assertBridgeReceipt(await transport[method](body, controller.signal)); } catch (error) { throw bridgeFailure(typeof error?.code === 'string' && error.code.startsWith('bridge_') ? error.code : 'bridge_transport_failed'); } finally { aborts.delete(controller); }
     }
     async function open() {
         const captured = generation;
@@ -41,7 +41,8 @@ export async function createFrontendBridge({ descriptor, transport, onEpoch = ()
         if (refreshPromise) return refreshPromise;
         const captured = generation;
         refreshPromise = (async () => {
-            const result = await exchange('request', { epoch, method: 'status' });
+            let result;
+            try { result = await exchange('request', { epoch, method: 'status' }); } catch (error) { if (disposed || captured !== generation) return; throw error; }
             if (disposed || captured !== generation) return;
             if (!result.ok || result.epoch !== epoch) { if (result.error?.code === 'bridge_epoch_stale' || result.epoch !== epoch) invalidate(); return; }
             if (revision !== result.revision) {

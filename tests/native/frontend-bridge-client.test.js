@@ -4,7 +4,7 @@ import { bridgeFixture } from './helpers/frontend-bridge-fixture.js';
 import { compileBridge } from '../../src/native/frontend/bridge.js';
 import { createFrontendBridge } from '../../public/scripts/native/frontend/bridge.js';
 import { previewBridgeTransport } from '../../public/scripts/native/frontend/preview-bridge.js';
-import { bridgeReceipt, bridgeDescriptorDigest } from '../../public/shared/native-frontend-bridge.js';
+import { bridgeReceipt, bridgeDescriptorDigest, publicBridgeError } from '../../public/shared/native-frontend-bridge.js';
 
 const deferred = () => { let resolve; const promise = new Promise(yes => { resolve = yes; }); return { promise, resolve }; };
 const descriptor = () => { const f = bridgeFixture(); return compileBridge({ version: 1, bindings: f.bindings }, f.contract); };
@@ -34,6 +34,27 @@ describe('Frontend compiled Bridge client and Preview', () => {
         const read = scope.snapshot('notes'); await bridge.reload(); expect(cancelled.aborted).toBe(true); pending.resolve([]);
         expect((await read).error.code).toBe('bridge_epoch_stale'); expect(() => scope.fixed.prefs()).toThrow('bridge_epoch_stale');
         bridge.dispose(); expect(transport.close).toHaveBeenCalledWith('epoch-1');
+    });
+    test.each(['reload', 'dispose'])('aborted polling after %s cannot report failure to the replacement presentation', async transition => {
+        const d = descriptor(), entered = deferred(), onEpoch = jest.fn();
+        const transport = transportFor(d, () => {});
+        transport.request = (_body, signal) => new Promise((_resolve, reject) => {
+            signal.addEventListener('abort', () => reject(new DOMException('Private cancellation', 'AbortError')), { once: true });
+            entered.resolve();
+        });
+        const bridge = await createFrontendBridge({ descriptor: d, transport, onEpoch });
+        const pending = bridge.refresh(); await entered.promise; await bridge[transition]();
+        await expect(pending).resolves.toBeUndefined(); expect(onEpoch).not.toHaveBeenCalled();
+        bridge.dispose();
+    });
+    test.each([new DOMException('Private cancellation', 'AbortError'), null, { code: 20 }, { code: {} }])('normalizes non-string transport error codes without masking current failures: %p', async error => {
+        const d = descriptor(), transport = transportFor(d, () => { throw error; });
+        const bridge = await createFrontendBridge({ descriptor: d, transport });
+        try {
+            await expect(bridge.refresh()).rejects.toMatchObject({ code: 'bridge_transport_failed' });
+            expect((await bridge.scope('Main', ['notes']).snapshot('notes')).error.code).toBe('bridge_transport_failed');
+            expect(publicBridgeError(error)).toBe('bridge_target_failed');
+        } finally { bridge.dispose(); }
     });
     test('out-of-order query completion fails closed without cancelling same-query readers', async () => {
         const d = descriptor(), first = deferred();

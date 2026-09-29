@@ -126,6 +126,11 @@ try {
         await expect.poll(() => page.locator('canvas').evaluate(node => node.getContext('2d').getImageData(180, 120, 1, 1).data[3])).toBe(255);
         await click('Animate'); await expect(page.locator('[data-node-id="count"]')).toHaveText('1');
         await click('Runaway'); await page.waitForFunction(() => window.workers.length === 2);
+        // Worker construction is not recovery readiness. Revocation clears the
+        // retained canvas; its fresh People-backed draw proves async init and
+        // the scoped read have finished before a new user interaction.
+        await expect.poll(() => page.locator('canvas').evaluate(node => node.width === 360 && node.height === 240
+            && node.getContext('2d').getImageData(180, 120, 1, 1).data[3] === 255)).toBe(true);
         await expect(page.locator('[data-node-id="count"]')).toHaveText('1'); await click('Animate'); await expect(page.locator('[data-node-id="count"]')).toHaveText('2');
         await page.screenshot({ path: resolve(output, `${mode}-${width}-relations.png`), fullPage: true });
         assert.equal((await snapshot()).revision.revisionId, authority); assert.equal(await page.evaluate(() => window.epochs), epochs);

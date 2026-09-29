@@ -19,9 +19,10 @@ export function bridgeReceipt({ bindingId = null, epoch = null, revision = null,
         error: error === null ? null : { code: error, retryable: ['bridge_revision_stale', 'bridge_transport_failed', 'bridge_backpressure'].includes(error) } };
 }
 export function publicBridgeError(error) {
-    if (error.code?.startsWith('bridge_')) return error.code;
-    if (/conflict|stale/.test(error.code ?? '')) return 'bridge_revision_stale';
-    if (/cancel/.test(error.code ?? '')) return 'bridge_cancelled';
+    const code = typeof error?.code === 'string' ? error.code : '';
+    if (code.startsWith('bridge_')) return code;
+    if (/conflict|stale/.test(code)) return 'bridge_revision_stale';
+    if (/cancel/.test(code)) return 'bridge_cancelled';
     return error instanceof TypeError ? 'bridge_target_invalid' : 'bridge_target_failed';
 }
 
