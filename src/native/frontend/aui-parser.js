@@ -15,6 +15,15 @@ function decode(text) {
 // CST keeps the exact source (including trivia) and offsets. Semantic identities
 // are explicit, so whitespace edits never change Component/Node/Interaction IDs.
 export function parseAui(source, file) {
+    try { return parseSource(source, file); } catch (error) {
+        const prefix = file + ':';
+        const start = error.message.startsWith(prefix) ? Number.parseInt(error.message.slice(prefix.length), 10) || 0 : 0;
+        error.source ??= { file, start, end: start };
+        throw error;
+    }
+}
+
+function parseSource(source, file) {
     if (typeof source !== 'string' || Buffer.byteLength(source) > FRONTEND_LIMITS.bytes) throw new TypeError('AUI source exceeds limits');
     const spans = [];
     const blocks = [];

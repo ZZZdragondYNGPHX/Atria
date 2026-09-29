@@ -5,7 +5,7 @@ import { sourceWriteOperation } from './studio-authoring.js';
 
 export function sourceFileInfo(path, content) {
     const extension = path.split('.').pop().toLowerCase();
-    const type = { json: 'JSON', jsonl: 'JSON Lines', yaml: 'YAML', yml: 'YAML', js: 'JavaScript', mjs: 'JavaScript', ts: 'TypeScript', css: 'CSS', html: 'HTML', xml: 'XML', svg: 'SVG', md: 'Markdown', txt: 'Text' }[extension] || 'Text';
+    const type = { aui: 'Native AUI', json: 'JSON', jsonl: 'JSON Lines', yaml: 'YAML', yml: 'YAML', js: 'JavaScript', mjs: 'JavaScript', ts: 'TypeScript', css: 'CSS', html: 'HTML', xml: 'XML', svg: 'SVG', md: 'Markdown', txt: 'Text' }[extension] || 'Text';
     const bytes = Uint8Array.from(atob(content), char => char.charCodeAt(0));
     if (bytes.length > 1024 * 1024) return { type, readOnly: true, reason: 'This file is too large for the Source editor. Replace it from Assets.', size: bytes.length };
     if (/^(png|jpe?g|gif|webp|avif|bmp|ico|mp[34]|ogg|wav|webm|flac|zip|atria|pdf|woff2?|ttf|otf|wasm|bin)$/.test(extension)) return { type: 'Binary', readOnly: true, reason: 'Binary file. Use Replace to change its contents.', size: bytes.length };

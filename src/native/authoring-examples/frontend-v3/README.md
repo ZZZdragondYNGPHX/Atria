@@ -1,4 +1,4 @@
-# Native Frontend v3 authoring — Phases 2–5
+# Native Frontend v3 authoring — Phases 2–7
 
 `frontend.json` identifies Views, Components, global styles and exact assets.
 Each `.aui` file contains one `<template>`, optional JSON `<contract>` and optional
@@ -591,3 +591,71 @@ layout/relationship map/animation), `frontend-script.test.js`, Script cases in
 `tests/frontend/native-frontend-script.smoke.mjs`. Worker bundling is part of the
 normal webpack build (`/atria-script.bundle.js`), cached by dependency/source
 fingerprint; generated engine bytes are not committed.
+# Phase 7 — Studio and AI source authoring
+
+Studio's UI destination opens the native `.aui` editor for `native@3` Experiences.
+The Experience form declares a native source index and Runtime Features. When
+switching from Text to a new frontend it proposes a minimal index/`Main.aui` in
+the same reviewed Workspace; it never overwrites existing source files.
+Choose an Experience and browse the Source Graph: View roots, Component contracts,
+semantic Nodes, state scopes, interactions, scoped/global styles, Bridge bindings,
+localization messages, media, assets and static Controller modules. Binary assets
+remain read-only here. The Source destination remains available for file creation,
+deletion and larger structural changes through the existing Authoring lifecycle.
+
+The editor offers two complementary paths:
+
+- Native source drafts retain their file and newline format while switching graph
+  entries. **Check source** compiles drafts without changing ProjectStore or its
+  revision. Diagnostics navigate to the original source, including JS/TS module
+  errors, CSS, accessibility and localization advice. **Preview draft** uses the
+  existing transactional Workspace evaluation, formal Build Compiler and production
+  Renderer. It does not create a Play Session or enable authority writes.
+- **Structured edit** addresses a stable semantic identity. Node text/attributes
+  change only their CST token (identity is immutable); mixed-content replacement
+  uses source editing. Component contracts, state, interactions, View metadata,
+  Bridge bindings and locale messages use JSON value spans. Unchanged whitespace,
+  comments, quote styles and sibling blocks remain intact. Replacing a whole
+  contract or style intentionally replaces that block's contents.
+
+Structured JSON field paths use `/` between keys, e.g. `state/component`,
+`initial/count`, or `target/method`; an empty path replaces the selected JSON
+value. JSON array indices are decimal path segments. Node fields are AUI names
+such as `class`, `bind:text`, `on:click`, or `text`. Styles accept CSS text. Source
+drafts must be reviewed or reloaded before a separate structured proposal.
+
+The Project Agent exposes `atri_agent_frontend_graph` and
+`atri_agent_frontend_patch`. Both use the existing Task/Plan/Workspace/Review
+boundary. An example patch input (with the actual hash returned by discovery):
+
+```json
+{
+  "ownerId": "package",
+  "kind": "node",
+  "componentId": "Main",
+  "id": "greeting",
+  "field": "text",
+  "value": "Welcome",
+  "contentHash": "<SHA-256 from Source Graph>"
+}
+```
+
+`frontend.patch` targets the Workspace `core.project`. Kinds are `component`,
+`node`, `view`, `binding`, `style`, `state`, `interaction`, and `message` (the last
+also requires `locale`). `componentId` disambiguates Node/state/interaction/scoped
+style IDs. Null Node attribute values remove the attribute through the API.
+Each proposal pins its source hash and the existing project base revision. Multiple
+patches to one file in a Workspace use the same baseline hash and apply in order.
+Unknown/ambiguous IDs, stale hashes, identity rewrites and derived IR targets fail.
+The Agent cannot commit; it stops at the existing human Review gate.
+
+Feature support/reason codes, required flags, permission declarations and remote
+origins are visible. A declaration is not permission consent; Preview retains the
+existing Host permission/fallback policy. The same feature/permission closure
+validator is used before Build and during package validation. No second renderer,
+Session authority, raw DB access, durable KV or automatic Operation replay exists.
+
+Validation is on demand rather than keystroke-triggered. Structured changes and
+raw drafts are compiled before Review; final application validates again and rolls
+back failures. General graph-level errors may point to a source file/block rather
+than one token. Accessibility diagnostics are advisory, not certification.

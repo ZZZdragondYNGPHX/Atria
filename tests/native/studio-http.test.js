@@ -78,6 +78,19 @@ function appFor(studio, { authenticated = true } = {}) {
 }
 
 describe('A1 Native Studio HTTP boundary', () => {
+    test('Frontend inspection/evaluation use authenticated owner and reject cross-project workspaces', async () => {
+        const studio = makeStudio();
+        studio.inspectFrontend = jest.fn(async () => ({ status: 'passed', entries: [], diagnostics: [] }));
+        studio.evaluateWorkspace = jest.fn(async () => ({ validation: { status: 'passed', diagnostics: [] } }));
+        await request(appFor(studio, { authenticated: false })).post('/projects/project_test/frontend/inspect').send({}).expect(401);
+        await request(appFor(studio)).post('/projects/project_test/frontend/inspect').send({ ownerId: 'package', handle: 'other' }).expect(200);
+        expect(studio.inspectFrontend).toHaveBeenCalledWith('u', 'project_test', { ownerId: 'package', handle: 'other' });
+        await request(appFor(studio)).post('/projects/project_test/frontend/evaluate').send({ workspace: { projectId: 'other' } }).expect(400);
+        expect(studio.evaluateWorkspace).not.toHaveBeenCalled();
+        const workspace = { projectId: 'project_test', baseRevision: 'revision' };
+        await request(appFor(studio)).post('/projects/project_test/frontend/evaluate').send({ workspace }).expect(200);
+        expect(studio.evaluateWorkspace).toHaveBeenCalledWith('u', workspace, { preview: true, simulation: false, entryPointId: undefined });
+    });
     test('revision deletion uses the authenticated owner and returns actionable conflicts', async () => {
         const studio = makeStudio(); studio.deleteLibraryRevision = jest.fn(async () => ({ deleted: true }));
         const ref = { scope: 'library', resourceType: 'core.world', resourceId: 'world', revision: 'exact' };

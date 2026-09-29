@@ -5,6 +5,8 @@ import { ATRIA_EXPERIENCE_CAPABILITIES } from '../../public/shared/native-experi
 // Curated identifiers resolve to current, checked-in compiler contracts. Never
 // interpret an AI-supplied path as a filesystem path.
 const definitions = [
+    ['frontend-authoring', 'Native v3 Studio Source Graph and format-preserving semantic patches', 'src/native/frontend/authoring.js'],
+    ['frontend-guide', 'Native v3 authoring, controller and Studio guide', 'src/native/authoring-examples/frontend-v3/README.md'],
     ['frontend', 'Native Frontend v3 Source Index and source/compiled Experience contracts', 'public/shared/native-frontend-contract.js'],
     ['frontend-aui', 'Native .aui compiler skeleton, supported syntax and stable semantic IDs', 'src/native/frontend/aui-parser.js'],
     ['frontend-bridge', 'Frontend Host Bridge v1 typed target linker and compiled descriptor', 'src/native/frontend/bridge.js'],

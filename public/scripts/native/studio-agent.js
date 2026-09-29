@@ -110,6 +110,7 @@ export function buildNativeProjectAgentSystemPrompt(context, skillEntries = []) 
         'Every write is only a proposal. The server forces origin.kind="agent", pins the Task baseRevision, and routes writes through StudioService.',
         'Never request a silent rebase. If the Project revision changes, stop at the conflict boundary and let the human decide.',
         'Prefer structured/domain Authoring Operations. source.write/move/delete are low-level fallback only.',
+        'For native@3, inspect atri_agent_frontend_graph then propose atri_agent_frontend_patch by Component/Node/Binding semantic ID and contentHash. Edit authoring source only. Preview uses the production Compiler/Renderer. Keep component uses, typed targets and Operation intent intact.',
         'Library relationships must use exact revisions. Never invent or resolve "latest".',
         'Use A2 Resource Graph tools for discovery/references/dependency closure, A5 Skills for know-how, and plugin-defined Resource Registry descriptors when relevant.',
         'Discover current Native Experience contracts with atri_agent_api_catalog and read relevant pages using atri_agent_api_read. This includes UI v2, Tasks, lifecycle, Activity/Scene, information, Continuity, Shared/Realm and Scenario. Never invent a field from a capability name.',

@@ -147,6 +147,14 @@
 .atri-asset-form textarea { width: 100%; min-height: 100px; }
 
 .atri-source-editor { min-width: 0; }
+[data-atria-frontend-editor] { display: grid; gap: 16px; }
+[data-atria-frontend-editor] > section { display: grid; gap: 12px; min-width: 0; }
+[data-atria-frontend-editor] p { margin: 0; line-height: 1.6; overflow-wrap: anywhere; }
+[data-atria-frontend-editor] h4 { margin: 8px 0; }
+.atria-native-studio [data-atria-frontend-editor] textarea { width: 100%; min-height: 120px; font-family: var(--atri-font-mono); }
+.atria-native-studio [data-atria-frontend-editor] .atria-studio-editor__textarea { min-height: 320px; }
+[data-atria-frontend-editor] .atri-library-button { white-space: normal; overflow-wrap: anywhere; text-align: start; }
+[data-atria-frontend-editor] .atria-studio-preview-canvas { min-height: 240px; }
 .atri-source-editor > textarea { display: block; width: 100%; min-height: 320px; font-family: var(--atri-font-mono); }
 .atri-source-diff pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto; }
 

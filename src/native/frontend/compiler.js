@@ -21,8 +21,14 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
         consumed.add(path);
         return Buffer.from(bytes);
     };
-    const readText = path => new TextDecoder('utf-8', { fatal: true }).decode(read(path));
-    const index = assertFrontendSourceIndex(JSON.parse(readText(source)));
+    const atSource = (file, run) => {
+        try { return run(); } catch (error) {
+            error.source ??= { file, start: 0, end: files.get(file)?.length || 0 };
+            throw error;
+        }
+    };
+    const readText = path => atSource(path, () => new TextDecoder('utf-8', { fatal: true }).decode(read(path)));
+    const index = atSource(source, () => assertFrontendSourceIndex(JSON.parse(readText(source))));
     const base = source.includes('/') ? source.slice(0, source.lastIndexOf('/') + 1) : '';
     const resolve = path => resourcePath(base + path);
     const output = new Map(), resources = [], provenance = [], pendingStyles = [], compiledComponents = [];
@@ -48,15 +54,15 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
             throw error;
         }
     };
-    const bridge = compileBridge(index.bridge ? JSON.parse(readText(resolve(index.bridge))) : undefined, experienceContract);
+    const bridge = atSource(index.bridge ? resolve(index.bridge) : source, () => compileBridge(index.bridge ? JSON.parse(readText(resolve(index.bridge))) : undefined, experienceContract));
     emit('bridge', 'bridge', bridge);
     if (index.bridge) provenance.push({ kind: 'bridge', id: 'bridge', file: resolve(index.bridge), start: 0, end: readText(resolve(index.bridge)).length });
     for (const asset of index.assets) emit('asset:' + asset.id, 'asset', read(resolve(asset.source)), [], asset.mediaType);
     if (index.media) {
-        const catalog = assertMediaCatalog(JSON.parse(readText(resolve(index.media))), new Map(resources.map(ref => [ref.id, ref])));
+        const catalog = atSource(resolve(index.media), () => assertMediaCatalog(JSON.parse(readText(resolve(index.media))), new Map(resources.map(ref => [ref.id, ref]))));
         emit('media', 'media', catalog, catalog.entries.map(entry => 'asset:' + entry.fallback));
     }
-    if (index.localization) { localization = assertLocalization(JSON.parse(readText(resolve(index.localization)))); emit('localization', 'localization', localization); }
+    if (index.localization) { localization = atSource(resolve(index.localization), () => assertLocalization(JSON.parse(readText(resolve(index.localization))))); emit('localization', 'localization', localization); }
     for (const style of index.styles) {
         const file = resolve(style.source), css = readText(file);
         pendingStyles.push({ id: 'style:' + style.id, css, dependencies: styleDependencies(css, file) });
@@ -66,7 +72,9 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
         const file = resolve(component.source);
         let parsed;
         try { parsed = parseAui(readText(file), file); } catch (error) {
-            throw new TypeError(file + ': ' + error.message, { cause: error });
+            const wrapped = new TypeError(file + ': ' + error.message, { cause: error });
+            wrapped.source = error.source || { file, start: 0, end: readText(file).length };
+            throw wrapped;
         }
         const styles = [];
         if (parsed.style) {

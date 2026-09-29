@@ -14,23 +14,28 @@ export function validateFrontendResources(manifest, files, assets) {
         frontendFeatureAvailability(normalized.features);
         const graph = validateFrontendGraph({ entry: normalized.frontend.entry, files, mode: normalized.mode,
             experienceContract: manifest.runtime?.experienceContract });
-        const mediaRef = graph.resources.find(ref => ref.kind === 'media');
-        if (graph.resources.some(ref => ref.kind === 'script')) {
-            const feature = normalized.features.find(item => item.id === 'frontend-script' && item.version === 1);
-            if (!feature || graph.resources.filter(ref => ref.kind === 'component').some(ref => JSON.parse(files.get(ref.path).toString('utf8')).controller?.required && !feature.required)) throw new TypeError('Controllers require matching frontend-script feature');
-        }
-        if (mediaRef) {
-            const catalog = JSON.parse(files.get(mediaRef.path).toString('utf8'));
-            const permission = manifest.permissions.find(item => item.permission === 'remote-media');
-            const feature = normalized.features.find(item => item.id === 'remote-media' && item.version === 1);
-            if (!permission || !feature || (catalog.required && (!permission.required || !feature.required))) throw new TypeError('Frontend media requires matching remote-media feature and External Access Permission');
-        }
+        validateFrontendCapabilities(normalized, graph, files, manifest.permissions);
         for (const binding of graph.bridge.bindings.filter(item => item.kind === 'read')) {
             if (!binding.target.resourceId) continue;
             const ref = manifest.runtime.experienceContract.dataResources.find(item => item.resourceId === binding.target.resourceId);
             const bytes = assets?.get(ref.assetId);
             if (!bytes || bytes.length > 2 * 1024 * 1024 || !validateSchemaValue(JSON.parse(bytes.toString('utf8')), binding.collection ? { type: 'array', items: binding.outputSchema, maxItems: 10000 } : binding.outputSchema).ok) throw new TypeError('Frontend Read projection does not match public schema');
         }
+    }
+}
+
+export function validateFrontendCapabilities(normalized, graph, files, permissions = []) {
+    frontendFeatureAvailability(normalized.features);
+    const mediaRef = graph.resources.find(ref => ref.kind === 'media');
+    if (graph.resources.some(ref => ref.kind === 'script')) {
+        const feature = normalized.features?.find(item => item.id === 'frontend-script' && item.version === 1);
+        if (!feature || graph.resources.filter(ref => ref.kind === 'component').some(ref => JSON.parse(files.get(ref.path).toString('utf8')).controller?.required && !feature.required)) throw new TypeError('Controllers require matching frontend-script feature');
+    }
+    if (mediaRef) {
+        const catalog = JSON.parse(files.get(mediaRef.path).toString('utf8'));
+        const permission = permissions.find(item => item.permission === 'remote-media');
+        const feature = normalized.features?.find(item => item.id === 'remote-media' && item.version === 1);
+        if (!permission || !feature || (catalog.required && (!permission.required || !feature.required))) throw new TypeError('Frontend media requires matching remote-media feature and External Access Permission');
     }
 }
 

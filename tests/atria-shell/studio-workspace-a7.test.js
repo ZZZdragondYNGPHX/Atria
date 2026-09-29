@@ -151,6 +151,24 @@ describe('A7 Atria Studio workspace', () => {
         controller.dispose();
     });
 
+    test('Experience authoring creates a native@3 source graph in the reviewed Workspace', async () => {
+        const previous = globalThis.fetch;
+        globalThis.fetch = jest.fn(async (url, options) => url.endsWith('/sources') ? response([]) : previous(url, options));
+        const slot = document.querySelector('#slot');
+        const controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        [...slot.querySelectorAll('.atria-studio-resource-tree button')].find(node => node.textContent === 'Experience').click(); await flush();
+        slot.querySelector('[aria-label="Experience mode"]').value = 'full';
+        [...slot.querySelectorAll('button')].find(node => node.textContent === 'Review Changes').click(); await flush();
+        const inspected = requests.find(item => item.path.endsWith('/workspaces/inspect'));
+        expect(inspected.body.operations).toHaveLength(3);
+        const experience = inspected.body.operations[0].input.source.package.entryPoints[0].runtime.experience;
+        expect(experience.frontend).toEqual({ kind: 'native', version: 3, source: 'frontend/index.json' });
+        expect(experience.componentModelVersion).toBeUndefined();
+        expect(inspected.body.operations[2].input.content).toContain('node-id="title"');
+        expect(requests.some(item => item.path.endsWith('/workspaces/execute'))).toBe(false);
+        controller.dispose();
+    });
+
     afterEach(() => {
         delete globalThis.Atria;
         delete globalThis.fetch;

@@ -24,12 +24,14 @@ import { createCoreResourceRegistry } from './resource-registry.js';
 import { ResourceBundleService, bundleRef } from '../resource-bundle.js';
 import { createCoreBundleAdapters } from '../resource-bundle-adapters.js';
 import { ResourceGraph } from './resource-graph.js';
+import { frontendOwners, inspectFrontend, planFrontendPatch } from '../frontend/authoring.js';
 
 export const STUDIO_SOURCE_OPERATION_TYPES = Object.freeze({
     write: 'source.write',
     move: 'source.move',
     delete: 'source.delete',
     saveProject: 'project.save',
+    frontendPatch: 'frontend.patch',
 });
 
 const HISTORY_AUTHOR = Object.freeze({
@@ -95,6 +97,7 @@ function normalizeDiagnostic(value) {
         ...(value.resourceType == null ? {} : { resourceType: value.resourceType }),
         ...(value.resourceId == null ? {} : { resourceId: value.resourceId }),
         ...(value.path == null ? {} : { path: value.path }),
+        ...(value.source == null ? {} : { source: value.source }),
     };
 }
 
@@ -429,7 +432,12 @@ export class StudioService {
         }
     }
 
-    async _inspectOperation(handle, projectId, operation) {
+    async _inspectOperation(handle, projectId, operation, baseSnapshot = null) {
+        if (operation.operationType === STUDIO_SOURCE_OPERATION_TYPES.frontendPatch) {
+            const edit = await this._frontendPatch(handle, projectId, operation, baseSnapshot);
+            return { operationId: operation.operationId, kind: 'frontend-patch', path: edit.path,
+                before: fingerprint(edit.before), after: fingerprint(edit.after), semantic: operation.input };
+        }
         if (operation.operationType === STUDIO_SOURCE_OPERATION_TYPES.write) {
             const before = await this._projects.readFile(handle, projectId, operation.target.path);
             const after = decodeSourceInput(operation.input);
@@ -555,8 +563,8 @@ export class StudioService {
             let keepPreview = false;
             try {
                 for (const operation of workspace.operations) {
-                    changes.push(await this._inspectOperation(handle, workspace.projectId, operation));
-                    await this._applyOperation(handle, workspace.projectId, operation);
+                    changes.push(await this._inspectOperation(handle, workspace.projectId, operation, snapshot));
+                    await this._applyOperation(handle, workspace.projectId, operation, snapshot);
                 }
 
                 const validation = await this._validateUnlocked(handle, workspace.projectId);
@@ -648,7 +656,11 @@ export class StudioService {
         });
     }
 
-    async _applyOperation(handle, projectId, operation) {
+    async _applyOperation(handle, projectId, operation, baseSnapshot = null) {
+        if (operation.operationType === STUDIO_SOURCE_OPERATION_TYPES.frontendPatch) {
+            const edit = await this._frontendPatch(handle, projectId, operation, baseSnapshot);
+            return this._projects.writeFile(handle, projectId, edit.path, edit.after);
+        }
         if (operation.operationType === STUDIO_SOURCE_OPERATION_TYPES.write) {
             return this._projects.writeFile(
                 handle,
@@ -717,6 +729,10 @@ export class StudioService {
             const items = Array.isArray(value) ? value : value?.diagnostics || [];
             for (const item of items) diagnostics.push(normalizeDiagnostic(item));
         }
+        if (frontendOwners(source).length) {
+            const snapshot = await this._snapshot(handle, projectId);
+            for (const owner of frontendOwners(source)) diagnostics.push(...inspectFrontend({ ...snapshot, ownerId: owner.id }).diagnostics.map(item => normalizeDiagnostic({ ...item, code: 'frontend.' + item.code })));
+        }
         return Object.freeze({
             status: diagnostics.some(item => item.severity === 'error') ? 'failed' : 'passed',
             diagnostics: Object.freeze(diagnostics),
@@ -727,6 +743,24 @@ export class StudioService {
         return this._queue(projectId, async () => {
             await this._project(handle, projectId);
             return this._validateUnlocked(handle, projectId);
+        });
+    }
+
+    async _frontendPatch(handle, projectId, operation, baseSnapshot = null) {
+        if (operation.target.resourceType !== 'core.project' || operation.target.resourceId !== projectId) throw new TypeError('Frontend patch requires Workspace project target');
+        return planFrontendPatch({ ...await this._snapshot(handle, projectId), baseFiles: baseSnapshot?.files }, operation.input);
+    }
+
+    async inspectFrontend(handle, projectId, { ownerId = 'package', baseRevision, drafts = [] } = {}) {
+        return this._queue(projectId, async () => {
+            if (baseRevision) await this._assertBaseRevision(handle, projectId, baseRevision);
+            const snapshot = await this._snapshot(handle, projectId);
+            if (!Array.isArray(drafts) || drafts.length > 64) throw new TypeError('Too many Frontend drafts');
+            for (const draft of drafts) {
+                if (!snapshot.files.has(draft.path) || typeof draft.content !== 'string' || Buffer.byteLength(draft.content) > 2 * 1024 * 1024) throw new TypeError('Invalid Frontend draft');
+                snapshot.files.set(draft.path, Buffer.from(draft.content));
+            }
+            return inspectFrontend({ ...snapshot, ownerId });
         });
     }
 
@@ -745,8 +779,8 @@ export class StudioService {
             const changes = [];
             try {
                 for (const operation of workspace.operations) {
-                    changes.push(await this._inspectOperation(handle, workspace.projectId, operation));
-                    await this._applyOperation(handle, workspace.projectId, operation);
+                    changes.push(await this._inspectOperation(handle, workspace.projectId, operation, snapshot));
+                    await this._applyOperation(handle, workspace.projectId, operation, snapshot);
                 }
 
                 const validation = await this._validateUnlocked(handle, workspace.projectId);

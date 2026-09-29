@@ -475,7 +475,13 @@ export function assertAuthoringChangeSet(value) {
     const diagnostics = value.validation.diagnostics.map((item, index) => {
         const field = 'ChangeSet.validation.diagnostics[' + index + ']';
         object(item, field);
-        only(item, ['severity', 'code', 'message', 'resourceType', 'resourceId', 'path'], field);
+        only(item, ['severity', 'code', 'message', 'resourceType', 'resourceId', 'path', 'source'], field);
+        if (item.source != null) {
+            object(item.source, field + '.source');
+            only(item.source, ['file', 'start', 'end', 'line', 'column'], field + '.source');
+            projectPath(item.source.file, field + '.source.file');
+            for (const key of ['start', 'end', 'line', 'column']) if (item.source[key] !== undefined && (!Number.isSafeInteger(item.source[key]) || item.source[key] < (['line', 'column'].includes(key) ? 1 : 0))) throw new TypeError('Invalid source coordinate');
+        }
         if (!['info', 'warning', 'error'].includes(item.severity)) {
             throw new TypeError(field + '.severity is unsupported');
         }
@@ -488,6 +494,7 @@ export function assertAuthoringChangeSet(value) {
                 : { resourceType: namespaced(item.resourceType, field + '.resourceType') }),
             ...(item.resourceId == null ? {} : { resourceId: token(item.resourceId, field + '.resourceId') }),
             ...(item.path == null ? {} : { path: projectPath(item.path, field + '.path') }),
+            ...(item.source == null ? {} : { source: Object.freeze({ ...item.source }) }),
         });
     });
     const resultingRevision = value.resultingRevision == null
