@@ -3,7 +3,7 @@
 **Task ID:** `plugin/atria-mcp-capability-expansion`  
 **Primary Workspace:** `plugin`  
 **Plan Workspace:** `docs`  
-**Status:** Discussion Draft v0.4  
+**Status:** Discussion Draft v0.5  
 **Current implementation baseline:** `plugin@c125b2e7b63ed035a0a253c4036cbdb6bd273225`  
 **Implementation path:** `plugin:atria-mcp/`
 
@@ -409,7 +409,141 @@ This is especially useful for chat-generation tests, Build validation, Agent run
 The current Atria `/version` endpoint already exposes package version and Git revision/branch/commit metadata and can serve as a baseline, but it is not by itself sufficient for exact runtime/source identity.
 
 
-## 11. Diagnostic workflow target
+
+
+## 11. Repository read and development-artifact policy
+
+Repository visibility is intentionally broad, but it is not defined by a single "read any file" rule.
+
+### 11.1 Canonical tracked repository
+
+All Git-tracked Atria repository content inside the configured product checkout is readable by default unless it matches an explicit sensitive-data prohibition.
+
+This includes, where present:
+
+- root configuration and documentation;
+- AGENTS / CLAUDE / maintenance guidance;
+- package metadata and lockfiles;
+- source, frontend, scripts and tests;
+- Android/build tooling;
+- workflows and CI configuration;
+- Docker/configuration templates;
+- checked-in plugins/runtime resources;
+- other tracked text/config/code assets.
+
+The current narrow `src/public/scripts/tests` source boundary should not remain the repository-wide visibility boundary.
+
+### 11.2 Safe untracked development files
+
+Safe, non-ignored untracked development files inside the configured Atria checkout should be readable.
+
+This supports the common development sequence:
+
+`create file -> run/test/debug -> stage/commit later`.
+
+Repository/Git tools should clearly distinguish tracked, modified, staged and untracked evidence.
+
+Safe runtime-relevant untracked content may participate in source identity. If it cannot be safely incorporated, the source/runtime match must degrade to `UNVERIFIABLE` rather than incorrectly claim `EXACT`.
+
+### 11.3 Ignored generated/development artifacts
+
+Ignored content is not automatically sensitive and must not be automatically invisible.
+
+Known development/verification artifact areas should be exposed through a bounded artifact layer rather than through unrestricted repository recursion.
+
+Candidate tools include:
+
+- `atri_artifact_list`;
+- `atri_artifact_read`;
+- `atri_artifact_search`;
+- `atri_artifact_image`;
+- `atri_artifact_inspect`.
+
+Useful examples include test results, Playwright screenshots, coverage output, Android/logcat/crash evidence and build outputs.
+
+Artifact enumeration/search must remain bounded to avoid recursively scanning large generated trees by default.
+
+### 11.4 Runtime configuration and logs use semantic access
+
+Machine/runtime configuration such as local config files should not be returned wholesale by generic repository tools.
+
+Prefer Atria-aware semantic snapshots that expose useful effective configuration while redacting credentials and sensitive values.
+
+Likewise, product logs should prefer Atria diagnostics/logging authorities over raw logfile scraping when such authorities exist.
+
+Raw artifact/log reads may still be available for known development evidence when appropriately bounded and filtered.
+
+### 11.5 Product/user data is not repository data
+
+User/product state must not become readable merely because its storage happens to live under the repository checkout.
+
+Examples include chat/session data, user settings, Library state, Package state, Memory/vector data, backups and similar runtime-owned data.
+
+These remain visible through their owning Atria semantic authorities:
+
+- Chat/Session through chat/session tools;
+- Memory through memory tools;
+- Library through library tools;
+- Package/Work through package tools;
+- Settings through settings tools;
+- other domains through their owning product surface.
+
+Direct unrestricted `dataRoot` traversal remains outside repository-read authority.
+
+### 11.6 Sensitive hard-deny layer
+
+Sensitive content remains blocked regardless of whether it is tracked, untracked, ignored, generated or historically committed.
+
+Examples include:
+
+- `.env*`;
+- Secret/credential stores;
+- passwords, tokens and API keys;
+- cookies and CSRF tokens;
+- private keys and keystores;
+- credential-bearing connection material.
+
+Protection should combine path/category denial with output redaction for structured/free-text content so a benign filename cannot trivially bypass secret handling.
+
+Historical Git reads such as diff/show/blame must apply the same sensitive policy and may report blocked files without returning their sensitive content.
+
+### 11.7 Git-read capability
+
+Atria MCP should support broad read-only Git evidence such as:
+
+- status;
+- working/staged/base-vs-head diffs;
+- log;
+- show;
+- blame where useful.
+
+MCP must not absorb the normal development Git write workflow. Operations such as fetch/pull/checkout/reset/clean/add/commit remain the responsibility of the AI client's normal development tools.
+
+### 11.8 Binary and large-artifact handling
+
+Text/code/config uses bounded textual read/search.
+
+Images that are legitimate development artifacts may be returned as MCP image content.
+
+Large binaries/archives should not be dumped into model context as large base64 payloads. Prefer semantic inspection returning identity, hashes, manifest/entry metadata, validation state and other useful bounded evidence.
+
+### 11.9 Independent access policy
+
+`.gitignore` is a version-control signal, not the MCP security policy.
+
+Atria MCP should maintain an explicit repository-access classification such as:
+
+- canonical tracked;
+- safe untracked development;
+- development artifact;
+- product/user data;
+- sensitive;
+- dependency/cache.
+
+Changes to `.gitignore` must not silently expand sensitive/user-data access.
+
+
+## 12. Diagnostic workflow target
 
 A successful end-state workflow should allow an AI to move through evidence such as:
 
@@ -423,7 +557,7 @@ For chat/generation issues it should support:
 
 `Session/message state -> relevant runtime/config -> authorized test message -> generation/UI result -> diagnostics -> source diagnosis -> authorized cleanup when requested`
 
-## 12. Non-goals currently frozen
+## 13. Non-goals currently frozen
 
 This expansion is not intended to:
 
@@ -434,21 +568,21 @@ This expansion is not intended to:
 - bypass Native Session, Studio/ProjectStore, Library, Package or other Atria ownership rules;
 - grant unattended destructive control over user data.
 
-## 13. Open design topics
+## 14. Open design topics
 
 The following remain intentionally unresolved and should be settled through further discussion before implementation planning:
 
 - concrete representation/storage of the accepted capability policy and leases;
 - detailed action semantics within each accepted product domain;
 - the exact threshold for promoting a generic Native API operation into a dedicated semantic MCP tool;
-- exact Git/repository read surface and limits, including safe handling of untracked files, config, logs and generated/build artifacts;
+- detailed artifact roots/types and bounded inspection rules;
 - edit/regenerate/delete semantics for message history;
 - detailed client presentation of generation cost/external-provider side-effect metadata;
 - exact enforcement mechanics for semantic-operation precedence over generic browser interaction;
 - audit/evidence returned for authorized actions;
 - compatibility and migration strategy from the current `--allow-writes` switch.
 
-## 14. Discussion workflow
+## 15. Discussion workflow
 
 During the design discussion phase:
 
