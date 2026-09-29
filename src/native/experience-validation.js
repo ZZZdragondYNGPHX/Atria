@@ -15,6 +15,10 @@ export function validateFrontendResources(manifest, files, assets) {
         const graph = validateFrontendGraph({ entry: normalized.frontend.entry, files, mode: normalized.mode,
             experienceContract: manifest.runtime?.experienceContract });
         const mediaRef = graph.resources.find(ref => ref.kind === 'media');
+        if (graph.resources.some(ref => ref.kind === 'script')) {
+            const feature = normalized.features.find(item => item.id === 'frontend-script' && item.version === 1);
+            if (!feature || graph.resources.filter(ref => ref.kind === 'component').some(ref => JSON.parse(files.get(ref.path).toString('utf8')).controller?.required && !feature.required)) throw new TypeError('Controllers require matching frontend-script feature');
+        }
         if (mediaRef) {
             const catalog = JSON.parse(files.get(mediaRef.path).toString('utf8'));
             const permission = manifest.permissions.find(item => item.permission === 'remote-media');

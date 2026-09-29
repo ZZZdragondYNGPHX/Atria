@@ -1,5 +1,6 @@
 import { FRONTEND_LIMITS, identifier, fields, list } from '../../../public/shared/native-frontend-contract.js';
 import { assertPresentationNode, assertPresentationContract, VOID_TAGS } from '../../../public/shared/native-frontend-presentation.js';
+import { assertController } from '../../../public/shared/native-frontend-script.js';
 
 export function assertNode(node) {
     return assertPresentationNode(node);
@@ -33,9 +34,10 @@ export function parseAui(source, file) {
     if (!template) throw new TypeError('AUI requires template');
     const contractBlock = blocks.find(block => block.kind === 'contract');
     const contract = contractBlock ? JSON.parse(contractBlock.content) : {};
-    fields(contract, ['uses', 'props', 'emits', 'slots', 'state', 'interactions', 'lifecycle', 'nodeRefs', 'dynamicStyles'], 'Component contract');
+    fields(contract, ['uses', 'controller', 'props', 'emits', 'slots', 'state', 'interactions', 'lifecycle', 'nodeRefs', 'dynamicStyles'], 'Component contract');
     const uses = list(contract.uses ?? [], identifier, item => item);
-    const { uses: _uses, ...presentationSource } = contract;
+    const { uses: _uses, controller, ...presentationSource } = contract;
+    if (controller) assertController(controller);
     const presentation = assertPresentationContract(presentationSource);
     const roots = [], stack = [], ids = new Set();
     const token = /<!--[\s\S]*?-->|<\/[a-zA-Z][a-zA-Z0-9]*\s*>|<[a-zA-Z][a-zA-Z0-9]*(?:\s+[a-zA-Z][a-zA-Z0-9:-]*\s*=\s*(?:"[^"<]*"|'[^'<]*'))*\s*\/?>|[^<]+/gy;
@@ -96,5 +98,5 @@ export function parseAui(source, file) {
     }
     if (stack.length || roots.length !== 1) throw new TypeError('Template must contain exactly one balanced root');
     const style = blocks.find(block => block.kind === 'style');
-    return { cst: { source, blocks }, ast: { root: roots[0], uses, presentation }, spans, style };
+    return { cst: { source, blocks }, ast: { root: roots[0], uses, presentation, ...(controller ? { controller } : {}) }, spans, style };
 }

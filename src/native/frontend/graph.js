@@ -1,4 +1,5 @@
 import { ASSET_TYPES, assertMediaCatalog } from '../../../public/shared/native-frontend-media.js';
+import { validateScriptArtifact } from './script-compiler.js';
 import { assertLocalization } from '../../../public/shared/native-frontend-localization.js';
 import { fields, identifier, list, resourcePath, FRONTEND_LIMITS } from '../../../public/shared/native-frontend-contract.js';
 import { assertNode } from './aui-parser.js';
@@ -7,13 +8,18 @@ import { validateCompiledStyle } from './styles.js';
 import { assertPresentationContract, valuePath } from '../../../public/shared/native-frontend-presentation.js';
 
 export function componentDependencies(ir, bridge) {
-    fields(ir, ['format', 'version', 'id', 'root', 'uses', 'styles', 'presentation']);
+    fields(ir, ['format', 'version', 'id', 'root', 'uses', 'styles', 'presentation', 'controller']);
     const presentation = assertPresentationContract(ir.presentation);
     if (ir.format !== 'atria-component-ir' || ir.version !== 3) throw new TypeError('Invalid Component IR');
     identifier(ir.id);
     const uses = list(ir.uses, identifier, id => id);
     for (const id of uses) if (!bridge.bindings.some(binding => binding.id === id)) throw new TypeError('Unknown Component Binding: ' + id);
     const deps = new Set(['bridge']);
+    if (ir.controller) {
+        fields(ir.controller, ['resource', 'required']);
+        if (ir.controller.resource !== 'script:' + ir.id || typeof ir.controller.required !== 'boolean') throw new TypeError('Invalid Controller ref');
+        deps.add(ir.controller.resource);
+    }
     for (const id of list(ir.styles, id => {
         if (typeof id !== 'string' || !id.startsWith('style:')) throw new TypeError('Invalid Component Style reference');
         identifier(id.slice(6)); return id;
@@ -88,7 +94,7 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
     let totalBytes = 0;
     const resources = list(index.resources, ref => {
         fields(ref, ['id', 'kind', 'path', 'contentHash', 'size', 'mediaType', 'dependencies']);
-        if (!['view', 'component', 'bridge', 'style', 'asset', 'provenance', 'media', 'localization', 'diagnostics'].includes(ref.kind)) throw new TypeError('Invalid Frontend resource kind');
+        if (!['view', 'component', 'bridge', 'style', 'asset', 'provenance', 'media', 'localization', 'diagnostics', 'script'].includes(ref.kind)) throw new TypeError('Invalid Frontend resource kind');
         if (['bridge', 'provenance', 'media', 'localization', 'diagnostics'].includes(ref.kind) ? ref.id !== ref.kind : typeof ref.id !== 'string' || !ref.id.startsWith(ref.kind + ':')) throw new TypeError('Invalid resource identity');
         if (!['bridge', 'provenance', 'media', 'localization', 'diagnostics'].includes(ref.kind)) identifier(ref.id.slice(ref.kind.length + 1));
         if (!/^[a-f0-9]{64}$/.test(ref.contentHash) || ref.path !== prefix + ref.contentHash + (ref.mediaType === 'application/json' ? '.json' : '.bin')) throw new TypeError('Invalid exact resource path');
@@ -133,6 +139,8 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
             if (!ASSET_TYPES.includes(ref.mediaType)) throw new TypeError('Unsupported compiled asset');
         } else if (ref.kind === 'media') {
             assertMediaCatalog(ir, refs); dependencies = [...new Set(ir.entries.map(entry => 'asset:' + entry.fallback))].sort();
+        } else if (ref.kind === 'script') {
+            validateScriptArtifact(ir);
         } else if (ref.kind === 'localization') {
             assertLocalization(ir);
         } else if (ref.kind === 'diagnostics') {

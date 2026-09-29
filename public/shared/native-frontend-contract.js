@@ -40,11 +40,11 @@ export function assertFeatures(value = []) {
     });
 }
 
-// No optional extension runtime is implemented in Phase 1. Negotiation must
-// not confuse accepting a versioned declaration with providing that feature.
+// Negotiation must not confuse accepting a versioned declaration with actually
+// providing that feature. Unknown extensions remain unavailable, even optional.
 export function frontendFeatureAvailability(features) {
     return assertFeatures(features).map(feature => {
-        if (feature.id === 'remote-media' && feature.version === 1) return { ...feature, status: 'available', reasonCode: 'frontend_feature_available' };
+        if (['remote-media', 'frontend-script'].includes(feature.id) && feature.version === 1) return { ...feature, status: 'available', reasonCode: 'frontend_feature_available' };
         if (feature.required) throw new TypeError('Unsupported required Frontend feature: ' + feature.id + '@' + feature.version);
         return { ...feature, status: 'unsupported', reasonCode: 'frontend_feature_not_implemented' };
     });

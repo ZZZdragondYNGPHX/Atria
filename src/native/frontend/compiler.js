@@ -1,6 +1,7 @@
 import { assertMediaCatalog } from '../../../public/shared/native-frontend-media.js';
 import { assertLocalization } from '../../../public/shared/native-frontend-localization.js';
 import { frontendDiagnostics } from './diagnostics.js';
+import { compileController } from './script-compiler.js';
 import { assertFrontendExperience, assertFrontendSourceIndex, FRONTEND_LIMITS, resourcePath } from '../../../public/shared/native-frontend-contract.js';
 import { parseAui } from './aui-parser.js';
 import { canonicalJson, compileBridge, hash } from './bridge.js';
@@ -76,6 +77,11 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
             provenance.push({ kind: 'style', id, file, start: parsed.style.contentStart, end: parsed.style.end });
         }
         const ir = { format: 'atria-component-ir', version: 3, id: component.id, root: parsed.ast.root, uses: parsed.ast.uses, styles, presentation: parsed.ast.presentation };
+        if (parsed.ast.controller) {
+            const script = compileController(resolve(parsed.ast.controller.source), readText);
+            emit('script:' + component.id, 'script', script);
+            ir.controller = { resource: 'script:' + component.id, required: parsed.ast.controller.required };
+        }
         // Declarative uses are inferred; explicit declarations may narrow future
         // controller handles but can never manufacture a registry entry.
         const inferred = new Set(ir.uses);

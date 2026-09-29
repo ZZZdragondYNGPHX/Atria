@@ -25,6 +25,11 @@ const WEBPACK_BUNDLE_INPUT_FILES = Object.freeze([
     path.join(serverDirectory, 'public/lib-bundle-optional.js'),
     path.join(serverDirectory, 'public/lib-bundle-codemirror.js'),
     path.join(serverDirectory, 'public/lib-bundle-webllm.js'),
+    path.join(serverDirectory, 'public/scripts/native/frontend/script-worker.js'),
+    path.join(serverDirectory, 'public/scripts/native/frontend/script-vm.js'),
+    path.join(serverDirectory, 'public/shared/native-frontend-script.js'),
+    path.join(serverDirectory, 'public/shared/native-frontend-contract.js'),
+    path.join(serverDirectory, 'public/shared/native-frontend-media.js'),
 ]);
 
 export function getWebpackBundleInputFiles() {
@@ -177,6 +182,7 @@ export default function getPublicLibConfig({ forceDist = false, pruneCache = fal
     return {
         mode: 'production',
         entry: {
+            'atria-script.bundle': path.join(serverDirectory, 'public/scripts/native/frontend/script-worker.js'),
             'lib.core.bundle': path.join(serverDirectory, 'public/lib-bundle-core.js'),
             'lib.optional.bundle': path.join(serverDirectory, 'public/lib-bundle-optional.js'),
             'lib.webllm.bundle': path.join(serverDirectory, 'public/lib-bundle-webllm.js'),
@@ -190,7 +196,7 @@ export default function getPublicLibConfig({ forceDist = false, pruneCache = fal
         },
         devtool: false,
         watch: false,
-        module: {},
+        module: { rules: [{ test: /node_modules[\\/](?:@jitl|quickjs-emscripten-core)[\\/]/, parser: { dynamicImportMode: 'eager' } }] },
         stats: {
             preset: 'minimal',
             assets: false,

@@ -1,4 +1,6 @@
 import { createMediaResolver } from './media.js';
+import { createScriptSupervisor } from './script.js';
+import { createCanvasSurface } from './canvas.js';
 import { createLocalization } from '../../../shared/native-frontend-localization.js';
 import { renderSafeProse } from '../../../shared/native-safe-prose.js';
 import { createFrontendBridge } from './bridge.js';
@@ -17,6 +19,8 @@ export async function mountNativeFrontend(options) {
     const localization = createLocalization(resources.refs.has('localization') ? await resources.json('localization', 'localization') : { version: 1, defaultLocale: 'en', catalogs: { en: { direction: 'ltr', messages: {} } } }, options.locale, options.onDiagnostic);
     const advisoryDiagnostics = resources.refs.has('diagnostics') ? await resources.json('diagnostics', 'diagnostics') : [];
     const scheduler = createFrameScheduler(window, document);
+    const canvasBudget = new Map();
+    const scripts = createScriptSupervisor({ window, scheduler, onDiagnostic: options.onDiagnostic, workerFactory: options.scriptWorkerFactory });
     const composing = new Set();
     const instances = new Map(), shared = {}, declarations = {}, views = [], overlays = [];
     let sequence = 0, disposed = false, renderCancel = null, rendering = false, rerender = false, navigation = 0, overlayRevision = 0, nodeCount = 0;
@@ -26,10 +30,10 @@ export async function mountNativeFrontend(options) {
         const view = overlays.at(-1) ?? views.at(-1);
         if (view) { view.failure.hidden = false; view.failureText.textContent = 'Presentation could not be completed.'; }
     };
-    const media = await createMediaResolver({ resources, window, fetchImage: options.fetchImage, enabled: options.remoteMediaEnabled === true, changed: requestRender });
+    const media = await createMediaResolver({ resources, window, fetchImage: options.fetchImage, enabled: options.remoteMediaEnabled === true, changed: () => { instances.forEach(instance => instance.revokeScriptMedia?.()); requestRender(); } });
     if (media.required && !media.enabled && media.origins.length) {
         const consent = await (options.confirmRemoteMedia?.(media.origins) ?? window.confirm?.('Enable remote images from ' + media.origins.join(', ') + '? These sites can observe your IP address, image choices and request timing.'));
-        if (!consent) { scheduler.dispose(); resources.dispose(); media.dispose(); throw new Error('media_permission_denied'); }
+        if (!consent) { scripts.dispose(); scheduler.dispose(); resources.dispose(); media.dispose(); throw new Error('media_permission_denied'); }
         media.setEnabled(true);
     }
     let recovering = null, recoveryFailure = null;
@@ -49,7 +53,7 @@ export async function mountNativeFrontend(options) {
     } };
     const bridge = await createFrontendBridge({ descriptor: bridgeDescriptor, transport: options.bridgeTransport, hostServices,
         onEpoch: () => { void recover().catch(diagnostic); }, onRevision: options.onBridgeRevision,
-        fixed: { prefs: () => shared.prefs ?? {}, environment: () => views.at(-1)?.environment.get() ?? {} } }).catch(error => { scheduler.dispose(); media.dispose(); resources.dispose(); throw error; });
+        fixed: { prefs: () => shared.prefs ?? {}, environment: () => views.at(-1)?.environment.get() ?? {} } }).catch(error => { scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); throw error; });
     const bridgeTimer = options.bridgeTransport ? window.setInterval(() => { void bridge.refresh().catch(diagnostic); }, 1000) : null;
     const active = () => !disposed;
     const context = (instance, item, event = {}) => ({ ...Object.fromEntries(['ui', 'draft', 'prefs'].map(scope => [scope, shared[scope] ?? {}])),
@@ -136,6 +140,65 @@ export async function mountNativeFrontend(options) {
         if (instance.mounted || instance.disposed) return;
         instance.mounted = true;
         await lifecycle(instance, 'mount'); await lifecycle(instance, 'activate');
+        if (instance.ir.controller) await startController(instance);
+    }
+    function nodeHandle(instance, id) {
+        if (!instance.contract.nodeRefs.includes(id)) throw new TypeError('Undeclared NodeRef');
+        if (!instance.handles.has(id)) instance.handles.set(id, createNodeHandle(instance.nodes.get(id), instance.view.frame, { window, scheduler, active: () => active() && !instance.disposed, pointers: instance.pointers }));
+        return instance.handles.get(id).handle;
+    }
+    async function startController(instance) {
+        const images = new Map(), canvases = new Map(); let revision = 0, loadingImages = 0;
+        const revoke = () => { revision++; images.forEach(item => item.release?.()); images.clear(); canvases.forEach(item => item.dispose()); canvases.clear(); };
+        instance.revokeScriptMedia = revoke;
+        instance.cleanups.add(revoke);
+        const controller = await (async () => scripts.attach({ artifact: await resources.json(instance.ir.controller.resource, 'script'), required: instance.ir.controller.required,
+            snapshot: () => ({ props: instance.props, state: instance.state, env: instance.view.environment.get(), time: Date.now() }),
+            failure: error => {
+                if (!error.scriptFatal && instance.failBoundary) instance.failBoundary(error);
+                else { instance.view.failure.hidden = false; instance.view.failureText.textContent = 'Required Controller unavailable. Reload presentation to recover.'; }
+            }, revoked: () => { revoke(); instance.handles.forEach(handle => handle.dispose()); instance.handles.clear(); },
+            capability: async (method, args) => {
+                if (disposed || instance.disposed) throw new Error('script_revoked');
+                if (method === 'bridge') return instance.bridge[args[0]](...args.slice(1));
+                if (method === 'state') { if (typeof args[0] !== 'string' || !args[0].startsWith('component.')) throw new Error('script_state_scope'); write(instance, args[0], args[1]); } else if (method === 'emit') {
+                    if (!Object.hasOwn(instance.contract.emits, args[0])) throw new Error('script_emit_denied');
+                    await instance.onEmit?.(args[0], assertValue(args[1], instance.contract.emits[args[0]]), 1);
+                } else if (method === 'node') {
+                    const handle = nodeHandle(instance, args[0]);
+                    if (!['measure', 'capturePointer', 'releasePointer'].includes(args[1])) throw new Error('script_node_method');
+                    return handle[args[1]](args[2]);
+                } else if (method === 'media') {
+                    const token = revision, mediaEpoch = media.epoch;
+                    const binding = bridgeDescriptor.bindings.find(binding => binding.id === args[0]);
+                    if (!instance.ir.uses.includes(args[0]) || binding?.target?.service !== 'host.media' || binding.target.method !== 'resolve') throw new Error('script_media_scope');
+                    const authorization = await instance.bridge.snapshot(args[0], { ref: args[1], type: 'image' });
+                    if (!authorization.ok || instance.disposed || token !== revision || media.epoch !== mediaEpoch) throw new Error('script_media_denied');
+                    if (images.size + loadingImages >= 32) throw new Error('script_media_budget');
+                    loadingImages++;
+                    try {
+                        const result = await media.resolve(args[1], 'image');
+                        if (token !== revision || instance.disposed || media.epoch !== mediaEpoch) { result.release?.(); throw new Error('script_media_revoked'); }
+                        const image = new window.Image(); image.src = result.url;
+                        try { await image.decode(); } catch (error) { result.release?.(); throw error; }
+                        if (token !== revision || instance.disposed || media.epoch !== mediaEpoch) { result.release?.(); throw new Error('script_media_revoked'); }
+                        const handle = 'image.' + window.crypto.randomUUID(); images.set(handle, { image, release: result.release, mediaEpoch }); return handle;
+                    } finally { loadingImages--; }
+                } else if (method === 'canvas') {
+                    const id = args[0], node = instance.nodes.get(id);
+                    if (!instance.contract.nodeRefs.includes(id) || node?.localName !== 'canvas') throw new Error('script_canvas_denied');
+                    if (!canvases.has(id)) canvases.set(id, createCanvasSurface(node, scheduler, handle => { const item = images.get(handle); return item?.mediaEpoch === media.epoch ? item.image : null; }, canvasBudget, instance.failBoundary ?? diagnostic));
+                    canvases.get(id).submit(args[1]);
+                }
+            } }))().catch(error => {
+            options.onDiagnostic?.({ category: 'script', reasonCode: 'script_unavailable', sourceId: instance.ir.id, message: 'Controller resource or capacity unavailable.' });
+            if (instance.ir.controller.required) {
+                if (instance.failBoundary) instance.failBoundary(error);
+                else { instance.view.failure.hidden = false; instance.view.failureText.textContent = 'Required Controller unavailable. Reload presentation to recover.'; }
+            }
+            return { status: 'unavailable', dispose() {}, invoke() {} };
+        });
+        if (disposed || instance.disposed) controller.dispose(); else instance.controller = controller;
     }
     function propsFor(contract, input) {
         for (const key of Object.keys(input)) if (!Object.hasOwn(contract.props, key)) throw new TypeError('Undeclared Component prop');
@@ -155,7 +218,7 @@ export async function mountNativeFrontend(options) {
         instance.dispose = () => {
             if (instance.disposed) return;
             if (instance.mounted) { void lifecycle(instance, 'deactivate'); void lifecycle(instance, 'unmount'); }
-            instance.disposed = true; instance.bridge.dispose();
+            instance.disposed = true; instance.controller?.dispose(); instance.bridge.dispose();
             instance.cleanups.forEach(clean => clean()); instance.cleanups.clear();
             instance.handles.forEach(handle => handle.dispose()); instance.handles.clear(); instances.delete(instance.id); host.remove();
         };
@@ -170,7 +233,7 @@ export async function mountNativeFrontend(options) {
         } catch (error) { instance.dispose(); throw error; }
         instance.update = async input => {
             if (instance.disposed) return;
-            if (input && JSON.stringify(input) !== JSON.stringify(instance.props)) { instance.props = propsFor(contract, input); await lifecycle(instance, 'propsChanged'); }
+            if (input && JSON.stringify(input) !== JSON.stringify(instance.props)) { instance.props = propsFor(contract, input); await lifecycle(instance, 'propsChanged'); await instance.controller?.invoke('update'); }
             await block.update();
         };
         return instance;
@@ -240,6 +303,10 @@ export async function mountNativeFrontend(options) {
         listen('pointerdown', event => { if (instance.pointers.size < 16) instance.pointers.add(event.pointerId); });
         listen('pointerup', event => instance.pointers.delete(event.pointerId));
         listen('pointercancel', event => instance.pointers.delete(event.pointerId));
+        if (instance.ir.controller && instance.contract.nodeRefs.includes(definition.id)) for (const type of ['click', 'pointerdown', 'pointermove', 'pointerup', 'keydown', 'keyup', 'input', 'change']) listen(type, event => {
+            if ((event.isComposing || composing.has(node)) && ['keydown', 'keyup', 'input'].includes(type)) return;
+            void instance.controller?.invoke('event', { ...eventValue(event), type, node: definition.id });
+        });
         if (definition.events?.drop) listen('dragover', event => event.preventDefault());
         if (definition.tag === 'img') listen('error', () => {
             if (node.dataset.mediaStatus === 'available' && !definition.asset) {
@@ -574,7 +641,7 @@ export async function mountNativeFrontend(options) {
         }).finally(() => { recovering = null; });
         return recovering;
     }
-    try { await navigate(resources.index.primaryView.slice(5)); } catch (error) { disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); throw error; }
+    try { await navigate(resources.index.primaryView.slice(5)); } catch (error) { disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); throw error; }
     return Object.freeze({ mode: options.mode, status: 'active', refresh() { requestRender(); return bridge.refresh(); }, getContributions: () => [], getRenderReceipts: () => [],
         navigate, back, openOverlay, closeOverlay,
         recover, setLocale, announce, issueMedia: media.issue, setRemoteMediaEnabled: media.setEnabled,
@@ -590,12 +657,11 @@ export async function mountNativeFrontend(options) {
         getState() { return clone({ ...shared, view: views.at(-1)?.state ?? {} }); },
         setState(scope, path, value) { const root = views.at(-1)?.root; if (!root || !active()) throw new Error('Frontend unavailable'); write(root, scope + '.' + path, value); },
         getNodeRef(instanceId, nodeId) {
-            const instance = instances.get(instanceId); if (!instance || !instance.contract.nodeRefs.includes(nodeId)) throw new TypeError('Undeclared NodeRef');
-            if (!instance.handles.has(nodeId)) instance.handles.set(nodeId, createNodeHandle(instance.nodes.get(nodeId), instance.view.frame, { window, scheduler, active: () => active() && !instance.disposed, pointers: instance.pointers }));
-            return instance.handles.get(nodeId).handle;
+            const instance = instances.get(instanceId); if (!instance) throw new TypeError('Undeclared NodeRef');
+            return nodeHandle(instance, nodeId);
         },
-        getInstances() { return [...instances.values()].map(instance => ({ id: instance.id, componentId: instance.ir.id })); },
+        getInstances() { return [...instances.values()].map(instance => ({ id: instance.id, componentId: instance.ir.id, ...(instance.ir.controller ? { script: instance.controller?.status ?? 'loading' } : {}) })); },
         scheduler: Object.freeze({ frame: scheduler.frame }),
-        dispose() { if (disposed) return; recoveryFailure?.unmount(); ++navigation; [...overlays, ...views].reverse().forEach(disposeView); disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); instances.clear(); },
+        dispose() { if (disposed) return; recoveryFailure?.unmount(); ++navigation; [...overlays, ...views].reverse().forEach(disposeView); disposed = true; window.clearInterval(bridgeTimer); bridge.dispose(); scripts.dispose(); scheduler.dispose(); media.dispose(); resources.dispose(); instances.clear(); },
     });
 }

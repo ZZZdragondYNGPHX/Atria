@@ -22,10 +22,14 @@ const browser = await chromium.launch({ channel: process.env.ATRIA_BROWSER_CHANN
 try {
     const encoder = await browser.newPage(); await encoder.goto(`http://127.0.0.1:${server.address().port}`);
     const video = await encoder.evaluate(async () => {
-        const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32; const context = canvas.getContext('2d'); context.fillStyle = '#426b8e'; context.fillRect(0, 0, 32, 32);
+        const canvas = document.createElement('canvas'); canvas.width = 32; canvas.height = 32; document.body.append(canvas); const context = canvas.getContext('2d'); context.fillStyle = '#426b8e'; context.fillRect(0, 0, 32, 32);
         const stream = canvas.captureStream(10), recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' }), chunks = [];
-        recorder.ondataavailable = event => chunks.push(event.data); const done = new Promise(resolve => { recorder.onstop = resolve; }); recorder.start(); context.fillStyle = '#aa8844'; context.fillRect(0, 0, 32, 32); stream.getVideoTracks()[0].requestFrame?.();
-        await new Promise(resolve => setTimeout(resolve, 500)); context.fillStyle = '#224488'; context.fillRect(1, 1, 20, 20); stream.getVideoTracks()[0].requestFrame?.(); await new Promise(resolve => setTimeout(resolve, 100)); recorder.stop(); await done; stream.getTracks().forEach(track => track.stop());
+        recorder.ondataavailable = event => chunks.push(event.data); const done = new Promise(resolve => { recorder.onstop = resolve; });
+        const started = new Promise(resolve => { recorder.onstart = resolve; }); recorder.start(); await started;
+        // Paint attached, changing frames after recording starts. A detached
+        // canvas can produce a header-only WebM on newer headless Chromium.
+        for (let frame = 0; frame < 10; frame++) { context.fillStyle = frame % 2 ? '#224488' : '#aa8844'; context.fillRect(0, 0, 32, 32); stream.getVideoTracks()[0].requestFrame?.(); await new Promise(resolve => setTimeout(resolve, 100)); }
+        recorder.stop(); await done; stream.getTracks().forEach(track => track.stop()); canvas.remove();
         return [...new Uint8Array(await new Blob(chunks).arrayBuffer())];
     });
     assert.ok(video.length > 100, 'Recorded WebM must contain encoded frames');

@@ -9,6 +9,10 @@ import { compileBridge, validateCompiledBridge } from '../../src/native/frontend
 import { FrontendBridgeService, frontendBridgeService } from '../../src/native/frontend/host-bridge.js';
 import { createNativeSessionRouter } from '../../src/endpoints/native-session.js';
 import { createFrontendBridge } from '../../public/scripts/native/frontend/bridge.js';
+import { getQuickJS } from 'quickjs-emscripten';
+import { createScriptVM } from '../../public/scripts/native/frontend/script-vm.js';
+import { createScriptSupervisor } from '../../public/scripts/native/frontend/script.js';
+import { compileController } from '../../src/native/frontend/script-compiler.js';
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 15));
 describe('Frontend Host Bridge v1 data plane', () => {
@@ -63,6 +67,45 @@ describe('Frontend Host Bridge v1 data plane', () => {
         expect((await main.invoke('save', { label: 'yes' })).ok).toBe(true);
         expect(values.at(-1).data[0].value.text).toBe('yes');
         stop(); main.dispose(); child.dispose(); bridge.dispose();
+    });
+    test('isolated Controllers preserve typed writes, Component uses, Epoch revocation and Session Authority across VM recreation', async () => {
+        const engine = await getQuickJS(), receipts = [], vms = [];
+        const bridge = await createFrontendBridge({ descriptor: compileBridge({ version: 1, bindings: f.bindings }, f.contract), transport: {
+            open: previous => host.open(svc, h.handle, base.session.sessionId, previous), request: body => host.request(svc, h.handle, body),
+        } });
+        const main = bridge.scope('Main', ['save', 'notes']), child = bridge.scope('Child', []);
+        const workerFactory = () => {
+            let vm, dead = false;
+            const worker = { terminate() { if (dead) return; dead = true; vm?.dispose(); }, postMessage(message) {
+                queueMicrotask(() => {
+                    if (dead) return;
+                    try {
+                        if (message.kind === 'init') { vm = createScriptVM(engine, message.artifact); vms.push(vm); }
+                        const calls = message.kind === 'init' ? [] : vm.run(message);
+                        worker.onmessage({ data: { sequence: message.sequence, calls, cpu: 1 } });
+                    } catch { worker.onmessage({ data: { sequence: message.sequence, calls: [], cpu: 1, error: { reasonCode: 'script_budget_exceeded' } } }); }
+                });
+            } }; return worker;
+        };
+        const supervisor = createScriptSupervisor({ window: { setTimeout, clearTimeout }, scheduler: {}, workerFactory });
+        const code = 'export default { async event(ctx,event) { if(event.crash) {while(true){}} const result=await ctx.bridge.invoke(\'save\',{label:\'VM write\'});ctx.emit(\'receipt\',result); } };';
+        const artifact = compileController('test.ts', () => code);
+        const capability = scope => (method, args) => method === 'bridge' ? scope[args[0]](...args.slice(1)) : receipts.push(args[1]);
+        const parent = await supervisor.attach({ artifact, snapshot: () => ({}), capability: capability(main), required: false });
+        const denied = await supervisor.attach({ artifact, snapshot: () => ({}), capability: capability(child), required: false });
+        try {
+            await denied.invoke('event'); for (let i = 0; i < 100 && receipts.length < 1; i++) await tick();
+            expect(receipts[0].error.code).toBe('bridge_binding_denied');
+            await parent.invoke('event'); for (let i = 0; i < 100 && receipts.length < 2; i++) await tick();
+            expect(receipts[1].ok).toBe(true);
+            const current = await svc.core.load(h.handle, base.session.sessionId), epoch = bridge.epoch;
+            expect(current.states.atri_lifecycle.domains.notes.records[0].value.text).toBe('VM write');
+            await parent.invoke('event', { crash: true });
+            expect(vms).toHaveLength(3); expect(bridge.epoch).toBe(epoch);
+            expect((await svc.core.load(h.handle, base.session.sessionId)).revision.revisionId).toBe(current.revision.revisionId);
+            await bridge.reload();
+            expect((await main.snapshot('notes')).error.code).toBe('bridge_epoch_stale');
+        } finally { supervisor.dispose(); main.dispose(); child.dispose(); bridge.dispose(); }
     });
     test('Collection pages use formal projection; cursor binds query/revision/order/epoch', async () => {
         for (const id of ['c', 'a', 'b', 'd']) await append(id);

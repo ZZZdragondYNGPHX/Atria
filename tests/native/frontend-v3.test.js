@@ -13,6 +13,7 @@ import { StudioPreviewHost } from '../../src/native/studio-preview.js';
 import { resolveNativeRuntimePackage, readFrontendRuntimeResource } from '../../src/native/runtime-descriptor.js';
 import { ProjectStore, WorldRepo, KnowledgeRepo, AssetStore, PackageRepo, createNativeId } from '../../src/native/index.js';
 import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
+import { scriptFixture } from './helpers/frontend-script-fixture.js';
 
 const sourcePath = 'frontend/frontend.json';
 const template = '<!-- kept -->\n<template><main node-id="root"><p node-id="greeting">Hello &amp; welcome</p></main></template>\n<style>main { color: red; }</style>';
@@ -123,9 +124,9 @@ describe('Native Frontend v3 compiler skeleton', () => {
     });
 
     test('feature declarations do not imply support and style diagnostics retain source location', () => {
-        expect(frontendFeatureAvailability([{ id: 'frontend-script', version: 1, required: false }])[0])
+        expect(frontendFeatureAvailability([{ id: 'frontend-wasm', version: 1, required: false }])[0])
             .toMatchObject({ status: 'unsupported', reasonCode: 'frontend_feature_not_implemented' });
-        expect(() => frontendFeatureAvailability([{ id: 'frontend-script', version: 1, required: true }])).toThrow(/Unsupported required/);
+        expect(() => frontendFeatureAvailability([{ id: 'frontend-wasm', version: 1, required: true }])).toThrow(/Unsupported required/);
         const { files } = fixture();
         files.set('frontend/Main.aui', Buffer.from('<template><div node-id="root" /></template><style>@import "remote";</style>'));
         let error;
@@ -207,8 +208,39 @@ test('formal Project Build -> Preview -> install -> reopen consumes the same com
             const bad = structuredClone(built.manifest); bad.runtime.experience = sourceExperience;
             expect(() => buildAtriaPackageContainer({ manifest: bad, sourceFiles: fixture().files })).toThrow();
             const required = structuredClone(built.manifest);
-            required.runtime.experience.features = [{ id: 'frontend-script', version: 1, required: true }];
+            required.runtime.experience.features = [{ id: 'frontend-wasm', version: 1, required: true }];
             expect(() => buildAtriaPackageContainer({ manifest: required, sourceFiles: inspected.sourceFiles })).toThrow(/Unsupported required/);
+        }
+    } finally { await h.cleanup(); }
+});
+
+test('Script source builds once, installs as exact artifact, and negotiates the feature', async () => {
+    const h = await makeTempFsEngine();
+    try {
+        const projectStore = new ProjectStore({ directoriesByHandle: () => h.dirs });
+        const worldRepo = new WorldRepo({ engine: h.engine }), knowledgeRepo = new KnowledgeRepo({ engine: h.engine });
+        const assetStore = new AssetStore({ engine: h.engine, directoriesByHandle: () => h.dirs });
+        const installer = new PackageInstaller({ packageRepo: new PackageRepo({ engine: h.engine }), assetStore });
+        const projectId = createNativeId('project'), packageId = createNativeId('package'), entryPointId = createNativeId('entryPoint');
+        const source = { format: 'atria-project-source', schemaVersion: 1, project: { projectId, packageId, displayName: 'Sandbox' },
+            package: { name: 'Sandbox', version: '1.0.0', actors: [], capabilities: [], permissions: [], entryPoints: [{ entryPointId, displayName: 'Main', actorIds: [], worldIds: [], knowledgeBindingIds: [] }],
+                runtime: { experience: { mode: 'full', frontend: { kind: 'native', version: 3, source: 'frontend/index.json' }, features: [{ id: 'frontend-script', version: 1, required: true }] } } },
+            worlds: [], knowledge: [], knowledgeBindings: [], dependencies: {}, assetFiles: [] };
+        await projectStore.create(h.handle, source);
+        for (const [path, bytes] of scriptFixture().files) await projectStore.writeFile(h.handle, projectId, path, bytes);
+        const built = await buildProjectPackage({ handle: h.handle, projectId, projectStore, worldRepo, knowledgeRepo, assetStore });
+        const inspected = inspectAtriaPackageContainer(built.archive), preview = new StudioPreviewHost().create({ projectId, archive: built.archive });
+        expect(inspected.sourceFiles.has('frontend/controller.ts')).toBe(false);
+        expect(inspected.sourceFiles.has('frontend/vendor/layout.js')).toBe(false);
+        await installer.install(h.handle, built.archive);
+        const opened = await installer.open(h.handle, packageId, built.packageVersion.packageVersionId), resolved = resolveNativeRuntimePackage(opened, entryPointId);
+        expect(resolved.runtime).toEqual(preview.runtime);
+        const script = resolved.frontendGraph.resources.find(ref => ref.kind === 'script');
+        expect(readFrontendRuntimeResource(opened, resolved, script.path).bytes.length).toBe(script.size);
+        expect(() => readFrontendRuntimeResource(opened, resolved, 'frontend/controller.ts')).toThrow();
+        for (const features of [[], [{ id: 'frontend-script', version: 1, required: false }]]) {
+            const manifest = structuredClone(built.manifest); manifest.runtime.experience.features = features;
+            expect(() => buildAtriaPackageContainer({ manifest, sourceFiles: inspected.sourceFiles })).toThrow(/frontend-script/);
         }
     } finally { await h.cleanup(); }
 });

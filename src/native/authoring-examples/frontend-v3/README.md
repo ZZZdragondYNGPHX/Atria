@@ -456,7 +456,7 @@ local rendering/schema errors remain in the affected boundary. Retry recreates
 that subtree and read subscriptions with a new request epoch, preserving sibling
 state and suppressing late completion. It never automatically replays an Action
 or Operation. Business rejections remain Bridge Receipts. Controller VM failures
-will use this boundary seam in Phase 6; no VM is implemented here.
+use this boundary seam in Phase 6 (documented below).
 
 Root/View load errors retain the independent Host failure/recovery surface. Public
 errors contain safe category/reasonCode/retryable/sourceId/diagnosticRef/message,
@@ -470,3 +470,124 @@ Executable coverage: `frontend-platform.test.js`,
 a tiny WebM locally, validates real media decode, and uses deterministic remote
 responses plus synthetic composition/viewport events. It does not claim a real
 IME, physical soft keyboard, provider or external image-server E2E.
+
+## Phase 6 — Script Sandbox and Canvas
+
+Declare `frontend-script@1` in Experience features. A required Controller requires
+a required feature. Script is a capability-isolated feature, not external access
+permission. Package source never runs in the browser/Worker's JavaScript realm.
+
+Reference a Controller in the Component's JSON contract; `source` is relative to
+the Frontend Source Index, just like other authoring resources:
+
+```json
+{
+  "controller": { "source": "controllers/map.ts", "required": false },
+  "uses": ["people", "save", "images"],
+  "nodeRefs": ["map", "animate"]
+}
+```
+
+Use semantic `<canvas node-id="map" width="360" height="240"
+aria-label="Relationship map"></canvas>` in `.aui`. Canvas remains a declarative
+node; a Controller cannot create DOM, traverse selectors or obtain a real context.
+The installed graph contains `script:<ComponentId>` with exact compiled modules,
+static import links, source digests and per-module source maps. The formal Build
+transpiles TypeScript to strict ES2020 JS and links package-local, explicit `.js`
+or `.ts` static imports. Vendored pure JS algorithms work without npm at runtime.
+Source imports are relative to their importing file; cycles, remote/bare/Node
+imports, dynamic import, runtime require, eval and dynamic Function are rejected.
+This is transpilation/compatibility validation, not a full TS type-checking IDE.
+Installation revalidates module syntax and static closure; hashes alone do not
+make script artifacts executable. Preview uses exactly these compiled artifacts.
+
+Export a default object with optional `init(ctx, event)`, `event(ctx, event)` and
+`update(ctx, event)` handlers. `init` runs once per VM, `update` on changed props.
+Declared NodeRefs receive bounded click/pointer/key/input/change events with
+`event.node` and `event.type`; composing input/key events are withheld. Events
+contain no DOM objects. Nested `ctx.props`, `ctx.state`, `ctx.env` and events are
+readonly copies. Each call/async continuation gets current Host presentation
+state. Write component fields with `ctx.set('component.count', value)`; schema
+validation and reconciliation use the existing state authority. Use declared
+`ctx.emit(name, value)` for parent interactions.
+
+```js
+import { layout } from './vendor/layout.js';
+
+function draw(ctx) {
+    const commands = [['fillStyle', '#edf3e8'], ['fillRect', 0, 0, 360, 240]];
+    for (const point of layout(6)) {
+        commands.push(['fillStyle', '#356d83'], ['beginPath'],
+            ['arc', point.x, point.y, 10, 0, Math.PI * 2, false], ['fill']);
+    }
+    ctx.canvas('map', { width: 360, height: 240, commands });
+}
+export default {
+    init(ctx) { draw(ctx); },
+    async event(ctx, event) {
+        if (event.type !== 'click' || event.node !== 'animate') return;
+        const frame = await ctx.scheduler.frame();
+        if (frame.animation) draw(ctx);
+    },
+};
+```
+
+Controller ABI:
+
+- `ctx.bridge.snapshot/page/invoke/start/operation/cancel` have the same arguments,
+  Receipts, revision/idempotency guards and Operation Lifecycle as the existing
+  typed Bridge scope. Only the Component's compiled `uses` are callable. Fixed
+  Host services use these same declared bindings. Business rejection is a Receipt.
+- `await ctx.node(id, 'measure')` returns bounded local geometry. Pointer capture
+  and release use `'capturePointer'/'releasePointer'` and an owned pointer ID.
+  Direct selectors, mutation and DOM construction are unavailable.
+- `await ctx.media(bindingId, ref)` requires a declared `host.media.resolve` Read
+  binding. It returns an opaque, VM-generation-scoped image handle, never a URL,
+  image object or bytes. Exact/declared/HostIssued refs use the existing resolver
+  and remote permission/fallback policy. Pass the handle to an `image` command.
+- `await ctx.scheduler.timer(ms)`, `frame()` and `yield()` are bounded Host work.
+  Frames use the shared scheduler and return `{time, animation}`; honor
+  `animation: false` for hidden/reduced-motion presentation. Timer maximum is 10s.
+  `ctx.clock()` and `ctx.random()` are presentation-only, not Game Authority.
+
+Canvas submits one retained batch, coalesced per Host frame. Supported commands:
+`clearRect/fillRect/strokeRect`, `beginPath/closePath/moveTo/lineTo/arc`,
+`bezierCurveTo/quadraticCurveTo`, `fill/stroke`, `save/restore`,
+`translate/scale/rotate/setTransform`, `fillText`, `image` (handle,x,y,width,height),
+`fillStyle/strokeStyle` (hex RGBA), `lineWidth`, `globalAlpha`. There is no pixel
+readback, URL sink, arbitrary context dispatch, WebGL or Package WASM.
+
+Host policy bounds: 16 Controllers/Experience; 8 MiB QuickJS heap and 256 KiB stack
+per Controller; 40ms cooperative invocation deadline and 1s Worker hard watchdog
+(10s engine startup); 2s reported execution per 10s Experience window; 64 modules,
+512 KiB source/compiled module code; 128 KiB structured message/batch; 64 queued
+invocations/messages; 32 outstanding async and 4 live Operations per Controller.
+Canvas allows 2048 commands/batch, 2048px per dimension, 32 save levels, 16 active
+surfaces and 8M retained pixels/Experience. These guest heap limits exclude
+browser/Worker/WASM engine overhead; native VM operations may reach the hard
+watchdog before a cooperative interrupt. No browser global/network/storage is
+injected. QuickJS WASM is a Host implementation detail, not `frontend-wasm` support.
+
+Ordinary exceptions produce source-mapped diagnostics and disable the failed
+Controller (optional declarative fallback, required local/root failure surface).
+Budget/engine failures terminate the Worker and rebuild at most twice, restoring
+props/component state from the Host. Rebuild revokes timers, Node/media requests,
+images and Canvas buffers; old completions are discarded. Required repeated
+failure escalates to the Host View failure surface. `getInstances()` reports
+`loading/available/recovered/unavailable` script status for Host diagnostics.
+
+Keep `init` presentation/read-only: automatic recovery never replays Actions,
+Operations or parent emits. A fresh user event enables new writes, including its
+async continuations; intent tokens are bounded and revoked on VM replacement.
+VM restart never reloads SessionCore, changes Authority Epoch or cancels/replays
+an authoritative write. Already-started Operations remain owned by the existing
+Task lifecycle; their IDs continue to count against the Controller's quota until
+terminal status is observed. Authority Epoch recovery still revokes the whole
+old Component/Bridge/VM through the existing Host recovery path.
+
+Executable examples: `tests/native/helpers/frontend-script-fixture.js` (vendored
+layout/relationship map/animation), `frontend-script.test.js`, Script cases in
+`frontend-bridge.test.js` and `frontend-v3.test.js`, and
+`tests/frontend/native-frontend-script.smoke.mjs`. Worker bundling is part of the
+normal webpack build (`/atria-script.bundle.js`), cached by dependency/source
+fingerprint; generated engine bytes are not committed.
