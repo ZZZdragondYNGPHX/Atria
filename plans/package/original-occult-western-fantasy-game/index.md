@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.21 — Rounds 6–6.5 approved; Round 6.6 opened; not approved for implementation
+- **Status:** Discussion Draft v0.22 — Rounds 6–6.6 approved; Round 6.7 opened; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -57,7 +57,7 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 6.6
+## Current route — Round 6.7
 
 Required reading:
 
@@ -190,7 +190,11 @@ Approved: fourteen logical authority domains, derived relationship/availability 
 
 ### Round 6.6 — Perspective-specific context projection
 
-Define Narrator, Actor, Agenda Task, Case Reflection and supernatural-advisory context packages with bounded, provenance-aware information.
+Approved: task-specific Context Packages, bounded Narrator/Actor/Agenda/Reflection/Advisory views, explicit information-transfer events and structured authority provenance.
+
+### Round 6.7 — World-advance scheduling and model-call budget
+
+Define deterministic post-action scheduling, due-event batching, Agenda execution, background Model Task limits and safe save/replay behavior.
 
 ### Round 7 — Native UI and interaction model
 
@@ -239,7 +243,8 @@ Currently carried forward from research:
 - approved Native-authoritative uncertainty resolution with bounded Fortune, risk preview and structured consequences;
 - approved open Case architecture with world-owned Evidence, durable Settlement history and no quest-checklist ontology;
 - approved Atria-native simulation authority with bounded perspectives, shared information graph, one world clock, Agenda state machines and tiered actor simulation;
-- approved fourteen-domain simulation decomposition with derived state and Hard/Perspective/Intent write-authority separation.
+- approved fourteen-domain simulation decomposition with derived state and Hard/Perspective/Intent write-authority separation;
+- approved task-specific bounded Context Packages with explicit information-transfer events and no shared omniscient prompt.
 
 All unapproved elements remain open to revision.
 
