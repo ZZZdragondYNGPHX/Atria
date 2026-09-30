@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.23 — Rounds 6–6.7 approved; Round 7 opened as lightweight frontend-constraint pass; not approved for implementation
+- **Status:** Discussion Draft v0.24 — Round 7 approved; Round 8 opened; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -51,39 +51,30 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 | `institutions.md` | Round 3.9: city institutions, faction network, Eastbank evidence distribution and institutional conflicts | `society.md`, `religion.md`, `geography.md` |
 | `player.md` | Rounds 4–4.6: player identity, controlled character creation, first Breach and first-Claim flow | `foundation.md`, `geography.md`, `society.md`, `institutions.md` |
 | `gameplay.md` | Rounds 5–5.6: core loop, investigation, uncertainty, case structure, failure, time, downtime and economy | `player.md`, `platform-and-gameplay.md` |
-| `simulation.md` | Round 6: authoritative world state, information projections, logical time, Agendas and Case graph | `gameplay.md`, `platform-and-gameplay.md`, `institutions.md`, `player.md` |
+| `simulation.md` | Rounds 6–6.7: authoritative state, projections, domains, scheduling and simulation budgets | `gameplay.md`, `platform-and-gameplay.md`, `institutions.md`, `player.md` |
+| `content-architecture.md` | Round 8: content scale, NPC depth, Case/anomaly/Claim catalog architecture, replay and maintainability | `geography.md`, `institutions.md`, `player.md`, `gameplay.md`, `simulation.md`, `metaphysics.md` |
 | `platform-and-gameplay.md` | Atria fit, provisional core loop/surfaces, external design references, open questions | `foundation.md` plus relevant domain modules |
 | `decisions.md` | Compact cross-module frozen-decision index; links back to detailed authorities | all authoritative modules |
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 7
+## Current route — Round 8
 
 Required reading:
 
 - `index.md`
-- `platform-and-gameplay.md`
-- `simulation.md`
+- `content-architecture.md`
 
-Round 7 is intentionally lightweight.
+Load only when content scope requires it:
 
-Only define:
+- `geography.md` — city / regional authored footprint;
+- `institutions.md` — institutional roster and evidence ownership;
+- `player.md` — opening content and Claim acquisition;
+- `gameplay.md` — Case architecture and replay requirements;
+- `simulation.md` — actor tiers, graph, context and retention limits;
+- `metaphysics.md` — Claim / anomaly design boundaries.
 
-- player-visible information requirements;
-- required player actions / interactions;
-- information that must remain hidden;
-- anti-leakage and authority constraints.
-
-Do not define:
-
-- layout;
-- visual hierarchy;
-- styling;
-- animation;
-- component composition;
-- detailed navigation / UX architecture.
-
-Detailed frontend planning is delegated to a frontend-specialized AI or an AI with an installed frontend skill.
+Round 7 visual/UI design remains delegated and is not a dependency for content authoring.
 
 ## Stage routing
 
@@ -97,8 +88,8 @@ Detailed frontend planning is delegated to a frontend-specialized AI or an AI wi
 | Round 4–4.6 | `index.md`, `player.md`; dependencies only as needed | Approved |
 | Round 5–5.6 | `index.md`, `gameplay.md`, `platform-and-gameplay.md`; dependencies only as needed | Approved |
 | Round 6–6.7 | `index.md`, `simulation.md`, `platform-and-gameplay.md`; dependencies only as needed | Approved |
-| Round 7 | `index.md`, `platform-and-gameplay.md`, `simulation.md` | Current; lightweight constraints only, no detailed UI design module by default |
-| Round 8 | `index.md` plus gameplay/simulation/UI and relevant world modules | Create content-architecture module when design starts |
+| Round 7 | `index.md`, `platform-and-gameplay.md`, `simulation.md` | Approved; lightweight information/interaction constraints only |
+| Round 8 | `index.md`, `content-architecture.md`; affected authority modules only as needed | Current |
 | Round 9 | `index.md`, `platform-and-gameplay.md` plus approved system/content modules | Create Package technical-design module when design starts |
 | Round 10 | `index.md`, `decisions.md`, technical-design module | Freeze implementation stages and exact implementation-stage reading map |
 
@@ -209,11 +200,11 @@ Approved: deterministic-first world advance, three Agenda step classes, relevanc
 
 ### Round 7 — Frontend information and interaction constraints
 
-Define only which information and actions must be available or hidden. Do not prescribe layout, visual hierarchy, styling, animation, component composition or detailed UX. Detailed frontend/UI planning is delegated to an AI with strong frontend/design capability or an installed frontend skill.
+Approved: player-safe information access, required investigative/risk/Claim interactions and strict anti-leakage boundary; visual/UI/UX planning remains delegated.
 
 ### Round 8 — Content architecture
 
-Define cities, factions, NPC archetypes, mysteries, progression content and replay structure.
+Define authored world footprint, NPC depth, institutions, reusable Case/anomaly structures, Claim catalog scope, replay variation and maintainable Package content boundaries.
 
 ### Round 9 — Package technical design
 
@@ -256,7 +247,8 @@ Currently carried forward from research:
 - approved Atria-native simulation authority with bounded perspectives, shared information graph, one world clock, Agenda state machines and tiered actor simulation;
 - approved fourteen-domain simulation decomposition with derived state and Hard/Perspective/Intent write-authority separation;
 - approved task-specific bounded Context Packages with explicit information-transfer events and no shared omniscient prompt;
-- approved deterministic-first world scheduling with bounded background deliberation and event-driven fast-forward.
+- approved deterministic-first world scheduling with bounded background deliberation and event-driven fast-forward;
+- approved lightweight frontend information/interaction constraints with detailed visual design delegated.
 
 All unapproved elements remain open to revision.
 
