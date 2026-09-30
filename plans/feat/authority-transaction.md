@@ -2,9 +2,9 @@
 
 - **Task ID:** feat/authority-transaction
 - **Primary Workspace:** main
-- **Implementation branch:** feat/authority-transaction
-- **Status:** Approved Core Prerequisite Plan v1.0
-- **Blocks:** package/original-occult-western-fantasy-game P1+
+- **Implementation branch:** feat/authority-transaction (merged; temporary branch removed)
+- **Status:** Complete — C1–C4 verified and integrated; see records/feat/authority-transaction.md for exact HEADs and evidence
+- **Blocks:** P0 Core prerequisite cleared; Package P1 is unblocked but not started
 - **Design authority:** docs:plans/package/original-occult-western-fantasy-game/technical-design.md (Rounds 9.5–9.8)
 
 ## Goal

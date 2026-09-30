@@ -2,7 +2,7 @@
 
 - Task ID: feat/authority-transaction
 - Primary Workspace: main
-- Branch: feat/authority-transaction
+- Branch: feat/authority-transaction (merged into main; temporary branch removed)
 - Plan: plans/feat/authority-transaction.md
 - Design authority: plans/package/original-occult-western-fantasy-game/technical-design.md, Rounds 9.5–9.8
 
@@ -184,7 +184,7 @@ Status: **C3 complete; stopped at the stage boundary; C4 not started** (2026-09-
 
 ## C4 — Regression / integration / merge gate
 
-Status: **in progress** (2026-09-30).
+Status: **complete — verified, integrated and closed** (2026-09-30).
 
 - Fetched all remotes; clean source/docs/main worktrees. Start task HEAD 98dd21a37e2d215df4a065672dd685db9c02eda3, origin/main 2a1cba78a428137ccded7647ce6dadd79a3ac60c, origin/docs 42ba215232bf982e58e526a4b0dc991f80ef59d3. Local main was behind only the already-read AGENTS Skill-routing commit; no rollback or C1–C3 redo.
 - Read current main AGENTS, complete docs Governance, HANDOFF → Core Plan → this Record, Package index → technical-design Rounds 9.5–9.8. Scope remains Core C4; no Package content/workaround or reference reads.
@@ -217,11 +217,35 @@ All paths above are tests/native unless identified as Game Logic compiler tests.
 - Enabled Host authority-transaction supported versions from [] to [1] only after the executable gate above. Capability v1 now passes required activation; undeclared/mismatched/unknown-version contracts still fail closed. Existing C1 staging assertions were updated to test the completed capability rather than permanently expecting it disabled.
 - The shared Turn fixture now declares required=true, so all C3 Turn/Frontend/Narrator/publication and new C4 integration tests exercise real required capability activation, not an optional-metadata workaround. C1 optional and legacy regression cases remain intact.
 - Enabled-path targeted validation: **4 suites /94 tests passed**. All workflow-listed authority JS files passed ESLint; workflow YAML and exact 51 existing test paths validated. Full local/CI evidence and exact HEADs follow below.
-- No execution journal, parallel authority, mechanical redesign, private-information widening, Package content or Package workaround was added. Separate-process testing exports committed state after a simulated Narrator failure; it is not an abrupt OS-kill/power-loss test. No claim of full repository suite, real browser/UI, Android/device or production hosted model validation.
+- No execution journal, parallel authority, mechanical redesign, private-information widening, Package content or Package workaround was added. Separate-process testing exports committed state after a simulated Narrator failure; it is not an abrupt OS-kill/power-loss test. At this local checkpoint there was no full repository suite, real browser/UI, Android/device or production hosted model validation; subsequent adjacent remote browser evidence is recorded below.
 
 ### C4 task-branch validation
 
 - Implementation HEAD / local tested HEAD: 7e2e36433b8bb298ca234ca11e99517c2f4d6648; tested tree 3b0a469ea3da6e3c549a4492fac75e9916920d5c. Staged tree was verified unchanged after validation and before commit. Pushed to the existing task branch.
 - Complete local matrix: **51 suites /1324 tests passed**; FS/SQLite with existing explicit MySQL/PostgreSQL local exclusion flags. Includes new C4 suite /18 local tests (9 cases per engine).
 - All 41 workflow-listed JavaScript lint paths passed; workflow YAML parsed, all 51 test paths exist and are unique, working/staged diff checks passed. No untracked caches or machine files were committed.
-- Exact-HEAD four-engine CI pending; integrated main / branch cleanup / Package unblock not yet complete.
+- At this historical checkpoint, exact-HEAD four-engine CI, integrated main, branch cleanup and Package unblock were pending; final results follow below.
+
+- Task-branch CI **SUCCESS**, exact HEAD 7e2e36433b8bb298ca234ca11e99517c2f4d6648, run 36688893688: https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36688893688. **51 suites /1634 tests + lint passed**, with FS/SQLite/MySQL/PostgreSQL. Run metadata and actual log totals were checked. C4 adds 36 integration cases across four engines; separate-process restore uses a clean FS child target from each source engine.
+- Integrated latest main with a non-fast-forward merge after task CI passed. Integrated commit cd6bff19d54f651a4bffd8981f62ec77c0f84acb, tree ce40ad7e2a5af89dc4e2d65b89c4ecc491263f34. Its only difference from the task tested tree is the already-fetched AGENTS Skill-routing update; no code merge conflict or unreviewed source delta. Integrated-main local/remote validation is pending below.
+
+- Integrated main local tested HEAD: cd6bff19d54f651a4bffd8981f62ec77c0f84acb, tree ce40ad7e2a5af89dc4e2d65b89c4ecc491263f34. **8 suites /143 tests passed**: authority-integration-c4, authority-contract-c1, authority-resources-c1, authority-frontend-c3, session-core.contract, save-system, package-build-install and experience-actions. Main tree remained clean and unchanged, diff check passed, and main was pushed. Full exact-main four-engine CI follows below.
+
+- Integrated-main Authority CI **SUCCESS**, exact HEAD cd6bff19d54f651a4bffd8981f62ec77c0f84acb, run 36689762938: https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36689762938. **51 suites /1634 tests + lint passed**, all four storage engines; metadata and log totals verified.
+- Same-main Native Frontend v3 CI **SUCCESS**, run 36689762911: https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36689762911. Selected Native/Game Runtime/Atria Shell/Memory Graph matrix **257 suites /3186 tests passed**, plus existing Installed Heavy / formal Studio browser smoke and build-lib job. This is adjacent remote browser evidence, not a manual or Transaction-specific UI acceptance test.
+- Existing Cleanup merged task branches workflow 36689762977 removed the merged remote task branch after main push. Verified with ls-remote; local task branch is retained until final cleanup. No unrelated branch was manually deleted by this task.
+
+- Same-main Native Model Prompt Runtime CI **SUCCESS**, run 36689762996: https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36689762996. Selected Native/Atria Shell/Game Runtime/Orchestrator matrix **312 suites /3761 tests passed**, integration guard, full repository lint, frontend prebuild cache and **12 Native Session browser E2E tests passed**. Metadata and actual log totals verified. These adjacent matrices overlap; counts must not be added together as unique tests.
+
+### C4 final closure
+
+Status: **C4 complete; Core prerequisite integrated and closed** (2026-09-30).
+
+- Final task implementation / branch tested HEAD: 7e2e36433b8bb298ca234ca11e99517c2f4d6648; tree 3b0a469ea3da6e3c549a4492fac75e9916920d5c.
+- Final integrated main / local and remote tested HEAD: **cd6bff19d54f651a4bffd8981f62ec77c0f84acb**; tree **ce40ad7e2a5af89dc4e2d65b89c4ecc491263f34**. origin/main and local main match; source trees are clean.
+- Required authority-transaction@1 activation is enabled and tested. All twelve frozen gates have executable evidence above, including actual save-container and separate-process same-selection/same-anchor Fortune evidence, fail-closed limits, atomic finalization, derived publication, old-Package compatibility and coherent Branch Retry.
+- Temporary remote feat/authority-transaction was removed by the existing main cleanup workflow; local temporary branch removed after all relevant main CI passed. The task checkout is detached at the verified integrated main, rather than deleting a branch still checked out elsewhere. No worktree or unrelated branch was removed.
+- Core Plan status and Package Plan index routing are updated only to reflect completed P0 and P1 readiness. No game design/content, Package asset, workaround or Package implementation was added.
+- Permanent Record retains C1–C4 history, exact validation scope, decisions and prior plugin-task recovery. The unique live HANDOFF is removed in the final docs closure commit; no second live handoff is created.
+- **Package P1 prerequisite is now unblocked; P1 has not started.** Any Package stage still requires separate explicit authorization. Core work stops here.
+- Remaining scope limits are intentional: no persistent uncommitted selection journal, abrupt OS-kill/power-loss test, full-repository test suite, manual Transaction UI acceptance, Android/device or production hosted-model claim. Independent-process replay reselects the same declared action from the saved authority anchor; this must not be represented as recovering an uncommitted selection pin.
