@@ -32,14 +32,17 @@ describe('C1 pinned Package/Build/Runtime declaration closure', () => {
         const loaded = await loadGameLogicDefinition({ sessionId: 'session_fixture', runtime: resolved.runtime, descriptor: resolved.descriptor }, { fetchImpl });
         expect(loaded.transactions).toEqual(logic.transactions); expect(loaded.derivedPublications).toEqual(logic.derivedPublications);
         expect(loaded.commands).toEqual([]); expect(fetchImpl).toHaveBeenCalledTimes(1);
-        // No C2 execution. Optional declarations must not acquire an invocation API.
+        // Loading declarative metadata never exposes private execution to the browser.
         expect(loaded).not.toHaveProperty('executeTransaction');
     });
-    test('required capability cannot activate before Host execution support exists', async () => {
+    test('C4 required capability activates only through the verified runtime contract', async () => {
         manifest.runtime.experienceContract.capabilities[0].required = true;
         await svc.packageInstaller.install(h.handle, archive());
         const opened = await svc.packageInstaller.open(h.handle, manifest.packageId, manifest.packageVersionId);
-        expect(() => resolveNativeRuntimePackage(opened, fixture.entryPointId)).toThrow(/Host does not support required Experience capability/);
+        expect(resolveNativeRuntimePackage(opened, fixture.entryPointId).descriptor.experienceContract.capabilities)
+            .toContainEqual({ id: 'authority-transaction', version: 1, required: true });
+        const view = await svc.core.create(h.handle, { packageId: manifest.packageId, packageVersionId: manifest.packageVersionId, entryPointId: fixture.entryPointId });
+        expect(view.manifest.runtime.experienceContract.authorityRuntime).toEqual(manifest.runtime.experienceContract.authorityRuntime);
     });
     test('server pinned World compiler validates v3 without preparing transaction effects', async () => {
         await svc.packageInstaller.install(h.handle, archive());

@@ -2,7 +2,16 @@ name: Authority Transaction
 
 on:
   push:
-    branches: [feat/authority-transaction]
+    branches: [main, feat/authority-transaction]
+    paths:
+      - 'public/shared/native-*.js'
+      - 'public/scripts/native/**'
+      - 'src/native/**'
+      - 'src/storage/**'
+      - 'tests/native/**'
+      - 'tests/game-runtime/**'
+      - 'tests/storage/**'
+      - '.github/workflows/authority-transaction.yml'
   pull_request:
     paths:
       - 'public/shared/native-*.js'
@@ -87,6 +96,10 @@ jobs:
           native/model-prompt-runtime-p4.test.js
           native/package-turn-memory-bridge-g3.test.js
           native/authority-narrator-c3.test.js
+          native/authority-integration-c4.test.js
+          native/save-system.test.js native/storage-round-trip.test.js native/storage-commit-last.test.js
+          native/session-core.contract.test.js native/session-durability.test.js native/session-history-p2.test.js
+          native/information-session-p6.test.js native/session-runtime-http.test.js
       - name: Authority source lint
         run: >-
           npx --no-install eslint
@@ -117,3 +130,5 @@ jobs:
           tests/native/authority-publication-c3.test.js
           tests/native/authority-turn-c3.test.js
           tests/native/helpers/authority-turn-fixture.js
+          tests/native/authority-integration-c4.test.js
+          tests/native/helpers/authority-restore-process.js

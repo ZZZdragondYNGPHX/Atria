@@ -7,7 +7,6 @@ import { createHttpGenerationProvider } from '../../../src/native/adapters/http-
 
 export async function authorityTurnFixture(h, endpoint, change = () => {}) {
     const f = authorityCandidateFixture();
-    f.contract.capabilities[0].required = false; // Staged Host gate stays closed until integration.
     f.contract.taskRuntime = { schemaVersion: 1, slots: [], tasks: [], turn: { policy: 'authority-first', stages: [] } };
     f.contract.informationRuntime.views.push({ id: 'narrator.notes', audience: 'narrator', sources: ['public.notes'], exposure: ['context'], knowledge: false, memory: false, maxItems: 64, maxCharacters: 16384 });
     f.logic.transactions[0].reads.push({ id: 'secret', domainId: 'other', recordId: 'main', fields: ['text'] });

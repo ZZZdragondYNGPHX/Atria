@@ -16,12 +16,14 @@ describe('C1 independent Authority capability contract', () => {
         expect(result.authorityRuntime.policy.maxEffects).toBe(32);
         expect(ATRIA_EXPERIENCE_CAPABILITIES.action).toEqual({ versions: [2], supported: [2] });
     });
-    test('C1 registers declaration vocabulary, but fails closed until execution exists', () => {
+    test('C4 enables the verified v1 Host while preserving strict capability negotiation', () => {
         const { contract } = authorityFixture();
-        expect(ATRIA_EXPERIENCE_CAPABILITIES['authority-transaction']).toEqual({ versions: [1], supported: [] });
-        expect(() => assertSupportedExperienceContract(contract)).toThrow(/Host does not support required Experience capability authority-transaction@1/);
+        expect(ATRIA_EXPERIENCE_CAPABILITIES['authority-transaction']).toEqual({ versions: [1], supported: [1] });
+        expect(assertSupportedExperienceContract(contract)).toEqual(contract);
         contract.capabilities[0].required = false;
         expect(assertSupportedExperienceContract(contract)).toEqual(contract);
+        contract.capabilities[0].version = 2;
+        expect(() => assertSupportedExperienceContract(contract)).toThrow();
     });
     test('legacy contracts are unchanged and do not acquire default authority', () => {
         const legacy = { schemaVersion: 1, capabilities: [{ id: 'action', version: 2, required: true }], dataResources: [] };

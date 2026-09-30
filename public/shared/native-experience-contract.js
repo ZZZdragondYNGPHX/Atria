@@ -17,7 +17,7 @@ export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
     ['data-projection', [1], [1]],
     ['composer', [1], [1]],
     ['action', [2], [2]],
-    ['authority-transaction', [1], []],
+    ['authority-transaction', [1], [1]],
     ['declarative-mutation', [1], [1]],
     ['message-projection', [1], [1]],
     ['turn-contract', [1], [1]],
