@@ -14,5 +14,7 @@
 - **Divinity:** gods are transpersonal Identities with multiple possible origins; worship is Anchor rather than generic mana; doctrine does not automatically prove metaphysical truth. **Authority:** `religion.md`.
 - **Religious ecology:** an ecumenical religious world contains multiple sacred centers, saints, local cults and office-based priesthood with Church/State/Academy tensions. **Authority:** `religion.md`.
 - **Political stage:** the primary state is a constitutional monarchy; the principal stage is an industrial second city within a focused regional scope, contrasted with neighboring political systems. **Authority:** `geography.md`.
+- **Player opening:** the protagonist begins as an independent Civil Verifier, with controlled background Anchors, encounters the Eastbank second-death case, and reaches the supernatural through an action-caused Breach rather than destiny. **Authority:** `player.md`.
+- **First Claim authority:** resolved actions create discrete Breach Imprints; a curated Claim Catalog yields narrow Claim Seeds that require Anchor/Price stabilization; the model cannot invent mechanical Claims. **Authority:** `player.md`, `metaphysics.md`.
 - **State authority:** deterministic Atria Native state owns authoritative facts; the language model receives curated projections instead of implicitly owning world state. **Authority:** `platform-and-gameplay.md`.
 - **Implementation gate:** the project remains pre-production; no module is an implementation baseline until explicit approval and Round 10 staging.
