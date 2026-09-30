@@ -181,3 +181,47 @@ Status: **C3 complete; stopped at the stage boundary; C4 not started** (2026-09-
 - Final local affected matrix remains 8 suites /160 tests at that exact HEAD. The broader local 42 suites /1207 tests were on the immediately preceding C3 implementation commit; CI revalidated the complete matrix on the final HEAD.
 - Final fetch: origin/main remains 2a1cba78a428137ccded7647ce6dadd79a3ac60c; source local/remote task HEAD matches above; docs was 1bf1e939638ab2122b98d8b1864dbf74022a7152 before this Record/HANDOFF commit. Source worktree clean.
 - This Record and the unique HANDOFF are updated for C4. C3 is complete and stops here. No C4 integration/merge/branch deletion, no Package development and no Host capability support advertisement were performed. C4 must complete the final frozen gate, enable verified support, merge/revalidate main and perform Governance cleanup before Package P1 is unblocked.
+
+## C4 — Regression / integration / merge gate
+
+Status: **in progress** (2026-09-30).
+
+- Fetched all remotes; clean source/docs/main worktrees. Start task HEAD 98dd21a37e2d215df4a065672dd685db9c02eda3, origin/main 2a1cba78a428137ccded7647ce6dadd79a3ac60c, origin/docs 42ba215232bf982e58e526a4b0dc991f80ef59d3. Local main was behind only the already-read AGENTS Skill-routing commit; no rollback or C1–C3 redo.
+- Read current main AGENTS, complete docs Governance, HANDOFF → Core Plan → this Record, Package index → technical-design Rounds 9.5–9.8. Scope remains Core C4; no Package content/workaround or reference reads.
+- Added real .atriasave export/import tests for unresolved and committed typed/free-text Turns, independent-engine and separate-Node-process replay, persisted idempotency and complete Branch Retry execution, computed/expanded rejection before Narrator, ordinary due-work projection and injected final storage HEAD failure.
+- First C4 run: 14 passing /2 failing fixture cases. A numeric expression was intentionally placed in a string destination, so C1 correctly rejected installation before the intended runtime test. Replaced it with a statically valid numeric expression exceeding its computed destination range; no product bound was weakened.
+- Scope distinction: a separate process reruns intent selection from the imported anchor. Tests supply the same declared selection and verify identical authority identity/inputHash/Fortune/receipt. This proves durable-anchor RNG and real container portability, not persistence of an uncommitted resolver selection or an execution journal across process crashes.
+
+### C4 frozen verification matrix
+
+| Gate | Executable evidence |
+| --- | --- |
+| 1 — World + multiple Lifecycle domains + canonical clock | authority-candidate-c2 composition; authority-turn-c3 single-CAS Turn; authority-integration-c4 restored typed/free-text execution |
+| 2 — Invalid effect, zero published mutation | authority-session-c2 late workflow failure; authority-bounds-c2 computed/UTF-8/expanded limits; authority-integration-c4 rejects before Narrator and injects final storage HEAD CAS failure |
+| 3 — Only declared player-safe intent observation | authority-bounds-c2 player/display source, scan/item/UTF-8 limits; authority-turn-c3 real resolver request assertions |
+| 4 — No private read leakage into Narrator receipt/context | authority-candidate-c2 receipt/private-error tests; authority-narrator-c3 role/declared Task context; authority-integration-c4 HTTP sentinel checks including separate-process replay |
+| 5 — Atomic derived publication | authority-turn-c3 authority/projection CAS; authority-publication-c3 ordinary App/background Task/schema failure; authority-integration-c4 ordinary clock pump |
+| 6 — Narrator/provider final failure publishes nothing | authority-turn-c3 provider/empty/tools/stale/cancel/final-validation failures; authority-frontend-c3 private draft failure; authority-integration-c4 failed-provider saves contain only the original committed anchor |
+| 7 — Success commits authority + Action receipt + assistant Turn once | authority-turn-c3 and authority-frontend-c3 commitSnapshot count; authority-integration-c4 restored execution, receipt committedRevisionId and storage-head failure/retry |
+| 8 — Fixed typed and free-text share Transaction authority | authority-frontend-c3 real Bridge client/Host and prepareAuthorityTurn spy; authority-integration-c4 both paths through real HTTP Narrator and save portability |
+| 9 — Stale/idempotency fail closed | authority-turn-c3 same-anchor/conflicting input/concurrency; authority-frontend-c3 reopened epoch replay; authority-integration-c4 imported committed receipts replay without a provider/CAS and reject changed/stale requests |
+| 10 — Stable Fortune across provider retry/save restore | C2 cloned snapshot checks; C3 same-engine pin/Host reconstruction; C4 actual .atriasave import into a fresh engine and separate Node process preserves anchor, authorityId, inputHash and complete safe receipt for the same selected Transaction/input |
+| 11 — Coherent Branch Retry, immutable committed branch | authority-turn-c3 pre-effect free-text fork; authority-frontend-c3 typed replay; authority-integration-c4 both complete a new Turn after committed-container import and retain the original revision unchanged; save-system historical restore remains a new Branch |
+| 12 — Old Package compatibility | authority-contract-c1 / authority-resources-c1 absent-capability and schemaVersion 1/2; declarative/transactions compiler regressions; Package install/runtime, action@2, Turn/App, Lifecycle, Frontend, Information, Session and Save adjacent matrix |
+
+All paths above are tests/native unless identified as Game Logic compiler tests. Full exact matrix is maintained in .github/workflows/authority-transaction.yml, now 51 suites and applicable to relevant main pushes as well as the task branch.
+
+### C4 gate progression and scope
+
+- Before support enablement: staged execution gate **6 suites /108 tests passed** (including C4 real save/independent-process tests); additional precise storage-CAS fault test **2 tests passed**. The initial storage fault test targeted the legacy unconditional putResource, which the modern HEAD CAS does not use; corrected instrumentation to putResourceIfMatch, without changing production storage behavior.
+- Enabled Host authority-transaction supported versions from [] to [1] only after the executable gate above. Capability v1 now passes required activation; undeclared/mismatched/unknown-version contracts still fail closed. Existing C1 staging assertions were updated to test the completed capability rather than permanently expecting it disabled.
+- The shared Turn fixture now declares required=true, so all C3 Turn/Frontend/Narrator/publication and new C4 integration tests exercise real required capability activation, not an optional-metadata workaround. C1 optional and legacy regression cases remain intact.
+- Enabled-path targeted validation: **4 suites /94 tests passed**. All workflow-listed authority JS files passed ESLint; workflow YAML and exact 51 existing test paths validated. Full local/CI evidence and exact HEADs follow below.
+- No execution journal, parallel authority, mechanical redesign, private-information widening, Package content or Package workaround was added. Separate-process testing exports committed state after a simulated Narrator failure; it is not an abrupt OS-kill/power-loss test. No claim of full repository suite, real browser/UI, Android/device or production hosted model validation.
+
+### C4 task-branch validation
+
+- Implementation HEAD / local tested HEAD: 7e2e36433b8bb298ca234ca11e99517c2f4d6648; tested tree 3b0a469ea3da6e3c549a4492fac75e9916920d5c. Staged tree was verified unchanged after validation and before commit. Pushed to the existing task branch.
+- Complete local matrix: **51 suites /1324 tests passed**; FS/SQLite with existing explicit MySQL/PostgreSQL local exclusion flags. Includes new C4 suite /18 local tests (9 cases per engine).
+- All 41 workflow-listed JavaScript lint paths passed; workflow YAML parsed, all 51 test paths exist and are unique, working/staged diff checks passed. No untracked caches or machine files were committed.
+- Exact-HEAD four-engine CI pending; integrated main / branch cleanup / Package unblock not yet complete.
