@@ -1,6 +1,6 @@
 # Atria Repository Governance
 
-**Governance version: 1.0**
+**Governance version: 1.1**
 
 本文件是 `ZZZdragondYNGPHX/Atria` 的完整 Repository Governance 权威入口。它规定最终仓库状态与任务生命周期，不绑定 Web、CLI、桌面 Agent 或人工开发者的具体执行工具。
 
@@ -99,6 +99,8 @@ docs 可以记录实现、Package、Plugin、Skill、CI HEAD；实现工作空�
 
 ## 5. Plans
 
+Plan 描述准备怎么做、为什么这样做，以及已经冻结的设计边界；它不是实施历史。
+
 建议结构：
 
 - `plans/feat/`
@@ -108,11 +110,42 @@ docs 可以记录实现、Package、Plugin、Skill、CI HEAD；实现工作空�
 - `plans/plugin/`
 - `plans/architecture/`
 
-Plan 描述目标、设计、理由、范围与非目标，不是实施历史。
+### Single-file Plan
 
-大型 feature/refactor、架构任务、复杂 Package/Plugin 或用户明确要求先讨论的任务应建立 Plan；简单 Bug、UI 小改、文案、配置、小脚本等可以没有。
+小型或中型任务可使用单文件，例如：
 
-仅在已批准设计发生实质变化时更新 Plan。Plan 必须环境中立，不写特定客户端必须使用的命令/API。
+```text
+plans/feat/custom-start-form.md
+```
+
+### Plan Bundle
+
+大型项目或已经大到不适合每阶段整份加载的 Plan，必须改为项目目录：
+
+```text
+plans/package/example-project/
+├─ index.md
+├─ decisions.md
+├─ nation.md
+├─ religion.md
+├─ economy.md
+└─ ui.md
+```
+
+`index.md` 是唯一入口与路由文档，应包含项目目标、冻结核心原则、模块图/依赖、阶段图、当前设计状态，以及每个阶段究竟需要读取哪些模块。
+
+模块文件只对自己的领域负责。同一条详细规则只保留一个权威来源；其它模块通过链接/依赖引用，不复制第二份。
+
+`decisions.md` 可选，只保存会影响多个模块、未来 Agent 不应随意重开的冻结决策。
+
+规则：
+
+- 小型局部任务可以没有正式 Plan；
+- 大型 feature/refactor、架构任务、复杂 Package/Plugin、或用户明确要求先讨论的任务应建立 Plan；
+- 当单文件 Plan 已经大到需要阶段化按需阅读时，使用 Plan Bundle；
+- Plan Bundle 必须先读 `index.md`，再只读当前阶段所需模块；
+- 仅在已批准设计发生实质变化时更新对应模块；路由、依赖、阶段映射或跨模块冻结决策变化时更新 `index.md`；
+- Plan 必须环境中立，描述 what/why，不绑定某个客户端的 Git/API 执行方式。
 
 ## 6. Records
 
@@ -136,7 +169,7 @@ Record 是永久实施历史。小任务可以在完成时一次写入；多阶�
 
 多阶段、跨对话/Agent、外部依赖中断或用户明确要求交接时建立；一次连续闭环的小任务无需形式化创建。
 
-一旦存在，每个实际工作轮结束必须刷新，至少记录 Task ID、Primary Workspace、当前分支/HEAD、阶段、Plan/Record、已完成、未完成、关键决策、验证/CI、下一目标、开始前必读内容、不要重复的工作和新对话接手提示词。
+一旦存在，每个实际工作轮结束必须刷新，至少记录 Task ID、Primary Workspace、当前分支/HEAD、阶段、Plan entrypoint、当前阶段所需 Plan modules、Record、已完成、未完成、关键决策、验证/CI、下一目标、开始前必读内容、不要重复的工作和新对话接手提示词。
 
 任务完成后删除 HANDOFF。历史 handoff 的有价值事实应进入对应 Record，而不是继续作为多个“实时交接”存在。
 
@@ -161,7 +194,7 @@ Record 是永久实施历史。小任务可以在完成时一次写入；多阶�
 默认按需加载：
 
 - Level 0：用户请求 + 当前工作区热路径规则 + 直接相关代码；
-- Level 1：任务需要时增加 Plan / HANDOFF；
+- Level 1：任务需要时增加 Plan entrypoint / HANDOFF；若为 Plan Bundle，先读 `index.md`，再仅读当前阶段所需模块；
 - Level 2：续接或历史决策敏感时增加当前 Record / 必要历史；
 - Level 3：仅触发时读取完整 Governance、明确指定 Skill、明确授权的 reference。
 

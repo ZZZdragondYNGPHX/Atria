@@ -7,7 +7,7 @@
 - `main` 是稳定产品主线；普通产品工作使用 `feat/*`、`fix/*`、`refactor/*` 等短期语义分支。
 - `docs`、`package`、`plugin`、`skills` 是长期独立工作空间，不为方便 merge `main`。
 - `reference/<project>` 只有用户明确说“参考”时读取，明确说“更新”时同步；两种授权相互独立。
-- Plan 描述设计；Record 保存永久实施历史；HANDOFF 只保存一个当前实时恢复状态。
+- Plan 描述设计；大型 Plan 使用 `index.md` + 模块文件的 Plan Bundle；Record 保存永久实施历史；HANDOFF 只保存一个当前实时恢复状态。
 - 多阶段任务每阶段更新同一 Record 与 HANDOFF，然后在阶段边界停止。
 
 ## Remote execution
@@ -23,7 +23,7 @@
 ## Minimal context
 
 - 新普通任务：只读直接相关代码与必要热路径规则。
-- 续接/多阶段任务：先核对远端，再读对应 HANDOFF → Plan → Record。
+- 续接/多阶段任务：先核对远端，再读对应 HANDOFF → Plan entrypoint；若为 Bundle，先读 `index.md`、再只读当前阶段要求的模块 → Record。
 - Skill：仅当用户或正式 Plan 明确指定时，读 `skills:SKILLS.md` 后加载对应 Skill。
 - Reference：仅读取用户明确授权的 `reference/<project>`。
 - 治理敏感操作：读取完整 `docs:README.md`。

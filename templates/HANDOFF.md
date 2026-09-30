@@ -1,6 +1,6 @@
 # HANDOFF Template
 
-> This file is a template. A live handoff is stored as `docs:HANDOFF.md` and exists only while a task actually needs recovery/continuation.
+> 本文件是模板。live handoff 存放于 `docs:HANDOFF.md`，仅在任务确实需要恢复/续接时存在。
 
 ## Task
 
@@ -9,7 +9,8 @@
 - Current branch/workspace:
 - Current HEAD:
 - Current stage:
-- Plan:
+- Plan entrypoint:
+- Stage-required Plan modules:
 - Record:
 
 ## Completed
@@ -42,4 +43,4 @@
 
 ## New-chat bootstrap prompt
 
-Replace this section with a concise prompt containing repository, task, branch/HEAD, Plan/Record/HANDOFF paths, completed work, validation state, next target, files to read first, and work not to repeat.
+替换本段为精简接手提示词，包含仓库、任务、分支/HEAD、Plan entrypoint、当前阶段所需 Plan modules、Record/HANDOFF、已完成、验证状态、下一目标、必读文件和不要重复的工作。
