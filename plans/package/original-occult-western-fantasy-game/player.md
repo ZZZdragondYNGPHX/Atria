@@ -11,7 +11,7 @@ Owns Round 4: player identity, starting social position, initial access to insti
 - `society.md`
 - `institutions.md`
 
-> **Current discussion:** Round 4.5 is approved. Round 4.6 is open: first-Claim candidate generation, validation and stabilization.
+> **Current discussion:** Rounds 4–4.6 are approved. Core gameplay and failure design continues in `gameplay.md` as Round 5.
 
 ---
 
@@ -536,20 +536,366 @@ Rejected:
 - backgrounds that are only cosmetic;
 - background-exclusive solutions required to complete the opening case.
 
-### 6.24 Round 4.6 question — first Claim candidate generation and stabilization
+### 6.24 Approved first-Claim generation and stabilization — Round 4.6
 
-Round 4.6 must define how opening play produces the protagonist's first legitimate Claim without allowing the language model to invent unbounded abilities.
+The first Claim is generated through deterministic, validated play history rather than free model invention.
 
-It must determine:
+The approved flow is:
 
-- what player actions are tracked before the Breach;
-- how those actions produce Principle tendencies;
-- whether tendencies use hidden scores, discrete evidence tags or another deterministic representation;
-- how many Claim candidates are surfaced;
-- how candidate Claims are authored and validated;
-- how Condition / Effect / Anchor / Price / Jurisdiction are constrained for a first Claim;
-- how different institutions can offer different stabilization methods for the same underlying candidate;
-- whether self-Investiture is possible immediately or only later;
-- how refusal of Investiture remains playable;
-- how to prevent optimization-by-dialogue where the player simply asks the model for an overpowered Claim.
+**Resolved Actions → Breach Imprints → Claim Catalog Eligibility → 2–4 concrete Claim Seeds → choose / postpone → Anchor + Price stabilization → formal Claim**
+
+#### 6.24.1 Breach Imprints, not hidden Principle XP
+
+Opening behavior is represented by discrete **Breach Imprints** rather than continuously accumulating hidden Principle scores.
+
+Representative Imprints include:
+
+- `preserved_conflicting_evidence`;
+- `verified_identity_across_sources`;
+- `protected_relationship_continuity`;
+- `mapped_invalid_location`;
+- `followed_residual_trace`;
+- `refused_premature_settlement`.
+
+An Imprint records a resolved fact about what the protagonist actually did.
+
+It is not dialogue sentiment, role-play tone or a repeatable XP action.
+
+#### 6.24.2 Only resolved world actions create Imprints
+
+The model may interpret player intent, but it does not award supernatural qualification.
+
+An Imprint may be created only after the relevant world action is successfully resolved and published as authoritative game state.
+
+Therefore:
+
+- saying “I value truth” does not create a Witness Imprint;
+- asking for a powerful ability does not create eligibility;
+- repeating the same conversational declaration does not grind supernatural progress.
+
+This prevents optimization-by-dialogue.
+
+#### 6.24.3 Candidate eligibility requires independent support
+
+A first Claim candidate normally requires multiple supporting Imprints from materially different actions or scenes.
+
+At least one support condition should be tied to the actual Breach event.
+
+The purpose is to ensure that the first Claim reflects a demonstrated pattern of behavior rather than one isolated dialogue choice.
+
+#### 6.24.4 Claims come from a curated catalog
+
+The first Claim is not procedurally invented by the language model.
+
+The game maintains an authored and reviewed **Claim Catalog**.
+
+Each candidate archetype should eventually define at least:
+
+```text
+candidateId
+principles[]
+eligibilityRules[]
+condition
+coreEffect
+allowedAnchors[]
+allowedPrices[]
+starterJurisdiction
+forbiddenExtensions[]
+```
+
+This is a conceptual design shape, not the final Atria schema.
+
+Catalog Claims must obey the approved Principle boundaries and system-wide hard limits.
+
+#### 6.24.5 Candidate count
+
+When the Breach is ready to stabilize:
+
+- minimum: 2 valid Claim Seeds where possible;
+- typical: 3;
+- maximum: 4;
+- always allow “do not stabilize yet”.
+
+The player should see concrete, narrow rules rather than an eight-Principle class-selection screen.
+
+#### 6.24.6 Starter Claim scope
+
+The first formal Claim must be intentionally narrow.
+
+Typical starter Jurisdiction is limited to one of:
+
+- Self;
+- one personally observed object;
+- one personally verified person;
+- one personally traversed location;
+- one explicit fact;
+- one already-established relationship.
+
+The opening Claim should not immediately govern rooms, institutions, districts, public history or arbitrary groups.
+
+Later progression expands Jurisdiction.
+
+#### 6.24.7 Opening Claim families
+
+Because the first Breach arises from an identity investigation, early candidates should primarily involve:
+
+- perception;
+- evidence;
+- preservation;
+- identification;
+- tracking;
+- stabilization;
+- delimitation.
+
+Direct combat effects are not forbidden by the world, but they should not emerge from an unrelated investigative Breach without causal support.
+
+#### 6.24.8 Representative starter Claim Seeds
+
+The following are approved as design examples, not mandatory final names.
+
+**Unlost Evidence** — Witness + Memory
+
+A personally verified contradictory fact cannot be fully erased from the protagonist's own cognition by ordinary subsequent settlement.
+
+Limits:
+
+- does not prove which version is Truth;
+- does not protect other people's memory;
+- does not reconstruct destroyed evidence;
+- does not force institutions to recognize the fact.
+
+**A Name Still Bound** — Name + Bond
+
+When the protagonist personally verifies that a person continues to sustain a real social relationship, they can notice severe discontinuity between that relationship and the person's formal Identity.
+
+Limits:
+
+- does not reveal the correct hidden Name;
+- does not create a Bond;
+- does not prove fraud or innocence.
+
+**The Road Once Walked** — Boundary + Memory
+
+A location personally traversed, fixed and recorded by the protagonist leaves enough continuity that later ordinary map or recognition changes cannot completely erase their sense of its former Boundary.
+
+Limits:
+
+- does not open the route automatically;
+- does not teleport;
+- does not ignore physical barriers.
+
+**What Happened Leaves Trace** — Echo + Witness
+
+On an object or place personally examined, the protagonist can identify abnormal residue inconsistent with the present state when that residue originates from a real past event.
+
+Limits:
+
+- does not replay the past;
+- does not reveal complete causality;
+- does not create an Echo.
+
+#### 6.24.9 Claim Seed versus formal Claim
+
+A valid candidate first becomes a **Claim Seed**.
+
+The Seed means the Breach demonstrated that reality may accept this rule.
+
+It is not yet a stable long-term Claim.
+
+Formalization requires an Anchor structure and a Price.
+
+This separates:
+
+- **what the protagonist is becoming capable of** from
+- **how that capability becomes part of a durable Identity**.
+
+#### 6.24.10 Stabilization is institution-dependent, not Claim-exclusive
+
+Different institutions may stabilize the same Claim Seed through different Anchor / Price structures.
+
+Example for an evidence-preservation Seed:
+
+**Civic stabilization**
+
+Possible Anchors:
+
+- professional license;
+- official case number;
+- signed investigation record;
+- State Witness.
+
+Likely Price tendency:
+
+- reporting Obligation for dangerous contradictions;
+- greater institutional Exposure.
+
+**Church stabilization**
+
+Possible Anchors:
+
+- oath;
+- sacred Witness;
+- ritual record;
+- recognized sacred Name or office relationship.
+
+Likely Price tendency:
+
+- obligation not to knowingly deny a formally witnessed fact;
+- religious or communal accountability.
+
+**Academy stabilization**
+
+Possible Anchors:
+
+- experimental record;
+- measurement;
+- repeat testing;
+- research archive.
+
+Likely Price tendency:
+
+- continued observation / examination;
+- increased detectability to research apparatus.
+
+**Grey Registry stabilization**
+
+Possible Anchors:
+
+- private off-record document;
+- illicit Identity structure;
+- hidden witness network.
+
+Likely Price tendency:
+
+- weaker or more fragile Anchors;
+- lower formal Exposure but greater failure risk.
+
+These are representative patterns, not final faction-exclusive recipes.
+
+#### 6.24.11 Claim choice is separate from faction choice
+
+Choosing a Claim Seed does not lock the player to the institution that first explains it.
+
+The same Seed may be stabilized through different traditions.
+
+Institutions compete through:
+
+- methods;
+- Anchor quality;
+- Price structure;
+- obligations;
+- political consequences;
+- reliability.
+
+They do not own Principles or Claim categories.
+
+#### 6.24.12 Self-Investiture is knowledge-gated
+
+Immediate safe Self-Investiture is not available by default.
+
+A newly Breached Civil Verifier does not yet possess enough operational knowledge to freely design stable Anchor / Price structures.
+
+The player may eventually gain Self-Investiture through:
+
+- research;
+- stolen knowledge;
+- Grey Registry teaching;
+- institutional defection;
+- experimental practice.
+
+Self-Investiture is therefore a high-risk freedom route earned through knowledge.
+
+#### 6.24.13 Refusing stabilization remains playable
+
+A Breached-but-uninvested protagonist retains a limited **Contradiction Sensitivity**.
+
+This is a Breach consequence, not a formal Claim.
+
+It can provide vague awareness that reality is trying to collapse incompatible versions.
+
+It is:
+
+- inconsistent;
+- limited;
+- potentially dangerous;
+- insufficient to replace formal supernatural capability.
+
+This allows continued play without making refusal consequence-free.
+
+#### 6.24.14 Model authority boundary
+
+During Claim creation, the language model may:
+
+1. describe the Claim;
+2. explain it through an NPC's theoretical framework;
+3. propose or personalize a narrative name after the mechanical candidate is selected.
+
+The model may not:
+
+- add Effect;
+- enlarge Jurisdiction;
+- remove Price;
+- add a Principle;
+- invent an Anchor;
+- waive eligibility;
+- grant the Claim directly.
+
+Native authority controls those facts.
+
+#### 6.24.15 Later Claim Engineering
+
+Early game uses the curated Claim Catalog.
+
+Later progression may unlock **Claim Engineering**.
+
+The player may then compose from approved primitives such as:
+
+- Principle;
+- Effect primitive;
+- Condition;
+- Anchor;
+- Price;
+- Jurisdiction.
+
+A validator must reject:
+
+- self-contradictory structures;
+- world-rule violations;
+- unsupported Jurisdiction;
+- inadequate Anchors;
+- conflicts with existing Claims;
+- prohibited Principle behavior.
+
+The model may render an approved structure into natural language but not bypass validation.
+
+This enables the long-term fantasy of discovering or founding a new supernatural tradition without turning free text into unrestricted power creation.
+
+### 6.25 Round 4.6 decision
+
+Approved:
+
+- discrete Breach Imprints instead of hidden Principle XP;
+- only resolved authoritative world actions create Imprints;
+- multiple independent Imprints for first-Claim eligibility;
+- curated and validated Claim Catalog;
+- 2–4 concrete candidate Seeds plus postponement;
+- intentionally narrow first-Claim Jurisdiction;
+- investigative / perceptual starter emphasis for the opening Breach;
+- Claim Seed separated from formal Claim;
+- multiple institutional stabilization methods for the same Seed;
+- Claim selection separated from faction selection;
+- Self-Investiture gated behind acquired knowledge;
+- playable Breached-but-uninvested state through limited Contradiction Sensitivity;
+- strict model / Native authority boundary;
+- later validated Claim Engineering.
+
+Rejected:
+
+- language-model-generated mechanical Claims;
+- dialogue repetition as supernatural progression;
+- choosing one of the Common Eight as a class at the first Breach;
+- immediate large-area or high-impact starter Claims;
+- institutions owning entire Claim categories;
+- free safe Self-Investiture at the opening;
+- free-text ability descriptions overriding mechanical validation.
 
