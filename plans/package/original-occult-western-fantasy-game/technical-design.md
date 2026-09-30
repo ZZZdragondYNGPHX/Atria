@@ -72,3 +72,20 @@ Do not fall back to giving a shared task all actors' private Beliefs / Memories.
 A requirement is a **Core gap** only when the approved design cannot be represented safely through current Package Data, Lifecycle, Information, Task, Continuity, Message / Turn or Native Frontend contracts.
 
 Complexity or inconvenience alone is not a platform gap.
+
+### Authority-first Turn verification
+
+Current `main` `executeTurn / prepareTurn` confirms that `authority-first` directly supports the approved player-action direction:
+
+1. load the anchored Session revision;
+2. if free-text `userInput` is present and the Package declares game logic, run `role.intent_resolver`;
+3. the intent resolver operates through the Package game LLM runtime / tools and may publish authoritative state changes before narration;
+4. every accepted state publication advances the revision anchor;
+5. only after intent resolution completes do bounded Turn stages and the Narrator execute;
+6. `finalizeTurn` rejects Narrator outcomes under `authority-first`.
+
+Therefore the approved design **Player Intent → authority resolution / commit → projection → Narrator** maps directly to the current Package Turn policy.
+
+`narrative-outcome` should not be used for ordinary gameplay authority because it intentionally interprets narrative after generation.
+
+The remaining Round 9 work is to define the Package game-logic tool/action surface so the intent resolver can perform only validated world operations.
