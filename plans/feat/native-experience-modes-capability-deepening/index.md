@@ -31,7 +31,7 @@ Build one shared Native Experience Capability Layer for Component / Hybrid / Ful
 | `capability-gap-analysis.md` | Consolidated benchmark gap analysis | `baseline.md` |
 | `case-01-hanhai.md` | Activity/media/asset/background-task stress test | `capability-gap-analysis.md` |
 | `case-02-tianshu.md` | Action/activity/add-on stress test | `capability-gap-analysis.md` |
-| `case-03-yinqi-a.md`, `case-03-yinqi-b.md`, `case-03-yinqi-c.md` | Large-session/model-task/perspective/authority stress test; split only for reading size | `capability-gap-analysis.md` |
+| `case-03-yinqi-a.md` … `case-03-yinqi-e.md` | Large-session/model-task/perspective/authority stress test; split only for reading size | `capability-gap-analysis.md` |
 | `case-04-zhushen-space.md` | Shared-runtime stress test | `capability-gap-analysis.md` |
 | `case-05-cult-leader.md` | Final pressure test / productization evidence | `capability-gap-analysis.md` |
 | `revision-log.md` | Historical Plan revisions | — |
