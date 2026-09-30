@@ -6,7 +6,9 @@
 - Plan: none; one-pass governance/document-structure migration
 - Reference specification: `ZZZdragondYNGPHX/Standardized-project` `docs@ecbbb9f3d207241e115e2bdbe3db0fff10557374`
 - Start docs HEAD: `73e22d1698fd396f5bc52dcb2b0fcc0224e55f72`
-- Content migration HEAD: pending finalization
+- Content migration HEAD: `c7c6a8569b8304e5f9e89a3873fbedad3285e603`
+- Bundle sizing refinement: `8d98bd006c65d033cc4f4a907f4b0a7dd692539d`
+- Post-write verification baseline: `8d98bd006c65d033cc4f4a907f4b0a7dd692539d`
 
 ## Summary
 
@@ -32,4 +34,14 @@ Normalized the remaining large/legacy Atria Plans to Governance 1.1 Plan Bundle 
 
 ## Final state
 
-See the following record-only finalization commit for the exact content migration HEAD and post-write verification result.
+Post-write verification passed against `8d98bd006c65d033cc4f4a907f4b0a7dd692539d`:
+
+- all eight routed Plan Bundle entrypoints are present, including the concurrently migrated active Western-fantasy game Bundle;
+- all seven replaced monolithic Plan paths are absent;
+- Native Experience Case 03 is further split into A–E to keep stage reads bounded;
+- the live MCP HANDOFF points to the new Plan entrypoint and exact Phase 6 module set;
+- MCP and Native Frontend permanent Record Plan pointers resolve to the new entrypoints;
+- `records/README.md` and category routers are present;
+- the active MCP HANDOFF was preserved rather than repurposed/deleted;
+- no product/package/plugin/skills/reference content was modified by this migration;
+- no product test/build, Android/Termux, physical-device or UI validation is claimed.
