@@ -1,10 +1,10 @@
 # P4 — World / Content Foundation
 
-Version: 0.4.0-p4. This is reusable authored foundation, not a playable launch campaign.
+Historical P4 foundation contract. P5 default opening and current executable scope supersede the fixture-only statements below; see OPENING.md.
 
 ## Layout and authority
 
-Thirty-one hash-pinned Package Data resources include 222 structured assets: six districts, thirty durable locations (including county estate, mill town and railway corridor), ten institutional/network nodes, four subordinate civil service offices, twelve Tier A and thirty Tier B actor cores, eight Anomaly Families, eight Claim primitives, sixteen Starter Seeds, thirty-two established archetypes, four stabilization traditions, twelve Eastbank fragments and an index, ten Artifact templates, ten dormant inquiry hooks, one historical event, seven Origins/eight Prior Lives/seven Faith choices and six public reading entries. The P3 bootstrap and empty P5 Case resource remain separate.
+Thirty-one hash-pinned Package Data resources include 222 structured assets: six districts, thirty durable locations (including county estate, mill town and railway corridor), ten institutional/network nodes, four subordinate civil service offices, twelve Tier A and thirty Tier B actor cores, eight Anomaly Families, eight Claim primitives, sixteen Starter Seeds, thirty-two established archetypes, four stabilization traditions, twelve Eastbank fragments and an index, ten Artifact templates, ten dormant inquiry hooks, one historical event, seven Origins/eight Prior Lives/seven Faith choices and six public reading entries. The P3 bootstrap remains regression-only. P5 adds one closed Second Death Case in the formerly empty resource, for 223 total structured assets.
 
 Civil registry, courts, arrival and medical-examiner offices are subordinate service assets, not four new factions. Police liaison does not grant control over their records.
 
@@ -26,10 +26,10 @@ Ready still creates only the P3 synthetic state. None of the 222 content keys is
 
 P4 adds no executable Transaction, static authority target, Lifecycle domain, schedule, publication, Task, Source, View or Graph. Required authority-transaction@1 and world-simulation@1 remain. Seven publication reads / ten declared App Commands and the two-day measured sixteen reads / sixteen App Commands / twenty effects remain unchanged. Core hard limits remain 16 reads, 24 App Commands, 32 effects; computed destination schemas and receipt bounds are unchanged. Content tools enforce less than 256 KiB per resource, less than 2 MiB total and at most 64 resources, below Core 2 MiB per resource/256 resources. These are stricter P4 authoring ceilings, not increased runtime budgets.
 
-Two-day simulation remains a regression fixture; third-day advance fails closed. Background batches admit at most one deliberation. P5 will need explicit static bindings, seed selection and re-budgeted effects; it must not assume that definitions are already executable or full-city schedules exist.
+The two initial eventful days remain a regression fixture, followed by recurring accounting through day 30; day 31 fails atomically. Background batches admit at most one deliberation. P5 now supplies explicit opening bindings, two supported Seeds and separately budgeted effects; see OPENING.md. This does not make the whole catalog executable or create full-city schedules.
 
 ## Validation and continuation
 
 Run node tools/content-check.mjs for fast authoring checks. build/validate/preview also enforce content checks; full validation installs/reopens exact asset bytes, checks lazy Ready and safe Views, runs schema/reference/encoding/budget/privacy negatives, then P2/P3 regressions with real local HTTP requests checked against hidden Canon assertions/references.
 
-No P5 opening, character creation authority, acquisition runtime, Claim execution, P8 UI or P9 release is implemented here. Same-process selection pin, same-anchor RNG, committed replay and actual save-container restoration remain distinct; no cross-process uncommitted journal is assumed.
+This historical foundation profile itself has no opening. The default P5 profile is specified in OPENING.md; P8 UI and P9 release remain unimplemented. Same-process selection pin, same-anchor RNG, committed replay and actual save-container restoration remain distinct; no cross-process uncommitted journal is assumed.

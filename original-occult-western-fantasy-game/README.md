@@ -1,42 +1,38 @@
-# Original Occult Western Fantasy — P4 Content Foundation
+# Original Occult Western Fantasy — P5 Opening Vertical Slice
 
-Task: `package/original-occult-western-fantasy-game`. Independent long-lived `package` workspace. P4 adds the reusable launch-world foundation while keeping the **bounded 30-day synthetic runtime fixture**. This is not a playable campaign, P5 opening, P8 interface or release.
+Task: package/original-occult-western-fantasy-game. Long-lived independent package workspace.
+
+Default build: **Second Death (0.5.0-p5)**, from six-step ordinary character creation through investigation, Breach, earned Claim stabilization and a committed disposition. See runtime/OPENING.md for precise scope and limitations. P6/P8 and final release production have not started.
 
 ## Build / validate / preview
 
-Use Node and an independent current Atria main checkout with dependencies:
+Use Node and an independent current Atria main checkout with its dependencies:
 
-```text
+~~~text
+node tools/content-check.mjs
 node tools/package.mjs validate --core <main-checkout>
+node tools/package.mjs validate --fixture --core <main-checkout>
 node tools/package.mjs build --core <main-checkout>
 node tools/package.mjs preview --core <main-checkout>
-```
+~~~
 
-Build exclusively creates ignored `build/0.4.1-p4.atria`. If it already exists, use `--out <new-file.atria>`; never overwrite builds/releases. Final release production remains P9. Product code is imported for testing, never copied into this Package.
-
-Validation covers actual FS archive installation, Session/Ready, private preparations, all nine installed fixed typed actions, local synthetic HTTP resolver/Narrator/Agenda execution and actual save-container export/import into a fresh FS store. It tests two-day-per-command deterministic catch-up and recurring days 3–30, obligations, conditions, institution phases, a bounded background decision, generated Entity promotion, stale cancellation and foreground-to-background dispatch. No hosted model, manual browser/device or cross-process uncommitted selection recovery is claimed.
-
-Preview prints safe Information JSON, not a screenshot. The nine-button native fixture is a typed-contract test entrypoint, not P8 design or final UX.
+Both validation profiles are required. Build exclusively creates ignored build/0.5.0-p5.atria. If it exists, supply --out with a new filename; never overwrite historical releases. Preview runs integration validation, not a screenshot or hosted-model session. Final release production remains P9.
 
 ## Ownership
 
-- `manifest.json`: version/EntryPoint/World pins and synthetic initial timeline.
-- `runtime/capabilities.json`: required **authority-transaction@1** and **world-simulation@1**, plus the existing capabilities. Generation permission is required. Older main without the formal simulation support must reject activation.
-- `runtime/lifecycle.json`: existing World/Session domains, canonical minute clock, bounded Ready seeding, bounded Agenda/obligation/record/condition declarations. Unused later-stage domains retain bounded placeholders.
-- `runtime/logic.json`: nine player transactions, diagnostic foundation transaction, two non-player simulation transactions and one unified safe-publication layer. No Package executable scheduler, Outcome/Resolution domain or duplicate journal.
-- `runtime/simulation.json`: formal Core scheduling declarations with static private grants, due times, priority, relevance, one background admission per batch and a bounded input-only Agenda context.
-- `runtime/information.json`: seven Sources, five Views, two graphs. Structured status exposes known risk/condition/relation values without twelve duplicated publication branches. Hypotheses remain epistemic, not confirming Truth.
-- `runtime/tasks.json` / `model-resources.json`: four core Tasks. Agenda proposes `defer`/`file_report` plus a bounded delegate name; deterministic authority accepts any real-world action. Reflection/Claim Advisor remain advisory.
-- `frontend/`: fixed typed bindings; only the wait input bound changes to 1–2880 minutes. No visual/UI work.
-- `data/`: thirty-one hash-pinned resources with 222 structured P4 assets; private Canon and public reading are separate. No campaign scenes or eagerly instantiated city.
-- `tools/`: build and actual integration checks. `simulation-contract-check.mjs` diagnoses legacy Lifecycle limitations; it is not the acceptance test for the new capability.
-
-See `runtime/CONTENT.md`, `runtime/INTERACTION.md` and `runtime/SIMULATION.md`.
-
-P4 adds closed authoring schemas and reference, size, UTF-8, privacy and lazy-state checks. `node tools/content-check.mjs` runs the fast content gate; build/validate/preview include it. Six public Knowledge entries are installed but unbound in the fixture. Definition loading by Core is not lazy archive I/O; live-state materialization remains lazy. Permanent history belongs in the single Package Record on docs.
+- manifest.json and runtime/model-resources.json own immutable Package pins, reusable World and four core Task resources. The builder sets the effective opening EntryPoint and safe Narrator prompt.
+- tools/opening-compile.mjs composes **declarative Package assets at build time**. It emits existing Lifecycle, Transaction, Information, Simulation and typed Native bindings. No JavaScript authority evaluator, scheduler, RNG or alternate persistence is shipped.
+- data/cases.signature.second_death.json is the closed authored Case skeleton. The two supported Seeds explicitly declare runtimeEligibility/runtimeTraditions; other catalog entries remain definitions.
+- data/ contains 31 hash-pinned resources and 223 structured assets. Private Canon, institution/actor perspectives and the six installed but unbound public Knowledge texts remain separate. Only selected opening state is materialized; Core archive parsing itself is not lazy I/O.
+- Existing runtime/*.json and frontend/ are the retained P2/P3 synthetic **regression profile**. --fixture packages it under a separate Package/PackageVersion identity; it is not the player opening. runtime/INTERACTION.md and SIMULATION.md describe that fixture. runtime/CONTENT.md records the historical P4 foundation.
+- tools/opening-check.mjs exercises the real default archive, Native Session/Ready, typed/free-text local HTTP paths, state/graph/privacy assertions, dispositions and save containers. Existing P2/P3/P4 checks remain intact.
 
 ## Boundaries
 
-Player authority and narration still finalize together. Background intent plus its validated filing, Entity promotion and safe projections use another atomic Session CAS after foreground finalization. Provider failure commits no speculative action. Same-process selection pinning, same-anchor RNG, committed invocation idempotency and actual save-container restoration are distinct properties.
+Required authority-transaction@1 and world-simulation@1 remain. Static targets, Ready, field/reference/computed-schema closure, UTF-8 and Core expanded-work limits are unchanged. There is no Outcome/Resolution shadow domain, product-source copy or Core workaround.
 
-The synthetic schedule defines two initial eventful days and recurring daily rent/processing through day 30, the existing schema horizon. Later days preserve resolved institution phases and do not replay hearing/clinic/Agenda effects. Crossing day 31 fails atomically rather than freezing obligations while time continues. This is not a generalized campaign economy, clinic, dynamic NPC simulator or unrestricted downtime system; P4+ must author additional valid states/jobs within the unchanged limits.
+The opening has bounded rent/Anchor obligations through day 30, at most 2880 minutes per advance, not a complete autonomous city. Its two supported Seeds have civic/church stabilization paths, not unrestricted Claim Engineering. The minimal frontend exposes the Native contract surface and a conversation-oriented notice; visual/UI integration remains P8.
+
+The regression profile retains all original eventful two-day transitions, recurring days 3–30 and bounded background deliberation. Day 31 rejects atomically. Same-process selection pinning, same-anchor RNG, committed invocation replay and actual save-container restoration are distinct; neither cross-process uncommitted selection recovery nor old-version save migration is claimed.
+
+Permanent implementation/tested HEADs and actual verification evidence belong in the single Package Record on docs. Stop at each authorized stage boundary; do not merge or delete package.

@@ -1,4 +1,89 @@
 {
   "schemaVersion": 1,
-  "items": []
+  "items": [
+    {
+      "id": "matter.second_death",
+      "kind": "signature_case",
+      "name": "Second Death",
+      "purpose": "Civil verification under incompatible identity records",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police",
+        "institution.insurer",
+        "office.civil_registry",
+        "claim.seed.unlost_evidence",
+        "claim.seed.name_mismatch"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "No route proves the deep Eastbank cause.",
+        "Testimony is not Truth; independent records may disagree."
+      ],
+      "generationEnvelope": [
+        "Ordinary descriptions only; no invented evidence or powers."
+      ],
+      "canon": {
+        "entry": "An independent Civil Verifier receives a family mandate for the recent death of Elias Rook.",
+        "truth": "P5_PRIVATE_SECOND_DEATH: Elias sustained a continuous household identity after a valid Eastbank death registration. Both record chains are authentic; the cause of their incompatibility remains unresolved.",
+        "stakes": [
+          "Family recognition and insurance payment",
+          "Integrity of old and current death records"
+        ],
+        "actors": [
+          "Elias Rook, deceased",
+          "Ada Rook, surviving adult sister"
+        ],
+        "institutions": [
+          "institution.police",
+          "institution.insurer",
+          "office.civil_registry"
+        ],
+        "anomaly": "Identity Contradiction; Name, Memory and Witness",
+        "evidenceGraph": [
+          "Current death and insurance continuity support recent identity",
+          "Old registration and police-held certified extract support old death",
+          "Family testimony concerns lived continuity, not complete causation"
+        ],
+        "pressures": [
+          "Daily practice rent",
+          "Family appointment on day two; missing it strains continuity but does not erase evidence"
+        ],
+        "routes": [
+          "Mortuary record or insurer continuity",
+          "Civil register or police certified extract",
+          "Family testimony and optional professional consultation"
+        ],
+        "interventions": [
+          "Compare independently sourced records",
+          "Preserve both versions without adjudicating hidden causation",
+          "Report, challenge, protect family, notify specialists or abandon"
+        ],
+        "settlements": [
+          "report_new",
+          "challenge_old",
+          "protect_family",
+          "notify_authority",
+          "abandon"
+        ],
+        "consequences": [
+          "Official position differs from historical Truth",
+          "Reporting obligation and exposure",
+          "Family protection or dispute persists"
+        ],
+        "eastbankContribution": "Administrative Error layer only; no deliberate stabilization revelation",
+        "revelationPredicates": [
+          "Authentic identity chains conflict; no higher revelation predicate"
+        ],
+        "reentry": [
+          "Reopen on acquired evidence; keep the previous committed disposition in the World Journal"
+        ],
+        "orderSafety": "Routes can be taken in any order and each record chain has an alternative custodian.",
+        "failureContinuity": "Denied private access offers a public certified route; wrong theories never change evidence and imperfect dispositions remain playable."
+      },
+      "perspective": {
+        "publicDescription": "A newly deceased client appears in a valid Eastbank death register from approximately forty years ago. The family asks you to keep both documents separate."
+      }
+    }
+  ]
 }

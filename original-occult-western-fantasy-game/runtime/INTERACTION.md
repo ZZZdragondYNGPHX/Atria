@@ -1,5 +1,7 @@
 # P2 interaction contract
 
+This document describes the retained --fixture regression profile. Default P5 behavior is specified in OPENING.md. The fixture now supports bounded recurring accounting through day 30; older two-day references below describe its original eventful transitions.
+
 This fixture deliberately uses static authored slots, not arbitrary targets or model-owned resolution. Every verb takes target=fixture and an authored method/objective enum. create_hypothesis/create_lead also accept 1–256 characters; advance_time accepts 1–60 minutes. Unknown fields/targets fail closed.
 
 ## Ephemeral Resolution Frame
@@ -50,4 +52,4 @@ Evidence uses fixture; Beliefs keep fixture testimony separate from theory; play
 
 Acquired slip content reaches scene_projection and investigation_nodes only after known=true. Hypothesis content appears only as suspected epistemic data; its graph node is an explicitly unverified reference. Projections never read another projection. Conditions, relationship strain and known risk are safely projected to player.status. Raw authority and unused draws never enter resolver/Narrator input. Narrator cannot create effects by prose.
 
-No changes to static targets, field/reference closure, computed-value schemas, UTF-8 limits, Ready Barrier or expanded-work budgets. Declaration budgets count guarded branches too; actual work is tested against 16 reads / 24 App Commands / 32 effects. P3 unions repeated static reads in one safe publication hook and retains every hard ceiling. See SIMULATION.md for the two-day schedule and bounded third-day failure.
+No changes to static targets, field/reference closure, computed-value schemas, UTF-8 limits, Ready Barrier or expanded-work budgets. Declaration budgets count guarded branches too; actual work is tested against 16 reads / 24 App Commands / 32 effects. P3 unions repeated static reads in one safe publication hook and retains every hard ceiling. See SIMULATION.md for the two initial daily transitions, recurring accounting through day 30 and atomic day-31 rejection.

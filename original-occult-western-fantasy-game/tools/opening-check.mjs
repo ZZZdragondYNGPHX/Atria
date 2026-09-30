@@ -1,0 +1,86 @@
+import assert from 'node:assert/strict';
+import http from 'node:http';
+export async function verify({load,native,manifest,archive,sourceFiles}) {
+ const {makeTempFsEngine}=await load('tests/storage/harness/fs-harness.js');
+ const {services}=await load('tests/native/helpers/session-fixture.js');
+ const {NativeGenerationHost}=await load('src/native/adapters/generation-host.js');
+ const {seedGenerationProfiles}=await load('tests/native/helpers/generation-fixture.js');
+ const {createHttpGenerationProvider}=await load('src/native/adapters/http-generation-provider.js');
+ const {FrontendBridgeService}=await load('src/native/frontend/host-bridge.js');
+ const {projectInformation,queryInformationGraph}=await load('public/shared/native-information-runtime.js');
+ const {readContent,validateContent}=await import('./content-check.mjs');
+ const resources=await readContent();const content=validateContent(resources,manifest);
+ for(const mutate of [r=>delete r.get('cases.signature.second_death').value.items[0].canon.truth,r=>r.get('defs.claims.seeds').value.items[0].canon.runtimeEligibility.push('dialogue_xp'),r=>r.get('defs.claims.seeds').value.items[0].canon.runtimeTraditions.push('tradition.self')]){const copy=structuredClone(resources);mutate(copy);assert.throws(()=>validateContent(copy,manifest));}
+ const safe=value=>{content.assertSafe(value);assert(!JSON.stringify(value).includes('P5_PRIVATE_SECOND_DEATH'));};
+ const h=await makeTempFsEngine(),svc=services(h),bridge=new FrontendBridgeService();
+ let lastPrepared; const work=[];
+ const rawPrepare=svc.core.prepareAuthorityTurn;svc.core.prepareAuthorityTurn=async function(...args){const p=await rawPrepare.apply(this,args);lastPrepared=p.prepared;work.push(p.prepared.work);return p;};
+ let session,opened,host,binding,serial=0,fail=false,selection=null,requests=0,commits=0;
+ const rawCommit=svc.core._sessions.commitSnapshot;
+ svc.core._sessions.commitSnapshot=async function(...a){commits++;return rawCommit.apply(this,a);};
+ const server=http.createServer(async(req,res)=>{try {const chunks=[];for await(const c of req)chunks.push(c);const body=JSON.parse(Buffer.concat(chunks));safe(body);requests++;if(fail&&!body.tools?.length){res.writeHead(503);res.end('{}');return;}
+ const tool=body.tools?.[logic.transactions.filter(t=>t.intent.expose).findIndex(t=>t.verb===selection?.verb)];
+ const message=body.tools?.length?{content:'',tool_calls:[{id:'opening',type:'function',function:{name:tool?.function.name??body.tools.find(t=>JSON.stringify(t.function.parameters)===JSON.stringify(selection.schema))?.function.name,arguments:JSON.stringify(selection.input)}}]}:{content:JSON.stringify('The declared action is recorded; only the safe result is narrated.')};res.writeHead(200,{'Content-Type':'application/json',Connection:'close'});res.end(JSON.stringify({choices:[{message}]}));}catch(e){console.error(e);res.writeHead(500);res.end('{}');}});
+ await new Promise(r=>server.listen(0,'127.0.0.1',r));
+ const value=(id,record='main')=>session.states.atri_lifecycle.domains[id].records.find(r=>r.id===record)?.value;
+ const logic=JSON.parse(sourceFiles.get('runtime/logic.json'));
+ const fresh=async()=>{session=await svc.core.create(h.handle,{packageId:manifest.packageId,packageVersionId:manifest.packageVersionId,entryPointId:manifest.entryPoints[0].entryPointId});session=await svc.core.applyLifecycleCommand(h.handle,session.session.sessionId,{type:'lifecycle',invocationId:'ready',action:{kind:'experience.ready'}},{expectedRevisionId:session.revision.revisionId});opened=await bridge.open({...svc,generationHost:host,taskBindings:async()=>({narrative:binding,structured:binding})},h.handle,session.session.sessionId);};
+ const act=async(id,input={},expected='automatic')=>{const request={epoch:opened.epoch,revision:session.revision.revisionId,componentId:'Main',bindingId:'opening_'+id,method:'action.invoke',input,idempotencyKey:'p5-'+ ++serial};const before=commits;const response=await bridge.request({...svc,generationHost:host,taskBindings:async()=>({narrative:binding,structured:binding})},h.handle,request);assert.equal(response.ok,true,JSON.stringify(response));session=await svc.core.load(h.handle,session.session.sessionId);assert.equal(commits,before+1);assert.equal(lastPrepared.receipt.result.outcome,expected,id);console.error('PASS',id,JSON.stringify(lastPrepared.work));safe(response);return request;};
+ const create=async(prior='prior_life.legal')=>{await act('identity',{name:'Lin',pronouns:'they',age:29,appearance:'Ink-stained cuffs'});await act('origin',{choice:'origin.clerical_household'});await act('prior_life',{choice:prior});await act('faith',{choice:'faith.distanced'});await act('anchor',{name:'Rin',relationship:'friend',place:'office'});await act('reason',{reason:'Keep families from disappearing between registers.'});assert.equal(value('player_life').step,6);assert.equal(value('entities','anchor').alive,true);assert.equal(value('entities','elias_rook').alive,false);};
+ try {
+ await svc.packageInstaller.install(h.handle,archive,{grantedPermissions:['generation']});
+ const seeded=await seedGenerationProfiles({...h,endpoint:'http://127.0.0.1:'+server.address().port+'/v1/chat/completions',roles:['narrator','intent_resolver']});host=new NativeGenerationHost({...seeded,sessionCore:svc.core,packageInstaller:svc.packageInstaller,providers:{'provider.openai-compatible':createHttpGenerationProvider()},secretPort:{resolveSecret:async()=> 'local-test-only'}});binding={scope:'player',runtimeRouteId:seeded.routes[0].runtimeRouteId};
+ await fresh();
+ if(process.argv.includes('--state-only')){
+  const {prepareLifecycle}=await load('src/native/lifecycle-authority.js');
+  let base=await svc.core.appendTimeline(h.handle,session.session.sessionId,{role:'user',content:'Claim state consistency regression'});
+  const installed=await svc.core._openPackage(h.handle,base.session.packageId,base.session.packageVersionId,base.session.entryPointId);
+  for(const [domainId,commandId,args] of [
+   ['player_life','step_6',{step:6,reason:'Regression setup',licensed:true}],
+   ['progression','support_mortuary',{current_source:'mortuary'}],['progression','support_register',{old_source:'register'}],
+   ['progression','verified',{verified:true}],['progression','breach',{preserved:true,breached:true}],
+   ['conditions','breach',{text:'Breached and unsettled.',strained:true}],
+   ['progression','seed_unlost_evidence',{seed:'claim.seed.unlost_evidence',postponed:false}],['progression','taught',{taught:true}]
+  ]){const prepared=await prepareLifecycle(base,installed,{kind:'app.command',domainId,commandId,recordId:'main',args});base={...base,states:prepared.states};}
+  const evidence=await svc.core.load(h.handle,base.session.sessionId);
+  for(const tradition of ['civic','church']){const result=await svc.core.prepareAuthorityTurn(h.handle,base,{transactionId:'opening.stabilize_unlost_evidence_'+tradition,input:{tradition,seed:'claim.seed.unlost_evidence',acceptPrice:true}});const domain=result.prepared.candidate.states.atri_lifecycle.domains;assert.equal(domain.conditions.records.find(r=>r.id==='main').value.strained,false);assert.equal(domain.claims.records.find(r=>r.id==='main').value.active,true);assert.equal(domain.progression.records.find(r=>r.id==='main').value.invested,true);assert(result.prepared.work.appCommands<=24);assert(result.prepared.work.readGrants<=16);}
+  assert.deepEqual(await svc.core.load(h.handle,base.session.sessionId),evidence);
+  return {phase:'P5',checks:['Latest-code civic/church stabilization consistently clears Unsettled Condition, grants formal Claim and preserves zero-publication preparation'],work};
+ }
+ await create();await act('acquire_mortuary',{method:'inspect_death'});await act('test_copy',{method:'examine_authorized_copy'});await act('acquire_register',{method:'request_old_register'});await act('compare',{method:'compare_independent_sources'});assert.equal(value('progression').verified,true);
+ await act('preserve',{method:'separate_and_witness'});assert.equal(value('progression').breached,true);assert(JSON.stringify(projectInformation(session,'player.overview',{purpose:'display'})).includes('Unlost Evidence'));await act('postpone');assert.equal(value('progression').postponed,true);assert.equal(value('claims').active,false);
+ await act('seed_unlost_evidence',{seed:'claim.seed.unlost_evidence'});await act('consult',{method:'qualified_civic_or_church_consultation'});await act('stabilize_unlost_evidence_civic',{tradition:'civic',seed:'claim.seed.unlost_evidence',acceptPrice:true});assert.equal(value('claims').active,true);assert.equal(value('conditions').strained,false);assert.equal(value('world_matters').report_due,true);
+ await act('invoke',{target:'examined_identity'});await act('settle_notify_authority',{disposition:'notify_authority'});assert.equal(value('world_matters').report_filed,true);
+
+ // Committed replay uses the original bridge request without a second publication.
+ const replay=await act('reopen');const replayRevision=session.revision.revisionId;const replayCommits=commits;
+ assert.equal((await bridge.request({...svc,generationHost:host,taskBindings:async()=>({narrative:binding,structured:binding})},h.handle,replay)).ok,true);assert.equal(commits,replayCommits);assert.equal((await svc.core.load(h.handle,session.session.sessionId)).revision.revisionId,replayRevision);
+ // Time catches up actual obligations and preserves a kept living Anchor appointment.
+ await act('visit',{method:'keep_anchor_appointment'});await act('wait',{minutes:2880});assert.equal(value('world_matters').day,2);assert.equal(value('world_matters').anchor_missed,false);await act('wait',{minutes:1440});assert.equal(value('world_matters').day,3);
+ // Actual manual save container, fresh store install/import, no uncommitted journal assumption.
+ const save=await svc.saveSystem.manualSave(h.handle,session.session.sessionId);const exported=await svc.saveSystem.exportSnapshot(h.handle,session.session.sessionId,save.saveId);
+ const target=await makeTempFsEngine();try{const restoredServices=services(target);await restoredServices.packageInstaller.install(target.handle,archive,{grantedPermissions:['generation']});const restored=await restoredServices.saveSystem.importSave(target.handle,exported.archive);assert.deepEqual(restored.states.atri_lifecycle.domains,session.states.atri_lifecycle.domains);const continued=await restoredServices.core.applyLifecycleCommand(target.handle,restored.session.sessionId,{type:'lifecycle',invocationId:'restored-next-day',action:{kind:'clock.advance',commandId:'advance',ticks:1440}},{expectedRevisionId:restored.revision.revisionId});assert.equal(continued.states.atri_lifecycle.domains.world_matters.records.find(r=>r.id==='main').value.day,4);assert.equal(continued.states.atri_lifecycle.domains.claims.records.find(r=>r.id==='main').value.active,true);}finally{await target.cleanup();}
+
+ // Real bounded catch-up reaches day 30; crossing day 31 must roll back the whole candidate.
+ const clock=async(ticks,id)=>{session=await svc.core.applyLifecycleCommand(h.handle,session.session.sessionId,{type:'lifecycle',invocationId:id,action:{kind:'clock.advance',commandId:'advance',ticks}},{expectedRevisionId:session.revision.revisionId});};
+ while(value('world_matters').day<29)await clock(2880,'horizon-'+value('world_matters').day);
+ const beforeHorizon=structuredClone(session);await assert.rejects(clock(2880,'overflow-two-days'));assert.deepEqual(await svc.core.load(h.handle,session.session.sessionId),beforeHorizon);await clock(1440,'day-thirty');assert.equal(value('world_matters').day,30);const atThirty=structuredClone(session);await assert.rejects(clock(1440,'overflow-one-day'));assert.deepEqual(await svc.core.load(h.handle,session.session.sessionId),atThirty);
+ // Second independent route; wrong theory and a denied request never manufacture confirming evidence.
+ await fresh();await create('prior_life.insurance');await act('familiar_insurance',{method:'professional_introduction'});assert.equal(session.states.atri_lifecycle.clocks.world,0);await act('acquire_police',{method:'request_certified_copy'});
+ const evidence=structuredClone(session.states.atri_lifecycle.domains.evidence);await act('hypothesis',{text:'An ordinary thief replaced Elias yesterday.'});assert.deepEqual(session.states.atri_lifecycle.domains.evidence,evidence);await act('private_access',{method:'demand_secret_archive'},'denied');assert.deepEqual(session.states.atri_lifecycle.domains.evidence,evidence);await act('family',{method:'ask_with_consent'});assert(value('beliefs').testimony.includes('Ada Rook'));assert.equal(value('entities','ada_rook').alive,true);const testimony=projectInformation(session,'player.overview',{purpose:'display'}).items.find(i=>i.sourceId==='player.testimony');assert.equal(testimony.channel,'told_by');assert.equal(testimony.epistemicStatus,'suspected');
+ await act('compare',{method:'compare_independent_sources'});await act('preserve',{method:'separate_and_witness'});const imprints=structuredClone(value('progression'));await act('preserve',{method:'separate_and_witness'},'impossible');assert.deepEqual(value('progression'),imprints);
+ await act('seed_name_mismatch',{seed:'claim.seed.name_mismatch'});await act('stabilize_name_mismatch_church',{tradition:'church',seed:'claim.seed.name_mismatch',acceptPrice:true},'impossible');assert.equal(value('claims').active,false);await act('consult',{method:'qualified_civic_or_church_consultation'});await act('stabilize_name_mismatch_church',{tradition:'church',seed:'claim.seed.name_mismatch',acceptPrice:true});assert.equal(value('claims').tradition,'church');
+ for(const disposition of ['report_new','challenge_old','protect_family','abandon']){await act('settle_'+disposition,{disposition});assert.equal(value('settlements').disposition,disposition);await act('reopen');}
+ // Real free-text resolver -> same transaction, provider failure has zero mutation and in-process retry pins selection.
+ const t=logic.transactions.find(t=>t.id==='opening.lead');selection={verb:t.verb,schema:t.inputSchema,input:{text:'Ask another authorized record custodian.'}};
+ session=await svc.core.appendTimeline(h.handle,session.session.sessionId,{role:'user',content:'Record a lead to another authorized custodian.'});
+ const input={sessionId:session.session.sessionId,revisionId:session.revision.revisionId,invocationId:'p5-free-text',userInput:'Record a lead to another authorized custodian.',slotBindings:{narrative:binding,structured:binding}};
+ const before=structuredClone(session),beforeCommits=commits;fail=true;await assert.rejects(host.executeTurn(h.handle,input));assert.deepEqual(await svc.core.load(h.handle,session.session.sessionId),before);assert.equal(commits,beforeCommits);const failedReceipt=lastPrepared.receipt;fail=false;session=await host.executeTurn(h.handle,input);assert.deepEqual(lastPrepared.receipt,failedReceipt);assert.equal(value('player_matters','lead').text,selection.input.text);assert.equal(commits,beforeCommits+1);
+ for(const g of manifest.runtime.experienceContract.informationRuntime.graphs){const graph=queryInformationGraph(session,g.id,'main',{purpose:g.viewId==='player.investigation'?'display':'context'});safe(graph);assert.equal(graph.edges.length,2);assert.equal(graph.nodes.length,3);}
+ // Forged fields, underage identity, unknown targets and unsupported Seeds are rejected by actual Native preparation.
+ const invalidBase=await svc.core.appendTimeline(h.handle,session.session.sessionId,{role:'user',content:'Invalid request regression'});
+ for(const [id,input] of [['identity',{name:'X',pronouns:'they',age:17,appearance:''}],['seed_name_mismatch',{seed:'claim.seed.invented'}],['invoke',{target:'whole_city'}],['stabilize_name_mismatch_church',{tradition:'church',seed:'claim.seed.name_mismatch',acceptPrice:false}],['lead',{text:'x',outcome:'automatic'}]])await assert.rejects(svc.core.prepareAuthorityTurn(h.handle,invalidBase,{transactionId:'opening.'+id,input}));
+ for(const view of manifest.runtime.experienceContract.informationRuntime.views)safe(projectInformation(session,view.id,{purpose:view.exposure[0]}));
+ return {phase:'P5',checks:['FS installation and Ready','six-step character creation and living Anchor','independent records → Breach → postpone → earned formal Claim','typed actions through local HTTP Narrator / one CAS','safe projections and both non-empty acquired-evidence Graphs','alternative insurer/police route, wrong theory and denial continuity','both supported Seeds and civic/church stabilization, early grant rejection','all five dispositions and reopen','actual save-container import and continuation','day 30 / atomic day-31 boundary','free-text provider failure/retry and committed typed replay','malformed Case/Seed and input negative checks'],publication:{reads:logic.derivedPublications[0].reads.length,commands:logic.derivedPublications[0].effects.length},requests,maximumWork:Object.fromEntries(['readGrants','appCommands','effects'].map(k=>[k,Math.max(...work.map(w=>w[k]))]))};
+ } finally {bridge.dispose();svc.core._sessions.commitSnapshot=rawCommit;svc.core.prepareAuthorityTurn=rawPrepare;await new Promise(r=>{server.closeAllConnections();server.close(r);});await h.cleanup();}
+}

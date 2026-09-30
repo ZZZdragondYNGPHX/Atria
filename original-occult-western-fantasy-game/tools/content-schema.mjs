@@ -11,6 +11,7 @@ const publicDescription = object({ publicDescription: text });
 const playerDescription = object({ playerDescription: text });
 const backgrounds = { canon: object({ ...fields('institution socialAccess startingBelief activation'), ...strings('knowledgeAccess proceduralFamiliarity limits'), relationshipBudget: { type: 'integer', minimum: 1, maximum: 1 } }), perspective: publicDescription };
 export const kinds = {
+ signature_case: { canon: object({ ...fields('entry truth anomaly eastbankContribution orderSafety failureContinuity'), ...strings('stakes actors institutions evidenceGraph pressures routes interventions settlements consequences revelationPredicates reentry') }), perspective: publicDescription },
  civic_office: { canon: object(fields('publicFunction parentAuthority liaison jurisdiction')), perspective: publicDescription },
  district: { canon: object(fields('function history jurisdiction')), perspective: publicDescription },
  location: { canon: object({ ...fields('district geographicRelation controller publicFunction specialState availability'), ...strings('accessRules actors artifacts historicalEvents hooks safeGenerationZones') }), perspective: publicDescription },
@@ -24,7 +25,7 @@ export const kinds = {
  artifact_template: { canon: object({ semanticPayload: object({ ...fields('issuer issueTime subject assertedProposition custody provenance integrity accessRestriction'), names: list(text, 0), dates: list(text, 0), signatures: list(text, 0) }), ...fields('renderedTextPolicy instanceStatus') }), perspective: object(fields('weakerClaim knowledgeStatus')) },
  tradition: { canon: object(strings('anchorPatterns pricePatterns limits')), perspective: publicDescription },
  claim_primitive: { canon: object({ ...fields('effect runtimeStatus'), ...strings('principles hardLimits') }), perspective: playerDescription },
- claim_seed: { canon: object({ ...fields('primitive coreRule condition starterJurisdiction runtimeStatus'), ...strings('principles eligibilityImprints anchorFamilies priceFamilies traditions forbiddenExtensions diagnosticSigns') }), perspective: playerDescription },
+ claim_seed: { canon: object({ ...fields('primitive coreRule condition starterJurisdiction runtimeStatus'), ...strings('principles eligibilityImprints anchorFamilies priceFamilies traditions forbiddenExtensions diagnosticSigns'), runtimeEligibility:list(text,0), runtimeTraditions:list(text,0) }), perspective: playerDescription },
  claim_archetype: { canon: object({ ...fields('primitive coreRule conditionFamily baseJurisdiction runtimeStatus'), ...strings('principles anchorPatterns pricePatterns growthDirections incompatibilities failureModes traditions engineeringLimits hardProhibitions') }), perspective: playerDescription },
  anomaly: { canon: object({ ...fields('coreContradiction requiredSubstrate escalation mundaneInteraction claimInteraction'), ...strings('principles observableSigns evidenceSignatures falseExplanations resolutionFamilies hardLimits'), institutionalInterpretations: list(object(fields('institution interpretation'))) }), perspective: publicDescription },
  origin: backgrounds, prior_life: backgrounds, faith: backgrounds,

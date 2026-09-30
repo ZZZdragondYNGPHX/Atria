@@ -1,5 +1,7 @@
 # P3 World Simulation Contract
 
+This is the retained --fixture simulation profile. The default P5 opening uses the same Core scheduler with its own bounded rent/Anchor obligations; see OPENING.md.
+
 This fixture uses the formally integrated Core `world-simulation@1` capability and retains required `authority-transaction@1`. No scheduler is shipped in Package tools or frontend. Tools are verification clients only.
 
 ## Authority and schedule

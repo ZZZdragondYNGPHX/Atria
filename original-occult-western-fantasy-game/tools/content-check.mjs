@@ -29,7 +29,7 @@ export function validateContent(resources, manifest) {
   assert.deepEqual(Object.keys(value).sort(), ['items', 'schemaVersion']);
   assert.equal(value.schemaVersion, 1);
   assert(Array.isArray(value.items));
-  if (file === 'cases.signature.second_death') { assert.equal(value.items.length, 0, 'P5 opening remains unimplemented'); continue; }
+  if (file === 'cases.signature.second_death') assert.equal(value.items.length, 1, 'Exactly the P5 opening Case');
   assert(value.items.length > 0, 'Empty P4 module: ' + file);
   for (const a of value.items) {
    assertShape(a, schemaFor(a.kind), a.id);
@@ -61,6 +61,9 @@ export function validateContent(resources, manifest) {
  }
  for (const a of [...byKind('claim_seed'), ...byKind('claim_archetype')]) { assert.equal(all.get(a.canon.primitive).kind, 'claim_primitive'); assert(a.canon.principles.includes(all.get(a.canon.primitive).canon.principles[0])); }
  assert.equal(new Set(byKind('claim_archetype').map(a => a.canon.coreRule)).size, byKind('claim_archetype').length, 'Do not count Anchor skins as new mechanics');
+ const supported=byKind('claim_seed').filter(a=>a.canon.runtimeEligibility.length);
+ assert.deepEqual(supported.map(a=>a.id),['claim.seed.unlost_evidence','claim.seed.name_mismatch']);
+ for(const a of supported){assert.deepEqual(a.canon.runtimeEligibility,['verified_identity_across_sources','preserved_conflicting_evidence','first_breach']);assert.deepEqual(a.canon.runtimeTraditions,['tradition.civic','tradition.church']);}
  const fragments = byKind('canon_fragment');
  for (const a of fragments) { assert(a.canon.holders.length < 10); for (const id of a.canon.evidenceGateways) assert.equal(all.get(id).kind, 'artifact_template'); }
  assert.equal(all.get('canon.deep').canon.epistemicStatus, 'unresolved');
@@ -75,7 +78,7 @@ export function validateContent(resources, manifest) {
  assert.equal(manifest.knowledgeBindings.length, 0, 'No fixture retrieval binding');
  for (const e of manifest.entryPoints) assert.equal(e.knowledgeBindingIds.length, 0);
  for (const w of manifest.worlds) assert.equal(w.revision.knowledgeBindingIds.length, 0);
- const secretTexts = [...fragments.flatMap(a => a.canon.assertions), ...byKind('actor_a').flatMap(a => [a.canon.privateMotive, ...a.perspective.knownSecrets]), ...byKind('institution').flatMap(a => [a.canon.realFunction, ...a.perspective.initialKnowledge])];
+ const secretTexts = [...byKind('signature_case').map(a=>a.canon.truth), ...fragments.flatMap(a => a.canon.assertions), ...byKind('actor_a').flatMap(a => [a.canon.privateMotive, ...a.perspective.knownSecrets]), ...byKind('institution').flatMap(a => [a.canon.realFunction, ...a.perspective.initialKnowledge])];
  const assertSafe = value => { const text = JSON.stringify(value); for (const secret of secretTexts) assert(!text.includes(secret), 'Hidden Canon escaped'); for (const fragment of fragments) assert(!text.includes(fragment.id), 'Canon reference escaped'); };
  assertSafe(manifest.knowledge); assertSafe(manifest.entryPoints);
  return { all, assertSafe, metrics: { resources: resources.size, assets: all.size, bytes: total, largestResourceBytes: max, counts: Object.fromEntries([...new Set([...all.values()].map(a => a.kind))].map(k => [k, byKind(k).length])) } };
