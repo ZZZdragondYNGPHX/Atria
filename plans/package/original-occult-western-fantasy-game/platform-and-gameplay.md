@@ -115,15 +115,129 @@ The following are intentionally unresolved:
 
 ## 11. Round 7 — Frontend information and interaction constraints
 
-> **Current discussion:** Round 7 is intentionally lightweight. Define only player-facing information, required interactions, visibility boundaries and anti-leakage behavior. Detailed visual/UI/UX planning remains delegated.
+> **Current discussion:** Round 7 is approved. Detailed visual/UI/UX planning remains delegated to a frontend-specialized AI / frontend skill.
 
-Round 7 must determine only:
+Round 7 freezes only product-facing information and interaction requirements.
 
-- which information categories the player must be able to inspect on demand;
-- which actions must be available outside freeform narration;
-- which uncertain or hidden state must never be exposed by the frontend;
-- how risk previews, Case information and Claim/Identity state are surfaced without revealing backend Truth;
-- what minimum affordances a later frontend designer must preserve regardless of visual design;
-- which information should remain embedded naturally in narrative instead of becoming dashboard state.
+### 11.1 Information the player must be able to inspect
 
-Do not freeze screen count, layout, visual style, navigation pattern, component library, animation or responsive composition.
+The frontend must make player-safe access possible for:
+
+- canonical current time and location;
+- known upcoming commitments / natural deadlines;
+- player-known Matters / Cases / Leads;
+- acquired Evidence;
+- known Testimony / Findings / Hypotheses with their semantic distinction preserved;
+- known people / institutions and player-known relationship state;
+- actual Access and Obligations relevant to the player;
+- player Claims, Anchors, Prices and material Conditions;
+- Personal Anchor relationships;
+- acquired or public documents, reports, news and Settlements;
+- practical player financial state when it changes available actions.
+
+These are information requirements, not prescribed screens.
+
+### 11.2 Required player interactions
+
+The frontend must support or expose a path for the player to:
+
+- inspect Evidence provenance and known relations;
+- create / revise player Hypotheses and Leads;
+- choose investigation directions without a quest checklist;
+- invoke Case Reflection;
+- inspect known qualitative risk before committing a major uncertain action;
+- submit formal Case disposition / report / Settlement actions when valid;
+- inspect and manage meaningful Commitments and Downtime choices;
+- request time advancement / fast-forward when permitted;
+- inspect formal Claim and relevant abnormal state.
+
+Freeform narrative input remains central, but these important stateful actions must not depend solely on remembering hidden syntax.
+
+### 11.3 Information the frontend must not expose
+
+The player-facing frontend must never reveal merely because the backend stores it:
+
+- hidden World Truth;
+- culprit / answer-key fields;
+- unrevealed Evidence;
+- hidden locations / graph relations;
+- private NPC Beliefs or Memories;
+- secret Agenda phases / next actions;
+- faction-clock or quest-progress shadow state;
+- exact hidden success probabilities;
+- hidden clue totals;
+- Truth completion percentages;
+- Cold-simulation logs.
+
+### 11.4 Risk presentation boundary
+
+Risk presentation may expose only player-legible information such as:
+
+- qualitative Risk Tier;
+- known favorable factors;
+- known adverse factors;
+- known consequence families.
+
+Do not expose hidden random seeds or exact backend success probabilities by default.
+
+### 11.5 Preserve epistemic semantics
+
+The frontend must not flatten materially different information into one generic clue or fact list.
+
+At minimum preserve the distinction between:
+
+- Evidence;
+- Testimony;
+- Finding;
+- Hypothesis;
+- World fact versus Institutional Record;
+- formal Claim versus Claim Seed / progression candidate.
+
+Visual representation is intentionally unconstrained.
+
+### 11.6 Narrative versus persistent UI state
+
+Not every descriptive detail becomes persistent interface state.
+
+Transient details without ongoing gameplay meaning should normally remain Narrative.
+
+Examples include:
+
+- ordinary mood description;
+- weather texture when it has no mechanical consequence;
+- clothing dirt;
+- incidental crowd reactions.
+
+Persistent interface state should reflect durable or actionable information, not every sentence the model generated.
+
+### 11.7 Projection boundary
+
+Approved hard rule:
+
+**player-facing frontend consumes player-safe projections and authorized actions, not unrestricted backend domains.**
+
+A later frontend implementation may freely choose cards, graphs, documents, spatial navigation, overlays or other visual metaphors, but it may not bypass Information Perspective rules for convenience.
+
+### 11.8 Round 7 decision
+
+Approved:
+
+- frontend requirements limited to player-safe information access and required actions;
+- known time / location / commitments available;
+- player-known investigation semantics remain distinct;
+- risk preview exposes qualitative known factors only;
+- Claim / Anchor / Price / Condition information accessible;
+- formal Case disposition, Reflection and Downtime/time-advance interactions accessible;
+- player frontend cannot read hidden World Truth, private NPC cognition, secret Agenda state or hidden completion metrics;
+- transient narrative detail is not automatically dashboard state;
+- frontend consumes player-safe Projection rather than unrestricted backend domains;
+- detailed UI / visual / UX architecture is delegated.
+
+Rejected:
+
+- prescribing visual layout or component architecture in this Plan;
+- exposing backend debug state to improve apparent UI completeness;
+- generic clue lists that collapse Evidence / Testimony / Finding / Hypothesis;
+- exact hidden probability displays by default;
+- turning every narrative detail into a persistent dashboard variable.
+
