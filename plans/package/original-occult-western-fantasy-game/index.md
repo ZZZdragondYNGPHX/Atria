@@ -257,7 +257,7 @@ Pre-production design Rounds 1–10 are complete and frozen for implementation.
 Implementation authorization is staged:
 
 1. P0 `feat/authority-transaction` is complete; `docs:records/feat/authority-transaction.md` records the verified main baseline.
-2. The P0 prerequisite gate is cleared and Package P1 is complete. Package P2–P9 retain their individual stage authorizations; P2 has not started.
+2. The P0 prerequisite gate is cleared and Package P1 is complete. Package P2–P9 retain their individual stage authorizations; P2 is now authorized and has reached the conditional-Fortune Core contract gate (G1); P2 is not complete. See the Package Record and sole live HANDOFF for evidence.
 3. After P0, Package work proceeds in the independent long-lived `package` workspace under `original-occult-western-fantasy-game/`.
 4. Material contradictions discovered during implementation reopen only the authoritative Plan module they affect; ordinary implementation details do not reopen design.
 

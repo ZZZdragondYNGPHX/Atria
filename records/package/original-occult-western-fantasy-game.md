@@ -53,3 +53,41 @@ Status: **P1 complete; stopped at the stage boundary; P2 not started.**
 - P1 does not supply final schemas, meaningful evidence/graphs, complete opening/content, P2 verbs/Resolution, NPC simulation or P8 visual design. P2 must version evolving installed Package identities rather than silently overwrite a published PackageVersion.
 - Next: **P2 — Interaction Runtime only**, following index → technical-design + implementation-staging + gameplay + simulation, using a small synthetic world. Implement approved nine verbs, bounded Resolution/Fortune, authority effects/projections/receipt and free-text/typed equivalence. No P3/P8 or full campaign work.
 - Continue this same Package Record and long-lived package branch. A single live HANDOFF is created for this Package task; P1 work stops here.
+
+
+## P2 — Interaction Runtime: contract gate (2026-09-30)
+
+Status: **P2 authorized and started; blocked at conditional Fortune contract confirmation. P2 is NOT complete; P3/P8 not started.**
+
+- Fetch-all/prune confirmed main, docs and package at their recorded P1 closure refs. Main/docs/package and current detached checkout were clean. Package start HEAD: ecbad17290e2a8626cd99c515bc3d98f71b7da4d; docs start: dbe33d94a6331e8cdc9a7658d1d65d9aa71dc60f.
+- Read Governance, workspace adapters, the existing sole HANDOFF, Plan index and P2 contract/gameplay/simulation sections, Package Record and relevant P0 Core evidence. No reference content read, branch merge, Core edit or releases modification.
+- Package checkpoint / probe-tested / pushed HEAD: **c4293fe7238b9f433b324c1778e16fc47ebfcf73**. This is a diagnostic checkpoint, NOT a tested P2 gameplay implementation. P1 installable runtime/data/manifest remain byte-for-byte unchanged; PackageVersion is intentionally unchanged because the added tool is not packaged.
+- Core inspected / probe-tested HEAD: **cd6bff19d54f651a4bffd8981f62ec77c0f84acb**. Product checkout remains independent and unchanged.
+
+### G1 — Authority-dependent eligibility before Fortune
+
+Frozen requirements: gameplay.md 6.28.2 says eligibility is determined before randomness and only Uncertain uses bounded Fortune; technical-design.md 6.48.5 requires Automatic / Impossible / Uncertain before bounded Fortune. The same verb/method may become automatic, impossible or uncertain as access/opposition changes. A model must not select an authoritative eligibility result.
+
+Current Core evidence:
+
+- public/scripts/native/experience/logic/transactions.js:137–153 accepts only static deterministic or bounded_fortune resolution, with kind/cases/fallback/sides; no conditional-draw predicate or authority-selected kind.
+- src/native/authority-transaction.js:227–235 reads authority and applies validators, then bounded_fortune unconditionally draws before evaluating cases. Automatic/Impossible cases therefore still have a roll.
+- transactions.js:254 rejects duplicate verbs. Splitting the same verb into deterministic/Fortune variants is not a supported same-verb dispatch. A fixed typed binding targets one transaction, not an authority-driven dispatch function.
+- A validator can reject an ineligible action before RNG, but cannot return an accepted Automatic result or an Impossible result/receipt. World rules run after the frozen resolution; they are not a conditional replacement for Transaction Resolution.
+
+Reproduction: tools/probe-conditional-fortune.mjs imports the independent Core candidate fixture (no copied product implementation), substitutes a minimal private-read eligibility policy and executes actual preparation. Automatic and Impossible each contain a bounded roll. It also confirms rejection of resolution.when, formula-selected kind and duplicate-verb declarations. The hypothetical fields are negative probes only, not proposed/installable Package declarations.
+
+This establishes the missing **strict no-draw-on-non-Uncertain** contract. It does NOT establish that an ignored extra draw changes automatic success or causes rerolls: current deterministic same-anchor behavior passes. Treating that unused draw as acceptable would be a design interpretation/change requiring explicit approval, not something this Package task silently assumes.
+
+### Actually executed at this checkpoint
+
+- node tools/probe-conditional-fortune.mjs --core <main-checkout>: PASS in the sense **CONFIRMED_CONTRACT_LIMITATION_NOT_P2_PASS**. Three private authority states exercised; every result had roll in [1,3]; three same-anchor preparation retries matched; all source snapshots unchanged; three unsupported declaration alternatives rejected.
+- node --check tools/probe-conditional-fortune.mjs: PASS.
+- Staged git diff --check: PASS; Package checkpoint commit/push succeeded.
+- No new install/build/preview, full gameplay, provider/typed bridge, save-container, browser/device, regression suite or CI execution claimed. Historical P1/P0 evidence remains above/in the Core Record and is not repeated.
+
+### Required next checkpoint
+
+Resolve G1 before representing P2 as implemented: separately authorize an existing-authority Core contract extension (conditional Fortune with closed schema, private-read eligibility, stable same-anchor identity and typed/free-text parity), or explicitly adjudicate that ignored non-Uncertain draws satisfy the approved design. Do not implement either policy change implicitly here; do not reopen/repeat P0 wholesale.
+
+No nine-verb runtime, Resolution Frame/effects/index or typed binding has been implemented in this checkpoint. P2 exit gates remain open. Do not supply a P3 implementation handoff as though P2 passed. Resume the same Package task/Record after G1 is resolved, fetch actual refs and rerun/replace the limitation probe with acceptance assertions. Do not use Package RNG, model-selected eligibility, multi-commit dispatch or a shadow Resolution domain as a workaround.

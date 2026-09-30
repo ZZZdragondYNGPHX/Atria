@@ -11,7 +11,7 @@ Owns Round 10: Codex-ready implementation phases, dependency order, workspace ro
 - technical-design.md
 - approved domain modules only when a phase implements their authority.
 
-> **Status:** Approved Implementation Staging v1.0. Pre-production and P0 are complete; Package P1 is verified. P2 is the next separately authorized stage. Exact evidence is in the Package Record; phase scopes below remain unchanged.
+> **Status:** Approved Implementation Staging v1.0. Pre-production and P0 are complete; Package P1 is verified. P2 is authorized and started, but blocked at conditional-Fortune contract gate G1; no P2 exit gate is claimed. Exact evidence is in the Package Record; phase scopes below remain unchanged.
 
 ---
 

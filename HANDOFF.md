@@ -1,51 +1,40 @@
-# Live HANDOFF — Package P1 complete / P2 next
+# Live HANDOFF — Package P2 contract gate G1
 
-- Task ID: `package/original-occult-western-fantasy-game`
-- Primary Workspace / branch: `package`
-- Package root: `original-occult-western-fantasy-game/`
-- Current stage: **P1 complete; P2 not started and awaits the next explicit stage authorization.**
-- Package implementation / tested / pushed HEAD: `ecbad17290e2a8626cd99c515bc3d98f71b7da4d`
-- Tested tree: `704dbfbcfc6117cc00c90a1f4e6b220752016c11`
-- Core main / tested HEAD: `cd6bff19d54f651a4bffd8981f62ec77c0f84acb` (unchanged)
-- Plan entrypoint: `plans/package/original-occult-western-fantasy-game/index.md`
-- Next-stage modules: `technical-design.md`, `implementation-staging.md`, `gameplay.md`, `simulation.md` in the same Plan directory.
-- Permanent Package Record: `records/package/original-occult-western-fantasy-game.md`
-- Core Record (contract/evidence only): `records/feat/authority-transaction.md`
+- Task ID: package/original-occult-western-fantasy-game
+- Primary Workspace / branch: package (long-lived, independent)
+- Root: original-occult-western-fantasy-game/
+- Stage: **P2 authorized/started; blocked at G1. P2 NOT complete; no P3/P8.**
+- Package checkpoint / probe-tested / pushed HEAD: c4293fe7238b9f433b324c1778e16fc47ebfcf73
+- Last complete P1 runtime tested HEAD: ecbad17290e2a8626cd99c515bc3d98f71b7da4d
+- Core inspected / probe-tested main HEAD: cd6bff19d54f651a4bffd8981f62ec77c0f84acb
+- Plan entrypoint: plans/package/original-occult-western-fantasy-game/index.md
+- P2 modules: technical-design.md, implementation-staging.md, gameplay.md, simulation.md
+- Sole Package Record: records/package/original-occult-western-fantasy-game.md
+- Core evidence (read-only for this task): records/feat/authority-transaction.md
 
-## Completed and verified
+## Actual current state
 
-P1 native text skeleton installs against current main, resolves required authority-transaction@1 and exact Task/Data resources, starts a Session, enforces Ready, initializes once and publishes safe projections. Five Views and two Graphs resolve. Four Task contracts and diagnostic resolver/Narrator wiring exist. No gameplay implementation, UI, shadow authority or Core workaround.
+P1 runtime is unchanged. Only tools/probe-conditional-fortune.mjs was added to package; it is excluded from the archive. No PackageVersion bump, releases overwrite, Core edit, main merge or reference read. Nine verbs and typed frontend binding remain unimplemented. Existing main/package/docs worktrees are reused; product validation stays in independent main.
 
-Package checks passed: real FS install/reopen; required capability; Ready barrier/idempotence; disclosure-safe projections/receipt/model bodies; private preparation; negative closure/policy/Task checks; local synthetic HTTP failure-zero-publication/retry/finalization. Build 8975 bytes, exclusive output protection, safe JSON preview and three tool syntax checks passed. Adjacent main Jest: **2 suites /8 tests**. No new remote CI claimed. See Record for commands and exact limitations.
+## G1 evidence and decision needed
 
-## Unfinished / next target
+Frozen gameplay 6.28.2 requires eligibility before randomness, only Uncertain uses Fortune. Current Core bounded_fortune draws before cases even when private state selects Automatic/Impossible. Static resolution kind cannot depend on private reads; resolution.when is rejected; duplicate verbs are rejected. Validators can reject, not return accepted automatic outcomes. Probe confirms this on actual Core preparation/compiler and confirms unchanged same-anchor determinism.
 
-P2 only: implement nine approved verbs, Resolution/risk/Fortune, bounded multi-authority effects, safe derived index and free-text/typed equivalence in a small synthetic world. P1 placeholders must become real domain contracts before gameplay writes; no P3 simulation, mass content or P8 visual work.
+Important distinction: this proves a missing strict conditional-draw seam, not that an ignored draw affects automatic outcomes or that retry is broken. Accepting ignored draws would need explicit design adjudication. Otherwise separately authorize a narrow Core contract extension in the existing Transaction authority; no Package workaround and no wholesale P0 redo. This Package task does not authorize Core changes.
 
-Keep required authority-transaction@1. Use existing authority contracts and static targets; no permanent Outcome/Resolution domain. P1 text mode is intentional; typed frontend invocation binding is not yet implemented. Clock unit is one minute; scene/day/arc are not extra clocks.
+## Checks actually run
 
-P1 validation is FS plus local synthetic HTTP only, not hosted model/UI/device/save-container testing. Selection retry evidence is in-process; the deterministic diagnostic has no RNG. Never imply a durable uncommitted selection journal.
+- node tools/probe-conditional-fortune.mjs --core <main-checkout>: confirmed limitation; three authority states, same-anchor repeats, zero source mutation, three rejected declaration alternatives.
+- Tool syntax and staged diff whitespace checks passed; diagnostic Package checkpoint pushed.
+- No new install/build/provider/UI/device/save-container/full-suite/CI result. P1 and P0 historical evidence remains in Records.
+- Probe PASS means CONFIRMED_CONTRACT_LIMITATION_NOT_P2_PASS, not acceptance of P2.
 
-## Resume discipline
+## Resume discipline / next target
 
-Fetch all remotes and verify real refs/worktrees/dirty state before reading this as current truth. Read Governance and applicable AGENTS, then this HANDOFF → Plan index → P2 modules → Package Record. Do not redo P0/P1 or rewind refs. The package worktree remains independent; product validation uses a separate main checkout. No main merge into package; keep releases history.
+Fetch all remotes, verify actual refs/worktrees/dirty state; no rollback to historical pins. Read Governance and applicable AGENTS → this sole HANDOFF → Plan index → P2 modules → Package Record. Resolve G1 with explicit authorization or approved contract semantics before resuming P2. Preserve static targets, closure/schema/UTF-8/work bounds, Ready Barrier, safe disclosures and required authority-transaction@1. No Outcome/Resolution shadow domain, Package RNG, model-selected eligibility or multi-commit workaround. Do not confuse in-process selection pin, same-anchor RNG and actual save-container restoration.
 
-No HANDOFF existed at P1 start; this is the sole new live HANDOFF. Continue the same Package Record, not the Core Record. At P2 exit push verified Package changes, update Record/HANDOFF, provide P3 prompt and stop.
+P2 scope remains nine verbs, Resolution/risk/Fortune, bounded multi-authority effects, safe projections/index/receipt and free-text/typed equivalence in a synthetic world. Only after all P2 gates pass: commit/push, update the same Record and this HANDOFF, supply P3 prompt and stop. No P3 prompt is issued at this blocked checkpoint.
 
-## Copyable P2 prompt
+## Copyable continuation prompt
 
-```text
-接手 ZZZdragondYNGPHX/Atria 的 Package 实施任务。
-Task ID：package/original-occult-western-fantasy-game；Primary Workspace：package；根目录 original-occult-western-fantasy-game/。
-只执行 P2 — Interaction Runtime，不进入 P3/P8，不批量创作完整游戏，不做 Core workaround。沿用长期独立 package 分支，不 merge main，不删除 package，保留 releases/ 历史。
-先 fetch 全部远端，核对真实 main/docs/package refs、worktrees 和 dirty state；不要回退到历史 HEAD。读取最新 docs:README.md、package/main 适用 AGENTS.md、唯一 docs:HANDOFF.md。
-先读 docs:plans/package/original-occult-western-fantasy-game/index.md，再按路由读 technical-design.md、implementation-staging.md、gameplay.md、simulation.md；不要全量扫描 Plan 或读取 reference/*。
-读取 docs:records/package/original-occult-western-fantasy-game.md；Core contract 有疑问时查 docs:records/feat/authority-transaction.md。
-P1 已完成：Package implementation/tested HEAD ecbad17290e2a8626cd99c515bc3d98f71b7da4d；Core main/tested HEAD cd6bff19d54f651a4bffd8981f62ec77c0f84acb。这些是历史证据，开始时以最新 Git 为准。不要重做 P0/P1。
-P1 是 text Experience skeleton：7 个模块化 Data resources、20 个 Lifecycle domains（大量为空白受限占位）、7 Sources/5 Views/2 Graphs、4 类精确资源 Task、Ready bootstrap、required authority-transaction@1 与 foundation.check 诊断事务。两条 derived publications 只投影安全场景/状态。P1 未实现真实玩法动词、Resolution、typed frontend binding、完整图谱或模拟调度。
-使用小型合成测试世界实现 observe、verify、interview、access、test、intervene、create_hypothesis、create_lead、advance_time；实现 Resolution Frame、Automatic/Impossible/Uncertain、Risk Tier、确定性 bounded Fortune、批准的权威 effects、disclosure-safe projections/index/receipt 和 free-text/typed 等价语义。
-复用现有 World/Lifecycle/Information/Task/Session/Transaction authority；保留静态 targets、Ready Barrier、字段/引用闭包、计算值 schema、UTF-8 与展开工作量上限。隐藏权威不得直接进入 player/Narrator context；不建 Outcome/Resolution shadow domain。
-产品验证使用独立最新 main 工作树，不把 Core 源码复制入 Package。先理解 P1 占位和安装版本 pin；演化 PackageVersion 不覆盖既有已发布版本。真正 Core contract 缺口需确认记录，不以 workaround 掩盖。
-准确区分进程内 selection pin、同 anchor RNG 和实际 save-container 恢复；不要假设跨进程未提交 selection journal。P1 只验证 FS/本地模拟 HTTP，不代表生产模型、浏览器、设备或跨进程恢复通过。
-普通工程选择/失败自行处理。阶段完成后 targeted tests/集成验证，commit/push tested package HEAD，更新同一 Package Record 和唯一 HANDOFF，提供 P3 接手提示词并立即停止。
-```
+接手 ZZZdragondYNGPHX/Atria 的 Package P2 契约检查点。Task ID：package/original-occult-western-fantasy-game；沿用长期 package 分支，不 merge main，不删除，不读取 reference/*，不做 Core workaround。先 fetch 全部远端并核对真实 refs/worktrees/dirty，再读 docs:README.md、适用 AGENTS.md、唯一 HANDOFF、Plan index、P2 四个模块和同一 Package Record。P1 已完成；P2 尚未完成。当前 Package checkpoint c4293fe7238b9f433b324c1778e16fc47ebfcf73 只增加条件 Fortune 诊断工具，Core probe HEAD cd6bff19d54f651a4bffd8981f62ec77c0f84acb。G1：Core bounded_fortune 在 eligibility cases 前无条件抽取；批准设计只允许 Uncertain 抽取。先确认此后是否已有明确设计裁定或已批准且集成的 Core 条件抽取能力；没有则报告所需决策，不擅自改变设计或修改 Core。解决 G1 后继续原 P2 九动词、Resolution、effects、安全投影与 typed/free-text 等价验证，不进入 P3/P8。只有实际通过 P2 Exit Gate 才提供 P3 提示词。完整事实以 Record/HANDOFF 和最新 Git 为准。
