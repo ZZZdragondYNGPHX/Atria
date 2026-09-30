@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.20 — Round 6 core approved; Round 6.5 opened; not approved for implementation
+- **Status:** Discussion Draft v0.21 — Rounds 6–6.5 approved; Round 6.6 opened; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -57,7 +57,7 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 6.5
+## Current route — Round 6.6
 
 Required reading:
 
@@ -186,7 +186,11 @@ Approved: Atria Lifecycle + Information authority, perspective-bounded projectio
 
 ### Round 6.5 — Authoritative domain decomposition
 
-Define concrete domain ownership for actors, information, relationships, Cases, Settlements, Claims, Agendas, injuries, economy and progression state.
+Approved: fourteen logical authority domains, derived relationship/availability summaries, no generic reputation/schedule/economy shadow state, and strict Hard/Perspective/Intent write authority.
+
+### Round 6.6 — Perspective-specific context projection
+
+Define Narrator, Actor, Agenda Task, Case Reflection and supernatural-advisory context packages with bounded, provenance-aware information.
 
 ### Round 7 — Native UI and interaction model
 
@@ -234,7 +238,8 @@ Currently carried forward from research:
 - approved core gameplay loop using resilient investigation, persistent consequences, time pressure, low-frequency high-risk violence and concrete downtime/Identity maintenance;
 - approved Native-authoritative uncertainty resolution with bounded Fortune, risk preview and structured consequences;
 - approved open Case architecture with world-owned Evidence, durable Settlement history and no quest-checklist ontology;
-- approved Atria-native simulation authority with bounded perspectives, shared information graph, one world clock, Agenda state machines and tiered actor simulation.
+- approved Atria-native simulation authority with bounded perspectives, shared information graph, one world clock, Agenda state machines and tiered actor simulation;
+- approved fourteen-domain simulation decomposition with derived state and Hard/Perspective/Intent write-authority separation.
 
 All unapproved elements remain open to revision.
 
