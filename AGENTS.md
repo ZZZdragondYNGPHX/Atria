@@ -26,7 +26,7 @@
 
 - 新普通任务：本文件 + 直接相关代码/测试。
 - 续接/多阶段任务：核对真实 Git 状态，再读 `docs:HANDOFF.md` → 对应 Plan → 对应 Record。
-- Skill：只有用户或正式 Plan 明确要求时，读 `skills:SKILLS.md` 后加载对应 Skill。
+- Skill：只有用户或正式 Plan 明确要求时才加载；本地/CLI 优先直接使用环境中已安装的 Skill。不要为了模仿 Web 流程而绕读 `skills` 分支；仅在本地缺失、用户明确要求仓库副本，或 Plan 明确锁定仓库版本时读取 `skills:SKILLS.md`。
 - Reference：只读用户明确授权的 `reference/<project>`。
 - 治理敏感操作：读取完整 `docs:README.md`。
 
