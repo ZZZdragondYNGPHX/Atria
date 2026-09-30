@@ -130,6 +130,7 @@ export function createRulesEngine(rules = [], options = {}) {
 
             for (const rule of matching) {
                 evaluationCount += 1;
+                options.onEvaluation?.();
                 if (evaluationCount > maxEvaluations) {
                     throw new Error('Rules Engine exceeded maximum rule evaluations');
                 }

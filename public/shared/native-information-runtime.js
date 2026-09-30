@@ -26,7 +26,7 @@ export function assertInformationAnchor(snapshot, expected) {
 
 // A projection reads the selected immutable snapshot only. It never mutates a
 // World, discovers a second authority, or interprets package expressions.
-export function projectInformation(snapshot, viewId, { purpose = 'display', includeRollups = true } = {}) {
+export function projectInformation(snapshot, viewId, { purpose = 'display', includeRollups = true, onScan = null } = {}) {
     const def = informationDefinition(snapshot);
     const view = def?.views.find(view => view.id === viewId);
     if (!view || !['display', 'context'].includes(purpose) || !view.exposure.includes(purpose)) throw new TypeError('Information exposure denied');
@@ -57,6 +57,7 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
         }
         if (scanned + records.length > INFORMATION_LIMITS.records) throw new TypeError('Information scan budget exceeded');
         scanned += records.length;
+        onScan?.(records.length);
         for (const record of records) {
             const value = record.value;
             if (view.actorId && source.actorField && value[source.actorField] !== view.actorId) continue;

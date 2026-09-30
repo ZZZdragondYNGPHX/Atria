@@ -1,4 +1,4 @@
-name: Authority Transaction Contracts
+name: Authority Transaction
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
     paths:
       - 'public/shared/native-*.js'
       - 'public/scripts/native/experience/logic/**'
+      - 'public/scripts/native/experience/world/**'
       - 'src/native/**'
       - 'tests/native/**'
       - 'tests/game-runtime/**'
@@ -21,7 +22,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  c1-contracts:
+  authority-contracts-and-candidates:
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -51,7 +52,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm rebuild better-sqlite3 --ignore-scripts=false
       - run: npm ci --ignore-scripts --prefix tests
-      - name: Contract, declaration and adjacent Native regressions
+      - name: Contract, private candidate and adjacent Native regressions
         env:
           ATRIA_TEST_MYSQL_ROOT_URL: mysql://root:root@127.0.0.1:${{ job.services.mysql.ports['3306'] }}
           ATRIA_TEST_POSTGRES_URL: postgresql://atria:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/atria_test
@@ -59,6 +60,7 @@ jobs:
           npm run test:unit --prefix tests -- --runInBand --verbose=false
           --runTestsByPath
           native/authority-contract-c1.test.js native/authority-resources-c1.test.js
+          native/authority-candidate-c2.test.js native/authority-bounds-c2.test.js native/authority-session-c2.test.js
           game-runtime/transactions.test.js game-runtime/declarative.test.js
           native/authoring-contracts.test.js native/contracts.test.js
           native/experience-resources.test.js native/package-build-install.test.js
@@ -66,6 +68,10 @@ jobs:
           native/turn-app-outcome-g1.test.js native/background-task-app-bridge-g2.test.js
           native/information-runtime-p6.test.js native/experience-actions.test.js
           native/task-runtime-p3.test.js native/runtime-lifecycle.test.js
+          native/capability-retirement.test.js
+          game-runtime/logic-package.test.js game-runtime/logic-rules-integration.test.js
+          game-runtime/logic-runtime.test.js game-runtime/rules.test.js game-runtime/rng.test.js
+          game-runtime/world-session.test.js game-runtime/reducers.test.js game-runtime/formula.test.js
       - name: Authority source lint
         run: >-
           npx --no-install eslint
@@ -75,3 +81,8 @@ jobs:
           public/scripts/native/experience/logic/package.js src/native/experience-validation.js src/native/task-authority.js
           tests/native/authority-contract-c1.test.js tests/native/authority-resources-c1.test.js
           tests/native/helpers/authority-fixture.js tests/game-runtime/transactions.test.js tests/native/authoring-contracts.test.js
+          src/native/authority-transaction.js src/native/lifecycle-authority.js
+          public/scripts/native/experience/logic/rules.js public/scripts/native/experience/world/session.js
+          public/shared/native-information-runtime.js
+          tests/native/authority-candidate-c2.test.js tests/native/authority-bounds-c2.test.js
+          tests/native/authority-session-c2.test.js tests/native/helpers/authority-candidate-fixture.js

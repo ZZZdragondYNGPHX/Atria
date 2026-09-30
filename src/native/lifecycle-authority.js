@@ -173,32 +173,34 @@ function addOutbox(state, action, scopeId, occurrence, workflowId = null) {
     state.outbox.push({ ...copy(action), invocationId, scopeId, scopeEpoch: state.scopes[scopeId].epoch, status: 'pending', workflowId });
 }
 
-export async function prepareLifecycle(base, installed, action) {
+export async function prepareLifecycle(base, installed, action, authority = null) {
     const def = lifecycleDefinition(base);
     if (!def) throw new TypeError('Package lifecycle contract required');
     const candidate = { ...base, states: copy(base.states) }; const state = candidate.states[NS];
     const events = []; let budget = 32; let taskResolution = null; const drafts = [];
     const apply = async (request, occurrence = 'direct', scopeId = null) => {
         if (--budget < 0) throw new TypeError('Lifecycle transaction work limit');
+        authority?.effect(request);
         if (request.kind === 'app.command') {
             fields(request, ['kind', 'domainId', 'recordId', 'commandId', 'args'], 'App Command');
             const domain = def.domains.find(item => item.id === request.domainId); const command = domain?.commands.find(item => item.id === request.commandId);
             if (!command) throw new TypeError('Unknown App Command');
             active(state, domain.scopeId); taskId(request.recordId);
-            const args = assertTaskValue(request.args, command.argsSchema);
+            const args = authority ? authority.typed(request.args, command.argsSchema) : assertTaskValue(request.args, command.argsSchema);
             const records = state.domains[domain.id].records; let record = records.find(item => item.id === request.recordId);
             if (record?.status === 'terminal') throw new TypeError('App record is terminal');
             if (!record) { record = { id: request.recordId, scopeId: domain.scopeId, value: copy(domain.initial), status: 'active', pinned: false, createdLogicalTime: state.logicalTime }; records.push(record); }
             const { terminal: _terminal, ...mutation } = command;
             const logic = compileDeclarativeLogic({ schemaVersion: 2, mutations: [mutation] });
             const event = { type: command.event, payload: args };
-            record.value = assertTaskValue(logic.reducers[0].reduce(record.value, event), domain.recordSchema);
+            const nextValue = logic.reducers[0].reduce(record.value, event);
+            record.value = authority ? authority.typed(nextValue, domain.recordSchema) : assertTaskValue(nextValue, domain.recordSchema);
             record.updatedLogicalTime = state.logicalTime + 1;
             if (command.terminal) { record.status = 'terminal'; record.terminalTicks = copy(state.clocks); }
             events.push({ type: event.type, domainId: domain.id, recordId: record.id, payload: args });
         } else if (request.kind === 'world.command') {
             fields(request, ['kind', 'commandId', 'args'], 'World Process Command');
-            Object.assign(candidate.states, await prepareTaskAuthority(candidate, installed, { command: { id: request.commandId, args: request.args } }));
+            Object.assign(candidate.states, await prepareTaskAuthority(candidate, installed, { command: { id: request.commandId, args: request.args } }, authority));
         } else if (request.kind === 'task') {
             active(state, scopeId); addOutbox(state, request, scopeId, occurrence);
         } else if (request.kind === 'workflow.transition') {
@@ -219,7 +221,9 @@ export async function prepareLifecycle(base, installed, action) {
     const enter = async flow => {
         const current = state.workflows[flow.id]; const node = flow.nodes.find(item => item.id === current.phase);
         if (current.status !== 'active' || current.entered || state.scopes[flow.scopeId].status !== 'active') return;
+        authority?.step();
         if (node.kind === 'model_task') {
+            authority?.effect(node.action);
             const occurrence = `workflow:${flow.id}:${current.instance}`;
             addOutbox(state, node.action, flow.scopeId, occurrence, flow.id);
             current.taskInvocationId = state.outbox.at(-1).invocationId;
@@ -229,9 +233,12 @@ export async function prepareLifecycle(base, installed, action) {
     };
     const pump = async () => {
         if (!state.ready) throw new TypeError('Experience Ready Barrier required');
-        for (const flow of def.workflows) if (budget > 8) await enter(flow);
-        let remaining = Math.min(24, budget);
+        for (const flow of def.workflows) if (authority || budget > 8) await enter(flow);
+        // Legacy pumps may defer work. A bounded Authority candidate must instead
+        // fail if actual expanded work exceeds its shared transaction budget.
+        let remaining = authority ? Infinity : Math.min(24, budget);
         for (const item of state.interactions) {
+            authority?.step();
             if (!remaining || item.status !== 'scheduled' || state.clocks[item.clockId] < item.dueTick) continue;
             if (state.scopes[item.scopeId].status !== 'active' || state.scopes[item.scopeId].epoch !== item.scopeEpoch) { item.status = 'stale'; continue; }
             await apply({ kind: 'app.command', domainId: item.domainId, recordId: item.recordId, commandId: item.commandId, args: item.args });
@@ -239,6 +246,7 @@ export async function prepareLifecycle(base, installed, action) {
             events.push({ type: 'interaction.delivered', proposalId: item.proposalId, clockId: item.clockId, dueTick: item.dueTick });
         }
         for (const automation of def.automations) {
+            authority?.step();
             if (remaining <= 0 || state.scopes[automation.scopeId].status !== 'active') continue;
             const trigger = automation.trigger; const epoch = state.scopes[automation.scopeId].epoch;
             const previous = state.automations[automation.id] ?? { cursor: null, epoch };
@@ -272,6 +280,7 @@ export async function prepareLifecycle(base, installed, action) {
         fields(action, ['kind'], 'Lifecycle pump'); await pump();
     } else if (action.kind === 'clock.advance') {
         fields(action, ['kind', 'commandId', 'ticks'], 'World Clock advance');
+        authority?.effect(action);
         const command = def.advances.find(item => item.id === action.commandId);
         if (!command || !Number.isSafeInteger(action.ticks) || action.ticks < 1 || action.ticks > command.maxTicks
             || !integer(state.clocks[command.clockId] + action.ticks)) throw new TypeError('Invalid declared World Clock advance');
