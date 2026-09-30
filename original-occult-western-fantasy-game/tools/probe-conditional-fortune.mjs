@@ -3,8 +3,8 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
 
-// Diagnostic only: imports independent Core test fixtures; never included in
-// the Package archive. PASS confirms the current contract limitation, NOT P2.
+// Contract-policy probe: imports independent Core test fixtures; never included
+// in the Package archive. PASS confirms the approved interpretation, NOT P2.
 const argv = process.argv.slice(2);
 assert.equal(argv[0], '--core', 'Usage: node tools/probe-conditional-fortune.mjs --core <main-checkout>');
 assert(argv[1]);
@@ -65,7 +65,46 @@ reject('same verb cannot dispatch to deterministic and Fortune transactions', lo
     delete t.receipt.projection.roll;
     logic.transactions.push(t);
 }, /Duplicate Transaction verb/);
-console.log(JSON.stringify({ status: 'CONFIRMED_CONTRACT_LIMITATION_NOT_P2_PASS',
+// Approved policy: an internal draw is not gameplay Fortune until Uncertain.
+// Exhaust the small roll space using Core's own formula evaluator. Eligibility
+// cases must win before the case that consults resolution.roll.
+const { compileFormula, evaluateFormulaAst } = await load('public/scripts/native/experience/logic/formula.js');
+const resolve = (state, roll) => f.logic.transactions[0].resolution.cases.find(item =>
+    evaluateFormulaAst(compileFormula(item.when, { roots: ['args', 'reads', 'resolution'], strings: true }), { args: f.request.input, reads: { note: { text: state } }, resolution: { roll } }))?.outcome
+    ?? f.logic.transactions[0].resolution.fallback;
+for (const roll of [1, 2, 3]) {
+    assert.equal(resolve('unopposed', roll), 'automatic');
+    assert.equal(resolve('ineligible', roll), 'impossible');
+    assert.equal(resolve('opposed', roll), roll === 3 ? 'clean' : 'costly');
+}
+// Real preparation across alternate authority identities: no non-Uncertain
+// state or safe result may depend on the unused roll. No persistent sidecar RNG.
+const transaction = f.logic.transactions[0];
+delete transaction.receipt.schema.properties.roll;
+transaction.receipt.schema.required = ['outcome'];
+delete transaction.receipt.projection.roll;
+transaction.effects = [{ kind: 'app.command', domainId: 'notes', commandId: 'save', recordId: 'main',
+    args: { text: 'automatic effect' }, when: 'resolution.outcome == "automatic"' }];
+compile(f.logic);
+f.sync();
+for (const state of ['unopposed', 'ineligible']) {
+    f.base.states.atri_lifecycle.domains.notes.records[0].value.text = state;
+    const before = structuredClone(f.base);
+    let first;
+    for (let ordinal = 0; ordinal < 8; ordinal++) {
+        const prepared = await prepareAuthorityTransaction(f.base, f.installed, { ...f.request, ordinal });
+        const visible = prepared.receipt.result;
+        assert.deepEqual(visible, { outcome: state === 'unopposed' ? 'automatic' : 'impossible' });
+        const current = { states: prepared.candidate.states, result: visible };
+        if (first) assert.deepEqual(current, first);
+        else first = current;
+        assert.deepEqual(f.base, before);
+    }
+}
+console.log(JSON.stringify({ status: 'APPROVED_FORTUNE_POLICY_SUPPORTED_NOT_P2_PASS',
+    policyChecks: ['all three Fortune values preserve Automatic/Impossible and affect only Uncertain',
+        '16 real preparations: non-Uncertain effects/projections/result independent of draw identity',
+        'safe result excludes unused roll; source authority unchanged'],
     coreHead: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: core, encoding: 'utf8' }).trim(),
     observations, rejected,
     scope: 'In-process private preparation and declaration compilation only; no installation, save-container or provider test.' }, null, 2));
