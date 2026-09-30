@@ -60,7 +60,7 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Package P3 complete / P4 next
+## Current route — Package P5 complete / P6 next
 
 The game-design Plan Bundle is frozen as **Approved Implementation Baseline v1.0**.
 
@@ -72,7 +72,7 @@ Completed Core prerequisite:
 - Core status: **C1–C4 complete, merged and verified on main; temporary branch removed**
 - Permanent evidence: `docs:records/feat/authority-transaction.md`
 
-P0 completed C1–C4, merged into `main`, passed the frozen Core gates and integrated-main validation, and removed its temporary branch. Package P1 is now verified and complete. See `docs:records/package/original-occult-western-fantasy-game.md` for implementation/tested HEAD and limitations. P2 and P3 are complete. G2 was corrected formally by Core task feat/world-simulation-scheduling (required world-simulation@1 alongside authority-transaction@1). Current implementation/tested HEADs, two-day fixture limits and P4 routing are in the same Package Record and sole live HANDOFF.
+P0 completed C1–C4, merged into `main`, passed the frozen Core gates and integrated-main validation, and removed its temporary branch. Package P1 is now verified and complete. See `docs:records/package/original-occult-western-fantasy-game.md` for implementation/tested HEAD and limitations. P2–P5 are complete. G2 was corrected formally by Core task feat/world-simulation-scheduling (required world-simulation@1 alongside authority-transaction@1). Current implementation/tested HEADs, separate opening/regression profiles, 30-day bounds and P6 routing are in the same Package Record and sole live HANDOFF.
 
 Package implementation remains in the independent long-lived `package` workspace and must not merge `main`.
 
@@ -257,7 +257,7 @@ Pre-production design Rounds 1–10 are complete and frozen for implementation.
 Implementation authorization is staged:
 
 1. P0 `feat/authority-transaction` is complete; `docs:records/feat/authority-transaction.md` records the verified main baseline.
-2. The P0 prerequisite gate is cleared and Package P1 is complete. Package P2–P9 retain their individual stage authorizations; P2 is complete and stopped at its stage boundary; P3 is complete; G2 Core support is integrated and recorded. P4 is complete; P5/P8 have not started. G1 remains resolved by the user-authorized Fortune-use clarification in gameplay.md 6.28.2 and technical-design.md 6.48.5. See the Package Record and sole live HANDOFF for evidence.
+2. The P0 prerequisite gate is cleared and Package P1 is complete. Package P2–P9 retain their individual stage authorizations; P2 is complete and stopped at its stage boundary; P3 is complete; G2 Core support is integrated and recorded. P5 is complete; P6/P8 have not started. G1 remains resolved by the user-authorized Fortune-use clarification in gameplay.md 6.28.2 and technical-design.md 6.48.5. See the Package Record and sole live HANDOFF for evidence.
 3. After P0, Package work proceeds in the independent long-lived `package` workspace under `original-occult-western-fantasy-game/`.
 4. Material contradictions discovered during implementation reopen only the authoritative Plan module they affect; ordinary implementation details do not reopen design.
 
