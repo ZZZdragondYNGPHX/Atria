@@ -46,19 +46,11 @@ Potential core loop:
 8. perceive previously inaccessible layers of the world;
 9. uncover a larger mystery.
 
-Possible presentation surfaces:
+Possible presentation needs may include narrative, investigation/evidence access, people/relationship information, city/location navigation, public-information artifacts, and player Claim / Identity / Condition information.
 
-- main narrative view;
-- character / relationship dossier;
-- investigation notebook;
-- evidence and document viewer;
-- newspaper / public-information view;
-- organization network;
-- city / district interface;
-- occult research notes;
-- player identity / condition view.
+These are information-access requirements rather than prescribed screens.
 
-No UI layout is frozen yet.
+**Frontend planning boundary:** this Plan must not specify visual hierarchy, layout, styling, animation, component composition or detailed UX. Those decisions are intentionally deferred to a frontend-specialized AI or an AI with an installed frontend skill. Round 7 should remain limited to required information, allowed actions, visibility boundaries and anti-leakage constraints.
 
 ## 9. External design references to study
 
