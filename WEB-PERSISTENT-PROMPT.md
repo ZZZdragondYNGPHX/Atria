@@ -24,7 +24,7 @@
 
 - 新普通任务：只读直接相关代码与必要热路径规则。
 - 续接/多阶段任务：先核对远端，再读对应 HANDOFF → Plan entrypoint；若为 Bundle，先读 `index.md`、再只读当前阶段要求的模块 → Record。
-- Skill：仅当用户或正式 Plan 明确指定时，读 `skills:SKILLS.md` 后加载对应 Skill。
+- Skill：仅当用户或正式 Plan 明确指定时，从仓库 `skills` 工作空间加载；先读 `skills:SKILLS.md`，再读对应 Skill。Web / remote 不假定存在可自由访问的本地 Skill 安装。
 - Reference：仅读取用户明确授权的 `reference/<project>`。
 - 治理敏感操作：读取完整 `docs:README.md`。
 - 不默认扫描所有 Plans、Records、Skills 或 references。
