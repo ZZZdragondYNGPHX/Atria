@@ -12,7 +12,7 @@ Owns Round 6: authoritative world state, Truth / Belief / Memory / Exposure mapp
 - `player.md`
 - `metaphysics.md` only when a state design would alter supernatural rules.
 
-> **Current discussion:** Round 6 core is approved. Round 6.5 is open: authoritative domain decomposition and state ownership.
+> **Current discussion:** Rounds 6–6.5 are approved. Round 6.6 is open: perspective-specific context projection and anti-leakage design.
 
 ---
 
@@ -425,37 +425,430 @@ Rejected:
 - full autonomous simulation for every named or incidental NPC;
 - retaining every conversation detail as permanent Memory.
 
-### 6.34 Round 6.5 question — authoritative domain decomposition
+### 6.34 Approved authoritative domain decomposition — Round 6.5
 
-Round 6.5 must determine the concrete conceptual state domains and ownership boundaries before technical schemas are written.
+The simulation uses a small set of conceptually distinct authority domains.
 
-Candidate responsibilities include:
+The target is to prevent both a monolithic `gameState` and excessive fragmentation into duplicate shadow state.
 
-- actors;
-- actor Beliefs;
-- actor Memories;
-- relationships;
-- player ordinary Identity / Anchors;
-- supernatural Claims;
-- world Events;
-- Artifacts / Evidence;
-- Cases / Matters / Leads / Hypotheses;
-- Settlements;
-- institutional State / Standing / Access;
-- Agendas;
-- schedules / availability;
-- injuries / Conditions;
-- economy / obligations;
-- Breach Imprints and progression state.
+The approved logical domains are:
 
-The round must decide:
+1. `entities`
+2. `events`
+3. `institutional_records`
+4. `evidence`
+5. `relations`
+6. `beliefs`
+7. `memories`
+8. `matters`
+9. `settlements`
+10. `agendas`
+11. `conditions`
+12. `claims`
+13. `player_life`
+14. `progression`
 
-- which responsibilities belong in separate domains;
-- which should be joined to avoid needless fragmentation;
-- which entities need graph identity;
-- which data must be world-scoped versus session-scoped;
-- which state should be actor-owned versus institution-owned;
-- which records should be retained permanently;
-- which data should be derivable projection instead of stored duplication;
-- where strict write authority should live.
+Round 9 may split one logical domain into multiple physical Atria Lifecycle domains for scope or retention reasons without changing these responsibility boundaries.
+
+#### 6.34.1 Entities
+
+`entities` owns stable identity for persistent:
+
+- people;
+- institutions;
+- places;
+- important objects.
+
+It should not become a container for all data about an entity.
+
+Beliefs, Memories, Conditions, relationships and institutional records belong to their own domains.
+
+#### 6.34.2 Events
+
+`events` owns authoritative occurrences and world history.
+
+Examples:
+
+- entering a location;
+- a death;
+- injury;
+- document issuance;
+- a court action;
+- a completed world action.
+
+Later Belief, Memory or reporting may disagree with the Event without rewriting it.
+
+#### 6.34.3 Institutional records
+
+`institutional_records` owns what formal systems currently record or recognize.
+
+Examples:
+
+- civil identity;
+- birth / death registration;
+- title;
+- property;
+- court status;
+- Church status;
+- professional license;
+- insurance / corporate recognition.
+
+An institutional record is Truth about what the institution records, not automatic Truth about history.
+
+#### 6.34.4 Evidence
+
+`evidence` owns investigation-grade observations or evidence units with stable identity.
+
+Evidence may reference:
+
+- Artifact / Entity;
+- Event;
+- location;
+- source;
+- custody;
+- integrity;
+- observed content.
+
+A Case references Evidence rather than copying it.
+
+#### 6.34.5 Relations
+
+`relations` owns real relationships among entities such as:
+
+- kinship;
+- marriage;
+- employment;
+- ownership;
+- membership;
+- formal representation;
+- custody / possession;
+- religious affiliation;
+- contractual Bond where appropriate.
+
+Do not store one generic numerical reputation value here.
+
+#### 6.34.6 Beliefs
+
+`beliefs` owns actor- or institution-bound cognitive positions.
+
+Testimony, Hypothesis and Finding can use one Belief model differentiated by fields such as:
+
+- actor;
+- channel;
+- status;
+- source;
+- target proposition / reference.
+
+Representative channels:
+
+- testimony;
+- hypothesis;
+- finding;
+- institutional interpretation;
+- public interpretation.
+
+This maps naturally onto Atria Information's actor/status/channel Belief semantic.
+
+#### 6.34.7 Memories
+
+`memories` owns retained experience and remembered information for an actor or institution.
+
+It must remain separate from Belief.
+
+Memory can be accurate while current Belief rejects its interpretation, or Memory can be distorted while a Belief happens to be correct.
+
+#### 6.34.8 Matters
+
+`matters` is the unified logical model for unfinished future-relevant work.
+
+Matter types may include:
+
+- Case;
+- Lead;
+- Commitment;
+- Obligation;
+- professional Project;
+- personal appointment;
+- pending legal or institutional process.
+
+This maps to Open Loop semantics.
+
+Player/session Matters and world/institution Matters may become separate physical domains because of Atria scope rules while retaining one logical Matter contract.
+
+#### 6.34.9 Settlements
+
+`settlements` owns durable formal dispositions such as:
+
+- court ruling;
+- insurer settlement;
+- religious resolution;
+- identity ruling;
+- Case disposition;
+- administrative recognition.
+
+A Settlement receives a stable world identity because later institutions, Cases, Memories and Echo may reference it.
+
+Do not reduce Settlement to `case.status = completed`.
+
+#### 6.34.10 Agendas
+
+`agendas` owns autonomous actor / institution intent state.
+
+Agenda includes concepts such as:
+
+- goal;
+- current phase;
+- blockers;
+- permitted next actions;
+- trigger / due time;
+- relevant Knowledge.
+
+Agenda remains distinct from Matter.
+
+Matter describes what is unresolved.
+
+Agenda describes what an autonomous subject intends to do about the world.
+
+#### 6.34.11 Conditions
+
+`conditions` owns persistent states that materially alter future action validity or Position.
+
+Examples:
+
+- gunshot wound;
+- fracture;
+- infection;
+- significant disease;
+- persistent abnormal restraint;
+- relevant ongoing supernatural condition.
+
+Do not promote routine descriptive details such as mild tiredness or wet clothing into persistent Conditions without gameplay consequence.
+
+#### 6.34.12 Claims
+
+`claims` owns formal supernatural Claim instances currently recognized by the world.
+
+Player and NPC Claims belong to the same logical authority.
+
+Claim Seeds and Breach Imprints do not belong here.
+
+Creation or alteration of a formal Claim requires supernatural authority commands.
+
+#### 6.34.13 Player life
+
+`player_life` owns the protagonist's ordinary-life identity and practical persistent state, including:
+
+- Origin;
+- Prior Life;
+- Faith relationship;
+- current Civil Verifier profession state;
+- office / practice state;
+- Personal Anchor references;
+- home / community Anchor;
+- limited practical finances.
+
+Formal debts should not be flattened into a player numeric field; they belong in Relation + Matter / institutional records as appropriate.
+
+#### 6.34.14 Progression
+
+`progression` owns not-yet-formalized supernatural development such as:
+
+- Breach Imprints;
+- Unsettled state;
+- Claim Seeds;
+- Investiture eligibility;
+- Claim-candidate state;
+- Self-Investiture learning / research.
+
+When a Seed becomes a formal Claim, a validated progression command creates an entry in `claims`.
+
+#### 6.34.15 No general Economy domain
+
+The game does not simulate a complete economic model.
+
+Use existing domains instead:
+
+- protagonist practical cash / office finances → `player_life`;
+- debt → Relation + Matter;
+- contract → institutional record / Relation;
+- important company finance fact → institutional record / Event.
+
+Do not build city-wide commodity, wallet or corporate cashflow simulation unless a later approved system requires it.
+
+#### 6.34.16 No general Schedule domain
+
+Routine schedules should be package data or deterministic templates.
+
+Exceptional future commitments belong in Matter.
+
+Autonomous institutional timing belongs in Agenda.
+
+Travel / hospitalization / similar changes arise through Event, Relation/location and Condition.
+
+Availability should be projected from those authoritative facts rather than duplicated in a parallel schedule state.
+
+#### 6.34.17 No Reputation domain
+
+The approved relationship model must derive player-facing standing from real state.
+
+- **Institutional Standing** → institutional Belief;
+- **Personal Relation** → Relation + Belief;
+- **Access** → institutional record / Relation;
+- **Obligation** → Matter + Relation;
+- **Known History** → Memory + Belief.
+
+UI may summarize these, but the backend should not introduce a shadow `reputation = 57` value.
+
+#### 6.34.18 Investigation graph node model
+
+Primary graph node families should include:
+
+- Entity;
+- Event;
+- Evidence;
+- Matter;
+- Settlement;
+- formal Claim;
+- important Institutional Record.
+
+Relations provide graph edges.
+
+Belief, Memory and Condition primarily remain perspective / state records attached through stable references rather than automatically exploding the main graph into every cognitive record.
+
+#### 6.34.19 Retention priorities
+
+Prefer permanent or long-lived retention for:
+
+- important Entity;
+- significant Event;
+- Settlement;
+- formal Claim;
+- referenced Evidence;
+- Institutional Record that still defines rights or identity;
+- important Relation;
+- Personal Anchor.
+
+Candidates for later compaction include:
+
+- expired Lead;
+- superseded low-value Hypothesis;
+- finished minor Agenda step;
+- expired Condition;
+- redundant low-value supporting Memory.
+
+Compaction must never rewrite historical Truth.
+
+#### 6.34.20 Three write-authority classes
+
+**Hard Authority**
+
+Applies to:
+
+- entities;
+- events;
+- institutional records;
+- evidence;
+- relations;
+- settlements;
+- conditions;
+- claims.
+
+The language model cannot raw-patch these domains.
+
+Mutation requires validated commands.
+
+**Perspective Authority**
+
+Applies primarily to:
+
+- beliefs;
+- memories.
+
+A model may propose actor-perspective updates only when the actor plausibly observed, learned or experienced the supporting source.
+
+Actor identity and source provenance must be validated.
+
+**Intent Authority**
+
+Applies primarily to:
+
+- matters;
+- agendas.
+
+Players may create their own Hypotheses, Leads and Commitments.
+
+Institutional Model Tasks may propose bounded Agenda actions.
+
+Intent records do not themselves mutate hard world state.
+
+#### 6.34.21 Derived state principle
+
+Avoid duplicate shadow state whenever a useful value can be projected from authoritative records.
+
+Explicitly rejected as general-purpose stored variables:
+
+- `reputation`;
+- `quest_progress`;
+- generic `schedule`;
+- `truth_percentage`;
+- `sanity`;
+- `faction_clock_progress`.
+
+These may appear as UI summaries only when they are derived from authoritative underlying state and do not become a second source of truth.
+
+### 6.35 Round 6.5 decision
+
+Approved:
+
+- fourteen logical authority domains;
+- stable separation of Entity / Event / Institutional Record / Evidence / Relation;
+- Belief channels for Testimony / Hypothesis / Finding;
+- Memory separate from Belief;
+- unified logical Matter model across Cases, Leads, Commitments and Obligations;
+- Settlement as a durable world object;
+- Agenda separate from Matter;
+- only gameplay-relevant persistent Conditions;
+- formal Claim separate from progression state;
+- ordinary player life separate from supernatural progression;
+- no general Economy, Schedule or Reputation domain;
+- graph identity for major world/investigation objects;
+- retention priorities based on lasting authority / reference value;
+- Hard / Perspective / Intent write-authority classes;
+- derived state preferred over duplicate convenience variables.
+
+Rejected:
+
+- one monolithic nested `gameState`;
+- dozens of micro-domains for presentation convenience;
+- Case-private Evidence copies;
+- Claim Seeds stored as real Claims;
+- numeric reputation as backend truth;
+- universal schedule state;
+- full economy simulation by default;
+- quest progress / Truth percentage / sanity / faction-clock shadow variables.
+
+### 6.36 Round 6.6 question — perspective-specific context projection
+
+Round 6.6 must define what each AI-facing task is actually allowed to see.
+
+It must design separate context packages for at least:
+
+- Narrator;
+- speaking / acting NPC;
+- institutional Agenda Model Task;
+- Case Reflection / investigation assistance;
+- Claim interpretation / supernatural advisory tasks where needed.
+
+It must determine:
+
+- what each context always receives;
+- what is selected dynamically by current Scene / Matter / Actor / Task;
+- what is explicitly forbidden from each context;
+- how recent narrative is combined with structured state;
+- how relevant Beliefs and Memories are selected;
+- how graph depth / item / character budgets are bounded;
+- how source authority and uncertainty are represented so the model does not flatten Belief into Truth;
+- how actor-to-actor information sharing becomes an explicit world event rather than implicit prompt leakage;
+- how task output is validated and prevented from writing outside its authority;
+- how the same system avoids omniscience, cross-NPC leakage, stale context and unlimited prompt growth.
 
