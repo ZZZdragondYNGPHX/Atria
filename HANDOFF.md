@@ -3,67 +3,53 @@
 - Task ID: feat/authority-transaction
 - Primary Workspace: main
 - Branch: feat/authority-transaction
-- Stage: **C2 complete; stopped at stage boundary; ready for C3, which has not started**
-- Current HEAD / local and remote tested HEAD: f0113115138249a437d39ccdd8d6e4a46951d31c (pushed)
-- Exact tested tree: b28691562e118fe374f2a3e2a5a07f6ef3a6a0ec
-- Latest fetched origin/main: 2a1cba78a428137ccded7647ce6dadd79a3ac60c. It advanced concurrently only in AGENTS.md; stage-start main was c936b0aa4c42cf5711f40ae4a00f5fc3432813dc. This task did not change main or reset/rebase its tested commit.
-- Latest fetched docs before this handoff: ba2d4cdf4db3dce44cec0225bd94dd3edfbdbe60; docs was fast-forwarded, preserving concurrent Governance/Skill-routing changes.
+- Stage: **C3 complete; stopped at stage boundary; C4 not started**
+- Current HEAD / final local and remote tested HEAD: 98dd21a37e2d215df4a065672dd685db9c02eda3 (pushed)
+- Final tested tree: e1c9686e1bab87f66d97cec60299df4a3c2522e0
+- Prior C3 implementation HEAD: f3da66ad97db006b61da82aeba2df122f90a5957; prior tested tree: 170fbf2a5dda5e35c82f5ad3e6facdd671a1b4e2
+- Latest fetched origin/main: 2a1cba78a428137ccded7647ce6dadd79a3ac60c; origin/docs before this handoff: 1bf1e939638ab2122b98d8b1864dbf74022a7152. No main merge/reset/rebase performed.
 - Plan entrypoint: plans/feat/authority-transaction.md
 - Product routing entrypoint: plans/package/original-occult-western-fantasy-game/index.md
-- Required stage design module: plans/package/original-occult-western-fantasy-game/technical-design.md, Rounds 9.5–9.8
+- Required design module: technical-design.md, Rounds 9.5–9.8
 - Record: records/feat/authority-transaction.md
 
-## Completed C1/C2
+## Completed C3
 
-- C1 independent capability/runtime contract and strict bounded Game Logic v3 declarations remain intact; unversioned/v1/v2 and old Packages are supported.
-- C2 internal private preparation API: buildAuthorityObservation(base), prepareAuthorityTransaction(base, installed, request), prepareAuthorityPublications(base, installed), in src/native/authority-transaction.js.
-- Closed request/anchor/pinned Package validation; explicit private reads; validators; deterministic/Fortune Resolution; stable identity; separate canonical inputHash.
-- World reducers/rules, multiple Lifecycle domains, canonical clock, workflow and bounded due work compose inside a deeply immutable private candidate. No repository publication or provider execution.
-- One whole bounded derived layer refreshes before safe receipt creation; ordinary Lifecycle/background candidates can call the standalone hook without a fake player Transaction. Runtime publication wiring remains C3.
-- Exact computed schemas, strict finite JSON, aggregate expanded-effect/read/rule/step/UTF-8 limits, immutable player-only observation/receipt, sanitized errors. Detailed ceilings and choices are in the Record.
-- Real Session tests prove successful and failed preparation never mutate persistent World/Lifecycle/clock/journal/Timeline state; same-anchor reload produces the same candidate.
+- Shared declared Transaction path for safe fixed resolver tools and fixed Native Frontend binding target { transactionId }; exact entrypoint Build/install/runtime linkage and existing input mapping/schema guards.
+- Safe candidate Narrator perspective + ephemeral receipt; no raw World/task-private reads, no Skill/tool mechanical authority. Role Narrator and declared Narrator Task are covered.
+- Non-forgeable internal preparation proof; final existing Session CAS publishes candidate authority + Action receipt + assistant Turn. Typed user draft is also private until that CAS. Provider, cancellation, stale revision, output-schema and final validation failures publish nothing.
+- Anchored selection/input pin survives short-lived HTTP Host reconstruction; bounded transient cache, durable Action/task idempotency evidence and inputHash. C2 RNG identity unchanged. Input/provider/prose do not seed it.
+- Coherent free-text and typed Branch Retry; typed retry forks recorded pre-effect revision and carries only its original validated input onto a new branch. This is alternate Turn execution, not prose Re-narrate.
+- Same bounded derived-publication hook on ordinary Lifecycle and background App Command publication; shared expanded-effect budget and direct derived-write/generic World-patch rejection for opted-in Packages. No candidate outbox execution before commit.
+- Old Package behavior retained; final compatibility refinement explicitly confines new replay guards to authority Packages.
 
-## Validation / CI
+## Validation
 
-- Final local matrix on the exact tree above: **28 suites / 947 tests passed**, including 3 C2 suites / 78 tests. FS/SQLite; unavailable local MySQL/PostgreSQL explicitly excluded via existing harness flags.
-- All 10 touched/new JS files passed ESLint; workflow YAML and diff checks passed.
-- Four-engine CI run 36681134406 on exact HEAD above: **SUCCESS — 28 suites / 1153 tests passed**, FS/SQLite/MySQL/PostgreSQL plus lint. https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36681134406
-- Intermediate aggregate-byte fixture error is retained in the Record; fixed without weakening the budget.
-- No full-suite, real UI/browser, provider, Android/device or save-container round-trip claim.
+- f3da66ad97db006b61da82aeba2df122f90a5957: local **42 suites /1207 tests passed**; all 21 touched/new JS lint, YAML and diff checks passed.
+- Current 98dd21a37e2d215df4a065672dd685db9c02eda3: affected local **8 suites /160 tests passed**, including all four C3 suites /54 tests; changed-file lint and diff checks passed. Same-HEAD four-engine CI **42 suites /1451 tests + lint passed**, run 36685494750: https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36685494750.
+- Local repository tests used FS/SQLite; unavailable MySQL/PostgreSQL excluded using existing test flags. Real local HTTP protocol, Frontend Bridge client/Host, Build/install and persisted branch snapshots exercised.
+- No full-suite, real-browser/UI, Android/device, production hosted model, process-crash continuation or save-container round-trip claim. C3 transient retry pins are not a durable uncommitted execution journal.
 
-## Security / staging constraints
+## Security / stage boundary
 
-Host capability supported versions remain []: execution plus Turn publication semantics are not complete. Do not advertise support early. C2 APIs are not public endpoints. The complete result/candidate/work/inputHash is private Host data; only explicitly safe receipt/projections may enter Narrator input. Lifecycle-bearing Transactions require Ready; World-only declarations do not invent that requirement.
+Host authority-transaction supported versions remain **[]** pending C4 integrated gate. Do not advertise support merely because direct optional-metadata tests pass. No C4 merge/cleanup, Package content or workaround has started. Package P1 remains blocked. No parallel authority/persistence, permanent Outcome domain or legacy action@2 redefinition.
 
-RNG identity excludes regenerated input and all provider timing/prose. inputHash is separate: C3 must pin the chosen Transaction/input and implement conflict/idempotency rules, not silently reroll or accept changed input at the same anchored identity. Candidate revision/Timeline stay at the original anchor; logical-time advancement, receipts and assistant Variant remain owned by the final Session CAS. Do not dispatch private candidate outbox entries.
+## C4 target / required next work
 
-## Not done / next objective
+Complete the frozen 12-gate matrix; verify appropriate integration/save/retry evidence, final supported capability activation, old Packages and adjacent regressions. Only then commit/push, merge main, validate integrated main, delete the temporary branch and remove this unique HANDOFF after permanent Record closure. Stop before Package P1.
 
-Only next stage is **C3 — Turn and Frontend integration**:
+Read latest main AGENTS and docs Governance, then HANDOFF → Core Plan → same Record, plus Package index → required technical-design rounds. Fetch/inspect true refs and dirty state first; do not reset to historical baseline or redo completed stages. Do not read/update reference/* or unrelated Package/Skill content.
 
-1. Safe resolver catalog and free-text selection; fixed typed Frontend binding using the same declared Transaction.
-2. Narrator context projected from the frozen candidate + safe receipt; no mechanical authority for Narrator.
-3. Single existing Session CAS finalization of prepared authority, Action receipt and assistant Turn; every final/provider failure publishes nothing.
-4. Stable identity/inputHash, stale revision/idempotency conflicts, provider retry and Branch Retry/Fortune tests.
-5. Same derived-publication hook before affected ordinary Lifecycle/background publications; preserve aggregate limits.
-6. Appropriate adjacent regressions, commit/push, append this same Record, replace this unique HANDOFF with C4 target/prompt, stop.
+The earlier plugin/atria-mcp-capability-expansion recovery remains records/plugin/atria-mcp-capability-expansion.md (old HANDOFF at docs@523cb7190f23622e0b850823972a555cdfcd8197). It remains unchanged/acceptance-open; this Core task does not complete it.
 
-C4 integration/merge/cleanup is later. Package P1 remains blocked. No Package game content or workaround is authorized. Task branch is retained, not merged/deleted.
+## C4 copyable resume prompt
 
-## Before resuming / do not repeat
+接手 ZZZdragondYNGPHX/Atria 的 feat/authority-transaction，Primary Workspace main，继续同名任务分支。只执行 C4 — Regression / integration / merge gate；不开发 package/original-occult-western-fantasy-game，不做 Package workaround。
 
-Fetch and inspect actual refs/dirty state; HANDOFF → Core Plan → Record, plus latest main:AGENTS.md / docs:README.md and product Plan index → required technical-design rounds. Do not reset to historical audit/C1/C2 SHAs or redo completed stages. Do not scan reference branches or unrelated Package/Skill content. The updated main/Governance prefer installed local Skills if a later task requires them; no Skill was needed for this C2 engine stage.
+先 fetch 全部远端，核对真实 main/docs/任务分支及 dirty state；读取最新 main:AGENTS.md、docs:README.md，再按唯一 docs:HANDOFF.md → docs:plans/feat/authority-transaction.md → 同一 Record 恢复。先读 Package Plan index.md，再读 technical-design.md Round 9.5–9.8。C3 HEAD / tested HEAD：98dd21a37e2d215df4a065672dd685db9c02eda3。以最新 Git 为准，不回退、不重做 C1–C3；准确区分 Record 中各 tested HEAD 的本地与 CI 证据。
 
-The earlier HANDOFF belonged to plugin/atria-mcp-capability-expansion. Its permanent recovery entry remains records/plugin/atria-mcp-capability-expansion.md and the old HANDOFF at docs@523cb7190f23622e0b850823972a555cdfcd8197. It remains unchanged/acceptance-open; this task does not complete it. There is only this one live HANDOFF.
+完成 Core Plan 冻结的 12 项验证矩阵及适当回归，审查 free-text/typed 的同一路径、私有读不泄露、单次 CAS、任何 provider/finalization 失败零发布、derived hook 覆盖普通 Lifecycle/background、identity/inputHash/idempotency、同 anchor Fortune、Branch Retry 和旧 Package 兼容性。C3 未引入跨进程未提交 selection 的持久化 continuation；不要把进程内 retry pin 或同 anchor RNG 测试误称为 process-crash/save-container round-trip 证据，按最终 gate 补足所需集成验证。
 
-## C3 copyable resume prompt
+Host authority-transaction supported versions 仍为 []。只有完整执行/Turn/集成 gate 就绪后才宣告 [1] 并验证 required capability 激活与旧 Package 兼容。复用既有 authority，不降低安全边界、不创建 Package workaround。
 
-接手 ZZZdragondYNGPHX/Atria 的 feat/authority-transaction，Primary Workspace main，继续同名任务分支。只执行 C3 — Turn and Frontend integration，不开始 C4，不开发 package/original-occult-western-fantasy-game，不做 Package workaround。
-
-先 fetch 全部远端并核对真实 main/docs/任务分支及 dirty state；读取最新 main:AGENTS.md、docs:README.md、唯一 docs:HANDOFF.md、docs:plans/feat/authority-transaction.md、同一 Record；先读 Package Plan index.md，再读 technical-design.md Round 9.5–9.8。C2 HEAD / tested HEAD 为 f0113115138249a437d39ccdd8d6e4a46951d31c；本地 28 suites / 947 tests，同 HEAD 四引擎 CI 28 suites / 1153 tests 和 lint 均通过。以实际 Git 为准，不重置到旧 SHA，不重做 C1/C2。C2 结束时 main 已因无关 AGENTS.md 更新前进到 2a1cba78a428137ccded7647ce6dadd79a3ac60c；任务分支未合并 main。
-
-复用 src/native/authority-transaction.js 的 buildAuthorityObservation、prepareAuthorityTransaction、prepareAuthorityPublications。实现安全 resolver catalog/free-text selection 与固定 Native Frontend typed invocation 走同一 Transaction authority；从冻结候选构建受限 Narrator context，并传入 safe receipt，不把原始 candidate/private reads 整体送入模型。Narrator 不得改变机械结果；仅在成功后通过既有 Session authority 单次 CAS 提交 authority + Action receipt + assistant Turn。任何 provider/fallback/finalization 失败必须零发布；候选 outbox 在 final commit 前不得运行。
-
-完善稳定 anchored identity/inputHash 的 idempotency/conflict/stale-revision 检查和 retry/Fortune/Branch Retry 语义；输入重生成不得重置同一 anchored action 的 RNG。把同一 bounded derived-publication hook 接入受影响的普通 Lifecycle/background publication，不能另建 authority 或要求后台伪装成玩家 Transaction。保留 C2 展开工作量、计算值 schema/UTF-8 硬上限与 Ready Barrier。Host capability 支持仅在完整执行/Turn gate 就绪后再宣告。
-
-完成 targeted tests 和适当相邻回归、commit/push 同一分支、追加同一 Record、刷新唯一 HANDOFF（HEAD/tested HEAD/验证/C4 目标），提供 C4 接手提示词，然后停止。不提前执行 C4 merge/cleanup。
+验证、commit/push、必要 CI，追加同一 Record；按 Governance 合并 main、验证 integrated main、删除临时任务分支，并在永久状态落入 Record 后删除唯一 live HANDOFF。只有上述 gate 全部完成，Package P1 才解除阻塞。给出最终 integrated main HEAD/tested HEAD 和实际验证范围；完成 Core 后停止，不自动进入 Package P1。
