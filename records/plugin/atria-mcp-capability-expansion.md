@@ -2,7 +2,7 @@
 
 Task ID: `plugin/atria-mcp-capability-expansion`  
 Primary Workspace: `plugin`  
-Approved Plan: `plans/plugin/atria-mcp-capability-expansion.md`  
+Approved Plan: `plans/plugin/atria-mcp-capability-expansion/index.md`  
 Plan status: **Approved Implementation Plan v1.1 — Post-Frontend-Refactor Revalidated**
 
 ## Phase 1 — MCP Kernel / Repository Observation

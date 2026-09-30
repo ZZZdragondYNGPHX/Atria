@@ -3,7 +3,8 @@
 Task ID: `plugin/atria-mcp-capability-expansion`
 Primary Workspace: `plugin`
 Status: **Phase 6 verification checkpoint; acceptance open; final integration not authorized by passed acceptance yet**
-Plan: `plans/plugin/atria-mcp-capability-expansion.md`
+Plan entrypoint: `plans/plugin/atria-mcp-capability-expansion/index.md`
+Stage-required Plan modules: `authorization-provenance.md`, `chat-session.md`, `memory-agents.md`, `settings-diagnostics.md`, `tool-surface.md`, `implementation.md`, `acceptance.md`
 Record: `records/plugin/atria-mcp-capability-expansion.md`
 
 ## Actual checkpoints
@@ -48,4 +49,4 @@ Verifier cleans owned runtime/data/config/browser/client state. Evidence remains
 
 ## Resume prompt
 
-继续 Atria MCP Capability Expansion，Task ID plugin/atria-mcp-capability-expansion，Primary Workspace plugin。只继续 Phase 6 acceptance，不重做 Phases 1–5。先 fetch，核对 refs/dirty state，再读最新 plugin:AGENTS.md、docs:README.md、docs:HANDOFF.md、同一 Plan/Record。Plugin checkpoint fbdc372ee05556394d244ab84dac8457954aa7f9；产品分支 b2709b5af2664b05f6bd32a05a06097a3e98bd6f；remote main c936b0aa4c42cf5711f40ae4a00f5fc3432813dc；docs 用真实最新 HEAD。读取 Phase 6 已有真实 Native Preview/Epoch/populated Memory/Codex 协议证据，优先补齐实际客户端人工审批、Claude tool execution 和真实 provider/Agent/recall 链路。未关闭 acceptance 前不合并、不删除 HANDOFF/产品分支、不宣称完成。复用工作树，不访问 reference，保留权限与 provenance 边界。
+继续 Atria MCP Capability Expansion，Task ID plugin/atria-mcp-capability-expansion，Primary Workspace plugin。只继续 Phase 6 acceptance，不重做 Phases 1–5。先 fetch，核对 refs/dirty state，再读最新 plugin:AGENTS.md、docs:README.md、docs:HANDOFF.md、Plan entrypoint `docs:plans/plugin/atria-mcp-capability-expansion/index.md`、当前 Phase 6 必读模块、同一 Record。Plugin checkpoint fbdc372ee05556394d244ab84dac8457954aa7f9；产品分支 b2709b5af2664b05f6bd32a05a06097a3e98bd6f；remote main c936b0aa4c42cf5711f40ae4a00f5fc3432813dc；docs 用真实最新 HEAD。读取 Phase 6 已有真实 Native Preview/Epoch/populated Memory/Codex 协议证据，优先补齐实际客户端人工审批、Claude tool execution 和真实 provider/Agent/recall 链路。未关闭 acceptance 前不合并、不删除 HANDOFF/产品分支、不宣称完成。复用工作树，不访问 reference，保留权限与 provenance 边界。

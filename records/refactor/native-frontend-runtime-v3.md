@@ -5,7 +5,7 @@
 - Task ID: `refactor/native-frontend-runtime-v3`
 - Primary Workspace: `main`
 - Task Branch: `refactor/native-frontend-runtime-v3` (merged; local/remote branches deleted)
-- Plan: `docs:plans/refactor/native-frontend-runtime-v3.md`
+- Plan: `docs:plans/refactor/native-frontend-runtime-v3/index.md`
 - Baseline: **Implementation Baseline v1.0**
 - Compatibility Strategy: **Hard Cut / Clean Break**
 - Current Stage: **Phase 9 — Legacy Removal / Regression / Finalize**

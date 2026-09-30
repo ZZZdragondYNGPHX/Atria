@@ -1,7 +1,7 @@
 # Atria Product Frontend Redesign — Design Specification
 
 Status: completed and integrated into main; acceptance recorded in `PHASE-8.md`.
-Input boundary map: `docs/plans/atria-product-frontend-redesign-audit.md`.
+Input boundary map: `audit.md` in this Plan Bundle.
 This document is the visual and interaction authority for the redesign. It does
 not change product capability, routing, persistence or runtime authority.
 

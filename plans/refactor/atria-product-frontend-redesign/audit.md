@@ -1,5 +1,7 @@
 # Atria Product Frontend Redesign — Audit & Design Boundary
 
+> Former top-level audit/boundary Plan moved into the Bundle without intentional semantic redesign.
+
 - Repository: `ZZZdragondYNGPHX/Atria`
 - Work branch: `refactor/atria-product-frontend-redesign`
 - Baseline: `main@c664eded79b86df37bd951f1e5236a4335ce784b`

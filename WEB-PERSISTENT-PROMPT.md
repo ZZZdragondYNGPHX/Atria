@@ -41,4 +41,4 @@
 
 ## Handoff
 
-任务需要续接时，`docs:HANDOFF.md` 至少记录 Task ID、Primary Workspace、当前分支/HEAD、阶段、Plan/Record 路径、已完成/未完成、关键决策、实际验证/CI、下一目标、开始前必读文件、不要重复的工作，以及可复制的新对话接手提示词。下一位执行者仍需核对真实远端。
+任务需要续接时，`docs:HANDOFF.md` 至少记录 Task ID、Primary Workspace、当前分支/HEAD、阶段、Plan entrypoint、当前阶段所需 Plan modules、Record 路径、已完成/未完成、关键决策、实际验证/CI、下一目标、开始前必读文件、不要重复的工作，以及可复制的新对话接手提示词。下一位执行者仍需核对真实远端。

@@ -1,3 +1,7 @@
+# Atria Model / Prompt / Runtime Native Refactor — Legacy Master Overview
+
+> Former top-level master Plan retained as a non-entrypoint historical overview.
+
 # Atria Model / Prompt / Runtime Native Refactor
 
 ## Status
