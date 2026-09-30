@@ -48,7 +48,7 @@ export async function createTaskWorld(base, installed, publish = null) {
         for (const key of keys.slice(0, -1)) { target[key] ??= {}; target = target[key]; }
         target[keys.at(-1)] = JSON.parse(bytes.toString('utf8'));
     }
-    const logic = compileDeclarativeLogic(JSON.parse(bytes.toString('utf8')), { data });
+    const logic = compileDeclarativeLogic(JSON.parse(bytes.toString('utf8')), { data, experienceContract: installed.manifest.runtime?.experienceContract });
     const candidate = structuredClone(base);
     const statePatch = {};
     const adapter = { active: true, snapshot: candidate, commitStatePatch: async patch => {

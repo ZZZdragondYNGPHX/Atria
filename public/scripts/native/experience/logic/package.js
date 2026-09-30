@@ -25,13 +25,14 @@ export async function loadGameLogicDefinition(packageState, options = {}) {
         headers: options.headers || {},
     });
     const data = json(await loadExperienceData(packageState, options));
-    const compiled = compileDeclarativeLogic(raw, { data });
+    const compiled = compileDeclarativeLogic(raw, { data, experienceContract: packageState.descriptor?.experienceContract });
 
     return {
         commands: [...compiled.commands],
         reducers: [...compiled.reducers],
         rules: [...compiled.rules],
         interpretations: [...compiled.interpretations],
+        ...(compiled.transactions === undefined ? {} : { transactions: compiled.transactions, derivedPublications: compiled.derivedPublications }),
         source: {
             kind: 'declarative',
             entry,

@@ -22,3 +22,27 @@ export function json(value, depth = 0, budget = { nodes: 0 }) {
     }
     return Object.freeze(out);
 }
+
+// json supplies the existing depth/node/string budgets and immutable copying.
+// Reject non-JSON objects/hidden fields before it can erase their provenance.
+export function assertJsonDeclaration(value, label = 'Native', maxBytes = 1048576) {
+    function inspect(item, depth = 0, budget = { nodes: 0 }) {
+        if (depth > 24 || ++budget.nodes > 32768) throw new TypeError(label + ' JSON complexity limit');
+        if (!item || typeof item !== 'object') return;
+        const array = Array.isArray(item);
+        const proto = Object.getPrototypeOf(item);
+        if (!array && proto !== null && Object.getPrototypeOf(proto) !== null) throw new TypeError(label + ' requires plain JSON objects');
+        const keys = Reflect.ownKeys(item).filter(key => !(array && key === 'length'));
+        if (array && keys.length !== item.length) throw new TypeError(label + ' requires dense JSON arrays');
+        for (const key of keys) {
+            const descriptor = Object.getOwnPropertyDescriptor(item, key);
+            if (typeof key !== 'string' || key.length > 256 || !descriptor.enumerable || !Object.hasOwn(descriptor, 'value')
+                || (array && (!/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= item.length))) throw new TypeError(label + ' requires JSON fields');
+            inspect(descriptor.value, depth + 1, budget);
+        }
+    }
+    inspect(value);
+    const result = json(value);
+    if (new TextEncoder().encode(JSON.stringify(result)).byteLength > maxBytes) throw new TypeError(label + ' declaration byte limit');
+    return result;
+}

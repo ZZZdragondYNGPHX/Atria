@@ -1,3 +1,4 @@
+import { compileTransactionDeclarations, assertTransactionLogicJson } from './transactions.js';
 import {
     compileFormula,
     evaluateFormulaAst,
@@ -430,7 +431,22 @@ export function compileDeclarativeInterpretationMapping(raw, options = {}) {
 
 export function compileDeclarativeLogic(raw = {}, options = {}) {
     if (!isPlainObject(raw)) throw new Error('Declarative logic root must be an object');
-    if (raw.schemaVersion === 2) raw = lowerDeclarativeMutations(raw);
+    const versionField = Object.getOwnPropertyDescriptor(raw, 'schemaVersion');
+    if (versionField && (!Object.hasOwn(versionField, 'value') || !versionField.enumerable)) throw new TypeError('Declarative schemaVersion must be a JSON field');
+    const schemaVersion = versionField?.value;
+    let transactionDeclarations;
+    if (schemaVersion === 3) {
+        raw = assertTransactionLogicJson(raw);
+        assertKnownFields(raw, new Set(['schemaVersion', 'commands', 'reducers', 'rules', 'interpretations', 'mutations', 'transactions', 'derivedPublications']), 'Declarative logic v3');
+        const { schemaVersion: _version, transactions, derivedPublications, mutations, ...legacy } = raw;
+        const lowered = mutations === undefined ? legacy : lowerDeclarativeMutations({ schemaVersion: 2, ...legacy, mutations });
+        transactionDeclarations = compileTransactionDeclarations({ ...lowered, transactions, derivedPublications }, options);
+        raw = lowered;
+    } else if (schemaVersion === 2) raw = lowerDeclarativeMutations(raw);
+    else if (schemaVersion === 1) {
+        const { schemaVersion: _version, ...legacy } = raw;
+        raw = legacy;
+    }
     assertKnownFields(
         raw,
         new Set(['commands', 'reducers', 'rules', 'interpretations']),
@@ -459,5 +475,6 @@ export function compileDeclarativeLogic(raw = {}, options = {}) {
         reducers: Object.freeze(reducers),
         rules: Object.freeze(rules),
         interpretations: Object.freeze(interpretations),
+        ...(transactionDeclarations ?? {}),
     });
 }

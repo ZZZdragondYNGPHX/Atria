@@ -44,23 +44,28 @@ export function validateExperienceResources(manifest, files, assets, { lower = f
     for (const voice of manifest.runtime?.experienceContract?.presentationRuntime?.voices ?? []) {
         if (!manifest.actors.some(actor => actor.actorId === voice.actorId)) throw new TypeError('Actor Voice must belong to Package');
     }
+    const contract = manifest.runtime?.experienceContract;
     const logicPaths = new Set();
     for (const entry of manifest.entryPoints) {
         const logic = entry.runtime?.game?.logic ?? manifest.runtime?.game?.logic;
         if (logic) logicPaths.add(logic);
+        else if (contract?.authorityRuntime) throw new TypeError('Authority runtime requires pinned Game Logic v3 for each entry');
     }
     for (const path of logicPaths) {
         const bytes = files.get(path);
-        if (!bytes) continue;
+        if (!bytes) {
+            if (contract?.authorityRuntime) throw new TypeError('Authority runtime requires pinned Game Logic bytes');
+            continue;
+        }
         const raw = JSON.parse(bytes.toString('utf8'));
         const hasAppMapping = raw.interpretations?.some(item => item.appCommand !== undefined);
-        if (raw.schemaVersion !== 2 && !hasAppMapping) continue;
+        if (contract?.authorityRuntime && raw.schemaVersion !== 3) throw new TypeError('Authority runtime requires Game Logic schemaVersion 3');
+        if (raw.schemaVersion !== 2 && raw.schemaVersion !== 3 && raw.transactions === undefined && raw.derivedPublications === undefined && !hasAppMapping) continue;
         const lowered = raw.schemaVersion === 2 ? lowerDeclarativeMutations(raw) : raw;
-        compileDeclarativeLogic(lowered, { data: {} });
+        compileDeclarativeLogic(lowered, { data: {}, experienceContract: contract });
         for (const mapping of lowered.interpretations ?? []) {
             if (!mapping.appCommand) continue;
             const { domainId, commandId } = mapping.appCommand;
-            const contract = manifest.runtime?.experienceContract;
             if (!contract?.lifecycleRuntime?.domains.some(domain => domain.id === domainId && domain.commands.some(command => command.id === commandId))) throw new TypeError('Interpretation references unknown App Command');
             if (!contract.taskRuntime?.tasks.some(task => task.interpretation?.allowedEventTypes.includes(mapping.eventType))) throw new TypeError('App interpretation requires declared semantic Task');
         }
