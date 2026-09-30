@@ -276,7 +276,7 @@ Frontend design exploration may begin after P5. Formal integration should conver
 
 ### P8 required Skill set
 
-The execution environment is expected to have these four Skills installed. They are external agent Skills, not Atria repository-agent assets, and should not be copied into the Atria `skills` branch merely for this project.
+These four Skills are vendored repository-agent assets in Atria's long-lived `skills` workspace. During P8, load them through `skills:SKILLS.md -> corresponding Skill directory` according to Repository Governance; do not copy them into `main` or the Package workspace. Their upstream provenance and pinned commit are recorded in each Skill's `UPSTREAM.md`.
 
 1. **frontend-design**
    - Source: `anthropics/skills`
@@ -468,7 +468,7 @@ Do not parallelize Package implementation against an unfinished P0 Core contract
 | P5 | "player.md" + "gameplay.md" + "content-architecture.md" + this module |
 | P6 | "content-architecture.md" + only corresponding world authority modules |
 | P7 | P6 set + relevant "technical-design.md" revelation/authority rules |
-| P8 | "platform-and-gameplay.md" + "technical-design.md" Round 9.6 + installed Skills: frontend-design, ui-ux-pro-max, emil-design-eng, web-design-guidelines; load by P8-A/B/C/D routing above |
+| P8 | "platform-and-gameplay.md" + "technical-design.md" Round 9.6 + `skills:SKILLS.md` → frontend-design / ui-ux-pro-max / emil-design-eng / web-design-guidelines; load by P8-A/B/C/D routing above |
 | P9 | "index.md" + "decisions.md" + "technical-design.md" + this module + current Record/HANDOFF |
 
 Agents should not load the full Plan Bundle when the phase reading map is sufficient.
