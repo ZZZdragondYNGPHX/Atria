@@ -262,6 +262,8 @@ Implementation authorization is staged:
 
 Frozen cross-module decisions are indexed in `decisions.md`. Exact implementation order and phase gates are authoritative in `implementation-staging.md`.
 
+- approved P8 frontend Skill routing: `frontend-design` → visual identity, `ui-ux-pro-max` → design-system/UX, `emil-design-eng` → interaction/motion polish, `web-design-guidelines` → final implementation audit.
+
 ## Material routing/design changes
 
 - **2026-09-30 — Frontend-planning boundary:** Round 7 is intentionally lightweight. This Plan records only information-access, interaction and leakage constraints; visual design and detailed UX architecture are delegated to a frontend-specialized AI / frontend skill to avoid over-constraining later design quality.
