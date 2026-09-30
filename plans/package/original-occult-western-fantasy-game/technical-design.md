@@ -1385,7 +1385,7 @@ This hook:
 
 Background Lifecycle changes do not need to be artificially wrapped as player Transactions merely to refresh projections.
 
-#### 6.54.7 Agenda Deliberation requires no additional Core gap
+#### 6.54.7 Agenda Deliberation — original assumption and P3 correction
 
 The approved flow remains:
 
@@ -1397,7 +1397,7 @@ Lifecycle due event
 
 The AI records bounded intent; it does not directly create external institutional facts.
 
-Existing Task / Lifecycle machinery is sufficient.
+**P3 implementation correction (2026-09-30):** the existing primitives are retained, but the assumed orchestration bridge was absent. The user directed autonomous resolution of G2. Formal Core support now uses required `world-simulation@1` alongside required `authority-transaction@1`: typed static scoped job input, deterministic due-time ordering, non-player Transactions, one admitted deliberation per batch, stale revalidation and atomic Task-intent/action/publication acceptance. It reuses Lifecycle outbox/cursors, World Journal, Session CAS and the existing budgeted Transaction engine; no Package executable scheduler or fake player turn. See `plans/feat/world-simulation-scheduling.md` and its Record for the exact supported first profile. Legacy canonical schedules cannot compete with the opted-in job driver. The original no-additional-gap assertion is superseded only for this concrete G2 discovery; Fortune G1 remains closed.
 
 #### 6.54.8 NPC interaction requires no v1 dynamic Actor View
 

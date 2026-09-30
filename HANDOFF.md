@@ -7,7 +7,7 @@
 - Package diagnostic / probe-tested / pushed HEAD: bb13a1e47c6407a195c85f9974d7a8f81f113f8a
 - Last gameplay-tested Package HEAD: 8e7dec443d39beec5a182c16cfe7bcad97ebd6c0 (P2)
 - Installed runtime remains 0.2.0-p2; only an unpackaged diagnostic tool has been added.
-- Core inspected / probe-tested main: cd6bff19d54f651a4bffd8981f62ec77c0f84acb
+- Core correction PR #99 merged; implementation 648b00aa4a09dbda274fa18ee1876756ec284f45; actual main 052c466e3c9e4b07912da0cb602b2933f4821187. Package final validation against main is running.
 - Plan entrypoint: plans/package/original-occult-western-fantasy-game/index.md
 - Current modules: simulation.md, institutions.md, implementation-staging.md, technical-design.md (scheduling contract)
 - Sole Package Record: records/package/original-occult-western-fantasy-game.md
@@ -23,6 +23,10 @@ G2 is a missing orchestration bridge, not absence of all existing scheduling. Li
 `tools/simulation-contract-check.mjs` passes seven diagnostic checks against actual main. It uses real contract validators and in-memory Lifecycle preparation; the real Host dispatch loop has explicit storage/provider doubles. This is NOT an installed P3 Session/provider/save test. Tool syntax and whitespace checks passed. Diagnostic HEAD pushed; runtime declarations, main and releases remain unchanged at this checkpoint.
 
 Budget recount: interview and intervene reserve 24/24 App Commands, including the entire publication hook; advance_time reserves 21/24. Read/effect/expanded-work/UTF-8 limits must not be relaxed.
+
+## Current implementation checkpoint
+
+G2 has a formal Core correction, not a workaround. See records/feat/world-simulation-scheduling.md. Package now has an uncommitted 0.3.0-p3 two-day fixture with unified safe publication (7 reads / 10 App Commands), obligations, clinic, institution phases, dynamic Agenda input and generated Entity acceptance. Draft local HTTP, stale/conditional and actual save-container tests pass. Do not discard this dirty Package work or repeat P0/P2. Final Package commit/push, integrated-main confirmation, docs closure and P4 handoff remain.
 
 ## Next work
 
