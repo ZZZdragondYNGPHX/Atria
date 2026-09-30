@@ -2,34 +2,431 @@
 
 ## Responsibility
 
-Owns Round 10: Codex-ready implementation phases, dependency order, branch / workspace routing, per-phase reading map, validation gates, integration criteria and release handoff.
+Owns Round 10: Codex-ready implementation phases, dependency order, workspace routing, per-phase reading map, validation gates, integration criteria and release handoff.
 
 ## Dependencies
 
-- `index.md`
-- `decisions.md`
-- `technical-design.md`
+- index.md
+- decisions.md
+- technical-design.md
 - approved domain modules only when a phase implements their authority.
 
-> **Current discussion:** Round 10 is open. Freeze implementation order without reopening approved game design.
+> **Status:** Approved Implementation Staging v1.0. Pre-production is complete. Formal Package implementation is blocked until P0 "feat/authority-transaction" is implemented, verified and merged into "main".
 
 ---
 
-### 6.56 Round 10 question — implementation staging
+## 6.56 Approved implementation staging — Round 10
 
-Round 10 must determine:
+The implementation order is:
 
-- the exact Core prerequisite phase and its merge gate;
-- when the Package implementation workspace may begin;
-- the Package branch / folder strategy;
-- which phases build runtime foundation, content foundations, simulation, Signature Cases and integration;
-- which phases may run in parallel and which must remain sequential;
-- the minimal module reading map per implementation phase;
-- phase exit criteria and targeted tests;
-- when frontend-specialized work is handed off;
-- when docs/records are updated during multi-phase work;
-- when CI is considered a blocking verification stage;
-- final integration / release criteria;
-- what work is explicitly deferred from v1.
+**P0 Core prerequisite → P1 Package Foundation → P2 Interaction Runtime → P3 World Simulation → P4 World / Content Foundation → P5 Opening Vertical Slice → P6 Signature Network A → P7 Signature Network B + Eastbank Convergence → P8 Frontend-specialized integration → P9 Integration / Regression / Release**
 
-Round 10 must not add new gameplay systems unless implementation reveals a material contradiction requiring the relevant design authority to be reopened.
+Do not start Package implementation before P0 is integrated into "main".
+
+### P0 — Core prerequisite: Authority Transaction
+
+**Task ID:** "feat/authority-transaction"
+
+**Primary Workspace:** "main"
+
+**Task branch:** "feat/authority-transaction"
+
+**Plan:** "docs:plans/feat/authority-transaction.md"
+
+P0 implements only the frozen "authority-transaction@1" Core capability required by this Package.
+
+Required outcomes include:
+
+- optional "authorityRuntime" tied to "authority-transaction@1";
+- declarative Game Logic transaction support;
+- disclosure-safe intent observation;
+- statically bounded private authority reads;
+- private-candidate World + Lifecycle + clock preparation;
+- unified derived-publication hook;
+- deterministic Fortune / retry identity;
+- safe Turn-local transaction receipt;
+- free-text and fixed typed transaction invocation;
+- Narrator over the frozen candidate;
+- one final authority + assistant-message CAS;
+- provider failure with zero published mutation;
+- backwards compatibility for Packages not declaring the capability.
+
+P0 is a separate product task. It follows normal "main" short-lived branch lifecycle and receives its own Record.
+
+#### P0 exit gate
+
+P0 is complete only after the twelve verification gates frozen in "technical-design.md" Round 9.8 pass, appropriate targeted/regression CI succeeds, the implementation is merged into "main", integrated "main" is revalidated, and the temporary branch is removed.
+
+Package P1 may then revalidate the new real "main" and proceed.
+
+---
+
+## P1 — Package Foundation
+
+**Primary Workspace:** "package"
+
+**Package root:** "original-occult-western-fantasy-game/"
+
+The long-lived Package workspace is independent from "main"; do not merge "main" into "package".
+
+Create the Package root and "releases/", then establish an installable/validatable skeleton containing:
+
+- manifest / EntryPoint;
+- approved Experience capabilities;
+- modular Package Data declarations;
+- Lifecycle scopes/domains;
+- canonical world clock;
+- Information Sources / Views / Graphs;
+- four core Task classes;
+- Authority Runtime / transaction bindings against the integrated P0 Core contract;
+- minimal bootstrap seed;
+- minimum build / validate / preview path.
+
+Do not bulk-author the full game in P1.
+
+#### P1 exit gate
+
+The skeleton installs and validates against the current real Atria "main"; declared runtime contracts resolve; a minimal session starts; no temporary Core workaround exists.
+
+---
+
+## P2 — Interaction Runtime
+
+Implement the foundational gameplay transaction surface:
+
+- observe;
+- verify;
+- interview;
+- access;
+- test;
+- intervene;
+- create_hypothesis;
+- create_lead;
+- advance_time.
+
+Implement and validate:
+
+- Resolution Frame;
+- Automatic / Impossible / Uncertain;
+- qualitative Risk Tier;
+- deterministic bounded Fortune;
+- Evidence / Belief / Memory / Relation / Matter / Condition effects;
+- player-safe disclosure projections;
+- derived investigation index;
+- safe transaction receipt → Narrator path;
+- free-text and typed invocation parity.
+
+Use a deliberately small synthetic test world.
+
+#### P2 exit gate
+
+A free-text player action can resolve to a declared verb, prepare multiple authority effects atomically, update safe projections, generate narrative only from approved outcome/context, and finalize once. Typed invocation produces equivalent authority semantics. Narration retry cannot mutate or reroll the resolved result.
+
+---
+
+## P3 — World Simulation
+
+Implement autonomous world progression:
+
+- Agenda state machines;
+- Deterministic / Conditional / Deliberative Agenda steps;
+- Hot / Warm / Cold relevance;
+- Lifecycle Automations / Workflows;
+- Condition recovery;
+- deadlines and appointments;
+- event-driven fast-forward;
+- bounded reaction depth;
+- background Agenda Task;
+- Agenda Intent → later Authority Transaction;
+- generated Entity promotion;
+- derived-publication refresh after background authority changes.
+
+#### P3 exit gate
+
+A synthetic multi-day simulation demonstrates:
+
+- deterministic changes do not call a model;
+- only due Deliberative Agenda work invokes background AI;
+- Cold institutions progress without invented catch-up history;
+- hidden background state does not leak into player/Narrator projections;
+- save/reload preserves already-resolved results;
+- fast-forward processes obligations and deadlines.
+
+---
+
+## P4 — World / Content Foundation
+
+Author the reusable launch-world foundation:
+
+- six core city districts and approved surrounding footprint;
+- approximately 25–35 important locations;
+- approved ten major institutional/network nodes;
+- approximately 12–16 Tier A actor cores;
+- approximately 30–50 Tier B actor cores;
+- Anomaly Families;
+- Claim primitives;
+- Starter Claim Seeds;
+- Established Claim Archetypes;
+- Eastbank Canon Fragments;
+- Origin / Prior Life / Faith content;
+- Artifact templates;
+- public / legitimately retrievable Knowledge.
+
+Do not script the whole campaign in this phase.
+
+#### P4 exit gate
+
+Stable IDs and references resolve; Package Data remains within approved soft budgets; hidden Canon is not in generic Knowledge; no required institution/actor/Claim/Canon dependency is orphaned; initial materialization remains lazy where approved.
+
+---
+
+## P5 — Opening Vertical Slice
+
+Implement the playable opening from character creation through the first Signature Case.
+
+Required content/system path:
+
+- six-step character creation;
+- Civil Verifier starting state;
+- Personal Anchor creation;
+- Second Death opening Matter;
+- multi-path investigation;
+- first Breach;
+- Breach Imprints;
+- Claim Seed eligibility/candidates;
+- postpone option;
+- first stabilization / formal Claim path where earned;
+- multiple Case dispositions / Settlements;
+- failure continuity.
+
+#### P5 exit gate
+
+A player can start a fresh campaign and complete the opening arc without a mandatory fragile clue or quest-checklist progression. Backgrounds materially affect access. Wrong theories / failed actions can continue the campaign. Narrative regeneration cannot change settled mechanics.
+
+P8 frontend design research may begin after P5 because the player-safe projections and action surface should now be stable enough to evaluate.
+
+---
+
+## P6 — Signature Network A
+
+Implement:
+
+2. Dual Address Property;
+3. Impossible Burial;
+4. Dead Railway;
+
+plus the first reusable Institutional Case Patterns.
+
+This phase exercises:
+
+- Boundary / property conflict;
+- Church / Memory / communal Identity;
+- physical investigation / Echo / Injury;
+- worker information networks;
+- Case merge/reopen;
+- durable multi-institution Settlement.
+
+#### P6 exit gate
+
+Each Signature Case supports materially different investigation routes, multiple dispositions, persistent consequences, order flexibility, and correct Eastbank Revelation Predicate contributions.
+
+---
+
+## P7 — Signature Network B + Eastbank Convergence
+
+Implement:
+
+5. Self-Signing Company;
+6. Claims Before the Accident;
+7. Tomorrow's Headline;
+8. Eastbank Hearing;
+
+and complete launch-target Case Patterns / Claim / Anomaly coverage.
+
+This phase also completes:
+
+- Reality Consolidation pressure;
+- four-layer Eastbank revelation;
+- cross-source Revelation Predicates;
+- multidimensional final Settlement.
+
+#### P7 exit gate
+
+Eastbank convergence is unlocked by evidence predicates, not "casesCompleted". The campaign may reach convergence with some Signature content missed. Final dispositions can independently express Historical Truth, Current Stability, Justice, Political Power, Religious Authority and Institutional Accountability.
+
+---
+
+## P8 — Frontend-specialized integration
+
+Detailed visual/UI/UX design is intentionally delegated to a frontend-specialized AI or AI with the relevant frontend skill.
+
+The frontend receives the frozen functional contract:
+
+- player-safe Information display projections;
+- bounded investigation graph;
+- approved typed actions / transactions;
+- Case Reflection;
+- Claim Advisor;
+- Composer / narrative flow;
+- anti-leakage rules.
+
+This Plan does not prescribe visual hierarchy, color, typography, navigation architecture, animation or component composition.
+
+Frontend design exploration may begin after P5. Formal integration should converge after P7 to reduce content-driven rework.
+
+#### P8 exit gate
+
+Validate desktop/mobile behavior, long investigation data, graph interaction, overflow, touch affordances, important-state reachability and absence of hidden authority leakage. Real UI evidence is required where code-level validation cannot establish presentation quality.
+
+---
+
+## P9 — Integration / Regression / Release
+
+No new gameplay systems.
+
+Validate:
+
+- full campaign smoke;
+- varied Signature Case order;
+- failed / costly routes;
+- save / restore;
+- branch retry;
+- provider failure;
+- background Agenda;
+- fast-forward;
+- Claim Prices;
+- Settlement consequences;
+- Revelation Predicate convergence;
+- information-leak boundaries;
+- Package Data size;
+- install / validate / build / preview;
+- appropriate regression suites.
+
+Produce the final ".atria" release under:
+
+"original-occult-western-fantasy-game/releases/"
+
+Historical releases are retained and not overwritten.
+
+#### P9 exit gate
+
+All launch-critical functional, authority, leakage, regression and release checks pass; the Package Record contains tested HEAD / CI evidence; the release artifact is retained in the Package workspace.
+
+---
+
+## Phase dependency / parallelism
+
+Primary dependency chain:
+
+"P0 → P1 → P2 → P3 → P4 → P5 → P6 → P7 → P8 → P9"
+
+Only one planned overlap is approved:
+
+- P8 frontend design research may begin after P5;
+- formal frontend integration still converges after P7.
+
+Do not parallelize Package implementation against an unfinished P0 Core contract.
+
+---
+
+## Minimal implementation reading map
+
+| Phase | Required Plan context |
+| --- | --- |
+| P0 | "plans/feat/authority-transaction.md" + "technical-design.md" Round 9.5–9.8 |
+| P1 | "index.md" + "technical-design.md" + this module |
+| P2 | P1 set + "gameplay.md" + "simulation.md" |
+| P3 | "simulation.md" + "institutions.md" + this module |
+| P4 | "content-architecture.md"; load geography/institutions/religion/society/metaphysics only for the assets being authored |
+| P5 | "player.md" + "gameplay.md" + "content-architecture.md" + this module |
+| P6 | "content-architecture.md" + only corresponding world authority modules |
+| P7 | P6 set + relevant "technical-design.md" revelation/authority rules |
+| P8 | "platform-and-gameplay.md" + "technical-design.md" Round 9.6 + frontend skill/instructions |
+| P9 | "index.md" + "decisions.md" + "technical-design.md" + this module + current Record/HANDOFF |
+
+Agents should not load the full Plan Bundle when the phase reading map is sufficient.
+
+---
+
+## Documentation lifecycle during implementation
+
+### P0 Core task
+
+Use a separate implementation Record under:
+
+"docs:records/feat/authority-transaction.md"
+
+If P0 spans formal stages/conversations, maintain the repository's single live "docs:HANDOFF.md".
+
+P0 completion closes/removes its live HANDOFF after durable information is in the Record.
+
+### Package task P1–P9
+
+Create and continuously update one Package Record:
+
+"docs:records/package/original-occult-western-fantasy-game.md"
+
+P1–P9 remain one multi-stage Package implementation task.
+
+At the end of every formal Package phase:
+
+1. implement and validate the phase;
+2. persist/push the tested Package HEAD;
+3. update the same Package Record;
+4. update the single live "HANDOFF.md";
+5. record current/tested HEAD, CI, remaining work and next-phase target;
+6. provide a copyable next-phase handoff prompt;
+7. stop.
+
+Do not automatically cross a formal phase boundary.
+
+---
+
+## Validation / CI stop policy
+
+Ordinary code/test failures are handled autonomously.
+
+Stop only when the next step genuinely depends on:
+
+- a formal phase boundary;
+- clearly long-running CI that is the sole remaining dependency;
+- Android/Termux or other real-device evidence;
+- real UI/screenshots that code-level validation cannot replace;
+- user-only Secret / account / permission action.
+
+Do not wait indefinitely for CI. Once CI becomes the only long-running dependency, report the run/checkpoint and stop polling.
+
+---
+
+## v1 explicit deferrals
+
+Not required for v1 unless a later material contradiction reopens the relevant Plan authority:
+
+- dynamic per-NPC model-bound Information Views;
+- Player Continuity / cross-campaign transfer;
+- Content extension/addon ecosystem;
+- dedicated document-rendering Model Task;
+- generic economy simulation;
+- universal schedule system;
+- reputation scalar;
+- full city population simulation;
+- frontend visual design specified by this Plan;
+- prose-only Re-narrate feature.
+
+---
+
+## Round 10 decision
+
+Approved:
+
+- P0 Core prerequisite followed by Package P1–P9;
+- P0 is a separate "main" product task and hard gate for Package implementation;
+- Package remains in long-lived independent "package" workspace without merging "main";
+- P1 foundation, P2 interaction runtime, P3 simulation, P4 content foundation, P5 opening vertical slice, P6/P7 Signature networks, P8 frontend handoff, P9 release;
+- P8 research may overlap after P5, but formal integration converges after P7;
+- phase-specific minimal reading map;
+- separate P0 Record and one continuous P1–P9 Package Record;
+- formal phase boundary stop / HANDOFF rules;
+- v1 deferral list.
+
+The project is ready to become **Approved Implementation Baseline v1.0** once the Plan index is promoted accordingly.
