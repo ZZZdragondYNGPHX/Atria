@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.24 — Round 7 approved; Round 8 opened; not approved for implementation
+- **Status:** Discussion Draft v0.25 — Round 8 core approved; Round 8.5 opened; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -58,7 +58,7 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 8
+## Current route — Round 8.5
 
 Required reading:
 
@@ -204,7 +204,11 @@ Approved: player-safe information access, required investigative/risk/Claim inte
 
 ### Round 8 — Content architecture
 
-Define authored world footprint, NPC depth, institutions, reusable Case/anomaly structures, Claim catalog scope, replay variation and maintainable Package content boundaries.
+Approved: focused authored footprint, tiered NPC/content scale, reusable Case/anomaly/Claim structures, fragmented Eastbank Canon and explicit authored/generated boundaries.
+
+### Round 8.5 — Signature Case roles and long-form mystery structure
+
+Assign distinct gameplay, institutional, supernatural and revelation responsibilities to the 6–8 Signature Cases before detailed scripting.
 
 ### Round 9 — Package technical design
 
@@ -248,7 +252,8 @@ Currently carried forward from research:
 - approved fourteen-domain simulation decomposition with derived state and Hard/Perspective/Intent write-authority separation;
 - approved task-specific bounded Context Packages with explicit information-transfer events and no shared omniscient prompt;
 - approved deterministic-first world scheduling with bounded background deliberation and event-driven fast-forward;
-- approved lightweight frontend information/interaction constraints with detailed visual design delegated.
+- approved lightweight frontend information/interaction constraints with detailed visual design delegated;
+- approved content-scale architecture with focused authored depth, tiered NPCs, reusable Case/anomaly/Claim assets and fragmented Eastbank Canon.
 
 All unapproved elements remain open to revision.
 
