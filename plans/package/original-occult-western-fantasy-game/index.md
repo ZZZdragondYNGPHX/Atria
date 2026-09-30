@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.13 — Round 3.9 approved; Round 4 opened; not approved for implementation
+- **Status:** Discussion Draft v0.14 — Round 4 core approved; Round 4.5 opened; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -55,7 +55,7 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 4
+## Current route — Round 4.5
 
 Required reading:
 
@@ -155,7 +155,11 @@ Approved: interdependent city institutions, distributed Eastbank evidence, multi
 
 ### Round 4 — Player identity and starting situation
 
-Choose the initial player fantasy, starting social position, first mystery and entry point into the hidden world.
+Approved: independent Civil Verifier, second-death opening case, action-caused Breach and delayed Claim choice.
+
+### Round 4.5 — Character creation, background Anchors and controlled freedom
+
+Define player-authored biography, starting relationships, formal Anchors and canon-safe freeform input.
 
 ### Round 5 — Core gameplay loop and failure model
 
@@ -204,7 +208,8 @@ Currently carried forward from research:
 - approved cultural professions rather than cosmic classes;
 - deterministic Native authority over supernatural mechanics;
 - approved layered industrial-port city history and Eastbank Settlement as the first city-scale buried contradiction;
-- approved interdependent city institution network with distributed evidence and independent Agendas.
+- approved interdependent city institution network with distributed evidence and independent Agendas;
+- approved Civil Verifier starting role, second-death opening case and action-caused first Breach.
 
 All unapproved elements remain open to revision.
 
