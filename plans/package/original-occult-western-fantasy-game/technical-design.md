@@ -15,7 +15,7 @@ Owns Round 9: translation of the approved game/content design into current Atria
 - `metaphysics.md`
 - `platform-and-gameplay.md`
 
-> **Current discussion:** Rounds 9–9.6 are approved. Round 9.7 is open: Package Data resource layout and exact Authority Transaction Bridge contract.
+> **Current discussion:** Rounds 9–9.7 are approved. Round 9.8 is open: final technical freeze and Core-gap gate.
 
 ---
 
@@ -894,28 +894,396 @@ Rejected:
 - persisting `latest_outcome` merely for Narrator consumption;
 - adding Model Tasks solely because a document needs natural wording.
 
-### 6.52 Round 9.7 question — Package Data layout and exact Core bridge contract
+### 6.52 Approved Package Data layout and exact Core bridge contract — Round 9.7
 
-Round 9.7 must freeze two implementation-facing boundaries before Round 10 staging:
+Round 9.7 freezes the Package Data resource strategy and the minimum Core surface required for atomic authority transactions.
 
-1. the concrete Package Data resource families / `resourceId` layout;
-2. the exact minimum Core contract for the Authority Transaction Bridge.
+#### 6.52.1 Package Data resource strategy
 
-It must determine:
+Use many small, structured resources rather than one giant `world.json`.
 
-- resource grouping and size boundaries for institutions, actors, geography, Claims, Cases, anomalies, Canon, artifacts and backgrounds;
-- what remains Knowledge rather than Package Data;
-- which resources are loaded by game logic versus only by authoring/presentation;
-- initial-state seed resources versus immutable definition resources;
-- how resource IDs support modular editing without one giant blob;
-- whether shareable Content extension points are needed in v1;
-- the new Experience capability / contract versioning strategy for authority transactions;
-- how author-declared transaction verbs declare read grants, World effects, typed Lifecycle effects, clock effects and derived publications;
-- how the Host constructs player-safe intent observation;
-- how transaction validation and CAS commit interact with existing action receipts / revisions;
-- the exact shape and lifetime of the transaction receipt supplied to Narrator;
-- limits preventing arbitrary domain access / JSON patching / excessive effect count;
-- how the bridge composes with existing Game World, Lifecycle and Information authority instead of replacing them.
+Preferred resource families include:
+
+**World definitions**
+
+- `defs.geography.districts`;
+- `defs.geography.locations`;
+- `defs.institutions`;
+- `defs.actors.major`;
+- `defs.actors.supporting`;
+- `defs.origins`;
+- `defs.artifacts.templates`;
+- `defs.terminology`.
+
+**Supernatural definitions**
+
+- `defs.anomalies`;
+- `defs.claims.primitives`;
+- `defs.claims.seeds`;
+- `defs.claims.archetypes`.
+
+**Signature Cases**
+
+- `cases.signature.second_death`;
+- `cases.signature.dual_address`;
+- `cases.signature.impossible_burial`;
+- `cases.signature.dead_railway`;
+- `cases.signature.self_signing_company`;
+- `cases.signature.pre_accident_claims`;
+- `cases.signature.tomorrows_headline`;
+- `cases.signature.eastbank_hearing`.
+
+**Reusable Case patterns**
+
+- `cases.patterns.identity`;
+- `cases.patterns.property`;
+- `cases.patterns.insurance`;
+- `cases.patterns.family`;
+- `cases.patterns.industry`;
+- `cases.patterns.burial`.
+
+**Eastbank Canon**
+
+- `canon.eastbank.index`;
+- `canon.eastbank.registry`;
+- `canon.eastbank.church`;
+- `canon.eastbank.insurance`;
+- `canon.eastbank.railway`;
+- `canon.eastbank.workers`;
+- `canon.eastbank.academy`;
+- `canon.eastbank.settlement`;
+- `canon.eastbank.deep`.
+
+**Bootstrap**
+
+- `seed.bootstrap`;
+- `seed.opening.second_death`.
+
+Exact names may receive minor implementation cleanup, but the modular responsibility split is approved.
+
+#### 6.52.2 Resource size direction
+
+Current Core permits Package Data resources up to 2 MiB and up to 256 declared resources.
+
+The Package should stay well below those limits.
+
+Preferred authoring targets:
+
+- normal resource: preferably below 256 KiB;
+- large Case / Canon resource: preferably below 512 KiB;
+- exceed those soft limits only with concrete justification;
+- keep hot Package Data total in the low-megabyte range.
+
+Structured assertions / references are preferred over long prose.
+
+#### 6.52.3 Package Data versus Knowledge
+
+Use Package Data for:
+
+- immutable definitions;
+- hidden Canon;
+- Case structures;
+- Claim / anomaly rules;
+- actor / institution cores;
+- bootstrap seed definitions.
+
+Use Knowledge for legitimately retrievable informational material such as:
+
+- public legal / historical knowledge;
+- public religious doctrine;
+- player-acquired occult texts;
+- other sources intentionally available to Knowledge retrieval.
+
+Do not place hidden Canon in generally retrievable Knowledge.
+
+#### 6.52.4 Runtime design notes remain outside Package Data
+
+Author-only design notes, symbolism, intended reveal cadence and similar metadata must remain outside runtime resources.
+
+They are not valid runtime Context.
+
+#### 6.52.5 v1 does not require Content extension points
+
+Do not declare ContentRuntime extension points / addon architecture merely because the platform supports them.
+
+v1 should first produce one complete, validated Base Package.
+
+Shareable Case / content packs may be designed later.
+
+#### 6.52.6 New capability: authority-transaction@1
+
+Do not overload or version-bump ordinary `action@2` for this purpose.
+
+Add a separate optional Experience capability:
+
+`authority-transaction@1`
+
+Reason:
+
+the new behavior composes Game World authority, Lifecycle authority, world clock, derived projections and current-turn receipt publication.
+
+It is materially different from ordinary frontend typed Action invocation.
+
+Existing Packages remain unaffected when the capability is absent.
+
+#### 6.52.7 Optional authorityRuntime contract
+
+ExperienceContract gains an optional `authorityRuntime` declaration associated with `authority-transaction@1`.
+
+Rules:
+
+- capability absent → `authorityRuntime` absent;
+- capability required/present → `authorityRuntime` required;
+- the runtime declares bounded observation / transaction policy, not game-specific story rules;
+- ordinary Package game rules remain in pinned declarative game logic.
+
+A global ExperienceContract schema-version bump is not required solely for this addition if strict optional-field/capability negotiation can preserve backwards compatibility.
+
+#### 6.52.8 Declarative game logic schemaVersion 3
+
+Add a backwards-compatible Game Logic schema version supporting:
+
+- existing commands;
+- reducers;
+- rules;
+- interpretations;
+- new `transactions` declarations.
+
+Existing schemaVersion 1 / 2 logic remains supported.
+
+A Transaction is an author-declared game verb, not a generic script.
+
+#### 6.52.9 Transaction declaration responsibilities
+
+A Transaction may declare:
+
+- stable transaction / verb ID;
+- input schema;
+- intent-resolver exposure metadata;
+- private read grants;
+- validators;
+- deterministic / bounded Resolution policy;
+- World Event templates;
+- typed Lifecycle `app.command` effects;
+- optional canonical clock advance;
+- optional workflow transition;
+- derived publication declarations;
+- safe receipt projection.
+
+Domain / command targets are statically declared by Package logic.
+
+The model cannot choose arbitrary domain IDs or command IDs.
+
+#### 6.52.10 Effect kinds
+
+v1 permitted transaction effect families:
+
+- `world.event`;
+- `app.command`;
+- `clock.advance`;
+- optionally `workflow.transition`.
+
+Explicitly forbidden:
+
+- generic state patch;
+- namespace write;
+- JSON Patch;
+- eval / arbitrary script;
+- dynamically named commands / domains.
+
+#### 6.52.11 Private read grants
+
+Transaction validation may read only statically declared authority families / selectors.
+
+Typical grants include:
+
+- target Entity fields;
+- target Actor Beliefs / Memories relevant to selected interaction;
+- player↔target Relations;
+- explicit Evidence refs supplied by args;
+- current Conditions / Claims needed for validation.
+
+Private transaction reads are not automatically disclosed to the intent resolver or Narrator.
+
+#### 6.52.12 Safe intent observation
+
+`authorityRuntime` declares a bounded intent observation surface built only from disclosure-safe player-facing read models such as:
+
+- scene projection;
+- player status projection;
+- player epistemic projection;
+- player Matters;
+- player-known investigation nodes.
+
+The intent resolver uses this to map natural language to stable refs.
+
+It must not receive hidden World Truth or private actor cognition.
+
+#### 6.52.13 Execution pipeline
+
+The Core transaction path should behave conceptually as:
+
+1. resolve selected declared verb + args;
+2. capture expected revision;
+3. construct declared private read set;
+4. validate references / access / invariants;
+5. build Resolution Frame if required;
+6. resolve deterministic bounded Fortune where required;
+7. build a bounded typed effect plan;
+8. validate every effect against a private candidate;
+9. apply all World / Lifecycle / clock effects to the private candidate;
+10. update declared derived read models / indexes;
+11. produce a player-safe transaction receipt;
+12. publish exactly once through Session revision CAS / action receipt.
+
+Any failure before publication rejects the whole transaction.
+
+No partial authority mutation is visible.
+
+#### 6.52.14 Reuse existing Core authority machinery
+
+The bridge should reuse rather than replace:
+
+- Game World reducers;
+- Lifecycle `prepareLifecycle()` validation / mutation;
+- clock validation;
+- Session revision CAS;
+- Action receipt / idempotency semantics;
+- deterministic RNG;
+- Information state validation.
+
+The new capability is primarily an atomic composition / safe-observation seam.
+
+#### 6.52.15 Transaction bounds
+
+The bridge must impose hard bounds.
+
+Initial design targets:
+
+- up to 16 read grants;
+- up to 16 World Events;
+- up to 24 Lifecycle App Commands;
+- up to one canonical clock advance;
+- up to 32 total authority effects;
+- bounded receipt size, target approximately 32 KiB;
+- bounded intent observation, target approximately 64 items / 16 KiB.
+
+Exact numeric limits may be adjusted during Core implementation if equivalent or stricter boundedness is preserved.
+
+#### 6.52.16 Safe transaction receipt
+
+The transaction returns a Turn-local receipt containing concepts such as:
+
+- transaction ID;
+- verb;
+- anchor revision ID;
+- committed revision ID;
+- resolved outcome;
+- elapsed ticks;
+- committed Event refs;
+- changed safe refs;
+- player-visible consequences;
+- known unresolved uncertainty.
+
+Receipt projection is explicitly authored / validated.
+
+Core must not summarize every changed private record for Narrator automatically.
+
+#### 6.52.17 Receipt lifetime
+
+The safe transaction receipt is current-turn Host state.
+
+It is passed to post-authority Narrator generation and then discarded as a convenience object.
+
+Durable history remains available through:
+
+- committed Events;
+- Lifecycle authority records;
+- Action receipt;
+- Session revision history.
+
+Do not create a permanent Outcome domain.
+
+#### 6.52.18 Derived publication is part of the atomic candidate
+
+Disclosure-safe read models and investigation index updates caused by the transaction must be prepared before the single CAS publication.
+
+Narrator / frontend must not observe a revision where authority changed but its declared safe projection is still stale.
+
+#### 6.52.19 Authority Runtime scope
+
+The v1 Authority Runtime has exactly three product responsibilities:
+
+1. **safe intent observation**;
+2. **atomic typed authority composition**;
+3. **safe current-turn receipt publication**.
+
+It does not own:
+
+- NPC personality;
+- Case design;
+- Claim rules;
+- Agenda strategy;
+- UI;
+- general memory;
+- narrative generation.
+
+Those remain Package responsibilities.
+
+### 6.53 Round 9.7 decision
+
+Approved:
+
+- modular Package Data resource layout rather than giant JSON;
+- approximately 25–35 structured Data Resources as an initial target;
+- soft per-resource budgets far below the 2 MiB Core limit;
+- hidden Canon in Package Data rather than generic Knowledge;
+- no v1 Content extension-point requirement;
+- separate `authority-transaction@1` capability instead of overloading `action@2`;
+- optional `authorityRuntime` contract tied to that capability;
+- declarative Game Logic schemaVersion 3 with author-declared Transactions;
+- static read grants / effect targets;
+- four bounded transaction effect families;
+- private authority reads separated from resolver/Narrator disclosure;
+- player-safe intent observation;
+- private-candidate validation followed by one Session CAS publication;
+- reuse of existing World/Lifecycle/clock/revision/idempotency machinery;
+- hard transaction work / receipt / observation bounds;
+- safe Turn-local transaction receipt;
+- atomic derived projection publication;
+- narrowly scoped Authority Runtime responsibilities.
+
+Rejected:
+
+- one giant world resource;
+- placing hidden Canon in broadly retrievable Knowledge;
+- designing addon/content-extension architecture before v1;
+- changing `action@2` into a cross-authority general mutation system;
+- arbitrary JSON/state patch effects;
+- dynamic model-selected authority targets;
+- exposing private transaction reads to Narrator by default;
+- committing authority before safe derived projections are ready.
+
+### 6.54 Round 9.8 question — Technical Freeze / Core Gap Gate
+
+Round 9.8 is the final Round 9 validation pass.
+
+It must verify the approved architecture end-to-end against current `main` and answer:
+
+- is `authority-transaction@1` the only blocking Core prerequisite for v1;
+- are any approved behaviors still relying on an undeclared dynamic query / mutation path;
+- can all v1 NPC interaction remain model-free at actor-private perspective level;
+- can Agenda Deliberation safely feed Intent Authority without executing world effects directly;
+- can player-safe projections be rebuilt / retained without becoming a second Truth store;
+- can save / retry / branch semantics remain coherent with transaction receipts and deterministic Fortune;
+- can all required frontend actions consume safe projections / typed actions without backend-domain access;
+- does Package Data scope remain within current exact-resource limits;
+- should Core Gap implementation occur before Package implementation;
+- what exact verification gates must be satisfied before Round 10 declares implementation phases.
+
+Round 9.8 should not expand game design.
+
+It is a gap gate and technical consistency review.
 
 
 ## Current Atria main audit baseline
