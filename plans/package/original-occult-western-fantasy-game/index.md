@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.31 — Rounds 9–9.7 approved; Round 9.8 opened; not approved for implementation
+- **Status:** Discussion Draft v0.32 — Rounds 9–9.8 approved; Round 10 opened; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -53,30 +53,25 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 | `gameplay.md` | Rounds 5–5.6: core loop, investigation, uncertainty, case structure, failure, time, downtime and economy | `player.md`, `platform-and-gameplay.md` |
 | `simulation.md` | Rounds 6–6.7: authoritative state, projections, domains, scheduling and simulation budgets | `gameplay.md`, `platform-and-gameplay.md`, `institutions.md`, `player.md` |
 | `content-architecture.md` | Rounds 8–8.6: content scale, Signature Case network, production templates and authored/generated boundaries | `geography.md`, `institutions.md`, `player.md`, `gameplay.md`, `simulation.md`, `metaphysics.md` |
-| `technical-design.md` | Round 9: Atria Package mapping, runtime contracts, data resources, tasks, lifecycle, information views and platform-gap audit | all approved system/content modules |
+| `technical-design.md` | Rounds 9–9.8: Atria Package mapping, runtime contracts, data resources, tasks, authority transaction gap and technical freeze | all approved system/content modules |
+| `implementation-staging.md` | Round 10: implementation phases, branch/workspace routing, validation gates, integration and release handoff | `index.md`, `decisions.md`, `technical-design.md` plus phase-specific authorities |
 | `platform-and-gameplay.md` | Atria fit, provisional core loop/surfaces, external design references, open questions | `foundation.md` plus relevant domain modules |
 | `decisions.md` | Compact cross-module frozen-decision index; links back to detailed authorities | all authoritative modules |
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 9.8
+## Current route — Round 10
 
 Required reading:
 
 - `index.md`
 - `decisions.md`
 - `technical-design.md`
+- `implementation-staging.md`
 
-Load only when the mapping requires its authority:
+Load domain modules only for the phase that implements them.
 
-- `simulation.md` — domains, clocks, projections, scheduling;
-- `content-architecture.md` — Package Data content contracts;
-- `gameplay.md` — resolution, Case and Outcome requirements;
-- `player.md` — character creation and progression;
-- `metaphysics.md` — Claim authority and invariants;
-- `platform-and-gameplay.md` — verified platform-fit and frontend boundary.
-
-Current Atria `main` contracts are implementation-fit evidence and must be revalidated before freezing mappings.
+Round 10 freezes implementation order and verification gates. It does not reopen approved world/game design unless implementation exposes a material contradiction.
 
 ## Stage routing
 
@@ -92,8 +87,8 @@ Current Atria `main` contracts are implementation-fit evidence and must be reval
 | Round 6–6.7 | `index.md`, `simulation.md`, `platform-and-gameplay.md`; dependencies only as needed | Approved |
 | Round 7 | `index.md`, `platform-and-gameplay.md`, `simulation.md` | Approved; lightweight information/interaction constraints only |
 | Round 8–8.6 | `index.md`, `content-architecture.md`; affected authority modules only as needed | Approved |
-| Round 9 | `index.md`, `decisions.md`, `technical-design.md`; approved authority modules only as needed | Current |
-| Round 10 | `index.md`, `decisions.md`, technical-design module | Freeze implementation stages and exact implementation-stage reading map |
+| Round 9–9.8 | `index.md`, `decisions.md`, `technical-design.md`; approved authority modules only as needed | Approved / technically frozen |
+| Round 10 | `index.md`, `decisions.md`, `technical-design.md`, `implementation-staging.md` | Current |
 
 Future empty modules are intentionally not pre-created. When a new round gains substantive design content, create its authoritative module and update this routing table.
 
@@ -234,11 +229,11 @@ Approved: modular Package Data layout, `authority-transaction@1`, optional `auth
 
 ### Round 9.8 — Technical Freeze / Core Gap Gate
 
-Perform the final end-to-end technical consistency audit, confirm the complete v1 Core prerequisite set, and freeze verification gates before implementation staging.
+Approved: `authority-transaction@1` is the only blocking v1 Core prerequisite; authority is privately prepared before narration and atomically finalized with the assistant turn; provider failure is zero-mutation; retry/branch/Fortune semantics and the 12 Core verification gates are frozen.
 
 ### Round 10 — Implementation staging
 
-Freeze Codex-ready phases, validation criteria, Package branch layout and release strategy.
+Freeze Codex-ready phases, validation criteria, branch/workspace routing, frontend handoff and release strategy.
 
 The sequence may change if substantive design discoveries require it.
 
@@ -281,7 +276,8 @@ Currently carried forward from research:
 - approved top-level Atria Package mapping using Package Data / Lifecycle / Information / Task Runtime / authority-first Turn responsibilities;
 - approved concrete runtime authority layout and restricted Action API, with one v1 Core prerequisite for atomic cross-authority transactions and safe resolver observation;
 - approved disclosure-safe Information/Task mapping with seven Sources, five fixed Views, two bounded investigation Graphs and four core Task classes;
-- approved modular Package Data layout and the versioned `authority-transaction@1` Core contract.
+- approved modular Package Data layout and the versioned `authority-transaction@1` Core contract;
+- approved Round 9 technical freeze: `authority-transaction@1` is the only blocking v1 Core prerequisite and must land in `main` before Package implementation.
 
 All unapproved elements remain open to revision.
 
