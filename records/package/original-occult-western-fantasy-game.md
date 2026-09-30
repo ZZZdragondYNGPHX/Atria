@@ -148,3 +148,36 @@ Status: **P2 complete; stopped at the stage boundary. P3/P8 not started.**
 - P3 must add real obligations/deadlines, scheduled changes, institution/Agenda progression, relevance/budgeted deliberation, same-tick/stale handling and event-driven fast-forward. Current advance_time is bounded 1–60 minute canonical-clock advance only, not full simulation or downtime. Four Tasks remain declared, with Agenda defer-only and no autonomous scheduler.
 - Publication branches count against hard budgets even when mutually exclusive. P3 must re-audit the existing 16-read / 24-App / 32-effect and expanded-work constraints as its real scopes are added, rather than relax them or introduce a workaround.
 - Continue via the same Package Record and sole HANDOFF after P3 authorization. Keep the independent long-lived package branch and historical releases.
+
+## P3 — World Simulation: G2 scheduling contract diagnosis (2026-09-30)
+
+Status: **P3 authorized/in progress; exit gate NOT met. User directed autonomous problem resolution after the diagnosis; continue with a minimal formal Core correction if required, not a Package workaround. P4/P8 remain out of scope.**
+
+- Fetch-all/prune and worktree audit: main `cd6bff19d54f651a4bffd8981f62ec77c0f84acb`, docs `3496146a713285086497b3fd7ccce9938770e968`, package start `8e7dec443d39beec5a182c16cfe7bcad97ebd6c0`; matching origin refs and clean worktrees, including the existing detached product validation checkout. No history rollback or reference content read.
+- Diagnostic Package HEAD / probe-tested / pushed: `bb13a1e47c6407a195c85f9974d7a8f81f113f8a`. Only `tools/simulation-contract-check.mjs` was added. Installed runtime remains P2 `0.2.0-p2`, byte-for-byte unchanged. This is NOT a P3 gameplay-tested HEAD.
+- Core inspected / probe-tested HEAD: `cd6bff19d54f651a4bffd8981f62ec77c0f84acb`; no product changes at this checkpoint.
+
+### G2 evidence and exact scope
+
+The current primitives are real and useful, but do not provide the entire approved scheduling bridge assumed by technical-design 6.50.8/6.54.7:
+
+1. `public/shared/native-lifecycle-contract.js` validates automation Task inputs as literal values; automation declarations and Workflow transitions do not accept state predicates. The real Lifecycle probe advances to tick 60 and queues a due Task with unchanged literal input `tick=0`.
+2. `src/native/adapters/generation-host.js` requires the authority-producing Task payload hash to equal its durable outbox input. A caller cannot safely substitute a freshly built private institutional input. Broad projection/history would violate the approved Agenda context boundary.
+3. Lifecycle actions cannot dispatch Authority Transactions. Existing transaction effects can conditionally move a Workflow, but its Task input remains static. `prepareAuthorityTransaction` currently requires the last timeline entry to be a user message matching playerMessageId. Fabricating a player turn for background institutions is not acceptable.
+4. `executeLifecycle` processes at most four outbox entries sequentially, anchoring each after the preceding Task commit. This is not the approved same-tick baseline/proposal/order/acceptance protocol. Its generic four-call cap is not a relevance or per-advance deliberation budget.
+5. Real Lifecycle pumping after a large jump runs automations in declaration order. A diagnostic with due ticks [60,30] executes in that order, not chronological next-event order. Fixed declarations can be manually sorted for one fixture; that does not implement dynamic event-driven fast-forward.
+
+These are a **single missing World Simulation orchestration contract (G2)**, not a reopening of Fortune G1 and not evidence that Lifecycle, Task, CAS or authority-transaction@1 are absent. Safe deterministic reductions, static schedules, scope gates and fixed-input background Tasks already work. No new Core API/capability has yet been implemented or validated.
+
+### Actual diagnostic validation
+
+- `node tools/simulation-contract-check.mjs --core <main-checkout>`: PASS, seven assertions covering strict contract rejection, real in-memory Lifecycle preparation and its source immutability, plus the real Host dispatch loop with explicit storage/provider test doubles.
+- The dispatch probe is a unit control-flow check, **not** an installed Session, HTTP provider or persistence integration.
+- Recomputed declaration reservation for ALL publications: foundation 10 reads / 21 App / 21 effects; interview 12/24/28; intervene 11/24/28; advance_time 10/21/23. Other verbs stay within the same 16/24/32 ceilings. Expanded P3 work has not been implemented or validated; no limits were relaxed.
+- `node --check tools/simulation-contract-check.mjs`, unstaged/staged `git diff --check`: PASS. Diagnostic commit/push succeeded.
+- Initial probe setup omitted build-time bootstrap lowering and initially expected TypeError for all strict-field rejections; both diagnostic mistakes were fixed before the passing run. They are not Core defects.
+- No new build/install/Ready/model/save-container/CI/broad regression run is claimed; existing P2 evidence above is historical. No release files changed.
+
+### Continuation
+
+The user explicitly instructed continued autonomous resolution rather than stopping at G2. First prefer an existing legitimate authority path; if the missing contract needs Core support, implement and validate it in an independent short-lived product worktree without copied product code, raised limits, a parallel scheduler authority or fake player transactions. Keep this Package Record and the sole live HANDOFF current. P3 still needs every simulation exit criterion, including real save-container restoration; do not issue a P4 handoff until those gates pass.
