@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.28 — Round 9 core mapping approved; Round 9.5 opened; not approved for implementation
+- **Status:** Discussion Draft v0.29 — Rounds 9–9.5 approved; Round 9.6 opened; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -59,7 +59,7 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 9.5
+## Current route — Round 9.6
 
 Required reading:
 
@@ -222,7 +222,11 @@ Approved: Package Data definitions, Lifecycle authority, Information perspective
 
 ### Round 9.5 — Lifecycle domain mapping and restricted Action API
 
-Map logical authorities into concrete Lifecycle domains/scopes and define the validated game verbs exposed to the intent resolver, including multi-domain transaction and actor-perspective handling.
+Approved: physical authority layout, bounded game verbs, transactional Resolution/Promotion/Graph publication, v1 rule-based NPC responses and the Authority Transaction Bridge as the sole required v1 Core prerequisite.
+
+### Round 9.6 — Information Views and Task Runtime mapping
+
+Freeze player-safe Sources/Views/Graphs, Narrator/Reflection/Advisor/Agenda contexts, task execution/result authority and v1 anti-leakage budgets.
 
 ### Round 10 — Implementation staging
 
@@ -266,7 +270,8 @@ Currently carried forward from research:
 - approved content-scale architecture with focused authored depth, tiered NPCs, reusable Case/anomaly/Claim assets and fragmented Eastbank Canon;
 - approved eight-case Signature network with distinct gameplay roles and predicate-based Eastbank convergence;
 - approved structured content production templates with Canon/Perspective/Generation separation and no prose-as-authority dependency;
-- approved top-level Atria Package mapping using Package Data / Lifecycle / Information / Task Runtime / authority-first Turn responsibilities.
+- approved top-level Atria Package mapping using Package Data / Lifecycle / Information / Task Runtime / authority-first Turn responsibilities;
+- approved concrete runtime authority layout and restricted Action API, with one v1 Core prerequisite for atomic cross-authority transactions and safe resolver observation.
 
 All unapproved elements remain open to revision.
 
