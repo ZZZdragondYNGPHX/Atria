@@ -59,7 +59,9 @@
 
 ### `skills`
 
-长期、独立的 repository-agent AI Skill 资产工作空间。每个 Skill 一个顶级目录，由 `SKILLS.md` 负责摘要路由。
+长期、独立的 repository-agent AI Skill 资产工作空间，**主要为 Web / remote Agent 提供仓库内可直接读取的 Skill 副本**。每个 Skill 一个顶级目录，由 `SKILLS.md` 负责摘要路由。
+
+Local / CLI / desktop Agent 若已经安装对应 Skill，应优先直接使用本地 Skill；不要为了模仿 Web 流程而绕读 `skills` 分支。只有本地缺失、用户明确要求仓库副本，或正式 Plan 明确锁定仓库版本时，才读取 `skills:SKILLS.md -> 对应 Skill`。
 
 Atria Runtime Skills（例如 `main:default/skills/**`）属于产品资产，继续留在 `main`，不得因为名称相同而搬入本工作空间。
 
@@ -202,9 +204,10 @@ Record 是永久实施历史。小任务可以在完成时一次写入；多阶�
 
 ## 10. Skills loading
 
-只有用户明确要求某 Skill，或当前正式 Plan 明确要求某 Skill 时，才读取：
+只有用户明确要求某 Skill，或当前正式 Plan 明确要求某 Skill 时，才加载。
 
-`skills:SKILLS.md -> 对应 Skill`。
+- **Web / remote：** 以仓库 `skills` 工作空间作为可访问 Skill 源，按 `skills:SKILLS.md -> 对应 Skill` 加载。
+- **Local / CLI / desktop：** 优先使用环境中已安装的本地 Skill；不要为了模仿 Web 流程而绕读 `skills` 分支。仅在本地缺失、用户明确要求仓库副本，或正式 Plan 明确锁定仓库版本时读取 `skills` 工作空间。
 
 Skill 可以指导技术方法，但不能扩大任务范围，也不能覆盖用户指令、Governance 或 Plan。
 
@@ -231,11 +234,11 @@ Governance 定义结果，不规定客户端实现。
 
 ### Web / remote
 
-使用 `WEB-PERSISTENT-PROMPT.md`。以远端 refs 为事实，使用实际可用的远程能力；没有运行过的本地测试、构建、真机或 UI 验证不得声称通过。
+使用 `WEB-PERSISTENT-PROMPT.md`。以远端 refs 为事实，使用实际可用的远程能力；Repository-agent Skill 需要时从 `skills` 工作空间加载；没有运行过的本地测试、构建、真机或 UI 验证不得声称通过。
 
 ### Local / CLI
 
-使用当前工作区 `AGENTS.md`。优先本地 Git、文件系统、搜索、测试、构建以及独立 worktree；保护已有 dirty changes，不为模仿 Web 流程而绕远程 API。
+使用当前工作区 `AGENTS.md`。优先本地 Git、文件系统、搜索、测试、构建、独立 worktree以及本地已安装 Skill；保护已有 dirty changes，不为模仿 Web 流程而绕远程 API 或 `skills` 分支。
 
 `CLAUDE.md` 只作为 Claude Code 薄入口，不复制第二套 Governance。
 
