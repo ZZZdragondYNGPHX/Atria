@@ -258,7 +258,7 @@ Eastbank convergence is unlocked by evidence predicates, not "casesCompleted". T
 
 ## P8 — Frontend-specialized integration
 
-Detailed visual/UI/UX design is intentionally delegated to a frontend-specialized AI or AI with the relevant frontend skill.
+Detailed visual/UI/UX design is intentionally delegated to a frontend-specialized AI using the user's installed frontend Skills.
 
 The frontend receives the frozen functional contract:
 
@@ -274,9 +274,136 @@ This Plan does not prescribe visual hierarchy, color, typography, navigation arc
 
 Frontend design exploration may begin after P5. Formal integration should converge after P7 to reduce content-driven rework.
 
+### P8 required Skill set
+
+The execution environment is expected to have these four Skills installed. They are external agent Skills, not Atria repository-agent assets, and should not be copied into the Atria `skills` branch merely for this project.
+
+1. **frontend-design**
+   - Source: `anthropics/skills`
+   - Upstream path: `skills/frontend-design/SKILL.md`
+   - Primary responsibility: distinctive visual direction, subject-matter-specific aesthetic identity, typography/layout character, anti-template / anti-"AI slop" critique.
+   - Use when establishing or materially reshaping the visual concept.
+   - It is the **visual identity lead**, not the accessibility/compliance authority.
+
+2. **ui-ux-pro-max**
+   - Source: `nextlevelbuilder/ui-ux-pro-max-skill`
+   - Upstream path: `.claude/skills/ui-ux-pro-max/SKILL.md`
+   - Primary responsibility: design-system generation, UX structure, responsive behavior, accessibility, touch/interaction, typography/color systems, component/system consistency and stack-aware implementation guidance.
+   - Use for the project-wide design system and for component/page-level UX decisions.
+   - It is the **system/UX lead**.
+
+3. **emil-design-eng**
+   - Source: `emilkowalski/skills`
+   - Upstream path: `skills/emil-design-eng/SKILL.md`
+   - Primary responsibility: interaction polish, micro-interactions, animation decisions, perceived responsiveness, interruptible motion, component feel and invisible design-engineering details.
+   - Use after structure/usability are stable.
+   - It is the **interaction/motion polish lead**, not the primary visual concept generator.
+
+4. **web-design-guidelines**
+   - Source: `vercel-labs/agent-skills`
+   - Upstream path: `skills/web-design-guidelines/SKILL.md`
+   - Runtime rule source: `vercel-labs/web-interface-guidelines:command.md`
+   - Primary responsibility: final implementation audit for web-interface best practices such as accessibility, focus, forms, animation, typography, content handling, performance, navigation/state, touch, safe areas, dark mode, i18n and hydration.
+   - Fetch/use the current upstream guidelines when performing the audit.
+   - It is the **final compliance/review lead**, not a visual-direction generator.
+
+### P8 Skill routing
+
+Do not load all four Skills for every frontend task. Use the smallest appropriate set.
+
+#### P8-A — Visual direction / identity
+
+Load:
+
+- **frontend-design** — primary;
+- **ui-ux-pro-max** — secondary.
+
+Responsibilities:
+
+- derive a visual language from this game's occult industrial-modernity subject matter rather than from generic dashboard/game templates;
+- establish typography, palette, density, composition principles and memorable visual motif;
+- use `ui-ux-pro-max` to pressure-test the direction for usability, responsive behavior, accessibility and coherent design-system rules;
+- reject generic SaaS-card layouts or fashionable effects that are unrelated to the game's subject matter.
+
+Expected result:
+
+- a reviewed frontend concept / design-system direction;
+- no implementation yet if visual direction is still unstable.
+
+#### P8-B — Design system / information architecture / component implementation
+
+Load:
+
+- **ui-ux-pro-max** — primary;
+- **frontend-design** — review support when a component or page drifts into generic/template styling.
+
+Responsibilities:
+
+- translate the approved player-safe information/actions into concrete navigation, hierarchy, responsive patterns and reusable components;
+- establish tokens, typography/color/spacing rules and component behavior;
+- cover desktop and mobile/touch constraints;
+- preserve semantic differences required by the Plan, especially Evidence / Testimony / Finding / Hypothesis and Claim / Seed;
+- never solve layout convenience by reading hidden Lifecycle authority.
+
+If the Skill persists a design system, keep it project-local to the Package frontend work and review it before treating it as design authority.
+
+#### P8-C — Interaction and motion polish
+
+Load:
+
+- **emil-design-eng** — primary;
+- **ui-ux-pro-max** — secondary for accessibility/reduced-motion/touch checks.
+
+Responsibilities:
+
+- decide whether an interaction should animate at all;
+- polish drawers, popovers, toasts, transitions, press feedback, gestures and state changes;
+- optimize perceived responsiveness and interruption behavior;
+- prefer motion that explains state/spatial change over decorative motion;
+- respect `prefers-reduced-motion` and touch-device behavior;
+- avoid slowing high-frequency investigation/navigation actions with unnecessary animation.
+
+Do not start P8-C before P8-B interaction structure is stable.
+
+#### P8-D — Final frontend audit
+
+Load:
+
+- **web-design-guidelines** — primary;
+- **ui-ux-pro-max** — secondary pre-delivery UX/accessibility checklist;
+- **emil-design-eng** only for targeted motion-quality review when motion remains material.
+
+Responsibilities:
+
+- audit the implemented frontend against the latest Vercel Web Interface Guidelines;
+- resolve accessibility/focus/form/touch/navigation/performance/content-overflow/i18n/hydration issues;
+- recheck responsive breakpoints, long Evidence/Case content, graph interaction and mobile safe areas;
+- perform final leakage audit: frontend reads only player-safe projection/authorized actions;
+- review real screenshots / devices where implementation quality cannot be established from code alone.
+
+### Skill conflict / priority rule
+
+When Skill advice conflicts, use this order:
+
+1. user instruction, Atria Repository Governance and approved Plan/technical authority;
+2. player-safe information/authority boundary and functional correctness;
+3. accessibility, input, responsive and performance constraints from `web-design-guidelines` / `ui-ux-pro-max`;
+4. project-specific visual direction from `frontend-design`;
+5. motion/polish guidance from `emil-design-eng`.
+
+Aesthetic or motion advice may never weaken accessibility, disclosure safety, typed-action authority or mobile usability.
+
 #### P8 exit gate
 
-Validate desktop/mobile behavior, long investigation data, graph interaction, overflow, touch affordances, important-state reachability and absence of hidden authority leakage. Real UI evidence is required where code-level validation cannot establish presentation quality.
+Validate desktop/mobile behavior, long investigation data, graph interaction, overflow, touch affordances, important-state reachability and absence of hidden authority leakage.
+
+P8 cannot exit until:
+
+- P8-A visual direction is deliberate and game-specific rather than template-derived;
+- P8-B design-system/component structure is responsive and semantically faithful;
+- P8-C motion/polish is purposeful, interruptible where appropriate and reduced-motion-safe;
+- P8-D latest-guideline audit has no unresolved launch-critical findings;
+- real UI evidence exists for presentation quality that code-level validation cannot establish.
 
 ---
 
@@ -341,7 +468,7 @@ Do not parallelize Package implementation against an unfinished P0 Core contract
 | P5 | "player.md" + "gameplay.md" + "content-architecture.md" + this module |
 | P6 | "content-architecture.md" + only corresponding world authority modules |
 | P7 | P6 set + relevant "technical-design.md" revelation/authority rules |
-| P8 | "platform-and-gameplay.md" + "technical-design.md" Round 9.6 + frontend skill/instructions |
+| P8 | "platform-and-gameplay.md" + "technical-design.md" Round 9.6 + installed Skills: frontend-design, ui-ux-pro-max, emil-design-eng, web-design-guidelines; load by P8-A/B/C/D routing above |
 | P9 | "index.md" + "decisions.md" + "technical-design.md" + this module + current Record/HANDOFF |
 
 Agents should not load the full Plan Bundle when the phase reading map is sufficient.
