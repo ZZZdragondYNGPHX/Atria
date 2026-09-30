@@ -3,7 +3,7 @@
 **Task ID:** `package/original-occult-western-fantasy-game`  
 **Primary Workspace (implementation):** `package`  
 **Current stage:** Pre-production research and design discussion  
-**Status:** Discussion Draft v0.5 — Round 2.5 approved; Round 2.6 opened; not approved for implementation  
+**Status:** Discussion Draft v0.6 — Round 2.6 approved; Round 3 opened; not approved for implementation  
 **Plan path:** `docs:plans/package/original-occult-western-fantasy-game.md`
 
 ## 1. Purpose
@@ -576,32 +576,219 @@ Rejected:
 - an immutable universe-authored Principle list;
 - treating Principle combinations as merely elemental spell schools.
 
-### 6.12 Round 2.6 question — Principle coverage pressure test
+### 6.12 Approved Principle coverage boundaries — Round 2.6
 
-Before society design begins, test whether the Common Eight can coherently support the major gameplay families without excessive exception rules or obvious redundancy.
+The Common Eight remain unchanged after gameplay pressure testing.
 
-Coverage targets:
+No ninth Principle is currently required.
 
-- investigation and evidence;
-- stealth and infiltration;
-- social influence and institutional authority;
-- direct conflict and defense;
-- healing and bodily transformation;
-- curses and hostile persistent effects;
-- divination and prediction;
-- summoning / external entities;
-- dream and mind interaction;
-- travel, barriers and spatial anomalies;
-- relics and equipment;
-- large-scale institutional or civic effects.
+### 6.12.1 Principle boundaries
 
-Round 2.6 should identify:
+Each Principle requires a positive domain and an explicit limit.
 
-- missing domains;
-- Principles that overlap too heavily;
-- combinations that produce unintuitive results;
-- gameplay families that should remain mostly mundane rather than supernatural;
-- boundaries that prevent any Principle from becoming an all-purpose solution.
+**Witness**
+
+Governs observation, proof, recognition, evidence, testimony and public confirmation.
+
+Does not permit unlimited reality alteration merely because many people believe something.
+
+**Name**
+
+Governs identity, designation, qualification, impersonation, substitution and erasure.
+
+Does not directly alter bodily or material structure.
+
+**Boundary**
+
+Governs inside / outside, entry, exclusion, containment, distance, domain and adjacency.
+
+Does not create targets from nothing and does not allow unconditional travel to unknown destinations.
+
+**Bond**
+
+Governs persistent relationships, rights, obligations, ownership, kinship, debt, loyalty and oath.
+
+Does not freely bind unrelated strangers without a real relational basis or successfully established Claim.
+
+**Memory**
+
+Governs continuity across time in a carrier such as a person, record, institution or supernatural storage structure.
+
+Does not rewrite the already established past.
+
+**Echo**
+
+Governs residue, resonance, repetition, traces and causal afterimages of events that actually occurred.
+
+Does not create an event that never happened and is not ordinary time travel.
+
+**Form**
+
+Governs current bodily or material structure, continuity, injury, transformation, restoration and embodiment.
+
+Does not create unlimited matter or energy from nothing.
+
+**Possibility**
+
+Governs unresolved outcomes, branching, omen, coincidence, risk and the narrowing of alternatives.
+
+Can influence only realities that have not yet been sufficiently settled. It does not retroactively negate strongly anchored outcomes and cannot make an outcome valid outside the Claim's Jurisdiction.
+
+### 6.12.2 System-wide hard boundaries
+
+The supernatural system adopts the following hard design constraints:
+
+1. **No unrestricted creation from nothing.**
+2. **No arbitrary rewriting of settled facts.**
+3. **Belief alone does not grant unlimited reality control.**
+4. **No unconditional traversal of boundaries.**
+5. **No unconditional direct domination of another person's will.**
+6. **Large-scale effects normally require large-scale Anchors rather than merely a stronger individual practitioner.**
+
+These constraints exist to preserve ordinary material reality, social gameplay, technology, institutions and meaningful opposition.
+
+### 6.12.3 Coverage result
+
+The Common Eight can support the major expected gameplay families without adding dedicated elemental, mental, death, dream, spirit or time Principles.
+
+Representative mappings:
+
+- investigation: **Witness + Echo**;
+- identity verification / disguise: **Name + Witness**;
+- infiltration: **Name + Witness / Boundary**;
+- tracking: **Echo + Bond / Name**;
+- institutional authority: **Name + Bond + Witness**;
+- contracts and oath: **Bond + Name**;
+- barriers and defense: **Boundary + Form**;
+- healing: **Form + Memory**;
+- transformation: **Form + Name**;
+- curse: **Bond + Echo / Name**;
+- divination: **Possibility + Echo + Witness**;
+- dream interaction: **Memory + Boundary**, with Possibility in deeper forms;
+- summoning: **Boundary + Name + Bond**;
+- dead-person phenomena: combinations of **Name + Echo + Memory + Bond + Form**;
+- travel and spatial anomaly: **Boundary + Name / Bond**;
+- relics: **Form + Echo + Bond**;
+- large civic workings: institutional combinations of several Principles supported by mass Anchors.
+
+### 6.12.4 Deliberate non-Principles
+
+The following are intentionally not independent Principles at this stage:
+
+- fire / ice / lightning / shadow or other elements;
+- dream;
+- blood;
+- mind;
+- death;
+- spirit;
+- time.
+
+These should emerge through Principle combinations.
+
+This preserves the importance of ordinary guns, explosives, electricity, poison, medicine, transport and material infrastructure.
+
+### 6.12.5 Memory versus Echo
+
+The distinction is approved:
+
+- **Memory** is preserved continuity in a carrier;
+- **Echo** is residue left by an event even if nobody consciously remembers it.
+
+A destroyed record can eliminate one Memory carrier while a location or object may still retain Echo.
+
+### 6.12.6 Name versus Bond
+
+The distinction is approved:
+
+- **Name** answers what or who something is;
+- **Bond** answers what valid relation exists between things or people.
+
+Identity and ownership must therefore remain mechanically distinct.
+
+### 6.12.7 Possibility restriction
+
+Possibility is the Principle most likely to become universal if unconstrained.
+
+Approved rule:
+
+**Possibility influences only unresolved outcomes within the Claim's Jurisdiction.**
+
+The more strongly an outcome is anchored by observation, evidence, consequence and institutional recognition, the less available it becomes to Possibility.
+
+This creates a useful structural opposition:
+
+**Possibility preserves or biases uncertainty; Witness helps settle uncertainty into reality.**
+
+### 6.12.8 Mental influence restriction
+
+Direct mind control is intentionally weak and difficult.
+
+Most supernatural influence over persons should work through narrower operations such as:
+
+- changing remembered continuity through Memory;
+- changing perceived or recognized identity through Name;
+- strengthening or damaging existing obligations through Bond;
+- controlling access through Boundary.
+
+An unconditional command that overrides a person's will should require extraordinary, specific and expensive conditions rather than being a routine social spell.
+
+### 6.12.9 Large-scale supernatural engineering
+
+City-scale and national-scale effects should generally be **institutional**, not the automatic consequence of an individual reaching a high numeric tier.
+
+Examples of mass Anchors include:
+
+- registries;
+- courts;
+- borders;
+- hospitals;
+- graveyards;
+- churches;
+- newspapers;
+- civil-service procedures;
+- property systems;
+- railways;
+- telegraph networks;
+- recurring public rituals.
+
+This supports the design direction that modern institutions can themselves become enormous supernatural machines.
+
+### 6.13 Round 2.6 decision
+
+Approved:
+
+- keep the Common Eight unchanged;
+- formal positive and negative boundaries for all eight;
+- six system-wide hard limits;
+- no elemental / death / dream / spirit / time Principles;
+- explicit Memory/Echo and Name/Bond separation;
+- strict Possibility settlement rule;
+- intentionally weak direct mind control;
+- institutional mass Anchors for large-scale effects.
+
+Rejected:
+
+- adding Principles merely to cover familiar fantasy spell categories;
+- allowing Possibility to become generic probability control;
+- ordinary retroactive fact rewriting;
+- large-scale reality control based solely on personal power tier.
+
+### 6.14 Round 3 question — society generated by the supernatural rules
+
+Round 3 must derive society from the approved metaphysics instead of designing factions independently.
+
+It must determine:
+
+- whether the supernatural is public, classified, folkloric or layered by social class;
+- how religion relates to Claims, Investiture and deep cosmology;
+- how monarchy, nobility, citizenship, courts and property use Name / Bond / Witness;
+- how archives, universities and police manage supernatural evidence;
+- how banks, insurance and corporations exploit enforceable obligations and records;
+- how newspapers, telegraphy and mass recognition affect public reality;
+- which institutions are intentionally supernatural infrastructure;
+- how ordinary people interact with these systems without being trained practitioners;
+- where black markets, heresies and secret societies emerge;
+- how state and church power remain limited enough for mystery, crime and political conflict to exist.
 
 ## 7. Atria platform fit — current verified direction
 
@@ -743,7 +930,7 @@ Approved: Common Eight as a human operational taxonomy, normally combined throug
 
 ### Round 2.6 — Principle coverage pressure test
 
-Pressure-test the Common Eight against major gameplay families and identify gaps, overlap and necessary boundaries.
+Approved: Common Eight retained, explicit Principle limits, hard system boundaries and institutional scaling.
 
 ### Round 3 — Society generated by the supernatural rules
 
