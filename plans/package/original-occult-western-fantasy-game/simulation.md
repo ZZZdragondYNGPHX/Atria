@@ -12,7 +12,7 @@ Owns Round 6: authoritative world state, Truth / Belief / Memory / Exposure mapp
 - `player.md`
 - `metaphysics.md` only when a state design would alter supernatural rules.
 
-> **Current discussion:** Rounds 6–6.5 are approved. Round 6.6 is open: perspective-specific context projection and anti-leakage design.
+> **Current discussion:** Rounds 6–6.6 are approved. Round 6.7 is open: world-advance scheduling, batching and model-call budget.
 
 ---
 
@@ -827,28 +827,379 @@ Rejected:
 - full economy simulation by default;
 - quest progress / Truth percentage / sanity / faction-clock shadow variables.
 
-### 6.36 Round 6.6 question — perspective-specific context projection
+### 6.36 Approved perspective-specific context projection — Round 6.6
 
-Round 6.6 must define what each AI-facing task is actually allowed to see.
+There is no single complete “game prompt”.
 
-It must design separate context packages for at least:
+Every AI-facing task receives a purpose-specific, bounded Context Package.
 
-- Narrator;
-- speaking / acting NPC;
-- institutional Agenda Model Task;
-- Case Reflection / investigation assistance;
-- Claim interpretation / supernatural advisory tasks where needed.
+All Context Packages use the same conceptual assembly order:
 
-It must determine:
+1. **Task Identity** — what this model invocation is responsible for;
+2. **Immediate State** — current authoritative state required for the task;
+3. **Relevant Graph Slice** — a bounded graph projection rooted in Scene / Matter / Actor / Task;
+4. **Perspective Memory** — only Memories legitimately available to this perspective;
+5. **Recent Narrative** — a small amount of recent narrative for continuity.
 
-- what each context always receives;
-- what is selected dynamically by current Scene / Matter / Actor / Task;
-- what is explicitly forbidden from each context;
-- how recent narrative is combined with structured state;
-- how relevant Beliefs and Memories are selected;
-- how graph depth / item / character budgets are bounded;
-- how source authority and uncertainty are represented so the model does not flatten Belief into Truth;
-- how actor-to-actor information sharing becomes an explicit world event rather than implicit prompt leakage;
-- how task output is validated and prevented from writing outside its authority;
-- how the same system avoids omniscience, cross-NPC leakage, stale context and unlimited prompt growth.
+Structured authority has higher precedence than narrative text.
+
+#### 6.36.1 Narrator context
+
+The Narrator normally receives:
+
+- current Scene;
+- canonical world time;
+- observable entities and environment;
+- already-resolved Outcome Packet;
+- player-known Evidence and Findings relevant to the scene;
+- visible actor behavior;
+- limited relevant relations and institutional state;
+- compact recent narrative.
+
+The Narrator must not receive by default:
+
+- unrevealed culprit identity;
+- private NPC Beliefs;
+- private NPC Memories;
+- undiscovered Evidence;
+- secret institutional Agenda steps;
+- complete Eastbank Truth;
+- unrelated world Truth.
+
+The Narrator describes what is available to narrate rather than possessing omniscience.
+
+#### 6.36.2 Outcome Packet
+
+Every resolved player action produces an authoritative **Outcome Packet** before narrative generation.
+
+It may contain:
+
+- outcome class;
+- achieved objective;
+- structured consequences;
+- time elapsed;
+- state changes;
+- visible reactions;
+- unresolved uncertainty.
+
+The Narrator may dramatize this packet but may not add, remove or invert its mechanical facts.
+
+Absence of an immediate consequence does not imply absence of future state.
+
+#### 6.36.3 Actor context
+
+An NPC Actor context is centered on that actor and should normally contain:
+
+- actor Identity / Office;
+- current Beliefs;
+- relevant Memories;
+- current observable Scene;
+- real Relations relevant to the scene;
+- current Obligations;
+- relevant Agenda state if the actor owns one;
+- public or legitimately acquired information.
+
+It must not contain institution-wide knowledge merely because the actor belongs to that institution.
+
+#### 6.36.4 Institution knowledge is not employee knowledge
+
+Institutional Belief and Institutional Records do not automatically become the Belief of every member.
+
+An actor learns institutional information only through valid mechanisms such as:
+
+- role / Office access;
+- formal notification;
+- direct record access;
+- meeting;
+- communication;
+- public report.
+
+This prevents cross-NPC and organization-wide knowledge leakage.
+
+#### 6.36.5 Communication is a world event
+
+Information transfer between actors must occur through an explicit communication or publication event.
+
+If Actor A tells Actor B a claim:
+
+- B receives a source-attributed communication;
+- B may create a Testimony-channel Belief;
+- B may accept, reject or remain uncertain;
+- the content does not become World Truth merely through transmission.
+
+Information therefore travels through the world rather than copying invisibly between prompts.
+
+#### 6.36.6 Institutional Agenda Task context
+
+An Agenda Model Task receives only the institution's legitimate operational perspective:
+
+- institution Identity;
+- current Agenda;
+- Blockers;
+- institution-owned records;
+- institution Beliefs;
+- legally/publicly acquired information;
+- relevant Matter / Entity graph slice;
+- canonical time;
+- allowed Action Catalog.
+
+It should normally receive no general narrative history.
+
+The task outputs only a bounded action proposal compatible with the allowed catalog.
+
+#### 6.36.7 Agenda Task does not consume ordinary Narrative by default
+
+Narrative prose is intentionally excluded from ordinary institutional Agenda tasks unless the prose has already become an authoritative Artifact, Event or public communication.
+
+This prevents metaphor, tone or narration errors from being mistaken for institution knowledge.
+
+#### 6.36.8 Case Reflection context
+
+Case Reflection is a non-oracular player assistance task.
+
+It may receive only player-known:
+
+- Evidence;
+- Findings;
+- Hypotheses;
+- Leads;
+- known Settlements;
+- player Case notes;
+- revealed graph relations.
+
+It must not receive:
+
+- hidden World Truth;
+- unrevealed Evidence;
+- private NPC Belief;
+- future Agenda steps;
+- hidden trigger conditions.
+
+#### 6.36.9 Reflection functions
+
+Permitted Reflection functions include:
+
+- consistency checking;
+- evidence relationship mapping;
+- highlighting unanswered questions;
+- surfacing contradictions among already known records;
+- reminding the player of an acquired but overlooked relationship.
+
+Reflection must not identify the canonical answer from hidden data or generate new Evidence.
+
+#### 6.36.10 Supernatural / Claim Advisory context
+
+A dedicated advisory task may inspect necessary mechanical Claim state such as:
+
+- formal Claim structure;
+- Anchor state;
+- Price state;
+- Conditions;
+- player-known occult theory;
+- permitted diagnostic output.
+
+Mechanical visibility does not grant permission to reveal hidden story knowledge.
+
+If the true cause of a Claim problem depends on an unrevealed Anchor event, the advisor may report a symptom class such as “Anchor interruption is consistent with this failure” without revealing the hidden cause.
+
+#### 6.36.11 Context item provenance
+
+AI-facing structured information should preserve epistemic metadata such as:
+
+- semantic class;
+- source;
+- subject / actor where relevant;
+- effective or observed time;
+- status such as active / disputed / superseded.
+
+Do not flatten all projected text into undifferentiated “facts”.
+
+#### 6.36.12 Avoid generic confidence scores
+
+Do not use one floating-point truth-confidence value such as `0.73` as the primary epistemic representation.
+
+Prefer source and status distinctions such as:
+
+- Police testimony — disputed;
+- Player Finding — verified from two sources;
+- Newspaper report — unverified;
+- Institutional Record — active.
+
+This reflects actual information structure rather than inventing pseudo-probabilities.
+
+#### 6.36.13 Context precedence
+
+When projected sources conflict, the context compiler and task contract should preserve this priority:
+
+1. authoritative structured state;
+2. resolved Outcomes / Events;
+3. perspective Beliefs / Memories;
+4. approved Knowledge resources;
+5. recent Narrative.
+
+Recent Narrative supports continuity but does not override authoritative structured state.
+
+#### 6.36.14 Recent narrative is bounded
+
+Do not provide the entire conversation history to every task.
+
+The Narrator may receive a small recent scene window plus compact narrative rollup.
+
+Older durable facts must re-enter context through:
+
+- Event;
+- Memory;
+- Settlement;
+- Finding;
+- Relation;
+- relevant Knowledge.
+
+#### 6.36.15 NPCs do not receive whole chat history
+
+An NPC appearing for the first time does not inherit the player's previous conversations.
+
+Actor context may include only:
+
+- scenes the actor participated in;
+- information explicitly communicated to the actor;
+- public or institutionally available material the actor plausibly obtained;
+- retained actor Memory.
+
+#### 6.36.16 Bounded graph radius by task
+
+Default design tendency:
+
+- **Narrator** — current Scene depth 1–2 plus a narrow active-Matter slice;
+- **Actor** — self-centered relationship depth 1 plus current Scene / Matter additions;
+- **Agenda Task** — Institution + Agenda depth 1–2;
+- **Case Reflection** — player-known Matter graph depth 2–3;
+- **Advisory Task** — exact Claim / Anchor / Condition references rather than broad graph traversal.
+
+Exact depth / edge budgets are deferred to Round 9.
+
+#### 6.36.17 Independent context budgets
+
+Each task class should have its own item and character budget.
+
+Default density tendency:
+
+- ordinary Actor — smallest;
+- Agenda Task — small, highly structured;
+- Claim Advisor — small to medium, rule-dense;
+- Narrator — medium;
+- Case Reflection — largest, but strictly player-known.
+
+Do not simply configure every Atria Information View to the maximum supported item / character limits.
+
+#### 6.36.18 Stale knowledge is perspective state
+
+An Actor may continue to believe an outdated fact if no valid information transfer updated them.
+
+Projection must not silently substitute the latest World Truth for an actor's last known Belief.
+
+Knowledge changes through observation, communication, record access or another legitimate information event.
+
+#### 6.36.19 Public information channel
+
+Widely published law, news or announcements may use a public-information mechanism instead of individually simulating every copy of a newspaper.
+
+Propagation may depend on:
+
+- place;
+- institution;
+- communication channel;
+- elapsed time.
+
+Public information creates attributable public Belief / report state, not instantaneous universal omniscience.
+
+#### 6.36.20 User speech is not authority
+
+Player statements inside dialogue are speech Events, not system facts.
+
+If the player tells an NPC “you already know the mayor is guilty,” the Actor context still contains only the NPC's actual Beliefs.
+
+This prevents prompt-style user assertions from silently rewriting character knowledge.
+
+#### 6.36.21 AI output authority classes
+
+Every AI-facing task has an explicit output authority.
+
+**Narrative Output**
+
+May render scene prose and presentation only.
+
+**Actor Output**
+
+May produce actor speech, actor action intent and bounded Belief / Memory proposals.
+
+**Agenda Output**
+
+May produce an allowed institutional / actor Agenda action proposal.
+
+**Reflection Output**
+
+May organize already-known player information.
+
+**Advisory Output**
+
+May explain permitted mechanics under player Knowledge policy.
+
+Any hard world mutation still requires validated Native commands.
+
+### 6.37 Round 6.6 decision
+
+Approved:
+
+- no universal game prompt;
+- common five-layer Context Package assembly;
+- bounded Narrator without hidden omniscience;
+- authoritative Outcome Packet before narration;
+- actor-centered NPC context;
+- institutional knowledge not automatically inherited by members;
+- communication / publication as explicit information-transfer events;
+- structured Agenda Task context without ordinary Narrative by default;
+- non-oracular Case Reflection;
+- mechanical Claim Advisory constrained by Knowledge policy;
+- semantic / source / time / status provenance on context items;
+- no generic confidence score;
+- structured-state precedence over recent Narrative;
+- bounded recent narrative;
+- no whole-chat NPC context;
+- task-specific graph radius and budget;
+- stale knowledge preserved until valid transfer;
+- public-information propagation without universal instant sync;
+- user dialogue is not authority;
+- explicit output-authority class for every AI task.
+
+Rejected:
+
+- one full-context prompt shared by all AI calls;
+- giving Narrator hidden Truth and relying on instruction discipline;
+- employee access to all institution knowledge;
+- implicit actor-to-actor knowledge copying;
+- Agenda decisions based on decorative narrative prose;
+- Reflection access to answer keys;
+- advisory tasks leaking unrevealed story facts;
+- prompt history as the primary source of NPC knowledge;
+- user claims treated as system facts.
+
+### 6.38 Round 6.7 question — world-advance scheduling and model-call budget
+
+Round 6.7 must determine when the background simulation advances and when a Model Task is justified.
+
+It must define:
+
+- the deterministic order after a player action commits;
+- which updates happen synchronously without any model;
+- how due Matters, Conditions, appointments and evidence decay are processed;
+- how Agenda triggers are collected and batched;
+- whether multiple institutions can advance in one world tick;
+- how simultaneous or conflicting actions are ordered;
+- which Agenda steps are deterministic and which require model proposals;
+- per-Scene / per-Day / per-Arc limits on background model calls;
+- how low-relevance institutions remain dormant without appearing frozen;
+- how far the simulation may fast-forward during travel / recovery / downtime;
+- how pending background events are surfaced to the player without narrating every invisible action;
+- how retries, failed Model Tasks and unavailable providers fail safely without corrupting world state;
+- how deterministic replay / save-restore preserves the same already-resolved background outcomes.
 
