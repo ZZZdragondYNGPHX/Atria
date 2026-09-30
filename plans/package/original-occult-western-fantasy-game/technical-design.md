@@ -381,3 +381,22 @@ Therefore the approved design **Player Intent → authority resolution / commit 
 `narrative-outcome` should not be used for ordinary gameplay authority because it intentionally interprets narrative after generation.
 
 The remaining Round 9 work is to define the Package game-logic tool/action surface so the intent resolver can perform only validated world operations.
+
+
+### Round 9.5 verified runtime constraints
+
+The following constraints are now verified against `main@c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`:
+
+- Declarative Game World commands accept `id / description / argsSchema / validators / events / llm` and emit World Events. They do **not** directly declare Lifecycle `app.command` mutations.
+- Declarative interpretation mappings can produce a World command plus one Lifecycle `app.command`, but that bridge belongs to semantic outcome / task-authority handling rather than the ordinary `authority-first` intent-resolver command catalog.
+- Lifecycle action kinds are individually typed as `app.command`, `world.command`, `workflow.transition` or `task`; one workflow / automation action node contains one action, not an arbitrary atomic multi-action transaction.
+- `authority-first` free-text resolution exposes Game World commands through `createCommandToolCatalog(worldSession.getCommands())`.
+- The Host-created Game LLM runtime does not currently inject Package-defined `observationProjectors` or dynamic actor Information views into that intent-resolver path. The default observation projector contains only declared projector outputs (none in this Host path) plus recent sanitized World Events.
+- Information Actor views are statically bound to one `actorId`; there is no current invocation-time actor binding in the Information contract.
+
+These constraints mean two requirements need explicit Round 9.5 resolution rather than assumed Package wiring:
+
+1. **authority-first cross-authority transaction seam** — a free-text game verb may need to validate against and atomically update World/Lifecycle authority together;
+2. **dynamic actor-private perspective seam** — many persistent actors cannot each consume a dedicated static Information View.
+
+These are verified platform pressures. Whether they become Core implementation prerequisites depends on the accepted Round 9.5 architecture.
