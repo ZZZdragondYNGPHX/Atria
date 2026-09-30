@@ -111,3 +111,19 @@ The following are intentionally unresolved:
 13. What information should the player UI expose versus deliberately hide?
 14. What role should combat play?
 15. How long should one campaign/session be expected to persist?
+
+
+## 11. Round 7 — Frontend information and interaction constraints
+
+> **Current discussion:** Round 7 is intentionally lightweight. Define only player-facing information, required interactions, visibility boundaries and anti-leakage behavior. Detailed visual/UI/UX planning remains delegated.
+
+Round 7 must determine only:
+
+- which information categories the player must be able to inspect on demand;
+- which actions must be available outside freeform narration;
+- which uncertain or hidden state must never be exposed by the frontend;
+- how risk previews, Case information and Claim/Identity state are surfaced without revealing backend Truth;
+- what minimum affordances a later frontend designer must preserve regardless of visual design;
+- which information should remain embedded naturally in narrative instead of becoming dashboard state.
+
+Do not freeze screen count, layout, visual style, navigation pattern, component library, animation or responsive composition.
