@@ -15,29 +15,321 @@ Owns Round 9: translation of the approved game/content design into current Atria
 - `metaphysics.md`
 - `platform-and-gameplay.md`
 
-> **Current discussion:** Round 9 is open. Revalidate the current Atria `main` contracts before freezing any Package mapping. Existing platform capabilities must be reused where sufficient; only real missing primitives should be recorded as platform gaps.
+> **Current discussion:** Round 9 core mapping is approved. Round 9.5 is open: concrete Lifecycle domain mapping and restricted intent-resolver Action API.
 
 ---
 
-### 6.46 Round 9 question — Package technical design
+### 6.46 Approved top-level Package mapping — Round 9
 
-Round 9 must determine:
+The approved top-level architecture is:
 
-- which approved capabilities the Package declares;
-- how static authored content maps to Package Data resources;
-- how the fourteen logical simulation domains map to Lifecycle scopes/domains without needless fragmentation;
-- how the canonical world clock, automations and workflows map to Lifecycle;
-- how Narrator / Actor / Agenda / Reflection / Advisory views map to Information Runtime;
-- which tasks belong in Task Runtime and which logic remains deterministic;
-- how Case / Evidence graph projection is represented;
-- how Outcome Packets and resolved actions reach narration;
-- how save / restore and long-running continuity interact with generated/persisted state;
-- how bounded generative content is promoted into authoritative state;
-- which parts of the lightweight frontend contract must be supported by Presentation / Native Frontend without prescribing design;
-- whether any approved game requirement is not expressible by current Atria `main`;
-- which apparent gaps can be solved inside the Package and which, if any, require Core changes.
+**Package Data = definitions**
 
-Round 9 must not start Package implementation.
+**Lifecycle Runtime = authoritative mutable state**
+
+**Information Runtime = perspective / projection**
+
+**Task Runtime = bounded AI reasoning**
+
+**authority-first Package Turn + game logic = free-text player intent resolution**
+
+**Narrator = post-authority rendering**
+
+**Native Frontend = player-safe projections + authorized actions**
+
+The Package should reuse current Atria `main` capabilities wherever possible and record a Core gap only when the approved behavior cannot be represented safely through current contracts.
+
+#### 6.46.1 Package Data owns definitions, not live session truth
+
+Package Data should hold stable authored definitions such as:
+
+- Institutions;
+- actor cores;
+- important Locations;
+- Case Kits;
+- Anomaly Families;
+- Claim Catalog;
+- Canon Fragments;
+- Origin / background options;
+- Artifact templates;
+- terminology and narrative-support resources.
+
+Package Data answers **what kinds of things and rules exist**.
+
+Whether a player currently owns a Claim, an Evidence item exists in custody, or an Agenda has advanced belongs to Lifecycle state.
+
+#### 6.46.2 Hidden Canon is not generic Narrator Knowledge
+
+Hidden Canon must not be placed into one generally retrievable knowledge source that Narrator or unrelated tasks can accidentally retrieve.
+
+Public / learned knowledge may use Knowledge resources.
+
+Deep Canon should remain behind structured Package Data / authority state and explicit disclosure rules until legitimately projected.
+
+#### 6.46.3 Lifecycle carries the approved state domains
+
+Current Lifecycle limits are sufficient for the fourteen approved logical state domains and reasonable scope-driven physical splitting.
+
+The logical model remains:
+
+- entities;
+- events;
+- institutional records;
+- evidence;
+- relations;
+- beliefs;
+- memories;
+- matters;
+- settlements;
+- agendas;
+- conditions;
+- claims;
+- player life;
+- progression.
+
+Round 9.5 may split some into multiple physical Lifecycle domains where session / world scope, retention or command authority requires it.
+
+Domain count is not currently a Core gap.
+
+#### 6.46.4 One canonical world clock maps directly to Lifecycle
+
+Use one authoritative game world clock.
+
+Scene / Day / Arc remain design / presentation scales.
+
+Lifecycle Automations and Workflows handle:
+
+- deadlines;
+- recovery;
+- appointments;
+- Agenda triggers;
+- legal processes;
+- transport;
+- evidence decay;
+- other due transitions.
+
+Do not create separate subsystem clocks merely because the platform permits them.
+
+#### 6.46.5 Authority-first is the required ordinary Turn policy
+
+Current `main` confirms that `authority-first` supports the approved gameplay direction.
+
+For free-text player input:
+
+1. `role.intent_resolver` runs before Narrator;
+2. Package game logic / tools perform accepted authority changes;
+3. each publication advances the revision anchor;
+4. bounded Turn stages may then run;
+5. Narrator runs after authority resolution;
+6. `finalizeTurn` rejects Narrator-authored outcomes under this policy.
+
+Therefore ordinary gameplay should not use `narrative-outcome` as its state-authority mechanism.
+
+#### 6.46.6 Intent Resolver uses game verbs, never raw state patching
+
+The intent resolver must be exposed only to validated gameplay operations.
+
+Conceptual verbs include:
+
+- observe;
+- verify;
+- interview;
+- access;
+- test;
+- act;
+- invoke Claim;
+- publish;
+- create Hypothesis;
+- create Lead;
+- commit Case disposition;
+- spend Downtime;
+- advance time.
+
+The resolver may decide which operation best matches player intent.
+
+The operation implementation decides what is valid and what authoritative state changes occur.
+
+Do not expose a generic `patchState(path,value)` capability to the model.
+
+#### 6.46.7 Outcome Packet is a projection artifact, not a new truth store
+
+A resolved action may change:
+
+- Event;
+- Evidence;
+- Relation;
+- Condition;
+- Matter;
+- Institutional Record;
+- clock;
+- other authoritative state.
+
+The Narrator-facing Outcome Packet should be a structured projection of the just-committed authoritative changes.
+
+Do not create a permanent duplicate Outcome domain unless a later implementation need proves necessary.
+
+#### 6.46.8 Task Runtime remains small
+
+Expected AI task classes are limited.
+
+Likely categories:
+
+- Narrator — turn-blocking presentation;
+- Case Reflection — interactive advisory;
+- Claim / occult Advisor — interactive advisory;
+- Agenda Deliberation — background bounded proposal;
+- optional bounded document / public-text rendering where useful.
+
+Do not create one Model Task per NPC.
+
+#### 6.46.9 Background supersession must respect current Task authority rules
+
+Current Task Runtime forbids `queuePolicy=latest` on authority-producing Tasks.
+
+Therefore Round 6.7 supersession maps to state/request management:
+
+- pending decision requests may be marked superseded before authority acceptance;
+- a new anchored decision may then be scheduled;
+- accepted authority / committed Events are never superseded.
+
+Do not try to configure confirmed authority-producing tasks as replaceable latest work.
+
+#### 6.46.10 Investigation graph uses a derived index
+
+The authoritative graph spans several logical domains.
+
+Do not merge those authorities into one giant graph domain solely for projection convenience.
+
+Use a derived, rebuildable graph index with stable refs such as:
+
+- nodeId;
+- nodeKind;
+- display-safe / projection-safe fields;
+- edge refs.
+
+The graph index is not a source of World Truth and is not raw model-writeable.
+
+It serves Information bounded-graph projection.
+
+#### 6.46.11 Player / Narrator / specialist Task views fit current Information limits
+
+The fixed global views required for:
+
+- player display;
+- Narrator;
+- Case Reflection;
+- Claim Advisor;
+- Agenda Deliberation;
+- other small specialist tasks
+
+fit comfortably within the current 16-view Information limit.
+
+The pressure lies specifically in per-NPC private Actor views.
+
+#### 6.46.12 Actor-private perspective remains an unresolved technical pressure
+
+Current Information Actor Views are statically bound to a concrete `actorId`.
+
+The current global View limit is 16.
+
+The approved actor content scale cannot therefore assign one static private View to every persistent Tier A / Tier B Actor.
+
+Approved safety constraint:
+
+**do not solve this by giving a shared AI task unrestricted access to all actors' private Beliefs / Memories.**
+
+Round 9.5 must determine whether actor interaction can safely use Package game-logic tools to project one current target's perspective dynamically.
+
+If not, this becomes a genuine Core gap for dynamic actor-bound Information projection.
+
+#### 6.46.13 Continuity is not required merely because it exists
+
+Normal campaign persistence already uses Native Session / revisions / saves.
+
+Do not declare Player Continuity for the initial implementation unless the design explicitly requires cross-session or cross-campaign transferable state.
+
+#### 6.46.14 Frontend technical boundary
+
+Native Frontend receives:
+
+- player-safe display projections;
+- authorized action interfaces.
+
+It must not read unrestricted backend Lifecycle domains for convenience.
+
+Visual design remains outside this technical Plan.
+
+#### 6.46.15 Current gap status
+
+**Confirmed reusable without Core change:**
+
+- Package Data;
+- Lifecycle domain capacity;
+- canonical clock;
+- Automation / Workflow;
+- authority-first free-text turn;
+- post-authority Narrator;
+- bounded background Task Runtime;
+- belief / memory / open-loop information semantics;
+- bounded graph support through a derived index;
+- immutable revision / save / retry authority.
+
+**Needs Round 9.5 verification / design:**
+
+1. safe dynamic actor-private perspective for many persistent NPCs;
+2. typed multi-domain gameplay transactions through the Package-facing authority seam;
+3. exact derived graph-index publication strategy.
+
+At this point no additional Core gap is assumed.
+
+### 6.47 Round 9 decision
+
+Approved:
+
+- Package Data = definitions;
+- Lifecycle = mutable authority;
+- Information = perspective;
+- Task Runtime = bounded AI reasoning;
+- authority-first = ordinary free-text gameplay policy;
+- Narrator remains downstream of committed state;
+- restricted game-verb Action API instead of raw model patching;
+- Outcome Packet as derived Turn projection;
+- small shared task set rather than per-NPC Model Tasks;
+- state-level supersession before authority rather than `latest` confirmed tasks;
+- derived graph index instead of merging world authorities;
+- no initial Player Continuity requirement;
+- player-safe frontend projection boundary;
+- gap policy based only on genuine platform inability.
+
+Rejected:
+
+- Narrative Outcome as ordinary game-state authority;
+- hidden Canon in generic Narrator-retrievable Knowledge;
+- raw model state patching;
+- one Model Task per persistent NPC;
+- one monolithic graph authority domain;
+- declaring platform gaps merely because Package implementation is non-trivial.
+
+### 6.48 Round 9.5 question — Lifecycle domain mapping and restricted Action API
+
+Round 9.5 must translate the logical authority model into concrete Package-facing runtime operations.
+
+It must determine:
+
+- the physical Lifecycle domains and scopes;
+- which domains may be combined safely;
+- domain retention / terminal policy direction;
+- which Package Data resources initialize each domain;
+- the exact restricted game-verb API available to the intent resolver;
+- which verbs are pure reads, which create proposals and which commit authority;
+- how one high-level player action can update multiple logical authorities consistently;
+- how Resolution Frames / bounded Fortune are executed;
+- how actor interaction obtains one target's private perspective without global leakage;
+- how generated Tier C / bounded content is promoted to authoritative Entity / Actor state;
+- how graph-index publication follows authoritative writes;
+- how Outcome Packet projection is constructed after commit;
+- whether any of these operations require Core changes on current `main`.
+
 
 ## Current Atria main audit baseline
 
