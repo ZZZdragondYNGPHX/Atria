@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.30 — Rounds 9–9.6 approved; Round 9.7 opened; not approved for implementation
+- **Status:** Discussion Draft v0.31 — Rounds 9–9.7 approved; Round 9.8 opened; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -59,7 +59,7 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 9.7
+## Current route — Round 9.8
 
 Required reading:
 
@@ -230,7 +230,11 @@ Approved: disclosure-safe projection read models, seven Sources, five fixed View
 
 ### Round 9.7 — Package Data layout and exact Core bridge contract
 
-Freeze modular Package Data resource IDs and define the minimum versioned Authority Transaction Bridge contract before implementation staging.
+Approved: modular Package Data layout, `authority-transaction@1`, optional `authorityRuntime`, declarative transactions, bounded read/effect grants, atomic CAS publication and Turn-local safe receipts.
+
+### Round 9.8 — Technical Freeze / Core Gap Gate
+
+Perform the final end-to-end technical consistency audit, confirm the complete v1 Core prerequisite set, and freeze verification gates before implementation staging.
 
 ### Round 10 — Implementation staging
 
@@ -276,7 +280,8 @@ Currently carried forward from research:
 - approved structured content production templates with Canon/Perspective/Generation separation and no prose-as-authority dependency;
 - approved top-level Atria Package mapping using Package Data / Lifecycle / Information / Task Runtime / authority-first Turn responsibilities;
 - approved concrete runtime authority layout and restricted Action API, with one v1 Core prerequisite for atomic cross-authority transactions and safe resolver observation;
-- approved disclosure-safe Information/Task mapping with seven Sources, five fixed Views, two bounded investigation Graphs and four core Task classes.
+- approved disclosure-safe Information/Task mapping with seven Sources, five fixed Views, two bounded investigation Graphs and four core Task classes;
+- approved modular Package Data layout and the versioned `authority-transaction@1` Core contract.
 
 All unapproved elements remain open to revision.
 
