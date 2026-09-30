@@ -86,7 +86,7 @@ Current Atria `main` Information / Lifecycle contracts are implementation-fit ev
 | Round 4–4.6 | `index.md`, `player.md`; dependencies only as needed | Approved |
 | Round 5–5.6 | `index.md`, `gameplay.md`, `platform-and-gameplay.md`; dependencies only as needed | Approved |
 | Round 6 | `index.md`, `simulation.md`, `platform-and-gameplay.md`; dependencies only as needed | Current |
-| Round 7 | `index.md`, `platform-and-gameplay.md` plus simulation module | Create UI module when design starts |
+| Round 7 | `index.md`, `platform-and-gameplay.md`, `simulation.md` | Define only player-facing information/interaction constraints; visual/UI planning is delegated to a frontend-specialized AI and does not require a detailed Plan module by default |
 | Round 8 | `index.md` plus gameplay/simulation/UI and relevant world modules | Create content-architecture module when design starts |
 | Round 9 | `index.md`, `platform-and-gameplay.md` plus approved system/content modules | Create Package technical-design module when design starts |
 | Round 10 | `index.md`, `decisions.md`, technical-design module | Freeze implementation stages and exact implementation-stage reading map |
@@ -196,9 +196,9 @@ Approved: task-specific Context Packages, bounded Narrator/Actor/Agenda/Reflecti
 
 Define deterministic post-action scheduling, due-event batching, Agenda execution, background Model Task limits and safe save/replay behavior.
 
-### Round 7 — Native UI and interaction model
+### Round 7 — Frontend information and interaction constraints
 
-Define player-facing surfaces and which information remains intentionally uncertain.
+Define only which information and actions must be available or hidden. Do not prescribe layout, visual hierarchy, styling, animation, component composition or detailed UX. Detailed frontend/UI planning is delegated to an AI with strong frontend/design capability or an installed frontend skill.
 
 ### Round 8 — Content architecture
 
@@ -249,5 +249,7 @@ Currently carried forward from research:
 All unapproved elements remain open to revision.
 
 ## Material routing/design changes
+
+- **2026-09-30 — Frontend-planning boundary:** Round 7 is intentionally lightweight. This Plan records only information-access, interaction and leakage constraints; visual design and detailed UX architecture are delegated to a frontend-specialized AI / frontend skill to avoid over-constraining later design quality.
 
 - **2026-09-30 — Plan Bundle migration:** the previous 75 KB monolithic Plan was split by authority domain. No approved game-design decision was intentionally changed. `index.md` is now the only routing entrypoint; Round 3.8 reads `geography.md` first.
