@@ -395,7 +395,11 @@ The proposed method cannot accomplish the objective under current world rules. T
 
 **Uncertain**
 
-Meaningful opposition, timing, danger or unresolved external factors remain. Only this class uses bounded Fortune.
+Meaningful opposition, timing, danger or unresolved external factors remain. Only this class uses bounded Fortune to determine gameplay outcomes.
+
+**Implementation clarification (2026-09-30, user-authorized P2 adjustment):** eligibility precedes the *use* of randomness in resolution, not necessarily the Core's internal deterministic draw allocation. A static `bounded_fortune` transaction may internally allocate its anchored draw before cases execute. Authoritative Automatic / Impossible cases must take precedence and must not depend on that draw. Their accepted outcome, effect selection/values, elapsed time, derived publications and player/Narrator result must be invariant across Fortune values; do not expose an unused roll in their public receipt or context. Only Uncertain cases may consult the roll. A transaction that never needs Fortune should remain deterministic.
+
+This is a gameplay-semantics clarification, not a Package RNG or Core workaround. No model-selected eligibility, custom RNG, shadow Resolution state, extra transaction dispatch or weaker retry/boundedness contract is introduced. Verify non-Uncertain invariance and Uncertain bounded outcomes explicitly in P2 tests.
 
 This prevents competence from being erased by arbitrary bad luck.
 

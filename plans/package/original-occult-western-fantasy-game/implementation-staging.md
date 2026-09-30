@@ -109,7 +109,7 @@ Implement and validate:
 - Resolution Frame;
 - Automatic / Impossible / Uncertain;
 - qualitative Risk Tier;
-- deterministic bounded Fortune;
+- deterministic bounded Fortune, with Automatic / Impossible outcomes, effects and safe outputs invariant to unused internal draws (gameplay.md 6.28.2);
 - Evidence / Belief / Memory / Relation / Matter / Condition effects;
 - player-safe disclosure projections;
 - derived investigation index;
