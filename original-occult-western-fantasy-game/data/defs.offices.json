@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "office.civil_registry",
+      "kind": "civic_office",
+      "name": "Municipal Civil Registry",
+      "purpose": "Reusable civic_office foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "publicFunction": "Certified civil status copies",
+        "parentAuthority": "Public civil administration",
+        "liaison": "institution.police",
+        "jurisdiction": "Only this office can authorize its own restricted records; police liaison is not ownership or a general warrant."
+      },
+      "perspective": {
+        "publicDescription": "Certified civil status copies"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "office.civil_court",
+      "kind": "civic_office",
+      "name": "Municipal Civil Courts",
+      "purpose": "Reusable civic_office foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "publicFunction": "Hearings, enforceable orders and sealed-record access",
+        "parentAuthority": "Judicial administration",
+        "liaison": "institution.police",
+        "jurisdiction": "Only this office can authorize its own restricted records; police liaison is not ownership or a general warrant."
+      },
+      "perspective": {
+        "publicDescription": "Hearings, enforceable orders and sealed-record access"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "office.arrival_service",
+      "kind": "civic_office",
+      "name": "Port Arrival Service",
+      "purpose": "Reusable civic_office foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "publicFunction": "Arrival and customs records",
+        "parentAuthority": "Port civil administration",
+        "liaison": "institution.police",
+        "jurisdiction": "Only this office can authorize its own restricted records; police liaison is not ownership or a general warrant."
+      },
+      "perspective": {
+        "publicDescription": "Arrival and customs records"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "office.medical_examiner",
+      "kind": "civic_office",
+      "name": "Municipal Medical Examiner",
+      "purpose": "Reusable civic_office foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "publicFunction": "Body custody and examination records",
+        "parentAuthority": "Civil medical service",
+        "liaison": "institution.police",
+        "jurisdiction": "Only this office can authorize its own restricted records; police liaison is not ownership or a general warrant."
+      },
+      "perspective": {
+        "publicDescription": "Body custody and examination records"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

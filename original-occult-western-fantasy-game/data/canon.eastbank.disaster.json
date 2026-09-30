@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "canon.disaster",
+      "kind": "canon_fragment",
+      "name": "Disaster events",
+      "purpose": "Reusable canon_fragment foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.press",
+        "artifact.press",
+        "event.eastbank_settlement"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "subject": "Disaster events",
+        "timeScope": "Disaster approximately forty years ago and continuing records",
+        "assertions": [
+          "Fire and communications failures coincided with mass contradictions; a total event order is unknown."
+        ],
+        "events": [
+          "event.eastbank_settlement"
+        ],
+        "conflictingRecords": [
+          {
+            "artifact": "artifact.press",
+            "conflict": "Receipt times and eyewitness sequences disagree."
+          }
+        ],
+        "holders": [
+          "institution.press"
+        ],
+        "evidenceGateways": [
+          "artifact.press"
+        ],
+        "revealLayer": 2,
+        "projectionRules": [
+          "Never copy this fragment into Knowledge, model context or Views.",
+          "Only a separately authored weaker proposition may be acquired after validated custody and access."
+        ],
+        "epistemicStatus": "authored_fact"
+      },
+      "perspective": {
+        "currentlySupportable": "Receipt times and eyewitness sequences disagree."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

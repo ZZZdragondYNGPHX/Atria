@@ -1,4 +1,55 @@
 {
   "schemaVersion": 1,
-  "items": []
+  "items": [
+    {
+      "id": "canon.index",
+      "kind": "canon_index",
+      "name": "Eastbank fragment index",
+      "purpose": "Reusable canon_index foundation",
+      "authority": "definition",
+      "dependencies": [
+        "canon.geography",
+        "canon.registry",
+        "canon.disaster",
+        "canon.church",
+        "canon.insurance",
+        "canon.railway",
+        "canon.workers",
+        "canon.academy",
+        "canon.settlement",
+        "canon.press",
+        "canon.excluded",
+        "canon.deep"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "fragments": [
+          "canon.geography",
+          "canon.registry",
+          "canon.disaster",
+          "canon.church",
+          "canon.insurance",
+          "canon.railway",
+          "canon.workers",
+          "canon.academy",
+          "canon.settlement",
+          "canon.press",
+          "canon.excluded",
+          "canon.deep"
+        ],
+        "loading": "Exact backend fragment by authorized need; never aggregate model context."
+      },
+      "perspective": {
+        "publicDescription": "No public projection."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
 }

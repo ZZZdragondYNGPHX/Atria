@@ -1,0 +1,2117 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "claim.archetype.contradiction_register",
+      "kind": "claim_archetype",
+      "name": "contradiction register",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.witness",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Witness",
+          "Memory"
+        ],
+        "primitive": "primitive.witness",
+        "coreRule": "Compare preserved assertions without merging them",
+        "conditionFamily": "Separate custodians attest versions",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One docket",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "Do not erase disagreement",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "Do not erase disagreement",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Compare preserved assertions without merging them"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.witness_quorum",
+      "kind": "claim_archetype",
+      "name": "witness quorum",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.witness",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Witness",
+          "Bond"
+        ],
+        "primitive": "primitive.witness",
+        "coreRule": "Preserve separate attribution in joint attestation",
+        "conditionFamily": "Consenting witnesses record observations separately",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One hearing",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "Majority belief cannot create Truth",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "Majority belief cannot create Truth",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Preserve separate attribution in joint attestation"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.seal_comparison",
+      "kind": "claim_archetype",
+      "name": "seal comparison",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.witness",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Witness",
+          "Name"
+        ],
+        "primitive": "primitive.witness",
+        "coreRule": "Detect substitution of a witnessed seal",
+        "conditionFamily": "Original attestation remains in custody",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One seal pair",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No universal forgery detection",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No universal forgery detection",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Detect substitution of a witnessed seal"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.survey_disagreement",
+      "kind": "claim_archetype",
+      "name": "survey disagreement",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.witness",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Witness",
+          "Boundary"
+        ],
+        "primitive": "primitive.witness",
+        "coreRule": "Preserve conflicting measured boundaries during copying",
+        "conditionFamily": "Independent field measurements",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One plot",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No relocating land",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No relocating land",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Preserve conflicting measured boundaries during copying"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.registered_alias",
+      "kind": "claim_archetype",
+      "name": "registered alias",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.name",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Name",
+          "Witness"
+        ],
+        "primitive": "primitive.name",
+        "coreRule": "Maintain distinction between acknowledged aliases",
+        "conditionFamily": "Subject consent and recorded designations",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One subject",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No erasing other identities",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No erasing other identities",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Maintain distinction between acknowledged aliases"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.office_designation",
+      "kind": "claim_archetype",
+      "name": "office designation",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.name",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Name",
+          "Bond"
+        ],
+        "primitive": "primitive.name",
+        "coreRule": "Distinguish office authority from private designation",
+        "conditionFamily": "Valid investiture and records",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One office",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No creating offices by assertion",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No creating offices by assertion",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Distinguish office authority from private designation"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.familiar_continuity",
+      "kind": "claim_archetype",
+      "name": "familiar continuity",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.name",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Name",
+          "Memory"
+        ],
+        "primitive": "primitive.name",
+        "coreRule": "Recognize disrupted familiar identity continuity",
+        "conditionFamily": "Recurring acquaintance and present examination",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One known person",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No unknown true names",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No unknown true names",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Recognize disrupted familiar identity continuity"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.object_designation",
+      "kind": "claim_archetype",
+      "name": "object designation",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.name",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Name",
+          "Form"
+        ],
+        "primitive": "primitive.name",
+        "coreRule": "Maintain designation through permitted repairs",
+        "conditionFamily": "Custody and material continuity",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One registered object",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No object replacement from nothing",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No object replacement from nothing",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Maintain designation through permitted repairs"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.survey_threshold",
+      "kind": "claim_archetype",
+      "name": "survey threshold",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.boundary",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Boundary",
+          "Witness"
+        ],
+        "primitive": "primitive.boundary",
+        "coreRule": "Stabilize recognition of surveyed threshold",
+        "conditionFamily": "Physical markers and witnesses maintained",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One doorway",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No unconditional exclusion",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No unconditional exclusion",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Stabilize recognition of surveyed threshold"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.consented_enclosure",
+      "kind": "claim_archetype",
+      "name": "consented enclosure",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.boundary",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Boundary",
+          "Bond"
+        ],
+        "primitive": "primitive.boundary",
+        "coreRule": "Maintain agreed work boundary",
+        "conditionFamily": "Consent and physical boundary persist",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One work area",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No imprisonment of strangers",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No imprisonment of strangers",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Maintain agreed work boundary"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.known_route",
+      "kind": "claim_archetype",
+      "name": "known route",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.boundary",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Boundary",
+          "Memory"
+        ],
+        "primitive": "primitive.boundary",
+        "coreRule": "Preserve walked-route recognition after renaming",
+        "conditionFamily": "Personal memory and maintained map",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One known route",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No opening blocked passages",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No opening blocked passages",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Preserve walked-route recognition after renaming"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.relic_perimeter",
+      "kind": "claim_archetype",
+      "name": "relic perimeter",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.boundary",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Boundary",
+          "Form"
+        ],
+        "primitive": "primitive.boundary",
+        "coreRule": "Support an existing containment perimeter",
+        "conditionFamily": "Intact enclosure and custody checks",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One small enclosure",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No perfect force barrier",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No perfect force barrier",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Support an existing containment perimeter"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.custody_continuity",
+      "kind": "claim_archetype",
+      "name": "custody continuity",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.bond",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Bond",
+          "Witness"
+        ],
+        "primitive": "primitive.bond",
+        "coreRule": "Track gaps between attested handovers",
+        "conditionFamily": "Real object and witnessed chain",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One custody chain",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No remote thief identification",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No remote thief identification",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Track gaps between attested handovers"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.consented_oath",
+      "kind": "claim_archetype",
+      "name": "consented oath",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.bond",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Bond",
+          "Name"
+        ],
+        "primitive": "primitive.bond",
+        "coreRule": "Maintain recognition of voluntary duty",
+        "conditionFamily": "Consent and attested wording",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One oath",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No overriding will",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No overriding will",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Maintain recognition of voluntary duty"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.household_link",
+      "kind": "claim_archetype",
+      "name": "household link",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.bond",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Bond",
+          "Memory"
+        ],
+        "primitive": "primitive.bond",
+        "coreRule": "Preserve acknowledged relation through registry changes",
+        "conditionFamily": "Living recognition and household record",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One relation",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No ancestry revelation",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No ancestry revelation",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Preserve acknowledged relation through registry changes"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.pledge_separation",
+      "kind": "claim_archetype",
+      "name": "pledge separation",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.bond",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Bond",
+          "Witness"
+        ],
+        "primitive": "primitive.bond",
+        "coreRule": "Distinguish collateral obligations",
+        "conditionFamily": "Both contracts independently accessible",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One pledged object",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No cancelling creditors by observation",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No cancelling creditors by observation",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Distinguish collateral obligations"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.witnessed_memory",
+      "kind": "claim_archetype",
+      "name": "witnessed memory",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.memory",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Memory",
+          "Witness"
+        ],
+        "primitive": "primitive.memory",
+        "coreRule": "Retain a witnessed contradiction against normalization",
+        "conditionFamily": "Personal record and recognition maintained",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One fact",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No infallible Truth determination",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No infallible Truth determination",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Retain a witnessed contradiction against normalization"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.distributed_copy",
+      "kind": "claim_archetype",
+      "name": "distributed copy",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.memory",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Memory",
+          "Bond"
+        ],
+        "primitive": "primitive.memory",
+        "coreRule": "Preserve distinguishable continuity of entrusted copies",
+        "conditionFamily": "Consenting separate custodians",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One record family",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No restoration after all carriers are lost",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No restoration after all carriers are lost",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Preserve distinguishable continuity of entrusted copies"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.route_memory",
+      "kind": "claim_archetype",
+      "name": "route memory",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.memory",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Memory",
+          "Boundary"
+        ],
+        "primitive": "primitive.memory",
+        "coreRule": "Preserve walked boundary in named carrier",
+        "conditionFamily": "Carrier maintained and route actually known",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One route record",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No rewriting past geography",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No rewriting past geography",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Preserve walked boundary in named carrier"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.rite_continuity",
+      "kind": "claim_archetype",
+      "name": "rite continuity",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.memory",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Memory",
+          "Name"
+        ],
+        "primitive": "primitive.memory",
+        "coreRule": "Distinguish performed rite from later civil status",
+        "conditionFamily": "Recognized rite and durable carrier",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One rite record",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No resurrection or theological certainty",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No resurrection or theological certainty",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Distinguish performed rite from later civil status"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.strain_trace",
+      "kind": "claim_archetype",
+      "name": "strain trace",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.echo",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Echo",
+          "Form"
+        ],
+        "primitive": "primitive.echo",
+        "coreRule": "Distinguish strain residue from current damage",
+        "conditionFamily": "Existing substrate and comparative tests",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One component",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No full replay",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No full replay",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Distinguish strain residue from current damage"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.passage_residue",
+      "kind": "claim_archetype",
+      "name": "passage residue",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.echo",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Echo",
+          "Boundary"
+        ],
+        "primitive": "primitive.echo",
+        "coreRule": "Recognize passage trace at examined threshold",
+        "conditionFamily": "Real passage and retained substrate",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One doorway",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No identity of every traveller",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No identity of every traveller",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Recognize passage trace at examined threshold"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.bond_afterimage",
+      "kind": "claim_archetype",
+      "name": "bond afterimage",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.echo",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Echo",
+          "Bond"
+        ],
+        "primitive": "primitive.echo",
+        "coreRule": "Recognize residual evidence of former relation",
+        "conditionFamily": "Real relation and surviving carrier",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One trace",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No reinstating expired duties",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No reinstating expired duties",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Recognize residual evidence of former relation"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.repeated_signal",
+      "kind": "claim_archetype",
+      "name": "repeated signal",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.echo",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Echo",
+          "Witness"
+        ],
+        "primitive": "primitive.echo",
+        "coreRule": "Distinguish real signal residue from current transmission",
+        "conditionFamily": "Past signal and comparison logs",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One apparatus",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No future-message creation",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No future-message creation",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Distinguish real signal residue from current transmission"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.paper_continuity",
+      "kind": "claim_archetype",
+      "name": "paper continuity",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.form",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Form",
+          "Memory"
+        ],
+        "primitive": "primitive.form",
+        "coreRule": "Maintain inspected fibres during conservation",
+        "conditionFamily": "Surviving material and conservation record",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One document",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No absent-text reconstruction",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No absent-text reconstruction",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Maintain inspected fibres during conservation"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.supported_splint",
+      "kind": "claim_archetype",
+      "name": "supported splint",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.form",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Form",
+          "Bond"
+        ],
+        "primitive": "primitive.form",
+        "coreRule": "Support bodily continuity during immobilization",
+        "conditionFamily": "Consent, viable tissue and splint",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One treated limb",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No instant healing or missing limb creation",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No instant healing or missing limb creation",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Support bodily continuity during immobilization"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.seal_integrity",
+      "kind": "claim_archetype",
+      "name": "seal integrity",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.form",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Form",
+          "Witness"
+        ],
+        "primitive": "primitive.form",
+        "coreRule": "Maintain inspected seal during custody",
+        "conditionFamily": "Intact material and inspection record",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One seal",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No indestructibility or guarantee of contents",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No indestructibility or guarantee of contents",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Maintain inspected seal during custody"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.relic_housing",
+      "kind": "claim_archetype",
+      "name": "relic housing",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.form",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Form",
+          "Boundary"
+        ],
+        "primitive": "primitive.form",
+        "coreRule": "Maintain existing protective housing",
+        "conditionFamily": "Intact material and bounded stress",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One portable housing",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No infinite shielding",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No infinite shielding",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Maintain existing protective housing"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.open_test",
+      "kind": "claim_archetype",
+      "name": "open test",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.possibility",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Possibility",
+          "Witness"
+        ],
+        "primitive": "primitive.possibility",
+        "coreRule": "Preserve a supported alternative until test completion",
+        "conditionFamily": "Two valid unresolved outcomes",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One test",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No guaranteed result or settled-evidence reroll",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No guaranteed result or settled-evidence reroll",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Preserve a supported alternative until test completion"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.hazard_margin",
+      "kind": "claim_archetype",
+      "name": "hazard margin",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.possibility",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Possibility",
+          "Form"
+        ],
+        "primitive": "primitive.possibility",
+        "coreRule": "Narrow a minor unresolved handling hazard",
+        "conditionFamily": "Viable safe outcome and physical support",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One local handling attempt",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No undoing injury or impossible survival",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No undoing injury or impossible survival",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Narrow a minor unresolved handling hazard"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.route_omen",
+      "kind": "claim_archetype",
+      "name": "route omen",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.possibility",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Possibility",
+          "Echo"
+        ],
+        "primitive": "primitive.possibility",
+        "coreRule": "Interpret real route residue as bounded warning",
+        "conditionFamily": "Real residue and unresolved route choice",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One immediate choice",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No exact prophecy or unknown-destination travel",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No exact prophecy or unknown-destination travel",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Interpret real route residue as bounded warning"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.archetype.decision_reserve",
+      "kind": "claim_archetype",
+      "name": "decision reserve",
+      "purpose": "Reusable claim_archetype foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.possibility",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Possibility",
+          "Bond"
+        ],
+        "primitive": "primitive.possibility",
+        "coreRule": "Keep a lawful uncommitted choice available",
+        "conditionFamily": "Voluntary agreement and real alternatives",
+        "anchorPatterns": [
+          "Maintained witnessed carrier suited to this condition"
+        ],
+        "pricePatterns": [
+          "Ongoing maintenance and reporting"
+        ],
+        "baseJurisdiction": "One pending agreement",
+        "growthDirections": [
+          "Broader scope requires separately authored larger Anchors and validated conditions."
+        ],
+        "incompatibilities": [
+          "Cannot combine with a Claim negating this condition without resolving conflict."
+        ],
+        "failureModes": [
+          "Carrier loss suspends support; no invented substitute consequence."
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "engineeringLimits": [
+          "No cancelling settled contracts or compelling consent",
+          "Later authoring must bind approved effects with static targets."
+        ],
+        "hardProhibitions": [
+          "No cancelling settled contracts or compelling consent",
+          "No settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Catalog definition; not granted or executed."
+      },
+      "perspective": {
+        "playerDescription": "Keep a lawful uncommitted choice available"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

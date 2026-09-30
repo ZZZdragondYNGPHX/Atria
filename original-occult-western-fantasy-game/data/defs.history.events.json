@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "event.eastbank_settlement",
+      "kind": "historical_event",
+      "name": "Eastbank Settlement",
+      "purpose": "Reusable historical_event foundation",
+      "authority": "definition",
+      "dependencies": [],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "timeScope": "Approximately forty years before campaign start; exact date unassigned.",
+        "facts": [
+          "Fire, transport disruption and telegraph failure accompanied mass identity contradiction.",
+          "State, Church, Capital and Academy stabilized a coherent version, not complete Truth."
+        ],
+        "limits": [
+          "No complete casualty list or deep cosmological cause asserted."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Official history records a disaster and reconstruction approximately forty years ago."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

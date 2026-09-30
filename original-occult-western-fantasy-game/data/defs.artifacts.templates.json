@@ -1,0 +1,405 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "artifact.police",
+      "kind": "artifact_template",
+      "name": "Municipal Police: supervised extract",
+      "purpose": "Reusable artifact_template foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "semanticPayload": {
+          "issuer": "institution.police",
+          "issueTime": "Assigned only to an authored dated instance.",
+          "subject": "registry",
+          "assertedProposition": "Original attendance records are incomplete",
+          "names": [],
+          "dates": [],
+          "signatures": [],
+          "custody": "institution.police",
+          "provenance": "Custodian-certified extract, not an inferred original.",
+          "integrity": "Unassessed until an instance is examined.",
+          "accessRestriction": "Case mandate"
+        },
+        "renderedTextPolicy": "Vary wording only; preserve payload, qualifiers, provenance and absence of unassigned names/dates.",
+        "instanceStatus": "Template, not issued or discovered Evidence."
+      },
+      "perspective": {
+        "weakerClaim": "Original attendance records are incomplete",
+        "knowledgeStatus": "retrievable_only_after_access"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "artifact.abnormal",
+      "kind": "artifact_template",
+      "name": "Office of Abnormal Inquiry: supervised extract",
+      "purpose": "Reusable artifact_template foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.abnormal"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "semanticPayload": {
+          "issuer": "institution.abnormal",
+          "issueTime": "Assigned only to an authored dated instance.",
+          "subject": "settlement",
+          "assertedProposition": "Later anomalies recur at renamed addresses",
+          "names": [],
+          "dates": [],
+          "signatures": [],
+          "custody": "institution.abnormal",
+          "provenance": "Custodian-certified extract, not an inferred original.",
+          "integrity": "Unassessed until an instance is examined.",
+          "accessRestriction": "Referred incident"
+        },
+        "renderedTextPolicy": "Vary wording only; preserve payload, qualifiers, provenance and absence of unassigned names/dates.",
+        "instanceStatus": "Template, not issued or discovered Evidence."
+      },
+      "perspective": {
+        "weakerClaim": "Later anomalies recur at renamed addresses",
+        "knowledgeStatus": "retrievable_only_after_access"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "artifact.academy",
+      "kind": "artifact_template",
+      "name": "Municipal University: supervised extract",
+      "purpose": "Reusable artifact_template foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.academy"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "semanticPayload": {
+          "issuer": "institution.academy",
+          "issueTime": "Assigned only to an authored dated instance.",
+          "subject": "academy",
+          "assertedProposition": "Near-original studies found contradictory boundaries",
+          "names": [],
+          "dates": [],
+          "signatures": [],
+          "custody": "institution.academy",
+          "provenance": "Custodian-certified extract, not an inferred original.",
+          "integrity": "Unassessed until an instance is examined.",
+          "accessRestriction": "Research sponsorship"
+        },
+        "renderedTextPolicy": "Vary wording only; preserve payload, qualifiers, provenance and absence of unassigned names/dates.",
+        "instanceStatus": "Template, not issued or discovered Evidence."
+      },
+      "perspective": {
+        "weakerClaim": "Near-original studies found contradictory boundaries",
+        "knowledgeStatus": "retrievable_only_after_access"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "artifact.church",
+      "kind": "artifact_template",
+      "name": "Metropolitan Communion: supervised extract",
+      "purpose": "Reusable artifact_template foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "semanticPayload": {
+          "issuer": "institution.church",
+          "issueTime": "Assigned only to an authored dated instance.",
+          "subject": "church",
+          "assertedProposition": "Parish names are absent from civil death rolls",
+          "names": [],
+          "dates": [],
+          "signatures": [],
+          "custody": "institution.church",
+          "provenance": "Custodian-certified extract, not an inferred original.",
+          "integrity": "Unassessed until an instance is examined.",
+          "accessRestriction": "Parish consent"
+        },
+        "renderedTextPolicy": "Vary wording only; preserve payload, qualifiers, provenance and absence of unassigned names/dates.",
+        "instanceStatus": "Template, not issued or discovered Evidence."
+      },
+      "perspective": {
+        "weakerClaim": "Parish names are absent from civil death rolls",
+        "knowledgeStatus": "retrievable_only_after_access"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "artifact.insurer",
+      "kind": "artifact_template",
+      "name": "Meridian Assurance and Bank: supervised extract",
+      "purpose": "Reusable artifact_template foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.insurer"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "semanticPayload": {
+          "issuer": "institution.insurer",
+          "issueTime": "Assigned only to an authored dated instance.",
+          "subject": "insurance",
+          "assertedProposition": "Household cross-records disagree with final eligibility",
+          "names": [],
+          "dates": [],
+          "signatures": [],
+          "custody": "institution.insurer",
+          "provenance": "Custodian-certified extract, not an inferred original.",
+          "integrity": "Unassessed until an instance is examined.",
+          "accessRestriction": "Claimant mandate"
+        },
+        "renderedTextPolicy": "Vary wording only; preserve payload, qualifiers, provenance and absence of unassigned names/dates.",
+        "instanceStatus": "Template, not issued or discovered Evidence."
+      },
+      "perspective": {
+        "weakerClaim": "Household cross-records disagree with final eligibility",
+        "knowledgeStatus": "retrievable_only_after_access"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "artifact.railway",
+      "kind": "artifact_template",
+      "name": "Inland Rail and Port Company: supervised extract",
+      "purpose": "Reusable artifact_template foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.railway"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "semanticPayload": {
+          "issuer": "institution.railway",
+          "issueTime": "Assigned only to an authored dated instance.",
+          "subject": "railway",
+          "assertedProposition": "Old route numbers survived reconstruction",
+          "names": [],
+          "dates": [],
+          "signatures": [],
+          "custody": "institution.railway",
+          "provenance": "Custodian-certified extract, not an inferred original.",
+          "integrity": "Unassessed until an instance is examined.",
+          "accessRestriction": "Track permit"
+        },
+        "renderedTextPolicy": "Vary wording only; preserve payload, qualifiers, provenance and absence of unassigned names/dates.",
+        "instanceStatus": "Template, not issued or discovered Evidence."
+      },
+      "perspective": {
+        "weakerClaim": "Old route numbers survived reconstruction",
+        "knowledgeStatus": "retrievable_only_after_access"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "artifact.estates",
+      "kind": "artifact_template",
+      "name": "Old Estate Network: supervised extract",
+      "purpose": "Reusable artifact_template foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.estates"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "semanticPayload": {
+          "issuer": "institution.estates",
+          "issueTime": "Assigned only to an authored dated instance.",
+          "subject": "geography",
+          "assertedProposition": "Boundaries predate standardized addresses",
+          "names": [],
+          "dates": [],
+          "signatures": [],
+          "custody": "institution.estates",
+          "provenance": "Custodian-certified extract, not an inferred original.",
+          "integrity": "Unassessed until an instance is examined.",
+          "accessRestriction": "Patron or tenant introduction"
+        },
+        "renderedTextPolicy": "Vary wording only; preserve payload, qualifiers, provenance and absence of unassigned names/dates.",
+        "instanceStatus": "Template, not issued or discovered Evidence."
+      },
+      "perspective": {
+        "weakerClaim": "Boundaries predate standardized addresses",
+        "knowledgeStatus": "retrievable_only_after_access"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "artifact.workers",
+      "kind": "artifact_template",
+      "name": "Mutual Aid and Labor Network: supervised extract",
+      "purpose": "Reusable artifact_template foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.workers"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "semanticPayload": {
+          "issuer": "institution.workers",
+          "issueTime": "Assigned only to an authored dated instance.",
+          "subject": "workers",
+          "assertedProposition": "Contribution books preserve omitted names",
+          "names": [],
+          "dates": [],
+          "signatures": [],
+          "custody": "institution.workers",
+          "provenance": "Custodian-certified extract, not an inferred original.",
+          "integrity": "Unassessed until an instance is examined.",
+          "accessRestriction": "Member introduction"
+        },
+        "renderedTextPolicy": "Vary wording only; preserve payload, qualifiers, provenance and absence of unassigned names/dates.",
+        "instanceStatus": "Template, not issued or discovered Evidence."
+      },
+      "perspective": {
+        "weakerClaim": "Contribution books preserve omitted names",
+        "knowledgeStatus": "retrievable_only_after_access"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "artifact.press",
+      "kind": "artifact_template",
+      "name": "Evening Ledger and Telegraph Network: supervised extract",
+      "purpose": "Reusable artifact_template foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.press"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "semanticPayload": {
+          "issuer": "institution.press",
+          "issueTime": "Assigned only to an authored dated instance.",
+          "subject": "press",
+          "assertedProposition": "Early drafts disagree with later summaries",
+          "names": [],
+          "dates": [],
+          "signatures": [],
+          "custody": "institution.press",
+          "provenance": "Custodian-certified extract, not an inferred original.",
+          "integrity": "Unassessed until an instance is examined.",
+          "accessRestriction": "Source appointment"
+        },
+        "renderedTextPolicy": "Vary wording only; preserve payload, qualifiers, provenance and absence of unassigned names/dates.",
+        "instanceStatus": "Template, not issued or discovered Evidence."
+      },
+      "perspective": {
+        "weakerClaim": "Early drafts disagree with later summaries",
+        "knowledgeStatus": "retrievable_only_after_access"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "artifact.grey",
+      "kind": "artifact_template",
+      "name": "Grey Registry: supervised extract",
+      "purpose": "Reusable artifact_template foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "semanticPayload": {
+          "issuer": "institution.grey",
+          "issueTime": "Assigned only to an authored dated instance.",
+          "subject": "excluded",
+          "assertedProposition": "Some identities were deliberately excluded",
+          "names": [],
+          "dates": [],
+          "signatures": [],
+          "custody": "institution.grey",
+          "provenance": "Custodian-certified extract, not an inferred original.",
+          "integrity": "Unassessed until an instance is examined.",
+          "accessRestriction": "Trusted intermediary"
+        },
+        "renderedTextPolicy": "Vary wording only; preserve payload, qualifiers, provenance and absence of unassigned names/dates.",
+        "instanceStatus": "Template, not issued or discovered Evidence."
+      },
+      "perspective": {
+        "weakerClaim": "Some identities were deliberately excluded",
+        "knowledgeStatus": "retrievable_only_after_access"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

@@ -1,4 +1,739 @@
 {
   "schemaVersion": 1,
-  "items": []
+  "items": [
+    {
+      "id": "institution.police",
+      "kind": "institution",
+      "name": "Municipal Police",
+      "purpose": "Reusable institution foundation",
+      "authority": "definition",
+      "dependencies": [
+        "artifact.police",
+        "canon.registry",
+        "tradition.civic",
+        "actor.mara_vey",
+        "actor.oris_pell",
+        "actor.tessa_rook",
+        "actor.felix_darn"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "publicRole": "Crime, safety and civil inquiry",
+        "realFunction": "Preserve lawful evidence and escalation",
+        "jurisdiction": "City streets and assigned investigations",
+        "internalTension": "Quick closure versus record integrity",
+        "records": [
+          "artifact.police"
+        ],
+        "actors": [
+          "actor.mara_vey",
+          "actor.oris_pell",
+          "actor.tessa_rook",
+          "actor.felix_darn"
+        ],
+        "agendas": [
+          {
+            "id": "agenda.police.review",
+            "objective": "Protect a duplicate custody record",
+            "trigger": "Authenticated relevant record with lawful access",
+            "activation": "Dormant definition, not a P3 scheduled job."
+          }
+        ],
+        "claimTraditions": [
+          "tradition.civic"
+        ],
+        "accessRoutes": [
+          "Case mandate"
+        ],
+        "obligations": [
+          "Report dangerous contradictions"
+        ],
+        "materialThreats": [
+          "Suppression of a filed report"
+        ],
+        "eastbank": "canon.registry"
+      },
+      "perspective": {
+        "publicDescription": "Crime, safety and civil inquiry",
+        "initialKnowledge": [
+          "Original attendance records are incomplete"
+        ],
+        "knownUnknowns": [
+          "No complete disaster census"
+        ],
+        "blindSpots": [
+          "Current registration cannot prove old population"
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "institution.abnormal",
+      "kind": "institution",
+      "name": "Office of Abnormal Inquiry",
+      "purpose": "Reusable institution foundation",
+      "authority": "definition",
+      "dependencies": [
+        "artifact.abnormal",
+        "canon.settlement",
+        "tradition.civic",
+        "actor.elin_sarre",
+        "actor.pavel_orr",
+        "actor.nadia_crest",
+        "actor.ivo_marr"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "publicRole": "Classification and containment",
+        "realFunction": "Coordinate authorities without owning their archives",
+        "jurisdiction": "Referred incidents within legal authority",
+        "internalTension": "Containment versus historical repair",
+        "records": [
+          "artifact.abnormal"
+        ],
+        "actors": [
+          "actor.elin_sarre",
+          "actor.pavel_orr",
+          "actor.nadia_crest",
+          "actor.ivo_marr"
+        ],
+        "agendas": [
+          {
+            "id": "agenda.abnormal.review",
+            "objective": "Secure consent for a bounded survey",
+            "trigger": "Authenticated relevant record with lawful access",
+            "activation": "Dormant definition, not a P3 scheduled job."
+          }
+        ],
+        "claimTraditions": [
+          "tradition.civic"
+        ],
+        "accessRoutes": [
+          "Referred incident"
+        ],
+        "obligations": [
+          "Containment agreement"
+        ],
+        "materialThreats": [
+          "A containment harming a household"
+        ],
+        "eastbank": "canon.settlement"
+      },
+      "perspective": {
+        "publicDescription": "Classification and containment",
+        "initialKnowledge": [
+          "Later anomalies recur at renamed addresses"
+        ],
+        "knownUnknowns": [
+          "Original evidence is limited"
+        ],
+        "blindSpots": [
+          "Classification is not complete causality"
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "institution.academy",
+      "kind": "institution",
+      "name": "Municipal University",
+      "purpose": "Reusable institution foundation",
+      "authority": "definition",
+      "dependencies": [
+        "artifact.academy",
+        "canon.academy",
+        "tradition.academy",
+        "actor.sylva_morn",
+        "actor.dorian_fenn",
+        "actor.leonie_voss",
+        "actor.hugo_tarn",
+        "actor.ada_senn"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "publicRole": "Teaching, medicine and research",
+        "realFunction": "Develop replicable models from restricted studies",
+        "jurisdiction": "Consenting studies and licensed laboratories",
+        "internalTension": "Publication versus patient safety",
+        "records": [
+          "artifact.academy"
+        ],
+        "actors": [
+          "actor.sylva_morn",
+          "actor.dorian_fenn",
+          "actor.leonie_voss",
+          "actor.hugo_tarn",
+          "actor.ada_senn"
+        ],
+        "agendas": [
+          {
+            "id": "agenda.academy.review",
+            "objective": "Audit an old study before publication",
+            "trigger": "Authenticated relevant record with lawful access",
+            "activation": "Dormant definition, not a P3 scheduled job."
+          }
+        ],
+        "claimTraditions": [
+          "tradition.academy"
+        ],
+        "accessRoutes": [
+          "Research sponsorship"
+        ],
+        "obligations": [
+          "Examination and confidentiality"
+        ],
+        "materialThreats": [
+          "Proof of non-consensual research"
+        ],
+        "eastbank": "canon.academy"
+      },
+      "perspective": {
+        "publicDescription": "Teaching, medicine and research",
+        "initialKnowledge": [
+          "Near-original studies found contradictory boundaries"
+        ],
+        "knownUnknowns": [
+          "Deep substrate is unexplained"
+        ],
+        "blindSpots": [
+          "Measurement can strip away stabilizing context"
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "institution.church",
+      "kind": "institution",
+      "name": "Metropolitan Communion",
+      "purpose": "Reusable institution foundation",
+      "authority": "definition",
+      "dependencies": [
+        "artifact.church",
+        "canon.church",
+        "tradition.church",
+        "actor.cecily_arn",
+        "actor.jonas_mere",
+        "actor.ines_soll",
+        "actor.renald_firth"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "publicRole": "Rites, charity and sacred offices",
+        "realFunction": "Maintain communal continuity and sacred records",
+        "jurisdiction": "Parishes and rites, not unlimited civil authority",
+        "internalTension": "Pastoral care versus burial consistency",
+        "records": [
+          "artifact.church"
+        ],
+        "actors": [
+          "actor.cecily_arn",
+          "actor.jonas_mere",
+          "actor.ines_soll",
+          "actor.renald_firth"
+        ],
+        "agendas": [
+          {
+            "id": "agenda.church.review",
+            "objective": "Preserve disputed entries without voiding families",
+            "trigger": "Authenticated relevant record with lawful access",
+            "activation": "Dormant definition, not a P3 scheduled job."
+          }
+        ],
+        "claimTraditions": [
+          "tradition.church"
+        ],
+        "accessRoutes": [
+          "Parish consent"
+        ],
+        "obligations": [
+          "Witness oath and accountability"
+        ],
+        "materialThreats": [
+          "A correction dissolving a living family's recognition"
+        ],
+        "eastbank": "canon.church"
+      },
+      "perspective": {
+        "publicDescription": "Rites, charity and sacred offices",
+        "initialKnowledge": [
+          "Parish names are absent from civil death rolls"
+        ],
+        "knownUnknowns": [
+          "Later lives of excluded people unknown"
+        ],
+        "blindSpots": [
+          "A rite does not prove complete doctrine"
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "institution.insurer",
+      "kind": "institution",
+      "name": "Meridian Assurance and Bank",
+      "purpose": "Reusable institution foundation",
+      "authority": "definition",
+      "dependencies": [
+        "artifact.insurer",
+        "canon.insurance",
+        "tradition.civic",
+        "actor.agnes_trell",
+        "actor.lucan_iles",
+        "actor.vera_moss",
+        "actor.bram_elsen"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "publicRole": "Insurance, credit and compensation",
+        "realFunction": "Maintain enforceable claims and ownership",
+        "jurisdiction": "Contracts and commercial records",
+        "internalTension": "Compensation versus settled assets",
+        "records": [
+          "artifact.insurer"
+        ],
+        "actors": [
+          "actor.agnes_trell",
+          "actor.lucan_iles",
+          "actor.vera_moss",
+          "actor.bram_elsen"
+        ],
+        "agendas": [
+          {
+            "id": "agenda.insurer.review",
+            "objective": "Review a denied dependent claim",
+            "trigger": "Authenticated relevant record with lawful access",
+            "activation": "Dormant definition, not a P3 scheduled job."
+          }
+        ],
+        "claimTraditions": [
+          "tradition.civic"
+        ],
+        "accessRoutes": [
+          "Claimant mandate"
+        ],
+        "obligations": [
+          "Custody receipt and limited disclosure"
+        ],
+        "materialThreats": [
+          "Evidence of profitable systematic exclusion"
+        ],
+        "eastbank": "canon.insurance"
+      },
+      "perspective": {
+        "publicDescription": "Insurance, credit and compensation",
+        "initialKnowledge": [
+          "Household cross-records disagree with final eligibility"
+        ],
+        "knownUnknowns": [
+          "Unrecorded residents remain unknown"
+        ],
+        "blindSpots": [
+          "Commercial completeness excludes non-filers"
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "institution.railway",
+      "kind": "institution",
+      "name": "Inland Rail and Port Company",
+      "purpose": "Reusable institution foundation",
+      "authority": "definition",
+      "dependencies": [
+        "artifact.railway",
+        "canon.railway",
+        "tradition.civic",
+        "actor.otto_rehn",
+        "actor.lydia_venn",
+        "actor.silas_wren",
+        "actor.nora_kett",
+        "actor.tomas_bell"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "publicRole": "Transport, freight and housing",
+        "realFunction": "Maintain charter and repeated operational identity",
+        "jurisdiction": "Chartered infrastructure, not all city land",
+        "internalTension": "Management versus accumulated office routine",
+        "records": [
+          "artifact.railway"
+        ],
+        "actors": [
+          "actor.otto_rehn",
+          "actor.lydia_venn",
+          "actor.silas_wren",
+          "actor.nora_kett",
+          "actor.tomas_bell"
+        ],
+        "agendas": [
+          {
+            "id": "agenda.railway.review",
+            "objective": "Audit obsolete signal duties",
+            "trigger": "Authenticated relevant record with lawful access",
+            "activation": "Dormant definition, not a P3 scheduled job."
+          }
+        ],
+        "claimTraditions": [
+          "tradition.civic"
+        ],
+        "accessRoutes": [
+          "Track permit"
+        ],
+        "obligations": [
+          "Safety escort and reporting"
+        ],
+        "materialThreats": [
+          "Obsolete instructions binding current staff"
+        ],
+        "eastbank": "canon.railway"
+      },
+      "perspective": {
+        "publicDescription": "Transport, freight and housing",
+        "initialKnowledge": [
+          "Old route numbers survived reconstruction"
+        ],
+        "knownUnknowns": [
+          "Hidden geographic cause unknown"
+        ],
+        "blindSpots": [
+          "Institutional repetition is not machine intelligence"
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "institution.estates",
+      "kind": "institution",
+      "name": "Old Estate Network",
+      "purpose": "Reusable institution foundation",
+      "authority": "definition",
+      "dependencies": [
+        "artifact.estates",
+        "canon.geography",
+        "tradition.civic",
+        "actor.helena_vellin",
+        "actor.marcel_rye",
+        "actor.elsa_pike",
+        "actor.gareth_lune"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "publicRole": "Land stewardship and inherited rights",
+        "realFunction": "Preserve Name despite shrinking property Bonds",
+        "jurisdiction": "Individual deeds, not a unified government",
+        "internalTension": "Prestige versus debt",
+        "records": [
+          "artifact.estates"
+        ],
+        "actors": [
+          "actor.helena_vellin",
+          "actor.marcel_rye",
+          "actor.elsa_pike",
+          "actor.gareth_lune"
+        ],
+        "agendas": [
+          {
+            "id": "agenda.estates.review",
+            "objective": "Authenticate a boundary without erasing tenancy",
+            "trigger": "Authenticated relevant record with lawful access",
+            "activation": "Dormant definition, not a P3 scheduled job."
+          }
+        ],
+        "claimTraditions": [
+          "tradition.civic"
+        ],
+        "accessRoutes": [
+          "Patron or tenant introduction"
+        ],
+        "obligations": [
+          "Copying and custody restriction"
+        ],
+        "materialThreats": [
+          "A deed conflicting with pledged collateral"
+        ],
+        "eastbank": "canon.geography"
+      },
+      "perspective": {
+        "publicDescription": "Land stewardship and inherited rights",
+        "initialKnowledge": [
+          "Boundaries predate standardized addresses"
+        ],
+        "knownUnknowns": [
+          "Later tenants not all known"
+        ],
+        "blindSpots": [
+          "Family Name does not prove ownership"
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "institution.workers",
+      "kind": "institution",
+      "name": "Mutual Aid and Labor Network",
+      "purpose": "Reusable institution foundation",
+      "authority": "definition",
+      "dependencies": [
+        "artifact.workers",
+        "canon.workers",
+        "tradition.civic",
+        "actor.rosa_dell",
+        "actor.emil_hart",
+        "actor.maeve_rill",
+        "actor.anton_grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "publicRole": "Burial funds and collective support",
+        "realFunction": "Preserve household identity beyond weak registration",
+        "jurisdiction": "Voluntary membership and testimony",
+        "internalTension": "Solidarity versus household exposure",
+        "records": [
+          "artifact.workers"
+        ],
+        "actors": [
+          "actor.rosa_dell",
+          "actor.emil_hart",
+          "actor.maeve_rill",
+          "actor.anton_grey"
+        ],
+        "agendas": [
+          {
+            "id": "agenda.workers.review",
+            "objective": "Obtain consent for a burial cross-check",
+            "trigger": "Authenticated relevant record with lawful access",
+            "activation": "Dormant definition, not a P3 scheduled job."
+          }
+        ],
+        "claimTraditions": [
+          "tradition.civic"
+        ],
+        "accessRoutes": [
+          "Member introduction"
+        ],
+        "obligations": [
+          "Reciprocity and family consent"
+        ],
+        "materialThreats": [
+          "Publication enabling employer retaliation"
+        ],
+        "eastbank": "canon.workers"
+      },
+      "perspective": {
+        "publicDescription": "Burial funds and collective support",
+        "initialKnowledge": [
+          "Contribution books preserve omitted names"
+        ],
+        "knownUnknowns": [
+          "Disaster mechanics remain unknown"
+        ],
+        "blindSpots": [
+          "Family continuity can preserve honest mistakes"
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "institution.press",
+      "kind": "institution",
+      "name": "Evening Ledger and Telegraph Network",
+      "purpose": "Reusable institution foundation",
+      "authority": "definition",
+      "dependencies": [
+        "artifact.press",
+        "canon.press",
+        "tradition.civic",
+        "actor.beatrice_orn",
+        "actor.oskar_mell",
+        "actor.clara_holt",
+        "actor.edwin_sable"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "publicRole": "Reporting, transmission and corrections",
+        "realFunction": "Create timely accounts with source discipline",
+        "jurisdiction": "Publication, not adjudication",
+        "internalTension": "Circulation versus false confirmation",
+        "records": [
+          "artifact.press"
+        ],
+        "actors": [
+          "actor.beatrice_orn",
+          "actor.oskar_mell",
+          "actor.clara_holt",
+          "actor.edwin_sable"
+        ],
+        "agendas": [
+          {
+            "id": "agenda.press.review",
+            "objective": "Verify a correction independently",
+            "trigger": "Authenticated relevant record with lawful access",
+            "activation": "Dormant definition, not a P3 scheduled job."
+          }
+        ],
+        "claimTraditions": [
+          "tradition.civic"
+        ],
+        "accessRoutes": [
+          "Source appointment"
+        ],
+        "obligations": [
+          "Attribution consent or source protection"
+        ],
+        "materialThreats": [
+          "A rushed report imposing false identity"
+        ],
+        "eastbank": "canon.press"
+      },
+      "perspective": {
+        "publicDescription": "Reporting, transmission and corrections",
+        "initialKnowledge": [
+          "Early drafts disagree with later summaries"
+        ],
+        "knownUnknowns": [
+          "Timestamps do not establish full causal order"
+        ],
+        "blindSpots": [
+          "Repetition can reinforce a wrong Name"
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "institution.grey",
+      "kind": "institution",
+      "name": "Grey Registry",
+      "purpose": "Reusable institution foundation",
+      "authority": "definition",
+      "dependencies": [
+        "artifact.grey",
+        "canon.excluded",
+        "tradition.grey",
+        "actor.soren_vale",
+        "actor.mira_fane",
+        "actor.abel_kerr",
+        "actor.della_rusk"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "publicRole": "Private identity brokerage, no central office",
+        "realFunction": "Trade access between incompatible systems",
+        "jurisdiction": "Specific contacts, no central sovereign",
+        "internalTension": "Protecting excluded people versus exploiting identities",
+        "records": [
+          "artifact.grey"
+        ],
+        "actors": [
+          "actor.soren_vale",
+          "actor.mira_fane",
+          "actor.abel_kerr",
+          "actor.della_rusk"
+        ],
+        "agendas": [
+          {
+            "id": "agenda.grey.review",
+            "objective": "Protect an excluded person while testing provenance",
+            "trigger": "Authenticated relevant record with lawful access",
+            "activation": "Dormant definition, not a P3 scheduled job."
+          }
+        ],
+        "claimTraditions": [
+          "tradition.grey"
+        ],
+        "accessRoutes": [
+          "Trusted intermediary"
+        ],
+        "obligations": [
+          "Discretion with fragile witnesses"
+        ],
+        "materialThreats": [
+          "A borrowed identity transferring another person's debt"
+        ],
+        "eastbank": "canon.excluded"
+      },
+      "perspective": {
+        "publicDescription": "Private identity brokerage, no central office",
+        "initialKnowledge": [
+          "Some identities were deliberately excluded"
+        ],
+        "knownUnknowns": [
+          "No complete register of participants"
+        ],
+        "blindSpots": [
+          "Usable papers do not prove historical identity"
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
 }

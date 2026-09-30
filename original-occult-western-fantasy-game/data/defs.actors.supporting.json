@@ -1,0 +1,1685 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "actor.oris_pell",
+      "kind": "actor_b",
+      "name": "Oris Pell",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police",
+        "location.police_desk",
+        "actor.mara_vey",
+        "matter.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Oris Pell",
+        "role": "Inquiry clerk",
+        "affiliation": "institution.police",
+        "competencies": [
+          "Civil indexing"
+        ],
+        "relations": [
+          {
+            "actor": "actor.mara_vey",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.police_desk",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.police"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Oris Pell, Inquiry clerk",
+        "beliefs": [
+          "A mandate has a specific subject"
+        ],
+        "memories": [
+          "Previously handled registry under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.tessa_rook",
+      "kind": "actor_b",
+      "name": "Tessa Rook",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police",
+        "location.police_desk",
+        "actor.mara_vey",
+        "matter.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Tessa Rook",
+        "role": "Scene constable",
+        "affiliation": "institution.police",
+        "competencies": [
+          "Scene custody"
+        ],
+        "relations": [
+          {
+            "actor": "actor.mara_vey",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.police_desk",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.police"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Tessa Rook, Scene constable",
+        "beliefs": [
+          "Moving relics destroys context"
+        ],
+        "memories": [
+          "Previously handled registry under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.felix_darn",
+      "kind": "actor_b",
+      "name": "Felix Darn",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police",
+        "location.police_desk",
+        "actor.mara_vey",
+        "matter.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Felix Darn",
+        "role": "Mortuary liaison",
+        "affiliation": "institution.police",
+        "competencies": [
+          "Body-record comparison"
+        ],
+        "relations": [
+          {
+            "actor": "actor.mara_vey",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.police_desk",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.police"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Felix Darn, Mortuary liaison",
+        "beliefs": [
+          "A certificate is an assertion"
+        ],
+        "memories": [
+          "Previously handled registry under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.pavel_orr",
+      "kind": "actor_b",
+      "name": "Pavel Orr",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.abnormal",
+        "location.abnormal_office",
+        "actor.elin_sarre",
+        "matter.abnormal"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Pavel Orr",
+        "role": "Survey assistant",
+        "affiliation": "institution.abnormal",
+        "competencies": [
+          "Boundary survey"
+        ],
+        "relations": [
+          {
+            "actor": "actor.elin_sarre",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.abnormal_office",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.abnormal"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Pavel Orr, Survey assistant",
+        "beliefs": [
+          "Repetition needs a bounded test"
+        ],
+        "memories": [
+          "Previously handled settlement under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.nadia_crest",
+      "kind": "actor_b",
+      "name": "Nadia Crest",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.abnormal",
+        "location.abnormal_office",
+        "actor.elin_sarre",
+        "matter.abnormal"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Nadia Crest",
+        "role": "Permit clerk",
+        "affiliation": "institution.abnormal",
+        "competencies": [
+          "Permit review"
+        ],
+        "relations": [
+          {
+            "actor": "actor.elin_sarre",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.abnormal_office",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.abnormal"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Nadia Crest, Permit clerk",
+        "beliefs": [
+          "Emergency powers have limits"
+        ],
+        "memories": [
+          "Previously handled settlement under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.ivo_marr",
+      "kind": "actor_b",
+      "name": "Ivo Marr",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.abnormal",
+        "location.abnormal_office",
+        "actor.elin_sarre",
+        "matter.abnormal"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Ivo Marr",
+        "role": "Field custodian",
+        "affiliation": "institution.abnormal",
+        "competencies": [
+          "Relic custody"
+        ],
+        "relations": [
+          {
+            "actor": "actor.elin_sarre",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.abnormal_office",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.abnormal"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Ivo Marr, Field custodian",
+        "beliefs": [
+          "Unlabelled does not mean safe"
+        ],
+        "memories": [
+          "Previously handled settlement under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.leonie_voss",
+      "kind": "actor_b",
+      "name": "Leonie Voss",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.academy",
+        "location.ontology",
+        "actor.sylva_morn",
+        "matter.academy"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Leonie Voss",
+        "role": "Laboratory technician",
+        "affiliation": "institution.academy",
+        "competencies": [
+          "Instrument calibration"
+        ],
+        "relations": [
+          {
+            "actor": "actor.sylva_morn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.ontology",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.academy"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Leonie Voss, Laboratory technician",
+        "beliefs": [
+          "Failed replication matters"
+        ],
+        "memories": [
+          "Previously handled academy under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.hugo_tarn",
+      "kind": "actor_b",
+      "name": "Hugo Tarn",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.academy",
+        "location.ontology",
+        "actor.sylva_morn",
+        "matter.academy"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Hugo Tarn",
+        "role": "Museum registrar",
+        "affiliation": "institution.academy",
+        "competencies": [
+          "Provenance comparison"
+        ],
+        "relations": [
+          {
+            "actor": "actor.sylva_morn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.ontology",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.academy"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Hugo Tarn, Museum registrar",
+        "beliefs": [
+          "A label is not full history"
+        ],
+        "memories": [
+          "Previously handled academy under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.ada_senn",
+      "kind": "actor_b",
+      "name": "Ada Senn",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.academy",
+        "location.ontology",
+        "actor.sylva_morn",
+        "matter.academy"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Ada Senn",
+        "role": "Research student",
+        "affiliation": "institution.academy",
+        "competencies": [
+          "Study indexing"
+        ],
+        "relations": [
+          {
+            "actor": "actor.sylva_morn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.ontology",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.academy"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Ada Senn, Research student",
+        "beliefs": [
+          "Restricted does not mean accurate"
+        ],
+        "memories": [
+          "Previously handled academy under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.jonas_mere",
+      "kind": "actor_b",
+      "name": "Jonas Mere",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church",
+        "location.cathedral",
+        "actor.cecily_arn",
+        "matter.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Jonas Mere",
+        "role": "Clinic steward",
+        "affiliation": "institution.church",
+        "competencies": [
+          "Medical intake"
+        ],
+        "relations": [
+          {
+            "actor": "actor.cecily_arn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.cathedral",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.church"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Jonas Mere, Clinic steward",
+        "beliefs": [
+          "Care need not await perfect registration"
+        ],
+        "memories": [
+          "Previously handled church under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.ines_soll",
+      "kind": "actor_b",
+      "name": "Ines Soll",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church",
+        "location.cathedral",
+        "actor.cecily_arn",
+        "matter.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Ines Soll",
+        "role": "Cemetery sexton",
+        "affiliation": "institution.church",
+        "competencies": [
+          "Burial layout"
+        ],
+        "relations": [
+          {
+            "actor": "actor.cecily_arn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.cathedral",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.church"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Ines Soll, Cemetery sexton",
+        "beliefs": [
+          "Memorials may mark absent persons"
+        ],
+        "memories": [
+          "Previously handled church under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.renald_firth",
+      "kind": "actor_b",
+      "name": "Renald Firth",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church",
+        "location.cathedral",
+        "actor.cecily_arn",
+        "matter.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Renald Firth",
+        "role": "School deacon",
+        "affiliation": "institution.church",
+        "competencies": [
+          "Ritual literacy"
+        ],
+        "relations": [
+          {
+            "actor": "actor.cecily_arn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.cathedral",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.church"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Renald Firth, School deacon",
+        "beliefs": [
+          "Office is not universal knowledge"
+        ],
+        "memories": [
+          "Previously handled church under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.lucan_iles",
+      "kind": "actor_b",
+      "name": "Lucan Iles",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.insurer",
+        "location.insurance_hall",
+        "actor.agnes_trell",
+        "matter.insurer"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Lucan Iles",
+        "role": "Dependent claims clerk",
+        "affiliation": "institution.insurer",
+        "competencies": [
+          "Claim codes"
+        ],
+        "relations": [
+          {
+            "actor": "actor.agnes_trell",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.insurance_hall",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.insurer"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Lucan Iles, Dependent claims clerk",
+        "beliefs": [
+          "Surname is not kinship proof"
+        ],
+        "memories": [
+          "Previously handled insurance under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.vera_moss",
+      "kind": "actor_b",
+      "name": "Vera Moss",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.insurer",
+        "location.insurance_hall",
+        "actor.agnes_trell",
+        "matter.insurer"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Vera Moss",
+        "role": "Cargo assessor",
+        "affiliation": "institution.insurer",
+        "competencies": [
+          "Cargo examination"
+        ],
+        "relations": [
+          {
+            "actor": "actor.agnes_trell",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.insurance_hall",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.insurer"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Vera Moss, Cargo assessor",
+        "beliefs": [
+          "Value is not ownership"
+        ],
+        "memories": [
+          "Previously handled insurance under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.bram_elsen",
+      "kind": "actor_b",
+      "name": "Bram Elsen",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.insurer",
+        "location.insurance_hall",
+        "actor.agnes_trell",
+        "matter.insurer"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Bram Elsen",
+        "role": "Collateral assistant",
+        "affiliation": "institution.insurer",
+        "competencies": [
+          "Debt tracing"
+        ],
+        "relations": [
+          {
+            "actor": "actor.agnes_trell",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.insurance_hall",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.insurer"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Bram Elsen, Collateral assistant",
+        "beliefs": [
+          "Paid debt differs from old Bond"
+        ],
+        "memories": [
+          "Previously handled insurance under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.silas_wren",
+      "kind": "actor_b",
+      "name": "Silas Wren",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.railway",
+        "location.freight_board",
+        "actor.otto_rehn",
+        "matter.railway"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Silas Wren",
+        "role": "Signal operator",
+        "affiliation": "institution.railway",
+        "competencies": [
+          "Signal comparison"
+        ],
+        "relations": [
+          {
+            "actor": "actor.otto_rehn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.freight_board",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.railway"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Silas Wren, Signal operator",
+        "beliefs": [
+          "Signed can still be obsolete"
+        ],
+        "memories": [
+          "Previously handled railway under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.nora_kett",
+      "kind": "actor_b",
+      "name": "Nora Kett",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.railway",
+        "location.freight_board",
+        "actor.otto_rehn",
+        "matter.railway"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Nora Kett",
+        "role": "Ticket clerk",
+        "affiliation": "institution.railway",
+        "competencies": [
+          "Passenger routing"
+        ],
+        "relations": [
+          {
+            "actor": "actor.otto_rehn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.freight_board",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.railway"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Nora Kett, Ticket clerk",
+        "beliefs": [
+          "Fare is not track access"
+        ],
+        "memories": [
+          "Previously handled railway under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.tomas_bell",
+      "kind": "actor_b",
+      "name": "Tomas Bell",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.railway",
+        "location.freight_board",
+        "actor.otto_rehn",
+        "matter.railway"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Tomas Bell",
+        "role": "Freight checker",
+        "affiliation": "institution.railway",
+        "competencies": [
+          "Manifest verification"
+        ],
+        "relations": [
+          {
+            "actor": "actor.otto_rehn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.freight_board",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.railway"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Tomas Bell, Freight checker",
+        "beliefs": [
+          "Repeated stamps can copy an error"
+        ],
+        "memories": [
+          "Previously handled railway under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.marcel_rye",
+      "kind": "actor_b",
+      "name": "Marcel Rye",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.estates",
+        "location.old_court",
+        "actor.helena_vellin",
+        "matter.estates"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Marcel Rye",
+        "role": "Estate surveyor",
+        "affiliation": "institution.estates",
+        "competencies": [
+          "Boundary measurement"
+        ],
+        "relations": [
+          {
+            "actor": "actor.helena_vellin",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.old_court",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.estates"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Marcel Rye, Estate surveyor",
+        "beliefs": [
+          "A line can conceal a use right"
+        ],
+        "memories": [
+          "Previously handled geography under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.elsa_pike",
+      "kind": "actor_b",
+      "name": "Elsa Pike",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.estates",
+        "location.old_court",
+        "actor.helena_vellin",
+        "matter.estates"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Elsa Pike",
+        "role": "House archivist",
+        "affiliation": "institution.estates",
+        "competencies": [
+          "Paper provenance"
+        ],
+        "relations": [
+          {
+            "actor": "actor.helena_vellin",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.old_court",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.estates"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Elsa Pike, House archivist",
+        "beliefs": [
+          "Custody gaps matter"
+        ],
+        "memories": [
+          "Previously handled geography under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.gareth_lune",
+      "kind": "actor_b",
+      "name": "Gareth Lune",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.estates",
+        "location.old_court",
+        "actor.helena_vellin",
+        "matter.estates"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Gareth Lune",
+        "role": "Tenant representative",
+        "affiliation": "institution.estates",
+        "competencies": [
+          "Local access history"
+        ],
+        "relations": [
+          {
+            "actor": "actor.helena_vellin",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.old_court",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.estates"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Gareth Lune, Tenant representative",
+        "beliefs": [
+          "Custom needs living witnesses"
+        ],
+        "memories": [
+          "Previously handled geography under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.emil_hart",
+      "kind": "actor_b",
+      "name": "Emil Hart",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.workers",
+        "location.old_ferry",
+        "actor.rosa_dell",
+        "matter.workers"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Emil Hart",
+        "role": "Burial fund collector",
+        "affiliation": "institution.workers",
+        "competencies": [
+          "Contribution arithmetic"
+        ],
+        "relations": [
+          {
+            "actor": "actor.rosa_dell",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.old_ferry",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.workers"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Emil Hart, Burial fund collector",
+        "beliefs": [
+          "Missed payment need not end belonging"
+        ],
+        "memories": [
+          "Previously handled workers under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.maeve_rill",
+      "kind": "actor_b",
+      "name": "Maeve Rill",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.workers",
+        "location.old_ferry",
+        "actor.rosa_dell",
+        "matter.workers"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Maeve Rill",
+        "role": "Literacy organizer",
+        "affiliation": "institution.workers",
+        "competencies": [
+          "Document explanation"
+        ],
+        "relations": [
+          {
+            "actor": "actor.rosa_dell",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.old_ferry",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.workers"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Maeve Rill, Literacy organizer",
+        "beliefs": [
+          "Official headings can intimidate valid claims"
+        ],
+        "memories": [
+          "Previously handled workers under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.anton_grey",
+      "kind": "actor_b",
+      "name": "Anton Grey",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.workers",
+        "location.old_ferry",
+        "actor.rosa_dell",
+        "matter.workers"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Anton Grey",
+        "role": "Mill delegate",
+        "affiliation": "institution.workers",
+        "competencies": [
+          "Witness interviewing"
+        ],
+        "relations": [
+          {
+            "actor": "actor.rosa_dell",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.old_ferry",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.workers"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Anton Grey, Mill delegate",
+        "beliefs": [
+          "Solidarity does not justify invention"
+        ],
+        "memories": [
+          "Previously handled workers under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.oskar_mell",
+      "kind": "actor_b",
+      "name": "Oskar Mell",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.press",
+        "location.telegraph",
+        "actor.beatrice_orn",
+        "matter.press"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Oskar Mell",
+        "role": "Telegraph operator",
+        "affiliation": "institution.press",
+        "competencies": [
+          "Signal logs"
+        ],
+        "relations": [
+          {
+            "actor": "actor.beatrice_orn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.telegraph",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.press"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Oskar Mell, Telegraph operator",
+        "beliefs": [
+          "Transmission order is not event order"
+        ],
+        "memories": [
+          "Previously handled press under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.clara_holt",
+      "kind": "actor_b",
+      "name": "Clara Holt",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.press",
+        "location.telegraph",
+        "actor.beatrice_orn",
+        "matter.press"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Clara Holt",
+        "role": "Court reporter",
+        "affiliation": "institution.press",
+        "competencies": [
+          "Attribution"
+        ],
+        "relations": [
+          {
+            "actor": "actor.beatrice_orn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.telegraph",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.press"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Clara Holt, Court reporter",
+        "beliefs": [
+          "Publication does not create Truth"
+        ],
+        "memories": [
+          "Previously handled press under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.edwin_sable",
+      "kind": "actor_b",
+      "name": "Edwin Sable",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.press",
+        "location.telegraph",
+        "actor.beatrice_orn",
+        "matter.press"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Edwin Sable",
+        "role": "Archive compositor",
+        "affiliation": "institution.press",
+        "competencies": [
+          "Edition comparison"
+        ],
+        "relations": [
+          {
+            "actor": "actor.beatrice_orn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.telegraph",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.press"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Edwin Sable, Archive compositor",
+        "beliefs": [
+          "Draft and final editions can disagree honestly"
+        ],
+        "memories": [
+          "Previously handled press under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.mira_fane",
+      "kind": "actor_b",
+      "name": "Mira Fane",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.grey",
+        "location.lodging",
+        "actor.soren_vale",
+        "matter.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Mira Fane",
+        "role": "Lodging keeper",
+        "affiliation": "institution.grey",
+        "competencies": [
+          "Household introductions"
+        ],
+        "relations": [
+          {
+            "actor": "actor.soren_vale",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.lodging",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.grey"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Mira Fane, Lodging keeper",
+        "beliefs": [
+          "Boarders control their testimony"
+        ],
+        "memories": [
+          "Previously handled excluded under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.abel_kerr",
+      "kind": "actor_b",
+      "name": "Abel Kerr",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.grey",
+        "location.lodging",
+        "actor.soren_vale",
+        "matter.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Abel Kerr",
+        "role": "Copyist",
+        "affiliation": "institution.grey",
+        "competencies": [
+          "Ink inspection"
+        ],
+        "relations": [
+          {
+            "actor": "actor.soren_vale",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.lodging",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.grey"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Abel Kerr, Copyist",
+        "beliefs": [
+          "A convincing copy is still a copy"
+        ],
+        "memories": [
+          "Previously handled excluded under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.della_rusk",
+      "kind": "actor_b",
+      "name": "Della Rusk",
+      "purpose": "Reusable actor_b foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.grey",
+        "location.lodging",
+        "actor.soren_vale",
+        "matter.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Della Rusk",
+        "role": "Dock intermediary",
+        "affiliation": "institution.grey",
+        "competencies": [
+          "Contact verification"
+        ],
+        "relations": [
+          {
+            "actor": "actor.soren_vale",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.lodging",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.grey"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Della Rusk, Dock intermediary",
+        "beliefs": [
+          "A pass is not permission to assume a life"
+        ],
+        "memories": [
+          "Previously handled excluded under local custody; no complete disaster recollection implied."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

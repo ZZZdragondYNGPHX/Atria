@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "knowledge.civil_requests",
+      "kind": "public_knowledge",
+      "name": "Civil copy requests",
+      "purpose": "Reusable public_knowledge foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police"
+      ],
+      "disclosure": "public",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "issuer": "institution.police",
+        "text": "A Civil Verifier may request a specific copy with documented interest. This is not a warrant for every archive.",
+        "epistemicStatus": "attributed_public_information"
+      },
+      "perspective": {
+        "publicDescription": "A Civil Verifier may request a specific copy with documented interest. This is not a warrant for every archive."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "knowledge.ordinary_rites",
+      "kind": "public_knowledge",
+      "name": "Communal rites",
+      "purpose": "Reusable public_knowledge foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church"
+      ],
+      "disclosure": "public",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "issuer": "institution.church",
+        "text": "The communion maintains naming, marriage and burial practices. Membership does not grant sacred office or deep theory.",
+        "epistemicStatus": "attributed_public_information"
+      },
+      "perspective": {
+        "publicDescription": "The communion maintains naming, marriage and burial practices. Membership does not grant sacred office or deep theory."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "knowledge.public_history",
+      "kind": "public_knowledge",
+      "name": "Official Eastbank history",
+      "purpose": "Reusable public_knowledge foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.press"
+      ],
+      "disclosure": "public",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "issuer": "institution.press",
+        "text": "Official accounts describe fire, transport disruption, telegraph failure and reconstruction approximately forty years ago. This attributed account is not a complete causal explanation.",
+        "epistemicStatus": "attributed_public_information"
+      },
+      "perspective": {
+        "publicDescription": "Official accounts describe fire, transport disruption, telegraph failure and reconstruction approximately forty years ago. This attributed account is not a complete causal explanation."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "knowledge.claim_procedure",
+      "kind": "public_knowledge",
+      "name": "Claims procedure",
+      "purpose": "Reusable public_knowledge foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.insurer"
+      ],
+      "disclosure": "public",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "issuer": "institution.insurer",
+        "text": "A claimant must identify the subject and authority to act. An accepted financial claim does not prove every historical assertion.",
+        "epistemicStatus": "attributed_public_information"
+      },
+      "perspective": {
+        "publicDescription": "A claimant must identify the subject and authority to act. An accepted financial claim does not prove every historical assertion."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "knowledge.safe_inquiry",
+      "kind": "public_knowledge",
+      "name": "Safe inquiry",
+      "purpose": "Reusable public_knowledge foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police"
+      ],
+      "disclosure": "public",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "issuer": "institution.police",
+        "text": "Separate witnesses, record time, preserve boundaries and avoid casually moving contradictory relics or records. Escalate persistent identity discrepancies.",
+        "epistemicStatus": "attributed_public_information"
+      },
+      "perspective": {
+        "publicDescription": "Separate witnesses, record time, preserve boundaries and avoid casually moving contradictory relics or records. Escalate persistent identity discrepancies."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "knowledge.city_routes",
+      "kind": "public_knowledge",
+      "name": "City districts",
+      "purpose": "Reusable public_knowledge foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.railway"
+      ],
+      "disclosure": "public",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "issuer": "institution.railway",
+        "text": "The city links the Old Quarter, Civic District, Exchange, University Quarter, Industrial Belt and Docks. A ticket does not grant track or warehouse access.",
+        "epistemicStatus": "attributed_public_information"
+      },
+      "perspective": {
+        "publicDescription": "The city links the Old Quarter, Civic District, Exchange, University Quarter, Industrial Belt and Docks. A ticket does not grant track or warehouse access."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

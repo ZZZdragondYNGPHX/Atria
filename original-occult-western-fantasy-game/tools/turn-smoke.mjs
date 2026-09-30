@@ -2,7 +2,7 @@ import http from 'node:http';
 import assert from 'node:assert/strict';
 
 // Package-specific protocol smoke. All model responses are synthetic and local.
-export async function turnSmoke({ load, h, svc, session }) {
+export async function turnSmoke({ load, h, svc, session, assertContentSafe = () => {} }) {
     const { NativeGenerationHost } = await load('src/native/adapters/generation-host.js');
     const { seedGenerationProfiles } = await load('tests/native/helpers/generation-fixture.js');
     const { createHttpGenerationProvider } = await load('src/native/adapters/http-generation-provider.js');
@@ -14,6 +14,7 @@ export async function turnSmoke({ load, h, svc, session }) {
             for await (const chunk of req) chunks.push(chunk);
             const body = JSON.parse(Buffer.concat(chunks));
             seen.push(body);
+            assertContentSafe(body);
             if (!body.tools?.length && failNarrator) { res.writeHead(503, { Connection: 'close' }); res.end('{}'); return; }
             const message = body.tools?.length
                 ? { content: '', tool_calls: [{ id: 'foundation', type: 'function', function: { name: body.tools.find(t => t.function.parameters.properties.objective?.enum?.includes('obtain_account')).function.name, arguments: JSON.stringify({ target: 'fixture', method: 'ask', objective: 'obtain_account' }) } }] }

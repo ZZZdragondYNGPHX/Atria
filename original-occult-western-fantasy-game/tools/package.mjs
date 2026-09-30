@@ -20,6 +20,8 @@ const load = rel => import(pathToFileURL(path.join(core, rel)).href);
 const json = async rel => JSON.parse(await fs.readFile(path.join(root, rel), 'utf8'));
 const native = await load('src/native/index.js');
 const manifest = await json('manifest.json');
+const { readContent, validateContent } = await import('./content-check.mjs');
+validateContent(await readContent(), manifest);
 manifest.resources = await json('runtime/model-resources.json');
 const contract = { schemaVersion: 1, capabilities: await json('runtime/capabilities.json'), dataResources: [] };
 for (const [key, file] of Object.entries({ lifecycleRuntime: 'lifecycle', taskRuntime: 'tasks', informationRuntime: 'information', authorityRuntime: 'authority', simulationRuntime: 'simulation' })) contract[key] = await json('runtime/' + file + '.json');

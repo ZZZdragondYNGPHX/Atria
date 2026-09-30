@@ -1,0 +1,445 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "anomaly.identity_contradiction",
+      "kind": "anomaly",
+      "name": "identity contradiction",
+      "purpose": "Reusable anomaly foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "coreContradiction": "Competing supported designations",
+        "principles": [
+          "Name",
+          "Witness"
+        ],
+        "requiredSubstrate": "Independent records and identifiable subject",
+        "observableSigns": [
+          "Identity checks disagree"
+        ],
+        "evidenceSignatures": [
+          "Separate identity assertions"
+        ],
+        "escalation": "Forced registration strengthens exclusion",
+        "mundaneInteraction": "Compare without forced merge",
+        "claimInteraction": "Bounded designation comparison",
+        "falseExplanations": [
+          "Simple fraud"
+        ],
+        "institutionalInterpretations": [
+          {
+            "institution": "institution.police",
+            "interpretation": "Testable classification, not automatic Truth."
+          }
+        ],
+        "resolutionFamilies": [
+          "Reconcile or preserve ambiguity"
+        ],
+        "hardLimits": [
+          "No automatic true-name revelation",
+          "No new Principle or unsupported substrate."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Identity checks disagree"
+      },
+      "generationEnvelope": [
+        "Vary sensory details within substrate; signs alone do not determine cause."
+      ]
+    },
+    {
+      "id": "anomaly.boundary_failure",
+      "kind": "anomaly",
+      "name": "boundary failure",
+      "purpose": "Reusable anomaly foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.estates"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "coreContradiction": "Incompatible spatial definitions",
+        "principles": [
+          "Boundary",
+          "Name"
+        ],
+        "requiredSubstrate": "Real place and overlapping boundaries",
+        "observableSigns": [
+          "Maps or access recognition disagree"
+        ],
+        "evidenceSignatures": [
+          "Survey differs from customary description"
+        ],
+        "escalation": "Wrong routing extends confusion",
+        "mundaneInteraction": "Survey safe access",
+        "claimInteraction": "Stabilize known threshold",
+        "falseExplanations": [
+          "Bad surveying"
+        ],
+        "institutionalInterpretations": [
+          {
+            "institution": "institution.estates",
+            "interpretation": "Testable classification, not automatic Truth."
+          }
+        ],
+        "resolutionFamilies": [
+          "Negotiate, contain or preserve uses"
+        ],
+        "hardLimits": [
+          "No unconditional travel",
+          "No new Principle or unsupported substrate."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Maps or access recognition disagree"
+      },
+      "generationEnvelope": [
+        "Vary sensory details within substrate; signs alone do not determine cause."
+      ]
+    },
+    {
+      "id": "anomaly.residual_echo",
+      "kind": "anomaly",
+      "name": "residual echo",
+      "purpose": "Reusable anomaly foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.railway"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "coreContradiction": "Past trace conflicts with present account",
+        "principles": [
+          "Echo",
+          "Witness"
+        ],
+        "requiredSubstrate": "Surviving substrate of real event",
+        "observableSigns": [
+          "Repeated strain or signal"
+        ],
+        "evidenceSignatures": [
+          "Trace and record disagree"
+        ],
+        "escalation": "Disturbance loses evidence",
+        "mundaneInteraction": "Preserve substrate",
+        "claimInteraction": "Perceive bounded residue",
+        "falseExplanations": [
+          "Mechanical vibration"
+        ],
+        "institutionalInterpretations": [
+          {
+            "institution": "institution.railway",
+            "interpretation": "Testable classification, not automatic Truth."
+          }
+        ],
+        "resolutionFamilies": [
+          "Document or contain repetition"
+        ],
+        "hardLimits": [
+          "No event creation or full replay",
+          "No new Principle or unsupported substrate."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Repeated strain or signal"
+      },
+      "generationEnvelope": [
+        "Vary sensory details within substrate; signs alone do not determine cause."
+      ]
+    },
+    {
+      "id": "anomaly.broken_bond",
+      "kind": "anomaly",
+      "name": "broken bond",
+      "purpose": "Reusable anomaly foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.insurer"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "coreContradiction": "Relation loses compatible support",
+        "principles": [
+          "Bond",
+          "Name"
+        ],
+        "requiredSubstrate": "Real duty, custody or household relation",
+        "observableSigns": [
+          "Conflicting obligations"
+        ],
+        "evidenceSignatures": [
+          "Valid relational records conflict"
+        ],
+        "escalation": "Blind enforcement transfers harm",
+        "mundaneInteraction": "Consent and custody comparison",
+        "claimInteraction": "Detect discontinuity",
+        "falseExplanations": [
+          "Ordinary breach of contract"
+        ],
+        "institutionalInterpretations": [
+          {
+            "institution": "institution.insurer",
+            "interpretation": "Testable classification, not automatic Truth."
+          }
+        ],
+        "resolutionFamilies": [
+          "Renegotiate or rebuild relation"
+        ],
+        "hardLimits": [
+          "No stranger binding or mind control",
+          "No new Principle or unsupported substrate."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Conflicting obligations"
+      },
+      "generationEnvelope": [
+        "Vary sensory details within substrate; signs alone do not determine cause."
+      ]
+    },
+    {
+      "id": "anomaly.memory_discontinuity",
+      "kind": "anomaly",
+      "name": "memory discontinuity",
+      "purpose": "Reusable anomaly foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.workers"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "coreContradiction": "Carriers retain incompatible continuity",
+        "principles": [
+          "Memory",
+          "Witness"
+        ],
+        "requiredSubstrate": "People or records with real continuity",
+        "observableSigns": [
+          "Copies differ from independent accounts"
+        ],
+        "evidenceSignatures": [
+          "Carrier histories diverge"
+        ],
+        "escalation": "Carrier loss removes testimony",
+        "mundaneInteraction": "Separate originals",
+        "claimInteraction": "Preserve bounded carrier",
+        "falseExplanations": [
+          "Dishonest witness"
+        ],
+        "institutionalInterpretations": [
+          {
+            "institution": "institution.workers",
+            "interpretation": "Testable classification, not automatic Truth."
+          }
+        ],
+        "resolutionFamilies": [
+          "Preserve disagreement or uncertainty"
+        ],
+        "hardLimits": [
+          "No past rewriting",
+          "No new Principle or unsupported substrate."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Copies differ from independent accounts"
+      },
+      "generationEnvelope": [
+        "Vary sensory details within substrate; signs alone do not determine cause."
+      ]
+    },
+    {
+      "id": "anomaly.institutional_identity",
+      "kind": "anomaly",
+      "name": "institutional identity",
+      "purpose": "Reusable anomaly foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.railway"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "coreContradiction": "Office routine diverges from management",
+        "principles": [
+          "Name",
+          "Bond"
+        ],
+        "requiredSubstrate": "Repeated charter, offices and practice",
+        "observableSigns": [
+          "Obsolete duties recur"
+        ],
+        "evidenceSignatures": [
+          "Old procedure conflicts with current order"
+        ],
+        "escalation": "Repetition reinforces harmful duty",
+        "mundaneInteraction": "Audit responsibility",
+        "claimInteraction": "Separate office designation",
+        "falseExplanations": [
+          "Secret manager orders"
+        ],
+        "institutionalInterpretations": [
+          {
+            "institution": "institution.railway",
+            "interpretation": "Testable classification, not automatic Truth."
+          }
+        ],
+        "resolutionFamilies": [
+          "Reform charter or contain duties"
+        ],
+        "hardLimits": [
+          "Not machine intelligence or omnipotence",
+          "No new Principle or unsupported substrate."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Obsolete duties recur"
+      },
+      "generationEnvelope": [
+        "Vary sensory details within substrate; signs alone do not determine cause."
+      ]
+    },
+    {
+      "id": "anomaly.possibility_saturation",
+      "kind": "anomaly",
+      "name": "possibility saturation",
+      "purpose": "Reusable anomaly foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.academy"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "coreContradiction": "Supported outcomes remain unsettled",
+        "principles": [
+          "Possibility",
+          "Echo"
+        ],
+        "requiredSubstrate": "Real unresolved alternatives and traces",
+        "observableSigns": [
+          "Conflicting bounded warnings"
+        ],
+        "evidenceSignatures": [
+          "Warnings differ before resolution"
+        ],
+        "escalation": "Manipulation exhausts viable alternatives",
+        "mundaneInteraction": "Complete safe tests",
+        "claimInteraction": "Narrow unresolved possibilities",
+        "falseExplanations": [
+          "Certain prophecy"
+        ],
+        "institutionalInterpretations": [
+          {
+            "institution": "institution.academy",
+            "interpretation": "Testable classification, not automatic Truth."
+          }
+        ],
+        "resolutionFamilies": [
+          "Settle safely or defer with costs"
+        ],
+        "hardLimits": [
+          "No negating settled outcomes",
+          "No new Principle or unsupported substrate."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Conflicting bounded warnings"
+      },
+      "generationEnvelope": [
+        "Vary sensory details within substrate; signs alone do not determine cause."
+      ]
+    },
+    {
+      "id": "anomaly.form_discontinuity",
+      "kind": "anomaly",
+      "name": "form discontinuity",
+      "purpose": "Reusable anomaly foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "coreContradiction": "Material continuity conflicts with support",
+        "principles": [
+          "Form",
+          "Memory"
+        ],
+        "requiredSubstrate": "Existing material and maintained carrier",
+        "observableSigns": [
+          "Repair conflicts with continuity record"
+        ],
+        "evidenceSignatures": [
+          "Inspection and record diverge"
+        ],
+        "escalation": "Rough handling destroys continuity",
+        "mundaneInteraction": "Ordinary care and conservation",
+        "claimInteraction": "Support existing structure",
+        "falseExplanations": [
+          "All injury is supernatural"
+        ],
+        "institutionalInterpretations": [
+          {
+            "institution": "institution.church",
+            "interpretation": "Testable classification, not automatic Truth."
+          }
+        ],
+        "resolutionFamilies": [
+          "Treat, conserve or acknowledge loss"
+        ],
+        "hardLimits": [
+          "No unlimited restoration or resurrection",
+          "No new Principle or unsupported substrate."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Repair conflicts with continuity record"
+      },
+      "generationEnvelope": [
+        "Vary sensory details within substrate; signs alone do not determine cause."
+      ]
+    }
+  ]
+}

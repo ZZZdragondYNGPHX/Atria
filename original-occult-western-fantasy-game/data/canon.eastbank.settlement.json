@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "canon.settlement",
+      "kind": "canon_fragment",
+      "name": "Emergency stabilization",
+      "purpose": "Reusable canon_fragment foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.abnormal",
+        "artifact.abnormal",
+        "event.eastbank_settlement"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "subject": "Emergency stabilization",
+        "timeScope": "Disaster approximately forty years ago and continuing records",
+        "assertions": [
+          "Authorities knowingly chose a survivable coherent version while excluding incompatible claims."
+        ],
+        "events": [
+          "event.eastbank_settlement"
+        ],
+        "conflictingRecords": [
+          {
+            "artifact": "artifact.abnormal",
+            "conflict": "A later summary calls final lists complete."
+          }
+        ],
+        "holders": [
+          "institution.abnormal"
+        ],
+        "evidenceGateways": [
+          "artifact.abnormal"
+        ],
+        "revealLayer": 3,
+        "projectionRules": [
+          "Never copy this fragment into Knowledge, model context or Views.",
+          "Only a separately authored weaker proposition may be acquired after validated custody and access."
+        ],
+        "epistemicStatus": "authored_fact"
+      },
+      "perspective": {
+        "currentlySupportable": "A later summary calls final lists complete."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

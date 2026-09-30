@@ -1,4 +1,1664 @@
 {
   "schemaVersion": 1,
-  "items": []
+  "items": [
+    {
+      "id": "location.cathedral",
+      "kind": "location",
+      "name": "Cathedral Close",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.old_quarter",
+        "institution.church",
+        "artifact.church",
+        "event.eastbank_settlement",
+        "matter.church",
+        "actor.cecily_arn",
+        "actor.jonas_mere",
+        "actor.ines_soll",
+        "actor.renald_firth"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.old_quarter",
+        "geographicRelation": "within city",
+        "controller": "institution.church",
+        "publicFunction": "Parish rites",
+        "accessRules": [
+          "Public nave; register room by consent"
+        ],
+        "actors": [
+          "actor.cecily_arn",
+          "actor.jonas_mere",
+          "actor.ines_soll",
+          "actor.renald_firth"
+        ],
+        "artifacts": [
+          "artifact.church"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.church"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Parish rites"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.burial_archive",
+      "kind": "location",
+      "name": "Burial Register House",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.old_quarter",
+        "institution.church",
+        "artifact.church",
+        "event.eastbank_settlement",
+        "matter.church",
+        "actor.jonas_mere"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.old_quarter",
+        "geographicRelation": "within city",
+        "controller": "institution.church",
+        "publicFunction": "Burial and marriage records",
+        "accessRules": [
+          "Named request and supervised copying"
+        ],
+        "actors": [
+          "actor.jonas_mere"
+        ],
+        "artifacts": [
+          "artifact.church"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.church"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Burial and marriage records"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.old_court",
+      "kind": "location",
+      "name": "Old Charter Court",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.old_quarter",
+        "institution.estates",
+        "artifact.estates",
+        "event.eastbank_settlement",
+        "matter.estates",
+        "actor.helena_vellin",
+        "actor.marcel_rye",
+        "actor.elsa_pike",
+        "actor.gareth_lune",
+        "office.civil_court"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.old_quarter",
+        "geographicRelation": "within city",
+        "controller": "office.civil_court",
+        "publicFunction": "Historic title arbitration",
+        "accessRules": [
+          "Public hearings; restricted deeds"
+        ],
+        "actors": [
+          "actor.helena_vellin",
+          "actor.marcel_rye",
+          "actor.elsa_pike",
+          "actor.gareth_lune"
+        ],
+        "artifacts": [
+          "artifact.estates"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.estates"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Historic title arbitration"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.map_room",
+      "kind": "location",
+      "name": "Vellin Map Room",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.old_quarter",
+        "institution.estates",
+        "artifact.estates",
+        "event.eastbank_settlement",
+        "matter.estates",
+        "actor.marcel_rye"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.old_quarter",
+        "geographicRelation": "within city",
+        "controller": "institution.estates",
+        "publicFunction": "Pre-industrial surveys",
+        "accessRules": [
+          "Estate introduction and supervised copying"
+        ],
+        "actors": [
+          "actor.marcel_rye"
+        ],
+        "artifacts": [
+          "artifact.estates"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.estates"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Pre-industrial surveys"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.old_ferry",
+      "kind": "location",
+      "name": "Old Ferry Steps",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.old_quarter",
+        "institution.workers",
+        "artifact.workers",
+        "event.eastbank_settlement",
+        "matter.workers",
+        "actor.rosa_dell",
+        "actor.emil_hart",
+        "actor.maeve_rill",
+        "actor.anton_grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.old_quarter",
+        "geographicRelation": "within city",
+        "controller": "institution.workers",
+        "publicFunction": "Landing and community meeting",
+        "accessRules": [
+          "Public steps; lower stones close at high tide"
+        ],
+        "actors": [
+          "actor.rosa_dell",
+          "actor.emil_hart",
+          "actor.maeve_rill",
+          "actor.anton_grey"
+        ],
+        "artifacts": [
+          "artifact.workers"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.workers"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Landing and community meeting"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.police_desk",
+      "kind": "location",
+      "name": "Central Inquiry Desk",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.civic",
+        "institution.police",
+        "artifact.police",
+        "event.eastbank_settlement",
+        "matter.police",
+        "actor.mara_vey",
+        "actor.oris_pell",
+        "actor.tessa_rook",
+        "actor.felix_darn"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.civic",
+        "geographicRelation": "within city",
+        "controller": "institution.police",
+        "publicFunction": "Fraud and missing-person intake",
+        "accessRules": [
+          "Public desk; files require legal interest"
+        ],
+        "actors": [
+          "actor.mara_vey",
+          "actor.oris_pell",
+          "actor.tessa_rook",
+          "actor.felix_darn"
+        ],
+        "artifacts": [
+          "artifact.police"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.police"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Fraud and missing-person intake"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.registry",
+      "kind": "location",
+      "name": "Civil Register Hall",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.civic",
+        "institution.police",
+        "artifact.police",
+        "event.eastbank_settlement",
+        "matter.police",
+        "actor.oris_pell",
+        "office.civil_registry"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.civic",
+        "geographicRelation": "within city",
+        "controller": "office.civil_registry",
+        "publicFunction": "Certified civil copies",
+        "accessRules": [
+          "Specific documented civil interest"
+        ],
+        "actors": [
+          "actor.oris_pell"
+        ],
+        "artifacts": [
+          "artifact.police"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.police"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Certified civil copies"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.new_court",
+      "kind": "location",
+      "name": "New Court Hall",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.civic",
+        "institution.police",
+        "artifact.police",
+        "event.eastbank_settlement",
+        "matter.police",
+        "actor.oris_pell",
+        "office.civil_court"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.civic",
+        "geographicRelation": "within city",
+        "controller": "office.civil_court",
+        "publicFunction": "Civil petitions",
+        "accessRules": [
+          "Public gallery; sealed records require order"
+        ],
+        "actors": [
+          "actor.oris_pell"
+        ],
+        "artifacts": [
+          "artifact.police"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.police"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Civil petitions"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.abnormal_office",
+      "kind": "location",
+      "name": "Contradiction Office",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.civic",
+        "institution.abnormal",
+        "artifact.abnormal",
+        "event.eastbank_settlement",
+        "matter.abnormal",
+        "actor.elin_sarre",
+        "actor.pavel_orr",
+        "actor.nadia_crest",
+        "actor.ivo_marr"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.civic",
+        "geographicRelation": "within city",
+        "controller": "institution.abnormal",
+        "publicFunction": "Classification and coordination",
+        "accessRules": [
+          "Appointment or referred incident"
+        ],
+        "actors": [
+          "actor.elin_sarre",
+          "actor.pavel_orr",
+          "actor.nadia_crest",
+          "actor.ivo_marr"
+        ],
+        "artifacts": [
+          "artifact.abnormal"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.abnormal"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Classification and coordination"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.telegraph",
+      "kind": "location",
+      "name": "Central Telegraph Counter",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.civic",
+        "institution.press",
+        "artifact.press",
+        "event.eastbank_settlement",
+        "matter.press",
+        "actor.beatrice_orn",
+        "actor.oskar_mell",
+        "actor.clara_holt",
+        "actor.edwin_sable"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.civic",
+        "geographicRelation": "within city",
+        "controller": "institution.press",
+        "publicFunction": "Timed transmission",
+        "accessRules": [
+          "Paid counter; message contents private"
+        ],
+        "actors": [
+          "actor.beatrice_orn",
+          "actor.oskar_mell",
+          "actor.clara_holt",
+          "actor.edwin_sable"
+        ],
+        "artifacts": [
+          "artifact.press"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.press"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Timed transmission"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.insurance_hall",
+      "kind": "location",
+      "name": "Meridian Assurance Hall",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.exchange",
+        "institution.insurer",
+        "artifact.insurer",
+        "event.eastbank_settlement",
+        "matter.insurer",
+        "actor.agnes_trell",
+        "actor.lucan_iles",
+        "actor.vera_moss",
+        "actor.bram_elsen"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.exchange",
+        "geographicRelation": "within city",
+        "controller": "institution.insurer",
+        "publicFunction": "Claims and dependents",
+        "accessRules": [
+          "Claimant mandate"
+        ],
+        "actors": [
+          "actor.agnes_trell",
+          "actor.lucan_iles",
+          "actor.vera_moss",
+          "actor.bram_elsen"
+        ],
+        "artifacts": [
+          "artifact.insurer"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.insurer"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Claims and dependents"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.clearing_room",
+      "kind": "location",
+      "name": "Meridian Clearing Room",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.exchange",
+        "institution.insurer",
+        "artifact.insurer",
+        "event.eastbank_settlement",
+        "matter.insurer",
+        "actor.lucan_iles"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.exchange",
+        "geographicRelation": "within city",
+        "controller": "institution.insurer",
+        "publicFunction": "Debt and title reconciliation",
+        "accessRules": [
+          "Bank authorization"
+        ],
+        "actors": [
+          "actor.lucan_iles"
+        ],
+        "artifacts": [
+          "artifact.insurer"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.insurer"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Debt and title reconciliation"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.freight_board",
+      "kind": "location",
+      "name": "Rail Charter House",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.exchange",
+        "institution.railway",
+        "artifact.railway",
+        "event.eastbank_settlement",
+        "matter.railway",
+        "actor.otto_rehn",
+        "actor.lydia_venn",
+        "actor.silas_wren",
+        "actor.nora_kett",
+        "actor.tomas_bell"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.exchange",
+        "geographicRelation": "within city",
+        "controller": "institution.railway",
+        "publicFunction": "Freight and charter business",
+        "accessRules": [
+          "Commercial appointment"
+        ],
+        "actors": [
+          "actor.otto_rehn",
+          "actor.lydia_venn",
+          "actor.silas_wren",
+          "actor.nora_kett",
+          "actor.tomas_bell"
+        ],
+        "artifacts": [
+          "artifact.railway"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.railway"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Freight and charter business"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.exchange_square",
+      "kind": "location",
+      "name": "Exchange Square",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.exchange",
+        "institution.press",
+        "artifact.press",
+        "event.eastbank_settlement",
+        "matter.press",
+        "actor.oskar_mell"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.exchange",
+        "geographicRelation": "within city",
+        "controller": "institution.press",
+        "publicFunction": "Market notices",
+        "accessRules": [
+          "Public square, not private offices"
+        ],
+        "actors": [
+          "actor.oskar_mell"
+        ],
+        "artifacts": [
+          "artifact.press"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.press"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Market notices"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.newspaper",
+      "kind": "location",
+      "name": "Evening Ledger Office",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.exchange",
+        "institution.press",
+        "artifact.press",
+        "event.eastbank_settlement",
+        "matter.press",
+        "actor.oskar_mell"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.exchange",
+        "geographicRelation": "within city",
+        "controller": "institution.press",
+        "publicFunction": "News and corrections",
+        "accessRules": [
+          "Public submissions; source archive restricted"
+        ],
+        "actors": [
+          "actor.oskar_mell"
+        ],
+        "artifacts": [
+          "artifact.press"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.press"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "News and corrections"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.ontology",
+      "kind": "location",
+      "name": "Applied Ontology Institute",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.university",
+        "institution.academy",
+        "artifact.academy",
+        "event.eastbank_settlement",
+        "matter.academy",
+        "actor.sylva_morn",
+        "actor.dorian_fenn",
+        "actor.leonie_voss",
+        "actor.hugo_tarn",
+        "actor.ada_senn"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.university",
+        "geographicRelation": "within city",
+        "controller": "institution.academy",
+        "publicFunction": "Licensed study",
+        "accessRules": [
+          "Sponsorship and experimental safeguards"
+        ],
+        "actors": [
+          "actor.sylva_morn",
+          "actor.dorian_fenn",
+          "actor.leonie_voss",
+          "actor.hugo_tarn",
+          "actor.ada_senn"
+        ],
+        "artifacts": [
+          "artifact.academy"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.academy"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Licensed study"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.hospital",
+      "kind": "location",
+      "name": "Teaching Hospital",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.university",
+        "institution.academy",
+        "artifact.academy",
+        "event.eastbank_settlement",
+        "matter.academy",
+        "actor.leonie_voss"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.university",
+        "geographicRelation": "within city",
+        "controller": "institution.academy",
+        "publicFunction": "Medical treatment",
+        "accessRules": [
+          "Public intake; records by patient consent"
+        ],
+        "actors": [
+          "actor.leonie_voss"
+        ],
+        "artifacts": [
+          "artifact.academy"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.academy"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Medical treatment"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.mortuary",
+      "kind": "location",
+      "name": "Municipal Examination Rooms",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.university",
+        "institution.police",
+        "artifact.police",
+        "event.eastbank_settlement",
+        "matter.police",
+        "actor.oris_pell",
+        "office.medical_examiner"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.university",
+        "geographicRelation": "within city",
+        "controller": "office.medical_examiner",
+        "publicFunction": "Body identification",
+        "accessRules": [
+          "Assigned investigation and medical custody"
+        ],
+        "actors": [
+          "actor.oris_pell"
+        ],
+        "artifacts": [
+          "artifact.police"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.police"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Body identification"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.museum",
+      "kind": "location",
+      "name": "Survey and Relic Museum",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.university",
+        "institution.academy",
+        "artifact.academy",
+        "event.eastbank_settlement",
+        "matter.academy",
+        "actor.leonie_voss"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.university",
+        "geographicRelation": "within city",
+        "controller": "institution.academy",
+        "publicFunction": "Public collections",
+        "accessRules": [
+          "Public galleries; relic store restricted"
+        ],
+        "actors": [
+          "actor.leonie_voss"
+        ],
+        "artifacts": [
+          "artifact.academy"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.academy"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Public collections"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.clinic",
+      "kind": "location",
+      "name": "Parish Relief Clinic",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.university",
+        "institution.church",
+        "artifact.church",
+        "event.eastbank_settlement",
+        "matter.church",
+        "actor.jonas_mere"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.university",
+        "geographicRelation": "within city",
+        "controller": "institution.church",
+        "publicFunction": "Charitable care",
+        "accessRules": [
+          "Intake by need; confidentiality"
+        ],
+        "actors": [
+          "actor.jonas_mere"
+        ],
+        "artifacts": [
+          "artifact.church"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.church"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Charitable care"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.rail_station",
+      "kind": "location",
+      "name": "Eastbank Junction",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.industrial",
+        "institution.railway",
+        "artifact.railway",
+        "event.eastbank_settlement",
+        "matter.railway",
+        "actor.silas_wren"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.industrial",
+        "geographicRelation": "within city",
+        "controller": "institution.railway",
+        "publicFunction": "Passenger and freight transfer",
+        "accessRules": [
+          "Ticketed areas; track permit required"
+        ],
+        "actors": [
+          "actor.silas_wren"
+        ],
+        "artifacts": [
+          "artifact.railway"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.railway"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Passenger and freight transfer"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.signal_house",
+      "kind": "location",
+      "name": "Disused Signal House",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.industrial",
+        "institution.railway",
+        "artifact.railway",
+        "event.eastbank_settlement",
+        "matter.railway",
+        "actor.silas_wren"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.industrial",
+        "geographicRelation": "within city",
+        "controller": "institution.railway",
+        "publicFunction": "Obsolete signal infrastructure",
+        "accessRules": [
+          "Safety escort and railway permit"
+        ],
+        "actors": [
+          "actor.silas_wren"
+        ],
+        "artifacts": [
+          "artifact.railway"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.railway"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Obsolete signal infrastructure"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.aid_hall",
+      "kind": "location",
+      "name": "Rivet Mutual Hall",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.industrial",
+        "institution.workers",
+        "artifact.workers",
+        "event.eastbank_settlement",
+        "matter.workers",
+        "actor.emil_hart"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.industrial",
+        "geographicRelation": "within city",
+        "controller": "institution.workers",
+        "publicFunction": "Contributions and burial fund",
+        "accessRules": [
+          "Members or invited claimants; family consent"
+        ],
+        "actors": [
+          "actor.emil_hart"
+        ],
+        "artifacts": [
+          "artifact.workers"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.workers"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Contributions and burial fund"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.works_gate",
+      "kind": "location",
+      "name": "Foundry Gate",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.industrial",
+        "institution.workers",
+        "artifact.workers",
+        "event.eastbank_settlement",
+        "matter.workers",
+        "actor.emil_hart"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.industrial",
+        "geographicRelation": "within city",
+        "controller": "institution.workers",
+        "publicFunction": "Shift and labor notices",
+        "accessRules": [
+          "Public verge; employer permit inside"
+        ],
+        "actors": [
+          "actor.emil_hart"
+        ],
+        "artifacts": [
+          "artifact.workers"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.workers"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Shift and labor notices"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.customs",
+      "kind": "location",
+      "name": "Arrival Examination Hall",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.docks",
+        "institution.police",
+        "artifact.police",
+        "event.eastbank_settlement",
+        "matter.police",
+        "actor.oris_pell",
+        "office.arrival_service"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.docks",
+        "geographicRelation": "within city",
+        "controller": "office.arrival_service",
+        "publicFunction": "Arrival identity checks",
+        "accessRules": [
+          "Public arrivals; records require lawful purpose"
+        ],
+        "actors": [
+          "actor.oris_pell"
+        ],
+        "artifacts": [
+          "artifact.police"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.police"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Arrival identity checks"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.warehouse",
+      "kind": "location",
+      "name": "Tide Bonded Warehouse",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.docks",
+        "institution.insurer",
+        "artifact.insurer",
+        "event.eastbank_settlement",
+        "matter.insurer",
+        "actor.lucan_iles"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.docks",
+        "geographicRelation": "within city",
+        "controller": "institution.insurer",
+        "publicFunction": "Cargo custody",
+        "accessRules": [
+          "Cargo warrant and escort"
+        ],
+        "actors": [
+          "actor.lucan_iles"
+        ],
+        "artifacts": [
+          "artifact.insurer"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.insurer"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Cargo custody"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.lodging",
+      "kind": "location",
+      "name": "Three Landings House",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.docks",
+        "institution.grey",
+        "artifact.grey",
+        "event.eastbank_settlement",
+        "matter.grey",
+        "actor.soren_vale",
+        "actor.mira_fane",
+        "actor.abel_kerr",
+        "actor.della_rusk"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.docks",
+        "geographicRelation": "within city",
+        "controller": "institution.grey",
+        "publicFunction": "Migrant lodging",
+        "accessRules": [
+          "Resident invitation; privacy preserved"
+        ],
+        "actors": [
+          "actor.soren_vale",
+          "actor.mira_fane",
+          "actor.abel_kerr",
+          "actor.della_rusk"
+        ],
+        "artifacts": [
+          "artifact.grey"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.grey"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Migrant lodging"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.county_estate",
+      "kind": "location",
+      "name": "Vellin County Estate",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.old_quarter",
+        "institution.estates",
+        "artifact.estates",
+        "event.eastbank_settlement",
+        "matter.estates",
+        "actor.marcel_rye"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.old_quarter",
+        "geographicRelation": "surrounding footprint connected to this district",
+        "controller": "institution.estates",
+        "publicFunction": "Nearby rural estate",
+        "accessRules": [
+          "Tenant introduction or appointment"
+        ],
+        "actors": [
+          "actor.marcel_rye"
+        ],
+        "artifacts": [
+          "artifact.estates"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.estates"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Nearby rural estate"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.mill_town",
+      "kind": "location",
+      "name": "Bracken Mill Town",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.industrial",
+        "institution.workers",
+        "artifact.workers",
+        "event.eastbank_settlement",
+        "matter.workers",
+        "actor.emil_hart"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.industrial",
+        "geographicRelation": "surrounding footprint connected to this district",
+        "controller": "institution.workers",
+        "publicFunction": "Nearby mill households",
+        "accessRules": [
+          "Public town; household consent for records"
+        ],
+        "actors": [
+          "actor.emil_hart"
+        ],
+        "artifacts": [
+          "artifact.workers"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.workers"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Nearby mill households"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "location.rail_corridor",
+      "kind": "location",
+      "name": "Inland Charter Corridor",
+      "purpose": "Reusable location foundation",
+      "authority": "definition",
+      "dependencies": [
+        "district.industrial",
+        "institution.railway",
+        "artifact.railway",
+        "event.eastbank_settlement",
+        "matter.railway",
+        "actor.silas_wren"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "district": "district.industrial",
+        "geographicRelation": "surrounding footprint connected to this district",
+        "controller": "institution.railway",
+        "publicFunction": "City-to-county railway",
+        "accessRules": [
+          "Ticketed travel; service sites by permit"
+        ],
+        "actors": [
+          "actor.silas_wren"
+        ],
+        "artifacts": [
+          "artifact.railway"
+        ],
+        "historicalEvents": [
+          "event.eastbank_settlement"
+        ],
+        "specialState": "No anomaly inferred from location alone.",
+        "availability": "Business/daylight hours subject to appointment and safety.",
+        "hooks": [
+          "matter.railway"
+        ],
+        "safeGenerationZones": [
+          "Incidental subspaces within stated function; never a new access route through restrictions."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "City-to-county railway"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
 }

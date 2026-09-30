@@ -57,12 +57,15 @@ export async function verify({ load, native, manifest, sourceFiles, assetPayload
         assertTaskValue({ institutionId: 'foundation', agendaId: 'foundation', blockers: [], knownRecords: [], tick: 0, permittedActions: ['defer'] }, agenda.inputSchema);
         assert.throws(() => assertTaskValue({ decision: 'execute', reason: 'Not authorized' }, agenda.variants[0].outputSchema));
         checks.push('over-limit policy / broken static target / missing Task resource / undeclared Agenda decision rejected');
+        const { contentCheck } = await import('./content-check.mjs');
+        const content = await contentCheck({ manifest, opened, session, projections, logic: JSON.parse(sourceFiles.get('runtime/logic.json')) });
+        checks.push(content.result);
         const { interactionCheck } = await import('./interaction-check.mjs');
         checks.push(await interactionCheck({ load, svc, h, session, sourceFiles }));
         const { turnSmoke } = await import('./turn-smoke.mjs');
-        checks.push(await turnSmoke({ load, h, svc, session }));
+        checks.push(await turnSmoke({ load, h, svc, session, assertContentSafe: content.assertSafe }));
         const { simulationCheck } = await import('./simulation-check.mjs');
-        checks.push(await simulationCheck({ load, svc, h, manifest, archive }));
+        checks.push(await simulationCheck({ load, svc, h, manifest, archive, assertContentSafe: content.assertSafe }));
         return { mode, checks, dataResources: manifest.runtime.experienceContract.dataResources.length, tasks: manifest.runtime.experienceContract.taskRuntime.tasks.length,
             ...(mode === 'preview' ? { player: projections['player.overview'], narrator: projections['narrator.context'] } : {}),
             limits: ['FS integration only', 'No hosted model or UI execution', 'Two-day synthetic world only; no full gameplay or cross-process uncommitted selection claim'] };

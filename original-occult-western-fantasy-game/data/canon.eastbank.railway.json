@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "canon.railway",
+      "kind": "canon_fragment",
+      "name": "Reconstruction routes",
+      "purpose": "Reusable canon_fragment foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.railway",
+        "artifact.railway",
+        "event.eastbank_settlement"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "subject": "Reconstruction routes",
+        "timeScope": "Disaster approximately forty years ago and continuing records",
+        "assertions": [
+          "Repeated modern routes reinforce new identity over obsolete spatial interpretations."
+        ],
+        "events": [
+          "event.eastbank_settlement"
+        ],
+        "conflictingRecords": [
+          {
+            "artifact": "artifact.railway",
+            "conflict": "Old route numbers survive in worker dockets."
+          }
+        ],
+        "holders": [
+          "institution.railway"
+        ],
+        "evidenceGateways": [
+          "artifact.railway"
+        ],
+        "revealLayer": 2,
+        "projectionRules": [
+          "Never copy this fragment into Knowledge, model context or Views.",
+          "Only a separately authored weaker proposition may be acquired after validated custody and access."
+        ],
+        "epistemicStatus": "authored_fact"
+      },
+      "perspective": {
+        "currentlySupportable": "Old route numbers survive in worker dockets."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "canon.deep",
+      "kind": "canon_fragment",
+      "name": "Residual structure",
+      "purpose": "Reusable canon_fragment foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.academy",
+        "artifact.academy",
+        "event.eastbank_settlement"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "subject": "Residual structure",
+        "timeScope": "Unresolved prehistory and present structure",
+        "assertions": [
+          "The origin remains unresolved. An older Boundary/Identity structure is a hypothesis, not established Canon."
+        ],
+        "events": [
+          "event.eastbank_settlement"
+        ],
+        "conflictingRecords": [
+          {
+            "artifact": "artifact.academy",
+            "conflict": "Institutional explanations do not determine deep cause."
+          }
+        ],
+        "holders": [
+          "institution.academy"
+        ],
+        "evidenceGateways": [
+          "artifact.academy"
+        ],
+        "revealLayer": 4,
+        "projectionRules": [
+          "Never copy this fragment into Knowledge, model context or Views.",
+          "Only a separately authored weaker proposition may be acquired after validated custody and access."
+        ],
+        "epistemicStatus": "unresolved"
+      },
+      "perspective": {
+        "currentlySupportable": "Institutional explanations do not determine deep cause."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

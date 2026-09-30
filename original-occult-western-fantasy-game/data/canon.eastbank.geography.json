@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "canon.geography",
+      "kind": "canon_fragment",
+      "name": "Pre-disaster geography",
+      "purpose": "Reusable canon_fragment foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.estates",
+        "artifact.estates",
+        "event.eastbank_settlement"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "subject": "Pre-disaster geography",
+        "timeScope": "Disaster approximately forty years ago and continuing records",
+        "assertions": [
+          "Old boundary descriptions survived standardized numbering."
+        ],
+        "events": [
+          "event.eastbank_settlement"
+        ],
+        "conflictingRecords": [
+          {
+            "artifact": "artifact.estates",
+            "conflict": "A modern map omits customary access."
+          }
+        ],
+        "holders": [
+          "institution.estates"
+        ],
+        "evidenceGateways": [
+          "artifact.estates"
+        ],
+        "revealLayer": 2,
+        "projectionRules": [
+          "Never copy this fragment into Knowledge, model context or Views.",
+          "Only a separately authored weaker proposition may be acquired after validated custody and access."
+        ],
+        "epistemicStatus": "authored_fact"
+      },
+      "perspective": {
+        "currentlySupportable": "A modern map omits customary access."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

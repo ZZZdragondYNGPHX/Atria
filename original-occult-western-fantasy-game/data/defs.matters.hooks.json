@@ -1,0 +1,275 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "matter.police",
+      "kind": "matter_hook",
+      "name": "Municipal Police: record inquiry",
+      "purpose": "Reusable matter_hook foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.police",
+        "trigger": "Protect a duplicate custody record",
+        "activation": "Dormant inquiry hook, not an active Case or deadline."
+      },
+      "perspective": {
+        "publicDescription": "A specific crime, safety and civil inquiry inquiry may be raised by an authorized participant."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "matter.abnormal",
+      "kind": "matter_hook",
+      "name": "Office of Abnormal Inquiry: record inquiry",
+      "purpose": "Reusable matter_hook foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.abnormal"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.abnormal",
+        "trigger": "Secure consent for a bounded survey",
+        "activation": "Dormant inquiry hook, not an active Case or deadline."
+      },
+      "perspective": {
+        "publicDescription": "A specific classification and containment inquiry may be raised by an authorized participant."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "matter.academy",
+      "kind": "matter_hook",
+      "name": "Municipal University: record inquiry",
+      "purpose": "Reusable matter_hook foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.academy"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.academy",
+        "trigger": "Audit an old study before publication",
+        "activation": "Dormant inquiry hook, not an active Case or deadline."
+      },
+      "perspective": {
+        "publicDescription": "A specific teaching, medicine and research inquiry may be raised by an authorized participant."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "matter.church",
+      "kind": "matter_hook",
+      "name": "Metropolitan Communion: record inquiry",
+      "purpose": "Reusable matter_hook foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.church",
+        "trigger": "Preserve disputed entries without voiding families",
+        "activation": "Dormant inquiry hook, not an active Case or deadline."
+      },
+      "perspective": {
+        "publicDescription": "A specific rites, charity and sacred offices inquiry may be raised by an authorized participant."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "matter.insurer",
+      "kind": "matter_hook",
+      "name": "Meridian Assurance and Bank: record inquiry",
+      "purpose": "Reusable matter_hook foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.insurer"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.insurer",
+        "trigger": "Review a denied dependent claim",
+        "activation": "Dormant inquiry hook, not an active Case or deadline."
+      },
+      "perspective": {
+        "publicDescription": "A specific insurance, credit and compensation inquiry may be raised by an authorized participant."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "matter.railway",
+      "kind": "matter_hook",
+      "name": "Inland Rail and Port Company: record inquiry",
+      "purpose": "Reusable matter_hook foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.railway"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.railway",
+        "trigger": "Audit obsolete signal duties",
+        "activation": "Dormant inquiry hook, not an active Case or deadline."
+      },
+      "perspective": {
+        "publicDescription": "A specific transport, freight and housing inquiry may be raised by an authorized participant."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "matter.estates",
+      "kind": "matter_hook",
+      "name": "Old Estate Network: record inquiry",
+      "purpose": "Reusable matter_hook foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.estates"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.estates",
+        "trigger": "Authenticate a boundary without erasing tenancy",
+        "activation": "Dormant inquiry hook, not an active Case or deadline."
+      },
+      "perspective": {
+        "publicDescription": "A specific land stewardship and inherited rights inquiry may be raised by an authorized participant."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "matter.workers",
+      "kind": "matter_hook",
+      "name": "Mutual Aid and Labor Network: record inquiry",
+      "purpose": "Reusable matter_hook foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.workers"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.workers",
+        "trigger": "Obtain consent for a burial cross-check",
+        "activation": "Dormant inquiry hook, not an active Case or deadline."
+      },
+      "perspective": {
+        "publicDescription": "A specific burial funds and collective support inquiry may be raised by an authorized participant."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "matter.press",
+      "kind": "matter_hook",
+      "name": "Evening Ledger and Telegraph Network: record inquiry",
+      "purpose": "Reusable matter_hook foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.press"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.press",
+        "trigger": "Verify a correction independently",
+        "activation": "Dormant inquiry hook, not an active Case or deadline."
+      },
+      "perspective": {
+        "publicDescription": "A specific reporting, transmission and corrections inquiry may be raised by an authorized participant."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "matter.grey",
+      "kind": "matter_hook",
+      "name": "Grey Registry: record inquiry",
+      "purpose": "Reusable matter_hook foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.grey",
+        "trigger": "Protect an excluded person while testing provenance",
+        "activation": "Dormant inquiry hook, not an active Case or deadline."
+      },
+      "perspective": {
+        "publicDescription": "A specific private identity brokerage, no central office inquiry may be raised by an authorized participant."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

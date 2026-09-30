@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "canon.press",
+      "kind": "canon_fragment",
+      "name": "Early reporting",
+      "purpose": "Reusable canon_fragment foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.press",
+        "artifact.press",
+        "event.eastbank_settlement"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "subject": "Early reporting",
+        "timeScope": "Disaster approximately forty years ago and continuing records",
+        "assertions": [
+          "Drafts before the final narrative preserved incompatible observations."
+        ],
+        "events": [
+          "event.eastbank_settlement"
+        ],
+        "conflictingRecords": [
+          {
+            "artifact": "artifact.press",
+            "conflict": "Draft and final edition differ in population status."
+          }
+        ],
+        "holders": [
+          "institution.press"
+        ],
+        "evidenceGateways": [
+          "artifact.press"
+        ],
+        "revealLayer": 2,
+        "projectionRules": [
+          "Never copy this fragment into Knowledge, model context or Views.",
+          "Only a separately authored weaker proposition may be acquired after validated custody and access."
+        ],
+        "epistemicStatus": "authored_fact"
+      },
+      "perspective": {
+        "currentlySupportable": "Draft and final edition differ in population status."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

@@ -3,9 +3,9 @@
   "schemaVersion": 2,
   "nativeSchemaVersion": 1,
   "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-  "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042",
-  "name": "Original Occult Western Fantasy — World Simulation Fixture",
-  "version": "0.3.0-p3",
+  "packageVersionId": "pkgv_30e4eb31258baa84728b1f3666bd32cc",
+  "name": "Original Occult Western Fantasy — Content Foundation",
+  "version": "0.4.0-p4",
   "actors": [
     {
       "actorId": "actor_78fd62e4f874657db785310ec4c9ef52",
@@ -15,7 +15,7 @@
   "entryPoints": [
     {
       "entryPointId": "entry_1e0df9035d386c417c3f88380748cad0",
-      "displayName": "P2 Interaction Fixture",
+      "displayName": "P3 Two-day Regression Fixture",
       "actorIds": [
         "actor_78fd62e4f874657db785310ec4c9ef52"
       ],
@@ -54,7 +54,78 @@
       }
     }
   ],
-  "knowledge": [],
+  "knowledge": [
+    {
+      "knowledgeBase": {
+        "knowledgeBaseId": "kb_388a620251cd36d16fe5e69b107d9774",
+        "displayName": "Public civic reading",
+        "currentRevisionId": "kbv_6075ab7c25b0cc48ea6f724aef692b14"
+      },
+      "revision": {
+        "knowledgeBaseId": "kb_388a620251cd36d16fe5e69b107d9774",
+        "knowledgeRevisionId": "kbv_6075ab7c25b0cc48ea6f724aef692b14",
+        "entryIds": [
+          "kentry_6f35a5d5397d88ec57a91c28d5ed4480",
+          "kentry_19de4ee1637ee3fb5d0446035a87f254",
+          "kentry_b6b8d84a761c240d88dc93dd1c22b5a6",
+          "kentry_9c40d98cd88fde037f5b8faea50ab1e9",
+          "kentry_515b4a10477c713789a00930debf9e64",
+          "kentry_29bdd2d28034da884b976d483cde0191"
+        ],
+        "metadata": {}
+      },
+      "entries": [
+        {
+          "knowledgeEntryId": "kentry_6f35a5d5397d88ec57a91c28d5ed4480",
+          "content": "A Civil Verifier may request a specific copy with documented interest. This is not a warrant for every archive.",
+          "metadata": {
+            "sourceDefinitionId": "knowledge.civil_requests",
+            "disclosure": "public"
+          }
+        },
+        {
+          "knowledgeEntryId": "kentry_19de4ee1637ee3fb5d0446035a87f254",
+          "content": "The communion maintains naming, marriage and burial practices. Membership does not grant sacred office or deep theory.",
+          "metadata": {
+            "sourceDefinitionId": "knowledge.ordinary_rites",
+            "disclosure": "public"
+          }
+        },
+        {
+          "knowledgeEntryId": "kentry_b6b8d84a761c240d88dc93dd1c22b5a6",
+          "content": "Official accounts describe fire, transport disruption, telegraph failure and reconstruction approximately forty years ago. This attributed account is not a complete causal explanation.",
+          "metadata": {
+            "sourceDefinitionId": "knowledge.public_history",
+            "disclosure": "public"
+          }
+        },
+        {
+          "knowledgeEntryId": "kentry_9c40d98cd88fde037f5b8faea50ab1e9",
+          "content": "A claimant must identify the subject and authority to act. An accepted financial claim does not prove every historical assertion.",
+          "metadata": {
+            "sourceDefinitionId": "knowledge.claim_procedure",
+            "disclosure": "public"
+          }
+        },
+        {
+          "knowledgeEntryId": "kentry_515b4a10477c713789a00930debf9e64",
+          "content": "Separate witnesses, record time, preserve boundaries and avoid casually moving contradictory relics or records. Escalate persistent identity discrepancies.",
+          "metadata": {
+            "sourceDefinitionId": "knowledge.safe_inquiry",
+            "disclosure": "public"
+          }
+        },
+        {
+          "knowledgeEntryId": "kentry_29bdd2d28034da884b976d483cde0191",
+          "content": "The city links the Old Quarter, Civic District, Exchange, University Quarter, Industrial Belt and Docks. A ticket does not grant track or warehouse access.",
+          "metadata": {
+            "sourceDefinitionId": "knowledge.city_routes",
+            "disclosure": "public"
+          }
+        }
+      ]
+    }
+  ],
   "knowledgeBindings": [],
   "assets": [],
   "capabilities": [

@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "tradition.civic",
+      "kind": "tradition",
+      "name": "civic stabilization",
+      "purpose": "Reusable tradition foundation",
+      "authority": "definition",
+      "dependencies": [],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "anchorPatterns": [
+          "Licence, signed record and state witness"
+        ],
+        "pricePatterns": [
+          "Reporting obligation and institutional exposure"
+        ],
+        "limits": [
+          "Not faction-exclusive; valid Anchor, Price and Investiture required."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "A civic route can support an eligible Seed."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "tradition.church",
+      "kind": "tradition",
+      "name": "church stabilization",
+      "purpose": "Reusable tradition foundation",
+      "authority": "definition",
+      "dependencies": [],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "anchorPatterns": [
+          "Oath, sacred witness and ritual record"
+        ],
+        "pricePatterns": [
+          "Communal accountability and non-denial of witnessed facts"
+        ],
+        "limits": [
+          "Not faction-exclusive; valid Anchor, Price and Investiture required."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "A church route can support an eligible Seed."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "tradition.academy",
+      "kind": "tradition",
+      "name": "academy stabilization",
+      "purpose": "Reusable tradition foundation",
+      "authority": "definition",
+      "dependencies": [],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "anchorPatterns": [
+          "Measurement, repeated tests and research archive"
+        ],
+        "pricePatterns": [
+          "Continued examination and detectability"
+        ],
+        "limits": [
+          "Not faction-exclusive; valid Anchor, Price and Investiture required."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "A academy route can support an eligible Seed."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "tradition.grey",
+      "kind": "tradition",
+      "name": "grey stabilization",
+      "purpose": "Reusable tradition foundation",
+      "authority": "definition",
+      "dependencies": [],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "anchorPatterns": [
+          "Private document and off-record witnesses"
+        ],
+        "pricePatterns": [
+          "Fragile recognition and greater failure risk"
+        ],
+        "limits": [
+          "Not faction-exclusive; valid Anchor, Price and Investiture required."
+        ]
+      },
+      "perspective": {
+        "publicDescription": "A grey route can support an eligible Seed."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "district.old_quarter",
+      "kind": "district",
+      "name": "Old Quarter",
+      "purpose": "Reusable district foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "function": "Inherited boundaries and parish memory",
+        "history": "Layered mercantile, administrative and industrial city.",
+        "jurisdiction": "Municipal law and overlapping institutional custody."
+      },
+      "perspective": {
+        "publicDescription": "Inherited boundaries and parish memory"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "district.civic",
+      "kind": "district",
+      "name": "Civic District",
+      "purpose": "Reusable district foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "function": "Civil registry, courts and official narrative",
+        "history": "Layered mercantile, administrative and industrial city.",
+        "jurisdiction": "Municipal law and overlapping institutional custody."
+      },
+      "perspective": {
+        "publicDescription": "Civil registry, courts and official narrative"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "district.exchange",
+      "kind": "district",
+      "name": "Exchange",
+      "purpose": "Reusable district foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.insurer"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "function": "Post-Settlement financial and property continuity",
+        "history": "Layered mercantile, administrative and industrial city.",
+        "jurisdiction": "Municipal law and overlapping institutional custody."
+      },
+      "perspective": {
+        "publicDescription": "Post-Settlement financial and property continuity"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "district.university",
+      "kind": "district",
+      "name": "University Quarter",
+      "purpose": "Reusable district foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.academy"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "function": "Medicine and restricted analytical research",
+        "history": "Layered mercantile, administrative and industrial city.",
+        "jurisdiction": "Municipal law and overlapping institutional custody."
+      },
+      "perspective": {
+        "publicDescription": "Medicine and restricted analytical research"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "district.industrial",
+      "kind": "district",
+      "name": "Industrial Belt",
+      "purpose": "Reusable district foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.railway"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "function": "Worker continuity, rail and industrial Echo",
+        "history": "Layered mercantile, administrative and industrial city.",
+        "jurisdiction": "Municipal law and overlapping institutional custody."
+      },
+      "perspective": {
+        "publicDescription": "Worker continuity, rail and industrial Echo"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "district.docks",
+      "kind": "district",
+      "name": "Docks",
+      "purpose": "Reusable district foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "function": "Migration and cross-system identity",
+        "history": "Layered mercantile, administrative and industrial city.",
+        "jurisdiction": "Municipal law and overlapping institutional custody."
+      },
+      "perspective": {
+        "publicDescription": "Migration and cross-system identity"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

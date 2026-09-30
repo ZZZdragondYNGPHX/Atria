@@ -1,4 +1,253 @@
 {
   "schemaVersion": 1,
-  "items": []
+  "items": [
+    {
+      "id": "primitive.witness",
+      "kind": "claim_primitive",
+      "name": "Detect contradiction",
+      "purpose": "Reusable claim_primitive foundation",
+      "authority": "definition",
+      "dependencies": [],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Witness"
+        ],
+        "effect": "Detect contradiction",
+        "hardLimits": [
+          "Cannot decide which proposition is Truth.",
+          "No arbitrary settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Definition only; not an executable or granted ability."
+      },
+      "perspective": {
+        "playerDescription": "Detect contradiction"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "primitive.name",
+      "kind": "claim_primitive",
+      "name": "Protect designation",
+      "purpose": "Reusable claim_primitive foundation",
+      "authority": "definition",
+      "dependencies": [],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Name"
+        ],
+        "effect": "Protect designation",
+        "hardLimits": [
+          "Cannot change bodily or material structure.",
+          "No arbitrary settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Definition only; not an executable or granted ability."
+      },
+      "perspective": {
+        "playerDescription": "Protect designation"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "primitive.boundary",
+      "kind": "claim_primitive",
+      "name": "Recognize or stabilize boundary",
+      "purpose": "Reusable claim_primitive foundation",
+      "authority": "definition",
+      "dependencies": [],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Boundary"
+        ],
+        "effect": "Recognize or stabilize boundary",
+        "hardLimits": [
+          "No unconditional travel or exclusion.",
+          "No arbitrary settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Definition only; not an executable or granted ability."
+      },
+      "perspective": {
+        "playerDescription": "Recognize or stabilize boundary"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "primitive.bond",
+      "kind": "claim_primitive",
+      "name": "Identify relational discontinuity",
+      "purpose": "Reusable claim_primitive foundation",
+      "authority": "definition",
+      "dependencies": [],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Bond"
+        ],
+        "effect": "Identify relational discontinuity",
+        "hardLimits": [
+          "No binding unrelated strangers or overriding will.",
+          "No arbitrary settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Definition only; not an executable or granted ability."
+      },
+      "perspective": {
+        "playerDescription": "Identify relational discontinuity"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "primitive.memory",
+      "kind": "claim_primitive",
+      "name": "Preserve carrier continuity",
+      "purpose": "Reusable claim_primitive foundation",
+      "authority": "definition",
+      "dependencies": [],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Memory"
+        ],
+        "effect": "Preserve carrier continuity",
+        "hardLimits": [
+          "Cannot rewrite established past.",
+          "No arbitrary settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Definition only; not an executable or granted ability."
+      },
+      "perspective": {
+        "playerDescription": "Preserve carrier continuity"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "primitive.echo",
+      "kind": "claim_primitive",
+      "name": "Perceive real residual traces",
+      "purpose": "Reusable claim_primitive foundation",
+      "authority": "definition",
+      "dependencies": [],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Echo"
+        ],
+        "effect": "Perceive real residual traces",
+        "hardLimits": [
+          "Cannot invent events or replay complete causality.",
+          "No arbitrary settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Definition only; not an executable or granted ability."
+      },
+      "perspective": {
+        "playerDescription": "Perceive real residual traces"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "primitive.form",
+      "kind": "claim_primitive",
+      "name": "Maintain structural continuity",
+      "purpose": "Reusable claim_primitive foundation",
+      "authority": "definition",
+      "dependencies": [],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Form"
+        ],
+        "effect": "Maintain structural continuity",
+        "hardLimits": [
+          "No creation from nothing or unlimited restoration.",
+          "No arbitrary settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Definition only; not an executable or granted ability."
+      },
+      "perspective": {
+        "playerDescription": "Maintain structural continuity"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "primitive.possibility",
+      "kind": "claim_primitive",
+      "name": "Narrow unresolved alternatives",
+      "purpose": "Reusable claim_primitive foundation",
+      "authority": "definition",
+      "dependencies": [],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Possibility"
+        ],
+        "effect": "Narrow unresolved alternatives",
+        "hardLimits": [
+          "Cannot negate settled outcomes or exceed Jurisdiction.",
+          "No arbitrary settled-fact rewriting, unlimited creation or unconditional domination."
+        ],
+        "runtimeStatus": "Definition only; not an executable or granted ability."
+      },
+      "perspective": {
+        "playerDescription": "Narrow unresolved alternatives"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
 }

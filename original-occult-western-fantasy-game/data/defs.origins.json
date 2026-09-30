@@ -1,0 +1,863 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "origin.old_family",
+      "kind": "origin",
+      "name": "Old Quarter household",
+      "purpose": "Reusable origin foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.church",
+        "knowledgeAccess": [
+          "Parish and customary address notation"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Parish and customary address notation"
+        ],
+        "startingBelief": "No sacred office from familiarity",
+        "relationshipBudget": 1,
+        "limits": [
+          "No sacred office from familiarity",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Old Quarter household"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "origin.worker_household",
+      "kind": "origin",
+      "name": "Worker household",
+      "purpose": "Reusable origin foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.workers"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.workers",
+        "knowledgeAccess": [
+          "Contribution and shift records"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Contribution and shift records"
+        ],
+        "startingBelief": "No complete knowledge of other households",
+        "relationshipBudget": 1,
+        "limits": [
+          "No complete knowledge of other households",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Worker household"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "origin.clerical_household",
+      "kind": "origin",
+      "name": "Clerical household",
+      "purpose": "Reusable origin foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.police",
+        "knowledgeAccess": [
+          "Civil copy requests"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Civil copy requests"
+        ],
+        "startingBelief": "Forms are not archive warrants",
+        "relationshipBudget": 1,
+        "limits": [
+          "Forms are not archive warrants",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Clerical household"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "origin.county",
+      "kind": "origin",
+      "name": "County upbringing",
+      "purpose": "Reusable origin foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.estates"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.estates",
+        "knowledgeAccess": [
+          "Customary paths and tenant contacts"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Customary paths and tenant contacts"
+        ],
+        "startingBelief": "Memory is not current title",
+        "relationshipBudget": 1,
+        "limits": [
+          "Memory is not current title",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "County upbringing"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "origin.migrant",
+      "kind": "origin",
+      "name": "Migrant household",
+      "purpose": "Reusable origin foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.grey",
+        "knowledgeAccess": [
+          "Names across registration systems"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Names across registration systems"
+        ],
+        "startingBelief": "Migration implies no criminal ties",
+        "relationshipBudget": 1,
+        "limits": [
+          "Migration implies no criminal ties",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Migrant household"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "origin.minor_family",
+      "kind": "origin",
+      "name": "Declining minor family",
+      "purpose": "Reusable origin foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.estates"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.estates",
+        "knowledgeAccess": [
+          "Deed custody and patron etiquette"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Deed custody and patron etiquette"
+        ],
+        "startingBelief": "Family grants no title or bloodline power",
+        "relationshipBudget": 1,
+        "limits": [
+          "Family grants no title or bloodline power",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Declining minor family"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "origin.charity",
+      "kind": "origin",
+      "name": "Church-charity upbringing",
+      "purpose": "Reusable origin foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.church",
+        "knowledgeAccess": [
+          "Relief intake and rites"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Relief intake and rites"
+        ],
+        "startingBelief": "Care records reveal no high theory",
+        "relationshipBudget": 1,
+        "limits": [
+          "Care records reveal no high theory",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Church-charity upbringing"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "prior_life.legal",
+      "kind": "prior_life",
+      "name": "Legal work",
+      "purpose": "Reusable prior_life foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.police",
+        "knowledgeAccess": [
+          "Requests and certified copies"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Requests and certified copies"
+        ],
+        "startingBelief": "No standing warrant",
+        "relationshipBudget": 1,
+        "limits": [
+          "No standing warrant",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Legal work"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "prior_life.insurance",
+      "kind": "prior_life",
+      "name": "Accounting or insurance",
+      "purpose": "Reusable prior_life foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.insurer"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.insurer",
+        "knowledgeAccess": [
+          "Claim codes"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Claim codes"
+        ],
+        "startingBelief": "No private ledger without mandate",
+        "relationshipBudget": 1,
+        "limits": [
+          "No private ledger without mandate",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Accounting or insurance"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "prior_life.medical",
+      "kind": "prior_life",
+      "name": "Medical support",
+      "purpose": "Reusable prior_life foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.academy"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.academy",
+        "knowledgeAccess": [
+          "Consent and mortuary procedure"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Consent and mortuary procedure"
+        ],
+        "startingBelief": "No automatic physician licence",
+        "relationshipBudget": 1,
+        "limits": [
+          "No automatic physician licence",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Medical support"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "prior_life.church_school",
+      "kind": "prior_life",
+      "name": "Church schooling",
+      "purpose": "Reusable prior_life foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.church",
+        "knowledgeAccess": [
+          "Burial notation"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Burial notation"
+        ],
+        "startingBelief": "No office Claim",
+        "relationshipBudget": 1,
+        "limits": [
+          "No office Claim",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Church schooling"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "prior_life.journalism",
+      "kind": "prior_life",
+      "name": "Journalism",
+      "purpose": "Reusable prior_life foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.press"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.press",
+        "knowledgeAccess": [
+          "Source comparison"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Source comparison"
+        ],
+        "startingBelief": "No invented source",
+        "relationshipBudget": 1,
+        "limits": [
+          "No invented source",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Journalism"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "prior_life.rail_work",
+      "kind": "prior_life",
+      "name": "Rail or industrial work",
+      "purpose": "Reusable prior_life foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.railway"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.railway",
+        "knowledgeAccess": [
+          "Obsolete route numbering"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Obsolete route numbering"
+        ],
+        "startingBelief": "No unrestricted track access",
+        "relationshipBudget": 1,
+        "limits": [
+          "No unrestricted track access",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Rail or industrial work"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "prior_life.military",
+      "kind": "prior_life",
+      "name": "Military service",
+      "purpose": "Reusable prior_life foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.police",
+        "knowledgeAccess": [
+          "Orders and custody"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Orders and custody"
+        ],
+        "startingBelief": "No current command authority",
+        "relationshipBudget": 1,
+        "limits": [
+          "No current command authority",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Military service"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "prior_life.administration",
+      "kind": "prior_life",
+      "name": "Ordinary administration",
+      "purpose": "Reusable prior_life foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.police",
+        "knowledgeAccess": [
+          "File provenance"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "File provenance"
+        ],
+        "startingBelief": "No every-department access",
+        "relationshipBudget": 1,
+        "limits": [
+          "No every-department access",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Ordinary administration"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "faith.communion",
+      "kind": "faith",
+      "name": "Ordinary communion member",
+      "purpose": "Reusable faith foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.church",
+        "knowledgeAccess": [
+          "Life-cycle rites"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Life-cycle rites"
+        ],
+        "startingBelief": "Doctrine is not complete cosmological Truth",
+        "relationshipBudget": 1,
+        "limits": [
+          "Doctrine is not complete cosmological Truth",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Ordinary communion member"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "faith.cultural",
+      "kind": "faith",
+      "name": "Culturally affiliated",
+      "purpose": "Reusable faith foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.church",
+        "knowledgeAccess": [
+          "Festival and family practice"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Festival and family practice"
+        ],
+        "startingBelief": "No compulsory belief",
+        "relationshipBudget": 1,
+        "limits": [
+          "No compulsory belief",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Culturally affiliated"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "faith.devout",
+      "kind": "faith",
+      "name": "Devout",
+      "purpose": "Reusable faith foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.church",
+        "knowledgeAccess": [
+          "Prayer as address and responsibility"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Prayer as address and responsibility"
+        ],
+        "startingBelief": "No guaranteed miracle",
+        "relationshipBudget": 1,
+        "limits": [
+          "No guaranteed miracle",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Devout"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "faith.local",
+      "kind": "faith",
+      "name": "Local tradition",
+      "purpose": "Reusable faith foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.workers"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.workers",
+        "knowledgeAccess": [
+          "Household protector customs"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Household protector customs"
+        ],
+        "startingBelief": "No ninth Principle",
+        "relationshipBudget": 1,
+        "limits": [
+          "No ninth Principle",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Local tradition"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "faith.convert",
+      "kind": "faith",
+      "name": "Convert",
+      "purpose": "Reusable faith foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.church",
+        "knowledgeAccess": [
+          "Changed sacred recognition"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Changed sacred recognition"
+        ],
+        "startingBelief": "No automatic erasure of former ties",
+        "relationshipBudget": 1,
+        "limits": [
+          "No automatic erasure of former ties",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Convert"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "faith.distanced",
+      "kind": "faith",
+      "name": "Distanced or nonbelieving",
+      "purpose": "Reusable faith foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.academy"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.academy",
+        "knowledgeAccess": [
+          "Public procedures without devotion"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Public procedures without devotion"
+        ],
+        "startingBelief": "Nonbelief does not nullify offices",
+        "relationshipBudget": 1,
+        "limits": [
+          "Nonbelief does not nullify offices",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Distanced or nonbelieving"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "faith.dual",
+      "kind": "faith",
+      "name": "Unresolved dual affiliation",
+      "purpose": "Reusable faith foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "institution": "institution.church",
+        "knowledgeAccess": [
+          "Overlapping communal obligations"
+        ],
+        "socialAccess": "One credible ordinary introduction; instantiate only during P5 character creation.",
+        "proceduralFamiliarity": [
+          "Overlapping communal obligations"
+        ],
+        "startingBelief": "Not automatically a supernatural contradiction",
+        "relationshipBudget": 1,
+        "limits": [
+          "Not automatically a supernatural contradiction",
+          "Access and interpretation, not stat bonuses, powers or mandatory solution gates."
+        ],
+        "activation": "Unselected definition; no protagonist fact created."
+      },
+      "perspective": {
+        "publicDescription": "Unresolved dual affiliation"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

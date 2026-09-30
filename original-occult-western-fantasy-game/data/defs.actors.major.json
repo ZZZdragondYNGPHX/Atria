@@ -1,4 +1,1001 @@
 {
   "schemaVersion": 1,
-  "items": []
+  "items": [
+    {
+      "id": "actor.mara_vey",
+      "kind": "actor_a",
+      "name": "Mara Vey",
+      "purpose": "Reusable actor_a foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police",
+        "location.police_desk",
+        "actor.oris_pell",
+        "matter.police",
+        "artifact.police"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Mara Vey",
+        "role": "Evidence inspector",
+        "affiliation": "institution.police",
+        "competencies": [
+          "Separate recorded and inferred time"
+        ],
+        "relations": [
+          {
+            "actor": "actor.oris_pell",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.police_desk",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.police"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ],
+        "privateMotive": "Keep an inconvenient duplicate intact",
+        "constraints": [
+          "Quick closure versus record integrity",
+          "Cannot grant access to another custodian."
+        ],
+        "agenda": {
+          "objective": "Keep an inconvenient duplicate intact",
+          "changeHook": "Authenticated contrary evidence or harm to a protected person"
+        },
+        "personalAnchors": [
+          "Maintained signed work record at location.police_desk"
+        ],
+        "legitimateAccess": [
+          "artifact.police"
+        ],
+        "changeHooks": [
+          "Provenance-reviewed evidence can change belief.",
+          "Broken custody promises change relation independently."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Mara Vey, Evidence inspector",
+        "beliefs": [
+          "An orderly file may hide a missing witness"
+        ],
+        "memories": [
+          "Previously handled registry under local custody; no complete disaster recollection implied."
+        ],
+        "knownSecrets": [
+          "Original attendance records are incomplete"
+        ],
+        "unknowns": [
+          "No complete disaster census",
+          "Deep Eastbank cause unknown."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.elin_sarre",
+      "kind": "actor_a",
+      "name": "Elin Sarre",
+      "purpose": "Reusable actor_a foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.abnormal",
+        "location.abnormal_office",
+        "actor.pavel_orr",
+        "matter.abnormal",
+        "artifact.abnormal"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Elin Sarre",
+        "role": "Containment coordinator",
+        "affiliation": "institution.abnormal",
+        "competencies": [
+          "Jurisdiction coordination"
+        ],
+        "relations": [
+          {
+            "actor": "actor.pavel_orr",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.abnormal_office",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.abnormal"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ],
+        "privateMotive": "Keep a district habitable without ending appeals",
+        "constraints": [
+          "Containment versus historical repair",
+          "Cannot grant access to another custodian."
+        ],
+        "agenda": {
+          "objective": "Keep a district habitable without ending appeals",
+          "changeHook": "Authenticated contrary evidence or harm to a protected person"
+        },
+        "personalAnchors": [
+          "Maintained signed work record at location.abnormal_office"
+        ],
+        "legitimateAccess": [
+          "artifact.abnormal"
+        ],
+        "changeHooks": [
+          "Provenance-reviewed evidence can change belief.",
+          "Broken custody promises change relation independently."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Elin Sarre, Containment coordinator",
+        "beliefs": [
+          "Containment is not historical settlement"
+        ],
+        "memories": [
+          "Previously handled settlement under local custody; no complete disaster recollection implied."
+        ],
+        "knownSecrets": [
+          "Later anomalies recur at renamed addresses"
+        ],
+        "unknowns": [
+          "Original evidence is limited",
+          "Deep Eastbank cause unknown."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.sylva_morn",
+      "kind": "actor_a",
+      "name": "Sylva Morn",
+      "purpose": "Reusable actor_a foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.academy",
+        "location.ontology",
+        "actor.dorian_fenn",
+        "matter.academy",
+        "artifact.academy"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Sylva Morn",
+        "role": "Ontology chair",
+        "affiliation": "institution.academy",
+        "competencies": [
+          "Controlled comparison"
+        ],
+        "relations": [
+          {
+            "actor": "actor.dorian_fenn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.ontology",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.academy"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ],
+        "privateMotive": "Publish a defensible negative result",
+        "constraints": [
+          "Publication versus patient safety",
+          "Cannot grant access to another custodian."
+        ],
+        "agenda": {
+          "objective": "Publish a defensible negative result",
+          "changeHook": "Authenticated contrary evidence or harm to a protected person"
+        },
+        "personalAnchors": [
+          "Maintained signed work record at location.ontology"
+        ],
+        "legitimateAccess": [
+          "artifact.academy"
+        ],
+        "changeHooks": [
+          "Provenance-reviewed evidence can change belief.",
+          "Broken custody promises change relation independently."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Sylva Morn, Ontology chair",
+        "beliefs": [
+          "Theory is not consent to experiment"
+        ],
+        "memories": [
+          "Previously handled academy under local custody; no complete disaster recollection implied."
+        ],
+        "knownSecrets": [
+          "Near-original studies found contradictory boundaries"
+        ],
+        "unknowns": [
+          "Deep substrate is unexplained",
+          "Deep Eastbank cause unknown."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.dorian_fenn",
+      "kind": "actor_a",
+      "name": "Dorian Fenn",
+      "purpose": "Reusable actor_a foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.academy",
+        "location.ontology",
+        "actor.sylva_morn",
+        "matter.academy",
+        "artifact.academy"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Dorian Fenn",
+        "role": "Clinical archivist",
+        "affiliation": "institution.academy",
+        "competencies": [
+          "Medical record ethics"
+        ],
+        "relations": [
+          {
+            "actor": "actor.sylva_morn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.ontology",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.academy"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ],
+        "privateMotive": "Protect contradictory patient testimony",
+        "constraints": [
+          "Publication versus patient safety",
+          "Cannot grant access to another custodian."
+        ],
+        "agenda": {
+          "objective": "Protect contradictory patient testimony",
+          "changeHook": "Authenticated contrary evidence or harm to a protected person"
+        },
+        "personalAnchors": [
+          "Maintained signed work record at location.ontology"
+        ],
+        "legitimateAccess": [
+          "artifact.academy"
+        ],
+        "changeHooks": [
+          "Provenance-reviewed evidence can change belief.",
+          "Broken custody promises change relation independently."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Dorian Fenn, Clinical archivist",
+        "beliefs": [
+          "A carrier may preserve honest disagreement"
+        ],
+        "memories": [
+          "Previously handled academy under local custody; no complete disaster recollection implied."
+        ],
+        "knownSecrets": [
+          "Near-original studies found contradictory boundaries"
+        ],
+        "unknowns": [
+          "Deep substrate is unexplained",
+          "Deep Eastbank cause unknown."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.cecily_arn",
+      "kind": "actor_a",
+      "name": "Cecily Arn",
+      "purpose": "Reusable actor_a foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church",
+        "location.cathedral",
+        "actor.jonas_mere",
+        "matter.church",
+        "artifact.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Cecily Arn",
+        "role": "Parish register keeper",
+        "affiliation": "institution.church",
+        "competencies": [
+          "Rite comparison"
+        ],
+        "relations": [
+          {
+            "actor": "actor.jonas_mere",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.cathedral",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.church"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ],
+        "privateMotive": "Preserve an omitted burial name",
+        "constraints": [
+          "Pastoral care versus burial consistency",
+          "Cannot grant access to another custodian."
+        ],
+        "agenda": {
+          "objective": "Preserve an omitted burial name",
+          "changeHook": "Authenticated contrary evidence or harm to a protected person"
+        },
+        "personalAnchors": [
+          "Maintained signed work record at location.cathedral"
+        ],
+        "legitimateAccess": [
+          "artifact.church"
+        ],
+        "changeHooks": [
+          "Provenance-reviewed evidence can change belief.",
+          "Broken custody promises change relation independently."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Cecily Arn, Parish register keeper",
+        "beliefs": [
+          "Pastoral continuity can differ from civil rolls"
+        ],
+        "memories": [
+          "Previously handled church under local custody; no complete disaster recollection implied."
+        ],
+        "knownSecrets": [
+          "Parish names are absent from civil death rolls"
+        ],
+        "unknowns": [
+          "Later lives of excluded people unknown",
+          "Deep Eastbank cause unknown."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.agnes_trell",
+      "kind": "actor_a",
+      "name": "Agnes Trell",
+      "purpose": "Reusable actor_a foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.insurer",
+        "location.insurance_hall",
+        "actor.lucan_iles",
+        "matter.insurer",
+        "artifact.insurer"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Agnes Trell",
+        "role": "Claims review officer",
+        "affiliation": "institution.insurer",
+        "competencies": [
+          "Ledger reconciliation"
+        ],
+        "relations": [
+          {
+            "actor": "actor.lucan_iles",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.insurance_hall",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.insurer"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ],
+        "privateMotive": "Reopen a denial without harming dependents",
+        "constraints": [
+          "Compensation versus settled assets",
+          "Cannot grant access to another custodian."
+        ],
+        "agenda": {
+          "objective": "Reopen a denial without harming dependents",
+          "changeHook": "Authenticated contrary evidence or harm to a protected person"
+        },
+        "personalAnchors": [
+          "Maintained signed work record at location.insurance_hall"
+        ],
+        "legitimateAccess": [
+          "artifact.insurer"
+        ],
+        "changeHooks": [
+          "Provenance-reviewed evidence can change belief.",
+          "Broken custody promises change relation independently."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Agnes Trell, Claims review officer",
+        "beliefs": [
+          "Commercial continuity excluded real households"
+        ],
+        "memories": [
+          "Previously handled insurance under local custody; no complete disaster recollection implied."
+        ],
+        "knownSecrets": [
+          "Household cross-records disagree with final eligibility"
+        ],
+        "unknowns": [
+          "Unrecorded residents remain unknown",
+          "Deep Eastbank cause unknown."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.otto_rehn",
+      "kind": "actor_a",
+      "name": "Otto Rehn",
+      "purpose": "Reusable actor_a foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.railway",
+        "location.freight_board",
+        "actor.lydia_venn",
+        "matter.railway",
+        "artifact.railway"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Otto Rehn",
+        "role": "Route superintendent",
+        "affiliation": "institution.railway",
+        "competencies": [
+          "Timetable audit"
+        ],
+        "relations": [
+          {
+            "actor": "actor.lydia_venn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.freight_board",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.railway"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ],
+        "privateMotive": "Stop obsolete duties endangering staff",
+        "constraints": [
+          "Management versus accumulated office routine",
+          "Cannot grant access to another custodian."
+        ],
+        "agenda": {
+          "objective": "Stop obsolete duties endangering staff",
+          "changeHook": "Authenticated contrary evidence or harm to a protected person"
+        },
+        "personalAnchors": [
+          "Maintained signed work record at location.freight_board"
+        ],
+        "legitimateAccess": [
+          "artifact.railway"
+        ],
+        "changeHooks": [
+          "Provenance-reviewed evidence can change belief.",
+          "Broken custody promises change relation independently."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Otto Rehn, Route superintendent",
+        "beliefs": [
+          "Routine may outlive its author"
+        ],
+        "memories": [
+          "Previously handled railway under local custody; no complete disaster recollection implied."
+        ],
+        "knownSecrets": [
+          "Old route numbers survived reconstruction"
+        ],
+        "unknowns": [
+          "Hidden geographic cause unknown",
+          "Deep Eastbank cause unknown."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.lydia_venn",
+      "kind": "actor_a",
+      "name": "Lydia Venn",
+      "purpose": "Reusable actor_a foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.railway",
+        "location.freight_board",
+        "actor.otto_rehn",
+        "matter.railway",
+        "artifact.railway"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Lydia Venn",
+        "role": "Charter solicitor",
+        "affiliation": "institution.railway",
+        "competencies": [
+          "Charter interpretation"
+        ],
+        "relations": [
+          {
+            "actor": "actor.otto_rehn",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.freight_board",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.railway"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ],
+        "privateMotive": "Defend operations without concealing unsafe orders",
+        "constraints": [
+          "Management versus accumulated office routine",
+          "Cannot grant access to another custodian."
+        ],
+        "agenda": {
+          "objective": "Defend operations without concealing unsafe orders",
+          "changeHook": "Authenticated contrary evidence or harm to a protected person"
+        },
+        "personalAnchors": [
+          "Maintained signed work record at location.freight_board"
+        ],
+        "legitimateAccess": [
+          "artifact.railway"
+        ],
+        "changeHooks": [
+          "Provenance-reviewed evidence can change belief.",
+          "Broken custody promises change relation independently."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Lydia Venn, Charter solicitor",
+        "beliefs": [
+          "Company office is not a manager's private will"
+        ],
+        "memories": [
+          "Previously handled railway under local custody; no complete disaster recollection implied."
+        ],
+        "knownSecrets": [
+          "Old route numbers survived reconstruction"
+        ],
+        "unknowns": [
+          "Hidden geographic cause unknown",
+          "Deep Eastbank cause unknown."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.helena_vellin",
+      "kind": "actor_a",
+      "name": "Helena Vellin",
+      "purpose": "Reusable actor_a foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.estates",
+        "location.old_court",
+        "actor.marcel_rye",
+        "matter.estates",
+        "artifact.estates"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Helena Vellin",
+        "role": "Estate custodian",
+        "affiliation": "institution.estates",
+        "competencies": [
+          "Historic deeds"
+        ],
+        "relations": [
+          {
+            "actor": "actor.marcel_rye",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.old_court",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.estates"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ],
+        "privateMotive": "Preserve tenant rights while negotiating debt",
+        "constraints": [
+          "Prestige versus debt",
+          "Cannot grant access to another custodian."
+        ],
+        "agenda": {
+          "objective": "Preserve tenant rights while negotiating debt",
+          "changeHook": "Authenticated contrary evidence or harm to a protected person"
+        },
+        "personalAnchors": [
+          "Maintained signed work record at location.old_court"
+        ],
+        "legitimateAccess": [
+          "artifact.estates"
+        ],
+        "changeHooks": [
+          "Provenance-reviewed evidence can change belief.",
+          "Broken custody promises change relation independently."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Helena Vellin, Estate custodian",
+        "beliefs": [
+          "Family Name may outlive its property"
+        ],
+        "memories": [
+          "Previously handled geography under local custody; no complete disaster recollection implied."
+        ],
+        "knownSecrets": [
+          "Boundaries predate standardized addresses"
+        ],
+        "unknowns": [
+          "Later tenants not all known",
+          "Deep Eastbank cause unknown."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.rosa_dell",
+      "kind": "actor_a",
+      "name": "Rosa Dell",
+      "purpose": "Reusable actor_a foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.workers",
+        "location.old_ferry",
+        "actor.emil_hart",
+        "matter.workers",
+        "artifact.workers"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Rosa Dell",
+        "role": "Mutual fund secretary",
+        "affiliation": "institution.workers",
+        "competencies": [
+          "Household continuity"
+        ],
+        "relations": [
+          {
+            "actor": "actor.emil_hart",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.old_ferry",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.workers"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ],
+        "privateMotive": "Recover recognition without retaliation",
+        "constraints": [
+          "Solidarity versus household exposure",
+          "Cannot grant access to another custodian."
+        ],
+        "agenda": {
+          "objective": "Recover recognition without retaliation",
+          "changeHook": "Authenticated contrary evidence or harm to a protected person"
+        },
+        "personalAnchors": [
+          "Maintained signed work record at location.old_ferry"
+        ],
+        "legitimateAccess": [
+          "artifact.workers"
+        ],
+        "changeHooks": [
+          "Provenance-reviewed evidence can change belief.",
+          "Broken custody promises change relation independently."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Rosa Dell, Mutual fund secretary",
+        "beliefs": [
+          "Contributions remember omitted households"
+        ],
+        "memories": [
+          "Previously handled workers under local custody; no complete disaster recollection implied."
+        ],
+        "knownSecrets": [
+          "Contribution books preserve omitted names"
+        ],
+        "unknowns": [
+          "Disaster mechanics remain unknown",
+          "Deep Eastbank cause unknown."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.beatrice_orn",
+      "kind": "actor_a",
+      "name": "Beatrice Orn",
+      "purpose": "Reusable actor_a foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.press",
+        "location.telegraph",
+        "actor.oskar_mell",
+        "matter.press",
+        "artifact.press"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Beatrice Orn",
+        "role": "Corrections editor",
+        "affiliation": "institution.press",
+        "competencies": [
+          "Cross-source verification"
+        ],
+        "relations": [
+          {
+            "actor": "actor.oskar_mell",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.telegraph",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.press"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ],
+        "privateMotive": "Correct a Name before it spreads",
+        "constraints": [
+          "Circulation versus false confirmation",
+          "Cannot grant access to another custodian."
+        ],
+        "agenda": {
+          "objective": "Correct a Name before it spreads",
+          "changeHook": "Authenticated contrary evidence or harm to a protected person"
+        },
+        "personalAnchors": [
+          "Maintained signed work record at location.telegraph"
+        ],
+        "legitimateAccess": [
+          "artifact.press"
+        ],
+        "changeHooks": [
+          "Provenance-reviewed evidence can change belief.",
+          "Broken custody promises change relation independently."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Beatrice Orn, Corrections editor",
+        "beliefs": [
+          "Speed manufactures false certainty"
+        ],
+        "memories": [
+          "Previously handled press under local custody; no complete disaster recollection implied."
+        ],
+        "knownSecrets": [
+          "Early drafts disagree with later summaries"
+        ],
+        "unknowns": [
+          "Timestamps do not establish full causal order",
+          "Deep Eastbank cause unknown."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "actor.soren_vale",
+      "kind": "actor_a",
+      "name": "Soren Vale",
+      "purpose": "Reusable actor_a foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.grey",
+        "location.lodging",
+        "actor.mira_fane",
+        "matter.grey",
+        "artifact.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "identity": "Soren Vale",
+        "role": "Retired clerk and intermediary",
+        "affiliation": "institution.grey",
+        "competencies": [
+          "Cross-system gaps"
+        ],
+        "relations": [
+          {
+            "actor": "actor.mira_fane",
+            "basis": "Colleagues with distinct duties; no automatic loyalty or shared secrets."
+          }
+        ],
+        "availability": {
+          "location": "location.lodging",
+          "pattern": "Office hours by appointment; field duty may interrupt."
+        },
+        "matters": [
+          "matter.grey"
+        ],
+        "formalClaims": [],
+        "promotionHooks": [
+          "Consequential participation may justify fuller state, not automatic Native actor/Task creation."
+        ],
+        "privateMotive": "Keep a living person from a dead stranger's debt",
+        "constraints": [
+          "Protecting excluded people versus exploiting identities",
+          "Cannot grant access to another custodian."
+        ],
+        "agenda": {
+          "objective": "Keep a living person from a dead stranger's debt",
+          "changeHook": "Authenticated contrary evidence or harm to a protected person"
+        },
+        "personalAnchors": [
+          "Maintained signed work record at location.lodging"
+        ],
+        "legitimateAccess": [
+          "artifact.grey"
+        ],
+        "changeHooks": [
+          "Provenance-reviewed evidence can change belief.",
+          "Broken custody promises change relation independently."
+        ]
+      },
+      "perspective": {
+        "publicIdentity": "Soren Vale, Retired clerk and intermediary",
+        "beliefs": [
+          "Usable identity papers can be traps"
+        ],
+        "memories": [
+          "Previously handled excluded under local custody; no complete disaster recollection implied."
+        ],
+        "knownSecrets": [
+          "Some identities were deliberately excluded"
+        ],
+        "unknowns": [
+          "No complete register of participants",
+          "Deep Eastbank cause unknown."
+        ]
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
 }

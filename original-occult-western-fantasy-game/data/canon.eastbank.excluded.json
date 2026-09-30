@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "canon.excluded",
+      "kind": "canon_fragment",
+      "name": "Excluded identities",
+      "purpose": "Reusable canon_fragment foundation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.grey",
+        "artifact.grey",
+        "event.eastbank_settlement"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "subject": "Excluded identities",
+        "timeScope": "Disaster approximately forty years ago and continuing records",
+        "assertions": [
+          "Some identities were deliberately excluded or concealed; no broker knows all of them."
+        ],
+        "events": [
+          "event.eastbank_settlement"
+        ],
+        "conflictingRecords": [
+          {
+            "artifact": "artifact.grey",
+            "conflict": "Off-record papers remain usable without proving lawful identity."
+          }
+        ],
+        "holders": [
+          "institution.grey"
+        ],
+        "evidenceGateways": [
+          "artifact.grey"
+        ],
+        "revealLayer": 3,
+        "projectionRules": [
+          "Never copy this fragment into Knowledge, model context or Views.",
+          "Only a separately authored weaker proposition may be acquired after validated custody and access."
+        ],
+        "epistemicStatus": "authored_fact"
+      },
+      "perspective": {
+        "currentlySupportable": "Off-record papers remain usable without proving lawful identity."
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}

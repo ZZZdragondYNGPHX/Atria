@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 
-export async function simulationCheck({ load, svc, h, manifest, archive }) {
+export async function simulationCheck({ load, svc, h, manifest, archive, assertContentSafe = () => {} }) {
     const { NativeGenerationHost } = await load('src/native/adapters/generation-host.js');
     const { seedGenerationProfiles } = await load('tests/native/helpers/generation-fixture.js');
     const { createHttpGenerationProvider } = await load('src/native/adapters/http-generation-provider.js');
@@ -21,6 +21,7 @@ export async function simulationCheck({ load, svc, h, manifest, archive }) {
         try {
             const chunks = []; for await (const chunk of req) chunks.push(chunk);
             const request = JSON.parse(Buffer.concat(chunks)); seen.push(request);
+            assertContentSafe(request);
             const isAgenda = JSON.stringify(request.messages).includes('permittedActions');
             if (failProvider) { res.writeHead(503, { Connection: 'close' }); res.end('{}'); return; }
             res.writeHead(200, { 'Content-Type': 'application/json', Connection: 'close' });

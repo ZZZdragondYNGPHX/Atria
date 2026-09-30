@@ -1,0 +1,981 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "claim.seed.unlost_evidence",
+      "kind": "claim_seed",
+      "name": "Unlost Evidence",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.memory",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Witness",
+          "Memory"
+        ],
+        "primitive": "primitive.memory",
+        "eligibilityImprints": [
+          "Personal examination and independent contradiction support",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Retain recognition of a personally verified contradictory fact",
+        "condition": "Personal examination and independent contradiction support",
+        "starterJurisdiction": "One remembered fact",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No protection of other minds or reconstruction of destroyed records"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: retain recognition of a personally verified contradictory fact."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Retain recognition of a personally verified contradictory fact"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.name_mismatch",
+      "kind": "claim_seed",
+      "name": "A Name Does Not Fit",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.name",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Name",
+          "Witness"
+        ],
+        "primitive": "primitive.name",
+        "eligibilityImprints": [
+          "Two independently examined identity supports",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Notice mismatch between designation and examined identity support",
+        "condition": "Two independently examined identity supports",
+        "starterJurisdiction": "One present subject",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No true-name revelation or universal forgery detection"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: notice mismatch between designation and examined identity support."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Notice mismatch between designation and examined identity support"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.remembered_path",
+      "kind": "claim_seed",
+      "name": "Remembered Path",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.boundary",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Memory",
+          "Boundary"
+        ],
+        "primitive": "primitive.boundary",
+        "eligibilityImprints": [
+          "Walked route and independently changed map",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Recognize a personally walked boundary after renaming",
+        "condition": "Walked route and independently changed map",
+        "starterJurisdiction": "One known route",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No opening blocked routes or teleportation"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: recognize a personally walked boundary after renaming."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Recognize a personally walked boundary after renaming"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.trace_remains",
+      "kind": "claim_seed",
+      "name": "What Happened Leaves Trace",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.echo",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Echo",
+          "Witness"
+        ],
+        "primitive": "primitive.echo",
+        "eligibilityImprints": [
+          "Examined substrate and independent past-event support",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Recognize real residue inconsistent with current appearance",
+        "condition": "Examined substrate and independent past-event support",
+        "starterJurisdiction": "One object or examined room",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No past replay or complete causal revelation"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: recognize real residue inconsistent with current appearance."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Recognize real residue inconsistent with current appearance"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.custody_break",
+      "kind": "claim_seed",
+      "name": "Custody Break",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.bond",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Bond",
+          "Witness"
+        ],
+        "primitive": "primitive.bond",
+        "eligibilityImprints": [
+          "Two witnessed handovers with a record",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Notice a gap in an attested custody chain",
+        "condition": "Two witnessed handovers with a record",
+        "starterJurisdiction": "One entrusted object",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No unseen thief identification or creation of ownership"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: notice a gap in an attested custody chain."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Notice a gap in an attested custody chain"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.quiet_copy",
+      "kind": "claim_seed",
+      "name": "Quiet Copy",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.memory",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Memory",
+          "Form"
+        ],
+        "primitive": "primitive.memory",
+        "eligibilityImprints": [
+          "Inscription inspection and maintained copy",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Preserve an inspected inscription's legibility during copying",
+        "condition": "Inscription inspection and maintained copy",
+        "starterJurisdiction": "One small record",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No missing-word reconstruction or guarantee of Truth"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: preserve an inspected inscription's legibility during copying."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Preserve an inspected inscription's legibility during copying"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.held_threshold",
+      "kind": "claim_seed",
+      "name": "Held Threshold",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.boundary",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Boundary",
+          "Witness"
+        ],
+        "primitive": "primitive.boundary",
+        "eligibilityImprints": [
+          "Physical marker and two consenting witnesses",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Maintain recognition of a marked threshold during inspection",
+        "condition": "Physical marker and two consenting witnesses",
+        "starterJurisdiction": "One doorway during inspection",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No imprisonment or unlimited force resistance"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: maintain recognition of a marked threshold during inspection."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Maintain recognition of a marked threshold during inspection"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.attested_mark",
+      "kind": "claim_seed",
+      "name": "Attested Mark",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.witness",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Witness",
+          "Name"
+        ],
+        "primitive": "primitive.witness",
+        "eligibilityImprints": [
+          "Recorded observation and present comparison",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Recognize substitution of an earlier attested mark",
+        "condition": "Recorded observation and present comparison",
+        "starterJurisdiction": "One signed mark",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No signer's intent revelation or content certification"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: recognize substitution of an earlier attested mark."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Recognize substitution of an earlier attested mark"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.oath_reminder",
+      "kind": "claim_seed",
+      "name": "Oath Reminder",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.bond",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Bond",
+          "Memory"
+        ],
+        "primitive": "primitive.bond",
+        "eligibilityImprints": [
+          "Consenting parties and recorded promise",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Retain awareness of a voluntarily witnessed duty",
+        "condition": "Consenting parties and recorded promise",
+        "starterJurisdiction": "One existing promise",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No compelled fulfilment or invented debt"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: retain awareness of a voluntarily witnessed duty."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Retain awareness of a voluntarily witnessed duty"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.surface_hold",
+      "kind": "claim_seed",
+      "name": "Surface Hold",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.form",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Form",
+          "Witness"
+        ],
+        "primitive": "primitive.form",
+        "eligibilityImprints": [
+          "Documented intact surface and custody",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Maintain inspected evidence surface during careful handling",
+        "condition": "Documented intact surface and custody",
+        "starterJurisdiction": "One palm-sized nonliving object",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No missing matter or resistance to deliberate destruction"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: maintain inspected evidence surface during careful handling."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Maintain inspected evidence surface during careful handling"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.last_resonance",
+      "kind": "claim_seed",
+      "name": "Last Resonance",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.echo",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Echo",
+          "Form"
+        ],
+        "primitive": "primitive.echo",
+        "eligibilityImprints": [
+          "Examined material and comparative sample",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Distinguish real strain residue from current deformation",
+        "condition": "Examined material and comparative sample",
+        "starterJurisdiction": "One component",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No exact dating or repair"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: distinguish real strain residue from current deformation."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Distinguish real strain residue from current deformation"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.open_alternative",
+      "kind": "claim_seed",
+      "name": "Open Alternative",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.possibility",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Possibility",
+          "Witness"
+        ],
+        "primitive": "primitive.possibility",
+        "eligibilityImprints": [
+          "Independent support for both unresolved alternatives",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Keep two supported interpretations open during an unfinished test",
+        "condition": "Independent support for both unresolved alternatives",
+        "starterJurisdiction": "One test",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No guaranteed outcome or revival of disproved alternatives"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: keep two supported interpretations open during an unfinished test."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Keep two supported interpretations open during an unfinished test"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.familiar_voice",
+      "kind": "claim_seed",
+      "name": "Familiar Voice",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.name",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Name",
+          "Memory"
+        ],
+        "primitive": "primitive.name",
+        "eligibilityImprints": [
+          "Prior acquaintance and present comparison",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Recognize mismatch in a familiar speaker's claimed continuity",
+        "condition": "Prior acquaintance and present comparison",
+        "starterJurisdiction": "One familiar interlocutor",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No mind reading or perfect unmasking"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: recognize mismatch in a familiar speaker's claimed continuity."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Recognize mismatch in a familiar speaker's claimed continuity"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.shared_measure",
+      "kind": "claim_seed",
+      "name": "Shared Measure",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.witness",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Witness",
+          "Boundary"
+        ],
+        "primitive": "primitive.witness",
+        "eligibilityImprints": [
+          "Two independently obtained measurements",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Preserve disagreement between measurements instead of averaging it away",
+        "condition": "Two independently obtained measurements",
+        "starterJurisdiction": "One surveyed boundary",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No determination or movement of the true boundary"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: preserve disagreement between measurements instead of averaging it away."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Preserve disagreement between measurements instead of averaging it away"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.kinship_gap",
+      "kind": "claim_seed",
+      "name": "Kinship Gap",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.bond",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Bond",
+          "Name"
+        ],
+        "primitive": "primitive.bond",
+        "eligibilityImprints": [
+          "Two independent family records",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Notice discontinuity in a supported family relation claim",
+        "condition": "Two independent family records",
+        "starterJurisdiction": "One asserted relation",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No biological ancestry revelation or invalidating families"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: notice discontinuity in a supported family relation claim."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Notice discontinuity in a supported family relation claim"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    },
+    {
+      "id": "claim.seed.unsettled_sign",
+      "kind": "claim_seed",
+      "name": "Unsettled Sign",
+      "purpose": "Reusable claim_seed foundation",
+      "authority": "definition",
+      "dependencies": [
+        "primitive.possibility",
+        "tradition.civic",
+        "tradition.church",
+        "tradition.academy",
+        "tradition.grey"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Immutable definition, not live Session state.",
+        "Knowledge does not equal complete Truth."
+      ],
+      "canon": {
+        "principles": [
+          "Possibility",
+          "Echo"
+        ],
+        "primitive": "primitive.possibility",
+        "eligibilityImprints": [
+          "Real residue and independent local hazard support",
+          "Independent resolved-action support; repeated prose adds no eligibility."
+        ],
+        "coreRule": "Recognize a real residual warning about an unresolved hazard",
+        "condition": "Real residue and independent local hazard support",
+        "starterJurisdiction": "One nearby unresolved hazard",
+        "anchorFamilies": [
+          "Personal witnessed carrier",
+          "Recognized institutional record"
+        ],
+        "priceFamilies": [
+          "Reporting obligation",
+          "Carrier maintenance"
+        ],
+        "traditions": [
+          "tradition.civic",
+          "tradition.church",
+          "tradition.academy",
+          "tradition.grey"
+        ],
+        "forbiddenExtensions": [
+          "No exact prophecy or reversal of injury"
+        ],
+        "diagnosticSigns": [
+          "A bounded comparison can test: recognize a real residual warning about an unresolved hazard."
+        ],
+        "runtimeStatus": "Catalog candidate; neither granted nor executable."
+      },
+      "perspective": {
+        "playerDescription": "Recognize a real residual warning about an unresolved hazard"
+      },
+      "generationEnvelope": [
+        "Incidental wording only; no new facts, permissions, powers or identities."
+      ]
+    }
+  ]
+}
