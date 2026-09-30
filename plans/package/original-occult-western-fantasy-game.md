@@ -3,7 +3,7 @@
 **Task ID:** `package/original-occult-western-fantasy-game`  
 **Primary Workspace (implementation):** `package`  
 **Current stage:** Pre-production research and design discussion  
-**Status:** Discussion Draft v0.2 — Round 1 opened; not approved for implementation  
+**Status:** Discussion Draft v0.3 — Round 1 approved; Round 2 opened; not approved for implementation  
 **Plan path:** `docs:plans/package/original-occult-western-fantasy-game.md`
 
 ## 1. Purpose
@@ -109,92 +109,137 @@ Failed investigation, risky occult use and social mistakes should usually genera
 
 Avoid excessive micro-variables that change by tiny amounts every turn. Prefer a smaller number of stateful systems with clear gameplay meaning.
 
-## 6. Candidate foundational premise — provisional
+## 6. Approved foundational metaphysics — Round 1
 
-One current candidate premise is that **record, recognition and reality are physically related**.
+Round 1 is approved as a **hierarchical synthesis**, not three parallel magic systems.
 
-Illustrative—not yet approved—world laws:
+### 6.1 Layer C — Deep cosmology: Dream / Star / Soul Topography
 
-1. Facts that are reliably recorded may become more stable than facts that are not.
-2. Shared recognition may exert limited pressure on reality.
-3. Contradictory realities with sufficient witnesses cannot coexist indefinitely.
+At the deepest level, waking physical reality is not categorically separate from mind, memory, dream or symbol. It is the most stable layer currently experienced by ordinary people.
 
-Possible consequences:
+Dreams, memories, identities and symbolic structures can therefore leave real topology in the deeper substrate of the world.
 
-- archives become strategic infrastructure;
-- churches and governments care about documentary authority for supernatural as well as political reasons;
-- newspapers, telegraph networks and public rumor can become dangerous;
-- falsified histories may have real effects;
-- erased names and suppressed records may alter what can persist;
-- ruins can preserve truths modern society no longer accepts;
-- witnesses, testimony and memory become supernatural assets.
+Design rules:
 
-This premise is a candidate only. It must compete against other foundational systems before approval.
+- this layer explains *why* consciousness, memory and symbols can matter physically;
+- it should remain largely hidden in the early game;
+- early exposition must not introduce a catalogue of dream realms, astral planes or cosmic taxonomies;
+- deeper access should change perception and ontology rather than merely provide a second combat map;
+- this layer is the long-term source of existential horror and late-game revelation.
 
+### 6.2 Layer A — Observable world law: Record / Witness / Contradiction
 
-### 6.1 Round 1 candidate metaphysical models
+The principal player-facing supernatural law is that reality has **stability** and **anchors**.
 
-The first design round compares three deliberately different foundations. None is approved yet.
+Working laws:
 
-#### Model A — Record / Witness / Contradiction
+1. Repeated, independent and durable evidence can increase the stability of a fact.
+2. Memory, testimony, records, physical traces and social recognition can function as different forms of anchor.
+3. Shared recognition can exert limited pressure on reality but cannot trivially overwrite strongly anchored facts.
+4. Contradictory realities can coexist temporarily, but sufficient unresolved contradiction produces instability and abnormal phenomena.
+5. Erasure is gradual: destroying one document does not rewrite reality. Altering a strongly established fact requires attacking enough of its mutually reinforcing anchors and causal residue.
 
-Reality is partly stabilized by reliable records and witnessed recognition.
+Consequences:
 
-Core consequences:
+- archives, courts, churches, newspapers and registries can become supernatural infrastructure;
+- suppressed people or events may remain detectable through residual contradiction;
+- evidence can have gameplay significance beyond puzzle solving;
+- public information can be dangerous without turning mass belief into unlimited wish magic;
+- witnesses, names, records, memory and causal traces can be contested resources.
 
-- archives, testimony and public information can possess supernatural weight;
-- contradiction is not merely misinformation but a source of metaphysical instability;
-- powers may alter evidence, bind testimony, preserve erased facts, expose incompatible histories or weaponize consensus;
-- advancement would likely depend on gaining authority over increasingly consequential forms of truth and record;
-- costs may involve identity rigidity, inability to deny witnessed facts, contradiction debt or becoming vulnerable to documentary erasure.
+This layer should dominate the early and middle player's understanding of the supernatural.
 
-Primary strength: exceptionally strong fit for investigation and Atria Truth / Belief / Exposure.
+### 6.3 Layer B — Civilizational technology: Oath / Lineage / Relic / Office
 
-Primary risk: the system can become too abstract, bureaucratic or document-centric if the physical and emotional manifestations are weak.
+Human societies have learned to exploit Layer A without fully understanding Layer C.
 
-#### Model B — Oath / Lineage / Relic
+A powerful oath is unusually stable because it can combine explicit meaning, witnesses, repeated behavior, institutional recognition and durable records. Over centuries, civilizations have therefore created supernatural technologies out of ordinary social institutions.
 
-Reality recognizes binding commitments. A sufficiently witnessed oath can become an objective force; bloodlines inherit unfinished obligations; relics are promises, victories, betrayals or offices that have become materially persistent.
+Examples include:
 
-Core consequences:
+- marriage and kinship;
+- inheritance;
+- noble title and land tenure;
+- military commissions and chains of command;
+- guild membership and professional office;
+- priesthood and consecrated duty;
+- criminal pacts;
+- charters, contracts and property records;
+- relics that preserve historically consequential obligations.
 
-- noble titles, marriages, guild charters, military commissions, church vows and criminal pacts can possess supernatural force;
-- lineage is less “genetic magic” than inherited contractual burden;
-- relics encode historical obligations rather than functioning as generic enchanted loot;
-- advancement would come from accepting, fulfilling, rewriting or breaking increasingly powerful covenants;
-- power always grants rights together with duties, taboos, claimants and enemies.
+A title or bloodline is not intrinsically magical. Its supernatural force comes from accumulated, mutually reinforcing anchors and obligations.
 
-Primary strength: naturally generates politics, religion, law, aristocracy and social-role gameplay.
+Relics should usually embody a historical relationship, promise, victory, betrayal, office or unresolved claim rather than function as generic enchanted loot.
 
-Primary risk: without a deeper cosmology it can drift toward familiar dark-fantasy oath magic.
+### 6.4 Unified interpretation
 
-#### Model C — Dream / Star / Soul Topography
+The approved relationship is:
 
-The waking world is only the most stable layer of reality. Dreams, memory, celestial cycles and the internal structure of the soul form adjacent geographies that can partially overlap with physical space.
+**Layer C explains why → Layer A describes what people can observe → Layer B describes what civilization has learned to do with it.**
 
-Core consequences:
+These must remain one ontology.
 
-- people can possess inaccessible inner territories rather than a single abstract “sanity” value;
-- dreams can contain routes, ruins, predators, inherited memories and impossible places;
-- occult progression changes what portions of reality a person can perceive and enter;
-- celestial or seasonal conditions alter which boundaries are traversable;
-- costs may include identity fragmentation, dream leakage, parasitic memories or the gradual replacement of ordinary perception.
+Do not create independent “record magic”, “oath magic” and “dream magic” power systems with separate rules unless later design proves a strict need.
 
-Primary strength: supports highly imaginative exploration and progression-through-perception.
+### 6.5 Revelation pacing
 
-Primary risk: it places a larger burden on AI narration and can weaken the grounded social / investigative game if allowed to dominate.
+Default revelation order:
 
-### 6.2 Candidate synthesis — not approved
+1. the player encounters contradictions and abnormal evidence;
+2. the player learns practical rules about anchors, witnesses and records;
+3. the player discovers that institutions deliberately engineer those rules;
+4. only much later does the player learn why reality itself responds to cognition, memory and symbolic structure.
 
-A possible synthesis is:
+The early game should therefore feel like grounded occult investigation in a late-industrial Western-fantasy society, not immediate cosmic exposition.
 
-- Model A as the **surface law** governing information, evidence and public reality;
-- Model B as the **social technology** by which institutions deliberately exploit those laws;
-- Model C as the **deep cosmology** explaining why reality is responsive to witness, memory and symbolic structure.
+### 6.6 Self-consistency as the preferred cost direction
 
-This synthesis is attractive because it avoids three separate magic systems: oath and dream phenomena would instead be different consequences of one deeper ontology.
+The project rejects a simple monotonic sanity meter as the primary occult cost.
 
-However, combining them too early may recreate the “everything connects to everything” density of the inspiration target before the game has established its own clear identity. Round 1 must therefore decide whether to use one foundation or a deliberately hierarchical synthesis.
+A person's ordinary identity is stabilized by many anchors: name, body, family, profession, residence, relationships, documents, memories and the expectations of others.
+
+Supernatural growth may require altering, weakening, externalizing or contradicting some of these anchors.
+
+Illustrative example:
+
+- first, a practitioner causes one person to overlook them;
+- later, they can disappear from a group's active memory;
+- later still, public systems may fail to register their presence;
+- the corresponding danger is not “lose 8 sanity”, but that too few anchors remain to guarantee that the practitioner returns as the same person.
+
+This concept is approved as a design direction, not yet as a finalized mechanical system.
+
+### 6.7 Round 1 decision
+
+Approved:
+
+- hierarchical C → A → B structure;
+- A as the dominant early/mid-game supernatural expression;
+- B as social and institutional application;
+- C as deep cosmological truth revealed late;
+- reality stability must have inertia and multiple anchor types;
+- self-consistency is a preferred major cost axis.
+
+Rejected:
+
+- treating A/B/C as three unrelated magic systems;
+- immediate public-belief wish magic;
+- trivial “destroy one record, rewrite history” behavior;
+- exposing the deep cosmology at the beginning;
+- using a single generic sanity bar as the main occult consequence.
+
+### 6.8 Round 2 question — progression and price
+
+Round 2 must decide:
+
+- how an ordinary person first gains supernatural capability;
+- what exactly a practitioner acquires when they become stronger;
+- whether progression is tree-based, modular, role-based or something else;
+- how specialization emerges without recreating fixed LoM-style Pathways;
+- how power is stabilized by anchors;
+- how permanent costs accumulate;
+- how progression changes perception, social identity and available actions;
+- how the system remains deterministic enough for Atria state while leaving narrative room for AI.
 
 
 ## 7. Atria platform fit — current verified direction
