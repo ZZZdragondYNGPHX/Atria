@@ -43,5 +43,10 @@
     "id": "authority-transaction",
     "version": 1,
     "required": true
+  },
+  {
+    "id": "world-simulation",
+    "version": 1,
+    "required": true
   }
 ]

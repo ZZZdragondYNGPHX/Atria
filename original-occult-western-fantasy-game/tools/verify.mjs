@@ -61,8 +61,10 @@ export async function verify({ load, native, manifest, sourceFiles, assetPayload
         checks.push(await interactionCheck({ load, svc, h, session, sourceFiles }));
         const { turnSmoke } = await import('./turn-smoke.mjs');
         checks.push(await turnSmoke({ load, h, svc, session }));
+        const { simulationCheck } = await import('./simulation-check.mjs');
+        checks.push(await simulationCheck({ load, svc, h, manifest, archive }));
         return { mode, checks, dataResources: manifest.runtime.experienceContract.dataResources.length, tasks: manifest.runtime.experienceContract.taskRuntime.tasks.length,
             ...(mode === 'preview' ? { player: projections['player.overview'], narrator: projections['narrator.context'] } : {}),
-            limits: ['FS integration only', 'No hosted model or UI execution', 'No full gameplay, save-container restore or cross-process selection claim'] };
+            limits: ['FS integration only', 'No hosted model or UI execution', 'Two-day synthetic world only; no full gameplay or cross-process uncommitted selection claim'] };
     } finally { await h.cleanup(); }
 }

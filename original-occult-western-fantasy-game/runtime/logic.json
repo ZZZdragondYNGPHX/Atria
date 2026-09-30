@@ -26,7 +26,7 @@
           "elapsed": {
             "type": "integer",
             "minimum": 0,
-            "maximum": 60
+            "maximum": 2880
           },
           "fortune": {
             "type": "integer",
@@ -47,20 +47,72 @@
           "formula": "world.interactionCount + 1"
         }
       }
+    },
+    {
+      "type": "SimulationAdvanced",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30
+          },
+          "tick": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          }
+        },
+        "required": [
+          "day",
+          "tick"
+        ],
+        "additionalProperties": false
+      },
+      "assign": {
+        "simulationTicks": {
+          "formula": "args.tick"
+        }
+      }
+    },
+    {
+      "type": "InstitutionFiled",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "delegateName": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "delegateName"
+        ],
+        "additionalProperties": false
+      },
+      "assign": {
+        "filingCount": {
+          "formula": "world.filingCount + 1"
+        }
+      }
     }
   ],
   "rules": [],
   "interpretations": [],
   "derivedPublications": [
     {
-      "id": "scene_projection.publish",
+      "id": "safe.publish",
       "reads": [
         {
           "id": "bootstrap",
           "domainId": "entities",
           "recordId": "foundation",
           "fields": [
-            "scene"
+            "scene",
+            "position",
+            "prepared"
           ]
         },
         {
@@ -70,6 +122,56 @@
           "fields": [
             "known",
             "text"
+          ]
+        },
+        {
+          "id": "conditions",
+          "domainId": "conditions",
+          "recordId": "fixture",
+          "fields": [
+            "text",
+            "severity"
+          ]
+        },
+        {
+          "id": "relations",
+          "domainId": "relations",
+          "recordId": "fixture",
+          "fields": [
+            "text",
+            "trust"
+          ]
+        },
+        {
+          "id": "theory",
+          "domainId": "beliefs",
+          "recordId": "theory",
+          "fields": [
+            "text",
+            "actor",
+            "status",
+            "channel"
+          ]
+        },
+        {
+          "id": "belief",
+          "domainId": "beliefs",
+          "recordId": "fixture",
+          "fields": [
+            "text",
+            "kind",
+            "actor",
+            "status",
+            "channel"
+          ]
+        },
+        {
+          "id": "memory",
+          "domainId": "memories",
+          "recordId": "fixture",
+          "fields": [
+            "text",
+            "actor"
           ]
         }
       ],
@@ -97,186 +199,31 @@
             }
           },
           "when": "reads.evidence.known"
-        }
-      ]
-    },
-    {
-      "id": "player_status_projection.publish",
-      "reads": [
-        {
-          "id": "bootstrap",
-          "domainId": "entities",
-          "recordId": "foundation",
-          "fields": [
-            "position",
-            "prepared"
-          ]
-        },
-        {
-          "id": "conditions",
-          "domainId": "conditions",
-          "recordId": "fixture",
-          "fields": [
-            "text"
-          ]
-        },
-        {
-          "id": "relations",
-          "domainId": "relations",
-          "recordId": "fixture",
-          "fields": [
-            "text",
-            "trust"
-          ]
-        }
-      ],
-      "effects": [
-        {
-          "kind": "app.command",
-          "domainId": "player_status_projection",
-          "commandId": "publish",
-          "recordId": "risk",
-          "args": {
-            "text": "Synthetic known-position preview: secure. Opposition may cost time; interviews can strain trust; physical intervention can bruise. No lethal stakes."
-          },
-          "when": "max(1, reads.bootstrap.position - reads.bootstrap.prepared) == 1"
         },
         {
           "kind": "app.command",
           "domainId": "player_status_projection",
+          "recordId": "status",
           "commandId": "publish",
-          "recordId": "risk",
           "args": {
-            "text": "Synthetic known-position preview: favorable. Opposition may cost time; interviews can strain trust; physical intervention can bruise. No lethal stakes."
-          },
-          "when": "max(1, reads.bootstrap.position - reads.bootstrap.prepared) == 2"
-        },
-        {
-          "kind": "app.command",
-          "domainId": "player_status_projection",
-          "commandId": "publish",
-          "recordId": "risk",
-          "args": {
-            "text": "Synthetic known-position preview: contested. Opposition may cost time; interviews can strain trust; physical intervention can bruise. No lethal stakes."
-          },
-          "when": "max(1, reads.bootstrap.position - reads.bootstrap.prepared) == 3"
-        },
-        {
-          "kind": "app.command",
-          "domainId": "player_status_projection",
-          "commandId": "publish",
-          "recordId": "risk",
-          "args": {
-            "text": "Synthetic known-position preview: risky. Opposition may cost time; interviews can strain trust; physical intervention can bruise. No lethal stakes."
-          },
-          "when": "max(1, reads.bootstrap.position - reads.bootstrap.prepared) == 4"
-        },
-        {
-          "kind": "app.command",
-          "domainId": "player_status_projection",
-          "commandId": "publish",
-          "recordId": "risk",
-          "args": {
-            "text": "Synthetic known-position preview: desperate. Opposition may cost time; interviews can strain trust; physical intervention can bruise. No lethal stakes."
-          },
-          "when": "max(1, reads.bootstrap.position - reads.bootstrap.prepared) == 5"
-        },
-        {
-          "kind": "app.command",
-          "domainId": "player_status_projection",
-          "commandId": "publish",
-          "recordId": "conditions",
-          "args": {
-            "text": {
+            "text": "Known risk band 1–5 (lower is safer); trust modifies interview risk. Conditions and relations below are disclosed facts.",
+            "condition": {
               "formula": "reads.conditions.text"
-            }
-          }
-        },
-        {
-          "kind": "app.command",
-          "domainId": "player_status_projection",
-          "commandId": "publish",
-          "recordId": "relations",
-          "args": {
-            "text": {
+            },
+            "relation": {
               "formula": "reads.relations.text"
+            },
+            "risk_band": {
+              "formula": "max(1, reads.bootstrap.position - reads.bootstrap.prepared)"
+            },
+            "severity": {
+              "formula": "reads.conditions.severity"
+            },
+            "trust": {
+              "formula": "reads.relations.trust"
             }
           }
         },
-        {
-          "kind": "app.command",
-          "domainId": "player_status_projection",
-          "commandId": "publish",
-          "recordId": "interview_risk",
-          "args": {
-            "text": "Known clerk interaction risk: secure. Permission/credible method still determine eligibility; strain can reduce future cooperation."
-          },
-          "when": "max(1, min(5, reads.bootstrap.position - reads.bootstrap.prepared - reads.relations.trust)) == 1"
-        },
-        {
-          "kind": "app.command",
-          "domainId": "player_status_projection",
-          "commandId": "publish",
-          "recordId": "interview_risk",
-          "args": {
-            "text": "Known clerk interaction risk: favorable. Permission/credible method still determine eligibility; strain can reduce future cooperation."
-          },
-          "when": "max(1, min(5, reads.bootstrap.position - reads.bootstrap.prepared - reads.relations.trust)) == 2"
-        },
-        {
-          "kind": "app.command",
-          "domainId": "player_status_projection",
-          "commandId": "publish",
-          "recordId": "interview_risk",
-          "args": {
-            "text": "Known clerk interaction risk: contested. Permission/credible method still determine eligibility; strain can reduce future cooperation."
-          },
-          "when": "max(1, min(5, reads.bootstrap.position - reads.bootstrap.prepared - reads.relations.trust)) == 3"
-        },
-        {
-          "kind": "app.command",
-          "domainId": "player_status_projection",
-          "commandId": "publish",
-          "recordId": "interview_risk",
-          "args": {
-            "text": "Known clerk interaction risk: risky. Permission/credible method still determine eligibility; strain can reduce future cooperation."
-          },
-          "when": "max(1, min(5, reads.bootstrap.position - reads.bootstrap.prepared - reads.relations.trust)) == 4"
-        },
-        {
-          "kind": "app.command",
-          "domainId": "player_status_projection",
-          "commandId": "publish",
-          "recordId": "interview_risk",
-          "args": {
-            "text": "Known clerk interaction risk: desperate. Permission/credible method still determine eligibility; strain can reduce future cooperation."
-          },
-          "when": "max(1, min(5, reads.bootstrap.position - reads.bootstrap.prepared - reads.relations.trust)) == 5"
-        }
-      ]
-    },
-    {
-      "id": "investigation.publish",
-      "reads": [
-        {
-          "id": "evidence",
-          "domainId": "evidence",
-          "recordId": "fixture",
-          "fields": [
-            "text",
-            "known"
-          ]
-        },
-        {
-          "id": "theory",
-          "domainId": "beliefs",
-          "recordId": "theory",
-          "fields": [
-            "text"
-          ]
-        }
-      ],
-      "effects": [
         {
           "kind": "app.command",
           "domainId": "investigation_nodes",
@@ -336,37 +283,7 @@
             "from": "",
             "to": ""
           }
-        }
-      ]
-    },
-    {
-      "id": "epistemic.publish",
-      "reads": [
-        {
-          "id": "belief",
-          "domainId": "beliefs",
-          "recordId": "fixture",
-          "fields": [
-            "text",
-            "kind",
-            "actor",
-            "status",
-            "channel"
-          ]
         },
-        {
-          "id": "theory",
-          "domainId": "beliefs",
-          "recordId": "theory",
-          "fields": [
-            "text",
-            "actor",
-            "status",
-            "channel"
-          ]
-        }
-      ],
-      "effects": [
         {
           "kind": "app.command",
           "domainId": "player_epistemic_projection",
@@ -410,23 +327,7 @@
             "from": "",
             "to": ""
           }
-        }
-      ]
-    },
-    {
-      "id": "memory.publish",
-      "reads": [
-        {
-          "id": "memory",
-          "domainId": "memories",
-          "recordId": "fixture",
-          "fields": [
-            "text",
-            "actor"
-          ]
-        }
-      ],
-      "effects": [
+        },
         {
           "kind": "app.command",
           "domainId": "player_memory_projection",
@@ -471,8 +372,7 @@
       },
       "effects": [],
       "derivedPublications": [
-        "scene_projection.publish",
-        "player_status_projection.publish"
+        "safe.publish"
       ],
       "receipt": {
         "schema": {
@@ -598,11 +498,7 @@
         }
       ],
       "derivedPublications": [
-        "scene_projection.publish",
-        "player_status_projection.publish",
-        "investigation.publish",
-        "epistemic.publish",
-        "memory.publish"
+        "safe.publish"
       ],
       "receipt": {
         "schema": {
@@ -913,11 +809,7 @@
         }
       ],
       "derivedPublications": [
-        "scene_projection.publish",
-        "player_status_projection.publish",
-        "investigation.publish",
-        "epistemic.publish",
-        "memory.publish"
+        "safe.publish"
       ],
       "receipt": {
         "schema": {
@@ -1227,11 +1119,7 @@
         }
       ],
       "derivedPublications": [
-        "scene_projection.publish",
-        "player_status_projection.publish",
-        "investigation.publish",
-        "epistemic.publish",
-        "memory.publish"
+        "safe.publish"
       ],
       "receipt": {
         "schema": {
@@ -1519,11 +1407,7 @@
         }
       ],
       "derivedPublications": [
-        "scene_projection.publish",
-        "player_status_projection.publish",
-        "investigation.publish",
-        "epistemic.publish",
-        "memory.publish"
+        "safe.publish"
       ],
       "receipt": {
         "schema": {
@@ -1836,11 +1720,7 @@
         }
       ],
       "derivedPublications": [
-        "scene_projection.publish",
-        "player_status_projection.publish",
-        "investigation.publish",
-        "epistemic.publish",
-        "memory.publish"
+        "safe.publish"
       ],
       "receipt": {
         "schema": {
@@ -2141,11 +2021,7 @@
         }
       ],
       "derivedPublications": [
-        "scene_projection.publish",
-        "player_status_projection.publish",
-        "investigation.publish",
-        "epistemic.publish",
-        "memory.publish"
+        "safe.publish"
       ],
       "receipt": {
         "schema": {
@@ -2312,11 +2188,7 @@
         }
       ],
       "derivedPublications": [
-        "scene_projection.publish",
-        "player_status_projection.publish",
-        "investigation.publish",
-        "epistemic.publish",
-        "memory.publish"
+        "safe.publish"
       ],
       "receipt": {
         "schema": {
@@ -2479,11 +2351,7 @@
         }
       ],
       "derivedPublications": [
-        "scene_projection.publish",
-        "player_status_projection.publish",
-        "investigation.publish",
-        "epistemic.publish",
-        "memory.publish"
+        "safe.publish"
       ],
       "receipt": {
         "schema": {
@@ -2596,7 +2464,7 @@
           "minutes": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 60
+            "maximum": 2880
           }
         },
         "required": [
@@ -2609,7 +2477,7 @@
       },
       "intent": {
         "expose": true,
-        "description": "Synthetic registry: wait_here by wait. Target fixture only; never choose eligibility, risk, outcomes or state patches. Expected minutes: 1–60."
+        "description": "Synthetic registry: wait_here by wait. Target fixture only; never choose eligibility, risk, outcomes or state patches. Expected minutes: 1–2880."
       },
       "reads": [],
       "validators": [],
@@ -2643,11 +2511,7 @@
         }
       ],
       "derivedPublications": [
-        "scene_projection.publish",
-        "player_status_projection.publish",
-        "investigation.publish",
-        "epistemic.publish",
-        "memory.publish"
+        "safe.publish"
       ],
       "receipt": {
         "schema": {
@@ -2691,7 +2555,7 @@
             "expectedMinutes": {
               "type": "integer",
               "minimum": 0,
-              "maximum": 60
+              "maximum": 2880
             },
             "timeAdvanced": {
               "type": "boolean"
@@ -2723,7 +2587,7 @@
           "outcome": {
             "formula": "resolution.outcome"
           },
-          "notice": "Synthetic wait only. Autonomous obligations/scheduling arrive in P3.",
+          "notice": "Time advance processes the two-day synthetic schedule, rent, hearing, clinic and institutional phases; background decisions use a bounded separate Task.",
           "expectedMinutes": {
             "formula": "args.minutes"
           },
@@ -2732,6 +2596,234 @@
           }
         },
         "maxBytes": 2048
+      }
+    },
+    {
+      "id": "simulation.day",
+      "verb": "simulation_day",
+      "origin": "simulation",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "tick": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "railAllowed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "day",
+          "tick",
+          "railAllowed"
+        ],
+        "additionalProperties": false
+      },
+      "intent": {
+        "expose": false,
+        "description": "Bounded synthetic world authority; not a player command."
+      },
+      "reads": [],
+      "validators": [],
+      "resolution": {
+        "kind": "deterministic",
+        "cases": [],
+        "fallback": "applied"
+      },
+      "effects": [
+        {
+          "kind": "world.event",
+          "type": "SimulationAdvanced",
+          "payload": {
+            "day": {
+              "formula": "args.day"
+            },
+            "tick": {
+              "formula": "args.tick"
+            }
+          }
+        },
+        {
+          "kind": "app.command",
+          "domainId": "agendas",
+          "recordId": "foundation",
+          "commandId": "day_0_true",
+          "args": {},
+          "when": "args.day == 0 && args.railAllowed == true"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "agendas",
+          "recordId": "foundation",
+          "commandId": "day_0_false",
+          "args": {},
+          "when": "args.day == 0 && args.railAllowed == false"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "agendas",
+          "recordId": "foundation",
+          "commandId": "day_1_true",
+          "args": {},
+          "when": "args.day == 1 && args.railAllowed == true"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "agendas",
+          "recordId": "foundation",
+          "commandId": "day_1_false",
+          "args": {},
+          "when": "args.day == 1 && args.railAllowed == false"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "institutional_records",
+          "recordId": "foundation",
+          "commandId": "day",
+          "args": {
+            "day": {
+              "formula": "args.day"
+            }
+          }
+        },
+        {
+          "kind": "app.command",
+          "domainId": "world_matters",
+          "recordId": "foundation",
+          "commandId": "rent_day_0",
+          "args": {},
+          "when": "args.day == 0"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "world_matters",
+          "recordId": "foundation",
+          "commandId": "rent_day_1",
+          "args": {},
+          "when": "args.day == 1"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "conditions",
+          "recordId": "fixture",
+          "commandId": "clinic",
+          "args": {},
+          "when": "args.day == 1"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "entities",
+          "recordId": "foundation",
+          "commandId": "hearing_missed",
+          "args": {},
+          "when": "args.day == 1"
+        }
+      ],
+      "derivedPublications": [
+        "safe.publish"
+      ],
+      "receipt": {
+        "schema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "projection": {},
+        "maxBytes": 1024
+      }
+    },
+    {
+      "id": "simulation.file",
+      "verb": "simulation_file",
+      "origin": "simulation",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "intent": {
+        "expose": false,
+        "description": "Bounded synthetic world authority; not a player command."
+      },
+      "reads": [],
+      "validators": [],
+      "resolution": {
+        "kind": "deterministic",
+        "cases": [],
+        "fallback": "applied"
+      },
+      "effects": [
+        {
+          "kind": "world.event",
+          "type": "InstitutionFiled",
+          "payload": {
+            "delegateName": {
+              "formula": "args.name"
+            }
+          }
+        },
+        {
+          "kind": "app.command",
+          "domainId": "agendas",
+          "recordId": "foundation",
+          "commandId": "accept",
+          "args": {}
+        },
+        {
+          "kind": "app.command",
+          "domainId": "institutional_records",
+          "recordId": "foundation",
+          "commandId": "file",
+          "args": {}
+        },
+        {
+          "kind": "app.command",
+          "domainId": "entities",
+          "recordId": "delegate",
+          "commandId": "promote",
+          "args": {
+            "name": {
+              "formula": "args.name"
+            }
+          }
+        },
+        {
+          "kind": "app.command",
+          "domainId": "entities",
+          "recordId": "foundation",
+          "commandId": "filing_notice",
+          "args": {}
+        }
+      ],
+      "derivedPublications": [
+        "safe.publish"
+      ],
+      "receipt": {
+        "schema": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        },
+        "projection": {},
+        "maxBytes": 1024
       }
     }
   ]

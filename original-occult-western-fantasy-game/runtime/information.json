@@ -22,6 +22,21 @@
       "fields": [
         [
           "text"
+        ],
+        [
+          "condition"
+        ],
+        [
+          "relation"
+        ],
+        [
+          "risk_band"
+        ],
+        [
+          "severity"
+        ],
+        [
+          "trust"
         ]
       ]
     },

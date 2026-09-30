@@ -1,10 +1,10 @@
-# Original Occult Western Fantasy — P2 Interaction Fixture
+# Original Occult Western Fantasy — P3 Simulation Fixture
 
-Task: `package/original-occult-western-fantasy-game`. Independent long-lived `package` workspace. This is a small synthetic runtime fixture, **not a campaign or a release**.
+Task: `package/original-occult-western-fantasy-game`. Independent long-lived `package` workspace. This is a **two-day synthetic test world**, not a campaign or a release. P4/P8 content and visual design are not included.
 
 ## Build / validate / preview
 
-With Node and an independent current Atria main checkout (dependencies installed):
+Use Node and an independent current Atria main checkout with dependencies:
 
 ```text
 node tools/package.mjs validate --core <main-checkout>
@@ -12,28 +12,29 @@ node tools/package.mjs build --core <main-checkout>
 node tools/package.mjs preview --core <main-checkout>
 ```
 
-Build creates ignored `build/0.2.0-p2.atria` exclusively. Use `--out <new-file.atria>` for a distinct output. Existing builds/releases are never overwritten. Final release production remains P9. No product source is copied into this Package.
+Build exclusively creates ignored `build/0.3.0-p3.atria`. If it already exists, use `--out <new-file.atria>`; never overwrite builds/releases. Final release production remains P9. Product code is imported for testing, never copied into this Package.
 
-Validation uses the real compiler, temporary FS installation, Session/Ready, Information projections, private preparations, and a local synthetic HTTP resolver/Narrator. It also invokes all nine installed fixed Native Frontend bindings. Temporary storage is cleaned. No credentials, hosted model, real UI/device, save-container restoration or cross-process uncommitted selection journal is assumed.
+Validation covers actual FS archive installation, Session/Ready, private preparations, all nine installed fixed typed actions, local synthetic HTTP resolver/Narrator/Agenda execution and actual save-container export/import into a fresh FS store. It tests two-day deterministic catch-up, obligations, conditions, institution phases, a bounded background decision, generated Entity promotion, stale cancellation and foreground-to-background dispatch. No hosted model, manual browser/device or cross-process uncommitted selection recovery is claimed.
 
-Preview prints safe Information JSON, not a browser screenshot. The native full Experience has a bare nine-button functional fixture solely to exercise typed transactions; P8 visual/UI design has not begun. Bindings accept closed typed input; example buttons use fixed sample text, not a final player editor.
+Preview prints safe Information JSON, not a screenshot. The nine-button native fixture is a typed-contract test entrypoint, not P8 design or final UX.
 
 ## Ownership
 
-- `manifest.json`: version pin, EntryPoint, World/actor identity and synthetic initial timeline.
-- `runtime/capabilities.json`: required capabilities including **authority-transaction@1**. Installation requires generation permission.
-- `runtime/lifecycle.json`: existing World/Session authorities, one canonical minute clock, bounded Ready initialization. Unused P3+ domains retain P1 placeholder schemas.
-- `runtime/logic.json`: nine gameplay transactions; non-exposed foundation diagnostic; guarded effects and single-layer safe publications. No executable Package gameplay runtime, Outcome/Resolution domain, generic patch or duplicate journal.
-- `runtime/information.json`: seven Sources, five Views, two graphs, no actor-private direct subscription. Hypotheses stay suspected/inference, testimony suspected/told_by, Matters open. Graph nodes identify hypotheses, never present their content as Truth.
-- `runtime/tasks.json` / `model-resources.json`: exact four Task contracts. Narrator consumes Host receipt/projections. Reflection/Claim Advisor remain advisory. Agenda is still defer-only and has no autonomous scheduler.
-- `frontend/`: fixed transaction bindings with exact input schemas and minimal native source; compiled by the existing Core frontend compiler.
-- `data/`: seven hash-pinned resources; only synthetic bootstrap has content. No authored campaign expansion.
-- `tools/`: build/validation and integration tests. The older conditional-Fortune probe is historical contract evidence, not the P2 acceptance suite.
+- `manifest.json`: version/EntryPoint/World pins and synthetic initial timeline.
+- `runtime/capabilities.json`: required **authority-transaction@1** and **world-simulation@1**, plus the existing capabilities. Generation permission is required. Older main without the formal simulation support must reject activation.
+- `runtime/lifecycle.json`: existing World/Session domains, canonical minute clock, bounded Ready seeding, two-day Agenda/obligation/record/condition declarations. Unused later-stage domains retain bounded placeholders.
+- `runtime/logic.json`: nine player transactions, diagnostic foundation transaction, two non-player simulation transactions and one unified safe-publication layer. No Package executable scheduler, Outcome/Resolution domain or duplicate journal.
+- `runtime/simulation.json`: formal Core scheduling declarations with static private grants, due times, priority, relevance, one background admission per batch and a bounded input-only Agenda context.
+- `runtime/information.json`: seven Sources, five Views, two graphs. Structured status exposes known risk/condition/relation values without twelve duplicated publication branches. Hypotheses remain epistemic, not confirming Truth.
+- `runtime/tasks.json` / `model-resources.json`: four core Tasks. Agenda proposes `defer`/`file_report` plus a bounded delegate name; deterministic authority accepts any real-world action. Reflection/Claim Advisor remain advisory.
+- `frontend/`: fixed typed bindings; only the wait input bound changes to 1–2880 minutes. No visual/UI work.
+- `data/`: seven hash-pinned modular resources; no launch-world or campaign content batch.
+- `tools/`: build and actual integration checks. `simulation-contract-check.mjs` diagnoses legacy Lifecycle limitations; it is not the acceptance test for the new capability.
 
-See `runtime/INTERACTION.md` for the Resolution Frame, risk table, static slots and effects. Permanent evidence belongs in the single Package Record on docs.
+See `runtime/INTERACTION.md` and `runtime/SIMULATION.md`. Permanent history belongs in the single Package Record on docs.
 
-## Retry and stage boundary
+## Boundaries
 
-Mechanics are prepared privately before Narrator; successful narration and authority publish in one Session CAS. Same-anchor RNG is deterministic. In-process selection pinning, committed invocation idempotency and actual save restoration are different properties. Branch Retry is a new branch, not prose-only regeneration.
+Player authority and narration still finalize together. Background intent plus its validated filing, Entity promotion and safe projections use another atomic Session CAS after foreground finalization. Provider failure commits no speculative action. Same-process selection pinning, same-anchor RNG, committed invocation idempotency and actual save-container restoration are distinct properties.
 
-P3 owns obligations/deadlines, world-advance scheduling, institution/Agenda simulation and event-driven fast-forward. P2 wait advances only the canonical clock by 1–60 minutes; it is not a finished downtime or simulation system. No P3/P8 implementation is included.
+The synthetic schedule defines two daily cycles. Crossing the third daily boundary fails closed before publication rather than freezing obligations while time continues. This is not a generalized campaign economy, clinic, dynamic NPC simulator or unrestricted downtime system; P4+ must author additional valid states/jobs within the unchanged limits.

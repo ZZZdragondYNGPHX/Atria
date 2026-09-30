@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "clockId": "world",
+  "policy": {
+    "maxSteps": 3,
+    "maxDeliberations": 1,
+    "maxAdvanceTicks": 2880
+  },
+  "jobs": [
+    {
+      "id": "calendar.day",
+      "scopeId": "world",
+      "reads": [
+        {
+          "id": "agenda",
+          "domainId": "agendas",
+          "recordId": "foundation",
+          "fields": [
+            "day",
+            "nextTick",
+            "railAllowed"
+          ]
+        }
+      ],
+      "enabled": "true",
+      "due": {
+        "formula": "reads.agenda.nextTick"
+      },
+      "priority": 1,
+      "relevance": "cold",
+      "action": {
+        "kind": "transaction",
+        "transactionId": "simulation.day",
+        "input": {
+          "day": {
+            "formula": "reads.agenda.day"
+          },
+          "tick": {
+            "formula": "clock.tick"
+          },
+          "railAllowed": {
+            "formula": "reads.agenda.railAllowed"
+          }
+        }
+      }
+    },
+    {
+      "id": "archive.execute",
+      "scopeId": "world",
+      "reads": [
+        {
+          "id": "agenda",
+          "domainId": "agendas",
+          "recordId": "foundation",
+          "fields": [
+            "decision",
+            "candidateName"
+          ]
+        }
+      ],
+      "enabled": "reads.agenda.decision == \"file_report\"",
+      "due": 2880,
+      "priority": 2,
+      "relevance": "hot",
+      "action": {
+        "kind": "transaction",
+        "transactionId": "simulation.file",
+        "input": {
+          "name": {
+            "formula": "reads.agenda.candidateName"
+          }
+        }
+      }
+    },
+    {
+      "id": "archive.choose",
+      "scopeId": "world",
+      "reads": [
+        {
+          "id": "agenda",
+          "domainId": "agendas",
+          "recordId": "foundation",
+          "fields": [
+            "archivePhase",
+            "decision"
+          ]
+        }
+      ],
+      "enabled": "reads.agenda.archivePhase == \"awaiting\" && reads.agenda.decision == \"pending\"",
+      "due": 2880,
+      "priority": 1,
+      "relevance": "hot",
+      "action": {
+        "kind": "task",
+        "taskId": "agenda.deliberation",
+        "variantId": "default",
+        "input": {
+          "institutionId": "registry",
+          "agendaId": "foundation",
+          "blockers": [],
+          "knownRecords": [
+            "The public hearing window elapsed. The registry may file its own report and appoint one delegate."
+          ],
+          "tick": {
+            "formula": "clock.tick"
+          },
+          "permittedActions": [
+            "defer",
+            "file_report"
+          ]
+        }
+      }
+    }
+  ]
+}

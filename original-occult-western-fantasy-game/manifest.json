@@ -3,9 +3,9 @@
   "schemaVersion": 2,
   "nativeSchemaVersion": 1,
   "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-  "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41",
-  "name": "Original Occult Western Fantasy — Interaction Fixture",
-  "version": "0.2.0-p2",
+  "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042",
+  "name": "Original Occult Western Fantasy — World Simulation Fixture",
+  "version": "0.3.0-p3",
   "actors": [
     {
       "actorId": "actor_78fd62e4f874657db785310ec4c9ef52",
@@ -27,7 +27,7 @@
       "initialTimeline": [
         {
           "role": "assistant",
-          "content": "Synthetic registry: a publicly visible slip, a clerk and a protected desk. P2 interaction test world, not the campaign opening.",
+          "content": "Synthetic registry: a public slip, clerk and protected desk. Two-day fixture: rent 10 is due daily; hearing and clinic at minute 2880. Not the campaign opening.",
           "actorId": "actor_78fd62e4f874657db785310ec4c9ef52"
         }
       ]
@@ -44,7 +44,9 @@
         "worldId": "world_d3335a3fb6f1c3cf95a1332d85a3d0b6",
         "worldRevisionId": "worldv_95e265c7e2a3d5ef2a034c7e9b3f4874",
         "baseline": {
-          "interactionCount": 0
+          "interactionCount": 0,
+          "simulationTicks": 0,
+          "filingCount": 0
         },
         "knowledgeBindingIds": [],
         "assetIds": [],

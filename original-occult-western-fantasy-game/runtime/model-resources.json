@@ -4,7 +4,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+      "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
     },
     "resource": {
       "schemaVersion": 1,
@@ -23,7 +23,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+      "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
     },
     "resource": {
       "schemaVersion": 1,
@@ -40,7 +40,7 @@
               "revision": "p1",
               "scope": "package",
               "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-              "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+              "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
             }
           ]
         }
@@ -52,7 +52,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+      "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
     },
     "resource": {
       "schemaVersion": 1,
@@ -72,7 +72,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+      "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
     },
     "resource": {
       "schemaVersion": 1,
@@ -91,7 +91,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+      "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
     },
     "resource": {
       "schemaVersion": 1,
@@ -108,7 +108,7 @@
               "revision": "p1",
               "scope": "package",
               "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-              "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+              "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
             }
           ]
         }
@@ -120,7 +120,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+      "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
     },
     "resource": {
       "schemaVersion": 1,
@@ -140,7 +140,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+      "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
     },
     "resource": {
       "schemaVersion": 1,
@@ -159,7 +159,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+      "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
     },
     "resource": {
       "schemaVersion": 1,
@@ -176,7 +176,7 @@
               "revision": "p1",
               "scope": "package",
               "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-              "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+              "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
             }
           ]
         }
@@ -188,7 +188,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+      "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
     },
     "resource": {
       "schemaVersion": 1,
@@ -208,7 +208,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+      "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
     },
     "resource": {
       "schemaVersion": 1,
@@ -219,7 +219,7 @@
       "stages": [
         "stage.main"
       ],
-      "body": "P1 only: return a defer intent and a short reason using only the explicit bounded input. Never execute world actions."
+      "body": "Use only this institution-specific input. Return a closed JSON proposal: decision defer or file_report, reason up to 256 characters, candidateName 1–64 characters. A proposed delegate is not a world Entity until deterministic authority accepts the filing. Never infer another institution’s private records, write state patches or invent penalties."
     }
   },
   {
@@ -227,7 +227,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+      "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
     },
     "resource": {
       "schemaVersion": 1,
@@ -244,7 +244,7 @@
               "revision": "p1",
               "scope": "package",
               "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-              "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+              "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
             }
           ]
         }
@@ -256,7 +256,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
+      "packageVersionId": "pkgv_b9c0df8ea32803d2fb74283b4b3da042"
     },
     "resource": {
       "schemaVersion": 1,

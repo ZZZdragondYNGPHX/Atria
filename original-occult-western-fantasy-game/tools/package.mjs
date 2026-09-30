@@ -22,7 +22,7 @@ const native = await load('src/native/index.js');
 const manifest = await json('manifest.json');
 manifest.resources = await json('runtime/model-resources.json');
 const contract = { schemaVersion: 1, capabilities: await json('runtime/capabilities.json'), dataResources: [] };
-for (const [key, file] of Object.entries({ lifecycleRuntime: 'lifecycle', taskRuntime: 'tasks', informationRuntime: 'information', authorityRuntime: 'authority' })) contract[key] = await json('runtime/' + file + '.json');
+for (const [key, file] of Object.entries({ lifecycleRuntime: 'lifecycle', taskRuntime: 'tasks', informationRuntime: 'information', authorityRuntime: 'authority', simulationRuntime: 'simulation' })) contract[key] = await json('runtime/' + file + '.json');
 manifest.runtime.experienceContract = contract;
 const assetPayloads = new Map();
 for (const file of (await fs.readdir(path.join(root, 'data'))).sort()) {

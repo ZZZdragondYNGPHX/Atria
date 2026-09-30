@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "entityId": "foundation",
-  "scene": "Synthetic registry: a publicly visible slip, a clerk and a protected desk. P2 interaction test world, not the campaign opening.",
+  "scene": "Synthetic registry: a public slip, clerk and protected desk. Two-day fixture: rent 10 is due daily; hearing and clinic at minute 2880. Not the campaign opening.",
   "playerStatus": "Synthetic Verifier: trained for the declared methods; present credentials, inspect the slip or ask the clerk. No character creation in this fixture.",
   "privateNote": "P1_PRIVATE_CANON_SENTINEL"
 }

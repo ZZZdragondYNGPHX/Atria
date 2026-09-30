@@ -49,6 +49,10 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 1
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 64
           }
         },
         "required": [
@@ -59,7 +63,8 @@
           "permission",
           "opposed",
           "position",
-          "prepared"
+          "prepared",
+          "name"
         ],
         "additionalProperties": false
       },
@@ -71,7 +76,8 @@
         "permission": true,
         "opposed": true,
         "position": 3,
-        "prepared": 0
+        "prepared": 0,
+        "name": "Fixture participant"
       },
       "commands": [
         {
@@ -114,6 +120,63 @@
               "formula": "args.prepared"
             }
           }
+        },
+        {
+          "id": "hearing_missed",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.hearing_missed",
+          "assign": {
+            "permission": false,
+            "scene": "Synthetic registry: the hearing deadline passed. Daily rent is in arrears. Clinic treatment is recorded. The registry slip remains available through authorized observation."
+          }
+        },
+        {
+          "id": "filing_notice",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.filing_notice",
+          "assign": {
+            "scene": "Synthetic registry: the filing was accepted and an authorized delegate was appointed. The hearing remains missed and rent arrears remain due."
+          }
+        },
+        {
+          "id": "promote",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "event": "simulation.promote",
+          "assign": {
+            "name": {
+              "formula": "args.name"
+            },
+            "scene": "Authorized synthetic delegate",
+            "privateNote": "",
+            "trained": true,
+            "permission": true,
+            "opposed": false,
+            "position": 1,
+            "prepared": 0
+          }
         }
       ],
       "retention": {
@@ -130,50 +193,89 @@
       "recordSchema": {
         "type": "object",
         "properties": {
-          "text": {
+          "processedDay": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30
+          },
+          "filing": {
+            "type": "string",
+            "maxLength": 16,
+            "enum": [
+              "none",
+              "filed"
+            ]
+          },
+          "privateNote": {
             "type": "string",
             "maxLength": 256
-          },
-          "actor": {
-            "type": "string",
-            "maxLength": 64
-          },
-          "status": {
-            "type": "string",
-            "maxLength": 32
-          },
-          "channel": {
-            "type": "string",
-            "maxLength": 32
-          },
-          "from": {
-            "type": "string",
-            "maxLength": 64
-          },
-          "to": {
-            "type": "string",
-            "maxLength": 64
           }
         },
         "required": [
-          "text",
-          "actor",
-          "status",
-          "channel",
-          "from",
-          "to"
+          "processedDay",
+          "filing",
+          "privateNote"
         ],
         "additionalProperties": false
       },
       "initial": {
-        "text": "",
-        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
-        "status": "known",
-        "channel": "witnessed",
-        "from": "",
-        "to": ""
+        "processedDay": 0,
+        "filing": "none",
+        "privateNote": "P3_PRIVATE_ARCHIVE_SENTINEL"
       },
-      "commands": [],
+      "commands": [
+        {
+          "id": "bootstrap",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.bootstrap",
+          "assign": {
+            "processedDay": 0,
+            "filing": "none",
+            "privateNote": "P3_PRIVATE_ARCHIVE_SENTINEL"
+          }
+        },
+        {
+          "id": "day",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "day": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 30
+              }
+            },
+            "required": [
+              "day"
+            ],
+            "additionalProperties": false
+          },
+          "event": "simulation.day",
+          "assign": {
+            "processedDay": {
+              "formula": "args.day + 1"
+            }
+          }
+        },
+        {
+          "id": "file",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.file",
+          "assign": {
+            "filing": "filed"
+          }
+        }
+      ],
       "retention": {
         "maxItems": 64,
         "maxLogicalBytes": 65536,
@@ -637,50 +739,113 @@
       "recordSchema": {
         "type": "object",
         "properties": {
-          "text": {
-            "type": "string",
-            "maxLength": 256
-          },
-          "actor": {
+          "ownerEntityId": {
             "type": "string",
             "maxLength": 64
           },
-          "status": {
-            "type": "string",
-            "maxLength": 32
+          "dailyRent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
           },
-          "channel": {
-            "type": "string",
-            "maxLength": 32
+          "arrears": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3000
           },
-          "from": {
+          "rentStatus": {
             "type": "string",
-            "maxLength": 64
+            "maxLength": 16,
+            "enum": [
+              "due",
+              "overdue"
+            ]
           },
-          "to": {
+          "hearingStatus": {
             "type": "string",
-            "maxLength": 64
+            "maxLength": 16,
+            "enum": [
+              "scheduled",
+              "missed"
+            ]
+          },
+          "hearingTick": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
           }
         },
         "required": [
-          "text",
-          "actor",
-          "status",
-          "channel",
-          "from",
-          "to"
+          "ownerEntityId",
+          "dailyRent",
+          "arrears",
+          "rentStatus",
+          "hearingStatus",
+          "hearingTick"
         ],
         "additionalProperties": false
       },
       "initial": {
-        "text": "",
-        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
-        "status": "known",
-        "channel": "witnessed",
-        "from": "",
-        "to": ""
+        "ownerEntityId": "foundation",
+        "dailyRent": 10,
+        "arrears": 0,
+        "rentStatus": "due",
+        "hearingStatus": "scheduled",
+        "hearingTick": 2880
       },
-      "commands": [],
+      "commands": [
+        {
+          "id": "bootstrap",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.bootstrap",
+          "assign": {
+            "ownerEntityId": "foundation",
+            "dailyRent": 10,
+            "arrears": 0,
+            "rentStatus": "due",
+            "hearingStatus": "scheduled",
+            "hearingTick": 2880
+          }
+        },
+        {
+          "id": "rent_day_0",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.rent_day_0",
+          "assign": {
+            "arrears": {
+              "formula": "world.arrears + world.dailyRent"
+            },
+            "rentStatus": "overdue"
+          }
+        },
+        {
+          "id": "rent_day_1",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.rent_day_1",
+          "assign": {
+            "arrears": {
+              "formula": "world.arrears + world.dailyRent"
+            },
+            "rentStatus": "overdue",
+            "hearingStatus": "missed"
+          }
+        }
+      ],
       "retention": {
         "maxItems": 64,
         "maxLogicalBytes": 65536,
@@ -753,29 +918,202 @@
       "recordSchema": {
         "type": "object",
         "properties": {
+          "day": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 30
+          },
+          "nextTick": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "railAllowed": {
+            "type": "boolean"
+          },
+          "railPhase": {
+            "type": "string",
+            "maxLength": 16,
+            "enum": [
+              "survey",
+              "charter",
+              "construction",
+              "blocked"
+            ]
+          },
+          "pressPhase": {
+            "type": "string",
+            "maxLength": 16,
+            "enum": [
+              "planning",
+              "published"
+            ]
+          },
+          "archivePhase": {
+            "type": "string",
+            "maxLength": 16,
+            "enum": [
+              "waiting",
+              "awaiting",
+              "filed"
+            ]
+          },
           "decision": {
             "type": "string",
+            "maxLength": 16,
             "enum": [
-              "defer"
-            ],
-            "maxLength": 16
+              "pending",
+              "defer",
+              "file_report",
+              "accepted"
+            ]
           },
           "reason": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "candidateName": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "privateNote": {
             "type": "string",
             "maxLength": 256
           }
         },
         "required": [
+          "day",
+          "nextTick",
+          "railAllowed",
+          "railPhase",
+          "pressPhase",
+          "archivePhase",
           "decision",
-          "reason"
+          "reason",
+          "candidateName",
+          "privateNote"
         ],
         "additionalProperties": false
       },
       "initial": {
-        "decision": "defer",
-        "reason": ""
+        "day": 0,
+        "nextTick": 1440,
+        "railAllowed": true,
+        "railPhase": "survey",
+        "pressPhase": "planning",
+        "archivePhase": "waiting",
+        "decision": "pending",
+        "reason": "",
+        "candidateName": "",
+        "privateNote": "P3_PRIVATE_RAIL_SENTINEL"
       },
       "commands": [
+        {
+          "id": "bootstrap",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.bootstrap",
+          "assign": {
+            "day": 0,
+            "nextTick": 1440,
+            "railAllowed": true,
+            "railPhase": "survey",
+            "pressPhase": "planning",
+            "archivePhase": "waiting",
+            "decision": "pending",
+            "reason": "",
+            "candidateName": "",
+            "privateNote": "P3_PRIVATE_RAIL_SENTINEL"
+          }
+        },
+        {
+          "id": "day_0_true",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.day_0_true",
+          "assign": {
+            "day": {
+              "formula": "world.day + 1"
+            },
+            "nextTick": {
+              "formula": "world.nextTick + 1440"
+            },
+            "railPhase": "charter",
+            "pressPhase": "planning",
+            "archivePhase": "waiting"
+          }
+        },
+        {
+          "id": "day_1_true",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.day_1_true",
+          "assign": {
+            "day": {
+              "formula": "world.day + 1"
+            },
+            "nextTick": {
+              "formula": "world.nextTick + 1440"
+            },
+            "railPhase": "construction",
+            "pressPhase": "published",
+            "archivePhase": "awaiting"
+          }
+        },
+        {
+          "id": "day_0_false",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.day_0_false",
+          "assign": {
+            "day": {
+              "formula": "world.day + 1"
+            },
+            "nextTick": {
+              "formula": "world.nextTick + 1440"
+            },
+            "railPhase": "blocked",
+            "pressPhase": "planning",
+            "archivePhase": "waiting"
+          }
+        },
+        {
+          "id": "day_1_false",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.day_1_false",
+          "assign": {
+            "day": {
+              "formula": "world.day + 1"
+            },
+            "nextTick": {
+              "formula": "world.nextTick + 1440"
+            },
+            "railPhase": "blocked",
+            "pressPhase": "published",
+            "archivePhase": "awaiting"
+          }
+        },
         {
           "id": "record_intent",
           "argsSchema": {
@@ -783,30 +1121,67 @@
             "properties": {
               "decision": {
                 "type": "string",
+                "maxLength": 16,
                 "enum": [
-                  "defer"
-                ],
-                "maxLength": 16
+                  "defer",
+                  "file_report"
+                ]
               },
               "reason": {
                 "type": "string",
                 "maxLength": 256
+              },
+              "candidateName": {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1
               }
             },
             "required": [
               "decision",
-              "reason"
+              "reason",
+              "candidateName"
             ],
             "additionalProperties": false
           },
-          "event": "agenda.intent_recorded",
+          "event": "simulation.record_intent",
           "assign": {
             "decision": {
               "formula": "args.decision"
             },
             "reason": {
               "formula": "args.reason"
+            },
+            "candidateName": {
+              "formula": "args.candidateName"
             }
+          }
+        },
+        {
+          "id": "accept",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.accept",
+          "assign": {
+            "decision": "accepted",
+            "archivePhase": "filed"
+          }
+        },
+        {
+          "id": "fixture_block_rail",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.fixture_block_rail",
+          "assign": {
+            "railAllowed": false
           }
         }
       ],
@@ -887,6 +1262,20 @@
           "event": "conditions.initialized",
           "assign": {
             "text": "Uninjured.",
+            "severity": 0
+          }
+        },
+        {
+          "id": "clinic",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.clinic",
+          "assign": {
+            "text": "The scheduled clinic visit treated the recorded condition.",
             "severity": 0
           }
         }
@@ -1233,15 +1622,48 @@
           "text": {
             "type": "string",
             "maxLength": 256
+          },
+          "condition": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "relation": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "risk_band": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "severity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "trust": {
+            "type": "integer",
+            "minimum": -2,
+            "maximum": 2
           }
         },
         "required": [
-          "text"
+          "text",
+          "condition",
+          "relation",
+          "risk_band",
+          "severity",
+          "trust"
         ],
         "additionalProperties": false
       },
       "initial": {
-        "text": ""
+        "text": "",
+        "condition": "",
+        "relation": "",
+        "risk_band": 1,
+        "severity": 0,
+        "trust": 0
       },
       "commands": [
         {
@@ -1252,17 +1674,60 @@
               "text": {
                 "type": "string",
                 "maxLength": 256
+              },
+              "condition": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "relation": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "risk_band": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "severity": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 3
+              },
+              "trust": {
+                "type": "integer",
+                "minimum": -2,
+                "maximum": 2
               }
             },
             "required": [
-              "text"
+              "text",
+              "condition",
+              "relation",
+              "risk_band",
+              "severity",
+              "trust"
             ],
             "additionalProperties": false
           },
-          "event": "player_status_projection.published",
+          "event": "simulation.publish",
           "assign": {
             "text": {
               "formula": "args.text"
+            },
+            "condition": {
+              "formula": "args.condition"
+            },
+            "relation": {
+              "formula": "args.relation"
+            },
+            "risk_band": {
+              "formula": "args.risk_band"
+            },
+            "severity": {
+              "formula": "args.severity"
+            },
+            "trust": {
+              "formula": "args.trust"
             }
           }
         }
@@ -1770,7 +2235,7 @@
     {
       "id": "advance",
       "clockId": "world",
-      "maxTicks": 60
+      "maxTicks": 2880
     }
   ],
   "interactions": [],
@@ -1891,6 +2356,51 @@
         "domainId": "beliefs",
         "commandId": "bootstrap",
         "recordId": "theory",
+        "args": {}
+      },
+      "maxCatchUp": 1
+    },
+    {
+      "id": "agendas.bootstrap",
+      "scopeId": "world",
+      "trigger": {
+        "kind": "experience.ready"
+      },
+      "action": {
+        "kind": "app.command",
+        "domainId": "agendas",
+        "recordId": "foundation",
+        "commandId": "bootstrap",
+        "args": {}
+      },
+      "maxCatchUp": 1
+    },
+    {
+      "id": "institutional_records.bootstrap",
+      "scopeId": "world",
+      "trigger": {
+        "kind": "experience.ready"
+      },
+      "action": {
+        "kind": "app.command",
+        "domainId": "institutional_records",
+        "recordId": "foundation",
+        "commandId": "bootstrap",
+        "args": {}
+      },
+      "maxCatchUp": 1
+    },
+    {
+      "id": "world_matters.bootstrap",
+      "scopeId": "world",
+      "trigger": {
+        "kind": "experience.ready"
+      },
+      "action": {
+        "kind": "app.command",
+        "domainId": "world_matters",
+        "recordId": "foundation",
+        "commandId": "bootstrap",
         "args": {}
       },
       "maxCatchUp": 1

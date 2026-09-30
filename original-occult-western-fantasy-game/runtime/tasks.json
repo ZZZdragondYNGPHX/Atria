@@ -214,10 +214,11 @@
               "type": "string",
               "maxLength": 16,
               "enum": [
-                "defer"
+                "defer",
+                "file_report"
               ]
             },
-            "maxItems": 1
+            "maxItems": 2
           }
         },
         "required": [
@@ -254,19 +255,26 @@
             "properties": {
               "decision": {
                 "type": "string",
+                "maxLength": 16,
                 "enum": [
-                  "defer"
-                ],
-                "maxLength": 16
+                  "defer",
+                  "file_report"
+                ]
               },
               "reason": {
                 "type": "string",
                 "maxLength": 256
+              },
+              "candidateName": {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1
               }
             },
             "required": [
               "decision",
-              "reason"
+              "reason",
+              "candidateName"
             ],
             "additionalProperties": false
           },
