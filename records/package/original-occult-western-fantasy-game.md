@@ -104,3 +104,47 @@ Status: **G1 closed; P2 authorized/in progress, not complete. No Core extension 
 - Actual checks: probe passes with APPROVED_FORTUNE_POLICY_SUPPORTED_NOT_P2_PASS; Core formula evaluation exhausts all 3 roll values for Automatic/Impossible/Uncertain, and 16 real private preparations across two eligibility states/eight ordinals preserve non-Uncertain effects/projections/results and source immutability. Public semantic result omits roll. Original declaration-rejection/same-anchor checks remain. Syntax and staged whitespace checks pass. Initial formula probe failure was corrected by using the same roots/strings compiler options as Core; no product change.
 - No new install/build/hosted-model/typed bridge/save-container/UI/device/full-suite/CI validation claimed. Tests use a diagnostic fixture, not implemented gameplay; P2 must repeat the invariance property on actual nine-verb declarations.
 - Next: continue the already-authorized P2 nine-verb runtime, bounded Resolution/effects/index, safe receipt and typed/free-text parity. No further approval for G1 is needed. No P3/P8 until the actual P2 exit gate passes.
+
+
+## P2 — Interaction Runtime (2026-09-30)
+
+Status: **P2 complete; stopped at the stage boundary. P3/P8 not started.**
+
+- Start Package HEAD: `6be0ed75d68a9f8e0df5b1f3c0b291f00d73ed47` (G1 policy checkpoint, not P2 implementation).
+- End / tested / pushed Package HEAD: **`8e7dec443d39beec5a182c16cfe7bcad97ebd6c0`**. Version: `0.2.0-p2`.
+- Independent Core main / tested HEAD: **`cd6bff19d54f651a4bffd8981f62ec77c0f84acb`**. Initial and final fetch confirmed no newer main/docs/package changes during this implementation. Core remained clean and unchanged.
+- Docs start HEAD: `d2ca8694aa6aff1c5b94d2fd910fbc97483a9821`. Continued this same Record and sole live HANDOFF. No main merge, reference reads, release overwrite, parallel authority or Core workaround.
+
+### Implemented
+
+- Nine closed transactions: observe, verify, interview, access, test, intervene, create_hypothesis, create_lead, advance_time. Private read grants and fixed domain/command/record targets; high-level intent only. Foundation diagnostic remains available for tests but is no longer resolver-exposed.
+- Small registry fixture only. Existing entities/Evidence/Belief/Memory/Relation/Condition/player Matter authorities have bounded schemas and Ready seeds. Hypothesis and lead have separate static slots; a hypothesis cannot overwrite testimony or manufacture confirming Evidence. Unused P3+ domains remain explicitly limited P1 placeholders.
+- Ephemeral Resolution Frame: closed method/objective, categorical qualification, permission/position, preparation, opposition, existing clerk relationship, authored stakes and bounded expected time. Eligibility precedes Fortune use. Five qualitative risk bands and bounded Core 1–3 Fortune implement the approved G1 interpretation. No Resolution/Outcome domain or custom RNG.
+- Automatic and Impossible outcomes/effects/time/public results never depend on an unused draw. Only Uncertain uses Fortune. Accepted InteractionResolved events enter the existing World Journal; its fortune=0 denotes not used, not an exposed internal draw. Public receipt has no roll.
+- Evidence preserves provenance/custody/integrity/verification across updates. Verification authenticates a copy, not its assertion. Testimony is suspected/told_by and hypotheses suspected/inference using actual Core enums. Costly success has a concrete authored cost (relationship strain, fatigue, or bruise); failed attempts still consume authored time. Impossible consumes none.
+- Single-layer disclosure-safe scene/status/epistemic/memory/index publications, all rebuilt under existing authority. Unknown slip content is withheld; acquired content reaches safe scene context. Graph hypothesis nodes explicitly reference an unverified interpretation rather than labeling its content Truth. Known general/social risk and consequences are projected safely. Hidden sentinel/privateNote never enters model requests.
+- Real Native Frontend v3 compilation and nine installed fixed typed bindings. Full Experience contains only a bare functional button fixture; no P8 visual design or final UX. Free-text and typed selection map to the same transactions and closed schemas.
+- Package-owned tools import the independent main compiler/harness/services; no product implementation is copied or shipped. Historical releases and the ignored P1 build remain untouched. New ignored build is `build/0.2.0-p2.atria` (19,623 bytes at this checkpoint); final release publication is still P9.
+
+### Actual validation
+
+- `node tools/package.mjs build --core <main-checkout>`: PASS, exclusive new archive write.
+- `node tools/package.mjs preview --core <main-checkout>`: PASS, actual install/start/Ready and safe JSON projections, with integration checks. This is not a screenshot or browser preview.
+- Final `node tools/package.mjs validate --core <main-checkout>`: PASS on the exact content committed above. Permission enforcement, archive reopen, required authority-transaction@1, pre-Ready rejection, repeat-Ready idempotence, five Views/two Graphs and hidden-sentinel isolation pass.
+- Nine real transaction preparations plus same-anchor repeat; undeclared target and extra outcome arguments rejected. Core resolver tool selection verified for all nine closed inputs.
+- Core formula evaluator exhausts **600** eligibility/position/preparation/Fortune cases for actual gameplay declarations. Non-Uncertain selected effects and public results are invariant; Uncertain outcomes remain in their risk distribution.
+- **80** real non-Uncertain private preparations across ordinals preserve domain/clock/public-result semantics and source snapshots; **75** real Uncertain preparations across five bands/ordinals pass outcome and expanded-work ceilings. No synthetic replacement RNG/evaluator is used.
+- Local synthetic HTTP free-text interview: failed Narrator publishes no state/revision; same-process selection resolves once; retry receives identical frozen narrative request messages; repeated successful invocation is idempotent.
+- Actual installed frontend bridge: **all nine actions** invoke the expected fixed transaction. Each successful action is observed to call Session commitSnapshot **exactly once**; replay does not commit again. Failed typed interview publishes neither temporary user draft nor state; retry retains the same prepared receipt. Hypothesis/lead creation leaves Evidence unchanged.
+- All model requests, including typed narration, are checked for hidden sentinel/privateNote leakage.
+- All tools/*.mjs `node --check`, unstaged/staged `git diff --check`: PASS. Package commit and push succeeded.
+- Initial authoring errors (unsupported ternary syntax and non-Core epistemic enum names) were corrected in declarations using guarded effects and actual enums. Local synthetic HTTP calls intermittently failed during same-process execution; explicit Connection: close avoids idle pooled-socket reuse, with subsequent preview and final validation passing. No retry loop or product patch hides a failed check.
+
+### Limits / next checkpoint
+
+- This validates the deliberately small synthetic P2 world, not a complete authored game, generalized NPC model, final frontend or campaign acceptance. Fixed hypothesis/lead slots hold the latest current record; this is not an unlimited notebook.
+- Only the interview has a real local HTTP free-text resolver run; all nine have contract selection/preparation checks and actual typed bridge runs. Different Session/branch anchors may legitimately draw differently; parity assertions use identical anchored inputs.
+- No hosted-model, browser/device, save-container export/import/restore, cross-process crash/retry, broad regression suite or CI run is claimed. FS reopen/load is not save-container restoration. In-process selection pin, same-anchor RNG and committed invocation idempotency are separate from a durable uncommitted selection journal, which is not assumed.
+- P3 must add real obligations/deadlines, scheduled changes, institution/Agenda progression, relevance/budgeted deliberation, same-tick/stale handling and event-driven fast-forward. Current advance_time is bounded 1–60 minute canonical-clock advance only, not full simulation or downtime. Four Tasks remain declared, with Agenda defer-only and no autonomous scheduler.
+- Publication branches count against hard budgets even when mutually exclusive. P3 must re-audit the existing 16-read / 24-App / 32-effect and expanded-work constraints as its real scopes are added, rather than relax them or introduce a workaround.
+- Continue via the same Package Record and sole HANDOFF after P3 authorization. Keep the independent long-lived package branch and historical releases.
