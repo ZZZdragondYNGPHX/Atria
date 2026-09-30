@@ -10,7 +10,7 @@ Owns Round 5: the moment-to-moment and day-to-day gameplay loop, investigation s
 - `platform-and-gameplay.md`
 - relevant world modules only where the loop depends on them.
 
-> **Current discussion:** Rounds 5–5.5 are approved. Round 5.6 is open: case structure, branching investigation and closure.
+> **Current discussion:** Rounds 5–5.6 are approved. World simulation and information architecture continues in `simulation.md` as Round 6.
 
 ---
 
@@ -689,23 +689,273 @@ Rejected:
 - separate disconnected combat ruleset;
 - hidden arbitrary player death.
 
-### 6.30 Round 5.6 question — case structure, open investigation and closure
+### 6.30 Approved case structure, open investigation and closure — Round 5.6
 
-Round 5.6 must define the campaign's reusable case model.
+A Case is not a quest checklist.
 
-It must determine:
+It represents a **currently unresolved problem or contradiction** that the player is attempting to understand, influence or formally settle.
 
-- what a Case object represents;
-- how cases begin and who can create them;
-- how Evidence / Testimony / Finding / Hypothesis attach to a case;
-- how leads emerge without a rigid quest checklist;
-- whether one fact may belong to multiple cases;
-- how cases merge, split or remain unresolved;
-- what constitutes a meaningful closure decision;
-- whether the player can close a case with uncertainty;
-- how official resolution differs from Truth;
-- how premature closure, public reporting or legal judgment changes world state;
-- how recurring consequences reopen an apparently finished matter;
-- how main-arc cases differ from professional work and emergent side cases;
-- how to keep open investigation legible without displaying an RPG objective list.
+#### 6.30.1 Case information model
+
+A Case may reference:
+
+- **Question** — what remains unresolved;
+- **Evidence** — acquired world objects, records, traces or observations;
+- **Testimony** — statements held as source Belief rather than automatic Truth;
+- **Finding** — sufficiently verified conclusions;
+- **Hypothesis** — player or NPC interpretations that may be wrong;
+- **Stake** — people, institutions, identities or situations affected by the matter.
+
+These types remain distinct.
+
+#### 6.30.2 Evidence belongs to the world, not the Case
+
+Evidence must be modeled as an independent world entity or fact.
+
+A Case stores relationships to Evidence rather than owning private duplicate “clue” copies.
+
+The same document, person, location, event or trace may matter to several Cases.
+
+This supports cross-case discovery and later graph reasoning.
+
+#### 6.30.3 Leads are directions, not objectives
+
+A Lead represents a plausible next avenue of inquiry.
+
+A Lead may point toward:
+
+- a person;
+- institution;
+- document;
+- place;
+- event;
+- experiment;
+- record system;
+- relationship.
+
+It is not a mandatory quest step.
+
+The player may ignore, delegate, reinterpret or replace it.
+
+#### 6.30.4 Player-created Hypotheses and Leads
+
+The player may propose their own explanatory Hypothesis or investigative Lead through natural language.
+
+The system may validate whether the proposed direction is meaningful given known Evidence and available world structure.
+
+Creating a Hypothesis or Lead does **not** alter World Truth.
+
+Player speculation never causes new confirming evidence to appear merely because the theory was guessed.
+
+#### 6.30.5 Cases may merge
+
+Two or more Cases may be linked or merged when evidence shows that they concern the same deeper problem.
+
+This can occur through:
+
+- shared identity;
+- shared address;
+- common institution;
+- common event;
+- common abnormal mechanism;
+- common historical period.
+
+Merging is an information-structure operation, not a revelation that one item was secretly a “main quest”.
+
+#### 6.30.6 Cases may split
+
+A broad Case may split when investigation shows that apparently related phenomena have different causes.
+
+For example, one supposed family curse might resolve into:
+
+- an ordinary inheritance fraud;
+- a Bond anomaly;
+- an unrelated industrial Echo.
+
+The system must permit increasing precision rather than forcing all discovered facts into one original storyline.
+
+#### 6.30.7 No cosmic main-quest / side-quest labels
+
+Player-facing case structure should not mark matters as universal “MAIN QUEST” or “SIDE QUEST”.
+
+Professional work, personal commitments, institutional problems and large investigations may all intersect.
+
+A mundane paid verification job may reveal major world history.
+
+A major investigation may be temporarily ignored while personal obligations continue.
+
+Internal content priority may exist, but it is not presented as metaphysical importance.
+
+#### 6.30.8 Case closure is a committed world action
+
+A Case may be acted upon before complete Truth is known.
+
+The player may:
+
+- submit a professional opinion;
+- file a police report;
+- request a legal ruling;
+- trigger religious procedure;
+- publish a story;
+- make a private Settlement;
+- suppress information;
+- explicitly leave the matter unresolved.
+
+Closure therefore means committing to a disposition, not answering an author's quiz.
+
+#### 6.30.9 Truth, Finding, Official Settlement and Public Belief remain separate
+
+Approved hard separation:
+
+- **World Truth** — what actually occurred / exists according to authoritative world state;
+- **Player Finding** — what the player has sufficiently established;
+- **Official Settlement** — what a court, agency, Church, insurer or other authority formally accepts;
+- **Public Belief** — what the wider population comes to believe.
+
+Any of these may diverge.
+
+A player can know Truth but fail to establish it institutionally.
+
+An institution may settle a matter incorrectly.
+
+Public Belief may stabilize around a false version without rewriting underlying Truth.
+
+#### 6.30.10 Settlement Record
+
+A meaningful Case disposition should create a durable Settlement Record describing at least:
+
+- what was asserted;
+- who accepted or rejected it;
+- which records, Bonds, Names or permissions changed;
+- what remains unresolved;
+- who materially benefited or suffered;
+- what new obligations, contradictions or future consequences were created.
+
+Case closure therefore becomes part of world history.
+
+#### 6.30.11 Case states
+
+Approved conceptual states include:
+
+- **Active** — being pursued;
+- **Resolved** — the immediate core problem has been functionally handled;
+- **Settled** — a social / legal / institutional version has been accepted;
+- **Dormant** — no active route or intentionally paused;
+- **Abandoned** — the player explicitly stops pursuing it;
+- **Escalated** — transformed into a larger or structurally different Case;
+- **Reopened** — new evidence makes a previously closed matter active again.
+
+These are working state semantics, not final UI labels.
+
+#### 6.30.12 The world may settle without the player
+
+Institutions, courts, newspapers, suspects and other actors continue to act.
+
+If the player delays:
+
+- police may arrest someone;
+- a court may rule;
+- a newspaper may publish;
+- an insurer may close a claim;
+- a family may bury someone;
+- a corporation may destroy or archive material.
+
+A Case can therefore become socially Settled while remaining unresolved from the player's perspective.
+
+#### 6.30.13 Natural deadlines only
+
+Deadlines arise from world conditions such as:
+
+- decomposition;
+- scheduled departure;
+- court hearing;
+- publication deadline;
+- demolition;
+- witness travel;
+- election / vote;
+- institutional decision.
+
+Do not give every Case an artificial countdown timer.
+
+#### 6.30.14 Support without auto-solving
+
+Anti-stall support has three preferred levels.
+
+**Notebook / Case Board**
+
+Organizes already acquired information and relationships.
+
+**NPC Consultation**
+
+An NPC offers advice based only on their own Knowledge and Belief, which may be incomplete or wrong.
+
+**Professional Reflection**
+
+The protagonist spends time reviewing already acquired material; the system may surface overlooked relationships among known Evidence.
+
+Reflection may not create new Evidence or reveal authoritative hidden Truth.
+
+#### 6.30.15 Wrong theory may still produce a successful intervention
+
+The player does not need perfect metaphysical understanding to solve a practical problem.
+
+An incorrect Hypothesis may still lead to an action that removes the actual Anchor sustaining an anomaly.
+
+Conversely, a player may understand Truth accurately but fail to achieve legal, social or material resolution.
+
+Knowledge and practical power remain distinct.
+
+#### 6.30.16 Long-form mystery emerges through the Case graph
+
+The Eastbank arc should not begin as a visible “Investigate Eastbank Settlement — 0%” objective.
+
+Instead, smaller matters gradually reveal shared entities, records, addresses, institutions and historical patterns.
+
+The player may eventually recognize and formalize a larger Eastbank Pattern / Investigation.
+
+The main arc is therefore discovered through relationships among Cases rather than announced as a progress bar.
+
+#### 6.30.17 No Truth completion percentage
+
+Do not expose:
+
+- “Truth 72% discovered”;
+- “8 / 12 clues found”;
+- hidden total evidence counts.
+
+The player knows what they have found, not how much remains unknown.
+
+### 6.31 Round 5.6 decision
+
+Approved:
+
+- Case as unresolved problem rather than quest checklist;
+- world-owned Evidence referenced by Cases;
+- Question / Evidence / Testimony / Finding / Hypothesis / Stake distinction;
+- Leads as optional directions;
+- player-authored Hypotheses and Leads without Truth mutation;
+- Case merge and split;
+- no player-facing main / side quest ontology;
+- closure through committed disposition under incomplete knowledge;
+- strict separation of Truth / Player Finding / Official Settlement / Public Belief;
+- durable Settlement Records;
+- Active / Resolved / Settled / Dormant / Abandoned / Escalated / Reopened semantics;
+- institutions can settle matters without the player;
+- natural rather than artificial deadlines;
+- Notebook / Consultation / Reflection anti-stall support;
+- no AI auto-solving;
+- practical success with imperfect theory and vice versa;
+- long-form mysteries emerging through the Case graph;
+- no Truth completion percentages.
+
+Rejected:
+
+- objective checklists as the primary case model;
+- Case-private clue duplication;
+- player theories generating confirming world facts;
+- “Completed / Failed” as the only closure states;
+- every matter waiting indefinitely for the player;
+- universal artificial countdowns;
+- helper systems revealing hidden answers;
+- visible clue totals or Truth-percentage meters.
 
