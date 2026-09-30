@@ -95,11 +95,67 @@ export async function simulationCheck({ load, svc, h, manifest, archive, assertC
         assert.equal(restored.states.atri_lifecycle.clocks.world, 2880);
         assert.deepEqual(restored.states.atri_lifecycle.domains, base.states.atri_lifecycle.domains);
         assert.deepEqual(restored.states.atri_task_results.records.map(record => record.payload), base.states.atri_task_results.records.map(record => record.payload));
-        // The authored fixture ends at the third daily boundary: fail closed,
-        // never advance into undefined days while silently freezing obligations.
-        const prior = structuredClone(base);
+        // Continue an actual imported day-two save, not a reconstructed snapshot.
+        const restoredThird = await restoredServices.core.applyLifecycleCommand(target.handle, restored.session.sessionId,
+            { type: 'lifecycle', invocationId: 'restored-day-three', action: { kind: 'clock.advance', commandId: 'advance', ticks: 1440 } },
+            { expectedRevisionId: restored.revision.revisionId });
+        const recurringBudget = await createAuthorityPublicationBudget(base, installed);
+        const recurringDraft = await prepareLifecycle(base, installed, { kind: 'clock.advance', commandId: 'advance', ticks: 2880 }, recurringBudget);
+        const recurringProjection = await prepareAuthorityPublications({ ...base, states: recurringDraft.states }, installed, recurringBudget);
+        assert.equal(recurringProjection.work.readGrants, 16);
+        assert.equal(recurringProjection.work.appCommands, 14);
+        assert.equal(recurringProjection.work.effects, 17);
+        const priorCommits = commits;
+        await command({ kind: 'clock.advance', commandId: 'advance', ticks: 1440 }, 'p4-day-three');
+        assert.equal(commits, priorCommits + 1);
+        assert.equal(base.states.atri_lifecycle.clocks.world, 4320);
+        assert.equal(value('world_matters').arrears, 30);
+        assert.equal(value('agendas').day, 3);
+        assert.equal(value('agendas').nextTick, 5760);
+        assert.equal(value('institutional_records').processedDay, 3);
+        assert.deepEqual(restoredThird.states.atri_lifecycle.domains, base.states.atri_lifecycle.domains);
+        const third = structuredClone(base);
+        await command({ kind: 'clock.advance', commandId: 'advance', ticks: 1440 }, 'p4-day-three');
+        assert.deepEqual(base, third, 'Committed third-day replay is idempotent');
+        // A new post-clinic Condition must survive every later day.
+        await command({ kind: 'app.command', domainId: 'conditions', recordId: 'fixture', commandId: 'record', args: { text: 'Post-clinic injury.', severity: 2 } });
+        while (value('agendas').day < 29) await command({ kind: 'clock.advance', commandId: 'advance', ticks: 2880 });
+        const horizonPrior = structuredClone(base);
+        await assert.rejects(command({ kind: 'clock.advance', commandId: 'advance', ticks: 2880 }));
+        assert.deepEqual(await svc.core.load(h.handle, base.session.sessionId), horizonPrior, 'Overflow rolls back even valid day-30 work');
+        await command({ kind: 'clock.advance', commandId: 'advance', ticks: 1440 });
+        assert.equal(value('agendas').day, 30);
+        assert.equal(value('agendas').nextTick, 44640);
+        assert.equal(value('world_matters').arrears, 300);
+        assert.equal(value('institutional_records').processedDay, 30);
+        assert.equal(value('conditions', 'fixture').severity, 2, 'Clinic is not recurring healing');
+        assert.equal(value('agendas').archivePhase, 'filed');
+        assert.equal(value('agendas').railPhase, 'construction');
+        assert.equal(value('agendas').pressPhase, 'published');
+        assert.equal(value('institutional_records').filing, 'filed');
+        assert.equal(value('entities', 'delegate').name, 'Synthetic Delegate');
+        assert.equal(value('world_matters').hearingStatus, 'missed');
+        assert.equal(value('entities').permission, false);
+        assert.equal(seen.length, requests, 'Recurring daily work does not request models');
+        const horizon = structuredClone(base);
         await assert.rejects(command({ kind: 'clock.advance', commandId: 'advance', ticks: 1440 }));
-        assert.deepEqual(await svc.core.load(h.handle, base.session.sessionId), prior);
+        assert.deepEqual(await svc.core.load(h.handle, base.session.sessionId), horizon);
+        // Mixed second/third-day catch-up retains the one-shot effects and budget.
+        base = await svc.core.create(h.handle, { packageId: manifest.packageId, packageVersionId: manifest.packageVersionId, entryPointId: manifest.entryPoints[0].entryPointId });
+        await command({ kind: 'experience.ready' });
+        await command({ kind: 'clock.advance', commandId: 'advance', ticks: 1440 });
+        const mixedBudget = await createAuthorityPublicationBudget(base, installed);
+        const mixedDraft = await prepareLifecycle(base, installed, { kind: 'clock.advance', commandId: 'advance', ticks: 2880 }, mixedBudget);
+        const mixedProjection = await prepareAuthorityPublications({ ...base, states: mixedDraft.states }, installed, mixedBudget);
+        assert.equal(mixedProjection.work.readGrants, 16);
+        assert.equal(mixedProjection.work.appCommands, 16);
+        assert.equal(mixedProjection.work.effects, 20);
+        await command({ kind: 'clock.advance', commandId: 'advance', ticks: 2880 });
+        assert.equal(value('agendas').day, 3);
+        assert.equal(value('world_matters').arrears, 30);
+        assert.equal(value('world_matters').hearingStatus, 'missed');
+        assert.equal(value('agendas').archivePhase, 'awaiting');
+        assert.equal(base.states.atri_lifecycle.outbox.filter(item => item.status === 'pending').length, 1);
         // Conditional Cold branch and stale cancellation use actual declared
         // fixture setup commands, not hidden state edits or a mock scheduler.
         base = await svc.core.create(h.handle, { packageId: manifest.packageId, packageVersionId: manifest.packageVersionId, entryPointId: manifest.entryPoints[0].entryPointId });
@@ -114,6 +170,13 @@ export async function simulationCheck({ load, svc, h, manifest, archive, assertC
         assert.equal(seen.length, countBeforeStale);
         assert(!base.states.atri_lifecycle.outbox.some(item => item.status === 'pending'));
         assert.equal(value('entities', 'delegate'), undefined);
+        await command({ kind: 'clock.advance', commandId: 'advance', ticks: 1440 });
+        assert.equal(value('agendas').railPhase, 'blocked');
+        assert.equal(value('agendas').decision, 'defer');
+        assert.equal(value('world_matters').arrears, 30);
+        assert.equal(value('entities', 'delegate'), undefined);
+        assert(!base.states.atri_lifecycle.outbox.some(item => item.status === 'pending'));
+        assert.equal(seen.length, countBeforeStale);
         // Real fixed-transaction Turn: Narrator finalizes first; the Host then
         // dispatches the admitted background Task without a manual drain call.
         base = await svc.core.create(h.handle, { packageId: manifest.packageId, packageVersionId: manifest.packageVersionId, entryPointId: manifest.entryPoints[0].entryPointId });
@@ -133,7 +196,7 @@ export async function simulationCheck({ load, svc, h, manifest, archive, assertC
         assert.equal(value('agendas').archivePhase, 'filed');
         assert.equal(value('entities', 'delegate').name, 'Synthetic Delegate');
         assert(!JSON.stringify(seen).includes('P3_PRIVATE_') && !JSON.stringify(seen).includes('P1_PRIVATE_CANON_SENTINEL'));
-        return 'P3 actual FS two-day install/Ready simulation; Cold/Warm deterministic phases, rent/hearing/clinic, conditional Cold blocking/stale cancellation, actual foreground-to-background HTTP dispatch, one bounded HTTP Agenda failure/retry, atomic intent/filing/Entity/projection acceptance, no hidden-input leak, committed replay, real save-container export/import to fresh FS, undefined third-day fail-closed';
+        return 'P3 actual FS two-day install/Ready simulation; Cold/Warm deterministic phases, rent/hearing/clinic, conditional Cold blocking/stale cancellation, actual foreground-to-background HTTP dispatch, one bounded HTTP Agenda failure/retry, atomic intent/filing/Entity/projection acceptance, no hidden-input leak, committed replay, real save-container export/import to fresh FS, recurring days 3–30, imported-save third-day continuation, no repeated clinic/deliberation, unchanged expanded budgets, day-31 atomic horizon rejection';
     } finally {
         svc.core._sessions.commitSnapshot = original;
         await target?.cleanup();

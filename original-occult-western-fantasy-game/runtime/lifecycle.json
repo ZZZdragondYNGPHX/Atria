@@ -1183,6 +1183,24 @@
           "assign": {
             "railAllowed": false
           }
+        },
+        {
+          "id": "day_recurring",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "simulation.day_recurring",
+          "assign": {
+            "day": {
+              "formula": "world.day + 1"
+            },
+            "nextTick": {
+              "formula": "world.nextTick + 1440"
+            }
+          }
         }
       ],
       "retention": {

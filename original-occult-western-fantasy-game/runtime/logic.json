@@ -2608,7 +2608,7 @@
           "day": {
             "type": "integer",
             "minimum": 0,
-            "maximum": 1
+            "maximum": 29
           },
           "tick": {
             "type": "integer",
@@ -2684,6 +2684,14 @@
         },
         {
           "kind": "app.command",
+          "domainId": "agendas",
+          "recordId": "foundation",
+          "commandId": "day_recurring",
+          "args": {},
+          "when": "args.day >= 2"
+        },
+        {
+          "kind": "app.command",
           "domainId": "institutional_records",
           "recordId": "foundation",
           "commandId": "day",
@@ -2699,7 +2707,7 @@
           "recordId": "foundation",
           "commandId": "rent_day_0",
           "args": {},
-          "when": "args.day == 0"
+          "when": "args.day != 1"
         },
         {
           "kind": "app.command",

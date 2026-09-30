@@ -68,6 +68,6 @@ export async function verify({ load, native, manifest, sourceFiles, assetPayload
         checks.push(await simulationCheck({ load, svc, h, manifest, archive, assertContentSafe: content.assertSafe }));
         return { mode, checks, dataResources: manifest.runtime.experienceContract.dataResources.length, tasks: manifest.runtime.experienceContract.taskRuntime.tasks.length,
             ...(mode === 'preview' ? { player: projections['player.overview'], narrator: projections['narrator.context'] } : {}),
-            limits: ['FS integration only', 'No hosted model or UI execution', 'Two-day synthetic world only; no full gameplay or cross-process uncommitted selection claim'] };
+            limits: ['FS integration only', 'No hosted model or UI execution', 'Thirty-day bounded synthetic accounting, at most two days per command; no full gameplay or cross-process uncommitted selection claim'] };
     } finally { await h.cleanup(); }
 }
