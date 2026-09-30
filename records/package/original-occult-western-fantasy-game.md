@@ -91,3 +91,16 @@ This establishes the missing **strict no-draw-on-non-Uncertain** contract. It do
 Resolve G1 before representing P2 as implemented: separately authorize an existing-authority Core contract extension (conditional Fortune with closed schema, private-read eligibility, stable same-anchor identity and typed/free-text parity), or explicitly adjudicate that ignored non-Uncertain draws satisfy the approved design. Do not implement either policy change implicitly here; do not reopen/repeat P0 wholesale.
 
 No nine-verb runtime, Resolution Frame/effects/index or typed binding has been implemented in this checkpoint. P2 exit gates remain open. Do not supply a P3 implementation handoff as though P2 passed. Resume the same Package task/Record after G1 is resolved, fetch actual refs and rerun/replace the limitation probe with acceptance assertions. Do not use Package RNG, model-selected eligibility, multi-commit dispatch or a shadow Resolution domain as a workaround.
+
+
+### G1 resolved — user-authorized interpretation adjustment (2026-09-30)
+
+Status: **G1 closed; P2 authorized/in progress, not complete. No Core extension is needed for this issue.**
+
+- User explicitly permitted appropriate Plan adjustment after the G1 report. The previous strict "no internal draw" interpretation was unnecessarily restrictive: an unused deterministic draw is not a gameplay Fortune decision.
+- Updated gameplay.md 6.28.2 and technical-design.md 6.48.5: Core may allocate its anchored draw before cases; Automatic / Impossible cases must have priority and must not depend on it. Their outcome, effects, time, derived projections and safe result are invariant; unused roll is not disclosed. Only Uncertain uses the roll. Always-deterministic verbs should declare deterministic resolution.
+- No Core modification, Package RNG, model-selected eligibility, parallel authority, multi-transaction dispatch or relaxed safety limit. Historical G1 evidence above remains accurate for the strict interpretation, but is no longer a blocker under the approved semantics.
+- Updated probe at Package tested/pushed HEAD **6be0ed75d68a9f8e0df5b1f3c0b291f00d73ed47**; Core probe HEAD remains cd6bff19d54f651a4bffd8981f62ec77c0f84acb. P1 runtime/data/manifest remain unchanged. This is a contract-policy test checkpoint, not nine-verb implementation.
+- Actual checks: probe passes with APPROVED_FORTUNE_POLICY_SUPPORTED_NOT_P2_PASS; Core formula evaluation exhausts all 3 roll values for Automatic/Impossible/Uncertain, and 16 real private preparations across two eligibility states/eight ordinals preserve non-Uncertain effects/projections/results and source immutability. Public semantic result omits roll. Original declaration-rejection/same-anchor checks remain. Syntax and staged whitespace checks pass. Initial formula probe failure was corrected by using the same roots/strings compiler options as Core; no product change.
+- No new install/build/hosted-model/typed bridge/save-container/UI/device/full-suite/CI validation claimed. Tests use a diagnostic fixture, not implemented gameplay; P2 must repeat the invariance property on actual nine-verb declarations.
+- Next: continue the already-authorized P2 nine-verb runtime, bounded Resolution/effects/index, safe receipt and typed/free-text parity. No further approval for G1 is needed. No P3/P8 until the actual P2 exit gate passes.

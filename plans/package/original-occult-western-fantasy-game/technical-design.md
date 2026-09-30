@@ -428,6 +428,8 @@ It resolves:
 
 Uncertain actions map to the approved qualitative Risk Tier and use deterministic-seeded bounded Fortune.
 
+P2 implementation clarification (2026-09-30): the existing static Core `bounded_fortune` policy may allocate an internal anchored draw before evaluating cases. Eligibility must precede **mechanical use** of this draw: Automatic / Impossible cases have priority and their outcomes, effects, time and safe publications must be draw-independent; no unused roll is exposed to player/Narrator. See gameplay.md 6.28.2. No conditional-RNG Core extension is required for this interpretation; the earlier G1 strict no-draw concern is resolved by this approved adjustment, not by a change to Core.
+
 Resolution Frames are process state, not a permanent Domain.
 
 The accepted Fortune result becomes part of the committed Event / resulting authority so narration retry cannot reroll it.
