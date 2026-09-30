@@ -3,7 +3,7 @@
 **Task ID:** `package/original-occult-western-fantasy-game`  
 **Primary Workspace (implementation):** `package`  
 **Current stage:** Pre-production research and design discussion  
-**Status:** Discussion Draft v0.4 — Round 2 approved; Round 2.5 opened; not approved for implementation  
+**Status:** Discussion Draft v0.5 — Round 2.5 approved; Round 2.6 opened; not approved for implementation  
 **Plan path:** `docs:plans/package/original-occult-western-fantasy-game.md`
 
 ## 1. Purpose
@@ -440,20 +440,168 @@ Rejected:
 - generic sanity loss as the default price for power;
 - allowing the language model to freely invent or grant mechanical abilities.
 
-### 6.10 Round 2.5 question — Principle architecture
+### 6.10 Approved Principle architecture — Round 2.5
 
-Before designing society, the project must define what a **Principle** is and how many Principles the setting should expose.
+Principles are **human operational abstractions**, not confirmed cosmic classes.
 
-Round 2.5 must determine:
+Layer C itself may be continuous, stranger and fundamentally unlike the categories used by modern occult scholarship. Principles are therefore comparable to scientific models: useful, predictive and operationally powerful without necessarily being ontologically final.
 
-- whether Principles are fundamental aspects of reality, human abstractions, or interfaces into deeper Layer C structures;
-- how many should be player-legible;
-- whether Principles are a closed list, partially discoverable set or historically evolving taxonomy;
-- how broad a Principle may be before it becomes meaningless;
-- how Claims combine multiple Principles without recreating Pathways;
-- whether organizations own Principles, specialize in combinations, or merely teach traditions;
-- how to preserve strong thematic identities without turning Principles into disguised classes.
+#### 6.10.1 Common Eight
 
+The current mainstream taxonomy is the **Common Eight**:
+
+1. **Witness** — observation, proof, recognition, evidence, testimony and concealment.
+2. **Name** — identity, designation, impersonation, qualification, erasure and substitution.
+3. **Boundary** — separation, entry, exclusion, containment, distance and domain.
+4. **Bond** — oath, ownership, kinship, debt, loyalty, marriage and persistent relation.
+5. **Memory** — continuity through time, recollection, forgetting, inheritance and historical retention.
+6. **Echo** — residual consequence, trace, resonance, repetition, imitation and causal afterimage.
+7. **Form** — bodily and material continuity, shape, injury, transformation, repair and relic embodiment.
+8. **Possibility** — unresolved outcomes, branching, omen, coincidence, risk and the narrowing of alternatives.
+
+These names are working translations and may later be replaced by setting-native terminology.
+
+#### 6.10.2 The Eight are not guaranteed to be complete or finally correct
+
+The Common Eight are historically developed scholarly categories.
+
+Consequences:
+
+- earlier eras may have used fewer or differently grouped Principles;
+- rival religions, states and schools may use incompatible taxonomies;
+- conservative institutions may reject newer categories;
+- later discoveries may split, merge or reinterpret Principles;
+- the late game may reveal that Principles do not exist as discrete Layer C objects at all.
+
+This allows occult scholarship itself to have a history.
+
+#### 6.10.3 Derived phenomena rather than endless Principles
+
+Concrete supernatural themes should normally be derived from combinations rather than promoted into new Principles.
+
+Examples:
+
+- dream phenomena may emerge from **Memory + Boundary**, with **Possibility** appearing in deeper forms;
+- blood may matter because it can simultaneously anchor **Form + Bond + Name**;
+- divination may use combinations involving **Possibility + Echo + Witness**;
+- identity erasure may involve **Name + Witness + Memory**;
+- restoration may involve **Form + Memory**.
+
+Do not create dedicated Principles for every fantasy concept such as dream, blood, shadow, fire, death or time unless later design proves that the Common Eight cannot represent the phenomenon coherently.
+
+#### 6.10.4 Claim composition
+
+Default Claim complexity:
+
+- ordinary stable Claim: one dominant Principle;
+- advanced Claim: one dominant Principle plus one supporting Principle;
+- three-Principle Claims: possible but rare, expensive and difficult to keep self-consistent.
+
+This is a design tendency rather than a universal hard level gate.
+
+Complexity should increase Anchor burden, Price complexity and contradiction risk rather than simply requiring a numeric character level.
+
+#### 6.10.5 Professions and organizations
+
+Organizations do not own Principles.
+
+They own or protect:
+
+- tested Claim designs;
+- Investiture techniques;
+- reliable Anchor structures;
+- known failure cases;
+- institutional offices;
+- training traditions;
+- rare records and relics;
+- safe combinations;
+- methods for resolving contradiction.
+
+A church, ministry, university or criminal society should therefore specialize in a **combination tradition**, not map one-to-one to a Principle.
+
+Illustrative combinations:
+
+- ecclesiastical institutions: **Bond + Name + Witness**;
+- state investigators and archives: **Witness + Memory + Name**;
+- clandestine transport / smuggling traditions: **Boundary + Name + Echo**;
+- medical colleges: **Form + Memory**;
+- astrological or omen schools: **Possibility + Echo + Witness**.
+
+These are examples, not yet approved factions.
+
+#### 6.10.6 Knowledge as institutional power
+
+The most valuable supernatural asset of a mature institution is not exclusive ownership of a cosmic class.
+
+It is accumulated operational knowledge:
+
+- which Claims can be established safely;
+- which Anchor combinations are robust;
+- which Prices are survivable;
+- which apparent abilities are actually traps;
+- which combinations create unacceptable contradiction;
+- which historical cases prove or falsify theories.
+
+This supports the project's approved principle that knowledge itself is power.
+
+#### 6.10.7 Late-game epistemic reversal
+
+A late-game possibility is approved:
+
+The player may discover that Witness, Name, Memory and the other Principles are merely human-readable projections of a deeper continuous Layer C structure.
+
+The Common Eight remain mechanically valid at ordinary scales even if they are not the final metaphysical truth.
+
+This preserves progression into deeper mystery without invalidating earlier gameplay.
+
+### 6.11 Round 2.5 decision
+
+Approved:
+
+- Principles as human operational models rather than cosmic classes;
+- the Common Eight working taxonomy;
+- Witness / Name / Boundary / Bond / Memory / Echo / Form / Possibility as the current eight;
+- 1–2 Principle Claims as the normal design space;
+- rare three-Principle Claims as high-complexity structures rather than ordinary progression;
+- derived treatment of dream, blood, divination and similar motifs;
+- organizations as owners of Claim traditions and operational knowledge rather than Principles;
+- historically changing occult theory;
+- the possibility that the Common Eight are a useful but incomplete model of Layer C.
+
+Rejected:
+
+- one Principle = one class;
+- one Principle = one church / faction;
+- every familiar fantasy theme becoming its own Principle;
+- an immutable universe-authored Principle list;
+- treating Principle combinations as merely elemental spell schools.
+
+### 6.12 Round 2.6 question — Principle coverage pressure test
+
+Before society design begins, test whether the Common Eight can coherently support the major gameplay families without excessive exception rules or obvious redundancy.
+
+Coverage targets:
+
+- investigation and evidence;
+- stealth and infiltration;
+- social influence and institutional authority;
+- direct conflict and defense;
+- healing and bodily transformation;
+- curses and hostile persistent effects;
+- divination and prediction;
+- summoning / external entities;
+- dream and mind interaction;
+- travel, barriers and spatial anomalies;
+- relics and equipment;
+- large-scale institutional or civic effects.
+
+Round 2.6 should identify:
+
+- missing domains;
+- Principles that overlap too heavily;
+- combinations that produce unintuitive results;
+- gameplay families that should remain mostly mundane rather than supernatural;
+- boundaries that prevent any Principle from becoming an all-purpose solution.
 
 ## 7. Atria platform fit — current verified direction
 
@@ -591,7 +739,11 @@ Approved: Breach / Investiture, Claim / Anchor / Price / Jurisdiction, modular s
 
 ### Round 2.5 — Principle architecture
 
-Define the Principle taxonomy and combination rules before deriving institutions and society from it.
+Approved: Common Eight as a human operational taxonomy, normally combined through 1–2 Principle Claims.
+
+### Round 2.6 — Principle coverage pressure test
+
+Pressure-test the Common Eight against major gameplay families and identify gaps, overlap and necessary boundaries.
 
 ### Round 3 — Society generated by the supernatural rules
 
