@@ -10,7 +10,7 @@ Owns Round 5: the moment-to-moment and day-to-day gameplay loop, investigation s
 - `platform-and-gameplay.md`
 - relevant world modules only where the loop depends on them.
 
-> **Current discussion:** Round 5 core is approved. Round 5.5 is open: deterministic checks, risk resolution and anti-arbitrary-AI success rules.
+> **Current discussion:** Rounds 5–5.5 are approved. Round 5.6 is open: case structure, branching investigation and closure.
 
 ---
 
@@ -358,21 +358,354 @@ Rejected:
 - exhaustive minute-level life simulation;
 - one fragile required clue for core progression.
 
-### 6.28 Round 5.5 question — deterministic checks and risk resolution
+### 6.28 Approved deterministic checks and risk resolution — Round 5.5
 
-Round 5.5 must determine exactly how uncertain actions are resolved.
+Uncertain actions use **Native-authoritative bounded uncertainty**.
 
-It must answer:
+The approved resolution pipeline is:
 
-- whether any random roll is used;
-- how Capability / Position / Preparation become deterministic inputs;
-- whether the player sees risk before committing;
-- how opposition and environmental difficulty are represented;
-- how Clean / Costly / Complicated / Denied are selected;
-- how Claims modify possibility without becoming automatic success;
-- how injuries, stress, obligations and institutional support affect action resolution;
-- how social conflict avoids becoming one generic persuasion score;
-- how combat uses the same world-action model;
-- which part of resolution belongs to Native authority and which part belongs to model narration;
-- how to prevent the language model from arbitrarily deciding success because a response “sounds persuasive.”
+**Intent → Resolution Frame → Automatic / Impossible / Uncertain → Capability + Position + Preparation vs Opposition → Risk Tier → bounded Native Fortune → Clean / Costly / Complicated / Denied → structured Consequence → narrative rendering**
+
+#### 6.28.1 Resolution Frame
+
+A risky action is first converted into an authoritative Resolution Frame containing at least:
+
+- objective;
+- method;
+- relevant Capability;
+- Position;
+- Preparation;
+- Opposition;
+- Stakes;
+- expected time.
+
+Natural-language phrasing does not itself determine success.
+
+#### 6.28.2 Eligibility gate before randomness
+
+Every attempted action is first classified as:
+
+**Automatic**
+
+A valid method, adequate access and no meaningful opposition. Resolve without random failure.
+
+**Impossible by current method**
+
+The proposed method cannot accomplish the objective under current world rules. This is not a random failure; the player must change method or conditions.
+
+**Uncertain**
+
+Meaningful opposition, timing, danger or unresolved external factors remain. Only this class uses bounded Fortune.
+
+This prevents competence from being erased by arbitrary bad luck.
+
+#### 6.28.3 Competencies are categorical capabilities
+
+The game should use meaningful Competencies rather than large universal numeric skills.
+
+Examples may include:
+
+- Civil Records;
+- Legal Procedure;
+- Insurance Practice;
+- Forensic Observation;
+- Railway Operations;
+- Firearms Handling;
+- Medical First Aid;
+- Academic Research;
+- Street Networks.
+
+Competency answers whether the protagonist has a credible method or trained familiarity.
+
+Progression expands capability and technique rather than endlessly inflating percentages.
+
+#### 6.28.4 Position
+
+Position represents current circumstances:
+
+- access;
+- permission;
+- trust;
+- physical location;
+- equipment;
+- cover;
+- jurisdiction;
+- tactical advantage;
+- social leverage.
+
+Position should often matter more than abstract character charisma or generic skill rank.
+
+Good investigation improves Position before commitment.
+
+#### 6.28.5 Preparation
+
+Preparation converts prior play into present advantage.
+
+Examples:
+
+- verified route;
+- correct file number;
+- witness support;
+- copied key;
+- legal authorization;
+- target schedule;
+- escape route;
+- special equipment;
+- prior research.
+
+Preparation assets may be consumed, exposed, invalidated or remain reusable depending on their nature.
+
+#### 6.28.6 Risk preview
+
+Major uncertain actions show a qualitative risk preview before commitment.
+
+Approved risk tiers:
+
+- **Secure**
+- **Favorable**
+- **Contested**
+- **Risky**
+- **Desperate**
+
+The player should also see the primary known sources of risk and likely consequence families.
+
+Do not default to exact visible success percentages.
+
+Risk preview supports informed agency without turning every decision into expected-value arithmetic.
+
+#### 6.28.7 Bounded Native Fortune
+
+Randomness exists only inside an already established risk band.
+
+Native authority produces a small bounded Fortune result such as low / middle / high or an equivalent deterministic-seeded draw.
+
+Fortune may shift the final consequence within the nearby outcome range but should not make trained competence disappear.
+
+A Favorable situation should not routinely collapse into catastrophic denial solely because of one extreme random event.
+
+#### 6.28.8 Regeneration does not reroll reality
+
+Approved hard rule:
+
+**generation text does not reroll world resolution.**
+
+The world outcome is resolved and persisted before narrative generation.
+
+Regenerating, restyling or retrying the language-model narration for the same resolved action must not change:
+
+- success class;
+- consequences;
+- injuries;
+- evidence;
+- world state.
+
+The same authoritative resolution state remains the source for all renderings.
+
+#### 6.28.9 Risk tier constrains outcome distribution
+
+Qualitative tendencies:
+
+- **Secure** — usually Clean, occasionally Costly;
+- **Favorable** — Clean / Costly, occasional Complicated;
+- **Contested** — Costly / Complicated with possible Clean;
+- **Risky** — Complicated / Costly / Denied;
+- **Desperate** — Complicated / Denied; success usually carries serious consequence.
+
+This is a design relation, not yet a frozen probability table.
+
+#### 6.28.10 Consequence families
+
+Consequences are selected from structured families rather than improvised mechanical punishment.
+
+Approved families include:
+
+- **Time** — delay or lost opportunity;
+- **Exposure** — someone notices, records or identifies the protagonist;
+- **Relationship** — trust or support changes;
+- **Access** — credentials, invitation or route is damaged or lost;
+- **Legal** — violation, investigation or liability;
+- **Financial** — cost, damage or debt;
+- **Physical** — Injury / Condition;
+- **Evidence** — contamination, partial loss, destruction or restricted custody;
+- **Position** — lost cover, containment, separation or worse tactical state;
+- **Obligation** — favor, promise, duty or debt;
+- **Identity** — strain on Anchor, Claim or personal continuity.
+
+Native authority selects the mechanical consequence class and state change.
+
+The model renders its concrete narrative form.
+
+#### 6.28.11 Player creativity changes Position and Preparation
+
+Natural-language creativity is a first-class input.
+
+A clever plan not represented by a button may become:
+
+- a new Preparation asset;
+- improved Position;
+- reduced Opposition;
+- a new valid Method.
+
+The model may interpret intent into candidate structure, but authoritative rules validate the resulting change.
+
+This preserves freeform play without granting the model adjudication authority.
+
+#### 6.28.12 Claim interaction with resolution
+
+Claims do not provide generic universal bonuses.
+
+A valid Claim may:
+
+**Change Permission**
+
+Make an otherwise impossible action legally or metaphysically attemptable.
+
+**Improve Position**
+
+Reduce a specific obstacle or stabilize a needed condition.
+
+**Cancel a Specific Consequence**
+
+Negate only a consequence explicitly covered by the Claim.
+
+**Create Price Consequence**
+
+Successful Claim use may trigger its own Obligation, Exposure or Displacement.
+
+Claims therefore alter rules, not generic score totals.
+
+#### 6.28.13 Possibility and Fortune
+
+Possibility Claims may interact with unresolved Fortune only before outcome settlement and only inside their Jurisdiction.
+
+A valid effect may, for example, bias one bounded Fortune state toward a neighboring favorable state.
+
+It cannot:
+
+- rewrite an already settled result;
+- exceed Jurisdiction;
+- make an impossible method valid unless the Claim specifically changes permission;
+- ignore Price.
+
+This maps Possibility directly onto unresolved reality.
+
+#### 6.28.14 Witness and settlement
+
+Witness-oriented action can reduce later manipulability by increasing settlement through:
+
+- records;
+- photographs;
+- independent witnesses;
+- timestamps;
+- sealed custody.
+
+This creates a systemic opposition between Possibility and Witness without introducing a separate minigame.
+
+#### 6.28.15 Social resolution model
+
+Social action does not use one generic Persuasion score.
+
+Important NPC decisions are modeled through factors such as:
+
+- **Belief** — what the NPC currently thinks is true;
+- **Interest** — what outcome benefits or threatens them;
+- **Relationship** — trust, affection, hostility or prior history;
+- **Constraint** — law, Office, oath, policy, fear, duty;
+- **Evidence** — what credible support the player can present.
+
+Player action succeeds socially by changing relevant factors or creating leverage.
+
+A beautifully worded model response is not itself mechanical persuasion success.
+
+#### 6.28.16 Deception
+
+Deception is evaluated against:
+
+- target Belief;
+- verifiability;
+- available evidence;
+- the protagonist's recognized identity;
+- institutional records;
+- plausibility of the claim.
+
+Truthful identity assertions usually require no check.
+
+False claims become risky when verification is possible or contradiction is already known.
+
+#### 6.28.17 Combat uses the same action authority
+
+Combat does not switch to a separate unrelated RPG ruleset.
+
+A combat action uses the same Resolution Frame:
+
+- Capability;
+- Position;
+- Preparation;
+- Opposition;
+- Stakes;
+- Risk.
+
+Cover, distance, lighting, readiness, injury and weapon familiarity matter as world conditions.
+
+Violence is therefore a high-pressure subset of normal world action.
+
+#### 6.28.18 Lethal risk requires legibility
+
+Player death is possible but should arise from understandable high-risk circumstances.
+
+Before a major action with credible lethal consequences, risk preview should make that fact clear.
+
+Avoid hidden low-context random death from ordinary low-risk situations.
+
+### 6.29 Round 5.5 decision
+
+Approved:
+
+- Native-authoritative Resolution Frame;
+- Automatic / Impossible / Uncertain eligibility gate;
+- categorical Competencies;
+- Position and Preparation as major inputs;
+- qualitative visible risk tiers;
+- bounded deterministic-seeded Fortune;
+- regenerate-does-not-reroll rule;
+- structured consequence families;
+- natural-language creativity changing validated Position / Preparation;
+- Claims changing permission, position or specific consequences rather than giving universal bonuses;
+- Possibility interaction only with unresolved Fortune;
+- Witness increasing settlement;
+- social decisions based on Belief / Interest / Relationship / Constraint / Evidence;
+- deception grounded in actual world knowledge;
+- same action framework for combat;
+- legible lethal risk.
+
+Rejected:
+
+- language model deciding success from prose quality;
+- universal percentage-based skill ladders;
+- exact visible success percentages as the default interface;
+- random failure for actions that should be routine;
+- regeneration changing mechanical outcomes;
+- one Persuasion / Deception stat deciding social scenes;
+- separate disconnected combat ruleset;
+- hidden arbitrary player death.
+
+### 6.30 Round 5.6 question — case structure, open investigation and closure
+
+Round 5.6 must define the campaign's reusable case model.
+
+It must determine:
+
+- what a Case object represents;
+- how cases begin and who can create them;
+- how Evidence / Testimony / Finding / Hypothesis attach to a case;
+- how leads emerge without a rigid quest checklist;
+- whether one fact may belong to multiple cases;
+- how cases merge, split or remain unresolved;
+- what constitutes a meaningful closure decision;
+- whether the player can close a case with uncertainty;
+- how official resolution differs from Truth;
+- how premature closure, public reporting or legal judgment changes world state;
+- how recurring consequences reopen an apparently finished matter;
+- how main-arc cases differ from professional work and emergent side cases;
+- how to keep open investigation legible without displaying an RPG objective list.
 
