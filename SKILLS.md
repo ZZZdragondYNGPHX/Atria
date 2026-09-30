@@ -4,14 +4,17 @@
 
 ## Loading rule
 
+本工作空间的主要用途是让 **Web / remote Agent** 在无法像本地环境那样自由使用已安装 Skill 时，仍能从仓库取得固定版本的 repository-agent Skill。
+
 只有以下任一条件成立时才加载 Skill：
 
 1. 用户明确要求该 Skill；
 2. 当前正式 Plan 明确要求该 Skill。
 
-加载顺序：
+执行环境路由：
 
-`SKILLS.md -> 指定 Skill 目录`
+- **Web / remote：** `SKILLS.md -> 指定 Skill 目录`。
+- **Local / CLI / desktop：** 优先使用环境中已安装的本地 Skill；通常不需要读取本分支。仅在本地缺失、用户明确要求仓库副本，或 Plan 明确锁定仓库版本时使用这里的副本。
 
 Skill 不得扩大任务范围，也不得覆盖用户指令、`docs:README.md` Governance 或正式 Plan。
 
