@@ -2,8 +2,8 @@
 
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
-- **Current stage:** P0 Core complete; Package P1 awaiting explicit stage authorization
-- **Status:** Approved Implementation Baseline v1.0 — P0 `feat/authority-transaction` verified/integrated; Package P1 unblocked, not started
+- **Current stage:** Package P1 complete; P2 awaiting explicit stage authorization
+- **Status:** Approved Implementation Baseline v1.0 — P0 `feat/authority-transaction` verified/integrated; Package P1 verified; P2 not started
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -60,7 +60,7 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — P0 complete / Package P1 not started
+## Current route — Package P1 complete / P2 not started
 
 The game-design Plan Bundle is frozen as **Approved Implementation Baseline v1.0**.
 
@@ -72,7 +72,7 @@ Completed Core prerequisite:
 - Core status: **C1–C4 complete, merged and verified on main; temporary branch removed**
 - Permanent evidence: `docs:records/feat/authority-transaction.md`
 
-P0 completed C1–C4, merged into `main`, passed the frozen Core gates and integrated-main validation, and removed its temporary branch. Package P1 is now unblocked but requires a separate explicit stage authorization; it has not started.
+P0 completed C1–C4, merged into `main`, passed the frozen Core gates and integrated-main validation, and removed its temporary branch. Package P1 is now verified and complete. See `docs:records/package/original-occult-western-fantasy-game.md` for implementation/tested HEAD and limitations. P2 requires separate stage authorization and has not started.
 
 Package implementation remains in the independent long-lived `package` workspace and must not merge `main`.
 
@@ -257,7 +257,7 @@ Pre-production design Rounds 1–10 are complete and frozen for implementation.
 Implementation authorization is staged:
 
 1. P0 `feat/authority-transaction` is complete; `docs:records/feat/authority-transaction.md` records the verified main baseline.
-2. The P0 prerequisite gate is cleared. Package P1–P9 retain their individual stage authorizations; P1 is unblocked but not started.
+2. The P0 prerequisite gate is cleared and Package P1 is complete. Package P2–P9 retain their individual stage authorizations; P2 has not started.
 3. After P0, Package work proceeds in the independent long-lived `package` workspace under `original-occult-western-fantasy-game/`.
 4. Material contradictions discovered during implementation reopen only the authoritative Plan module they affect; ordinary implementation details do not reopen design.
 
