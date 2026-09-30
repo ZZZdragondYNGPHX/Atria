@@ -15,7 +15,7 @@ Owns Round 9: translation of the approved game/content design into current Atria
 - `metaphysics.md`
 - `platform-and-gameplay.md`
 
-> **Current discussion:** Rounds 9–9.7 are approved. Round 9.8 is open: final technical freeze and Core-gap gate.
+> **Current discussion:** Rounds 9–9.8 are approved. Round 9 is technically frozen; implementation staging continues in `implementation-staging.md`.
 
 ---
 
@@ -1264,26 +1264,252 @@ Rejected:
 - exposing private transaction reads to Narrator by default;
 - committing authority before safe derived projections are ready.
 
-### 6.54 Round 9.8 question — Technical Freeze / Core Gap Gate
+### 6.54 Approved Technical Freeze / Core Gap Gate — Round 9.8
 
-Round 9.8 is the final Round 9 validation pass.
+Round 9 is technically frozen against `main@c936b0aa4c42cf5711f40ae4a00f5fc3432813dc`.
 
-It must verify the approved architecture end-to-end against current `main` and answer:
+The only blocking v1 Core prerequisite is the previously approved `authority-transaction@1` capability.
 
-- is `authority-transaction@1` the only blocking Core prerequisite for v1;
-- are any approved behaviors still relying on an undeclared dynamic query / mutation path;
-- can all v1 NPC interaction remain model-free at actor-private perspective level;
-- can Agenda Deliberation safely feed Intent Authority without executing world effects directly;
-- can player-safe projections be rebuilt / retained without becoming a second Truth store;
-- can save / retry / branch semantics remain coherent with transaction receipts and deterministic Fortune;
-- can all required frontend actions consume safe projections / typed actions without backend-domain access;
-- does Package Data scope remain within current exact-resource limits;
-- should Core Gap implementation occur before Package implementation;
-- what exact verification gates must be satisfied before Round 10 declares implementation phases.
+No second v1 Core gap is required for NPC perspectives, Agenda deliberation, Package Data scale, bounded investigation graphs, frontend consumption, save/branch authority or deterministic Fortune.
 
-Round 9.8 should not expand game design.
+#### 6.54.1 Prepare authority before narration, publish only after narration succeeds
 
-It is a gap gate and technical consistency review.
+The final authority-first flow is refined as:
+
+1. resolve player intent to a declared Transaction;
+2. prepare the complete authority result inside a private candidate;
+3. resolve deterministic Fortune and all typed effects;
+4. prepare disclosure-safe derived projections;
+5. create an immutable safe transaction receipt / Outcome Packet;
+6. invoke Narrator against the frozen candidate + safe receipt;
+7. if Narrator succeeds, publish authority changes + action receipt + assistant message in one final Session CAS;
+8. if Narrator fails, publish nothing.
+
+Approved principle:
+
+**resolve first does not mean publish first.**
+
+Narrator remains downstream of a mechanically frozen result while provider failure cannot leave a half-committed world with no completed assistant turn.
+
+#### 6.54.2 Narrator failure is zero mutation
+
+If Narrator generation, route fallback or final provider delivery fails before finalization:
+
+- no World Event is committed;
+- no Lifecycle authority mutation is committed;
+- no clock advance is committed;
+- no derived projection is committed;
+- no final Action receipt is committed.
+
+A retry may re-run the Turn from the same authoritative revision.
+
+#### 6.54.3 Fortune seed must survive provider retry
+
+Bounded Fortune must not depend on Narrator provider response, model retry timing or regenerated prose.
+
+The transaction RNG identity should be derived from stable authority inputs such as:
+
+- Package / Package version;
+- source player-turn identity / anchored revision;
+- stable transaction ordinal / verb identity.
+
+Equivalent stable identities are acceptable.
+
+The requirement is that a provider retry of the same unresolved Turn cannot silently reroll mechanical reality.
+
+#### 6.54.4 Branch Retry and Re-narrate are distinct
+
+Native Retry Reply currently forks from the preceding coherent user-message boundary.
+
+Therefore it is treated as:
+
+**Branch Retry — alternate world branch / new Turn execution.**
+
+It may legitimately produce different future state.
+
+A future **Re-narrate / Restyle** capability, if provided, must:
+
+- reuse already committed authoritative outcome;
+- never rerun Intent Resolver;
+- never rerun Resolution;
+- never rerun Fortune;
+- never change committed Events.
+
+v1 does not require Re-narrate.
+
+Do not wire a prose-only “regenerate” affordance to a full world retry while presenting it as merely stylistic.
+
+#### 6.54.5 Typed UI invokes the same Authority Transaction
+
+Current ordinary Native Frontend `action.invoke` targets one fixed Lifecycle App Command.
+
+Complex gameplay actions such as:
+
+- Case Settlement;
+- Downtime;
+- Claim invocation;
+- multi-effect investigation action
+
+must use the same declared Authority Transaction as free-text intent.
+
+The new capability therefore supports both:
+
+- intent-resolver transaction selection;
+- fixed typed frontend transaction binding.
+
+Frontend bindings select a statically declared Transaction and provide only its validated input args.
+
+They cannot select arbitrary dynamic transaction IDs.
+
+#### 6.54.6 Derived Publication Hook applies beyond player transactions
+
+Disclosure-safe projections can become stale because of:
+
+- player Transactions;
+- Condition recovery;
+- Agenda action;
+- deadline / Automation;
+- Workflow transition;
+- other Lifecycle authority changes.
+
+Therefore `authorityRuntime` must provide a unified **Derived Publication Hook** for any authority publication that affects declared safe projections.
+
+This hook:
+
+- recomputes or incrementally updates declared derived read models;
+- runs before final Session publication;
+- remains deterministic / bounded;
+- is not a new source of Truth.
+
+Background Lifecycle changes do not need to be artificially wrapped as player Transactions merely to refresh projections.
+
+#### 6.54.7 Agenda Deliberation requires no additional Core gap
+
+The approved flow remains:
+
+Lifecycle due event
+→ bounded background Agenda Task
+→ declared App Command writes Agenda Intent
+→ deterministic scheduler validates current state
+→ real-world action, when required, uses Authority Transaction.
+
+The AI records bounded intent; it does not directly create external institutional facts.
+
+Existing Task / Lifecycle machinery is sufficient.
+
+#### 6.54.8 NPC interaction requires no v1 dynamic Actor View
+
+v1 retains:
+
+- zero ordinary per-NPC Model Tasks;
+- zero required per-NPC Information Views.
+
+Private Belief / Memory / Relation reads occur only inside declared transaction validation.
+
+The committed observable response is what Narrator receives.
+
+Dynamic actor-bound model perspectives remain a future enhancement, not a v1 blocker.
+
+#### 6.54.9 Package Data remains within current limits
+
+The approved 25–35-resource target is far below current:
+
+- 256 Package Data resource limit;
+- 2 MiB single-resource hard limit.
+
+The project keeps its stricter authoring soft budgets.
+
+No Package Data Core change is required.
+
+#### 6.54.10 Frontend requires no second Core gap
+
+The frontend needs only:
+
+- player-safe projections;
+- ordinary fixed Lifecycle typed actions where sufficient;
+- fixed Authority Transaction invocation for cross-authority gameplay actions;
+- interactive advisory Tasks;
+- Composer / narrative turn flow.
+
+Visual design remains delegated.
+
+No direct backend-domain frontend access is approved.
+
+#### 6.54.11 Core implementation order
+
+`authority-transaction@1` must be implemented, tested and merged into `main` before formal Package implementation begins.
+
+Do not build Package workarounds against the missing seam.
+
+Once Core is integrated, Package implementation rebases / syncs to the verified new `main` baseline.
+
+#### 6.54.12 Blocking Core verification gates
+
+The Core prerequisite is complete only when tests verify at minimum:
+
+1. one Transaction may prepare World + multiple Lifecycle-domain effects + canonical clock change;
+2. any invalid effect causes zero published mutation;
+3. intent observation contains only declared player-safe information;
+4. private transaction reads never leak into the safe Narrator receipt;
+5. declared derived projections publish atomically with authority;
+6. Narrator/provider final failure publishes no authority;
+7. Narrator success publishes prepared authority + Action receipt + assistant Turn atomically;
+8. fixed typed UI invocation and free-text intent use the same declared Transaction authority path;
+9. stale revision and idempotency checks fail closed;
+10. deterministic Fortune is stable across provider retry / save restore of the same authority anchor;
+11. Retry/branch semantics preserve coherent authority and never mutate an already committed branch in place;
+12. Packages that do not declare `authority-transaction@1` retain current behavior and compatibility.
+
+Equivalent stronger tests are acceptable.
+
+#### 6.54.13 Final v1 Core-gap result
+
+**Blocking Core prerequisite: exactly one**
+
+- `authority-transaction@1`, including:
+  - safe intent observation;
+  - bounded private authority reads;
+  - atomic private-candidate World / Lifecycle / clock preparation;
+  - unified derived-publication hook;
+  - safe Turn-local receipt;
+  - atomic authority + Narrator finalization;
+  - free-text and fixed typed invocation;
+  - stable retry / Fortune semantics.
+
+**Not blocking for v1**
+
+- dynamic per-NPC Actor projection;
+- Player Continuity;
+- Content extension points;
+- document-rendering Task;
+- additional graph engine;
+- general economy/schedule/reputation system;
+- frontend visual architecture.
+
+### 6.55 Round 9.8 decision
+
+Approved:
+
+- Round 9 technical architecture is frozen;
+- `authority-transaction@1` is the only blocking v1 Core prerequisite;
+- authority is prepared in a private candidate before Narrator but published only after successful Narrator completion;
+- Narrator failure causes zero authority mutation;
+- deterministic Fortune must survive provider retry on the same authority anchor;
+- Branch Retry is distinct from future prose-only Re-narrate;
+- typed frontend and free-text use the same declared Transaction path;
+- one unified derived-publication hook covers player and background authority changes;
+- Agenda Deliberation, NPC interaction, Package Data and frontend require no additional v1 Core gap;
+- Core prerequisite must enter `main` before formal Package implementation;
+- twelve minimum Core verification gates are frozen.
+
+Rejected:
+
+- publishing mechanical authority before Narrator finalization and tolerating provider-failure half-turns;
+- rerolling Fortune because prose generation was retried;
+- treating a full branch retry as a cosmetic rephrase;
+- inventing separate frontend transaction authority;
+- requiring every background Lifecycle update to masquerade as a player Transaction;
+- starting Package development with temporary Core-gap workarounds.
 
 
 ## Current Atria main audit baseline
