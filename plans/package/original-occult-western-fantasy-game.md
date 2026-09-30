@@ -3,7 +3,7 @@
 **Task ID:** `package/original-occult-western-fantasy-game`  
 **Primary Workspace (implementation):** `package`  
 **Current stage:** Pre-production research and design discussion  
-**Status:** Discussion Draft v0.3 — Round 1 approved; Round 2 opened; not approved for implementation  
+**Status:** Discussion Draft v0.4 — Round 2 approved; Round 2.5 opened; not approved for implementation  
 **Plan path:** `docs:plans/package/original-occult-western-fantasy-game.md`
 
 ## 1. Purpose
@@ -228,18 +228,231 @@ Rejected:
 - exposing the deep cosmology at the beginning;
 - using a single generic sanity bar as the main occult consequence.
 
-### 6.8 Round 2 question — progression and price
+### 6.8 Approved progression architecture — Round 2
 
-Round 2 must decide:
+Round 2 rejects fixed supernatural classes, universal level ladders and one-way Pathway-style progression.
 
-- how an ordinary person first gains supernatural capability;
-- what exactly a practitioner acquires when they become stronger;
-- whether progression is tree-based, modular, role-based or something else;
-- how specialization emerges without recreating fixed LoM-style Pathways;
-- how power is stabilized by anchors;
-- how permanent costs accumulate;
-- how progression changes perception, social identity and available actions;
-- how the system remains deterministic enough for Atria state while leaving narrative room for AI.
+The approved core progression grammar is:
+
+**Breach / Investiture → Claim → Anchor → Price → Jurisdiction → compatible Claims → personal supernatural Identity**
+
+#### 6.8.1 Entry into the supernatural
+
+Two principal entry modes are approved.
+
+**Breach**
+
+A person directly survives or remains coherent through a contradiction that ordinary reality fails to reconcile.
+
+The important property is not trauma by itself. The person becomes unusual because reality's ordinary correction fails to fully resolve what they have witnessed, remembered, embodied or proven.
+
+A Breach may leave the person capable of establishing a first Claim.
+
+**Investiture**
+
+Institutions can deliberately create controlled conditions in which a candidate establishes a Claim.
+
+An Investiture may combine witnesses, legal or ritual language, office, relics, records, controlled contradiction and historically weighty locations.
+
+This is a civilizational technique derived from Layer B, not a universal potion-equivalent.
+
+#### 6.8.2 Claim
+
+A supernatural ability is fundamentally a **Claim**: a special rule about the practitioner's relationship to reality that has become sufficiently recognized and anchored to operate.
+
+A Claim should be representable through at least:
+
+- **Principle** — what aspect of reality the Claim touches;
+- **Condition** — when it is allowed to operate;
+- **Effect** — what it changes, preserves, reveals or permits;
+- **Anchor** — why reality continues to recognize it;
+- **Price** — what reciprocal constraint or consequence it imposes;
+- **Jurisdiction** — the current scope within which the Claim has authority.
+
+Claims are not ordinary learned spells. Two practitioners touching the same Principle may possess materially different Claims.
+
+#### 6.8.3 Anchors
+
+Every durable Claim must be supported by one or more Anchors.
+
+Potential anchor categories include:
+
+- identity;
+- body;
+- witness;
+- office;
+- relationship;
+- place;
+- document;
+- relic;
+- repeated act;
+- public recognition;
+- oath;
+- memory.
+
+The exact taxonomy remains open for later technical design.
+
+A Claim can weaken, become unstable or change behavior when an Anchor is damaged, revoked, contradicted or transferred.
+
+#### 6.8.4 Price
+
+The primary approved Price categories are:
+
+**Obligation**
+
+The Claim remains valid only while duties, conditions, offices, relationships or repeated practices are maintained.
+
+**Exposure**
+
+The same structure that allows the practitioner to affect or preserve something also makes the practitioner more legible, traceable or vulnerable through related channels.
+
+**Displacement**
+
+Reality increasingly identifies the practitioner with the supernatural role or rule they embody, potentially weakening ordinary identity anchors.
+
+Prices should usually be structurally related to the power gained. Avoid generic mana loss or arbitrary sanity damage where a more causal consequence is possible.
+
+#### 6.8.5 Jurisdiction instead of universal levels
+
+Progression primarily expands or refines a Claim's **Jurisdiction** rather than increasing a global character level.
+
+Possible jurisdiction dimensions include:
+
+- self;
+- one target;
+- relationship;
+- object;
+- room;
+- event;
+- institution;
+- district;
+- city;
+- historical or public reality.
+
+These are examples, not a frozen ladder.
+
+A stronger Claim may also gain finer Conditions, more robust Anchors, new interpretations or compatibility with additional Claims.
+
+#### 6.8.6 Modular build and self-consistency
+
+Practitioners are not permanently locked into one cosmically predefined profession.
+
+A person may establish Claims from more than one Principle.
+
+The limiting factor is **self-consistency**.
+
+Claims that assert incompatible things about the practitioner create contradiction. Resolving that contradiction may require:
+
+- narrowing Conditions;
+- introducing stronger Anchors;
+- accepting additional Price;
+- rewriting or relinquishing a Claim;
+- restructuring the practitioner's supernatural Identity.
+
+Buildcraft therefore becomes an occult problem of constructing a coherent person that reality can continue to recognize.
+
+#### 6.8.7 Professions are cultural builds, not cosmic classes
+
+The world may contain clear supernatural professions, schools and offices.
+
+However, these are human-developed, historically tested Claim combinations rather than immutable classes built into the cosmos.
+
+Examples may eventually include investigators, ecclesiastical offices, royal examiners, archivists, illicit identity specialists or academic traditions.
+
+Different societies may independently discover different stable combinations.
+
+This permits:
+
+- recognizable NPC professions;
+- institutional training;
+- regional supernatural traditions;
+- player experimentation;
+- discovery of previously unknown viable combinations;
+- the possibility that a player founds a new supernatural school.
+
+#### 6.8.8 Identity progression
+
+As Claims accumulate and Jurisdiction expands, they form a supernatural **Identity**.
+
+This Identity is not merely a title. It is the increasingly coherent way in which reality recognizes what the practitioner is.
+
+High-tier progression should therefore change:
+
+- what the practitioner can perceive;
+- what social roles they can credibly occupy;
+- what institutions recognize or fear them;
+- what obligations bind them;
+- which contradictions they can survive;
+- how easily they can return to ordinary life.
+
+Late progression can approach Layer C by making the practitioner's Identity increasingly metaphysical.
+
+#### 6.8.9 Atria authority principle
+
+The project approves a strict separation between deterministic game authority and language-model narration.
+
+Native state should ultimately own facts such as:
+
+- which Claims exist;
+- Principle identity;
+- Conditions;
+- Anchors;
+- Price clauses;
+- Jurisdiction;
+- Claim status;
+- relevant contradiction / instability state.
+
+The model may describe, interpret and dramatize these rules, but must not silently grant abilities, ignore invalid Anchors or invent rule authority.
+
+Illustrative conceptual structure:
+
+```text
+claimId
+principleId
+condition
+effect
+anchors[]
+priceClauses[]
+jurisdiction
+status
+```
+
+The exact schema is deferred to the Package technical-design round.
+
+### 6.9 Round 2 decision
+
+Approved:
+
+- Breach and Investiture as principal supernatural entry patterns;
+- Claim as the atomic unit of supernatural capability;
+- Anchor / Price / Jurisdiction as mandatory progression concepts;
+- Obligation / Exposure / Displacement as the primary Price families;
+- modular multi-Principle builds constrained by self-consistency;
+- supernatural professions as cultural / institutional build traditions;
+- Identity as the long-term result of coherent accumulated Claims;
+- deterministic Native authority over Claim validity.
+
+Rejected:
+
+- a universal level number as the principal progression model;
+- fixed one-way cosmic class trees;
+- a renamed Sequence / Potion / Acting structure;
+- generic sanity loss as the default price for power;
+- allowing the language model to freely invent or grant mechanical abilities.
+
+### 6.10 Round 2.5 question — Principle architecture
+
+Before designing society, the project must define what a **Principle** is and how many Principles the setting should expose.
+
+Round 2.5 must determine:
+
+- whether Principles are fundamental aspects of reality, human abstractions, or interfaces into deeper Layer C structures;
+- how many should be player-legible;
+- whether Principles are a closed list, partially discoverable set or historically evolving taxonomy;
+- how broad a Principle may be before it becomes meaningless;
+- how Claims combine multiple Principles without recreating Pathways;
+- whether organizations own Principles, specialize in combinations, or merely teach traditions;
+- how to preserve strong thematic identities without turning Principles into disguised classes.
 
 
 ## 7. Atria platform fit — current verified direction
@@ -336,11 +549,10 @@ These are references, not implementation templates.
 
 The following are intentionally unresolved:
 
-1. What are the actual fundamental supernatural laws?
-2. What is the metaphysical source of supernatural phenomena?
-3. What replaces conventional class / pathway / level structures?
-4. What exactly is gained and lost through progression?
-5. What makes the player initially special, if anything?
+1. What are the final player-legible Principles and their taxonomy?
+2. How exactly do multi-Principle Claims work?
+3. Which Anchor categories and Jurisdiction dimensions become formal mechanics?
+4. What makes the player initially special, if anything?
 6. What is the main political and religious structure?
 7. How technologically advanced is the setting?
 8. How open or hidden is the supernatural?
@@ -375,7 +587,11 @@ Compare several genuinely different metaphysical systems and choose or combine a
 
 ### Round 2 — Progression and price
 
-Define how people gain power, what advancement means, what it costs, and how it avoids one-to-one resemblance to LoM's Sequence/Potion/Acting structure.
+Approved: Breach / Investiture, Claim / Anchor / Price / Jurisdiction, modular self-consistent builds and cultural professions.
+
+### Round 2.5 — Principle architecture
+
+Define the Principle taxonomy and combination rules before deriving institutions and society from it.
 
 ### Round 3 — Society generated by the supernatural rules
 
@@ -423,6 +639,13 @@ Currently carried forward from research:
 - late-industrial / early-electrical-era research direction;
 - independent faction/world progression;
 - deliberate use of Atria Truth/Belief/Memory/Exposure architecture;
-- avoidance of trivial renamed Sequence/Pathway/Potion structures.
+- avoidance of trivial renamed Sequence/Pathway/Potion structures;
+- approved C → A → B metaphysical hierarchy;
+- approved Breach / Investiture entry model;
+- approved Claim / Anchor / Price / Jurisdiction progression grammar;
+- approved Obligation / Exposure / Displacement Price families;
+- approved modular builds constrained by self-consistency;
+- approved cultural professions rather than cosmic classes;
+- deterministic Native authority over supernatural mechanics.
 
-All other elements remain open to revision.
+All unapproved elements remain open to revision.
