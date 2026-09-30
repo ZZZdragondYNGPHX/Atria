@@ -3,7 +3,7 @@
 **Task ID:** `package/original-occult-western-fantasy-game`  
 **Primary Workspace (implementation):** `package`  
 **Current stage:** Pre-production research and design discussion  
-**Status:** Discussion Draft v0.8 — Round 3.5 approved; Round 3.6 opened; not approved for implementation  
+**Status:** Discussion Draft v0.9 — Round 3.6 approved; Round 3.7 opened; not approved for implementation  
 **Plan path:** `docs:plans/package/original-occult-western-fantasy-game.md`
 
 ## 1. Purpose
@@ -1320,23 +1320,351 @@ Rejected:
 - “real miracle = religion fully true”;
 - universal god-tier access to every Principle and every event.
 
-### 6.16 Round 3.6 question — religious landscape and church organization
+### 6.16 Approved religious ecology — Round 3.6
 
-With divine ontology established, Round 3.6 must decide the **social ecology of religion**.
+The main cultural region uses a **layered religious ecology**, not a one-god-one-church faction map.
+
+### 6.16.1 Dominant ecumenical tradition
+
+The principal religious structure is a broad **ecumenical communion** spanning multiple states and peoples.
+
+Its core claim is not exclusive ownership of one god.
+
+It claims authority over:
+
+- legitimate sacred Address;
+- priestly office;
+- life-cycle rites;
+- recognized saints and sacred Identities;
+- communal religious law;
+- the proper maintenance of human relationships with transpersonal beings.
+
+This communion may contain multiple theological schools, regional churches and internal political conflicts.
+
+### 6.16.2 Multiple sacred centers within one religious world
+
+The dominant tradition may recognize several categories of sacred beings or Identities without treating all of them as equivalent.
+
+Possible categories include:
+
+- a highest sacred object of worship;
+- ancient saints;
+- martyrs;
+- royal or civic protectors;
+- local protectors;
+- sacred offices;
+- recognized nonhuman beings;
+- canonized historical figures.
+
+Religious categories such as god, saint, angel, protector or spirit do not have to map perfectly onto actual metaphysical origin.
+
+### 6.16.3 Saints as major Identity structures
+
+Saints are approved as a major religious mechanism.
+
+A saint may begin as a historical human, but centuries of:
+
+- repeated Name;
+- feast days;
+- relics;
+- prayer;
+- imitation;
+- sacred office;
+- art;
+- pilgrimage;
+- communal Memory
+
+can create a durable saintly Identity that is no longer trivially identical to the historical person.
+
+A false or legendary biography does not automatically make the resulting saintly Identity unreal.
+
+Revealing historical truth can therefore have real metaphysical consequences.
+
+### 6.16.4 Religious life as relationship network
+
+Ordinary believers do not choose one deity as a game faction.
+
+One person may participate in different sacred relationships across life:
+
+- naming;
+- profession;
+- marriage;
+- travel;
+- illness;
+- household devotion;
+- regional protector traditions;
+- burial.
+
+These relationships still belong to one wider religious world.
+
+### 6.16.5 Priestly office as institutional Claim infrastructure
+
+Priestly power is primarily tied to **Office**.
+
+A valid office combines:
+
+- recognized Name;
+- formal Bond to institution and community;
+- witnessed Investiture;
+- durable records;
+- repeated historical function.
+
+Some rites work only because reality recognizes the officiant as legitimately holding that office.
+
+Removal from office can therefore weaken or terminate associated Claims.
+
+### 6.16.6 Clerical knowledge is tiered
+
+Ordinary clergy are not universal occult experts.
+
+Approved knowledge layers:
+
+**Pastoral clergy**
+
+- ritual;
+- ethics;
+- community administration;
+- ordinary religious law;
+- a small number of safe Office Claims;
+- basic abnormal-response procedure.
+
+**Specialist clergy**
+
+- Claim and Anchor theory;
+- relic identification;
+- major Investiture;
+- abnormal investigation;
+- heresy cases;
+- difficult exorcistic / containment work.
+
+**Restricted theological / occult institutions**
+
+- divine ontology;
+- dangerous historical records;
+- experimental theology;
+- deep Identity problems;
+- unresolved Layer C questions.
+
+Even the highest level need not possess final truth.
+
+### 6.16.7 Church and Academy conflict is interpretive as well as political
+
+Academy and Church may agree on reproducible observations while disagreeing on meaning.
+
+For example:
+
+- Academy: prayer establishes a stable cross-subject Bond;
+- Church: prayer is communion or grace.
+
+Scientific description therefore does not automatically disprove religion.
+
+The core conflict is partly over **who possesses legitimate explanatory authority**.
+
+### 6.16.8 Local cults and regional sacred Identities
+
+Local religious traditions remain important.
+
+Villages, cities, professions, families and regions may maintain long-lived traditions around:
+
+- wells;
+- bridges;
+- forests;
+- historical protectors;
+- mines;
+- battlefields;
+- household guardians;
+- unexplained entities.
+
+Repeated local practice can create or stabilize regional Identities.
+
+The dominant communion may respond through:
+
+- recognition;
+- absorption;
+- renaming;
+- reinterpretation;
+- prohibition.
+
+### 6.16.9 Absorption can change the sacred Identity
+
+Religious assimilation is not merely political language.
+
+If a local being is systematically:
+
+- renamed;
+- assigned a canonical story;
+- placed under formal clergy;
+- connected to standard ritual;
+- interpreted as a saintly manifestation,
+
+the Anchor network may gradually alter the Identity itself.
+
+Long-term syncretism can therefore create genuine metaphysical convergence.
+
+### 6.16.10 Religious difference categories
+
+The setting distinguishes:
+
+**Unrecognized Tradition**
+
+A religion or local practice not recognized by the dominant communion but not inherently dangerous.
+
+**Heresy**
+
+A movement arising within the dominant tradition that materially reinterprets sacred Name, ritual, history or Identity.
+
+**Malignant Cult**
+
+A group using dangerous Claim structures, coercive Bonds, Identity destruction or uncontrolled Layer C contact.
+
+These categories must not be collapsed into one political label.
+
+### 6.16.11 Conversion as Identity transition
+
+Conversion is a meaningful supernatural and social transition.
+
+It may require:
+
+- release from prior communal Bonds;
+- new Name or recognized status;
+- formal Reception;
+- altered marriage / burial rights;
+- new ritual obligations;
+- changed family or civic relationships.
+
+Incomplete conversion can create Identity contradiction if multiple systems continue to recognize incompatible sacred status.
+
+### 6.16.12 Marriage as Church/State fault line
+
+Marriage is a major site of conflict because it combines:
+
+- civil Bond;
+- sacred Bond;
+- family Name;
+- property;
+- inheritance;
+- children;
+- communal recognition.
+
+Modern states may increasingly claim the right to create and dissolve civil marriage.
+
+Church authorities may deny that civil procedure alone terminates every sacred Bond.
+
+This conflict is approved as a major social theme.
+
+### 6.16.13 Death and burial
+
+Death requires multiple systems to settle a person's transition out of living social Identity.
+
+Relevant processes may include:
+
+- medical death;
+- civil death registration;
+- inheritance;
+- funeral rite;
+- burial;
+- family Memory;
+- closure of offices and contracts.
+
+Failed or contradictory settlement can create abnormal consequences.
+
+### 6.16.14 Church social institutions
+
+Church power also comes from long-term control of:
+
+- education;
+- hospitals;
+- orphan care;
+- cemeteries;
+- poor relief;
+- marriage;
+- burial;
+- local recordkeeping.
+
+Modern state expansion into these areas is therefore also a contest over Identity infrastructure.
+
+### 6.16.15 Three vertical layers plus horizontal traditions
+
+The approved religious structure is:
+
+**Layer 1 — Ecumenical Communion**
+
+A transnational theological and institutional framework.
+
+**Layer 2 — National / regional churches and rites**
+
+States and regions possess distinct protectors, calendars, legal accommodations and political relationships.
+
+**Layer 3 — Local devotion**
+
+Cities, villages, professions, families and districts maintain local sacred traditions.
+
+Across all three layers run horizontal structures such as:
+
+- monastic orders;
+- pilgrimage traditions;
+- relic networks;
+- reform movements;
+- mystical schools;
+- heresies.
+
+Religion should therefore behave as a network rather than a list of faction churches.
+
+### 6.16.16 Religious reform
+
+Industrial modernity encourages reform movements that may argue:
+
+- ordinary believers can Address the sacred without elaborate hierarchy;
+- saint veneration creates dangerous secondary Identities;
+- the Church should not control marriage or death registration;
+- sacred texts should be directly available through mass literacy;
+- institutional ritual has drifted from original teaching.
+
+Because worship affects Identity, religious reform can produce genuine supernatural consequences.
+
+### 6.16.17 Round 3.6 decision
+
+Approved:
+
+- one dominant but non-monopolistic ecumenical tradition in the main cultural region;
+- many sacred centers within that tradition;
+- saints as major transpersonal Identity structures;
+- religious life as a network of relationships rather than deity-faction selection;
+- priestly Office as institutional Claim infrastructure;
+- tiered clerical occult knowledge;
+- Church / Academy conflict over interpretation and authority;
+- persistent local cults and regional Identities;
+- real metaphysical consequences from syncretism and assimilation;
+- separate treatment of unrecognized tradition, heresy and malignant cult;
+- conversion as Identity transition;
+- marriage and death as major Church/State fault lines;
+- church social institutions as Anchor infrastructure;
+- three religious layers plus horizontal orders and reform movements.
+
+Rejected:
+
+- one god = one church;
+- ordinary believers selecting a permanent divine faction;
+- all local religion being classified as evil;
+- every priest being a high-level occult engineer;
+- Church possessing unquestioned monopoly over supernatural truth.
+
+### 6.17 Round 3.7 question — political geography and primary stage
+
+Round 3.7 must establish the main political geography before named factions and characters are designed.
 
 It must determine:
 
-- whether one universal church dominates the main region;
-- whether several large religions coexist;
-- whether saints, local gods and household cults sit inside or outside major churches;
-- how civil and sacred identity interact in everyday life;
-- how priestly offices obtain Claims and Investiture;
-- whether churches recognize one another's rites;
-- how mission, conversion and religious law work;
-- how syncretism and heresy appear socially;
-- how much doctrine ordinary clergy know versus restricted theological / occult offices;
-- how state and church divide registration, marriage, burial, education and welfare;
-- whether a single church structure is too close to the inspiration target and should be avoided.
+- the main playable state's constitutional form;
+- whether the primary stage is a capital, industrial metropolis, provincial city or border region;
+- how monarchy, parliament, aristocracy and bureaucracy divide authority;
+- neighboring states and ideological contrasts;
+- whether an empire / colonial system exists and how strongly the game engages with it;
+- where rail, telegraph and industrialization are most advanced;
+- how church jurisdiction overlaps political borders;
+- how citizenship, nationality and migration interact with Name / Bond / Boundary;
+- whether the game begins inside a stable center or a rapidly changing frontier;
+- how large the initial geographic scope should be to support long-form play without diluting local depth.
 
 ## 7. Atria platform fit — current verified direction
 
@@ -1490,7 +1818,11 @@ Approved: gods as transpersonal Identities with multiple possible origins, worsh
 
 ### Round 3.6 — Religious landscape and church organization
 
-Define the social ecology of religion, priesthood, rites, saints, heresy, syncretism and church/state division.
+Approved: ecumenical tradition, layered religious ecology, saints, local cults, office-based priesthood and Church/State identity conflicts.
+
+### Round 3.7 — Political geography and primary stage
+
+Define the principal state, neighboring political systems, industrial geography and the initial geographic scale of the game.
 
 ### Round 4 — Player identity and starting situation
 
