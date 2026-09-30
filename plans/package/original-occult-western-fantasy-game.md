@@ -3,7 +3,7 @@
 **Task ID:** `package/original-occult-western-fantasy-game`  
 **Primary Workspace (implementation):** `package`  
 **Current stage:** Pre-production research and design discussion  
-**Status:** Discussion Draft v0.1 — not approved for implementation  
+**Status:** Discussion Draft v0.2 — Round 1 opened; not approved for implementation  
 **Plan path:** `docs:plans/package/original-occult-western-fantasy-game.md`
 
 ## 1. Purpose
@@ -130,6 +130,72 @@ Possible consequences:
 - witnesses, testimony and memory become supernatural assets.
 
 This premise is a candidate only. It must compete against other foundational systems before approval.
+
+
+### 6.1 Round 1 candidate metaphysical models
+
+The first design round compares three deliberately different foundations. None is approved yet.
+
+#### Model A — Record / Witness / Contradiction
+
+Reality is partly stabilized by reliable records and witnessed recognition.
+
+Core consequences:
+
+- archives, testimony and public information can possess supernatural weight;
+- contradiction is not merely misinformation but a source of metaphysical instability;
+- powers may alter evidence, bind testimony, preserve erased facts, expose incompatible histories or weaponize consensus;
+- advancement would likely depend on gaining authority over increasingly consequential forms of truth and record;
+- costs may involve identity rigidity, inability to deny witnessed facts, contradiction debt or becoming vulnerable to documentary erasure.
+
+Primary strength: exceptionally strong fit for investigation and Atria Truth / Belief / Exposure.
+
+Primary risk: the system can become too abstract, bureaucratic or document-centric if the physical and emotional manifestations are weak.
+
+#### Model B — Oath / Lineage / Relic
+
+Reality recognizes binding commitments. A sufficiently witnessed oath can become an objective force; bloodlines inherit unfinished obligations; relics are promises, victories, betrayals or offices that have become materially persistent.
+
+Core consequences:
+
+- noble titles, marriages, guild charters, military commissions, church vows and criminal pacts can possess supernatural force;
+- lineage is less “genetic magic” than inherited contractual burden;
+- relics encode historical obligations rather than functioning as generic enchanted loot;
+- advancement would come from accepting, fulfilling, rewriting or breaking increasingly powerful covenants;
+- power always grants rights together with duties, taboos, claimants and enemies.
+
+Primary strength: naturally generates politics, religion, law, aristocracy and social-role gameplay.
+
+Primary risk: without a deeper cosmology it can drift toward familiar dark-fantasy oath magic.
+
+#### Model C — Dream / Star / Soul Topography
+
+The waking world is only the most stable layer of reality. Dreams, memory, celestial cycles and the internal structure of the soul form adjacent geographies that can partially overlap with physical space.
+
+Core consequences:
+
+- people can possess inaccessible inner territories rather than a single abstract “sanity” value;
+- dreams can contain routes, ruins, predators, inherited memories and impossible places;
+- occult progression changes what portions of reality a person can perceive and enter;
+- celestial or seasonal conditions alter which boundaries are traversable;
+- costs may include identity fragmentation, dream leakage, parasitic memories or the gradual replacement of ordinary perception.
+
+Primary strength: supports highly imaginative exploration and progression-through-perception.
+
+Primary risk: it places a larger burden on AI narration and can weaken the grounded social / investigative game if allowed to dominate.
+
+### 6.2 Candidate synthesis — not approved
+
+A possible synthesis is:
+
+- Model A as the **surface law** governing information, evidence and public reality;
+- Model B as the **social technology** by which institutions deliberately exploit those laws;
+- Model C as the **deep cosmology** explaining why reality is responsive to witness, memory and symbolic structure.
+
+This synthesis is attractive because it avoids three separate magic systems: oath and dream phenomena would instead be different consequences of one deeper ontology.
+
+However, combining them too early may recreate the “everything connects to everything” density of the inspiration target before the game has established its own clear identity. Round 1 must therefore decide whether to use one foundation or a deliberately hierarchical synthesis.
+
 
 ## 7. Atria platform fit — current verified direction
 
