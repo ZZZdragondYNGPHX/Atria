@@ -13,7 +13,7 @@ Owns Round 8: playable content scale, authored-versus-generated boundaries, NPC 
 - `simulation.md`
 - `metaphysics.md`
 
-> **Current discussion:** Round 8 core is approved. Round 8.5 is open: Signature Case roles and long-form Eastbank revelation structure.
+> **Current discussion:** Rounds 8–8.5 are approved. Round 8.6 is open: minimum production templates for authored content assets.
 
 ---
 
@@ -406,20 +406,465 @@ Rejected:
 - random culprit substitution as the main replay system;
 - one giant always-loaded Package content blob.
 
-### 6.42 Round 8.5 question — Signature Case roles and long-form mystery structure
+### 6.42 Approved Signature Case roles and long-form mystery structure — Round 8.5
 
-Round 8.5 must assign distinct design responsibilities to the 6–8 Signature Cases before any detailed plot scripting begins.
+The launch target is eight Signature Case responsibility slots.
 
-It must determine:
+Only the opening Case is mandatory.
 
-- what gameplay system each Signature Case introduces or stress-tests;
-- which institution(s) it foregrounds;
-- which Principle / anomaly family it explores;
-- which part of city life it reveals;
-- what Eastbank / Reality Consolidation information it may expose;
-- what kind of Settlement choice it creates;
-- what persistent consequence can survive Case closure;
-- how Cases may be encountered in different orders without breaking revelation logic;
-- which Cases are mandatory for the opening / first Breach and which are discoverable / optional;
-- how the long mystery emerges from shared Evidence / institutions rather than a rigid chapter sequence.
+Cases 2–7 form a semi-open investigative network.
+
+The final Eastbank convergence is unlocked by cross-source revelation predicates rather than a fixed “complete every main quest” sequence.
+
+Names remain working titles.
+
+#### 6.42.1 Signature Case 1 — Second Death
+
+Working role: mandatory opening Case.
+
+Primary gameplay responsibilities:
+
+- Civil Verifier professional loop;
+- Evidence / Testimony / Finding / Hypothesis distinction;
+- first shared Case Graph;
+- first meaningful Contradiction;
+- first Breach;
+- first confrontation with incomplete official records.
+
+Primary institutions:
+
+- ordinary police;
+- civil registry;
+- hospital / mortuary;
+- insurer.
+
+Primary supernatural focus:
+
+- Name;
+- Memory;
+- Witness;
+- Identity Contradiction.
+
+Eastbank revelation role:
+
+- supports the **Administrative Error** layer;
+- does not reveal deliberate Settlement.
+
+Core disposition pressure:
+
+- how the new death is reported;
+- whether the old death record is challenged;
+- whether abnormal authorities are informed;
+- whether current family Identity is protected.
+
+Persistent consequence:
+
+- the player's Breach and first supernatural transition.
+
+This is the only guaranteed Signature Case.
+
+#### 6.42.2 Signature Case 2 — Dual Address Property
+
+Working premise:
+
+one building remains supported by two still-effective address / property systems with incompatible ownership chains.
+
+Primary gameplay responsibilities:
+
+- graph linking across records and property;
+- institutional access;
+- competing legal records;
+- Boundary as a social / spatial rule;
+- non-binary Settlement.
+
+Primary institutions:
+
+- civil registry;
+- courts;
+- old-estate interests;
+- railway / property interests;
+- insurer.
+
+Primary supernatural focus:
+
+- Boundary;
+- Name;
+- Bond;
+- Boundary Failure.
+
+Eastbank revelation role:
+
+- shows that post-disaster reconstruction changed spatial and property Identity, not merely personal records.
+
+Possible enduring consequences:
+
+- housing displacement;
+- changed title;
+- old-estate / Capital conflict;
+- later railway access;
+- persistent Boundary instability.
+
+#### 6.42.3 Signature Case 3 — Impossible Burial
+
+Working premise:
+
+a cemetery transfer discovers people with coherent Church burial identity but no valid Civil birth or death existence.
+
+Primary gameplay responsibilities:
+
+- Memory versus Belief;
+- communal / sacred Identity;
+- Church-State record conflict;
+- family testimony;
+- burial / continuity ethics.
+
+Primary institutions:
+
+- Church;
+- civic administration;
+- cemetery authority;
+- worker / migrant communities;
+- Academy as optional interpreter.
+
+Primary supernatural focus:
+
+- Memory;
+- Name;
+- Bond;
+- Memory Discontinuity.
+
+Eastbank revelation role:
+
+- advances the **Settlement Contradiction** layer;
+- indicates that some populations were not properly incorporated into the final Settlement.
+
+Possible enduring consequences:
+
+- restored recognition;
+- preserved Church-only Identity;
+- civil registration;
+- changed burial status;
+- damaged or strengthened family / communal Anchors.
+
+#### 6.42.4 Signature Case 4 — Dead Railway
+
+Working premise:
+
+a dismantled industrial / railway route continues producing timetables, payroll traces, sounds, injuries and work patterns as if still operational.
+
+Primary gameplay responsibilities:
+
+- physical exploration;
+- time pressure;
+- environmental danger;
+- Injury / Condition;
+- worker information networks;
+- non-document Evidence.
+
+Primary institutions:
+
+- railway corporation;
+- worker mutual societies;
+- industrial policing;
+- abnormal authority.
+
+Primary supernatural focus:
+
+- Echo;
+- Boundary;
+- Memory;
+- Residual Echo.
+
+Eastbank revelation role:
+
+- reveals that disaster-era transport shutdown / movement was more organized and extensive than public history suggests;
+- begins making deliberate stabilization operations plausible without yet proving their full intent.
+
+Possible enduring consequences:
+
+- restored / sealed route;
+- worker compensation;
+- corporate liability;
+- preserved dangerous Echo;
+- newly exposed historical movement records.
+
+#### 6.42.5 Signature Case 5 — Self-Signing Company
+
+Working premise:
+
+a corporation produces valid internal orders, contracts, budgets or schedules that no current executive admits authoring.
+
+Primary gameplay responsibilities:
+
+- autonomous institutional Agenda;
+- corporate records;
+- legal personality;
+- institutional negotiation;
+- non-human persistent Identity.
+
+Primary institutions:
+
+- railway / industrial corporation;
+- finance;
+- courts;
+- University;
+- worker organizations.
+
+Primary supernatural focus:
+
+- Name;
+- Bond;
+- Memory;
+- Institutional Identity.
+
+Eastbank revelation role:
+
+- advances the **Deliberate Stabilization** layer;
+- connects the modern corporate Identity to Eastbank Reconstruction and post-disaster institutional reconstitution.
+
+Possible Settlements include:
+
+- partial legal recognition;
+- re-anchoring;
+- charter revision;
+- institutional split;
+- management reassertion;
+- negotiated coexistence.
+
+The Case must not resolve through a generic “kill the corporate monster” structure.
+
+#### 6.42.6 Signature Case 6 — Claims Before the Accident
+
+Working premise:
+
+insurance claims or actuarial records contain specific valid information dated before the accidents they describe.
+
+Primary gameplay responsibilities:
+
+- Possibility and bounded Fortune;
+- risk / prediction;
+- finance and contract;
+- ethical use of measurement;
+- uncertainty before settlement.
+
+Primary institutions:
+
+- insurer / bank;
+- Academy;
+- abnormal authority;
+- industrial clients.
+
+Primary supernatural focus:
+
+- Possibility;
+- Witness;
+- Bond;
+- Possibility Saturation.
+
+The underlying design is not generic prophecy.
+
+The risk-measurement system may itself be altering or stabilizing unresolved outcomes.
+
+Reality Consolidation role:
+
+- directly raises the question whether increasingly comprehensive measurement / registration changes Possibility rather than merely observing it.
+
+Possible enduring consequences:
+
+- restricted model use;
+- state regulation;
+- continued secret use;
+- public research;
+- deliberate preservation of uncertainty.
+
+#### 6.42.7 Signature Case 7 — Tomorrow's Headline
+
+Working premise:
+
+major newspapers hold incompatible versions of an imminent public event, and one version is beginning to dominate Public Belief before Truth is securely established.
+
+Primary gameplay responsibilities:
+
+- publication;
+- information propagation;
+- time competition;
+- Public Belief;
+- evidence custody;
+- consequences of premature certainty.
+
+Primary institutions:
+
+- press;
+- telegraph;
+- civic authority;
+- abnormal authority;
+- affected Church / Capital actors as relevant.
+
+Primary supernatural focus:
+
+- Witness;
+- Memory;
+- Name;
+- Public Belief Anchor.
+
+Approved boundary:
+
+mass belief does not become unlimited Truth.
+
+The danger is strong Belief Anchor and institutional lock-in, not wish-based reality editing.
+
+Reality Consolidation role:
+
+- demonstrates why governments and institutions seek informational standardization;
+- also demonstrates the danger of stabilizing a wrong version too early.
+
+Possible dispositions include:
+
+- publish incomplete Truth;
+- delay;
+- permit another version to settle;
+- leak protected Evidence;
+- negotiate controlled publication.
+
+#### 6.42.8 Signature Case 8 — Eastbank Hearing
+
+Working role:
+
+long-form convergence Matter.
+
+The final working title is intentionally provisional.
+
+This Case becomes available only when the player has enough cross-source evidence to make reopening Eastbank politically and institutionally meaningful.
+
+Primary gameplay responsibilities:
+
+- accumulated Settlement history;
+- competing institutional authority;
+- justice versus stability;
+- Reality Consolidation;
+- long-term consequence convergence.
+
+Primary thematic dimensions:
+
+- Historical Truth;
+- Current Stability;
+- Justice;
+- Political Power;
+- Religious Authority;
+- Institutional Accountability.
+
+The final disposition must support mixed positions.
+
+Examples:
+
+- reveal history while preserving selected current property arrangements;
+- demand compensation without publishing deep metaphysical causes;
+- challenge national consolidation while preserving some standardized records;
+- recognize some old sacred / communal identities without restoring every pre-Settlement condition.
+
+Do not reduce the finale to “reveal Truth” versus “hide Truth”.
+
+#### 6.42.9 Semi-open Signature network
+
+The approved structural relationship is:
+
+- Case 1 is the mandatory opening and Breach;
+- Cases 2–7 are discoverable / semi-open and may be encountered in different orders;
+- Case 8 is a convergence investigation.
+
+The long arc is not:
+
+**1 → 2 → 3 → 4 → 5 → 6 → 7 → 8**
+
+Different players may reach the necessary revelation state through different Evidence combinations.
+
+#### 6.42.10 Revelation predicates
+
+Eastbank convergence should use cross-source **Revelation Predicates** rather than completion counts.
+
+Representative predicate families include proof that:
+
+- the official Settlement account is materially incomplete;
+- the Settlement involved deliberate stabilization;
+- present-day rights / institutions depend on that stabilization;
+- the Eastbank contradiction remains active.
+
+The exact evidence sources satisfying these predicates may differ by campaign.
+
+Do not require “7 / 7 Signature Cases complete”.
+
+#### 6.42.11 Distinct gameplay responsibility rule
+
+Every Signature Case must have a distinct gameplay / systems responsibility.
+
+Approved responsibility map:
+
+1. **Second Death** — Identity / opening Case / Breach.
+2. **Dual Address Property** — Boundary / property / record graph.
+3. **Impossible Burial** — Memory versus Belief / Church / communal Identity.
+4. **Dead Railway** — physical investigation / Injury / Echo / worker networks.
+5. **Self-Signing Company** — Institutional Identity / Agenda / corporate politics.
+6. **Claims Before the Accident** — Possibility / risk / insurance.
+7. **Tomorrow's Headline** — Public Belief / Witness / publication timing.
+8. **Eastbank Hearing** — Settlement / Reality Consolidation / accumulated consequences.
+
+Avoid designing multiple Signature Cases that differ only in surface story while using the same investigation structure.
+
+#### 6.42.12 Signature does not mean purely supernatural
+
+A Signature Case may present primarily as:
+
+- property law;
+- corporate governance;
+- journalism;
+- insurance;
+- burial administration;
+- labor / transport;
+- identity verification.
+
+The supernatural should emerge through the same social reality rather than making every Case a monster hunt.
+
+### 6.43 Round 8.5 decision
+
+Approved:
+
+- eight Signature Case responsibility slots;
+- Second Death as the only mandatory opening Signature Case;
+- Cases 2–7 as semi-open network content;
+- Eastbank Hearing as convergence rather than fixed chapter eight;
+- cross-source Revelation Predicates instead of completion count;
+- distinct gameplay responsibility for each Signature Case;
+- long mystery emerging through shared Evidence / institutions;
+- Signature Cases may remain primarily social / legal / institutional rather than combat-centric;
+- final Eastbank disposition remains multidimensional and does not collapse to reveal-versus-hide.
+
+Rejected:
+
+- fixed 1→8 chapter progression;
+- “complete all seven quests to unlock finale” gating;
+- repeated archive-interview structure for every Signature Case;
+- one final binary Truth / secrecy choice;
+- making every Signature Case a supernatural monster encounter.
+
+### 6.44 Round 8.6 question — minimum content production templates
+
+Round 8.6 must define the minimum authored fields for each major content asset class so implementation does not depend on ad hoc prose interpretation.
+
+It must define production templates for at least:
+
+- Institution;
+- Tier A Actor;
+- Tier B Actor;
+- Signature Case;
+- Institutional Case Pattern;
+- Anomaly Family;
+- Starter Claim Seed;
+- Established Claim Archetype;
+- Canon Fragment;
+- important Location;
+- public / institutional Artifact templates where useful.
+
+The goal is not to freeze JSON schemas yet.
+
+The goal is to define what information must exist and which fields are authoritative, perspective-bound, generated or optional before Round 9 translates them into Package Data resources.
 
