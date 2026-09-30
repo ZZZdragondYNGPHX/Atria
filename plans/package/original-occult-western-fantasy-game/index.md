@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.22 — Rounds 6–6.6 approved; Round 6.7 opened; not approved for implementation
+- **Status:** Discussion Draft v0.23 — Rounds 6–6.7 approved; Round 7 opened as lightweight frontend-constraint pass; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -57,22 +57,33 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 6.7
+## Current route — Round 7
 
 Required reading:
 
 - `index.md`
-- `simulation.md`
 - `platform-and-gameplay.md`
+- `simulation.md`
 
-Load only when a simulation question requires it:
+Round 7 is intentionally lightweight.
 
-- `gameplay.md` — Case model, Resolution Frames, time scales and consequences;
-- `institutions.md` — institutional Agendas and relationship state;
-- `player.md` — Personal Anchors, Breach / Claim state and background;
-- `metaphysics.md` — only when a proposed state rule would alter Claim / Principle authority.
+Only define:
 
-Current Atria `main` Information / Lifecycle contracts are implementation-fit evidence, not Plan authority.
+- player-visible information requirements;
+- required player actions / interactions;
+- information that must remain hidden;
+- anti-leakage and authority constraints.
+
+Do not define:
+
+- layout;
+- visual hierarchy;
+- styling;
+- animation;
+- component composition;
+- detailed navigation / UX architecture.
+
+Detailed frontend planning is delegated to a frontend-specialized AI or an AI with an installed frontend skill.
 
 ## Stage routing
 
@@ -85,8 +96,8 @@ Current Atria `main` Information / Lifecycle contracts are implementation-fit ev
 | Round 3.9 | `index.md`, `institutions.md`; authority dependencies only as needed | Approved |
 | Round 4–4.6 | `index.md`, `player.md`; dependencies only as needed | Approved |
 | Round 5–5.6 | `index.md`, `gameplay.md`, `platform-and-gameplay.md`; dependencies only as needed | Approved |
-| Round 6 | `index.md`, `simulation.md`, `platform-and-gameplay.md`; dependencies only as needed | Current |
-| Round 7 | `index.md`, `platform-and-gameplay.md`, `simulation.md` | Define only player-facing information/interaction constraints; visual/UI planning is delegated to a frontend-specialized AI and does not require a detailed Plan module by default |
+| Round 6–6.7 | `index.md`, `simulation.md`, `platform-and-gameplay.md`; dependencies only as needed | Approved |
+| Round 7 | `index.md`, `platform-and-gameplay.md`, `simulation.md` | Current; lightweight constraints only, no detailed UI design module by default |
 | Round 8 | `index.md` plus gameplay/simulation/UI and relevant world modules | Create content-architecture module when design starts |
 | Round 9 | `index.md`, `platform-and-gameplay.md` plus approved system/content modules | Create Package technical-design module when design starts |
 | Round 10 | `index.md`, `decisions.md`, technical-design module | Freeze implementation stages and exact implementation-stage reading map |
@@ -194,7 +205,7 @@ Approved: task-specific Context Packages, bounded Narrator/Actor/Agenda/Reflecti
 
 ### Round 6.7 — World-advance scheduling and model-call budget
 
-Define deterministic post-action scheduling, due-event batching, Agenda execution, background Model Task limits and safe save/replay behavior.
+Approved: deterministic-first world advance, three Agenda step classes, relevance gating, bounded background deliberation, deterministic same-tick commits and event-driven fast-forward.
 
 ### Round 7 — Frontend information and interaction constraints
 
@@ -244,7 +255,8 @@ Currently carried forward from research:
 - approved open Case architecture with world-owned Evidence, durable Settlement history and no quest-checklist ontology;
 - approved Atria-native simulation authority with bounded perspectives, shared information graph, one world clock, Agenda state machines and tiered actor simulation;
 - approved fourteen-domain simulation decomposition with derived state and Hard/Perspective/Intent write-authority separation;
-- approved task-specific bounded Context Packages with explicit information-transfer events and no shared omniscient prompt.
+- approved task-specific bounded Context Packages with explicit information-transfer events and no shared omniscient prompt;
+- approved deterministic-first world scheduling with bounded background deliberation and event-driven fast-forward.
 
 All unapproved elements remain open to revision.
 
