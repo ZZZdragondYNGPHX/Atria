@@ -97,7 +97,8 @@ export function compactLifecycle(base, state, { reserveTask = false, pruneIntera
                 || Object.values(state.workflows).some(flow => flow.status === 'active' && flow.taskInvocationId === record.invocationId)
                 || state.outbox.some(item => item.status === 'pending' && item.invocationId === record.invocationId)) { i++; continue; }
             state.taskTombstones.push({ invocationId: record.invocationId, fingerprint: record.fingerprint ?? null,
-                kind: record.kind, requestHash: record.requestHash ?? null, status: record.status, branchId: record.branchId, storedRevisionId: record.storedRevisionId });
+                kind: record.kind, requestHash: record.requestHash ?? null, status: record.status, branchId: record.branchId, storedRevisionId: record.storedRevisionId,
+                ...(record.anchorRevisionId ? { anchorRevisionId: record.anchorRevisionId } : {}) });
             records.splice(i, 1);
         }
         if (records.length > limit) throw new TypeError('Task result retention is pinned or active');
@@ -144,7 +145,7 @@ function scheduleInteraction(base, candidate, mapping, record) {
         anchorRevisionId: record.storedRevisionId ?? base.revision.revisionId, taskId: record.taskId, variantId: record.variantId, status: 'scheduled' });
 }
 
-export async function prepareDeclaredTaskResult(base, installed, queued, task, variant, record) {
+export async function prepareDeclaredTaskResult(base, installed, queued, task, variant, record, authority = null) {
     const state = base.states[NS];
     if (!state?.ready || !queued || task.resultPolicy.sink !== 'app_command') throw new TypeError('Declared App Command requires durable Lifecycle intent');
     const binding = variant.resultBinding;
@@ -156,11 +157,12 @@ export async function prepareDeclaredTaskResult(base, installed, queued, task, v
     active(state, domain.scopeId);
     if (binding.kind === 'app.command') {
         const action = { ...binding, recordId: binding.recordId ?? 'task-' + hashNativeDocument(record.invocationId).slice(0, 48), args: record.payload };
-        const prepared = await prepareLifecycle(base, installed, action);
+        const prepared = await prepareLifecycle(base, installed, action, authority);
         return { states: prepared.states, authorityReceipt: { kind: 'authority', decision: 'app.command',
             domainId: action.domainId, commandId: action.commandId, recordId: action.recordId, baseRevisionId: base.revision.revisionId } };
     }
     const candidate = { ...base, states: copy(base.states) };
+    authority?.value(record.payload);
     scheduleInteraction(base, candidate, mapping, record);
     compactLifecycle(candidate, candidate.states[NS]);
     return { states: candidate.states, authorityReceipt: { kind: 'authority', decision: 'schedule',

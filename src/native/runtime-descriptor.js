@@ -8,6 +8,7 @@ import {
 } from './authoring-contracts.js';
 import { compilePackageRuntimePlugins } from './plugin-platform.js';
 import { assertFrontendExperience, frontendFeatureAvailability } from '../../public/shared/native-frontend-contract.js';
+import { frontendTransactions } from './frontend/authority.js';
 import { validateFrontendGraph } from './frontend/graph.js';
 
 function plain(value) {
@@ -193,7 +194,8 @@ export function resolveNativeRuntimePackage(opened, entryPointId) {
     });
     const experience = compiled.runtime.experience;
     const frontendGraph = experience.frontend ? validateFrontendGraph({ entry: experience.frontend.entry, files: opened.sourceFiles,
-        mode: experience.mode, experienceContract: opened.manifest.runtime?.experienceContract }) : null;
+        mode: experience.mode, experienceContract: opened.manifest.runtime?.experienceContract,
+        transactions: () => frontendTransactions(opened.manifest, compiled.entryPoint, opened.sourceFiles) }) : null;
     return Object.freeze({
         ...compiled,
         ...(frontendGraph ? { frontendGraph } : {}),

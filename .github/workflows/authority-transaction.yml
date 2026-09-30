@@ -6,6 +6,7 @@ on:
   pull_request:
     paths:
       - 'public/shared/native-*.js'
+      - 'public/scripts/native/context-compiler.js'
       - 'public/scripts/native/experience/logic/**'
       - 'public/scripts/native/experience/world/**'
       - 'src/native/**'
@@ -22,7 +23,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  authority-contracts-and-candidates:
+  authority-contracts-candidates-and-turns:
     runs-on: ubuntu-latest
     services:
       mysql:
@@ -52,7 +53,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm rebuild better-sqlite3 --ignore-scripts=false
       - run: npm ci --ignore-scripts --prefix tests
-      - name: Contract, private candidate and adjacent Native regressions
+      - name: Contract, private candidate, Turn and adjacent Native regressions
         env:
           ATRIA_TEST_MYSQL_ROOT_URL: mysql://root:root@127.0.0.1:${{ job.services.mysql.ports['3306'] }}
           ATRIA_TEST_POSTGRES_URL: postgresql://atria:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/atria_test
@@ -72,6 +73,20 @@ jobs:
           game-runtime/logic-package.test.js game-runtime/logic-rules-integration.test.js
           game-runtime/logic-runtime.test.js game-runtime/rules.test.js game-runtime/rng.test.js
           game-runtime/world-session.test.js game-runtime/reducers.test.js game-runtime/formula.test.js
+          native/authority-turn-c3.test.js
+          native/authority-frontend-c3.test.js
+          native/authority-publication-c3.test.js
+          native/frontend-v3.test.js
+          native/frontend-bridge.test.js
+          native/frontend-bridge-client.test.js
+          native/frontend-authoring.test.js
+          native/frontend-platform.test.js
+          native/frontend-conversation.test.js
+          native/frontend-presentation.test.js
+          native/frontend-script.test.js
+          native/model-prompt-runtime-p4.test.js
+          native/package-turn-memory-bridge-g3.test.js
+          native/authority-narrator-c3.test.js
       - name: Authority source lint
         run: >-
           npx --no-install eslint
@@ -86,3 +101,19 @@ jobs:
           public/shared/native-information-runtime.js
           tests/native/authority-candidate-c2.test.js tests/native/authority-bounds-c2.test.js
           tests/native/authority-session-c2.test.js tests/native/helpers/authority-candidate-fixture.js
+          public/scripts/native/context-compiler.js
+          src/native/adapters/generation-host.js
+          src/native/frontend/authoring.js
+          src/native/frontend/bridge.js
+          src/native/frontend/compiler.js
+          src/native/frontend/graph.js
+          src/native/frontend/host-bridge.js
+          src/native/runtime-descriptor.js
+          src/native/session-core.js
+          src/native/authority-turn.js
+          src/native/frontend/authority.js
+          tests/native/authority-frontend-c3.test.js
+          tests/native/authority-narrator-c3.test.js
+          tests/native/authority-publication-c3.test.js
+          tests/native/authority-turn-c3.test.js
+          tests/native/helpers/authority-turn-fixture.js

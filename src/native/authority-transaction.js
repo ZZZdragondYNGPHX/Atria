@@ -180,10 +180,18 @@ function protectOutputs(logic, budget) {
     for (const publication of logic.derivedPublications) for (const effect of publication.effects) budget.protectedDomains.add(effect.domainId);
 }
 
-export async function prepareAuthorityPublications(base, installed) {
+export async function createAuthorityPublicationBudget(base, installed) {
+    const contract = contractFor(base, installed);
+    const budget = budgetFor(contract.authorityRuntime.policy, 'derived-publication');
+    const { logic } = await createTaskWorld(base, installed, null, budget);
+    protectOutputs(logic, budget);
+    return budget;
+}
+
+export async function prepareAuthorityPublications(base, installed, authority = null) {
     try {
         const contract = contractFor(base, installed); validateCandidate(base, contract);
-        const budget = budgetFor(contract.authorityRuntime.policy, 'derived-publication');
+        const budget = authority ?? budgetFor(contract.authorityRuntime.policy, 'derived-publication');
         const { candidate, logic } = await createTaskWorld(base, installed, null, budget);
         protectOutputs(logic, budget);
         await publications(candidate, installed, contract, logic, budget);

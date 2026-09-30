@@ -79,7 +79,7 @@ export function componentDependencies(ir, bridge) {
 
 // Validate bytes and semantic closure again at the untrusted Package boundary.
 // Hashes alone do not establish that an artifact is safe IR.
-export function validateFrontendGraph({ entry, files, mode, experienceContract = {} }) {
+export function validateFrontendGraph({ entry, files, mode, experienceContract = {}, transactions = [] }) {
     resourcePath(entry);
     const read = path => {
         const bytes = files.get(path);
@@ -110,7 +110,7 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
     const bridgeRef = refs.get('bridge');
     if (!bridgeRef || !refs.has('provenance') || refs.get(index.primaryView)?.kind !== 'view') throw new TypeError('Incomplete Frontend graph');
     const bridge = json(bridgeRef.path);
-    validateCompiledBridge(bridge, experienceContract);
+    validateCompiledBridge(bridge, experienceContract, transactions);
     const visiting = new Set(), visited = new Set();
     const visit = id => {
         if (!refs.has(id)) throw new TypeError('Unknown exact Frontend resource: ' + id);

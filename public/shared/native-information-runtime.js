@@ -120,13 +120,13 @@ export function queryInformationGraph(snapshot, graphId, startId, { depth, expec
     return { anchor: projection.anchor, nodes: [...visited].map(id => nodes.get(id)), edges: selectedEdges, truncated };
 }
 
-export function informationContext(snapshot, target, taskId) {
+export function informationContext(snapshot, target, taskId, { onScan = null, includeRollups = true } = {}) {
     const def = informationDefinition(snapshot);
     if (!def) return null;
     const view = def.views.find(view => view.exposure.includes('context') && (taskId ? view.audience === 'task' && view.taskId === taskId
         : view.audience === target.kind && (target.kind !== 'actor' || view.actorId === target.id)));
     if (!view) return { items: [], knowledge: false };
-    const projection = projectInformation(snapshot, view.id, { purpose: 'context' });
+    const projection = projectInformation(snapshot, view.id, { purpose: 'context', onScan, includeRollups });
     return { knowledge: view.knowledge && (!view.actorId || projection.availability[0]?.available), memory: view.memory === true, actorId: view.actorId, projection,
         items: projection.items.map(item => ({ contextItemId: 'projection:' + view.id + ':' + item.id,
             lane: item.semantic === 'open_loop' ? 'commitments' : item.semantic === 'memory' ? 'memory' : ['rollup', 'narrative'].includes(item.semantic) ? 'narrative_spine' : 'current_state_event',

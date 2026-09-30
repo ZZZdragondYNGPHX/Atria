@@ -2,6 +2,7 @@ import { compileDeclarativeLogic } from '../../public/scripts/native/experience/
 import { lowerDeclarativeMutations } from '../../public/scripts/native/experience/logic/mutations.js';
 import { json } from '../../public/shared/native-values.js';
 import { assertFrontendExperience, frontendFeatureAvailability } from '../../public/shared/native-frontend-contract.js';
+import { frontendTransactions } from './frontend/authority.js';
 import { validateFrontendGraph } from './frontend/graph.js';
 import { validateSchemaValue } from '../../public/scripts/native/experience/world/schema.js';
 
@@ -12,7 +13,7 @@ export function validateFrontendResources(manifest, files, assets) {
         const normalized = assertFrontendExperience(experience);
         frontendFeatureAvailability(normalized.features);
         const graph = validateFrontendGraph({ entry: normalized.frontend.entry, files, mode: normalized.mode,
-            experienceContract: manifest.runtime?.experienceContract });
+            experienceContract: manifest.runtime?.experienceContract, transactions: () => frontendTransactions(manifest, owner, files) });
         validateFrontendCapabilities(normalized, graph, files, manifest.permissions);
         for (const binding of graph.bridge.bindings.filter(item => item.kind === 'read')) {
             if (!binding.target.resourceId) continue;

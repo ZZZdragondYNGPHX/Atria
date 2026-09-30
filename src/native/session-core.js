@@ -1,3 +1,5 @@
+import { hasAuthorityTransactions, prepareAuthorityTurn, authorityTurnProof, authorityActionRequest, authorityFailure } from './authority-turn.js';
+import { prepareAuthorityPublications, createAuthorityPublicationBudget } from './authority-transaction.js';
 import { resolveNativeRuntimePackage } from './runtime-descriptor.js';
 import { bridgeValue } from '../../public/shared/native-frontend-bridge.js';
 import { invalidateFrontendEpoch } from './frontend/epoch.js';
@@ -310,11 +312,18 @@ export class SessionCore {
 
     async _publishLocked(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
         graph = base.graph, branchId = base.revision?.branchId ?? base.session.activeBranchId,
-        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false } = {}) {
+        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false, authorityPrepared = false, authorityBudget = null } = {}) {
         if (continuityDefinition(base)) states = reconcileOwnership(base, states,
             await this._continuity.load(handle, base.session.packageId), { publication: true, pendingIntentId });
         if (realmDefinition(base)) states = reconcileRealm(base, states,
             await this._sessions.realm.load(handle, base.session.packageId), { publication: true, pendingIntentId: pendingRealmIntentId });
+        if (hasAuthorityTransactions(base) && !authorityPrepared && base.revision && states !== base.states
+            && (hashNativeDocument(states.atri_lifecycle?.domains ?? null) !== hashNativeDocument(base.states.atri_lifecycle?.domains ?? null)
+                || hashNativeDocument(states.atri_lifecycle?.clocks ?? null) !== hashNativeDocument(base.states.atri_lifecycle?.clocks ?? null)
+                || hashNativeDocument(states.atri_world_state ?? null) !== hashNativeDocument(base.states.atri_world_state ?? null))) {
+            const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+            states = (await prepareAuthorityPublications({ ...base, states }, installed, authorityBudget)).candidate.states;
+        }
         variants = variants.map(assertVariant);
         await this._validateProjections(handle, { ...base, timeline }, variants);
         validateWorldState(states, base.manifest, base.entryPoint);
@@ -445,11 +454,12 @@ export class SessionCore {
         if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
         const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
         let prepared;
-        try { prepared = await prepareLifecycle(base, installed, command.action); } catch (error) { throw new TypeError(error.message); }
+        const authorityBudget = hasAuthorityTransactions(base) ? await createAuthorityPublicationBudget(base, installed) : null;
+        try { prepared = await prepareLifecycle(base, installed, command.action, authorityBudget); } catch (error) { throw new TypeError(error.message); }
         if (hashNativeDocument(prepared.states) === hashNativeDocument(base.states)) return base;
         const timeline = [...base.timeline]; const entries = []; const variants = [];
         for (const draft of prepared.drafts) { const created = this._newEntry(base, draft, timeline.length); timeline.push(created.entry); entries.push(created.entry); variants.push(created.variant); }
-        return this._publish(handle, base, { states: prepared.states, timeline, entries, variants, taskResolution: prepared.taskResolution, lifecycleReceipt: { invocationId: command.invocationId,
+        return this._publish(handle, base, { states: prepared.states, timeline, entries, variants, authorityBudget, taskResolution: prepared.taskResolution, lifecycleReceipt: { invocationId: command.invocationId,
             fingerprint, baseRevisionId: expectedRevisionId, action: command.action.kind, events: prepared.events } });
     }
 
@@ -474,7 +484,12 @@ export class SessionCore {
         return this._continuity.graph(handle, base.session.packageId, limit);
     }
 
-    async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [] }, { expectedRevisionId } = {}) {
+    async prepareAuthorityTurn(handle, base, selection, player = null) {
+        const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+        return prepareAuthorityTurn(this, handle, base, installed, selection, player);
+    }
+
+    async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [], authorityProof = null }, { expectedRevisionId } = {}) {
         if (!expectedRevisionId || typeof invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(invocationId)) throw new TypeError('Turn anchor and invocation required');
         const base = await this.load(handle, sessionId);
         let envelope = assertTurnEnvelope(raw);
@@ -482,7 +497,7 @@ export class SessionCore {
         const existing = base.states[TASK_STATE_NAMESPACE]?.records.find(record => record.invocationId === invocationId)
             ?? base.states.atri_lifecycle?.taskTombstones.find(record => record.invocationId === invocationId);
         if (existing) {
-            if (existing.fingerprint !== fingerprint || existing.kind !== 'turn') throw new TypeError('Turn invocation conflict');
+            if (existing.fingerprint !== fingerprint || existing.kind !== 'turn' || existing.requestHash !== requestHash) throw new TypeError('Turn invocation conflict');
             return base;
         }
         if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
@@ -495,6 +510,20 @@ export class SessionCore {
             envelope = assertTurnEnvelope({ ...envelope, outcomes: [assertSemanticOutcome(envelope.outcomes[0], interpreter.interpretation)] });
         }
         const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+        if (hasAuthorityTransactions(base)) {
+            if (policy.policy !== 'authority-first' || envelope.outcomes.length || !envelope.narrative.trim()) throw authorityFailure('native_authority_narrative_invalid');
+            const { prepared, player, selection } = authorityTurnProof(this, handle, base, authorityProof);
+            const request = authorityActionRequest(prepared, selection, invocationId, expectedRevisionId, player);
+            if (actionReceipts(base).some(item => item.authorityId === prepared.identity || item.idempotencyKey === request.idempotencyKey)) throw authorityFailure('native_authority_invocation_conflict');
+            const candidate = prepared.candidate;
+            const { entry, variant } = this._newEntry(candidate, { role: 'assistant', envelope }, candidate.timeline.length, true);
+            return this._publish(handle, base, { states: candidate.states, timeline: [...candidate.timeline, entry],
+                entries: [...(player ? [player.entry] : []), entry], variants: [...(player ? [player.variant] : []), variant],
+                authorityPrepared: true, actionRequest: { ...request, assistantMessageId: entry.messageId },
+                taskRecord: { kind: 'turn', invocationId, fingerprint, requestHash, provenance, anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId,
+                    outcomes: [], status: 'applied', authorityReceipt: { kind: 'authority', messageId: entry.messageId, authorityId: prepared.identity, inputHash: prepared.inputHash } } });
+        }
+        if (authorityProof) throw authorityFailure('native_authority_capability_required');
         const patch = envelope.outcomes.some(item => item.interpretation.decision !== 'no_change')
             ? await prepareTaskAuthority(base, installed, { outcomes: envelope.outcomes }) : {};
         const { entry, variant } = this._newEntry(base, { role: 'assistant', envelope }, base.timeline.length, true);
@@ -519,8 +548,9 @@ export class SessionCore {
         if (base.states[TASK_STATE_NAMESPACE]?.records.some(item => item.invocationId === record.invocationId)) throw new TypeError('Duplicate Task invocation');
         if (task.resultPolicy.sink === 'app_command') {
             const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
-            const prepared = await prepareDeclaredTaskResult(base, installed, queued, task, variant, { ...record, payload });
-            return this._publish(handle, base, { states: prepared.states, taskResolution: record.invocationId,
+            const authorityBudget = hasAuthorityTransactions(base) ? await createAuthorityPublicationBudget(base, installed) : null;
+            const prepared = await prepareDeclaredTaskResult(base, installed, queued, task, variant, { ...record, payload }, authorityBudget);
+            return this._publish(handle, base, { states: prepared.states, authorityBudget, taskResolution: record.invocationId,
                 taskRecord: { ...record, payload, kind: 'task', status: 'applied', resultClass: task.resultPolicy.resultClass,
                     anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId, authorityReceipt: prepared.authorityReceipt } });
         }
@@ -590,6 +620,9 @@ export class SessionCore {
         const { values, deletes } = validateRuntimeStateChanges(handle, sessionId, statePatch, deleteNamespaces);
         if (base.manifest.runtime?.experienceContract?.informationRuntime && (Object.hasOwn(values, 'atri_context_derived') || deletes.includes('atri_context_derived'))) {
             throw new TypeError('Information derived state requires typed lifecycle publication');
+        }
+        if (hasAuthorityTransactions(base) && (request || ['atri_world_state', 'atri_game_runtime'].some(namespace => Object.hasOwn(values, namespace) || deletes.includes(namespace)))) {
+            throw authorityFailure('native_authority_typed_publication_required');
         }
         const states = { ...base.states, ...values };
         for (const namespace of deletes) delete states[namespace];
@@ -661,6 +694,24 @@ export class SessionCore {
         if (userIndex < 0) throw new TypeError('Native Retry Reply requires a preceding committed user turn');
         const userMessageId = current.timeline[userIndex].messageId;
 
+        const turn = current.states[TASK_STATE_NAMESPACE]?.records.find(item => item.kind === 'turn' && item.authorityReceipt?.messageId === messageId);
+        const transaction = actionReceipts(current).find(item => item.source === 'frontend' && item.playerMessageId === userMessageId
+            && (item.assistantMessageId === messageId || item.authorityId === turn?.authorityReceipt?.authorityId));
+        if (transaction) {
+            // A typed turn publishes its user input and reply in one CAS. Its
+            // coherent retry boundary is the pre-effect revision plus that input,
+            // not a Timeline slice inheriting the already committed mechanics.
+            const source = await this.load(handle, sessionId, { revisionId: transaction.baseRevisionId });
+            const branchId = createNativeId('branch');
+            const last = source.timeline.at(-1);
+            const branch = { branchId, sessionId, parentBranchId: source.revision.branchId,
+                forkPoint: last ? { messageId: last.messageId, variantId: last.activeVariantId } : null, createdAt: Date.now() };
+            const { entry, variant } = this._newEntry({ ...source, revision: { ...source.revision, branchId } }, { role: 'user', content: current.timeline[userIndex].content,
+                metadata: { atri_authority_retry: { revisionId: current.revision.revisionId, playerMessageId: userMessageId } } });
+            return this._publish(handle, { ...source, session: current.session }, { branchId,
+                timeline: [...source.timeline, entry], entries: [entry], variants: [variant], branches: [branch],
+                graph: [...current.graph, { branchId, forkRevisionId: source.revision.revisionId, branch }] });
+        }
         const postUser = await this._findTimelineBoundary(handle, sessionId, current, userMessageId);
         return this.forkBranch(handle, sessionId, {
             revisionId: postUser.revision.revisionId,

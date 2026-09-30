@@ -18,7 +18,7 @@ describe.each(CONTRACT_HARNESSES)('C2 existing Session authority - $name', ({ ma
         base = await svc.core.create(h.handle, { packageId: f.base.session.packageId, packageVersionId: f.base.session.packageVersionId, entryPointId: f.base.session.entryPointId });
         base = await svc.core.applyLifecycleCommand(h.handle, base.session.sessionId,
             { type: 'lifecycle', invocationId: 'ready', action: { kind: 'experience.ready' } }, { expectedRevisionId: base.revision.revisionId });
-        for (const domainId of ['notes', 'other', 'public_notes']) base = await svc.core.applyLifecycleCommand(h.handle, base.session.sessionId,
+        for (const domainId of ['notes', 'other']) base = await svc.core.applyLifecycleCommand(h.handle, base.session.sessionId,
             { type: 'lifecycle', invocationId: 'seed-' + domainId, action: { kind: 'app.command', domainId, commandId: 'save', recordId: 'main', args: { text: domainId === 'notes' ? 'PRIVATE SENTINEL' : 'public note' } } },
             { expectedRevisionId: base.revision.revisionId });
         base = await svc.core.appendTimeline(h.handle, base.session.sessionId, { role: 'user', content: 'Update note.' });
