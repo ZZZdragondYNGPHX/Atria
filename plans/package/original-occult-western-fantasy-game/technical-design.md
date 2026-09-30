@@ -15,7 +15,7 @@ Owns Round 9: translation of the approved game/content design into current Atria
 - `metaphysics.md`
 - `platform-and-gameplay.md`
 
-> **Current discussion:** Rounds 9–9.5 are approved. Round 9.6 is open: exact Information Views, Sources and Task Runtime mapping.
+> **Current discussion:** Rounds 9–9.6 are approved. Round 9.7 is open: Package Data resource layout and exact Authority Transaction Bridge contract.
 
 ---
 
@@ -606,26 +606,316 @@ Rejected:
 - using the derived graph index as a source of Truth;
 - persisting Resolution Frame / Outcome Packet as duplicate shadow authority.
 
-### 6.50 Round 9.6 question — exact Information and Task Runtime mapping
+### 6.50 Approved Information Views and Task Runtime mapping — Round 9.6
 
-Round 9.6 must freeze the concrete v1 AI-facing projection/task set.
+v1 deliberately uses a small AI-facing projection surface.
+
+The design target is approximately:
+
+- seven disclosure-safe Information Sources;
+- five fixed Information Views;
+- two bounded investigation Graphs;
+- four core Model Task classes;
+- zero ordinary per-NPC Model Tasks.
+
+Authority domains containing hidden data are not directly exposed to player / Narrator contexts unless the entire domain is safe for that audience.
+
+#### 6.50.1 Disclosure-safe read models
+
+Because Information application Sources do not provide arbitrary per-record `playerKnown` filtering, player/Narrator projections must not subscribe directly to mixed hidden/public authority domains.
+
+The Authority Transaction Bridge maintains rebuildable, downstream read models such as:
+
+- `scene_projection` — currently observable scene facts;
+- `player_status_projection` — player Claims, Anchors, Conditions, identity/access information that is actually player-visible;
+- `player_epistemic_projection` — player-known Findings, Hypotheses and Testimony;
+- `investigation_nodes`;
+- `investigation_edges`.
+
+`player_matters` is already session-private and may be exposed directly where its complete contents are player-safe.
+
+Derived projection state is not a source of Truth and must be rebuildable.
+
+#### 6.50.2 v1 Information Sources
+
+Preferred v1 Sources:
+
+| Source | Semantic | Backing data |
+| --- | --- | --- |
+| `scene.truth` | `truth` | `scene_projection` |
+| `player.status` | `truth` | `player_status_projection` |
+| `player.epistemic` | `belief` | `player_epistemic_projection` |
+| `player.matters` | `open_loop` | `player_matters` |
+| `investigation.nodes` | `truth` | `investigation_nodes` |
+| `investigation.edges` | `truth` | `investigation_edges` |
+| `player.memory` | `memory` | disclosure-safe player Memory subset |
+
+Do not directly expose full:
+
+- actor Beliefs;
+- institutional records;
+- institutional Agendas;
+- complete Evidence authority;
+- complete Claims authority
+
+to player/Narrator views.
+
+#### 6.50.3 Player overview View
+
+`player.overview`:
+
+- audience: `player`;
+- exposure: display only;
+- Sources: `player.status`, `player.matters`;
+- no Context exposure.
+
+Budget direction: approximately 64 items / 16k characters.
+
+This is an information contract, not a UI layout contract.
+
+#### 6.50.4 Player investigation View
+
+`player.investigation`:
+
+- audience: `player`;
+- exposure: display only;
+- Sources: investigation nodes/edges, player epistemic state and player Matters;
+- bounded graph: `player.case_graph`.
+
+Budget direction: up to 128 items / 32k characters where needed.
+
+Because player Views cannot enter model Context under current contract, this view is safe as a rich display surface.
+
+#### 6.50.5 Narrator Context View
+
+`narrator.context`:
+
+- audience: `narrator`;
+- exposure: context;
+- Sources: `scene.truth`, `player.status`, relevant `player.epistemic`, relevant open player Matters;
+- bounded recent Timeline history supplied through normal Context policy;
+- no complete World state;
+- no unrestricted Knowledge;
+- no automatic full Memory injection.
+
+Budget direction: approximately 64 items / 20k characters.
+
+The Narrator additionally receives the current Authority Transaction Receipt / Outcome Packet as Host-owned Turn input.
+
+#### 6.50.6 Case Reflection Context View
+
+`case.reflection.context`:
+
+- audience: `task`;
+- task: Case Reflection;
+- exposure: context;
+- Sources: player-known investigation nodes/edges, player epistemic state and player Matters;
+- bounded graph: `reflection.case_graph`;
+- no hidden World Truth / private actor cognition.
+
+Budget direction: up to 128 items / 32k characters.
+
+Reflection can reason deeply over known evidence without receiving the answer key.
+
+#### 6.50.7 Claim Advisor Context View
+
+`claim.advisor.context`:
+
+- audience: `task`;
+- task: Claim Advisor;
+- exposure: context;
+- Sources: `player.status` plus narrowly relevant player epistemic state;
+- `knowledge = true` only for player-acquired / player-legible occult Knowledge bindings;
+- no automatic Memory exposure.
+
+Budget direction: approximately 32 items / 12k characters.
+
+Mechanical diagnosis does not authorize disclosure of hidden story causes.
+
+#### 6.50.8 Agenda Deliberation uses bounded input, not a broad Information View
+
+Institutional Agenda Deliberation should receive a scheduler/bridge-built input payload containing only:
+
+- institution identity;
+- current Agenda;
+- blockers;
+- legitimately known records / Beliefs;
+- current time;
+- permitted Action Catalog.
+
+The Task does not need:
+
+- World Context;
+- Timeline history;
+- generic Knowledge;
+- a global Information projection.
+
+This avoids leaking other institutions' private state and saves a static View.
+
+#### 6.50.9 Two bounded investigation Graphs
+
+Preferred Graph declarations:
+
+**`player.case_graph`**
+
+For player display and exploration of already-known investigative relations.
+
+**`reflection.case_graph`**
+
+For Case Reflection reasoning over the same disclosure-safe node/edge family with its own depth / edge budget.
+
+Neither graph may contain hidden canonical nodes simply because those nodes exist in backend authority.
+
+#### 6.50.10 Core Task set
+
+**Narrator**
+
+- execution: `turn_blocking`;
+- result: presentation;
+- Context: Host Outcome input + limited history + narrator projection;
+- no authority outcome;
+- FIFO / ordinary turn ordering.
+
+**Case Reflection**
+
+- execution: `interactive`;
+- result: advisory proposal with no Apply Command;
+- Context: input + projection;
+- `queuePolicy=latest` is acceptable because output has no authority.
+
+**Claim Advisor**
+
+- execution: `interactive`;
+- result: advisory proposal with no Apply Command;
+- Context: input + projection + permitted Knowledge;
+- `queuePolicy=latest` is acceptable.
+
+**Agenda Deliberation**
+
+- execution: `background`;
+- result: authority-producing bounded Agenda decision;
+- preferred sink: declared App Command into Agenda Intent state;
+- Context: explicit bounded input payload only;
+- FIFO, never `latest`.
+
+The Agenda Task records intent, not direct world execution.
+
+Deterministic scheduler / transaction authority later validates and performs any real-world action.
+
+#### 6.50.11 No v1 document-rendering core Task
+
+Artifact semantics and rendered text remain separated.
+
+Most formal documents should use deterministic templates or bounded presentation-time wording from Semantic Payload.
+
+Do not add a permanent document-rendering Model Task to the v1 core task set unless implementation proves a concrete need.
+
+#### 6.50.12 Knowledge / Memory exposure defaults
+
+Default to closed.
+
+Preferred v1 direction:
+
+- Narrator: `knowledge=false`, automatic Memory off;
+- Reflection: `knowledge=false`, automatic Memory off;
+- Claim Advisor: player-acquired occult `knowledge=true`, automatic Memory off;
+- Agenda Deliberation: no broad Information Knowledge/Memory channel.
+
+Game-owned actor Memories remain authoritative data even when model automatic-memory injection is disabled.
+
+#### 6.50.13 NPCs consume zero static Context Views in v1
+
+Ordinary Tier A / Tier B interaction does not allocate Information Actor Views.
+
+Private actor state is read only inside the validated social/action transaction.
+
+The committed transaction produces the player-observable response state consumed by Narrator.
+
+This keeps v1 within Information View limits without weakening perspective isolation.
+
+#### 6.50.14 Authority-to-projection boundary is mandatory
+
+Approved hard rule:
+
+**Authority → disclosure-safe derived projection → Information View → AI/UI**
+
+Do not use:
+
+**mixed hidden authority Domain → AI prompt → instruction saying what not to reveal**
+
+Direct authority-to-View wiring is allowed only when the complete Source is safe for that audience.
+
+#### 6.50.15 Transaction Receipt / Outcome Packet is Host-owned Turn input
+
+The Authority Transaction Bridge returns a bounded current-turn receipt containing concepts such as:
+
+- accepted verb;
+- objective;
+- resolved outcome;
+- committed Event refs;
+- player-visible consequence summaries;
+- elapsed ticks;
+- known unresolved uncertainty.
+
+The Host supplies this to the post-authority Narrator as ephemeral Turn input.
+
+It is:
+
+- not World Truth storage;
+- not a Lifecycle shadow domain;
+- not model-editable;
+- not retained merely for Narrator convenience.
+
+Long-term facts remain in Event/Lifecycle authority.
+
+### 6.51 Round 9.6 decision
+
+Approved:
+
+- disclosure-safe read models between mixed authority and AI/UI;
+- approximately seven v1 Information Sources;
+- five fixed Views: player overview, player investigation, narrator, reflection, advisor;
+- two disclosure-safe bounded investigation Graphs;
+- Agenda Task using explicit bounded input rather than broad Information projection;
+- four core Model Task classes;
+- no permanent v1 document-rendering Task;
+- Knowledge / Memory exposure closed by default;
+- zero ordinary per-NPC static Views;
+- mandatory Authority → safe projection → View boundary;
+- Host-owned ephemeral transaction receipt as Narrator Turn input;
+- no additional v1 Core gap beyond the approved Authority Transaction Bridge.
+
+Rejected:
+
+- subscribing Narrator/player directly to mixed hidden authority domains;
+- using prompt instructions as the primary anti-leakage mechanism;
+- giving Agenda Deliberation whole World/History context;
+- per-NPC static Views;
+- persisting `latest_outcome` merely for Narrator consumption;
+- adding Model Tasks solely because a document needs natural wording.
+
+### 6.52 Round 9.7 question — Package Data layout and exact Core bridge contract
+
+Round 9.7 must freeze two implementation-facing boundaries before Round 10 staging:
+
+1. the concrete Package Data resource families / `resourceId` layout;
+2. the exact minimum Core contract for the Authority Transaction Bridge.
 
 It must determine:
 
-- the exact Information Sources and their semantics;
-- the minimal fixed Information Views and which are display/context capable;
-- the bounded graph views used by player investigation / Reflection;
-- what Narrator receives after an authority transaction;
-- what Case Reflection receives;
-- what Claim Advisor receives;
-- what Agenda Deliberation receives;
-- whether any document-rendering Task is necessary in v1;
-- Task execution classes, result policies and queue policy;
-- which Tasks may propose authority and how acceptance works;
-- exact Knowledge / Memory exposure policy per Task;
-- Context item budgets direction;
-- how v1 avoids consuming scarce static Views for ordinary NPCs;
-- whether Round 9.6 reveals any further Core gap.
+- resource grouping and size boundaries for institutions, actors, geography, Claims, Cases, anomalies, Canon, artifacts and backgrounds;
+- what remains Knowledge rather than Package Data;
+- which resources are loaded by game logic versus only by authoring/presentation;
+- initial-state seed resources versus immutable definition resources;
+- how resource IDs support modular editing without one giant blob;
+- whether shareable Content extension points are needed in v1;
+- the new Experience capability / contract versioning strategy for authority transactions;
+- how author-declared transaction verbs declare read grants, World effects, typed Lifecycle effects, clock effects and derived publications;
+- how the Host constructs player-safe intent observation;
+- how transaction validation and CAS commit interact with existing action receipts / revisions;
+- the exact shape and lifetime of the transaction receipt supplied to Narrator;
+- limits preventing arbitrary domain access / JSON patching / excessive effect count;
+- how the bridge composes with existing Game World, Lifecycle and Information authority instead of replacing them.
 
 
 ## Current Atria main audit baseline
