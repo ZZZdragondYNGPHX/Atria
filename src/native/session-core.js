@@ -497,7 +497,8 @@ export class SessionCore {
         const existing = base.states[TASK_STATE_NAMESPACE]?.records.find(record => record.invocationId === invocationId)
             ?? base.states.atri_lifecycle?.taskTombstones.find(record => record.invocationId === invocationId);
         if (existing) {
-            if (existing.fingerprint !== fingerprint || existing.kind !== 'turn' || existing.requestHash !== requestHash) throw new TypeError('Turn invocation conflict');
+            if (existing.fingerprint !== fingerprint || existing.kind !== 'turn'
+                || (hasAuthorityTransactions(base) && existing.requestHash !== requestHash)) throw new TypeError('Turn invocation conflict');
             return base;
         }
         if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });

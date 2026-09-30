@@ -123,7 +123,7 @@ export class NativeGenerationHost {
         const routes = await this.persistence.listRuntimeRoutes(handle);
         const lanes = [];
         if (!runtime.turn.narratorTaskId) lanes.push(selectNativeRuntimeRoute(routes, 'role.narrator', input.routeRef));
-        if (!transaction && !base.timeline.at(-1)?.metadata?.atri_authority_retry && runtime.turn.policy === 'authority-first' && (authority || input.userInput?.trim()) && (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic)) lanes.push(selectNativeRuntimeRoute(routes, 'role.intent_resolver'));
+        if (!transaction && !(authority && base.timeline.at(-1)?.metadata?.atri_authority_retry) && runtime.turn.policy === 'authority-first' && (authority || input.userInput?.trim()) && (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic)) lanes.push(selectNativeRuntimeRoute(routes, 'role.intent_resolver'));
         for (const id of [...runtime.turn.stages, runtime.turn.narratorTaskId, runtime.turn.interpreterTaskId].filter(Boolean)) {
             const task = runtime.tasks.find(item => item.id === id);
             const ref = input.slotBindings?.[task.bindingSlotId];
