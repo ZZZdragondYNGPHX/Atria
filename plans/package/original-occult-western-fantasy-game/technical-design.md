@@ -15,7 +15,7 @@ Owns Round 9: translation of the approved game/content design into current Atria
 - `metaphysics.md`
 - `platform-and-gameplay.md`
 
-> **Current discussion:** Round 9 core mapping is approved. Round 9.5 is open: concrete Lifecycle domain mapping and restricted intent-resolver Action API.
+> **Current discussion:** Rounds 9–9.5 are approved. Round 9.6 is open: exact Information Views, Sources and Task Runtime mapping.
 
 ---
 
@@ -310,25 +310,322 @@ Rejected:
 - one monolithic graph authority domain;
 - declaring platform gaps merely because Package implementation is non-trivial.
 
-### 6.48 Round 9.5 question — Lifecycle domain mapping and restricted Action API
+### 6.48 Approved Lifecycle domain mapping and restricted Action API — Round 9.5
 
-Round 9.5 must translate the logical authority model into concrete Package-facing runtime operations.
+Round 9.5 maps the approved logical authorities into a concrete Package-facing runtime shape and identifies one required v1 Core bridge.
+
+#### 6.48.1 Physical authority layout
+
+The preferred physical authority layout is approximately:
+
+| Physical authority | Scope | Logical responsibility |
+| --- | --- | --- |
+| Game World Event Journal | World | authoritative Events / action history |
+| `entities` | World | persistent Entity identity/current authoritative state |
+| `institutional_records` | World | civil / court / Church / company / property formal records |
+| `evidence` | World | Evidence units, provenance, custody and integrity |
+| `relations` | World | kinship, employment, ownership, membership, possession and other real relations |
+| `beliefs` | World | actor/institution Testimony, Finding, Hypothesis and interpretation records |
+| `memories` | World | durable Actor / institutional Memory |
+| `world_matters` | World | institutional/world Cases, obligations and pending procedures |
+| `settlements` | World | formal rulings / dispositions / Settlements |
+| `agendas` | World | autonomous institution / Major Actor Agenda state |
+| `conditions` | World | Injury and persistent gameplay-relevant Conditions |
+| `claims` | World | formal supernatural Claim instances |
+| `player_matters` | Session | player Cases, Leads, personal commitments |
+| `player_life` | Session | ordinary player identity, Anchors, practice and limited finances |
+| `progression` | Session | Breach Imprints, Seeds, Unsettled and Investiture progression |
+| `investigation_index` | derived Session read model | Case Graph node/edge projection; not authority |
+
+This remains comfortably below current Lifecycle domain limits.
+
+The derived investigation index may be stored in a Lifecycle-compatible publication surface if required by Information Runtime, but it is rebuildable and must never become a source of Truth.
+
+#### 6.48.2 Event Journal owns occurrence history
+
+Do not duplicate all world Events into a second general `events` Lifecycle domain merely to match the logical model.
+
+The existing Game World Event Journal is the preferred occurrence-history authority.
+
+Other domains hold current authoritative records whose mutations reference Events where useful.
+
+#### 6.48.3 Intent-resolver command vocabulary
+
+The authority-first resolver receives only high-level, author-declared verbs.
+
+Approved initial verb families:
+
+- `observe`;
+- `verify`;
+- `interview`;
+- `access`;
+- `test`;
+- `intervene`;
+- `invoke_claim`;
+- `publish`;
+- `create_hypothesis`;
+- `create_lead`;
+- `settle_matter`;
+- `downtime`;
+- `advance_time`.
+
+`act` is rejected as too broad; `intervene` must declare method, target and objective.
+
+No verb maps to raw state patching.
+
+#### 6.48.4 Verb authority categories
+
+**Pure / bounded reads**
+
+Examples:
+
+- inspect player-known Evidence;
+- inspect legally visible record metadata;
+- inspect current Claim / Condition state.
+
+These do not mutate authority.
+
+**Intent / perspective writes**
+
+Examples:
+
+- `create_hypothesis`;
+- `create_lead`.
+
+These write only player-bound Belief / Matter state after validation.
+
+**Authority transactions**
+
+Examples:
+
+- interview;
+- verify;
+- access;
+- intervene;
+- invoke Claim;
+- publish;
+- settle Matter;
+- downtime;
+- time advance.
+
+These may cause several authoritative effects and therefore require the transaction seam defined below.
+
+#### 6.48.5 Resolution execution
+
+A risky verb builds an ephemeral Resolution Frame from:
+
+- Capability;
+- Position;
+- Preparation;
+- Opposition;
+- Stakes.
+
+It resolves:
+
+- Automatic;
+- Impossible;
+- Uncertain.
+
+Uncertain actions map to the approved qualitative Risk Tier and use deterministic-seeded bounded Fortune.
+
+Resolution Frames are process state, not a permanent Domain.
+
+The accepted Fortune result becomes part of the committed Event / resulting authority so narration retry cannot reroll it.
+
+#### 6.48.6 One required Core prerequisite — Authority Transaction Bridge
+
+Current `main` declarative Game World commands emit World Events, while Lifecycle `app.command` mutation is a separate typed seam.
+
+The approved game requires one player action to be able to atomically change several authorities.
+
+Therefore v1 requires a Core-supported **Authority Transaction Bridge**.
+
+The bridge must allow an author-declared game verb to:
+
+1. read only explicitly granted authoritative / player-safe records needed for validation;
+2. validate the command against current revision and world rules;
+3. produce zero or more World Events;
+4. execute zero or more predeclared typed Lifecycle `app.command` effects;
+5. optionally advance the declared canonical world clock;
+6. update / publish derived indexes;
+7. commit all accepted effects under one revision / action receipt;
+8. fail closed with no partial world mutation.
+
+The bridge must not expose arbitrary namespace patching, dynamic domain names or generic JSON Patch to the model.
+
+#### 6.48.7 Resolver observation belongs to the same bridge
+
+The current Host authority-first path does not inject Package-defined observation projectors into `createGameLlmRuntime`.
+
+Therefore the Authority Transaction Bridge must also expose a bounded **intent observation** assembled from player-safe / action-relevant authority.
+
+This observation exists so the resolver can map natural references such as:
+
+- “Arthur”;
+- “the death certificate”;
+- “that Eastbank file”
+
+to stable candidate refs without receiving hidden World Truth.
+
+The resolver observation is not an NPC-private view and must not contain private actor Beliefs / Memories unless the selected verb is itself authorized to query them during validation after the resolver has selected a target.
+
+This observation requirement is part of the same Core bridge, not a separate general information bypass.
+
+#### 6.48.8 Transaction example
+
+For an interview action such as showing an Evidence item to a target and asking a question, one accepted transaction may create:
+
+- a Communication Event;
+- a source-attributed Testimony Belief;
+- a target Memory update;
+- a player Finding / Matter update;
+- Evidence / relation references;
+- elapsed world time;
+- Operational Exposure.
+
+All accepted effects commit as one revision.
+
+No intermediate partially updated world may be visible.
+
+#### 6.48.9 NPC interaction in v1 does not require per-NPC Model Tasks
+
+Routine NPC conversation / reaction uses authority state plus social-resolution rules.
+
+Flow:
+
+1. resolver selects `interview` or another social verb;
+2. transaction validation reads only the target actor's permitted Beliefs / Memories / Relations / Constraints;
+3. deterministic / bounded rules decide what can be revealed, refused or changed;
+4. the transaction commits an observable actor-response Event and any legitimate perspective changes;
+5. Narrator renders the approved visible response into natural dialogue.
+
+The Narrator does not receive the target's complete private cognitive state.
+
+This avoids the current 16-View per-actor scaling problem for v1.
+
+#### 6.48.10 Dynamic actor projection is a future capability, not a v1 blocker
+
+A future feature may add invocation-time dynamic actor-bound Information projection for complex autonomous Major Actor model reasoning.
+
+It is not required for v1 because ordinary NPC interaction is resolved through bounded authority rules and observable response Events.
+
+Do not weaken perspective isolation merely to provide every NPC with a dedicated model.
+
+#### 6.48.11 Generated-content promotion
+
+Tier C / incidental generated content remains non-authoritative until promotion is required.
+
+Promotion operations create stable authority such as:
+
+- Entity;
+- Relation;
+- initial permitted Belief / Memory state;
+- Location or Evidence entry where applicable.
+
+Promotion is itself a validated transaction.
+
+Once promoted, identity may not be casually regenerated in later turns.
+
+#### 6.48.12 Derived investigation index publication
+
+The transaction layer knows which stable refs were changed.
+
+After accepted authority changes, it updates or rebuilds the relevant portion of `investigation_index`.
+
+The index may contain projection-oriented node/edge records such as:
+
+- nodeId;
+- nodeKind;
+- safe label / metadata refs;
+- from;
+- to;
+- relation kind;
+- epistemic / player-known visibility where required.
+
+The index cannot author Truth and is never directly model-writeable.
+
+Player Hypothesis links must be marked as perspective-derived rather than Canon graph relations.
+
+#### 6.48.13 Outcome Packet construction
+
+After transaction commit, construct the Narrator-facing Outcome Packet from:
+
+- accepted verb / objective;
+- committed World Events;
+- typed authority changes relevant to the player-visible result;
+- elapsed time;
+- structured consequence families;
+- unresolved uncertainty.
+
+It is a transient post-commit projection.
+
+Do not duplicate it into permanent truth state.
+
+#### 6.48.14 Package Data initialization
+
+Static Package Data provides initial definitions / seed material for:
+
+- institutions;
+- actor cores;
+- location cores;
+- Claims and anomaly rules;
+- Case Kits;
+- Canon Fragments;
+- starting records.
+
+Lifecycle / World initialization materializes only the state required at campaign start.
+
+Do not eagerly instantiate every generated population member or optional Case instance.
+
+### 6.49 Round 9.5 decision
+
+Approved:
+
+- approximately fifteen physical Lifecycle authority domains plus the Game World Event Journal and derived investigation index;
+- Game World Event Journal as occurrence history instead of duplicate general Event domain;
+- bounded intent-resolver verbs;
+- `intervene` replacing broad `act`;
+- Resolution Frame / Fortune as ephemeral transaction machinery;
+- one v1 Core prerequisite: Authority Transaction Bridge;
+- player-safe intent observation included in that bridge;
+- atomic World Event + typed Lifecycle effects + clock + derived-index commit;
+- no arbitrary patch API;
+- v1 NPC interaction through authority rules + observable response Events;
+- dynamic per-NPC model perspective deferred rather than weakening information isolation;
+- generated Tier C content promoted through validated transactions;
+- derived graph index refreshed downstream of authority writes;
+- Outcome Packet constructed from committed changes;
+- lazy materialization from Package Data definitions.
+
+Rejected:
+
+- sequential best-effort multi-domain commits for one player action;
+- exposing Lifecycle domains directly as arbitrary resolver tools;
+- per-NPC Model Task / static View for all persistent actors;
+- shared-model access to every actor's private cognition;
+- using the derived graph index as a source of Truth;
+- persisting Resolution Frame / Outcome Packet as duplicate shadow authority.
+
+### 6.50 Round 9.6 question — exact Information and Task Runtime mapping
+
+Round 9.6 must freeze the concrete v1 AI-facing projection/task set.
 
 It must determine:
 
-- the physical Lifecycle domains and scopes;
-- which domains may be combined safely;
-- domain retention / terminal policy direction;
-- which Package Data resources initialize each domain;
-- the exact restricted game-verb API available to the intent resolver;
-- which verbs are pure reads, which create proposals and which commit authority;
-- how one high-level player action can update multiple logical authorities consistently;
-- how Resolution Frames / bounded Fortune are executed;
-- how actor interaction obtains one target's private perspective without global leakage;
-- how generated Tier C / bounded content is promoted to authoritative Entity / Actor state;
-- how graph-index publication follows authoritative writes;
-- how Outcome Packet projection is constructed after commit;
-- whether any of these operations require Core changes on current `main`.
+- the exact Information Sources and their semantics;
+- the minimal fixed Information Views and which are display/context capable;
+- the bounded graph views used by player investigation / Reflection;
+- what Narrator receives after an authority transaction;
+- what Case Reflection receives;
+- what Claim Advisor receives;
+- what Agenda Deliberation receives;
+- whether any document-rendering Task is necessary in v1;
+- Task execution classes, result policies and queue policy;
+- which Tasks may propose authority and how acceptance works;
+- exact Knowledge / Memory exposure policy per Task;
+- Context item budgets direction;
+- how v1 avoids consuming scarce static Views for ordinary NPCs;
+- whether Round 9.6 reveals any further Core gap.
 
 
 ## Current Atria main audit baseline
