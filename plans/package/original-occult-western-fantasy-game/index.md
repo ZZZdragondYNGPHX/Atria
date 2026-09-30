@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.19 — Rounds 5–5.6 approved; Round 6 opened; not approved for implementation
+- **Status:** Discussion Draft v0.20 — Round 6 core approved; Round 6.5 opened; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -57,7 +57,7 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 6
+## Current route — Round 6.5
 
 Required reading:
 
@@ -182,7 +182,11 @@ Approved: Case as unresolved problem, world-owned Evidence, open Leads/Hypothese
 
 ### Round 6 — World simulation and information architecture
 
-Map Truth / Belief / Memory / Exposure, institutional Agendas, Case graph and logical time onto Atria.
+Approved: Atria Lifecycle + Information authority, perspective-bounded projections, one world clock, Agenda state machines, shared investigation graph and tiered actor simulation.
+
+### Round 6.5 — Authoritative domain decomposition
+
+Define concrete domain ownership for actors, information, relationships, Cases, Settlements, Claims, Agendas, injuries, economy and progression state.
 
 ### Round 7 — Native UI and interaction model
 
@@ -229,7 +233,8 @@ Currently carried forward from research:
 - approved deterministic first-Claim flow using Breach Imprints, curated Claim Seeds and institution-dependent stabilization;
 - approved core gameplay loop using resilient investigation, persistent consequences, time pressure, low-frequency high-risk violence and concrete downtime/Identity maintenance;
 - approved Native-authoritative uncertainty resolution with bounded Fortune, risk preview and structured consequences;
-- approved open Case architecture with world-owned Evidence, durable Settlement history and no quest-checklist ontology.
+- approved open Case architecture with world-owned Evidence, durable Settlement history and no quest-checklist ontology;
+- approved Atria-native simulation authority with bounded perspectives, shared information graph, one world clock, Agenda state machines and tiered actor simulation.
 
 All unapproved elements remain open to revision.
 
