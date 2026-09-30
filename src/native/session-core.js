@@ -550,7 +550,17 @@ export class SessionCore {
         if (task.resultPolicy.sink === 'app_command') {
             const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
             const authorityBudget = hasAuthorityTransactions(base) ? await createAuthorityPublicationBudget(base, installed) : null;
+            if (queued?.simulation) {
+                const { simulationTaskCurrent } = await import('./simulation-authority.js');
+                if (!authorityBudget || !simulationTaskCurrent(base, queued, authorityBudget)) throw new TypeError('Simulation proposal is stale');
+            }
             const prepared = await prepareDeclaredTaskResult(base, installed, queued, task, variant, { ...record, payload }, authorityBudget);
+            if (queued?.simulation) {
+                const { prepareWorldSimulation } = await import('./simulation-authority.js');
+                const candidate = { ...base, states: prepared.states };
+                const clockId = base.manifest.runtime.experienceContract.simulationRuntime.clockId;
+                prepared.states = (await prepareWorldSimulation(candidate, installed, candidate.states.atri_lifecycle.clocks[clockId], authorityBudget, { admit: false })).states;
+            }
             return this._publish(handle, base, { states: prepared.states, authorityBudget, taskResolution: record.invocationId,
                 taskRecord: { ...record, payload, kind: 'task', status: 'applied', resultClass: task.resultPolicy.resultClass,
                     anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId, authorityReceipt: prepared.authorityReceipt } });

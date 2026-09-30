@@ -24,7 +24,7 @@ export const authorityValue = value => assertJsonDeclaration(value, 'Authority T
 // validators, effects, private grants or authoring-only Resolution formulas.
 export async function authorityCatalog(base, installed) {
     const { logic } = await createTaskWorld(base, installed);
-    return immutable(logic.transactions.map(({ id, verb, inputSchema, intent }) => ({ id, verb, inputSchema, intent })));
+    return immutable(logic.transactions.filter(item => item.origin !== 'simulation').map(({ id, verb, inputSchema, intent }) => ({ id, verb, inputSchema, intent })));
 }
 export function authoritySelection(catalog, raw, { resolver = false } = {}) {
     const value = authorityValue(raw);

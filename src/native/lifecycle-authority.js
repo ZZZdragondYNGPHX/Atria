@@ -168,11 +168,13 @@ export async function prepareDeclaredTaskResult(base, installed, queued, task, v
     return { states: candidate.states, authorityReceipt: { kind: 'authority', decision: 'schedule',
         interactionId: mapping.id, baseRevisionId: base.revision.revisionId } };
 }
-function addOutbox(state, action, scopeId, occurrence, workflowId = null) {
+export function addOutbox(state, action, scopeId, occurrence, workflowId = null) {
     if (state.outbox.length >= 128) throw new TypeError('Scheduled interaction backpressure');
     const invocationId = 'lc:' + hashNativeDocument({ occurrence, scopeId, epoch: state.scopes[scopeId].epoch }).slice(0, 48);
-    if (state.outbox.some(item => item.invocationId === invocationId)) return;
+    const existing = state.outbox.find(item => item.invocationId === invocationId);
+    if (existing) return existing;
     state.outbox.push({ ...copy(action), invocationId, scopeId, scopeEpoch: state.scopes[scopeId].epoch, status: 'pending', workflowId });
+    return state.outbox.at(-1);
 }
 
 export async function prepareLifecycle(base, installed, action, authority = null) {
@@ -286,7 +288,13 @@ export async function prepareLifecycle(base, installed, action, authority = null
         const command = def.advances.find(item => item.id === action.commandId);
         if (!command || !Number.isSafeInteger(action.ticks) || action.ticks < 1 || action.ticks > command.maxTicks
             || !integer(state.clocks[command.clockId] + action.ticks)) throw new TypeError('Invalid declared World Clock advance');
-        state.clocks[command.clockId] += action.ticks;
+        if (candidate.manifest.runtime.experienceContract.simulationRuntime?.clockId === command.clockId) {
+            if (!authority) throw new TypeError('Simulation requires a shared Authority budget');
+            const { prepareWorldSimulation } = await import('./simulation-authority.js');
+            const prepared = await prepareWorldSimulation(candidate, installed, state.clocks[command.clockId] + action.ticks, authority);
+            Object.assign(candidate.states, prepared.states);
+            Object.assign(state, prepared.states[NS]); candidate.states[NS] = state;
+        } else state.clocks[command.clockId] += action.ticks;
         events.push({ type: 'world.clock.advanced', clockId: command.clockId, ticks: action.ticks });
     } else if (action.kind === 'scope.transition') {
         fields(action, ['kind', 'scopeId', 'status'], 'Scope transition'); const scope = state.scopes[action.scopeId];

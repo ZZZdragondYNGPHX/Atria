@@ -8,5 +8,5 @@ export function frontendTransactions(manifest, owner, files) {
     const path = owner?.runtime?.game?.logic ?? manifest.runtime?.game?.logic;
     const bytes = files.get(path);
     if (!bytes || bytes.length > 2 * 1024 * 1024) throw new TypeError('Pinned Transaction logic required');
-    return compileDeclarativeLogic(JSON.parse(bytes.toString('utf8')), { data: {}, experienceContract: contract }).transactions;
+    return compileDeclarativeLogic(JSON.parse(bytes.toString('utf8')), { data: {}, experienceContract: contract }).transactions.filter(item => item.origin !== 'simulation');
 }

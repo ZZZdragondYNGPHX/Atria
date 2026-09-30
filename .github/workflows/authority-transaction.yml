@@ -2,7 +2,7 @@ name: Authority Transaction
 
 on:
   push:
-    branches: [main, feat/authority-transaction]
+    branches: [main, feat/authority-transaction, feat/world-simulation-scheduling]
     paths:
       - 'public/shared/native-*.js'
       - 'public/scripts/native/**'
@@ -69,6 +69,7 @@ jobs:
         run: >-
           npm run test:unit --prefix tests -- --runInBand --verbose=false
           --runTestsByPath
+          native/simulation-contract.test.js native/simulation-candidate.test.js native/simulation-task.test.js native/simulation-session.test.js
           native/authority-contract-c1.test.js native/authority-resources-c1.test.js
           native/authority-candidate-c2.test.js native/authority-bounds-c2.test.js native/authority-session-c2.test.js
           game-runtime/transactions.test.js game-runtime/declarative.test.js
@@ -132,3 +133,7 @@ jobs:
           tests/native/helpers/authority-turn-fixture.js
           tests/native/authority-integration-c4.test.js
           tests/native/helpers/authority-restore-process.js
+          public/shared/native-simulation-contract.js public/scripts/native/experience/logic/bound-expressions.js
+          src/native/simulation-authority.js
+          tests/native/simulation-contract.test.js tests/native/simulation-candidate.test.js tests/native/simulation-task.test.js tests/native/simulation-session.test.js
+          tests/native/helpers/simulation-candidate-fixture.js tests/native/helpers/simulation-task-fixture.js
