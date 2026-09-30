@@ -1,7 +1,54 @@
 {
   "schemaVersion": 3,
   "commands": [],
-  "reducers": [],
+  "reducers": [
+    {
+      "type": "InteractionResolved",
+      "payloadSchema": {
+        "type": "object",
+        "properties": {
+          "verb": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "outcome": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "automatic",
+              "impossible",
+              "costly",
+              "clean",
+              "complicated",
+              "denied"
+            ]
+          },
+          "elapsed": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 60
+          },
+          "fortune": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          }
+        },
+        "required": [
+          "verb",
+          "outcome",
+          "elapsed",
+          "fortune"
+        ],
+        "additionalProperties": false
+      },
+      "assign": {
+        "interactionCount": {
+          "formula": "world.interactionCount + 1"
+        }
+      }
+    }
+  ],
   "rules": [],
   "interpretations": [],
   "derivedPublications": [
@@ -15,6 +62,15 @@
           "fields": [
             "scene"
           ]
+        },
+        {
+          "id": "evidence",
+          "domainId": "evidence",
+          "recordId": "fixture",
+          "fields": [
+            "known",
+            "text"
+          ]
         }
       ],
       "effects": [
@@ -27,7 +83,20 @@
             "text": {
               "formula": "reads.bootstrap.scene"
             }
-          }
+          },
+          "when": "!reads.evidence.known"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "scene_projection",
+          "commandId": "publish",
+          "recordId": "foundation",
+          "args": {
+            "text": {
+              "formula": "reads.evidence.text"
+            }
+          },
+          "when": "reads.evidence.known"
         }
       ]
     },
@@ -39,7 +108,25 @@
           "domainId": "entities",
           "recordId": "foundation",
           "fields": [
-            "playerStatus"
+            "position",
+            "prepared"
+          ]
+        },
+        {
+          "id": "conditions",
+          "domainId": "conditions",
+          "recordId": "fixture",
+          "fields": [
+            "text"
+          ]
+        },
+        {
+          "id": "relations",
+          "domainId": "relations",
+          "recordId": "fixture",
+          "fields": [
+            "text",
+            "trust"
           ]
         }
       ],
@@ -48,11 +135,314 @@
           "kind": "app.command",
           "domainId": "player_status_projection",
           "commandId": "publish",
-          "recordId": "foundation",
+          "recordId": "risk",
+          "args": {
+            "text": "Synthetic known-position preview: secure. Opposition may cost time; interviews can strain trust; physical intervention can bruise. No lethal stakes."
+          },
+          "when": "max(1, reads.bootstrap.position - reads.bootstrap.prepared) == 1"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_status_projection",
+          "commandId": "publish",
+          "recordId": "risk",
+          "args": {
+            "text": "Synthetic known-position preview: favorable. Opposition may cost time; interviews can strain trust; physical intervention can bruise. No lethal stakes."
+          },
+          "when": "max(1, reads.bootstrap.position - reads.bootstrap.prepared) == 2"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_status_projection",
+          "commandId": "publish",
+          "recordId": "risk",
+          "args": {
+            "text": "Synthetic known-position preview: contested. Opposition may cost time; interviews can strain trust; physical intervention can bruise. No lethal stakes."
+          },
+          "when": "max(1, reads.bootstrap.position - reads.bootstrap.prepared) == 3"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_status_projection",
+          "commandId": "publish",
+          "recordId": "risk",
+          "args": {
+            "text": "Synthetic known-position preview: risky. Opposition may cost time; interviews can strain trust; physical intervention can bruise. No lethal stakes."
+          },
+          "when": "max(1, reads.bootstrap.position - reads.bootstrap.prepared) == 4"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_status_projection",
+          "commandId": "publish",
+          "recordId": "risk",
+          "args": {
+            "text": "Synthetic known-position preview: desperate. Opposition may cost time; interviews can strain trust; physical intervention can bruise. No lethal stakes."
+          },
+          "when": "max(1, reads.bootstrap.position - reads.bootstrap.prepared) == 5"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_status_projection",
+          "commandId": "publish",
+          "recordId": "conditions",
           "args": {
             "text": {
-              "formula": "reads.bootstrap.playerStatus"
+              "formula": "reads.conditions.text"
             }
+          }
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_status_projection",
+          "commandId": "publish",
+          "recordId": "relations",
+          "args": {
+            "text": {
+              "formula": "reads.relations.text"
+            }
+          }
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_status_projection",
+          "commandId": "publish",
+          "recordId": "interview_risk",
+          "args": {
+            "text": "Known clerk interaction risk: secure. Permission/credible method still determine eligibility; strain can reduce future cooperation."
+          },
+          "when": "max(1, min(5, reads.bootstrap.position - reads.bootstrap.prepared - reads.relations.trust)) == 1"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_status_projection",
+          "commandId": "publish",
+          "recordId": "interview_risk",
+          "args": {
+            "text": "Known clerk interaction risk: favorable. Permission/credible method still determine eligibility; strain can reduce future cooperation."
+          },
+          "when": "max(1, min(5, reads.bootstrap.position - reads.bootstrap.prepared - reads.relations.trust)) == 2"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_status_projection",
+          "commandId": "publish",
+          "recordId": "interview_risk",
+          "args": {
+            "text": "Known clerk interaction risk: contested. Permission/credible method still determine eligibility; strain can reduce future cooperation."
+          },
+          "when": "max(1, min(5, reads.bootstrap.position - reads.bootstrap.prepared - reads.relations.trust)) == 3"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_status_projection",
+          "commandId": "publish",
+          "recordId": "interview_risk",
+          "args": {
+            "text": "Known clerk interaction risk: risky. Permission/credible method still determine eligibility; strain can reduce future cooperation."
+          },
+          "when": "max(1, min(5, reads.bootstrap.position - reads.bootstrap.prepared - reads.relations.trust)) == 4"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_status_projection",
+          "commandId": "publish",
+          "recordId": "interview_risk",
+          "args": {
+            "text": "Known clerk interaction risk: desperate. Permission/credible method still determine eligibility; strain can reduce future cooperation."
+          },
+          "when": "max(1, min(5, reads.bootstrap.position - reads.bootstrap.prepared - reads.relations.trust)) == 5"
+        }
+      ]
+    },
+    {
+      "id": "investigation.publish",
+      "reads": [
+        {
+          "id": "evidence",
+          "domainId": "evidence",
+          "recordId": "fixture",
+          "fields": [
+            "text",
+            "known"
+          ]
+        },
+        {
+          "id": "theory",
+          "domainId": "beliefs",
+          "recordId": "theory",
+          "fields": [
+            "text"
+          ]
+        }
+      ],
+      "effects": [
+        {
+          "kind": "app.command",
+          "domainId": "investigation_nodes",
+          "commandId": "publish",
+          "recordId": "fixture",
+          "args": {
+            "text": {
+              "formula": "reads.evidence.text"
+            },
+            "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+            "status": "known",
+            "channel": "witnessed",
+            "from": "",
+            "to": ""
+          },
+          "when": "reads.evidence.known"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "investigation_edges",
+          "commandId": "publish",
+          "recordId": "fixture",
+          "args": {
+            "text": "Hypothesis concerns this document; not verification.",
+            "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+            "status": "known",
+            "channel": "witnessed",
+            "from": "theory",
+            "to": "fixture"
+          }
+        },
+        {
+          "kind": "app.command",
+          "domainId": "investigation_nodes",
+          "commandId": "publish",
+          "recordId": "fixture",
+          "args": {
+            "text": "Registry slip: not yet examined.",
+            "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+            "status": "known",
+            "channel": "witnessed",
+            "from": "",
+            "to": ""
+          },
+          "when": "!reads.evidence.known"
+        },
+        {
+          "kind": "app.command",
+          "domainId": "investigation_nodes",
+          "commandId": "publish",
+          "recordId": "theory",
+          "args": {
+            "text": "Player hypothesis (unverified). See player epistemic record theory; this node does not assert its content as Truth.",
+            "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+            "status": "known",
+            "channel": "witnessed",
+            "from": "",
+            "to": ""
+          }
+        }
+      ]
+    },
+    {
+      "id": "epistemic.publish",
+      "reads": [
+        {
+          "id": "belief",
+          "domainId": "beliefs",
+          "recordId": "fixture",
+          "fields": [
+            "text",
+            "kind",
+            "actor",
+            "status",
+            "channel"
+          ]
+        },
+        {
+          "id": "theory",
+          "domainId": "beliefs",
+          "recordId": "theory",
+          "fields": [
+            "text",
+            "actor",
+            "status",
+            "channel"
+          ]
+        }
+      ],
+      "effects": [
+        {
+          "kind": "app.command",
+          "domainId": "player_epistemic_projection",
+          "commandId": "publish",
+          "recordId": "fixture",
+          "args": {
+            "text": {
+              "formula": "reads.belief.text"
+            },
+            "actor": {
+              "formula": "reads.belief.actor"
+            },
+            "status": {
+              "formula": "reads.belief.status"
+            },
+            "channel": {
+              "formula": "reads.belief.channel"
+            },
+            "from": "",
+            "to": ""
+          }
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_epistemic_projection",
+          "commandId": "publish",
+          "recordId": "theory",
+          "args": {
+            "text": {
+              "formula": "reads.theory.text"
+            },
+            "actor": {
+              "formula": "reads.theory.actor"
+            },
+            "status": {
+              "formula": "reads.theory.status"
+            },
+            "channel": {
+              "formula": "reads.theory.channel"
+            },
+            "from": "",
+            "to": ""
+          }
+        }
+      ]
+    },
+    {
+      "id": "memory.publish",
+      "reads": [
+        {
+          "id": "memory",
+          "domainId": "memories",
+          "recordId": "fixture",
+          "fields": [
+            "text",
+            "actor"
+          ]
+        }
+      ],
+      "effects": [
+        {
+          "kind": "app.command",
+          "domainId": "player_memory_projection",
+          "commandId": "publish",
+          "recordId": "fixture",
+          "args": {
+            "text": {
+              "formula": "reads.memory.text"
+            },
+            "actor": {
+              "formula": "reads.memory.actor"
+            },
+            "status": "known",
+            "channel": "witnessed",
+            "from": "",
+            "to": ""
           }
         }
       ]
@@ -69,7 +459,7 @@
         "additionalProperties": false
       },
       "intent": {
-        "expose": true,
+        "expose": false,
         "description": "P1 diagnostic only: confirm foundation contracts. No gameplay action or time advance."
       },
       "reads": [],
@@ -107,6 +497,2241 @@
           }
         },
         "maxBytes": 1024
+      }
+    },
+    {
+      "id": "interaction.observe",
+      "verb": "observe",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "inspect"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "read_slip"
+            ]
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective"
+        ],
+        "additionalProperties": false
+      },
+      "intent": {
+        "expose": true,
+        "description": "Synthetic registry: read_slip by inspect. Target fixture only; never choose eligibility, risk, outcomes or state patches. Expected minutes: 0."
+      },
+      "reads": [
+        {
+          "id": "evidence",
+          "domainId": "evidence",
+          "recordId": "fixture",
+          "fields": [
+            "text",
+            "provenance",
+            "custody",
+            "integrity",
+            "known",
+            "verified"
+          ]
+        }
+      ],
+      "validators": [],
+      "resolution": {
+        "kind": "deterministic",
+        "cases": [],
+        "fallback": "automatic"
+      },
+      "effects": [
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "observe",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "elapsed": 0,
+            "fortune": 0
+          }
+        },
+        {
+          "kind": "app.command",
+          "domainId": "evidence",
+          "commandId": "record",
+          "recordId": "fixture",
+          "args": {
+            "text": {
+              "formula": "reads.evidence.text"
+            },
+            "provenance": {
+              "formula": "reads.evidence.provenance"
+            },
+            "custody": {
+              "formula": "reads.evidence.custody"
+            },
+            "integrity": {
+              "formula": "reads.evidence.integrity"
+            },
+            "known": true,
+            "verified": {
+              "formula": "reads.evidence.verified"
+            }
+          }
+        }
+      ],
+      "derivedPublications": [
+        "scene_projection.publish",
+        "player_status_projection.publish",
+        "investigation.publish",
+        "epistemic.publish",
+        "memory.publish"
+      ],
+      "receipt": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "verb": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "target": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "fixture"
+              ]
+            },
+            "objective": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "method": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "outcome": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "automatic",
+                "impossible",
+                "costly",
+                "clean",
+                "complicated",
+                "denied"
+              ]
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "expectedMinutes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60
+            },
+            "timeAdvanced": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "verb",
+            "target",
+            "objective",
+            "method",
+            "outcome",
+            "notice",
+            "expectedMinutes",
+            "timeAdvanced"
+          ],
+          "additionalProperties": false
+        },
+        "projection": {
+          "verb": "observe",
+          "target": {
+            "formula": "args.target"
+          },
+          "objective": {
+            "formula": "args.objective"
+          },
+          "method": {
+            "formula": "args.method"
+          },
+          "outcome": {
+            "formula": "resolution.outcome"
+          },
+          "notice": "Synthetic registry action. Statements and hypotheses are perspective, never Truth. Consult safe projections for consequences.",
+          "expectedMinutes": 0,
+          "timeAdvanced": false
+        },
+        "maxBytes": 2048
+      }
+    },
+    {
+      "id": "interaction.verify",
+      "verb": "verify",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "compare"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "authenticate_copy"
+            ]
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective"
+        ],
+        "additionalProperties": false
+      },
+      "intent": {
+        "expose": true,
+        "description": "Synthetic registry: authenticate_copy by compare. Target fixture only; never choose eligibility, risk, outcomes or state patches. Expected minutes: 10."
+      },
+      "reads": [
+        {
+          "id": "frame",
+          "domainId": "entities",
+          "recordId": "foundation",
+          "fields": [
+            "trained",
+            "permission",
+            "opposed",
+            "position",
+            "prepared"
+          ]
+        },
+        {
+          "id": "evidence",
+          "domainId": "evidence",
+          "recordId": "fixture",
+          "fields": [
+            "text",
+            "provenance",
+            "custody",
+            "integrity",
+            "known",
+            "verified"
+          ]
+        }
+      ],
+      "validators": [],
+      "resolution": {
+        "kind": "bounded_fortune",
+        "sides": 3,
+        "cases": [
+          {
+            "id": "impossible",
+            "when": "!reads.frame.trained || !reads.frame.permission",
+            "outcome": "impossible"
+          },
+          {
+            "id": "automatic",
+            "when": "!reads.frame.opposed",
+            "outcome": "automatic"
+          },
+          {
+            "id": "secure.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 1 && resolution.roll == 1",
+            "outcome": "costly"
+          },
+          {
+            "id": "secure.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 1 && resolution.roll == 2",
+            "outcome": "clean"
+          },
+          {
+            "id": "favorable.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 2 && resolution.roll == 1",
+            "outcome": "complicated"
+          },
+          {
+            "id": "favorable.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 2 && resolution.roll == 2",
+            "outcome": "costly"
+          },
+          {
+            "id": "contested.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 3 && resolution.roll == 1",
+            "outcome": "complicated"
+          },
+          {
+            "id": "contested.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 3 && resolution.roll == 2",
+            "outcome": "costly"
+          },
+          {
+            "id": "risky.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 4 && resolution.roll == 1",
+            "outcome": "denied"
+          },
+          {
+            "id": "risky.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 4 && resolution.roll == 2",
+            "outcome": "complicated"
+          },
+          {
+            "id": "desperate.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 5 && resolution.roll == 1",
+            "outcome": "denied"
+          },
+          {
+            "id": "desperate.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 5 && resolution.roll == 2",
+            "outcome": "denied"
+          },
+          {
+            "id": "high.clean",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) <= 3 && resolution.roll == 3",
+            "outcome": "clean"
+          },
+          {
+            "id": "high.costly",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 4 && resolution.roll == 3",
+            "outcome": "costly"
+          }
+        ],
+        "fallback": "complicated"
+      },
+      "effects": [
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "verify",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": 0,
+            "elapsed": 0
+          },
+          "when": "resolution.outcome == \"impossible\""
+        },
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "verify",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": 0,
+            "elapsed": 10
+          },
+          "when": "resolution.outcome == \"automatic\""
+        },
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "verify",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": {
+              "formula": "resolution.roll"
+            },
+            "elapsed": 10
+          },
+          "when": "resolution.outcome != \"automatic\" && resolution.outcome != \"impossible\""
+        },
+        {
+          "kind": "app.command",
+          "domainId": "evidence",
+          "commandId": "record",
+          "recordId": "fixture",
+          "args": {
+            "text": {
+              "formula": "reads.evidence.text"
+            },
+            "provenance": {
+              "formula": "reads.evidence.provenance"
+            },
+            "custody": {
+              "formula": "reads.evidence.custody"
+            },
+            "integrity": {
+              "formula": "reads.evidence.integrity"
+            },
+            "known": true,
+            "verified": true
+          },
+          "when": "resolution.outcome == \"automatic\" || resolution.outcome == \"clean\" || resolution.outcome == \"costly\""
+        },
+        {
+          "kind": "clock.advance",
+          "commandId": "advance",
+          "ticks": 10,
+          "when": "resolution.outcome != \"impossible\""
+        },
+        {
+          "kind": "app.command",
+          "domainId": "conditions",
+          "commandId": "record",
+          "recordId": "fixture",
+          "args": {
+            "text": "Fatigued by demanding registry work; recovery is not simulated in P2.",
+            "severity": 1
+          },
+          "when": "resolution.outcome == \"costly\""
+        }
+      ],
+      "derivedPublications": [
+        "scene_projection.publish",
+        "player_status_projection.publish",
+        "investigation.publish",
+        "epistemic.publish",
+        "memory.publish"
+      ],
+      "receipt": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "verb": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "target": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "fixture"
+              ]
+            },
+            "objective": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "method": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "outcome": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "automatic",
+                "impossible",
+                "costly",
+                "clean",
+                "complicated",
+                "denied"
+              ]
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "expectedMinutes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60
+            },
+            "timeAdvanced": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "verb",
+            "target",
+            "objective",
+            "method",
+            "outcome",
+            "notice",
+            "expectedMinutes",
+            "timeAdvanced"
+          ],
+          "additionalProperties": false
+        },
+        "projection": {
+          "verb": "verify",
+          "target": {
+            "formula": "args.target"
+          },
+          "objective": {
+            "formula": "args.objective"
+          },
+          "method": {
+            "formula": "args.method"
+          },
+          "outcome": {
+            "formula": "resolution.outcome"
+          },
+          "notice": "Synthetic registry action. Statements and hypotheses are perspective, never Truth. Consult safe projections for consequences.",
+          "expectedMinutes": 10,
+          "timeAdvanced": {
+            "formula": "resolution.outcome != \"impossible\""
+          }
+        },
+        "maxBytes": 2048
+      }
+    },
+    {
+      "id": "interaction.interview",
+      "verb": "interview",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "ask"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "obtain_account"
+            ]
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective"
+        ],
+        "additionalProperties": false
+      },
+      "intent": {
+        "expose": true,
+        "description": "Synthetic registry: obtain_account by ask. Target fixture only; never choose eligibility, risk, outcomes or state patches. Expected minutes: 10."
+      },
+      "reads": [
+        {
+          "id": "frame",
+          "domainId": "entities",
+          "recordId": "foundation",
+          "fields": [
+            "trained",
+            "permission",
+            "opposed",
+            "position",
+            "prepared"
+          ]
+        },
+        {
+          "id": "relationship",
+          "domainId": "relations",
+          "recordId": "fixture",
+          "fields": [
+            "trust"
+          ]
+        }
+      ],
+      "validators": [],
+      "resolution": {
+        "kind": "bounded_fortune",
+        "sides": 3,
+        "cases": [
+          {
+            "id": "impossible",
+            "when": "!reads.frame.trained || !reads.frame.permission",
+            "outcome": "impossible"
+          },
+          {
+            "id": "automatic",
+            "when": "!reads.frame.opposed",
+            "outcome": "automatic"
+          },
+          {
+            "id": "secure.1",
+            "when": "max(1, min(5, reads.frame.position - reads.frame.prepared - reads.relationship.trust)) == 1 && resolution.roll == 1",
+            "outcome": "costly"
+          },
+          {
+            "id": "secure.2",
+            "when": "max(1, min(5, reads.frame.position - reads.frame.prepared - reads.relationship.trust)) == 1 && resolution.roll == 2",
+            "outcome": "clean"
+          },
+          {
+            "id": "favorable.1",
+            "when": "max(1, min(5, reads.frame.position - reads.frame.prepared - reads.relationship.trust)) == 2 && resolution.roll == 1",
+            "outcome": "complicated"
+          },
+          {
+            "id": "favorable.2",
+            "when": "max(1, min(5, reads.frame.position - reads.frame.prepared - reads.relationship.trust)) == 2 && resolution.roll == 2",
+            "outcome": "costly"
+          },
+          {
+            "id": "contested.1",
+            "when": "max(1, min(5, reads.frame.position - reads.frame.prepared - reads.relationship.trust)) == 3 && resolution.roll == 1",
+            "outcome": "complicated"
+          },
+          {
+            "id": "contested.2",
+            "when": "max(1, min(5, reads.frame.position - reads.frame.prepared - reads.relationship.trust)) == 3 && resolution.roll == 2",
+            "outcome": "costly"
+          },
+          {
+            "id": "risky.1",
+            "when": "max(1, min(5, reads.frame.position - reads.frame.prepared - reads.relationship.trust)) == 4 && resolution.roll == 1",
+            "outcome": "denied"
+          },
+          {
+            "id": "risky.2",
+            "when": "max(1, min(5, reads.frame.position - reads.frame.prepared - reads.relationship.trust)) == 4 && resolution.roll == 2",
+            "outcome": "complicated"
+          },
+          {
+            "id": "desperate.1",
+            "when": "max(1, min(5, reads.frame.position - reads.frame.prepared - reads.relationship.trust)) == 5 && resolution.roll == 1",
+            "outcome": "denied"
+          },
+          {
+            "id": "desperate.2",
+            "when": "max(1, min(5, reads.frame.position - reads.frame.prepared - reads.relationship.trust)) == 5 && resolution.roll == 2",
+            "outcome": "denied"
+          },
+          {
+            "id": "high.clean",
+            "when": "max(1, min(5, reads.frame.position - reads.frame.prepared - reads.relationship.trust)) <= 3 && resolution.roll == 3",
+            "outcome": "clean"
+          },
+          {
+            "id": "high.costly",
+            "when": "max(1, min(5, reads.frame.position - reads.frame.prepared - reads.relationship.trust)) == 4 && resolution.roll == 3",
+            "outcome": "costly"
+          }
+        ],
+        "fallback": "complicated"
+      },
+      "effects": [
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "interview",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": 0,
+            "elapsed": 0
+          },
+          "when": "resolution.outcome == \"impossible\""
+        },
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "interview",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": 0,
+            "elapsed": 10
+          },
+          "when": "resolution.outcome == \"automatic\""
+        },
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "interview",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": {
+              "formula": "resolution.roll"
+            },
+            "elapsed": 10
+          },
+          "when": "resolution.outcome != \"automatic\" && resolution.outcome != \"impossible\""
+        },
+        {
+          "kind": "app.command",
+          "domainId": "beliefs",
+          "commandId": "record",
+          "recordId": "fixture",
+          "args": {
+            "text": "The clerk reports a changed date. This testimony remains unverified.",
+            "kind": "testimony",
+            "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+            "status": "suspected",
+            "channel": "told_by"
+          },
+          "when": "resolution.outcome == \"automatic\" || resolution.outcome == \"clean\" || resolution.outcome == \"costly\""
+        },
+        {
+          "kind": "app.command",
+          "domainId": "memories",
+          "commandId": "record",
+          "recordId": "fixture",
+          "args": {
+            "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+            "text": "The player asked the clerk about the slip."
+          },
+          "when": "resolution.outcome != \"impossible\""
+        },
+        {
+          "kind": "app.command",
+          "domainId": "relations",
+          "commandId": "record",
+          "recordId": "fixture",
+          "args": {
+            "text": "The clerk remembers the approach.",
+            "trust": -1
+          },
+          "when": "resolution.outcome == \"costly\" || resolution.outcome == \"complicated\" || resolution.outcome == \"denied\""
+        },
+        {
+          "kind": "clock.advance",
+          "commandId": "advance",
+          "ticks": 10,
+          "when": "resolution.outcome != \"impossible\""
+        }
+      ],
+      "derivedPublications": [
+        "scene_projection.publish",
+        "player_status_projection.publish",
+        "investigation.publish",
+        "epistemic.publish",
+        "memory.publish"
+      ],
+      "receipt": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "verb": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "target": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "fixture"
+              ]
+            },
+            "objective": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "method": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "outcome": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "automatic",
+                "impossible",
+                "costly",
+                "clean",
+                "complicated",
+                "denied"
+              ]
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "expectedMinutes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60
+            },
+            "timeAdvanced": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "verb",
+            "target",
+            "objective",
+            "method",
+            "outcome",
+            "notice",
+            "expectedMinutes",
+            "timeAdvanced"
+          ],
+          "additionalProperties": false
+        },
+        "projection": {
+          "verb": "interview",
+          "target": {
+            "formula": "args.target"
+          },
+          "objective": {
+            "formula": "args.objective"
+          },
+          "method": {
+            "formula": "args.method"
+          },
+          "outcome": {
+            "formula": "resolution.outcome"
+          },
+          "notice": "Synthetic registry action. Statements and hypotheses are perspective, never Truth. Consult safe projections for consequences.",
+          "expectedMinutes": 10,
+          "timeAdvanced": {
+            "formula": "resolution.outcome != \"impossible\""
+          }
+        },
+        "maxBytes": 2048
+      }
+    },
+    {
+      "id": "interaction.access",
+      "verb": "access",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "present_credentials"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "enter_registry"
+            ]
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective"
+        ],
+        "additionalProperties": false
+      },
+      "intent": {
+        "expose": true,
+        "description": "Synthetic registry: enter_registry by present_credentials. Target fixture only; never choose eligibility, risk, outcomes or state patches. Expected minutes: 5."
+      },
+      "reads": [
+        {
+          "id": "frame",
+          "domainId": "entities",
+          "recordId": "foundation",
+          "fields": [
+            "trained",
+            "permission",
+            "opposed",
+            "position",
+            "prepared"
+          ]
+        }
+      ],
+      "validators": [],
+      "resolution": {
+        "kind": "bounded_fortune",
+        "sides": 3,
+        "cases": [
+          {
+            "id": "impossible",
+            "when": "!reads.frame.trained",
+            "outcome": "impossible"
+          },
+          {
+            "id": "automatic",
+            "when": "!reads.frame.opposed",
+            "outcome": "automatic"
+          },
+          {
+            "id": "secure.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 1 && resolution.roll == 1",
+            "outcome": "costly"
+          },
+          {
+            "id": "secure.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 1 && resolution.roll == 2",
+            "outcome": "clean"
+          },
+          {
+            "id": "favorable.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 2 && resolution.roll == 1",
+            "outcome": "complicated"
+          },
+          {
+            "id": "favorable.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 2 && resolution.roll == 2",
+            "outcome": "costly"
+          },
+          {
+            "id": "contested.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 3 && resolution.roll == 1",
+            "outcome": "complicated"
+          },
+          {
+            "id": "contested.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 3 && resolution.roll == 2",
+            "outcome": "costly"
+          },
+          {
+            "id": "risky.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 4 && resolution.roll == 1",
+            "outcome": "denied"
+          },
+          {
+            "id": "risky.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 4 && resolution.roll == 2",
+            "outcome": "complicated"
+          },
+          {
+            "id": "desperate.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 5 && resolution.roll == 1",
+            "outcome": "denied"
+          },
+          {
+            "id": "desperate.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 5 && resolution.roll == 2",
+            "outcome": "denied"
+          },
+          {
+            "id": "high.clean",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) <= 3 && resolution.roll == 3",
+            "outcome": "clean"
+          },
+          {
+            "id": "high.costly",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 4 && resolution.roll == 3",
+            "outcome": "costly"
+          }
+        ],
+        "fallback": "complicated"
+      },
+      "effects": [
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "access",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": 0,
+            "elapsed": 0
+          },
+          "when": "resolution.outcome == \"impossible\""
+        },
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "access",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": 0,
+            "elapsed": 5
+          },
+          "when": "resolution.outcome == \"automatic\""
+        },
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "access",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": {
+              "formula": "resolution.roll"
+            },
+            "elapsed": 5
+          },
+          "when": "resolution.outcome != \"automatic\" && resolution.outcome != \"impossible\""
+        },
+        {
+          "kind": "app.command",
+          "domainId": "entities",
+          "commandId": "gain_access",
+          "recordId": "foundation",
+          "args": {
+            "permission": true,
+            "prepared": 1
+          },
+          "when": "resolution.outcome == \"automatic\" || resolution.outcome == \"clean\" || resolution.outcome == \"costly\""
+        },
+        {
+          "kind": "clock.advance",
+          "commandId": "advance",
+          "ticks": 5,
+          "when": "resolution.outcome != \"impossible\""
+        },
+        {
+          "kind": "app.command",
+          "domainId": "conditions",
+          "commandId": "record",
+          "recordId": "fixture",
+          "args": {
+            "text": "Fatigued by demanding registry work; recovery is not simulated in P2.",
+            "severity": 1
+          },
+          "when": "resolution.outcome == \"costly\""
+        }
+      ],
+      "derivedPublications": [
+        "scene_projection.publish",
+        "player_status_projection.publish",
+        "investigation.publish",
+        "epistemic.publish",
+        "memory.publish"
+      ],
+      "receipt": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "verb": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "target": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "fixture"
+              ]
+            },
+            "objective": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "method": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "outcome": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "automatic",
+                "impossible",
+                "costly",
+                "clean",
+                "complicated",
+                "denied"
+              ]
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "expectedMinutes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60
+            },
+            "timeAdvanced": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "verb",
+            "target",
+            "objective",
+            "method",
+            "outcome",
+            "notice",
+            "expectedMinutes",
+            "timeAdvanced"
+          ],
+          "additionalProperties": false
+        },
+        "projection": {
+          "verb": "access",
+          "target": {
+            "formula": "args.target"
+          },
+          "objective": {
+            "formula": "args.objective"
+          },
+          "method": {
+            "formula": "args.method"
+          },
+          "outcome": {
+            "formula": "resolution.outcome"
+          },
+          "notice": "Synthetic registry action. Statements and hypotheses are perspective, never Truth. Consult safe projections for consequences.",
+          "expectedMinutes": 5,
+          "timeAdvanced": {
+            "formula": "resolution.outcome != \"impossible\""
+          }
+        },
+        "maxBytes": 2048
+      }
+    },
+    {
+      "id": "interaction.test",
+      "verb": "test",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "sample"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "test_ink"
+            ]
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective"
+        ],
+        "additionalProperties": false
+      },
+      "intent": {
+        "expose": true,
+        "description": "Synthetic registry: test_ink by sample. Target fixture only; never choose eligibility, risk, outcomes or state patches. Expected minutes: 15."
+      },
+      "reads": [
+        {
+          "id": "frame",
+          "domainId": "entities",
+          "recordId": "foundation",
+          "fields": [
+            "trained",
+            "permission",
+            "opposed",
+            "position",
+            "prepared"
+          ]
+        },
+        {
+          "id": "evidence",
+          "domainId": "evidence",
+          "recordId": "fixture",
+          "fields": [
+            "text",
+            "provenance",
+            "custody",
+            "integrity",
+            "known",
+            "verified"
+          ]
+        }
+      ],
+      "validators": [],
+      "resolution": {
+        "kind": "bounded_fortune",
+        "sides": 3,
+        "cases": [
+          {
+            "id": "impossible",
+            "when": "!reads.frame.trained || !reads.frame.permission",
+            "outcome": "impossible"
+          },
+          {
+            "id": "automatic",
+            "when": "!reads.frame.opposed",
+            "outcome": "automatic"
+          },
+          {
+            "id": "secure.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 1 && resolution.roll == 1",
+            "outcome": "costly"
+          },
+          {
+            "id": "secure.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 1 && resolution.roll == 2",
+            "outcome": "clean"
+          },
+          {
+            "id": "favorable.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 2 && resolution.roll == 1",
+            "outcome": "complicated"
+          },
+          {
+            "id": "favorable.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 2 && resolution.roll == 2",
+            "outcome": "costly"
+          },
+          {
+            "id": "contested.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 3 && resolution.roll == 1",
+            "outcome": "complicated"
+          },
+          {
+            "id": "contested.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 3 && resolution.roll == 2",
+            "outcome": "costly"
+          },
+          {
+            "id": "risky.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 4 && resolution.roll == 1",
+            "outcome": "denied"
+          },
+          {
+            "id": "risky.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 4 && resolution.roll == 2",
+            "outcome": "complicated"
+          },
+          {
+            "id": "desperate.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 5 && resolution.roll == 1",
+            "outcome": "denied"
+          },
+          {
+            "id": "desperate.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 5 && resolution.roll == 2",
+            "outcome": "denied"
+          },
+          {
+            "id": "high.clean",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) <= 3 && resolution.roll == 3",
+            "outcome": "clean"
+          },
+          {
+            "id": "high.costly",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 4 && resolution.roll == 3",
+            "outcome": "costly"
+          }
+        ],
+        "fallback": "complicated"
+      },
+      "effects": [
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "test",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": 0,
+            "elapsed": 0
+          },
+          "when": "resolution.outcome == \"impossible\""
+        },
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "test",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": 0,
+            "elapsed": 15
+          },
+          "when": "resolution.outcome == \"automatic\""
+        },
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "test",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": {
+              "formula": "resolution.roll"
+            },
+            "elapsed": 15
+          },
+          "when": "resolution.outcome != \"automatic\" && resolution.outcome != \"impossible\""
+        },
+        {
+          "kind": "app.command",
+          "domainId": "evidence",
+          "commandId": "record",
+          "recordId": "fixture",
+          "args": {
+            "text": {
+              "formula": "reads.evidence.text"
+            },
+            "provenance": {
+              "formula": "reads.evidence.provenance"
+            },
+            "custody": {
+              "formula": "reads.evidence.custody"
+            },
+            "integrity": "tested",
+            "known": true,
+            "verified": {
+              "formula": "reads.evidence.verified"
+            }
+          },
+          "when": "resolution.outcome == \"automatic\" || resolution.outcome == \"clean\" || resolution.outcome == \"costly\""
+        },
+        {
+          "kind": "clock.advance",
+          "commandId": "advance",
+          "ticks": 15,
+          "when": "resolution.outcome != \"impossible\""
+        },
+        {
+          "kind": "app.command",
+          "domainId": "conditions",
+          "commandId": "record",
+          "recordId": "fixture",
+          "args": {
+            "text": "Fatigued by demanding registry work; recovery is not simulated in P2.",
+            "severity": 1
+          },
+          "when": "resolution.outcome == \"costly\""
+        }
+      ],
+      "derivedPublications": [
+        "scene_projection.publish",
+        "player_status_projection.publish",
+        "investigation.publish",
+        "epistemic.publish",
+        "memory.publish"
+      ],
+      "receipt": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "verb": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "target": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "fixture"
+              ]
+            },
+            "objective": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "method": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "outcome": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "automatic",
+                "impossible",
+                "costly",
+                "clean",
+                "complicated",
+                "denied"
+              ]
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "expectedMinutes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60
+            },
+            "timeAdvanced": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "verb",
+            "target",
+            "objective",
+            "method",
+            "outcome",
+            "notice",
+            "expectedMinutes",
+            "timeAdvanced"
+          ],
+          "additionalProperties": false
+        },
+        "projection": {
+          "verb": "test",
+          "target": {
+            "formula": "args.target"
+          },
+          "objective": {
+            "formula": "args.objective"
+          },
+          "method": {
+            "formula": "args.method"
+          },
+          "outcome": {
+            "formula": "resolution.outcome"
+          },
+          "notice": "Synthetic registry action. Statements and hypotheses are perspective, never Truth. Consult safe projections for consequences.",
+          "expectedMinutes": 15,
+          "timeAdvanced": {
+            "formula": "resolution.outcome != \"impossible\""
+          }
+        },
+        "maxBytes": 2048
+      }
+    },
+    {
+      "id": "interaction.intervene",
+      "verb": "intervene",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "secure"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "protect_slip"
+            ]
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective"
+        ],
+        "additionalProperties": false
+      },
+      "intent": {
+        "expose": true,
+        "description": "Synthetic registry: protect_slip by secure. Target fixture only; never choose eligibility, risk, outcomes or state patches. Expected minutes: 10."
+      },
+      "reads": [
+        {
+          "id": "frame",
+          "domainId": "entities",
+          "recordId": "foundation",
+          "fields": [
+            "trained",
+            "permission",
+            "opposed",
+            "position",
+            "prepared"
+          ]
+        }
+      ],
+      "validators": [],
+      "resolution": {
+        "kind": "bounded_fortune",
+        "sides": 3,
+        "cases": [
+          {
+            "id": "impossible",
+            "when": "!reads.frame.trained || !reads.frame.permission",
+            "outcome": "impossible"
+          },
+          {
+            "id": "automatic",
+            "when": "!reads.frame.opposed",
+            "outcome": "automatic"
+          },
+          {
+            "id": "secure.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 1 && resolution.roll == 1",
+            "outcome": "costly"
+          },
+          {
+            "id": "secure.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 1 && resolution.roll == 2",
+            "outcome": "clean"
+          },
+          {
+            "id": "favorable.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 2 && resolution.roll == 1",
+            "outcome": "complicated"
+          },
+          {
+            "id": "favorable.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 2 && resolution.roll == 2",
+            "outcome": "costly"
+          },
+          {
+            "id": "contested.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 3 && resolution.roll == 1",
+            "outcome": "complicated"
+          },
+          {
+            "id": "contested.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 3 && resolution.roll == 2",
+            "outcome": "costly"
+          },
+          {
+            "id": "risky.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 4 && resolution.roll == 1",
+            "outcome": "denied"
+          },
+          {
+            "id": "risky.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 4 && resolution.roll == 2",
+            "outcome": "complicated"
+          },
+          {
+            "id": "desperate.1",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 5 && resolution.roll == 1",
+            "outcome": "denied"
+          },
+          {
+            "id": "desperate.2",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 5 && resolution.roll == 2",
+            "outcome": "denied"
+          },
+          {
+            "id": "high.clean",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) <= 3 && resolution.roll == 3",
+            "outcome": "clean"
+          },
+          {
+            "id": "high.costly",
+            "when": "max(1, reads.frame.position - reads.frame.prepared) == 4 && resolution.roll == 3",
+            "outcome": "costly"
+          }
+        ],
+        "fallback": "complicated"
+      },
+      "effects": [
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "intervene",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": 0,
+            "elapsed": 0
+          },
+          "when": "resolution.outcome == \"impossible\""
+        },
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "intervene",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": 0,
+            "elapsed": 10
+          },
+          "when": "resolution.outcome == \"automatic\""
+        },
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "intervene",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": {
+              "formula": "resolution.roll"
+            },
+            "elapsed": 10
+          },
+          "when": "resolution.outcome != \"automatic\" && resolution.outcome != \"impossible\""
+        },
+        {
+          "kind": "app.command",
+          "domainId": "conditions",
+          "commandId": "record",
+          "recordId": "fixture",
+          "args": {
+            "text": "Bruised while securing the slip.",
+            "severity": 1
+          },
+          "when": "resolution.outcome == \"costly\" || resolution.outcome == \"complicated\" || resolution.outcome == \"denied\""
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_matters",
+          "commandId": "record",
+          "recordId": "fixture",
+          "args": {
+            "text": "Protection attempt recorded; investigation remains open.",
+            "status": "open",
+            "actor": "actor_78fd62e4f874657db785310ec4c9ef52"
+          },
+          "when": "resolution.outcome == \"complicated\" || resolution.outcome == \"denied\""
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_matters",
+          "commandId": "record",
+          "recordId": "fixture",
+          "args": {
+            "text": "Protection attempt recorded; investigation remains open.",
+            "status": "open",
+            "actor": "actor_78fd62e4f874657db785310ec4c9ef52"
+          },
+          "when": "resolution.outcome == \"automatic\" || resolution.outcome == \"clean\" || resolution.outcome == \"costly\""
+        },
+        {
+          "kind": "clock.advance",
+          "commandId": "advance",
+          "ticks": 10,
+          "when": "resolution.outcome != \"impossible\""
+        }
+      ],
+      "derivedPublications": [
+        "scene_projection.publish",
+        "player_status_projection.publish",
+        "investigation.publish",
+        "epistemic.publish",
+        "memory.publish"
+      ],
+      "receipt": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "verb": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "target": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "fixture"
+              ]
+            },
+            "objective": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "method": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "outcome": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "automatic",
+                "impossible",
+                "costly",
+                "clean",
+                "complicated",
+                "denied"
+              ]
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "expectedMinutes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60
+            },
+            "timeAdvanced": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "verb",
+            "target",
+            "objective",
+            "method",
+            "outcome",
+            "notice",
+            "expectedMinutes",
+            "timeAdvanced"
+          ],
+          "additionalProperties": false
+        },
+        "projection": {
+          "verb": "intervene",
+          "target": {
+            "formula": "args.target"
+          },
+          "objective": {
+            "formula": "args.objective"
+          },
+          "method": {
+            "formula": "args.method"
+          },
+          "outcome": {
+            "formula": "resolution.outcome"
+          },
+          "notice": "Synthetic registry action. Statements and hypotheses are perspective, never Truth. Consult safe projections for consequences.",
+          "expectedMinutes": 10,
+          "timeAdvanced": {
+            "formula": "resolution.outcome != \"impossible\""
+          }
+        },
+        "maxBytes": 2048
+      }
+    },
+    {
+      "id": "interaction.create_hypothesis",
+      "verb": "create_hypothesis",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "propose"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "record_theory"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective",
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "intent": {
+        "expose": true,
+        "description": "Synthetic registry: record_theory by propose. Target fixture only; never choose eligibility, risk, outcomes or state patches. Expected minutes: 0."
+      },
+      "reads": [],
+      "validators": [],
+      "resolution": {
+        "kind": "deterministic",
+        "cases": [],
+        "fallback": "automatic"
+      },
+      "effects": [
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "create_hypothesis",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": 0,
+            "elapsed": 0
+          }
+        },
+        {
+          "kind": "app.command",
+          "domainId": "beliefs",
+          "commandId": "record",
+          "recordId": "theory",
+          "args": {
+            "text": {
+              "formula": "args.text"
+            },
+            "kind": "hypothesis",
+            "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+            "status": "suspected",
+            "channel": "inference"
+          }
+        }
+      ],
+      "derivedPublications": [
+        "scene_projection.publish",
+        "player_status_projection.publish",
+        "investigation.publish",
+        "epistemic.publish",
+        "memory.publish"
+      ],
+      "receipt": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "verb": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "target": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "fixture"
+              ]
+            },
+            "objective": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "method": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "outcome": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "automatic",
+                "impossible",
+                "costly",
+                "clean",
+                "complicated",
+                "denied"
+              ]
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "expectedMinutes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60
+            },
+            "timeAdvanced": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "verb",
+            "target",
+            "objective",
+            "method",
+            "outcome",
+            "notice",
+            "expectedMinutes",
+            "timeAdvanced"
+          ],
+          "additionalProperties": false
+        },
+        "projection": {
+          "verb": "create_hypothesis",
+          "target": {
+            "formula": "args.target"
+          },
+          "objective": {
+            "formula": "args.objective"
+          },
+          "method": {
+            "formula": "args.method"
+          },
+          "outcome": {
+            "formula": "resolution.outcome"
+          },
+          "notice": "Synthetic registry action. Statements and hypotheses are perspective, never Truth. Consult safe projections for consequences.",
+          "expectedMinutes": 0,
+          "timeAdvanced": false
+        },
+        "maxBytes": 2048
+      }
+    },
+    {
+      "id": "interaction.create_lead",
+      "verb": "create_lead",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "propose"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "record_direction"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective",
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "intent": {
+        "expose": true,
+        "description": "Synthetic registry: record_direction by propose. Target fixture only; never choose eligibility, risk, outcomes or state patches. Expected minutes: 0."
+      },
+      "reads": [],
+      "validators": [],
+      "resolution": {
+        "kind": "deterministic",
+        "cases": [],
+        "fallback": "automatic"
+      },
+      "effects": [
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "create_lead",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": 0,
+            "elapsed": 0
+          }
+        },
+        {
+          "kind": "app.command",
+          "domainId": "player_matters",
+          "commandId": "record",
+          "recordId": "lead",
+          "args": {
+            "text": {
+              "formula": "args.text"
+            },
+            "status": "open",
+            "actor": "actor_78fd62e4f874657db785310ec4c9ef52"
+          }
+        }
+      ],
+      "derivedPublications": [
+        "scene_projection.publish",
+        "player_status_projection.publish",
+        "investigation.publish",
+        "epistemic.publish",
+        "memory.publish"
+      ],
+      "receipt": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "verb": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "target": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "fixture"
+              ]
+            },
+            "objective": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "method": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "outcome": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "automatic",
+                "impossible",
+                "costly",
+                "clean",
+                "complicated",
+                "denied"
+              ]
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "expectedMinutes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60
+            },
+            "timeAdvanced": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "verb",
+            "target",
+            "objective",
+            "method",
+            "outcome",
+            "notice",
+            "expectedMinutes",
+            "timeAdvanced"
+          ],
+          "additionalProperties": false
+        },
+        "projection": {
+          "verb": "create_lead",
+          "target": {
+            "formula": "args.target"
+          },
+          "objective": {
+            "formula": "args.objective"
+          },
+          "method": {
+            "formula": "args.method"
+          },
+          "outcome": {
+            "formula": "resolution.outcome"
+          },
+          "notice": "Synthetic registry action. Statements and hypotheses are perspective, never Truth. Consult safe projections for consequences.",
+          "expectedMinutes": 0,
+          "timeAdvanced": false
+        },
+        "maxBytes": 2048
+      }
+    },
+    {
+      "id": "interaction.advance_time",
+      "verb": "advance_time",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "wait"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "wait_here"
+            ]
+          },
+          "minutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective",
+          "minutes"
+        ],
+        "additionalProperties": false
+      },
+      "intent": {
+        "expose": true,
+        "description": "Synthetic registry: wait_here by wait. Target fixture only; never choose eligibility, risk, outcomes or state patches. Expected minutes: 1–60."
+      },
+      "reads": [],
+      "validators": [],
+      "resolution": {
+        "kind": "deterministic",
+        "cases": [],
+        "fallback": "automatic"
+      },
+      "effects": [
+        {
+          "kind": "world.event",
+          "type": "InteractionResolved",
+          "payload": {
+            "verb": "advance_time",
+            "outcome": {
+              "formula": "resolution.outcome"
+            },
+            "fortune": 0,
+            "elapsed": {
+              "formula": "args.minutes"
+            }
+          }
+        },
+        {
+          "kind": "clock.advance",
+          "commandId": "advance",
+          "ticks": {
+            "formula": "args.minutes"
+          },
+          "when": "resolution.outcome != \"impossible\""
+        }
+      ],
+      "derivedPublications": [
+        "scene_projection.publish",
+        "player_status_projection.publish",
+        "investigation.publish",
+        "epistemic.publish",
+        "memory.publish"
+      ],
+      "receipt": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "verb": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "target": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "fixture"
+              ]
+            },
+            "objective": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "method": {
+              "type": "string",
+              "maxLength": 32
+            },
+            "outcome": {
+              "type": "string",
+              "maxLength": 32,
+              "enum": [
+                "automatic",
+                "impossible",
+                "costly",
+                "clean",
+                "complicated",
+                "denied"
+              ]
+            },
+            "notice": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "expectedMinutes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 60
+            },
+            "timeAdvanced": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "verb",
+            "target",
+            "objective",
+            "method",
+            "outcome",
+            "notice",
+            "expectedMinutes",
+            "timeAdvanced"
+          ],
+          "additionalProperties": false
+        },
+        "projection": {
+          "verb": "advance_time",
+          "target": {
+            "formula": "args.target"
+          },
+          "objective": {
+            "formula": "args.objective"
+          },
+          "method": {
+            "formula": "args.method"
+          },
+          "outcome": {
+            "formula": "resolution.outcome"
+          },
+          "notice": "Synthetic wait only. Autonomous obligations/scheduling arrive in P3.",
+          "expectedMinutes": {
+            "formula": "args.minutes"
+          },
+          "timeAdvanced": {
+            "formula": "resolution.outcome != \"impossible\""
+          }
+        },
+        "maxBytes": 2048
       }
     }
   ]

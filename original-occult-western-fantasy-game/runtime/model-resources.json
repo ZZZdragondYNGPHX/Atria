@@ -4,7 +4,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
     },
     "resource": {
       "schemaVersion": 1,
@@ -15,7 +15,7 @@
       "stages": [
         "stage.main"
       ],
-      "body": "P1 contract probe only. Use only supplied player-safe projections and Host receipt. Never invent facts, hidden causes, state changes or gameplay outcomes. This is not the authored game opening."
+      "body": "P2 synthetic registry fixture. Render only Host-approved receipt and disclosure-safe views. Outcomes, time, evidence provenance, testimony and conditions are settled by authority. Never promote a hypothesis or testimony to Truth. Never invent a mechanical consequence or reinterpret a failed action as disproving a theory. No hidden Canon, reasoning trace or unused Fortune draw belongs in narration."
     }
   },
   {
@@ -23,7 +23,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
     },
     "resource": {
       "schemaVersion": 1,
@@ -40,7 +40,7 @@
               "revision": "p1",
               "scope": "package",
               "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-              "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+              "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
             }
           ]
         }
@@ -52,7 +52,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
     },
     "resource": {
       "schemaVersion": 1,
@@ -72,7 +72,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
     },
     "resource": {
       "schemaVersion": 1,
@@ -83,7 +83,7 @@
       "stages": [
         "stage.main"
       ],
-      "body": "P1 contract probe only. Use only supplied player-safe projections and Host receipt. Never invent facts, hidden causes, state changes or gameplay outcomes. This is not the authored game opening."
+      "body": "P2 synthetic registry fixture. Render only Host-approved receipt and disclosure-safe views. Outcomes, time, evidence provenance, testimony and conditions are settled by authority. Never promote a hypothesis or testimony to Truth. Never invent a mechanical consequence or reinterpret a failed action as disproving a theory. No hidden Canon, reasoning trace or unused Fortune draw belongs in narration."
     }
   },
   {
@@ -91,7 +91,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
     },
     "resource": {
       "schemaVersion": 1,
@@ -108,7 +108,7 @@
               "revision": "p1",
               "scope": "package",
               "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-              "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+              "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
             }
           ]
         }
@@ -120,7 +120,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
     },
     "resource": {
       "schemaVersion": 1,
@@ -140,7 +140,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
     },
     "resource": {
       "schemaVersion": 1,
@@ -151,7 +151,7 @@
       "stages": [
         "stage.main"
       ],
-      "body": "P1 contract probe only. Use only supplied player-safe projections and Host receipt. Never invent facts, hidden causes, state changes or gameplay outcomes. This is not the authored game opening."
+      "body": "P2 synthetic registry fixture. Render only Host-approved receipt and disclosure-safe views. Outcomes, time, evidence provenance, testimony and conditions are settled by authority. Never promote a hypothesis or testimony to Truth. Never invent a mechanical consequence or reinterpret a failed action as disproving a theory. No hidden Canon, reasoning trace or unused Fortune draw belongs in narration."
     }
   },
   {
@@ -159,7 +159,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
     },
     "resource": {
       "schemaVersion": 1,
@@ -176,7 +176,7 @@
               "revision": "p1",
               "scope": "package",
               "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-              "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+              "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
             }
           ]
         }
@@ -188,7 +188,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
     },
     "resource": {
       "schemaVersion": 1,
@@ -208,7 +208,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
     },
     "resource": {
       "schemaVersion": 1,
@@ -227,7 +227,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
     },
     "resource": {
       "schemaVersion": 1,
@@ -244,7 +244,7 @@
               "revision": "p1",
               "scope": "package",
               "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-              "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+              "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
             }
           ]
         }
@@ -256,7 +256,7 @@
     "origin": {
       "scope": "package",
       "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+      "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41"
     },
     "resource": {
       "schemaVersion": 1,

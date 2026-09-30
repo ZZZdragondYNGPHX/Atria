@@ -1,0 +1,19 @@
+{
+  "format": "atria-frontend-source",
+  "version": 3,
+  "primaryView": "main",
+  "bridge": "bridge.json",
+  "views": [
+    {
+      "id": "main",
+      "root": "Main",
+      "surface": "app.root"
+    }
+  ],
+  "components": [
+    {
+      "id": "Main",
+      "source": "Main.aui"
+    }
+  ]
+}

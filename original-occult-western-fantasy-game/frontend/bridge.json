@@ -1,0 +1,419 @@
+{
+  "version": 1,
+  "bindings": [
+    {
+      "id": "observe",
+      "kind": "action",
+      "target": {
+        "transactionId": "interaction.observe"
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "inspect"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "read_slip"
+            ]
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "verify",
+      "kind": "action",
+      "target": {
+        "transactionId": "interaction.verify"
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "compare"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "authenticate_copy"
+            ]
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "interview",
+      "kind": "action",
+      "target": {
+        "transactionId": "interaction.interview"
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "ask"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "obtain_account"
+            ]
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "access",
+      "kind": "action",
+      "target": {
+        "transactionId": "interaction.access"
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "present_credentials"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "enter_registry"
+            ]
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "test",
+      "kind": "action",
+      "target": {
+        "transactionId": "interaction.test"
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "sample"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "test_ink"
+            ]
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "intervene",
+      "kind": "action",
+      "target": {
+        "transactionId": "interaction.intervene"
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "secure"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "protect_slip"
+            ]
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_hypothesis",
+      "kind": "action",
+      "target": {
+        "transactionId": "interaction.create_hypothesis"
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "propose"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "record_theory"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective",
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "create_lead",
+      "kind": "action",
+      "target": {
+        "transactionId": "interaction.create_lead"
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "propose"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "record_direction"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective",
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    {
+      "id": "advance_time",
+      "kind": "action",
+      "target": {
+        "transactionId": "interaction.advance_time"
+      },
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "fixture"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "wait"
+            ]
+          },
+          "objective": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "wait_here"
+            ]
+          },
+          "minutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60
+          }
+        },
+        "required": [
+          "target",
+          "method",
+          "objective",
+          "minutes"
+        ],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    }
+  ]
+}

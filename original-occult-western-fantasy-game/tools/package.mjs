@@ -41,6 +41,12 @@ const seed = await json('data/seed.bootstrap.json');
 const bootstrap = contract.lifecycleRuntime.domains.find(d => d.id === 'entities').commands.find(c => c.id === 'bootstrap');
 bootstrap.assign = { scene: seed.scene, playerStatus: seed.playerStatus, privateNote: seed.privateNote };
 const sourceFiles = new Map([['runtime/logic.json', await fs.readFile(path.join(root, 'runtime/logic.json'))]]);
+for (const file of ['frontend/frontend.json', 'frontend/bridge.json', 'frontend/Main.aui']) sourceFiles.set(file, await fs.readFile(path.join(root, file)));
+const { compileProjectFrontends } = await load('src/native/frontend/compiler.js');
+const compiled = compileProjectFrontends(manifest, sourceFiles);
+Object.assign(manifest, compiled.packageSource);
+sourceFiles.clear();
+for (const [file, bytes] of compiled.files) sourceFiles.set(file, bytes);
 const { archive } = native.buildAtriaPackageContainer({ manifest, sourceFiles, assetPayloads });
 if (mode === 'build') {
     const out = args.includes('--out') ? path.resolve(option('--out')) : path.join(root, 'build', manifest.version + '.atria');

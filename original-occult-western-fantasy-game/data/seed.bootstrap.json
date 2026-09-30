@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "entityId": "foundation",
-  "scene": "Package Foundation 已就绪；这不是正式游戏开场。",
-  "playerStatus": "尚未创建角色；P1 仅验证运行契约。",
+  "scene": "Synthetic registry: a publicly visible slip, a clerk and a protected desk. P2 interaction test world, not the campaign opening.",
+  "playerStatus": "Synthetic Verifier: trained for the declared methods; present credentials, inspect the slip or ask the clerk. No character creation in this fixture.",
   "privateNote": "P1_PRIVATE_CANON_SENTINEL"
 }

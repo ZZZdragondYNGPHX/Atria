@@ -19,7 +19,7 @@ export async function verify({ load, native, manifest, sourceFiles, assetPayload
         checks.push('reopen / required authority-transaction@1 runtime resolution');
         let session = await svc.core.create(h.handle, { packageId: manifest.packageId, packageVersionId: manifest.packageVersionId, entryPointId: manifest.entryPoints[0].entryPointId });
         assert.equal(session.states.atri_lifecycle.ready, false);
-        session = await svc.core.appendTimeline(h.handle, session.session.sessionId, { role: 'user', content: 'Foundation diagnostic.' });
+        session = await svc.core.appendTimeline(h.handle, session.session.sessionId, { role: 'user', content: 'Ask the clerk about the registry slip.' });
         await assert.rejects(svc.core.prepareAuthorityTurn(h.handle, session, { transactionId: 'foundation.check', input: {} }), { code: 'AUTHORITY_PREPARATION_FAILED' });
         checks.push('pre-Ready transaction rejected');
         session = await svc.core.applyLifecycleCommand(h.handle, session.session.sessionId, { type: 'lifecycle', invocationId: 'p1-ready', action: { kind: 'experience.ready' } }, { expectedRevisionId: session.revision.revisionId });
@@ -32,7 +32,7 @@ export async function verify({ load, native, manifest, sourceFiles, assetPayload
         const info = manifest.runtime.experienceContract.informationRuntime;
         const projections = Object.fromEntries(info.views.map(v => [v.id, projectInformation(session, v.id, { purpose: v.exposure[0] })]));
         assert(!JSON.stringify(projections).includes('P1_PRIVATE_CANON_SENTINEL'));
-        assert(JSON.stringify(projections['narrator.context']).includes('Package Foundation'));
+        assert(JSON.stringify(projections['narrator.context']).includes('Synthetic registry'));
         assert(!JSON.stringify(buildAuthorityObservation(session)).includes('P1_PRIVATE_CANON_SENTINEL'));
         for (const graph of info.graphs) queryInformationGraph(session, graph.id, 'foundation', { purpose: info.views.find(v => v.id === graph.viewId).exposure[0] });
         checks.push('all five Views / two Graphs resolve; hidden seed excluded from observation and context');
@@ -57,6 +57,8 @@ export async function verify({ load, native, manifest, sourceFiles, assetPayload
         assertTaskValue({ institutionId: 'foundation', agendaId: 'foundation', blockers: [], knownRecords: [], tick: 0, permittedActions: ['defer'] }, agenda.inputSchema);
         assert.throws(() => assertTaskValue({ decision: 'execute', reason: 'Not authorized' }, agenda.variants[0].outputSchema));
         checks.push('over-limit policy / broken static target / missing Task resource / undeclared Agenda decision rejected');
+        const { interactionCheck } = await import('./interaction-check.mjs');
+        checks.push(await interactionCheck({ load, svc, h, session, sourceFiles }));
         const { turnSmoke } = await import('./turn-smoke.mjs');
         checks.push(await turnSmoke({ load, h, svc, session }));
         return { mode, checks, dataResources: manifest.runtime.experienceContract.dataResources.length, tasks: manifest.runtime.experienceContract.taskRuntime.tasks.length,

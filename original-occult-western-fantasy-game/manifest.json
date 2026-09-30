@@ -3,19 +3,19 @@
   "schemaVersion": 2,
   "nativeSchemaVersion": 1,
   "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
-  "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac",
-  "name": "Original Occult Western Fantasy — Foundation",
-  "version": "0.1.0-p1",
+  "packageVersionId": "pkgv_3dff9ea1c412628f39f753ef0b506e41",
+  "name": "Original Occult Western Fantasy — Interaction Fixture",
+  "version": "0.2.0-p2",
   "actors": [
     {
       "actorId": "actor_78fd62e4f874657db785310ec4c9ef52",
-      "displayName": "P1 Player Placeholder"
+      "displayName": "Synthetic Verifier"
     }
   ],
   "entryPoints": [
     {
       "entryPointId": "entry_1e0df9035d386c417c3f88380748cad0",
-      "displayName": "P1 Foundation",
+      "displayName": "P2 Interaction Fixture",
       "actorIds": [
         "actor_78fd62e4f874657db785310ec4c9ef52"
       ],
@@ -27,7 +27,7 @@
       "initialTimeline": [
         {
           "role": "assistant",
-          "content": "Package Foundation 已就绪；这不是正式游戏开场。",
+          "content": "Synthetic registry: a publicly visible slip, a clerk and a protected desk. P2 interaction test world, not the campaign opening.",
           "actorId": "actor_78fd62e4f874657db785310ec4c9ef52"
         }
       ]
@@ -43,7 +43,9 @@
       "revision": {
         "worldId": "world_d3335a3fb6f1c3cf95a1332d85a3d0b6",
         "worldRevisionId": "worldv_95e265c7e2a3d5ef2a034c7e9b3f4874",
-        "baseline": {},
+        "baseline": {
+          "interactionCount": 0
+        },
         "knowledgeBindingIds": [],
         "assetIds": [],
         "metadata": {}
@@ -69,7 +71,12 @@
       "logic": "runtime/logic.json"
     },
     "experience": {
-      "mode": "text"
+      "mode": "full",
+      "frontend": {
+        "kind": "native",
+        "version": 3,
+        "source": "frontend/frontend.json"
+      }
     }
   }
 }

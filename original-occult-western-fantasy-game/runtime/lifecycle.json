@@ -30,19 +30,48 @@
           "privateNote": {
             "type": "string",
             "maxLength": 256
+          },
+          "trained": {
+            "type": "boolean"
+          },
+          "permission": {
+            "type": "boolean"
+          },
+          "opposed": {
+            "type": "boolean"
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "prepared": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1
           }
         },
         "required": [
           "scene",
           "playerStatus",
-          "privateNote"
+          "privateNote",
+          "trained",
+          "permission",
+          "opposed",
+          "position",
+          "prepared"
         ],
         "additionalProperties": false
       },
       "initial": {
         "scene": "",
         "playerStatus": "",
-        "privateNote": ""
+        "privateNote": "",
+        "trained": true,
+        "permission": true,
+        "opposed": true,
+        "position": 3,
+        "prepared": 0
       },
       "commands": [
         {
@@ -55,6 +84,36 @@
           },
           "event": "foundation.initialized",
           "assign": {}
+        },
+        {
+          "id": "gain_access",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "permission": {
+                "type": "boolean"
+              },
+              "prepared": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "permission",
+              "prepared"
+            ],
+            "additionalProperties": false
+          },
+          "event": "entities.gain_access",
+          "assign": {
+            "permission": {
+              "formula": "args.permission"
+            },
+            "prepared": {
+              "formula": "args.prepared"
+            }
+          }
         }
       ],
       "retention": {
@@ -133,46 +192,131 @@
             "type": "string",
             "maxLength": 256
           },
-          "actor": {
+          "provenance": {
             "type": "string",
             "maxLength": 64
           },
-          "status": {
-            "type": "string",
-            "maxLength": 32
-          },
-          "channel": {
-            "type": "string",
-            "maxLength": 32
-          },
-          "from": {
+          "custody": {
             "type": "string",
             "maxLength": 64
           },
-          "to": {
+          "integrity": {
             "type": "string",
-            "maxLength": 64
+            "maxLength": 32,
+            "enum": [
+              "intact",
+              "tested"
+            ]
+          },
+          "known": {
+            "type": "boolean"
+          },
+          "verified": {
+            "type": "boolean"
           }
         },
         "required": [
           "text",
-          "actor",
-          "status",
-          "channel",
-          "from",
-          "to"
+          "provenance",
+          "custody",
+          "integrity",
+          "known",
+          "verified"
         ],
         "additionalProperties": false
       },
       "initial": {
-        "text": "",
-        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
-        "status": "known",
-        "channel": "witnessed",
-        "from": "",
-        "to": ""
+        "text": "A registry slip bears a second date; this establishes document content, not a second death.",
+        "provenance": "fixture.registry",
+        "custody": "fixture.desk",
+        "integrity": "intact",
+        "known": false,
+        "verified": false
       },
-      "commands": [],
+      "commands": [
+        {
+          "id": "record",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "provenance": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "custody": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "integrity": {
+                "type": "string",
+                "maxLength": 32,
+                "enum": [
+                  "intact",
+                  "tested"
+                ]
+              },
+              "known": {
+                "type": "boolean"
+              },
+              "verified": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "text",
+              "provenance",
+              "custody",
+              "integrity",
+              "known",
+              "verified"
+            ],
+            "additionalProperties": false
+          },
+          "event": "evidence.record",
+          "assign": {
+            "text": {
+              "formula": "args.text"
+            },
+            "provenance": {
+              "formula": "args.provenance"
+            },
+            "custody": {
+              "formula": "args.custody"
+            },
+            "integrity": {
+              "formula": "args.integrity"
+            },
+            "known": {
+              "formula": "args.known"
+            },
+            "verified": {
+              "formula": "args.verified"
+            }
+          }
+        },
+        {
+          "id": "bootstrap",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "evidence.initialized",
+          "assign": {
+            "text": "A registry slip bears a second date; this establishes document content, not a second death.",
+            "provenance": "fixture.registry",
+            "custody": "fixture.desk",
+            "integrity": "intact",
+            "known": false,
+            "verified": false
+          }
+        }
+      ],
       "retention": {
         "maxItems": 64,
         "maxLogicalBytes": 65536,
@@ -191,46 +335,69 @@
             "type": "string",
             "maxLength": 256
           },
-          "actor": {
-            "type": "string",
-            "maxLength": 64
-          },
-          "status": {
-            "type": "string",
-            "maxLength": 32
-          },
-          "channel": {
-            "type": "string",
-            "maxLength": 32
-          },
-          "from": {
-            "type": "string",
-            "maxLength": 64
-          },
-          "to": {
-            "type": "string",
-            "maxLength": 64
+          "trust": {
+            "type": "integer",
+            "minimum": -2,
+            "maximum": 2
           }
         },
         "required": [
           "text",
-          "actor",
-          "status",
-          "channel",
-          "from",
-          "to"
+          "trust"
         ],
         "additionalProperties": false
       },
       "initial": {
-        "text": "",
-        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
-        "status": "known",
-        "channel": "witnessed",
-        "from": "",
-        "to": ""
+        "text": "Clerk has not been approached.",
+        "trust": 0
       },
-      "commands": [],
+      "commands": [
+        {
+          "id": "record",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "trust": {
+                "type": "integer",
+                "minimum": -2,
+                "maximum": 2
+              }
+            },
+            "required": [
+              "text",
+              "trust"
+            ],
+            "additionalProperties": false
+          },
+          "event": "relations.record",
+          "assign": {
+            "text": {
+              "formula": "args.text"
+            },
+            "trust": {
+              "formula": "args.trust"
+            }
+          }
+        },
+        {
+          "id": "bootstrap",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "relations.initialized",
+          "assign": {
+            "text": "Clerk has not been approached.",
+            "trust": 0
+          }
+        }
+      ],
       "retention": {
         "maxItems": 64,
         "maxLogicalBytes": 65536,
@@ -249,46 +416,134 @@
             "type": "string",
             "maxLength": 256
           },
+          "kind": {
+            "type": "string",
+            "maxLength": 32,
+            "enum": [
+              "testimony",
+              "hypothesis"
+            ]
+          },
           "actor": {
             "type": "string",
             "maxLength": 64
           },
           "status": {
             "type": "string",
-            "maxLength": 32
+            "maxLength": 32,
+            "enum": [
+              "suspected"
+            ]
           },
           "channel": {
             "type": "string",
-            "maxLength": 32
-          },
-          "from": {
-            "type": "string",
-            "maxLength": 64
-          },
-          "to": {
-            "type": "string",
-            "maxLength": 64
+            "maxLength": 32,
+            "enum": [
+              "told_by",
+              "inference"
+            ]
           }
         },
         "required": [
           "text",
+          "kind",
           "actor",
           "status",
-          "channel",
-          "from",
-          "to"
+          "channel"
         ],
         "additionalProperties": false
       },
       "initial": {
-        "text": "",
+        "text": "No statement acquired.",
+        "kind": "testimony",
         "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
-        "status": "known",
-        "channel": "witnessed",
-        "from": "",
-        "to": ""
+        "status": "suspected",
+        "channel": "told_by"
       },
-      "commands": [],
+      "commands": [
+        {
+          "id": "record",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "kind": {
+                "type": "string",
+                "maxLength": 32,
+                "enum": [
+                  "testimony",
+                  "hypothesis"
+                ]
+              },
+              "actor": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "status": {
+                "type": "string",
+                "maxLength": 32,
+                "enum": [
+                  "suspected"
+                ]
+              },
+              "channel": {
+                "type": "string",
+                "maxLength": 32,
+                "enum": [
+                  "told_by",
+                  "inference"
+                ]
+              }
+            },
+            "required": [
+              "text",
+              "kind",
+              "actor",
+              "status",
+              "channel"
+            ],
+            "additionalProperties": false
+          },
+          "event": "beliefs.record",
+          "assign": {
+            "text": {
+              "formula": "args.text"
+            },
+            "kind": {
+              "formula": "args.kind"
+            },
+            "actor": {
+              "formula": "args.actor"
+            },
+            "status": {
+              "formula": "args.status"
+            },
+            "channel": {
+              "formula": "args.channel"
+            }
+          }
+        },
+        {
+          "id": "bootstrap",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "beliefs.initialized",
+          "assign": {
+            "text": "No statement acquired.",
+            "kind": "testimony",
+            "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+            "status": "suspected",
+            "channel": "told_by"
+          }
+        }
+      ],
       "retention": {
         "maxItems": 64,
         "maxLogicalBytes": 65536,
@@ -310,43 +565,64 @@
           "actor": {
             "type": "string",
             "maxLength": 64
-          },
-          "status": {
-            "type": "string",
-            "maxLength": 32
-          },
-          "channel": {
-            "type": "string",
-            "maxLength": 32
-          },
-          "from": {
-            "type": "string",
-            "maxLength": 64
-          },
-          "to": {
-            "type": "string",
-            "maxLength": 64
           }
         },
         "required": [
           "text",
-          "actor",
-          "status",
-          "channel",
-          "from",
-          "to"
+          "actor"
         ],
         "additionalProperties": false
       },
       "initial": {
-        "text": "",
-        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
-        "status": "known",
-        "channel": "witnessed",
-        "from": "",
-        "to": ""
+        "text": "No contact yet.",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52"
       },
-      "commands": [],
+      "commands": [
+        {
+          "id": "record",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "actor": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "text",
+              "actor"
+            ],
+            "additionalProperties": false
+          },
+          "event": "memories.record",
+          "assign": {
+            "text": {
+              "formula": "args.text"
+            },
+            "actor": {
+              "formula": "args.actor"
+            }
+          }
+        },
+        {
+          "id": "bootstrap",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "memories.initialized",
+          "assign": {
+            "text": "No contact yet.",
+            "actor": "actor_78fd62e4f874657db785310ec4c9ef52"
+          }
+        }
+      ],
       "retention": {
         "maxItems": 64,
         "maxLogicalBytes": 65536,
@@ -552,46 +828,69 @@
             "type": "string",
             "maxLength": 256
           },
-          "actor": {
-            "type": "string",
-            "maxLength": 64
-          },
-          "status": {
-            "type": "string",
-            "maxLength": 32
-          },
-          "channel": {
-            "type": "string",
-            "maxLength": 32
-          },
-          "from": {
-            "type": "string",
-            "maxLength": 64
-          },
-          "to": {
-            "type": "string",
-            "maxLength": 64
+          "severity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2
           }
         },
         "required": [
           "text",
-          "actor",
-          "status",
-          "channel",
-          "from",
-          "to"
+          "severity"
         ],
         "additionalProperties": false
       },
       "initial": {
-        "text": "",
-        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
-        "status": "known",
-        "channel": "witnessed",
-        "from": "",
-        "to": ""
+        "text": "Uninjured.",
+        "severity": 0
       },
-      "commands": [],
+      "commands": [
+        {
+          "id": "record",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "severity": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2
+              }
+            },
+            "required": [
+              "text",
+              "severity"
+            ],
+            "additionalProperties": false
+          },
+          "event": "conditions.record",
+          "assign": {
+            "text": {
+              "formula": "args.text"
+            },
+            "severity": {
+              "formula": "args.severity"
+            }
+          }
+        },
+        {
+          "id": "bootstrap",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "conditions.initialized",
+          "assign": {
+            "text": "Uninjured.",
+            "severity": 0
+          }
+        }
+      ],
       "retention": {
         "maxItems": 64,
         "maxLogicalBytes": 65536,
@@ -668,46 +967,88 @@
             "type": "string",
             "maxLength": 256
           },
-          "actor": {
-            "type": "string",
-            "maxLength": 64
-          },
           "status": {
             "type": "string",
-            "maxLength": 32
+            "maxLength": 32,
+            "enum": [
+              "open"
+            ]
           },
-          "channel": {
-            "type": "string",
-            "maxLength": 32
-          },
-          "from": {
-            "type": "string",
-            "maxLength": 64
-          },
-          "to": {
+          "actor": {
             "type": "string",
             "maxLength": 64
           }
         },
         "required": [
           "text",
-          "actor",
           "status",
-          "channel",
-          "from",
-          "to"
+          "actor"
         ],
         "additionalProperties": false
       },
       "initial": {
-        "text": "",
-        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
-        "status": "known",
-        "channel": "witnessed",
-        "from": "",
-        "to": ""
+        "text": "Compare the slip and the clerk account.",
+        "status": "open",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52"
       },
-      "commands": [],
+      "commands": [
+        {
+          "id": "record",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "status": {
+                "type": "string",
+                "maxLength": 32,
+                "enum": [
+                  "open"
+                ]
+              },
+              "actor": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "text",
+              "status",
+              "actor"
+            ],
+            "additionalProperties": false
+          },
+          "event": "player_matters.record",
+          "assign": {
+            "text": {
+              "formula": "args.text"
+            },
+            "status": {
+              "formula": "args.status"
+            },
+            "actor": {
+              "formula": "args.actor"
+            }
+          }
+        },
+        {
+          "id": "bootstrap",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "player_matters.initialized",
+          "assign": {
+            "text": "Compare the slip and the clerk account.",
+            "status": "open",
+            "actor": "actor_78fd62e4f874657db785310ec4c9ef52"
+          }
+        }
+      ],
       "retention": {
         "maxItems": 64,
         "maxLogicalBytes": 65536,
@@ -983,7 +1324,70 @@
         "from": "",
         "to": ""
       },
-      "commands": [],
+      "commands": [
+        {
+          "id": "publish",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "actor": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "status": {
+                "type": "string",
+                "maxLength": 32
+              },
+              "channel": {
+                "type": "string",
+                "maxLength": 32
+              },
+              "from": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "to": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "text",
+              "actor",
+              "status",
+              "channel",
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "event": "player_epistemic_projection.publish",
+          "assign": {
+            "text": {
+              "formula": "args.text"
+            },
+            "actor": {
+              "formula": "args.actor"
+            },
+            "status": {
+              "formula": "args.status"
+            },
+            "channel": {
+              "formula": "args.channel"
+            },
+            "from": {
+              "formula": "args.from"
+            },
+            "to": {
+              "formula": "args.to"
+            }
+          }
+        }
+      ],
       "retention": {
         "maxItems": 64,
         "maxLogicalBytes": 65536,
@@ -1041,7 +1445,70 @@
         "from": "",
         "to": ""
       },
-      "commands": [],
+      "commands": [
+        {
+          "id": "publish",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "actor": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "status": {
+                "type": "string",
+                "maxLength": 32
+              },
+              "channel": {
+                "type": "string",
+                "maxLength": 32
+              },
+              "from": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "to": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "text",
+              "actor",
+              "status",
+              "channel",
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "event": "investigation_nodes.publish",
+          "assign": {
+            "text": {
+              "formula": "args.text"
+            },
+            "actor": {
+              "formula": "args.actor"
+            },
+            "status": {
+              "formula": "args.status"
+            },
+            "channel": {
+              "formula": "args.channel"
+            },
+            "from": {
+              "formula": "args.from"
+            },
+            "to": {
+              "formula": "args.to"
+            }
+          }
+        }
+      ],
       "retention": {
         "maxItems": 64,
         "maxLogicalBytes": 65536,
@@ -1099,7 +1566,70 @@
         "from": "",
         "to": ""
       },
-      "commands": [],
+      "commands": [
+        {
+          "id": "publish",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "actor": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "status": {
+                "type": "string",
+                "maxLength": 32
+              },
+              "channel": {
+                "type": "string",
+                "maxLength": 32
+              },
+              "from": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "to": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "text",
+              "actor",
+              "status",
+              "channel",
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "event": "investigation_edges.publish",
+          "assign": {
+            "text": {
+              "formula": "args.text"
+            },
+            "actor": {
+              "formula": "args.actor"
+            },
+            "status": {
+              "formula": "args.status"
+            },
+            "channel": {
+              "formula": "args.channel"
+            },
+            "from": {
+              "formula": "args.from"
+            },
+            "to": {
+              "formula": "args.to"
+            }
+          }
+        }
+      ],
       "retention": {
         "maxItems": 64,
         "maxLogicalBytes": 65536,
@@ -1157,7 +1687,70 @@
         "from": "",
         "to": ""
       },
-      "commands": [],
+      "commands": [
+        {
+          "id": "publish",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "actor": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "status": {
+                "type": "string",
+                "maxLength": 32
+              },
+              "channel": {
+                "type": "string",
+                "maxLength": 32
+              },
+              "from": {
+                "type": "string",
+                "maxLength": 64
+              },
+              "to": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "text",
+              "actor",
+              "status",
+              "channel",
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          },
+          "event": "player_memory_projection.publish",
+          "assign": {
+            "text": {
+              "formula": "args.text"
+            },
+            "actor": {
+              "formula": "args.actor"
+            },
+            "status": {
+              "formula": "args.status"
+            },
+            "channel": {
+              "formula": "args.channel"
+            },
+            "from": {
+              "formula": "args.from"
+            },
+            "to": {
+              "formula": "args.to"
+            }
+          }
+        }
+      ],
       "retention": {
         "maxItems": 64,
         "maxLogicalBytes": 65536,
@@ -1193,6 +1786,111 @@
         "domainId": "entities",
         "commandId": "bootstrap",
         "recordId": "foundation",
+        "args": {}
+      },
+      "maxCatchUp": 1
+    },
+    {
+      "id": "evidence.bootstrap",
+      "scopeId": "world",
+      "trigger": {
+        "kind": "experience.ready"
+      },
+      "action": {
+        "kind": "app.command",
+        "domainId": "evidence",
+        "commandId": "bootstrap",
+        "recordId": "fixture",
+        "args": {}
+      },
+      "maxCatchUp": 1
+    },
+    {
+      "id": "beliefs.bootstrap",
+      "scopeId": "world",
+      "trigger": {
+        "kind": "experience.ready"
+      },
+      "action": {
+        "kind": "app.command",
+        "domainId": "beliefs",
+        "commandId": "bootstrap",
+        "recordId": "fixture",
+        "args": {}
+      },
+      "maxCatchUp": 1
+    },
+    {
+      "id": "memories.bootstrap",
+      "scopeId": "world",
+      "trigger": {
+        "kind": "experience.ready"
+      },
+      "action": {
+        "kind": "app.command",
+        "domainId": "memories",
+        "commandId": "bootstrap",
+        "recordId": "fixture",
+        "args": {}
+      },
+      "maxCatchUp": 1
+    },
+    {
+      "id": "relations.bootstrap",
+      "scopeId": "world",
+      "trigger": {
+        "kind": "experience.ready"
+      },
+      "action": {
+        "kind": "app.command",
+        "domainId": "relations",
+        "commandId": "bootstrap",
+        "recordId": "fixture",
+        "args": {}
+      },
+      "maxCatchUp": 1
+    },
+    {
+      "id": "conditions.bootstrap",
+      "scopeId": "world",
+      "trigger": {
+        "kind": "experience.ready"
+      },
+      "action": {
+        "kind": "app.command",
+        "domainId": "conditions",
+        "commandId": "bootstrap",
+        "recordId": "fixture",
+        "args": {}
+      },
+      "maxCatchUp": 1
+    },
+    {
+      "id": "player_matters.bootstrap",
+      "scopeId": "session",
+      "trigger": {
+        "kind": "experience.ready"
+      },
+      "action": {
+        "kind": "app.command",
+        "domainId": "player_matters",
+        "commandId": "bootstrap",
+        "recordId": "fixture",
+        "args": {}
+      },
+      "maxCatchUp": 1
+    },
+    {
+      "id": "beliefs.theory.bootstrap",
+      "scopeId": "world",
+      "trigger": {
+        "kind": "experience.ready"
+      },
+      "action": {
+        "kind": "app.command",
+        "domainId": "beliefs",
+        "commandId": "bootstrap",
+        "recordId": "theory",
         "args": {}
       },
       "maxCatchUp": 1
