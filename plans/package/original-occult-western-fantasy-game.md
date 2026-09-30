@@ -3,7 +3,7 @@
 **Task ID:** `package/original-occult-western-fantasy-game`  
 **Primary Workspace (implementation):** `package`  
 **Current stage:** Pre-production research and design discussion  
-**Status:** Discussion Draft v0.7 — Round 3 approved; Round 3.5 opened; not approved for implementation  
+**Status:** Discussion Draft v0.8 — Round 3.5 approved; Round 3.6 opened; not approved for implementation  
 **Plan path:** `docs:plans/package/original-occult-western-fantasy-game.md`
 
 ## 1. Purpose
@@ -1103,27 +1103,240 @@ Approved:
 - intentionally weakly anchored secret organizations;
 - black markets built around reality gaps.
 
-### 6.15 Round 3.5 question — religion and the nature of gods
+### 6.15 Approved divine ontology — Round 3.5
 
-Before naming churches or designing theology, the project must determine what a god can actually be in this ontology.
+A **god is not a single species or origin category**.
 
-Round 3.5 must distinguish among possibilities such as:
+The approved defining property is a **transpersonal Identity**: an Identity capable of maintaining meaningful continuity without depending on one human body, one memory carrier or one institution.
 
-- a genuinely external Layer C entity;
-- an emergent institutional / collective Identity;
-- a historical practitioner whose Identity outlived the person;
-- a Claim-complex maintained by centuries of worship and ritual;
-- a hybrid phenomenon in which a pre-existing entity and social Identity have merged.
+### 6.15.1 Possible divine origins
 
-It must also determine:
+Different gods may arise through materially different histories.
 
-- whether worship feeds, stabilizes, merely contacts or merely interprets a god;
-- whether different religions can refer to the same underlying entity without knowing it;
-- whether gods can die, split, merge or be misidentified;
-- whether miracles are direct divine interventions, licensed Claims, institutional effects or several different things;
-- how much ordinary clergy actually know;
-- why churches cannot simply dominate every state and occult institution;
-- how to preserve genuine uncertainty about divinity even for high-level players.
+#### Layer C native entity
+
+A pre-existing nonhuman entity may originate beyond ordinary waking reality. Human worship does not create it, but names, stories and rituals may create a stable interface through which humans can address and interpret it.
+
+#### Historical person whose Identity outlived the person
+
+A king, saint, prophet, martyr, general or other practitioner may die while their Name, Memory, relics, offices, vows and repeated public imitation continue to accumulate.
+
+Over time, the surviving social Identity may become separable from the original human person.
+
+#### Institutional Identity
+
+A sufficiently old and coherent religious institution may accumulate so much Name, Bond, Witness and Memory that the institutional structure itself develops transpersonal continuity and begins to behave as a subject.
+
+#### Hybrid
+
+A pre-existing entity, historical person, institutional structure and centuries of interpretation may merge so thoroughly that no observer can meaningfully separate the original source from the accumulated divine Identity.
+
+Mature major religions may often involve such hybridization.
+
+### 6.15.2 Worship provides Anchor, not generic fuel
+
+Faith is not a mana battery.
+
+Worship stabilizes and shapes divine Identity by repeatedly reinforcing:
+
+- Name;
+- ritual;
+- communal Bond;
+- narrative Memory;
+- sacred offices;
+- architecture;
+- relics;
+- calendars;
+- repeated Witness;
+- social expectations.
+
+Worship therefore tells reality what the god is and how the god relates to worshippers.
+
+A larger religion can create a more stable divine Identity without implying unlimited power.
+
+### 6.15.3 Prayer as address
+
+Prayer is approved as a form of **addressing** rather than a guaranteed message API.
+
+Stable prayer traditions can combine:
+
+- sacred Name;
+- ritual language;
+- posture or gesture;
+- time;
+- place;
+- relic;
+- community Witness;
+- office.
+
+These elements form an established route toward a transpersonal Identity.
+
+Ordinary believers interpret this theologically; occult scholars may model it as a high-stability cross-subject Bond.
+
+### 6.15.4 Miracles do not prove doctrine
+
+Similar outward miracles may arise through different mechanisms:
+
+- ordinary priestly Claims;
+- institutional office;
+- relic effects;
+- large ritual machinery;
+- direct response from a transpersonal Identity.
+
+Therefore:
+
+**evidence that a religion produces real supernatural effects does not automatically prove every theological claim made by that religion.**
+
+This uncertainty is a permanent design principle.
+
+### 6.15.5 Divine Identity can diverge from historical origin
+
+If a historical human becomes the source of a divine tradition, centuries of worship can produce an Identity that differs substantially from the original person.
+
+The question “is this still the same individual?” may have no simple answer.
+
+Likewise, a Layer C entity interpreted through human religion may gradually acquire a human-readable Identity that is partly produced by centuries of interaction.
+
+### 6.15.6 Gods may split
+
+A major religious schism can eventually become a real **Identity Schism** if incompatible communities maintain sufficiently distinct:
+
+- Names;
+- stories;
+- offices;
+- rituals;
+- sacred places;
+- expectations;
+- memory traditions.
+
+A theological split may therefore eventually produce two independently responsive divine Identities.
+
+This is possible, not automatic.
+
+### 6.15.7 Gods may merge
+
+Long-term syncretism can cause previously distinct divine Identities to become increasingly overlapping if:
+
+- Names are systematically equated;
+- ritual systems merge;
+- priesthoods combine;
+- myths are rewritten into a shared history;
+- worshippers treat the entities as one.
+
+Cultural religious synthesis can therefore have actual supernatural consequences.
+
+### 6.15.8 Divine death
+
+A god can die, but divine death is defined as failure of **Identity continuity**, not destruction of one body.
+
+Possible components include:
+
+- destruction or contradiction of core Names;
+- severance of central Bonds;
+- collapse of primary Memory traditions;
+- loss or inversion of major offices;
+- fragmentation of essential Anchors;
+- unresolved Identity contradiction.
+
+Even after divine death, temples, relics, stories, old Claims and Echo may remain active.
+
+A dead god's religion may therefore continue to produce genuine phenomena.
+
+### 6.15.9 Stability versus freedom
+
+A major divine Identity can be extremely powerful precisely because it is heavily anchored.
+
+The same Anchors also constrain it.
+
+Approved principle:
+
+**the more stable a divine Identity becomes, the less freely it can redefine what it is.**
+
+A god strongly defined through centuries as guardian of marriage, for example, may possess deep authority in that domain while being poorly suited to unrelated acts.
+
+Divine power is therefore deep but not automatically broad.
+
+### 6.15.10 Heresy can be metaphysically consequential
+
+Heresy is not merely a political category.
+
+A movement that successfully changes:
+
+- sacred Name;
+- doctrine;
+- ritual;
+- public expectation;
+- office;
+- sacred history
+
+may alter the Anchor structure of a divine Identity.
+
+This can create genuine contradiction, mutation or schism.
+
+Church suppression of heresy may therefore combine:
+
+- political self-interest;
+- institutional survival;
+- sincere fear of supernatural instability.
+
+This does not imply that the orthodox church is automatically correct.
+
+### 6.15.11 Gods are not omniscient by system rule
+
+No god receives automatic global knowledge.
+
+Divine knowledge remains constrained by:
+
+- Witness;
+- Memory;
+- Bond;
+- Jurisdiction;
+- available Anchors;
+- the actual structure of the divine Identity.
+
+A religion may teach that its god is omniscient, but that is a theological claim rather than a mechanically guaranteed truth.
+
+This preserves investigation, secrecy and uncertain history.
+
+### 6.15.12 Round 3.5 decision
+
+Approved:
+
+- god as transpersonal Identity rather than one biological / metaphysical species;
+- Layer C native, historical, institutional and hybrid origins;
+- worship as Anchor and Identity shaping rather than generic fuel;
+- prayer as an addressing mechanism;
+- miracles not proving doctrine;
+- divine death, split and merger as Identity-continuity phenomena;
+- stability constraining divine freedom;
+- heresy as potentially metaphysically consequential;
+- no automatic divine omniscience.
+
+Rejected:
+
+- all gods sharing one mandatory origin;
+- belief creating gods from nothing with no prior structure;
+- worship functioning as simple power points;
+- “real miracle = religion fully true”;
+- universal god-tier access to every Principle and every event.
+
+### 6.16 Round 3.6 question — religious landscape and church organization
+
+With divine ontology established, Round 3.6 must decide the **social ecology of religion**.
+
+It must determine:
+
+- whether one universal church dominates the main region;
+- whether several large religions coexist;
+- whether saints, local gods and household cults sit inside or outside major churches;
+- how civil and sacred identity interact in everyday life;
+- how priestly offices obtain Claims and Investiture;
+- whether churches recognize one another's rites;
+- how mission, conversion and religious law work;
+- how syncretism and heresy appear socially;
+- how much doctrine ordinary clergy know versus restricted theological / occult offices;
+- how state and church divide registration, marriage, burial, education and welfare;
+- whether a single church structure is too close to the inspiration target and should be avoided.
 
 ## 7. Atria platform fit — current verified direction
 
@@ -1273,7 +1486,11 @@ Approved: public supernatural / restricted mechanism, four reality authorities, 
 
 ### Round 3.5 — Religion and the nature of gods
 
-Determine what gods actually are, how worship and miracles work, and how churches fit the ontology without collapsing the setting into a simple divine hierarchy.
+Approved: gods as transpersonal Identities with multiple possible origins, worship as Anchor, uncertain doctrine and non-omniscient divine action.
+
+### Round 3.6 — Religious landscape and church organization
+
+Define the social ecology of religion, priesthood, rites, saints, heresy, syncretism and church/state division.
 
 ### Round 4 — Player identity and starting situation
 
