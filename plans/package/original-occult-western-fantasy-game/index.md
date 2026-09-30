@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.26 — Rounds 8–8.5 approved; Round 8.6 opened; not approved for implementation
+- **Status:** Discussion Draft v0.27 — Rounds 8–8.6 approved; Round 9 opened; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -52,29 +52,31 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 | `player.md` | Rounds 4–4.6: player identity, controlled character creation, first Breach and first-Claim flow | `foundation.md`, `geography.md`, `society.md`, `institutions.md` |
 | `gameplay.md` | Rounds 5–5.6: core loop, investigation, uncertainty, case structure, failure, time, downtime and economy | `player.md`, `platform-and-gameplay.md` |
 | `simulation.md` | Rounds 6–6.7: authoritative state, projections, domains, scheduling and simulation budgets | `gameplay.md`, `platform-and-gameplay.md`, `institutions.md`, `player.md` |
-| `content-architecture.md` | Round 8: content scale, NPC depth, Case/anomaly/Claim catalog architecture, replay and maintainability | `geography.md`, `institutions.md`, `player.md`, `gameplay.md`, `simulation.md`, `metaphysics.md` |
+| `content-architecture.md` | Rounds 8–8.6: content scale, Signature Case network, production templates and authored/generated boundaries | `geography.md`, `institutions.md`, `player.md`, `gameplay.md`, `simulation.md`, `metaphysics.md` |
+| `technical-design.md` | Round 9: Atria Package mapping, runtime contracts, data resources, tasks, lifecycle, information views and platform-gap audit | all approved system/content modules |
 | `platform-and-gameplay.md` | Atria fit, provisional core loop/surfaces, external design references, open questions | `foundation.md` plus relevant domain modules |
 | `decisions.md` | Compact cross-module frozen-decision index; links back to detailed authorities | all authoritative modules |
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 8.6
+## Current route — Round 9
 
 Required reading:
 
 - `index.md`
-- `content-architecture.md`
+- `decisions.md`
+- `technical-design.md`
 
-Load only when content scope requires it:
+Load only when the mapping requires its authority:
 
-- `geography.md` — city / regional authored footprint;
-- `institutions.md` — institutional roster and evidence ownership;
-- `player.md` — opening content and Claim acquisition;
-- `gameplay.md` — Case architecture and replay requirements;
-- `simulation.md` — actor tiers, graph, context and retention limits;
-- `metaphysics.md` — Claim / anomaly design boundaries.
+- `simulation.md` — domains, clocks, projections, scheduling;
+- `content-architecture.md` — Package Data content contracts;
+- `gameplay.md` — resolution, Case and Outcome requirements;
+- `player.md` — character creation and progression;
+- `metaphysics.md` — Claim authority and invariants;
+- `platform-and-gameplay.md` — verified platform-fit and frontend boundary.
 
-Round 7 visual/UI design remains delegated and is not a dependency for content authoring.
+Current Atria `main` contracts are implementation-fit evidence and must be revalidated before freezing mappings.
 
 ## Stage routing
 
@@ -89,8 +91,8 @@ Round 7 visual/UI design remains delegated and is not a dependency for content a
 | Round 5–5.6 | `index.md`, `gameplay.md`, `platform-and-gameplay.md`; dependencies only as needed | Approved |
 | Round 6–6.7 | `index.md`, `simulation.md`, `platform-and-gameplay.md`; dependencies only as needed | Approved |
 | Round 7 | `index.md`, `platform-and-gameplay.md`, `simulation.md` | Approved; lightweight information/interaction constraints only |
-| Round 8 | `index.md`, `content-architecture.md`; affected authority modules only as needed | Current |
-| Round 9 | `index.md`, `platform-and-gameplay.md` plus approved system/content modules | Create Package technical-design module when design starts |
+| Round 8–8.6 | `index.md`, `content-architecture.md`; affected authority modules only as needed | Approved |
+| Round 9 | `index.md`, `decisions.md`, `technical-design.md`; approved authority modules only as needed | Current |
 | Round 10 | `index.md`, `decisions.md`, technical-design module | Freeze implementation stages and exact implementation-stage reading map |
 
 Future empty modules are intentionally not pre-created. When a new round gains substantive design content, create its authoritative module and update this routing table.
@@ -212,11 +214,11 @@ Approved: eight distinct Signature Case responsibility slots, semi-open Cases 2�
 
 ### Round 8.6 — Minimum content production templates
 
-Define the minimum authored information required for institutions, actors, Cases, anomaly families, Claims, Canon fragments, locations and important artifacts before schema design.
+Approved: Canon Core / Perspective Layer / Generation Envelope, common authority/disclosure metadata, and minimum production contracts for all major content asset classes.
 
 ### Round 9 — Package technical design
 
-Translate the approved game design into Atria Package contracts, resources, tasks, state domains, Native Frontend and Studio workflow.
+Translate the approved game design into current Atria Package contracts, resources, tasks, Lifecycle / Information structures and frontend integration boundaries; record only genuine platform gaps.
 
 ### Round 10 — Implementation staging
 
@@ -258,7 +260,8 @@ Currently carried forward from research:
 - approved deterministic-first world scheduling with bounded background deliberation and event-driven fast-forward;
 - approved lightweight frontend information/interaction constraints with detailed visual design delegated;
 - approved content-scale architecture with focused authored depth, tiered NPCs, reusable Case/anomaly/Claim assets and fragmented Eastbank Canon;
-- approved eight-case Signature network with distinct gameplay roles and predicate-based Eastbank convergence.
+- approved eight-case Signature network with distinct gameplay roles and predicate-based Eastbank convergence;
+- approved structured content production templates with Canon/Perspective/Generation separation and no prose-as-authority dependency.
 
 All unapproved elements remain open to revision.
 
