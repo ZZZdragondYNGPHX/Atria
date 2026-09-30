@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.12 — Round 3.8 approved; Round 3.9 opened; not approved for implementation
+- **Status:** Discussion Draft v0.13 — Round 3.9 approved; Round 4 opened; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -49,25 +49,27 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 | `religion.md` | Rounds 3.5–3.6: gods, worship, Church, saints, cults, religious ecology | `metaphysics.md`, `society.md` |
 | `geography.md` | Rounds 3.7–3.8: states, borders, primary city, urban structure/history and current city mystery | `society.md`, `religion.md` |
 | `institutions.md` | Round 3.9: city institutions, faction network, Eastbank evidence distribution and institutional conflicts | `society.md`, `religion.md`, `geography.md` |
+| `player.md` | Round 4: player identity, starting social position, first Breach / Investiture relationship and opening case | `foundation.md`, `geography.md`, `society.md`, `institutions.md` |
 | `platform-and-gameplay.md` | Atria fit, provisional core loop/surfaces, external design references, open questions | `foundation.md` plus relevant domain modules |
 | `decisions.md` | Compact cross-module frozen-decision index; links back to detailed authorities | all authoritative modules |
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 3.9
+## Current route — Round 4
 
 Required reading:
 
 - `index.md`
-- `institutions.md`
+- `player.md`
 
-Load only when a faction question requires its authority:
+Load only when a player-background question requires it:
 
-- `geography.md` — Eastbank history, district placement, territorial facts;
-- `society.md` — generic State / Capital / Academy institutional mechanics;
-- `religion.md` — Church hierarchy, sacred Office, saints or religious jurisdiction.
+- `geography.md` — city and Eastbank placement;
+- `society.md` — class, profession, public supernatural knowledge;
+- `institutions.md` — guaranteed or earned institutional access;
+- `foundation.md` — product fantasy and opening-design constraints.
 
-Do not reload `metaphysics.md` or `platform-and-gameplay.md` by default for Round 3.9.
+Do not load detailed metaphysics/religion by default unless the starting supernatural mechanism specifically requires verification.
 
 ## Stage routing
 
@@ -77,8 +79,8 @@ Do not reload `metaphysics.md` or `platform-and-gameplay.md` by default for Roun
 | Round 3 | `index.md`, `society.md`; `metaphysics.md` only as needed | Approved |
 | Round 3.5–3.6 | `index.md`, `religion.md`, `society.md` | Approved |
 | Round 3.7–3.8 | `index.md`, `geography.md`; `society.md` / `religion.md` only as needed | Approved |
-| Round 3.9 | `index.md`, `institutions.md`; authority dependencies only as needed | Current |
-| Round 4 | `index.md`, `foundation.md`, `geography.md`, `society.md` | Create a dedicated player/starting-situation module once this round begins accumulating approved detail |
+| Round 3.9 | `index.md`, `institutions.md`; authority dependencies only as needed | Approved |
+| Round 4 | `index.md`, `player.md`; dependencies only as needed | Current |
 | Round 5 | `index.md`, `platform-and-gameplay.md` plus the future player module | Freeze core loop/failure model; split a dedicated gameplay module if needed |
 | Round 6 | `index.md`, `platform-and-gameplay.md` plus affected authority modules | Create simulation/information module when design starts |
 | Round 7 | `index.md`, `platform-and-gameplay.md` plus simulation module | Create UI module when design starts |
@@ -149,11 +151,11 @@ Approved: layered port-city history, Eastbank Settlement, institutional stabiliz
 
 ### Round 3.9 — City institutions and faction network
 
-Define the playable institutional network, Eastbank evidence distribution and mutually dependent institutional conflicts.
+Approved: interdependent city institutions, distributed Eastbank evidence, multi-axis relationship state and independent institutional Agendas.
 
 ### Round 4 — Player identity and starting situation
 
-Choose the initial player fantasy, starting class/social position, first mystery and entry point into the hidden world.
+Choose the initial player fantasy, starting social position, first mystery and entry point into the hidden world.
 
 ### Round 5 — Core gameplay loop and failure model
 
@@ -201,7 +203,8 @@ Currently carried forward from research:
 - approved modular builds constrained by self-consistency;
 - approved cultural professions rather than cosmic classes;
 - deterministic Native authority over supernatural mechanics;
-- approved layered industrial-port city history and Eastbank Settlement as the first city-scale buried contradiction.
+- approved layered industrial-port city history and Eastbank Settlement as the first city-scale buried contradiction;
+- approved interdependent city institution network with distributed evidence and independent Agendas.
 
 All unapproved elements remain open to revision.
 
