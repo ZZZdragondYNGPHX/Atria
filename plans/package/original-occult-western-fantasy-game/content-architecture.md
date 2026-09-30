@@ -13,7 +13,7 @@ Owns Round 8: playable content scale, authored-versus-generated boundaries, NPC 
 - `simulation.md`
 - `metaphysics.md`
 
-> **Current discussion:** Rounds 8–8.5 are approved. Round 8.6 is open: minimum production templates for authored content assets.
+> **Current discussion:** Rounds 8–8.6 are approved. Round 8 is complete; Package technical design continues in `technical-design.md` as Round 9.
 
 ---
 
@@ -846,25 +846,336 @@ Rejected:
 - one final binary Truth / secrecy choice;
 - making every Signature Case a supernatural monster encounter.
 
-### 6.44 Round 8.6 question — minimum content production templates
+### 6.44 Approved minimum content production templates — Round 8.6
 
-Round 8.6 must define the minimum authored fields for each major content asset class so implementation does not depend on ad hoc prose interpretation.
+All major content assets must distinguish three layers:
 
-It must define production templates for at least:
+- **Canon Core** — authored facts that generation cannot silently change;
+- **Perspective Layer** — what actors / institutions know, believe, remember or officially record;
+- **Generation Envelope** — details a model may safely fill without creating new world authority.
 
-- Institution;
-- Tier A Actor;
-- Tier B Actor;
-- Signature Case;
-- Institutional Case Pattern;
+Content assets should be structured first and prose second.
+
+Do not rely on long character biographies, giant Case documents or worldbook prose for the runtime to infer authoritative facts.
+
+#### 6.44.1 Common asset header
+
+Every major authored asset should conceptually provide:
+
+- stable ID;
+- asset kind;
+- purpose;
+- authority level;
+- dependencies;
+- stable references;
+- disclosure policy;
+- generation policy: hard-authored / bounded-model / generative;
+- invariants that later generation must not violate.
+
+Exact serialization is deferred to Round 9.
+
+#### 6.44.2 Institution production template
+
+A major Institution must define:
+
+- stable Identity;
+- Public Role;
+- Real Function;
+- Jurisdiction;
+- Internal Tension;
+- important Records;
+- Initial Knowledge;
+- Known Unknowns;
+- Blind Spots;
+- Tier A / Tier B actor references;
+- one to three major Agendas;
+- characteristic Claim / Investiture traditions;
+- player Access routes;
+- possible Obligations;
+- material Threats;
+- Eastbank connection or explicit absence;
+- Generation Envelope.
+
+Institution Knowledge must not be treated as equivalent to complete Canon Truth.
+
+#### 6.44.3 Tier A Actor production template
+
+A Tier A Actor must define:
+
+- Core Identity;
+- Public Identity;
+- Office / profession / affiliation;
+- current Private Motive;
+- Constraints;
+- Initial Beliefs;
+- Key Memories;
+- important Relations;
+- Agenda;
+- Competencies;
+- formal Claims or explicit absence;
+- Personal Anchors where relevant;
+- availability pattern;
+- legitimate information access;
+- Secrets the actor actually knows;
+- Unknowns the actor does not know;
+- Change Hooks for Belief / Agenda / Relation shifts.
+
+Speaking style or mannerisms may exist as presentation support but are not substitutes for the above state.
+
+#### 6.44.4 Tier B Actor production template
+
+A Tier B Actor should remain intentionally lighter.
+
+Minimum fields:
+
+- Identity;
+- Role;
+- Affiliation;
+- relevant Beliefs;
+- limited important Memories;
+- key Relations;
+- Competencies;
+- availability pattern;
+- current Matter links;
+- Promotion Hooks.
+
+Do not pre-author full biographies for every supporting character.
+
+#### 6.44.5 Signature Case production template
+
+A Signature Case must define:
+
+- Case Purpose;
+- Entry Conditions;
+- authoritative Underlying Truth;
+- Stakes;
+- core Actors;
+- Institutions;
 - Anomaly Family;
-- Starter Claim Seed;
-- Established Claim Archetype;
-- Canon Fragment;
-- important Location;
-- public / institutional Artifact templates where useful.
+- relevant Principles;
+- Evidence Graph;
+- Initial Beliefs;
+- Natural Pressures / deadlines;
+- Investigation Route classes;
+- Valid Intervention classes;
+- Settlement Families;
+- Persistent Consequences;
+- Eastbank contribution;
+- Revelation Predicate contributions;
+- Re-entry Hooks;
+- Order Safety for early / late discovery;
+- Failure Continuity.
 
-The goal is not to freeze JSON schemas yet.
+A Signature Case must not be encoded as a mandatory scene-by-scene script.
 
-The goal is to define what information must exist and which fields are authoritative, perspective-bound, generated or optional before Round 9 translates them into Package Data resources.
+#### 6.44.6 Institutional Case Pattern production template
+
+A reusable Institutional Case Pattern should define:
+
+- Problem Family;
+- Participant Slots;
+- allowed Underlying Truth structures;
+- required Evidence roles;
+- optional Evidence roles;
+- Pressure Patterns;
+- compatible Anomaly Families;
+- Settlement Families;
+- Generation Slots.
+
+Generated Case instances may fill names, ordinary addresses, document wording, minor characterization and similar bounded details.
+
+They may not invent new world laws or unsupported anomaly behavior.
+
+#### 6.44.7 Anomaly Family production template
+
+An Anomaly Family must define:
+
+- Core Contradiction;
+- relevant Principles;
+- Required Substrate;
+- Observable Signs;
+- Evidence Signatures;
+- Escalation behavior;
+- Mundane Interaction;
+- Claim Interaction;
+- common False Explanations;
+- institutional Interpretations;
+- Resolution Families;
+- Hard Limits;
+- Generation Envelope.
+
+Hard Limits must explicitly prevent the model from expanding a family beyond approved world-law boundaries.
+
+#### 6.44.8 Starter Claim Seed production template
+
+A Starter Claim Seed must define:
+
+- Seed Identity;
+- Principles;
+- Eligibility Imprints;
+- Core Rule;
+- Condition;
+- Starter Jurisdiction;
+- Allowed Anchor Families;
+- Allowed Price Families;
+- supported stabilization traditions;
+- Forbidden Extensions;
+- player-legible description;
+- diagnostic signs.
+
+Forbidden Extensions are mandatory.
+
+They prevent natural-language narration from broadening a narrow starter Claim into unsupported powers.
+
+#### 6.44.9 Established Claim Archetype production template
+
+An Established Claim Archetype must define:
+
+- Principles;
+- Core Effect Primitive;
+- Condition Family;
+- Anchor Patterns;
+- Price Patterns;
+- Base Jurisdiction;
+- Growth Directions;
+- Incompatibilities;
+- Failure Modes;
+- institutional traditions;
+- Engineering Limits;
+- Hard Prohibitions.
+
+This structure must support later Claim Engineering without turning free-form prose into mechanical authority.
+
+#### 6.44.10 Canon Fragment production template
+
+A Canon Fragment must define:
+
+- Subject;
+- Time Scope;
+- Canonical Assertions;
+- referenced Entities / Events;
+- Conflicting Records;
+- Initial Knowledge Holders;
+- Evidence Gateways;
+- Reveal Layer;
+- Projection Rules;
+- Dependencies.
+
+A Canon Fragment is backend Canon, not lore prose intended to be inserted wholesale into Narrator context.
+
+#### 6.44.11 Important Location production template
+
+An important persistent Location should define:
+
+- stable Identity;
+- district / geographic relation;
+- public function;
+- controlling institution / owner;
+- access rules;
+- important Actors;
+- important Artifacts / Evidence;
+- historical Events;
+- Boundary / Identity special state where relevant;
+- ordinary availability assumptions;
+- Matter / Case hooks;
+- safe Generation Zones for incidental subspaces.
+
+Generic sub-locations may be generated inside approved zones and promoted only if play makes them important.
+
+#### 6.44.12 Public / institutional Artifact production template
+
+Important Artifact content should separate **Semantic Payload** from **Rendered Text**.
+
+Semantic Payload may include:
+
+- artifact identity;
+- issuer / author;
+- issue time;
+- subject;
+- asserted Event / proposition;
+- names;
+- dates;
+- signatures;
+- custody;
+- provenance;
+- integrity;
+- access restriction.
+
+Rendered prose may then be produced from this payload without changing the underlying facts.
+
+This applies especially to:
+
+- newspaper articles;
+- court documents;
+- insurance records;
+- letters;
+- Church registers;
+- telegrams;
+- police reports.
+
+#### 6.44.13 Design-only metadata is runtime-inaccessible
+
+Author notes such as:
+
+- theme;
+- symbolism;
+- intended reveal order;
+- “the player should discover this around the third Case”;
+- author commentary
+
+must remain separate from runtime Context.
+
+Design intent is not World Truth.
+
+This separation is mandatory to prevent author spoilers from entering model projections.
+
+#### 6.44.14 Truth versus revealable expression
+
+Hard Canon should distinguish:
+
+- what is actually true;
+- what Evidence exists;
+- which weaker claims may currently be supported;
+- who is allowed to know which layer.
+
+Do not expose Canon prose directly merely because the system needs to reason about a Case.
+
+#### 6.44.15 Production validation questions
+
+Before a Hard-authored asset is accepted, authoring should answer:
+
+1. **What world state can this asset change or constrain?**
+2. **Through what legitimate route can the player or an actor learn it?**
+3. **If the player never discovers it, does the world remain coherent?**
+
+If an asset changes nothing, has no discoverable route and exists only as exposition, it should be challenged as unnecessary worldbook content.
+
+### 6.45 Round 8.6 decision
+
+Approved:
+
+- Canon Core / Perspective Layer / Generation Envelope separation;
+- common asset header with authority / disclosure / generation policy / invariants;
+- minimum Institution production template;
+- distinct Tier A and lighter Tier B templates;
+- Signature Case structural template;
+- reusable Institutional Case Pattern template;
+- Anomaly Family template with explicit Hard Limits;
+- Starter Claim Seed template with mandatory Forbidden Extensions;
+- Established Claim Archetype template;
+- fragmented Canon Fragment template;
+- Important Location template with safe Generation Zones;
+- Artifact Semantic Payload separated from Rendered Text;
+- runtime separation of design-only metadata;
+- Truth separated from currently revealable claims / evidence paths;
+- three production-validation questions for Hard-authored assets.
+
+Rejected:
+
+- long prose biography as the source of Actor state;
+- giant prose Case document as runtime authority;
+- one worldbook file containing Canon plus author notes;
+- AI inference of required fields from unstructured lore;
+- rendered document prose as the source of Artifact semantics;
+- passing author spoiler notes into runtime Context.
 
