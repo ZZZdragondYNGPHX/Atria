@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.17 — Round 5 core approved; Round 5.5 opened; not approved for implementation
+- **Status:** Discussion Draft v0.18 — Rounds 5–5.5 approved; Round 5.6 opened; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -56,7 +56,7 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 5.5
+## Current route — Round 5.6
 
 Required reading:
 
@@ -172,7 +172,11 @@ Approved: Acquire → Interpret → Commit → Consequence → Continue; resilie
 
 ### Round 5.5 — Deterministic checks and risk resolution
 
-Define exact uncertainty resolution, risk preview, opposition, Claim interaction and Native/model authority boundaries.
+Approved: Native-authoritative Resolution Frames, qualitative risk tiers, bounded Fortune, structured consequences and non-arbitrary social/combat resolution.
+
+### Round 5.6 — Case structure, open investigation and closure
+
+Define Case objects, lead emergence, case merging/splitting, closure decisions and distinction between official resolution and Truth.
 
 ### Round 6 — World simulation and information architecture
 
@@ -221,7 +225,8 @@ Currently carried forward from research:
 - approved Civil Verifier starting role, second-death opening case and action-caused first Breach;
 - approved controlled character creation with Personal Anchors and canon-safe background freedom;
 - approved deterministic first-Claim flow using Breach Imprints, curated Claim Seeds and institution-dependent stabilization;
-- approved core gameplay loop using resilient investigation, persistent consequences, time pressure, low-frequency high-risk violence and concrete downtime/Identity maintenance.
+- approved core gameplay loop using resilient investigation, persistent consequences, time pressure, low-frequency high-risk violence and concrete downtime/Identity maintenance;
+- approved Native-authoritative uncertainty resolution with bounded Fortune, risk preview and structured consequences.
 
 All unapproved elements remain open to revision.
 
