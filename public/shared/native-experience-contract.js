@@ -1,3 +1,4 @@
+import { assertAuthorityRuntime } from './native-authority-contract.js';
 import { assertSharedRuntime } from './native-shared-contract.js';
 import { assertPresentationRuntime, assertPresentationClosure } from './native-presentation-contract.js';
 import { assertTaskRuntime } from './native-task-contract.js';
@@ -16,6 +17,7 @@ export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
     ['data-projection', [1], [1]],
     ['composer', [1], [1]],
     ['action', [2], [2]],
+    ['authority-transaction', [1], [1]],
     ['declarative-mutation', [1], [1]],
     ['message-projection', [1], [1]],
     ['turn-contract', [1], [1]],
@@ -67,7 +69,7 @@ function list(value, label, validate, key) {
 // presentation is native@3 Core, not a legacy Component Model capability.
 // No generic config/extension/persistence/exposure payload belongs in this seam.
 export function assertNativeExperienceContract(value) {
-    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime', 'presentationRuntime', 'informationRuntime', 'contentRuntime', 'continuityRuntime', 'sharedRuntime'], 'ExperienceContract');
+    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime', 'presentationRuntime', 'informationRuntime', 'contentRuntime', 'continuityRuntime', 'sharedRuntime', 'authorityRuntime'], 'ExperienceContract');
     if (value.schemaVersion !== ATRIA_EXPERIENCE_CONTRACT_VERSION) {
         throw new TypeError('ExperienceContract.schemaVersion must be 1');
     }
@@ -96,7 +98,12 @@ export function assertNativeExperienceContract(value) {
     const taskRuntime = value.taskRuntime === undefined ? undefined : assertTaskRuntime(value.taskRuntime);
     const lifecycleRuntime = value.lifecycleRuntime === undefined ? undefined : assertLifecycleRuntime(value.lifecycleRuntime, taskRuntime);
     if (!lifecycleRuntime && taskRuntime?.tasks.some(task => task.resultPolicy.sink === 'app_command')) throw new TypeError('Declared App Command requires Lifecycle runtime');
+    const authorityCapability = capabilities.some(item => item.id === 'authority-transaction');
+    if (authorityCapability !== (value.authorityRuntime !== undefined)) throw new TypeError('authority-transaction capability and authorityRuntime must be declared together');
+    const authorityRuntime = value.authorityRuntime === undefined ? undefined : assertAuthorityRuntime(value.authorityRuntime,
+        lifecycleRuntime, value.informationRuntime === undefined ? undefined : assertInformationRuntime(value.informationRuntime, lifecycleRuntime, taskRuntime));
     return Object.freeze({ schemaVersion: ATRIA_EXPERIENCE_CONTRACT_VERSION, capabilities, dataResources,
+        ...(authorityRuntime === undefined ? {} : { authorityRuntime }),
         ...(taskRuntime === undefined ? {} : { taskRuntime }),
         ...(lifecycleRuntime === undefined ? {} : { lifecycleRuntime }),
         ...(value.sharedRuntime === undefined ? {} : { sharedRuntime: assertSharedRuntime(value.sharedRuntime, lifecycleRuntime, value.informationRuntime === undefined ? undefined : assertInformationRuntime(value.informationRuntime, lifecycleRuntime, taskRuntime), value.continuityRuntime) }),

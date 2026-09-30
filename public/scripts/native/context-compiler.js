@@ -789,7 +789,10 @@ export class SessionContextCompiler {
             coverage.narrativeThroughSequence,
             options.promptContentByMessageId,
         );
-        const information = informationContext(snapshot, target, options.informationTaskId);
+        let informationScans = 0;
+        const information = informationContext(snapshot, target, options.informationTaskId, options.authorityTurn ? {
+            includeRollups: false, onScan: count => { informationScans += count; if (informationScans > 4096) throw new TypeError('Authority context scan limit'); },
+        } : {});
         const knowledgeTarget = information?.actorId ? { kind: 'actor', id: information.actorId } : target;
         const knowledge = knowledgeItems(snapshot, knowledgeTarget, options.memoryEvidence);
         const branchScope = currentBranchScope(snapshot);

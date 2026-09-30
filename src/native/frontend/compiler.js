@@ -1,3 +1,4 @@
+import { frontendTransactions } from './authority.js';
 import { assertMediaCatalog } from '../../../public/shared/native-frontend-media.js';
 import { assertLocalization } from '../../../public/shared/native-frontend-localization.js';
 import { frontendDiagnostics } from './diagnostics.js';
@@ -8,7 +9,7 @@ import { canonicalJson, compileBridge, hash } from './bridge.js';
 import { validateStyle, compileStyle, linkStyle } from './styles.js';
 import { validateFrontendGraph, componentDependencies } from './graph.js';
 
-export function compileFrontend({ source, files, mode, namespace = 'package', experienceContract = {} }) {
+export function compileFrontend({ source, files, mode, namespace = 'package', experienceContract = {}, transactions = [] }) {
     resourcePath(source); resourcePath(namespace);
     const consumed = new Set();
     let sourceBytes = 0;
@@ -54,7 +55,7 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
             throw error;
         }
     };
-    const bridge = atSource(index.bridge ? resolve(index.bridge) : source, () => compileBridge(index.bridge ? JSON.parse(readText(resolve(index.bridge))) : undefined, experienceContract));
+    const bridge = atSource(index.bridge ? resolve(index.bridge) : source, () => compileBridge(index.bridge ? JSON.parse(readText(resolve(index.bridge))) : undefined, experienceContract, transactions));
     emit('bridge', 'bridge', bridge);
     if (index.bridge) provenance.push({ kind: 'bridge', id: 'bridge', file: resolve(index.bridge), start: 0, end: readText(resolve(index.bridge)).length });
     for (const asset of index.assets) emit('asset:' + asset.id, 'asset', read(resolve(asset.source)), [], asset.mediaType);
@@ -124,7 +125,7 @@ export function compileFrontend({ source, files, mode, namespace = 'package', ex
         resources: resources.sort((a, b) => a.id < b.id ? -1 : 1) };
     const entry = prefix + '/index.json';
     output.set(entry, Buffer.from(canonicalJson(compiled)));
-    validateFrontendGraph({ entry, files: output, mode, experienceContract });
+    validateFrontendGraph({ entry, files: output, mode, experienceContract, transactions });
     return { entry, files: output, consumed };
 }
 
@@ -138,7 +139,7 @@ export function compileProjectFrontends(packageSource, inputFiles) {
         const experience = assertFrontendExperience(value.runtime.experience, { authoring: true });
         if (experience.mode === 'text') continue;
         const compiled = compileFrontend({ source: experience.frontend.source, files: inputFiles, mode: experience.mode, namespace,
-            experienceContract: result.runtime?.experienceContract });
+            experienceContract: result.runtime?.experienceContract, transactions: () => frontendTransactions(result, value, inputFiles) });
         for (const [path, bytes] of compiled.files) {
             if (files.has(path)) throw new TypeError('Author source collides with compiled artifact: ' + path);
             files.set(path, bytes);

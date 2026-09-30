@@ -1,3 +1,6 @@
+import { hasAuthorityTransactions, authorityCatalog, authoritySelection, resolverRequest, authorityValue, authorityFailure, authoritySelectionCache } from '../authority-turn.js';
+import { buildAuthorityObservation } from '../authority-transaction.js';
+import { createNativeId } from '../identity.js';
 import { prepareNarrativeSkills, runNarrativeSkillLoop, isNarrativeSkillInvocation } from '../skill-invocation.js';
 import { GenerationService } from '../model-prompt-runtime/generation-service.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
@@ -70,6 +73,8 @@ export class NativeGenerationHost {
         Object.assign(this, { persistence, library, sessionCore, packageInstaller, studio, agent, providers, secretPort, skillRepository, extensions });
     }
 
+    get authoritySelections() { return authoritySelectionCache(this.sessionCore); }
+
     async executionResources(handle, route, sessionId, capture = {}) {
         capture.routes ??= {}; capture.connections ??= {}; capture.models ??= {};
         const routes = await this.persistence.listRuntimeRoutes(handle);
@@ -94,26 +99,31 @@ export class NativeGenerationHost {
         return resources;
     }
 
-    async executeTurn(handle, input, signal, onChunk) {
+    async executeTurn(handle, input, signal, onChunk, { transaction = null } = {}) {
         input = immutable(input);
+        transaction = transaction ? immutable(authorityValue(transaction)) : null;
         if (typeof input.invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,96}$/.test(input.invocationId)
             || Object.keys(input).some(key => !['sessionId', 'revisionId', 'invocationId', 'requestId', 'userInput', 'stageInputs', 'variants', 'slotBindings', 'routeRef', 'hostMemoryEvidence'].includes(key))) fail('native_turn_request_invalid');
         const { requestId: _requestId, ...turnRequest } = input;
-        const requestHash = hashNativeDocument(turnRequest);
+        const requestHash = hashNativeDocument(transaction ? { ...turnRequest, transaction } : turnRequest);
         const base = await this.sessionCore.load(handle, input.sessionId);
         const previous = base.states.atri_task_results?.records.find(item => item.invocationId === input.invocationId)
             ?? base.states.atri_lifecycle?.taskTombstones.find(item => item.invocationId === input.invocationId);
         if (previous) {
-            if (previous.requestHash !== requestHash || previous.kind !== 'turn') fail('native_turn_invocation_conflict');
+            if (previous.requestHash !== requestHash || previous.kind !== 'turn'
+                || (hasAuthorityTransactions(base) && (previous.branchId !== base.revision.branchId || previous.anchorRevisionId !== input.revisionId))) fail('native_turn_invocation_conflict');
             return base;
         }
         if (base.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
         const runtime = base.manifest.runtime?.experienceContract?.taskRuntime;
         if (!runtime?.turn) fail('native_turn_contract_required');
+        const authority = hasAuthorityTransactions(base);
+        if (transaction && !authority) fail('native_authority_capability_required');
+        if (authority && runtime.turn.policy !== 'authority-first') fail('native_authority_turn_policy_required');
         const routes = await this.persistence.listRuntimeRoutes(handle);
         const lanes = [];
         if (!runtime.turn.narratorTaskId) lanes.push(selectNativeRuntimeRoute(routes, 'role.narrator', input.routeRef));
-        if (runtime.turn.policy === 'authority-first' && input.userInput?.trim() && (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic)) lanes.push(selectNativeRuntimeRoute(routes, 'role.intent_resolver'));
+        if (!transaction && !(authority && base.timeline.at(-1)?.metadata?.atri_authority_retry) && runtime.turn.policy === 'authority-first' && (authority || input.userInput?.trim()) && (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic)) lanes.push(selectNativeRuntimeRoute(routes, 'role.intent_resolver'));
         for (const id of [...runtime.turn.stages, runtime.turn.narratorTaskId, runtime.turn.interpreterTaskId].filter(Boolean)) {
             const task = runtime.tasks.find(item => item.id === id);
             const ref = input.slotBindings?.[task.bindingSlotId];
@@ -121,7 +131,7 @@ export class NativeGenerationHost {
             if (!lane) fail('native_task_binding_missing');
             lanes.push(lane);
         }
-        const lanePlan = { memoryEvidence: normalizeHostMemoryEvidence(input.hostMemoryEvidence, base) };
+        const lanePlan = { memoryEvidence: normalizeHostMemoryEvidence(input.hostMemoryEvidence, base), transaction };
         const resources = (await Promise.all(lanes.map(lane => this.executionResources(handle, lane, input.sessionId, lanePlan)))).flat();
         let expectedRevisionId = input.revisionId;
         const operation = nativeTaskScheduler.submit({ owner: handle, kind: 'turn',
@@ -132,14 +142,75 @@ export class NativeGenerationHost {
             finalize: prepared => this.sessionCore.finalizeTurn(handle, input.sessionId, { ...prepared, requestHash }, { expectedRevisionId }),
         });
         try { onChunk?.({ operationId: operation.operationId, status: 'queued', provisional: true }); } catch { /* Observer only. */ }
-        return operation.result;
+        const result = await operation.result;
+        if (authority) this.authoritySelections.delete(handle + ':' + base.session.sessionId + ':' + base.revision.branchId + ':' + base.revision.revisionId);
+        return result;
+    }
+
+    async prepareAuthoritySelection(handle, base, input, lanePlan, signal) {
+        if (base.manifest.runtime.experienceContract.lifecycleRuntime && !base.states.atri_lifecycle?.ready) fail('native_authority_ready_required');
+        const installed = await this.sessionCore._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+        const catalog = await authorityCatalog(base, installed);
+        const typed = lanePlan.transaction;
+        let player = null;
+        if (typed) {
+            const selection = authoritySelection(catalog, typed);
+            const content = JSON.stringify({ verb: catalog.find(item => item.id === selection.transactionId).verb, input: selection.input });
+            player = structuredClone(this.sessionCore._newEntry(base, { role: 'user', content,
+                metadata: { atri_authority_input: selection } }));
+            // Input and invocation key do not influence the mechanical RNG.
+            const stable = hashNativeDocument({ sessionId: base.session.sessionId, branchId: base.revision.branchId,
+                revisionId: base.revision.revisionId, transactionId: selection.transactionId });
+            const messageId = createNativeId('message', () => stable.slice(0, 32));
+            const variantId = createNativeId('variant', () => stable.slice(32));
+            Object.assign(player.entry, { messageId, variantIds: [variantId], activeVariantId: variantId });
+            Object.assign(player.variant, { messageId, variantId });
+        } else if (base.timeline.at(-1)?.role !== 'user'
+            || (input.userInput !== undefined && input.userInput !== base.timeline.at(-1).content)) fail('native_authority_player_anchor_required');
+        const key = handle + ':' + base.session.sessionId + ':' + base.revision.branchId + ':' + base.revision.revisionId;
+        const fingerprint = hashNativeDocument({ player: player?.entry.messageId ?? base.timeline.at(-1).messageId,
+            typed: typed ?? null, userInput: typed ? null : base.timeline.at(-1).content });
+        let pinned = this.authoritySelections.get(key);
+        if (pinned && pinned.fingerprint !== fingerprint) fail('native_authority_input_conflict');
+        if (!pinned) {
+            // Never evict an unresolved pin to allow a silent re-resolution.
+            if (this.authoritySelections.size >= 128) fail('native_authority_retry_retention_limit');
+            const selecting = async () => {
+                if (typed) return authoritySelection(catalog, typed);
+                // Branch Retry of a typed action retains its fixed authored input.
+                const replay = base.timeline.at(-1).metadata?.atri_authority_retry;
+                if (replay) {
+                    const origin = await this.sessionCore.load(handle, base.session.sessionId, { revisionId: replay.revisionId });
+                    const receipt = origin.states.atri_action_receipts?.receipts.find(item => item.source === 'frontend' && item.playerMessageId === replay.playerMessageId);
+                    const player = origin.timeline.find(item => item.messageId === replay.playerMessageId);
+                    if (!receipt || !player?.metadata?.atri_authority_input) fail('native_authority_retry_invalid');
+                    return authoritySelection(catalog, player.metadata.atri_authority_input);
+                }
+                const request = resolverRequest(catalog, buildAuthorityObservation(base), base.timeline.at(-1).content);
+                const result = await this.execute(handle, { sessionId: base.session.sessionId, revisionId: base.revision.revisionId,
+                    role: 'intent_resolver', requestId: input.invocationId + ':intent', tools: request.tools }, signal, undefined,
+                { scheduled: true, lanePlan: { ...lanePlan, authorityContext: { mode: 'resolver', snapshot: base, payload: request.payload } } });
+                try { return request.select(result.response); } catch { throw authorityFailure('native_authority_selection_invalid'); }
+            };
+            pinned = { fingerprint, selection: selecting() };
+            this.authoritySelections.set(key, pinned);
+            pinned.selection.catch(() => { if (this.authoritySelections.get(key) === pinned) this.authoritySelections.delete(key); });
+        }
+        const selection = await pinned.selection;
+        checkCancellation(signal);
+        return this.sessionCore.prepareAuthorityTurn(handle, base, selection, player);
     }
 
     async prepareTurn(handle, input, signal, onChunk, onAnchor, lanePlan) {
         let base = await this.sessionCore.load(handle, input.sessionId);
         if (base.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
         const runtime = base.manifest.runtime.experienceContract.taskRuntime;
-        if (runtime.turn.policy === 'authority-first' && input.userInput?.trim() && (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic)) {
+        let authorityTurn = null;
+        if (hasAuthorityTransactions(base)) {
+            authorityTurn = await this.prepareAuthoritySelection(handle, base, input, lanePlan, signal);
+            base = authorityTurn.prepared.candidate;
+            lanePlan = { ...lanePlan, authorityContext: { snapshot: base, receipt: authorityTurn.prepared.receipt, mode: 'narrator' } };
+        } else if (runtime.turn.policy === 'authority-first' && input.userInput?.trim() && (base.entryPoint.runtime?.game?.logic ?? base.manifest.runtime?.game?.logic)) {
             const installed = await this.packageInstaller.open(handle, base.session.packageId, base.session.packageVersionId);
             const { world, candidate } = await createTaskWorld(base, { ...installed, entryPoint: base.entryPoint }, async (patch, revisionId) => {
                 checkCancellation(signal);
@@ -183,7 +254,7 @@ export class NativeGenerationHost {
         } else {
             const narration = await this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId,
                 requestId: input.invocationId, role: 'narrator', routeRef: input.routeRef,
-                messages: stages.length ? [{ role: 'user', content: JSON.stringify({ provisionalTurnContext: stages }) }] : [] }, signal, onChunk, { scheduled: true, lanePlan });
+                messages: stages.length ? [{ role: 'user', content: JSON.stringify({ provisionalTurnContext: authorityTurn ? authorityValue(stages) : stages }) }] : [] }, signal, onChunk, { scheduled: true, lanePlan });
             provenance.push({ taskId: 'narrator', requestSnapshotHash: hashNativeDocument(narration.snapshot),
                 deliveryReceipt: { kind: 'model_delivery', invocationId: input.invocationId, delivered: true } });
             draft = { schemaVersion: 1, narrative: narration.response.text, outcomes: [], diagnostics: [] };
@@ -197,7 +268,7 @@ export class NativeGenerationHost {
             outcomes.push({ requestId: task.interpretation.id, interpretation: interpreted.record.payload });
         }
         checkCancellation(signal);
-        return { invocationId: input.invocationId, provenance, envelope: { ...draft, outcomes } };
+        return { invocationId: input.invocationId, provenance, envelope: { ...draft, outcomes }, ...(authorityTurn ? { authorityProof: authorityTurn.proof } : {}) };
     }
 
     async prepareLifecycle(handle, input) {
@@ -258,7 +329,7 @@ export class NativeGenerationHost {
         input = immutable(input);
         if (input.invocationId?.startsWith('lc:') && !lifecycleInvocation) fail('native_task_reserved_invocation');
         if (Object.keys(input).some(key => !['sessionId', 'revisionId', 'taskId', 'variantId', 'input', 'slotBindings', 'invocationId', 'requestId', 'fallbackMode'].includes(key))) fail('native_task_request_invalid');
-        const snapshot = await this.sessionCore.load(handle, input.sessionId);
+        const snapshot = lanePlan?.authorityContext?.snapshot ?? await this.sessionCore.load(handle, input.sessionId);
         const task = snapshot.manifest.runtime?.experienceContract?.taskRuntime?.tasks.find(item => item.id === input.taskId);
         const variant = task?.variants.find(item => item.id === input.variantId);
         if (!variant) fail('native_task_variant_missing');
@@ -333,7 +404,7 @@ export class NativeGenerationHost {
         const role = 'role.' + input.role;
         let snapshot; let project; let source; let runtime;
         if (input.sessionId) {
-            snapshot = immutable(await this.sessionCore.load(handle, input.sessionId));
+            snapshot = immutable(lanePlan?.authorityContext?.snapshot ?? await this.sessionCore.load(handle, input.sessionId));
             if (snapshot.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
             if (!preflight && snapshot.externalEffects?.some(effect => effect.status === 'prepared')) fail('native_transfer_pending');
             source = { kind: 'session', sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
@@ -409,11 +480,12 @@ export class NativeGenerationHost {
         if (preview && input.previewRefs) persistence.getRuntimeRoute = async (owner, id) => id === route.runtimeRouteId ? route : this.persistence.getRuntimeRoute(owner, id);
         const resolver = new RouteResolver({ persistence, library: this.library, providers: this.providers, getScopedResource });
         if (preflight) return resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role, requirements });
-        if (snapshot) assertInformationActorAvailable(snapshot, taskPlan?.task.id);
-        if (informationDefinition(snapshot) && input.messages?.length) fail('native_information_unscoped_messages');
-        const nativeContext = snapshot ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
-            options: { informationTaskId: taskPlan?.task.id, memoryEvidence: lanePlan?.memoryEvidence ?? [] } }) : null;
-        const skills = this.skillRepository && isNarrativeSkillInvocation(input.role, taskPlan, runtime)
+        if (snapshot) assertInformationActorAvailable(snapshot, lanePlan?.authorityContext ? undefined : taskPlan?.task.id);
+        const authorityContext = lanePlan?.authorityContext;
+        if (!authorityContext && informationDefinition(snapshot) && input.messages?.length) fail('native_information_unscoped_messages');
+        const nativeContext = snapshot && authorityContext?.mode !== 'resolver' ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
+            options: { informationTaskId: authorityContext ? undefined : taskPlan?.task.id, memoryEvidence: lanePlan?.memoryEvidence ?? [], authorityTurn: Boolean(authorityContext) } }) : null;
+        const skills = !authorityContext && this.skillRepository && isNarrativeSkillInvocation(input.role, taskPlan, runtime)
             ? await prepareNarrativeSkills({ repository: this.skillRepository(handle), settings: (await this.extensions.settings(handle)).value,
                 context: snapshot ? { packageId: snapshot.session.packageId, packageVersionId: snapshot.session.packageVersionId,
                     skillIds: snapshot.manifest.skills?.map(item => typeof item === 'string' ? item : item.skillId ?? item.id) }
@@ -428,14 +500,16 @@ export class NativeGenerationHost {
             };
             // A task/tool transcript follows the selected turn input. Do not
             // append the original user turn again after a tool result.
-            const exposed = taskPlan ? selected.items.filter(item => {
+            const safeItems = authorityContext ? selected.items.filter(item => item.id.startsWith('projection:') || item.kind === 'context.history' || item.kind === 'context.input'
+                || (informationDefinition(snapshot) && (item.id.startsWith('knowledge:') || item.id.startsWith('memory:')))) : selected.items;
+            const exposed = taskPlan ? safeItems.filter(item => {
                 const context = taskPlan.task.context;
                 if (item.id.startsWith('projection:')) return context.includes('projection');
                 if (item.id.startsWith('memory:')) return true;
                 return item.kind === 'context.history' ? context.includes('history')
                     : item.id.startsWith('knowledge:') ? context.includes('knowledge')
                         : item.id === 'state:atri_world_state' && context.includes('world');
-            }) : selected.items;
+            }) : safeItems;
             const items = exposed.map(item => (input.messages?.length || skillTranscript.length) && item.kind === 'context.input'
                 ? { ...item, kind: 'context.history', content: { role: 'user', content: item.content } } : item);
             // Host-owned task dialogue is supplemental context, never a second fact scan.
@@ -444,6 +518,12 @@ export class NativeGenerationHost {
             }
             if (taskPlan?.task.context.includes('input')) items.push({ kind: skillTranscript.length ? 'context.history' : 'context.input', id: 'task-input',
                 content: skillTranscript.length ? { role: 'user', content: JSON.stringify(taskPlan.payload) } : JSON.stringify(taskPlan.payload), provenance: [{ source: 'host.task' }] });
+            if (authorityContext) {
+                const payload = authorityContext.mode === 'resolver' ? authorityContext.payload
+                    : { instruction: 'Narrate only the frozen authority result. You have no mechanical write authority.', receipt: authorityContext.receipt };
+                items.push({ kind: 'context.input', id: 'authority-turn', content: JSON.stringify(authorityValue(payload)), provenance: [{ source: 'host.authority' }] });
+                authorityValue(items);
+            }
             items.push(...(skills?.items ?? []));
             for (const [index, message] of skillTranscript.entries()) items.push({ kind: 'context.history', id: 'skill-message-' + index,
                 content: message, provenance: [{ source: 'host.skills' }] });
@@ -486,6 +566,7 @@ export class NativeGenerationHost {
                 if (current !== (snapshot ? input.revisionId : input.revision)) fail('native_generation_revision_conflict');
             },
         }) : await service.execute(request, { preview });
+        if (authorityContext?.mode === 'narrator' && (result.response.toolCalls?.length || result.response.tool_calls?.length)) fail('native_narrator_outcome_denied');
         return immutable({ ...result, routing: { fallbackUsed: result.snapshot.runtimeRouteId !== route.runtimeRouteId, attempts } });
     }
 }

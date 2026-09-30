@@ -78,11 +78,13 @@ export class FrontendBridgeService {
                 const key = binding.id + ':' + request.idempotencyKey;
                 const fingerprint = hash(canonicalJson({ input, revision: request.revision, method: request.method }));
                 const previous = state.receipts.get(key);
-                if (previous) { if (previous.fingerprint !== fingerprint) throw bridgeFailure('bridge_idempotency_conflict'); return await previous.result; }
+                if (previous) { if (previous.fingerprint !== fingerprint) throw bridgeFailure('bridge_idempotency_conflict'); if (previous.result) return await previous.result; }
                 if (state.receipts.size >= 256) throw bridgeFailure('bridge_backpressure');
-                if (request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
+                if (!binding.target.transactionId && request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
                 const result = this.write(services, state, binding, request, input, base, receipt);
-                state.receipts.set(key, { fingerprint, result });
+                const cached = { fingerprint, result };
+                state.receipts.set(key, cached);
+                if (binding.target.transactionId) result.catch(() => { cached.result = null; });
                 return await result;
             }
             if (request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
@@ -122,6 +124,19 @@ export class FrontendBridgeService {
             return receipt(await writeFixedHost(services.core, state.owner, state, binding, mapped, request.revision));
         }
         const invocationId = 'fb:' + hash(canonicalJson({ epoch: state.epoch, binding: binding.id, key: request.idempotencyKey }));
+        if (binding.kind === 'action' && binding.target.transactionId && request.method === 'action.invoke') {
+            const host = services.generationHost ?? await services.getGenerationHost?.();
+            if (!host) throw bridgeFailure('bridge_operation_unavailable');
+            const tasks = base.manifest.runtime.experienceContract.taskRuntime.tasks;
+            const slotBindings = Object.assign({}, ...await Promise.all(tasks.map(task => services.taskBindings?.(state.owner, base.session.packageId, task) ?? {})));
+            // Epoch is a transport capability, not the durable action identity.
+            const turnId = 'fb-at:' + hash(canonicalJson({ sessionId: state.sessionId, binding: binding.id, key: request.idempotencyKey }));
+            const snapshot = await host.executeTurn(state.owner, { sessionId: state.sessionId, revisionId: request.revision,
+                invocationId: turnId, slotBindings }, undefined, undefined,
+            { transaction: { transactionId: binding.target.transactionId, input: mapped } });
+            await this.current(services, state);
+            return receipt({ revision: snapshot.revision.revisionId, data: {} });
+        }
         if (binding.kind === 'action' && request.method === 'action.invoke') {
             const snapshot = await services.core.applyLifecycleCommand(state.owner, state.sessionId, { type: 'lifecycle', invocationId,
                 action: { kind: 'app.command', domainId: binding.target.domainId, commandId: binding.target.commandId, recordId: binding.target.recordId ?? binding.target.domainId, args: mapped } },
