@@ -4,7 +4,7 @@
 - Primary Workspace: `main`
 - Consumer: Package P3 `package/original-occult-western-fantasy-game`
 - Plan: `plans/feat/world-simulation-scheduling.md`
-- Status: **implemented and merged; integrated-main/Package final checks in progress**
+- Status: **complete, merged and verified on main; temporary branch refs removed**
 - Start main: `cd6bff19d54f651a4bffd8981f62ec77c0f84acb`
 - Implementation / tested / pushed: `648b00aa4a09dbda274fa18ee1876756ec284f45`
 - PR: https://github.com/ZZZdragondYNGPHX/Atria/pull/99 (merged)
@@ -39,3 +39,7 @@ Local MySQL/PostgreSQL tests initially failed because services were unavailable.
 ## Limits
 
 No hosted model, manual browser/device, OS-kill or cross-process uncommitted-selection recovery is claimed. Remote browser CI is separate from manual UI/P8 acceptance. Pending task delivery may retry only at an explicit later opportunity; it is not an automatic provider retry cascade. A new authored occurrence is required for reconsideration after stale cancellation; committed results are not superseded.
+
+## Integrated closure (2026-09-30)
+
+Exact main 052c466e3c9e4b07912da0cb602b2933f4821187 passed Authority, integration, Native v3 regression/Hard Cut, Native v3 Heavy/Studio browser and cleanup checks. Authority main run: https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36723857416 ; Native run: https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36723857617 . Package final build/full validation and full-verification preview passed against this main (evidence is in the Package Record). Both Core feature branch refs are deleted; the pre-existing product worktree is retained detached at integrated main. Only the two task-created database containers were removed after exact ID checks. No user worktree/release was deleted.

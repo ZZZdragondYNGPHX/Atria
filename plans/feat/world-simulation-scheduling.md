@@ -3,7 +3,7 @@
 - Task ID: feat/world-simulation-scheduling
 - Primary Workspace: main (short-lived product branch)
 - Consumer: package/original-occult-western-fantasy-game, P3 only
-- Status: implementation in progress following the user's direction to resolve G2 autonomously
+- Status: completed and integrated; evidence in records/feat/world-simulation-scheduling.md
 
 ## Gap / scope
 

@@ -1272,7 +1272,7 @@ Round 9 is technically frozen against `main@c936b0aa4c42cf5711f40ae4a00f5fc34328
 
 The only blocking v1 Core prerequisite is the previously approved `authority-transaction@1` capability.
 
-No second v1 Core gap is required for NPC perspectives, Agenda deliberation, Package Data scale, bounded investigation graphs, frontend consumption, save/branch authority or deterministic Fortune.
+This was the original freeze assumption for NPC perspectives, Agenda deliberation, Package Data scale, bounded investigation graphs, frontend consumption, save/branch authority and deterministic Fortune. P3 supersedes only the Agenda orchestration part through the formal G2 correction in 6.54.7; the other boundaries and closed G1 remain unchanged.
 
 #### 6.54.1 Prepare authority before narration, publish only after narration succeeds
 

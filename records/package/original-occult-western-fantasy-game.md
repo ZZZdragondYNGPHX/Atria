@@ -181,3 +181,56 @@ These are a **single missing World Simulation orchestration contract (G2)**, not
 ### Continuation
 
 The user explicitly instructed continued autonomous resolution rather than stopping at G2. First prefer an existing legitimate authority path; if the missing contract needs Core support, implement and validate it in an independent short-lived product worktree without copied product code, raised limits, a parallel scheduler authority or fake player transactions. Keep this Package Record and the sole live HANDOFF current. P3 still needs every simulation exit criterion, including real save-container restoration; do not issue a P4 handoff until those gates pass.
+
+## P3 — World Simulation completed (2026-09-30)
+
+Status: **P3 complete, tested and pushed. Stopped at the P3 boundary. P4/P8 have NOT started.**
+
+### Pins and prerequisite closure
+
+- Package start: `8e7dec443d39beec5a182c16cfe7bcad97ebd6c0` (completed P2); diagnostic checkpoint: `bb13a1e47c6407a195c85f9974d7a8f81f113f8a`.
+- Package implementation / tested / pushed HEAD: **`472045a270c23371d7dc2dac6f7dc685fd3e1970`**.
+- Tested committed tree: `920af90fb2e21058794e84dd137d546600919082`.
+- Version / PackageVersion: `0.3.0-p3` / `pkgv_b9c0df8ea32803d2fb74283b4b3da042`.
+- Independent latest main used for final build/validate/preview: **`052c466e3c9e4b07912da0cb602b2933f4821187`**.
+- G2 was resolved through formal Core task `feat/world-simulation-scheduling`, implementation `648b00aa4a09dbda274fa18ee1876756ec284f45`, merged PR https://github.com/ZZZdragondYNGPHX/Atria/pull/99. Its product implementation/CI history is in `records/feat/world-simulation-scheduling.md`; P0 Record was not changed. Both temporary Core branch refs are removed. The existing independent product worktrees are retained and clean.
+- Package requires **authority-transaction@1 AND world-simulation@1**. The second requirement is a real implemented Host capability, not optional metadata. G1 remains closed and unchanged.
+
+### Implemented scope
+
+- Formal Core scheduling declarations in `runtime/simulation.json`; no executable Package scheduler, fake player turns, copied product code or parallel authority.
+- Two-day synthetic calendar: daily rent arrears; missed hearing with actual permission loss; scheduled clinic treatment of Condition severity; institutional processing; conditional Cold railway progression/blocking; Warm press publication; due Hot registry deliberation.
+- Existing Lifecycle domains own Agendas, institutional records, obligations and Conditions. Existing World Journal records `SimulationAdvanced`/`InstitutionFiled`. There is no Outcome/Resolution shadow domain or duplicate event history.
+- Static input-only Agenda Task receives its institution identity, actual clock and an explicitly known docket notice, with a bounded `defer`/`file_report` catalog. No other institution's private records or general World/Timeline context. One deliberation is admitted per batch; no normal unrelated-turn model burst.
+- Valid intent is rechecked and applied through a non-player Authority Transaction. Filing, one static generated Entity slot (`entities/delegate`), safe projections and accepted Task result publish in one additional Session CAS. A proposed name is not an Entity before acceptance. Reflection/Claim Advisor remain advisory; no per-NPC Tasks/Views were added.
+- Foreground authority/narration still finalize atomically; the Host then dispatches an admitted background Task without blocking the foreground result. Failed background delivery leaves the previously committed foreground world unchanged and adds no speculative consequence.
+- Relevance, deterministic due-time/priority/ID ordering, bounded work/reaction, stale cancellation, scope/input freshness and provider failure are enforced through the integrated Core. New reconsideration needs an eligible authored occurrence; no immediate recursive retry.
+- Unified safe publication unions repeated static grants: **7 read grants / 10 declared App Commands**, down from P2's 10/21. All guarded branches still count in declaration budgets. The fixture's actual two-day private Lifecycle advance measures **16 reads / 16 App Commands / 20 effects**, including selected publication and admission work. This is measured fixture work, not an entitlement to bypass any limit.
+- The same nine frontend bindings remain, with wait widened to 1–2880 minutes. Structured player-safe risk/condition/relation fields replace repeated status text branches. No P8 visual/UX work.
+- Seven Package Data resources remain modular/hash-pinned; bootstrap public schedule text is synthetic, not launch-world content. Historical releases and earlier ignored builds were preserved.
+
+### Actual validation
+
+- Final `node tools/package.mjs build --core <latest-main> --out <new-output>` passed against integrated main. Final ignored archive: `build/0.3.0-p3-final.atria`, **22,309 bytes**, SHA-256 **`71d007460e2f6b610d33e2199c090f805fea8fdb150a95c7d3d4b2861d5325e6`**. It is not a P9 release and is not committed.
+- `node tools/package.mjs validate --core <latest-main>` passed. The subsequent final `preview` executed the same full verification function on the exact committed source, including the final public opening/name metadata, and produced ignored `build/p3-preview.json`.
+- Actual FS install/reopen, required capability activation, pre-Ready rejection, Ready/repeat-Ready, five Views/two Graphs, resource/static-target/closed-schema negatives and hidden seed isolation passed.
+- P2 regressions on P3 source passed: all nine preparations and resolver contracts, **600** formula cases, **80** non-Uncertain and **75** Uncertain real preparations; local HTTP free-text failure/retry; all nine actual typed actions with one CAS and committed replay; hypothesis/lead do not confirm Evidence. G1 Fortune-use semantics were preserved.
+- P3 actual FS checks passed: two daily boundaries with no deterministic model calls; 20 rent arrears; missed hearing/permission loss; clinic recovery; Cold/Warm/Hot states; a conditional railway blocker; exactly one due Agenda intent; actual `tick=2880` input.
+- Actual local HTTP Agenda failure publishes no Task/world changes. Retry succeeds; accepted filing/Entity/projections use one CAS. Repeated committed clock invocation and drained Task do not repeat effects or generation.
+- Actual stale request cancellation after new institutional information calls no model and promotes no Entity.
+- Actual fixed-transaction 2880-minute foreground Turn produces Narrator output, then automatically dispatches the background HTTP Task without a manual drain. The final Entity/filing is accepted.
+- All five safe Views and actual model request bodies exclude P1/rail/archive private sentinels. Private institutional notes never enter Narrator/player context.
+- **Actual save-container** manual save → export archive → install same Package in a fresh FS store → import save: canonical clock, authority domains and accepted Task payloads preserved. This is not merely reopen/load.
+- An attempted advance across the third, un-authored daily boundary rejects with zero published change instead of silently freezing obligations.
+- All `tools/*.mjs` syntax and unstaged/staged whitespace checks passed; Package commit/push succeeded. The final source tree is clean.
+- Core integrated-main CI at `052c466e...` succeeded: Authority, integration, Native v3 regression/Hard Cut, Native v3 Heavy/Studio browser and cleanup. Core Record contains exact evidence/links; these are not a claim of manually testing Package UI.
+
+Initial authoring checks caught a camelCase Information field ID and a stale frontend wait schema; both were corrected. A diagnostic initially confused declared publication reservation with selected expanded commands (18 expected vs 16 actual); exact measured expectations were corrected without changing any runtime limit. Passing evidence above is from subsequent runs.
+
+### Limits and P4 entry
+
+This is an explicit two-day synthetic fixture, not a generalized campaign economy/healing/travel system or full autonomous city. Clinic treatment is a fixed appointment, not arbitrary natural recovery. The third daily boundary intentionally fails closed until more authored schedule states exist. One admitted deliberation per batch avoids model completion races; the profile does not promise unbounded same-tick strategic batches.
+
+No hosted-model, manual browser/device/P8 acceptance, cross-process OS-crash or durable uncommitted-selection recovery test is claimed. In-process selection pin, same-anchor RNG, committed invocation idempotency and the actual container round-trip above are distinct. The model's proposed name is bounded and promoted to a game Entity, not a new Native actor/model runtime.
+
+Next stage is **P4 — World / Content Foundation only**, after separate authorization. Read index → content-architecture.md + implementation-staging.md, then only the world modules required by the current asset. Preserve hidden Canon boundaries, stable refs, lazy materialization, publication/expanded-work limits and the independent package branch. Do not expand into P5/P8 or the whole campaign. Continue this same Record and sole HANDOFF.

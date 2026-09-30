@@ -1,39 +1,38 @@
-# Live HANDOFF — Package P3 in progress / G2 correction
+# Live HANDOFF — Package P3 complete / P4 next
 
 - Task ID: package/original-occult-western-fantasy-game
 - Primary Workspace / branch: package (long-lived, independent)
 - Root: original-occult-western-fantasy-game/
-- Stage: **P3 authorized/in progress, NOT complete. User instructed autonomous resolution of problems; do not stop merely at G2. P4/P8 not started.**
-- Package diagnostic / probe-tested / pushed HEAD: bb13a1e47c6407a195c85f9974d7a8f81f113f8a
-- Last gameplay-tested Package HEAD: 8e7dec443d39beec5a182c16cfe7bcad97ebd6c0 (P2)
-- Installed runtime remains 0.2.0-p2; only an unpackaged diagnostic tool has been added.
-- Core correction PR #99 merged; implementation 648b00aa4a09dbda274fa18ee1876756ec284f45; actual main 052c466e3c9e4b07912da0cb602b2933f4821187. Package final validation against main is running.
+- Stage: **P3 complete and stopped. P4/P8 not started.**
+- Package / tested / pushed HEAD: **472045a270c23371d7dc2dac6f7dc685fd3e1970**
+- Package version: 0.3.0-p3
+- Core main / integrated tested HEAD: **052c466e3c9e4b07912da0cb602b2933f4821187**
 - Plan entrypoint: plans/package/original-occult-western-fantasy-game/index.md
-- Current modules: simulation.md, institutions.md, implementation-staging.md, technical-design.md (scheduling contract)
+- P4 modules: content-architecture.md + implementation-staging.md; geography/institutions/religion/society/metaphysics only for the current asset; technical-design.md only for actual contract questions
 - Sole Package Record: records/package/original-occult-western-fantasy-game.md
 
-## Do not repeat
+## Completed / do not repeat
 
-P0/P1/P2 are complete. G1 is resolved and must not be reopened. No full game/P4/P8 work. Preserve independent package and historical releases; no main merge into package, no reference reads, no Package workaround.
+P0/P1/P2/P3 are complete. G1 is closed. G2 is resolved through the formal Core world-simulation@1 support merged in PR #99, not a Package workaround. Core evidence: records/feat/world-simulation-scheduling.md. Temporary Core branch refs are removed; existing independent product worktrees remain available. Never merge main into package or delete package/releases.
 
-## Current finding / evidence
+P3 retains all nine P2 verbs and adds an explicitly two-day synthetic world: rent, hearing/permission consequences, scheduled clinic recovery, conditional Cold railway, Warm press, Hot registry deliberation, bounded intent → validated filing/Entity promotion, safe projection, stale cancellation and event-driven advance. Foreground narration commits first; admitted background work runs afterward through existing Task authority. No Outcome/Resolution domain, copied product runtime, per-NPC Tasks/Views or P8 design.
 
-G2 is a missing orchestration bridge, not absence of all existing scheduling. Lifecycle Task inputs are literals; authority-producing execution requires exact outbox input. Current Workflow/automation contracts cannot build a fresh private institutional payload or invoke an independently anchored background Authority Transaction. The Host loop uses sequential changing anchors and a fixed four-call cap, not same-tick anchored ordering/relevance budgeting. Large-jump Lifecycle pumping uses declaration order, not next-event order. Full details and source references are in the same Record.
+Both authority-transaction@1 and world-simulation@1 are **required**. New `runtime/SIMULATION.md` describes the fixture/profile. Safe publication now reserves 7 reads / 10 App Commands. The actual two-day test reaches 16 reads (16 App / 20 effects); re-budget expansion before adding assets or jobs. No limits were loosened.
 
-`tools/simulation-contract-check.mjs` passes seven diagnostic checks against actual main. It uses real contract validators and in-memory Lifecycle preparation; the real Host dispatch loop has explicit storage/provider doubles. This is NOT an installed P3 Session/provider/save test. Tool syntax and whitespace checks passed. Diagnostic HEAD pushed; runtime declarations, main and releases remain unchanged at this checkpoint.
+## Actual validation
 
-Budget recount: interview and intervene reserve 24/24 App Commands, including the entire publication hook; advance_time reserves 21/24. Read/effect/expanded-work/UTF-8 limits must not be relaxed.
+Final build/full validate and full-verification JSON preview passed against actual main 052c466e.... Actual FS install/Ready/projections; complete P2 targeted regression; two-day P3 obligations/clinic/phases; conditional blocker; local HTTP Agenda failure/retry; stale no-model cancellation; automatic foreground-to-background dispatch; one-CAS Task/filing/Entity/publication; private-sentinel isolation; committed replay; real save-container export/import into a fresh FS store. Tools syntax/whitespace checks passed; tested Package HEAD pushed. Integrated Core main CI is green.
 
-## Current implementation checkpoint
+No hosted model, manual Package browser/device/P8 acceptance or cross-process uncommitted selection recovery is claimed. Actual container restore is distinct from in-process selection pin and same-anchor RNG. Final ignored archive `build/0.3.0-p3-final.atria` is a test build, not a release; preserve earlier builds/releases.
 
-G2 has a formal Core correction, not a workaround. See records/feat/world-simulation-scheduling.md. Package now has an uncommitted 0.3.0-p3 two-day fixture with unified safe publication (7 reads / 10 App Commands), obligations, clinic, institution phases, dynamic Agenda input and generated Entity acceptance. Draft local HTTP, stale/conditional and actual save-container tests pass. Do not discard this dirty Package work or repeat P0/P2. Final Package commit/push, integrated-main confirmation, docs closure and P4 handoff remain.
+## Important limits / P4 objective
 
-## Next work
+- The fixture authors two daily cycles; the third daily boundary fails closed rather than silently skipping obligations. It is not the full campaign or a general economy/healing system.
+- One background deliberation is admitted per batch. Pending reconsideration needs a new eligible occurrence; committed history is never superseded. Do not assume unconstrained multi-agent strategic batches.
+- P4 authors launch-world foundation: six districts, roughly 25–35 locations, ten institutional/network nodes, 12–16 Tier A and 30–50 Tier B cores, anomaly/Claim foundations, Eastbank Canon fragments, origins/prior-life/faith and public/retrievable Knowledge. Follow the approved templates; do not script the whole campaign or begin P5/P8.
+- Keep hidden Canon outside generic Knowledge/context, stable IDs/ref closure, modular bounded Package Data and lazy initial materialization.
+- User preference: resolve ordinary engineering failures autonomously. Confirm/record real Core gaps and fix formally when necessary; never disguise them with Package workaround or raised bounds.
 
-Continue resolving G2 autonomously as requested. Reuse existing authority wherever possible. If Core correction is necessary, make a minimal formal product change on a short-lived branch in the independent product worktree, validate/integrate it, then resume Package implementation against real latest main. Do not fabricate player turns, duplicate authority in tools/frontend, substitute broad information context or claim a hard-coded schedule is full simulation.
+## Copyable P4 prompt
 
-P3 requires authoritative deterministic/conditional/deliberative progress, obligations/recovery/deadlines, relevance/budgets, same-tick ordering/stale handling, event-driven multi-day fast-forward and actual save-container restoration evidence. Update this HANDOFF during execution. Only after P3 exit gates pass: push tested Package HEAD, close this stage in the same Record and provide P4 instructions.
-
-## Copyable continuation prompt
-
-继续 Atria 的 package/original-occult-western-fantasy-game P3，仅 P3，不进入 P4/P8。先 fetch 并核对真实 refs/worktrees/dirty，读 Governance、适用 AGENTS、唯一 HANDOFF、Plan index、P3 模块和同一 Package Record。P2 已完成；Package bb13a1e47c6407a195c85f9974d7a8f81f113f8a 仅新增 G2 诊断工具，不是 P3 实现。G2 证据已写入 Record，用户要求自行解决并持续推进；不要因契约问题直接结束，也不要做 Package workaround。必要时在独立产品工作树修复正式 Core 契约并验证集成，再实施 P3。保留 required authority-transaction@1、Ready、静态授权、严格 schema/UTF-8/工作量上限，不重开 G1、不伪造背景玩家事务、不建立平行 authority。真实验证保存恢复与同锚重放区别。P3 完成后提交推送并更新同一 Record/HANDOFF，给 P4 提示词后停止。
+接手 ZZZdragondYNGPHX/Atria 的 Package P4 — World / Content Foundation。Task ID：package/original-occult-western-fantasy-game；Primary Workspace：长期独立 package；根目录 original-occult-western-fantasy-game/。只执行 P4，不进入 P5/P8，不批量创作完整游戏。先 fetch 全部远端并核对 refs/worktrees/dirty，以最新 Git 为准，不回退历史 pin。读 docs:README.md、适用 AGENTS.md、唯一 HANDOFF；先读 Plan index，再读 content-architecture.md、implementation-staging.md 和同一 Package Record。geography/institutions/religion/society/metaphysics 仅按当前资产依赖加载，契约问题再读 technical-design.md。P3 tested/pushed Package HEAD：472045a270c23371d7dc2dac6f7dc685fd3e1970；Core main/tested：052c466e3c9e4b07912da0cb602b2933f4821187（均为历史 pin，不回退）。不要重做 P0/P1/P2/P3 或重开 G1/G2。G2 已通过正式 Core world-simulation@1 修复并合并；保留 required authority-transaction@1 与 world-simulation@1。P3 是两日合成测试世界，不是完整城市；第三日边界故意 fail closed，背景每批最多一次 deliberation。阅读 runtime/SIMULATION.md，保留静态 targets、Ready、字段/引用/计算 schema、UTF-8 与展开工作量硬上限；安全投影为7 reads/10 App Commands，当前两日推进达到16-read上限，扩展前重新核算。P4 按批准模板制作地区/地点、机构、Tier A/B角色、Anomaly/Claim、Eastbank Canon及起源/信仰/知识等基础资产，保持稳定引用、模块化数据与懒加载，隐藏 Canon 不进入普通 Knowledge/player/Narrator context。不要实现P5开场剧情或P8视觉。产品验证用独立最新 main 工作树；不 merge main 到 package、不删除 package、不覆盖 releases、不读取或更新 reference/*。普通问题自行解决；真正 Core 缺口先记录并正式修复，不做 Package workaround。完成适用验证及commit/push，更新同一 Package Record和唯一HANDOFF，给P5接手提示词后立即停止。
