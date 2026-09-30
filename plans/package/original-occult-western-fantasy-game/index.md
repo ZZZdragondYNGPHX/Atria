@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.25 — Round 8 core approved; Round 8.5 opened; not approved for implementation
+- **Status:** Discussion Draft v0.26 — Rounds 8–8.5 approved; Round 8.6 opened; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -58,7 +58,7 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 8.5
+## Current route — Round 8.6
 
 Required reading:
 
@@ -208,7 +208,11 @@ Approved: focused authored footprint, tiered NPC/content scale, reusable Case/an
 
 ### Round 8.5 — Signature Case roles and long-form mystery structure
 
-Assign distinct gameplay, institutional, supernatural and revelation responsibilities to the 6–8 Signature Cases before detailed scripting.
+Approved: eight distinct Signature Case responsibility slots, semi-open Cases 2–7, cross-source Revelation Predicates and a multidimensional Eastbank convergence.
+
+### Round 8.6 — Minimum content production templates
+
+Define the minimum authored information required for institutions, actors, Cases, anomaly families, Claims, Canon fragments, locations and important artifacts before schema design.
 
 ### Round 9 — Package technical design
 
@@ -253,7 +257,8 @@ Currently carried forward from research:
 - approved task-specific bounded Context Packages with explicit information-transfer events and no shared omniscient prompt;
 - approved deterministic-first world scheduling with bounded background deliberation and event-driven fast-forward;
 - approved lightweight frontend information/interaction constraints with detailed visual design delegated;
-- approved content-scale architecture with focused authored depth, tiered NPCs, reusable Case/anomaly/Claim assets and fragmented Eastbank Canon.
+- approved content-scale architecture with focused authored depth, tiered NPCs, reusable Case/anomaly/Claim assets and fragmented Eastbank Canon;
+- approved eight-case Signature network with distinct gameplay roles and predicate-based Eastbank convergence.
 
 All unapproved elements remain open to revision.
 
