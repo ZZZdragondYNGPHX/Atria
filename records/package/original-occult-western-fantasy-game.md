@@ -282,3 +282,39 @@ Ready materializes only the P3 fixture; none of the 222 P4 keys is copied into S
 P4 is reusable foundation, not a playable campaign. Two-day synthetic EntryPoint remains; third-day boundary fails closed and each batch admits at most one deliberation. Definitions are not automatically selected, acquired, instantiated or executed. P5 must evolve stage-specific fixture assertions deliberately while retaining P2/P3 coverage, and re-budget static targets/schema/publication/expanded work before binding live state. Do not disable validation to accept an opening: add its real closed Case/seed contracts in P5.
 
 P5 next: six-step character creation, Civil Verifier and living Personal Anchor, Second Death multi-path opening, Breach/Imprints, eligible Seed candidates and postpone, earned stabilization/formal Claim, multiple dispositions and failure continuity. Read index → player.md + gameplay.md + content-architecture.md + implementation-staging.md, then technical-design/simulation for actual contracts. Keep Canon isolated and initialization lazy. P0–P4/G1/G2 are complete; P5/P8 not started. Continue this Record and sole HANDOFF; stop after each separately authorized phase.
+
+
+## P4 follow-up — Third-day simulation correction (2026-10-01)
+
+Status: **User-requested correction complete; P5/P8 not started.** Same Task ID, Package Record and live HANDOFF; no new phase or Core task.
+
+### Pins and scope
+
+- Start Package HEAD: bd2402db0818ab891b1d17658bc22509f340432d.
+- Package implementation/tested/pushed HEAD: 37ad414f34350af238c2ca0ac4c081024ca6cf38; committed tree: 1f8e26bf888756a0e315b57df669eee707fcfe75.
+- Version: 0.4.1-p4 / pkgv_e2223dfe132e2d3f5e651d4cf8925256.
+- Fetched all remotes and checked refs/worktrees/dirty state. Core origin/main and independent tested checkout: 052c466e3c9e4b07912da0cb602b2933f4821187. Product worktrees remained clean; no Core changes, workaround, main merge, reference reads or release overwrite.
+
+### Root cause and correction
+
+The Core scheduler already supports subsequent occurrences. Package simulation.day accepted only day input 0–1 and only authored initial transition branches. Thus the third due daily occurrence was rejected at input validation, not a missing Core scheduler feature.
+
+Added one statically targeted agendas/foundation day_recurring command for day inputs 2–29. It advances only day/nextTick; the existing institutional day command and ordinary rent command continue processing and arrears. Existing domain limits remain day/processedDay <=30 and arrears <=3000. The input contract now matches the supported pre-increment days; no stored-state, UTF-8, authority-read, App Command, effect, step or clock-advance limit was raised. Required capabilities, Ready, Information, Task and simulation scheduling declarations are unchanged. Manifest/model-resource pins identify a new immutable PackageVersion.
+
+Days 3–30 preserve accepted/deferred decisions, existing delegate, railway construction/blocked phase and published press. Hearing/permission loss and clinic execute only at the original second-day boundary. There is no repeated healing, reset of institutional state, daily model call or newly invented institution progression. Single advances remain <=2880 minutes; background admission remains <=1; maxSteps remains 3. Day 31 remains outside the existing 30-day fixture horizon and rejects the whole candidate, including valid day-30 work if combined with overflow in one call.
+
+### Actual verification
+
+- Final full validate: PASS against the exact Core above. Includes actual FS install/reopen, Ready, five Views/two Graphs, required contracts, content schema/reference/UTF-8/privacy negatives, all P2 preparation/formula/HTTP typed/free-text regressions and P3 actual foreground/background HTTP, one-CAS, stale cancellation, filing and conditional rail regressions.
+- New positive day-three advance: clock 4320, arrears 30, day/processedDay 3, nextTick 5760; one CAS. Repeated committed invocation makes no additional mutation.
+- Actual second-day manual save/export -> new FS archive install/import -> third-day command succeeds and Lifecycle domains match the source-session continuation. This save is from **0.4.1-p4**, not a migration of an old pinned 0.4.0-p4 save.
+- Repeated bounded batches reach day 30 / arrears 300. A post-clinic injury stays at severity 2; accepted filing/delegate and hearing/permission consequences persist. Deferred/blocked branches stay deferred/blocked on day three, without new pending work or model requests.
+- Mixed day-two/day-three catch-up succeeds with one admitted task. Both original eventful and mixed batches: **16 reads / 16 App Commands / 20 effects**. Recurring two-day batch after accepted filing: **16 / 14 / 17**. Safe publication stays **7 declared reads / 10 declared App Commands**. The simulation transaction adds one declared static App Command, not a new target record/domain. Core ceilings remain 16 reads / 24 App Commands / 32 effects.
+- Both a direct day-31 crossing and a day-29 -> day-31 request reject with the persisted snapshot unchanged. No partial rent/clock/publication commit.
+- All tools node --check and unstaged/staged git diff --check: PASS. Build: PASS; ignored build/0.4.1-p4.atria, 74,252 bytes, SHA-256 f8754ee33f7bb78f336557a18cfe51bbb232f54c4b33def82d1e4a741e284c37. Build is not a release.
+- Initial regression correctly failed because its old assertion expected third-day rejection. The replacement test initially expected 18 recurring effects; measured 17 is correct because an already accepted Agenda produces no new admission effect. Corrected that assertion and reran the full suite successfully; no runtime limit was relaxed.
+- Content remains 31 resources / 222 assets; only fixture wording changed, giving 393,968 total data bytes (largest remains 73,685). No new content production, hosted-model/UI/device/Core CI or cross-process uncommitted journal evidence is claimed. Final code/seed was validated before commit; the only later source edit clarified runtime documentation. All 58 tracked JSON/MJS/Markdown/AUI files byte-match their committed blobs. Remote Package HEAD matches; main is unchanged.
+
+### Remaining boundary / next checkpoint
+
+This fixes the third day, **not unlimited campaign simulation**: recurring accounting is supported through the existing 30-day schema horizon. Installing the new PackageVersion does not retarget old pinned Sessions; old-version save migration is not implemented or tested. No payment/attendance verbs, general healing, dynamic institution strategy, P5 opening or P8 UI was added. P5 remains the next separately authorized phase; use the refreshed sole HANDOFF and preserve all prior regressions.
