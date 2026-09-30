@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "id": "scene.truth",
+      "kind": "application",
+      "scopeId": "session",
+      "domainId": "scene_projection",
+      "semantic": "truth",
+      "fields": [
+        [
+          "text"
+        ]
+      ]
+    },
+    {
+      "id": "player.status",
+      "kind": "application",
+      "scopeId": "session",
+      "domainId": "player_status_projection",
+      "semantic": "truth",
+      "fields": [
+        [
+          "text"
+        ]
+      ]
+    },
+    {
+      "id": "player.epistemic",
+      "kind": "application",
+      "scopeId": "session",
+      "domainId": "player_epistemic_projection",
+      "semantic": "belief",
+      "fields": [
+        [
+          "text"
+        ]
+      ],
+      "actorField": "actor",
+      "statusField": "status",
+      "channelField": "channel"
+    },
+    {
+      "id": "player.matters",
+      "kind": "application",
+      "scopeId": "session",
+      "domainId": "player_matters",
+      "semantic": "open_loop",
+      "fields": [
+        [
+          "text"
+        ]
+      ],
+      "statusField": "status"
+    },
+    {
+      "id": "investigation.nodes",
+      "kind": "application",
+      "scopeId": "session",
+      "domainId": "investigation_nodes",
+      "semantic": "truth",
+      "fields": [
+        [
+          "text"
+        ]
+      ]
+    },
+    {
+      "id": "investigation.edges",
+      "kind": "application",
+      "scopeId": "session",
+      "domainId": "investigation_edges",
+      "semantic": "truth",
+      "fields": [
+        [
+          "from"
+        ],
+        [
+          "to"
+        ],
+        [
+          "text"
+        ]
+      ]
+    },
+    {
+      "id": "player.memory",
+      "kind": "application",
+      "scopeId": "session",
+      "domainId": "player_memory_projection",
+      "semantic": "memory",
+      "fields": [
+        [
+          "text"
+        ]
+      ]
+    }
+  ],
+  "views": [
+    {
+      "id": "player.overview",
+      "audience": "player",
+      "sources": [
+        "player.status",
+        "player.matters"
+      ],
+      "exposure": [
+        "display"
+      ],
+      "knowledge": false,
+      "memory": false,
+      "maxItems": 64,
+      "maxCharacters": 16384
+    },
+    {
+      "id": "player.investigation",
+      "audience": "player",
+      "sources": [
+        "investigation.nodes",
+        "investigation.edges",
+        "player.epistemic",
+        "player.matters"
+      ],
+      "exposure": [
+        "display"
+      ],
+      "knowledge": false,
+      "memory": false,
+      "maxItems": 128,
+      "maxCharacters": 32768
+    },
+    {
+      "id": "narrator.context",
+      "audience": "narrator",
+      "sources": [
+        "scene.truth",
+        "player.status",
+        "player.epistemic",
+        "player.matters"
+      ],
+      "exposure": [
+        "context"
+      ],
+      "knowledge": false,
+      "memory": false,
+      "maxItems": 64,
+      "maxCharacters": 20000
+    },
+    {
+      "id": "case.reflection.context",
+      "audience": "task",
+      "sources": [
+        "investigation.nodes",
+        "investigation.edges",
+        "player.epistemic",
+        "player.matters"
+      ],
+      "exposure": [
+        "context"
+      ],
+      "knowledge": false,
+      "memory": false,
+      "maxItems": 128,
+      "maxCharacters": 32768,
+      "taskId": "case.reflection"
+    },
+    {
+      "id": "claim.advisor.context",
+      "audience": "task",
+      "sources": [
+        "player.status",
+        "player.epistemic"
+      ],
+      "exposure": [
+        "context"
+      ],
+      "knowledge": true,
+      "memory": false,
+      "maxItems": 32,
+      "maxCharacters": 12000,
+      "taskId": "claim.advisor"
+    }
+  ],
+  "actors": [],
+  "graphs": [
+    {
+      "id": "player.case_graph",
+      "viewId": "player.investigation",
+      "nodeSource": "investigation.nodes",
+      "edgeSource": "investigation.edges",
+      "fromField": "from",
+      "toField": "to",
+      "maxDepth": 2,
+      "maxEdges": 64
+    },
+    {
+      "id": "reflection.case_graph",
+      "viewId": "case.reflection.context",
+      "nodeSource": "investigation.nodes",
+      "edgeSource": "investigation.edges",
+      "fromField": "from",
+      "toField": "to",
+      "maxDepth": 2,
+      "maxEdges": 64
+    }
+  ]
+}

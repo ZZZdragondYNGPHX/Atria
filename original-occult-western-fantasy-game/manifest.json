@@ -1,0 +1,75 @@
+{
+  "format": "atria-package",
+  "schemaVersion": 2,
+  "nativeSchemaVersion": 1,
+  "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+  "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac",
+  "name": "Original Occult Western Fantasy — Foundation",
+  "version": "0.1.0-p1",
+  "actors": [
+    {
+      "actorId": "actor_78fd62e4f874657db785310ec4c9ef52",
+      "displayName": "P1 Player Placeholder"
+    }
+  ],
+  "entryPoints": [
+    {
+      "entryPointId": "entry_1e0df9035d386c417c3f88380748cad0",
+      "displayName": "P1 Foundation",
+      "actorIds": [
+        "actor_78fd62e4f874657db785310ec4c9ef52"
+      ],
+      "worldIds": [
+        "world_d3335a3fb6f1c3cf95a1332d85a3d0b6"
+      ],
+      "primaryWorldId": "world_d3335a3fb6f1c3cf95a1332d85a3d0b6",
+      "knowledgeBindingIds": [],
+      "initialTimeline": [
+        {
+          "role": "assistant",
+          "content": "Package Foundation 已就绪；这不是正式游戏开场。",
+          "actorId": "actor_78fd62e4f874657db785310ec4c9ef52"
+        }
+      ]
+    }
+  ],
+  "worlds": [
+    {
+      "world": {
+        "worldId": "world_d3335a3fb6f1c3cf95a1332d85a3d0b6",
+        "displayName": "Foundation World",
+        "currentRevisionId": "worldv_95e265c7e2a3d5ef2a034c7e9b3f4874"
+      },
+      "revision": {
+        "worldId": "world_d3335a3fb6f1c3cf95a1332d85a3d0b6",
+        "worldRevisionId": "worldv_95e265c7e2a3d5ef2a034c7e9b3f4874",
+        "baseline": {},
+        "knowledgeBindingIds": [],
+        "assetIds": [],
+        "metadata": {}
+      }
+    }
+  ],
+  "knowledge": [],
+  "knowledgeBindings": [],
+  "assets": [],
+  "capabilities": [
+    "narrative",
+    "world-simulation"
+  ],
+  "permissions": [
+    {
+      "permission": "generation",
+      "required": true,
+      "reason": "Declared Model Tasks require a player-configured model route."
+    }
+  ],
+  "runtime": {
+    "game": {
+      "logic": "runtime/logic.json"
+    },
+    "experience": {
+      "mode": "text"
+    }
+  }
+}

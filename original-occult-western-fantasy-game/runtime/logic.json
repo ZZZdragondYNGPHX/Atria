@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 3,
+  "commands": [],
+  "reducers": [],
+  "rules": [],
+  "interpretations": [],
+  "derivedPublications": [
+    {
+      "id": "scene_projection.publish",
+      "reads": [
+        {
+          "id": "bootstrap",
+          "domainId": "entities",
+          "recordId": "foundation",
+          "fields": [
+            "scene"
+          ]
+        }
+      ],
+      "effects": [
+        {
+          "kind": "app.command",
+          "domainId": "scene_projection",
+          "commandId": "publish",
+          "recordId": "foundation",
+          "args": {
+            "text": {
+              "formula": "reads.bootstrap.scene"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "player_status_projection.publish",
+      "reads": [
+        {
+          "id": "bootstrap",
+          "domainId": "entities",
+          "recordId": "foundation",
+          "fields": [
+            "playerStatus"
+          ]
+        }
+      ],
+      "effects": [
+        {
+          "kind": "app.command",
+          "domainId": "player_status_projection",
+          "commandId": "publish",
+          "recordId": "foundation",
+          "args": {
+            "text": {
+              "formula": "reads.bootstrap.playerStatus"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "transactions": [
+    {
+      "id": "foundation.check",
+      "verb": "foundation_check",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "intent": {
+        "expose": true,
+        "description": "P1 diagnostic only: confirm foundation contracts. No gameplay action or time advance."
+      },
+      "reads": [],
+      "validators": [],
+      "resolution": {
+        "kind": "deterministic",
+        "cases": [],
+        "fallback": "ready"
+      },
+      "effects": [],
+      "derivedPublications": [
+        "scene_projection.publish",
+        "player_status_projection.publish"
+      ],
+      "receipt": {
+        "schema": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "ready"
+              ],
+              "maxLength": 16
+            }
+          },
+          "required": [
+            "status"
+          ],
+          "additionalProperties": false
+        },
+        "projection": {
+          "status": {
+            "formula": "resolution.outcome"
+          }
+        },
+        "maxBytes": 1024
+      }
+    }
+  ]
+}

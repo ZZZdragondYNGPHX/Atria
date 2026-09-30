@@ -1,0 +1,274 @@
+[
+  {
+    "resourceType": "core.prompt-module",
+    "origin": {
+      "scope": "package",
+      "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+    },
+    "resource": {
+      "schemaVersion": 1,
+      "promptModuleId": "pmod_9c1b0f91db57a477433faf8fb5b3c7cc",
+      "revision": "p1",
+      "displayName": "narrator",
+      "target": "system.foundation",
+      "stages": [
+        "stage.main"
+      ],
+      "body": "P1 contract probe only. Use only supplied player-safe projections and Host receipt. Never invent facts, hidden causes, state changes or gameplay outcomes. This is not the authored game opening."
+    }
+  },
+  {
+    "resourceType": "core.prompt-program",
+    "origin": {
+      "scope": "package",
+      "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+    },
+    "resource": {
+      "schemaVersion": 1,
+      "promptProgramId": "pprog_9c1b0f91db57a477433faf8fb5b3c7cc",
+      "revision": "p1",
+      "displayName": "narrator",
+      "stages": [
+        {
+          "stageId": "stage.main",
+          "moduleRefs": [
+            {
+              "resourceType": "core.prompt-module",
+              "resourceId": "pmod_9c1b0f91db57a477433faf8fb5b3c7cc",
+              "revision": "p1",
+              "scope": "package",
+              "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+              "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "resourceType": "core.generation-profile",
+    "origin": {
+      "scope": "package",
+      "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+    },
+    "resource": {
+      "schemaVersion": 1,
+      "generationProfileId": "genprof_9c1b0f91db57a477433faf8fb5b3c7cc",
+      "revision": "p1",
+      "displayName": "narrator",
+      "output": {
+        "maxTokens": 512
+      },
+      "streaming": {
+        "enabled": false
+      }
+    }
+  },
+  {
+    "resourceType": "core.prompt-module",
+    "origin": {
+      "scope": "package",
+      "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+    },
+    "resource": {
+      "schemaVersion": 1,
+      "promptModuleId": "pmod_10c3f98135b9af2db3d4118ac42b215b",
+      "revision": "p1",
+      "displayName": "case.reflection",
+      "target": "system.foundation",
+      "stages": [
+        "stage.main"
+      ],
+      "body": "P1 contract probe only. Use only supplied player-safe projections and Host receipt. Never invent facts, hidden causes, state changes or gameplay outcomes. This is not the authored game opening."
+    }
+  },
+  {
+    "resourceType": "core.prompt-program",
+    "origin": {
+      "scope": "package",
+      "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+    },
+    "resource": {
+      "schemaVersion": 1,
+      "promptProgramId": "pprog_10c3f98135b9af2db3d4118ac42b215b",
+      "revision": "p1",
+      "displayName": "case.reflection",
+      "stages": [
+        {
+          "stageId": "stage.main",
+          "moduleRefs": [
+            {
+              "resourceType": "core.prompt-module",
+              "resourceId": "pmod_10c3f98135b9af2db3d4118ac42b215b",
+              "revision": "p1",
+              "scope": "package",
+              "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+              "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "resourceType": "core.generation-profile",
+    "origin": {
+      "scope": "package",
+      "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+    },
+    "resource": {
+      "schemaVersion": 1,
+      "generationProfileId": "genprof_10c3f98135b9af2db3d4118ac42b215b",
+      "revision": "p1",
+      "displayName": "case.reflection",
+      "output": {
+        "maxTokens": 512
+      },
+      "streaming": {
+        "enabled": false
+      }
+    }
+  },
+  {
+    "resourceType": "core.prompt-module",
+    "origin": {
+      "scope": "package",
+      "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+    },
+    "resource": {
+      "schemaVersion": 1,
+      "promptModuleId": "pmod_219bdc8bdc4e8d3aa40e1523a74f2bfb",
+      "revision": "p1",
+      "displayName": "claim.advisor",
+      "target": "system.foundation",
+      "stages": [
+        "stage.main"
+      ],
+      "body": "P1 contract probe only. Use only supplied player-safe projections and Host receipt. Never invent facts, hidden causes, state changes or gameplay outcomes. This is not the authored game opening."
+    }
+  },
+  {
+    "resourceType": "core.prompt-program",
+    "origin": {
+      "scope": "package",
+      "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+    },
+    "resource": {
+      "schemaVersion": 1,
+      "promptProgramId": "pprog_219bdc8bdc4e8d3aa40e1523a74f2bfb",
+      "revision": "p1",
+      "displayName": "claim.advisor",
+      "stages": [
+        {
+          "stageId": "stage.main",
+          "moduleRefs": [
+            {
+              "resourceType": "core.prompt-module",
+              "resourceId": "pmod_219bdc8bdc4e8d3aa40e1523a74f2bfb",
+              "revision": "p1",
+              "scope": "package",
+              "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+              "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "resourceType": "core.generation-profile",
+    "origin": {
+      "scope": "package",
+      "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+    },
+    "resource": {
+      "schemaVersion": 1,
+      "generationProfileId": "genprof_219bdc8bdc4e8d3aa40e1523a74f2bfb",
+      "revision": "p1",
+      "displayName": "claim.advisor",
+      "output": {
+        "maxTokens": 512
+      },
+      "streaming": {
+        "enabled": false
+      }
+    }
+  },
+  {
+    "resourceType": "core.prompt-module",
+    "origin": {
+      "scope": "package",
+      "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+    },
+    "resource": {
+      "schemaVersion": 1,
+      "promptModuleId": "pmod_20c8dafb2f8dd6594eb6729cb62a6a56",
+      "revision": "p1",
+      "displayName": "agenda.deliberation",
+      "target": "system.foundation",
+      "stages": [
+        "stage.main"
+      ],
+      "body": "P1 only: return a defer intent and a short reason using only the explicit bounded input. Never execute world actions."
+    }
+  },
+  {
+    "resourceType": "core.prompt-program",
+    "origin": {
+      "scope": "package",
+      "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+    },
+    "resource": {
+      "schemaVersion": 1,
+      "promptProgramId": "pprog_20c8dafb2f8dd6594eb6729cb62a6a56",
+      "revision": "p1",
+      "displayName": "agenda.deliberation",
+      "stages": [
+        {
+          "stageId": "stage.main",
+          "moduleRefs": [
+            {
+              "resourceType": "core.prompt-module",
+              "resourceId": "pmod_20c8dafb2f8dd6594eb6729cb62a6a56",
+              "revision": "p1",
+              "scope": "package",
+              "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+              "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "resourceType": "core.generation-profile",
+    "origin": {
+      "scope": "package",
+      "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+      "packageVersionId": "pkgv_95e7124550d94198e04d315fcc3ebdac"
+    },
+    "resource": {
+      "schemaVersion": 1,
+      "generationProfileId": "genprof_20c8dafb2f8dd6594eb6729cb62a6a56",
+      "revision": "p1",
+      "displayName": "agenda.deliberation",
+      "output": {
+        "maxTokens": 512
+      },
+      "streaming": {
+        "enabled": false
+      }
+    }
+  }
+]

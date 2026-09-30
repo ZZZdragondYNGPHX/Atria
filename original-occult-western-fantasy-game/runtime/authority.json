@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "canonicalClockId": "world",
+  "intentObservation": {
+    "viewIds": [
+      "player.overview",
+      "player.investigation"
+    ],
+    "maxItems": 64,
+    "maxBytes": 16384
+  },
+  "policy": {
+    "maxReadGrants": 16,
+    "maxWorldEvents": 16,
+    "maxAppCommands": 24,
+    "maxEffects": 32,
+    "maxReceiptBytes": 32768
+  }
+}

@@ -1,0 +1,47 @@
+[
+  {
+    "id": "package-data",
+    "version": 1,
+    "required": true
+  },
+  {
+    "id": "data-projection",
+    "version": 1,
+    "required": true
+  },
+  {
+    "id": "perspective",
+    "version": 1,
+    "required": true
+  },
+  {
+    "id": "model-task",
+    "version": 1,
+    "required": true
+  },
+  {
+    "id": "session-application",
+    "version": 1,
+    "required": true
+  },
+  {
+    "id": "temporal",
+    "version": 1,
+    "required": true
+  },
+  {
+    "id": "runtime-automation",
+    "version": 1,
+    "required": true
+  },
+  {
+    "id": "turn-contract",
+    "version": 1,
+    "required": true
+  },
+  {
+    "id": "authority-transaction",
+    "version": 1,
+    "required": true
+  }
+]

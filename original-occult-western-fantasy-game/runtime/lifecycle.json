@@ -1,0 +1,1206 @@
+{
+  "schemaVersion": 1,
+  "scopes": [
+    {
+      "id": "world",
+      "kind": "world",
+      "worldId": "world_d3335a3fb6f1c3cf95a1332d85a3d0b6"
+    },
+    {
+      "id": "session",
+      "kind": "session"
+    }
+  ],
+  "domains": [
+    {
+      "id": "entities",
+      "scopeId": "world",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "scene": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "playerStatus": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "privateNote": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "scene",
+          "playerStatus",
+          "privateNote"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "scene": "",
+        "playerStatus": "",
+        "privateNote": ""
+      },
+      "commands": [
+        {
+          "id": "bootstrap",
+          "argsSchema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "event": "foundation.initialized",
+          "assign": {}
+        }
+      ],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "institutional_records",
+      "scopeId": "world",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "evidence",
+      "scopeId": "world",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "relations",
+      "scopeId": "world",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "beliefs",
+      "scopeId": "world",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "memories",
+      "scopeId": "world",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "world_matters",
+      "scopeId": "world",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "settlements",
+      "scopeId": "world",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "agendas",
+      "scopeId": "world",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "defer"
+            ],
+            "maxLength": 16
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "decision",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "decision": "defer",
+        "reason": ""
+      },
+      "commands": [
+        {
+          "id": "record_intent",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "decision": {
+                "type": "string",
+                "enum": [
+                  "defer"
+                ],
+                "maxLength": 16
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "decision",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          "event": "agenda.intent_recorded",
+          "assign": {
+            "decision": {
+              "formula": "args.decision"
+            },
+            "reason": {
+              "formula": "args.reason"
+            }
+          }
+        }
+      ],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "conditions",
+      "scopeId": "world",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "claims",
+      "scopeId": "world",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "player_matters",
+      "scopeId": "session",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "player_life",
+      "scopeId": "session",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "progression",
+      "scopeId": "session",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "scene_projection",
+      "scopeId": "session",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": ""
+      },
+      "commands": [
+        {
+          "id": "publish",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "event": "scene_projection.published",
+          "assign": {
+            "text": {
+              "formula": "args.text"
+            }
+          }
+        }
+      ],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "player_status_projection",
+      "scopeId": "session",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": ""
+      },
+      "commands": [
+        {
+          "id": "publish",
+          "argsSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "event": "player_status_projection.published",
+          "assign": {
+            "text": {
+              "formula": "args.text"
+            }
+          }
+        }
+      ],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "player_epistemic_projection",
+      "scopeId": "session",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "investigation_nodes",
+      "scopeId": "session",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "investigation_edges",
+      "scopeId": "session",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    },
+    {
+      "id": "player_memory_projection",
+      "scopeId": "session",
+      "schemaVersion": 1,
+      "recordSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 256
+          },
+          "actor": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "channel": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "from": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "text",
+          "actor",
+          "status",
+          "channel",
+          "from",
+          "to"
+        ],
+        "additionalProperties": false
+      },
+      "initial": {
+        "text": "",
+        "actor": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "status": "known",
+        "channel": "witnessed",
+        "from": "",
+        "to": ""
+      },
+      "commands": [],
+      "retention": {
+        "maxItems": 64,
+        "maxLogicalBytes": 65536,
+        "keepPinned": true,
+        "keepReferenced": true
+      }
+    }
+  ],
+  "clocks": [
+    {
+      "id": "world",
+      "unit": "minute",
+      "initialTick": 0
+    }
+  ],
+  "advances": [
+    {
+      "id": "advance",
+      "clockId": "world",
+      "maxTicks": 60
+    }
+  ],
+  "interactions": [],
+  "automations": [
+    {
+      "id": "foundation.bootstrap",
+      "scopeId": "world",
+      "trigger": {
+        "kind": "experience.ready"
+      },
+      "action": {
+        "kind": "app.command",
+        "domainId": "entities",
+        "commandId": "bootstrap",
+        "recordId": "foundation",
+        "args": {}
+      },
+      "maxCatchUp": 1
+    }
+  ],
+  "workflows": [],
+  "retention": {
+    "maxTaskResults": 32,
+    "maxReceipts": 256
+  }
+}

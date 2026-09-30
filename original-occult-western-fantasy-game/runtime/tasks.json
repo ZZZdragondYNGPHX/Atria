@@ -1,0 +1,289 @@
+{
+  "schemaVersion": 1,
+  "slots": [
+    {
+      "id": "narrative",
+      "requiredCapabilities": []
+    },
+    {
+      "id": "structured",
+      "requiredCapabilities": []
+    }
+  ],
+  "tasks": [
+    {
+      "id": "narrator",
+      "bindingSlotId": "narrative",
+      "executionClass": "turn_blocking",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "stages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {},
+              "required": [],
+              "additionalProperties": false
+            },
+            "maxItems": 4
+          }
+        },
+        "required": [
+          "stages"
+        ],
+        "additionalProperties": false
+      },
+      "context": [
+        "input",
+        "history",
+        "projection"
+      ],
+      "resultPolicy": {
+        "resultClass": "presentation",
+        "sink": "artifact"
+      },
+      "queuePolicy": "fifo",
+      "variants": [
+        {
+          "id": "default",
+          "prompt": {
+            "resourceId": "pprog_9c1b0f91db57a477433faf8fb5b3c7cc",
+            "revision": "p1"
+          },
+          "generation": {
+            "resourceId": "genprof_9c1b0f91db57a477433faf8fb5b3c7cc",
+            "revision": "p1"
+          },
+          "outputSchema": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "requiredCapabilities": []
+        }
+      ]
+    },
+    {
+      "id": "case.reflection",
+      "bindingSlotId": "structured",
+      "executionClass": "interactive",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "context": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "context"
+        ],
+        "additionalProperties": false
+      },
+      "context": [
+        "input",
+        "projection"
+      ],
+      "resultPolicy": {
+        "resultClass": "advisory",
+        "sink": "proposal"
+      },
+      "queuePolicy": "latest",
+      "variants": [
+        {
+          "id": "default",
+          "prompt": {
+            "resourceId": "pprog_10c3f98135b9af2db3d4118ac42b215b",
+            "revision": "p1"
+          },
+          "generation": {
+            "resourceId": "genprof_10c3f98135b9af2db3d4118ac42b215b",
+            "revision": "p1"
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "requiredCapabilities": []
+        }
+      ]
+    },
+    {
+      "id": "claim.advisor",
+      "bindingSlotId": "structured",
+      "executionClass": "interactive",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "context": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "context"
+        ],
+        "additionalProperties": false
+      },
+      "context": [
+        "input",
+        "projection",
+        "knowledge"
+      ],
+      "resultPolicy": {
+        "resultClass": "advisory",
+        "sink": "proposal"
+      },
+      "queuePolicy": "latest",
+      "variants": [
+        {
+          "id": "default",
+          "prompt": {
+            "resourceId": "pprog_219bdc8bdc4e8d3aa40e1523a74f2bfb",
+            "revision": "p1"
+          },
+          "generation": {
+            "resourceId": "genprof_219bdc8bdc4e8d3aa40e1523a74f2bfb",
+            "revision": "p1"
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "requiredCapabilities": []
+        }
+      ]
+    },
+    {
+      "id": "agenda.deliberation",
+      "bindingSlotId": "structured",
+      "executionClass": "background",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "institutionId": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "agendaId": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "maxItems": 8
+          },
+          "knownRecords": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "maxItems": 8
+          },
+          "tick": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2147483647
+          },
+          "permittedActions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 16,
+              "enum": [
+                "defer"
+              ]
+            },
+            "maxItems": 1
+          }
+        },
+        "required": [
+          "institutionId",
+          "agendaId",
+          "blockers",
+          "knownRecords",
+          "tick",
+          "permittedActions"
+        ],
+        "additionalProperties": false
+      },
+      "context": [
+        "input"
+      ],
+      "resultPolicy": {
+        "resultClass": "declared_app_command",
+        "sink": "app_command"
+      },
+      "queuePolicy": "fifo",
+      "variants": [
+        {
+          "id": "default",
+          "prompt": {
+            "resourceId": "pprog_20c8dafb2f8dd6594eb6729cb62a6a56",
+            "revision": "p1"
+          },
+          "generation": {
+            "resourceId": "genprof_20c8dafb2f8dd6594eb6729cb62a6a56",
+            "revision": "p1"
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "decision": {
+                "type": "string",
+                "enum": [
+                  "defer"
+                ],
+                "maxLength": 16
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "decision",
+              "reason"
+            ],
+            "additionalProperties": false
+          },
+          "requiredCapabilities": [],
+          "resultBinding": {
+            "kind": "app.command",
+            "domainId": "agendas",
+            "commandId": "record_intent",
+            "recordId": "foundation"
+          }
+        }
+      ]
+    }
+  ],
+  "turn": {
+    "policy": "authority-first",
+    "stages": [],
+    "narratorTaskId": "narrator"
+  }
+}
