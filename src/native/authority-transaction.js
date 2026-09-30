@@ -84,7 +84,7 @@ export function buildAuthorityObservation(base) {
 function expression(source, context) {
     return evaluateFormulaAst(compileFormula(source, { roots: Object.keys(context), strings: true }), context);
 }
-function template(raw, context) {
+export function template(raw, context) {
     if (raw && typeof raw === 'object') {
         if (Object.hasOwn(raw, 'formula')) return expression(raw.formula, context);
         if (Array.isArray(raw)) return raw.map(item => template(item, context));
@@ -92,7 +92,7 @@ function template(raw, context) {
     }
     return raw;
 }
-function predicate(source, context) {
+export function predicate(source, context) {
     const value = expression(source, context);
     if (typeof value !== 'boolean') throw new TypeError('Authority predicate must be boolean');
     return value;
@@ -131,7 +131,7 @@ function budgetFor(policy, rngSeed) {
     };
     return context;
 }
-function privateReads(candidate, contract, grants, args, budget) {
+export function privateReads(candidate, contract, grants, args, budget) {
     const result = {};
     for (const grant of grants) {
         const domain = contract.lifecycleRuntime.domains.find(item => item.id === grant.domainId);
@@ -200,6 +200,38 @@ export async function prepareAuthorityPublications(base, installed, authority = 
     } catch { throw failure('publication preparation'); }
 }
 
+async function executeTransaction(candidate, installed, contract, logic, world, transaction, input, budget, identity) {
+    const args = budget.typed(input, transaction.inputSchema);
+    const reads = privateReads(candidate, contract, transaction.reads, args, budget);
+    for (const validator of transaction.validators) if (!predicate(validator.formula, { args, reads })) throw new TypeError('Transaction validator rejected');
+    const rng = createDeterministicRng(identity);
+    const resolution = transaction.resolution.kind === 'bounded_fortune' ? { roll: rng.int(1, transaction.resolution.sides) } : {};
+    // Cases see only the public die, not a partially assigned outcome.
+    const selected = transaction.resolution.cases.find(item => predicate(item.when, { args, reads, resolution }));
+    resolution.outcome = selected?.outcome ?? transaction.resolution.fallback;
+    const context = freeze({ args, reads, resolution });
+    const rules = createRulesEngine(logic.rules, { onEvaluation: () => budget.rule() });
+    for (const effect of transaction.effects) {
+        if (effect.when !== undefined && !predicate(effect.when, context)) continue;
+        if (effect.kind === 'world.event') {
+            const draft = { type: effect.type, payload: template(effect.payload, context), meta: { authorityId: identity } };
+            const ruled = await rules.process([draft], { beforeState: world.getState(),
+                project: events => world.simulateEventsInternal(events),
+                context: { transactionId: identity, args, command: { id: transaction.id }, rng } });
+            await world.commitEventsInternal(ruled.events);
+        } else {
+            let action;
+            if (effect.kind === 'app.command') action = { kind: effect.kind, domainId: effect.domainId, commandId: effect.commandId,
+                recordId: taskId(template(effect.recordId, context)), args: template(effect.args, context) };
+            else if (effect.kind === 'clock.advance') action = { kind: effect.kind, commandId: effect.commandId, ticks: template(effect.ticks, context) };
+            else action = { kind: effect.kind, workflowId: effect.workflowId, transitionId: effect.transitionId };
+            await applyLifecycle(candidate, installed, action, budget);
+        }
+    }
+
+    return resolution;
+}
+
 export async function prepareAuthorityTransaction(base, installed, rawRequest) {
     try {
         const contract = contractFor(base, installed); validateCandidate(base, contract);
@@ -222,35 +254,10 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
         const budget = budgetFor(contract.authorityRuntime.policy, identity);
         const { candidate, logic, world } = await createTaskWorld(base, installed, null, budget);
         const transaction = logic.transactions?.find(item => item.id === request.transactionId);
-        if (!transaction) throw new TypeError('Unknown Transaction');
+        if (!transaction || transaction.origin === 'simulation') throw new TypeError('Unknown player Transaction');
         protectOutputs(logic, budget);
-        const args = budget.typed(request.input, transaction.inputSchema);
-        const reads = privateReads(candidate, contract, transaction.reads, args, budget);
-        for (const validator of transaction.validators) if (!predicate(validator.formula, { args, reads })) throw new TypeError('Transaction validator rejected');
-        const rng = createDeterministicRng(identity);
-        const resolution = transaction.resolution.kind === 'bounded_fortune' ? { roll: rng.int(1, transaction.resolution.sides) } : {};
-        // Cases see only the public die, not a partially assigned outcome.
-        const selected = transaction.resolution.cases.find(item => predicate(item.when, { args, reads, resolution }));
-        resolution.outcome = selected?.outcome ?? transaction.resolution.fallback;
-        const context = freeze({ args, reads, resolution });
-        const rules = createRulesEngine(logic.rules, { onEvaluation: () => budget.rule() });
-        for (const effect of transaction.effects) {
-            if (effect.when !== undefined && !predicate(effect.when, context)) continue;
-            if (effect.kind === 'world.event') {
-                const draft = { type: effect.type, payload: template(effect.payload, context), meta: { authorityId: identity } };
-                const ruled = await rules.process([draft], { beforeState: world.getState(),
-                    project: events => world.simulateEventsInternal(events),
-                    context: { transactionId: identity, args, command: { id: transaction.id }, rng } });
-                await world.commitEventsInternal(ruled.events);
-            } else {
-                let action;
-                if (effect.kind === 'app.command') action = { kind: effect.kind, domainId: effect.domainId, commandId: effect.commandId,
-                    recordId: taskId(template(effect.recordId, context)), args: template(effect.args, context) };
-                else if (effect.kind === 'clock.advance') action = { kind: effect.kind, commandId: effect.commandId, ticks: template(effect.ticks, context) };
-                else action = { kind: effect.kind, workflowId: effect.workflowId, transitionId: effect.transitionId };
-                await applyLifecycle(candidate, installed, action, budget);
-            }
-        }
+        const args = request.input;
+        const resolution = await executeTransaction(candidate, installed, contract, logic, world, transaction, args, budget, identity);
         // Existing clock validation does not pump. Drain bounded due work privately
         // before projections; never dispatch queued Model Tasks in preparation.
         if (candidate.states.atri_lifecycle?.ready) await applyLifecycle(candidate, installed, { kind: 'pump' }, budget);
@@ -261,4 +268,28 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
             anchor: request.anchor, playerMessageId: player.messageId, result: projection }, transaction.receipt.maxBytes);
         return freeze({ candidate, receipt, identity, inputHash, work: { ...budget.counts } });
     } catch { throw failure('transaction preparation'); }
+}
+
+// Server-internal system entrypoint. No caller-selected transaction or invented
+// timeline entry; the required simulation declaration owns all targets/input.
+export async function prepareSimulationStep(base, installed, jobId, tick, budget) {
+    try {
+        const contract = contractFor(base, installed); validateCandidate(base, contract);
+        const simulation = contract.simulationRuntime;
+        const job = simulation?.jobs.find(item => item.id === jobId);
+        if (!budget || !job || job.action.kind !== 'transaction' || !base.states.atri_lifecycle.ready
+            || base.states.atri_lifecycle.clocks[simulation.clockId] !== tick) throw new TypeError('Invalid simulation invocation');
+        const { candidate, logic, world } = await createTaskWorld(base, installed, null, budget);
+        protectOutputs(logic, budget);
+        const reads = privateReads(candidate, contract, job.reads, {}, budget);
+        const context = freeze({ reads, clock: { tick } });
+        if (!predicate(job.enabled, context) || budget.typed(template(job.due, context), { type: 'integer', minimum: 0, maximum: 2147483647 }) > tick) throw new TypeError('Stale simulation job');
+        const transaction = logic.transactions.find(item => item.id === job.action.transactionId);
+        if (!transaction || transaction.origin !== 'simulation') throw new TypeError('Invalid system Transaction');
+        const input = budget.typed(template(job.action.input, context), transaction.inputSchema);
+        const identity = 'sim:' + hashNativeDocument({ ...snapshotAnchor(base), jobId, tick, input });
+        await executeTransaction(candidate, installed, contract, logic, world, transaction, input, budget, identity);
+        validateCandidate(candidate, contract);
+        return candidate;
+    } catch { throw failure('simulation step'); }
 }

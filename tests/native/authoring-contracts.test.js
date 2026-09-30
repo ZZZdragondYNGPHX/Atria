@@ -1,3 +1,4 @@
+import { simulationCandidateFixture } from './helpers/simulation-candidate-fixture.js';
 import { authorityFixture } from './helpers/authority-fixture.js';
 import { minimalFrontend } from './helpers/frontend-fixture.js';
 import { describe, expect, test } from '@jest/globals';
@@ -46,14 +47,14 @@ describe('P0 Experience contract foundation', () => {
     });
 
     test('remaining authority vocabulary entries distinguish reserved versions from implemented support', () => {
-        expect(Object.keys(ATRIA_EXPERIENCE_CAPABILITIES)).toHaveLength(31);
+        expect(Object.keys(ATRIA_EXPERIENCE_CAPABILITIES)).toHaveLength(32);
         for (const [id, definition] of Object.entries(ATRIA_EXPERIENCE_CAPABILITIES)) {
             for (const version of definition.versions) {
-                const value = id === 'authority-transaction' ? authorityFixture().contract : { schemaVersion: 1, capabilities: [{ id, version, required: true }], dataResources: [] };
+                const value = id === 'world-simulation' ? simulationCandidateFixture().contract : id === 'authority-transaction' ? authorityFixture().contract : { schemaVersion: 1, capabilities: [{ id, version, required: true }], dataResources: [] };
                 expect(assertNativeExperienceContract(value)).toEqual(value);
             }
             for (const version of definition.versions.filter(item => !definition.supported.includes(item))) {
-                const value = id === 'authority-transaction' ? authorityFixture().contract : { schemaVersion: 1, capabilities: [{ id, version, required: true }], dataResources: [] };
+                const value = id === 'world-simulation' ? simulationCandidateFixture().contract : id === 'authority-transaction' ? authorityFixture().contract : { schemaVersion: 1, capabilities: [{ id, version, required: true }], dataResources: [] };
                 expect(() => assertSupportedExperienceContract(value)).toThrow(/Host does not support/);
             }
         }

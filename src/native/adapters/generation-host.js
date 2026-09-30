@@ -144,7 +144,22 @@ export class NativeGenerationHost {
         try { onChunk?.({ operationId: operation.operationId, status: 'queued', provisional: true }); } catch { /* Observer only. */ }
         const result = await operation.result;
         if (authority) this.authoritySelections.delete(handle + ':' + base.session.sessionId + ':' + base.revision.branchId + ':' + base.revision.revisionId);
+        this.queueSimulation(handle, result, input.slotBindings);
         return result;
+    }
+
+    // Only after foreground finalization. The durable outbox survives a Host
+    // exit; this callback is not a saved Promise or a second scheduling authority.
+    queueSimulation(handle, snapshot, slotBindings) {
+        if (!snapshot.manifest.runtime?.experienceContract?.simulationRuntime
+            || !snapshot.states.atri_lifecycle?.outbox.some(item => item.simulation && item.status === 'pending')) return;
+        setImmediate(() => {
+            void this.executeLifecycle(handle, { sessionId: snapshot.session.sessionId,
+                revisionId: snapshot.revision.revisionId, slotBindings }).catch(() => {
+                // Existing Task operation diagnostics retain provider failures.
+                // Pending intent stays authoritative; no speculative fallback or retry loop.
+            });
+        }).unref();
     }
 
     async prepareAuthoritySelection(handle, base, input, lanePlan, signal) {
@@ -318,6 +333,18 @@ export class NativeGenerationHost {
                 && snapshot.states.atri_lifecycle.scopes[item.scopeId]?.status === 'active'
                 && snapshot.states.atri_lifecycle.scopes[item.scopeId].epoch === item.scopeEpoch);
             if (!item) break;
+            if (item.simulation) {
+                const { simulationTaskCurrent } = await import('../simulation-authority.js');
+                const { createAuthorityPublicationBudget } = await import('../authority-transaction.js');
+                const installed = await this.sessionCore._openPackage(handle, snapshot.session.packageId, snapshot.session.packageVersionId, snapshot.session.entryPointId);
+                const budget = await createAuthorityPublicationBudget(snapshot, installed);
+                if (!simulationTaskCurrent(snapshot, item, budget)) {
+                    snapshot = await this.sessionCore.applyLifecycleCommand(handle, input.sessionId,
+                        { type: 'lifecycle', invocationId: 'stale-' + item.invocationId, action: { kind: 'scheduled.cancel', invocationId: item.invocationId } },
+                        { expectedRevisionId: snapshot.revision.revisionId });
+                    continue;
+                }
+            }
             const result = await this.executeTask(handle, { sessionId: input.sessionId, revisionId: snapshot.revision.revisionId,
                 invocationId: item.invocationId, taskId: item.taskId, variantId: item.variantId, input: item.input, slotBindings: input.slotBindings }, signal, undefined, { lifecycleInvocation: true });
             snapshot = result.snapshot; results.push(result.record);
