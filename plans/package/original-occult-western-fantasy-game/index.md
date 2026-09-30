@@ -2,8 +2,8 @@
 
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
-- **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.32 — Rounds 9–9.8 approved; Round 10 opened; not approved for implementation
+- **Current stage:** Approved implementation baseline; P0 Core prerequisite
+- **Status:** Approved Implementation Baseline v1.0 — pre-production complete; P0 `feat/authority-transaction` ready; Package P1 remains blocked until P0 merges to `main`
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -37,7 +37,7 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 - Progression uses Breach / Investiture and Claim / Anchor / Price / Jurisdiction with modular, self-consistent builds and cultural professions. Authority: `metaphysics.md`.
 - Society, religion and political geography must be consequences of the same Anchor / Identity / Claim rules rather than decorative lore. Authorities: `society.md`, `religion.md`, `geography.md`.
 - Deterministic Native state owns authoritative facts; model context receives curated projections. Authority: `platform-and-gameplay.md`.
-- Nothing is an implementation baseline until pre-production reaches explicit approval and implementation staging.
+- Implementation Baseline v1.0 is approved. Formal Package implementation remains gated on the P0 Core prerequisite defined in `implementation-staging.md` and `plans/feat/authority-transaction.md`.
 
 ## Module map
 
@@ -60,18 +60,28 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 10
+## Current route — P0 Core prerequisite
 
-Required reading:
+The game-design Plan Bundle is frozen as **Approved Implementation Baseline v1.0**.
 
-- `index.md`
-- `decisions.md`
-- `technical-design.md`
-- `implementation-staging.md`
+Current implementation task:
 
-Load domain modules only for the phase that implements them.
+- Task ID: `feat/authority-transaction`
+- Primary Workspace: `main`
+- Plan: `docs:plans/feat/authority-transaction.md`
+- Initial Core stage: **C1 — Contract and declarative surface**
 
-Round 10 freezes implementation order and verification gates. It does not reopen approved world/game design unless implementation exposes a material contradiction.
+P0 must complete C1–C4, merge into `main`, and pass the frozen Core verification gates before Package P1 begins.
+
+Package implementation remains in the independent long-lived `package` workspace and must not merge `main`.
+
+For P0, read:
+
+- `plans/feat/authority-transaction.md`
+- this `index.md` only for product routing;
+- `technical-design.md` Round 9.5–9.8 when detailed design authority is needed.
+
+Do not reopen approved game/world design unless Core implementation exposes a material contradiction.
 
 ## Stage routing
 
@@ -88,7 +98,7 @@ Round 10 freezes implementation order and verification gates. It does not reopen
 | Round 7 | `index.md`, `platform-and-gameplay.md`, `simulation.md` | Approved; lightweight information/interaction constraints only |
 | Round 8–8.6 | `index.md`, `content-architecture.md`; affected authority modules only as needed | Approved |
 | Round 9–9.8 | `index.md`, `decisions.md`, `technical-design.md`; approved authority modules only as needed | Approved / technically frozen |
-| Round 10 | `index.md`, `decisions.md`, `technical-design.md`, `implementation-staging.md` | Current |
+| Round 10 | `index.md`, `decisions.md`, `technical-design.md`, `implementation-staging.md` | Approved; Implementation Baseline v1.0 |
 
 Future empty modules are intentionally not pre-created. When a new round gains substantive design content, create its authoritative module and update this routing table.
 
@@ -233,53 +243,24 @@ Approved: `authority-transaction@1` is the only blocking v1 Core prerequisite; a
 
 ### Round 10 — Implementation staging
 
-Freeze Codex-ready phases, validation criteria, branch/workspace routing, frontend handoff and release strategy.
+Approved: P0 Core prerequisite followed by Package P1–P9, phase-specific reading/validation gates, frontend handoff, Record/HANDOFF lifecycle and v1 deferrals. The overall Plan is now Implementation Baseline v1.0.
 
 The sequence may change if substantive design discoveries require it.
 
 ## Approval state
 
-Nothing in this document is yet an implementation baseline.
+**Approved Implementation Baseline v1.0**
 
-Currently carried forward from research:
+Pre-production design Rounds 1–10 are complete and frozen for implementation.
 
-- original occult Western fantasy rather than direct LoM conversion;
-- world-law-first design;
-- knowledge / investigation / identity as central systems;
-- late-industrial / early-electrical-era research direction;
-- independent faction/world progression;
-- deliberate use of Atria Truth/Belief/Memory/Exposure architecture;
-- avoidance of trivial renamed Sequence/Pathway/Potion structures;
-- approved C → A → B metaphysical hierarchy;
-- approved Breach / Investiture entry model;
-- approved Claim / Anchor / Price / Jurisdiction progression grammar;
-- approved Obligation / Exposure / Displacement Price families;
-- approved modular builds constrained by self-consistency;
-- approved cultural professions rather than cosmic classes;
-- deterministic Native authority over supernatural mechanics;
-- approved layered industrial-port city history and Eastbank Settlement as the first city-scale buried contradiction;
-- approved interdependent city institution network with distributed evidence and independent Agendas;
-- approved Civil Verifier starting role, second-death opening case and action-caused first Breach;
-- approved controlled character creation with Personal Anchors and canon-safe background freedom;
-- approved deterministic first-Claim flow using Breach Imprints, curated Claim Seeds and institution-dependent stabilization;
-- approved core gameplay loop using resilient investigation, persistent consequences, time pressure, low-frequency high-risk violence and concrete downtime/Identity maintenance;
-- approved Native-authoritative uncertainty resolution with bounded Fortune, risk preview and structured consequences;
-- approved open Case architecture with world-owned Evidence, durable Settlement history and no quest-checklist ontology;
-- approved Atria-native simulation authority with bounded perspectives, shared information graph, one world clock, Agenda state machines and tiered actor simulation;
-- approved fourteen-domain simulation decomposition with derived state and Hard/Perspective/Intent write-authority separation;
-- approved task-specific bounded Context Packages with explicit information-transfer events and no shared omniscient prompt;
-- approved deterministic-first world scheduling with bounded background deliberation and event-driven fast-forward;
-- approved lightweight frontend information/interaction constraints with detailed visual design delegated;
-- approved content-scale architecture with focused authored depth, tiered NPCs, reusable Case/anomaly/Claim assets and fragmented Eastbank Canon;
-- approved eight-case Signature network with distinct gameplay roles and predicate-based Eastbank convergence;
-- approved structured content production templates with Canon/Perspective/Generation separation and no prose-as-authority dependency;
-- approved top-level Atria Package mapping using Package Data / Lifecycle / Information / Task Runtime / authority-first Turn responsibilities;
-- approved concrete runtime authority layout and restricted Action API, with one v1 Core prerequisite for atomic cross-authority transactions and safe resolver observation;
-- approved disclosure-safe Information/Task mapping with seven Sources, five fixed Views, two bounded investigation Graphs and four core Task classes;
-- approved modular Package Data layout and the versioned `authority-transaction@1` Core contract;
-- approved Round 9 technical freeze: `authority-transaction@1` is the only blocking v1 Core prerequisite and must land in `main` before Package implementation.
+Implementation authorization is staged:
 
-All unapproved elements remain open to revision.
+1. P0 `feat/authority-transaction` may begin in `main` using `docs:plans/feat/authority-transaction.md`.
+2. Package P1–P9 remain blocked until P0 is implemented, verified, merged into `main`, integrated `main` is revalidated, and the P0 temporary branch is removed.
+3. After P0, Package work proceeds in the independent long-lived `package` workspace under `original-occult-western-fantasy-game/`.
+4. Material contradictions discovered during implementation reopen only the authoritative Plan module they affect; ordinary implementation details do not reopen design.
+
+Frozen cross-module decisions are indexed in `decisions.md`. Exact implementation order and phase gates are authoritative in `implementation-staging.md`.
 
 ## Material routing/design changes
 
