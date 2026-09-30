@@ -12,7 +12,7 @@ Owns Round 6: authoritative world state, Truth / Belief / Memory / Exposure mapp
 - `player.md`
 - `metaphysics.md` only when a state design would alter supernatural rules.
 
-> **Current discussion:** Rounds 6–6.6 are approved. Round 6.7 is open: world-advance scheduling, batching and model-call budget.
+> **Current discussion:** Rounds 6–6.7 are approved. Round 6 is complete; frontend information/interaction constraints continue in `platform-and-gameplay.md` as lightweight Round 7.
 
 ---
 
@@ -1183,23 +1183,334 @@ Rejected:
 - prompt history as the primary source of NPC knowledge;
 - user claims treated as system facts.
 
-### 6.38 Round 6.7 question — world-advance scheduling and model-call budget
+### 6.38 Approved world-advance scheduling and model-call budget — Round 6.7
 
-Round 6.7 must determine when the background simulation advances and when a Model Task is justified.
+World simulation advances deterministically by default.
 
-It must define:
+Background Model Tasks are an exception reserved for genuinely open-ended deliberation.
 
-- the deterministic order after a player action commits;
-- which updates happen synchronously without any model;
-- how due Matters, Conditions, appointments and evidence decay are processed;
-- how Agenda triggers are collected and batched;
-- whether multiple institutions can advance in one world tick;
-- how simultaneous or conflicting actions are ordered;
-- which Agenda steps are deterministic and which require model proposals;
-- per-Scene / per-Day / per-Arc limits on background model calls;
-- how low-relevance institutions remain dormant without appearing frozen;
-- how far the simulation may fast-forward during travel / recovery / downtime;
-- how pending background events are surfaced to the player without narrating every invisible action;
-- how retries, failed Model Tasks and unavailable providers fail safely without corrupting world state;
-- how deterministic replay / save-restore preserves the same already-resolved background outcomes.
+The approved post-action order is:
+
+**Player / World Action Commit → Advance Canonical Clock → Process deterministic due events → Evaluate conditional Agenda steps → Collect deliberative Agenda candidates → Relevance / Priority / Budget gate → Run bounded background tasks → Validate proposals against anchored revision → Commit in deterministic order → Stop at bounded reaction depth → Build Perspective Projection → Foreground Narrative**
+
+#### 6.38.1 Deterministic updates run before any model
+
+After a committed action advances world time, Native authority first processes due deterministic changes such as:
+
+- Condition recovery or worsening;
+- appointment completion / miss;
+- train departure;
+- closing time;
+- legal deadline;
+- evidence decay;
+- Personal Anchor commitment consequences;
+- fixed procedural transitions.
+
+These do not require Model Tasks.
+
+#### 6.38.2 Three Agenda step classes
+
+Agenda progression uses three step classes.
+
+**Deterministic Step**
+
+The next action is already known and valid if its conditions still hold.
+
+It executes without a model.
+
+**Conditional Step**
+
+A bounded authored rule chooses among known actions based on current state.
+
+It executes without a model.
+
+**Deliberative Step**
+
+Several valid strategic actions remain and authored deterministic rules cannot reasonably select among them.
+
+Only this class may request a bounded Model Task proposal.
+
+The design target is that most Agenda progression remains deterministic / conditional.
+
+#### 6.38.3 Model deliberation is trigger-based, not turn-based
+
+A Deliberative Agenda becomes eligible because of meaningful triggers such as:
+
+- elapsed time;
+- blocker change;
+- important new information;
+- direct player interference;
+- external institutional action.
+
+Ordinary unrelated conversation or low-impact actions must not cause every institution to reconsider strategy.
+
+#### 6.38.4 Relevance tiers
+
+Background actors / institutions use coarse simulation relevance.
+
+**Hot**
+
+Directly connected to the current player situation, active Matter or near-term event.
+
+Process fully.
+
+**Warm**
+
+Recently or indirectly relevant.
+
+Process deterministic state normally; Deliberative work may enter background queue when budget allows.
+
+**Cold**
+
+Currently remote from player-relevant state.
+
+Continue macro deterministic / conditional progression but do not normally invoke Model Tasks.
+
+Cold simulation is low precision, not frozen.
+
+#### 6.38.5 Cold simulation remains authoritative
+
+When an institution is Cold, its authored Agenda state still advances through valid deterministic transitions.
+
+Relevance returning later must reveal accumulated authoritative state rather than asking a model to invent what “probably happened” during the gap.
+
+#### 6.38.6 Foreground model budget principle
+
+Normal foreground play should minimize model calls.
+
+The usual Scene should require one primary narrative generation path.
+
+Do not create a separate model invocation for every visible NPC when one authorized turn-generation flow can represent the scene safely.
+
+Exact call counts remain a Round 9 implementation choice.
+
+#### 6.38.7 Background model budget principle
+
+The normal background cost for an ordinary player action should be zero Model Tasks.
+
+Background calls occur only when:
+
+- a Deliberative Step is due;
+- relevance / priority permits it;
+- budget permits it.
+
+Large time advances may make several Agendas eligible, but deterministic / conditional processing still happens first.
+
+#### 6.38.8 World-advance batching
+
+Large time advancement first catches up deterministic events.
+
+Only then are unresolved Deliberative requests collected.
+
+The scheduler applies:
+
+- priority;
+- relevance;
+- deduplication;
+- supersession where valid.
+
+This prevents one downtime action from causing uncontrolled bursts of background generation.
+
+#### 6.38.9 Perspective remains isolated during batching
+
+Multiple Agenda decisions may be scheduled together for efficiency, but their Context Packages remain isolated.
+
+Do not ask one model prompt to role-play several unrelated institutions with shared hidden information.
+
+Batching is scheduling optimization, not perspective merging.
+
+#### 6.38.10 Pending decisions may be superseded
+
+A not-yet-committed Agenda decision may become obsolete when newer authoritative state changes its decision context.
+
+Such pending work may use latest / supersede behavior.
+
+Example:
+
+a queued railway response to yesterday's private investigation may be replaced by a newer request after the player publicly releases the evidence.
+
+#### 6.38.11 Committed events are never superseded
+
+Once an action is committed as an Event or other hard state mutation, later task supersession cannot erase it.
+
+Approved distinction:
+
+- **Pending Decision** — may be superseded before commit;
+- **Committed Event** — permanent historical occurrence unless a later Event explicitly changes its consequences.
+
+#### 6.38.12 Same-tick decisions use an anchored snapshot
+
+Agenda tasks eligible at the same logical time should reason from a defined anchored revision rather than racing against network completion order.
+
+Flow:
+
+1. capture baseline revision;
+2. produce independent proposals;
+3. validate proposals;
+4. commit according to deterministic world ordering.
+
+World history must not depend on which provider response arrived first.
+
+#### 6.38.13 Deterministic commit ordering
+
+When same-tick actions conflict, the Package defines stable ordering rules based on the world meaning of actions.
+
+Potential categories may include:
+
+1. immediate physical effects already underway;
+2. formal legal / institutional submissions;
+3. communication / publication;
+4. downstream responses.
+
+Exact priority taxonomy is deferred to technical design.
+
+Within equal priority, a stable deterministic identifier or equivalent rule must resolve ordering.
+
+#### 6.38.14 Stale proposals fail validation
+
+A proposal that was valid against its anchored revision may become invalid after an earlier same-tick commit.
+
+It must fail closed as stale / blocked rather than being reinterpreted into a new action.
+
+The Agenda may enter a blocked state and reconsider at a later eligible opportunity.
+
+Do not immediately recurse into repeated Model Task calls until one succeeds.
+
+#### 6.38.15 Bounded reaction depth
+
+One world-advance batch has a bounded reaction depth.
+
+Direct consequences may trigger one limited layer of immediate institutional response, but indefinite reaction chains are deferred to later logical windows.
+
+This prevents:
+
+player action → institution response → another response → another response
+
+from simulating an unbounded political cascade in one foreground turn.
+
+Exact depth is deferred to Round 9.
+
+#### 6.38.16 Background state is not automatically player-visible
+
+An institution may take a secret action without creating a player notification.
+
+The player learns background change only through legitimate information routes such as:
+
+- observation;
+- report;
+- communication;
+- newspaper;
+- public record;
+- informant;
+- visible consequence.
+
+Do not expose Agenda phase changes or hidden simulation logs as UI meta-information.
+
+#### 6.38.17 Event-driven fast-forward
+
+Long recovery, travel or downtime should not iterate every hour.
+
+Fast-forward uses meaningful due times:
+
+1. find the next relevant scheduled Event / deadline / Agenda trigger;
+2. advance the canonical clock to that point;
+3. process deterministic state;
+4. handle any budget-approved deliberation;
+5. continue to the next meaningful point.
+
+Fast-forward processes the world; it does not pause obligations.
+
+#### 6.38.18 Fast-forward does not bypass commitments
+
+Skipping time still processes:
+
+- rent or important financial obligations;
+- Personal Anchor commitments;
+- Claim Obligations;
+- legal deadlines;
+- institutional action;
+- recovery;
+- scheduled travel or hearings.
+
+The player cannot avoid world consequences merely by requesting a long time skip.
+
+#### 6.38.19 Background Model Tasks fail closed
+
+If a background Model Task:
+
+- times out;
+- produces invalid output;
+- loses provider availability;
+- violates its Action Catalog,
+
+no hard world mutation is committed.
+
+The Agenda remains pending / blocked or uses an explicitly authored safe fallback.
+
+Provider failure must never invent arbitrary world consequences.
+
+#### 6.38.20 Foreground gameplay outranks background work
+
+A delayed or failed Warm / Cold background decision must not block normal player interaction.
+
+Foreground resolution and narration remain higher-priority work.
+
+Background simulation catches up when valid opportunities return.
+
+#### 6.38.21 Save / restore preserves accepted decisions
+
+Accepted background proposals and their committed Events are part of authoritative history.
+
+Save / restore must not cause an already-resolved Agenda to choose a different action simply because the model is invoked again.
+
+Pending, uncommitted work may be safely resumed or regenerated only against its preserved anchor rules.
+
+#### 6.38.22 Persist outcomes, not hidden reasoning
+
+Deterministic replay requires preserving:
+
+- task invocation identity where relevant;
+- anchor revision;
+- accepted proposal;
+- resulting commands / Events;
+- necessary diagnostics.
+
+It does not require storing or reproducing private model reasoning or token-level generation.
+
+The requirement is world-result consistency.
+
+### 6.39 Round 6.7 decision
+
+Approved:
+
+- deterministic post-action world-advance order;
+- deterministic / conditional / deliberative Agenda step classes;
+- background AI triggered by meaningful state, not every player turn;
+- Hot / Warm / Cold relevance tiers;
+- authoritative low-precision Cold progression;
+- foreground-first scheduling;
+- zero-background-call default for ordinary actions;
+- catch-up batching with priority / relevance / deduplication;
+- perspective isolation during scheduling batches;
+- pending decisions may supersede, committed Events may not;
+- same-tick anchored snapshots and deterministic commit ordering;
+- stale proposals fail closed;
+- bounded reaction depth;
+- secret background changes remain hidden until legitimately observed;
+- event-driven fast-forward;
+- time skipping does not bypass obligations;
+- background Model Task failure fails closed;
+- save / restore preserves accepted world outcomes;
+- persist accepted proposal / command history rather than model reasoning.
+
+Rejected:
+
+- running every faction AI after every player message;
+- world history determined by provider response race;
+- infinite same-turn institutional reaction chains;
+- cold institutions being frozen or retroactively invented on re-entry;
+- fast-forward as a way to suspend world simulation;
+- provider failure causing speculative fallback events;
+- background tasks blocking foreground play;
+- save reload re-rolling already accepted institutional decisions.
 
