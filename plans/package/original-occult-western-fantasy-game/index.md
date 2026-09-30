@@ -3,7 +3,7 @@
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
 - **Current stage:** Pre-production research and design discussion
-- **Status:** Discussion Draft v0.18 — Rounds 5–5.5 approved; Round 5.6 opened; not approved for implementation
+- **Status:** Discussion Draft v0.19 — Rounds 5–5.6 approved; Round 6 opened; not approved for implementation
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -50,27 +50,29 @@ This is not intended to be a conventional combat-first level-grinding RPG.
 | `geography.md` | Rounds 3.7–3.8: states, borders, primary city, urban structure/history and current city mystery | `society.md`, `religion.md` |
 | `institutions.md` | Round 3.9: city institutions, faction network, Eastbank evidence distribution and institutional conflicts | `society.md`, `religion.md`, `geography.md` |
 | `player.md` | Rounds 4–4.6: player identity, controlled character creation, first Breach and first-Claim flow | `foundation.md`, `geography.md`, `society.md`, `institutions.md` |
-| `gameplay.md` | Round 5: core loop, investigation, conflict, failure, time, downtime and economy | `player.md`, `platform-and-gameplay.md` |
+| `gameplay.md` | Rounds 5–5.6: core loop, investigation, uncertainty, case structure, failure, time, downtime and economy | `player.md`, `platform-and-gameplay.md` |
+| `simulation.md` | Round 6: authoritative world state, information projections, logical time, Agendas and Case graph | `gameplay.md`, `platform-and-gameplay.md`, `institutions.md`, `player.md` |
 | `platform-and-gameplay.md` | Atria fit, provisional core loop/surfaces, external design references, open questions | `foundation.md` plus relevant domain modules |
 | `decisions.md` | Compact cross-module frozen-decision index; links back to detailed authorities | all authoritative modules |
 
 Detailed rules have one authoritative module. Do not copy them into another module merely for convenience; link back to the owner.
 
-## Current route — Round 5.6
+## Current route — Round 6
 
 Required reading:
 
 - `index.md`
-- `gameplay.md`
+- `simulation.md`
 - `platform-and-gameplay.md`
 
-Load only when a gameplay question requires it:
+Load only when a simulation question requires it:
 
-- `player.md` — opening profession, background access, Claim acquisition;
+- `gameplay.md` — Case model, Resolution Frames, time scales and consequences;
 - `institutions.md` — institutional Agendas and relationship state;
-- `geography.md` — travel scope and district structure.
+- `player.md` — Personal Anchors, Breach / Claim state and background;
+- `metaphysics.md` — only when a proposed state rule would alter Claim / Principle authority.
 
-Do not reopen detailed metaphysics unless a proposed gameplay mechanic would alter Claim or Principle rules.
+Current Atria `main` Information / Lifecycle contracts are implementation-fit evidence, not Plan authority.
 
 ## Stage routing
 
@@ -82,8 +84,8 @@ Do not reopen detailed metaphysics unless a proposed gameplay mechanic would alt
 | Round 3.7–3.8 | `index.md`, `geography.md`; `society.md` / `religion.md` only as needed | Approved |
 | Round 3.9 | `index.md`, `institutions.md`; authority dependencies only as needed | Approved |
 | Round 4–4.6 | `index.md`, `player.md`; dependencies only as needed | Approved |
-| Round 5 | `index.md`, `gameplay.md`, `platform-and-gameplay.md`; dependencies only as needed | Current |
-| Round 6 | `index.md`, `platform-and-gameplay.md` plus affected authority modules | Create simulation/information module when design starts |
+| Round 5–5.6 | `index.md`, `gameplay.md`, `platform-and-gameplay.md`; dependencies only as needed | Approved |
+| Round 6 | `index.md`, `simulation.md`, `platform-and-gameplay.md`; dependencies only as needed | Current |
 | Round 7 | `index.md`, `platform-and-gameplay.md` plus simulation module | Create UI module when design starts |
 | Round 8 | `index.md` plus gameplay/simulation/UI and relevant world modules | Create content-architecture module when design starts |
 | Round 9 | `index.md`, `platform-and-gameplay.md` plus approved system/content modules | Create Package technical-design module when design starts |
@@ -176,11 +178,11 @@ Approved: Native-authoritative Resolution Frames, qualitative risk tiers, bounde
 
 ### Round 5.6 — Case structure, open investigation and closure
 
-Define Case objects, lead emergence, case merging/splitting, closure decisions and distinction between official resolution and Truth.
+Approved: Case as unresolved problem, world-owned Evidence, open Leads/Hypotheses, merge/split/reopen, durable Settlements and strict Truth/Settlement/Belief separation.
 
 ### Round 6 — World simulation and information architecture
 
-Map Truth / Belief / Memory / Exposure, faction clocks, logical time and persistent world state onto Atria.
+Map Truth / Belief / Memory / Exposure, institutional Agendas, Case graph and logical time onto Atria.
 
 ### Round 7 — Native UI and interaction model
 
@@ -226,7 +228,8 @@ Currently carried forward from research:
 - approved controlled character creation with Personal Anchors and canon-safe background freedom;
 - approved deterministic first-Claim flow using Breach Imprints, curated Claim Seeds and institution-dependent stabilization;
 - approved core gameplay loop using resilient investigation, persistent consequences, time pressure, low-frequency high-risk violence and concrete downtime/Identity maintenance;
-- approved Native-authoritative uncertainty resolution with bounded Fortune, risk preview and structured consequences.
+- approved Native-authoritative uncertainty resolution with bounded Fortune, risk preview and structured consequences;
+- approved open Case architecture with world-owned Evidence, durable Settlement history and no quest-checklist ontology.
 
 All unapproved elements remain open to revision.
 
