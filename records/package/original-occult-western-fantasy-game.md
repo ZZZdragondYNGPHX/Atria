@@ -234,3 +234,51 @@ This is an explicit two-day synthetic fixture, not a generalized campaign econom
 No hosted-model, manual browser/device/P8 acceptance, cross-process OS-crash or durable uncommitted-selection recovery test is claimed. In-process selection pin, same-anchor RNG, committed invocation idempotency and the actual container round-trip above are distinct. The model's proposed name is bounded and promoted to a game Entity, not a new Native actor/model runtime.
 
 Next stage is **P4 — World / Content Foundation only**, after separate authorization. Read index → content-architecture.md + implementation-staging.md, then only the world modules required by the current asset. Preserve hidden Canon boundaries, stable refs, lazy materialization, publication/expanded-work limits and the independent package branch. Do not expand into P5/P8 or the whole campaign. Continue this same Record and sole HANDOFF.
+
+## P4 — World / Content Foundation (2026-09-30)
+
+Status: **P4 complete, tested and pushed. P5/P8 not started.**
+
+- Fetch-all/prune confirmed clean package `472045a270c23371d7dc2dac6f7dc685fd3e1970`, main `052c466e3c9e4b07912da0cb602b2933f4821187`, docs `4a9ee30b02aeedb9237b05282302172acdfb2194`, matching origin refs. Reusing the clean independent detached main validation tree; no main merge or reference content access.
+- Read Governance/workspace instructions, sole HANDOFF, Plan index, P4 production templates/staging, this Record and runtime/SIMULATION.md. Loaded geography/institutions, relevant player background/Claim, metaphysics boundary, religion/society and technical data-budget sections for current assets.
+- Implementation approach: immutable modular authoring resources with closed structural validation, explicit references and public/private separation. No eager city materialization or added scheduler jobs. P3 fixture/required capabilities and G1/G2 remain unchanged. Deep Eastbank cause remains explicitly unresolved, not promoted from a design possibility into Canon.
+
+### P4 closure — complete / P5 not started
+
+- Package implementation / tested / pushed HEAD: **bd2402db0818ab891b1d17658bc22509f340432d**. Tested committed tree: **fdc56f3e2b6f21b91a2818c58f4a0817bcdb28cd**. Version: **0.4.0-p4**, PackageVersion **pkgv_30e4eb31258baa84728b1f3666bd32cc**.
+- Core main / independent validation HEAD: **052c466e3c9e4b07912da0cb602b2933f4821187**. Fetch-all immediately before Package commit confirmed unchanged actual main/docs/package remote baselines. No Core change, workaround, capability relaxation, branch merge, release overwrite or reference content access.
+
+#### Authored foundation
+
+- **31** hash-pinned Package Data resources, **222** structured assets; **393,957 bytes** total, largest resource **73,685 bytes**. Below 256 KiB per-resource and 2 MiB total P4 soft ceilings and Core hard ceilings. Scoped LF text attributes make asset hashes reproducible across checkouts; UTF-8 data has no BOM.
+- Six districts / thirty locations including county estate, mill town and rail corridor; ten approved institutional/network nodes. Four subordinate civil service offices distinguish registry/courts/arrival/medical custody from police liaison; not four extra major factions.
+- Twelve Tier A and thirty Tier B cores with stable affiliation, relations, competencies, limited perspectives and availability. Major cores include motive, constraints, Agenda, legitimate access, secrets/unknowns and change hooks. No Native actor/Task/View per NPC, full biography batch or eager population.
+- Eight Anomaly Families, eight Claim primitives, sixteen Starter Seeds, thirty-two established archetypes and four stabilization traditions. Effects/conditions/Jurisdictions/prohibitions are definitions, **not granted powers or executable Claim authority**. Archetypes vary bounded operations, not only faction/Anchor skins.
+- Twelve Eastbank Canon fragments plus index with custodians, conflicting records, evidence gateways and reveal rules. Deep origin remains unresolved; an older Boundary/Identity substrate is a hypothesis, not a newly declared final answer.
+- Ten semantic Artifact templates, ten dormant inquiry hooks and one historical event; not issued Evidence, active Cases, scheduled deadlines or scene scripts.
+- Seven Origins, eight Prior Lives and seven Faith options provide access/procedural interpretation, not bonuses or supernatural backstories. Selection, Personal Anchor creation and live background effects remain P5.
+- Six separately authored public readings mirrored exactly into one installed Native Knowledge revision. **No active fixture Knowledge binding**; private archives, actor motives, institution knowledge, Claim engineering and Canon are not generic Knowledge. Acquisition/authorization and document instances remain later-stage work.
+
+#### Authority and initialization
+
+Executable logic, Lifecycle, authority, simulation, Information, Tasks, capabilities, bootstrap and frontend retain P3 semantics. Only exact model-resource PackageVersion pins changed. Required authority-transaction@1 and world-simulation@1 remain; no added targets/publication/jobs. Seven publication read grants / ten declared App Commands remain. P3 regression still exercises selected two-day **16 reads / 16 App Commands / 20 effects** within unchanged limits.
+
+Ready materializes only the P3 fixture; none of the 222 P4 keys is copied into Session state. **This is lazy live-state materialization, not lazy archive I/O**: Core createTaskWorld parses declared Package Data before compiling logic. No Package-side loader, scheduler or alternate authority disguises that behavior.
+
+#### Actually executed verification
+
+- Fast content check, all tools syntax checks, unstaged/staged whitespace checks: PASS. Closed per-kind schemas, unique stable IDs, field/reference/type closure, non-orphan required dependencies, counts, Common Eight, Claim prohibitions, public Knowledge separation, unresolved deep Canon and byte budgets are enforced.
+- Draft full validate passed with the initial 218-asset version. Author review then corrected civil-service custody and expanded privacy/negative checks; **final preview ran the same complete verification function on the exact final 222-asset source**. This is a full integration run, not only JSON formatting.
+- Final build passed against real main. Ignored archive build/0.4.0-p4-final.atria: **74,195 bytes**, SHA-256 **fc7a2d36868a7243620ff8221fb851c411783d397a08d938726223c6287ce1ab**. No release artifact committed or overwritten.
+- Final actual FS install/reopen verified every declared data asset against exact source hash/bytes and the public Knowledge revision. Ready/repeat Ready, pre-Ready rejection, five Views/two Graphs and no eager P4 live state passed.
+- **15 negative checks** cover unknown/missing fields, unresolved/undeclared references, unsupported Principle, falsely settled deep cause, duplicate IDs, contaminated public Knowledge, bad Unicode/malformed UTF-8, string/resource-size/resource-count bounds and unauthorized fixture retrieval binding.
+- Final P2 regression: nine preparations, 600 formula cases, 80 non-Uncertain + 75 Uncertain preparations; local HTTP free-text failure/retry; all nine installed typed actions, one-CAS application and committed replay; hypotheses/leads do not become Evidence.
+- Final P3 regression: two-day progression, rent/hearing/permission/clinic, conditional rail, relevance, bounded Agenda failure/retry, stale no-model cancellation, automatic foreground-to-background HTTP dispatch and atomic filing/Entity/projections. Third-day advance rejects with no publication. Actual manual save/export and import into a fresh FS store preserves committed state.
+- Actual local HTTP foreground/resolver/typed and background requests additionally exclude Canon assertions/references, major actor motives/secrets and institution private function/knowledge. Safe Views and installed public reading also pass these checks.
+- Package commit/push succeeded; committed tree equals tested tree. All 58 tracked JSON/MJS/Markdown/AUI source files were byte-compared to their committed blobs. No new Core CI, hosted model, manual browser/device/P8, OS-kill or cross-process uncommitted-selection recovery claimed. Historical Core CI is not relabelled as P4 execution.
+
+#### Limits and P5 checkpoint
+
+P4 is reusable foundation, not a playable campaign. Two-day synthetic EntryPoint remains; third-day boundary fails closed and each batch admits at most one deliberation. Definitions are not automatically selected, acquired, instantiated or executed. P5 must evolve stage-specific fixture assertions deliberately while retaining P2/P3 coverage, and re-budget static targets/schema/publication/expanded work before binding live state. Do not disable validation to accept an opening: add its real closed Case/seed contracts in P5.
+
+P5 next: six-step character creation, Civil Verifier and living Personal Anchor, Second Death multi-path opening, Breach/Imprints, eligible Seed candidates and postpone, earned stabilization/formal Claim, multiple dispositions and failure continuity. Read index → player.md + gameplay.md + content-architecture.md + implementation-staging.md, then technical-design/simulation for actual contracts. Keep Canon isolated and initialization lazy. P0–P4/G1/G2 are complete; P5/P8 not started. Continue this Record and sole HANDOFF; stop after each separately authorized phase.
