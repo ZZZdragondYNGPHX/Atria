@@ -262,7 +262,7 @@ Implementation authorization is staged:
 
 Frozen cross-module decisions are indexed in `decisions.md`. Exact implementation order and phase gates are authoritative in `implementation-staging.md`.
 
-- approved P8 frontend Skill routing from the `skills` workspace: `frontend-design` → visual identity, `ui-ux-pro-max` → design-system/UX, `emil-design-eng` → interaction/motion polish, `web-design-guidelines` → final implementation audit.
+- approved P8 frontend Skill routing by adapter: Web/remote loads vendored copies from `skills`; Local/CLI/desktop uses installed local Skills first. Responsibility remains `frontend-design` → visual identity, `ui-ux-pro-max` → design-system/UX, `emil-design-eng` → interaction/motion polish, `web-design-guidelines` → final implementation audit.
 
 ## Material routing/design changes
 
