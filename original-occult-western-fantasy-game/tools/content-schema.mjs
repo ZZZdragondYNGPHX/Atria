@@ -12,6 +12,7 @@ const playerDescription = object({ playerDescription: text });
 const backgrounds = { canon: object({ ...fields('institution socialAccess startingBelief activation'), ...strings('knowledgeAccess proceduralFamiliarity limits'), relationshipBudget: { type: 'integer', minimum: 1, maximum: 1 } }), perspective: publicDescription };
 export const kinds = {
  signature_case: { canon: object({ ...fields('entry truth anomaly eastbankContribution orderSafety failureContinuity'), ...strings('stakes actors institutions evidenceGraph pressures routes interventions settlements consequences revelationPredicates reentry') }), perspective: publicDescription },
+ institutional_case_pattern: { canon: object({ problemFamily:text, ...strings('participantSlots allowedTruthStructures requiredEvidenceRoles optionalEvidenceRoles pressurePatterns compatibleAnomalies settlementFamilies generationSlots') }), perspective:publicDescription },
  civic_office: { canon: object(fields('publicFunction parentAuthority liaison jurisdiction')), perspective: publicDescription },
  district: { canon: object(fields('function history jurisdiction')), perspective: publicDescription },
  location: { canon: object({ ...fields('district geographicRelation controller publicFunction specialState availability'), ...strings('accessRules actors artifacts historicalEvents hooks safeGenerationZones') }), perspective: publicDescription },
@@ -31,9 +32,12 @@ export const kinds = {
  origin: backgrounds, prior_life: backgrounds, faith: backgrounds,
  public_knowledge: { canon: object(fields('issuer text epistemicStatus')), perspective: publicDescription },
 };
+const networkCaseRuntime=object({key:text,actor:text,location:text,dueDay:{type:'integer',minimum:1,maximum:30},pressure:text,late:text,preparation:text,testimony:text,sources:list(object({...fields('id slot role kind text issuer method'),dangerous:{type:'boolean'}})),dispositions:list(object(fields('id acceptedBy changed benefit cost')))});
 export const schemaFor = kind => {
  if (!kinds[kind]) throw new Error('Unknown content kind: ' + kind);
- return object({ ...fields('id kind name purpose authority disclosure generationPolicy'), dependencies: list(text, 0), invariants: list(), generationEnvelope: list(), ...kinds[kind] });
+ const schema = object({ ...fields('id kind name purpose authority disclosure generationPolicy'), dependencies: list(text, 0), invariants: list(), generationEnvelope: list(), ...kinds[kind], ...(kind === 'signature_case' ? {runtime: networkCaseRuntime} : {}) });
+ if(kind==='signature_case')schema.required=schema.required.filter(k=>k!=='runtime');
+ return schema;
 };
 export function assertShape(value, schema, at = '$') {
  const fail = message => { throw new Error(at + ': ' + message); };
@@ -47,6 +51,8 @@ export function assertShape(value, schema, at = '$') {
  } else if (schema.type === 'array') {
   if (!Array.isArray(value) || value.length < schema.minItems || value.length > schema.maxItems) fail('array bounds');
   value.forEach((item, i) => assertShape(item, schema.items, at + '[' + i + ']'));
+ } else if (schema.type === 'boolean') {
+  if(typeof value !== 'boolean')fail('expected boolean');
  } else if (schema.type === 'integer') {
   if (!Number.isInteger(value) || value < schema.minimum || value > schema.maximum) fail('integer bounds');
  } else if (typeof value !== 'string' || value.length < schema.minLength || value.length > schema.maxLength || value.includes('\uFFFD')) fail('string bounds/encoding');

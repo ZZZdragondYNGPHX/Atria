@@ -42,7 +42,7 @@ export function validateContent(resources, manifest) {
    for (const p of a.canon.principles ?? []) assert(principles.has(p), 'Unsupported Principle');
    if (a.canon.principles) assert(a.canon.principles.length <= 2, 'Bounded Claim/Anomaly composition');
    if (a.kind.startsWith('actor_')) assert.equal(a.canon.formalClaims.length, 0, 'P4 cores carry no granted Claim');
-   const referenced = stringsIn([a.canon, a.perspective]).filter(s => idPattern.test(s));
+   const referenced = stringsIn([a.canon, a.perspective, a.runtime]).filter(s => idPattern.test(s));
    for (const ref of referenced) assert(a.dependencies.includes(ref), a.id + ': undeclared reference ' + ref);
   }
  }
@@ -64,6 +64,17 @@ export function validateContent(resources, manifest) {
  const supported=byKind('claim_seed').filter(a=>a.canon.runtimeEligibility.length);
  assert.deepEqual(supported.map(a=>a.id),['claim.seed.unlost_evidence','claim.seed.name_mismatch']);
  for(const a of supported){assert.deepEqual(a.canon.runtimeEligibility,['verified_identity_across_sources','preserved_conflicting_evidence','first_breach']);assert.deepEqual(a.canon.runtimeTraditions,['tradition.civic','tradition.church']);}
+ const network=byKind('signature_case').filter(a=>a.id!=='matter.second_death');
+ assert.deepEqual(network.map(a=>a.runtime?.key).sort(),['burial','property','railway']);
+ for(const a of network){
+  const r=a.runtime;assert.equal(r.sources.length,4);assert.deepEqual(r.sources.map(s=>s.slot),['s0','s1','s2','s3']);
+  assert.equal(new Set(r.sources.map(s=>s.id)).size,4);assert.equal(new Set(r.sources.map(s=>s.method)).size,4);
+  assert.equal(r.sources[0].role,r.sources[2].role);assert.equal(r.sources[1].role,r.sources[3].role);assert.notEqual(r.sources[0].role,r.sources[1].role);
+  assert.equal(r.dispositions.length,4);assert.equal(r.dispositions.at(-1).id,'withdraw');
+  assert.equal(r.sources.filter(s=>s.dangerous).length,r.key==='railway'?1:0);
+  assert.equal(all.get(r.actor).kind,'actor_b');assert.equal(all.get(r.location).kind,'location');
+ }
+ assert.equal(byKind('institutional_case_pattern').length,3);
  const fragments = byKind('canon_fragment');
  for (const a of fragments) { assert(a.canon.holders.length < 10); for (const id of a.canon.evidenceGateways) assert.equal(all.get(id).kind, 'artifact_template'); }
  assert.equal(all.get('canon.deep').canon.epistemicStatus, 'unresolved');

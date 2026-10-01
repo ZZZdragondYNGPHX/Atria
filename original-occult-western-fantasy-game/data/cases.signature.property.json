@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "matter.dual_address",
+      "kind": "signature_case",
+      "name": "Dual Address Property",
+      "purpose": "Tenant displacement; Competing estate and railway title",
+      "authority": "definition",
+      "dependencies": [
+        "actor.elsa_pike",
+        "location.lodging",
+        "office.civil_registry",
+        "office.civil_court",
+        "institution.estates",
+        "institution.railway",
+        "institution.insurer",
+        "anomaly.boundary_failure",
+        "canon.geography"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "No route proves deliberate stabilization or the deep Eastbank cause.",
+        "Acquisition preserves custody and uncertainty; disposition is not historical Truth."
+      ],
+      "generationEnvelope": [
+        "Ordinary presentation only; fixed Evidence semantics, rights and danger cannot be invented."
+      ],
+      "canon": {
+        "entry": "After the opening Breach, discover this mandate in any network order.",
+        "truth": "P6_PRIVATE_PROPERTY: the same standing house is sustained by incompatible customary and reconstruction address chains. Neither title is a forgery; no disposition settles the deep cause.",
+        "stakes": [
+          "Tenant displacement",
+          "Competing estate and railway title"
+        ],
+        "actors": [
+          "actor.elsa_pike"
+        ],
+        "institutions": [
+          "office.civil_registry",
+          "office.civil_court",
+          "institution.estates",
+          "institution.railway",
+          "institution.insurer"
+        ],
+        "anomaly": "anomaly.boundary_failure",
+        "evidenceGraph": [
+          "title: current support through record",
+          "estate: old support through record",
+          "insurance: current support through record",
+          "survey: old support through physical"
+        ],
+        "pressures": [
+          "Day-four provisional title enforcement moves tenants to temporary lodging unless a protective arrangement has been lodged."
+        ],
+        "routes": [
+          "Independent source-role pair via institutional records",
+          "Alternative physical/community route; consent and safety preparation matter"
+        ],
+        "interventions": [
+          "Protect carriers or access with consent",
+          "Verify independent support; link/split related inquiries without merging Evidence ownership",
+          "Choose a qualified disposition or withdraw"
+        ],
+        "settlements": [
+          "shared_use",
+          "modern_title",
+          "customary_easement",
+          "withdraw"
+        ],
+        "consequences": [
+          "Current occupancy protected and expedited rail-dispatch access granted. Review costs remain; Boundary conflict is contained, not cured.",
+          "Modern transfer can proceed; displaced households obtain a claim. Old-estate challenge and unsettled customary access persist.",
+          "Residents retain access without universal restoration of old ownership. Railway acquisition is constrained; insurance review continues.",
+          "Another verifier can resume. No protective stay; provisional enforcement continues."
+        ],
+        "eastbankContribution": "Present rights depend on reconstruction numbering; physical Boundary remains contested.",
+        "revelationPredicates": [
+          "Acquired cross-source supports, never Case completion counts",
+          "Deliberate stabilization remains unproven; deep cause unresolved"
+        ],
+        "reentry": [
+          "Reopen without deleting committed arrangements or evidence",
+          "Late discovery uses retained copies/escorts and a remedy route"
+        ],
+        "orderSafety": "No other P6 Case completion required. Shared source links are contextual, not universal causation.",
+        "failureContinuity": "Provisional enforcement occurred. Records and compensation/review routes remain available; a later ruling cannot undo the displacement event."
+      },
+      "perspective": {
+        "publicDescription": "Three Landings House receives effective notices under both Ferry Court 12 and Eastbank Service Road 4. Tenants request verification before a title hearing."
+      },
+      "runtime": {
+        "key": "property",
+        "actor": "actor.elsa_pike",
+        "location": "location.lodging",
+        "dueDay": 4,
+        "pressure": "Day-four provisional title enforcement moves tenants to temporary lodging unless a protective arrangement has been lodged.",
+        "late": "Provisional enforcement occurred. Records and compensation/review routes remain available; a later ruling cannot undo the displacement event.",
+        "preparation": "Obtain a tenant mandate and escorted survey consent; no search warrant or secret archive access.",
+        "testimony": "Elsa Pike reports that tenants still use the old ferry entrance; her recollection is testimony, not proof of title.",
+        "sources": [
+          {
+            "id": "property_title",
+            "slot": "s0",
+            "role": "current",
+            "kind": "record",
+            "text": "Registry certified title: Eastbank Service Road 4 was assigned to railway housing during reconstruction. Existing residents remain named as occupants.",
+            "issuer": "Civil Register Hall",
+            "method": "registry_copy",
+            "dangerous": false
+          },
+          {
+            "id": "property_estate",
+            "slot": "s1",
+            "role": "old",
+            "kind": "record",
+            "text": "Court-certified estate deed still describes Ferry Court 12 by the surviving ferry steps and names the same house frontage.",
+            "issuer": "Old Charter Court",
+            "method": "estate_extract",
+            "dangerous": false
+          },
+          {
+            "id": "property_insurance",
+            "slot": "s2",
+            "role": "current",
+            "kind": "record",
+            "text": "A household-authorized Meridian schedule insures the occupied house under Service Road 4 and references the reconstruction title.",
+            "issuer": "Meridian Assurance",
+            "method": "household_schedule",
+            "dangerous": false
+          },
+          {
+            "id": "property_survey",
+            "slot": "s3",
+            "role": "old",
+            "kind": "physical",
+            "text": "Escorted measurements connect the ferry entrance and Service Road gate to one stairwell. Both posted numbers remain in use despite their incompatible boundary lines.",
+            "issuer": "Witnessed on-site survey",
+            "method": "walk_boundary",
+            "dangerous": false
+          }
+        ],
+        "dispositions": [
+          {
+            "id": "shared_use",
+            "acceptedBy": "Court, tenants and railway liaison",
+            "changed": "Recorded interim shared use; neither historical title erased.",
+            "benefit": "Current occupancy protected and expedited rail-dispatch access granted.",
+            "cost": "Review costs remain; Boundary conflict is contained, not cured."
+          },
+          {
+            "id": "modern_title",
+            "acceptedBy": "Civil registry and railway title desk",
+            "changed": "Current title recognized with a relocation/compensation docket.",
+            "benefit": "Modern transfer can proceed; displaced households obtain a claim.",
+            "cost": "Old-estate challenge and unsettled customary access persist."
+          },
+          {
+            "id": "customary_easement",
+            "acceptedBy": "Court and estate custodian",
+            "changed": "Customary entrance recognized; modern ownership retained subject to easement.",
+            "benefit": "Residents retain access without universal restoration of old ownership.",
+            "cost": "Railway acquisition is constrained; insurance review continues."
+          },
+          {
+            "id": "withdraw",
+            "acceptedBy": "Civil practice",
+            "changed": "Inquiry dormant; both title chains remain disputed.",
+            "benefit": "Another verifier can resume.",
+            "cost": "No protective stay; provisional enforcement continues."
+          }
+        ]
+      }
+    }
+  ]
+}

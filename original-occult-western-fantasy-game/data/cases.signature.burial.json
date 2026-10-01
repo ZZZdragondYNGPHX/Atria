@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "matter.impossible_burial",
+      "kind": "signature_case",
+      "name": "Impossible Burial",
+      "purpose": "Burial continuity; Civil recognition without coerced religious surrender",
+      "authority": "definition",
+      "dependencies": [
+        "actor.ines_soll",
+        "location.burial_archive",
+        "institution.church",
+        "office.civil_registry",
+        "institution.workers",
+        "institution.academy",
+        "anomaly.memory_discontinuity",
+        "canon.church"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "No route proves deliberate stabilization or the deep Eastbank cause.",
+        "Acquisition preserves custody and uncertainty; disposition is not historical Truth."
+      ],
+      "generationEnvelope": [
+        "Ordinary presentation only; fixed Evidence semantics, rights and danger cannot be invented."
+      ],
+      "canon": {
+        "entry": "After the opening Breach, discover this mandate in any network order.",
+        "truth": "P6_PRIVATE_BURIAL: the Vale burials retain communal sacred identity and coherent custody while final civil rolls exclude those persons. The absence is not evidence that their community invented them.",
+        "stakes": [
+          "Burial continuity",
+          "Civil recognition without coerced religious surrender"
+        ],
+        "actors": [
+          "actor.ines_soll"
+        ],
+        "institutions": [
+          "institution.church",
+          "office.civil_registry",
+          "institution.workers",
+          "institution.academy"
+        ],
+        "anomaly": "anomaly.memory_discontinuity",
+        "evidenceGraph": [
+          "parish: continuity support through record",
+          "civil: absence support through record",
+          "fund: continuity support through record",
+          "transfer: absence support through physical"
+        ],
+        "pressures": [
+          "Day-five cemetery transfer relocates unprotected carriers into a sealed parish store; certified inventories remain obtainable."
+        ],
+        "routes": [
+          "Independent source-role pair via institutional records",
+          "Alternative physical/community route; consent and safety preparation matter"
+        ],
+        "interventions": [
+          "Protect carriers or access with consent",
+          "Verify independent support; link/split related inquiries without merging Evidence ownership",
+          "Choose a qualified disposition or withdraw"
+        ],
+        "settlements": [
+          "dual_recognition",
+          "church_custody",
+          "civil_reburial",
+          "withdraw"
+        ],
+        "consequences": [
+          "Family continuity recognized in both systems without rewriting old rolls. Ongoing witnessed-record maintenance and contested precedent.",
+          "Sacred continuity preserved. Public civil benefits remain unresolved.",
+          "Civic access restored by qualified petition. Communal Anchor strained; religious objection persists.",
+          "Family can seek another custodian. No protective stay; scheduled transfer continues."
+        ],
+        "eastbankContribution": "Settlement account omits a coherently remembered population.",
+        "revelationPredicates": [
+          "Acquired cross-source supports, never Case completion counts",
+          "Deliberate stabilization remains unproven; deep cause unresolved"
+        ],
+        "reentry": [
+          "Reopen without deleting committed arrangements or evidence",
+          "Late discovery uses retained copies/escorts and a remedy route"
+        ],
+        "orderSafety": "No other P6 Case completion required. Shared source links are contextual, not universal causation.",
+        "failureContinuity": "The scheduled transfer occurred. A sealed carrier and its inventory remain; renewed recognition must include a reburial or access arrangement."
+      },
+      "perspective": {
+        "publicDescription": "A cemetery transfer lists the Vale household under coherent parish burial names, but the receiving civic desk cannot find matching civil existence."
+      },
+      "runtime": {
+        "key": "burial",
+        "actor": "actor.ines_soll",
+        "location": "location.burial_archive",
+        "dueDay": 5,
+        "pressure": "Day-five cemetery transfer relocates unprotected carriers into a sealed parish store; certified inventories remain obtainable.",
+        "late": "The scheduled transfer occurred. A sealed carrier and its inventory remain; renewed recognition must include a reburial or access arrangement.",
+        "preparation": "Obtain family consent and parish handling supervision; no compelled surrender of sacred records.",
+        "testimony": "Ines Soll reports that the Vale burial fund remembered contributions from the old ferry household. Recollection is attributed, not a civil birth certificate.",
+        "sources": [
+          {
+            "id": "burial_parish",
+            "slot": "s0",
+            "role": "continuity",
+            "kind": "record",
+            "text": "Certified parish extract identifies the Vale burials, their named witnesses and the old ferry household, with an unbroken register custody chain.",
+            "issuer": "Burial Register House",
+            "method": "parish_extract",
+            "dangerous": false
+          },
+          {
+            "id": "burial_civil",
+            "slot": "s1",
+            "role": "absence",
+            "kind": "record",
+            "text": "Civil desk certifies a bounded search of the Vale birth/death names and household aliases in the final reconstruction rolls: no matching entries found.",
+            "issuer": "Civil Register Hall",
+            "method": "negative_search",
+            "dangerous": false
+          },
+          {
+            "id": "burial_fund",
+            "slot": "s2",
+            "role": "continuity",
+            "kind": "record",
+            "text": "Rivet burial-fund ledger records Vale household contributions and witnessed burial payments under the old ferry address.",
+            "issuer": "Rivet Mutual Hall",
+            "method": "consented_fund_copy",
+            "dangerous": false
+          },
+          {
+            "id": "burial_transfer",
+            "slot": "s3",
+            "role": "absence",
+            "kind": "physical",
+            "text": "Supervised transfer comparison finds labelled carriers matching parish inventory, but no civil identifiers in the receiving transfer schedule.",
+            "issuer": "Cemetery transfer officer",
+            "method": "compare_carriers",
+            "dangerous": false
+          }
+        ],
+        "dispositions": [
+          {
+            "id": "dual_recognition",
+            "acceptedBy": "Civil registry, parish and family witnesses",
+            "changed": "Supplementary civil recognition filed while sacred burial identity remains intact.",
+            "benefit": "Family continuity recognized in both systems without rewriting old rolls.",
+            "cost": "Ongoing witnessed-record maintenance and contested precedent."
+          },
+          {
+            "id": "church_custody",
+            "acceptedBy": "Parish and consenting family",
+            "changed": "Burials retained under Church-only custody with a civil discrepancy notice.",
+            "benefit": "Sacred continuity preserved.",
+            "cost": "Public civil benefits remain unresolved."
+          },
+          {
+            "id": "civil_reburial",
+            "acceptedBy": "Civic cemetery desk and family",
+            "changed": "Civil reburial and recognition petition recorded; old sacred carrier archived, not destroyed.",
+            "benefit": "Civic access restored by qualified petition.",
+            "cost": "Communal Anchor strained; religious objection persists."
+          },
+          {
+            "id": "withdraw",
+            "acceptedBy": "Civil practice",
+            "changed": "Transfer inquiry dormant; no declaration that the buried persons never existed.",
+            "benefit": "Family can seek another custodian.",
+            "cost": "No protective stay; scheduled transfer continues."
+          }
+        ]
+      }
+    }
+  ]
+}

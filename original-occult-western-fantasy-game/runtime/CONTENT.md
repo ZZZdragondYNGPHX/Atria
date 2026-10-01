@@ -1,6 +1,6 @@
 # P4 — World / Content Foundation
 
-Historical P4 foundation contract. P5 default opening and current executable scope supersede the fixture-only statements below; see OPENING.md.
+Historical P4 foundation contract. P6 adds four modular resources / six assets for 35 resources and 229 assets in total; see NETWORK.md for executable scope. P5 default opening and current executable scope supersede the fixture-only statements below; see OPENING.md.
 
 ## Layout and authority
 

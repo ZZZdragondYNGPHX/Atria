@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "matter.pattern.property",
+      "kind": "institutional_case_pattern",
+      "name": "Occupancy Remedy",
+      "purpose": "Reusable professional follow-up with independently acquired evidence and qualified dispositions",
+      "authority": "definition",
+      "dependencies": [
+        "matter.dual_address",
+        "office.civil_registry",
+        "office.civil_court",
+        "institution.estates",
+        "institution.railway",
+        "institution.insurer",
+        "anomaly.boundary_failure"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Two static slots; no arbitrary authority targets or external biography.",
+        "Neither a payment nor recognition decree creates new Eastbank historical proof."
+      ],
+      "generationEnvelope": [
+        "Ordinary claimant labels and document rendering only; roles, truth structures and consequences stay authored."
+      ],
+      "canon": {
+        "problemFamily": "property",
+        "participantSlots": [
+          "consenting claimant",
+          "authorized custodian",
+          "responsible institution"
+        ],
+        "allowedTruthStructures": [
+          "A live underlying dispute with retained supporting record",
+          "A procedurally valid remedy may leave historical cause unresolved"
+        ],
+        "requiredEvidenceRoles": [
+          "claimant record",
+          "independent institutional response"
+        ],
+        "optionalEvidenceRoles": [
+          "attributed community testimony"
+        ],
+        "pressurePatterns": [
+          "Parent Case deadline remains active; a follow-up does not retroactively cancel it"
+        ],
+        "compatibleAnomalies": [
+          "anomaly.boundary_failure"
+        ],
+        "settlementFamilies": [
+          "qualified_remedy",
+          "refer_review",
+          "withdraw"
+        ],
+        "generationSlots": [
+          "bounded ordinary claimant label; not a new canonical office or identity"
+        ]
+      },
+      "perspective": {
+        "publicDescription": "A bounded property follow-up can be opened after a supported disposition, including a remedy for delayed intervention."
+      }
+    },
+    {
+      "id": "matter.pattern.burial",
+      "kind": "institutional_case_pattern",
+      "name": "Burial Recognition Petition",
+      "purpose": "Reusable professional follow-up with independently acquired evidence and qualified dispositions",
+      "authority": "definition",
+      "dependencies": [
+        "matter.impossible_burial",
+        "institution.church",
+        "office.civil_registry",
+        "institution.workers",
+        "institution.academy",
+        "anomaly.memory_discontinuity"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Two static slots; no arbitrary authority targets or external biography.",
+        "Neither a payment nor recognition decree creates new Eastbank historical proof."
+      ],
+      "generationEnvelope": [
+        "Ordinary claimant labels and document rendering only; roles, truth structures and consequences stay authored."
+      ],
+      "canon": {
+        "problemFamily": "burial",
+        "participantSlots": [
+          "consenting claimant",
+          "authorized custodian",
+          "responsible institution"
+        ],
+        "allowedTruthStructures": [
+          "A live underlying dispute with retained supporting record",
+          "A procedurally valid remedy may leave historical cause unresolved"
+        ],
+        "requiredEvidenceRoles": [
+          "claimant record",
+          "independent institutional response"
+        ],
+        "optionalEvidenceRoles": [
+          "attributed community testimony"
+        ],
+        "pressurePatterns": [
+          "Parent Case deadline remains active; a follow-up does not retroactively cancel it"
+        ],
+        "compatibleAnomalies": [
+          "anomaly.memory_discontinuity"
+        ],
+        "settlementFamilies": [
+          "qualified_remedy",
+          "refer_review",
+          "withdraw"
+        ],
+        "generationSlots": [
+          "bounded ordinary claimant label; not a new canonical office or identity"
+        ]
+      },
+      "perspective": {
+        "publicDescription": "A bounded burial follow-up can be opened after a supported disposition, including a remedy for delayed intervention."
+      }
+    },
+    {
+      "id": "matter.pattern.railway",
+      "kind": "institutional_case_pattern",
+      "name": "Industrial Injury Claim",
+      "purpose": "Reusable professional follow-up with independently acquired evidence and qualified dispositions",
+      "authority": "definition",
+      "dependencies": [
+        "matter.dead_railway",
+        "institution.railway",
+        "institution.workers",
+        "institution.police",
+        "institution.abnormal",
+        "anomaly.residual_echo"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Two static slots; no arbitrary authority targets or external biography.",
+        "Neither a payment nor recognition decree creates new Eastbank historical proof."
+      ],
+      "generationEnvelope": [
+        "Ordinary claimant labels and document rendering only; roles, truth structures and consequences stay authored."
+      ],
+      "canon": {
+        "problemFamily": "railway",
+        "participantSlots": [
+          "consenting claimant",
+          "authorized custodian",
+          "responsible institution"
+        ],
+        "allowedTruthStructures": [
+          "A live underlying dispute with retained supporting record",
+          "A procedurally valid remedy may leave historical cause unresolved"
+        ],
+        "requiredEvidenceRoles": [
+          "claimant record",
+          "independent institutional response"
+        ],
+        "optionalEvidenceRoles": [
+          "attributed community testimony"
+        ],
+        "pressurePatterns": [
+          "Parent Case deadline remains active; a follow-up does not retroactively cancel it"
+        ],
+        "compatibleAnomalies": [
+          "anomaly.residual_echo"
+        ],
+        "settlementFamilies": [
+          "qualified_remedy",
+          "refer_review",
+          "withdraw"
+        ],
+        "generationSlots": [
+          "bounded ordinary claimant label; not a new canonical office or identity"
+        ]
+      },
+      "perspective": {
+        "publicDescription": "A bounded railway follow-up can be opened after a supported disposition, including a remedy for delayed intervention."
+      }
+    }
+  ]
+}

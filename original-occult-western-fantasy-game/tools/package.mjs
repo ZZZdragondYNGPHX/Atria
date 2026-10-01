@@ -24,7 +24,7 @@ const fixture = args.includes('--fixture');
 const { readContent, validateContent } = await import('./content-check.mjs');
 validateContent(await readContent(), manifest);
 manifest.resources = await json('runtime/model-resources.json');
-if(fixture){const originalId=manifest.packageId,originalVersion=manifest.packageVersionId;manifest.packageId='pkg_'+createHash('sha256').update('occult-regression-only').digest('hex').slice(0,32);manifest.packageVersionId='pkgv_'+createHash('sha256').update('occult-regression-p5').digest('hex').slice(0,32);manifest.version+='-regression';manifest.resources=JSON.parse(JSON.stringify(manifest.resources).replaceAll(originalId,manifest.packageId).replaceAll(originalVersion,manifest.packageVersionId));}
+if(fixture){const originalId=manifest.packageId,originalVersion=manifest.packageVersionId;manifest.packageId='pkg_'+createHash('sha256').update('occult-regression-only').digest('hex').slice(0,32);manifest.packageVersionId='pkgv_'+createHash('sha256').update('occult-regression-p6').digest('hex').slice(0,32);manifest.version+='-regression';manifest.resources=JSON.parse(JSON.stringify(manifest.resources).replaceAll(originalId,manifest.packageId).replaceAll(originalVersion,manifest.packageVersionId));}
 const contract = { schemaVersion: 1, capabilities: await json('runtime/capabilities.json'), dataResources: [] };
 for (const [key, file] of Object.entries({ lifecycleRuntime: 'lifecycle', taskRuntime: 'tasks', informationRuntime: 'information', authorityRuntime: 'authority', simulationRuntime: 'simulation' })) contract[key] = await json('runtime/' + file + '.json');
 manifest.runtime.experienceContract = contract;
@@ -48,11 +48,13 @@ const sourceFiles = new Map([['runtime/logic.json', await fs.readFile(path.join(
 for (const file of ['frontend/frontend.json', 'frontend/bridge.json', 'frontend/Main.aui']) sourceFiles.set(file, await fs.readFile(path.join(root, file)));
 if (!fixture) {
  const { compileOpening } = await import('./opening-compile.mjs');
- const opening=compileOpening({manifest,contract,backgrounds:(await json('data/defs.origins.json')).items,seeds:(await json('data/defs.claims.seeds.json')).items,caseAsset:(await json('data/cases.signature.second_death.json')).items[0]});
+ let opening=compileOpening({manifest,contract,backgrounds:(await json('data/defs.origins.json')).items,seeds:(await json('data/defs.claims.seeds.json')).items,caseAsset:(await json('data/cases.signature.second_death.json')).items[0]});
+ const {compileNetwork}=await import('./network-compile.mjs');
+ opening=compileNetwork(opening,await Promise.all(['property','burial','railway'].map(async k=>(await json('data/cases.signature.'+k+'.json')).items[0])),(await json('data/defs.actors.supporting.json')).items);
  Object.assign(contract,{lifecycleRuntime:opening.lifecycle,simulationRuntime:opening.simulation,informationRuntime:opening.information});
  for(const r of manifest.resources)if(r.resourceType==='core.prompt-module' && r.resource.displayName==='narrator')r.resource.body='Render only the Host-approved outcome and disclosure-safe projections. A receipt notice describes a method, not proof it succeeded: respect its outcome. Never invent evidence, a Claim, an external biography fact, a hidden motive or deep Eastbank cause. Player descriptions define ordinary personal expression only. Hypotheses and testimony remain attributed and uncertain. Breach does not grant a class.';
- manifest.name='Original Occult Western Fantasy — Second Death';
- manifest.entryPoints[0].displayName='Second Death — Opening';
+ manifest.name='Original Occult Western Fantasy — Signature Network A';
+ manifest.entryPoints[0].displayName='Second Death — Signature Network A';
  manifest.actors[0].displayName='Independent Civil Verifier';
  manifest.entryPoints[0].initialTimeline[0].content='Before accepting a family death-verification mandate, create your ordinary adult Identity, Origin, Prior Life, Faith, living Personal Anchor and Reason. No supernatural class is selected. Use the conversation to make these choices.';
  sourceFiles.set('runtime/logic.json',Buffer.from(JSON.stringify(opening.logic)));

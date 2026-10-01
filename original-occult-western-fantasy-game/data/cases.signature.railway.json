@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "matter.dead_railway",
+      "kind": "signature_case",
+      "name": "Dead Railway",
+      "purpose": "Worker safety and compensation; Dangerous Echo and historical movement traces",
+      "authority": "definition",
+      "dependencies": [
+        "actor.emil_hart",
+        "location.signal_house",
+        "institution.railway",
+        "institution.workers",
+        "institution.police",
+        "institution.abnormal",
+        "anomaly.residual_echo",
+        "canon.railway"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "No route proves deliberate stabilization or the deep Eastbank cause.",
+        "Acquisition preserves custody and uncertainty; disposition is not historical Truth."
+      ],
+      "generationEnvelope": [
+        "Ordinary presentation only; fixed Evidence semantics, rights and danger cannot be invented."
+      ],
+      "canon": {
+        "entry": "After the opening Breach, discover this mandate in any network order.",
+        "truth": "P6_PRIVATE_RAILWAY: repeated disaster transport routines sustain a dangerous residual work pattern at the dismantled spur. Surviving movement instructions indicate coordination, not a proven account of the organizers intentions.",
+        "stakes": [
+          "Worker safety and compensation",
+          "Dangerous Echo and historical movement traces"
+        ],
+        "actors": [
+          "actor.emil_hart"
+        ],
+        "institutions": [
+          "institution.railway",
+          "institution.workers",
+          "institution.police",
+          "institution.abnormal"
+        ],
+        "anomaly": "anomaly.residual_echo",
+        "evidenceGraph": [
+          "echo: active support through physical",
+          "closure: history support through record",
+          "injury: active support through physical",
+          "payroll: history support through record"
+        ],
+        "pressures": [
+          "Day-six safety closure restricts unsupervised entry; escorted access and off-site copies remain possible."
+        ],
+        "routes": [
+          "Independent source-role pair via institutional records",
+          "Alternative physical/community route; consent and safety preparation matter"
+        ],
+        "interventions": [
+          "Protect carriers or access with consent",
+          "Verify independent support; link/split related inquiries without merging Evidence ownership",
+          "Choose a qualified disposition or withdraw"
+        ],
+        "settlements": [
+          "seal",
+          "controlled_route",
+          "preserve_echo",
+          "withdraw"
+        ],
+        "consequences": [
+          "Immediate exposure reduced and worker compensation docket opened. Dangerous Echo remains sealed; historical interpretation unresolved.",
+          "Trace access and compensation claims preserved. No unsupervised public operation; continuing risk and monitoring burden.",
+          "Historical traces retained and worker witnesses protected. Echo remains dangerous; corporation disputes liability.",
+          "Mutual aid can seek another investigator. Safety closure still occurs; no new compensation agreement."
+        ],
+        "eastbankContribution": "Organized movement becomes plausible; no proof of intent.",
+        "revelationPredicates": [
+          "Acquired cross-source supports, never Case completion counts",
+          "Deliberate stabilization remains unproven; deep cause unresolved"
+        ],
+        "reentry": [
+          "Reopen without deleting committed arrangements or evidence",
+          "Late discovery uses retained copies/escorts and a remedy route"
+        ],
+        "orderSafety": "No other P6 Case completion required. Shared source links are contextual, not universal causation.",
+        "failureContinuity": "Safety barriers are now in place. Request an escort or use worker-held traces; no lost single clue."
+      },
+      "perspective": {
+        "publicDescription": "Workers report shift bells and fresh industrial injuries beside the dismantled Eastbank service spur. Mutual aid asks for an independent site record."
+      },
+      "runtime": {
+        "key": "railway",
+        "actor": "actor.emil_hart",
+        "location": "location.signal_house",
+        "dueDay": 6,
+        "pressure": "Day-six safety closure restricts unsupervised entry; escorted access and off-site copies remain possible.",
+        "late": "Safety barriers are now in place. Request an escort or use worker-held traces; no lost single clue.",
+        "preparation": "Arrange worker accompaniment, isolate moving apparatus and mark the exit. After closure this provides escorted inspection permission, not immunity.",
+        "testimony": "Emil Hart reports a shift bell where the service rails were removed; workers describe injuries along the old timetable. This is a report, not a demonstrated cause.",
+        "sources": [
+          {
+            "id": "railway_echo",
+            "slot": "s0",
+            "role": "active",
+            "kind": "physical",
+            "text": "A timed perimeter recording captures a repeated shift bell and fresh wheel-scoring at the dismantled spur during its obsolete shift interval.",
+            "issuer": "Witnessed perimeter recording",
+            "method": "record_perimeter",
+            "dangerous": false
+          },
+          {
+            "id": "railway_closure",
+            "slot": "s1",
+            "role": "history",
+            "kind": "record",
+            "text": "Certified dismantling order and dispatch appendix show coordinated Eastbank movements on a supposedly idle service route during reconstruction.",
+            "issuer": "Rail Charter House",
+            "method": "certified_dispatch",
+            "dangerous": false
+          },
+          {
+            "id": "railway_injury",
+            "slot": "s2",
+            "role": "active",
+            "kind": "physical",
+            "text": "A witnessed inner-yard inspection records fresh mechanism pressure at the obsolete loading line; the dangerous pattern is repeatable, not an ordinary scheduled train.",
+            "issuer": "Independent site inspection",
+            "method": "enter_loading_line",
+            "dangerous": true
+          },
+          {
+            "id": "railway_payroll",
+            "slot": "s3",
+            "role": "history",
+            "kind": "record",
+            "text": "Consented worker-held shift stubs match an obsolete spur code across several coordinated evacuation shifts absent from the public route summary.",
+            "issuer": "Rivet Mutual Hall",
+            "method": "worker_shift_stubs",
+            "dangerous": false
+          }
+        ],
+        "dispositions": [
+          {
+            "id": "seal",
+            "acceptedBy": "Safety police, railway and mutual aid",
+            "changed": "Loading line isolated under joint inspection; injury claims retained.",
+            "benefit": "Immediate exposure reduced and worker compensation docket opened.",
+            "cost": "Dangerous Echo remains sealed; historical interpretation unresolved."
+          },
+          {
+            "id": "controlled_route",
+            "acceptedBy": "Railway, worker stewards and abnormal liaison",
+            "changed": "Supervised limited route research authorized with marked exits and stoppage duty.",
+            "benefit": "Trace access and compensation claims preserved.",
+            "cost": "No unsupervised public operation; continuing risk and monitoring burden."
+          },
+          {
+            "id": "preserve_echo",
+            "acceptedBy": "Worker custodians and abnormal intake",
+            "changed": "Hazard marked and preserved for evidence, with guarded perimeter access.",
+            "benefit": "Historical traces retained and worker witnesses protected.",
+            "cost": "Echo remains dangerous; corporation disputes liability."
+          },
+          {
+            "id": "withdraw",
+            "acceptedBy": "Civil practice",
+            "changed": "Site inquiry dormant without denying worker injuries.",
+            "benefit": "Mutual aid can seek another investigator.",
+            "cost": "Safety closure still occurs; no new compensation agreement."
+          }
+        ]
+      }
+    }
+  ]
+}

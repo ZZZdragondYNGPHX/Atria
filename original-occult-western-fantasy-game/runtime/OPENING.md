@@ -1,3 +1,7 @@
+# P5 opening contract retained in P6
+
+This document describes the retained opening behavior. P6 physical storage, publication budgets, new Cases and validation extensions are authoritative in NETWORK.md. The old 10/16 budget below is P5 historical evidence, not the current default.
+
 # P5 — Opening Vertical Slice
 
 The default build installs Second Death. tools/opening-compile.mjs is a **build-time declaration compiler**, never a shipped authority evaluator, scheduler or RNG. It emits the existing Core Lifecycle, Transaction, Information, Simulation and Native frontend binding contracts. The existing JSON fixture and --fixture build remain regression-only and use a distinct Package/PackageVersion identity. Do not merge product sources into this workspace.
@@ -34,4 +38,4 @@ Run both profiles against an independent latest main checkout:
 - node tools/package.mjs validate --fixture --core <main-checkout>
 - node tools/package.mjs build --core <main-checkout>
 
-build is exclusive-create; never overwrite releases. preview runs the default opening integration path. Prior P2/P3 assets and tests are retained, not disabled to make the opening pass. P6 adds only the next authorized Signature network; P8 remains separate.
+build is exclusive-create; never overwrite releases. preview runs the default opening integration path. Prior P2/P3 assets and tests are retained, not disabled to make the opening pass. P6 now adds the authorized Signature Network A described in NETWORK.md; P8 remains separate.
