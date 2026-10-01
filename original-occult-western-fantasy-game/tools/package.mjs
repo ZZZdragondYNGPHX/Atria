@@ -24,7 +24,7 @@ const fixture = args.includes('--fixture');
 const { readContent, validateContent } = await import('./content-check.mjs');
 validateContent(await readContent(), manifest);
 manifest.resources = await json('runtime/model-resources.json');
-if(fixture){const originalId=manifest.packageId,originalVersion=manifest.packageVersionId;manifest.packageId='pkg_'+createHash('sha256').update('occult-regression-only').digest('hex').slice(0,32);manifest.packageVersionId='pkgv_'+createHash('sha256').update('occult-regression-p8').digest('hex').slice(0,32);manifest.version+='-regression';manifest.resources=JSON.parse(JSON.stringify(manifest.resources).replaceAll(originalId,manifest.packageId).replaceAll(originalVersion,manifest.packageVersionId));}
+if(fixture){const originalId=manifest.packageId,originalVersion=manifest.packageVersionId;manifest.packageId='pkg_'+createHash('sha256').update('occult-regression-only').digest('hex').slice(0,32);manifest.packageVersionId='pkgv_'+createHash('sha256').update('occult-regression-release-1.0.0').digest('hex').slice(0,32);manifest.version+='-regression';manifest.resources=JSON.parse(JSON.stringify(manifest.resources).replaceAll(originalId,manifest.packageId).replaceAll(originalVersion,manifest.packageVersionId));}
 const contract = { schemaVersion: 1, capabilities: await json('runtime/capabilities.json'), dataResources: [] };
 for (const [key, file] of Object.entries({ lifecycleRuntime: 'lifecycle', taskRuntime: 'tasks', informationRuntime: 'information', authorityRuntime: 'authority', simulationRuntime: 'simulation' })) contract[key] = await json('runtime/' + file + '.json');
 manifest.runtime.experienceContract = contract;
@@ -74,13 +74,22 @@ const compiled = compileProjectFrontends(manifest, sourceFiles);
 Object.assign(manifest, compiled.packageSource);
 sourceFiles.clear();
 for (const [file, bytes] of compiled.files) sourceFiles.set(file, bytes);
-const { archive } = native.buildAtriaPackageContainer({ manifest, sourceFiles, assetPayloads });
+const { archive: builtArchive } = native.buildAtriaPackageContainer({ manifest, sourceFiles, assetPayloads });
+if (mode === 'build' && args.includes('--archive')) throw new Error('--archive is only valid for validation/preview');
+const archive = args.includes('--archive') ? await fs.readFile(path.resolve(option('--archive'))) : builtArchive;
+if (args.includes('--archive')) {
+ const actual = native.inspectAtriaPackageContainer(archive);
+ const expected = native.inspectAtriaPackageContainer(builtArchive);
+ assert.deepEqual(actual.manifest, expected.manifest, 'Release manifest must match current source');
+ assert.deepEqual(actual.sourceFiles, expected.sourceFiles, 'Release compiled files must match current source');
+ assert.deepEqual(actual.assets, expected.assets, 'Release Data must match current source');
+}
 if (mode === 'build') {
     const out = args.includes('--out') ? path.resolve(option('--out')) : path.join(root, 'build', manifest.version + '.atria');
     await fs.mkdir(path.dirname(out), { recursive: true });
     await fs.writeFile(out, archive, { flag: 'wx' });
     console.log(JSON.stringify({ mode, coreHead, output: out, bytes: archive.length }));
 } else {
-    const { verify } = await import(args.includes('--frontend-only')&&!fixture ? './frontend-check.mjs' : fixture ? './verify.mjs' : './opening-check.mjs');
+    const { verify } = await import(args.includes('--release-only')&&!fixture ? './release-check.mjs' : args.includes('--frontend-only')&&!fixture ? './frontend-check.mjs' : fixture ? './verify.mjs' : './opening-check.mjs');
     console.log(JSON.stringify({ coreHead, ...await verify({ load, native, manifest, sourceFiles, assetPayloads, archive, mode }) }, null, 2));
 }

@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-export async function browserChecks({load,url,root,getSession,actNative,setFailure,getLastProof,getTypedRequests}){
+export async function browserChecks({load,url,root,getSession,actNative,setFailure,getLastProof,getTypedRequests,version}){
  const {chromium}=await load('tests/node_modules/playwright/index.mjs');
  const browser=await chromium.launch({channel:process.env.ATRIA_BROWSER_CHANNEL||'msedge',headless:true});
- const output=path.join(root,'build/p8-ui');await fs.mkdir(output,{recursive:true});const result={browser:'Edge Chromium headless',screenshots:[],checks:[]};
+ const output=path.join(root,'build/ui-'+version);await fs.mkdir(output,{recursive:true});const result={browser:'Edge Chromium headless',screenshots:[],checks:[]};
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')console.error('Browser console',m.text());});
  page.setDefaultTimeout(180000);
  const node=id=>page.locator('[data-node-id="'+id+'"]');

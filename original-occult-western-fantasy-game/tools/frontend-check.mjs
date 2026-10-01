@@ -60,7 +60,7 @@ export async function verify({load,native,manifest,archive,sourceFiles}){
   if(process.argv.includes('--serve'))await new Promise(()=>{});
   const {browserChecks}=await import('./frontend-browser-check.mjs');
   const actNative=async(transactionId,input)=>{session=await svc.core.appendTimeline(h.handle,session.session.sessionId,{role:'user',content:'P8 presentation fixture: '+transactionId});const p=await svc.core.prepareAuthorityTurn(h.handle,session,{transactionId,input});assert.equal(p.prepared.receipt.result.outcome,'automatic',transactionId);session=await svc.core.finalizeTurn(h.handle,session.session.sessionId,{invocationId:'p8-native-'+ ++serial,authorityProof:p.proof,envelope:{schemaVersion:1,narrative:'The qualified source or arrangement is recorded.',outcomes:[],diagnostics:[]}},{expectedRevisionId:session.revision.revisionId});};
-  const result=await browserChecks({load,url,root,getSession:()=>session,actNative,setFailure:v=>{fail=v;},getLastProof:()=>lastProof,getTypedRequests:()=>typedRequests});
+  const result=await browserChecks({load,url,root,version:manifest.version,getSession:()=>session,actNative,setFailure:v=>{fail=v;},getLastProof:()=>lastProof,getTypedRequests:()=>typedRequests});
   for(const id of ['player.case_graph','reflection.case_graph'])safe(queryInformationGraph(session,id,'main',{purpose:id==='player.case_graph'?'display':'context'}));
   safe(projectInformation(session,'player.overview',{purpose:'display'}));
   const saved=await svc.saveSystem.manualSave(h.handle,session.session.sessionId);const exported=await svc.saveSystem.exportSnapshot(h.handle,session.session.sessionId,saved.saveId);

@@ -62,6 +62,7 @@ export async function verify({load,native,manifest,archive,sourceFiles}) {
   assert.deepEqual(await svc.core.load(h.handle,base.session.sessionId),evidence);
   return {phase:'P5-focused',checks:['Latest-code civic/church stabilization consistently clears Unsettled Condition, grants formal Claim and preserves zero-publication preparation'],work};
  }
+ if(process.argv.includes('--campaign-only')){const {campaignChecks}=await import('./campaign-check.mjs');return await campaignChecks({fresh,session:()=>session,svc,fsHandle:h.handle,manifest,archive,load,safe,makeTempFsEngine,services});}
  if(process.argv.includes('--convergence-only'))return {...await checkConvergence(),requests};
  if(process.argv.includes('--network-only'))return {...await checkNetwork(),requests,maximumWork:Object.fromEntries(['readGrants','appCommands','effects'].map(k=>[k,Math.max(0,...work.map(w=>w[k]))]))};
  await create();await act('acquire_mortuary',{method:'inspect_death'});await act('test_copy',{method:'examine_authorized_copy'});await act('acquire_register',{method:'request_old_register'});await act('compare',{method:'compare_independent_sources'});assert.equal(value('progression').verified,true);
