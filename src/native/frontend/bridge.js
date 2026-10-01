@@ -42,6 +42,10 @@ function compileMapping(mapping, input, target) {
 export function compileBridge(source = { version: 1, bindings: [] }, experienceContract = {}, transactions = []) {
     fields(source, ['version', 'bindings'], 'Bridge');
     if (source.version !== 1) throw new TypeError('Bridge version must be 1');
+    // The transaction catalogue is immutable during one compilation. Resolving
+    // its lazy provider for every binding repeats the entire authority compiler.
+    let resolvedTransactions;
+    const transactionCatalogue = () => resolvedTransactions ??= typeof transactions === 'function' ? transactions() : transactions;
     const bindings = list(source.bindings, binding => {
         fields(binding, ['id', 'kind', 'target', 'inputSchema', 'outputSchema', 'mapping', 'collection'], 'Binding');
         identifier(binding.id);
@@ -67,7 +71,7 @@ export function compileBridge(source = { version: 1, bindings: [] }, experienceC
             fields(binding.target, ['transactionId'], 'Transaction target');
             taskId(binding.target.transactionId);
             if (!experienceContract.authorityRuntime || experienceContract.taskRuntime?.turn?.policy !== 'authority-first') throw new TypeError('Transaction Turn authority required');
-            targetContract = (typeof transactions === 'function' ? transactions() : transactions).find(item => item.id === binding.target.transactionId);
+            targetContract = transactionCatalogue().find(item => item.id === binding.target.transactionId);
             targetInput = targetContract?.inputSchema;
             outputSchema = EMPTY;
         } else if (binding.kind === 'action') {
