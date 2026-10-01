@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "matter.eastbank_hearing",
+      "kind": "signature_case",
+      "name": "Eastbank Hearing",
+      "purpose": "Cross-source reopening with six independent settlement dimensions.",
+      "authority": "definition",
+      "dependencies": [
+        "institution.abnormal",
+        "institution.academy",
+        "institution.church",
+        "institution.insurer",
+        "institution.railway",
+        "institution.workers",
+        "institution.press",
+        "office.civil_court",
+        "canon.settlement",
+        "canon.deep",
+        "anomaly.boundary_failure",
+        "actor.pavel_orr",
+        "actor.leonie_voss"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "No completion-count unlock.",
+        "A hearing settlement changes arrangements, not historical Truth.",
+        "Deep cause remains an open bounded inquiry, not a revealed cosmology."
+      ],
+      "generationEnvelope": [
+        "Ordinary hearing wording only; no invented votes, powers or erased rights."
+      ],
+      "canon": {
+        "entry": "Acquired independent source roles establish incomplete account, deliberate policy, present dependence and active contradiction.",
+        "truth": "P7_PRIVATE_HEARING: the hearing negotiates a present compact over incomplete surviving evidence. No participating institution owns complete Eastbank Truth or can erase all dependence on the old settlement.",
+        "stakes": [
+          "Current inhabitants and excluded households",
+          "Institutional survival and accountability",
+          "National Reality Consolidation standards"
+        ],
+        "actors": [
+          "actor.pavel_orr",
+          "actor.leonie_voss"
+        ],
+        "institutions": [
+          "institution.abnormal",
+          "institution.academy",
+          "institution.church",
+          "institution.insurer",
+          "institution.railway",
+          "institution.workers",
+          "institution.press",
+          "office.civil_court"
+        ],
+        "anomaly": "anomaly.boundary_failure",
+        "evidenceGraph": [
+          "Burial or press evidence: incomplete official account",
+          "Corporate charter plus independent continuity: deliberate stabilization",
+          "Property or corporate continuing rights: present dependence",
+          "Physical property/railway/press comparison: active contradiction",
+          "Supervised residual comparison after reopening: ordinary explanations remain incomplete"
+        ],
+        "pressures": [
+          "Day eighteen standardization begins. Day twenty-four interoperable records lock unless a qualified compact has been filed.",
+          "Late hearing may issue remedies but cannot erase exclusions or the lock event."
+        ],
+        "routes": [
+          "Property + company + press; burial and railway may be missed.",
+          "Burial + railway + company; accident and press may be missed."
+        ],
+        "interventions": [
+          "File qualified reopening petition",
+          "Compare retained residual carriers with Academy custody",
+          "Submit a six-dimensional compact or adjourn"
+        ],
+        "settlements": [
+          "Independent historical disclosure, stability, justice, political power, religious authority and accountability terms"
+        ],
+        "consequences": [
+          "Current compact binds participating desks; higher state reversal is not claimed.",
+          "Compensation duty, review access and source exposure depend on chosen terms."
+        ],
+        "eastbankContribution": "Four interpretive layers reinterpret surviving evidence; the fourth exposes limits of the present theory without finalizing deep cause.",
+        "revelationPredicates": [
+          "incomplete_account",
+          "deliberate_stabilization",
+          "present_dependence",
+          "active_contradiction"
+        ],
+        "reentry": [
+          "Amend the current compact without erasing its occurrence history.",
+          "Residual inquiry may remain undiscovered."
+        ],
+        "orderSafety": "No all-Signatures completion gate.",
+        "failureContinuity": "Adjournment and late reopening retain sources and current people; clock pressure continues."
+      },
+      "perspective": {
+        "publicDescription": "A qualified Eastbank reopening can negotiate evidence disclosure, current stability, compensation, public power, sacred recognition and responsibility separately."
+      }
+    }
+  ]
+}

@@ -64,17 +64,28 @@ export function validateContent(resources, manifest) {
  const supported=byKind('claim_seed').filter(a=>a.canon.runtimeEligibility.length);
  assert.deepEqual(supported.map(a=>a.id),['claim.seed.unlost_evidence','claim.seed.name_mismatch']);
  for(const a of supported){assert.deepEqual(a.canon.runtimeEligibility,['verified_identity_across_sources','preserved_conflicting_evidence','first_breach']);assert.deepEqual(a.canon.runtimeTraditions,['tradition.civic','tradition.church']);}
- const network=byKind('signature_case').filter(a=>a.id!=='matter.second_death');
- assert.deepEqual(network.map(a=>a.runtime?.key).sort(),['burial','property','railway']);
+ const network=byKind('signature_case').filter(a=>!['matter.second_death','matter.eastbank_hearing'].includes(a.id));
+ assert.deepEqual(network.map(a=>a.runtime?.key).sort(),['accident','burial','company','headline','property','railway']);
  for(const a of network){
   const r=a.runtime;assert.equal(r.sources.length,4);assert.deepEqual(r.sources.map(s=>s.slot),['s0','s1','s2','s3']);
   assert.equal(new Set(r.sources.map(s=>s.id)).size,4);assert.equal(new Set(r.sources.map(s=>s.method)).size,4);
   assert.equal(r.sources[0].role,r.sources[2].role);assert.equal(r.sources[1].role,r.sources[3].role);assert.notEqual(r.sources[0].role,r.sources[1].role);
   assert.equal(r.dispositions.length,4);assert.equal(r.dispositions.at(-1).id,'withdraw');
-  assert.equal(r.sources.filter(s=>s.dangerous).length,r.key==='railway'?1:0);
+  assert.equal(r.sources.filter(s=>s.dangerous).length,['railway','accident'].includes(r.key)?1:0);
   assert.equal(all.get(r.actor).kind,'actor_b');assert.equal(all.get(r.location).kind,'location');
  }
- assert.equal(byKind('institutional_case_pattern').length,3);
+ assert.equal(byKind('institutional_case_pattern').length,10);
+ assert.equal(byKind('signature_case').length,8);
+ assert.equal(new Set(byKind('institutional_case_pattern').map(a=>a.canon.problemFamily)).size,10);
+ const hearing=all.get('matter.eastbank_hearing');
+ assert.deepEqual(hearing.canon.revelationPredicates,['incomplete_account','deliberate_stabilization','present_dependence','active_contradiction']);
+ for(const a of network.filter(a=>['company','accident','headline'].includes(a.runtime.key))){
+  assert.equal(a.runtime.sources.length,4);
+  for(const s of a.runtime.sources)assert(Buffer.byteLength(s.id+' | '+s.issuer+' | '+s.kind+': '+s.text,'utf8')<=512,'P7 evidence payload budget');
+  assert(a.runtime.dueDay>=1&&a.runtime.dueDay<=30);
+ }
+ assert.equal(byKind('claim_seed').length,16);assert.equal(byKind('claim_archetype').length,32);
+ for(const a of [...byKind('claim_seed'),...byKind('claim_archetype')])assert(a.canon.coreRule.length<=256&&(a.canon.condition??a.canon.conditionFamily).length<=256,'P7 canonical scalar bounds');
  const fragments = byKind('canon_fragment');
  for (const a of fragments) { assert(a.canon.holders.length < 10); for (const id of a.canon.evidenceGateways) assert.equal(all.get(id).kind, 'artifact_template'); }
  assert.equal(all.get('canon.deep').canon.epistemicStatus, 'unresolved');

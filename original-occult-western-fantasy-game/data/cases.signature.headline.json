@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "matter.tomorrow_headline",
+      "kind": "signature_case",
+      "name": "Tomorrow's Headline",
+      "purpose": "Two advance editions describe incompatible outcomes of the coming registration demonstration. Telegraph custody and direct witnesses can separate observation from an editorial certainty.",
+      "authority": "definition",
+      "dependencies": [
+        "actor.clara_holt",
+        "location.newspaper",
+        "institution.press",
+        "institution.abnormal",
+        "office.civil_registry",
+        "institution.church",
+        "institution.insurer",
+        "anomaly.memory_discontinuity",
+        "canon.press"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Acquired evidence is not complete Truth.",
+        "No generic prophecy, mind control or corporate monster kill.",
+        "Past circulation, injury and exclusion cannot be erased by late settlement."
+      ],
+      "generationEnvelope": [
+        "Ordinary descriptions only; fixed evidence, deadlines, power and rights cannot be invented."
+      ],
+      "canon": {
+        "entry": "After the opening Breach, accept an independent consented mandate.",
+        "truth": "P7_PRIVATE_HEADLINE: incompatible advance editions encourage premature administrative closure. Repetition anchors institutional belief, not universal physical Truth. The surviving pre-Settlement draft contradicts later claims of complete registration.",
+        "stakes": [
+          "On day fourteen an unchecked definitive edition becomes the default administrative account; correction remains possible but cannot erase its circulation.",
+          "Protect current people while retaining incompatible evidence."
+        ],
+        "actors": [
+          "actor.clara_holt"
+        ],
+        "institutions": [
+          "institution.press",
+          "institution.abnormal",
+          "office.civil_registry",
+          "institution.church",
+          "institution.insurer"
+        ],
+        "anomaly": "anomaly.memory_discontinuity",
+        "evidenceGraph": [
+          "s0: record via record",
+          "s1: observation via testimony",
+          "s2: record via record",
+          "s3: observation via physical"
+        ],
+        "pressures": [
+          "On day fourteen an unchecked definitive edition becomes the default administrative account; correction remains possible but cannot erase its circulation."
+        ],
+        "routes": [
+          "Authorized documentary route",
+          "Independent community, physical or controlled comparison route"
+        ],
+        "interventions": [
+          "Obtain consent for attributed reporting and protect witness copies before publication.",
+          "publish_incomplete",
+          "delay",
+          "controlled",
+          "withdraw"
+        ],
+        "settlements": [
+          "publish_incomplete",
+          "delay",
+          "controlled",
+          "withdraw"
+        ],
+        "consequences": [
+          "Corrections and minority accounts remain visible. Sources face attention.",
+          "Witness custody protected. Competitors may set the narrative.",
+          "Documented access and correction route. Gatekeepers retain information power.",
+          "Copies remain available. Premature certainty can acquire institutional force."
+        ],
+        "eastbankContribution": "Dated transmission plus present comparison can corroborate incomplete accounts and an active contradiction.",
+        "revelationPredicates": [
+          "Evidence roles, not completed Cases.",
+          "No single archive or settlement establishes every predicate."
+        ],
+        "reentry": [
+          "Late legal review and retained custody remain available.",
+          "Withdrawal does not erase acquired support or clock pressure."
+        ],
+        "orderSafety": "Other Signature completions are not prerequisites.",
+        "failureContinuity": "The circulated account and resulting refusals remain in history. A attributed correction and protected-evidence review can still be filed."
+      },
+      "perspective": {
+        "publicDescription": "Two advance editions describe incompatible outcomes of the coming registration demonstration. Telegraph custody and direct witnesses can separate observation from an editorial certainty."
+      },
+      "runtime": {
+        "key": "headline",
+        "actor": "actor.clara_holt",
+        "location": "location.newspaper",
+        "dueDay": 14,
+        "pressure": "On day fourteen an unchecked definitive edition becomes the default administrative account; correction remains possible but cannot erase its circulation.",
+        "late": "The circulated account and resulting refusals remain in history. A attributed correction and protected-evidence review can still be filed.",
+        "preparation": "Obtain consent for attributed reporting and protect witness copies before publication.",
+        "testimony": "Attributed institutional statements remain testimony, not underlying Truth.",
+        "sources": [
+          {
+            "id": "headline_s0",
+            "slot": "s0",
+            "role": "record",
+            "kind": "record",
+            "text": "The press custodian provides dated contradictory drafts, including an old preliminary Eastbank list marked incomplete before a later edition called it final.",
+            "issuer": "Evening Ledger custodian",
+            "method": "draft_custody",
+            "dangerous": false
+          },
+          {
+            "id": "headline_s1",
+            "slot": "s1",
+            "role": "observation",
+            "kind": "testimony",
+            "text": "Separate observers retain incompatible advance claims as claims, not witnessed events. Their controlled account records continuing address discrepancies at the demonstration site.",
+            "issuer": "Consenting witnesses",
+            "method": "witness_copy",
+            "dangerous": false
+          },
+          {
+            "id": "headline_s2",
+            "slot": "s2",
+            "role": "record",
+            "kind": "record",
+            "text": "A telegraph duplicate places the earlier incomplete-list report before the official final account; transmission order is independently verifiable.",
+            "issuer": "Telegraph counter",
+            "method": "telegraph_receipt",
+            "dangerous": false
+          },
+          {
+            "id": "headline_s3",
+            "slot": "s3",
+            "role": "observation",
+            "kind": "physical",
+            "text": "A consented present-site comparison finds two posted identity schedules still producing incompatible admissions. Newspaper repetition has not removed that observable conflict.",
+            "issuer": "Verifier and site stewards",
+            "method": "site_comparison",
+            "dangerous": false
+          }
+        ],
+        "dispositions": [
+          {
+            "id": "publish_incomplete",
+            "acceptedBy": "Press and named witnesses",
+            "changed": "Publish attributed limits and contradictory observations, not a settled deep explanation.",
+            "benefit": "Corrections and minority accounts remain visible.",
+            "cost": "Sources face attention."
+          },
+          {
+            "id": "delay",
+            "acceptedBy": "Press and witness custodians",
+            "changed": "Hold definitive copy while keeping a public notice of uncertainty.",
+            "benefit": "Witness custody protected.",
+            "cost": "Competitors may set the narrative."
+          },
+          {
+            "id": "controlled",
+            "acceptedBy": "Press, civic and community reviewers",
+            "changed": "Release a qualified bulletin with protected attachments held for review.",
+            "benefit": "Documented access and correction route.",
+            "cost": "Gatekeepers retain information power."
+          },
+          {
+            "id": "withdraw",
+            "acceptedBy": "Civil practice",
+            "changed": "No intervention in editorial scheduling.",
+            "benefit": "Copies remain available.",
+            "cost": "Premature certainty can acquire institutional force."
+          }
+        ]
+      }
+    }
+  ]
+}

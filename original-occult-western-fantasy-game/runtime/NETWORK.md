@@ -1,3 +1,7 @@
+# Retained P6 contract in P7
+
+The following describes retained Network A behavior and its historical boundary. Current P7 convergence, catalog, extra Patterns and final budget are in CONVERGENCE.md.
+
 # P6 — Signature Network A
 
 Default archive version: 0.6.0-p6. The opening in OPENING.md remains mandatory; after its Breach, three mandates may be discovered in any order. No P7 convergence, extra Claim catalog implementation or P8 UI is included.

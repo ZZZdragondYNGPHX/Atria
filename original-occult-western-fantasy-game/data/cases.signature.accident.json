@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "matter.claims_before_accident",
+      "kind": "signature_case",
+      "name": "Claims Before the Accident",
+      "purpose": "Meridian holds indemnity schedules dated before the described handling incidents. A supervised split-sample experiment can test the measurement regime without risking a worker.",
+      "authority": "definition",
+      "dependencies": [
+        "actor.vera_moss",
+        "location.clearing_room",
+        "institution.insurer",
+        "institution.academy",
+        "institution.abnormal",
+        "institution.railway",
+        "anomaly.possibility_saturation",
+        "canon.insurance"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Acquired evidence is not complete Truth.",
+        "No generic prophecy, mind control or corporate monster kill.",
+        "Past circulation, injury and exclusion cannot be erased by late settlement."
+      ],
+      "generationEnvelope": [
+        "Ordinary descriptions only; fixed evidence, deadlines, power and rights cannot be invented."
+      ],
+      "canon": {
+        "entry": "After the opening Breach, accept an independent consented mandate.",
+        "truth": "P7_PRIVATE_ACCIDENT: the instrument binds unresolved handling alternatives to indemnity records. Its backdated-looking specificity is produced by a registration regime, not knowledge of every future accident. Existing injuries cannot be undone.",
+        "stakes": [
+          "On day twelve the insurer standardizes unresolved categories unless use is restricted; excluded applicants then need individual review.",
+          "Protect current people while retaining incompatible evidence."
+        ],
+        "actors": [
+          "actor.vera_moss"
+        ],
+        "institutions": [
+          "institution.insurer",
+          "institution.academy",
+          "institution.abnormal",
+          "institution.railway"
+        ],
+        "anomaly": "anomaly.possibility_saturation",
+        "evidenceGraph": [
+          "s0: measurement via record",
+          "s1: comparison via physical",
+          "s2: measurement via record",
+          "s3: comparison via record"
+        ],
+        "pressures": [
+          "On day twelve the insurer standardizes unresolved categories unless use is restricted; excluded applicants then need individual review."
+        ],
+        "routes": [
+          "Authorized documentary route",
+          "Independent community, physical or controlled comparison route"
+        ],
+        "interventions": [
+          "Isolate two inert samples, stop the live conveyor and agree custody before any trial.",
+          "restrict",
+          "regulate",
+          "research",
+          "withdraw"
+        ],
+        "settlements": [
+          "restrict",
+          "regulate",
+          "research",
+          "withdraw"
+        ],
+        "consequences": [
+          "Unmeasured alternatives retained for review. Slower assessments and funding burden.",
+          "Audit and compensation rights. New reporting duties and institutional power.",
+          "Independent scrutiny of measurement. Publicity and sample custody burden.",
+          "Future review possible. Categories may lock without claimant input."
+        ],
+        "eastbankContribution": "Controlled evidence challenges passive-measurement explanations; it does not establish universal foreknowledge or Eastbank intent.",
+        "revelationPredicates": [
+          "Evidence roles, not completed Cases.",
+          "No single archive or settlement establishes every predicate."
+        ],
+        "reentry": [
+          "Late legal review and retained custody remain available.",
+          "Withdrawal does not erase acquired support or clock pressure."
+        ],
+        "orderSafety": "Other Signature completions are not prerequisites.",
+        "failureContinuity": "Locked categories and denied applications are not erased by later regulation; preserved duplicate samples permit a review route."
+      },
+      "perspective": {
+        "publicDescription": "Meridian holds indemnity schedules dated before the described handling incidents. A supervised split-sample experiment can test the measurement regime without risking a worker."
+      },
+      "runtime": {
+        "key": "accident",
+        "actor": "actor.vera_moss",
+        "location": "location.clearing_room",
+        "dueDay": 12,
+        "pressure": "On day twelve the insurer standardizes unresolved categories unless use is restricted; excluded applicants then need individual review.",
+        "late": "Locked categories and denied applications are not erased by later regulation; preserved duplicate samples permit a review route.",
+        "preparation": "Isolate two inert samples, stop the live conveyor and agree custody before any trial.",
+        "testimony": "Attributed institutional statements remain testimony, not underlying Truth.",
+        "sources": [
+          {
+            "id": "accident_s0",
+            "slot": "s0",
+            "role": "measurement",
+            "kind": "record",
+            "text": "Applicant-authorized schedule predates the handling incident and specifies one of two then-viable damage categories. It is not a record of an injury already observed.",
+            "issuer": "Meridian claims custodian",
+            "method": "insurer_schedule",
+            "dangerous": false
+          },
+          {
+            "id": "accident_s1",
+            "slot": "s1",
+            "role": "comparison",
+            "kind": "physical",
+            "text": "In a stopped-conveyor split-sample trial, registering one supported category makes the alternative harder to retain. No injured person or settled event is changed.",
+            "issuer": "Academy and claimant observers",
+            "method": "isolated_trial",
+            "dangerous": true
+          },
+          {
+            "id": "accident_s2",
+            "slot": "s2",
+            "role": "measurement",
+            "kind": "record",
+            "text": "The industrial client retains a separately sealed schedule with the same early issue time and two initially supported alternatives.",
+            "issuer": "Industrial client records",
+            "method": "client_duplicate",
+            "dangerous": false
+          },
+          {
+            "id": "accident_s3",
+            "slot": "s3",
+            "role": "comparison",
+            "kind": "record",
+            "text": "Independent unregistered controls retain both alternatives; the signed protocol limits the inference to this apparatus and these unresolved samples.",
+            "issuer": "Academy protocol custodian",
+            "method": "control_log",
+            "dangerous": false
+          }
+        ],
+        "dispositions": [
+          {
+            "id": "restrict",
+            "acceptedBy": "Insurer and abnormal authority",
+            "changed": "Live underwriting instrument suspended; ordinary cover preserved.",
+            "benefit": "Unmeasured alternatives retained for review.",
+            "cost": "Slower assessments and funding burden."
+          },
+          {
+            "id": "regulate",
+            "acceptedBy": "Civic regulator and insurer",
+            "changed": "Informed consent and independent controls required.",
+            "benefit": "Audit and compensation rights.",
+            "cost": "New reporting duties and institutional power."
+          },
+          {
+            "id": "research",
+            "acceptedBy": "Academy and consenting claimants",
+            "changed": "Redacted public protocol and inert-sample study authorized.",
+            "benefit": "Independent scrutiny of measurement.",
+            "cost": "Publicity and sample custody burden."
+          },
+          {
+            "id": "withdraw",
+            "acceptedBy": "Civil practice",
+            "changed": "No restriction imposed; observations retained.",
+            "benefit": "Future review possible.",
+            "cost": "Categories may lock without claimant input."
+          }
+        ]
+      }
+    }
+  ]
+}

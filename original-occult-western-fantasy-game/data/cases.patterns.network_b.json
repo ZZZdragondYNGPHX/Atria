@@ -1,0 +1,397 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "matter.pattern.identity_review",
+      "kind": "institutional_case_pattern",
+      "name": "Identity Verification",
+      "purpose": "Qualified recognition without a secret true Name",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police",
+        "anomaly.identity_contradiction"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Independent instance evidence and consent required.",
+        "Remedy is not Eastbank historical proof.",
+        "No overriding will or repairing destroyed evidence."
+      ],
+      "generationEnvelope": [
+        "Ordinary claimant names, appearance and wording within a finite professional instance."
+      ],
+      "canon": {
+        "problemFamily": "identity_review",
+        "participantSlots": [
+          "Ordinary consenting claimant",
+          "Authorized police respondent"
+        ],
+        "allowedTruthStructures": [
+          "Consented identity support contrasted with Independent civil comparison"
+        ],
+        "requiredEvidenceRoles": [
+          "Consented identity support",
+          "Independent civil comparison"
+        ],
+        "optionalEvidenceRoles": [
+          "Attributed witness statement"
+        ],
+        "pressurePatterns": [
+          "A seven-day response obligation; late review cannot erase expiry."
+        ],
+        "compatibleAnomalies": [
+          "anomaly.identity_contradiction"
+        ],
+        "settlementFamilies": [
+          "Qualified recognition without a secret true Name",
+          "Refer disputed duty to review",
+          "Withdraw without conclusion"
+        ],
+        "generationSlots": [
+          "Ordinary claimant label",
+          "Document wording without semantic changes"
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Identity Verification: Qualified recognition without a secret true Name."
+      }
+    },
+    {
+      "id": "matter.pattern.insurance_review",
+      "kind": "institutional_case_pattern",
+      "name": "Insurance Coverage Dispute",
+      "purpose": "Coverage review preserves disputed causation",
+      "authority": "definition",
+      "dependencies": [
+        "institution.insurer",
+        "anomaly.possibility_saturation"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Independent instance evidence and consent required.",
+        "Remedy is not Eastbank historical proof.",
+        "No overriding will or repairing destroyed evidence."
+      ],
+      "generationEnvelope": [
+        "Ordinary claimant names, appearance and wording within a finite professional instance."
+      ],
+      "canon": {
+        "problemFamily": "insurance_review",
+        "participantSlots": [
+          "Ordinary consenting claimant",
+          "Authorized insurer respondent"
+        ],
+        "allowedTruthStructures": [
+          "Applicant policy and loss account contrasted with Independent coverage response"
+        ],
+        "requiredEvidenceRoles": [
+          "Applicant policy and loss account",
+          "Independent coverage response"
+        ],
+        "optionalEvidenceRoles": [
+          "Attributed witness statement"
+        ],
+        "pressurePatterns": [
+          "A seven-day response obligation; late review cannot erase expiry."
+        ],
+        "compatibleAnomalies": [
+          "anomaly.possibility_saturation"
+        ],
+        "settlementFamilies": [
+          "Coverage review preserves disputed causation",
+          "Refer disputed duty to review",
+          "Withdraw without conclusion"
+        ],
+        "generationSlots": [
+          "Ordinary claimant label",
+          "Document wording without semantic changes"
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Insurance Coverage Dispute: Coverage review preserves disputed causation."
+      }
+    },
+    {
+      "id": "matter.pattern.missing_person",
+      "kind": "institutional_case_pattern",
+      "name": "Missing Person Continuity",
+      "purpose": "Search and protective identity notice, not death invention",
+      "authority": "definition",
+      "dependencies": [
+        "institution.police",
+        "anomaly.residual_echo"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Independent instance evidence and consent required.",
+        "Remedy is not Eastbank historical proof.",
+        "No overriding will or repairing destroyed evidence."
+      ],
+      "generationEnvelope": [
+        "Ordinary claimant names, appearance and wording within a finite professional instance."
+      ],
+      "canon": {
+        "problemFamily": "missing_person",
+        "participantSlots": [
+          "Ordinary consenting claimant",
+          "Authorized police respondent"
+        ],
+        "allowedTruthStructures": [
+          "Consented last-contact record contrasted with Independent trace and custody"
+        ],
+        "requiredEvidenceRoles": [
+          "Consented last-contact record",
+          "Independent trace and custody"
+        ],
+        "optionalEvidenceRoles": [
+          "Attributed witness statement"
+        ],
+        "pressurePatterns": [
+          "A seven-day response obligation; late review cannot erase expiry."
+        ],
+        "compatibleAnomalies": [
+          "anomaly.residual_echo"
+        ],
+        "settlementFamilies": [
+          "Search and protective identity notice, not death invention",
+          "Refer disputed duty to review",
+          "Withdraw without conclusion"
+        ],
+        "generationSlots": [
+          "Ordinary claimant label",
+          "Document wording without semantic changes"
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Missing Person Continuity: Search and protective identity notice, not death invention."
+      }
+    },
+    {
+      "id": "matter.pattern.kinship_review",
+      "kind": "institutional_case_pattern",
+      "name": "Kinship Record Conflict",
+      "purpose": "Qualified kinship recognition without forced relationship",
+      "authority": "definition",
+      "dependencies": [
+        "institution.church",
+        "anomaly.broken_bond"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Independent instance evidence and consent required.",
+        "Remedy is not Eastbank historical proof.",
+        "No overriding will or repairing destroyed evidence."
+      ],
+      "generationEnvelope": [
+        "Ordinary claimant names, appearance and wording within a finite professional instance."
+      ],
+      "canon": {
+        "problemFamily": "kinship_review",
+        "participantSlots": [
+          "Ordinary consenting claimant",
+          "Authorized church respondent"
+        ],
+        "allowedTruthStructures": [
+          "Consenting household account contrasted with Independent rite and civil comparison"
+        ],
+        "requiredEvidenceRoles": [
+          "Consenting household account",
+          "Independent rite and civil comparison"
+        ],
+        "optionalEvidenceRoles": [
+          "Attributed witness statement"
+        ],
+        "pressurePatterns": [
+          "A seven-day response obligation; late review cannot erase expiry."
+        ],
+        "compatibleAnomalies": [
+          "anomaly.broken_bond"
+        ],
+        "settlementFamilies": [
+          "Qualified kinship recognition without forced relationship",
+          "Refer disputed duty to review",
+          "Withdraw without conclusion"
+        ],
+        "generationSlots": [
+          "Ordinary claimant label",
+          "Document wording without semantic changes"
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Kinship Record Conflict: Qualified kinship recognition without forced relationship."
+      }
+    },
+    {
+      "id": "matter.pattern.custody_gap",
+      "kind": "institutional_case_pattern",
+      "name": "Broken Custody Chain",
+      "purpose": "Repair custody attribution without invented handovers",
+      "authority": "definition",
+      "dependencies": [
+        "institution.abnormal",
+        "anomaly.broken_bond"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Independent instance evidence and consent required.",
+        "Remedy is not Eastbank historical proof.",
+        "No overriding will or repairing destroyed evidence."
+      ],
+      "generationEnvelope": [
+        "Ordinary claimant names, appearance and wording within a finite professional instance."
+      ],
+      "canon": {
+        "problemFamily": "custody_gap",
+        "participantSlots": [
+          "Ordinary consenting claimant",
+          "Authorized abnormal respondent"
+        ],
+        "allowedTruthStructures": [
+          "Entrustment and handover record contrasted with Independent receiving inventory"
+        ],
+        "requiredEvidenceRoles": [
+          "Entrustment and handover record",
+          "Independent receiving inventory"
+        ],
+        "optionalEvidenceRoles": [
+          "Attributed witness statement"
+        ],
+        "pressurePatterns": [
+          "A seven-day response obligation; late review cannot erase expiry."
+        ],
+        "compatibleAnomalies": [
+          "anomaly.broken_bond"
+        ],
+        "settlementFamilies": [
+          "Repair custody attribution without invented handovers",
+          "Refer disputed duty to review",
+          "Withdraw without conclusion"
+        ],
+        "generationSlots": [
+          "Ordinary claimant label",
+          "Document wording without semantic changes"
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Broken Custody Chain: Repair custody attribution without invented handovers."
+      }
+    },
+    {
+      "id": "matter.pattern.document_conservation",
+      "kind": "institutional_case_pattern",
+      "name": "Document Surface Continuity",
+      "purpose": "Preserve extant material; no recreation of missing text",
+      "authority": "definition",
+      "dependencies": [
+        "institution.academy",
+        "anomaly.form_discontinuity"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Independent instance evidence and consent required.",
+        "Remedy is not Eastbank historical proof.",
+        "No overriding will or repairing destroyed evidence."
+      ],
+      "generationEnvelope": [
+        "Ordinary claimant names, appearance and wording within a finite professional instance."
+      ],
+      "canon": {
+        "problemFamily": "document_conservation",
+        "participantSlots": [
+          "Ordinary consenting claimant",
+          "Authorized academy respondent"
+        ],
+        "allowedTruthStructures": [
+          "Inspected surviving fibres and consent contrasted with Independent conservation comparison"
+        ],
+        "requiredEvidenceRoles": [
+          "Inspected surviving fibres and consent",
+          "Independent conservation comparison"
+        ],
+        "optionalEvidenceRoles": [
+          "Attributed witness statement"
+        ],
+        "pressurePatterns": [
+          "A seven-day response obligation; late review cannot erase expiry."
+        ],
+        "compatibleAnomalies": [
+          "anomaly.form_discontinuity"
+        ],
+        "settlementFamilies": [
+          "Preserve extant material; no recreation of missing text",
+          "Refer disputed duty to review",
+          "Withdraw without conclusion"
+        ],
+        "generationSlots": [
+          "Ordinary claimant label",
+          "Document wording without semantic changes"
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Document Surface Continuity: Preserve extant material; no recreation of missing text."
+      }
+    },
+    {
+      "id": "matter.pattern.designation_review",
+      "kind": "institutional_case_pattern",
+      "name": "Office and Private Name",
+      "purpose": "Separate office duty from private identity",
+      "authority": "definition",
+      "dependencies": [
+        "institution.railway",
+        "anomaly.institutional_identity"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Independent instance evidence and consent required.",
+        "Remedy is not Eastbank historical proof.",
+        "No overriding will or repairing destroyed evidence."
+      ],
+      "generationEnvelope": [
+        "Ordinary claimant names, appearance and wording within a finite professional instance."
+      ],
+      "canon": {
+        "problemFamily": "designation_review",
+        "participantSlots": [
+          "Ordinary consenting claimant",
+          "Authorized railway respondent"
+        ],
+        "allowedTruthStructures": [
+          "Consented office designation record contrasted with Independent charter response"
+        ],
+        "requiredEvidenceRoles": [
+          "Consented office designation record",
+          "Independent charter response"
+        ],
+        "optionalEvidenceRoles": [
+          "Attributed witness statement"
+        ],
+        "pressurePatterns": [
+          "A seven-day response obligation; late review cannot erase expiry."
+        ],
+        "compatibleAnomalies": [
+          "anomaly.institutional_identity"
+        ],
+        "settlementFamilies": [
+          "Separate office duty from private identity",
+          "Refer disputed duty to review",
+          "Withdraw without conclusion"
+        ],
+        "generationSlots": [
+          "Ordinary claimant label",
+          "Document wording without semantic changes"
+        ]
+      },
+      "perspective": {
+        "publicDescription": "Office and Private Name: Separate office duty from private identity."
+      }
+    }
+  ]
+}

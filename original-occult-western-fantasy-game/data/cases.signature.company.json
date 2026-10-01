@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "items": [
+    {
+      "id": "matter.self_signing",
+      "kind": "signature_case",
+      "name": "Self-Signing Company",
+      "purpose": "Rail Charter House receives properly sealed continuity orders that the present board denies issuing. Workers seek a suspension of compulsory transfers, not destruction of the company.",
+      "authority": "definition",
+      "dependencies": [
+        "actor.nora_kett",
+        "location.freight_board",
+        "institution.railway",
+        "institution.insurer",
+        "office.civil_court",
+        "institution.workers",
+        "institution.academy",
+        "anomaly.institutional_identity",
+        "canon.railway"
+      ],
+      "disclosure": "private_definition",
+      "generationPolicy": "hard_authored",
+      "invariants": [
+        "Acquired evidence is not complete Truth.",
+        "No generic prophecy, mind control or corporate monster kill.",
+        "Past circulation, injury and exclusion cannot be erased by late settlement."
+      ],
+      "generationEnvelope": [
+        "Ordinary descriptions only; fixed evidence, deadlines, power and rights cannot be invented."
+      ],
+      "canon": {
+        "entry": "After the opening Breach, accept an independent consented mandate.",
+        "truth": "P7_PRIVATE_COMPANY: recurring charter obligations and reconstruction accounts sustain a bounded legal-person Identity across executives. Continuity orders implement the old stabilization bargain, not a thinking machine or a secret current director.",
+        "stakes": [
+          "On day ten the standing charter routine issues a compulsory transfer schedule unless an arrangement protects the affected workers.",
+          "Protect current people while retaining incompatible evidence."
+        ],
+        "actors": [
+          "actor.nora_kett"
+        ],
+        "institutions": [
+          "institution.railway",
+          "institution.insurer",
+          "office.civil_court",
+          "institution.workers",
+          "institution.academy"
+        ],
+        "anomaly": "anomaly.institutional_identity",
+        "evidenceGraph": [
+          "s0: mandate via record",
+          "s1: continuity via record",
+          "s2: mandate via record",
+          "s3: continuity via physical"
+        ],
+        "pressures": [
+          "On day ten the standing charter routine issues a compulsory transfer schedule unless an arrangement protects the affected workers."
+        ],
+        "routes": [
+          "Authorized documentary route",
+          "Independent community, physical or controlled comparison route"
+        ],
+        "interventions": [
+          "Secure a worker mandate and dual custody of charter and payroll copies.",
+          "coexist",
+          "reanchor",
+          "split",
+          "withdraw"
+        ],
+        "settlements": [
+          "coexist",
+          "reanchor",
+          "split",
+          "withdraw"
+        ],
+        "consequences": [
+          "Wages and worker veto protected. Board discretion is constrained.",
+          "Compulsory transfer routine is stayed. Ongoing inspection and maintenance duty.",
+          "Old obligations get a named custodian. Reorganization and compensation costs.",
+          "Retained evidence stays available. Standing transfer routine continues."
+        ],
+        "eastbankContribution": "Independent adopted-instruction and continuing-effect support can establish a local deliberate stabilization policy and its present institutional dependence.",
+        "revelationPredicates": [
+          "Evidence roles, not completed Cases.",
+          "No single archive or settlement establishes every predicate."
+        ],
+        "reentry": [
+          "Late legal review and retained custody remain available.",
+          "Withdrawal does not erase acquired support or clock pressure."
+        ],
+        "orderSafety": "Other Signature completions are not prerequisites.",
+        "failureContinuity": "Issued transfers remain historical facts; a recall and compensation docket can still change current arrangements."
+      },
+      "perspective": {
+        "publicDescription": "Rail Charter House receives properly sealed continuity orders that the present board denies issuing. Workers seek a suspension of compulsory transfers, not destruction of the company."
+      },
+      "runtime": {
+        "key": "company",
+        "actor": "actor.nora_kett",
+        "location": "location.freight_board",
+        "dueDay": 10,
+        "pressure": "On day ten the standing charter routine issues a compulsory transfer schedule unless an arrangement protects the affected workers.",
+        "late": "Issued transfers remain historical facts; a recall and compensation docket can still change current arrangements.",
+        "preparation": "Secure a worker mandate and dual custody of charter and payroll copies.",
+        "testimony": "Attributed institutional statements remain testimony, not underlying Truth.",
+        "sources": [
+          {
+            "id": "company_s0",
+            "slot": "s0",
+            "role": "mandate",
+            "kind": "record",
+            "text": "Court-certified emergency charter annex instructs the successor company to keep one workable address and payroll schedule even when surviving household lists disagree.",
+            "issuer": "Old Charter Court",
+            "method": "charter_extract",
+            "dangerous": false
+          },
+          {
+            "id": "company_s1",
+            "slot": "s1",
+            "role": "continuity",
+            "kind": "record",
+            "text": "Worker-held countersigned payroll shows the same continuity clause still funds wages and housing after three changes of directors.",
+            "issuer": "Rivet Mutual Hall",
+            "method": "worker_countersign",
+            "dangerous": false
+          },
+          {
+            "id": "company_s2",
+            "slot": "s2",
+            "role": "mandate",
+            "kind": "record",
+            "text": "A board-authorized duplicate identifies the reconstruction instruction as an adopted policy rather than a missing clerk signature. Names outside its schedule were sent to review, not counted as settled.",
+            "issuer": "Rail Charter House",
+            "method": "board_duplicate",
+            "dangerous": false
+          },
+          {
+            "id": "company_s3",
+            "slot": "s3",
+            "role": "continuity",
+            "kind": "physical",
+            "text": "A witnessed sealed-ledger comparison produces the same transfer order without a new executive instruction; the output cites the surviving charter clause.",
+            "issuer": "Joint worker and Academy examination",
+            "method": "audit_cycle",
+            "dangerous": false
+          }
+        ],
+        "dispositions": [
+          {
+            "id": "coexist",
+            "acceptedBy": "Court, board and worker stewards",
+            "changed": "Dual countersignature required; continuity payroll retained.",
+            "benefit": "Wages and worker veto protected.",
+            "cost": "Board discretion is constrained."
+          },
+          {
+            "id": "reanchor",
+            "acceptedBy": "Court and charter trustees",
+            "changed": "Charter attached to current consenting offices and maintained records.",
+            "benefit": "Compulsory transfer routine is stayed.",
+            "cost": "Ongoing inspection and maintenance duty."
+          },
+          {
+            "id": "split",
+            "acceptedBy": "Court and mutual trustees",
+            "changed": "Freight operations and household obligations separated without deleting debt.",
+            "benefit": "Old obligations get a named custodian.",
+            "cost": "Reorganization and compensation costs."
+          },
+          {
+            "id": "withdraw",
+            "acceptedBy": "Civil practice",
+            "changed": "Inquiry dormant; no recognition ruling.",
+            "benefit": "Retained evidence stays available.",
+            "cost": "Standing transfer routine continues."
+          }
+        ]
+      }
+    }
+  ]
+}
