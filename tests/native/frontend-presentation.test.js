@@ -120,3 +120,49 @@ describe('Native Frontend v3 presentation', () => {
         for (let i = 0; i < 256; i++) scheduler.frame(ordinary); expect(() => scheduler.frame(ordinary)).toThrow(); scheduler.dispose();
     });
 });
+
+
+describe('Native option identity bindings', () => {
+    function optionsFixture() {
+        const fixture = presentationFixture();
+        editContract(fixture, contract => {
+            contract.state.ui.initial.rows = [{ id: 'a', label: 'Same label' }, { id: 'b', label: 'Same label' }];
+            contract.state.ui.initial.title = 'b';
+            contract.nodeRefs = [];
+            contract.interactions.replaceOptions = [{ kind: 'set', target: 'ui.rows', value: [{ object: { id: 'b', label: 'Renamed label' } }] }];
+        });
+        fixture.files.set('frontend/Main.aui', Buffer.from(fixture.files.get('frontend/Main.aui').toString().replace(/<template>[\s\S]*?<\/template>/,
+            '<template><main node-id="root"><select node-id="choice" aria-label="Choice" bind:value="ui.title"><option node-id="option" each="ui.rows" item-key="id" bind:value="item.id" bind:text="item.label"/></select><button node-id="replaceOptions" on:click="replaceOptions">Replace options</button></main></template>')));
+        return fixture;
+    }
+    test('separates stable option IDs from labels and synchronizes after option updates', async () => {
+        const fixture = optionsFixture(), build = fixture.compile(), env = environment();
+        const runtime = await mountNativeFrontend({ ...env, entry: build.entry, loadBytes: async path => build.files.get(path) });
+        const find = (root, selector) => root.querySelector(selector) ?? [...root.querySelectorAll('*')].filter(el => el.shadowRoot).map(el => find(el.shadowRoot, selector)).find(Boolean);
+        try {
+            const select = find(env.document, 'select');
+            expect(select.value).toBe('b');
+            expect([...select.options].map(o => o.value)).toEqual(['a', 'b']);
+            select.value = 'a'; select.dispatchEvent(new env.window.Event('change'));
+            expect(runtime.getState().ui.title).toBe('a');
+            select.value = 'b'; select.dispatchEvent(new env.window.Event('change'));
+            find(env.document, '[data-node-id="replaceOptions"]').click();
+            await new Promise(resolve => setTimeout(resolve, 40));
+            expect(select.value).toBe('b');
+            expect(select.options.length).toBe(1);
+            expect(select.options[0].textContent).toBe('Renamed label');
+            // Options never write into their read-only item source, even on synthetic input.
+            select.options[0].dispatchEvent(new env.window.Event('input'));
+            expect(runtime.getState().ui.rows).toEqual([{ id: 'b', label: 'Renamed label' }]);
+        } finally { runtime.dispose(); env.dom.window.close(); }
+    });
+    test.each([
+        ['<option node-id="option"', '<option node-id="option" bind:checked="ui.title"'],
+        ['bind:value="ui.title"', 'bind:value="item.id"'],
+        ['<option node-id="option"', '<button node-id="option"'],
+    ])('does not relax checked, form-write or arbitrary-element restrictions: %s', (before, after) => {
+        const fixture = optionsFixture();
+        fixture.files.set('frontend/Main.aui', Buffer.from(fixture.files.get('frontend/Main.aui').toString().replace(before, after)));
+        expect(() => fixture.compile()).toThrow();
+    });
+});
