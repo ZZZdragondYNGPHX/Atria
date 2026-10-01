@@ -1,64 +1,58 @@
-# Live HANDOFF — Package P7 complete / P8 next
+# Live HANDOFF — Package P8 complete / P9 next
 
 - Task ID: package/original-occult-western-fantasy-game
 - Primary Workspace: long-lived independent package
-- Package root: original-occult-western-fantasy-game/
-- Stage: **P7 complete; stop before P8/P9**
-- Package implementation/tested/pushed HEAD: **436f7c9a96f4bb4344eacac03bbe124260b722e6**
-- Core main / independent validation HEAD: **052c466e3c9e4b07912da0cb602b2933f4821187**
-- Version:0.7.0-p7 / pkgv_97f2c5ebb8b0889bf04778b9e09c0e4a
+- Root: original-occult-western-fantasy-game/
+- Stage: **P8 complete; stop before P9**
+- Package implementation/tested/pushed HEAD: **dba2461270f4f03fd0b8d42c8cb125207e1f287a**
+- Independent Core main validation HEAD: **e8d0b983f30c22a169e8283157ccd7b4a1dd475d**
+- Version:0.8.0-p8 / pkgv_093513fa7c83ab2dc7abc4dd7fabf5d5
 - Plan entrypoint: plans/package/original-occult-western-fantasy-game/index.md
-- P8 modules: implementation-staging.md P8-A/B/C/D; platform-and-gameplay.md; technical-design.md Round9.6
+- Next modules: decisions.md, technical-design.md, implementation-staging.md P9
 - Sole Record: records/package/original-occult-western-fantasy-game.md
-- Runtime recovery: CONVERGENCE.md first, then NETWORK.md / OPENING.md (their older budget/boundary statements are historical).
+- Runtime recovery: FRONTEND.md, CONVERGENCE.md, NETWORK.md, OPENING.md; older budget/boundary statements are historical.
 
-## Current implementation
+## Completed and evidence
 
-Company, Accident, Headline and Hearing are implemented with alternative source roles, twelve dispositions, persistent pressure and six independent final terms. Cross-source predicates allow missing Signature content; no completion count. Ten Pattern families and the bounded16/32 catalog surface are present. Deep cause remains unresolved. No P8 visuals or P9 release.
+P8 Native field register presents six-step creation, conversation/Host Composer, acquired Evidence/provenance/relations, Testimony/Finding/Hypothesis, known Cases, six independent Hearing dimensions, Seed/Claim/Anchor/Price and duties. Uses existing typed authority and four closed safe projections. Original-request retry preserves identity; no replay on mount or hidden authority access. Two narrow formal Core fixes (#100 option bindings and #101 transaction compilation) are merged in the verified main. No main merge into package.
 
-Existing authorities remain sole owners. Publication9 reads/15 commands;64 transactions; static24-command ceiling; largest formula2000/2048. Schema nodes: evidence248, summary232, Graph169 (limit256). Observation now uses one overview and compact investigation.nodes; full Graphs use investigation.details. P7 observed max12632 bytes. Do not reintroduce duplicate full records or raise limits. Day30 horizon and capped world advances remain.
+Final browser integration `build/p8-verified-ui2.log/.err`: exit0; actual Native install/Ready and Edge Chromium, six creation UI actions, HTTP failure/retry, advisory tasks, SavePoint, 375/390/768/1440 layouts, landscape,200% root text, keyboard,reduced motion,dark OS preference and hover contrast. Real save export/import into fresh FS and next-day Claim/Hearing continuation; Graph/privacy/day31 checks.10 provider requests;13/14/16 max reads/commands/effects;10463 observation bytes. Screenshots and JSON reports persisted beside the Record under p8-evidence.
 
-## Evidence and exact limitations
+Default P5+P6+P7 combined regression `build/p8-resumed-default.log/.err`: **exit0**.156 P6 and294 P7 preparations,58/25 Native commits, all opening/route/disposition/Pattern/catalog/Price/Hearing/save/provider checks. Maximum15/17/19 and12632 observation bytes. This default run started before the final presentation-only brand/navigation/hover changes; final UI tests and build cover those. Do not claim the default run used final CSS bytes. Independent `--fixture` exit0; presentation-model check and24 JS/MJS syntax checks pass. Historical P7 interrupted evidence remains historical, not rewritten.
 
-- P5 full section completed47 typed calls, both routes/Seeds/traditions, all dispositions, free-text failure/retry, replay, real save continuation and day31. This **predates the last routing-only correction**. Combined final5 was stopped after entering P6; no final one-shot combined zero-exit claim.
-- Final P6 on corrected routing: PASS156 preparations,58 P6 Native commits plus setup,2 typed calls,5 HTTP requests, original visibility assertion, actual save/continuation and late recovery. Peak15/17/19 reads/commands/effects.
-- Final P7: PASS294 preparations; three orders, twelve dispositions, eighteen independent dimension options, ten Patterns,16/32 catalog qualification and8 primitive Price/invocation paths, Graph/privacy and day31. Final live:25 Native commits,1 typed call,4 HTTP requests, real save/import/next day with terms, Evidence, duty and renewed Claim Price.
-- Additional actual Fortune/Graph probe:15 preparations, both Automatic/Costly across different ordinals, same-anchor invariance checked separately. Fixture full P2/P3/P4 regression passed.17 tools syntax-checked;79 committed game files byte-match Git blobs.
-- Final archive: ignored build/0.7.0-p7-disclosure-verified.atria,159324 bytes,SHA-256 a3035455e2985d8196f830a9f30572fe18718ef2ff26b4b6a60368b75827c04f. Data40 resources/240 assets/482200 bytes, largest78485. Not a release.
+Final ignored build: build/0.8.0-p8-verified.atria,201577 bytes,SHA-256 fed17ff769343d3f15171bc2ddab2a24ad80a19e1d881f02532817ae9007ff62. Not a release. No P9 implementation or release publication.
 
-Authoritative final logs: p7-network-disclosure, p7-disclosure-contracts, p7-live-disclosure, p7-fixture-final; P5 evidence is the completed section in p7-default-final5. Earlier interrupted/failed logs are not successful combined runs. The Record preserves the exact sequence.
+## Guardrails and limitations
 
-The long default run exposed the normal30-minute Host bridge epoch; tests now open a fresh handle for a new typed request while replay uses the original request. Core TTL was not altered. No Core changes, hosted-model, manual UI/device, OS-crash, old-version migration or cross-process uncommitted-journal evidence. Catalog targets/Anchor variants and Pattern instances are deliberately bounded.
+64 transactions,9 publication reads/15 commands,static maximum24. Evidence schema248/256,summary232/256,Graph169/256;maximum formula2000/2048. Presentation schema188/256,79 bindings;wrapped safe reads234/6/171/6. Intent compact investigation.nodes must not absorb full Graph bundles. No relaxed limits. Required capabilities,Ready,static targets,field/ref/formula/UTF-8 and expanded execution rules remain.
+
+30-day horizon,<=2880-minute advance,maxSteps3/maxDeliberations1. Deep cause remains unresolved.16 Seeds/32 archetypes is bounded supervised carrier scope, not arbitrary Claim Engineering. Hearing remains six independent dimensions. No physical device/screen-reader,hosted-model,OS-crash,old-version migration or cross-process uncommitted journal evidence. Browser later-state fixtures use official Native transactions, not every campaign action clicked. Paper/light theme is intentional, not a separate dark-theme implementation.
 
 ## Next / do not repeat
 
-P8 needs its own authorization. Fetch/status/Governance/AGENTS before edits. Keep package independent; no main merge, deletion, reference access or release overwrite. Do not redo P0–P7 or reopen G1/G2. Apply the Plan's installed-Skill routing and real UI evidence requirements. Stop at P8 before release work.
+P9 needs separate authorization. Fetch actual refs and inspect dirty/worktrees before edits. Do not redo P0–P8 or reopen G1/G2. Preserve prior evidence and existing runtime authority. P9 is integration/regression/release only, no new gameplay. Keep package/docs independent; no main merge, package deletion, reference access or release overwrite. Update the same Record. Remove the sole live HANDOFF only when the full task is actually complete under Governance.
 
-## Copyable P8 prompt
+## Copyable P9 prompt
 
 ~~~text
-接手 ZZZdragondYNGPHX/Atria 的 Package P8 — Frontend-specialized Integration。
-Task ID：package/original-occult-western-fantasy-game
+接手 ZZZdragondYNGPHX/Atria 的 Package P9 — Integration / Regression / Release。
+Task ID：package/original-occult-western-fantasy-game。
 Primary Workspace：长期独立 package；根目录 original-occult-western-fantasy-game/。
 
-只执行 P8，不进入 P9，不新增玩法、不批量创作内容。先 fetch 全部远端，核对真实 refs/worktrees/dirty；以最新 Git 为准，不回退历史 pin。
-读取 docs:README.md、适用 AGENTS.md、唯一 HANDOFF；先读 Plan index，再读 implementation-staging.md 的 P8-A/B/C/D、platform-and-gameplay.md、technical-design.md Round 9.6、同一 Package Record，以及 runtime/CONVERGENCE.md、NETWORK.md、OPENING.md。
+只执行 P9，不新增玩法、不批量创作内容。先 fetch 全部远端，核对 refs/worktrees/dirty；读取 docs:README.md、适用 AGENTS.md、唯一 HANDOFF。先读 Plan index，再读 decisions.md、technical-design.md、implementation-staging.md P9，以及同一 Package Record、runtime/FRONTEND.md、CONVERGENCE.md、NETWORK.md、OPENING.md。
 
-P7 Package/tested/pushed HEAD：436f7c9a96f4bb4344eacac03bbe124260b722e6
-验证 Core main：052c466e3c9e4b07912da0cb602b2933f4821187
-以上仅历史 pin。不重做 P0–P7，不重开 G1/G2。
-P7 验证是准确记录的分层证据：完整 P5 段在最终 routing-only 修正前通过；最终 P6/P7 专项覆盖修正后的 Sources/Graphs/HTTP/save。不要把它说成最终 combined 命令一次退出0。
+P8 Package/tested/pushed：dba2461270f4f03fd0b8d42c8cb125207e1f287a。
+验证 Core main：e8d0b983f30c22a169e8283157ccd7b4a1dd475d。
+以上仅恢复 pin，以最新真实 Git 为准，不回退。不重做 P0–P8，不重开 G1/G2。
+P8 最终 UI、独立 fixture 和默认 P5+P6+P7 组合检查均退出0；默认检查早于最后纯 UI 排版/hover 修改，最终浏览器检查和构建覆盖这些修改。精确报告/截图见同一 Record 的 p8-evidence。不要混淆历史 P7 interrupted 验证与 P8 成功组合验证。
 
-按 Plan 使用本地已安装的 Skills：P8-A frontend-design 主导视觉、ui-ux-pro-max 校验；P8-B ui-ux-pro-max 主导信息架构/组件；P8-C emil-design-eng；P8-D web-design-guidelines 最新规则审查。按阶段加载，不默认全读。先建立游戏自身的视觉方向，再实现，不做通用后台模板。
-复用 Atria Native frontend、Composer、typed bindings、Information Views/Graphs、Reflection/Claim Advisor。完整覆盖六步角色创建、调查/证据语义、Case 网络、风险、Seed/Claim/Price、机构义务、六维 Hearing、错误/加载/禁用/重试、移动/桌面、触控和 reduced motion。用实际浏览器/截图验证可视质量，不把代码检查冒充 UI 证据。
+依 Plan 完成 full campaign smoke、不同 Signature 顺序、失败/代价路线、save/restore、branch retry、provider failure、background Agenda、fast-forward、Claim Prices、Settlement、Revelation convergence、信息泄漏、数据大小、install/validate/build/preview 与适当回归。使用独立最新 main 工作树；真实 UI 证据不能由静态检查代替。普通工程问题自行解决；确认真 Core 缺口后正式修复，不做 workaround。
 
-当前64/64 transactions，9 publication reads/15 commands；最大静态组合24，实测最高15 reads/17 commands/19 effects。Evidence schema248/256、summary232/256、Graph169/256；最大公式2000/2048。新增展示或绑定前重算，不能放宽限制。
-Intent 只读 player.overview 内的紧凑 investigation.nodes；两个 Graph 用 investigation.details 取完整安全证据。不要重新把重复的完整 bundle 塞回16-KiB observation。当前 P7 矩阵峰值12632 bytes。
-保持 required authority-transaction@1、world-simulation@1、Ready、静态 targets、字段/引用/计算 schema、UTF-8 与展开工作量硬限。隐藏 Canon/动机/机构私知只能经批准安全投影；deep cause 仍未定案。
-Catalog 是16 Seeds/32 archetypes 的受限监督载体契约，不是任意目标 Claim Engineering；额外 Pattern 槽是有界的。终局六维独立，不改成完成数量或二元揭露/隐瞒。
+保持64/64 transactions、9 publication reads/15 commands、静态最大24；Evidence248/256、summary232/256、Graph169/256、公式最大2000/2048。既有实测峰值15 reads/17 commands/19 effects、observation12632 bytes。新增或调整前重新预算，不能放宽限制。Intent 保留紧凑 investigation.nodes；两个 Graph 使用完整安全 details，不能把重复 bundle 塞回16-KiB observation。隐藏 Canon/动机/机构私知只经安全投影，deep cause 仍未定案。
 
-正确处理既有30分钟 bridge epoch：新操作正常取 handle；幂等重放保留原请求身份，不用新 epoch/key 掩盖未知提交状态。区分进程内 selection pin、同 anchor RNG、提交幂等和真实 save-container 恢复；无跨进程未提交 journal 或旧版本存档迁移。
-保留默认和 --fixture 检查，升级 immutable PackageVersion/model-resource origins 与 regression version identity。第31日仍原子拒绝；<=2880分钟推进、maxSteps3/maxDeliberations1 不变。
-产品验证使用独立最新 main 工作树。不 merge main 到 package，不删除 package、不覆盖 releases、不读/更新 reference/*。普通问题自行解决，真 Core 缺口确认记录后正式修复，不做 workaround。
-完成 P8 适用验证及 commit/push，更新同一 Record/唯一 HANDOFF，提供 P9 提示词并立即停止，不发布 P9 release。
+保持 required authority-transaction@1、world-simulation@1、Ready、静态 targets、字段/引用/计算 schema、UTF-8 与展开工作硬限。第31日原子拒绝；<=2880分钟、maxSteps3/maxDeliberations1 不变。16 Seeds/32 archetypes 是受限监督载体契约，额外 Pattern 槽有界；终局六维独立。
+
+30分钟 bridge epoch 按正常生命周期取新操作 handle；未知提交的幂等重放保持原身份，不用新 epoch/key 掩盖。区分进程内 selection pin、同 anchor RNG、提交幂等与实际 save-container 恢复；不宣称跨进程未提交 journal 或旧版本迁移。保留默认和 --fixture 检查；正式 release 更新 immutable PackageVersion/model-resource origins 及必要 regression identity。
+
+最终 .atria 放入 original-occult-western-fantasy-game/releases/，历史 releases 保留且不覆盖。不要把 ignored P8 build 直接冒称最终 release。按 Plan 完成版本、构建、验证、commit/push 与必要 CI，更新同一 Record；全任务完成才按 Governance 关闭唯一 HANDOFF。保持 package 长期独立，不 merge main、不删除 package、不读/更新 reference/*。不提交 secrets、用户数据、机器路径、缓存或无关生成产物；正式 .atria release 依 Package 发布规则保留。
 ~~~

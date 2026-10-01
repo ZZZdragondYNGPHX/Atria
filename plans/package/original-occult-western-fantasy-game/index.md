@@ -2,8 +2,8 @@
 
 - **Task ID:** `package/original-occult-western-fantasy-game`
 - **Primary Workspace (implementation):** `package`
-- **Current stage:** Package P7 complete; P8 awaiting separate authorization
-- **Status:** Approved Implementation Baseline v1.0 — P0–P5 complete; P6 complete; P7 complete; P8/P9 not started
+- **Current stage:** Package P8 complete; P9 awaiting separate authorization
+- **Status:** Approved Implementation Baseline v1.0 — P0–P5 complete; P6 complete; P7 complete; P8 complete; P9 not started
 - **Plan entrypoint:** `docs:plans/package/original-occult-western-fantasy-game/index.md`
 
 ## Goal
@@ -257,7 +257,7 @@ Pre-production design Rounds 1–10 are complete and frozen for implementation.
 Implementation authorization is staged:
 
 1. P0 `feat/authority-transaction` is complete; `docs:records/feat/authority-transaction.md` records the verified main baseline.
-2. The P0 prerequisite gate is cleared and Package P1 is complete. Package P2–P9 retain their individual stage authorizations; P2 is complete and stopped at its stage boundary; P3 is complete; G2 Core support is integrated and recorded. P5 is complete; P6 is complete; P7 is complete; P8/P9 have not started. G1 remains resolved by the user-authorized Fortune-use clarification in gameplay.md 6.28.2 and technical-design.md 6.48.5. See the Package Record and sole live HANDOFF for evidence.
+2. The P0 prerequisite gate is cleared and Package P1 is complete. Package P2–P9 retain their individual stage authorizations; P2 is complete and stopped at its stage boundary; P3 is complete; G2 Core support is integrated and recorded. P5 is complete; P6 is complete; P7 is complete; P8 is complete; P9 has not started. G1 remains resolved by the user-authorized Fortune-use clarification in gameplay.md 6.28.2 and technical-design.md 6.48.5. See the Package Record and sole live HANDOFF for evidence.
 3. After P0, Package work proceeds in the independent long-lived `package` workspace under `original-occult-western-fantasy-game/`.
 4. Material contradictions discovered during implementation reopen only the authoritative Plan module they affect; ordinary implementation details do not reopen design.
 

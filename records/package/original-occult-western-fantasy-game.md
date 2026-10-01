@@ -460,3 +460,50 @@ P7 is complete at its authorized boundary. Public information now distinguishes 
 The ten Pattern families use bounded independent slots, not unbounded generation or invented compensation payments. Catalog coverage is the declared supervised-carrier runtime with civic/church Prices, not every possible Anchor/tradition variant, arbitrary-target effects or free-form Claim engineering. Publication/administrative lock-in represents the press pressure, not autonomous simulation of every citizen's beliefs. Deep Eastbank origin remains unresolved. No old pinned-save migration.
 
 P8 must read runtime/CONVERGENCE.md first, preserve these functional boundaries, re-budget before changing any projection or action, and use the staged frontend Skill routing. The unchanged30-minute bridge epoch requires normal client handle lifecycle; do not renew a request's identity to hide an uncertain commit. The sole HANDOFF contains the complete P8 prompt. Package remains long-lived and unmerged.
+
+## P8 — Frontend-specialized Integration (2026-10-01)
+
+### In-progress Core gap confirmation
+
+P8-A established the reviewed Package-local register direction in frontend/DESIGN.md. P8-B compilation on main 052c466e exposed an actual Native frontend defect: graph validation treats option bind:value as a writable form model, so dynamic options cannot retain stable typed IDs distinct from display labels. The renderer also synchronizes select values before updating option children. A formal narrow fix is in fix/native-option-bindings; no Package label-to-ID workaround, new authority or raised bound is used. Completion/validation pins will be appended after verification.
+
+### P8-B performance gap confirmation
+
+PR #100 merged as main 30b980567492da1949253033f65df9c880279706; Native v3, Authority, Model Prompt and PR checks passed (public GitHub run pages). Integrated-main option tests:4 passed. During actual Package UI testing, repeated PackageInstaller.open measured 6817/7029/6790 ms after a14854 ms install. Root cause: compileBridge invokes the lazy full transaction compiler once per binding. Formal fix/frontend-transaction-resolution resolves it once per compilation only; no cross-call Session cache, validation bypass or limit increase. Initial UI runs timed out/interrupted and are not success evidence.
+
+
+### P8 completed — resumed implementation and final audit
+
+- Start Package HEAD:436f7c9a96f4bb4344eacac03bbe124260b722e6.
+- End/tested/pushed Package HEAD:**dba2461270f4f03fd0b8d42c8cb125207e1f287a**.
+- Independent validation Core main:**e8d0b983f30c22a169e8283157ccd7b4a1dd475d**; clean detached validation worktree, matching origin/main.
+- Version:0.8.0-p8 / pkgv_093513fa7c83ab2dc7abc4dd7fabf5d5. Model-resource origins and the independent regression version identity were updated together.
+- Status:**P8 complete; stop before P9. No release published.**
+
+#### Implementation and Core prerequisites
+
+P8-A/B established the game-specific marine-cover/paper field register and compiled Native v3 components. Four sections expose Field notes/Composer, six-step ordinary identity, acquired Evidence with provenance/relations and separate Testimony/Finding/Hypothesis, known Cases, independent six-dimensional Hearing, Identity/Seed/Claim/Anchor/Price and obligations. The existing 64 typed declarations generate fields and bounded catalog vocabulary. Four closed safe projections and existing Host/Model services are reused; no parallel authority, hidden-state access, new gameplay or authored-content expansion.
+
+P8-C ties consent to the current field signature, retains process-local drafts, blocks writes during unknown typed submission, and replays the original request identity. Motion is limited to short press/hover feedback and respects reduced motion. P8-D used the current Vercel Web Interface Guidelines fetched on 2026-10-01, installed ui-ux-pro-max checks and actual screenshots. Visual inspection caught mobile brand concatenation, 200%-text navigation overlap and a light generic hover on the marine navigation; all corrected and covered by final browser checks. The intended paper/light theme remains explicit under dark OS preference. URL routing/beforeunload and process-persistent drafts were not added to the sandbox.
+
+Both formal Core fixes from the interrupted work are now in main:PR #100 dynamic option identity/select synchronization (merge30b980567492da1949253033f65df9c880279706), and PR #101 compile-once frontend transaction resolution (mergee8d0b983f30c22a169e8283157ccd7b4a1dd475d). The resumed run verified actual package behavior against the latter; it did not rerun or claim new Core CI. No workaround or Core budget relaxation is used.
+
+#### Executed verification and durable evidence
+
+1. **Final Native browser integration:PASS, exit0**, `build/p8-verified-ui2.log/.err`; durable [report](original-occult-western-fantasy-game/p8-evidence/frontend-report.json). Actual Edge Chromium headless, six UI typed creation steps, local HTTP provider failure with zero publication and byte-equivalent original-request retry, acquired record/graph inspection and search, six independent compact terms, visible SavePoint, Reflection/Advisor operations,48 bounded catalog choices, consent/no mutation on selection,375/390/768/1440 widths,812x375 landscape,200% root text, keyboard activation, reduced motion, dark OS light-surface behavior and stable hover color. Actual exported save imported into fresh FS retains immutable version and Claim/Hearing next-day continuation. Both Graphs/overview privacy and atomic day31 rejection pass.10 provider requests; measured13 reads/14 commands/16 effects; observation10463 bytes.
+2. **Default complete P5+P6+P7 regression:PASS, exit0**, `build/p8-resumed-default.log/.err`; durable [report](original-occult-western-fantasy-game/p8-evidence/default-report.json). This is a successful combined run, unlike the historical P7 interrupted final5. Includes full opening checks,156 Network preparations/58 Native commits/2 typed calls,294 Convergence preparations/25 Native commits/1 typed call, route/disposition/Pattern/16-Seed/32-archetype/Price/Hearing alternatives, actual save containers and provider retry.59 outer provider requests; maximum15 reads/17 commands/19 effects; observation12632 bytes. This started before the final presentation-only brand/navigation/hover edits; authority/contracts/model resources were unchanged. The final browser suite and build cover those subsequent UI edits, so this is layered final evidence rather than a claim that the default command used the last CSS bytes.
+3. **Independent --fixture regression:PASS, exit0**, `build/p8-resumed-fixture.log/.err`; durable [report](original-occult-western-fantasy-game/p8-evidence/fixture-report.json). Existing P2/P3/P4 formula, authority, Tasks, simulated days1–30, save/container, failure/retry and content-negative evidence retained under the updated separate version. Later UI-only edits do not enter this profile.
+4. **Presentation model check:PASS**, `node tools/frontend-model-check.mjs`: unacquired/hidden endpoint exclusion, six independent terms, semantic separation, provenance/long text, empty search and original-request controller options. All24 tool/frontend JS/MJS files syntax-checked successfully. Staged whitespace check passed. Runtime source matches committed blobs; the documentation-only FRONTEND.md CRLF normalization was reconciled to its Git blob after commit.
+5. **Final build:PASS**, `build/0.8.0-p8-verified.atria`,201577 bytes,SHA-256 `fed17ff769343d3f15171bc2ddab2a24ad80a19e1d881f02532817ae9007ff62`. Ignored build output, not a release; no releases directory entry overwritten. Final UI install/Ready used the same production source. Package push and ls-remote confirm the end HEAD.
+
+Earlier browser runs are intermediate evidence only. `p8-verified-ui` failed solely because its new hover-color assertion sampled an in-flight120ms transition (rgba alpha0.953); the final test waits for native animations to finish and passes without weakening the target-color assertion.
+
+Screenshots retained under [p8-evidence](original-occult-western-fantasy-game/p8-evidence/):desktop creation/evidence,desktop Cases,mobile Identity,375px Evidence,landscape Evidence and200%-text Evidence. The resumed review visually inspected desktop and mobile Evidence,Cases,landscape and enlarged text; automated checks additionally cover all four pages at the declared widths. Screenshots are real browser output, not mockups.
+
+#### Budgets, limits and next checkpoint
+
+Authority remains64/64 transactions,9 publication reads/15 commands,maximum declared combination24;Evidence248/256,summary232/256,Graph169/256;unchanged maximum formula2000/2048. Added presentation schema188/256,79 bindings and wrapped projection schemas234/6/171/6. Intent still uses compact nodes; Graphs retain full safe detail. No limit raised, no new gameplay, no hidden cause conclusion.30-day horizon,<=2880-minute advance,maxSteps3/maxDeliberations1,required capabilities and Ready preserved.
+
+No physical touch/Android/Termux,screen-reader device,hosted-model,OS-crash,old-version migration or cross-process uncommitted journal evidence. Later-state browser fixtures use official Native transactions explicitly, not a claim that every campaign action was clicked. Composer uses the existing Host service; no additional live hosted-model Composer claim. The catalog is bounded supervised-carrier scope, not arbitrary Claim engineering. Current source/runtime instructions are in runtime/FRONTEND.md plus CONVERGENCE.md; older runtime documents retain historical boundaries.
+
+Next is separately authorized **P9 Integration / Regression / Release**. Read Plan index, decisions, technical-design and implementation-staging P9; preserve this same Record and sole HANDOFF. Package remains independent and unmerged; P9 must not add new gameplay or overwrite historical releases.

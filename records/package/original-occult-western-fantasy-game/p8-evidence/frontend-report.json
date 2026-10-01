@@ -1,0 +1,60 @@
+{
+  "coreHead": "e8d0b983f30c22a169e8283157ccd7b4a1dd475d",
+  "phase": "P8",
+  "budgets": {
+    "transactions": 64,
+    "publicationReads": 9,
+    "publicationCommands": 15,
+    "evidenceSchema": 248,
+    "summarySchema": 232,
+    "graphSchema": 169
+  },
+  "requests": 10,
+  "maximumObservationBytes": 10463,
+  "browser": "Edge Chromium headless",
+  "screenshots": [
+    "desktop-creation.png",
+    "desktop-created.png",
+    "desktop-evidence.png",
+    "desktop-cases.png",
+    "desktop-identity.png",
+    "desktop-catalog.png",
+    "notes-375.png",
+    "evidence-375.png",
+    "cases-375.png",
+    "identity-375.png",
+    "notes-390.png",
+    "evidence-390.png",
+    "cases-390.png",
+    "identity-390.png",
+    "notes-768.png",
+    "evidence-768.png",
+    "cases-768.png",
+    "identity-768.png",
+    "notes-1440.png",
+    "evidence-1440.png",
+    "cases-1440.png",
+    "identity-1440.png",
+    "evidence-landscape.png",
+    "evidence-375-large-text.png"
+  ],
+  "checks": [
+    "six native typed creation steps; distinct option IDs",
+    "actual typed provider failure publishes zero; retry retains epoch/revision/key/input",
+    "acquired evidence, provenance, graph selection, semantic categories, empty search",
+    "Native SavePoint through visible UI; acquired six-dimensional compact and Claim Price",
+    "Reflection and Claim Advisor complete through native operation bindings",
+    "bounded 16/32 catalog; consent off; no action on selection",
+    "375px small phone, 812x375 landscape, 200% root text sizing without horizontal overflow",
+    "intentional paper/light surface retains explicit color scheme under dark OS preference",
+    "390/768/1440 layouts, overflow, keyboard activation, reduced motion",
+    "actual exported save container into fresh FS; same immutable version and next-day Claim/Hearing continuation",
+    "both declared Graphs and overview privacy",
+    "day31 request rejects without mutating the candidate"
+  ],
+  "maximumWork": {
+    "readGrants": 13,
+    "appCommands": 14,
+    "effects": 16
+  }
+}
