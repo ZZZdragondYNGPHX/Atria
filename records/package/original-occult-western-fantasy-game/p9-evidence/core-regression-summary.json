@@ -1,0 +1,18 @@
+{
+  "coreHead": "e8d0b983f30c22a169e8283157ccd7b4a1dd475d",
+  "exitCode": 1,
+  "suites": 5,
+  "testsPassed": 116,
+  "testsFailed": 84,
+  "connectionRefusals": 84,
+  "passedSuites": [
+    "native/frontend-conversation.test.js",
+    "native/authority-frontend-c3.test.js"
+  ],
+  "mixedBackendSuites": [
+    "native/background-task-app-bridge-g2.test.js",
+    "native/authority-integration-c4.test.js",
+    "native/authority-turn-c3.test.js"
+  ],
+  "limitation": "All 84 failures are unavailable local MySQL/PostgreSQL services (ECONNREFUSED); FS/SQLite cases and the two frontend suites passed. This is not an all-backend pass. No Core change or new remote CI is claimed."
+}

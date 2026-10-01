@@ -1,0 +1,25 @@
+{
+  "coreHead": "e8d0b983f30c22a169e8283157ccd7b4a1dd475d",
+  "phase": "P9",
+  "nativeCommits": 57,
+  "order": [
+    "headline",
+    "property",
+    "company",
+    "burial",
+    "accident",
+    "railway"
+  ],
+  "maximumObservationBytes": 13492,
+  "maximumWork": {
+    "readGrants": 15,
+    "appCommands": 17,
+    "effects": 19
+  },
+  "checks": [
+    "One continuous committed campaign: creation, Breach, Claim, opening Settlement, all six interleaved Signatures and six-dimensional Hearing",
+    "Actual Retry Reply restores pre-effect authority; alternate execution leaves original committed branch unchanged",
+    "Actual same-version save-container export/import into fresh FS, bounded fast-forward to day30, persistent Claim and Hearing, atomic day31 rejection",
+    "Player observation and both full-detail Graphs checked after each committed action"
+  ]
+}

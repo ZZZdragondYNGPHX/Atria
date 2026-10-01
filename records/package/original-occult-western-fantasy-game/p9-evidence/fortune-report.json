@@ -1,0 +1,17 @@
+{
+  "coreHead": "e8d0b983f30c22a169e8283157ccd7b4a1dd475d",
+  "phase": "P7",
+  "prepared": 17,
+  "nativeCommits": 0,
+  "typed": 0,
+  "checks": [
+    "Actual bounded trial reaches both Automatic and Costly outcomes across distinct ordinals; both retain observation, Costly adds reporting duty"
+  ],
+  "maximumWork": {
+    "readGrants": 13,
+    "appCommands": 11,
+    "effects": 13
+  },
+  "maximumObservationBytes": 10238,
+  "requests": 0
+}

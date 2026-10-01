@@ -1,0 +1,80 @@
+{
+  "coreHead": "e8d0b983f30c22a169e8283157ccd7b4a1dd475d",
+  "phase": "P7",
+  "network": {
+    "phase": "P6",
+    "orders": [
+      "property>burial>railway",
+      "property>railway>burial",
+      "burial>property>railway",
+      "burial>railway>property",
+      "railway>property>burial",
+      "railway>burial>property"
+    ],
+    "prepared": 156,
+    "nativeCommits": 58,
+    "typed": 2,
+    "checks": [
+      "six order permutations through actual Native preparation",
+      "same-side/testimony rejection and both route pairs",
+      "all twelve dispositions and persistent multi-party consequences",
+      "shared graph merge/split without Evidence copies",
+      "early hazard, escort, injury care and late closure continuity",
+      "six reusable pattern instances with isolated source roles",
+      "Native Turn commits plus two typed HTTP merges and free-text one-CAS/retry semantics",
+      "actual save-container import and next-day continuation",
+      "no completion-count or deliberate/deep revelation",
+      "privacy and malformed-input rejection"
+    ],
+    "maximumPreparedWork": {
+      "readGrants": 15,
+      "appCommands": 17,
+      "effects": 19
+    }
+  },
+  "convergence": {
+    "phase": "P7",
+    "prepared": 294,
+    "nativeCommits": 25,
+    "typed": 1,
+    "checks": [
+      "Three Network B orders; same-side duplicates reject; convergence with all three P6 Signatures missed and no B dispositions",
+      "Twelve qualified B dispositions; denied unprepared inert trial; same-anchor bounded trial",
+      "All eighteen dimension alternatives preserve the other five terms independently; residual inquiry remains non-final",
+      "Ten independent Pattern families and fulfilment; all sixteen Seeds and thirty-two archetypes pass canonical consultation/Investiture; all eight primitives exercise paid-before-use invocation and renewed Price",
+      "Day10/12/14 pressure, day18 standardization and day24 lock survive non-discovery; atomic day31 refusal",
+      "Actual manual save export/import into a fresh FS preserves final six-dimensional terms and acquired carriers",
+      "Native Turn commits; typed HTTP and free-text failure-zero-publication/retry"
+    ],
+    "maximumWork": {
+      "readGrants": 15,
+      "appCommands": 16,
+      "effects": 18
+    },
+    "maximumObservationBytes": 12632
+  },
+  "openingChecks": [
+    "FS installation and Ready",
+    "six-step character creation and living Anchor",
+    "independent records → Breach → postpone → earned formal Claim",
+    "typed actions through local HTTP Narrator / one CAS",
+    "safe projections and both non-empty acquired-evidence Graphs",
+    "alternative insurer/police route, wrong theory and denial continuity",
+    "both supported Seeds and civic/church stabilization, early grant rejection",
+    "all five dispositions and reopen",
+    "actual save-container import and continuation",
+    "day 30 / atomic day-31 boundary",
+    "free-text provider failure/retry and committed typed replay",
+    "malformed Case/Seed and input negative checks"
+  ],
+  "publication": {
+    "reads": 9,
+    "commands": 15
+  },
+  "requests": 59,
+  "maximumWork": {
+    "readGrants": 15,
+    "appCommands": 17,
+    "effects": 19
+  }
+}
