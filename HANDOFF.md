@@ -1,51 +1,53 @@
-# Live HANDOFF — Occult Package
+# Live HANDOFF — Package P6 complete / P7 next
 
 - Task ID: package/original-occult-western-fantasy-game
-- Primary Workspace: package (long-lived, independent)
-- Phase: **P5 complete / P6 next; P6/P8 not started**
-- Package implementation/tested/pushed HEAD: **a30b0079c1163628e8a469016035fadd2f1dfd58**
-- Tree: 1f1b870c9fba510d96cb188e58177316bcdd68b7
-- Version: 0.5.0-p5 / pkgv_87771c9db42516502b09e82d0fa28915
-- Core main/independent validation HEAD: **052c466e3c9e4b07912da0cb602b2933f4821187**
+- Primary Workspace: long-lived independent package
+- Package root: original-occult-western-fantasy-game/
+- Stage: **P6 complete; stop before P7/P8**
+- Package implementation/tested/pushed HEAD: **b18f6649d87c6a5fa3533740c9f535520a43c6bb**
+- Core main / validation HEAD: **052c466e3c9e4b07912da0cb602b2933f4821187**
 - Plan entrypoint: plans/package/original-occult-western-fantasy-game/index.md
-- P6 modules: content-architecture.md, implementation-staging.md; geography/institutions/religion/society/metaphysics and technical-design/simulation only as required by actual assets/contracts
+- P7 modules: content-architecture.md, implementation-staging.md, relevant technical-design.md revelation/authority rules; world modules only for actual dependencies
 - Sole Record: records/package/original-occult-western-fantasy-game.md
 
 ## Start / do not repeat
 
-Fetch all remotes and inspect actual refs/worktrees/dirty state. Read Governance and applicable AGENTS, then index -> current-stage modules -> same Record and Package runtime/OPENING.md. Historical pins are evidence, never rollback targets. P0–P5 and G1/G2 are complete. No reference reads, main merge, package deletion, release overwrite or automatic P8 work.
+Fetch all remotes; inspect actual refs/worktrees/dirty. Read Governance and applicable AGENTS, then index -> current modules -> same Record and Package runtime/NETWORK.md, OPENING.md. Historical pins are evidence, not rollback targets. P0–P6 and G1/G2 are complete. No reference reads/updates, main merge, package deletion or release overwrite. Product validation belongs in an independent latest-main tree.
 
 ## Current Package
 
-Default build is the Second Death opening. Existing P2/P3 JSON/frontend assets are a separately identified --fixture regression archive, not the player campaign. Both validation profiles are mandatory. Build-time composition emits normal Core declarations; no shipped alternate authority or scheduler.
+Default0.6.0-p6 includes the retained six-step Second Death opening plus Dual Address Property, Impossible Burial and Dead Railway. Their independent record/physical/community routes,12 dispositions, persistent multi-party arrangements, repeatable Injury/care semantics, executable property-to-rail referral, Case association merge/split/reopen and late-discovery continuity are implemented. Initial Institutional Case Patterns comprise3 families x2 static independent slots, with claimant/response records and remedy/review duties.
 
-Six-step creation, living Anchor, two independent source-pair routes, distinct testimony/hypothesis/Finding, persistent deceased/family Entities, acquired-evidence Graphs, one-time Breach/Imprints, two legal Seeds/postpone, earned civic/church Claim and Price, five dispositions and reopening are implemented. Wrong theories and denied access do not invent Evidence. Other catalog Claims and city definitions are not automatically instantiated or executable. Deep Eastbank remains unresolved.
+Physical packing uses existing evidence/world_matters/settlements/institutional_records/relations/conditions/beliefs/player authorities. Public graph nodes contain acquired bundles with stable Evidence IDs, not a second authority. Sparse optional network detail avoids empty opening-node context inflation. Source projections never read private Case truth or institution/actor motives. Knowledge remains installed but unbound. P6 supports incomplete-account, present-rights, active-contradiction and organized-movement contributions; no completion count or P7 convergence. Deliberate stabilization remains unproven; deep cause unresolved.
 
-Opening obligations use a 30-day bounded rent/Anchor profile, not a full autonomous city or the synthetic clinic/hearing. Single advance <=2880 minutes, maxSteps=3/maxDeliberations=1. Day31 rejects atomically. Current/old source Imprints describe completed acquisitions; future destruction/invalidation must revalidate eligibility. Old pinned-save migration is absent.
+Core refreshes all publications. Current static budget: **9 publication reads /15 App Commands /58 transactions**. Background choice reserves23 commands; mandate-open reserves24. Final live maxima15 reads/17 commands/19 effects. All source fields, scalar reference closure, computed destination schemas, UTF-8 and expanded budgets remain enforced. Do not expand by changing caps or pretending per-transaction publication subsets are selective.
 
-## Verified evidence / limits
+Existing calendar handles day4/5/6 pressures and day30 rent/Anchor bounds; no new polling/model scheduler. Early protection prevents future pressure, late intervention cannot erase elapsed events. Single advance<=2880 minutes, maxSteps=3/maxDeliberations=1; day31 rejects atomically. Pattern fulfilment/payment, arbitrary unbounded instances, new Claim catalog mechanics, P7/P8 and old pinned-save migration remain absent.
 
-Full P5 matrix passed with 50 local HTTP requests, two routes and both Seeds/traditions, five dispositions, non-empty Graphs, privacy/negative checks, one-CAS typed replay and free-text failure/retry, actual exported/imported save continuation and day30/day31 boundaries. Full retained P2/P3/P4 regression also passed. Final isolated Condition-clear fix was validated afterward with focused actual Native civic/church preparation and rebuilt; the full HTTP matrix was not repeated after that assignment. Exact execution sequence is in the Record.
+## Verified evidence / limitations
 
-Publication: **10 reads/16 declared App Commands**; eight-choice background plus publication reserves **24** commands. Actual two-day advance uses **16 reads**. No hard cap raised. Full pre-final-assignment run measured maximum 16/15/18 reads/commands/effects; focused final assignment check measured 13/12/14 with unacquired-node setup. Data: 31 resources/223 assets/399,213 bytes, largest73,685. Latest ignored build is 90,105 bytes, SHA-256 4ec68888e1a90d50ef6b2d42906147671082d0a93ce6626cfca674df284f638c; not a release. Core remained clean; Package push confirmed.
+Full retained P5 matrix passed50 local HTTP requests. This began on the initial compacted layout before final P6-only audit deltas; it was **not** repeated afterward as one combined default run. Final P6 integration passed136 Native preparations,58 P6 Native Turn commits,2 typed HTTP merges and5 HTTP requests including failure/retry. Actual save export/import to fresh FS and next-day continuation preserved Case arrangements, Injury and duties. A final156-preparation matrix separately passed six orders, routes/dispositions/merge-split, exact deadlines and rich-state day31; final civic/church Claim preparation and final --fixture regression also passed. The Record details the exact layered sequence and excludes interrupted probes.
 
-No hosted-model, manual UI/device, new Core CI or uncommitted cross-process journal evidence. Minimal frontend is a Native contract entry, not P8 UX. Selection pin, RNG anchoring, committed replay and save-container restoration are distinct.
+Final build:119877 bytes, SHA-25663cb3b23effde9dd399633ec380406fb640a260122ac876941db574c3bdd71cc, ignored build/0.6.0-p6-verified.atria. Data35 resources/229 assets/430883 bytes; largest73685. No release overwrite. No new Core CI, hosted model, manual UI/device, OS-crash or uncommitted cross-process recovery evidence. Selection pin, RNG anchoring, committed replay and real save containers are distinct.
 
 ## Next objective
 
-Only after authorization: P6 Dual Address Property, Impossible Burial, Dead Railway and initial reusable Institutional Case Patterns. Exercise multiple routes/dispositions, enduring consequences, order flexibility, Case merge/reopen and correct Revelation contributions. Add actual bounded institution content rather than claiming that definitions already simulate a city. Stop after P6 and hand off P7.
+Only after authorization: Self-Signing Company, Claims Before the Accident, Tomorrow's Headline, Eastbank Hearing; complete launch-target Patterns/Claims/Anomalies and Reality Consolidation pressure. Evidence-based, optionally incomplete Signature coverage must support multidimensional convergence. Re-budget the58/64 declaration inventory and saturated command combinations first. Stop after P7 and hand off P8.
 
-## Copyable P6 prompt
+## Copyable P7 prompt
 
 ~~~text
-接手 ZZZdragondYNGPHX/Atria 的 Package P6 — Signature Network A。
+接手 ZZZdragondYNGPHX/Atria 的 Package P7 — Signature Network B + Eastbank Convergence。
 Task ID：package/original-occult-western-fantasy-game
 Primary Workspace：长期独立 package；根目录 original-occult-western-fantasy-game/。
-只执行 P6，不进入 P7/P8，不批量创作完整游戏。先 fetch 全部远端并核对真实 refs/worktrees/dirty；以最新 Git 为准。读取 docs:README.md、适用 AGENTS.md、唯一 HANDOFF；先读 Plan index，再读 content-architecture.md、implementation-staging.md、同一 Package Record 和 runtime/OPENING.md；其它世界/技术模块仅按当前资产依赖加载。
-P5 Package/tested/pushed HEAD：a30b0079c1163628e8a469016035fadd2f1dfd58
-验证 Core main：052c466e3c9e4b07912da0cb602b2933f4821187。以上仅历史 pin，不回退，不重做 P0–P5，不重开 G1/G2。
-实现 Dual Address Property、Impossible Burial、Dead Railway 与初批 Institutional Case Patterns：多路径、不同处置、持久后果、顺序灵活性及正确 Eastbank Revelation Predicate 贡献。
-默认 profile 已是 Second Death 开局；--fixture 是独立身份的 P2/P3 回归。两组验证都保留。P5 支持两个 Seed/civic 与 church 稳定化；其余仍是目录定义。世界仅有界到30日；第31日原子拒绝。publication 为10 reads/16 declared App Commands；背景选择静态组合已达24-command上限，两日推进达到16-read上限。新增状态前重新核算，不放宽硬限或建立平行 authority。
-保留 required authority-transaction@1、world-simulation@1、Ready、静态 targets、字段/引用/计算 schema、UTF-8 与展开工作量限制。隐藏 Canon、动机和机构私有知识只经批准安全投影；deep Eastbank 原因仍未定案。区分 selection pin、同 anchor RNG、提交幂等和真实 save-container 恢复；旧版本存档迁移未实现。
-使用独立最新 main 工作树验证，不 merge main 到 package，不删除 package、不覆盖 releases、不读取 reference/*。普通问题自行解决；真实 Core 缺口先确认记录后正式修复，不做 workaround。完成适用验证及 commit/push，更新同一 Record 和唯一 HANDOFF，提供 P7 提示词并立即停止。
+只执行 P7，不进入 P8/P9。先 fetch 全部远端并核对真实 refs、worktrees 和 dirty；以最新 Git 为准。
+读取 docs:README.md、适用 AGENTS.md、唯一 HANDOFF；先读 Plan index，再读 content-architecture.md、implementation-staging.md、同一 Package Record，以及 runtime/NETWORK.md、OPENING.md。补读 technical-design.md 的 revelation/authority 契约和实际资产依赖的世界模块，不默认扫描整个 Bundle。
+P6 Package/tested/pushed HEAD：b18f6649d87c6a5fa3533740c9f535520a43c6bb
+验证 Core main：052c466e3c9e4b07912da0cb602b2933f4821187。以上仅历史 pin，不回退，不重做 P0–P6，不重开 G1/G2。
+实现 Self-Signing Company、Claims Before the Accident、Tomorrow's Headline、Eastbank Hearing；完成批准的 launch-target Case Patterns/Claim/Anomaly coverage、Reality Consolidation 压力和跨来源 Revelation Predicates。允许遗漏部分 Signature 内容仍达到汇合；最终处置独立表达历史真相、当前稳定、正义、政治权力、宗教权威和机构责任，不用完成数量或二元揭露/隐瞒代替。
+P6 的 incomplete/rights_depend/active_contradiction/organized_movement 只是已获取证据贡献；deliberate stabilization 尚未证实，deep cause 未定案。三种 Pattern 各有两个静态实例槽，已支持 remedy/review 义务，履行/付款与任意无界生成尚未实现。
+保留默认开局+Network 与 --fixture 验证。Core 全量刷新所有 publications：当前9 reads/15 declared App Commands，58/64 transactions；mandate-open 静态组合已达24-command上限，实际两日推进15 reads。新增状态或动作前重新核算全部展开预算和 context/UTF-8 字节，不放宽上限。第31日仍原子拒绝；无旧 pinned-save migration。
+保留 required authority-transaction@1、world-simulation@1、Ready、静态 targets、字段/引用/计算值 schema。复用现有 authority；隐藏 Canon/角色动机/机构知识只经安全投影，不建立 Outcome/Resolution shadow domain。区分进程内 selection pin、同 anchor RNG、提交幂等和真实 save-container 恢复，不假设跨进程未提交 journal。
+使用独立最新 main 验证；不 merge main 到 package，不删除 package，不覆盖 releases，不读取或更新 reference/*。普通问题自行解决，真正 Core 缺口确认记录后正式修复，不做 workaround。
+完成 P7 适用验证及 commit/push，更新同一 Record 和唯一 HANDOFF，提供 P8 接手提示词后立即停止。
 ~~~

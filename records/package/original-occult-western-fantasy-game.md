@@ -362,3 +362,47 @@ No new Core CI, hosted-model, manual UI/device, OS-crash or cross-process uncomm
 ### P6 checkpoint
 
 P5 is complete and stopped. Next separately authorized stage: Dual Address Property, Impossible Burial, Dead Railway and initial reusable Institutional Case Patterns. Read index -> content-architecture.md + implementation-staging.md and only corresponding world modules; runtime/OPENING.md and this Record are the current recovery entry. Re-budget both profiles before adding live authority, preserve the complete P2/P3 regressions and P5 opening gates, and extend authored institution scheduling rather than inferring a full autonomous city. Do not start P7/P8, bulk-produce the campaign, reopen G1/G2 or merge/delete package.
+
+## P6 — Signature Network A (2026-10-01)
+
+Status: **P6 complete; stopped before P7/P8.** Start Package HEAD a30b0079c1163628e8a469016035fadd2f1dfd58; fetched main 052c466e3c9e4b07912da0cb602b2933f4821187 and docs 5787bff7263357abacdef655c4e07b206eba8a39. Long-lived workspaces and the independent validation checkout were clean; unrelated untracked content in an old detached chat checkout is untouched. The sole HANDOFF belongs to this task. P6 only; P0–P5 and G1/G2 remain closed.
+
+Budget inspection confirmed that Core refreshes all derived publications together, not transaction-selected subsets. P6 therefore compacts bounded physical evidence storage and publication commands while retaining independent evidence IDs/provenance, existing authorities and both test profiles. It must not merely add per-case hooks to the saturated P5 publication. No runtime workaround or Core limit change is planned.
+
+### P6 implementation and budget audit
+
+Three modular Signature Case Kits and three reusable professional Pattern families are implemented on existing Lifecycle domains. Civil/estate/rail property records, sacred/community versus civil burial identity, and dangerous physical railway Echo have independent evidence-role paths. The twelve qualified dispositions persist in settlements, institutional_records and relations. Property shared use grants an executable expedited rail-dispatch referral, not hazard immunity. Six bounded Pattern instances require their own claimant/response records and leave family-specific remedy or review obligations. No arbitrary world-law generation or full-city simulation is claimed.
+
+Core refreshes publications globally. Bounded physical packing reduces the current default to **9 publication reads /15 declared App Commands**, while keeping independent logical Evidence IDs. There are **58 transactions**; the largest background declaration reserves23 commands and mandate-open reserves24. Existing calendar processing handles day4/5/6 pressures without additional scheduler jobs. Early arrangements can prevent an event, but late intervention cannot clear its historical occurrence. New unsafe railway entry creates Injury and clears the earlier-care flag; treatment does not erase Injury. Sparse optional graph detail avoids filling ordinary opening nodes with empty network payload. All source fields, computed scalar references, UTF-8 and expanded budgets remain Core-validated; no cap was relaxed.
+
+P6 Revelation fields are acquired cross-source contributions (incomplete account, present rights, active contradiction, organized movement), never completion counts. Deliberate stabilization is not established and deep cause remains unresolved. Source text is independently authored weaker disclosure; neither private Canon nor actor/institution perspectives is placed in model context.
+
+### P6 validation checkpoint (historical; closure below)
+
+- Actual final Native preparation matrix: **156 preparations PASS**, six Case orders, route alternatives/same-side rejection, twelve dispositions, reopen and graph merge/split; exact day4/5/6 boundaries and rich-state day31 rejection. Max measured15 reads/13 App Commands/15 effects in this focused setup. This is preparation evidence, not HTTP or persisted-save evidence.
+- Final default civic/church focused Claim preparation: PASS; conditions cleared and source snapshot unchanged.
+- Seven new content negatives, 35 resources/229 assets,430883 bytes, largest73685 bytes: PASS.
+- Fifteen tool syntax checks and package/docs whitespace checks: PASS.
+- Default P5 HTTP matrix and final P6 Native/HTTP/save integration still running at this checkpoint; their outcomes are not yet claimed.
+
+- P5 default opening matrix completed: **PASS,50 actual local HTTP requests**, including both source routes/Seeds/traditions, all five dispositions, real save/import continuation, committed replay, failed Narrator zero publication/retry and day30/day31. Its first compacted P6 build measured15 reads/14 commands/16 effects. This run began before the final P6-only pattern duty/referral/reinjury/conditional-notice/sparse-node audit deltas; it is not represented as a full HTTP rerun after them. The final-state156-preparation matrix and final civic/church focused check above were run afterward; the final P6 live run covers those new paths.
+- Final retained --fixture regression completed: **PASS** on the final content set and independently identified regression archive. P2 formula/preparation/typed/HTTP retry, P3 scheduling/background/save/day31 and P4 content negatives remain enabled.
+
+### P6 closure pins and final integration
+
+- Package implementation/tested/pushed HEAD: **b18f6649d87c6a5fa3533740c9f535520a43c6bb**. Tree: **6742595a8f296e59ef585adc6daeafd09b50bc2e**. Version:0.6.0-p6 / pkgv_859149d99b6f6b10253eeaeff796e3d1. Verification is the layered sequence above and below, not a claim that the combined default command was re-run from scratch after every edit.
+- Core main and independent validation checkout: **052c466e3c9e4b07912da0cb602b2933f4821187**; all-remotes fetch repeated before closure, unchanged. Core remained clean and no product change/workaround was introduced.
+- Final default validation archive: ignored build/0.6.0-p6-verified.atria; **119877 bytes**, SHA-256 **63cb3b23effde9dd399633ec380406fb640a260122ac876941db574c3bdd71cc**. Not a release; historical builds/releases were retained.
+- Final P6 live integration: **PASS**.136 actual Native preparations,58 P6 Native Turn commits (plus ordinary opening setup),2 typed Native HTTP merges, **5 actual local HTTP requests** including free-text resolver/Narrator failure-zero-publication/retry. Six independent Pattern instances exercised separate requests/replies and enduring remedy/review duties. Repeated unsafe entry clears old care, treatment leaves Injury, and property shared use grants a real expedited rail-dispatch copy. Both Graphs traversed three acquired Case bundles; association split retained underlying Evidence.
+- Actual manual save/export -> fresh FS archive install/import -> next-day continuation preserved multi-institution dispositions, Injury and Pattern duties. Subsequent fresh late-discovery campaign validated all missed pressure flags, denied unescorted closed-yard entry, lawful escorted recovery and a late arrangement that did not erase the closure event.
+- Final P6 live maxima: **15 read grants /17 App Commands /19 effects**. The separately executed final156-preparation matrix adds exact daily boundaries and rich-state day31 rejection. The final civic/church check verifies retained Claim/Condition consistency on the final schema.
+- Final retained fixture regression: PASS (build/p6-fixture-final.log). Full P5 matrix: PASS (build/p6-opening-regression.log); its preceding-build/final-delta distinction is explicitly recorded above. Final P6 live evidence: build/p6-network-final3.log/.err; final focused matrix: build/p6-final-contracts.log; final Claim check: build/p6-final-claim-regression2.log. Earlier interrupted audit probes are not completion evidence.
+- Seven P6 authoring negatives and fifteen tool syntax checks passed; final changed test modules were syntax-checked again. Staged/unstaged whitespace checks passed. Package push succeeded; origin/package matches. All71 tracked game files byte-match their committed Git blobs; main/package/validation trees are clean.
+
+### Limits and P7 checkpoint
+
+No hosted-model, manual UI/device, new Core CI, OS-crash or cross-process uncommitted journal evidence. This is bounded content/runtime integration, not P8 UX or a complete autonomous city. No P7 content, final Hearing unlock, universal Claim engineering, Pattern fulfilment/payment or old-version save migration is implemented. The3 Pattern families have2 static slots each; their names and appearance may vary only within ordinary non-Canon bounds.
+
+P6 deliberately leaves deliberate stabilization unproven and deep Eastbank unresolved. Next P7 must combine acquired evidence predicates, not Case completion counts, while independently representing the six final-disposition dimensions. The58-transaction inventory leaves only6 declaration slots; redesign/re-budget approved declarations rather than raising64/16/24/32 limits. All publications refresh together. The current day30 horizon and capped advances remain.
+
+P6 is complete and stopped. P7 goals/routing and a copyable prompt are in the sole HANDOFF.
