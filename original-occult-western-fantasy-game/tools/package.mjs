@@ -24,7 +24,7 @@ const fixture = args.includes('--fixture');
 const { readContent, validateContent } = await import('./content-check.mjs');
 validateContent(await readContent(), manifest);
 manifest.resources = await json('runtime/model-resources.json');
-if(fixture){const originalId=manifest.packageId,originalVersion=manifest.packageVersionId;manifest.packageId='pkg_'+createHash('sha256').update('occult-regression-only').digest('hex').slice(0,32);manifest.packageVersionId='pkgv_'+createHash('sha256').update('occult-regression-p7').digest('hex').slice(0,32);manifest.version+='-regression';manifest.resources=JSON.parse(JSON.stringify(manifest.resources).replaceAll(originalId,manifest.packageId).replaceAll(originalVersion,manifest.packageVersionId));}
+if(fixture){const originalId=manifest.packageId,originalVersion=manifest.packageVersionId;manifest.packageId='pkg_'+createHash('sha256').update('occult-regression-only').digest('hex').slice(0,32);manifest.packageVersionId='pkgv_'+createHash('sha256').update('occult-regression-p8').digest('hex').slice(0,32);manifest.version+='-regression';manifest.resources=JSON.parse(JSON.stringify(manifest.resources).replaceAll(originalId,manifest.packageId).replaceAll(originalVersion,manifest.packageVersionId));}
 const contract = { schemaVersion: 1, capabilities: await json('runtime/capabilities.json'), dataResources: [] };
 for (const [key, file] of Object.entries({ lifecycleRuntime: 'lifecycle', taskRuntime: 'tasks', informationRuntime: 'information', authorityRuntime: 'authority', simulationRuntime: 'simulation' })) contract[key] = await json('runtime/' + file + '.json');
 manifest.runtime.experienceContract = contract;
@@ -56,15 +56,18 @@ if (!fixture) {
  contract.authorityRuntime.intentObservation.viewIds=['player.overview'];
  Object.assign(contract,{lifecycleRuntime:opening.lifecycle,simulationRuntime:opening.simulation,informationRuntime:opening.information});
  for(const r of manifest.resources)if(r.resourceType==='core.prompt-module' && r.resource.displayName==='narrator')r.resource.body='Render only the Host-approved outcome and disclosure-safe projections. A receipt notice describes a method, not proof it succeeded: respect its outcome. Never invent evidence, a Claim, an external biography fact, a hidden motive or deep Eastbank cause. Player descriptions define ordinary personal expression only. Hypotheses and testimony remain attributed and uncertain. Breach does not grant a class.';
- manifest.name='Original Occult Western Fantasy — Eastbank Convergence';
+ manifest.name='Original Occult Western Fantasy — Eastbank Field Register';
  manifest.entryPoints[0].displayName='Second Death — Eastbank Convergence';
  manifest.actors[0].displayName='Independent Civil Verifier';
  manifest.entryPoints[0].initialTimeline[0].content='Before accepting a family death-verification mandate, create your ordinary adult Identity, Origin, Prior Life, Faith, living Personal Anchor and Reason. No supernatural class is selected. Use the conversation to make these choices.';
  sourceFiles.set('runtime/logic.json',Buffer.from(JSON.stringify(opening.logic)));
  sourceFiles.set('frontend/bridge.json',Buffer.from(JSON.stringify(opening.bridge)));
- // Functional composer entry, not P8 visual design. Typed bindings remain available to Native clients.
- const interactions=Object.fromEntries(opening.bridge.bindings.map(b=>[b.id,[{kind:'action.invoke',target:b.id,value:{object:Object.fromEntries(Object.entries(b.inputSchema.properties).map(([k,s])=>[k,s.enum?.[0]??(s.type==='integer'?s.minimum:s.type==='boolean'?true:'Player input')]))}}]]));
- sourceFiles.set('frontend/Main.aui',Buffer.from('<template><main node-id="root"><p node-id="notice">Second Death — use the conversation for character creation and investigation. Native typed actions share the same contracts.</p></main></template><contract>'+JSON.stringify({interactions})+'</contract>'));
+ manifest.runtime.experience.features=[{id:'frontend-script',version:1,required:true}];
+ const {compileInquiry}=await import('./frontend-compile.mjs');
+ const frontend=await compileInquiry({root,opening,contract,load});
+ for(const [file,bytes]of frontend.files)sourceFiles.set(file,bytes);
+ console.error('P8 frontend budgets',JSON.stringify(frontend.budget));
+
 }
 const { compileProjectFrontends } = await load('src/native/frontend/compiler.js');
 const compiled = compileProjectFrontends(manifest, sourceFiles);
@@ -78,6 +81,6 @@ if (mode === 'build') {
     await fs.writeFile(out, archive, { flag: 'wx' });
     console.log(JSON.stringify({ mode, coreHead, output: out, bytes: archive.length }));
 } else {
-    const { verify } = await import(fixture ? './verify.mjs' : './opening-check.mjs');
+    const { verify } = await import(args.includes('--frontend-only')&&!fixture ? './frontend-check.mjs' : fixture ? './verify.mjs' : './opening-check.mjs');
     console.log(JSON.stringify({ coreHead, ...await verify({ load, native, manifest, sourceFiles, assetPayloads, archive, mode }) }, null, 2));
 }

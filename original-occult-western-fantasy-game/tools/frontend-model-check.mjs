@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import {projectRegister} from '../frontend/inquiry-model.js';
+const r=(id,value)=>({id,value});
+const summary={player_status_projection:{step:6,name:'Known adult'},player_progression_projection:{verified:true,breached:true},player_epistemic_projection:{testimony:'An attributed account.',text:'A revisable theory.',status:'suspected'},player_obligations_projection:{day:3,rent:30},convergence:{cases:{company:{mandate:true}},evidence:{company:{s0:{known:false,text:'P8_PRIVATE_POISON'},s1:{known:true,text:'Evidence ID / Issuer / independent authorized copy'}}},settlements:{hearing:{filed:true,history:'attributed_public',stability:'phased_revision',justice:'defer_remedy',power:'shared_council',religion:'dual_registry',accountability:'named_duties'}}}};
+const nodes=[r('main',{text:'The two authenticated chains conflict.',subject:'main',provenance:'Witnessed comparison',custody:'Verifier',verified:true}),r('mortuary',{text:'Long acquired carrier '.repeat(50),subject:'Elias Rook',provenance:'Medical examiner',custody:'Family copy',verified:true}),r('not-acquired',{text:'Not acquired',subject:'',provenance:'',custody:''})];
+const links=[r('support',{from:'main',to:'mortuary',text:'Independent current support'}),r('private',{from:'main',to:'missing_hidden_node',text:'P8_PRIVATE_POISON'})];
+const view=projectRegister(summary,nodes,[r('main',{text:'Family mandate'})],links);
+assert(!JSON.stringify(view).includes('P8_PRIVATE_POISON'));
+assert.equal(view.terms.length,6);assert.equal(new Set(view.terms.map(t=>t.text)).size,6);
+assert.deepEqual(view.rows.map(r=>r.kind),['Finding','Testimony','Hypothesis']);
+assert.equal(view.edges.length,1);assert.equal(view.evidence.find(e=>e.id==='mortuary').source,'Medical examiner');
+assert.equal(projectRegister(summary,nodes,[],links,'NO MATCH').evidence[0].id,'search_empty');
+const text=await fs.readFile(new URL('../frontend/inquiry-controller.js',import.meta.url),'utf8');
+assert(!/fetch\(|localStorage|indexedDB|eval\(|new Function|prepareAuthority/.test(text));
+assert(text.includes('pending.options'));assert(text.includes('revision:currentRevision'));
+console.log(JSON.stringify({phase:'P8 presentation model',checks:['unacquired payload excluded','hidden graph endpoint excluded','all six independent terms','separate epistemic categories','retained provenance and long text','empty search','bounded controller capabilities','original-request options retained']}));
