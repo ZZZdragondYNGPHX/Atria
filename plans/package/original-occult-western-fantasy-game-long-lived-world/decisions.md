@@ -60,6 +60,28 @@ Death, retirement and long-term absence remove actors from hot simulation when a
 
 AI may generate constrained presentation details and candidate biographies, but Runtime Authority owns dates, lifecycle legality, relationships, succession, role eligibility and whether a proposed historical fact becomes canon.
 
+### D-012 — Family is persistent world state, not player succession
+
+The protagonist may marry, form long-term partnerships, have biological or adopted children, become widowed, separate and remarry. Descendants can become important actors, but none replace the player protagonist.
+
+### D-013 — Family simulation is relevance-scaled
+
+Family graphs may span multiple generations. Important milestones and high-impact relationships are simulated; uneventful childcare and ordinary years may be abstracted. Detailed simulation follows relevance rather than enumerating every descendant equally.
+
+### D-014 — Longevity does not automatically propagate
+
+Spouses, partners and descendants age normally unless they separately obtain a valid supernatural longevity mechanism. Sharing longevity is a deliberate, rare and costly act, and the recipient may refuse it.
+
+### D-015 — Inheritance carries history forward
+
+Property, reputation, secrets, grudges, favors, institutional ties and selected supernatural consequences may persist or transfer across generations where world logic permits.
+
+### D-016 — Surface relationship norm is socially traditional, not mechanically exclusive
+
+Surface society generally treats one-to-one partnership and marriage as the normative public arrangement. This is a social expectation rather than a hard engine restriction.
+
+Affairs, hidden partners, informal unions, same-sex relationships, multi-partner arrangements and other structures may exist. Their visibility, legality, stigma, risk and institutional consequences are contextual to era, locality, class, religion, law and organization.
+
 ## Open
 
 - target campaign horizon;
