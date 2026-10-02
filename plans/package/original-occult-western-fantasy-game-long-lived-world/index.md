@@ -4,7 +4,7 @@
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
 **Plan status:** Discussion / not approved for implementation  
-**Plan generation:** v0.10
+**Plan generation:** v0.11
 
 ## 1. Why this plan exists
 
@@ -62,6 +62,7 @@ The plan will be split as decisions become stable:
 - `family-relationships.md` — romance, marriage, children, descendants, inheritance and social norms.
 - `progression-continuity.md` — career, resources, long-term identity and non-family continuity.
 - `era-evolution.md` — technology, infrastructure, law, culture and occult modernization across eras.
+- `world-scope.md` — multi-region simulation, travel, hub promotion/demotion and macro-world integration.
 - `verification.md` — 1k/5k/10k-turn and multi-year simulation/restore/replay gates.
 - `implementation-staging.md` — implementation phases, dependencies, validation gates and release criteria.
 
@@ -288,17 +289,38 @@ Detailed authority: `era-evolution.md`.
 
 ### Round 10 — Scope of the world beyond the starting city
 
+Status: complete.
+
+Frozen:
+
+- the opening city is the first fully realized Active Hub, not the permanent boundary of play;
+- the protagonist may permanently relocate, live abroad for decades, own assets across regions and maintain multiple long-term hubs;
+- regional simulation uses fidelity tiers: Active Hub, Warm Region and Cold World;
+- regions continue to advance when the protagonist leaves; leaving a city never freezes its clock;
+- a low-fidelity region can promote into an Active Hub when sustained player relevance requires detailed instantiation;
+- promoted regions must materialize consistently from already-existing macro history rather than being generated as if they began to exist at first visit;
+- old hubs may demote to Warm Region while preserving durable relationships, assets, institutions, family, hooks and history;
+- travel consumes real world time according to era-appropriate transport and creates absence consequences;
+- a Macro World Layer tracks coarse national/international developments such as wars, migration, crises, technological diffusion, religious movements, major institutions and large occult events;
+- macro events may materially affect local hubs without requiring literal per-person world simulation;
+- the protagonist may eventually operate across multiple cities or internationally through actual accumulated assets, agents, institutions and networks;
+- multi-region scale is earned through play and does not automatically grant global power.
+
+Detailed authority: `world-scope.md`.
+
+### Round 11 — Macro history: politics, war, economy and social shocks
+
 Status: active.
 
 Questions to freeze:
 
-1. Is the starting city the permanent main simulation domain, or may the player permanently relocate and build a life elsewhere?
-2. Can other cities/regions become fully simulated long-term hubs, or are they lighter external regions until promoted by relevance?
-3. Can national/international events materially affect the city and protagonist over decades?
-4. Should travel take real time and create absence consequences in the home region?
-5. Can the protagonist own property, institutions, businesses or relationships across multiple regions?
-6. How much of the wider world should be explicitly mapped versus generated on demand from curated regional grammars?
-7. Can a century-scale campaign eventually become multi-city or international without turning into a literal whole-world population simulator?
+1. Which macro systems should be simulated explicitly: war, recession/depression, inflation, migration, elections/governance, law, public health, labor conflict, religious movements, demographic change?
+2. Should the macro layer use authored scenario grammars plus state-driven outcomes rather than a full grand-strategy simulation?
+3. How directly may the protagonist influence city, regional or national political outcomes?
+4. How should wars and crises affect families, institutions, prices, property, migration and occult activity?
+5. Should economic cycles exist as systemic conditions instead of handcrafted story events?
+6. How should macro events remain historically coherent across multiple hubs and eras?
+7. What prevents the macro layer from overwhelming the personal/occult investigation game?
 
 No implementation starts until the discussion rounds are explicitly approved.
 
