@@ -4,7 +4,7 @@ import { MAX_INSTANT, stanceChoices } from './long-horizon-compile.mjs';
 // Integration evidence only: no Package-side evaluator or fake save serialization.
 export async function longHorizonChecks(h) {
     const { svc, fsHandle, manifest, archive, load, makeTempFsEngine, services } = h;
-    assert.equal(manifest.version, '2.0.0-phase1');
+    assert.equal(manifest.version, '2.0.0-phase2');
     await h.fresh(); await h.create();
     let s = h.session(), serial = 0;
     const work = [];
@@ -114,5 +114,5 @@ export async function longHorizonChecks(h) {
             'stable entity/protagonist/public identity and first-introduction provenance', 'persistent stances without lifecycle simulation',
             'atomic invalid/overflow/forged-input refusal', 'full Native save-container equivalence and multi-year continuation'],
         maximumWork: Object.fromEntries(['readGrants', 'appCommands', 'effects'].map(k => [k, Math.max(...work.map(w => w[k]))])),
-        gateA: 'not attempted; no Phase 2 compaction or later systems' };
+        gateA: 'foundation regression only; use --history-only for Phase 2 development evidence' };
 }

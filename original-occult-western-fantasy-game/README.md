@@ -2,13 +2,15 @@
 
 Task: package/original-occult-western-fantasy-game. Long-lived independent package workspace.
 
-## Development: 2.0.0-phase1
+## Development: 2.0.0-phase2
 
-Task: refactor/original-occult-western-fantasy-long-lived-world. **Phase 1 only** of the approved eight-phase plan; this is not the final 2.0.0 release.
+Task: refactor/original-occult-western-fantasy-long-lived-world. **Phases 1–2** of the approved eight-phase plan; this is not the final 2.0.0 release.
 
 Default builds now use an open-ended Native minute clock, Gregorian chronology, stable identity/provenance primitives, persistent Stances and an interval resolver skeleton. Day 31 and year rollover are valid. See [the runtime contract](runtime/LONG-HORIZON.md) for exact scope, Save/Restore semantics and explicit later-phase exclusions.
 
-Requires Core main@4b9fd013880cfc242d330f4a2be143416be20d4f (or a descendant with that capability). Historical 1.0.0 remains unchanged. The source manifest is the retained fixture/bootstrap input; tools/package.mjs emits the distinct v2 development identity by default.
+Phase 2 adds tiered history, exact canonical facts, artifacts/hooks, subjective memory, indexed Chronicle queries and portable checkpoints. See [the history contract](runtime/HISTORY-MEMORY.md), especially the archive/Retry boundary and growth limitations.
+
+Requires Core f116a98de7a09c32f1789a875244c7e4b9e14e20 (or a descendant with that capability). Historical 1.0.0 remains unchanged. The source manifest is the retained fixture/bootstrap input; tools/package.mjs emits the distinct v2 development identity by default.
 
 ## Retained release 1.0.0
 
@@ -32,6 +34,7 @@ node tools/frontend-model-check.mjs
 node tools/package.mjs validate --core <main-checkout>
 node tools/package.mjs validate --fixture --core <main-checkout>
 node tools/package.mjs validate --long-horizon-only --core <main-checkout>
+node tools/package.mjs validate --history-only --core <main-checkout>
 node tools/package.mjs validate --opening-only --core <main-checkout>
 node tools/package.mjs validate --campaign-only --core <main-checkout>
 node tools/package.mjs validate --campaign-only --v1-campaign --core <main-checkout>
@@ -40,7 +43,7 @@ node tools/package.mjs preview --v1-campaign --release-only --archive releases/1
 node tools/package.mjs build --core <main-checkout> --out <new-build-path.atria>
 ~~~
 
-Default validation retains the P5/P6/P7 regression matrix against the new foundation; this is not a repeat of the v1 completeness audit. --long-horizon-only checks the Phase 1 time/identity/stance and actual Fs/SQLite Save/Restore contract. --opening-only stops after the retained opening checks. --v1-campaign explicitly selects the old bounded campaign. --fixture retains P2/P3/P4 under a distinct immutable regression identity. --campaign-only performs a continuous committed campaign, interleaved Signatures, actual Branch Retry and save-container continuation beyond Day 30 (or bounded day30 under --v1-campaign). --frontend-only requires Edge Chromium (or ATRIA_BROWSER_CHANNEL) and the Core Playwright/browser bundle; screenshots go to build/ui-<version>. These are real Native/UI tests with a local synthetic HTTP provider, not hosted-model evidence.
+Default validation retains the P5/P6/P7 regression matrix against the new foundation; this is not a repeat of the v1 completeness audit. --long-horizon-only checks the Phase 1 time/identity/stance and actual Fs/SQLite Save/Restore contract. --history-only runs the history-only 1k-turn/10-year development gate, repeated real Save/Restore, early century-retrieval analogue and checkpoint growth audit; it is not full Gate A lifecycle/content coverage. --opening-only stops after the retained opening checks. --v1-campaign explicitly selects the old bounded campaign. --fixture retains P2/P3/P4 under a distinct immutable regression identity. --campaign-only performs a continuous committed campaign, interleaved Signatures, actual Branch Retry and save-container continuation beyond Day 30 (or bounded day30 under --v1-campaign). --frontend-only requires Edge Chromium (or ATRIA_BROWSER_CHANNEL) and the Core Playwright/browser bundle; screenshots go to build/ui-<version>. These are real Native/UI tests with a local synthetic HTTP provider, not hosted-model evidence.
 
 --archive decrypts and validates the saved archive, comparing its normalized manifest, every compiled file and every Data asset against the current build. --release-only checks fixed budgets, model-resource origins, permission/install/Ready, safe views and corruption refusal. This preview is an integration preview, not itself a screenshot; the separate frontend suite supplies visual evidence. Container salt/nonce vary, so payload equality, not rebuilt archive hash equality, establishes source correspondence.
 

@@ -5,12 +5,12 @@ Task: refactor/original-occult-western-fantasy-long-lived-world.
 
 ## Build and authority ownership
 
-Default package compilation is opening → network → convergence → long-horizon.
+Default package compilation is opening → network → convergence → long-horizon → history.
 The last compiler emits only Native declarations; no Package-side evaluator,
 scheduler, RNG, database or save format is shipped. Core Clock, Authority,
 Lifecycle and SaveSystem remain the authorities.
 
-- Development Package version: 2.0.0-phase1, with a distinct immutable PackageVersionId and remapped model-resource origins.
+- Development Package version: 2.0.0-phase2, with a distinct immutable PackageVersionId and remapped model-resource origins.
 - Final release remains 2.0.0, gated by the later approved phases.
 - --v1-campaign explicitly compiles the bounded historical campaign instead.
 - --fixture retains the separate synthetic two-day foundation fixture.
@@ -18,7 +18,7 @@ Lifecycle and SaveSystem remain the authorities.
   they are not the final compiled v2 runtime. Use tools/package.mjs.
 - releases/1.0.0.atria is never rewritten; old v1 saves are not migrated.
 
-Core prerequisite: main@4b9fd013880cfc242d330f4a2be143416be20d4f or a descendant
+Phase 1 time prerequisite: main@4b9fd013880cfc242d330f4a2be143416be20d4f or a descendant
 containing its simulation change. The prior Core limited advances to 10,080 ticks
 and instants to signed 32-bit values. The minimal prerequisite expands these to
 safe integers and exposes the scheduler's read-only clock.targetTick. It does
@@ -142,8 +142,11 @@ They also verify failure atomicity, stable namespace/actor IDs and Gregorian
 ordinary/leap/century rollover. The retained opening and Eastbank fixtures exercise
 real Native transactions, existing safe Graphs, Retry Reply and SaveSystem.
 
-No Hot/Warm/Cold/Archive compaction, Canonical Fact Ledger, family/NPC lifecycle,
-renewable generation, enterprise/delegation, multi-region, macro/Era simulation,
-Chronicle or final UI is implemented. Raw history growth is unchanged. A date test
-jumping centuries is **not** Gate A, Gate B or Gate C, and is not a century-world
-simulation or retrieval claim.
+Phase 2 adds Hot/Warm/Cold/Archive, a Canonical Fact Ledger, artifacts/hooks,
+subjective memory, Chronicle backend and portable checkpoints. See HISTORY-MEMORY.md
+for ownership, exact contracts and the important archive/Retry boundary.
+
+Family/NPC lifecycle, renewable generation, enterprise/delegation, multi-region,
+macro/Era simulation and final Chronicle UI remain unimplemented. The Phase 1
+date test jumping centuries is **not** Gate A/B/C or a century-world simulation.
+Use the dedicated Phase 2 check for history-only development/retrieval evidence.
