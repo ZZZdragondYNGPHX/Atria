@@ -218,6 +218,28 @@ Coarse national and international history may influence migration, institutions,
 
 The protagonist may eventually maintain assets, agents, institutions and relationships across multiple regions or countries through actual play. The system does not grant global influence merely for surviving long enough.
 
+### D-050 — Macro history is systemic but not grand strategy
+
+The long-lived world explicitly models economic cycles, governance/law, war, migration/demography, public health/disaster, religious/social movements and large occult events through curated macro grammars and state-driven resolution.
+
+The game does not attempt full nation-state grand-strategy simulation.
+
+### D-051 — Macro consequences propagate into local play
+
+Economic, military, legal, demographic, religious and occult macro events may alter prices, employment, property, institutions, migration, family, law, technology and local content generation.
+
+### D-052 — Macro relevance controls detail
+
+Macro events normally stay coarse unless they intersect with the protagonist's people, assets, institutions, Claims, current region or declared interests.
+
+### D-053 — Player political/social leverage is causal
+
+The protagonist's ability to affect public policy or macro outcomes depends on actual accumulated leverage such as capital, institutional office, media/social reach, organizations, relationships, archives or occult power.
+
+### D-054 — National/international power is allowed but optional
+
+A sufficiently established protagonist may eventually influence national law, war policy, major cross-regional institutions or occult orders. This is an extreme-late-game option rather than an automatic progression path.
+
 ## Open
 
 - target campaign horizon;
