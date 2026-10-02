@@ -32,11 +32,18 @@ There is no mandatory heir, successor, student, descendant, or replacement-chara
 
 The protagonist may remain active for decades or centuries through setting-consistent occult or supernatural means. The long-horizon design should therefore make prolonged life part of world logic rather than relying on unrealistic human lifespan assumptions.
 
+### D-006 — Ordinary death does not end the save
+
+Routine lethal outcomes do not automatically terminate the long-lived-world save.
+
+The protagonist may suffer bodily death, disappearance, reconstruction, delayed return, severe injury, memory damage, identity loss, resource loss, Claim escalation, or other durable consequences while the world continues to advance.
+
+A truly irreversible death may exist only as an exceptional and explicit end-state. It must not be triggered as a casual consequence of ordinary combat, accidents, disease, or routine ritual failure.
+
 ## Open
 
 - target campaign horizon;
-- exact supernatural longevity mechanism and its cost;
-- protagonist mortality / failure semantics;
+- exact supernatural longevity paths and route-specific costs;
 - family simulation as world content rather than player succession;
 - long-horizon time model;
 - renewable case/world generation;
