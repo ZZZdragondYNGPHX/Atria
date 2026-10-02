@@ -2,9 +2,9 @@
 
 Task: package/original-occult-western-fantasy-game. Long-lived independent package workspace.
 
-## Development: 2.0.0-phase3
+## Development: 2.0.0-phase4
 
-Task: refactor/original-occult-western-fantasy-long-lived-world. **Phases 1–3** of the approved eight-phase plan; this is not the final 2.0.0 release.
+Task: refactor/original-occult-western-fantasy-long-lived-world. **Phases 1–4** of the approved eight-phase plan; this is not the final 2.0.0 release.
 
 Default builds now use an open-ended Native minute clock, Gregorian chronology, stable identity/provenance primitives, persistent Stances and an interval resolver skeleton. Day 31 and year rollover are valid. See [the runtime contract](runtime/LONG-HORIZON.md) for exact scope, Save/Restore semantics and explicit later-phase exclusions.
 
@@ -12,7 +12,9 @@ Phase 2 adds tiered history, exact canonical facts, artifacts/hooks, subjective 
 
 Phase 3 adds human/family/office lifecycle and costly non-terminal reconstruction. See [the lifetime contract](runtime/HUMAN-LIFETIMES.md).
 
-Requires Core 80376ec9f0e5cce9ef1c29422f39604bb7446cfd or a descendant with its optional Native human-lifetime policy. Historical 1.0.0 remains unchanged. The source manifest is the retained fixture/bootstrap input; tools/package.mjs emits the distinct v2 development identity by default.
+Phase 4 adds renewable state-bound Matters, semantic cooldown, real Historical Hook reuse, portable history promotion and evolving geography/institutions. The first full 5k-turn/50-year candidate passed; this is not final Gate C or a finished 2.0.0 release. See [the renewable-content contract](runtime/RENEWABLE-CONTENT.md).
+
+Requires Core main@6e2611a0a5bbcf743cd9fe19c6eeba457890d3f1 or a descendant with its optional Native renewal policy. Historical 1.0.0 remains unchanged. The source manifest is the retained fixture/bootstrap input; tools/package.mjs emits the distinct v2 development identity by default.
 
 ## Retained release 1.0.0
 
@@ -37,6 +39,8 @@ node tools/package.mjs validate --core <main-checkout>
 node tools/package.mjs validate --fixture --core <main-checkout>
 node tools/package.mjs validate --long-horizon-only --core <main-checkout>
 node tools/package.mjs validate --history-only --core <main-checkout>
+node tools/package.mjs validate --lifetime-only --core <main-checkout>
+node tools/package.mjs validate --renewal-only --core <main-checkout>
 node tools/package.mjs validate --opening-only --core <main-checkout>
 node tools/package.mjs validate --campaign-only --core <main-checkout>
 node tools/package.mjs validate --campaign-only --v1-campaign --core <main-checkout>
@@ -44,6 +48,8 @@ node tools/package.mjs validate --frontend-only --core <main-checkout>
 node tools/package.mjs preview --v1-campaign --release-only --archive releases/1.0.0.atria --core <main-checkout>
 node tools/package.mjs build --core <main-checkout> --out <new-build-path.atria>
 ~~~
+
+--renewal-only runs the actual 5,000-content-turn/50-year candidate with two generations, late history reuse, structural repetition audit and five real portable checkpoint imports. Measured exports use existing Native history.compact; compaction/setup/clock-only actions do not inflate the content count. A smaller ATRIA_RENEWAL_TURNS override is smoke evidence only.
 
 Default validation retains the P5/P6/P7 regression matrix against the new foundation; this is not a repeat of the v1 completeness audit. --long-horizon-only checks the Phase 1 time/identity/stance and actual Fs/SQLite Save/Restore contract. --lifetime-only checks Phase 3 human/family/office lifecycles over 90 years and nine real Fs/SQLite save imports (see runtime/HUMAN-LIFETIMES.md). --history-only runs the history-only 1k-turn/10-year development gate, repeated real Save/Restore, early century-retrieval analogue and checkpoint growth audit; it is not full Gate A lifecycle/content coverage. --opening-only stops after the retained opening checks. --v1-campaign explicitly selects the old bounded campaign. --fixture retains P2/P3/P4 under a distinct immutable regression identity. --campaign-only performs a continuous committed campaign, interleaved Signatures, actual Branch Retry and save-container continuation beyond Day 30 (or bounded day30 under --v1-campaign). --frontend-only requires Edge Chromium (or ATRIA_BROWSER_CHANNEL) and the Core Playwright/browser bundle; screenshots go to build/ui-<version>. These are real Native/UI tests with a local synthetic HTTP provider, not hosted-model evidence.
 

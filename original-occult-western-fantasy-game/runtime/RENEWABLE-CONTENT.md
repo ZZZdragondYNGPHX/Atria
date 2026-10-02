@@ -1,6 +1,6 @@
 # Phase 4 — Renewable World Content
 
-Development: 2.0.0-phase4. **Implementation candidate; not yet a passed Phase 4 gate.**
+Development: 2.0.0-phase4. **Phase 4 complete; first full 5k-turn / 50-year candidate passed.**
 Final release remains 2.0.0; the retained 1.0.0 archive is unchanged.
 
 ## Ownership and declarations
@@ -9,9 +9,9 @@ The Package adds tools/renewal-compile.mjs after lifetime compilation. Curated
 structural grammars and initial geography are policy, not a Package evaluator.
 Native Lifetime preparation owns atri_lifecycle.lifetimes.renewal in the existing
 private candidate; History, Clock, CAS publication, Retry and SaveSystem are reused.
-Core candidate: feat/native-renewable-world@6e2611a0a (runtime unchanged from 0fced2b79; additional checkpoint/restore tests).
+Verified Core: main@6e2611a0a5bbcf743cd9fe19c6eeba457890d3f1.
 A compatible Core must include native-renewal-contract.js / renewal-authority.js;
-80376ec9f by itself is the Phase 3 baseline, not sufficient for this candidate.
+80376ec9f by itself is the Phase 3 baseline, not sufficient for Phase 4.
 
 No wealth accounts, delegation, complete identity rotation, region simulation,
 Era/macro evolution, final UI or v1 save migration are added.
@@ -114,3 +114,32 @@ revision window. In the first full run the 5,000th content turn completed with
 No container/history/lifetime limit has been raised and no old save or durable
 fact is deleted by the repair. Existing explicit old SavePoints and branches
 continue to retain their own history and are not active-growth measurements.
+
+## Verified Phase 4 candidate
+
+[CI 37027895867](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37027895867)
+passed both the full Native/four-adapter job and the Package long run on Core
+6e2611a0a and executable Package d57f0c0ad. Later Package documentation-only changes
+do not change that tested compiler/runtime/checker. Final evidence:
+
+- 5,000 content-mutating turns, 50 years, 1,000 concluded Matters;
+- two kinship edges/generations; 18 durable institution identities;
+- 763 semantic structures, excluding names and grammar IDs;
+- early/late halves: 435/427 unique structures in 500 Matters each;
+- 349 actual family-bound Matters (214 early, 135 late); family binding is real,
+  not asserted to increase in proportion as the institutional population grows;
+- 29 original Hook reuses: 4 early and 25 late, including the opening artifact
+  re-examined after approximately 40 years;
+- five actual Fs/SQLite imports, each with exactly one exported revision;
+- 1k/5k active bytes: 249,840 / 732,928; portable save.json: 254,360 / 737,447;
+- exercised bounded projection maxima: 945 / 957 bytes at 1k/5k;
+- final archive: 97,148 bytes; durable history: 590,942 bytes.
+
+The strongest later path accounts for 162/500 Matters (32.4%); late structural
+variety did not collapse. The measured 1k-to-5k active/portable growth is about
+2.93x/2.90x for 5x turns. This is interval evidence, not a proof of asymptotic
+storage bounds or unlimited durable facts. Existing safety budgets remain.
+
+This completes Phase 4 only. Full wealth/delegation, regions/Eras/macro, final UI
+and the 10k-turn/200-year release gate remain later approved phases. No Phase 5
+implementation was performed in this work round.

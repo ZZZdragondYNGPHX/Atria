@@ -15,7 +15,7 @@ Tier A retains personal detail, health, career, family, offices and route state.
 
 Long advances resolve due maturation, gestation, retirement, death, succession, reconstruction and slow documentary-exposure boundaries. Ties have deterministic ordering. Work scales with relevant events, never every skipped day. Exact milestone dates survive a multi-year enclosing transaction. Inactive profiles lose detailed hot characterization, not identity, kinship, history, obligations or Claims. Dead NPC age freezes at death.
 
-Institutions have independent stable IDs. Offices point to institutions; exact non-overlapping terms identify changing holders. Vacancies prefer eligible nominees/senior members, otherwise materialize adult institutional intake with an existing birthday and vacancy provenance. Retained opening actions cannot silently reenact retired/dead actors' living roles. Institution creation/merge/split/dissolution remains Phase 4.
+Institutions have independent stable IDs. Offices point to institutions; exact non-overlapping terms identify changing holders. Vacancies prefer eligible nominees/senior members, otherwise materialize adult institutional intake with an existing birthday and vacancy provenance. Retained opening actions cannot silently reenact retired/dead actors' living roles. Phase 4 adds institution creation/merge/split/dissolution through the same office and succession authority; see RENEWABLE-CONTENT.md.
 
 ## Exact history and limits
 
@@ -64,4 +64,4 @@ lifetimeView(snapshot, actorId) provides a bounded read-only age/status projecti
 
 This executes real Native transitions over 90 years: two descendant generations, adoption, widowhood/re-partnering, leadership succession, causal intake, promotion, disappearance/return, inheritance and protagonist reconstruction. Nine SaveSystem containers import into fresh alternating Fs/SQLite stores around risky boundaries and continue play. Core also tests three seeds, JSON normalization, event budgets, invalid chronology and checkpoint/Retry.
 
-These are Phase 3 tests, **not** Gate A/B/C or final Century Retrieval. Preserve releases/1.0.0.atria unchanged. No v1 save migration. Phase 4 needs a separate authorized work round.
+These are Phase 3 tests, **not** Gate A/B/C or final Century Retrieval. Preserve releases/1.0.0.atria unchanged. No v1 save migration. Phase 4 evidence is separate and recorded in RENEWABLE-CONTENT.md; it does not relabel this lifetime fixture as a gate.

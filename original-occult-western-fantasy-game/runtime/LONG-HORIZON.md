@@ -5,7 +5,7 @@ Task: refactor/original-occult-western-fantasy-long-lived-world.
 
 ## Build and authority ownership
 
-Default package compilation is opening → network → convergence → long-horizon → history → lifetimes.
+Default package compilation is opening → network → convergence → long-horizon → history → lifetimes → renewal.
 The last compiler emits only Native declarations; no Package-side evaluator,
 scheduler, RNG, database or save format is shipped. Core Clock, Authority,
 Lifecycle and SaveSystem remain the authorities.
@@ -147,7 +147,7 @@ subjective memory, Chronicle backend and portable checkpoints. See HISTORY-MEMOR
 for ownership, exact contracts and the important archive/Retry boundary.
 
 Phase 3 adds human/family/office lifecycle; see HUMAN-LIFETIMES.md.
-Phase 4 renewable generation is an unverified candidate; see RENEWABLE-CONTENT.md.
+Phase 4 renewable generation has passed its first full 5k-turn/50-year candidate; see RENEWABLE-CONTENT.md.
 Enterprise/delegation, multi-region,
 macro/Era simulation and final Chronicle UI remain unimplemented. The Phase 1
 date test jumping centuries is **not** Gate A/B/C or a century-world simulation.
