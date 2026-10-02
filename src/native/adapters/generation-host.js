@@ -1,6 +1,6 @@
 import { hasAuthorityTransactions, authorityCatalog, authoritySelection, resolverRequest, authorityValue, authorityFailure, authoritySelectionCache } from '../authority-turn.js';
 import { buildAuthorityObservation } from '../authority-transaction.js';
-import { createNativeId } from '../identity.js';
+import { createNativeId, isNativeId } from '../identity.js';
 import { prepareNarrativeSkills, runNarrativeSkillLoop, isNarrativeSkillInvocation } from '../skill-invocation.js';
 import { GenerationService } from '../model-prompt-runtime/generation-service.js';
 import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
@@ -65,6 +65,20 @@ export function selectNativeRuntimeRoute(routeList, role, routeRef) {
     const matches = routeList.filter(item => item.role === role && !fallbacks.has(item.runtimeRouteId));
     if (matches.length !== 1) fail(matches.length ? 'native_generation_route_ambiguous' : 'native_generation_route_missing');
     return matches[0];
+}
+
+
+function startupTaskVariants(contract) {
+    const tasks = contract?.taskRuntime?.tasks ?? [];
+    const selected = new Map(tasks.map(task => [task.id, new Set([task.variants[0].id])]));
+    for (const action of [...(contract?.lifecycleRuntime?.automations ?? []).map(item => item.action),
+        ...(contract?.lifecycleRuntime?.workflows ?? []).flatMap(flow => flow.nodes.map(node => node.action))]) {
+        if (action?.kind === 'task') selected.get(action.taskId).add(action.variantId);
+    }
+    for (const activity of contract?.presentationRuntime?.activities ?? []) {
+        if (activity.narrator) selected.get(activity.narrator.taskId).add(activity.narrator.variantId);
+    }
+    return selected;
 }
 
 // A host composition over existing P1 storage and Native Session/Studio authorities.
@@ -286,20 +300,55 @@ export class NativeGenerationHost {
         return { invocationId: input.invocationId, provenance, envelope: { ...draft, outcomes }, ...(authorityTurn ? { authorityProof: authorityTurn.proof } : {}) };
     }
 
+    // Read-only, exact installed Package preflight. Never stores player bindings or
+    // creates a Session; capability resolution is the same path as lifecycle prepare.
+    async preflightTaskBindings(handle, input) {
+        if (!input || !isNativeId(input.packageId, 'package') || !isNativeId(input.packageVersionId, 'packageVersion')
+            || Object.keys(input).some(key => !['packageId', 'packageVersionId', 'slotBindings'].includes(key))
+            || (input.slotBindings !== undefined && (!input.slotBindings || typeof input.slotBindings !== 'object' || Array.isArray(input.slotBindings)))) fail('native_task_binding_request_invalid');
+        const opened = await this.packageInstaller.open(handle, input.packageId, input.packageVersionId);
+        if (!opened) fail('native_task_binding_package_missing');
+        const contract = opened.manifest.runtime?.experienceContract;
+        const tasks = contract?.taskRuntime?.tasks ?? [];
+        const selected = startupTaskVariants(contract);
+        const routes = tasks.length ? (await this.persistence.listRuntimeRoutes(handle)).filter(route => route.scope === 'player') : [];
+        const slots = [];
+        for (const id of new Set(tasks.map(task => task.bindingSlotId))) {
+            const slot = contract.taskRuntime.slots.find(item => item.id === id);
+            const uses = tasks.filter(task => task.bindingSlotId === id);
+            const choices = [];
+            for (const route of routes) {
+                let error = null;
+                try {
+                    for (const task of uses) for (const variantId of selected.get(task.id)) {
+                        const variant = task.variants.find(item => item.id === variantId);
+                        await this.execute(handle, { requestId: 'preflight:' + task.id, role: route.role.replace(/^role\./, ''),
+                            routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId },
+                            outputContract: { name: 'atria_task', schema: variant.outputSchema } }, undefined, undefined,
+                        { taskPlan: { task, variant, slot, payload: null }, scheduled: true, preflight: true, preflightPackage: opened });
+                    }
+                } catch (cause) { error = cause.code || 'native_task_binding_route_invalid'; }
+                choices.push({ runtimeRouteId: route.runtimeRouteId, displayName: route.displayName, compatible: !error, error });
+            }
+            const binding = input.slotBindings?.[id];
+            const validRef = binding?.scope === 'player' && isNativeId(binding.runtimeRouteId, 'runtimeRoute')
+                && Object.keys(binding).every(key => ['scope', 'runtimeRouteId'].includes(key));
+            const choice = validRef && choices.find(route => route.runtimeRouteId === binding.runtimeRouteId);
+            slots.push({ id, tasks: uses.map(task => task.id), requiredCapabilities: slot.requiredCapabilities,
+                routes: choices, binding: choice?.compatible ? binding : null,
+                error: choice?.compatible ? null : choice?.error || 'native_task_binding_missing' });
+        }
+        return { packageId: opened.manifest.packageId, packageVersionId: opened.manifest.packageVersionId,
+            ready: slots.every(slot => !slot.error), slots };
+    }
+
     async prepareLifecycle(handle, input) {
         if (Object.keys(input).some(key => !['sessionId', 'revisionId', 'slotBindings'].includes(key))) fail('native_lifecycle_request_invalid');
         const base = await this.sessionCore.load(handle, input.sessionId);
         if (base.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
         const contract = base.manifest.runtime?.experienceContract;
         const tasks = contract?.taskRuntime?.tasks ?? [];
-        const selected = new Map(tasks.map(task => [task.id, new Set([task.variants[0].id])]));
-        for (const action of [...(contract?.lifecycleRuntime?.automations ?? []).map(item => item.action),
-            ...(contract?.lifecycleRuntime?.workflows ?? []).flatMap(flow => flow.nodes.map(node => node.action))]) {
-            if (action?.kind === 'task') selected.get(action.taskId).add(action.variantId);
-        }
-        for (const activity of contract?.presentationRuntime?.activities ?? []) {
-            if (activity.narrator) selected.get(activity.narrator.taskId).add(activity.narrator.variantId);
-        }
+        const selected = startupTaskVariants(contract);
         const bindings = [];
         for (const task of tasks) {
             const routeRef = input.slotBindings?.[task.bindingSlotId];
@@ -312,10 +361,14 @@ export class NativeGenerationHost {
                 await this.execute(handle, { sessionId: input.sessionId, revisionId: input.revisionId,
                     requestId: 'preflight:' + task.id, role: route.role.replace(/^role\./, ''), routeRef,
                     outputContract: { name: 'atria_task', schema: variant.outputSchema } }, undefined, undefined,
-                { taskPlan: { task, variant, slot, payload: null }, scheduled: true, preflight: true });
+                { taskPlan: { task, variant, slot, payload: null }, scheduled: true, preflight: true,
+                    preflightPackage: { manifest: base.manifest }, preflightSnapshot: base });
                 bindings.push({ taskId: task.id, variantId: variant.id, bindingSlotId: slot.id });
             }
         }
+        // All checks used one exact authority snapshot. A concurrent Session edit
+        // must still fail the barrier, never make stale readiness look current.
+        if (tasks.length && (await this.sessionCore.load(handle, input.sessionId)).revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
         return { revisionId: input.revisionId, bindings };
     }
 
@@ -419,7 +472,7 @@ export class NativeGenerationHost {
         return operation.result;
     }
 
-    async execute(handle, value, signal, onChunk, { preview = false, taskPlan = null, scheduled = false, lanePlan = null, preflight = false } = {}) {
+    async execute(handle, value, signal, onChunk, { preview = false, taskPlan = null, scheduled = false, lanePlan = null, preflight = false, preflightPackage = null, preflightSnapshot = null } = {}) {
         const input = immutable(value);
         if (!ROLES.has(input.role)) fail('native_generation_role_invalid');
         // The HTTP host currently owns player routes only. Never reinterpret an
@@ -431,7 +484,7 @@ export class NativeGenerationHost {
         const role = 'role.' + input.role;
         let snapshot; let project; let source; let runtime;
         if (input.sessionId) {
-            snapshot = immutable(lanePlan?.authorityContext?.snapshot ?? await this.sessionCore.load(handle, input.sessionId));
+            snapshot = immutable((preflight ? preflightSnapshot : null) ?? lanePlan?.authorityContext?.snapshot ?? await this.sessionCore.load(handle, input.sessionId));
             if (snapshot.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
             if (!preflight && snapshot.externalEffects?.some(effect => effect.status === 'prepared')) fail('native_transfer_pending');
             source = { kind: 'session', sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
@@ -447,7 +500,10 @@ export class NativeGenerationHost {
                 const allowed = new Set(context.tools.map(tool => tool.function.name).concat(['atri_agent_list_skills', 'atri_agent_read_skill', 'atri_agent_skill_files']));
                 if ((input.tools || []).some(tool => !allowed.has(tool.function?.name))) fail('native_generation_tool_denied');
             }
+        } else if (preflight && preflightPackage) {
+            runtime = preflightPackage.manifest.runtime;
         } else fail('native_generation_context_required');
+        const packageIdentity = snapshot?.session ?? preflightPackage?.manifest;
         const routeList = lanePlan ? Object.values(lanePlan.routes) : await this.persistence.listRuntimeRoutes(handle);
         let route = selectNativeRuntimeRoute(routeList, role, input.routeRef);
         if (!preview && !scheduled) {
@@ -478,8 +534,8 @@ export class NativeGenerationHost {
         const getScopedResource = async (owner, ref) => {
             let entries;
             if (ref.scope === 'package') {
-                if (!snapshot || ref.packageId !== snapshot.session.packageId || ref.packageVersionId !== snapshot.session.packageVersionId) fail('native_generation_resource_owner');
-                const opened = await this.packageInstaller.open(owner, ref.packageId, ref.packageVersionId);
+                if (!packageIdentity || ref.packageId !== packageIdentity.packageId || ref.packageVersionId !== packageIdentity.packageVersionId) fail('native_generation_resource_owner');
+                const opened = preflightPackage ?? await this.packageInstaller.open(owner, ref.packageId, ref.packageVersionId);
                 entries = opened.manifest.resources;
             } else {
                 if (!project || ref.projectId !== project.source.project.projectId) fail('native_generation_resource_owner');
@@ -499,8 +555,8 @@ export class NativeGenerationHost {
         }
         if (taskPlan) {
             const compose = lane => ({ ...lane, role, promptParameters: {},
-                promptProgramRef: { ...taskPlan.variant.prompt, resourceType: 'core.prompt-program', scope: 'package', packageId: snapshot.session.packageId, packageVersionId: snapshot.session.packageVersionId },
-                generationProfileRef: { ...taskPlan.variant.generation, resourceType: 'core.generation-profile', scope: 'package', packageId: snapshot.session.packageId, packageVersionId: snapshot.session.packageVersionId } });
+                promptProgramRef: { ...taskPlan.variant.prompt, resourceType: 'core.prompt-program', scope: 'package', packageId: packageIdentity.packageId, packageVersionId: packageIdentity.packageVersionId },
+                generationProfileRef: { ...taskPlan.variant.generation, resourceType: 'core.generation-profile', scope: 'package', packageId: packageIdentity.packageId, packageVersionId: packageIdentity.packageVersionId } });
             route = compose(route);
             persistence.getRuntimeRoute = async (owner, id) => compose(lanePlan ? lanePlan.routes[id] : await this.persistence.getRuntimeRoute(owner, id));
         }

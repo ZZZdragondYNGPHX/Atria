@@ -1,3 +1,4 @@
+import { ensureTaskBindings, isTaskBindingFailure } from './task-binding-ui.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { mountSessionHistory } from './session-history.js';
 import { mountSessionRename } from './session-naming.js';
@@ -558,10 +559,35 @@ export function mountNativePlayControls({
     if (sessionHeader) sessionHeader.append(toolbar);
     else root.prepend(toolbar);
     root.append(drawer);
+    const bindingNotice = documentRef.createElement('section'); bindingNotice.className = 'atri-library-section';
+    bindingNotice.dataset.atriaTaskBindingRecovery = 'true'; bindingNotice.hidden = true;
+    const bindingMessage = documentRef.createElement('p'); bindingMessage.setAttribute('role', 'status');
+    bindingMessage.textContent = tl('This work still needs its model purposes configured. Your story is kept.');
+    bindingNotice.append(bindingMessage, actionButton(documentRef, 'Configure model purposes', async () => {
+        const runtime = activeRuntime(); const base = runtime?.snapshot; if (!base) return;
+        openDrawer('Configure model purposes'); drawerBody.replaceChildren();
+        const setup = documentRef.createElement('div'); drawerBody.append(setup);
+        await ensureTaskBindings({ document: documentRef, root: setup, manifest: base.manifest,
+            packageId: base.session.packageId, packageVersionId: base.session.packageVersionId, force: true,
+            isCurrent: () => !disposed && activeRuntime()?.snapshot?.session.sessionId === base.session.sessionId,
+            onReady: async () => {
+                const api = globalThis.Atria?.getContext?.()?.getCapabilityApi?.('game-runtime');
+                const result = await api?.reloadPackage?.();
+                if (!result || result.status !== 'ready') throw new Error('Experience could not restart. Check Experience health.');
+                hideDrawer();
+            } });
+    }));
+    root.prepend(bindingNotice);
+    function syncBindings() {
+        const state = globalThis.Atria?.getContext?.()?.getCapabilityApi?.('game-runtime')?.getPackageState?.();
+        bindingNotice.hidden = !activeRuntime()?.active || state?.sessionId !== currentSessionId() || !isTaskBindingFailure(state?.errors);
+    }
+    documentRef.defaultView?.addEventListener('atria:game-package-changed', syncBindings);
 
     let landingRender = null;
     let wasActive = null;
     function sync() {
+        syncBindings();
         const active = documentRef.body.dataset.atriaNativeSessionActive === 'true';
         toolbar.hidden = !active;
         landing.hidden = active;
@@ -610,6 +636,8 @@ export function mountNativePlayControls({
             drawerRequest++;
             for (const unsubscribe of unsubscribers) unsubscribe();
             observer.disconnect();
+            documentRef.defaultView?.removeEventListener('atria:game-package-changed', syncBindings);
+            bindingNotice.remove();
             toolbar.remove();
             landing.remove();
             drawer.remove();

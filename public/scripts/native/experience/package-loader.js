@@ -145,9 +145,13 @@ export async function loadGamePackageJsonResource(packageState, relativePath, op
 export async function loadExperienceData(packageState, options = {}) {
     const entries = packageState.descriptor?.experienceContract?.dataResources || [];
     const result = {};
+    if (!entries.length) return result;
     const names = new Set(entries.map(ref => ref.resourceId));
-    for (const ref of entries) {
-        const response = await postJson('runtime/resource', { sessionId: sessionIdOf(packageState), resourceId: ref.resourceId }, options);
+    const response = await postJson('runtime/resource', { sessionId: sessionIdOf(packageState), resourceIds: entries.map(ref => ref.resourceId) }, options);
+    const { resources } = await response.json();
+    if (!Array.isArray(resources) || resources.length !== entries.length
+        || resources.some((item, index) => item?.resourceId !== entries[index].resourceId)) throw new Error('Invalid Package Data response');
+    for (const [index, ref] of entries.entries()) {
         const path = ref.resourceId.split('.'); let target = result;
         for (const segment of path) if (!segment || ['__proto__', 'constructor', 'prototype'].includes(segment)) throw new Error('Unsafe Package Data identifier');
         for (let index = 0; index < path.length - 1; index++) {
@@ -156,7 +160,7 @@ export async function loadExperienceData(packageState, options = {}) {
             target[segment] ??= {}; target = target[segment];
         }
         if (Object.hasOwn(target, path.at(-1))) throw new Error('Overlapping Package Data identifiers');
-        target[path.at(-1)] = await response.json();
+        target[path.at(-1)] = resources[index].value;
     }
     return result;
 }

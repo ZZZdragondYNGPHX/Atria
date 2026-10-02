@@ -41,6 +41,9 @@
 .atri-library-cover[data-cover="3"] { background: var(--atri-surface-3); color: var(--atri-text-secondary); }
 .atri-library-cover svg { flex-shrink: 0; }
 .atri-library-section { min-width: 0; }
+[data-atria-task-binding-setup] > div { display: grid; gap: 16px; }
+[data-atria-task-binding-setup] p { overflow-wrap: anywhere; }
+.atria-app-shell [data-atria-task-binding-setup] select { min-height: 44px; }
 .atri-library-section > h3 { margin: 8px 0 16px; font-size: var(--atri-text-title-2); }
 .atri-library-row { display: flex; align-items: center; gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--atri-separator); min-width: 0; }
 .atri-library-row-content { flex: 1; min-width: 0; }
