@@ -4,7 +4,7 @@
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
 **Plan status:** Discussion / not approved for implementation  
-**Plan generation:** v0.8
+**Plan generation:** v0.9
 
 ## 1. Why this plan exists
 
@@ -246,17 +246,38 @@ Detailed authority: `history-memory.md`.
 
 ### Round 8 — Progression, wealth, career and century-scale power
 
+Status: complete.
+
+Frozen:
+
+- early play may contain conventional vertical skill growth, but long-horizon progression shifts primarily toward horizontal capability, access, relationships, assets, obligations and specialized occult authority;
+- numeric power does not scale without bound across decades;
+- wealth, businesses and property are world entities with provenance, risk, depreciation, seizure, destruction, inheritance and legal/identity dependencies rather than permanent abstract currency;
+- the protagonist may change careers repeatedly across decades and may hold multiple social roles where world rules permit;
+- careers primarily grant permissions, networks, duties, access and liabilities rather than flat stat bonuses;
+- public/legal identities are distinct from the persistent protagonist; retiring or replacing a public identity creates real continuity problems for property, licenses, reputation, banking, marriage, criminal records and institutional standing;
+- supernatural power may grow substantially but should create new exposure, Claim pressure, countermeasures, obligations and vulnerabilities;
+- long-term challenge does not use universal level scaling;
+- as the protagonist becomes personally stronger, challenge shifts toward family, institutions, property, law, social legitimacy, history, identity exposure, Claim and occult obligations;
+- bodily death/reconstruction may damage embodied progress while preserving most deep protagonist continuity;
+- the protagonist may, through actual world play, become a city-scale magnate, institutional leader, religious authority, occult power broker or comparable major figure;
+- city-scale power is optional rather than mandatory: a low-profile century-long life remains a valid play style.
+
+Detailed authority: `progression-continuity.md`.
+
+### Round 9 — Era evolution: technology, infrastructure, law and culture
+
 Status: active.
 
 Questions to freeze:
 
-1. How should skills, wealth and social influence grow over 50–150 years without reaching meaningless caps?
-2. Should the protagonist be able to change careers, found businesses, hold office, join/leave institutions and accumulate property across decades?
-3. How should wealth and property persist, decay, transfer, be seized or become obsolete?
-4. Should long-term progression emphasize horizontal capabilities and new obligations rather than endless numeric scaling?
-5. How should public identity resets interact with licenses, careers, property, reputation and records?
-6. Should the protagonist be able to become extremely powerful socially/occultly, and what systems prevent this from collapsing challenge?
-7. Which progress persists through bodily death/reconstruction and which can be lost?
+1. Does a century-long save allow the world to progress technologically and socially, or should the setting remain in a broadly fixed occult-western era?
+2. Can infrastructure such as rail, electricity, telephony, automobiles, radio and later systems appear if enough time passes?
+3. Can laws, policing, medicine, finance, education, religion and public attitudes materially change across eras?
+4. Should world evolution follow a mostly authored alternate-history trajectory, be primarily emergent from simulation, or use authored historical rails with emergent deviations?
+5. How strongly may occult events and player actions alter technological/social development?
+6. How should old skills, institutions, businesses and properties become obsolete or adapt?
+7. Should Era transitions be explicit world milestones with systemic rule changes?
 
 No implementation starts until the discussion rounds are explicitly approved.
 
