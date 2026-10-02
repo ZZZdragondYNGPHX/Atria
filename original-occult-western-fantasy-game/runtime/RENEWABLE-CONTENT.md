@@ -9,7 +9,7 @@ The Package adds tools/renewal-compile.mjs after lifetime compilation. Curated
 structural grammars and initial geography are policy, not a Package evaluator.
 Native Lifetime preparation owns atri_lifecycle.lifetimes.renewal in the existing
 private candidate; History, Clock, CAS publication, Retry and SaveSystem are reused.
-Core candidate: feat/native-renewable-world@b90b85851.
+Core candidate: feat/native-renewable-world@0fced2b79.
 A compatible Core must include native-renewal-contract.js / renewal-authority.js;
 80376ec9f by itself is the Phase 3 baseline, not sufficient for this candidate.
 
