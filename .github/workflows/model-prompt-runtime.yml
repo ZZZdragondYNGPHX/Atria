@@ -30,7 +30,7 @@ jobs:
       - run: npm run lint
       - run: npm run frontend:prebuild-cache
       - run: npx --prefix tests playwright install --with-deps chromium
-      - run: npx playwright test e2e/native-session/03-native-generation-p4.e2e.js e2e/native-session/04-native-runtime-p5.e2e.js e2e/native-session/05-native-authoring-p6.e2e.js e2e/native-session/06-native-cleanup-p7.e2e.js --project=e2e --workers=1
+      - run: npx playwright test e2e/native-session/03-native-generation-p4.e2e.js e2e/native-session/04-native-runtime-p5.e2e.js e2e/native-session/05-native-authoring-p6.e2e.js e2e/native-session/06-native-cleanup-p7.e2e.js e2e/native-session/21-task-binding-preflight.e2e.js --project=e2e --workers=1
         working-directory: tests
       - uses: actions/upload-artifact@v4
         if: failure()
