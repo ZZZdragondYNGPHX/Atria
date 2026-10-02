@@ -82,6 +82,22 @@ Surface society generally treats one-to-one partnership and marriage as the norm
 
 Affairs, hidden partners, informal unions, same-sex relationships, multi-partner arrangements and other structures may exist. Their visibility, legality, stigma, risk and institutional consequences are contextual to era, locality, class, religion, law and organization.
 
+### D-017 — Long fast-forward is genuinely long
+
+The player may request multi-year or multi-decade fast-forward directly. The engine does not impose an arbitrary one-year confirmation ceiling.
+
+### D-018 — Fast-forward is event-driven and interruptible
+
+Long-horizon advancement uses hierarchical/event-driven resolution rather than full daily simulation. High-impact events may interrupt the requested span and return control to the player at the meaningful point.
+
+### D-019 — Unresolved content does not freeze the calendar
+
+Active cases and obligations do not universally block fast-forward. The player may explicitly continue, abandon, delegate or leave matters to world resolution. Consequences continue independently.
+
+### D-020 — Long-term stances guide compressed time
+
+Before substantial fast-forward, the protagonist may define persistent stances across career, family, occult practice, social posture, wealth and investigation. These stances guide background resolution until changed or interrupted.
+
 ## Open
 
 - target campaign horizon;
