@@ -3,8 +3,8 @@
 **Task ID:** `refactor/original-occult-western-fantasy-long-lived-world`  
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
-**Plan status:** Discussion / not approved for implementation  
-**Plan generation:** v0.14
+**Plan status:** Approved Implementation Plan v1.0  
+**Plan generation:** v1.0
 
 ## 1. Why this plan exists
 
@@ -70,9 +70,9 @@ The plan will be split as decisions become stable:
 
 Only create/fill these modules when the corresponding discussion has enough frozen decisions.
 
-## 5. Working architecture hypothesis
+## 5. Frozen architecture summary
 
-The current best starting hypothesis is a layered clock:
+The approved architecture uses a layered clock:
 
 `Scene → Day → Week → Month/Season → Year → Era`
 
@@ -85,25 +85,30 @@ Likewise, long-term persistence should probably separate:
 - **cold history** — compacted summaries and durable consequences;
 - **canon facts** — facts that cannot be silently rewritten.
 
-This is a hypothesis for discussion, not an approved implementation decision.
+These layers are now approved design boundaries; detailed schemas remain implementation work inside the relevant phase.
 
-## 6. Success criteria to freeze before implementation
+## 6. Frozen completion criteria
 
-At minimum the final approved plan must define:
+The project is complete only when the approved architecture is implemented and the hard release gates pass.
 
-- what “thousands of turns” means for validation;
-- what “many years” means for validation;
-- whether the player character ages and can die/retire;
-- whether play can continue through a successor character;
-- whether family/children are simulated;
-- how NPCs enter and leave the world;
-- how institutions replace leaders and evolve;
-- how renewable cases are generated without degenerating into template spam;
-- how world history is summarized/compacted;
-- how old consequences remain discoverable decades later;
-- state/save size expectations;
-- determinism/replay expectations;
-- exact soak-test gates.
+Key frozen criteria include:
+
+- one continuous player protagonist across the entire save;
+- setting-native supernatural longevity with non-terminal ordinary death/reconstruction;
+- multi-generation NPC/family and institutional lifecycle;
+- open-ended hierarchical time with multi-decade fast-forward;
+- renewable history-aware content and evolving cities/institutions;
+- tiered historical compaction plus Canonical Fact Ledger and durable artifacts;
+- horizontal long-term progression, assets, identity continuity and delegation;
+- systemic Era evolution into modern/later alternate-history technology;
+- dynamically scoped multi-region world;
+- macro history without full grand-strategy simulation;
+- optional city/national/international player influence earned through causal leverage;
+- **10,000 authoritative turns + at least 200 in-world years** as the final hard release gate;
+- sublinear history/context growth and century-scale historical retrieval;
+- actual Save/Restore, runtime and UI evidence where required.
+
+Detailed rules live in the domain modules and `verification.md`.
 
 ## 7. Discussion rounds
 
@@ -378,24 +383,29 @@ Detailed authority: `verification.md`.
 
 ### Round 14 — Implementation staging and Astra handoff
 
-Status: active.
+Status: complete.
 
-Questions to freeze:
+Frozen:
 
-1. How many implementation phases should Codex Astra receive?
-2. Which architecture must land first so later systems do not need repeated rewrites?
-3. Which phases may change runtime schemas versus content/data only?
-4. What is the minimum validation/record/handoff required at each phase boundary?
-5. Which legacy v1 assets should be preserved as compatibility fixtures versus migrated into the new architecture?
-6. At what phase should the old Day 30 authority limit actually be removed?
-7. At what phase should the full 10k-turn/200-year gate run?
+- implementation uses 8 phases in the dependency order defined by `implementation-staging.md`;
+- the whole project stays on `refactor/original-occult-western-fantasy-long-lived-world` until final integration;
+- each phase implements, validates, commits/pushes, updates the same Record and HANDOFF, then stops;
+- the v1 `releases/1.0.0.atria` artifact remains unchanged;
+- the long-lived-world release target is `2.0.0`;
+- compatibility with old v1 save files is not required;
+- the old 30-day campaign is retained as a regression scenario/fixture where practical, not as the global world authority limit;
+- Phase 1 removes the global Day 30 ceiling and establishes the long-horizon runtime foundation;
+- the full 10k-turn / 200-year hard gate runs in Phase 8.
 
-No implementation starts until the discussion rounds are explicitly approved.
+Detailed authority: `implementation-staging.md`.
 
-## 8. Current checkpoint
+## 8. Implementation checkpoint
 
-- `main@fa0c5df4f45b91c7750ed63f87c32100df68ad32`
-- `package@79447c0b8aca028c6929ff8f9842f8835676191f`
-- `docs@a0c341de4835ecc1ee890ae68bf9e118993ae451`
-- task branch created from current `package`;
-- no game implementation changes made yet.
+- task branch: `refactor/original-occult-western-fantasy-long-lived-world`
+- branch start / current implementation HEAD before Phase 1: `79447c0b8aca028c6929ff8f9842f8835676191f`
+- source workspace: `package`
+- target release: `2.0.0`
+- implementation state: **Phase 1 not started**
+- no game implementation changes were made during design discussion
+- live continuation state is maintained in `docs:HANDOFF.md`
+- permanent implementation history is maintained in `records/package/original-occult-western-fantasy-game-long-lived-world.md`
