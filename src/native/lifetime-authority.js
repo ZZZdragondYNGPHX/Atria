@@ -1,3 +1,4 @@
+import { initialRenewal, operateRenewal, resolveRenewalDue, validateRenewal } from './renewal-authority.js';
 import { lifetimePolicy, LIFETIME_OPERATIONS } from '../../public/shared/native-lifetime-contract.js';
 import { anniversary, ageAt, people } from '../../public/shared/native-lifetime-runtime.js';
 import { assertTaskValue, taskId } from '../../public/shared/native-task-contract.js';
@@ -33,11 +34,12 @@ export function initialLifetimes(policy) {
     for (const o of policy.offices) {
         s.institutions[o.institutionId] ??= { id: o.institutionId, founded: 0, origin: 'authored', refs: ['institution:' + o.institutionId] }; s.offices[o.id] = { ...clone(o), holderId: '', nomineeId: '', refs: ['institution:' + o.institutionId] };if (s.people[o.holderId])seat(s, policy, s.offices[o.id], o.holderId, 0);
     }
+    if (policy.renewal) s.renewal = initialRenewal(policy.renewal);
     return s;
 }
 function evidence(snapshot, s, id) {
     const h = snapshot.states.atri_lifecycle.history;
-    return Boolean(people(s)[id] || s.offices[id] || s.milestones[id] || h?.facts[id]?.public || h?.artifacts[id] || h?.hooks[id]);
+    return Boolean(people(s)[id] || s.offices[id] || s.milestones[id] || s.renewal?.canonical[id] || h?.facts[id]?.public || h?.artifacts[id] || h?.hooks[id]);
 }
 function compactPerson(s, p) {
     if (p.status.kind === 'active') return;
@@ -56,7 +58,7 @@ function vacate(s, p, tick, reason) {
     }
 }
 function succeed(s, policy, tick) {
-    for (const office of sorted(s.offices).filter(o => !o.holderId)) {
+    for (const office of sorted(s.offices).filter(o => !o.holderId && o.closed === undefined)) {
         const eligible = Object.values(s.people).filter(p => active(p) && adult(p, tick, policy) && p.retirementTick > tick && p.career.institutionId === office.institutionId && !Object.values(s.offices).some(o => o.holderId === p.id))
             .sort((a, b) => a.identity.birthTick - b.identity.birthTick || a.id.localeCompare(b.id, 'en'));
         let p = (office.rule === 'nomination' ? eligible.find(p => p.id === office.nomineeId) : null) ?? eligible[0];
@@ -109,11 +111,12 @@ function operate(snapshot, s, policy, operation, input, tick) {
     for (const [key, value] of Object.entries(input)) if ((key === 'id' || key.endsWith('Id')) && value)taskId(value);
     const a = clone(input), protagonist = actor(s, policy.protagonistId);
     need(protagonist.status.kind !== 'absent', 'must return before acting');
+    if (['matter.open', 'matter.act', 'world.change'].includes(operation)) { operateRenewal(snapshot, s, policy, operation, a, tick, { vacate, succeed }); return; }
     if (operation === 'bond.form')a.people = [a.firstId, a.secondId];
     if (operation === 'family.conceive' || operation === 'family.adopt')a.parents = [a.parentId, ...(a.otherParentId ? [a.otherParentId] : [])];
     if (operation === 'person.enter') {
         need(a.name.trim() && a.birthTick <= tick && ageAt(a.birthTick, tick) >= policy.adultAge && ageAt(a.birthTick, tick) < policy.retirementAge && evidence(snapshot, s, a.sourceId), 'causal adult introduction');
-        need(!a.institutionId || Object.values(s.offices).some(o => o.institutionId === a.institutionId), 'institution');
+        need(!a.institutionId || s.institutions[a.institutionId] && s.institutions[a.institutionId].status !== 'dissolved', 'institution');
         if (['hiring', 'recruitment'].includes(a.cause))need(s.offices[a.sourceId]?.institutionId === a.institutionId, 'institutional recruitment source');
         makePerson(s, policy, { ...a, id: next(s, 'person'), occupation: a.cause }, tick);s.population.materialized++;
     } else if (operation === 'person.promote') {
@@ -236,6 +239,7 @@ export function prepareLifetimes(base, candidate, operation = null) {
         }
     }
     resolve(candidate, s, policy, now);
+    resolveRenewalDue(candidate, s, policy, now);
     if (operation)operate(candidate, s, policy, operation.operation, operation.input, now);
     s.population.present = s.population.initial + s.population.births - s.population.deaths - s.population.materialized;
     for (const p of policy.people.filter(p => p.sourceRecordId)) {
@@ -248,7 +252,7 @@ export function prepareLifetimes(base, candidate, operation = null) {
 export function validateLifetimes(snapshot, { complete = false } = {}) {
     const policy = lifetimePolicy(snapshot), s = snapshot.states.atri_lifecycle?.lifetimes;
     if (!policy) { need(!s, 'undeclared state');return; }
-    need(s && s.schemaVersion === 1, 'state version');fields(s, ['schemaVersion', 'nextId', 'resolvedTick', 'people', 'archive', 'bonds', 'kinship', 'pregnancies', 'institutions', 'offices', 'terms', 'legacies', 'milestones', 'population', 'continuity', 'work'], 'Lifetime state');
+    need(s && s.schemaVersion === 1, 'state version');fields(s, ['schemaVersion', 'nextId', 'resolvedTick', 'people', 'archive', 'bonds', 'kinship', 'pregnancies', 'institutions', 'offices', 'terms', 'legacies', 'milestones', 'population', 'continuity', 'work', 'renewal'], 'Lifetime state');
     need(policy.protagonistId === snapshot.manifest.actors[0].actorId, 'protagonist authority');
     const now = snapshot.states.atri_lifecycle.clocks[policy.clockId], all = people(s);safe(s.nextId);safe(s.resolvedTick);need(s.nextId > 0 && s.resolvedTick >= 0 && s.resolvedTick <= now && (!complete || s.resolvedTick === now), 'resolved clock');
     need(Object.keys(all).length <= policy.maxPeople && Object.keys(s.people).every(id => !s.archive[id]), 'actor budget/identity');
@@ -298,5 +302,6 @@ export function validateLifetimes(snapshot, { complete = false } = {}) {
     }
     for (const l of Object.values(s.legacies)) { actor(s, l.ownerId);actor(s, l.heirId);need(l.tick <= now && ['pledged', 'inherited', 'disputed'].includes(l.status), 'inheritance'); }
     for (const e of Object.values(s.milestones)) { taskId(e.id);safe(e.tick);need(e.tick >= 0 && e.tick <= now, 'milestone chronology');for (const id of e.people)actor(s, id); }
+    validateRenewal(snapshot, policy);
     const pop = s.population;for (const value of Object.values(pop))need(Number.isSafeInteger(value) && value >= 0, 'population count');need(pop.present === pop.initial + pop.births - pop.deaths - pop.materialized, 'population accounting');
 }

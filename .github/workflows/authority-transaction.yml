@@ -23,6 +23,12 @@ on:
       - 'tests/game-runtime/**'
       - '.github/workflows/authority-transaction.yml'
   workflow_dispatch:
+    inputs:
+      package_revision:
+        description: 'Exact Package commit for optional Phase 4 Gate B candidate; empty skips it'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -71,6 +77,7 @@ jobs:
           --runTestsByPath
           native/history.test.js native/history-session.test.js
           native/lifetime.test.js native/lifetime-session.test.js
+          native/renewal.test.js native/renewal-session.test.js
           native/simulation-contract.test.js native/simulation-candidate.test.js native/simulation-task.test.js native/simulation-session.test.js
           native/authority-contract-c1.test.js native/authority-resources-c1.test.js
           native/authority-candidate-c2.test.js native/authority-bounds-c2.test.js native/authority-session-c2.test.js
@@ -106,6 +113,7 @@ jobs:
       - name: Authority source lint
         run: >-
           npx --no-install eslint
+          public/shared/native-renewal-contract.js public/shared/native-renewal-runtime.js src/native/renewal-authority.js
           public/shared/native-authority-contract.js public/shared/native-experience-contract.js
           public/shared/native-lifecycle-contract.js public/shared/native-values.js
           public/scripts/native/experience/logic/transactions.js public/scripts/native/experience/logic/declarative.js
@@ -139,3 +147,32 @@ jobs:
           src/native/simulation-authority.js
           tests/native/simulation-contract.test.js tests/native/simulation-candidate.test.js tests/native/simulation-task.test.js tests/native/simulation-session.test.js
           tests/native/helpers/simulation-candidate-fixture.js tests/native/helpers/simulation-task-fixture.js
+
+  renewable-package-candidate:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.package_revision != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - run: npm ci --ignore-scripts --prefix tests
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.package_revision }}
+          path: package-candidate
+      - name: Actual 5000-turn / 50-year Package candidate
+        working-directory: package-candidate/original-occult-western-fantasy-game
+        run: |
+          mkdir -p build
+          set -o pipefail
+          node tools/package.mjs validate --renewal-only --core "$GITHUB_WORKSPACE" 2>&1 | tee build/phase4-gate-b.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase4-gate-b-candidate
+          path: package-candidate/original-occult-western-fantasy-game/build/phase4-gate-b.log

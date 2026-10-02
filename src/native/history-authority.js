@@ -1,3 +1,4 @@
+import { renewalSources } from './renewal-authority.js';
 import { lifetimeSources } from '../../public/shared/native-lifetime-runtime.js';
 import { createHash } from 'node:crypto';
 import { hashNativeDocument } from './repositories/common.js';
@@ -9,7 +10,7 @@ const copy = v => structuredClone(v);
 const same = (a, b) => a === undefined || b === undefined ? a === b : hashNativeDocument(a) === hashNativeDocument(b);
 const record = (snapshot, domain, id = 'main') => snapshot.states.atri_lifecycle.domains[domain]?.records.find(r => r.id === id)?.value;
 const sourceValue = (snapshot, source) => Object.hasOwn(source, 'value') ? source.value : source.path.reduce((v, k) => v?.[k], record(snapshot, source.domainId, source.recordId));
-export const historySources = snapshot => [...(historyPolicy(snapshot)?.sources ?? []), ...lifetimeSources(snapshot)];
+export const historySources = snapshot => [...(historyPolicy(snapshot)?.sources ?? []), ...lifetimeSources(snapshot), ...renewalSources(snapshot)];
 const lifetimeMeaning = state => { if (!state) return null; const { work: _work, resolvedTick: _tick, ...value } = state; return value; };
 const id = h => 'history.' + h.nextId++;
 function anchor(h, event) { h.anchors[event.id] ??= { ...copy(event), tier: 'archive' }; }
@@ -116,6 +117,25 @@ export function prepareHistory(base, candidate, transaction, resolution, operati
         if (!artifact || artifact.provenance.some(p => p.lifetimeEvent === legacy.transferEvent)) continue;
         artifact.provenance.push({ eventId: event.id, tick: legacy.tick, status: artifact.status, holderId: legacy.heirId, lifetimeEvent: legacy.transferEvent });
         anchor(h, event);
+    }
+    for (const matter of Object.values(state.lifetimes?.renewal?.active ?? {})) {
+        if (!matter.hookId) continue;
+        const hook = h.hooks[matter.hookId];
+        if (hook.transitions.some(t => t.matterId === matter.id && t.status === 'active')) continue;
+        if (hook.status !== 'dormant') throw new TypeError('Renewal hook activation conflict');
+        hook.status = 'active';hook.transitions.push({ eventId: event.id, tick: clock, status: 'active', matterId: matter.id });anchor(h, event);
+    }
+    for (const matter of Object.values(state.lifetimes?.renewal?.canonical ?? {})) {
+        if (!matter.hookTransitions) continue;
+        const hook = h.hooks[matter.hookId];
+        if (hook.transitions.some(t => t.matterId === matter.id && t.status === 'resolved')) continue;
+        if (hook.status !== 'active') throw new TypeError('Renewal hook status conflict');
+        for (const status of matter.hookTransitions) hook.transitions.push({ eventId: event.id, tick: clock, status, matterId: matter.id });
+        hook.status = 'resolved';anchor(h, event);
+    }
+    if (state.lifetimes?.renewal?.last && !same(base.states.atri_lifecycle.lifetimes?.renewal?.last, state.lifetimes.renewal.last)) {
+        const last = state.lifetimes.renewal.last;
+        event.summary = last.operation + ': ' + (last.action ?? last.outcome ?? last.id);
     }
     if (operation) operate(candidate, h, operation.operation, operation.input, event);
     if (operation?.operation === 'compact') h.checkpointRequested = true;
