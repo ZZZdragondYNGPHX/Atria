@@ -1,0 +1,94 @@
+import assert from 'node:assert/strict';
+export async function renewalChecks(h){
+    const {anniversary,lifetimeView,people}=await h.load('public/shared/native-lifetime-runtime.js');
+    const {validateLifetimes}=await h.load('src/native/lifetime-authority.js');
+    const {validateHistory}=await h.load('src/native/history-authority.js');
+    const {semanticDistance}=await h.load('public/shared/native-renewal-contract.js');
+    const {queryHistory}=await h.load('public/shared/native-history-runtime.js');
+    const {makeTempSqliteEngineHarness}=await h.load('tests/storage/harness/contract-harness.js');
+    await h.fresh();await h.create();let s=h.session(),svc=h.svc,handle=h.fsHandle,owned=null,serial=0;const restores=[],work=[];
+    const life=()=>s.states.atri_lifecycle.lifetimes,hero=h.manifest.actors[0].actorId,clock=()=>s.states.atri_lifecycle.clocks.world;
+    const act=async input=>{
+        s=await svc.core.appendTimeline(handle,s.session.sessionId,{role:'user',content:'Resolve a declared human lifetime transition.'});
+        const p=await svc.core.prepareAuthorityTurn(handle,s,{transactionId:'opening.wait',input});assert.equal(p.prepared.receipt.result.outcome,'automatic');work.push(p.prepared.work);
+        const request={invocationId:'lifetime-check-'+ ++serial,authorityProof:p.proof,envelope:{schemaVersion:1,narrative:'The authorized lifetime transition is recorded.',outcomes:[],diagnostics:[]}};
+        s=await svc.core.finalizeTurn(handle,s.session.sessionId,request,{expectedRevisionId:s.revision.revisionId});validateLifetimes(s,{complete:true});validateHistory(s);
+    };
+    const op=(operation,input)=>act({minutes:0,lifetime:{operation,[operation.replaceAll('.','_')]:input}});
+    const wait=until=>act({minutes:until-clock()});
+    const restore=async label=>{
+        const point=await svc.saveSystem.manualSave(handle,s.session.sessionId),exported=await svc.saveSystem.exportSnapshot(handle,s.session.sessionId,point.saveId);
+        const target=await(restores.length%2?h.makeTempFsEngine():makeTempSqliteEngineHarness()),next=h.services(target);
+        await next.packageInstaller.install(target.handle,h.archive,{grantedPermissions:['generation']});const r=await next.saveSystem.importSave(target.handle,exported.archive);
+        assert.deepEqual(r.states,s.states,label+' all authoritative state');assert.deepEqual(r.timeline,s.timeline);assert.equal(r.session.sessionId,s.session.sessionId);
+        if(owned)await owned.cleanup();owned=target;svc=next;handle=target.handle;s=r;restores.push({label,bytes:exported.archive.length});
+    };
+    const r=()=>life().renewal,history=()=>s.states.atri_lifecycle.history;
+    const {renewalView}=await h.load('public/shared/native-renewal-runtime.js');
+    const structures=[],samples=[],reused=[];let maximumProjectionBytes=0;
+    const turns=Number(process.env.ATRIA_RENEWAL_TURNS ?? 5000);
+    let meaningful=0;
+    const turn=async(operation,input)=>{
+        const before=JSON.stringify({active:r().active,places:r().places,canonical:r().canonical});
+        const target=Math.floor((meaningful+1)*anniversary(0,50)/turns);
+        await act({minutes:Math.max(0,target-clock()),lifetime:{operation,[operation.replaceAll('.','_')]:input}});
+        assert.notEqual(JSON.stringify({active:r().active,places:r().places,canonical:r().canonical}),before,'not a prose/no-op/sequence-only turn');meaningful++;
+    };
+    try {
+        await op('longevity.bind',{routeId:'route.witness_covenant'});
+        await op('family.conceive',{parentId:hero,otherParentId:'entity.anchor',name:'Mara',consent:true});
+        const fact=Object.values(history().facts).find(f=>f.key==='protagonist.identity');
+        await act({minutes:0,history:{operation:'artifact.create',artifact_create:{kind:'letter',title:'Opening family testimony',content:'An attributed opening record, not proof of all assertions.',sourceId:fact.id,parentId:''}}});
+        const artifact=Object.values(history().artifacts)[0].id;
+        await act({minutes:0,history:{operation:'memory.mark',memory_mark:{id:artifact,marked:true,journaled:true}}});
+        let pendingHook='',secondGeneration=false,organization='';
+        let familySource='';
+        while(meaningful<turns){
+            const first=Object.values(life().kinship).find(k=>k.parents.includes(hero))?.childId;
+            if(first && !secondGeneration && lifetimeView(s,first).chronologicalAge>=20){
+                await op('family.conceive',{parentId:first,otherParentId:'',name:'Ilan',consent:true});secondGeneration=true;
+            }
+            const active=Object.values(r().active)[0];
+            if(!active){
+                if(r().completed && r().completed%(clock()>=anniversary(0,25)?20:100)===0){
+                    const cause=Object.values(r().canonical).filter(m=>m.outcome).at(-1);
+                    assert(cause,'world renewal has a resolved canonical cause');
+                    const sourceId=cause.id;
+                    if(r().completed%100===0){
+                    await op('world.change',{id:'eastbank',operation:'expand',otherId:'',sourceId,name:''});
+                    if(!organization){await op('world.change',{id:'',operation:'found',otherId:'',sourceId,name:'Civic Witness Association'});organization=r().last.id;}
+                    else if(life().institutions[organization].status!=='dissolved'){await op('world.change',{id:organization,operation:'split',otherId:'',sourceId,name:'Successor Witness Circle'});organization=life().institutions[organization].successors[0];}
+                    }
+                    const caseFact=Object.values(history().facts).find(f=>f.value?.id===cause.id&&f.key.startsWith('renewal.'));
+                    await act({minutes:0,history:{operation:'artifact.create',artifact_create:{kind:'case_file',title:'Record of a settled local matter',content:'An attributed case disposition survives for later verification.',sourceId:caseFact.id,parentId:''}}});
+                    familySource=r().completed===800?artifact:Object.values(history().artifacts).at(-1).id;
+                    await act({minutes:0,history:{operation:'hook.create',hook_create:{title:'Re-examine the earlier disposition',sourceId:familySource}}});
+                    pendingHook=Object.values(history().hooks).at(-1).id;
+                    await wait(clock()+91*1440);
+                }
+                await turn('matter.open',{grammarId:pendingHook?'cold_case':'',hookId:pendingHook});
+                const m=Object.values(r().active)[0];maximumProjectionBytes=Math.max(maximumProjectionBytes,Buffer.byteLength(JSON.stringify(renewalView(s))));structures.push({completed:r().completed,structure:m.structure,tick:m.opened,familyId:m.familyId,institutionId:m.institutionId});
+                if(pendingHook){assert.equal(m.sourceId,familySource);assert.equal(m.artifactId,familySource);reused.push({id:m.id,hookId:m.hookId,sourceId:m.sourceId,tick:m.opened});pendingHook='';}
+            }else{
+                const action=active.path[active.stage] ?? (r().completed%50===0?'record':'settle');
+                await turn('matter.act',{id:active.id,action,presentation:''});
+            }
+            if(meaningful%100===0)console.log('renewal progress',meaningful);
+            if(meaningful%1000===0 || meaningful===turns){
+                samples.push({turns:meaningful,tick:clock(),activeBytes:Buffer.byteLength(JSON.stringify(s.states)),historyBytes:Buffer.byteLength(JSON.stringify(history())),maximumProjectionBytes,completed:r().completed});
+                console.log('renewal checkpoint',JSON.stringify(samples.at(-1)));await restore('renewal-'+meaningful);
+            }
+        }
+        assert(clock()>=anniversary(0,50));assert.equal(meaningful,turns);
+        for(let i=0;i<structures.length;i++)for(let j=Math.max(0,i-64);j<i;j++){
+            const distance=semanticDistance(structures[i].structure,structures[j].structure);
+            assert(distance>0);if(structures[i].tick-structures[j].tick<90*1440)assert(distance>=3);
+        }
+        if(turns>=5000){assert(reused.length>=5);assert(structures.filter(x=>x.tick>=anniversary(0,40)).length>100);}
+        if(turns>=5000)assert(Object.values(life().kinship).length>=2);
+        assert(queryHistory(s,{facet:'artifact',value:artifact}).items.length>0);assert(history().memory[artifact].marked);
+        assert(Object.values(history().hooks).filter(x=>x.status==='resolved').length>=reused.length-1);
+        return {phase:'Phase 4 Gate B candidate',meaningfulContentTurns:meaningful,years:50,kinshipEdges:Object.keys(life().kinship).length,institutions:Object.keys(life().institutions).length,completed:r().completed,structures:structures.length,semanticStructures:new Set(structures.map(x=>JSON.stringify(x.structure))).size,familyBoundMatters:structures.filter(x=>x.familyId).length,reused,restores,samples,
+            caveat:'Candidate evidence only; not final Gate B multi-region/wealth coverage or Gate C. Snapshot sizes exclude accumulated explicit backup containers.'};
+    }finally{if(owned)await owned.cleanup();}
+}

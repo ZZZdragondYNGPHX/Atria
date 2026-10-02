@@ -1,6 +1,6 @@
 # Phase 2 — History / Memory / Compaction Core
 
-Development package: 2.0.0-phase3. Final release remains 2.0.0.
+Development package: 2.0.0-phase4. Final release remains 2.0.0.
 Requires Native history support in Core f116a98de7a09c32f1789a875244c7e4b9e14e20 or a descendant.
 This is the history foundation, not the completed long-lived world.
 

@@ -1,6 +1,6 @@
 # Phase 3 — Human Lifetime / Family / Institution Lifecycle
 
-Development: **2.0.0-phase3**. Not the final Long-Lived World release.
+Development: **2.0.0-phase4**. Not the final Long-Lived World release.
 Requires Core 80376ec9f0e5cce9ef1c29422f39604bb7446cfd or a descendant.
 
 ## Authority
