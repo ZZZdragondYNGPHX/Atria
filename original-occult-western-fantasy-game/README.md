@@ -4,6 +4,12 @@ Task: package/original-occult-western-fantasy-game. Long-lived independent packa
 
 ## Development: 2.0.0-phase4
 
+**Future Phase 7 UI/UX:** follow the implementation-ready
+[player-facing experience specification](https://github.com/ZZZdragondYNGPHX/Atria/blob/docs/plans/package/original-occult-western-fantasy-game-long-lived-world/player-facing-experience.md)
+for page structure, register styling, long-life forms, safe data wiring and browser
+acceptance. The [frontend design entry](frontend/DESIGN.md) routes implementers to
+that plan. This is planning only; Phases 5–6 remain prerequisites.
+
 Task: refactor/original-occult-western-fantasy-long-lived-world. **Phases 1–4** of the approved eight-phase plan; this is not the final 2.0.0 release.
 
 Default builds now use an open-ended Native minute clock, Gregorian chronology, stable identity/provenance primitives, persistent Stances and an interval resolver skeleton. Day 31 and year rollover are valid. See [the runtime contract](runtime/LONG-HORIZON.md) for exact scope, Save/Restore semantics and explicit later-phase exclusions.

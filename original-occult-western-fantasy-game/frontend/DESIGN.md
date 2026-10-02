@@ -1,5 +1,22 @@
 # P8 frontend — Eastbank field register
 
+## Long-lived-world Phase 7 implementation entry
+
+The original P8 sections below describe the verified opening-era frontend, not
+completed long-life UI. The Phase 7 plan was refined on 2026-10-03 using
+frontend-design, ui-ux-pro-max and emil-design-eng; execution remains gated on
+Phases 5–6. Preserve this marine/paper register and follow the implementation-ready
+[Phase 7 UX specification](https://github.com/ZZZdragondYNGPHX/Atria/blob/docs/plans/package/original-occult-western-fantasy-game-long-lived-world/player-facing-experience.md)
+and its acceptance matrix when that phase begins.
+
+The planned navigation is Field notes / Chronicle / Arrangements, with bounded
+historical/entity details and dedicated long-term forms. The specification owns
+the page defaults, responsive/failure states, authority boundaries, wiring-gap
+register and ordered work. At implementation time, update this existing file with
+the real frontend binding/schema/action mapping and measured deviations; do not
+create a parallel design or authority registry. No Phase 7 code is implemented by
+this document-routing change.
+
 ## P8-A: reviewed direction
 The interface is a civil verifier's working register, not a quest dashboard or an occult power menu. The memorable device is a double-file spine: a marine cover and offset paper index, recalling incompatible but authenticated records. Keep the reading surface quiet; no glow, fake parchment, invented seals, progress scores or decorative charts.
 
