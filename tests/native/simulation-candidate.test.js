@@ -24,6 +24,46 @@ describe('Pure bounded World Simulation preparation', () => {
         expect(prepared.work).toMatchObject({ clockAdvances: 1, appCommands: 4, worldEvents: 3, effects: 8, readGrants: 8 });
         expect(await run(f)).toEqual(prepared);
     });
+    test('a 200-year sparse interval has constant work and preserves the shared clock', async () => {
+        const span = 200 * 365 * 1440;
+        const f = simulationCandidateFixture(({ contract }) => {
+            contract.simulationRuntime.policy.maxAdvanceTicks = span;
+            contract.lifecycleRuntime.advances[0].maxTicks = span;
+        });
+        const before = structuredClone(f.base);
+        const budget = await createAuthorityPublicationBudget(f.base, f.installed);
+        const result = await prepareLifecycle(f.base, f.installed, { kind: 'clock.advance', commandId: 'advance', ticks: span }, budget);
+        expect(result.states.atri_lifecycle.clocks.world).toBe(span);
+        expect(result.states.atri_lifecycle.domains.notes.records[0].value.visits).toBe(3);
+        expect(budget.counts).toMatchObject({ clockAdvances: 1, worldEvents: 3, appCommands: 3 });
+        expect(f.base).toEqual(before);
+    });
+    test.each([1440, 200 * 365 * 1440, 5000 * 365 * 1440])('target-tick interval resolution is one step at %i minutes', async span => {
+        const f = simulationCandidateFixture(({ contract }) => {
+            contract.simulationRuntime.policy = { maxSteps: 1, maxDeliberations: 0, maxAdvanceTicks: span };
+            contract.lifecycleRuntime.advances[0].maxTicks = span;
+            const job = contract.simulationRuntime.jobs[0];
+            job.due = { formula: 'clock.targetTick' };
+            job.enabled = 'reads.calendar.visits < 1';
+        });
+        const budget = await createAuthorityPublicationBudget(f.base, f.installed);
+        const result = await prepareLifecycle(f.base, f.installed, { kind: 'clock.advance', commandId: 'advance', ticks: span }, budget);
+        expect(result.states.atri_lifecycle.clocks.world).toBe(span);
+        expect(result.states.atri_lifecycle.domains.notes.records[0].value.visits).toBe(1);
+        expect(budget.counts).toMatchObject({ clockAdvances: 1, worldEvents: 1, appCommands: 1 });
+    });
+    test('safe-integer overflow still refuses atomically', async () => {
+        const f = simulationCandidateFixture(({ contract }) => {
+            contract.simulationRuntime.policy.maxAdvanceTicks = Number.MAX_SAFE_INTEGER;
+            contract.lifecycleRuntime.advances[0].maxTicks = Number.MAX_SAFE_INTEGER;
+            contract.simulationRuntime.jobs = [];
+        });
+        f.base.states.atri_lifecycle.clocks.world = Number.MAX_SAFE_INTEGER;
+        const before = structuredClone(f.base);
+        const budget = await createAuthorityPublicationBudget(f.base, f.installed);
+        await expect(prepareLifecycle(f.base, f.installed, { kind: 'clock.advance', commandId: 'advance', ticks: 1 }, budget)).rejects.toThrow();
+        expect(f.base).toEqual(before);
+    });
     test('same-tick priority/id ordering is independent of declaration order; invalidated later work is not reinterpreted', async () => {
         const f = simulationCandidateFixture();
         const job = f.contract.simulationRuntime.jobs[0];
@@ -55,6 +95,13 @@ describe('Pure bounded World Simulation preparation', () => {
     ])('%s failure does not mutate the source', async (_name, mutate) => {
         const f = simulationCandidateFixture(); mutate(f); f.sync(); const before = structuredClone(f.base);
         await expect(run(f)).rejects.toThrow(); expect(f.base).toEqual(before);
+    });
+    test.each([-1, 0.5, Number.MAX_SAFE_INTEGER + 1])('invalid interval target %s cannot mutate a candidate', async target => {
+        const f = simulationCandidateFixture();
+        const before = structuredClone(f.base);
+        const budget = await createAuthorityPublicationBudget(f.base, f.installed);
+        await expect(prepareSimulationStep(f.base, f.installed, 'calendar.day', 0, budget, target)).rejects.toThrow();
+        expect(f.base).toEqual(before);
     });
     test('internal job entrypoint cannot invent a job or run before its due time', async () => {
         const f = simulationCandidateFixture(); const budget = await createAuthorityPublicationBudget(f.base, f.installed);

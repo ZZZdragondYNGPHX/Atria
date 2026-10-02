@@ -2,6 +2,7 @@ import { assertNativeExperienceContract } from '../../public/shared/native-exper
 import { assertJsonDeclaration, fields } from '../../public/shared/native-values.js';
 import { assertTaskValue, taskId } from '../../public/shared/native-task-contract.js';
 import { compileDataSchema } from '../../public/shared/native-data-schema.js';
+import { simulationInstantSchema } from '../../public/shared/native-simulation-contract.js';
 import { AUTHORITY_LIMITS } from '../../public/shared/native-authority-contract.js';
 import { projectInformation, assertInformationAnchor } from '../../public/shared/native-information-runtime.js';
 import { compileFormula, evaluateFormulaAst } from '../../public/scripts/native/experience/logic/formula.js';
@@ -272,7 +273,7 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
 
 // Server-internal system entrypoint. No caller-selected transaction or invented
 // timeline entry; the required simulation declaration owns all targets/input.
-export async function prepareSimulationStep(base, installed, jobId, tick, budget) {
+export async function prepareSimulationStep(base, installed, jobId, tick, budget, targetTick = tick) {
     try {
         const contract = contractFor(base, installed); validateCandidate(base, contract);
         const simulation = contract.simulationRuntime;
@@ -282,8 +283,10 @@ export async function prepareSimulationStep(base, installed, jobId, tick, budget
         const { candidate, logic, world } = await createTaskWorld(base, installed, null, budget);
         protectOutputs(logic, budget);
         const reads = privateReads(candidate, contract, job.reads, {}, budget);
-        const context = freeze({ reads, clock: { tick } });
-        if (!predicate(job.enabled, context) || budget.typed(template(job.due, context), { type: 'integer', minimum: 0, maximum: 2147483647 }) > tick) throw new TypeError('Stale simulation job');
+        budget.typed(targetTick, simulationInstantSchema);
+        if (targetTick < tick) throw new TypeError('Invalid simulation target');
+        const context = freeze({ reads, clock: { tick, targetTick } });
+        if (!predicate(job.enabled, context) || budget.typed(template(job.due, context), simulationInstantSchema) > tick) throw new TypeError('Stale simulation job');
         const transaction = logic.transactions.find(item => item.id === job.action.transactionId);
         if (!transaction || transaction.origin !== 'simulation') throw new TypeError('Invalid system Transaction');
         const input = budget.typed(template(job.action.input, context), transaction.inputSchema);

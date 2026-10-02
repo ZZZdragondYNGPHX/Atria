@@ -27,6 +27,15 @@ describe('World Simulation declaration gate', () => {
         expect(assertNativeExperienceContract(assertNativeExperienceContract(contract))).toEqual(contract);
         expect(assertSupportedExperienceContract(contract)).toEqual(contract);
     });
+    test('admits multi-century and safe-integer instants without expanding execution budgets', () => {
+        const value = fixture();
+        value.contract.simulationRuntime.policy.maxAdvanceTicks = Number.MAX_SAFE_INTEGER;
+        value.contract.simulationRuntime.jobs[0].due = Number.MAX_SAFE_INTEGER;
+        expect(() => assertNativeExperienceContract(value.contract)).not.toThrow();
+        expect(() => compile(value)).not.toThrow();
+        value.contract.simulationRuntime.jobs[0].due += 1;
+        expect(() => assertNativeExperienceContract(value.contract)).toThrow();
+    });
     test('resolves static system Transaction and typed input', () => {
         const value = fixture(); expect(compile(value).transactions.at(-1).origin).toBe('simulation');
         value.contract.simulationRuntime.jobs[0].action.input.text = { formula: 'reads.note.text' };
@@ -41,7 +50,9 @@ describe('World Simulation declaration gate', () => {
         ['extra policy', c => { c.simulationRuntime.policy.unlimited = true; }],
         ['too many steps', c => { c.simulationRuntime.policy.maxSteps = 17; }],
         ['unbounded background', c => { c.simulationRuntime.policy.maxDeliberations = 2; }],
-        ['unbounded advance', c => { c.simulationRuntime.policy.maxAdvanceTicks = 10081; }],
+        ['unsafe advance', c => { c.simulationRuntime.policy.maxAdvanceTicks = Number.MAX_SAFE_INTEGER + 1; }],
+        ['fractional advance', c => { c.simulationRuntime.policy.maxAdvanceTicks = 1.5; }],
+        ['zero advance', c => { c.simulationRuntime.policy.maxAdvanceTicks = 0; }],
         ['undeclared read', c => { c.simulationRuntime.jobs[0].enabled = 'reads.note.secret == "x"'; }],
         ['ambient World', c => { c.simulationRuntime.jobs[0].enabled = 'world.hp > 0'; }],
         ['whole record', c => { c.simulationRuntime.jobs[0].due = { formula: 'reads.note' }; }],

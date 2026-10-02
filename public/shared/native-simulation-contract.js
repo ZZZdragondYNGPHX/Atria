@@ -3,12 +3,16 @@ import { taskId } from './native-task-contract.js';
 import { authorityInteger as integer, authorityList as list, authorityReference as reference } from './native-authority-contract.js';
 import { reads, readContext, predicate, template } from '../scripts/native/experience/logic/bound-expressions.js';
 
-export const SIMULATION_LIMITS = Object.freeze({ jobs: 16, steps: 16, deliberations: 1, advanceTicks: 10080 });
-export const simulationInstantSchema = Object.freeze({ type: 'integer', minimum: 0, maximum: 2147483647 });
+// Calendar distance is not a work budget: sparse multi-year resolution uses
+// the same bounded jobs, steps, effects and deliberations as short advances.
+export const SIMULATION_LIMITS = Object.freeze({ jobs: 16, steps: 16, deliberations: 1, advanceTicks: Number.MAX_SAFE_INTEGER });
+export const simulationInstantSchema = Object.freeze({ type: 'integer', minimum: 0, maximum: Number.MAX_SAFE_INTEGER });
 const relevanceSchema = { type: 'string', maxLength: 4, enum: ['hot', 'warm', 'cold'] };
+// targetTick is the requested interval end, not elapsed world state. It allows
+// a declared aggregate job to run once at the interval boundary. tick stays canonical.
 export function simulationContext(job, lifecycle) {
     return { reads: readContext(reads(job.reads, lifecycle)), clock: { type: 'object', additionalProperties: false,
-        properties: { tick: simulationInstantSchema }, required: ['tick'] } };
+        properties: { tick: simulationInstantSchema, targetTick: simulationInstantSchema }, required: ['tick', 'targetTick'] } };
 }
 
 // Declaration-only. Private state can enter only explicit, schema-bounded Task

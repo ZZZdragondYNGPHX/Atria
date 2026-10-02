@@ -5,12 +5,12 @@ import { addOutbox } from './lifecycle-authority.js';
 
 const relevanceSchema = { type: 'string', maxLength: 4, enum: ['hot', 'warm', 'cold'] };
 const compare = (a, b) => a.tick - b.tick || a.job.priority - b.job.priority || (a.job.id < b.job.id ? -1 : a.job.id > b.job.id ? 1 : 0);
-function evaluate(base, contract, job, budget) {
+function evaluate(base, contract, job, budget, targetTick = base.states.atri_lifecycle.clocks[contract.simulationRuntime.clockId]) {
     const state = base.states.atri_lifecycle;
     budget.step();
     if (state.scopes[job.scopeId]?.status !== 'active') return null;
     const reads = privateReads(base, contract, job.reads, {}, budget);
-    const context = { reads, clock: { tick: state.clocks[contract.simulationRuntime.clockId] } };
+    const context = { reads, clock: { tick: state.clocks[contract.simulationRuntime.clockId], targetTick } };
     if (!predicate(job.enabled, context)) return null;
     return { job, context, tick: budget.typed(template(job.due, context), simulationInstantSchema),
         relevance: budget.typed(template(job.relevance, context), relevanceSchema) };
@@ -30,7 +30,7 @@ export async function prepareWorldSimulation(base, installed, untilTick, budget,
     let steps = 0;
     while (true) {
         const due = simulation.jobs.filter(job => job.action.kind === 'transaction')
-            .map(job => evaluate(candidate, contract, job, budget)).filter(item => item && item.tick <= untilTick).sort(compare);
+            .map(job => evaluate(candidate, contract, job, budget, untilTick)).filter(item => item && item.tick <= untilTick).sort(compare);
         if (!due.length) break;
         const next = due[0];
         const occurrence = next.job.id + ':' + next.tick;
@@ -38,7 +38,7 @@ export async function prepareWorldSimulation(base, installed, untilTick, budget,
         occurrences.add(occurrence);
         const tick = Math.max(candidate.states.atri_lifecycle.clocks[simulation.clockId], next.tick);
         candidate.states.atri_lifecycle.clocks[simulation.clockId] = tick;
-        candidate = await prepareSimulationStep(candidate, installed, next.job.id, tick, budget);
+        candidate = await prepareSimulationStep(candidate, installed, next.job.id, tick, budget, untilTick);
     }
     candidate.states.atri_lifecycle.clocks[simulation.clockId] = untilTick;
     // Admission is after deterministic catch-up, not once per event or model.
@@ -47,7 +47,7 @@ export async function prepareWorldSimulation(base, installed, untilTick, budget,
         const pending = state.outbox.some(item => item.status === 'pending' && item.simulation);
         if (!pending) {
             const candidates = simulation.jobs.filter(job => job.action.kind === 'task')
-                .map(job => evaluate(candidate, contract, job, budget)).filter(item => item && item.tick <= untilTick && item.relevance !== 'cold'
+                .map(job => evaluate(candidate, contract, job, budget, untilTick)).filter(item => item && item.tick <= untilTick && item.relevance !== 'cold'
                     && (state.automations['simulation:' + item.job.id]?.cursor ?? -1) < item.tick);
             candidates.sort((a, b) => (a.relevance === b.relevance ? 0 : a.relevance === 'hot' ? -1 : 1) || compare(a, b));
             const selected = candidates[0];
