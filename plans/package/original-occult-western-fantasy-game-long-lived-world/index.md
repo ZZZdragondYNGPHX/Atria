@@ -4,7 +4,7 @@
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
 **Plan status:** Discussion / not approved for implementation  
-**Plan generation:** v0.5
+**Plan generation:** v0.6
 
 ## 1. Why this plan exists
 
@@ -56,6 +56,7 @@ The plan will be split as decisions become stable:
 
 - `longevity-model.md` — time hierarchy, campaign horizon, aging/lifecycle, generational continuity.
 - `world-simulation.md` — institutions, actors, agenda renewal, city change, succession and background simulation.
+- `time-model.md` — hierarchical time, fast-forward, interruption, stances and long-horizon resolution.
 - `content-renewal.md` — renewable cases, claims, NPCs, locations/events, procedural constraints and anti-repetition.
 - `history-memory.md` — event compaction, memory tiers, archival summaries, save-size/context control.
 - `family-relationships.md` — romance, marriage, children, descendants, inheritance and social norms.
@@ -184,16 +185,36 @@ Detailed authority: `family-relationships.md`.
 
 ### Round 5 — Time scale, fast-forward and world resolution
 
+Status: complete.
+
+Frozen:
+
+- the world timeline has no artificial campaign end date;
+- authoritative time expands above Day into Week / Month / Season / Year / Era;
+- Era represents historically meaningful structural periods rather than a fixed-duration tick;
+- players may request long fast-forward directly, including multi-year or multi-decade spans;
+- long fast-forward is event-driven and hierarchical rather than implemented as tens of thousands of full Day ticks;
+- fast-forward may be interrupted automatically by high-impact events that reasonably demand player attention;
+- before long fast-forward, the protagonist may define long-term stances for career, family, occult practice, social posture, wealth and investigation;
+- unresolved cases do not universally block time advancement: the player may abandon them, delegate them, or allow the world to resolve/fail them independently;
+- the world continues to act during protagonist inactivity or absence;
+- low-information periods are compressed, while high-impact periods expand back into finer simulation;
+- historical detail is progressively summarized at longer temporal distance.
+
+Detailed authority: `time-model.md`.
+
+### Round 6 — Renewable content and anti-repetition
+
 Status: active.
 
 Questions to freeze:
 
-1. What time layers should be authoritative above Day: Week, Month, Season, Year, Era?
-2. How much time may the player fast-forward in one action?
-3. When fast-forwarding months or years, what must always be resolved rather than skipped?
-4. Which events interrupt fast-forward automatically?
-5. How should active cases, family, institutions and Claims behave during long absences?
-6. Should long fast-forward be allowed while unresolved high-risk matters exist, or should the system require an explicit stance/delegation plan first?
+1. Which content families must be indefinitely renewable: cases, claims, institutional conflicts, family events, economic/property disputes, occult incidents, social crises?
+2. How much should generation derive from current world state versus curated pattern libraries?
+3. What stops repeated case structures from feeling like reskinned templates?
+4. Can new locations, businesses, factions or institutions emerge dynamically?
+5. How should old unresolved history seed new cases decades later?
+6. What makes a generated matter important enough to promote into durable canon instead of disappearing after resolution?
 
 No implementation starts until the discussion rounds are explicitly approved.
 
