@@ -9,7 +9,7 @@ The Package adds tools/renewal-compile.mjs after lifetime compilation. Curated
 structural grammars and initial geography are policy, not a Package evaluator.
 Native Lifetime preparation owns atri_lifecycle.lifetimes.renewal in the existing
 private candidate; History, Clock, CAS publication, Retry and SaveSystem are reused.
-Core candidate: feat/native-renewable-world@0fced2b79.
+Core candidate: feat/native-renewable-world@6e2611a0a (runtime unchanged from 0fced2b79; additional checkpoint/restore tests).
 A compatible Core must include native-renewal-contract.js / renewal-authority.js;
 80376ec9f by itself is the Phase 3 baseline, not sufficient for this candidate.
 
@@ -96,3 +96,21 @@ smaller run is never Gate B evidence. A candidate run is not Gate C or release.
 
 The same Record and live HANDOFF carry actual results and remaining work. Do not
 start Phase 5 until Phase 4 implementation and the frozen candidate gate pass.
+
+### Portable-export measurement boundary
+
+The Gate B checker explicitly requests the existing Native history.compact before
+each measured export/import. This does not count as a meaningful content turn.
+It asserts unchanged clock, Lifetime world state and all durable facts, heads,
+anchors, artifacts, Hooks and marked memory. A single-branch portable export must
+contain exactly one revision; its uncompressed save.json bytes are recorded
+separately from archive bytes and active-state bytes. Projection maxima include
+actual investigation evidence, not only the empty-at-open view.
+
+This distinction matters: an uncheckpointed snapshot includes its retained raw
+revision window. In the first full run the 5,000th content turn completed with
+833,018 active-state bytes, but its raw-window export exceeded the unchanged
+64 MiB save.json bound before final import/audits. That run did not pass Gate B.
+No container/history/lifetime limit has been raised and no old save or durable
+fact is deleted by the repair. Existing explicit old SavePoints and branches
+continue to retain their own history and are not active-growth measurements.

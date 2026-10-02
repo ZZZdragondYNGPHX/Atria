@@ -17,11 +17,23 @@ export async function renewalChecks(h){
     const op=(operation,input)=>act({minutes:0,lifetime:{operation,[operation.replaceAll('.','_')]:input}});
     const wait=until=>act({minutes:until-clock()});
     const restore=async label=>{
+        // Measure/export a portable checkpoint, not the retained pre-checkpoint
+        // revision window. This is the existing Phase 2 Authority operation.
+        const before=structuredClone(s.states.atri_lifecycle);
+        await act({minutes:0,history:{operation:'compact',compact:{}}});
+        const after=s.states.atri_lifecycle;
+        assert.equal(after.history.turns,before.history.turns,'compaction is not a content turn');
+        assert.equal(after.history.checkpoint,after.history.transactions);
+        assert.deepEqual(after.clocks,before.clocks,'compaction does not advance time');
+        const {work:beforeWork,...beforeLife}=before.lifetimes,{work:afterWork,...afterLife}=after.lifetimes;
+        assert.deepEqual(afterLife,beforeLife,'compaction preserves all people, matters and geography; work telemetry is recomputed');
+        for(const key of ['facts','heads','anchors','artifacts','hooks','memory'])assert.deepEqual(after.history[key],before.history[key],'compaction preserves durable '+key);
         const point=await svc.saveSystem.manualSave(handle,s.session.sessionId),exported=await svc.saveSystem.exportSnapshot(handle,s.session.sessionId,point.saveId);
+        assert.equal(exported.save.closure.revisions.length,1,'single-branch checkpoint export must not retain the raw revision window');
         const target=await(restores.length%2?h.makeTempFsEngine():makeTempSqliteEngineHarness()),next=h.services(target);
         await next.packageInstaller.install(target.handle,h.archive,{grantedPermissions:['generation']});const r=await next.saveSystem.importSave(target.handle,exported.archive);
         assert.deepEqual(r.states,s.states,label+' all authoritative state');assert.deepEqual(r.timeline,s.timeline);assert.equal(r.session.sessionId,s.session.sessionId);
-        if(owned)await owned.cleanup();owned=target;svc=next;handle=target.handle;s=r;restores.push({label,bytes:exported.archive.length});
+        if(owned)await owned.cleanup();owned=target;svc=next;handle=target.handle;s=r;restores.push({label,bytes:exported.archive.length,saveJsonBytes:Buffer.byteLength(JSON.stringify(exported.save)),revisions:exported.save.closure.revisions.length});
     };
     const r=()=>life().renewal,history=()=>s.states.atri_lifecycle.history;
     const {renewalView}=await h.load('public/shared/native-renewal-runtime.js');
@@ -73,10 +85,12 @@ export async function renewalChecks(h){
                 const action=active.path[active.stage] ?? (r().completed%50===0?'record':'settle');
                 await turn('matter.act',{id:active.id,action,presentation:''});
             }
+            maximumProjectionBytes=Math.max(maximumProjectionBytes,Buffer.byteLength(JSON.stringify(renewalView(s))));
             if(meaningful%100===0)console.log('renewal progress',meaningful);
             if(meaningful%1000===0 || meaningful===turns){
+                await restore('renewal-'+meaningful);
                 samples.push({turns:meaningful,tick:clock(),activeBytes:Buffer.byteLength(JSON.stringify(s.states)),historyBytes:Buffer.byteLength(JSON.stringify(history())),maximumProjectionBytes,completed:r().completed});
-                console.log('renewal checkpoint',JSON.stringify(samples.at(-1)));await restore('renewal-'+meaningful);
+                console.log('renewal checkpoint',JSON.stringify({...samples.at(-1),portableSave:restores.at(-1)}));
             }
         }
         assert(clock()>=anniversary(0,50));assert.equal(meaningful,turns);
@@ -84,11 +98,13 @@ export async function renewalChecks(h){
             const distance=semanticDistance(structures[i].structure,structures[j].structure);
             assert(distance>0);if(structures[i].tick-structures[j].tick<90*1440)assert(distance>=3);
         }
+        const summarize=items=>({matters:items.length,semanticStructures:new Set(items.map(x=>JSON.stringify(x.structure))).size,familyBound:items.filter(x=>x.familyId).length,institutions:new Set(items.map(x=>x.institutionId)).size,paths:items.reduce((out,x)=>(out[x.structure.path]=(out[x.structure.path]??0)+1,out),{})});
+        const semanticAudit={early:summarize(structures.filter(x=>x.tick<anniversary(0,25))),late:summarize(structures.filter(x=>x.tick>=anniversary(0,25)))};
         if(turns>=5000){assert(reused.length>=5);assert(structures.filter(x=>x.tick>=anniversary(0,40)).length>100);}
         if(turns>=5000)assert(Object.values(life().kinship).length>=2);
         assert(queryHistory(s,{facet:'artifact',value:artifact}).items.length>0);assert(history().memory[artifact].marked);
         assert(Object.values(history().hooks).filter(x=>x.status==='resolved').length>=reused.length-1);
-        return {phase:'Phase 4 Gate B candidate',meaningfulContentTurns:meaningful,years:50,kinshipEdges:Object.keys(life().kinship).length,institutions:Object.keys(life().institutions).length,completed:r().completed,structures:structures.length,semanticStructures:new Set(structures.map(x=>JSON.stringify(x.structure))).size,familyBoundMatters:structures.filter(x=>x.familyId).length,reused,restores,samples,
+        return {phase:'Phase 4 Gate B candidate',meaningfulContentTurns:meaningful,years:50,kinshipEdges:Object.keys(life().kinship).length,institutions:Object.keys(life().institutions).length,completed:r().completed,structures:structures.length,semanticStructures:new Set(structures.map(x=>JSON.stringify(x.structure))).size,familyBoundMatters:structures.filter(x=>x.familyId).length,semanticAudit,reused,restores,samples,
             caveat:'Candidate evidence only; not final Gate B multi-region/wealth coverage or Gate C. Snapshot sizes exclude accumulated explicit backup containers.'};
     }finally{if(owned)await owned.cleanup();}
 }
