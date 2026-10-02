@@ -4,7 +4,7 @@
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
 **Plan status:** Discussion / not approved for implementation  
-**Plan generation:** v0.6
+**Plan generation:** v0.7
 
 ## 1. Why this plan exists
 
@@ -205,16 +205,36 @@ Detailed authority: `time-model.md`.
 
 ### Round 6 — Renewable content and anti-repetition
 
+Status: complete.
+
+Frozen:
+
+- renewable content uses finite high-quality grammars combined with current world state rather than fixed instance slots;
+- matter generation composes causal triggers, involved entities, interests, hidden facts, occult factors, institutional pressure, time pressure, historical ties and possible evolution;
+- model deliberation may fill bounded narrative/detail gaps, while Runtime Authority validates canon and structural legality;
+- major resolved content may leave compact Historical Hooks that can resurface decades later;
+- content can die as well as appear: cases close, businesses fail, institutions dissolve, locations change use, districts decline or rebuild;
+- the opening map and institution list are only the initial historical state, not permanent world fixtures;
+- new locations, districts, businesses, factions and institutions may emerge causally over time;
+- old ones may rename, merge, split, relocate, burn, be demolished, decline, close or disappear;
+- generated content must apply cooldown and semantic-distance checks to avoid structural repetition, not merely repeated labels;
+- ephemeral matters are aggressively compactable, while world-changing outcomes promote into durable canonical history.
+
+Detailed authority: `content-renewal.md`.
+
+### Round 7 — History compaction, memory and long-term retrieval
+
 Status: active.
 
 Questions to freeze:
 
-1. Which content families must be indefinitely renewable: cases, claims, institutional conflicts, family events, economic/property disputes, occult incidents, social crises?
-2. How much should generation derive from current world state versus curated pattern libraries?
-3. What stops repeated case structures from feeling like reskinned templates?
-4. Can new locations, businesses, factions or institutions emerge dynamically?
-5. How should old unresolved history seed new cases decades later?
-6. What makes a generated matter important enough to promote into durable canon instead of disappearing after resolution?
+1. What information must remain verbatim forever versus summarized?
+2. How many historical storage tiers should exist?
+3. How should a 100-year save retrieve a 70-year-old relationship, case or photograph without loading everything?
+4. When can old event detail be irreversibly compacted?
+5. Which facts must never be lost because later causality may depend on them?
+6. How should the system prevent save/context growth from becoming linear with every turn?
+7. Should the player be able to inspect historical timelines, family records, institutional histories and archived cases directly?
 
 No implementation starts until the discussion rounds are explicitly approved.
 
