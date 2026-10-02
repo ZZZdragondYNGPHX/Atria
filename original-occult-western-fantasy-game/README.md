@@ -2,7 +2,7 @@
 
 Task: package/original-occult-western-fantasy-game. Long-lived independent package workspace.
 
-## Development: 2.0.0-phase4
+## Development: 2.0.0-phase5
 
 **Future Phase 7 UI/UX:** follow the implementation-ready
 [player-facing experience specification](https://github.com/ZZZdragondYNGPHX/Atria/blob/docs/plans/package/original-occult-western-fantasy-game-long-lived-world/player-facing-experience.md)
@@ -10,7 +10,7 @@ for page structure, register styling, long-life forms, safe data wiring and brow
 acceptance. The [frontend design entry](frontend/DESIGN.md) routes implementers to
 that plan. This is planning only; Phases 5–6 remain prerequisites.
 
-Task: refactor/original-occult-western-fantasy-long-lived-world. **Phases 1–4** of the approved eight-phase plan; this is not the final 2.0.0 release.
+Task: refactor/original-occult-western-fantasy-long-lived-world. **Phases 1–5** of the approved eight-phase plan; this is not the final 2.0.0 release.
 
 Default builds now use an open-ended Native minute clock, Gregorian chronology, stable identity/provenance primitives, persistent Stances and an interval resolver skeleton. Day 31 and year rollover are valid. See [the runtime contract](runtime/LONG-HORIZON.md) for exact scope, Save/Restore semantics and explicit later-phase exclusions.
 
@@ -20,7 +20,9 @@ Phase 3 adds human/family/office lifecycle and costly non-terminal reconstructio
 
 Phase 4 adds renewable state-bound Matters, semantic cooldown, real Historical Hook reuse, portable history promotion and evolving geography/institutions. The first full 5k-turn/50-year candidate passed; this is not final Gate C or a finished 2.0.0 release. See [the renewable-content contract](runtime/RENEWABLE-CONTENT.md).
 
-Requires Core main@6e2611a0a5bbcf743cd9fe19c6eeba457890d3f1 or a descendant with its optional Native renewal policy. Historical 1.0.0 remains unchanged. The source manifest is the retained fixture/bootstrap input; tools/package.mjs emits the distinct v2 development identity by default.
+Phase 5 adds mature progression, identity-linked credentials/property, real delegated cashflow, hidden failures, causal inheritance and institutional autonomy. See [the enterprise contract](runtime/ENTERPRISE-CONTINUITY.md).
+
+Requires Native enterprise Core 14c2f8f30adc980caa04ec85046548f229bcc8fd or a descendant. CI status and integration state are recorded in the same Record/HANDOFF. Historical 1.0.0 remains unchanged. The source manifest is the retained fixture/bootstrap input; tools/package.mjs emits the distinct v2 development identity by default.
 
 ## Retained release 1.0.0
 
@@ -47,6 +49,7 @@ node tools/package.mjs validate --long-horizon-only --core <main-checkout>
 node tools/package.mjs validate --history-only --core <main-checkout>
 node tools/package.mjs validate --lifetime-only --core <main-checkout>
 node tools/package.mjs validate --renewal-only --core <main-checkout>
+node tools/package.mjs validate --enterprise-only --core <main-checkout>
 node tools/package.mjs validate --opening-only --core <main-checkout>
 node tools/package.mjs validate --campaign-only --core <main-checkout>
 node tools/package.mjs validate --campaign-only --v1-campaign --core <main-checkout>
@@ -54,6 +57,8 @@ node tools/package.mjs validate --frontend-only --core <main-checkout>
 node tools/package.mjs preview --v1-campaign --release-only --archive releases/1.0.0.atria --core <main-checkout>
 node tools/package.mjs build --core <main-checkout> --out <new-build-path.atria>
 ~~~
+
+--enterprise-only runs the focused 50-year Phase 5 candidate with twenty years of delegation, identity/title continuity, institutional resistance and eight actual portable Save/Restore transitions. This is not Gate A/B/C.
 
 --renewal-only runs the actual 5,000-content-turn/50-year candidate with two generations, late history reuse, structural repetition audit and five real portable checkpoint imports. Measured exports use existing Native history.compact; compaction/setup/clock-only actions do not inflate the content count. A smaller ATRIA_RENEWAL_TURNS override is smoke evidence only.
 

@@ -5,12 +5,12 @@ Task: refactor/original-occult-western-fantasy-long-lived-world.
 
 ## Build and authority ownership
 
-Default package compilation is opening → network → convergence → long-horizon → history → lifetimes → renewal.
+Default package compilation is opening → network → convergence → long-horizon → history → lifetimes → renewal → enterprise.
 The last compiler emits only Native declarations; no Package-side evaluator,
 scheduler, RNG, database or save format is shipped. Core Clock, Authority,
 Lifecycle and SaveSystem remain the authorities.
 
-- Development Package version: 2.0.0-phase4, with a distinct immutable PackageVersionId and remapped model-resource origins.
+- Development Package version: 2.0.0-phase5, with a distinct immutable PackageVersionId and remapped model-resource origins.
 - Final release remains 2.0.0, gated by the later approved phases.
 - --v1-campaign explicitly compiles the bounded historical campaign instead.
 - --fixture retains the separate synthetic two-day foundation fixture.
@@ -152,3 +152,5 @@ Enterprise/delegation, multi-region,
 macro/Era simulation and final Chronicle UI remain unimplemented. The Phase 1
 date test jumping centuries is **not** Gate A/B/C or a century-world simulation.
 Use the dedicated Phase 2 check for history-only development/retrieval evidence.
+
+Phase 5 progression/property/delegation extensions are specified in ENTERPRISE-CONTINUITY.md. Its Native Core prerequisite supersedes the historical minimums above.

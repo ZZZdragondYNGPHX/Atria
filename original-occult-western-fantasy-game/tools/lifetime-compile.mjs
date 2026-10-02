@@ -14,10 +14,12 @@ export function compileLifetimes(opening,manifest,operations,anniversary){
     const entries=Object.entries(operations);
     wait.inputSchema.properties.lifetime={type:'object',properties:{operation:{type:'string',maxLength:32,enum:entries.map(([op])=>op)},
         ...Object.fromEntries(entries.map(([op,schema])=>[op.replaceAll('.','_'),schema]))},required:['operation'],additionalProperties:false};
-    const has=entries.map(([op])=>'args.lifetime.operation == '+JSON.stringify(op)).join(' || ');
+    const balanced=parts=>parts.length===1?parts[0]:'('+balanced(parts.slice(0,Math.ceil(parts.length/2)))+' || '+balanced(parts.slice(Math.ceil(parts.length/2)))+')';
+    const has=balanced(entries.map(([op])=>'args.lifetime.operation == '+JSON.stringify(op)));
+    const template=(schema,path)=>schema.type==='object'?Object.fromEntries(Object.entries(schema.properties).map(([k,v])=>[k,template(v,path+'.'+k)])):{formula:path};
     wait.resolution.cases[0].when=wait.resolution.cases[0].when.replace('args.minutes == 0','args.minutes == 0 && !('+has+')');
     wait.lifetimes=entries.map(([op,schema])=>({operation:op,when:'resolution.outcome != "impossible" && args.lifetime.operation == '+JSON.stringify(op),
-        input:Object.fromEntries(Object.keys(schema.properties).map(k=>[k,{formula:'args.lifetime.'+op.replaceAll('.','_')+'.'+k}]))}));
+        input:Object.fromEntries(Object.keys(schema.properties).map(k=>[k,template(schema.properties[k],'args.lifetime.'+op.replaceAll('.','_')+'.'+k)]))}));
     wait.intent.description+=' Optional lifetime operations govern consent-based family transitions, causal actors, offices and costly occult continuity.';
     opening.logic.transactions.find(t=>t.id==='opening.day').receipt.projection.notice='Resolve the Native interval, retained obligations and relevant human lifetime milestones; no renewable or macro simulation.';
     return opening;

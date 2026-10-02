@@ -29,8 +29,8 @@ manifest.resources = await json('runtime/model-resources.json');
 // Historical v1 remains a distinct fixture; in-progress v2 must never reuse its immutable identity.
 if (!fixture && !boundedV1) {
  const previous = manifest.packageVersionId;
- manifest.version = '2.0.0-phase4';
- manifest.packageVersionId = 'pkgv_' + createHash('sha256').update('occult-long-lived-world-2.0.0-phase4').digest('hex').slice(0, 32);
+ manifest.version = '2.0.0-phase5';
+ manifest.packageVersionId = 'pkgv_' + createHash('sha256').update('occult-long-lived-world-2.0.0-phase5').digest('hex').slice(0, 32);
  manifest.resources = JSON.parse(JSON.stringify(manifest.resources).replaceAll(previous, manifest.packageVersionId));
 }
 if(fixture){const originalId=manifest.packageId,originalVersion=manifest.packageVersionId;manifest.packageId='pkg_'+createHash('sha256').update('occult-regression-only').digest('hex').slice(0,32);manifest.packageVersionId='pkgv_'+createHash('sha256').update('occult-regression-release-1.0.0').digest('hex').slice(0,32);manifest.version+='-regression';manifest.resources=JSON.parse(JSON.stringify(manifest.resources).replaceAll(originalId,manifest.packageId).replaceAll(originalVersion,manifest.packageVersionId));}
@@ -74,6 +74,8 @@ if (!fixture) {
   opening = compileLifetimes(opening, manifest, LIFETIME_OPERATIONS, anniversary);
   const { compileRenewal } = await import('./renewal-compile.mjs');
   opening = compileRenewal(opening);
+  const { compileEnterprise } = await import('./enterprise-compile.mjs');
+  opening = compileEnterprise(opening);
  }
  contract.authorityRuntime.intentObservation.viewIds=['player.overview'];
  Object.assign(contract,{lifecycleRuntime:opening.lifecycle,simulationRuntime:opening.simulation,informationRuntime:opening.information});
