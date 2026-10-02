@@ -423,9 +423,91 @@ including the expanded configured four-adapter institutional/checkpoint restore
 tests, has **passed**. The full Package long run remains in progress.
 Phase 4 remains incomplete; do not enter Phase 5.
 
+## Phase 4 complete — verified renewable world candidate
+
+**Phase 4 is complete. Phase 5 has NOT started.**
+
+- Tested executable Package: d57f0c0ad1d2c16a9959cff9841a9145f255eb28.
+- Final Package: 7937de304d3f4eef8a9626f3b537d0d4e23996e8, same task branch.
+  The final commit changes README/runtime documentation only; compiler, runtime
+  declarations and checker are identical to the tested Package commit.
+- Verified Core: main@6e2611a0a5bbcf743cd9fe19c6eeba457890d3f1, fast-forwarded
+  from 80376ec9f after candidate verification. Temporary support branch removed
+  remotely by the merged-branch cleanup workflow and locally after verification.
+- Long-lived package remains 79447c0b8aca028c6929ff8f9842f8835676191f; final
+  Package integration/release remains Phase 8. No main-to-Package merge occurred.
+
+### Full candidate / semantic and historical audit
+
+[37027895867](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37027895867)
+passed BOTH the full Core/four-adapter job and the real Package long run.
+The retained workflow artifact is phase4-gate-b-candidate / phase4-gate-b.log.
+
+- **5,000 actual content-mutating turns**, 50 years, 1,000 concluded Matters in
+  one continuous Native world/session across five Fs/SQLite imports.
+- Two kinship edges across two descendant generations, 18 durable institution
+  identities, 349 Matters bound to actual public families.
+- **763 distinct semantic structures**. Names/template IDs are excluded; runtime
+  distance/cooldown and the independent final rolling-window audit both passed.
+- Early 500 Matters: 435 structures; late 500: 427. Strongest late executed path:
+  162/500 (32.4%), not a dominant single-template stream. Late activity remained
+  genuinely stateful and did not merely accumulate sequence/prose turns.
+- Genuine Historical Hook reuses: **4 early, 25 late** (29 total), with exact
+  original source/artifact links and activation/resolution provenance. Includes
+  opening artifact history.64 re-examined at tick 21,168,864, approximately 40 years
+  after creation. The player-marked opening artifact remained retrievable.
+- Early/late institution bindings span 8/14 IDs. Actual family-bound Matters are
+  214/135; family binding remains real but is not claimed to increase in relative
+  frequency as the institution population grows.
+
+| Content turns | Active state bytes | History bytes | Portable save.json bytes | Archive bytes | Max projection bytes |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1,000 | 249,840 | 187,846 | 254,360 | 39,392 | 945 |
+| 2,000 | 321,924 | 247,107 | 326,444 | 52,724 | 953 |
+| 3,000 | 435,787 | 342,085 | 440,307 | 66,991 | 957 |
+| 4,000 | 582,362 | 465,242 | 586,881 | 83,261 | 957 |
+| 5,000 | 732,928 | 590,942 | 737,447 | 97,148 | 957 |
+
+Every measured export contains exactly one revision and restores all authority
+and timeline state into a fresh real Fs/SQLite store. The compaction assertions
+preserve durable facts, actors, geography, Hooks/artifacts and marked memory.
+Active/portable growth over 1k-to-5k is about 2.93x/2.90x for 5x content turns;
+projection growth is 945 to 957 bytes. This is measured interval evidence, not a
+claim that arbitrary durable-history accumulation is asymptotically bounded.
+Explicit old SavePoints/branches retain their own history and are not included
+in the active-growth claim. Existing safety budgets still fail atomically.
+
+### Core integration and final verification
+
+- Exact Core 6e2611a0a full Authority/four-adapter CI: success in 37027895867.
+  Includes real institution founding/split/merge/dissolution Save/Restore,
+  preservation of old SavePoints, portable checkpoints and Retry boundaries.
+- Main-triggered Authority Transaction
+  [37040144463](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37040144463): success.
+- Main-triggered Native Frontend v3
+  [37040144523](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37040144523): success.
+- Main-triggered Native Model Prompt Runtime
+  [37040144694](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37040144694): success.
+- All three main workflows use the same verified 6e2611a0a commit; main and its
+  remote ref were checked equal. No extra implementation changes were merged.
+- Final Package build on actual main@6e2611a0a: **212,231 bytes**, ignored output.
+  Historical 1.0.0 SHA-256 remains
+  e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09.
+- Local targeted and prior regression evidence is preserved in the preceding
+  entries; no additional hosted-model, device or final Package UI result is claimed.
+
+### Boundary / next phase
+
+This is the first complete **Phase 4 Gate B candidate**, not final multi-region/
+wealth Gate B coverage, full Gate A from the earlier history-only test, or Gate C.
+The approved 10k-turn/200-year release gate remains Phase 8. No v1 save migration
+or 2.0.0 release artifact was added. Phase 5 progression/property/wealth/delegation/
+organization autonomy remains unimplemented. Continue only in a new authorized
+Phase 5 round, following live HANDOFF and the frozen Plan modules.
+
 ## Final state
 
-The eight-phase project remains active and incomplete. Phases 1–3 are complete;
-Phase 4 is an implementation candidate under verification. The full 5k/50-year
-candidate has NOT passed. Continue Phase 4 on the same Package task branch.
-Phase 5 has not started.
+The eight-phase project remains active and incomplete. **Phases 1–4 are complete.**
+Phase 5 — Progression / Wealth / Delegation / Organization is next and NOT started.
+The same Package task branch remains active; live HANDOFF contains the Phase 5
+read order, verified refs, caveats and bootstrap prompt. Stop at this boundary.
