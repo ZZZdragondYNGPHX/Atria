@@ -1,3 +1,4 @@
+import { initialLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { initialHistory } from '../../public/shared/native-history-runtime.js';
 import { prepareActivity, validateActivities } from './activity-authority.js';
 import { prepareInformationRollup } from './information-authority.js';
@@ -22,6 +23,7 @@ export function initialLifecycle(definition) {
         domains: Object.fromEntries(definition.domains.map(domain => [domain.id, { records: [] }])),
         workflows: Object.fromEntries(definition.workflows.map(flow => [flow.id, { phase: flow.initial, instance: 0, status: 'active', entered: false }])),
         ...(definition.history ? { history: initialHistory() } : {}),
+        ...(definition.lifetimes ? { lifetimes: initialLifetimes(definition.lifetimes) } : {}),
         ready: false, automations: {}, outbox: [], interactions: [], receipts: [], taskTombstones: [] };
 }
 
@@ -54,6 +56,7 @@ export function validateLifecycle(base) {
     if (new Set(state.receipts.map(item => item.invocationId)).size !== state.receipts.length) throw new TypeError('Duplicate lifecycle receipt');
     for (const receipt of state.receipts) if (!invocation(receipt.invocationId) || receipt.kind !== 'authority') throw new TypeError('Invalid lifecycle receipt');
     // Canonical source cross-check occurs at the outer transaction boundary.
+    validateLifetimes(base);
     validateActivities(base);
     validateInformationState(base);
     if (typeof state.ready !== 'boolean') throw new TypeError('Invalid lifecycle barrier');

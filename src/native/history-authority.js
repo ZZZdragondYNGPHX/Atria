@@ -1,3 +1,4 @@
+import { lifetimeSources } from '../../public/shared/native-lifetime-runtime.js';
 import { createHash } from 'node:crypto';
 import { hashNativeDocument } from './repositories/common.js';
 import { historyPolicy, HISTORY_OPERATIONS, ARTIFACT_KINDS } from '../../public/shared/native-history-contract.js';
@@ -7,7 +8,9 @@ import { assertTaskValue } from '../../public/shared/native-task-contract.js';
 const copy = v => structuredClone(v);
 const same = (a, b) => a === undefined || b === undefined ? a === b : hashNativeDocument(a) === hashNativeDocument(b);
 const record = (snapshot, domain, id = 'main') => snapshot.states.atri_lifecycle.domains[domain]?.records.find(r => r.id === id)?.value;
-const sourceValue = (snapshot, source) => source.path.reduce((v, k) => v?.[k], record(snapshot, source.domainId, source.recordId));
+const sourceValue = (snapshot, source) => Object.hasOwn(source, 'value') ? source.value : source.path.reduce((v, k) => v?.[k], record(snapshot, source.domainId, source.recordId));
+export const historySources = snapshot => [...(historyPolicy(snapshot)?.sources ?? []), ...lifetimeSources(snapshot)];
+const lifetimeMeaning = state => { if (!state) return null; const { work: _work, resolvedTick: _tick, ...value } = state; return value; };
 const id = h => 'history.' + h.nextId++;
 function anchor(h, event) { h.anchors[event.id] ??= { ...copy(event), tier: 'archive' }; }
 function find(h, key) { const position = h.positions[key]; return h.facts[key] ?? h.artifacts[key] ?? h.hooks[key] ?? h.anchors[key] ?? (position && h[position.tier]?.[position.at]); }
@@ -50,7 +53,7 @@ function operate(snapshot, h, op, args, event) {
         if (['event', 'summary'].includes(source?.kind)) anchor(h, source);
     } else if (op === 'artifact.change') {
         const artifact = h.artifacts[args.id];
-        if (!artifact || artifact.status === 'destroyed' || artifact.status === args.status) throw new TypeError('Artifact transition unavailable');
+        if (!artifact || artifact.holderId !== actor || artifact.status === 'destroyed' || artifact.status === args.status) throw new TypeError('Artifact transition unavailable');
         event.targetId = artifact.id; event.status = args.status; event.refs = [...new Set([...event.refs, ...artifact.refs])];
         artifact.status = args.status;
         artifact.provenance.push({ eventId: event.id, tick: event.tick, status: args.status, holderId: actor });
@@ -79,20 +82,21 @@ function operate(snapshot, h, op, args, event) {
 export function prepareHistory(base, candidate, transaction, resolution, operation = null, { countTurn = true } = {}) {
     const policy = historyPolicy(candidate); if (!policy) return;
     const state = candidate.states.atri_lifecycle, h = state.history ??= initialHistory();
-    const scans = policy.meaningfulDomains.reduce((n, d) => n + state.domains[d].records.length, 0)
+    const sources = historySources(candidate);
+    const scans = sources.length - policy.sources.length + policy.meaningfulDomains.reduce((n, d) => n + state.domains[d].records.length, 0)
         + policy.sources.reduce((n, source) => n + state.domains[source.domainId].records.length, 0);
     if (scans > 4096) throw new TypeError('History source scan budget');
     if (countTurn) h.transactions++;
     const clock = state.clocks[policy.clockId], previousTick = base.states.atri_lifecycle.clocks[policy.clockId];
     const chronology = record(candidate, policy.chronologyDomain);
-    const changed = clock !== previousTick || policy.meaningfulDomains.some(d => !same(base.states.atri_lifecycle.domains[d]?.records.map(r => r.value), state.domains[d]?.records.map(r => r.value)));
+    const changed = !same(lifetimeMeaning(base.states.atri_lifecycle.lifetimes), lifetimeMeaning(state.lifetimes)) || clock !== previousTick || policy.meaningfulDomains.some(d => !same(base.states.atri_lifecycle.domains[d]?.records.map(r => r.value), state.domains[d]?.records.map(r => r.value)));
     const meaningful = changed || (operation && operation.operation !== 'compact');
     if (!meaningful && !operation) return;
     const event = { id: id(h), kind: 'event', tier: 'hot', turn: h.turns + Number(Boolean(meaningful && countTurn)), origin: countTurn ? 'player' : 'host',
         tick: clock, from: previousTick, year: chronology.calendar.year, fromYear: record(base, policy.chronologyDomain).calendar.year, sequence: chronology.sequence,
         public: true, transaction: transaction.id, outcome: resolution.outcome, summary: operation ? operation.operation + ': ' + resolution.outcome : clock !== previousTick ? 'Advance canonical time by ' + (clock - previousTick) + ' minutes; resolve due obligations.' : transaction.verb + ': ' + resolution.outcome,
         refs: ['actor:' + candidate.manifest.actors[0].actorId, 'era:' + chronology.era_id] };
-    for (const source of policy.sources) {
+    for (const source of sources) {
         const value = sourceValue(candidate, source);
         if (value === undefined || Buffer.byteLength(JSON.stringify(value)) > 8192) throw new TypeError('Missing or oversized canonical source');
         const previous = h.heads[source.id] ? h.facts[h.heads[source.id]] : null;
@@ -106,6 +110,13 @@ export function prepareHistory(base, candidate, transaction, resolution, operati
         anchor(h, event);
     }
     if (h.anchors[event.id]) h.anchors[event.id] = { ...copy(event), tier: 'archive' };
+    for (const legacy of Object.values(state.lifetimes?.legacies ?? {})) {
+        if (!legacy.transferEvent || legacy.status !== 'inherited') continue;
+        const artifact = h.artifacts[legacy.sourceId];
+        if (!artifact || artifact.provenance.some(p => p.lifetimeEvent === legacy.transferEvent)) continue;
+        artifact.provenance.push({ eventId: event.id, tick: legacy.tick, status: artifact.status, holderId: legacy.heirId, lifetimeEvent: legacy.transferEvent });
+        anchor(h, event);
+    }
     if (operation) operate(candidate, h, operation.operation, operation.input, event);
     if (operation?.operation === 'compact') h.checkpointRequested = true;
     if (h.anchors[event.id]) h.anchors[event.id] = { ...copy(event), tier: 'archive' };
@@ -118,21 +129,24 @@ export function validateHistory(snapshot) {
     if (!policy) { if (h) throw new TypeError('Undeclared history'); return; }
     if (!h || !Number.isSafeInteger(h.transactions) || h.transactions < h.turns || h.schemaVersion !== 1 || !Number.isSafeInteger(h.turns) || h.turns < 0 || !Number.isSafeInteger(h.nextId) || h.nextId < 1
         || h.hot.length > policy.hot || h.warm.length > policy.warm || h.cold.length > policy.cold || h.archive.length > 54) throw new TypeError('History retention invariant');
+    const sources = historySources(snapshot), sourceMap = new Map(sources.map(source => [source.id, source]));
+    if (sources.length > 4096) throw new TypeError('History lifecycle source budget');
     const durable = Object.keys(h.facts).length + Object.keys(h.artifacts).length + Object.keys(h.hooks).length + Object.keys(h.anchors).length;
     if (durable > policy.maxDurable || Buffer.byteLength(JSON.stringify(h)) > policy.maxBytes) throw new TypeError('History durable budget; explicit archival policy required');
-    for (const source of policy.sources) {
+    for (const source of sources) {
         const fact = h.facts[h.heads[source.id]];
         if (h.turns && (!fact || fact.public !== source.public)) throw new TypeError('Canonical source missing or wrong disclosure');
         if (fact && !same(fact.value, sourceValue(snapshot, source))) throw new TypeError('Canonical fact contradicts authority');
     }
     for (const fact of Object.values(h.facts)) {
-        const source = policy.sources.find(s => s.id === fact.key), previous = h.facts[fact.previousId];
+        const source = sourceMap.get(fact.key), previous = h.facts[fact.previousId];
         if (!source || fact.public !== source.public || fact.provenance.sessionId !== snapshot.session.sessionId
             || fact.provenance.source !== source.domainId + '.' + source.recordId + '.' + source.path.join('.')
             || !h.anchors[fact.eventId] || (fact.previousId && (!previous || previous.key !== fact.key || previous.tick > fact.tick
                 || Number(previous.id.split('.')[1]) >= Number(fact.id.split('.')[1])))) throw new TypeError('Canonical provenance');
     }
     for (const artifact of Object.values(h.artifacts)) {
+        if (snapshot.states.atri_lifecycle.lifetimes && artifact.provenance.at(-1)?.holderId !== artifact.holderId) throw new TypeError('Artifact custody contradiction');
         if (!h.anchors[artifact.origin] || (artifact.parentId && !h.artifacts[artifact.parentId]) || artifact.provenance.some((p, i, rows) => !h.anchors[p.eventId] || (i && p.tick < rows[i - 1].tick))) throw new TypeError('Artifact provenance');
     }
     const indexed = copy(h); const expectedIndex = historyIndex(indexed);

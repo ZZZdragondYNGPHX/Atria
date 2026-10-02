@@ -1,3 +1,4 @@
+import { LIFETIME_OPERATIONS } from '../../../../shared/native-lifetime-contract.js';
 import { HISTORY_OPERATIONS } from '../../../../shared/native-history-contract.js';
 import { assertSimulationTransactions } from '../../../../shared/native-simulation-contract.js';
 import { fields, json, text, assertJsonDeclaration } from '../../../../shared/native-values.js';
@@ -102,7 +103,7 @@ export function compileTransactionDeclarations(raw, options) {
     // Count the entire hook, not just each publication in isolation.
     budget(publications.reduce((sum, item) => sum + item.reads.length, 0), publications.flatMap(item => item.effects), authority);
     const transactions = list(raw.transactions, LIMITS.transactions, transaction => {
-        fields(transaction, ['id', 'origin', 'verb', 'inputSchema', 'intent', 'reads', 'validators', 'resolution', 'effects', 'derivedPublications', 'receipt', 'history'], 'Transaction');
+        fields(transaction, ['id', 'origin', 'verb', 'inputSchema', 'intent', 'reads', 'validators', 'resolution', 'effects', 'derivedPublications', 'receipt', 'history', 'lifetimes'], 'Transaction');
         taskId(transaction.id); taskId(transaction.verb);
         if (transaction.origin !== undefined && (transaction.origin !== 'simulation' || !contract.simulationRuntime)) throw new TypeError('Unknown or undeclared Transaction origin');
         if (transaction.origin === 'simulation' && transaction.intent?.expose !== false) throw new TypeError('Simulation Transaction cannot be player-exposed');
@@ -120,6 +121,15 @@ export function compileTransactionDeclarations(raw, options) {
                 fields(h, ['operation', 'input', 'when'], 'History command');
                 if (!lifecycle.history || !HISTORY_OPERATIONS[h.operation] || transaction.origin === 'simulation') throw new TypeError('History command unavailable');
                 template(h.input, HISTORY_OPERATIONS[h.operation], { args: input, resolution: result });
+                if (h.when !== undefined) predicate(h.when, { args: input, resolution: result });
+            }
+        }
+        if (transaction.lifetimes !== undefined) {
+            if (!Array.isArray(transaction.lifetimes) || transaction.lifetimes.length > 24) throw new TypeError('Lifetime commands');
+            for (const h of transaction.lifetimes) {
+                fields(h, ['operation', 'input', 'when'], 'Lifetime command');
+                if (!lifecycle.lifetimes || !LIFETIME_OPERATIONS[h.operation] || transaction.origin === 'simulation') throw new TypeError('Lifetime command unavailable');
+                template(h.input, LIFETIME_OPERATIONS[h.operation], { args: input, resolution: result });
                 if (h.when !== undefined) predicate(h.when, { args: input, resolution: result });
             }
         }

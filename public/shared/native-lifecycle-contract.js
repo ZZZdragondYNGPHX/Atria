@@ -1,3 +1,4 @@
+import { assertLifetimePolicy } from './native-lifetime-contract.js';
 import { assertHistoryPolicy } from './native-history-contract.js';
 import { fields, json, assertJsonDeclaration } from './native-values.js';
 import { compileDataSchema } from './native-data-schema.js';
@@ -239,7 +240,7 @@ function workflow(item, scopes, clocks) {
 
 export function assertLifecycleRuntime(value, taskRuntime) {
     value = declaration(value);
-    fields(value, ['schemaVersion', 'scopes', 'domains', 'clocks', 'advances', 'automations', 'workflows', 'interactions', 'retention', 'history'], 'Lifecycle runtime');
+    fields(value, ['schemaVersion', 'scopes', 'domains', 'clocks', 'advances', 'automations', 'workflows', 'interactions', 'retention', 'history', 'lifetimes'], 'Lifecycle runtime');
     if (value.schemaVersion !== 1) throw new TypeError('Lifecycle schemaVersion must be 1');
     const tasks = taskRuntime === undefined ? undefined : assertTaskRuntime(taskRuntime);
     const scopes = list(value.scopes, 32, scope, 'scope');
@@ -298,5 +299,6 @@ export function assertLifecycleRuntime(value, taskRuntime) {
     // eviction window. Host checks exact replay first; new work at cap fails.
     // Task result/terminal compaction must never silently erase receipt dedup.
     if (value.history !== undefined) runtime.history = assertHistoryPolicy(value.history, runtime);
+    if (value.lifetimes !== undefined) runtime.lifetimes = assertLifetimePolicy(value.lifetimes, runtime);
     return declaration(runtime);
 }

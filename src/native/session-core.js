@@ -1,3 +1,4 @@
+import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
 import { hasAuthorityTransactions, prepareAuthorityTurn, authorityTurnProof, authorityActionRequest, authorityFailure } from './authority-turn.js';
 import { prepareAuthorityPublications, createAuthorityPublicationBudget } from './authority-transaction.js';
 import { resolveNativeRuntimePackage } from './runtime-descriptor.js';
@@ -183,6 +184,7 @@ export class SessionCore {
         const installed = await this._openPackage(handle, session.packageId, session.packageVersionId, session.entryPointId);
         validateTaskRecords({ ...snapshot, manifest: installed.manifest });
         validateLifecycle({ ...snapshot, manifest: installed.manifest });
+        validateLifetimes({ ...snapshot, manifest: installed.manifest }, { complete: true });
         validateHistory({ ...snapshot, manifest: installed.manifest });
         if (installed.packageVersion.packageContentHash !== session.packageContentHash
             || installed.packageVersion.version !== session.packageVersion) throw new Error('Session PackageVersion dependency mismatch');
@@ -328,11 +330,13 @@ export class SessionCore {
             states = (await prepareAuthorityPublications({ ...base, states }, installed, authorityBudget)).candidate.states;
             if (base.states.atri_lifecycle?.ready && states.atri_lifecycle?.ready && states.atri_lifecycle.history) {
                 states = cloneNativeDocument(states);
+                prepareLifetimes(base, { ...base, states });
                 prepareHistory(base, { ...base, states }, { id: 'host.lifecycle', verb: 'host_lifecycle' }, { outcome: 'automatic' }, null, { countTurn: false });
             }
         }
         variants = variants.map(assertVariant);
         await this._validateProjections(handle, { ...base, timeline }, variants);
+        validateLifetimes({ ...base, states }, { complete: true });
         validateWorldState(states, base.manifest, base.entryPoint);
         const revisionId = createNativeId('revision');
         if (sharedPublication) for (const turn of Object.values(states.atri_shared?.turns ?? {})) {

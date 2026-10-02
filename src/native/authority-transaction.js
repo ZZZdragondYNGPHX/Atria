@@ -1,4 +1,6 @@
-import { prepareHistory, validateHistory } from './history-authority.js';
+import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
+import { lifetimePolicy } from '../../public/shared/native-lifetime-contract.js';
+import { prepareHistory, historySources, validateHistory } from './history-authority.js';
 import { assertNativeExperienceContract } from '../../public/shared/native-experience-contract.js';
 import { assertJsonDeclaration, fields } from '../../public/shared/native-values.js';
 import { assertTaskValue, taskId } from '../../public/shared/native-task-contract.js';
@@ -236,7 +238,7 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
 
 export async function prepareAuthorityTransaction(base, installed, rawRequest) {
     try {
-        const contract = contractFor(base, installed); validateCandidate(base, contract); validateHistory(base);
+        const contract = contractFor(base, installed); validateCandidate(base, contract); validateLifetimes(base, { complete: true }); validateHistory(base);
         if (contract.lifecycleRuntime && !base.states.atri_lifecycle.ready) throw new TypeError('Experience Ready Barrier required');
         const request = bounded(rawRequest);
         fields(request, ['transactionId', 'input', 'anchor', 'playerMessageId', 'ordinal'], 'Authority request');
@@ -257,7 +259,18 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
         const { candidate, logic, world } = await createTaskWorld(base, installed, null, budget);
         const transaction = logic.transactions?.find(item => item.id === request.transactionId);
         if (!transaction || transaction.origin === 'simulation') throw new TypeError('Unknown player Transaction');
+        const life = base.states.atri_lifecycle?.lifetimes;
+        if (life?.people[base.manifest.actors[0].actorId]?.status.kind === 'absent' && !transaction.lifetimes) throw new TypeError('Protagonist must return before acting');
         protectOutputs(logic, budget);
+        const lifetimePolicyValue = lifetimePolicy(base);
+        if (life && lifetimePolicyValue.actorSource) for (const effect of transaction.effects) {
+            if (effect.domainId !== lifetimePolicyValue.actorSource.domainId || typeof effect.recordId !== 'string') continue;
+            const binding = lifetimePolicyValue.people.find(p => p.sourceRecordId === effect.recordId);
+            const person = binding && (life.people[binding.id] ?? life.archive[binding.id]);
+            // A legacy action may retain historical records, but cannot re-enact a
+            // living role after its holder has retired, disappeared or died.
+            if (person && person.status.kind !== 'active' && effect.args?.alive !== false) throw new TypeError('Historical actor cannot resume active role');
+        }
         const args = request.input;
         const resolution = await executeTransaction(candidate, installed, contract, logic, world, transaction, args, budget, identity);
         // Existing clock validation does not pump. Drain bounded due work privately
@@ -267,11 +280,17 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
         if (histories.length > 1) throw new TypeError('Ambiguous history operation');
         const history = histories[0];
         const operation = history ? { operation: history.operation, input: template(history.input, { args, resolution }) } : null;
+        const lifetimeCommands = (transaction.lifetimes ?? []).filter(h => h.when === undefined || predicate(h.when, { args, resolution }));
+        if (lifetimeCommands.length > 1 || (operation && lifetimeCommands.length)) throw new TypeError('Ambiguous lifetime operation');
+        const lifetime = lifetimeCommands[0];
+        prepareLifetimes(base, candidate, lifetime ? { operation: lifetime.operation, input: template(lifetime.input, { args, resolution }) } : null);
         prepareHistory(base, candidate, transaction, resolution, operation);
         if (contract.lifecycleRuntime?.history) {
             const policy = contract.lifecycleRuntime.history, domains = candidate.states.atri_lifecycle.domains;
-            budget.counts.historySources = policy.sources.length;
-            budget.counts.historyRecordScans = policy.meaningfulDomains.reduce((n, id) => n + domains[id].records.length, 0)
+            budget.counts.historySources = historySources(candidate).length;
+            budget.counts.lifetimeEvents = candidate.states.atri_lifecycle.lifetimes?.work.events ?? 0;
+            budget.counts.lifetimeActors = candidate.states.atri_lifecycle.lifetimes?.work.actors ?? 0;
+            budget.counts.historyRecordScans = budget.counts.historySources - policy.sources.length + policy.meaningfulDomains.reduce((n, id) => n + domains[id].records.length, 0)
                 + policy.sources.reduce((n, source) => n + domains[source.domainId].records.length, 0);
             budget.counts.historyLogicalBytes = bytes(candidate.states.atri_lifecycle.history);
         }
