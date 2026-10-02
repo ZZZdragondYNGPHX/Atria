@@ -2,7 +2,7 @@
 
 - Task ID: fix/native-package-task-binding-preflight
 - Primary Workspace: main 产品源码；短期分支 fix/native-package-task-binding-preflight
-- Status: Active — 本地实现与验证完成，PR #102 等待必要 CI 集成
+- Status: Complete — PR #102 已合并 main，验证与分支清理完成
 - Plan: 小型修复，无独立 Plan；按用户交接要求执行。
 - Date: 2026-10-02
 
@@ -46,11 +46,17 @@
 - PR: https://github.com/ZZZdragondYNGPHX/Atria/pull/102
 - CI HEAD: 542e926e2c4a0e05769bce0c7631932becacaafc
 - 旧实现 HEAD 1d352701a：Lint、Migration Guard、Unit Tests、Authority Transaction、两项 Native Frontend v3 检查均成功；Model Prompt integration 未完成。
-- 最新 HEAD 542e926e2 已有 6/7 checks 成功：Lint、Migration Guard、Unit Tests、Authority Transaction、Native v3 regression/Hard Cut、Native v3 Heavy/Studio browser。仅 Native Model Prompt Runtime integration 仍在运行；该 job 的单元测试、lint、frontend prebuild 与 Chromium 安装均已成功，当前为包含新首启回归的最后一组浏览器测试。续接时做过一次 60 秒有限等待，尚未完成，无已知失败。耗时 CI 仍是唯一剩余依赖，保留 PR 和 HANDOFF，不提前合并。
+- 最终 CI：精确 HEAD 542e926e2 的 7/7 checks 全部成功：Lint、Atria Migration Guard、Unit Tests、Authority Transaction、Native v3 regression/Hard Cut、Native v3 Heavy/Studio browser、Native Model Prompt Runtime integration。最后一项包含本次新增通用首启浏览器回归。
 - 最新 Runs: 36954666510 (Atria PR Checks) / 36954666602 (Native Model Prompt Runtime) / 36954666525 (Authority Transaction) / 36954666502 (Native Frontend v3)。
 - Codex CI connector 要求 ChatGPT 登录；公开 GitHub REST API 无需凭据可读取该公开仓库 CI，未使用 source-control CLI 读取诊断。
-- Remaining: 最后浏览器 CI → 合并 main → 验证 main → 删除短期分支及 live HANDOFF → 更新本 Record。
+- PR #102 于 2026-10-02 12:16（Asia/Shanghai）正常 merge，merge commit 与 main HEAD 为 fa0c5df4f45b91c7750ed63f87c32100df68ad32。
 
 ## Final state
 
-待完成集成。
+- Status: Complete
+- main / origin/main: fa0c5df4f45b91c7750ed63f87c32100df68ad32
+- main 与已验证提交 542e926e2c4a0e05769bce0c7631932becacaafc 的 Git tree 均为 7b5abae447904b16db2e725cb7117758566b3a6d；git diff --exit-code 无差异。
+- main 验证：确认被测提交为 main 的 ancestor、合并范围 git diff --check 通过，main 工作树干净。因集成树完全一致，不重复运行此前已通过的相同测试；不把 merge 后自动触发的 CI 声称为已验证。
+- 本地与远端 fix/native-package-task-binding-preflight 均已删除，并用 branch --list / ls-remote 复核。
+- live HANDOFF 已删除；本 Record 保留完整实现、验证和已知限制。
+- 未修改 package / release 1.0.0；DELETE 409 在已测首启流程中未复现。初始 bridge_revision_stale 及外部数据库未运行的限制见 Validation，不扩大或隐瞒本次范围。
