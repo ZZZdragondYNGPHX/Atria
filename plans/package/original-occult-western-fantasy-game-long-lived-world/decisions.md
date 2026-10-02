@@ -40,6 +40,26 @@ The protagonist may suffer bodily death, disappearance, reconstruction, delayed 
 
 A truly irreversible death may exist only as an exceptional and explicit end-state. It must not be triggered as a casual consequence of ordinary combat, accidents, disease, or routine ritual failure.
 
+### D-007 — Tiered lifecycle simulation
+
+Tier A actors receive full long-horizon lifecycle simulation. Tier B actors receive reduced but real lifecycle simulation and can promote through sustained relevance. Tier C population remains aggregate until instantiated by relevance.
+
+### D-008 — Causal NPC entry
+
+New NPCs must enter the world through world-state causes such as birth, migration, hiring, promotion, marriage, recruitment, institutional expansion, case involvement, disaster, war or player-created vacancies. Long-running play must not rely on context-free random NPC spawning.
+
+### D-009 — Institutional continuity and succession
+
+Institutions have durable identity and organizational memory separate from their changing leaders and office holders. Leadership succession can alter agendas without erasing institutional history.
+
+### D-010 — Historical actors are compacted, not erased
+
+Death, retirement and long-term absence remove actors from hot simulation when appropriate, but durable identity, relationships, major life events, death/exit, inheritance, claims, secrets and unresolved hooks remain queryable history.
+
+### D-011 — Authority governs historical validity
+
+AI may generate constrained presentation details and candidate biographies, but Runtime Authority owns dates, lifecycle legality, relationships, succession, role eligibility and whether a proposed historical fact becomes canon.
+
 ## Open
 
 - target campaign horizon;
