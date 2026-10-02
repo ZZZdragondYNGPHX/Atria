@@ -4,7 +4,7 @@
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
 **Plan status:** Discussion / not approved for implementation  
-**Plan generation:** v0.9
+**Plan generation:** v0.10
 
 ## 1. Why this plan exists
 
@@ -61,6 +61,7 @@ The plan will be split as decisions become stable:
 - `history-memory.md` — event compaction, memory tiers, archival summaries, save-size/context control.
 - `family-relationships.md` — romance, marriage, children, descendants, inheritance and social norms.
 - `progression-continuity.md` — career, resources, long-term identity and non-family continuity.
+- `era-evolution.md` — technology, infrastructure, law, culture and occult modernization across eras.
 - `verification.md` — 1k/5k/10k-turn and multi-year simulation/restore/replay gates.
 - `implementation-staging.md` — implementation phases, dependencies, validation gates and release criteria.
 
@@ -267,17 +268,37 @@ Detailed authority: `progression-continuity.md`.
 
 ### Round 9 — Era evolution: technology, infrastructure, law and culture
 
+Status: complete.
+
+Frozen:
+
+- the setting does not remain permanently locked to the opening occult-western technological/social era;
+- sufficiently long play may progress into modern and potentially later technological eras;
+- technology, infrastructure, industry, law, finance, medicine, education, religion, media and social norms may materially evolve;
+- occult knowledge also evolves: anomaly classification, Claim theory, ritual safety, countermeasures, occult medicine, regulation and industrialization can develop over time;
+- world development follows an authored baseline/inertia combined with world-state-driven divergence rather than a fixed real-world historical script;
+- player actions and major occult events may accelerate, delay, redirect or suppress developments when they have credible causal leverage;
+- old businesses, skills, institutions and properties may become obsolete, adapt, merge, decline or disappear as eras change;
+- Era transitions are systemic rule changes, not merely labels or calendar milestones;
+- Era changes may alter available careers, industries, infrastructure, artifacts, laws, institution powers, content grammars, transport, communication and city-growth rules;
+- Era transitions are condition-driven rather than automatically firing on fixed year numbers;
+- content generation should evolve with the era so century-later cases and conflicts are structurally different from opening-era ones.
+
+Detailed authority: `era-evolution.md`.
+
+### Round 10 — Scope of the world beyond the starting city
+
 Status: active.
 
 Questions to freeze:
 
-1. Does a century-long save allow the world to progress technologically and socially, or should the setting remain in a broadly fixed occult-western era?
-2. Can infrastructure such as rail, electricity, telephony, automobiles, radio and later systems appear if enough time passes?
-3. Can laws, policing, medicine, finance, education, religion and public attitudes materially change across eras?
-4. Should world evolution follow a mostly authored alternate-history trajectory, be primarily emergent from simulation, or use authored historical rails with emergent deviations?
-5. How strongly may occult events and player actions alter technological/social development?
-6. How should old skills, institutions, businesses and properties become obsolete or adapt?
-7. Should Era transitions be explicit world milestones with systemic rule changes?
+1. Is the starting city the permanent main simulation domain, or may the player permanently relocate and build a life elsewhere?
+2. Can other cities/regions become fully simulated long-term hubs, or are they lighter external regions until promoted by relevance?
+3. Can national/international events materially affect the city and protagonist over decades?
+4. Should travel take real time and create absence consequences in the home region?
+5. Can the protagonist own property, institutions, businesses or relationships across multiple regions?
+6. How much of the wider world should be explicitly mapped versus generated on demand from curated regional grammars?
+7. Can a century-scale campaign eventually become multi-city or international without turning into a literal whole-world population simulator?
 
 No implementation starts until the discussion rounds are explicitly approved.
 
