@@ -42,6 +42,17 @@ describe('Native tiered history', () => {
         expect(JSON.stringify(queryHistory(s, { kind: 'fact' }))).not.toContain('DO_NOT_DISCLOSE');
         expect(queryHistory(s, { facet: 'family', value: 'rook' }).scanned).toBeLessThanOrEqual(4);
     });
+    test('database JSON key normalization cannot change ledger equality or posting order', () => {
+        const reorder = value => Array.isArray(value) ? value.map(reorder) : value && typeof value === 'object'
+            ? Object.fromEntries(Object.keys(value).sort().reverse().map(k => [k, reorder(value[k])])) : value;
+        let s = fixture(); for (let i = 0; i < 100; i++) s = advance(s);
+        const reordered = reorder(s);
+        expect(() => validateHistory(reordered)).not.toThrow();
+        expect(queryHistory(reordered, { kind: 'fact' })).toEqual(queryHistory(s, { kind: 'fact' }));
+        const page = queryHistory(s, { kind: 'fact', limit: 1 });
+        expect(() => queryHistory(reordered, { limit: 1, kind: 'fact', cursor: page.next })).not.toThrow();
+        expect(advance(reordered).states.atri_lifecycle.history.facts).toEqual(h(s).facts);
+    });
     test('sequence-only/no-op does not count; canonical contradiction and corrupt index fail closed', () => {
         let s = advance(fixture()); const candidate = advance(s, 0);
         expect(h(candidate).turns).toBe(h(s).turns);

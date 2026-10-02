@@ -6,7 +6,8 @@ export function initialHistory() {
 }
 export function historyItems(h) {
     return [...new Map([...Object.values(h.anchors), ...h.archive, ...h.cold, ...h.warm, ...h.hot,
-        ...Object.values(h.facts), ...Object.values(h.artifacts), ...Object.values(h.hooks)].map(item => [item.id, item])).values()];
+        ...Object.values(h.facts), ...Object.values(h.artifacts), ...Object.values(h.hooks)].map(item => [item.id, item])).values()]
+        .sort((a, b) => Number(a.id.slice(8)) - Number(b.id.slice(8)));
 }
 export function historyIndex(h) {
     const index = {}; h.positions = {};
@@ -32,7 +33,7 @@ export function queryHistory(snapshot, query = {}) {
     if (query.facet !== undefined && (!facets.includes(query.facet) || !['string', 'number'].includes(typeof query.value))) throw new TypeError('Chronicle facet');
     if (query.value !== undefined && query.facet === undefined) throw new TypeError('Chronicle facet required');
     if (query.id !== undefined && (typeof query.id !== 'string' || query.id.length > 128)) throw new TypeError('Chronicle id');
-    const signature = JSON.stringify({ ...query, cursor: undefined });
+    const signature = JSON.stringify({ id: query.id, kind: query.kind, facet: query.facet, value: query.value, limit, memory: query.memory ?? false });
     let offset = 0;
     if (query.cursor !== undefined) {
         fields(query.cursor, ['revisionId', 'signature', 'offset'], 'Chronicle cursor');

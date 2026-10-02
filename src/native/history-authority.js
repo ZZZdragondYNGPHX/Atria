@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
+import { hashNativeDocument } from './repositories/common.js';
 import { historyPolicy, HISTORY_OPERATIONS, ARTIFACT_KINDS } from '../../public/shared/native-history-contract.js';
 import { initialHistory, historyIndex } from '../../public/shared/native-history-runtime.js';
 import { assertTaskValue } from '../../public/shared/native-task-contract.js';
 
 const copy = v => structuredClone(v);
-const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const same = (a, b) => a === undefined || b === undefined ? a === b : hashNativeDocument(a) === hashNativeDocument(b);
 const record = (snapshot, domain, id = 'main') => snapshot.states.atri_lifecycle.domains[domain]?.records.find(r => r.id === id)?.value;
 const sourceValue = (snapshot, source) => source.path.reduce((v, k) => v?.[k], record(snapshot, source.domainId, source.recordId));
 const id = h => 'history.' + h.nextId++;
