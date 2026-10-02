@@ -4,7 +4,7 @@ import { MAX_INSTANT, stanceChoices } from './long-horizon-compile.mjs';
 // Integration evidence only: no Package-side evaluator or fake save serialization.
 export async function longHorizonChecks(h) {
     const { svc, fsHandle, manifest, archive, load, makeTempFsEngine, services } = h;
-    assert.equal(manifest.version, '2.0.0-phase2');
+    assert.equal(manifest.version, '2.0.0-phase3');
     await h.fresh(); await h.create();
     let s = h.session(), serial = 0;
     const work = [];
@@ -111,7 +111,7 @@ export async function longHorizonChecks(h) {
     assert.equal(value(h.session(), 'continuity').protagonist_id, origin.protagonist_id);
     return { phase: 'Long-Lived World Phase 1', authoritativeTransactions: serial, restoredEngines,
         checks: ['Day 31 is valid', 'Gregorian year/month/leap/century rollover', 'single-step multi-century chronology (not a later release gate)',
-            'stable entity/protagonist/public identity and first-introduction provenance', 'persistent stances without lifecycle simulation',
+            'stable entity/protagonist/public identity and first-introduction provenance', 'persistent stances with the current phased runtime',
             'atomic invalid/overflow/forged-input refusal', 'full Native save-container equivalence and multi-year continuation'],
         maximumWork: Object.fromEntries(['readGrants', 'appCommands', 'effects'].map(k => [k, Math.max(...work.map(w => w[k]))])),
         gateA: 'foundation regression only; use --history-only for Phase 2 development evidence' };

@@ -1,6 +1,6 @@
 # Phase 2 — History / Memory / Compaction Core
 
-Development package: 2.0.0-phase2. Final release remains 2.0.0.
+Development package: 2.0.0-phase3. Final release remains 2.0.0.
 Requires Native history support in Core f116a98de7a09c32f1789a875244c7e4b9e14e20 or a descendant.
 This is the history foundation, not the completed long-lived world.
 
@@ -37,8 +37,8 @@ The exact Canonical Fact Ledger is separate from narrative summaries. It preserv
 current and superseded values, previous-fact links and source/event provenance.
 The initial source declarations cover protagonist/public identity, the introduced
 Anchor identity, Claim state and retained case dispositions. Hidden Eastbank
-state is canonical but not player/model-visible. More lifecycle source declarations
-belong to Phase 3; no birth, kinship or office-tenure facts are invented here.
+state is canonical but not player/model-visible. Phase 3 adds exact Native lifetime sources for births, kinship, office tenure and
+reconstruction; see HUMAN-LIFETIMES.md. Introduction remains distinct from birth.
 
 ## Portable checkpoints and Retry
 
@@ -86,7 +86,8 @@ copy parent and a chronology-stamped origin. A document's assertions do not beco
 external World Truth. Copies require a surviving, available parent. Supported
 status transitions include held, archived, damaged, lost, rediscovered (held) and
 destroyed; destruction is terminal. Every transition has an immutable event anchor.
-Custody/ownership law, inheritance and authenticity disputes are not simulated here.
+Phase 3 adds authority-validated legacy custody transfers and provenance; full
+ownership law and authenticity disputes remain later work.
 
 Historical Hooks require an available public historical source. They begin dormant
 and may activate, expire, be disproven or resolve; terminal states cannot silently

@@ -62,6 +62,7 @@ export async function verify({load,native,manifest,archive,sourceFiles}) {
   assert.deepEqual(await svc.core.load(h.handle,base.session.sessionId),evidence);
   return {phase:'P5-focused',checks:['Latest-code civic/church stabilization consistently clears Unsettled Condition, grants formal Claim and preserves zero-publication preparation'],work};
  }
+ if(process.argv.includes('--lifetime-only')){const {lifetimeChecks}=await import('./lifetime-check.mjs');return await lifetimeChecks({fresh,create,session:()=>session,svc,fsHandle:h.handle,manifest,archive,load,safe,makeTempFsEngine,services});}
  if(process.argv.includes('--history-only')){const {historyChecks}=await import('./history-check.mjs');return await historyChecks({fresh,create,session:()=>session,svc,fsHandle:h.handle,manifest,archive,load,safe,makeTempFsEngine,services});}
  if(process.argv.includes('--long-horizon-only')){const {longHorizonChecks}=await import('./long-horizon-check.mjs');return await longHorizonChecks({fresh,create,session:()=>session,svc,fsHandle:h.handle,manifest,archive,load,safe,makeTempFsEngine,services});}
  if(process.argv.includes('--campaign-only')){const {campaignChecks}=await import('./campaign-check.mjs');return await campaignChecks({fresh,session:()=>session,svc,fsHandle:h.handle,manifest,archive,load,safe,makeTempFsEngine,services});}

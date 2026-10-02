@@ -29,8 +29,8 @@ manifest.resources = await json('runtime/model-resources.json');
 // Historical v1 remains a distinct fixture; in-progress v2 must never reuse its immutable identity.
 if (!fixture && !boundedV1) {
  const previous = manifest.packageVersionId;
- manifest.version = '2.0.0-phase2';
- manifest.packageVersionId = 'pkgv_' + createHash('sha256').update('occult-long-lived-world-2.0.0-phase2').digest('hex').slice(0, 32);
+ manifest.version = '2.0.0-phase3';
+ manifest.packageVersionId = 'pkgv_' + createHash('sha256').update('occult-long-lived-world-2.0.0-phase3').digest('hex').slice(0, 32);
  manifest.resources = JSON.parse(JSON.stringify(manifest.resources).replaceAll(previous, manifest.packageVersionId));
 }
 if(fixture){const originalId=manifest.packageId,originalVersion=manifest.packageVersionId;manifest.packageId='pkg_'+createHash('sha256').update('occult-regression-only').digest('hex').slice(0,32);manifest.packageVersionId='pkgv_'+createHash('sha256').update('occult-regression-release-1.0.0').digest('hex').slice(0,32);manifest.version+='-regression';manifest.resources=JSON.parse(JSON.stringify(manifest.resources).replaceAll(originalId,manifest.packageId).replaceAll(originalVersion,manifest.packageVersionId));}
@@ -68,6 +68,10 @@ if (!fixture) {
   const { compileHistory } = await import('./history-compile.mjs');
   const { HISTORY_OPERATIONS } = await load('public/shared/native-history-contract.js');
   opening = compileHistory(opening, manifest, HISTORY_OPERATIONS);
+  const { compileLifetimes } = await import('./lifetime-compile.mjs');
+  const { LIFETIME_OPERATIONS } = await load('public/shared/native-lifetime-contract.js');
+  const { anniversary } = await load('public/shared/native-lifetime-runtime.js');
+  opening = compileLifetimes(opening, manifest, LIFETIME_OPERATIONS, anniversary);
  }
  contract.authorityRuntime.intentObservation.viewIds=['player.overview'];
  Object.assign(contract,{lifecycleRuntime:opening.lifecycle,simulationRuntime:opening.simulation,informationRuntime:opening.information});
