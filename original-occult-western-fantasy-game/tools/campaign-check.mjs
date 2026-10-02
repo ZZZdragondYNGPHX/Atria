@@ -32,11 +32,18 @@ export async function campaignChecks(h) {
   }else{
    const kit=content.get('cases.signature.'+key).value.items[0];
    await act('convergence.manage',{case:key,operation:'open',disposition:'none'});
+   if(s.states.atri_lifecycle.domains.chronology){await act('convergence.manage',{case:key,operation:'prepare',disposition:'none'});assert(value(s,'world_matters').convergence[key].prepared);}
    for(const i of [0,3])await act('convergence.source_'+i%2,{method:kit.runtime.sources[i].method});
    await act('convergence.manage',{case:key,operation:'settle',disposition:b[key]});
   }
  }
  assert(value(s,'opening_summary_projection').convergence.eligible);
+ if(s.states.atri_lifecycle.domains.chronology){
+  // Phase 1's bounded write consolidation must retain both maintain and release semantics.
+  const item=content.get('defs.claims.seeds').value.items.find(a=>a.id==='claim.seed.custody_break');
+  for(const operation of ['consult','invest','maintain','invoke','release'])await act('convergence.claim',{item:item.id,rule:item.canon.coreRule,condition:item.canon.condition??item.canon.conditionFamily,primitive:item.canon.primitive,tradition:'civic',operation,acceptPrice:true});
+  assert.equal(value(s,'claims').catalog.active,false);assert.equal(value(s,'claims').catalog.applied,false);assert.equal(value(s,'claims').catalog.consulted,false);
+ }
  const dims={history:'attributed_public',stability:'preserve_arrangements',justice:'compensation',power:'shared_council',religion:'dual_registry',accountability:'independent_audit'};
  for(const operation of ['petition','examine','settle'])await act('convergence.hearing',{operation,...dims});
  const committed=structuredClone(s);
@@ -54,7 +61,9 @@ export async function campaignChecks(h) {
   assert.equal(restored.session.packageVersionId,manifest.packageVersionId);assert.deepEqual(restored.states.atri_lifecycle.domains,s.states.atri_lifecycle.domains);
   while(value(restored,'world_matters').day<30){const minutes=Math.min(2880,(30-value(restored,'world_matters').day)*1440);restored=await execute(next.core,target.handle,restored,'opening.wait',{minutes});}
   assert.equal(value(restored,'world_matters').day,30);assert.equal(value(restored,'settlements').convergence.hearing.history,'protected_archive');assert(value(restored,'claims').active);
-  const before=await next.core.load(target.handle,restored.session.sessionId);await assert.rejects(next.core.prepareAuthorityTurn(target.handle,restored,{transactionId:'opening.wait',input:{minutes:1440}}));assert.deepEqual(await next.core.load(target.handle,restored.session.sessionId),before);inspect(restored);
+  if(restored.states.atri_lifecycle.domains.chronology){restored=await execute(next.core,target.handle,restored,'opening.wait',{minutes:1440});assert.equal(value(restored,'world_matters').day,31);assert.deepEqual(value(restored,'continuity'),value(s,'continuity'));}
+  else {const before=await next.core.load(target.handle,restored.session.sessionId);await assert.rejects(next.core.prepareAuthorityTurn(target.handle,restored,{transactionId:'opening.wait',input:{minutes:1440}}));assert.deepEqual(await next.core.load(target.handle,restored.session.sessionId),before);}
+  inspect(restored);
  }finally{await target.cleanup();}
- result.checks.push('Actual same-version save-container export/import into fresh FS, bounded fast-forward to day30, persistent Claim and Hearing, atomic day31 rejection','Player observation and both full-detail Graphs checked after each committed action');return result;
+ result.checks.push(s.states.atri_lifecycle.domains.chronology?'Actual save-container import, preserved Claim/Hearing and Day 31 continuation':'Explicit v1 fixture: save import, bounded day30 and atomic day31 rejection','Player observation and both full-detail Graphs checked after each committed action');return result;
 }

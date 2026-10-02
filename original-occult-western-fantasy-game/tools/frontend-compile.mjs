@@ -31,7 +31,8 @@ export async function compileInquiry({root,opening,contract,load}) {
   const key=t.id.split('.')[1];let group=t.id.startsWith('network.')?'cases':t.id.startsWith('convergence.')?'cases':'investigation';
   if(['identity','origin','prior_life','faith','anchor','reason'].includes(key))group='creation';
   if(/seed_|stabilize_|^(postpone|consult|invoke|visit|wait|day|claim)$/.test(key))group='identity';
-  return {id:t.id.replaceAll('.','_'),label:label(key),group,fields:Object.entries(t.inputSchema.properties).map(([name,schema])=>({name,schema,label:label(name)})),notice:t.receipt.projection.notice};
+  // Stance is a structured Authority contract; the retained scalar form must not fabricate it.
+  return {id:t.id.replaceAll('.','_'),label:label(key),group,fields:Object.entries(t.inputSchema.properties).filter(([name])=>name!=='stances').map(([name,schema])=>({name,schema,label:label(name)})),notice:t.receipt.projection.notice};
  });
  const definitions=JSON.parse(await fs.readFile(path.join(root,'data/defs.origins.json'),'utf8')).items;
  const captions=Object.fromEntries(definitions.map(a=>[a.id,a.name??a.title??label(a.id.split('.').at(-1))]));

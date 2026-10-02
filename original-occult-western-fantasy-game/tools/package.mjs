@@ -21,9 +21,18 @@ const json = async rel => JSON.parse(await fs.readFile(path.join(root, rel), 'ut
 const native = await load('src/native/index.js');
 const manifest = await json('manifest.json');
 const fixture = args.includes('--fixture');
+const boundedV1 = args.includes('--v1-campaign');
+if (fixture && boundedV1) throw new Error('Choose only one explicit regression scenario');
 const { readContent, validateContent } = await import('./content-check.mjs');
 validateContent(await readContent(), manifest);
 manifest.resources = await json('runtime/model-resources.json');
+// Historical v1 remains a distinct fixture; in-progress v2 must never reuse its immutable identity.
+if (!fixture && !boundedV1) {
+ const previous = manifest.packageVersionId;
+ manifest.version = '2.0.0-phase1';
+ manifest.packageVersionId = 'pkgv_' + createHash('sha256').update('occult-long-lived-world-2.0.0-phase1').digest('hex').slice(0, 32);
+ manifest.resources = JSON.parse(JSON.stringify(manifest.resources).replaceAll(previous, manifest.packageVersionId));
+}
 if(fixture){const originalId=manifest.packageId,originalVersion=manifest.packageVersionId;manifest.packageId='pkg_'+createHash('sha256').update('occult-regression-only').digest('hex').slice(0,32);manifest.packageVersionId='pkgv_'+createHash('sha256').update('occult-regression-release-1.0.0').digest('hex').slice(0,32);manifest.version+='-regression';manifest.resources=JSON.parse(JSON.stringify(manifest.resources).replaceAll(originalId,manifest.packageId).replaceAll(originalVersion,manifest.packageVersionId));}
 const contract = { schemaVersion: 1, capabilities: await json('runtime/capabilities.json'), dataResources: [] };
 for (const [key, file] of Object.entries({ lifecycleRuntime: 'lifecycle', taskRuntime: 'tasks', informationRuntime: 'information', authorityRuntime: 'authority', simulationRuntime: 'simulation' })) contract[key] = await json('runtime/' + file + '.json');
@@ -53,6 +62,10 @@ if (!fixture) {
  opening=compileNetwork(opening,await Promise.all(['property','burial','railway'].map(async k=>(await json('data/cases.signature.'+k+'.json')).items[0])),(await json('data/defs.actors.supporting.json')).items);
  const {compileConvergence}=await import('./convergence-compile.mjs');
  opening=compileConvergence(opening,await Promise.all(['company','accident','headline'].map(async k=>(await json('data/cases.signature.'+k+'.json')).items[0])),[...(await json('data/cases.patterns.network_a.json')).items,...(await json('data/cases.patterns.network_b.json')).items],[...(await json('data/defs.claims.seeds.json')).items,...(await json('data/defs.claims.archetypes.json')).items]);
+ if (!boundedV1) {
+  const { compileLongHorizon } = await import('./long-horizon-compile.mjs');
+  opening = compileLongHorizon(opening, manifest);
+ }
  contract.authorityRuntime.intentObservation.viewIds=['player.overview'];
  Object.assign(contract,{lifecycleRuntime:opening.lifecycle,simulationRuntime:opening.simulation,informationRuntime:opening.information});
  for(const r of manifest.resources)if(r.resourceType==='core.prompt-module' && r.resource.displayName==='narrator')r.resource.body='Render only the Host-approved outcome and disclosure-safe projections. A receipt notice describes a method, not proof it succeeded: respect its outcome. Never invent evidence, a Claim, an external biography fact, a hidden motive or deep Eastbank cause. Player descriptions define ordinary personal expression only. Hypotheses and testimony remain attributed and uncertain. Breach does not grant a class.';
