@@ -26,7 +26,7 @@
 ## 未完成 / 下一目标
 
 1. fetch 并核对真实 PR head、main、docs 与干净工作树。
-2. 对上述精确 HEAD 查询必要 CI。最新 runs: 36954666510 (Atria PR Checks), 36954666602 (Native Model Prompt Runtime), 36954666525 (Authority Transaction), 36954666502 (Native Frontend v3)。最新 HEAD 的 Migration Guard 已成功，其余运行中。旧 1d352701a 上除了 Model Prompt integration 外已成功，但不能挪作最新 HEAD 的通过证据。耗时 CI 是唯一剩余依赖，本轮按停止条件结束，不长轮询。
+2. 对上述精确 HEAD 查询必要 CI。最新 runs: 36954666510 (Atria PR Checks), 36954666602 (Native Model Prompt Runtime), 36954666525 (Authority Transaction), 36954666502 (Native Frontend v3)。最新 HEAD 542e926e2 已有 6/7 checks 成功；仅 Native Model Prompt Runtime integration (job 110675175077) 仍在跑最后一组浏览器回归，该 job 的 unit/lint/prebuild/Chromium 安装均已成功。已做一次 60 秒有限等待，仍运行中，未观察到失败。仅凭 integration 内部步骤成功不能提前认为整项通过。耗时 CI 是唯一剩余依赖，本轮按停止条件结束，不长轮询。
 3. 若失败，读取具体 job/annotation，修复普通代码或 workflow 问题，更新同一 Record。
 4. 必要 CI 成功后合并 PR 到 main（普通 merge），fetch/pull main，核对集成树与已测实现，运行相称 main 验证，删除远端/本地临时分支。
 5. 更新 Record 的 CI 与最终 main HEAD，完成后删除本 HANDOFF，commit/push docs。

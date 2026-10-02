@@ -46,10 +46,10 @@
 - PR: https://github.com/ZZZdragondYNGPHX/Atria/pull/102
 - CI HEAD: 542e926e2c4a0e05769bce0c7631932becacaafc
 - 旧实现 HEAD 1d352701a：Lint、Migration Guard、Unit Tests、Authority Transaction、两项 Native Frontend v3 检查均成功；Model Prompt integration 未完成。
-- 最新测试补充 HEAD 542e926e2 已重新触发必要 CI；Migration Guard 成功，其余运行中。不能把旧 HEAD 的通过记作最新 HEAD 通过。耗时 CI 是唯一剩余依赖，保留 PR 和 HANDOFF，不提前合并。
+- 最新 HEAD 542e926e2 已有 6/7 checks 成功：Lint、Migration Guard、Unit Tests、Authority Transaction、Native v3 regression/Hard Cut、Native v3 Heavy/Studio browser。仅 Native Model Prompt Runtime integration 仍在运行；该 job 的单元测试、lint、frontend prebuild 与 Chromium 安装均已成功，当前为包含新首启回归的最后一组浏览器测试。续接时做过一次 60 秒有限等待，尚未完成，无已知失败。耗时 CI 仍是唯一剩余依赖，保留 PR 和 HANDOFF，不提前合并。
 - 最新 Runs: 36954666510 (Atria PR Checks) / 36954666602 (Native Model Prompt Runtime) / 36954666525 (Authority Transaction) / 36954666502 (Native Frontend v3)。
 - Codex CI connector 要求 ChatGPT 登录；公开 GitHub REST API 无需凭据可读取该公开仓库 CI，未使用 source-control CLI 读取诊断。
-- Remaining: 提交/push → 必要 CI → 合并 main → 验证 main → 删除短期分支 → 更新本 Record。
+- Remaining: 最后浏览器 CI → 合并 main → 验证 main → 删除短期分支及 live HANDOFF → 更新本 Record。
 
 ## Final state
 
