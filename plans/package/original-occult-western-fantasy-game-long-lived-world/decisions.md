@@ -194,6 +194,30 @@ Era changes may modify careers, industries, infrastructure, transportation, comm
 
 Era changes should emerge from development conditions and world events rather than firing only because a fixed calendar year has been reached.
 
+### D-044 — The world is multi-region and dynamically scoped
+
+The starting city is the first high-fidelity hub, not the permanent world boundary. Long-running play may span multiple cities, regions and countries.
+
+### D-045 — Regional fidelity is tiered
+
+World geography uses at least Active Hub, Warm Region and Cold World fidelity. Simulation detail follows player relevance while all regions continue to advance in time.
+
+### D-046 — Region promotion preserves prior history
+
+A region promoted into detailed simulation must instantiate consistently from its pre-existing macro history, institutions, population trends and prior events. First detailed visit does not imply first existence.
+
+### D-047 — Travel consumes world time
+
+Travel duration follows era-appropriate transport and may create meaningful absence consequences in other hubs and relationships.
+
+### D-048 — Macro events affect local worlds
+
+Coarse national and international history may influence migration, institutions, economy, law, family, property, technology and occult conditions without requiring whole-world population simulation.
+
+### D-049 — International reach is allowed but earned
+
+The protagonist may eventually maintain assets, agents, institutions and relationships across multiple regions or countries through actual play. The system does not grant global influence merely for surviving long enough.
+
 ## Open
 
 - target campaign horizon;
