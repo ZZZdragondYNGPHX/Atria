@@ -15,7 +15,8 @@
 ## Implementation
 
 - Start HEAD: e8d0b983f (origin/main)
-- Tested/Implementation HEAD: 1d352701a21e88b757195ebe398251224a99d0a2
+- Implementation HEAD: 1d352701a21e88b757195ebe398251224a99d0a2
+- Final Tested HEAD: 542e926e2c4a0e05769bce0c7631932becacaafc（仅为真实包回归补充等待刷新 loading 完整结束；重新运行真实包 E2E 通过并检查最终无 loading/错误截图）
 - 按唯一 bindingSlotId 枚举用途，展示实际 Task ID 和能力要求；不硬编码 narrative/structured 中文含义。
 - 每用途选择有效 player route；仅共同兼容路由提供“全部用途使用同一路由”。不替玩家选模型，无可用路由时链接现有 Runtime 配置。
 - 保存前重新校验当前配置，通过现有 setTaskBinding/settings authority 保存，然后才创建 Session。取消、过期路由、外部 scope、能力不满足及网络错误均不能绕过屏障。
@@ -43,9 +44,10 @@
 
 - 将新浏览器回归加入 Native Model Prompt Runtime workflow；精确 release 从本地 package 工作区由环境变量提供，不复制到 main 或 CI。
 - PR: https://github.com/ZZZdragondYNGPHX/Atria/pull/102
-- CI HEAD: 1d352701a21e88b757195ebe398251224a99d0a2
-- 结束本轮前 CI 查询：Lint、Atria Migration Guard、Native v3 regression and Hard Cut、Native v3 Heavy and Studio browser 成功；Unit Tests、Native Model Prompt Runtime integration、Authority Transaction Runtime 仍在运行。耗时 CI 已成为唯一剩余依赖，按用户停止条件保留 PR 与 live HANDOFF，不提前合并。
-- Runs: 36953856219 / 36953856222 / 36953856196 / 36953856311。
+- CI HEAD: 542e926e2c4a0e05769bce0c7631932becacaafc
+- 旧实现 HEAD 1d352701a：Lint、Migration Guard、Unit Tests、Authority Transaction、两项 Native Frontend v3 检查均成功；Model Prompt integration 未完成。
+- 最新测试补充 HEAD 542e926e2 已重新触发必要 CI；Migration Guard 成功，其余运行中。不能把旧 HEAD 的通过记作最新 HEAD 通过。耗时 CI 是唯一剩余依赖，保留 PR 和 HANDOFF，不提前合并。
+- 最新 Runs: 36954666510 (Atria PR Checks) / 36954666602 (Native Model Prompt Runtime) / 36954666525 (Authority Transaction) / 36954666502 (Native Frontend v3)。
 - Codex CI connector 要求 ChatGPT 登录；公开 GitHub REST API 无需凭据可读取该公开仓库 CI，未使用 source-control CLI 读取诊断。
 - Remaining: 提交/push → 必要 CI → 合并 main → 验证 main → 删除短期分支 → 更新本 Record。
 
