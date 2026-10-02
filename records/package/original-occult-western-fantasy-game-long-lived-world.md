@@ -378,6 +378,51 @@ actually pass and ordinary failures are repaired. Then integrate verified Core
 support into main without merging main into Package, update this same Record and
 live HANDOFF, prepare the Phase 5 prompt and stop. Do not issue Phase 5 work now.
 
+## Phase 4 continuation — portable-export repair
+
+- Package: d57f0c0ad1d2c16a9959cff9841a9145f255eb28, same task branch.
+- Core support: 6e2611a0a5bbcf743cd9fe19c6eeba457890d3f1, tests-only follow-up;
+  runtime unchanged from 0fced2b79. Neither support commit is integrated into main.
+- Run [37011388445](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37011388445)
+  finished: full Core/four-adapter job **success**, Package candidate **failure**.
+  The candidate reached 5,000 actual content turns / 50 years / 1,000 closures;
+  active state 833,018 bytes, logical history 590,928 bytes. Its final export hit
+  the unchanged 64 MiB save.json cap because export includes the pre-checkpoint
+  revision window. Final import and semantic/late-world audits did not run.
+  Therefore the run did not pass the Phase 4 gate.
+
+The checker now requests the existing Native history.compact before each measured
+export/import. Assertions preserve world clock, all Lifetime/world state except
+recomputed work telemetry, facts/heads/anchors/artifacts/hooks/memory and the
+meaningful-turn count. Single-branch portable exports must contain one revision.
+Archive bytes, uncompressed save.json bytes, active state and model projection are
+reported separately. Projection maxima now include investigation evidence, not
+just opening views; early/late semantic path and family/institution summaries are
+included for audit.
+
+The fix does not change Runtime Authority, SaveSystem, periodic checkpoint/Retry
+rules, save/history/lifetime limits, or delete any existing SavePoint, branch or
+durable fact. Arbitrary uncheckpointed/branched exports can still hit their safety
+limits; those retained-history containers are not active-growth measurements.
+
+Verification executed:
+
+- Expanded real Native renewal session test on Fs and SQLite: **2 passed**, MySQL
+  and PostgreSQL excluded locally. Covers previous raw revision windows versus
+  one-revision portable export, unchanged durable state, retained old SavePoints,
+  archived Retry rejection, new Retry and institution creation/split/merge/
+  dissolution followed by actual exports/imports.
+- Revised actual Package smoke: **25 content turns / 50 years**, two kinship edges,
+  five concluded Matters, one real import; save.json 219,941 bytes, archive 22,524
+  bytes, one revision, maximum exercised projection 941 bytes. Not Gate B.
+- Package checker syntax and both workspace whitespace checks passed.
+
+Full rerun [37027895867](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37027895867)
+was dispatched on exact Core 6e2611a0a and Package d57f0c0ad. The full Core job,
+including the expanded configured four-adapter institutional/checkpoint restore
+tests, has **passed**. The full Package long run remains in progress.
+Phase 4 remains incomplete; do not enter Phase 5.
+
 ## Final state
 
 The eight-phase project remains active and incomplete. Phases 1–3 are complete;

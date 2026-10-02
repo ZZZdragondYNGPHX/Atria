@@ -5,9 +5,9 @@
 - Task ID: refactor/original-occult-western-fantasy-long-lived-world
 - Primary Workspace: Package
 - Package branch: refactor/original-occult-western-fantasy-long-lived-world
-- Package HEAD: 0bfb7fe2a69051639c3a1953a05f134808afa2cc
+- Package HEAD: d57f0c0ad1d2c16a9959cff9841a9145f255eb28
 - Core support branch: feat/native-renewable-world
-- Core support HEAD: 0fced2b7989a7e9ff6fbc33ba206232b90a3b6b9
+- Core support HEAD: 6e2611a0a5bbcf743cd9fe19c6eeba457890d3f1
 - Stable main: 80376ec9f0e5cce9ef1c29422f39604bb7446cfd; support NOT integrated
 - Long-lived package: 79447c0b8aca028c6929ff8f9842f8835676191f; no final integration
 - Stage: **Phase 4 implementation candidate; verification in progress. NOT complete.**
@@ -21,15 +21,16 @@
 
 Inspect real Git refs/status, then read the current CI result:
 
-https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37011388445
+https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37027895867
 
-This run pins Core 0fced2b79 and Package 0bfb7fe2a. It has two jobs:
+This run pins Core 6e2611a0a and Package d57f0c0ad. It has two jobs:
 
 1. existing full Native Authority regression suite, including real configured
    Fs/SQLite/MySQL/PostgreSQL renewal publication/checkpoint/import tests;
 2. the full actual Package 5,000-content-turn / 50-year Gate B candidate.
 
-Results were pending at this handoff update. Download/inspect the candidate log
+The exact Core/four-adapter job has passed; the Package long run is still in progress.
+Download/inspect the candidate log
 artifact and audit its final statistics, not merely the workflow title or elapsed
 time. Ordinary code, schema, test, budget, repetition and CI failures must be fixed
 inside Phase 4. A timeout or partial run is not a passing Gate B candidate.
@@ -59,6 +60,26 @@ initial geography; it does not execute a parallel simulation.
 - bounded read-only renewalView, not final UI.
 
 See runtime/RENEWABLE-CONTENT.md and the same Record for contracts and caveats.
+
+## Export repair / preceding run
+
+Run 37011388445 passed the complete Core four-adapter job on 0fced2b79.
+Its Package job reached 5,000 actual content turns, 50 years and 1,000 closures,
+but failed on the final export: the retained raw revision window exceeded the
+unchanged 64 MiB save.json file limit. Active state was 833,018 bytes; do not
+confuse that raw ancestry with active-state or durable-history size. Final import
+and audit did not execute, so this was NOT a passing Gate B candidate.
+
+Package d57f0c0ad now invokes the existing Native history.compact before measured
+portable exports, as the Phase 2 fixture already does. It asserts no content-turn,
+clock, people/world or durable-history change, and requires one exported revision.
+No runtime limit, durable fact, old SavePoint or branch was removed/relaxed.
+Core 6e2611a0a adds tests only; runtime remains identical to verified 0fced2b79.
+
+New Fs/SQLite tests pass for checkpoint/import, protected old snapshots, archived
+Retry and actual institution creation/split/merge/dissolution restores. A revised
+25-content-turn/50-year smoke passed: save.json 219,941 bytes, one revision,
+22,524-byte archive, two kinship edges. It is not Gate B. Full rerun is pending.
 
 ## Evidence already available
 
@@ -123,11 +144,11 @@ e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09.
 继续 Atria 的 Original Occult Western Fantasy Long-Lived World 重构，仅完成 Phase 4。
 先核对真实 Git/远端 refs，再按 docs:HANDOFF.md 的 Read first 读取。
 Package 分支保持 refactor/original-occult-western-fantasy-long-lived-world，当前
-HEAD 0bfb7fe2a69051639c3a1953a05f134808afa2cc；Core 支持分支
-feat/native-renewable-world@0fced2b7989a7e9ff6fbc33ba206232b90a3b6b9。
+HEAD d57f0c0ad1d2c16a9959cff9841a9145f255eb28；Core 支持分支
+feat/native-renewable-world@6e2611a0a5bbcf743cd9fe19c6eeba457890d3f1。
 main 仍是 80376ec9f，尚未集成 Core 支持。
 
-Phase 4 候选实现已提交/push，但未完成验证。先检查 CI 37011388445：
+Phase 4 候选实现已提交/push，但未完成验证。先检查 CI 37027895867：
 它在精确 Core/Package 提交上运行四适配器 Native 检查与真实 5k-turn/50-year
 Package candidate。下载并审计日志，修复普通失败，不能把早期 100 回合冒烟、
 Phase 2 历史检查或 Phase 3 寿命检查冒充完整 Gate B。
