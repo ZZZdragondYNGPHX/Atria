@@ -146,6 +146,34 @@ Memory degradation must remain light-touch and must not routinely override expli
 
 The final design should expose a Chronicle/Archive capable of browsing historical timelines and records by major world dimensions such as date, actor, family, place, institution, case, Claim and Era.
 
+### D-032 — Long-horizon progression becomes horizontal
+
+Conventional vertical progression may matter early, but decades-long advancement is primarily expressed through capabilities, permissions, relationships, assets, institutions, specialized knowledge, Claims and obligations rather than unbounded numeric stat growth.
+
+### D-033 — Wealth and property remain world-bound
+
+Money, businesses, land and other assets have provenance and remain subject to world processes such as depreciation, destruction, seizure, legal identity, inheritance, economic change and institutional pressure.
+
+### D-034 — Careers are social roles, not permanent classes
+
+The protagonist may change careers repeatedly and hold multiple roles when world rules permit. Careers primarily grant access, authority, networks, duties and liabilities rather than simple stat bonuses.
+
+### D-035 — Public identity is separate from protagonist continuity
+
+Changing or retiring a legal/public identity does not reset the protagonist, but it may disrupt ownership, licenses, reputation, banking, marriage, criminal records, contracts and institutional standing.
+
+### D-036 — No universal level scaling
+
+The world does not scale every opponent to protagonist power. As personal capability grows, challenge shifts toward larger or more complex systems such as family, institutions, law, property, history, identity exposure, Claims and occult obligations.
+
+### D-037 — City-scale power is permitted but optional
+
+A protagonist may become a major owner, institutional leader, religious authority, occult power broker or other city-scale actor through actual play. Long-lived low-profile play remains equally valid.
+
+### D-038 — Death can damage embodied progress without erasing deep continuity
+
+Bodily death or reconstruction may damage current-body state, equipment, public identity or role-specific advantages while preserving most deep protagonist continuity such as core knowledge, long-term history, Claims and durable relationships where world logic permits.
+
 ## Open
 
 - target campaign horizon;
