@@ -264,6 +264,26 @@ Routine delegated operations should not repeatedly interrupt long fast-forward. 
 
 Organizations can accumulate institutional culture, leadership interests and historical inertia. Their Agenda may become partially independent of the protagonist, and extreme divergence may lead to internal resistance or opposition.
 
+### D-061 — 10k-turn / 200-year final release gate
+
+The Long-Lived World project cannot be declared complete until a continuous authoritative-world soak reaches at least 10,000 authoritative turns and at least 200 in-world years.
+
+### D-062 — Long-run completeness is behavioral, not merely crash-free
+
+The final soak must demonstrate real lifecycle, institutional, geographic, Era, macro-history, renewable-content, history-compaction and multi-region behavior. A world that merely remains process-stable while nothing meaningfully changes does not pass.
+
+### D-063 — Long-run validation requires multiple evidence types
+
+Final validation requires deterministic fixtures, a multi-seed matrix and long-running soak coverage. One favorable deterministic path is insufficient.
+
+### D-064 — Historical integrity is a hard invariant
+
+Chronology, kinship, ownership, office tenure, institution lineage, artifact provenance, Canonical Facts and other causally significant facts must survive compaction, Save/Restore and long-horizon progression without contradiction.
+
+### D-065 — Storage and context growth must be sublinear
+
+Long-lived history must compact and retrieve selectively so state/history storage and active model context do not scale linearly with every turn.
+
 ## Open
 
 - target campaign horizon;
