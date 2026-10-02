@@ -84,3 +84,25 @@ test('absence escalates once at the real deadline without simulating every day',
     s=act(s,null,{},deadline+200*1440);expect(renewal(s).places[m.placeId].pressure).toBe(pressure);
     s=finish(s);expect(renewal(s).canonical[m.id].closed).toBe(deadline+200*1440);
 });
+
+test('family grammar requires a real public family and exposes no hidden truth',async()=>{
+    let s=fixture();expect(()=>act(s,'matter.open',{grammarId:'family_obligation',hookId:''})).toThrow();
+    s=act(s,'family.conceive',{parentId:'hero',otherParentId:'partner',name:'Child',consent:true});s=act(s,null,{},403200);
+    s=act(s,'matter.open',{grammarId:'family_obligation',hookId:''});const m=Object.values(renewal(s).active)[0];expect(life(s).kinship[m.familyId]).toBeDefined();
+    const {renewalView}=await import('../../public/shared/native-renewal-runtime.js');const view=renewalView(s);expect(JSON.stringify(view)).not.toContain(m.structure.truth);
+    view[0].evidence.push({fake:true});expect(m.evidence).toHaveLength(0);
+    expect(()=>act(s,'matter.act',{id:m.id,action:m.path[0],presentation:'x'.repeat(321)})).toThrow();
+    expect(()=>act(s,'matter.act',{id:m.id,action:m.path[0],presentation:'',truth:'rewrite canon'})).toThrow();
+});
+test('merger, business and district creation retain causes and reject resurrection',()=>{
+    let s=finish(open(fixture()),true),sourceId=Object.keys(renewal(s).canonical)[0];
+    const change=(id,operation,otherId='',name='')=>{s=act(s,'world.change',{id,operation,otherId,name,sourceId});return renewal(s).last.id;};
+    const first=change('','found','','First circle'),second=change('','found','','Second circle');
+    change(first,'merge',second,'United circle');expect(life(s).institutions[first].successors).toEqual(life(s).institutions[second].successors);
+    const successor=life(s).institutions[first].successors[0];expect(life(s).institutions[successor].predecessors).toEqual([first,second]);
+    expect(Object.values(life(s).offices).some(o=>o.institutionId===successor&&o.holderId)).toBe(true);
+    expect(()=>change(first,'split','','Invalid restoration')).toThrow();
+    const district=change('','zone_district','','New ward'),business=change('','open_business',district,'Ward workshop');
+    expect(renewal(s).places[business].origin).toBe(sourceId);change(business,'repurpose','','Public clinic');change(business,'protect');
+    expect(()=>change(business,'demolish')).toThrow('protected');validateHistory(s);
+});

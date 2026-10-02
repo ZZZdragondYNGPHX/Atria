@@ -135,7 +135,8 @@ export function prepareHistory(base, candidate, transaction, resolution, operati
     }
     if (state.lifetimes?.renewal?.last && !same(base.states.atri_lifecycle.lifetimes?.renewal?.last, state.lifetimes.renewal.last)) {
         const last = state.lifetimes.renewal.last;
-        event.summary = last.operation + ': ' + (last.action ?? last.outcome ?? last.id);
+        event.summary = last.operation + ': ' + (last.summary ?? last.action ?? last.outcome ?? last.id);
+        event.refs = [...new Set([...event.refs, ...(last.refs ?? [])])];
     }
     if (operation) operate(candidate, h, operation.operation, operation.input, event);
     if (operation?.operation === 'compact') h.checkpointRequested = true;

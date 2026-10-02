@@ -12,7 +12,7 @@ export const RENEWAL_OPERATIONS = {
 };
 export function assertRenewalPolicy(p) {
     assertTaskValue(p, O({ schemaVersion: I(1, 1), maxActive: I(1, 4), maxRecent: I(8, 64), cooldownTicks: I(1440, 5256000), minimumDistance: I(2, 6), maxEntities: I(4, 128),
-        grammars: A(O({ id: S(), trigger: S(160), responseTicks: I(1440, 525600), ...Object.fromEntries(RENEWAL_DIMENSIONS.map(d => [d, A(S(80), 8)])), actions: A(S(32), 8), historyRequired: { type: 'boolean' } }), 32),
+        grammars: A(O({ id: S(), trigger: S(160), responseTicks: I(1440, 525600), ...Object.fromEntries(RENEWAL_DIMENSIONS.map(d => [d, A(S(80), 8)])), actions: A(S(32), 8), historyRequired: { type: 'boolean' }, requiresFamily: { type: 'boolean' } }), 32),
         places: A(O({ id: S(), name: S(80), kind: S(16, ['location', 'business', 'district']), districtId: S(), function: S(80) }), 32) }));
     if (!p.grammars.length || !p.places.length) throw new TypeError('Renewal empty grammar/geography');
     for (const list of [p.grammars, p.places]) {

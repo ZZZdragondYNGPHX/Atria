@@ -32,6 +32,7 @@ function compose(snapshot, s, policy, args, tick) {
         const subject = pick(actors, 'subject'), investigator = actors.find(a => a.id === policy.protagonistId);
         need(investigator, 'protagonist unavailable');
         const family = sorted(s.kinship).find(k => k.visibility !== 'secret' && (k.childId === subject.id || k.parents.includes(subject.id)));
+        if (g.requiresFamily && !family) continue;
         const artifact = hook ? h.artifacts[hook.sourceId] ?? null : null;
         need(!artifact || !['lost', 'destroyed'].includes(artifact.status), 'historical document unavailable');
         const structure = Object.fromEntries(RENEWAL_DIMENSIONS.map(d => [d, pick(g[d], d)]));
@@ -46,7 +47,7 @@ function compose(snapshot, s, policy, args, tick) {
         const m = { id, grammarId: g.id, trigger: g.trigger, opened: tick, deadline: tick + g.responseTicks, escalated: false, status: 'investigating', structure, subjectId: subject.id, institutionId: institution.id, placeId: place.id,
             familyId: family?.id ?? '', artifactId: artifact?.id ?? '', hookId: hook?.id ?? '', sourceId: hook?.sourceId ?? '', refs,
             path: [...g.actions], evidence: [], stage: 0, presentation: '', pressureAtOpen: place.pressure };
-        r.active[id] = m;r.recent.push({ tick, structure, id });if (r.recent.length > p.maxRecent)r.recent.shift();r.last = { operation: 'matter.open', id };
+        r.active[id] = m;r.recent.push({ tick, structure, id });if (r.recent.length > p.maxRecent)r.recent.shift();r.last = { operation: 'matter.open', id, refs, summary: g.trigger };
         return;
     }
     throw new TypeError('Renewal novelty exhausted; advance world or choose other grammar');
@@ -68,7 +69,7 @@ function resolveMatter(snapshot, s, m, action, tick, api) {
         }
     }
     place.pressure = (place.pressure + (m.structure.resolution.includes('restitution') ? 2 : 1)) % 12;
-    r.completed++;r.last = { operation: 'matter.resolve', id: m.id, outcome: outcome.outcome };delete r.active[m.id];
+    r.completed++;r.last = { operation: 'matter.resolve', id: m.id, outcome: outcome.outcome, refs: m.refs, summary: m.trigger + ' Outcome: ' + outcome.outcome + '; local pressure is now ' + place.pressure + '.' };delete r.active[m.id];
 }
 function worldChange(snapshot, s, policy, a, tick, api) {
     const r = s.renewal, evidence = source(snapshot, s, a.sourceId);
@@ -145,7 +146,7 @@ export function operateRenewal(snapshot, s, policy, operation, a, tick, api) {
             need(live(r.places[m.placeId]) && activeInstitution(s.institutions[m.institutionId]), 'investigation venue unavailable');
             m.evidence.push({ action: a.action, tick, sourceId: archiveSource?.id ?? (m.sourceId || m.subjectId), statusAtObservation: subject.status.kind, mode: historical ? 'archival-review' : 'live-inquiry' });m.stage++;
             // This is explicitly attributed testimony, not newly invented canon.
-            m.presentation = a.presentation;r.actions++;r.last = { operation: 'matter.act', id: m.id, action: a.action };
+            m.presentation = a.presentation;r.actions++;r.last = { operation: 'matter.act', id: m.id, action: a.action, refs: m.refs, summary: a.action + ': ' + (historical ? 'review archived evidence' : 'record live inquiry') };
         }
     }
     validateRenewal(snapshot, policy);
@@ -175,7 +176,7 @@ export function validateRenewal(snapshot, policy) {
         for (const d of ['truth', 'anomaly', 'stakes', 'resolution'])need(g[d].includes(m.structure[d]), 'authored structure');
         need(Number.isSafeInteger(m.deadline) && m.deadline === m.opened + g.responseTicks && typeof m.escalated === 'boolean', 'matter deadline');
         need(m.structure.path === m.path.join('>') && people(s)[m.subjectId] && s.institutions[m.institutionId] && r.places[m.placeId], 'role identity');
-        need(!m.familyId || s.kinship[m.familyId], 'family source');
+        need((!g.requiresFamily || m.familyId) && (!m.familyId || s.kinship[m.familyId]), 'family source');
         need(!m.artifactId || snapshot.states.atri_lifecycle.history.artifacts[m.artifactId], 'artifact source');
         need(!m.hookId || snapshot.states.atri_lifecycle.history.hooks[m.hookId]?.sourceId === m.sourceId, 'historical source');
         need(typeof m.presentation === 'string' && m.presentation.length <= 320, 'deliberation bound');
