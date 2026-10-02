@@ -4,7 +4,7 @@
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
 **Plan status:** Discussion / not approved for implementation  
-**Plan generation:** v0.4
+**Plan generation:** v0.5
 
 ## 1. Why this plan exists
 
@@ -58,7 +58,8 @@ The plan will be split as decisions become stable:
 - `world-simulation.md` — institutions, actors, agenda renewal, city change, succession and background simulation.
 - `content-renewal.md` — renewable cases, claims, NPCs, locations/events, procedural constraints and anti-repetition.
 - `history-memory.md` — event compaction, memory tiers, archival summaries, save-size/context control.
-- `progression-continuity.md` — career, relationships, resources, retirement/continuation and possible successor play.
+- `family-relationships.md` — romance, marriage, children, descendants, inheritance and social norms.
+- `progression-continuity.md` — career, resources, long-term identity and non-family continuity.
 - `verification.md` — 1k/5k/10k-turn and multi-year simulation/restore/replay gates.
 - `implementation-staging.md` — implementation phases, dependencies, validation gates and release criteria.
 
@@ -162,17 +163,37 @@ Detailed authority: `world-simulation.md`.
 
 ### Round 4 — Family, descendants and century-scale relationships
 
+Status: complete.
+
+Frozen:
+
+- the protagonist may form romances, marry, maintain long-term partnerships, have biological children, adopt children, separate, become widowed, and remarry;
+- family members age normally unless they separately obtain a setting-consistent longevity mechanism;
+- children and important descendants can grow into Tier A/B actors and continue producing later generations;
+- the family graph may span multiple generations, but detailed simulation is relevance-scoped rather than exhaustive;
+- ordinary childcare and uneventful years are abstracted; high-impact lifecycle milestones are simulated and recorded;
+- property, reputation, secrets, grudges, favors, institutional ties and selected supernatural consequences may pass across generations;
+- longevity does not automatically spread to spouses, partners or descendants;
+- extending longevity to another person is an intentional, rare, costly and narratively significant act, and the other person may refuse;
+- the protagonist may outlive spouses, children, grandchildren or later descendants;
+- family history participates in identity exposure: later generations can discover evidence that the protagonist has not aged;
+- surface society generally treats relatively traditional one-to-one partnership/marriage as the default norm;
+- this social default is not a hard system restriction: affairs, secret partners, informal unions, same-sex relationships, multi-partner arrangements and other structures may exist, but their visibility and consequences depend on era, locality, class, law, religion and institution.
+
+Detailed authority: `family-relationships.md`.
+
+### Round 5 — Time scale, fast-forward and world resolution
+
 Status: active.
 
 Questions to freeze:
 
-1. Can the protagonist marry, form long-term partnerships, have children, adopt, or create other recognized family bonds?
-2. Should descendants be simulated as a persistent family graph across multiple generations?
-3. Can descendants inherit property, secrets, claims, enemies, social status or institutional positions?
-4. How deeply should the game model pregnancy/birth/childhood versus abstracting those periods?
-5. How should the protagonist's immortality affect partners and descendants who age normally?
-6. Can supernatural longevity be extended to loved ones, and if so at what cost?
-7. How should romance and family relationships remain playable over decades without becoming repetitive maintenance?
+1. What time layers should be authoritative above Day: Week, Month, Season, Year, Era?
+2. How much time may the player fast-forward in one action?
+3. When fast-forwarding months or years, what must always be resolved rather than skipped?
+4. Which events interrupt fast-forward automatically?
+5. How should active cases, family, institutions and Claims behave during long absences?
+6. Should long fast-forward be allowed while unresolved high-risk matters exist, or should the system require an explicit stance/delegation plan first?
 
 No implementation starts until the discussion rounds are explicitly approved.
 
