@@ -284,12 +284,39 @@ Chronology, kinship, ownership, office tenure, institution lineage, artifact pro
 
 Long-lived history must compact and retrieve selectively so state/history storage and active model context do not scale linearly with every turn.
 
-## Open
+### D-066 — Eight-phase implementation order is frozen
 
-- target campaign horizon;
-- exact supernatural longevity paths and route-specific costs;
-- family simulation as world content rather than player succession;
-- long-horizon time model;
-- renewable case/world generation;
-- historical compaction;
-- long-run validation gates.
+Implementation follows the dependency order in `implementation-staging.md`:
+
+1. Long-Horizon Runtime Foundation
+2. History / Memory / Compaction Core
+3. Human Lifetime / Family / Institution Lifecycle
+4. Renewable World Content
+5. Progression / Wealth / Delegation / Organization
+6. Multi-Region / Era / Macro History
+7. Player-Facing Long-Life Experience
+8. Century Integration / Stress / Release
+
+Each formal phase ends with validation, persistence, Record/HANDOFF refresh and a stop.
+
+### D-067 — One task branch across all phases
+
+All implementation phases use `refactor/original-occult-western-fantasy-long-lived-world` until final verified integration into the long-lived `package` workspace.
+
+### D-068 — Version 2.0 release preserves 1.0
+
+The target long-lived-world release is `2.0.0`. The existing `releases/1.0.0.atria` is retained unchanged as historical release evidence.
+
+### D-069 — v1 save compatibility is not required
+
+The long-lived-world refactor may change foundational runtime/state schemas without implementing migration for old v1 saves.
+
+The v1 campaign remains useful as a behavioral regression fixture where practical, but compatibility debt must not constrain the new century-scale architecture.
+
+### D-070 — The Day 30 ceiling is removed in Phase 1
+
+The old 30-day bound remains a v1 regression scenario only. Phase 1 removes it as the global authoritative world limit.
+
+## Implementation-deferred details
+
+Detailed numeric thresholds, serialization layouts, exact schema field names, route-specific longevity catalogues, compaction budgets, generator tuning and UI component choices remain implementation decisions inside the approved module boundaries. They must not reopen the frozen product decisions above without a real conflict.
