@@ -4,7 +4,7 @@
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
 **Plan status:** Discussion / not approved for implementation  
-**Plan generation:** v0.1
+**Plan generation:** v0.2
 
 ## 1. Why this plan exists
 
@@ -115,16 +115,27 @@ Findings:
 
 ### Round 1 — Campaign lifetime and player continuity
 
+Status: complete.
+
+Frozen:
+
+- the entire save is always controlled through one protagonist;
+- there is no heir/successor/new-investigator handoff as a core continuation model;
+- the protagonist may remain playable for decades or centuries through setting-consistent occult/supernatural longevity;
+- long-horizon design must therefore preserve one continuous identity while the surrounding human world changes generations around them;
+- family/children may exist as world relationships, but never as a mandatory player-continuity mechanism.
+
+### Round 2 — Protagonist longevity model
+
 Status: active.
 
 Questions to freeze:
 
-1. Is the target an effectively open-ended single save, or a deliberately large but finite lifespan?
-2. Does the protagonist age normally?
-3. Can the protagonist permanently die/retire?
-4. If so, does the same save continue through an heir/successor/new investigator?
-5. Should family/marriage/children be first-class simulation, optional systems, or mostly abstracted?
-6. Should decades pass mainly through active daily play, controlled fast-forward, or both?
+1. Is long life innate/guaranteed, earned through progression, or optional through a dangerous occult path?
+2. Should the protagonist physically age slowly, stop aging, periodically renew, or vary by build/Claim?
+3. Should supernatural longevity carry meaningful prices such as Claim escalation, identity exposure, social alienation, bodily corruption, memory strain, or institutional attention?
+4. Can the protagonist still die permanently from violence/ritual failure, or should the game strongly protect continuity?
+5. How should a character survive socially for 50–150 years: changing aliases, faking descendants, institutional cover, public immortality, or some mixture?
 
 No implementation starts until the discussion rounds are explicitly approved.
 
