@@ -4,7 +4,7 @@
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
 **Plan status:** Discussion / not approved for implementation  
-**Plan generation:** v0.13
+**Plan generation:** v0.14
 
 ## 1. Why this plan exists
 
@@ -353,17 +353,42 @@ Detailed authority: `delegation-agency.md`.
 
 ### Round 13 — Long-run verification and release gates
 
+Status: complete.
+
+Frozen:
+
+- the final Long-Lived World release gate requires at least **10,000 authoritative turns** in one continuous save/world;
+- the final release gate requires at least **200 in-world years** of continuous world history;
+- an authoritative turn means a committed interaction that mutates authoritative world state, not merely a model response or no-op chat turn;
+- development may use lower gates such as 1k-turn/10-year and 5k-turn/50-year tests, but neither substitutes for the final gate;
+- the final soak must exercise multiple NPC generations, institution leadership turnover, organization creation/dissolution, changing geography, multiple Era transitions, macro-history events and renewable content;
+- the final soak must include at least one multi-region migration path and verify that departed regions continue evolving;
+- the final soak must include protagonist death/reconstruction events and verify non-terminal continuity with durable consequences;
+- Save/Restore must be exercised around lifecycle, Era, region, institutional and death/reconstruction transitions;
+- century-scale retrieval must recover correct old facts/artifacts/hooks after many decades of compaction;
+- chronology, kinship, ownership, office tenure, institution lineage, artifact provenance and canonical facts must remain internally consistent;
+- anti-repetition auditing must detect structural/semantic repetition rather than only repeated names or pattern IDs;
+- later generated matters should demonstrably reuse authentic prior history, family, artifacts, institutions and Historical Hooks;
+- save/history storage and active model projection must show sublinear growth relative to turn count through compaction and retrieval;
+- long fast-forward must prove hierarchical/event-driven resolution rather than secretly executing every intervening day at full fidelity;
+- deterministic fixtures plus a seed matrix plus long-running soak tests are required; a single favorable seed is insufficient;
+- failure to meet these gates blocks declaring the Long-Lived World project complete.
+
+Detailed authority: `verification.md`.
+
+### Round 14 — Implementation staging and Astra handoff
+
 Status: active.
 
 Questions to freeze:
 
-1. What minimum simulated lifespan must pass before the feature can be called complete: 30, 50, 100, 200 years?
-2. What turn-count soak gates are mandatory: 1k, 5k, 10k, more?
-3. What save-growth and context-growth bounds should be treated as release blockers?
-4. What invariants must survive save/restore, fast-forward, death/reconstruction, region promotion/demotion and Era transitions?
-5. How much deterministic replay is required across long simulations?
-6. What anti-repetition metrics should be checked for cases, NPCs and macro events?
-7. Which browser/UI or real-runtime evidence is required before declaring the package complete?
+1. How many implementation phases should Codex Astra receive?
+2. Which architecture must land first so later systems do not need repeated rewrites?
+3. Which phases may change runtime schemas versus content/data only?
+4. What is the minimum validation/record/handoff required at each phase boundary?
+5. Which legacy v1 assets should be preserved as compatibility fixtures versus migrated into the new architecture?
+6. At what phase should the old Day 30 authority limit actually be removed?
+7. At what phase should the full 10k-turn/200-year gate run?
 
 No implementation starts until the discussion rounds are explicitly approved.
 
