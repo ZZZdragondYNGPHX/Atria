@@ -122,6 +122,30 @@ Content generation must track more than pattern names. Repetition control should
 
 Routine resolved matters may compact heavily. Matters that materially alter important actors, institutions, geography, Claims, law, family history or the protagonist's identity become durable canonical history.
 
+### D-027 — Historical fidelity is tiered
+
+Long-running saves do not retain every turn and transaction at full fidelity. Historical information moves through Hot, Warm, Cold and Archive tiers according to recency, importance and unresolved causal relevance.
+
+### D-028 — Canonical facts are separate from narrative summaries
+
+Precise facts that later world logic may depend on are stored in a Canonical Fact Ledger and are not allowed to disappear or become ambiguous merely because narrative history was compacted.
+
+### D-029 — Durable artifacts outlive event detail
+
+Documents and objects such as photographs, letters, contracts, wills, newspapers, case files, diaries, property records, ritual records and heirlooms may persist independently of compressed events and can reintroduce old history into active play.
+
+### D-030 — World Truth and Protagonist Memory are distinct
+
+The authoritative world may retain facts that the protagonist no longer remembers clearly.
+
+Ordinary details may fade over decades or centuries. Major events, strong relationships, deliberately recorded information and player-marked memories remain clearer for longer.
+
+Memory degradation must remain light-touch and must not routinely override explicit player knowledge.
+
+### D-031 — History is player-inspectable
+
+The final design should expose a Chronicle/Archive capable of browsing historical timelines and records by major world dimensions such as date, actor, family, place, institution, case, Claim and Era.
+
 ## Open
 
 - target campaign horizon;
