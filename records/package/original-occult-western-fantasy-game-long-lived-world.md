@@ -138,6 +138,93 @@ Phase 2 has **not** started. Raw history growth is unchanged. No Hot/Warm/Cold/A
 
 Next: **Phase 2 — History / Memory / Compaction Core** on the same Package branch. Read live HANDOFF, Plan index and Phase 2 modules only; implement/validate Phase 2, update this Record and HANDOFF, provide the Phase 3 prompt, then stop.
 
+## Phase 2 — History / Memory / Compaction Core
+
+- Start Package HEAD: `2cba4357b3d096a9edb5b54d06103d0412ade2f9`
+- End/Tested Package HEAD: `58b29477c8ac5cb499dcee6f2b13159ff30c1e43`
+- Compatible final Core: `main@f116a98de7a09c32f1789a875244c7e4b9e14e20`
+- Status: **Complete — stopped at the Phase 2 boundary**
+- Core implementation: `9194a5abfbb3e0d02f7ff58870f13d2632699d38`
+- Core JSON/storage normalization repair: `f116a98de7a09c32f1789a875244c7e4b9e14e20`
+- Core support branch: `fix/native-history-compaction`; fast-forwarded into main, then removed locally and remotely (remote cleanup by the existing merged-branch workflow)
+- Development Package version: `2.0.0-phase2`; final release remains `2.0.0`
+- Validation date: 2026-10-02
+
+### Completed implementation
+
+- Added Native-owned Hot/Warm/Cold/Archive history in the existing Lifecycle namespace, with age/count retention and logarithmic archive interval bins.
+- Added exact canonical source facts, supersession links, source provenance and current-authority cross-checks; hidden sources remain outside public queries.
+- Added attributed durable artifacts, copy lineage, status/provenance transitions, source-backed Historical Hooks and light-touch marked/journaled memory independent of world truth.
+- Added persisted facet/ID/interval indexes, revision-bound Chronicle pagination, safe recent narrator slices and growth instrumentation.
+- Reused the Package's existing opening.wait contract for optional typed history operations; retained the 64-transaction ceiling and existing command/read/effect budgets. Structured History/Stance payloads are not exposed as broken scalar UI controls.
+- Added atomic portable checkpoints, recent exact replay, explicit archived Retry expiration and a bounded fail-closed replay fence. The latest approved reply stays readable; old raw messages, event journals and exact retired turn payloads/tombstones do not grow forever in the active snapshot.
+- Preserved Native SaveSystem, immutable world/session identity, branch graph and explicit SavePoints. Local historical repository revisions are not garbage-collected; no parallel authority/storage implementation exists.
+- Documented the exact contracts and caveats in Package runtime/HISTORY-MEMORY.md and updated the development entrypoint.
+
+### Core prerequisite and repairs
+
+The original Lifecycle compactor only evicted terminal records and did not compact raw transcript/turn history. Snapshot export followed full parent ancestry. Package-only summaries would therefore leave linear raw/save growth and fixed receipt admission ceilings.
+
+The Core support adds optional Lifecycle history policy/transaction annotations, private candidate history preparation, safe Information queries and SessionCore checkpoint publication. Normal packages without history policy keep the original behavior. The repository writer retains expected-HEAD CAS and permits a severed parent only for an explicit, validated checkpoint. Retry after the boundary still restores pre-effect authority; an archived reply cannot advertise a replayable pre-effect state.
+
+Repairs during validation:
+
+- moved ledger consistency checking to complete transaction/publication/load boundaries rather than partially applied simulation effects;
+- synchronized direct Host Lifecycle/clock changes without counting them as player turns, copying frozen publication candidates before mutation;
+- retired old turn tombstones as well as full turn payloads, closing a hidden linear-growth path;
+- retained the last approved reply at checkpoints and refused checkpoints with protected Task-result dependencies;
+- pinned historical summary sources when later hooks/memories/artifacts reference them;
+- retained operation target/status on durable event anchors for provenance retrieval;
+- reused Native canonical JSON hashing and deterministically ordered archive postings after MySQL/PostgreSQL JSON normalization exposed insertion-order assumptions;
+- added a four-entry, exact-content-addressed declarative compilation cache containing no session state, proofs or RNG. A local five-sample probe measured roughly 351 ms per uncached full Package compilation, making repeated compilation a material long-run validation cost.
+
+### Actual validation
+
+| Check | Result |
+| --- | --- |
+| `node tools/package.mjs validate --history-only --core <compatible Core>` | **Passed**: 1,000 separately committed positive time advances in one continuous Native world over at least 10 in-world years; the test asserts meaningful-history and real-clock increments, not sequence/prose padding. Eight actual Fs/SQLite SaveSystem imports preserve all authoritative namespaces and timeline; early letter/contract/copy/hook/marked memory survives a later 100-year jump and remains retrievable with provenance/status. Recent retry is idempotent; private/missing source operations and invalid candidates do not publish. |
+| History growth / portable saves | **Passed**, checkpoints below. Whole active snapshot, raw retention, query projection and checkpoint export growth are explicitly checked. Turn tombstones are absent after compaction rather than hidden in another namespace. |
+| Core local regression batch | **Passed**: 12 suites / 467 tests on local Fs/SQLite. Subsequent overlapping targeted Host/checkpoint/Save tests: 7 suites / 201 tests. Final history/JSON-order regressions: 2 suites / 12 tests, including three deterministic 1k-history seeds, mock database key normalization, and actual Fs/SQLite checkpoint/import/Retry. Counts overlap; they are not additive. |
+| `validate --opening-only` | **Passed**: retained creation/Seeds/Claims/settlements, real Host bridge/provider failure/retry/idempotency, direct Host clock continuation, SaveSystem and Day 31. 50 local synthetic HTTP requests; max 14 reads / 19 commands / 21 effects. |
+| `validate --campaign-only` | **Passed**: 67-commit v2 Eastbank campaign, Hearing, Retry, SaveSystem, Day 31 and late Pattern deadline; max 16 reads / 22 commands / 24 effects. |
+| `validate --campaign-only --v1-campaign` | **Passed**: retained 57-commit historical fixture, actual restore and atomic Day 31 refusal; max 15 reads / 17 commands / 19 effects. This was not a new v1 completeness audit. |
+| `validate --long-horizon-only` on final Core f116a98de | **Passed**: Gregorian/long-span/identity/Stance regression, complete Fs/SQLite save equivalence and continuation; max 14 reads / 14 commands / 16 effects. |
+| `build --out build/2.0.0-phase2.atria` on final Core f116a98de | **Passed**: 207,277-byte development container; ignored output, not a release or committed binary. |
+| Node syntax for six changed Package tools; targeted Core ESLint; Git whitespace | **Passed**. |
+
+The continuous Package gate ran on Core implementation **9194a5abf**. The final Core **f116a98de** is the subsequent JSON/storage-order repair, covered by the final local history tests, final foundation/build checks and actual four-adapter Authority CI. The 1k continuous run used SQLite with real Fs/SQLite transfers; no local MySQL/PostgreSQL service or 1k run on those engines is claimed. Remote CI covers those engines' checkpoint/restore/retry path.
+
+#### Measured growth
+
+Bytes are serialized measurements, not universal ceilings or a claim about every possible playstyle. The 250/500/750/1000 rows count only the dedicated continuous player-action loop; initial creation/history setup is additional. Successful administrative compaction commits are not meaningful-turn padding.
+
+| Loop turns | Hot/Warm/Cold/Archive | Raw history bytes | Total history bytes | Active state bytes | Query projection bytes | Portable save bytes |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 250 | 2 / 24 / 32 / 4 | 723 | 110,526 | 135,981 | 955 | 18,158 |
+| 500 | 2 / 24 / 32 / 4 | 723 | 110,582 | 136,046 | 955 | 21,791 |
+| 750 | 2 / 24 / 32 / 7 | 729 | 112,383 | 137,848 | 961 | 24,822 |
+| 1000 | 2 / 24 / 32 / 6 | 733 | 112,095 | 137,563 | 965 | 27,240 |
+
+Each checkpoint retains one last approved reply and 25 durable entries. Across a 4x turn increase, active state grows about 1.2%, the query projection about 1.0%, and compressed portable saves about 50%, not 4x. The replay filter's changing bit density contributes to compressed-save growth. After the century-distance retrieval/continuation checks, final tiers are 3 / 0 / 0 / 7 with 28 durable entries. History instrumentation observed at most 8 declared fact sources / 28 source-record scans; the focused history flow stayed within 14 ordinary reads / 11 commands / 13 effects.
+
+#### Remote CI
+
+- [Authority Transaction on f116a98de](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36993657474): **success**, including actual Fs, SQLite, MySQL and PostgreSQL history checkpoint/import/Retry tests and adjacent authority/storage/frontend tests.
+- [Native Frontend v3 on 9194a5abf](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36992157136): **success**.
+- [Native Model Prompt Runtime on 9194a5abf](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36992404686): **success**.
+- The initial [Authority CI on 9194a5abf](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36992151667) failed only the two new MySQL/PostgreSQL history cases (56 other suites / 1,726 other tests passed). The canonical JSON/posting-order repair above closes that failure; it was not waived.
+- Main rechecks on final Core f116a98de: [Authority Transaction](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36995449817), [Native Frontend v3](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36995449822) and [Native Model Prompt Runtime](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/36995449816) are all **success**.
+
+### Scope / limitations
+
+This is Phase 2, not full Gate A lifecycle/renewable-content coverage, Gate B/C, final Century Retrieval or final UI evidence. Ordinary NPC/family lifecycle, renewable generation, enterprises/delegation, regions and Era/macro systems remain future phases.
+
+Growth claims distinguish active authority/raw retention/checkpoint exports from deliberately preserved branches, SavePoints and all immutable local repository backups. Durable facts/marked evidence are not silently deleted; configured durable budgets fail closed. The replay fence has conservative false-positive admission behavior and is not an infinite exact idempotency store. Protected non-turn/pinned Task results prevent checkpointing until their dependencies are resolved.
+
+The v1 release remains unchanged: SHA-256 `e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09`. No v1 save migration or Phase 3 implementation was added.
+
 ## Final state
 
-The eight-phase project remains active and incomplete. Phase 1 is complete; Phase 2 is pending.
+The eight-phase project remains active and incomplete. Phases 1 and 2 are complete. **Phase 3 — Human Lifetime / Family / Institution Lifecycle** is next and has not started.
+
+Continue on the same Package branch. Read live HANDOFF and its full bootstrap prompt; do not merge main into Package, create a Package phase branch, add a v1 save migration or begin Phase 4 during Phase 3.
