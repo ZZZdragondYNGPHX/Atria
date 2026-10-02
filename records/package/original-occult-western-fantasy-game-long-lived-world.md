@@ -284,6 +284,103 @@ This phase supplies the bounded lifecycle foundation, not full medical fertility
 
 Historical releases/1.0.0.atria is unchanged: SHA-256 e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09. No v1 save migration. The long-lived package branch remains at 79447c0b8aca028c6929ff8f9842f8835676191f; final integration remains Phase 8.
 
+## Phase 4 — Renewable World Content: implementation candidate (2026-10-02)
+
+**Status: IN PROGRESS. Do not advance to Phase 5.**
+
+- Package: refactor/original-occult-western-fantasy-long-lived-world@0bfb7fe2a69051639c3a1953a05f134808afa2cc.
+- Core support: feat/native-renewable-world@0fced2b7989a7e9ff6fbc33ba206232b90a3b6b9.
+- Stable main remains 80376ec9f0e5cce9ef1c29422f39604bb7446cfd. Core support has NOT been integrated.
+- Long-lived package remains 79447c0b8aca028c6929ff8f9842f8835676191f.
+- Development version: 2.0.0-phase4; final target stays 2.0.0.
+
+### Implemented candidate
+
+The Package compiles curated document-fraud, industrial-harm, family-obligation,
+institutional-conflict and historical-cold-case grammars. Native Lifetime owns
+selection, current-world role eligibility, evidence paths, a bounded presentation
+proposal, resolution, deadline escalation and ephemeral/canonical disposition.
+No Package evaluator, new scheduler, authority or SaveSystem was introduced.
+
+The semantic window excludes names/template IDs and uses actual actor classes,
+executed paths, institutional/historical roles, truth, anomaly, stakes and
+resolution. Family-specific content requires actual public kinship. The bounded
+backend renewalView omits hidden truth, copies mutable evidence, and treats model
+presentation as unverified testimony, not structural canon.
+
+Historical cases activate and resolve the original Hook with exact attributed
+transitions and source/artifact identity. Unavailable artifacts do not reappear.
+Ordinary compressed history retains participants, cause and local consequences;
+canonical cases/geography enter the existing exact ledger and indexes.
+
+Location/business/district lifecycle and institution founding/merger/split/
+dissolution are available. New institutions and successors reuse Native offices,
+causal adult intake and succession. Old offices close and never refill after
+institution dissolution. Birth remains separate from introduction. Investigation
+steps explicitly switch to archived evidence when a witness exits.
+
+Existing history/lifetime/state limits remain fail-closed, with one active Matter,
+a bounded novelty window and geography/institution admission limits. No durable
+history is dropped to admit more content. Phase 5 wealth/delegation/property-law,
+complete identity rotation, later regions/Era/macro and final UI remain outside scope.
+
+### Validation actually executed
+
+- Final focused Native renewal suite: **10 passed**, including three seeds,
+  semantic structure, chronology/deadlines, real public family eligibility,
+  model overreach rejection, Hook/artifact/marked-memory reuse, JSON order,
+  failure atomicity, institution lineage/offices, business/district creation.
+- Native history suite: **10 passed** after the ordinary-case summary/refs repair;
+  its three 1k seeds remain history-core regression evidence, not full Gate A/B.
+- Earlier local related batch: **4 suites, 19 passed / 4 skipped** for renewal,
+  lifetime and actual Fs/SQLite session publication/import/Retry. Another batch
+  including history: **3 suites, 20 passed / 2 skipped**. These were executed during
+  implementation, before the last family/summary hardening; the exact final full
+  adapter matrix is delegated to the current CI run, not assumed passed locally.
+- MySQL/PostgreSQL attempts locally failed to connect at 127.0.0.1:53306/55432.
+  They were subsequently excluded from local runs, not reported as local passes.
+- Retained Package opening regression passed on the preceding b90b85851 candidate:
+  50 local mock-provider requests; Day 31, typed/free-text transactions, failure
+  atomicity, Retry and Save/Restore remained valid. No hosted-model/UI claim.
+- An earlier Package smoke completed **100 content-mutating turns / 50 years**,
+  20 concluded Matters and one real import. This ran before final deadline,
+  semantic/history-reuse and projection-audit hardening. It is **not Gate B** and
+  does not validate the final candidate. Its empty end-of-case projection sample
+  was replaced with maximum nonempty renewalView sampling in the final fixture.
+- The initial local 5k attempts were stopped after relevant implementation changes;
+  neither completed and neither is a passing gate.
+- Four modified/new Package tool syntax checks, targeted Core lint and whitespace
+  checks passed. Final ignored build on exact Core 0fced2b79: **212,231 bytes**.
+- releases/1.0.0.atria SHA-256 remains
+  e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09.
+
+### CI / outstanding gate
+
+The Authority workflow now accepts an optional exact package_revision for a
+separate real 5,000-content-turn / 50-year Package candidate job, preserving its
+existing four-adapter contract job. Gate logs are retained as a workflow artifact.
+The fixture additionally mutates family/institution history, reuses real settled
+case files and Hooks more frequently late in the world, retrieves an opening
+artifact decades later, measures semantic structure/nonempty projection and
+performs repeated actual Fs/SQLite imports. Extra setup, clock waits and world
+operations do not inflate its counted content turns.
+
+- Prior run [37010021756](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37010021756):
+  the full authority-contracts-candidates-and-turns job succeeded on b90b85851,
+  including configured four-adapter renewal tests. Its long Package job was
+  superseded by the later exact candidate; do not treat it as a passed gate.
+- Current run [37011388445](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37011388445):
+  Core 0fced2b7989a7e9ff6fbc33ba206232b90a3b6b9 and Package
+  0bfb7fe2a69051639c3a1953a05f134808afa2cc. Dispatched; **results pending**.
+
+Phase 4 is not complete until the final current CI, full candidate and audits
+actually pass and ordinary failures are repaired. Then integrate verified Core
+support into main without merging main into Package, update this same Record and
+live HANDOFF, prepare the Phase 5 prompt and stop. Do not issue Phase 5 work now.
+
 ## Final state
 
-The eight-phase project remains active and incomplete. Phases 1–3 are complete; **Phase 4 — Renewable World Content is next and has not started**. Continue on the same Package task branch and follow the refreshed live HANDOFF. Do not merge main into Package or begin Phase 4 inside the Phase 3 round.
+The eight-phase project remains active and incomplete. Phases 1–3 are complete;
+Phase 4 is an implementation candidate under verification. The full 5k/50-year
+candidate has NOT passed. Continue Phase 4 on the same Package task branch.
+Phase 5 has not started.
