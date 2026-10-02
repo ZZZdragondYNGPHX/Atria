@@ -98,6 +98,30 @@ Active cases and obligations do not universally block fast-forward. The player m
 
 Before substantial fast-forward, the protagonist may define persistent stances across career, family, occult practice, social posture, wealth and investigation. These stances guide background resolution until changed or interrupted.
 
+### D-021 — Renewable content is grammar-driven, not slot-driven
+
+Long-running cases and world events are generated from curated structural grammars composed with current world state. Fixed one-use or preallocated instance slots are not the long-horizon model.
+
+### D-022 — Historical hooks seed future content
+
+Resolved matters may leave compact durable hooks such as debts, secrets, missing evidence, descendants, institutional scars, unresolved Claims or disputed history. Later content may causally reuse those hooks.
+
+### D-023 — World entities have full lifecycles
+
+Locations, businesses, factions and institutions may be created, transformed, renamed, merged, split, relocated, repurposed, destroyed, dissolved or archived. The opening world map and organization list are historical starting conditions, not immutable canon fixtures.
+
+### D-024 — New world entities require causal origin
+
+Dynamically created locations, organizations and institutions must have an explainable origin in world state: founders, capital/resources, membership, social need, disaster, migration, institutional split, player action or comparable causes.
+
+### D-025 — Anti-repetition is semantic
+
+Content generation must track more than pattern names. Repetition control should consider actor roles, institution combinations, hidden truth, anomaly family, investigation path, stakes and resolution structure.
+
+### D-026 — Canon promotion is impact-based
+
+Routine resolved matters may compact heavily. Matters that materially alter important actors, institutions, geography, Claims, law, family history or the protagonist's identity become durable canonical history.
+
 ## Open
 
 - target campaign horizon;
