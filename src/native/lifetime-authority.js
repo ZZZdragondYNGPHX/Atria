@@ -1,3 +1,5 @@
+import { ENTERPRISE_OPERATIONS } from '../../public/shared/native-enterprise-contract.js';
+import { initialEnterprise, operateEnterprise, syncEnterprise, enterpriseDue, resolveEnterprise, validateEnterprise } from './enterprise-authority.js';
 import { initialRenewal, operateRenewal, resolveRenewalDue, validateRenewal } from './renewal-authority.js';
 import { lifetimePolicy, LIFETIME_OPERATIONS } from '../../public/shared/native-lifetime-contract.js';
 import { anniversary, ageAt, people } from '../../public/shared/native-lifetime-runtime.js';
@@ -35,6 +37,7 @@ export function initialLifetimes(policy) {
         s.institutions[o.institutionId] ??= { id: o.institutionId, founded: 0, origin: 'authored', refs: ['institution:' + o.institutionId] }; s.offices[o.id] = { ...clone(o), holderId: '', nomineeId: '', refs: ['institution:' + o.institutionId] };if (s.people[o.holderId])seat(s, policy, s.offices[o.id], o.holderId, 0);
     }
     if (policy.renewal) s.renewal = initialRenewal(policy.renewal);
+    if (policy.enterprise) s.enterprise = initialEnterprise(policy);
     return s;
 }
 function evidence(snapshot, s, id) {
@@ -111,6 +114,7 @@ function operate(snapshot, s, policy, operation, input, tick) {
     for (const [key, value] of Object.entries(input)) if ((key === 'id' || key.endsWith('Id')) && value)taskId(value);
     const a = clone(input), protagonist = actor(s, policy.protagonistId);
     need(protagonist.status.kind !== 'absent', 'must return before acting');
+    if (ENTERPRISE_OPERATIONS[operation]) { operateEnterprise(snapshot, s, policy, operation, a, tick, { vacate, succeed, renewal: operateRenewal }); return; }
     if (['matter.open', 'matter.act', 'world.change'].includes(operation)) { operateRenewal(snapshot, s, policy, operation, a, tick, { vacate, succeed }); return; }
     if (operation === 'bond.form')a.people = [a.firstId, a.secondId];
     if (operation === 'family.conceive' || operation === 'family.adopt')a.parents = [a.parentId, ...(a.otherParentId ? [a.otherParentId] : [])];
@@ -143,6 +147,7 @@ function operate(snapshot, s, policy, operation, input, tick) {
     } else if (operation === 'bond.change') {
         const b = s.bonds[a.id];need(b && b.state !== 'widowed' && b.state !== a.state, 'bond transition');
         if (a.state === 'active') { need(a.consent, 'reconciliation consent');for (const id of b.people)need(adult(actor(s, id), tick, policy), 'bond alive'); }
+        if (a.state === 'active' && s.enterprise) for (const c of Object.values(s.enterprise.contracts)) if (c.domain === 'family' && c.targetId === b.id) c.lastPresenceAt = tick;
         b.state = a.state;b.ended = a.state === 'separated' ? tick : null;event(s, a.state, tick, b.people, { bondId: b.id }, b.visibility);
     } else if (operation === 'family.conceive') {
         need(a.consent && a.name.trim(), 'parenthood consent');parentCheck(s, policy, a.parents, tick);
@@ -182,7 +187,7 @@ function resolve(snapshot, s, policy, target) {
     need(target >= s.resolvedTick, 'clock rewind');let steps = 0;
     // Event queue is rebuilt from bounded relevant actors/milestones, never days.
     while (true) {
-        const pending = [];
+        const pending = enterpriseDue(s);
         for (const p of Object.values(people(s))) {
             if (p.status.kind === 'dead') continue;
             if (!p.matured)pending.push({ tick: anniversary(p.identity.birthTick, policy.adultAge), kind: 'mature', id: p.id });
@@ -197,8 +202,9 @@ function resolve(snapshot, s, policy, target) {
         for (const p of Object.values(s.pregnancies)) if (p.status === 'pending')pending.push({ tick: p.due, kind: 'birth', id: p.id });
         if (s.continuity.nextExposureAt !== null)pending.push({ tick: s.continuity.nextExposureAt, kind: 'exposure', id: policy.protagonistId });
         if (s.continuity.returnAt !== null)pending.push({ tick: s.continuity.returnAt, kind: 'reconstruct', id: policy.protagonistId });
-        const e = pending.filter(e => e.tick <= target).sort((a, b) => a.tick - b.tick || a.kind.localeCompare(b.kind, 'en') || a.id.localeCompare(b.id, 'en'))[0];
+        const e = pending.filter(e => e.tick <= target).sort((a, b) => a.tick - b.tick || Number(a.kind === 'enterprise') - Number(b.kind === 'enterprise') || a.kind.localeCompare(b.kind, 'en') || a.id.localeCompare(b.id, 'en'))[0];
         if (!e) break;need(e.tick >= s.resolvedTick, 'overdue milestone');need(++steps <= policy.maxEvents, 'event budget');
+        if (e.kind === 'enterprise') { resolveEnterprise(snapshot, s, policy, e.id, e.tick, { vacate, succeed, renewal: operateRenewal }); continue; }
         const p = e.kind === 'birth' ? null : actor(s, e.id);
         if (e.kind === 'mature') { p.matured = true;event(s, 'maturation', e.tick, [p.id]); }
         if (e.kind === 'retire')endPerson(snapshot, s, policy, p, e.tick, 'retired');
@@ -221,6 +227,7 @@ function resolve(snapshot, s, policy, target) {
             if (!pregnancy.parents.some(id => alive(actor(s, id)))) { pregnancy.status = 'lost';event(s, 'pregnancy_loss', e.tick, pregnancy.parents, { pregnancyId: e.id }); } else { const id = next(s, 'person');makePerson(s, policy, { id, name: pregnancy.name, birthTick: e.tick, sourceId: e.id, cause: 'birth' }, e.tick);pregnancy.status = 'born';pregnancy.childId = id;kinship(s, 'biological', pregnancy.parents, id, e.tick); }
         }
         succeed(s, policy, e.tick);
+        syncEnterprise(snapshot, s, policy, e.tick);
     }
     const years = Math.floor(target / (365.2425 * 1440)), pop = s.population;
     pop.births = safe(Math.floor(pop.initial * years * 0.03));pop.deaths = safe(Math.floor(pop.initial * years * 0.02));pop.present = safe(pop.initial + pop.births - pop.deaths - pop.materialized);need(pop.present >= 0, 'aggregate population');
@@ -246,13 +253,14 @@ export function prepareLifetimes(base, candidate, operation = null) {
         const binding = policy.actorSource, value = candidate.states.atri_lifecycle.domains[binding.domainId]?.records.find(r => r.id === p.sourceRecordId)?.value;
         if (value && people(s)[p.id]) value[binding.aliveField] = people(s)[p.id].status.kind !== 'dead';
     }
+    syncEnterprise(candidate, s, policy, now);
     validateLifetimes(candidate, { complete: true });
 }
 
 export function validateLifetimes(snapshot, { complete = false } = {}) {
     const policy = lifetimePolicy(snapshot), s = snapshot.states.atri_lifecycle?.lifetimes;
     if (!policy) { need(!s, 'undeclared state');return; }
-    need(s && s.schemaVersion === 1, 'state version');fields(s, ['schemaVersion', 'nextId', 'resolvedTick', 'people', 'archive', 'bonds', 'kinship', 'pregnancies', 'institutions', 'offices', 'terms', 'legacies', 'milestones', 'population', 'continuity', 'work', 'renewal'], 'Lifetime state');
+    need(s && s.schemaVersion === 1, 'state version');fields(s, ['schemaVersion', 'nextId', 'resolvedTick', 'people', 'archive', 'bonds', 'kinship', 'pregnancies', 'institutions', 'offices', 'terms', 'legacies', 'milestones', 'population', 'continuity', 'work', 'renewal', 'enterprise'], 'Lifetime state');
     need(policy.protagonistId === snapshot.manifest.actors[0].actorId, 'protagonist authority');
     const now = snapshot.states.atri_lifecycle.clocks[policy.clockId], all = people(s);safe(s.nextId);safe(s.resolvedTick);need(s.nextId > 0 && s.resolvedTick >= 0 && s.resolvedTick <= now && (!complete || s.resolvedTick === now), 'resolved clock');
     need(Object.keys(all).length <= policy.maxPeople && Object.keys(s.people).every(id => !s.archive[id]), 'actor budget/identity');
@@ -272,7 +280,7 @@ export function validateLifetimes(snapshot, { complete = false } = {}) {
         if (s.archive[id])need(!active(p) && p.detail === null, 'archive simulation fidelity');
         if (p.id !== policy.protagonistId && Object.values(s.milestones).some(e => e.kind === 'dead' && e.people.includes(id)))need(p.status.kind === 'dead', 'dead identity resurrection');
     }
-    const c = s.continuity;need(c.protagonistId === policy.protagonistId && c.publicIdentityId === policy.publicIdentityId && c.identitySince >= 0 && c.identitySince <= now, 'identity continuity');
+    const c = s.continuity;need(c.protagonistId === policy.protagonistId && (policy.enterprise ? Boolean(s.enterprise?.identities[c.publicIdentityId]) : c.publicIdentityId === policy.publicIdentityId) && c.identitySince >= 0 && c.identitySince <= now, 'identity continuity');
     for (const key of ['claimBurden', 'exposure', 'scars', 'returns', 'grants'])need(Number.isSafeInteger(c[key]) && c[key] >= 0, 'durable cost');
     need(c.grants <= 2 && c.returns <= c.scars, 'reconstruction cost');
     need((actor(s, policy.protagonistId).status.kind === 'absent') === (c.returnAt !== null), 'return obligation');
@@ -303,5 +311,6 @@ export function validateLifetimes(snapshot, { complete = false } = {}) {
     for (const l of Object.values(s.legacies)) { actor(s, l.ownerId);actor(s, l.heirId);need(l.tick <= now && ['pledged', 'inherited', 'disputed'].includes(l.status), 'inheritance'); }
     for (const e of Object.values(s.milestones)) { taskId(e.id);safe(e.tick);need(e.tick >= 0 && e.tick <= now, 'milestone chronology');for (const id of e.people)actor(s, id); }
     validateRenewal(snapshot, policy);
+    validateEnterprise(snapshot, policy, { complete });
     const pop = s.population;for (const value of Object.values(pop))need(Number.isSafeInteger(value) && value >= 0, 'population count');need(pop.present === pop.initial + pop.births - pop.deaths - pop.materialized, 'population accounting');
 }

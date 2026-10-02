@@ -1,3 +1,4 @@
+import { enterpriseSources } from './enterprise-authority.js';
 import { renewalSources } from './renewal-authority.js';
 import { lifetimeSources } from '../../public/shared/native-lifetime-runtime.js';
 import { createHash } from 'node:crypto';
@@ -10,7 +11,7 @@ const copy = v => structuredClone(v);
 const same = (a, b) => a === undefined || b === undefined ? a === b : hashNativeDocument(a) === hashNativeDocument(b);
 const record = (snapshot, domain, id = 'main') => snapshot.states.atri_lifecycle.domains[domain]?.records.find(r => r.id === id)?.value;
 const sourceValue = (snapshot, source) => Object.hasOwn(source, 'value') ? source.value : source.path.reduce((v, k) => v?.[k], record(snapshot, source.domainId, source.recordId));
-export const historySources = snapshot => [...(historyPolicy(snapshot)?.sources ?? []), ...lifetimeSources(snapshot), ...renewalSources(snapshot)];
+export const historySources = snapshot => [...(historyPolicy(snapshot)?.sources ?? []), ...lifetimeSources(snapshot), ...renewalSources(snapshot), ...enterpriseSources(snapshot)];
 const lifetimeMeaning = state => { if (!state) return null; const { work: _work, resolvedTick: _tick, ...value } = state; return value; };
 const id = h => 'history.' + h.nextId++;
 function anchor(h, event) { h.anchors[event.id] ??= { ...copy(event), tier: 'archive' }; }

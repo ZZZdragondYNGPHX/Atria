@@ -3,7 +3,7 @@ import { RENEWAL_DIMENSIONS, semanticDistance } from '../../public/shared/native
 import { people, ageAt } from '../../public/shared/native-lifetime-runtime.js';
 const need = (ok, message) => { if (!ok) throw new TypeError('Renewal ' + message); };
 const sorted = o => Object.values(o).sort((a, b) => a.id.localeCompare(b.id, 'en'));
-const live = x => !['dissolved', 'demolished', 'burned'].includes(x.status);
+const live = x => !['dissolved', 'demolished', 'burned', 'closed'].includes(x.status);
 const next = r => 'renewal.' + r.nextId++;
 const activeInstitution = x => !x.status || x.status === 'active';
 function hash(value) { let h = 2166136261; for (const c of value) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0; return h; }
@@ -55,7 +55,8 @@ function compose(snapshot, s, policy, args, tick) {
 function resolveMatter(snapshot, s, m, action, tick, api) {
     const r = s.renewal, place = r.places[m.placeId];
     need(action === 'settle' || action === 'record', 'resolution action');
-    need(live(place) && activeInstitution(s.institutions[m.institutionId]), 'roles changed; cannot resolve against defunct entity');
+    const available = live(place) && activeInstitution(s.institutions[m.institutionId]);
+    need(available || action === 'record', 'unavailable venue permits archival recording, not live settlement');
     // The evidence path remains usable after a witness exits, but never pretends
     // the departed witness performed another live action.
     const outcome = { id: m.id, opened: m.opened, closed: tick, structure: m.structure, subjectId: m.subjectId, institutionId: m.institutionId, placeId: m.placeId,
@@ -68,7 +69,7 @@ function resolveMatter(snapshot, s, m, action, tick, api) {
             outcome.hookTransitions = ['resolved'];
         }
     }
-    place.pressure = (place.pressure + (m.structure.resolution.includes('restitution') ? 2 : 1)) % 12;
+    if (available) place.pressure = (place.pressure + (m.structure.resolution.includes('restitution') ? 2 : 1)) % 12;
     r.completed++;r.last = { operation: 'matter.resolve', id: m.id, outcome: outcome.outcome, refs: m.refs, summary: m.trigger + ' Outcome: ' + outcome.outcome + '; local pressure is now ' + place.pressure + '.' };delete r.active[m.id];
 }
 function worldChange(snapshot, s, policy, a, tick, api) {
@@ -140,10 +141,10 @@ export function operateRenewal(snapshot, s, policy, operation, a, tick, api) {
             need(a.action === m.path[m.stage], 'evidence path order');
             const subject = people(s)[m.subjectId];
             need(subject, 'subject identity missing');
-            const historical = subject.status.kind !== 'active';
-            const archiveSource = historical ? sorted(s.milestones).find(e => e.people.includes(subject.id) && ['retired', 'dead', 'missing'].includes(e.kind)) : null;
+            const unavailable = !live(r.places[m.placeId]) || !activeInstitution(s.institutions[m.institutionId]);
+            const historical = subject.status.kind !== 'active' || unavailable;
+            const archiveSource = unavailable ? { id: !live(r.places[m.placeId]) ? m.placeId : m.institutionId } : historical ? sorted(s.milestones).find(e => e.people.includes(subject.id) && ['retired', 'dead', 'missing'].includes(e.kind)) : null;
             need(!historical || archiveSource, 'unexplained witness absence');
-            need(live(r.places[m.placeId]) && activeInstitution(s.institutions[m.institutionId]), 'investigation venue unavailable');
             m.evidence.push({ action: a.action, tick, sourceId: archiveSource?.id ?? (m.sourceId || m.subjectId), statusAtObservation: subject.status.kind, mode: historical ? 'archival-review' : 'live-inquiry' });m.stage++;
             // This is explicitly attributed testimony, not newly invented canon.
             m.presentation = a.presentation;r.actions++;r.last = { operation: 'matter.act', id: m.id, action: a.action, refs: m.refs, summary: a.action + ': ' + (historical ? 'review archived evidence' : 'record live inquiry') };

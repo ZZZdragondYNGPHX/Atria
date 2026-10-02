@@ -1,3 +1,4 @@
+import { assertEnterprisePolicy, ENTERPRISE_OPERATIONS } from './native-enterprise-contract.js';
 import { assertRenewalPolicy, RENEWAL_OPERATIONS } from './native-renewal-contract.js';
 // Optional, declarative human-lifetime policy. All writes remain Native candidates.
 import { fields, json } from './native-values.js';
@@ -10,6 +11,7 @@ const A = (items, maxItems = 16) => ({ type: 'array', items, maxItems });
 const date = I(-Number.MAX_SAFE_INTEGER);
 export const LIFETIME_OPERATIONS = {
     ...RENEWAL_OPERATIONS,
+    ...ENTERPRISE_OPERATIONS,
     'person.enter': O({ name: S(80), birthTick: date, cause: S(24, ['migration', 'hiring', 'recruitment', 'case']), sourceId: S(), institutionId: S() }),
     'person.promote': O({ id: S(), sourceId: S() }),
     'person.exit': O({ id: S(), reason: S(24, ['retired', 'missing', 'dead']), sourceId: S() }),
@@ -28,7 +30,7 @@ export const LIFETIME_OPERATIONS = {
 };
 export const lifetimePolicy = s => s.manifest.runtime?.experienceContract?.lifecycleRuntime?.lifetimes;
 export function assertLifetimePolicy(raw, lifecycle) {
-    fields(raw, ['schemaVersion', 'clockId', 'chronologyDomain', 'protagonistId', 'publicIdentityId', 'seed', 'adultAge', 'retirementAge', 'mortalityAge', 'gestationTicks', 'maxPeople', 'maxEvents', 'maxBytes', 'initialPopulation', 'people', 'offices', 'routes', 'actorSource', 'renewal'], 'Lifetime policy');
+    fields(raw, ['schemaVersion', 'clockId', 'chronologyDomain', 'protagonistId', 'publicIdentityId', 'seed', 'adultAge', 'retirementAge', 'mortalityAge', 'gestationTicks', 'maxPeople', 'maxEvents', 'maxBytes', 'initialPopulation', 'people', 'offices', 'routes', 'actorSource', 'renewal', 'enterprise'], 'Lifetime policy');
     if (raw.schemaVersion !== 1 || !lifecycle.history || !lifecycle.clocks.some(c => c.id === raw.clockId) || raw.clockId !== lifecycle.history.clockId || raw.chronologyDomain !== lifecycle.history.chronologyDomain) throw new TypeError('Lifetime clock/history authority');
     for (const key of ['protagonistId', 'publicIdentityId']) taskId(raw[key]);
     for (const [key, lo, hi] of [['seed', 0, 2147483647], ['adultAge', 16, 30], ['retirementAge', 40, 90], ['mortalityAge', 60, 120], ['gestationTicks', 1440, 525600], ['maxPeople', 8, 512], ['maxEvents', 16, 1024], ['maxBytes', 16384, 1048576], ['initialPopulation', 100, 10000000]]) assertTaskValue(raw[key], I(lo, hi));
@@ -49,5 +51,6 @@ export function assertLifetimePolicy(raw, lifecycle) {
         if (stamp?.type !== 'integer') throw new TypeError('Lifetime introduction source');
     }
     if (raw.renewal !== undefined) assertRenewalPolicy(raw.renewal);
+    if (raw.enterprise !== undefined) assertEnterprisePolicy(raw.enterprise, raw, lifecycle);
     return json(raw);
 }
