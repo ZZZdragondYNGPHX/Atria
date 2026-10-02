@@ -4,7 +4,7 @@
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
 **Plan status:** Discussion / not approved for implementation  
-**Plan generation:** v0.11
+**Plan generation:** v0.12
 
 ## 1. Why this plan exists
 
@@ -63,6 +63,7 @@ The plan will be split as decisions become stable:
 - `progression-continuity.md` — career, resources, long-term identity and non-family continuity.
 - `era-evolution.md` — technology, infrastructure, law, culture and occult modernization across eras.
 - `world-scope.md` — multi-region simulation, travel, hub promotion/demotion and macro-world integration.
+- `macro-history.md` — economy, governance, war, migration, public health, social movements and large-scale occult history.
 - `verification.md` — 1k/5k/10k-turn and multi-year simulation/restore/replay gates.
 - `implementation-staging.md` — implementation phases, dependencies, validation gates and release criteria.
 
@@ -310,17 +311,37 @@ Detailed authority: `world-scope.md`.
 
 ### Round 11 — Macro history: politics, war, economy and social shocks
 
+Status: complete.
+
+Frozen:
+
+- the macro layer explicitly represents economic cycles, governance/law, war, migration/demography, public health/disaster, religious/social movements and large occult events;
+- macro history uses curated event grammars plus state-driven resolution rather than a full grand-strategy simulation;
+- economic conditions produce real downstream effects on employment, rent, property, business viability, credit, migration, crime and institutional pressure;
+- wars resolve as macro campaigns/phases unless a relevant region is promoted into detailed simulation, and may affect conscription, casualties, refugees, production, prices, technology and occult activity;
+- law and governance are modeled through offices, institutions, factions, public pressure and durable legal history rather than isolated booleans;
+- population is represented structurally at macro scale and instantiated into individual actors only when relevance requires it;
+- religious and social movements may rise, split, institutionalize, decline or disappear;
+- macro events normally enter detailed play only when they intersect with the protagonist's people, assets, institutions, Claims, location or explicit interests;
+- player influence is leverage-based and may expand from personal/local to city/regional/national/international scale through actual accumulated capital, organizations, relationships and occult power;
+- national/international influence is an optional extreme-late-game path, never an automatic reward for surviving long enough;
+- macro history must remain subordinate to the personal/occult game rather than becoming a standalone strategy simulation.
+
+Detailed authority: `macro-history.md`.
+
+### Round 12 — Delegation, agents and long-term operation
+
 Status: active.
 
 Questions to freeze:
 
-1. Which macro systems should be simulated explicitly: war, recession/depression, inflation, migration, elections/governance, law, public health, labor conflict, religious movements, demographic change?
-2. Should the macro layer use authored scenario grammars plus state-driven outcomes rather than a full grand-strategy simulation?
-3. How directly may the protagonist influence city, regional or national political outcomes?
-4. How should wars and crises affect families, institutions, prices, property, migration and occult activity?
-5. Should economic cycles exist as systemic conditions instead of handcrafted story events?
-6. How should macro events remain historically coherent across multiple hubs and eras?
-7. What prevents the macro layer from overwhelming the personal/occult investigation game?
+1. What kinds of work may be delegated: cases, businesses, property, institutions, family care, research, travel logistics, political/social operations?
+2. How much autonomy should named agents have while the protagonist is elsewhere or fast-forwarding?
+3. How should trust, competence, loyalty, corruption and hidden agendas affect delegated outcomes?
+4. Can organizations develop internal hierarchy so the player can manage systems rather than individuals at large scale?
+5. How are failures, fraud, coups, betrayal and mismanagement surfaced without turning delegation into constant micromanagement?
+6. Which decisions must always return to the player rather than being delegated?
+7. How should delegation interact with multi-region play and decade-scale fast-forward?
 
 No implementation starts until the discussion rounds are explicitly approved.
 
