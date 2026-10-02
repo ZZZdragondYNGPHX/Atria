@@ -511,3 +511,42 @@ The eight-phase project remains active and incomplete. **Phases 1–4 are comple
 Phase 5 — Progression / Wealth / Delegation / Organization is next and NOT started.
 The same Package task branch remains active; live HANDOFF contains the Phase 5
 read order, verified refs, caveats and bootstrap prompt. Stop at this boundary.
+
+## 2026-10-03 — Phase 7 UI/UX planning refinement
+
+This is a user-requested design refinement, not execution/completion of Phase 7.
+Phases 1–4 remain complete; Phase 5 is next and has not started.
+
+- Start Package HEAD: 7937de304d3f4eef8a9626f3b537d0d4e23996e8.
+- End Package HEAD: 20e739edd6495a4ae93c484c8f438d29b6eac0dc.
+- Executable tested baseline remains d57f0c0ad1d2c16a9959cff9841a9145f255eb28;
+  this refinement changes only Package README/frontend design document routing.
+- Start docs HEAD: e2f8177ba; Plan generation now v1.1.
+- Added plans/package/original-occult-western-fantasy-game-long-lived-world/player-facing-experience.md.
+- Updated the existing index, Phase 7 staging, UI verification routing and live
+  HANDOFF without creating another task Record or changing phase boundaries.
+
+Applied installed frontend-design, ui-ux-pro-max and emil-design-eng. The two
+visual database queries did not fit the existing Native game register and were
+rejected; the specification preserves inspected marine/paper tokens and records
+that decision. Focus guidance used a targeted UX search; general usability rules
+use the Skill's built-in guidance.
+
+The specification fixes three primary destinations, section defaults, wide/compact
+wireframes, typography/color/spacing, bounded Chronicle/entity/artifact details,
+identity/longevity, deliberate time/stance and interruption review, delegation,
+regional travel, empty/loading/error/unknown-write behavior, keyboard/focus/motion,
+real authority/binding gaps, ordered implementation checkpoints and an acceptance
+matrix with a Phase 7 bootstrap prompt. Phase 5/6 contracts remain prerequisites;
+future implementers must use their actual schemas rather than invented fields.
+
+Validation: both staged Git whitespace checks and document routing/path/coverage
+checks passed. Changes are Markdown only; no runtime tests, build, UI screenshots,
+physical device, hosted model or CI run was executed for this refinement. No final
+release artifact changed. Historical Phase 4 runtime/CI evidence above is retained,
+not reclassified as validation of a new UI. The specification requires actual
+Native browser evidence when Phase 7 is implemented and preserves Phase 8 Gate C.
+
+Next checkpoint: execute the existing Phase 5 scope and stop rules. When Phases
+5–6 actually complete, use the new Phase 7 specification directly; do not restart
+open-ended UI design. No final package integration or release in this round.

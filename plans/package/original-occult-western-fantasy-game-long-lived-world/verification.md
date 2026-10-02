@@ -203,6 +203,11 @@ The release decision cannot rely on a single favorable seed.
 
 ## 12. UI/runtime evidence
 
+Phase 7 uses the concrete flows, state coverage, responsive matrix and evidence
+requirements in `player-facing-experience.md` section 8. That UI specification
+does not replace this document's authoritative-turn definition or final gates.
+Late-world fixture setup and UI retrieval over 200 years are not Gate C evidence.
+
 Before final completion, user-facing evidence should verify that:
 
 - long dates/eras render correctly;

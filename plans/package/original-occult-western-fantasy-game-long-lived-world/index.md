@@ -3,8 +3,9 @@
 **Task ID:** `refactor/original-occult-western-fantasy-long-lived-world`  
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
-**Plan status:** Approved Implementation Plan v1.0  
-**Plan generation:** v1.0
+**Plan status:** Approved Implementation Plan v1.1 — Phase 7 UX refinement
+
+**Plan generation:** v1.1
 
 ## 1. Why this plan exists
 
@@ -67,6 +68,9 @@ The plan will be split as decisions become stable:
 - `delegation-agency.md` — agents, delegation, organizational hierarchy and autonomous institutional agendas.
 - `verification.md` — 1k/5k/10k-turn and multi-year simulation/restore/replay gates.
 - `implementation-staging.md` — implementation phases, dependencies, validation gates and release criteria.
+- `player-facing-experience.md` — Phase 7 implementation-ready UI/UX: navigation,
+  visual tokens, page/flow contracts, safe data wiring, state handling and browser
+  acceptance matrix; read when implementing or reviewing Phase 7.
 
 Only create/fill these modules when the corresponding discussion has enough frozen decisions.
 
@@ -402,10 +406,11 @@ Detailed authority: `implementation-staging.md`.
 ## 8. Implementation checkpoint
 
 - task branch: `refactor/original-occult-western-fantasy-long-lived-world`
-- branch start / current implementation HEAD before Phase 1: `79447c0b8aca028c6929ff8f9842f8835676191f`
+- branch start before Phase 1: `79447c0b8aca028c6929ff8f9842f8835676191f`
 - source workspace: `package`
 - target release: `2.0.0`
-- implementation state: **Phase 1 not started**
-- no game implementation changes were made during design discussion
+- implementation checkpoint at this refinement: **Phases 1–4 complete; Phase 5 next, not started**
+- the 2026-10-03 Phase 7 UX refinement changes planning and Package document
+  routing only; it does not implement Phase 7 or authorize skipping Phases 5–6
 - live continuation state is maintained in `docs:HANDOFF.md`
 - permanent implementation history is maintained in `records/package/original-occult-western-fantasy-game-long-lived-world.md`

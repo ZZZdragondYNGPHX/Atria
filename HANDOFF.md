@@ -5,9 +5,9 @@
 - Task ID: refactor/original-occult-western-fantasy-long-lived-world
 - Primary Workspace: Package
 - Package branch: refactor/original-occult-western-fantasy-long-lived-world
-- Current Package HEAD: 7937de304d3f4eef8a9626f3b537d0d4e23996e8
+- Current Package HEAD: 20e739edd6495a4ae93c484c8f438d29b6eac0dc
 - Tested executable Package HEAD: d57f0c0ad1d2c16a9959cff9841a9145f255eb28
-- Difference between those Package commits: README/runtime documentation only
+- Difference from tested executable Package: README/runtime/frontend design documentation only
 - Compatible verified Core: main@6e2611a0a5bbcf743cd9fe19c6eeba457890d3f1
 - Core support was fast-forwarded into main; its temporary branch is removed
 - Long-lived package: 79447c0b8aca028c6929ff8f9842f8835676191f; no final integration
@@ -18,6 +18,22 @@
 - Development: 2.0.0-phase4; final release target: 2.0.0
 
 This is the Phase 4 stop boundary, not permission to start Phase 5 in that round.
+
+## 2026-10-03 planning refinement — future Phase 7
+
+The user requested implementation-ready frontend-skill UI/UX planning for Phase 7.
+Plan v1.1 now adds `player-facing-experience.md` and links it from Phase 7 staging,
+the Plan index, verification, Package README and existing `frontend/DESIGN.md`.
+It fixes Field notes / Chronicle / Arrangements, register styling, responsive
+reading/detail patterns, structured long-term forms, safe binding gaps, failure
+states, an implementation sequence and actual browser acceptance scenarios.
+
+This changes documentation only. Phases 1–4 remain complete; Phase 5 remains next
+and not started. No Phase 7 UI implementation, runtime tests, browser validation
+or Gate C evidence is claimed. At Phase 7 start, read that specification and apply
+frontend-design, ui-ux-pro-max and emil-design-eng. Phase 5 need not load future UI
+design context. The Phase 7 bootstrap is stored in the specification; the current
+Phase 5 continuation below remains the live next-work prompt.
 
 ## Completed foundations
 
@@ -153,7 +169,7 @@ e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09.
 继续 ZZZdragondYNGPHX/Atria 的 Original Occult Western Fantasy Long-Lived World 重构。
 
 沿用 Package 分支 refactor/original-occult-western-fantasy-long-lived-world。
-当前 Package HEAD：7937de304d3f4eef8a9626f3b537d0d4e23996e8。
+当前 Package HEAD：20e739edd6495a4ae93c484c8f438d29b6eac0dc。
 配套 Core：main@6e2611a0a5bbcf743cd9fe19c6eeba457890d3f1 或包含它的后代。
 已完成 Phase 1–4；本轮只执行 Phase 5 — Progression / Wealth / Delegation / Organization。
 不要进入 Phase 6，不要重开已冻结的产品方向。

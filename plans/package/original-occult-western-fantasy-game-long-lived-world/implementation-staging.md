@@ -277,12 +277,25 @@ Stop after Phase 6.
 
 **Purpose:** expose the already-working long-horizon systems coherently to the player.
 
+**Execution specification:** `player-facing-experience.md` fixes information
+architecture, page defaults, register styling, responsive layouts, typed forms,
+data wiring, states and acceptance scenarios. Implement that specification rather
+than repeating exploratory design. This refinement does not start Phase 7 or
+bypass its Phase 5–6 dependencies.
+
 **Read:**
 
 - `index.md`
 - `implementation-staging.md`
 - only modules whose state must be surfaced;
 - current frontend/runtime interfaces.
+
+Also read `player-facing-experience.md` and `verification.md`.
+
+**Skills:** apply `frontend-design`, `ui-ux-pro-max` and `emil-design-eng` during
+implementation/review. Prefer installed local Skills; remote execution routes
+through `skills:SKILLS.md` to those named copies. Preserve the existing
+marine/paper register and the specification's decisions.
 
 **Implement information architecture for:**
 
@@ -298,13 +311,30 @@ Stop after Phase 6.
 - delegation and organization policy;
 - region/hub state.
 
-Do not hard-code unnecessary visual styling in the Plan. Use appropriate frontend capabilities during implementation.
+**Build in this order:** contract/binding mapping → navigation and long-date
+orientation → Chronicle/entity/provenance detail → dedicated long-term forms →
+interaction/failure review → real Native browser validation. Use three primary
+destinations: Field notes, Chronicle and Arrangements. Preserve the existing
+opening, Evidence, Cases, identity, Composer, advice and Host Save/Restore flows.
+
+Backend methods are not automatically sandbox bindings. Close safe adapter gaps
+without raw Lifecycle access, new gameplay authority or a second persistence
+system. Read completed Phase 5–6 schemas rather than guessing their fields.
 
 **Exit evidence:**
 
 - real browser/UI evidence for the above flows where available;
 - long dates, eras and historical navigation remain usable;
 - no claim of UI success without actual UI/runtime validation.
+- execute the acceptance matrix in `player-facing-experience.md`, including
+  bounded/privacy-safe century retrieval, lineage/succession, provenance,
+  interrupted fast-forward, stance-only updates, identity/reconstruction,
+  delegation drift, regional return, unknown-write reconciliation and actual
+  Save/Restore/checkpoint Retry;
+- inspect wide/compact/200%-text screenshots and record exact tested Package/Core
+  HEADs; fixture UI dates spanning 200 years do not constitute Gate C;
+- update existing `frontend/DESIGN.md` and `runtime/FRONTEND.md` with implemented
+  bindings, actual evidence and any measured deviations.
 
 Stop after Phase 7.
 
