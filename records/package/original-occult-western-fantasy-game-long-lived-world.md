@@ -223,8 +223,67 @@ Growth claims distinguish active authority/raw retention/checkpoint exports from
 
 The v1 release remains unchanged: SHA-256 `e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09`. No v1 save migration or Phase 3 implementation was added.
 
+## Phase 3 — Human Lifetime / Family / Institution Lifecycle
+
+- Start Package HEAD: 58b29477c8ac5cb499dcee6f2b13159ff30c1e43
+- End/Tested Package HEAD: ccc7b6c6ad3d460898ec4c81e875218cc29fdc84
+- Compatible Core: 80376ec9f0e5cce9ef1c29422f39604bb7446cfd
+- Status: **Complete — stopped at the Phase 3 boundary**
+- Development version: 2.0.0-phase3; final release remains 2.0.0
+- Validation date: 2026-10-02
+
+### Completed implementation
+
+- Optional Native human-lifetime policy and typed transaction annotations, declared by the Package after its existing long-horizon/history compilers. State remains in atri_lifecycle; Authority, Clock, History, CAS publication and SaveSystem remain owners.
+- Tier A/B relevant actors, two-source relevance promotion, aggregate Tier C turnover and causal adult institutional intake. Introduction remains distinct from explicit pre-opening/actual birth.
+- Gregorian birthdays, maturation, retirement, disappearance/return, health/career changes, death and compact inactive profiles. Important structural history is retained rather than deleting actors.
+- Consensual romance/marriage/partnership, separation, estrangement/reconciliation, widowhood and new partnerships. Pairwise bonds permit nonexclusive structures; secret bonds/adoptions remain outside public history.
+- Fixed-duration gestation, birth, adoption and chronology-checked multi-generation kinship. Children grow up and can become parents without transferring player control.
+- Causal legacy foundations: artifact custody transfers with exact provenance; favors, grudges, secrets, obligations, institutional ties and explicit supernatural liabilities; unavailable beneficiaries/assets remain disputed.
+- Separate institution, office and office-holder identity; eligibility/nomination/seniority and non-overlapping tenure. Vacancies can materialize adults from aggregate intake without inventing newborn successors.
+- Separate protagonist chronological/apparent/public-identity ages, two setting-native longevity routes, explicit costly consent-based sponsorship/refusal and slow family-documentary exposure.
+- Non-terminal ordinary protagonist death, continued world evolution during absence, preserved single identity, costly reconstruction and persistent inheritance/Claim/exposure/scars. Returning never refunds consequences.
+- Exact dynamic lifecycle sources use the existing canonical ledger, supersession/provenance and Chronicle facets. Source validation now builds one bounded lookup rather than rebuilding sources for each retained fact.
+- Existing scalar UI omits all unsupported object/array inputs; no unfinished lifetime editor or final UI was added.
+
+### Core prerequisite and repairs
+
+Static same-record Native jobs could not express a dynamic relevant population, relational eligibility or event-driven generational succession. A separately scoped Core support branch, fix/native-human-lifecycle, adds an optional declarative lifetime policy; it is not a Package evaluator or second authority. Normal packages remain unaffected. The verified support commit was fast-forwarded into main; the temporary support branch was deleted locally and remotely. The Package stayed on its original task branch, and main was never merged into it.
+
+The initial session test attempted importing into an already-existing session. Native correctly refused native_session_import_conflict; the test was repaired to use fresh stores at each import. Additional checks cover unsafe evidence IDs, allocation-cursor reuse, dead-actor resurrection, invalid parent/office chronology, artifact custody contradictions, absent-person action refusal and JSON key-order normalization.
+
+### Actual validation
+
+| Check | Result |
+| --- | --- |
+| Package validate --lifetime-only | Passed: 28 committed focused transitions plus creation, 90 actual in-world years, 9 relevant people, 3 kinship/adoption edges, two descendant generations, 4 office terms, and 162 exact history facts. Nine fresh alternating Fs/SQLite SaveSystem imports preserve every authoritative namespace and timeline, followed by continued play. |
+| High-risk restore boundaries | Before/after first birth; before death and leadership turnover; after bodily death/before return; after reconstruction/succession; before/after the second generation; after widowhood/new partnership; after 90-year history. |
+| Protagonist continuity | Chronological age 118; apparent age under 50; initial public identity age 90. One reconstruction, one durable scar, Claim burden 6 and exposure 7. Inherited artifact custody stays with the beneficiary after return. |
+| Core final local batch | Passed: 8 suites / 343 tests (lifetime, lifetime-session, history, history-session, authority-candidate, simulation-candidate, lifecycle-contract and authority-contract). Includes three deterministic lifetime seeds, actual Fs/SQLite checkpoint/import/Retry, no-op turn accounting and split-interval equivalence. |
+| Adjacent local regressions | Lifecycle runtime, history-session and simulation-session also passed in an earlier 3-suite subset (120 passing tests in the surrounding run, whose two new lifetime-session tests then failed only on the import-harness conflict and were subsequently repaired/retested). Counts overlap; do not add them. |
+| Retained opening | Passed: creation/Seeds/Claims/settlements, Host bridge/provider retries, actual save continuation, 50 local synthetic HTTP requests; max 14 reads / 19 commands / 21 effects. |
+| v2 Eastbank campaign | Passed: continuous campaign, Hearing, Retry isolation, save import and Day 31; max 16 reads / 22 commands / 24 effects. |
+| Explicit v1 campaign | Passed: retained bounded campaign/save import and atomic Day 31 refusal; max 15 reads / 17 commands / 19 effects. Not a repeated v1 completeness audit. |
+| Phase 1 foundation regression | Passed: Gregorian leap/century rollover, stable identity/provenance, long intervals and complete Fs/SQLite restore/continuation. Run against the Phase 3 implementation before the later source-binding/exposure hardening; final lifetime/adjacent tests cover those repairs. |
+| Syntax, lint and whitespace | Six changed Package tool syntax checks, targeted Core ESLint and Git whitespace checks passed. |
+| Final development build | Passed on Core 80376ec9f: 210,015-byte container in ignored build output. No release artifact created. |
+
+The final lifetime integration log printed the pre-commit Core HEAD f116a98de because that process started while the tested support code was uncommitted. That exact implementation was subsequently committed as 80376ec9f; the final build records 80376ec9f explicitly.
+
+Focused lifetime transactions stay within existing ordinary Authority limits (max 14 reads / 11 app commands / 13 effects). The 90-year restore-container sizes range from 152,123 to 766,787 bytes and include explicit retained revision/save ancestry; this is **not** an active-checkpoint growth claim. Phase 2 compaction/Replay protections remain intact, but the Phase 3 fixture is not a new 1k/10-year history soak or full Gate A.
+
+### Remote CI / integration
+
+- Core support Authority Transaction workflow: [37002045148](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37002045148), **success** on exact 80376ec9f. Includes the added lifetime fixture on configured Fs/SQLite/MySQL/PostgreSQL adapters.
+- Main Native Frontend v3: [37002812492](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37002812492), **success** on 80376ec9f. Main Authority Transaction: [37002812470](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37002812470), **success**. Main Native Model Prompt Runtime: [37002812654](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37002812654), **success**, including the remote E2E subset (16 passed / 1 skipped). All three main runs use exact 80376ec9f.
+- No local MySQL/PostgreSQL service run, real browser/device/Android, hosted-model or final long-life UI evidence is claimed.
+
+### Scope / next checkpoint
+
+This phase supplies the bounded lifecycle foundation, not full medical fertility, estate/property law, complete Claim progression, identity rotation, renewable Matters, institution creation/merge/split/dissolution, business/delegation, multi-region or Era/macro simulation. Ordinary childcare and Tier C turnover remain authored abstractions. Hard state/event/history budgets fail closed and need final-soak profiling.
+
+Historical releases/1.0.0.atria is unchanged: SHA-256 e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09. No v1 save migration. The long-lived package branch remains at 79447c0b8aca028c6929ff8f9842f8835676191f; final integration remains Phase 8.
+
 ## Final state
 
-The eight-phase project remains active and incomplete. Phases 1 and 2 are complete. **Phase 3 — Human Lifetime / Family / Institution Lifecycle** is next and has not started.
-
-Continue on the same Package branch. Read live HANDOFF and its full bootstrap prompt; do not merge main into Package, create a Package phase branch, add a v1 save migration or begin Phase 4 during Phase 3.
+The eight-phase project remains active and incomplete. Phases 1–3 are complete; **Phase 4 — Renewable World Content is next and has not started**. Continue on the same Package task branch and follow the refreshed live HANDOFF. Do not merge main into Package or begin Phase 4 inside the Phase 3 round.
