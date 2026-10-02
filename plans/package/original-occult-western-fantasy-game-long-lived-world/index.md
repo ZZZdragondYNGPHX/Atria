@@ -4,7 +4,7 @@
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
 **Plan status:** Discussion / not approved for implementation  
-**Plan generation:** v0.7
+**Plan generation:** v0.8
 
 ## 1. Why this plan exists
 
@@ -224,17 +224,39 @@ Detailed authority: `content-renewal.md`.
 
 ### Round 7 — History compaction, memory and long-term retrieval
 
+Status: complete.
+
+Frozen:
+
+- historical state uses multiple retention tiers rather than keeping every turn at full fidelity forever;
+- the baseline tiers are Hot State, Warm History, Cold History and Archive;
+- historical compression preserves durable consequences and causal links while discarding low-value transient detail;
+- a separate Canonical Fact Ledger stores precise facts that later world logic may depend on and must not be lost through narrative summarization;
+- Historical Hooks remain reusable seeds for future content after their source matter is compacted;
+- durable artifacts such as photographs, letters, contracts, wills, newspapers, case files, diaries, property records, ritual records and heirlooms persist independently and may reintroduce old information into current play;
+- World Truth and Protagonist Memory are separate layers;
+- the protagonist may naturally forget or blur ordinary old details across decades or centuries while the world retains authoritative truth;
+- major events, strong relationships, intentionally recorded information and player-marked memories remain clearer for longer;
+- memory loss must remain light-touch and must not routinely contradict what the player clearly remembers;
+- a Chronicle / Archive interface should let the player inspect historical timelines by year, person, family, location, institution, case, Claim and Era;
+- active model context should retrieve only relevant historical slices rather than replay the entire save;
+- long-run save/context growth must be sublinear with turn count through compaction and archival indexing.
+
+Detailed authority: `history-memory.md`.
+
+### Round 8 — Progression, wealth, career and century-scale power
+
 Status: active.
 
 Questions to freeze:
 
-1. What information must remain verbatim forever versus summarized?
-2. How many historical storage tiers should exist?
-3. How should a 100-year save retrieve a 70-year-old relationship, case or photograph without loading everything?
-4. When can old event detail be irreversibly compacted?
-5. Which facts must never be lost because later causality may depend on them?
-6. How should the system prevent save/context growth from becoming linear with every turn?
-7. Should the player be able to inspect historical timelines, family records, institutional histories and archived cases directly?
+1. How should skills, wealth and social influence grow over 50–150 years without reaching meaningless caps?
+2. Should the protagonist be able to change careers, found businesses, hold office, join/leave institutions and accumulate property across decades?
+3. How should wealth and property persist, decay, transfer, be seized or become obsolete?
+4. Should long-term progression emphasize horizontal capabilities and new obligations rather than endless numeric scaling?
+5. How should public identity resets interact with licenses, careers, property, reputation and records?
+6. Should the protagonist be able to become extremely powerful socially/occultly, and what systems prevent this from collapsing challenge?
+7. Which progress persists through bodily death/reconstruction and which can be lost?
 
 No implementation starts until the discussion rounds are explicitly approved.
 
