@@ -4,7 +4,7 @@
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
 **Plan status:** Discussion / not approved for implementation  
-**Plan generation:** v0.2
+**Plan generation:** v0.3
 
 ## 1. Why this plan exists
 
@@ -127,15 +127,33 @@ Frozen:
 
 ### Round 2 — Protagonist longevity model
 
+Status: complete.
+
+Frozen:
+
+- longevity is a setting-native long-horizon system rather than a trivial `aging=false` flag;
+- normal viable routes should eventually offer at least one path to supernatural longevity;
+- the protagonist keeps one continuous identity across decades or centuries;
+- chronological age, apparent age, and public identity age are separate concepts;
+- long life should create slow-burn consequences such as identity exposure, Claim escalation, institutional attention, social alienation, old obligations returning, or other setting-consistent costs;
+- routine death does not end the save;
+- major injury, bodily death, ritual failure, disappearance, reconstruction, or delayed return may impose durable costs while the world continues to advance;
+- a true irreversible death may exist only as an exceptional, explicit end-state and must not be triggered casually by ordinary play.
+
+Detailed authority: `longevity-model.md`.
+
+### Round 3 — NPC lifecycle and generational social change
+
 Status: active.
 
 Questions to freeze:
 
-1. Is long life innate/guaranteed, earned through progression, or optional through a dangerous occult path?
-2. Should the protagonist physically age slowly, stop aging, periodically renew, or vary by build/Claim?
-3. Should supernatural longevity carry meaningful prices such as Claim escalation, identity exposure, social alienation, bodily corruption, memory strain, or institutional attention?
-4. Can the protagonist still die permanently from violence/ritual failure, or should the game strongly protect continuity?
-5. How should a character survive socially for 50–150 years: changing aliases, faking descendants, institutional cover, public immortality, or some mixture?
+1. Which NPC tiers should actually age, retire, die, marry, have children, move away, or change occupation?
+2. How should new NPCs enter the world without requiring full population simulation?
+3. Should important NPC children be able to grow into meaningful adults over decades?
+4. How should institutions replace leaders and preserve continuity across generations?
+5. What information about dead/retired NPCs remains active history versus archived history?
+6. How much of this should be deterministic simulation versus bounded AI-assisted generation?
 
 No implementation starts until the discussion rounds are explicitly approved.
 
