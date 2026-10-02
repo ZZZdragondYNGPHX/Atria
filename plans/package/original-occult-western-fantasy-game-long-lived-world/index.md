@@ -4,7 +4,7 @@
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
 **Plan status:** Discussion / not approved for implementation  
-**Plan generation:** v0.3
+**Plan generation:** v0.4
 
 ## 1. Why this plan exists
 
@@ -144,16 +144,35 @@ Detailed authority: `longevity-model.md`.
 
 ### Round 3 — NPC lifecycle and generational social change
 
+Status: complete.
+
+Frozen:
+
+- Tier A actors receive full long-horizon lifecycle treatment: age, health, occupation, relationships, family, retirement, death, succession and durable history;
+- Tier B actors receive reduced but real lifecycle simulation and may promote to Tier A through sustained relevance;
+- Tier C population is not individually simulated for decades; it is handled through aggregate world processes until a person becomes relevant enough to instantiate;
+- important NPC children and later descendants may grow into meaningful actors while the player remains the same protagonist;
+- new NPCs must enter the world for causal reasons such as birth, migration, hiring, promotion, marriage, recruitment, institutional expansion, case involvement, disaster, war or player-created vacancies;
+- institutions separate durable institutional identity from changing office holders and leadership;
+- institutions retain organizational memory across leadership changes;
+- dead/retired/absent actors are compacted into historical records rather than deleted from world truth;
+- model generation may propose constrained identities, backgrounds and characterization, but Runtime Authority owns whether historical facts, dates, relationships, succession and eligibility are valid.
+
+Detailed authority: `world-simulation.md`.
+
+### Round 4 — Family, descendants and century-scale relationships
+
 Status: active.
 
 Questions to freeze:
 
-1. Which NPC tiers should actually age, retire, die, marry, have children, move away, or change occupation?
-2. How should new NPCs enter the world without requiring full population simulation?
-3. Should important NPC children be able to grow into meaningful adults over decades?
-4. How should institutions replace leaders and preserve continuity across generations?
-5. What information about dead/retired NPCs remains active history versus archived history?
-6. How much of this should be deterministic simulation versus bounded AI-assisted generation?
+1. Can the protagonist marry, form long-term partnerships, have children, adopt, or create other recognized family bonds?
+2. Should descendants be simulated as a persistent family graph across multiple generations?
+3. Can descendants inherit property, secrets, claims, enemies, social status or institutional positions?
+4. How deeply should the game model pregnancy/birth/childhood versus abstracting those periods?
+5. How should the protagonist's immortality affect partners and descendants who age normally?
+6. Can supernatural longevity be extended to loved ones, and if so at what cost?
+7. How should romance and family relationships remain playable over decades without becoming repetitive maintenance?
 
 No implementation starts until the discussion rounds are explicitly approved.
 
