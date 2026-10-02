@@ -22,12 +22,22 @@ The original v1 Plan Bundle remains the authority for the released v1 scope.
 
 During the current discussion phase, the Package task branch may exist, but game assets are not modified until the user freezes the design and explicitly hands implementation to Codex Astra.
 
+### D-004 — One continuous player protagonist
+
+The long-lived world keeps one player-controlled protagonist for the entire save.
+
+There is no mandatory heir, successor, student, descendant, or replacement-character handoff. NPC generations may change around the protagonist, but player identity remains continuous.
+
+### D-005 — Supernatural longevity is allowed as the continuity mechanism
+
+The protagonist may remain active for decades or centuries through setting-consistent occult or supernatural means. The long-horizon design should therefore make prolonged life part of world logic rather than relying on unrealistic human lifespan assumptions.
+
 ## Open
 
 - target campaign horizon;
-- protagonist lifespan and mortality;
-- successor/legacy play;
-- family/generation simulation;
+- exact supernatural longevity mechanism and its cost;
+- protagonist mortality / failure semantics;
+- family simulation as world content rather than player succession;
 - long-horizon time model;
 - renewable case/world generation;
 - historical compaction;
