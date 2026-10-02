@@ -24,12 +24,15 @@ export function assertInformationRuntime(value, lifecycle, tasks) {
     if (value.schemaVersion !== 1 || !lifecycle) throw new TypeError('Information runtime requires version 1 and lifecycle');
     const sources = informationList(value.sources, 32, source => {
         fields(source, ['id', 'kind', 'semantic', 'scopeId', 'domainId', 'worldId', 'fields', 'actorField', 'statusField', 'channelField', 'participantsField'], 'Information source');
-        taskId(source.id); choice(source.kind, ['application', 'world', 'timeline']);
+        taskId(source.id); choice(source.kind, ['application', 'world', 'timeline', 'history']);
         choice(source.semantic, ['truth', 'belief', 'thread', 'open_loop', 'memory', 'narrative']);
         if (!lifecycle.scopes.some(scope => scope.id === source.scopeId)) throw new TypeError('Unknown information scope');
         const paths = informationList(source.fields, 16, path => informationList(path, 8, taskId));
         if (!paths.length || paths.some(path => !path.length) || new Set(paths.map(path => path.join('.'))).size !== paths.length) throw new TypeError('Information fields must be unique nonempty paths');
-        if (source.kind === 'application') {
+        if (source.kind === 'history') {
+            if (!lifecycle.history || source.semantic !== 'narrative' || paths.some(p => p.length !== 1 || !['summary', 'tick', 'year', 'refs', 'transaction'].includes(p[0]))
+                || ['domainId', 'worldId', 'actorField', 'statusField', 'channelField', 'participantsField'].some(k => source[k] !== undefined)) throw new TypeError('History projection disclosure');
+        } else if (source.kind === 'application') {
             if (source.semantic === 'narrative') throw new TypeError('Canonical narrative requires Timeline source');
             const domain = lifecycle.domains.find(domain => domain.id === source.domainId && domain.scopeId === source.scopeId);
             if (!domain || source.worldId !== undefined) throw new TypeError('Unknown information domain');

@@ -1,3 +1,4 @@
+import { initialHistory } from '../../public/shared/native-history-runtime.js';
 import { prepareActivity, validateActivities } from './activity-authority.js';
 import { prepareInformationRollup } from './information-authority.js';
 import { validateInformationState } from '../../public/shared/native-information-runtime.js';
@@ -20,6 +21,7 @@ export function initialLifecycle(definition) {
         scopes: Object.fromEntries(definition.scopes.map(scope => [scope.id, { status: 'active', epoch: 0 }])),
         domains: Object.fromEntries(definition.domains.map(domain => [domain.id, { records: [] }])),
         workflows: Object.fromEntries(definition.workflows.map(flow => [flow.id, { phase: flow.initial, instance: 0, status: 'active', entered: false }])),
+        ...(definition.history ? { history: initialHistory() } : {}),
         ready: false, automations: {}, outbox: [], interactions: [], receipts: [], taskTombstones: [] };
 }
 
@@ -51,6 +53,7 @@ export function validateLifecycle(base) {
         || !Array.isArray(state.outbox) || state.outbox.length > 128) throw new TypeError('Lifecycle retention limit');
     if (new Set(state.receipts.map(item => item.invocationId)).size !== state.receipts.length) throw new TypeError('Duplicate lifecycle receipt');
     for (const receipt of state.receipts) if (!invocation(receipt.invocationId) || receipt.kind !== 'authority') throw new TypeError('Invalid lifecycle receipt');
+    // Canonical source cross-check occurs at the outer transaction boundary.
     validateActivities(base);
     validateInformationState(base);
     if (typeof state.ready !== 'boolean') throw new TypeError('Invalid lifecycle barrier');

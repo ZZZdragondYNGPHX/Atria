@@ -1,3 +1,4 @@
+import { HISTORY_OPERATIONS } from '../../../../shared/native-history-contract.js';
 import { assertSimulationTransactions } from '../../../../shared/native-simulation-contract.js';
 import { fields, json, text, assertJsonDeclaration } from '../../../../shared/native-values.js';
 import { taskId } from '../../../../shared/native-task-contract.js';
@@ -101,7 +102,7 @@ export function compileTransactionDeclarations(raw, options) {
     // Count the entire hook, not just each publication in isolation.
     budget(publications.reduce((sum, item) => sum + item.reads.length, 0), publications.flatMap(item => item.effects), authority);
     const transactions = list(raw.transactions, LIMITS.transactions, transaction => {
-        fields(transaction, ['id', 'origin', 'verb', 'inputSchema', 'intent', 'reads', 'validators', 'resolution', 'effects', 'derivedPublications', 'receipt'], 'Transaction');
+        fields(transaction, ['id', 'origin', 'verb', 'inputSchema', 'intent', 'reads', 'validators', 'resolution', 'effects', 'derivedPublications', 'receipt', 'history'], 'Transaction');
         taskId(transaction.id); taskId(transaction.verb);
         if (transaction.origin !== undefined && (transaction.origin !== 'simulation' || !contract.simulationRuntime)) throw new TypeError('Unknown or undeclared Transaction origin');
         if (transaction.origin === 'simulation' && transaction.intent?.expose !== false) throw new TypeError('Simulation Transaction cannot be player-exposed');
@@ -113,6 +114,15 @@ export function compileTransactionDeclarations(raw, options) {
         validators(transaction.validators, before);
         const result = resolution(transaction.resolution, before);
         const context = { ...before, resolution: result };
+        if (transaction.history !== undefined) {
+            if (!Array.isArray(transaction.history) || transaction.history.length > 8) throw new TypeError('History commands');
+            for (const h of transaction.history) {
+                fields(h, ['operation', 'input', 'when'], 'History command');
+                if (!lifecycle.history || !HISTORY_OPERATIONS[h.operation] || transaction.origin === 'simulation') throw new TypeError('History command unavailable');
+                template(h.input, HISTORY_OPERATIONS[h.operation], { args: input, resolution: result });
+                if (h.when !== undefined) predicate(h.when, { args: input, resolution: result });
+            }
+        }
         effects(transaction.effects, context, lifecycle, raw.reducers ?? [], authority);
         const clockIndex = transaction.effects.findIndex(effect => effect.kind === 'clock.advance');
         if (contract.simulationRuntime && clockIndex >= 0 && transaction.effects.slice(clockIndex + 1).some(effect => effect.kind === 'world.event')) throw new TypeError('Simulation clock must follow the player World effects');

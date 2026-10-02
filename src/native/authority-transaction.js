@@ -1,3 +1,4 @@
+import { prepareHistory, validateHistory } from './history-authority.js';
 import { assertNativeExperienceContract } from '../../public/shared/native-experience-contract.js';
 import { assertJsonDeclaration, fields } from '../../public/shared/native-values.js';
 import { assertTaskValue, taskId } from '../../public/shared/native-task-contract.js';
@@ -235,7 +236,7 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
 
 export async function prepareAuthorityTransaction(base, installed, rawRequest) {
     try {
-        const contract = contractFor(base, installed); validateCandidate(base, contract);
+        const contract = contractFor(base, installed); validateCandidate(base, contract); validateHistory(base);
         if (contract.lifecycleRuntime && !base.states.atri_lifecycle.ready) throw new TypeError('Experience Ready Barrier required');
         const request = bounded(rawRequest);
         fields(request, ['transactionId', 'input', 'anchor', 'playerMessageId', 'ordinal'], 'Authority request');
@@ -262,6 +263,18 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
         // Existing clock validation does not pump. Drain bounded due work privately
         // before projections; never dispatch queued Model Tasks in preparation.
         if (candidate.states.atri_lifecycle?.ready) await applyLifecycle(candidate, installed, { kind: 'pump' }, budget);
+        const histories = (transaction.history ?? []).filter(h => h.when === undefined || predicate(h.when, { args, resolution }));
+        if (histories.length > 1) throw new TypeError('Ambiguous history operation');
+        const history = histories[0];
+        const operation = history ? { operation: history.operation, input: template(history.input, { args, resolution }) } : null;
+        prepareHistory(base, candidate, transaction, resolution, operation);
+        if (contract.lifecycleRuntime?.history) {
+            const policy = contract.lifecycleRuntime.history, domains = candidate.states.atri_lifecycle.domains;
+            budget.counts.historySources = policy.sources.length;
+            budget.counts.historyRecordScans = policy.meaningfulDomains.reduce((n, id) => n + domains[id].records.length, 0)
+                + policy.sources.reduce((n, source) => n + domains[source.domainId].records.length, 0);
+            budget.counts.historyLogicalBytes = bytes(candidate.states.atri_lifecycle.history);
+        }
         await publications(candidate, installed, contract, logic, budget);
         validateCandidate(candidate, contract);
         const projection = budget.typed(template(transaction.receipt.projection, { args, resolution }), transaction.receipt.schema);

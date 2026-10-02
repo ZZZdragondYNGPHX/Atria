@@ -1,3 +1,4 @@
+import { queryHistory } from './native-history-runtime.js';
 import { INFORMATION_LIMITS, informationInteger } from './native-information-contract.js';
 
 export const informationDefinition = snapshot => snapshot?.manifest?.runtime?.experienceContract?.informationRuntime;
@@ -47,7 +48,8 @@ export function projectInformation(snapshot, viewId, { purpose = 'display', incl
         if (scope?.status !== 'active') continue;
         result.anchor.scopeEpochs[source.scopeId] = scope.epoch;
         let records;
-        if (source.kind === 'application') records = snapshot.states.atri_lifecycle.domains[source.domainId]?.records ?? [];
+        if (source.kind === 'history') records = queryHistory(snapshot, { limit: 8, memory: true }).items.map(item => ({ id: item.id, value: item }));
+        else if (source.kind === 'application') records = snapshot.states.atri_lifecycle.domains[source.domainId]?.records ?? [];
         else if (source.kind === 'world') {
             const value = snapshot.states.atri_world_state?.worlds[source.worldId]?.state;
             records = value ? [{ id: source.worldId, value }] : [];

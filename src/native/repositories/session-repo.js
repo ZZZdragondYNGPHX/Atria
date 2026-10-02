@@ -432,7 +432,7 @@ export class SessionRepo {
     // N3 coherent publication. Every dependency is immutable and checked before
     // publishing the revision manifest; the Session record is the final commit marker.
     async commitSnapshot(handle, { session: sessionValue, revision: revisionValue,
-        branches = [], entries = [], variants = [], states, expectedRevisionId }) {
+        branches = [], entries = [], variants = [], states, expectedRevisionId, historyCheckpoint = false }) {
         assertWritable();
         const session = assertSession(sessionValue);
         const revision = assertSessionRevision(revisionValue);
@@ -475,7 +475,13 @@ export class SessionRepo {
             const published = { ...session, updatedAt: Math.max(session.updatedAt, existing?.doc.updatedAt || 0) };
             if (existing) { if (existing.doc.displayTitle == null) delete published.displayTitle; else published.displayTitle = existing.doc.displayTitle; }
             const snapshot = await readSessionSnapshot(tx, handle, assertSession(published), revision);
-            if (snapshot.core.parentRevisionId !== expectedRevisionId) throw new TypeError('Revision parent must match expected HEAD');
+            if (historyCheckpoint) {
+                const history = snapshot.states.atri_lifecycle?.history;
+                const previousRevision = (await tx.getResource(this._revisionKey(handle, session.sessionId, expectedRevisionId)))?.doc;
+                const previous = previousRevision && (await tx.getResource(this._stateKey(handle, session.sessionId, 'atri_lifecycle', previousRevision.stateHeads.atri_lifecycle)))?.doc;
+                if (!existing || snapshot.core.parentRevisionId !== null || snapshot.timeline.length > 1 || snapshot.timeline.some(entry => entry.role !== 'assistant') || !history
+                    || history.checkpoint !== history.transactions || history.checkpoint <= (previous?.history?.checkpoint ?? 0)) throw new TypeError('Invalid History checkpoint');
+            } else if (snapshot.core.parentRevisionId !== expectedRevisionId) throw new TypeError('Revision parent must match expected HEAD');
             await putImmutable(tx, this._revisionKey(handle, session.sessionId, revision.revisionId), revision);
             await putMutable(tx, key, published, { expectedIntegrity: existing?.integrity ?? null });
             return snapshot;

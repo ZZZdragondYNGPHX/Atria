@@ -23,6 +23,8 @@ import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { ACTION_RECEIPTS_NAMESPACE, assertActionRequest, actionReceipts, assertCompensation } from './action-receipts.js';
 import { TASK_STATE_NAMESPACE, assertTaskValue, assertSemanticOutcome } from '../../public/shared/native-task-contract.js';
 import { prepareTaskAuthority, validateTaskRecords } from './task-authority.js';
+import { checkpointHistory, retiredInvocation, validateHistory, prepareHistory } from './history-authority.js';
+import { queryHistory, historyMetrics } from '../../public/shared/native-history-runtime.js';
 import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle, prepareDeclaredTaskResult } from './lifecycle-authority.js';
 import { fields } from '../../public/shared/native-values.js';
 import { applyContinuity, continuityDefinition, continuityDisplay, continuityEffects, projectContinuity, reconcileOwnership } from './continuity-authority.js';
@@ -181,6 +183,7 @@ export class SessionCore {
         const installed = await this._openPackage(handle, session.packageId, session.packageVersionId, session.entryPointId);
         validateTaskRecords({ ...snapshot, manifest: installed.manifest });
         validateLifecycle({ ...snapshot, manifest: installed.manifest });
+        validateHistory({ ...snapshot, manifest: installed.manifest });
         if (installed.packageVersion.packageContentHash !== session.packageContentHash
             || installed.packageVersion.version !== session.packageVersion) throw new Error('Session PackageVersion dependency mismatch');
         await this._validateProjections(handle, snapshot, snapshot.variants, installed);
@@ -323,6 +326,10 @@ export class SessionCore {
                 || hashNativeDocument(states.atri_world_state ?? null) !== hashNativeDocument(base.states.atri_world_state ?? null))) {
             const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
             states = (await prepareAuthorityPublications({ ...base, states }, installed, authorityBudget)).candidate.states;
+            if (base.states.atri_lifecycle?.ready && states.atri_lifecycle?.ready && states.atri_lifecycle.history) {
+                states = cloneNativeDocument(states);
+                prepareHistory(base, { ...base, states }, { id: 'host.lifecycle', verb: 'host_lifecycle' }, { outcome: 'automatic' }, null, { countTurn: false });
+            }
         }
         variants = variants.map(assertVariant);
         await this._validateProjections(handle, { ...base, timeline }, variants);
@@ -368,7 +375,10 @@ export class SessionCore {
             publishActivities({ ...base, states }, revisionId, branchId, taskRecord);
             validateLifecycle({ ...base, states });
         }
-        const core = { schemaVersion: 1, parentRevisionId: base.session.headRevisionId,
+        const checkpoint = checkpointHistory(base, states, timeline, taskRecord);
+        if (checkpoint) timeline = checkpoint.timeline;
+        validateHistory({ ...base, states });
+        const core = { schemaVersion: 1, parentRevisionId: checkpoint ? null : base.session.headRevisionId,
             branches: graph.map(node => ({ branchId: node.branchId, forkRevisionId: node.forkRevisionId,
                 headRevisionId: node.branchId === branchId ? revisionId : node.headRevisionId })) };
         const documents = { ...states,
@@ -386,7 +396,7 @@ export class SessionCore {
         const session = assertSession({ ...base.session, activeBranchId: branchId, headRevisionId: revisionId,
             updatedAt: Math.max(Date.now(), base.session.updatedAt) });
         const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
-            entries, variants, branches, expectedRevisionId: base.session.headRevisionId });
+            entries, variants, branches, expectedRevisionId: base.session.headRevisionId, historyCheckpoint: Boolean(checkpoint) });
         if (branchId !== base.session.activeBranchId) invalidateFrontendEpoch(handle, session.sessionId);
         const continuity = continuityDefinition(base) ? await this._continuity.load(handle, base.session.packageId) : null;
         return loadRealm(this, handle, { ...snapshot, manifest: base.manifest, entryPoint: base.entryPoint,
@@ -484,6 +494,14 @@ export class SessionCore {
         return this._continuity.graph(handle, base.session.packageId, limit);
     }
 
+    async getHistory(handle, sessionId, query = {}) {
+        return queryHistory(await this.load(handle, sessionId), query);
+    }
+
+    async getHistoryMetrics(handle, sessionId) {
+        return historyMetrics(await this.load(handle, sessionId));
+    }
+
     async prepareAuthorityTurn(handle, base, selection, player = null) {
         const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
         return prepareAuthorityTurn(this, handle, base, installed, selection, player);
@@ -502,6 +520,7 @@ export class SessionCore {
             return base;
         }
         if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
+        if (retiredInvocation(base.states.atri_lifecycle?.history, invocationId)) throw new TypeError('Archived turn invocation expired');
         const policy = base.manifest.runtime?.experienceContract?.taskRuntime?.turn;
         if (!policy) throw new TypeError('Package Turn contract required');
         if (policy.policy === 'authority-first' && envelope.outcomes.length) throw new TypeError('Authority-first narrative cannot write outcomes');
@@ -702,7 +721,7 @@ export class SessionCore {
         }
         let userIndex = assistantIndex - 1;
         while (userIndex >= 0 && current.timeline[userIndex].role !== 'user') userIndex--;
-        if (userIndex < 0) throw new TypeError('Native Retry Reply requires a preceding committed user turn');
+        if (userIndex < 0) throw new TypeError(current.states.atri_lifecycle?.history?.checkpoint ? 'Reply archived at History checkpoint; continue or restore an explicit SavePoint' : 'Native Retry Reply requires a preceding committed user turn');
         const userMessageId = current.timeline[userIndex].messageId;
 
         const turn = current.states[TASK_STATE_NAMESPACE]?.records.find(item => item.kind === 'turn' && item.authorityReceipt?.messageId === messageId);

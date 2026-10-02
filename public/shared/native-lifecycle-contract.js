@@ -1,3 +1,4 @@
+import { assertHistoryPolicy } from './native-history-contract.js';
 import { fields, json, assertJsonDeclaration } from './native-values.js';
 import { compileDataSchema } from './native-data-schema.js';
 import { compileDeclarativeLogic } from '../scripts/native/experience/logic/declarative.js';
@@ -238,7 +239,7 @@ function workflow(item, scopes, clocks) {
 
 export function assertLifecycleRuntime(value, taskRuntime) {
     value = declaration(value);
-    fields(value, ['schemaVersion', 'scopes', 'domains', 'clocks', 'advances', 'automations', 'workflows', 'interactions', 'retention'], 'Lifecycle runtime');
+    fields(value, ['schemaVersion', 'scopes', 'domains', 'clocks', 'advances', 'automations', 'workflows', 'interactions', 'retention', 'history'], 'Lifecycle runtime');
     if (value.schemaVersion !== 1) throw new TypeError('Lifecycle schemaVersion must be 1');
     const tasks = taskRuntime === undefined ? undefined : assertTaskRuntime(taskRuntime);
     const scopes = list(value.scopes, 32, scope, 'scope');
@@ -296,5 +297,6 @@ export function assertLifecycleRuntime(value, taskRuntime) {
     // maxReceipts is a fail-closed admission cap on exact replay history, NOT an
     // eviction window. Host checks exact replay first; new work at cap fails.
     // Task result/terminal compaction must never silently erase receipt dedup.
+    if (value.history !== undefined) runtime.history = assertHistoryPolicy(value.history, runtime);
     return declaration(runtime);
 }

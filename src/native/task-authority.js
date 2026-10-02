@@ -1,3 +1,4 @@
+import { hashNativeDocument } from './repositories/common.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
 import { createGameWorldSession } from '../../public/scripts/native/experience/world/session.js';
 import { createInterpretationMappingRegistry } from '../../public/scripts/native/experience/logic/interpretations.js';
@@ -33,6 +34,19 @@ export function validateTaskRecords(base) {
     }
 }
 
+// Bounded, content-addressed declaration cache. It contains no Session state,
+// candidates, authority proofs or RNG. Exact source/Data/contract changes miss.
+const compiledWorlds = new Map();
+function pinnedLogic(bytes, data, experienceContract) {
+    const text = bytes.toString('utf8');
+    const key = hashNativeDocument({ text, data, experienceContract });
+    if (compiledWorlds.has(key)) return compiledWorlds.get(key);
+    const compiled = compileDeclarativeLogic(JSON.parse(text), { data, experienceContract });
+    if (compiledWorlds.size >= 4) compiledWorlds.delete(compiledWorlds.keys().next().value);
+    compiledWorlds.set(key, compiled);
+    return compiled;
+}
+
 // The existing World/Command/Rule/Reducer engine runs against a private candidate
 // snapshot. Only SessionCore may publish its result, with the narrative, in one CAS.
 export async function createTaskWorld(base, installed, publish = null, authority = null) {
@@ -48,7 +62,7 @@ export async function createTaskWorld(base, installed, publish = null, authority
         for (const key of keys.slice(0, -1)) { target[key] ??= {}; target = target[key]; }
         target[keys.at(-1)] = JSON.parse(bytes.toString('utf8'));
     }
-    const logic = compileDeclarativeLogic(JSON.parse(bytes.toString('utf8')), { data, experienceContract: installed.manifest.runtime?.experienceContract });
+    const logic = pinnedLogic(bytes, data, installed.manifest.runtime?.experienceContract);
     const candidate = structuredClone(base);
     const statePatch = {};
     const adapter = { active: true, snapshot: candidate, commitStatePatch: async patch => {
