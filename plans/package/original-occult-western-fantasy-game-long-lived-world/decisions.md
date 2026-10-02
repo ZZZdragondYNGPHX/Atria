@@ -240,6 +240,30 @@ The protagonist's ability to affect public policy or macro outcomes depends on a
 
 A sufficiently established protagonist may eventually influence national law, war policy, major cross-regional institutions or occult orders. This is an extreme-late-game option rather than an automatic progression path.
 
+### D-055 — Delegation is policy-driven
+
+Long-horizon delegation uses explicit authority boundaries, policies and escalation rules so the protagonist can manage work without approving routine actions.
+
+### D-056 — Agents are full actors
+
+Important agents and managers have their own competence, loyalty, ambition, relationships, secrets, Claims, values and lifecycle. Delegation outcomes arise from those properties and current world conditions rather than a single efficiency score.
+
+### D-057 — Organizations develop hierarchy
+
+Large player-created organizations may develop layered leadership and aggregate lower ranks so management can scale from individual tasks to departments, regions and long-term policy.
+
+### D-058 — Delegated failure creates world consequences
+
+Mismanagement, fraud, corruption, betrayal and bad judgment are valid outcomes. They alter world state rather than producing only abstract mission-failure messages.
+
+### D-059 — Escalation is significance-gated
+
+Routine delegated operations should not repeatedly interrupt long fast-forward. Interruptions occur when authority is exceeded, configured alerts fire or high-impact consequences emerge.
+
+### D-060 — Player-founded institutions may diverge from the founder
+
+Organizations can accumulate institutional culture, leadership interests and historical inertia. Their Agenda may become partially independent of the protagonist, and extreme divergence may lead to internal resistance or opposition.
+
 ## Open
 
 - target campaign horizon;
