@@ -174,6 +174,26 @@ A protagonist may become a major owner, institutional leader, religious authorit
 
 Bodily death or reconstruction may damage current-body state, equipment, public identity or role-specific advantages while preserving most deep protagonist continuity such as core knowledge, long-term history, Claims and durable relationships where world logic permits.
 
+### D-039 — The world advances beyond the opening era
+
+The setting is not permanently locked to the opening occult-western technology and social structure. Long-running play may progress into modern and potentially later eras.
+
+### D-040 — Era evolution uses authored inertia plus emergent divergence
+
+World development follows curated historical/technological tendencies but actual timing and form depend on world state. Major occult events and sufficiently consequential player action may accelerate, delay or redirect development.
+
+### D-041 — Occult knowledge modernizes too
+
+Anomaly classification, Claim theory, ritual practice, countermeasures, occult medicine, regulation and potentially industrialized supernatural systems may evolve across eras rather than remaining static.
+
+### D-042 — Era transitions are systemic
+
+Era changes may modify careers, industries, infrastructure, transportation, communication, law, institutional authority, artifacts, social norms and content-generation grammars. Era is therefore a rule layer, not merely a historical label.
+
+### D-043 — Era transitions are condition-driven
+
+Era changes should emerge from development conditions and world events rather than firing only because a fixed calendar year has been reached.
+
 ## Open
 
 - target campaign horizon;
