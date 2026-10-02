@@ -126,6 +126,7 @@ test('Original Occult Western Fantasy 1.0.0 release starts Eastbank Field Regist
     const refreshed = page.waitForResponse(response => new URL(response.url()).pathname === '/api/native/session/frontend/request');
     await full(page).getByRole('button', { name: 'Refresh record', exact: true }).click();
     expect((await (await refreshed).json()).ok).toBe(true);
+    await expect(full(page).getByText('Opening the player-safe record…', { exact: true })).not.toBeVisible({ timeout: 15000 });
     await expect(full(page).getByText(/The record could not be refreshed/)).not.toBeVisible({ timeout: 15000 });
     await page.screenshot({ path: info.outputPath('eastbank-first-start.png'), fullPage: true });
     await info.attach('delete-409', { body: JSON.stringify(conflicts), contentType: 'application/json' }); expect(conflicts).toEqual([]);
