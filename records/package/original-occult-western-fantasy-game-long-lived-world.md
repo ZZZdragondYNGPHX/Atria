@@ -505,11 +505,11 @@ or 2.0.0 release artifact was added. Phase 5 progression/property/wealth/delegat
 organization autonomy remains unimplemented. Continue only in a new authorized
 Phase 5 round, following live HANDOFF and the frozen Plan modules.
 
-## Final state
+## Final state (updated after Phase 5 below)
 
-The eight-phase project remains active and incomplete. **Phases 1–4 are complete.**
-Phase 5 — Progression / Wealth / Delegation / Organization is next and NOT started.
-The same Package task branch remains active; live HANDOFF contains the Phase 5
+The eight-phase project remains active and incomplete. **Phases 1–5 are complete.**
+Phase 6 — Multi-Region / Era / Macro History is next and NOT started.
+The same Package task branch remains active; live HANDOFF contains the current
 read order, verified refs, caveats and bootstrap prompt. Stop at this boundary.
 
 ## 2026-10-03 — Phase 7 UI/UX planning refinement
@@ -550,3 +550,149 @@ Native browser evidence when Phase 7 is implemented and preserves Phase 8 Gate C
 Next checkpoint: execute the existing Phase 5 scope and stop rules. When Phases
 5–6 actually complete, use the new Phase 7 specification directly; do not restart
 open-ended UI design. No final package integration or release in this round.
+
+
+## Phase 5 — Progression / Wealth / Delegation / Organization
+
+- Recovered on 2026-10-03 from interrupted chat 01a0fecc-524c-7873-964a-164cf15920aa.
+- Original Package baseline: 7937de304d3f4eef8a9626f3b537d0d4e23996e8.
+- Reconciled start: 20e739edd6495a4ae93c484c8f438d29b6eac0dc; the intervening
+  Phase 7 planning-only changes were fast-forwarded and preserved.
+- Package implementation: 68fac6f6452061fc1e522794b8c4d4bff122923d.
+- Core implementation: 14c2f8f30adc980caa04ec85046548f229bcc8fd, on feat/native-enterprise-continuity,
+  based on main@6e2611a0a5bbcf743cd9fe19c6eeba457890d3f1.
+- Development: 2.0.0-phase5. Final target remains 2.0.0.
+- Status: **Complete — stopped at the Phase 5 boundary**.
+
+### Implementation
+
+- Added optional Native enterprise declarations/state inside existing Lifetime
+  Authority/CAS, sparse clock resolution, History and SaveSystem.
+- Early ranks mature at 3; source-distinct knowledge remains horizontal. Embodied
+  progress resets on reconstruction; knowledge and costs remain.
+- Evidence-backed role permissions/obligations, repeated career changes and
+  institution/identity-aware suspension; obsolete actor career also clears.
+- Separate persistent protagonist and ordered public/legal identities; real
+  registration/forgery costs, retained liabilities and family continuity.
+- Identity transitions strand titles/banking and suspend roles/contracts. Paid
+  regularization preserves old records rather than silently renaming ownership.
+- Real existing-world property, purchases, capital, withdrawals, maintenance,
+  income, condition, debt, seizure, transfer and causal inheritance; complete
+  financial reconciliation and exact ownership-event provenance.
+- Adult named-agent or office-bound delegation with objectives, spend/risk/loss
+  boundaries, prohibitions, reporting cadence and mandatory occult escalation.
+- Seeded competence/loyalty/ambition, health, instructions, capital and environment
+  affect results. Hidden corruption/audit, betrayal and failures mutate the world.
+- Ordinary investigations use existing evidence actions or unresolved closure;
+  personal/occult/Hook stakes escalate. Family logistics never preserve emotional
+  closeness automatically; reconciliation resets the absence interval.
+- Player-founded charters, four-level office hierarchy and aggregate workforce;
+  Native succession, leadership-driven Agenda drift and founder-order refusal.
+- Disclosure-safe cloned backend enterpriseView. No final UI/binding claim.
+- Grouped operation verbs and balanced/nested compiler expressions preserve
+  existing command/expression limits. No global safety budget was increased.
+
+### Root-cause repairs found while continuing
+
+The initial real Package run failed pre-Ready publication because identity
+projection validation required a record that Ready had not initialized. Validation
+now gates this projection on Ready, with a regression requiring the correct record
+once ready. Runtime identity authority was not weakened or duplicated.
+
+Suspension initially left the protagonist's older career text in the actor graph;
+it now reconciles with the remaining real credentials. Closed/destroyed venues
+cannot participate in live settlements or new Matter selection; existing Matters
+retain explicitly attributed archival inquiry/recording. Business closure carries
+its actual tick, revision and cause. Regression actor counts now inspect Lifetime
+people rather than an empty top-level snapshot object.
+
+### Local validation actually run
+
+- Native enterprise tests: **17 passed** on the final implementation, including
+  seed 17/71/731 split/whole interval equivalence and a broader delegated-case seed
+  matrix, hidden failure/audit, ownership, succession, privacy and atomic budgets.
+- Existing lifetime and renewal tests: **18 passed**.
+- Enterprise Session tests: FsEngine and SqliteEngine passed. The two local SQL
+  network adapters failed with ECONNREFUSED because services were absent, not
+  reported as passes; hosted four-adapter validation is required below.
+- Targeted ESLint for all changed/new JavaScript: passed. Git whitespace: passed.
+- Real focused Package candidate passed after the initialization fix: 50 years,
+  20 delegated years/four routine reports, eight alternating Fs/SQLite imports,
+  identity/property regularization, institutional resistance, inheritance and
+  reconstruction; marked original title artifact remained retrievable.
+  This local run used the evolving worktree and is not the final commit identity
+  evidence; the hosted run below uses exact committed Package/Core SHAs.
+- Content assets: 40 resources / 240 assets / 482200 bytes, unchanged.
+- Final committed candidate build: 214316 bytes, ignored local output only.
+- Retained 1.0.0 SHA-256 remains
+  e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09.
+
+### Hosted validation / integration
+
+CI [37078163213](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37078163213)
+passed against the exact Core/Package implementations above: **63 suites /
+1776 tests**, all four adapters, targeted lint and the focused 50-year Package job.
+
+### Boundaries
+
+This is a bounded local economy/organization abstraction, not arbitrary market,
+trust/share, legal-code, lending, regional or macro simulation. New enterprise
+records have a finite 256-record safety ceiling; budget overflow rejects atomically,
+not by dropping facts. Review cadence is sparse, not daily simulation. Unsupported
+church/force/borrowing actions are not invented from policy flags. Restricted
+research does not silently grant the player occult powers.
+
+The 50-year focused scenario is **not Gate A, B or C** and is not a 5k-turn rerun.
+Historical Phase 4 CI 37027895867 remains the 5k/50-year renewable-content candidate,
+not final wealth/region/Era coverage. No release, v1 migration, multi-region/Era/macro
+or final UI was added. The future Phase 7 UI specification remains preserved.
+
+
+### Exact hosted Package metrics (37078163213)
+
+- 50 elapsed years; 40 checker transactions, 37 history meaningful turns including
+  setup, not a content-soak gate. Compaction is excluded from meaningful turns.
+- 20 delegated years, four routine reports and eight successful portable imports.
+- Every portable export contains exactly one revision; old saves are not deleted.
+- At 20/50 years: active state 186845 / 280653 bytes; bounded enterprise projection
+  823 / 827 bytes. These short-stage measures are not asymptotic growth claims.
+- Final portable save.json: 285171 bytes; archive: 28685 bytes.
+- Actual observed maxima: 14 reads, 11 app commands, 13 effects, seven lifetime
+  events. No per-day loop or raised authority budget is used.
+- Asset enterprise.2 remains owned by descendant life.person.12 after reconstruction;
+  original title artifact history.72 remains marked/retrievable. The founded
+  institution renewal.2 drifts to profit with autonomy 2 and refuses founder policy.
+
+
+### Core integration and stage boundary
+
+- Core 14c2f8f30adc980caa04ec85046548f229bcc8fd was fast-forwarded into main and pushed after the full
+  four-adapter CI passed. Git tree equality and matching local/remote HEAD were
+  verified; main was clean. No main-to-Package merge occurred.
+- The repository's Cleanup merged task branches workflow 37078755503 removed the
+  remote support branch; local feat/native-enterprise-continuity was also deleted.
+  A subsequent explicit remote delete found it already absent; ls-remote confirmed.
+- Automatic main CI uses that same already-verified SHA: Authority Transaction
+  37078755497, Native Frontend v3 37078755515, Native Model Prompt Runtime 37078755452.
+  All three completed successfully on that same Core SHA (see final results below).
+- Package remains on 68fac6f6452061fc1e522794b8c4d4bff122923d; no final integration into package,
+  no release artifact and no Phase 6 implementation.
+
+Next checkpoint is a newly authorized **Phase 6 — Multi-Region / Era / Macro
+History** round, reading live HANDOFF and its listed modules. Preserve the frozen
+Phase 7 player-facing-experience.md specification for that later stage. Stop here.
+
+
+### Final main verification (2026-10-03)
+
+All automatic integration runs completed successfully on main@14c2f8f30adc980caa04ec85046548f229bcc8fd:
+
+- [Authority Transaction 37078755497](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37078755497).
+- [Native Frontend v3 37078755515](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37078755515).
+- [Native Model Prompt Runtime 37078755452](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37078755452),
+  including its repository unit/lint/prebuild and Core browser regression steps.
+
+These are Core integration checks, not the final Phase 7 Package UI acceptance.
+No additional implementation was merged after the exact-commit Phase 5 candidate.
+Document route/HEAD/boundary checks and staged whitespace checks passed. Phase 5
+is complete; stop with the Phase 6 prompt in the live HANDOFF.
