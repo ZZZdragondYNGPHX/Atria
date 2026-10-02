@@ -4,7 +4,7 @@
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
 **Plan status:** Discussion / not approved for implementation  
-**Plan generation:** v0.12
+**Plan generation:** v0.13
 
 ## 1. Why this plan exists
 
@@ -64,6 +64,7 @@ The plan will be split as decisions become stable:
 - `era-evolution.md` — technology, infrastructure, law, culture and occult modernization across eras.
 - `world-scope.md` — multi-region simulation, travel, hub promotion/demotion and macro-world integration.
 - `macro-history.md` — economy, governance, war, migration, public health, social movements and large-scale occult history.
+- `delegation-agency.md` — agents, delegation, organizational hierarchy and autonomous institutional agendas.
 - `verification.md` — 1k/5k/10k-turn and multi-year simulation/restore/replay gates.
 - `implementation-staging.md` — implementation phases, dependencies, validation gates and release criteria.
 
@@ -331,17 +332,38 @@ Detailed authority: `macro-history.md`.
 
 ### Round 12 — Delegation, agents and long-term operation
 
+Status: complete.
+
+Frozen:
+
+- delegation is a first-class long-horizon system for cases, businesses, property, institutions, research, logistics and other scalable work;
+- named agents are real actors with competence, loyalty, ambition, relationships, secrets, Claims, values and lifecycle rather than abstract efficiency numbers;
+- delegation is defined by policy, authority boundaries and escalation rules rather than constant micromanagement;
+- organizations may develop internal hierarchy so large-scale play can be managed through leaders, departments and regional branches rather than direct control of every member;
+- delegated outcomes depend on competence, information, resources, loyalty, environment and instruction quality;
+- delegation may fail, drift, conceal problems, create corruption, trigger betrayal or produce unexpected success;
+- only matters outside delegated authority or above configured significance thresholds should routinely interrupt the protagonist;
+- family logistics may be delegated, but delegation cannot substitute for emotional presence or preserve relationships automatically;
+- ordinary investigations may be delegated and automatically escalate back to the protagonist if they become important;
+- late-game institutions may accept long-term organizational goals rather than only specific tasks;
+- player-founded organizations may accumulate culture, leadership interests and institutional memory that diverge from the founder's personal agenda;
+- in extreme cases, an organization founded or controlled by the protagonist may resist, constrain or oppose the protagonist if its evolved interests conflict with them.
+
+Detailed authority: `delegation-agency.md`.
+
+### Round 13 — Long-run verification and release gates
+
 Status: active.
 
 Questions to freeze:
 
-1. What kinds of work may be delegated: cases, businesses, property, institutions, family care, research, travel logistics, political/social operations?
-2. How much autonomy should named agents have while the protagonist is elsewhere or fast-forwarding?
-3. How should trust, competence, loyalty, corruption and hidden agendas affect delegated outcomes?
-4. Can organizations develop internal hierarchy so the player can manage systems rather than individuals at large scale?
-5. How are failures, fraud, coups, betrayal and mismanagement surfaced without turning delegation into constant micromanagement?
-6. Which decisions must always return to the player rather than being delegated?
-7. How should delegation interact with multi-region play and decade-scale fast-forward?
+1. What minimum simulated lifespan must pass before the feature can be called complete: 30, 50, 100, 200 years?
+2. What turn-count soak gates are mandatory: 1k, 5k, 10k, more?
+3. What save-growth and context-growth bounds should be treated as release blockers?
+4. What invariants must survive save/restore, fast-forward, death/reconstruction, region promotion/demotion and Era transitions?
+5. How much deterministic replay is required across long simulations?
+6. What anti-repetition metrics should be checked for cases, NPCs and macro events?
+7. Which browser/UI or real-runtime evidence is required before declaring the package complete?
 
 No implementation starts until the discussion rounds are explicitly approved.
 
