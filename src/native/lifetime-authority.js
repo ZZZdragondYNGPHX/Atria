@@ -19,14 +19,14 @@ function noise(policy, id) { let n = policy.seed;for (const c of id)n = (Math.im
 function event(s, kind, tick, ids, detail = {}, visibility = 'public') {
     const id = next(s, 'event');s.milestones[id] = { id, kind, tick, people: ids, detail, visibility, refs: ids.map(x => 'actor:' + x) };return id;
 }
-function makePerson(s, policy, { id, name, birthTick, tier = 'B', institutionId = '', occupation = '', sourceId, cause }, tick) {
+function makePerson(s, policy, { id, name, birthTick, tier = 'B', institutionId = '', occupation = '', sourceId, cause, regionId }, tick) {
     need(!people(s)[id] && birthTick <= tick, 'identity/birth conflict');
     const p = { id, identity: { name, birthTick, introducedTick: tick, origin: { cause, sourceId } }, tier, status: { kind: 'active', tick },
         career: { occupation, institutionId, since: tick }, health: { impairment: '', since: tick }, route: { id: '', since: tick },
         bodyAge: ageAt(birthTick, tick), bodyAt: tick, matured: ageAt(birthTick, tick) >= policy.adultAge,
         retirementTick: anniversary(birthTick, policy.retirementAge), deathTick: anniversary(birthTick, policy.mortalityAge + noise(policy, id)),
         contacts: 0, lastContactSource: '', detail: tier === 'A' ? { residence: 'opening_hub', notes: '' } : null };
-    if (s.regional) p.regionId = s.institutions[institutionId]?.regionId ?? s.regional.currentRegionId;
+    if (s.regional) p.regionId = regionId ?? s.institutions[institutionId]?.regionId ?? s.regional.currentRegionId;
     s.people[id] = p; event(s, cause === 'birth' ? 'birth' : 'introduction', tick, [id], { birthTick, sourceId, cause });return p;
 }
 export function initialLifetimes(policy) {
@@ -235,7 +235,7 @@ function resolve(snapshot, s, policy, target) {
         }
         if (e.kind === 'birth') {
             const pregnancy = s.pregnancies[e.id];
-            if (!pregnancy.parents.some(id => alive(actor(s, id)))) { pregnancy.status = 'lost';event(s, 'pregnancy_loss', e.tick, pregnancy.parents, { pregnancyId: e.id }); } else { const id = next(s, 'person');makePerson(s, policy, { id, name: pregnancy.name, birthTick: e.tick, sourceId: e.id, cause: 'birth' }, e.tick);pregnancy.status = 'born';pregnancy.childId = id;kinship(s, 'biological', pregnancy.parents, id, e.tick); }
+            if (!pregnancy.parents.some(id => alive(actor(s, id)))) { pregnancy.status = 'lost';event(s, 'pregnancy_loss', e.tick, pregnancy.parents, { pregnancyId: e.id }); } else { const id = next(s, 'person');makePerson(s, policy, { id, name: pregnancy.name, birthTick: e.tick, sourceId: e.id, cause: 'birth', regionId: pregnancy.parents.map(id => people(s)[id]).find(p => alive(p))?.regionId }, e.tick);pregnancy.status = 'born';pregnancy.childId = id;kinship(s, 'biological', pregnancy.parents, id, e.tick); }
         }
         succeed(s, policy, e.tick);
         syncEnterprise(snapshot, s, policy, e.tick);

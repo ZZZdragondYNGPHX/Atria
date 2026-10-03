@@ -39,6 +39,7 @@ export function lifetimeSources(snapshot) {
     const out = [];
     const add = (key, value, refs, visible = true) => out.push({ id: 'lifetime.' + key, domainId: 'lifetimes', recordId: key, path: ['value'], public: visible, refs, label: key, value });
     for (const [id, p] of Object.entries(people(s)).sort()) {
+        if (s.regional) add('person.' + id + '.residence', { regionId: p.regionId }, ['actor:' + id, 'location:' + p.regionId]);
         for (const field of ['identity', 'status', 'career', 'route', 'health']) add('person.' + id + '.' + field, p[field], ['actor:' + id]);
     }
     for (const group of ['bonds', 'kinship', 'pregnancies', 'institutions', 'offices', 'terms', 'legacies', 'milestones']) for (const [id, item] of Object.entries(s[group]).sort()) add(group + '.' + id, item, item.refs, item.visibility !== 'secret');

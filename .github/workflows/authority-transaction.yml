@@ -120,6 +120,7 @@ jobs:
       - name: Authority source lint
         run: >-
           npx --no-install eslint
+          public/shared/native-lifetime-runtime.js src/native/lifetime-authority.js
           public/shared/native-regional-contract.js public/shared/native-regional-runtime.js src/native/regional-authority.js
           public/shared/native-enterprise-contract.js public/shared/native-enterprise-runtime.js src/native/enterprise-authority.js
           public/shared/native-renewal-contract.js public/shared/native-renewal-runtime.js src/native/renewal-authority.js

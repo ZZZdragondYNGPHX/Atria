@@ -78,6 +78,14 @@ describe('Native regional history in the shared Lifetime candidate', () => {
         expect(life(s).enterprise).toEqual(before);
         expect(() => region(s, 'fidelity', { regionId: 'salt_coast', tier: 'active' })).toThrow('interests');
     });
+    test('unrelated bonds and transferred property cannot authorize a remote hub', () => {
+        let { s, sourceId } = caseFile(fixture()); s = act(s, 'career.take', { roleId: 'merchant', institutionId: '', sourceId });
+        s = act(s, 'asset.acquire', { placeId: 'river_foundry', sourceId });
+        const id = Object.keys(life(s).enterprise.assets)[0]; s = act(s, 'asset.manage', { id, action: 'transfer', amount: 0, otherId: 'partner', sourceId });
+        s = act(s, 'bond.form', { firstId: 'leader', secondId: 'partner', kind: 'partnership', visibility: 'public', consent: true });
+        s = travel(s, 'northreach');
+        expect(() => region(s, 'fidelity', { regionId: 'eastbank', tier: 'active' })).toThrow('interests');
+    });
     test('macro domains affect geography and bounded view does not leak or mutate hidden state', () => {
         const s = act(fixture(), null, {}, year(50)), w = life(s).regional, events = Object.values(w.events).filter(e => e.kind === 'macro');
         for (const domain of ['economy', 'law', 'war', 'migration', 'health', 'movement', 'occult', 'technology']) expect(events.some(e => e.detail[domain])).toBe(true);
@@ -85,6 +93,14 @@ describe('Native regional history in the shared Lifetime candidate', () => {
         const view = regionalView(s); expect(JSON.stringify(view)).not.toMatch(/loyalty|ambition|concealed|hidden/); view.regions[0].technology.research = 99;
         expect(life(s).regional.regions[view.regions[0].id].technology.research).toBeLessThan(9);
         expect(Buffer.byteLength(JSON.stringify(regionalView(s)))).toBeLessThan(6000);
+    });
+    test('remote birth uses the parent residence; demotion compacts only empty hot details', () => {
+        let s = fixture(); s = act(s, 'family.conceive', { parentId: 'partner', otherParentId: '', name: 'Resident child', consent: true });
+        const identity = structuredClone(people(life(s)).partner.identity);
+        s = travel(s, 'northreach'); expect(people(life(s)).partner.detail).toBeNull();
+        s = act(s, null, {}, year(1)); const childId = Object.values(life(s).kinship)[0].childId;
+        expect(people(life(s))[childId].regionId).toBe('eastbank'); expect(people(life(s)).partner.identity).toEqual(identity);
+        s = travel(s, 'eastbank'); expect(people(life(s)).partner.detail.residence).toBe('eastbank');
     });
     test('Era-sensitive grammar is unavailable early and uses later systemic rules', () => {
         let s = fixture(); const p = s.manifest.runtime.experienceContract.lifecycleRuntime.lifetimes;

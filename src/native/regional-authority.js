@@ -24,9 +24,9 @@ export function initialRegional(policy) {
 }
 function connected(s, id) {
     const e = s.enterprise;
-    return s.regional.currentRegionId === id || sorted(e.assets).some(a => s.renewal.places[a.placeId]?.regionId === id && !['destroyed', 'seized'].includes(a.status)) ||
+    return s.regional.currentRegionId === id || sorted(e.assets).some(a => a.ownerId === s.continuity.protagonistId && s.renewal.places[a.placeId]?.regionId === id && !['destroyed', 'seized'].includes(a.status)) ||
         sorted(e.contracts).some(c => c.status === 'active' && people(s)[c.agentId]?.regionId === id) ||
-        sorted(s.bonds).some(b => ['active', 'estranged'].includes(b.state) && b.people.some(x => people(s)[x]?.regionId === id)) ||
+        sorted(s.bonds).some(b => b.people.includes(s.continuity.protagonistId) && ['active', 'estranged'].includes(b.state) && b.people.some(x => people(s)[x]?.regionId === id)) ||
         sorted(s.renewal.active).some(m => s.renewal.places[m.placeId]?.regionId === id);
 }
 export function syncRegional(s, policy) {
@@ -34,7 +34,14 @@ export function syncRegional(s, policy) {
     const w = s.regional, here = w.currentRegionId;
     for (const x of Object.values(s.institutions)) x.regionId ??= here;
     for (const x of Object.values(s.renewal.places)) x.regionId ??= s.renewal.places[x.districtId]?.regionId ?? here;
-    for (const x of Object.values(people(s))) x.regionId ??= s.institutions[x.career.institutionId]?.regionId ?? here;
+    for (const x of Object.values(people(s))) {
+        x.regionId ??= s.institutions[x.career.institutionId]?.regionId ?? here;
+        // Only the rebuildable empty hot-profile stub is compacted. Never erase
+        // authored notes, biography, lifetime status, offices or relationships.
+        if (x.status.kind === 'active' && x.tier === 'A' && w.regions[x.regionId].tier === 'active') {
+            x.detail ??= { residence: x.regionId, notes: '' }; x.detail.residence = x.regionId;
+        } else if (x.detail && !x.detail.notes) x.detail = null;
+    }
     for (const r of sorted(w.regions)) if (r.tier === 'cold' && connected(s, r.id)) r.tier = 'warm';
 }
 function materialize(s, policy, r, tick, api) {

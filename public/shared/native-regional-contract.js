@@ -5,7 +5,8 @@ const I = (minimum, maximum) => ({ type: 'integer', minimum, maximum });
 const O = properties => ({ type: 'object', properties, required: Object.keys(properties), additionalProperties: false });
 const A = (items, maxItems) => ({ type: 'array', items, maxItems });
 export function regionalCommand(verb, input) {
-    if (!['travel', 'fidelity', 'invest'].includes(verb) || Object.keys(input).some(k => !['regionId', 'mode', 'tier', 'project', 'sourceId'].includes(k))) throw new TypeError('Regional command');
+    const allowed = { travel: ['regionId', 'mode'], fidelity: ['regionId', 'tier'], invest: ['regionId', 'project', 'sourceId'] }[verb];
+    if (!allowed || Object.keys(input).some(k => !allowed.includes(k))) throw new TypeError('Regional command');
     return { operation: 'world.change', input: { operation: 'region.' + verb, id: input.regionId, otherId: input.mode || input.tier || input.project || '', sourceId: input.sourceId || '', name: '' } };
 }
 export function assertRegionalPolicy(p, policy) {
