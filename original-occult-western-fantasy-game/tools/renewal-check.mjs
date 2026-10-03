@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
+import { renewalProfile } from './renewal-profile.mjs';
 export async function renewalChecks(h){
+    const started = performance.now();
+    const regional = process.argv.includes('--regional-only');
+    const profile = renewalProfile({ regional, full: process.argv.includes('--regional-full'), override: process.env.ATRIA_RENEWAL_TURNS });
+    const { turns, years, fast } = profile;
     const {anniversary,lifetimeView,people}=await h.load('public/shared/native-lifetime-runtime.js');
     const {validateLifetimes}=await h.load('src/native/lifetime-authority.js');
     const {validateHistory}=await h.load('src/native/history-authority.js');
@@ -16,7 +21,6 @@ export async function renewalChecks(h){
     };
     const {enterpriseCommand}=await h.load('public/shared/native-enterprise-contract.js');
     const {regionalCommand}=await h.load('public/shared/native-regional-contract.js');
-    const regional=process.argv.includes('--regional-only');
     const op=(operation,input)=>{const c=enterpriseCommand(operation,input);return act({minutes:0,lifetime:{operation:c.operation,[c.operation.replaceAll('.','_')]:c.input}});};
     const region=(verb,input)=>{const c=regionalCommand(verb,input);return op(c.operation,c.input);};
     const wait=until=>act({minutes:until-clock()});
@@ -42,11 +46,10 @@ export async function renewalChecks(h){
     const r=()=>life().renewal,history=()=>s.states.atri_lifecycle.history;
     const {renewalView}=await h.load('public/shared/native-renewal-runtime.js');
     const structures=[],samples=[],reused=[];let maximumProjectionBytes=0;
-    const turns=Number(process.env.ATRIA_RENEWAL_TURNS ?? 5000);
     let meaningful=0;
     const turn=async(operation,input)=>{
         const before=JSON.stringify({active:r().active,places:r().places,canonical:r().canonical});
-        const target=Math.floor((meaningful+1)*anniversary(0,50)/turns);
+        const target=Math.floor((meaningful+1)*anniversary(0,years)/turns);
         await act({minutes:Math.max(0,target-clock()),lifetime:{operation,[operation.replaceAll('.','_')]:input}});
         assert.notEqual(JSON.stringify({active:r().active,places:r().places,canonical:r().canonical}),before,'not a prose/no-op/sequence-only turn');meaningful++;
     };
@@ -82,11 +85,11 @@ export async function renewalChecks(h){
                     if(returned && !coast && clock()>=anniversary(0,45)){await travel('salt_coast');coast=true;}
                     organization=organizations[life().regional.currentRegionId]??'';
                 }
-                if(r().completed && r().completed%(clock()>=anniversary(0,25)?20:100)===0){
+                if(r().completed && r().completed%(profile.hookEvery ?? (clock()>=anniversary(0,25)?20:100))===0){
                     const cause=Object.values(r().canonical).filter(m=>m.outcome).at(-1);
                     assert(cause,'world renewal has a resolved canonical cause');
                     const sourceId=cause.id;
-                    if(r().completed%100===0){
+                    if(r().completed%profile.worldEvery===0){
                     const district=regional?Object.values(r().places).find(p=>p.kind==='district'&&p.regionId===life().regional.currentRegionId).id:'eastbank';
                     await op('world.change',{id:district,operation:'expand',otherId:'',sourceId,name:''});
                     if(!organization){await op('world.change',{id:'',operation:'found',otherId:'',sourceId,name:'Civic Witness Association'});organization=r().last.id;}
@@ -95,7 +98,7 @@ export async function renewalChecks(h){
                     }
                     const caseFact=Object.values(history().facts).find(f=>f.value?.id===cause.id&&f.key.startsWith('renewal.'));
                     await act({minutes:0,history:{operation:'artifact.create',artifact_create:{kind:'case_file',title:'Record of a settled local matter',content:'An attributed case disposition survives for later verification.',sourceId:caseFact.id,parentId:''}}});
-                    familySource=r().completed===800?artifact:Object.values(history().artifacts).at(-1).id;
+                    familySource=(fast ? r().completed>=12 : r().completed===800)?artifact:Object.values(history().artifacts).at(-1).id;
                     await act({minutes:0,history:{operation:'hook.create',hook_create:{title:'Re-examine the earlier disposition',sourceId:familySource}}});
                     pendingHook=Object.values(history().hooks).at(-1).id;
                     await wait(clock()+91*1440);
@@ -109,13 +112,13 @@ export async function renewalChecks(h){
             }
             maximumProjectionBytes=Math.max(maximumProjectionBytes,Buffer.byteLength(JSON.stringify(renewalView(s))));
             if(meaningful%100===0)console.log('renewal progress',meaningful);
-            if(meaningful%1000===0 || meaningful===turns){
+            if(meaningful%profile.checkpointEvery===0 || meaningful===turns){
                 await restore('renewal-'+meaningful);
                 samples.push({turns:meaningful,tick:clock(),activeBytes:Buffer.byteLength(JSON.stringify(s.states)),historyBytes:Buffer.byteLength(JSON.stringify(history())),maximumProjectionBytes,completed:r().completed});
                 console.log('renewal checkpoint',JSON.stringify({...samples.at(-1),portableSave:restores.at(-1)}));
             }
         }
-        assert(clock()>=anniversary(0,50));assert.equal(meaningful,turns);
+        assert(clock()>=anniversary(0,years));assert.equal(meaningful,turns);
         for(let i=0;i<structures.length;i++)for(let j=Math.max(0,i-64);j<i;j++){
             const distance=semanticDistance(structures[i].structure,structures[j].structure);
             assert(distance>0);if(structures[i].tick-structures[j].tick<90*1440)assert(distance>=3);
@@ -123,11 +126,19 @@ export async function renewalChecks(h){
         const summarize=items=>({matters:items.length,semanticStructures:new Set(items.map(x=>JSON.stringify(x.structure))).size,familyBound:items.filter(x=>x.familyId).length,institutions:new Set(items.map(x=>x.institutionId)).size,paths:items.reduce((out,x)=>(out[x.structure.path]=(out[x.structure.path]??0)+1,out),{})});
         const semanticAudit={early:summarize(structures.filter(x=>x.tick<anniversary(0,25))),late:summarize(structures.filter(x=>x.tick>=anniversary(0,25)))};
         if(turns>=5000){assert(reused.length>=5);assert(structures.filter(x=>x.tick>=anniversary(0,40)).length>100);}
-        if(turns>=5000)assert(Object.values(life().kinship).length>=2);
+        if(turns>=5000 || fast)assert(Object.values(life().kinship).length>=2);
+        if(fast){
+            assert(reused.length>=3,'focused run exercises repeated historical hooks');
+            assert(reused.some(x=>x.sourceId===artifact && x.tick>=anniversary(0,25)),'opening evidence is reused decades later');
+            assert(semanticAudit.early.matters>=3 && semanticAudit.late.matters>=3,'semantic audit spans early and late eras');
+            assert.equal(samples.length,4,'four measured content checkpoints');
+            assert.equal(restores.length,10,'three journeys and four content checkpoints use actual imports');
+            assert(Object.values(life().institutions).some(x=>x.predecessors?.length),'institution succession retains lineage');
+        }
         assert(queryHistory(s,{facet:'artifact',value:artifact}).items.length>0);assert(history().memory[artifact].marked);
         assert(Object.values(history().hooks).filter(x=>x.status==='resolved').length>=reused.length-1);
         if(regional){assert(departed&&returned&&coast);assert(regionalEras.size>=3);assert(regionalTrips.find(t=>t.to==='eastbank').tick-regionalTrips[0].tick>=anniversary(0,29));assert(Object.values(life().enterprise.contracts)[0].reviews>0);}
-        return {phase:regional?(turns>=5000?'Phase 6 multi-region 5k/50-year candidate':'Phase 6 regional smoke (not a gate)'):'Phase 4 Gate B candidate',...(regional?{regionalTrips,eras:[...regionalEras],regionalEvents:Object.keys(life().regional.events).length,remoteAssetId:assetId,remoteReviews:Object.values(life().enterprise.contracts)[0].reviews,maximumWork:Object.fromEntries(['readGrants','appCommands','effects','lifetimeEvents'].map(k=>[k,Math.max(0,...work.map(w=>w[k]??0))]))}:{} ),meaningfulContentTurns:meaningful,years:50,kinshipEdges:Object.keys(life().kinship).length,institutions:Object.keys(life().institutions).length,completed:r().completed,structures:structures.length,semanticStructures:new Set(structures.map(x=>JSON.stringify(x.structure))).size,familyBoundMatters:structures.filter(x=>x.familyId).length,semanticAudit,reused,restores,samples,
-            caveat:'Stage candidate evidence, not final integration or Gate C. Content turns exclude setup, compaction and prose. Snapshot sizes exclude accumulated explicit backup containers.'};
+        return {phase:regional?(fast?'Phase 6 focused regional acceptance':turns>=5000?'Phase 6 multi-region 5k/50-year optional soak':'Phase 6 regional smoke (not a gate)'):turns>=5000?'Phase 4 Gate B candidate':'Phase 4 renewal smoke (not a gate)',...(regional?{regionalTrips,eras:[...regionalEras],regionalEvents:Object.keys(life().regional.events).length,remoteAssetId:assetId,remoteReviews:Object.values(life().enterprise.contracts)[0].reviews,maximumWork:Object.fromEntries(['readGrants','appCommands','effects','lifetimeEvents'].map(k=>[k,Math.max(0,...work.map(w=>w[k]??0))]))}:{} ),profile:profile.profile,elapsedMs:Math.round(performance.now()-started),meaningfulContentTurns:meaningful,years,kinshipEdges:Object.keys(life().kinship).length,institutions:Object.keys(life().institutions).length,completed:r().completed,structures:structures.length,semanticStructures:new Set(structures.map(x=>JSON.stringify(x.structure))).size,familyBoundMatters:structures.filter(x=>x.familyId).length,semanticAudit,reused,restores,samples,
+            caveat:'Focused regional acceptance is not Gate B, high-turn growth proof or Gate C. Content turns exclude setup, compaction and prose. Snapshot sizes exclude accumulated explicit backup containers.'};
     }finally{if(owned)await owned.cleanup();}
 }

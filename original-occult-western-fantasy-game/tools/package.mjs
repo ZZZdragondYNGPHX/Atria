@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const mode = args[0] || 'validate';
+if (args.includes('--regional-full') && !args.includes('--regional-only')) throw new Error('--regional-full requires --regional-only');
 const option = name => {
     const index = args.indexOf(name);
     if (index < 0 || !args[index + 1] || args[index + 1].startsWith('--')) throw new Error('Missing value for ' + name);

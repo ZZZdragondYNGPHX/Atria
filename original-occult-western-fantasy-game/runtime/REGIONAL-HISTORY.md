@@ -108,10 +108,26 @@ Final information architecture follows player-facing-experience.md in Phase 7.
 ## Verification boundary
 
 Run node tools/package.mjs validate --regional-only --core <compatible Core>.
-Default is 5,000 actual content-mutating turns over 50 years; environment override
-ATRIA_RENEWAL_TURNS is smoke evidence only. The existing renewal checker is reused,
-including semantic-distance audits, generations, original historical evidence,
-portable one-revision checkpoints and actual alternating Fs/SQLite imports.
+Default is the user-approved focused Phase 6 acceptance: 100 actual content-mutating
+turns with sparse event-driven advancement across 50 in-world years. The calendar
+span retains generations, decades of regional absence and Era transitions without
+5,000 persistence transactions. It is not Gate B, high-turn growth proof or Gate C.
+No simulation rates, dates, permissions or safety budgets are changed.
+
+The existing renewal checker forces historical Hook reuse every three completed
+matters and institutional change every six. It checks at least two kinship edges,
+early/late semantic variation, opening evidence reused after 25 years, retained
+institution lineage, and four content checkpoints at turns 25/50/75/100. Together
+with departure/arrival saves this performs ten actual alternating Fs/SQLite
+imports, each preserving all authoritative state in a one-revision checkpoint.
+Elapsed milliseconds and the explicit profile label are included in the result.
+
+Opt into the original 5,000-turn soak with --regional-only --regional-full.
+ATRIA_RENEWAL_TURNS remains available for diagnostics; custom short counts other
+than the exact 100-turn acceptance are labeled smoke and do not satisfy Phase 6.
+Invalid counts fail closed. Hosted package_check=regional uses focused acceptance;
+regional-soak explicitly opts into the long run. Prefer local execution; retain
+existing exact-code four-adapter evidence instead of rerunning it routinely.
 
 The regional scenario adds remote foundry ownership/delegation, earned dual hubs,
 Eastbank departure around year 10, return around year 40, and later Salt Coast
