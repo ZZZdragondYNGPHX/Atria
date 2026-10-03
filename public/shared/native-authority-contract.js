@@ -1,6 +1,22 @@
 import { fields, json, assertJsonDeclaration } from './native-values.js';
 import { taskId } from './native-task-contract.js';
 
+const publicRefusals = Object.freeze({
+    'Enterprise delegation policy': 'delegation_policy',
+    'Enterprise delegation policy authority': 'delegation_unavailable',
+    'Enterprise organization refuses': 'organization_refused',
+    'Enterprise delegate eligible': 'delegate_unavailable',
+    'Enterprise one delegate authority': 'delegate_authority',
+    'Enterprise identity evidence': 'identity_evidence',
+    'Artifact copy source unavailable': 'artifact_copy',
+    'Lifetime must return before acting': 'personal_absence',
+    'Protagonist must return before acting': 'personal_absence',
+});
+export function authorityPublicRefusal(error) {
+    if (error?.code === 'AUTHORITY_PREPARATION_FAILED' && Object.values(publicRefusals).includes(error.publicRefusal)) return error.publicRefusal;
+    return error instanceof TypeError && Object.hasOwn(publicRefusals, error.message) ? publicRefusals[error.message] : null;
+}
+
 // C1 declares/compiles only. Host execution support is deliberately not advertised.
 export const AUTHORITY_LIMITS = Object.freeze({
     transactions: 64, publications: 16, readGrants: 16, readFields: 16,

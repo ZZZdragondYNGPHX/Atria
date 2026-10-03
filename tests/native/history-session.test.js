@@ -5,6 +5,7 @@ import { authorityCandidateFixture } from './helpers/authority-candidate-fixture
 import { closed } from './helpers/authority-fixture.js';
 import { lifecycleFixture } from './helpers/lifecycle-fixture.js';
 import { buildAtriaPackageContainer } from '../../src/native/index.js';
+import { publicBridgeError } from '../../public/shared/native-frontend-bridge.js';
 
 function fixture() {
     const f = authorityCandidateFixture();
@@ -35,6 +36,10 @@ function fixture() {
         { kind: 'app.command', domainId: 'chronology', commandId: 'order', recordId: 'main', args: {} },
         { kind: 'clock.advance', commandId: 'advance', ticks: 1 },
     ];
+    const copy = structuredClone(f.logic.transactions[0]);
+    Object.assign(copy, { id: 'history.copy', verb: 'copy', reads: [], validators: [], effects: [], inputSchema: closed({ parentId: { type: 'string', maxLength: 128 } }),
+        history: [{ operation: 'artifact.create', input: { kind: 'letter', title: 'Copy', content: 'An attributed copy', sourceId: '', parentId: { formula: 'args.parentId' } } }] });
+    f.logic.transactions.push(copy);
     f.sync();
     return { f, ...buildAtriaPackageContainer({ manifest: f.base.manifest, sourceFiles: f.installed.sourceFiles, assetPayloads: new Map() }) };
 }
@@ -51,6 +56,14 @@ describe.each(CONTRACT_HARNESSES)('History checkpoint / SaveSystem - $name', ({ 
             const advice = { invocationId: 'history-advice', taskId: 'summarize', variantId: 'default', payload: { text: 'Advice only' }, fingerprint: 'advice-fingerprint' };
             s = await svc.core.recordTaskResult(source.handle, s.session.sessionId, advice, { expectedRevisionId: s.revision.revisionId });
             expect(s.states.atri_task_results.records[0].status).toBe('draft');
+            const player = await svc.core.appendTimeline(source.handle, s.session.sessionId, { role: 'user', content: 'Try copying an unavailable carrier.' });
+            const beforeRefusal = structuredClone(player);
+            const preparation = await svc.core.prepareAuthorityTurn(source.handle, player, { transactionId: 'history.copy', input: { parentId: 'unavailable' } }).catch(error => error);
+            expect(preparation).toMatchObject({ code: 'AUTHORITY_PREPARATION_FAILED', publicRefusal: 'artifact_copy' });
+            expect(publicBridgeError(preparation)).toBe('bridge_authority_artifact_copy');
+            expect(preparation.cause).toBeUndefined(); expect(preparation.message).not.toContain('unavailable');
+            expect(await svc.core.load(source.handle, s.session.sessionId)).toEqual(beforeRefusal);
+            s = player;
             const act = async (service, handle, state, n) => {
                 state = await service.core.appendTimeline(handle, state.session.sessionId, { role: 'user', content: 'Change the recorded note.' });
                 const p = await service.core.prepareAuthorityTurn(handle, state, { transactionId: 'note.update', input: { target: 'main', text: 'Note ' + n, amount: 1 } });

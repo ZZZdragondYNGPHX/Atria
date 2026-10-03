@@ -1,6 +1,7 @@
 import { fields } from './native-frontend-contract.js';
 // Data-only protocol shared by all frontend transports (including future Script).
 import { validateSchemaValue } from '../scripts/native/experience/world/schema.js';
+import { authorityPublicRefusal } from './native-authority-contract.js';
 export const bridgeFailure = code => Object.assign(new Error(code), { code });
 export function bridgeValue(value, schema) {
     if (!validateSchemaValue(value, schema).ok) throw bridgeFailure('bridge_schema_invalid');
@@ -24,16 +25,7 @@ export function publicBridgeError(error) {
     if (/conflict|stale/.test(code)) return 'bridge_revision_stale';
     if (/cancel/.test(code)) return 'bridge_cancelled';
     // Closed public refusal reasons, never raw Authority/provider diagnostics.
-    const refusal = {
-        'Enterprise delegation policy': 'delegation_policy',
-        'Enterprise delegation policy authority': 'delegation_unavailable',
-        'Enterprise organization refuses': 'organization_refused',
-        'Enterprise delegate eligible': 'delegate_unavailable',
-        'Enterprise one delegate authority': 'delegate_authority',
-        'Enterprise identity evidence': 'identity_evidence',
-        'Artifact copy source unavailable': 'artifact_copy',
-        'Lifetime must return before acting': 'personal_absence',
-    }[error instanceof TypeError ? error.message : ''];
+    const refusal = authorityPublicRefusal(error);
     if (refusal) return 'bridge_authority_' + refusal;
     return error instanceof TypeError ? 'bridge_target_invalid' : 'bridge_target_failed';
 }

@@ -6,7 +6,7 @@ import { assertJsonDeclaration, fields } from '../../public/shared/native-values
 import { assertTaskValue, taskId } from '../../public/shared/native-task-contract.js';
 import { compileDataSchema } from '../../public/shared/native-data-schema.js';
 import { simulationInstantSchema } from '../../public/shared/native-simulation-contract.js';
-import { AUTHORITY_LIMITS } from '../../public/shared/native-authority-contract.js';
+import { AUTHORITY_LIMITS, authorityPublicRefusal } from '../../public/shared/native-authority-contract.js';
 import { projectInformation, assertInformationAnchor } from '../../public/shared/native-information-runtime.js';
 import { compileFormula, evaluateFormulaAst } from '../../public/scripts/native/experience/logic/formula.js';
 import { createDeterministicRng } from '../../public/scripts/native/experience/logic/rng.js';
@@ -58,10 +58,10 @@ function validateCandidate(base, contract) {
     validateLifecycle({ ...base, manifest: { ...base.manifest,
         runtime: { ...base.manifest.runtime, experienceContract: contract } } });
 }
-function failure(operation) {
+function failure(operation, refusal = null) {
     // Never attach underlying formula/schema errors, private values or a cause.
     const error = new TypeError('Authority ' + operation + ' failed');
-    error.code = 'AUTHORITY_PREPARATION_FAILED'; return error;
+    error.code = 'AUTHORITY_PREPARATION_FAILED'; if (refusal) error.publicRefusal = refusal; return error;
 }
 
 export function buildAuthorityObservation(base) {
@@ -300,7 +300,7 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
         const receipt = bounded({ schemaVersion: 1, authorityId: identity, transactionId: transaction.id, verb: transaction.verb,
             anchor: request.anchor, playerMessageId: player.messageId, result: projection }, transaction.receipt.maxBytes);
         return freeze({ candidate, receipt, identity, inputHash, work: { ...budget.counts } });
-    } catch { throw failure('transaction preparation'); }
+    } catch (error) { throw failure('transaction preparation', authorityPublicRefusal(error)); }
 }
 
 // Server-internal system entrypoint. No caller-selected transaction or invented
