@@ -124,3 +124,7 @@ The regional event ceiling is 256 and active-hub ceiling two, inside prior safet
 limits. No durable fact is evicted on exhaustion. Alert lists are projections of
 retained events. Growth means active state/portable export, never accumulated old
 revisions, explicit SavePoints or backup files. Preserve releases/1.0.0.atria.
+
+Person residence is an exact History source. Birth uses the actual parent region,
+not the absent protagonist location. Demotion compacts only empty rebuildable hot
+profile stubs; authored notes and all canonical identity/relationship state remain.
