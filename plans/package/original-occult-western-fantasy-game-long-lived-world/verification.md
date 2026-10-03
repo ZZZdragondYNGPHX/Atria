@@ -1,7 +1,20 @@
 # Long-Lived World — Verification and Release Gates
 
 **Task ID:** `refactor/original-occult-western-fantasy-long-lived-world`  
-**Status:** Approved implementation; Phase 6 focused-validation amendment (2026-10-03)
+**Status:** Approved implementation; final workload amendment (2026-10-04)
+
+## User amendment — 2026-10-04
+
+The user authorized continuing directly through Phase 8 and release after Phase 7
+is complete and pushed, and then requested fewer turns to avoid hours per run.
+The implementation workload is now Gate A: 250 content turns / at least 10 years;
+Gate B: 500 / at least 50 years; Gate C: 1,000 / at least 200 years. These can be
+measured checkpoints of one continuous 1,000-turn / 200-year save. All coverage,
+canonical invariants, real portable imports, semantic auditing, seed matrix and UI
+requirements remain. Measure storage/context at 250, 500 and 1,000 turns.
+The original 10k soak becomes optional stress evidence, not a release blocker;
+never describe the reduced acceptance as a completed 10k soak. The Phase 6
+100-turn focused amendment remains unchanged.
 
 ## 1. Release claim
 
@@ -31,7 +44,7 @@ Pure prose/no-op chat does not count.
 
 ## 3. Development gates
 
-### Gate A — 1k turns / 10 years
+### Gate A — 250 turns / at least 10 years
 
 Purpose:
 
@@ -42,7 +55,7 @@ Purpose:
 - prove early compaction;
 - verify repeated Save/Restore.
 
-### Gate B — 5k turns / 50 years
+### Gate B — 500 turns / at least 50 years
 
 Purpose:
 
@@ -87,13 +100,13 @@ This is a focused stage gate, **not Gate B**, a 5k growth/stress claim or Gate C
 Gate A/B remain available for dedicated stress work; the Phase 8 final release
 requirement below is unchanged by this Phase 6 amendment.
 
-### Gate C — Final release: 10k turns / 200 years
+### Gate C — Final release: 1k turns / at least 200 years
 
 This is the hard completion gate.
 
 ## 4. Mandatory final-soak coverage
 
-The 10k/200-year soak must demonstrate:
+The amended 1k/200-year soak must demonstrate:
 
 - one continuous protagonist identity;
 - multiple ordinary NPC generations;
@@ -198,9 +211,9 @@ Long-lived history must not remain full-fidelity forever.
 
 Validation should compare growth across checkpoints such as:
 
-- 1k turns;
-- 5k turns;
-- 10k turns.
+- 250 turns;
+- 500 turns;
+- 1,000 turns.
 
 Release-blocking signs include:
 
@@ -253,4 +266,4 @@ Only tests actually run may be reported as passed.
 
 ## 13. Completion rule
 
-If the 10,000-authoritative-turn / 200-in-world-year gate has not passed with the required coverage and invariants, the Long-Lived World project remains incomplete.
+If the amended 1,000-content-turn / 200-in-world-year gate has not passed with the required coverage and invariants, the Long-Lived World project remains incomplete.

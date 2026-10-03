@@ -3,15 +3,21 @@
 **Task ID:** `refactor/original-occult-western-fantasy-long-lived-world`  
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
-**Plan status:** Approved Implementation Plan v1.2 — Phase 6 focused validation
+**Plan status:** Approved Implementation Plan v1.3 — final workload amendment
 
-**Plan generation:** v1.2
+**Plan generation:** v1.3
 
 2026-10-03 user amendment: minimize date-validation wall time. Phase 6 uses the
 100-content-turn focused regional acceptance in verification.md; sparse 50-year
 calendar coverage preserves decades-away and generational checks. The original
 5k regional soak is optional, not a stage blocker. Phase 8/Gate C and the existing
 Phase 7 UI specification remain unchanged. Live stage state is in HANDOFF.md.
+
+2026-10-04 user amendment: complete and push Phase 7, then continue directly
+through Phase 8 and release. Reduce final validation to measured 250/500/1,000
+content-turn gates with the 200-year span and all invariant/coverage requirements
+retained; original 10k is optional stress. See verification.md. This later
+instruction supersedes the default phase stop and original mandatory turn count.
 
 ## 1. Why this plan exists
 
@@ -114,7 +120,7 @@ Key frozen criteria include:
 - dynamically scoped multi-region world;
 - macro history without full grand-strategy simulation;
 - optional city/national/international player influence earned through causal leverage;
-- **10,000 authoritative turns + at least 200 in-world years** as the final hard release gate;
+- **1,000 real content turns + at least 200 in-world years** as the user-amended final release gate;
 - sublinear history/context growth and century-scale historical retrieval;
 - actual Save/Restore, runtime and UI evidence where required.
 

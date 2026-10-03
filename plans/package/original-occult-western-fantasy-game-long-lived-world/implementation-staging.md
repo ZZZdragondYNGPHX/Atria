@@ -7,6 +7,15 @@
 **Legacy save compatibility:** not required  
 **Status:** Approved implementation staging
 
+## User amendment — 2026-10-04
+
+After completing and pushing Phase 7, continue Phase 8 to release in the same work
+round; the user explicitly superseded the default stop at that boundary. Update
+its Record/HANDOFF before continuing. The user also requested a shorter final
+validation workload: use the amended 250/500/1,000-content-turn checkpoints with
+at least 200 years and all hard coverage/invariants in verification.md. Do not
+claim that this is the original 10k stress gate.
+
 ## 1. Global execution rules
 
 The full project uses one task branch for all implementation phases.
@@ -353,9 +362,9 @@ Stop after Phase 7.
 
 **Execute:**
 
-- Gate A: 1k turns / 10 years;
-- Gate B: 5k turns / 50 years;
-- Gate C: **10k turns / 200 years**;
+- Gate A: 250 content turns / at least 10 years;
+- Gate B: 500 content turns / at least 50 years;
+- Gate C: **1k content turns / at least 200 years** (user-amended final workload);
 - deterministic fixtures;
 - multi-seed matrix;
 - multi-generation lifecycle;
@@ -398,7 +407,7 @@ The ordering is intentional:
 5. progression/delegation must exist before large player organizations are practical;
 6. multi-region/macro/Era scope must build on a stable local long-lived world;
 7. UX should expose validated systems rather than drive their internal architecture;
-8. the 10k/200y test belongs at final integration, not as a substitute for staged correctness.
+8. the amended 1k/200y test belongs at final integration, not as a substitute for staged correctness.
 
 Do not reorder phases merely to chase visible features.
 

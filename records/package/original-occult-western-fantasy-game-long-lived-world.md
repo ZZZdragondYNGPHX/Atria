@@ -1040,3 +1040,15 @@ Run from game directory, with an independent checkout of the support branch:
 Frontend harness serves the configured forceDist webpack output; prebuild required
 bundles on a new device before running. Use installed browser channel (default
 msedge; ATRIA_BROWSER_CHANNEL is available). Do not copy device paths into code.
+
+
+## Continuation and final workload amendment — 2026-10-04
+
+The user requested pulling the remote task and resuming Phase 7, then explicitly
+authorized proceeding directly through Phase 8 to release after Phase 7 is complete
+and pushed. They subsequently requested fewer turns because each run would take
+hours. Plan v1.3 implements this as 250/500/1,000 measured real content-turn gates
+with the 200-year span and all semantic, canonical, restore, seed and UI coverage
+retained. The original mandatory 10k becomes optional stress; no reduced run is
+represented as 10k evidence. This supersedes historical Phase 7-only stop prompts
+and the original final turn count, but preserves the Phase 6 focused amendment.
