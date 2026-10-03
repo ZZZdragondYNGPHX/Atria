@@ -3,5 +3,5 @@
 *.md text eol=lf
 *.aui text eol=lf
 # Native frontend artifacts fingerprint exact authored bytes and source offsets.
-frontend/** -text !eol
+frontend/** -text !eol whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 *.atria binary
