@@ -2,3 +2,6 @@
 *.mjs text eol=lf
 *.md text eol=lf
 *.aui text eol=lf
+# Native frontend artifacts fingerprint exact authored bytes and source offsets.
+frontend/** -text !eol
+*.atria binary

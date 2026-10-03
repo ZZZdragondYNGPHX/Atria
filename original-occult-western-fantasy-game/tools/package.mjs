@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
+import { isDeepStrictEqual } from 'node:util';
 import { execFileSync } from 'node:child_process';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -156,9 +157,13 @@ if (args.includes('--archive')) {
   assetPayloads.clear();for(const [id,bytes]of actual.assets)assetPayloads.set(id,bytes);
  }else{
  const expected = native.inspectAtriaPackageContainer(builtArchive);
- assert.deepEqual(actual.manifest, expected.manifest, 'Release manifest must match current source');
- assert.deepEqual(actual.sourceFiles, expected.sourceFiles, 'Release compiled files must match current source');
- assert.deepEqual(actual.assets, expected.assets, 'Release Data must match current source');
+ // Never pretty-print whole compiled Buffer maps on mismatch: a small source
+ // fingerprint difference can otherwise allocate gigabytes of diagnostic text.
+ assert(isDeepStrictEqual(actual.manifest, expected.manifest), 'Release manifest must match current source');
+ for(const [label,found,wanted]of [['compiled file',actual.sourceFiles,expected.sourceFiles],['Data asset',actual.assets,expected.assets]]){
+  assert.equal(found.size,wanted.size,'Release '+label+' count must match current source');
+  for(const [id,bytes]of wanted)assert(found.get(id)?.equals(bytes),'Release '+label+' must match current source: '+id);
+ }
  }
 }
 if (mode === 'build') {
