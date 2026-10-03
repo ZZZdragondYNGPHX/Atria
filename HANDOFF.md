@@ -9,7 +9,12 @@ The same Record contains precise checks/bounds/deviations and earlier failures.
 User authorized continuing directly through Phase8 to release. Plan v1.3 uses
 one continuous1,000 real content turns / at least200years with250/500/1,000
 checkpoints; original10k is optional, never claimed. Read index then staging and
-verification. No Phase8 implementation/soak/release yet; current version2.0.0-phase7.
+verification. Phase8 implementation is pushed at Package
+ae48a4669dc27359c428f5cb6b1638202d61475f. Current emitted version is2.0.0.
+A clean fixed candidate build/2.0.0-candidate.atria is under actual --century-only
+and --frontend-only validation on the same Core. Logs: build/p8-century-final.log
+and build/p8-browser-final.log. Both runs remain pending; no final archive has
+been retained or gate success claimed yet.
 
 Next: extend existing renewal-profile/renewal-check/opening-check for fixed century
 profile. Preserve investigated paths by advancing only when opening a matter;
