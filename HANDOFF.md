@@ -5,159 +5,127 @@
 - Task ID: refactor/original-occult-western-fantasy-long-lived-world
 - Primary Workspace: Package
 - Package branch: refactor/original-occult-western-fantasy-long-lived-world
-- Current / tested Package HEAD: 68fac6f6452061fc1e522794b8c4d4bff122923d
-- Compatible verified Core: main@14c2f8f30adc980caa04ec85046548f229bcc8fd
-- Core support fast-forwarded to main; its temporary branch is removed
-- Stage: **Phases 1–5 complete. Phase 6 is next and NOT started.**
+- Current Package HEAD: 3c59ec0697a80886e740bda3f0c8bcdc6c0eaba7
+- Executable Package implementation: b20db579aab53cabe8575409863247fd476c4920
+  (subsequent Package commits are documentation-only).
+- Required Core candidate: feat/native-regional-history@50053928d21e74940c1c2d10b70609e6b83ff253
+- Core baseline/main remains 14c2f8f30adc980caa04ec85046548f229bcc8fd.
+- Local workspaces: Package and independent Core worktree; do not merge main into Package.
+- Stage: **Phases 1–5 complete; Phase 6 implemented candidate, final long-run CI pending.**
+- Phase 6 is NOT complete. Phase 7 is NOT started.
 - Plan: plans/package/original-occult-western-fantasy-game-long-lived-world/index.md
-- Next modules: implementation-staging.md (Phase 6), world-scope.md,
-  era-evolution.md, macro-history.md, time-model.md, verification.md
+- Modules: implementation-staging.md (Phase 6), world-scope.md, era-evolution.md,
+  macro-history.md, time-model.md, verification.md.
 - Record: records/package/original-occult-western-fantasy-game-long-lived-world.md
-- Development: 2.0.0-phase5; final release target: 2.0.0
-- Long-lived package baseline: 79447c0b8aca028c6929ff8f9842f8835676191f; no final integration
+- Development: 2.0.0-phase6; final target: 2.0.0.
+- Long-lived package baseline: 79447c0b8aca028c6929ff8f9842f8835676191f; no final integration.
 
-This is the Phase 5 stop boundary, not permission to implement Phase 6 in this round.
+## Immediate next action
 
-## Completed foundations
+Check true local/remote refs, then read final CI
+[37089757760](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37089757760).
 
-Phases 1–4 retain the continuous protagonist/world, Native clock and sparse
-intervals, exact chronology/lifetimes/family/succession, costly reconstruction,
-tiered canonical history, original Hooks/artifacts, portable checkpoints, renewable
-state-bound Matters and evolving real geography/institutions.
+- Native job 111107432009: **passed 65 suites / 1793 tests**, real four adapters,
+  targeted lint, on the exact Core/Package commits above.
+- Package job 111107432187: **running** at handoff; actual multi-region 5000-content-
+  turn/50-year candidate. Prior comparable Phase 4 long run took ~93.5 minutes.
+- Earlier CI 37088466630 passed 65/1791 Native tests, but its Package run was
+  superseded/cancelled; it is not regional gate evidence.
 
-Phase 5 adds mature ranks and source-distinct horizontal knowledge, permission/
-obligation roles, public identity lifecycle, real title/bank/legal stranding and
-regularization, financial provenance/ledger, inheritance and embodied reset,
-named/office delegation, sparse multi-year cashflow, hidden corruption/audit,
-real failure/closure, four-level organizational hierarchy/aggregate workforce,
-leadership-driven Agenda drift and founder-order refusal. Backend enterpriseView
-is bounded and disclosure-safe; it is not final UI or a sandbox binding.
+This is a Governance Environment Stop for the remote long run, not the Phase 6
+completion boundary. Continue ordinary failures/CI repairs autonomously on the
+same branches. Do not restart the product design or begin final UI.
 
-All writes remain under existing Native Authority/Lifetime/Clock/History/SaveSystem.
-No alternate authority, scheduler, simulator or persistence was introduced.
+## Phase 6 implementation
 
-## Verified Phase 5 evidence
+- Native optional regional declarations/state join existing Lifetime event queue,
+  Clock, History, Authority CAS and SaveSystem. No parallel authority/scheduler/save.
+- Eastbank/Northreach/Salt Coast; aggregate cold history, warm durable interests,
+  earned dual hubs and one physical protagonist location.
+- Historical materialization uses scars/Era, actual offices and adult intake.
+  Birth uses the parent's real region, never the absent protagonist location.
+  Exact person residence is canonical; demotion only compacts empty hot stubs.
+- Paid route/transport/Era/disruption-based journeys; real departure/arrival dates,
+  no teleport or remote personal world/case mutations. Existing local agents operate
+  remotely; wrong-region agents escalate. Transferred property and unrelated bonds
+  cannot confer player regional authority.
+- Sparse fixed-anniversary macro economy/law/war/migration/population/health/movement/
+  occult/technology resolution. Conserved migration and local/enterprise consequences.
+- Three conditional regional eras with retained prerequisites; real changes to
+  travel, business condition, documentary exposure and content evidence paths.
+- Bounded regionalView backend helper, not a frontend sandbox binding.
+- Reused world.change grouping to stay inside the unchanged 24-command limit.
+- Fixed intermediate Native clock validation at journey arrival; complete candidates
+  still must resolve Lifetime to the final Native instant. No diagnostic logger left.
 
-[37078163213](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37078163213)
-passed on the exact Package/Core commits above:
+## Actual local evidence
 
-- 63 Native/adjacent suites / 1776 tests, including real Fs/SQLite/MySQL/PostgreSQL.
-- Focused Package: 50 years, 20 delegated years/four routine reports, eight actual
-  alternating Fs/SQLite Save/Restore transitions; each export has one revision.
-- Identity/title repair, institutional resistance, inherited ownership surviving
-  reconstruction and original marked artifact retrieval were exercised.
-- 40 checker transactions / 37 history meaningful turns including setup; this is
-  not a content soak. Compaction is excluded from meaningful-turn counts.
-- 20/50-year active bytes: 186845 / 280653; enterprise projection: 823 / 827 bytes.
-- Final portable save.json: 285171 bytes; archive: 28685 bytes.
-- Max observed: 14 reads, 11 commands, 13 effects, seven lifetime events.
+- 13 final regional tests, including three seeds, split/whole equivalence, JSON
+  normalization, real costs/rights, remote birth, Era/private facts and atomic budget
+  refusal. Existing enterprise 17, lifetime eight and renewal ten also passed during
+  this work path; exact final full regression evidence is hosted CI above.
+- Final local Fs/SQLite regional Session checks passed with old SavePoints,
+  portable checkpoint preservation, recent Retry and archived Retry refusal.
+- 100-turn/50-year Package smoke passed: ~30-year absence, three regions/Eras,
+  six delegated reports, two kinship edges, seven actual alternating Fs/SQLite
+  imports. This was smoke on the evolving worktree, NOT the 5k gate.
+- Content: 40 resources / 240 assets / 482200 bytes. Targeted lint and whitespace passed.
+- Native candidate builds succeeded; ignored build outputs are not release assets.
 
-Local enterprise regressions: 17 passed; prior Lifetime/Renewal: 18 passed;
-Fs/SQLite Session tests passed. Local MySQL/PostgreSQL connections were refused
-because services were absent; hosted CI above supplies the actual four-adapter
-passes. Targeted lint, content checks, whitespace and final candidate build passed.
-No hosted-model, final UI, physical-device or screen-reader evidence is claimed.
+## Completion work after CI
 
-Core was integrated without new code changes; main tree/HEAD equality and clean
-status were checked. All three main-triggered CI runs passed on the same SHA:
-37078755497 (Authority), 37078755515 (Frontend v3), 37078755452 (Model Prompt Runtime).
-The last includes Core browser regression, not final Package UI acceptance. Cleanup workflow 37078755503 removed the remote support
-branch and local cleanup confirmed its absence.
+1. Inspect complete exact-candidate results and Package artifact/log. If failed,
+   diagnose, fix, commit/push and rerun required checks without raising budgets or
+   dropping facts. Validate retained old marked evidence/Hooks and true content turns.
+2. Record exact 5k/50-year metrics, semantic audit, region/Era/macro coverage,
+   actual imports and work/growth measurements. Do not count compaction/sequence/prose.
+3. If all Phase 6 exits pass, integrate the verified Core support branch into main,
+   verify main on the same code and clean up that temporary support branch under
+   repository governance. Keep the Package task branch; no final package integration.
+4. Update this same Record and live HANDOFF to Phase 6 complete. Generate the Phase 7
+   bootstrap prompt with the actual final SHAs/CI, then STOP. Do not implement Phase 7.
+5. Phase 7 must follow existing player-facing-experience.md, not redo UI design.
 
-## Preserved evidence and caveats
+## Preserved evidence and hard boundaries
 
-Phase 4 full 5k-turn/50-year renewable candidate: CI 37027895867, with 1000 concluded
-Matters, 763 semantic structures, 29 authentic Hook reuses, two descendant
-generations, 18 institutional identities and five real portable imports. This is
-not final wealth/region/Era coverage or Gate C. Phase 2's 1k/10-year history-only
-exercise is not full Gate A. Phase 5's focused 50-year run is not Gate A/B/C.
+Phase 5 37078163213: 63 suites/1776 tests, focused 50-year enterprise evidence,
+20 delegated years/four routine reports and eight actual saves; NOT Gate A/B/C.
+Phase 4 37027895867 remains the earlier renewable 5k/50y candidate, NOT the new
+regional gate or Gate C. Phase 2 1k/10y remains history-core evidence only.
 
-Retain history.compact for portable measurement/export; never count compaction,
-sequence increments or no-op prose as content turns. Preserve referenced/marked
-history, old SavePoints, protected Task/checkpoint/Retry boundaries, normalized
-four-adapter state and atomic budget failures. Do not raise ceilings or drop facts
-for a passing result. The new enterprise 256-record ceiling is a finite safety
-boundary, not proof of unlimited economic-history retention.
+Keep referenced/marked history, old SavePoints, protected Task/checkpoint/Retry
+boundaries, four-adapter normalization and atomic budget rejection. Do not raise
+caps, evict facts, reset property/identity/agency on travel, silently resurrect
+people/institutions, or measure accumulated backups as active growth. Introduction
+is not birth. No v1 migration or final UI/release.
 
-Do not confuse introduction with birth or resurrect dead/retired people/dissolved
-institutions through re-selection. Identity/roles/titles/contracts must remain
-coherent across future region changes. Real estate transfer must not be undone by
-reconstruction. New regions must reuse these authorities rather than reset them.
-
-## Phase 6 scope / stop boundary
-
-Implement only frozen Multi-Region / Era / Macro History: Active Hub/Warm/Cold
-fidelity, causal promotion/demotion, travel/absence, remote assets/agents and
-multi-hub play; economic/legal/war/migration/health/social/occult macro events,
-technology/infrastructure/occult modernization and condition-driven Era changes.
-
-Exit evidence: leave a hub for decades and return to real changes, multiple Era
-transitions, and sparse rather than per-day travel/long advancement.
-
-Do not implement Phase 7 UI, create a new Package phase branch, merge main into
-Package, read/update reference projects, migrate v1 saves or publish 2.0.0 early.
-The 2026-10-03 planning refinement is preserved: future Phase 7 must read
-player-facing-experience.md and apply its named frontend skills. Do not reopen
-that UI design or preload it for unrelated Phase 6 implementation.
-
-## Read first for Phase 6
-
-1. Current Package AGENTS.md and true Git/worktree/remote state.
-2. This live HANDOFF.
-3. Plan index.
-4. implementation-staging.md, Phase 6 section.
-5. world-scope.md, era-evolution.md, macro-history.md, time-model.md, verification.md.
-6. Same Record, especially completed Phase 5 and preserved earlier contracts.
-7. Package runtime/LONG-HORIZON.md, HISTORY-MEMORY.md, HUMAN-LIFETIMES.md,
-   RENEWABLE-CONTENT.md and ENTERPRISE-CONTINUITY.md.
-8. Only directly related Phase 6 runtime/compiler/contracts/tests.
-
-Preserve releases/1.0.0.atria, SHA-256:
+Retain releases/1.0.0.atria unchanged, SHA-256:
 e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09.
 
-## Phase 6 bootstrap prompt
+## Read first
+
+1. Package AGENTS and actual Git/worktree/remote state; this HANDOFF.
+2. Plan index, implementation-staging Phase 6, world-scope, era-evolution,
+   macro-history, time-model and verification.
+3. Same Record, especially Phase 6 candidate/CI and preserved Phase 5 rules.
+4. Package runtime LONG-HORIZON, HISTORY-MEMORY, HUMAN-LIFETIMES,
+   RENEWABLE-CONTENT, ENTERPRISE-CONTINUITY and REGIONAL-HISTORY.
+5. Only directly implicated Native/compiler/checker code or tests.
+
+## Resume prompt (finish Phase 6 only)
 
 ~~~text
-继续 ZZZdragondYNGPHX/Atria 的 Original Occult Western Fantasy Long-Lived World 重构。
-
-沿用 Package 分支 refactor/original-occult-western-fantasy-long-lived-world。
-当前 Package HEAD：68fac6f6452061fc1e522794b8c4d4bff122923d。
-配套 Core：main@14c2f8f30adc980caa04ec85046548f229bcc8fd 或包含它的后代。
-已完成 Phase 1–5；本轮只执行 Phase 6 — Multi-Region / Era / Macro History。
-不要进入 Phase 7，不要重开已冻结的产品方向。
-
-先检查工作树与真实远端 refs，以实际 Git 状态为准。沿用同一 Package 任务分支，
-不新建阶段分支，不把 main merge 到 Package。按 docs:HANDOFF.md 的 Read first
-读取 Package AGENTS、live HANDOFF、Plan index、implementation-staging 的 Phase 6、
-world-scope、era-evolution、macro-history、time-model、verification、同一 Record，
-以及 LONG-HORIZON、HISTORY-MEMORY、HUMAN-LIFETIMES、RENEWABLE-CONTENT、
-ENTERPRISE-CONTINUITY 五份 Package runtime 合约，再只读 Phase 6 直接相关代码/测试。
-
-Phase 6 范围：Active Hub / Warm Region / Cold World，历史一致的升降级与实体化，
-真实旅行时间和离场后果，远程资产/代理和多 Hub；宏观经济、法律治理、战争、迁移人口、
-公共卫生灾害、宗教社会运动、大型隐秘事件、科技基础设施与隐秘现代化；条件驱动的
-Era 转换和 Era 敏感内容。复用现有 Native Authority/Lifecycle/Clock/SaveSystem、
-History/Hooks/文物/检查点、人物/家族/职位、Matter/世界实体和 enterprise，
-不要另建平行 authority、调度或存档系统。
-
-Phase 5 CI 37078163213 已通过 63 suites / 1776 tests、四适配器和真实 Package 场景。
-场景是 50 年、20 年委托/4 次常规报告、8 次实际 Fs/SQLite Save/Restore，
-包含身份/财产重整、机构自主拒绝、继承/重构及旧标记文物检索。
-它是聚焦阶段证据，不是 Gate A/B/C。Phase 4 的 5k-turn/50-year candidate
-仍是 CI 37027895867，不等于最终财富/多区域/Era 验证；Phase 2 的 1k/10 年
-也仍只是历史核心证据。不要把 compaction、sequence 或纯输出累计当有效回合。
-
-保留被引用/玩家标记历史和旧 SavePoints，维持 checkpoint/Retry 与受保护 Task
-依赖边界、四适配器规范化和预算失败的原子拒绝。不要提高上限或丢事实掩盖问题，
-不要把旧 revision/备份累计大小当活跃增长。不把 introduction 当 birth，
-不让已死/退休人物或已解散机构无解释复任。身份更替、产权、委托和组织自主性
-必须沿用 Phase 5 的真实状态与权限，不以地域切换重置世界。
-
-按冻结 Phase 6 验证：离开一城数十年后返回能看到真实变化；多次条件驱动 Era
-转换；迁移与长时间推进不依赖逐日细模拟。普通实现、schema、测试和 CI 问题自行解决。
-不提前实现最终 UI。保留 releases/1.0.0.atria，最终目标 2.0.0，不添加 v1 save migration。
-
-Phase 6 完成后，完成相关验证、commit/push 当前任务分支，更新同一 Record 和 live
-HANDOFF，生成 Phase 7 接手提示词，然后停止。Phase 7 必须沿用已完成的
-player-facing-experience.md 实施规划，不重做开放式 UI 设计。
+继续 ZZZdragondYNGPHX/Atria 的 Original Occult Western Fantasy Long-Lived World。
+先核对真实 Git/远端 refs，再读 docs:HANDOFF.md 的 Read first。
+Package 沿用 refactor/original-occult-western-fantasy-long-lived-world，当前
+3c59ec0697a80886e740bda3f0c8bcdc6c0eaba7。Core 候选 feat/native-regional-history@50053928d21e74940c1c2d10b70609e6b83ff253；
+main 仍是 14c2f8f30adc980caa04ec85046548f229bcc8fd，不要把 main merge 到 Package。
+本轮只收尾 Phase 6，不进入 Phase 7，不重做产品方向。
+先检查 CI 37089757760：Native 已通过 65 suites/1793 tests/四适配器，
+完整多区域 5k-turn/50-year Package job 111107432187 在交接时仍运行。
+普通实现、schema、测试和 CI 错误自行修复并重跑；不得把前序/缩短测试当阶段门槛。
+保留事实、旧 SavePoints、标记历史、权限、预算和真实有效回合定义。
+完整 Phase 6 验证通过后再集成并验证 Core main、清理 Core 支持分支；Package 仍留原分支。
+更新同一 Record 和 live HANDOFF，生成基于现有 player-facing-experience.md 的 Phase 7
+接手提示词，然后停止。不要提前实现 UI，也不要新建阶段分支或发布 2.0.0。
 ~~~

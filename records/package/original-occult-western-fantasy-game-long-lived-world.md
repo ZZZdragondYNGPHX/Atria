@@ -696,3 +696,126 @@ These are Core integration checks, not the final Phase 7 Package UI acceptance.
 No additional implementation was merged after the exact-commit Phase 5 candidate.
 Document route/HEAD/boundary checks and staged whitespace checks passed. Phase 5
 is complete; stop with the Phase 6 prompt in the live HANDOFF.
+
+
+## Phase 6 — Multi-Region / Era / Macro History (2026-10-03)
+
+- Start Package HEAD: 68fac6f6452061fc1e522794b8c4d4bff122923d.
+- Start Core: main@14c2f8f30adc980caa04ec85046548f229bcc8fd.
+- Implementation Package: b20db579aab53cabe8575409863247fd476c4920.
+- Implementation Core candidate: 78858e689ca39a03b807369b55ad0e4e6b1760c4
+  (feat/native-regional-history, independent Core worktree; never merged into Package).
+- Status: implementation candidate; full regional CI validation in progress.
+- Development: 2.0.0-phase6; final target remains 2.0.0.
+
+### Implementation
+
+- Added optional regional declarations to the existing Native Lifetime candidate,
+  shared event queue, History sources and SaveSystem. Reused world.change grouping
+  rather than adding a 25th declared Lifetime command or raising its budget.
+- Three persistent regions with earned two-hub operation; current physical region
+  is separate from remote relevance. Cold aggregate history materializes existing
+  geography/scars/Era and a real civic office with causal adult intake, not births.
+- Paid journeys have exact departure/arrival, route/transport/Era/disruption-based
+  duration and saveable in-transit state. Personal remote case/world action is
+  refused; local agents retain delegated authority. Region switches do not reset
+  titles, public identities, organization autonomy, relationships or history.
+- Five-year fixed-anniversary macro resolution: credit/capital cycles, governance
+  and law phases, war campaign phases, paired/conserved migration, demographic
+  aggregates, epidemic/disaster losses, relief geography, social/religious movement
+  phases, private occult incidents and public consequences, technology/adoption.
+- Macro conditions change actual enterprise maintenance/income; agents outside a
+  target region escalate. Prolonged separation can estrange family bonds.
+- Condition-driven opening/networked/regulated eras with preserved prerequisites,
+  asynchronous regional adoption, transport speed, record-density exposure,
+  business adaptation and era-gated case grammars with actual new evidence paths.
+- Bounded cloned regionalView backend projection; not a sandbox binding or Phase 7
+  UI. Exact hidden occult causes stay outside public Chronicle queries.
+
+### Repairs found in actual validation
+
+- The initial standalone regional operation exceeded the unchanged 24-command
+  declaration budget. Regional verbs now use the existing world.change envelope.
+- Actual Package travel exposed an intermediate-state validation bug: Native
+  simulation advances its clock before Lifetime resolves arrival. Journey expiry
+  now validates against Lifetime.resolvedTick during preparation; completed
+  candidates still require the final clock to be fully resolved. A regression
+  covers this boundary. Temporary diagnostic logging was removed before commit.
+
+### Local validation actually executed
+
+- Existing Lifetime/Renewal regressions: 18 passed on the implementation path.
+- Final regional + enterprise regression run: 28 passed (11 regional, 17 enterprise).
+  Includes three seeds, whole/split intervals, normalized JSON, conserved migration,
+  actual costs, earned hubs, Era eligibility, hidden history and atomic refusal.
+- Regional Session final local run: FsEngine and SqliteEngine passed; MySQL/Pg
+  intentionally excluded locally and require hosted four-adapter results below.
+  Scenarios exercise six real imports, old SavePoints, portable checkpoints,
+  archived Retry refusal, recent exact Retry and invalid-transaction atomicity.
+- 100-content-turn/50-year Package smoke passed with a roughly 30-year absence,
+  three regions/Eras, six remote delegated reports, two kinship edges and seven
+  actual alternating Fs/SQLite imports. All exports contain one revision. This is
+  smoke evidence, NOT the 5k gate; its active bytes were 568114, save.json 572633,
+  archive 57919 and max projection 1069 bytes on the then-current worktree.
+- Targeted source/test lint and whitespace passed. A development Package build
+  passed. Retained releases/1.0.0.atria SHA-256 remains
+  e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09.
+
+### Hosted candidate
+
+CI [37088466630](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37088466630)
+was dispatched against the exact implementation SHAs above for Native/four-adapter
+regressions and the real multi-region 5000-content-turn/50-year Package candidate.
+Results must be appended before declaring Phase 6 complete.
+
+### Scope and preserved boundaries
+
+The macro world is a bounded authored abstraction, not per-person grand strategy.
+Reviews and exact relevant lifetimes are event-driven, never full daily loops.
+Regional alerts record relevant crises; the existing scheduler is not replaced by
+an extra subsystem that interrupts every macro review. Three regional eras do not
+claim an unlimited technology tree. The 256-event regional safety ceiling, prior
+Lifetime/History limits, protected Task/checkpoint dependencies and all old explicit
+SavePoints remain. No fact is dropped on budget exhaustion.
+
+Phase 5 CI 37078163213 remains focused stage evidence; Phase 4 37027895867 and Phase 2
+history-only evidence retain their original scope. No final UI, Gate C, 2.0.0
+release, v1 save migration, or final integration into package is claimed here.
+Phase 7 must implement the already-frozen player-facing-experience.md, not repeat
+open-ended UI design.
+
+### Final-candidate residence/permission correction
+
+- Additional inspection found that a birth during player absence could inherit the
+  protagonist region rather than its parent's residence. Core now uses the real
+  parent region and records exact person residence through History.
+- Demotion compacts only rebuildable empty hot-profile stubs, never authored notes,
+  identity/kinship or lifetime facts. Re-promotion uses the same people.
+- Remote-hub relevance now requires protagonist-owned property or the protagonist's
+  own bonds/contracts, not unrelated people or property already transferred away.
+- Final local regional suite: 13 tests passed; latest Lifetime suite: eight passed;
+  targeted lint passed.
+- Core candidate: 50053928d21e74940c1c2d10b70609e6b83ff253. Package HEAD: 3c59ec0697a80886e740bda3f0c8bcdc6c0eaba7.
+  The Package changes after b20db579a are documentation-only.
+- CI 37088466630 passed 65 suites / 1791 tests and actual four-adapter tests; its
+  still-running Package job was superseded by the corrected candidate, so it is
+  NOT full regional gate evidence.
+- Final exact-commit CI: [37089757760](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37089757760),
+  Native/four-adapter plus full regional Package candidate. Pending result.
+
+### Current hosted result / environment stop
+
+- Final CI 37089757760: Native job 111107432009 passed **65 suites / 1793 tests**,
+  including actual Fs/SQLite/MySQL/PostgreSQL and targeted source lint.
+- Full Package job 111107432187 is still running. Phase 6 is **not complete**.
+  No new 5k/50-year gate success is claimed; no Phase 7 implementation or prompt
+  that assumes Phase 6 completion is issued.
+- The previous comparable Phase 4 Package job took approximately 93.5 minutes.
+  The remaining dependency is the long remote candidate, so this work round uses
+  the Governance Environment Stop rather than inventing a successful result.
+- main remains 14c2f8f30adc980caa04ec85046548f229bcc8fd. Do not integrate the Core
+  candidate or delete feat/native-regional-history until the full exact-candidate
+  validation passes. Continue on the same Package branch and existing Record.
+
+Final current-Core build also passed on 50053928d21e74940c1c2d10b70609e6b83ff253 and Package 3c59ec0697a80886e740bda3f0c8bcdc6c0eaba7:
+215106 bytes, ignored development output. No release file changed.
