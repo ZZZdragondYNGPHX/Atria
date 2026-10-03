@@ -30,10 +30,10 @@ on:
         default: ''
         type: string
       package_check:
-        description: 'Select the frozen stage validation (enterprise is not a Gate B rerun)'
+        description: 'Focused regional by default; regional-soak explicitly opts into 5000 turns'
         type: choice
-        options: [renewal, enterprise, regional]
-        default: renewal
+        options: [renewal, enterprise, regional, regional-soak]
+        default: regional
 
 permissions:
   contents: read
@@ -217,9 +217,9 @@ jobs:
           path: package-candidate/original-occult-western-fantasy-game/build/phase5-enterprise.log
 
   regional-package-candidate:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.package_revision != '' && inputs.package_check == 'regional' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.package_revision != '' && (inputs.package_check == 'regional' || inputs.package_check == 'regional-soak') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: ${{ inputs.package_check == 'regional-soak' && 180 || 20 }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -233,12 +233,17 @@ jobs:
         with:
           ref: ${{ inputs.package_revision }}
           path: package-candidate
-      - name: Actual multi-region 5000-turn / 50-year Phase 6 Package candidate
+      - name: Focused multi-region Phase 6 acceptance (optional full soak)
         working-directory: package-candidate/original-occult-western-fantasy-game
+        env:
+          REGIONAL_CHECK: ${{ inputs.package_check }}
         run: |
           mkdir -p build
           set -o pipefail
-          node tools/package.mjs validate --regional-only --core "$GITHUB_WORKSPACE" 2>&1 | tee build/phase6-regional.log
+          node --test tools/renewal-profile.test.mjs
+          extra=()
+          if [[ "$REGIONAL_CHECK" == "regional-soak" ]]; then extra+=(--regional-full); fi
+          node tools/package.mjs validate --regional-only "${extra[@]}" --core "$GITHUB_WORKSPACE" 2>&1 | tee build/phase6-regional.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
