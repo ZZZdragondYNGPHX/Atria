@@ -126,3 +126,5 @@ adapters. Only the exact executed checks and CI results in the Record are eviden
 
 No multi-region, Era/macro, final UI, v1 save migration or final 2.0.0 artifact is
 included. releases/1.0.0.atria remains unchanged.
+
+Phase 6 adds regional macro conditions and remote-agent constraints without replacing these ownership/permission rules; see REGIONAL-HISTORY.md.
