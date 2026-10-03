@@ -714,9 +714,8 @@ export class SessionCore {
      * Variant. Find the exact ancestor revision whose Timeline HEAD is the
      * preceding user message, then fork from that post-user revision.
      */
-    async retryReply(handle, sessionId, { messageId, expectedRevisionId } = {}) {
+    async _replyRetryBoundary(handle, current, messageId) {
         assertNativeId(messageId, 'message');
-        const current = await this._current(handle, sessionId, expectedRevisionId);
         const assistantIndex = current.timeline.findIndex(item => item.messageId === messageId);
         if (assistantIndex < 0) throw new NotFoundError('native retry assistant message', { messageId });
         const assistant = current.timeline[assistantIndex];
@@ -731,11 +730,26 @@ export class SessionCore {
         const turn = current.states[TASK_STATE_NAMESPACE]?.records.find(item => item.kind === 'turn' && item.authorityReceipt?.messageId === messageId);
         const transaction = actionReceipts(current).find(item => item.source === 'frontend' && item.playerMessageId === userMessageId
             && (item.assistantMessageId === messageId || item.authorityId === turn?.authorityReceipt?.authorityId));
+        const source = transaction ? await this.load(handle, current.session.sessionId, { revisionId: transaction.baseRevisionId }) : await this._findTimelineBoundary(handle, current.session.sessionId, current, userMessageId);
+        return { transaction, source, userIndex, userMessageId };
+    }
+
+    async inspectReplyRetry(handle, sessionId, { messageId } = {}) {
+        const current = await this._current(handle, sessionId), id = messageId || current.timeline.at(-1)?.messageId || '';
+        try { await this._replyRetryBoundary(handle, current, id); return { messageId: id, eligible: true, reason: 'Retry returns to the committed input boundary; review and resolve the new branch.' }; } catch (error) {
+            if (!(error instanceof TypeError) && !(error instanceof NotFoundError)) throw error;
+            const archived = current.states.atri_lifecycle?.history?.checkpoint && (error instanceof NotFoundError || error.message.includes('archived'));
+            return { messageId: id, eligible: false, reason: archived ? 'Reply archived at History checkpoint. Continue with a new input or restore an explicit SavePoint.' : 'Retry requires the current committed assistant reply and its available user input boundary.' };
+        }
+    }
+
+    async retryReply(handle, sessionId, { messageId, expectedRevisionId } = {}) {
+        const current = await this._current(handle, sessionId, expectedRevisionId);
+        const { transaction, source, userIndex, userMessageId } = await this._replyRetryBoundary(handle, current, messageId);
         if (transaction) {
             // A typed turn publishes its user input and reply in one CAS. Its
             // coherent retry boundary is the pre-effect revision plus that input,
             // not a Timeline slice inheriting the already committed mechanics.
-            const source = await this.load(handle, sessionId, { revisionId: transaction.baseRevisionId });
             const branchId = createNativeId('branch');
             const last = source.timeline.at(-1);
             const branch = { branchId, sessionId, parentBranchId: source.revision.branchId,
@@ -746,9 +760,8 @@ export class SessionCore {
                 timeline: [...source.timeline, entry], entries: [entry], variants: [variant], branches: [branch],
                 graph: [...current.graph, { branchId, forkRevisionId: source.revision.revisionId, branch }] });
         }
-        const postUser = await this._findTimelineBoundary(handle, sessionId, current, userMessageId);
         return this.forkBranch(handle, sessionId, {
-            revisionId: postUser.revision.revisionId,
+            revisionId: source.revision.revisionId,
             expectedRevisionId: current.session.headRevisionId,
         });
     }

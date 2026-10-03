@@ -52,6 +52,9 @@ describe.each(CONTRACT_HARNESSES)('History checkpoint / SaveSystem - $name', ({ 
             await next.packageInstaller.install(target.handle, archive);
             let restored = await next.saveSystem.importSave(target.handle, exported.archive);
             expect(restored.states).toEqual(s.states); expect(restored.timeline).toEqual(s.timeline);
+            const archived = await next.core.inspectReplyRetry(target.handle, restored.session.sessionId);
+            expect(archived.eligible).toBe(false); expect(archived.reason).toContain('checkpoint');
+            expect((await next.core.load(target.handle, restored.session.sessionId)).revision).toEqual(restored.revision);
             await expect(next.core.finalizeTurn(target.handle, restored.session.sessionId, { invocationId: 'history-1', envelope }, { expectedRevisionId: restored.revision.revisionId })).rejects.toThrow('Archived');
             restored = await act(next, target.handle, restored, 17);
             expect(restored.states.atri_lifecycle.history.turns).toBe(17);
@@ -60,6 +63,7 @@ describe.each(CONTRACT_HARNESSES)('History checkpoint / SaveSystem - $name', ({ 
             expect(restored.states.atri_lifecycle.history.turns).toBe(17);
             expect(restored.states.atri_lifecycle.history.hot.at(-1).origin).toBe('host');
             const messageId = restored.timeline.at(-1).messageId;
+            expect(await next.core.inspectReplyRetry(target.handle, restored.session.sessionId, { messageId })).toMatchObject({ messageId, eligible: true });
             const retry = await next.core.retryReply(target.handle, restored.session.sessionId, { messageId, expectedRevisionId: restored.revision.revisionId });
             expect(retry.states.atri_lifecycle.history.turns).toBe(16);
             expect((await next.core.getHistory(target.handle, restored.session.sessionId, { kind: 'fact', limit: 1 })).items).toHaveLength(1);

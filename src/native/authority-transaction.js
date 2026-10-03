@@ -227,7 +227,7 @@ async function executeTransaction(candidate, installed, contract, logic, world, 
             let action;
             if (effect.kind === 'app.command') action = { kind: effect.kind, domainId: effect.domainId, commandId: effect.commandId,
                 recordId: taskId(template(effect.recordId, context)), args: template(effect.args, context) };
-            else if (effect.kind === 'clock.advance') action = { kind: effect.kind, commandId: effect.commandId, ticks: template(effect.ticks, context) };
+            else if (effect.kind === 'clock.advance') action = { kind: effect.kind, commandId: effect.commandId, ticks: template(effect.ticks, context), ...(effect.attention === undefined ? {} : { attention: template(effect.attention, context) }) };
             else action = { kind: effect.kind, workflowId: effect.workflowId, transitionId: effect.transitionId };
             await applyLifecycle(candidate, installed, action, budget);
         }
@@ -305,7 +305,7 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
 
 // Server-internal system entrypoint. No caller-selected transaction or invented
 // timeline entry; the required simulation declaration owns all targets/input.
-export async function prepareSimulationStep(base, installed, jobId, tick, budget, targetTick = tick) {
+export async function prepareSimulationStep(base, installed, jobId, tick, budget, targetTick = tick, requestedTick = targetTick) {
     try {
         const contract = contractFor(base, installed); validateCandidate(base, contract);
         const simulation = contract.simulationRuntime;
@@ -316,8 +316,9 @@ export async function prepareSimulationStep(base, installed, jobId, tick, budget
         protectOutputs(logic, budget);
         const reads = privateReads(candidate, contract, job.reads, {}, budget);
         budget.typed(targetTick, simulationInstantSchema);
-        if (targetTick < tick) throw new TypeError('Invalid simulation target');
-        const context = freeze({ reads, clock: { tick, targetTick } });
+        budget.typed(requestedTick, simulationInstantSchema);
+        if (targetTick < tick || requestedTick < targetTick) throw new TypeError('Invalid simulation target');
+        const context = freeze({ reads, clock: { tick, targetTick, requestedTick } });
         if (!predicate(job.enabled, context) || budget.typed(template(job.due, context), simulationInstantSchema) > tick) throw new TypeError('Stale simulation job');
         const transaction = logic.transactions.find(item => item.id === job.action.transactionId);
         if (!transaction || transaction.origin !== 'simulation') throw new TypeError('Invalid system Transaction');

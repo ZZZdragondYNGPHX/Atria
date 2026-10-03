@@ -10,6 +10,7 @@ export async function readFixedHost(core, owner, state, base, binding, input) {
     if (service === 'host.chronology' && method === 'interval') return reviewInterval(base, input);
     if (method === 'status') return projectSession(base);
     if (service === 'host.session' && method === 'saves') return (await core.listSavePoints(owner, state.sessionId)).map(projectSave);
+    if (service === 'host.conversation' && method === 'retryStatus') return core.inspectReplyRetry(owner, state.sessionId, input);
     if (method === 'messages') return projectConversation(base);
     if (method === 'blocks') return projectMessageBlocks(base, binding.target.blockType);
     if (method === 'inspect') return projectConversation(await core.load(owner, state.sessionId, { revisionId: input.revisionId }));

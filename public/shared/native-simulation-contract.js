@@ -12,7 +12,7 @@ const relevanceSchema = { type: 'string', maxLength: 4, enum: ['hot', 'warm', 'c
 // a declared aggregate job to run once at the interval boundary. tick stays canonical.
 export function simulationContext(job, lifecycle) {
     return { reads: readContext(reads(job.reads, lifecycle)), clock: { type: 'object', additionalProperties: false,
-        properties: { tick: simulationInstantSchema, targetTick: simulationInstantSchema }, required: ['tick', 'targetTick'] } };
+        properties: { tick: simulationInstantSchema, targetTick: simulationInstantSchema, requestedTick: simulationInstantSchema }, required: ['tick', 'targetTick', 'requestedTick'] } };
 }
 
 // Declaration-only. Private state can enter only explicit, schema-bounded Task

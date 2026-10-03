@@ -74,6 +74,7 @@ export function createNodeHandle(node, boundary, { window, scheduler, active, po
         const stop = () => { cancel?.(); observer.disconnect(); cleanups.delete(stop); }; cleanups.add(stop); return stop;
     }
     return { handle: Object.freeze({ measure, observeResize: callback => observe('resize', callback), observeVisibility: callback => observe('visibility', callback),
+        focus() { check(); if (node.disabled || !node.getClientRects().length) throw new Error('Unavailable focus target'); node.focus(); },
         capturePointer(id) { check(); if (!pointers.has(id)) throw new Error('Pointer is not owned by this Component'); node.setPointerCapture(id); },
         releasePointer(id) { check(); if (node.hasPointerCapture(id)) node.releasePointerCapture(id); },
     }), dispose() { [...cleanups].forEach(clean => clean()); for (const id of pointers) if (node?.hasPointerCapture?.(id)) node.releasePointerCapture(id); } };

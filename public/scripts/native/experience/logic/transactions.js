@@ -52,10 +52,10 @@ function effect(raw, context, lifecycle, reducers, authority, publication = fals
         }
         case 'clock.advance': {
             if (publication) throw new TypeError('Derived publication cannot advance clocks');
-            fields(raw, ['kind', 'commandId', 'ticks', ...guard], 'Transaction clock advance');
+            fields(raw, ['kind', 'commandId', 'ticks', 'attention', ...guard], 'Transaction clock advance');
             const advance = reference(lifecycle?.advances, raw.commandId, 'clock advance');
             if (!authority.canonicalClockId || advance.clockId !== authority.canonicalClockId) throw new TypeError('Transaction requires the declared canonical clock');
-            template(raw.ticks, { type: 'integer', minimum: 1, maximum: advance.maxTicks }, context); break;
+            template(raw.ticks, { type: 'integer', minimum: 1, maximum: advance.maxTicks }, context); if (raw.attention !== undefined) template(raw.attention, { type: 'boolean' }, context); break;
         }
         case 'workflow.transition': {
             if (publication) throw new TypeError('Derived publication cannot transition workflows');

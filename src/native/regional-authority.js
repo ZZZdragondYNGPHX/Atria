@@ -1,3 +1,4 @@
+import { reviewTravel } from '../../public/shared/native-regional-runtime.js';
 import { anniversary, people } from '../../public/shared/native-lifetime-runtime.js';
 import { fields } from '../../public/shared/native-values.js';
 import { taskId } from '../../public/shared/native-task-contract.js';
@@ -149,14 +150,9 @@ export function operateRegional(snapshot, s, policy, a, tick, api) {
     need(policy.regional, 'not declared'); need(['travel', 'fidelity', 'invest'].includes(a.verb), 'verb'); const w = s.regional, r = w.regions[a.regionId]; need(r, 'unknown region');
     if (a.verb === 'travel') {
         need(!a.tier && !a.project && !a.sourceId && !w.journey && a.regionId !== w.currentRegionId, 'travel state');
-        const origin = w.regions[w.currentRegionId], route = policy.regional.routes.find(x => [x.from, x.to].includes(origin.id) && [x.from, x.to].includes(r.id)); need(route, 'route unavailable');
-        const level = Math.min(origin.technology.transport, r.technology.transport);
-        need(a.mode === 'coach' || a.mode === 'rail' && level >= 1 || a.mode === 'motor' && level >= 4, 'transport unavailable');
-        const speed = a.mode === 'coach' ? 1 : a.mode === 'rail' ? 3 : 5;
-        const eraSpeed = Math.min(...[origin, r].map(x => policy.regional.eras.find(e => e.id === x.eraId).transportDivisor));
-        const disruption = [origin, r].some(x => ['war', 'mobilization'].includes(x.war) || x.health !== 'stable') ? 3 : 1;
-        const duration = Math.max(1440, Math.ceil(route.days * 1440 * disruption / (speed * eraSpeed)));
-        spendEnterprise(s, policy, 5 + route.days, tick, 'travel', r.id);
+        const origin = w.regions[w.currentRegionId], reviewed = reviewTravel(s, policy, r.id, a.mode, tick);
+        const { duration, disruption } = reviewed;
+        spendEnterprise(s, policy, reviewed.cost, tick, 'travel', r.id);
         const sourceId = log(w, 'departure', tick, origin.id, r.lastEventId || 'authored.' + r.id, { to: r.id, mode: a.mode, duration, disruption });
         origin.lastPresence = tick; w.journey = { from: origin.id, to: r.id, departed: tick, arrives: safe(tick + duration), mode: a.mode, sourceId };
     } else if (a.verb === 'fidelity') {

@@ -31,6 +31,7 @@ const targets = {
     'host.conversation.branches': read(BRANCH_SCHEMA, false, true),
     'host.conversation.alternatives': read(hostObject({ ...MESSAGE_SCHEMA.properties, alternativeBranchId: id }), false, true),
     'host.conversation.inspect': { ...read(rows(MESSAGE_SCHEMA)), inputSchema: hostObject({ revisionId: id }) },
+    'host.conversation.retryStatus': { ...read(hostObject({ messageId: id, eligible: { type: 'boolean' }, reason: string(512) })), inputSchema: hostObject({ messageId: id }, []) },
     'host.conversation.retry': action(hostObject({ messageId: id })),
     'host.conversation.fork': action(hostObject({ revisionId: id, messageId: id }, ['revisionId'])),
     'host.conversation.switch': action(hostObject({ branchId: id })),

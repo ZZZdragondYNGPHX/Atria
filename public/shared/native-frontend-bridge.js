@@ -23,6 +23,18 @@ export function publicBridgeError(error) {
     if (code.startsWith('bridge_')) return code;
     if (/conflict|stale/.test(code)) return 'bridge_revision_stale';
     if (/cancel/.test(code)) return 'bridge_cancelled';
+    // Closed public refusal reasons, never raw Authority/provider diagnostics.
+    const refusal = {
+        'Enterprise delegation policy': 'delegation_policy',
+        'Enterprise delegation policy authority': 'delegation_unavailable',
+        'Enterprise organization refuses': 'organization_refused',
+        'Enterprise delegate eligible': 'delegate_unavailable',
+        'Enterprise one delegate authority': 'delegate_authority',
+        'Enterprise identity evidence': 'identity_evidence',
+        'Artifact copy source unavailable': 'artifact_copy',
+        'Lifetime must return before acting': 'personal_absence',
+    }[error instanceof TypeError ? error.message : ''];
+    if (refusal) return 'bridge_authority_' + refusal;
     return error instanceof TypeError ? 'bridge_target_invalid' : 'bridge_target_failed';
 }
 

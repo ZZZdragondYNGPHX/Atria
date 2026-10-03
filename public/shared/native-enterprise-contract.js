@@ -18,12 +18,13 @@ export const ENTERPRISE_ACTIONS = {
     'delegate.create': O({ domain: S(24, ['business', 'investigation', 'research', 'family']), targetId: S(), agentId: S(), officeId: S(), institutionId: S(), objective: S(240), maxSpend: I(0, 1000000), risk: I(0, 3), prohibited: O({ debt: B, occult: B, church: B, force: B }), lossThreshold: I(1, 1000000), reportYears: I(1, 10), escalateOccult: B }),
     'delegate.review': O({ id: S(), action: S(16, ['audit', 'resume', 'revoke']) }),
 };
+ENTERPRISE_ACTIONS['delegate.policy'] = O({ id: S(), ...Object.fromEntries(Object.entries(ENTERPRISE_ACTIONS['delegate.create'].properties).filter(([key]) => ['objective', 'maxSpend', 'risk', 'prohibited', 'lossThreshold', 'reportYears', 'escalateOccult'].includes(key))) });
 // Group related verbs to stay inside the unchanged 24 Lifetime-command budget.
 const families = {
     'career.change': ['career.take', 'career.leave'],
     'asset.change': ['asset.acquire', 'asset.manage'],
     'organization.change': ['organization.charter', 'organization.department', 'organization.policy'],
-    'delegate.change': ['delegate.create', 'delegate.review'],
+    'delegate.change': ['delegate.create', 'delegate.review', 'delegate.policy'],
 };
 export const ENTERPRISE_OPERATIONS = Object.fromEntries(Object.entries(ENTERPRISE_ACTIONS).filter(([k]) => !Object.values(families).flat().includes(k)));
 for (const [family, verbs] of Object.entries(families)) {

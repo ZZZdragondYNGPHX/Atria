@@ -8,6 +8,26 @@ const clone = structuredClone;
 const year = n => anniversary(0, n);
 const normalize = v => Array.isArray(v) ? v.map(normalize) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).reverse().map(k => [k, normalize(v[k])])) : v;
 describe('Native progression, property and delegation', () => {
+    test('an active retained credential can establish its ordinary name but cannot authorize replacement', () => {
+        const s = fixture(), id = life(s).continuity.publicIdentityId;
+        const input = { mode: 'retain', name: 'Ordinary name', method: 'legitimate', sourceId: id };
+        const named = act(s, 'identity.change', input);
+        expect(e(named).identities[id].name).toBe(input.name); expect(life(named).continuity.protagonistId).toBe(life(s).continuity.protagonistId);
+        expect(() => act(s, 'identity.change', { ...input, mode: 'replace' })).toThrow('identity evidence');
+        expect(() => act(s, 'identity.change', { ...input, method: 'forged' })).toThrow('identity evidence');
+    });
+    test('delegation policy updates preserve responsibility and reject occult escalation removal atomically', () => {
+        let { s, assetId } = business(); s = delegate(s, assetId);
+        const contract = Object.values(e(s).contracts)[0], prior = clone(contract);
+        const policy = { id: contract.id, objective: 'Maintain the original responsibility with lower spending.', maxSpend: 75, risk: 1, prohibited: { debt: true, occult: true, church: false, force: true }, lossThreshold: 50, reportYears: 3, escalateOccult: true };
+        s = act(s, 'delegate.policy', policy);
+        const current = e(s).contracts[contract.id];
+        expect(current).toMatchObject({ ...policy, targetId: prior.targetId, agentId: prior.agentId, since: prior.since, status: prior.status });
+        expect(enterpriseView(s).contracts[0].prohibited).toEqual(policy.prohibited);
+        const before = clone(s); expect(() => act(s, 'delegate.policy', { ...policy, escalateOccult: false })).toThrow('delegation policy'); expect(s).toEqual(before);
+        s = act(s, 'delegate.review', { id: contract.id, action: 'revoke' });
+        expect(() => act(s, 'delegate.policy', policy)).toThrow('policy authority');
+    });
     test('identity projection is required after ready, not during pre-ready session publication', () => {
         const s = fixture(), lifecycle = s.manifest.runtime.experienceContract.lifecycleRuntime;
         lifecycle.lifetimes.enterprise.identityDomainId = 'continuity';

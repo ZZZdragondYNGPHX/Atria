@@ -13,6 +13,12 @@ function transportFor(bridge, request) {
 }
 
 describe('Frontend compiled Bridge client and Preview', () => {
+    test('only closed Authority refusal reasons are public; private diagnostics stay scrubbed', () => {
+        expect(publicBridgeError(new TypeError('Enterprise delegation policy'))).toBe('bridge_authority_delegation_policy');
+        expect(publicBridgeError(new TypeError('Artifact copy source unavailable'))).toBe('bridge_authority_artifact_copy');
+        expect(publicBridgeError(new TypeError('PRIVATE_POISON'))).toBe('bridge_target_invalid');
+        expect(publicBridgeError(new Error('PRIVATE_POISON'))).toBe('bridge_target_failed');
+    });
     test('Preview uses public schemas/Collection semantics and never substitutes a fake authority writer', async () => {
         const d = descriptor(), transport = previewBridgeTransport({ descriptor: d, scopes: { Main: d.bindings.map(item => item.id), Child: [] },
             projections: { notes: [], page: ['c', 'a', 'b'].map(id => ({ id, value: { text: id } })) } });

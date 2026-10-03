@@ -186,7 +186,8 @@ export function operateEnterprise(snapshot, s, policy, operation, a, tick, api) 
         const role = e.roles[a.id]; need(role?.status === 'active', 'active role'); role.status = 'left'; role.ended = tick;
         const current = sorted(e.roles).find(r => r.status === 'active'); all[hero].career = { occupation: current?.roleId ?? 'private citizen', institutionId: current?.institutionId ?? '', since: tick };
     } else if (operation === 'identity.change') {
-        need(source(snapshot, s, a.sourceId), 'identity evidence'); const prior = e.identities[s.continuity.publicIdentityId];
+        const prior = e.identities[s.continuity.publicIdentityId];
+        need(source(snapshot, s, a.sourceId) || a.mode === 'retain' && a.method === 'legitimate' && a.sourceId === prior.id && prior.status === 'active', 'identity evidence');
         if (a.mode === 'retain') { need(prior.status === 'active' && a.name.trim(), 'retained identity'); prior.name = a.name; prior.sourceId = a.sourceId; } else if (a.mode === 'replace') {
             need(a.name.trim() && e.reserves >= 40, 'identity continuity cost/name');
             money(e, 'treasury', -40, tick, 'identity_registration', a.sourceId);
@@ -259,6 +260,15 @@ export function operateEnterprise(snapshot, s, policy, operation, a, tick, api) 
         if (a.domain === 'family') need(s.bonds[a.targetId]?.people.includes(hero), 'family logistics boundary');
         profile(s, policy, agentId);
         const id = next(e); e.contracts[id] = { ...structuredClone(a), id, agentId, identityId: s.continuity.publicIdentityId, since: tick, lastPresenceAt: tick, lastReview: tick, nextReview: a.domain === 'investigation' ? Math.min(tick + 7 * 1440, s.renewal.active[a.targetId].deadline) : anniversary(tick, a.reportYears), status: 'active', reviews: 0, report: null, refs: refs(hero, agentId) };
+    } else if (operation === 'delegate.policy') {
+        const c = e.contracts[a.id];
+        need(c && ['active', 'escalated'].includes(c.status) && legal(s) && c.identityId === s.continuity.publicIdentityId && active(all[c.agentId]), 'delegation policy authority');
+        need(!c.institutionId || e.organizations[c.institutionId]?.autonomy < 2, 'organization refuses');
+        need(a.objective.trim().length >= 12 && a.escalateOccult, 'delegation policy');
+        const prior = Object.fromEntries(Object.keys(ENTERPRISE_ACTIONS['delegate.policy'].properties).filter(key => key !== 'id').map(key => [key, structuredClone(c[key])]));
+        for (const key of Object.keys(ENTERPRISE_ACTIONS['delegate.policy'].properties)) if (key !== 'id') c[key] = structuredClone(a[key]);
+        c.nextReview = c.domain === 'investigation' ? Math.min(tick + 7 * 1440, s.renewal.active[c.targetId]?.deadline ?? c.nextReview) : anniversary(tick, c.reportYears);
+        log(e, 'delegation_policy', tick, c.id, { contractId: c.id, prior, policy: Object.fromEntries(Object.keys(prior).map(key => [key, structuredClone(c[key])])) });
     } else {
         const c = e.contracts[a.id]; need(c && c.status !== 'revoked', 'delegation missing');
         if (a.action === 'revoke') c.status = 'revoked';

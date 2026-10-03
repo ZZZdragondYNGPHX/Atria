@@ -7,6 +7,8 @@ import { instant } from '../../public/shared/native-lifetime-runtime.js';
 import { fixedHostTarget } from '../../public/shared/native-frontend-host.js';
 import { readFixedHost } from '../../src/native/frontend/host-services.js';
 import { bridgeValue } from '../../public/shared/native-frontend-bridge.js';
+import { fixture as enterpriseFixture, act } from './helpers/enterprise-fixture.js';
+import { regionalPolicy } from './helpers/regional-policy.js';
 function fixture() {
     const history = initialHistory();
     for (let i = 1; i <= 30; i++) history.facts['history.' + i] = { id: 'history.' + i, kind: 'fact', key: 'person.' + i, label: 'Public record ' + i, tick: 0, year: 1, public: i !== 2, value: i === 2 ? 'SECRET_POISON' : 'Known name', refs: ['family:rook'], provenance: { source: 'public.person.name' } };
@@ -14,6 +16,20 @@ function fixture() {
     return { session: { sessionId: 's' }, revision: { revisionId: 'r1', branchId: 'b1' }, manifest: { runtime: { experienceContract: { lifecycleRuntime: { history: { clockId: 'world' } } } } }, states: { atri_lifecycle: { clocks: { world: 0 }, history } } };
 }
 describe('closed player Chronicle and calendar Host adapters', () => {
+    test('real public family records and unvisited regions preserve their actual contract dates', () => {
+        let s = enterpriseFixture();
+        s = act(s, 'bond.form', { firstId: 'hero', secondId: 'partner', kind: 'marriage', visibility: 'public', consent: true });
+        s = act(s, 'family.conceive', { parentId: 'hero', otherParentId: 'partner', name: 'Child', consent: true });
+        s = act(s, null, {}, 403200);
+        const page = readWorldView(s, { view: 'identity' });
+        expect(page.rows[0].text).toContain('marriage'); expect(page.rows[0].text).toContain('Child');
+        expect(() => bridgeValue(page, fixedHostTarget({ service: 'host.world', method: 'view' }).outputSchema)).not.toThrow();
+        const policy = s.manifest.runtime.experienceContract.lifecycleRuntime.lifetimes;
+        policy.regional = structuredClone(regionalPolicy);
+        const region = { id: 'northreach', name: 'Northreach', nation: 'Northern Compact', tier: 'cold', materializedAt: null, eraId: 'era.opening', population: { present: 8000 }, technology: {} };
+        s.states.atri_lifecycle.lifetimes.regional = { currentRegionId: 'northreach', journey: null, regions: { northreach: region }, alerts: [] };
+        expect(readWorldView(s, { view: 'regions' }).rows[0].text).toContain('not yet inspected');
+    });
     test('public bounded pages retain exact sources and revision-bound cursors', () => {
         const base = fixture(), before = JSON.stringify(base), result = readChronicle(base, { kind: 'fact' });
         expect(result.rows).toHaveLength(12); expect(result.rows[0].date).toBe('Year 1, 01-01, 00:00');
@@ -63,11 +79,11 @@ test('public person view excludes secret relationships and freezes deceased age'
     base.manifest.runtime.experienceContract.lifecycleRuntime.lifetimes = policy;
     const state = initialLifetimes(policy); base.states.atri_lifecycle.lifetimes = state;
     state.bonds.private = { id: 'private', visibility: 'secret', refs: ['actor:hero'], secret: 'BOND_POISON' };
-    state.bonds.public = { id: 'public', visibility: 'public', refs: ['actor:hero'], kind: 'marriage' };
+    state.bonds.public = { id: 'public', visibility: 'public', refs: ['actor:hero'], kind: 'marriage', people: ['hero', 'partner'], state: 'active', from: 0 };
     const page = readWorldView(base, { view: 'people', id: 'hero' });
     expect(page.rows[0].text).toContain('marriage'); expect(JSON.stringify(page)).not.toContain('BOND_POISON');
     expect(readWorldView(base, { view: 'people', id: 'missing' }).rows).toEqual([]);
     expect(() => bridgeValue(page, fixedHostTarget({ service: 'host.world', method: 'view' }).outputSchema)).not.toThrow();
     state.people.partner.status = { kind: 'dead', tick: 0 }; base.states.atri_lifecycle.clocks.world = instant({ year: 50, month: 1, day: 1 });
-    expect(readWorldView(base, { view: 'people', id: 'partner' }).rows[0].text).toContain('chronological Age: 26');
+    expect(readWorldView(base, { view: 'people', id: 'partner' }).rows[0].text).toContain('Chronological age: 26');
 });

@@ -289,19 +289,21 @@ export async function prepareLifecycle(base, installed, action, authority = null
     } else if (action.kind === 'pump') {
         fields(action, ['kind'], 'Lifecycle pump'); await pump();
     } else if (action.kind === 'clock.advance') {
-        fields(action, ['kind', 'commandId', 'ticks'], 'World Clock advance');
+        fields(action, ['kind', 'commandId', 'ticks', 'attention'], 'World Clock advance');
+        if (action.attention !== undefined && typeof action.attention !== 'boolean') throw new TypeError('Invalid attention request');
         authority?.effect(action);
         const command = def.advances.find(item => item.id === action.commandId);
         if (!command || !Number.isSafeInteger(action.ticks) || action.ticks < 1 || action.ticks > command.maxTicks
             || !integer(state.clocks[command.clockId] + action.ticks)) throw new TypeError('Invalid declared World Clock advance');
+        const fromTick = state.clocks[command.clockId];
         if (candidate.manifest.runtime.experienceContract.simulationRuntime?.clockId === command.clockId) {
             if (!authority) throw new TypeError('Simulation requires a shared Authority budget');
             const { prepareWorldSimulation } = await import('./simulation-authority.js');
-            const prepared = await prepareWorldSimulation(candidate, installed, state.clocks[command.clockId] + action.ticks, authority);
+            const prepared = await prepareWorldSimulation(candidate, installed, state.clocks[command.clockId] + action.ticks, authority, { attention: action.attention === true });
             Object.assign(candidate.states, prepared.states);
             Object.assign(state, prepared.states[NS]); candidate.states[NS] = state;
         } else state.clocks[command.clockId] += action.ticks;
-        events.push({ type: 'world.clock.advanced', clockId: command.clockId, ticks: action.ticks });
+        events.push({ type: 'world.clock.advanced', clockId: command.clockId, ticks: state.clocks[command.clockId] - fromTick });
     } else if (action.kind === 'scope.transition') {
         fields(action, ['kind', 'scopeId', 'status'], 'Scope transition'); const scope = state.scopes[action.scopeId];
         if (!scope || !['active', 'suspended', 'archived'].includes(action.status) || scope.status === 'archived') throw new TypeError('Invalid scope transition');

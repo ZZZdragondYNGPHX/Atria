@@ -1,6 +1,6 @@
 import {describe,test,expect} from '@jest/globals';
 import {lifetimePolicyFixture} from './helpers/lifetime-policy.js';
-import {initialLifetimes,prepareLifetimes,validateLifetimes} from '../../src/native/lifetime-authority.js';
+import {initialLifetimes,prepareLifetimes,validateLifetimes,nextAttentionTick} from '../../src/native/lifetime-authority.js';
 import {initialHistory,queryHistory} from '../../public/shared/native-history-runtime.js';
 import {prepareHistory,validateHistory} from '../../src/native/history-authority.js';
 import {anniversary,civil,instant,lifetimeView,people} from '../../public/shared/native-lifetime-runtime.js';
@@ -19,6 +19,15 @@ const life=s=>s.states.atri_lifecycle.lifetimes;
 const child=s=>Object.values(life(s).pregnancies).find(p=>p.status==='born').childId;
 const birth=s=>{s=act(s,'family.conceive',{parentId:'hero',otherParentId:'partner',name:'Child',consent:true});return act(s,null,{},s.states.atri_lifecycle.clocks.world+403200);};
 describe('Native human lifetimes',()=>{
+    test('attention uses exact public family milestones without mutation or private pregnancy disclosure',()=>{
+        let s=act(fixture(),'longevity.bind',{routeId:'covenant'});
+        s=act(s,'family.conceive',{parentId:'hero',otherParentId:'partner',name:'Child',consent:true});
+        const pregnancy=Object.values(life(s).pregnancies)[0], before=copy(s),target=anniversary(0,200);
+        expect(nextAttentionTick(s,target)).toBe(pregnancy.due);expect(s).toEqual(before);
+        pregnancy.visibility='secret';expect(nextAttentionTick(s,target)).toBeGreaterThan(pregnancy.due);
+        pregnancy.visibility='public';s=act(s,null,{},pregnancy.due);expect(Object.values(life(s).pregnancies)[0].status).toBe('born');
+        expect(nextAttentionTick(s,s.states.atri_lifecycle.clocks.world+1)).toBe(s.states.atri_lifecycle.clocks.world+1);
+    });
     test('Gregorian birthdays, including pre-epoch and leap birthdays',()=>{
         for(const tick of [-14400000,-1440,0,1440,anniversary(0,200)])expect(instant(civil(tick))).toBe(tick);
         const leap=instant({year:4,month:2,day:29});expect(civil(anniversary(leap,1))).toMatchObject({year:5,month:2,day:28});

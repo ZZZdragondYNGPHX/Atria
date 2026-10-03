@@ -166,7 +166,7 @@ export async function mountNativeFrontend(options) {
                     await instance.onEmit?.(args[0], assertValue(args[1], instance.contract.emits[args[0]]), 1);
                 } else if (method === 'node') {
                     const handle = nodeHandle(instance, args[0]);
-                    if (!['measure', 'capturePointer', 'releasePointer'].includes(args[1])) throw new Error('script_node_method');
+                    if (!['measure', 'focus', 'capturePointer', 'releasePointer'].includes(args[1])) throw new Error('script_node_method');
                     return handle[args[1]](args[2]);
                 } else if (method === 'media') {
                     const token = revision, mediaEpoch = media.epoch;

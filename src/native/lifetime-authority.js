@@ -193,6 +193,28 @@ function operate(snapshot, s, policy, operation, input, tick) {
         need(evidence(snapshot, s, a.sourceId), 'death evidence');die(snapshot, s, policy, tick, a.sourceId);succeed(s, policy, tick);
     }
 }
+const mortalityTick = (p, policy) => {
+    const route = policy.routes.find(r => r.id === p.route.id);
+    return route ? safe(p.route.since + Math.max(1, p.deathTick - p.route.since) * route.agingDivisor) : p.deathTick;
+};
+// Same bounded Lifetime milestones as resolve(); never a frontend scheduler.
+// Routine delegated/region reviews do not stop the protagonist automatically.
+export function nextAttentionTick(snapshot, target, budget) {
+    const policy = lifetimePolicy(snapshot), s = snapshot.states.atri_lifecycle?.lifetimes;
+    if (!policy || !s) return target;
+    const now = snapshot.states.atri_lifecycle.clocks[policy.clockId], related = new Set([policy.protagonistId]);
+    for (const bond of Object.values(s.bonds)) if (bond.visibility !== 'secret' && bond.people.includes(policy.protagonistId)) bond.people.forEach(id => related.add(id));
+    for (const link of Object.values(s.kinship)) if (link.visibility !== 'secret' && (link.parents.includes(policy.protagonistId) || link.childId === policy.protagonistId)) [...link.parents, link.childId].forEach(id => related.add(id));
+    const candidates = [s.continuity.returnAt, s.regional?.journey?.arrives];
+    for (const p of Object.values(people(s))) {
+        budget?.step(); if (['dead', 'absent'].includes(p.status.kind)) continue;
+        const office = Object.values(s.offices).some(o => o.holderId === p.id);
+        if (related.has(p.id) || office) candidates.push(mortalityTick(p, policy));
+        if (office && active(p)) candidates.push(p.retirementTick);
+    }
+    for (const pregnancy of Object.values(s.pregnancies)) if (pregnancy.status === 'pending' && pregnancy.visibility !== 'secret' && pregnancy.parents.includes(policy.protagonistId)) candidates.push(pregnancy.due);
+    return Math.min(target, ...candidates.filter(tick => Number.isSafeInteger(tick) && tick > now));
+}
 function resolve(snapshot, s, policy, target) {
     need(target >= s.resolvedTick, 'clock rewind');let steps = 0;
     // Event queue is rebuilt from bounded relevant actors/milestones, never days.
@@ -203,9 +225,7 @@ function resolve(snapshot, s, policy, target) {
             if (!p.matured)pending.push({ tick: anniversary(p.identity.birthTick, policy.adultAge), kind: 'mature', id: p.id });
             if (p.id !== policy.protagonistId && active(p))pending.push({ tick: p.retirementTick, kind: 'retire', id: p.id });
             if (p.status.kind !== 'absent') {
-                const route = policy.routes.find(r => r.id === p.route.id);
-                // Explicit route slows remaining mortality; no inherited immortality.
-                const death = route ? safe(p.route.since + Math.max(1, p.deathTick - p.route.since) * route.agingDivisor) : p.deathTick;
+                const death = mortalityTick(p, policy);
                 pending.push({ tick: death, kind: 'death', id: p.id });
             }
         }
