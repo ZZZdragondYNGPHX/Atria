@@ -1,3 +1,4 @@
+import { CHRONICLE_QUERY, CHRONICLE_PAGE, WORLD_QUERY, INTERVAL_QUERY, INTERVAL_RESULT } from './native-chronicle-host.js';
 import { fields } from './native-frontend-contract.js';
 import { assertMessageProjection } from './native-message-contract.js';
 
@@ -18,6 +19,9 @@ const action = (inputSchema = HOST_EMPTY, local = false, outputSchema = HOST_EMP
 // Closed Host-owned target catalogue. These are capabilities, never arbitrary
 // method dispatch; both authoring and installed graph validation use this table.
 const targets = {
+    'host.world.view': { ...read(CHRONICLE_PAGE), inputSchema: WORLD_QUERY },
+    'host.history.query': { ...read(CHRONICLE_PAGE), inputSchema: CHRONICLE_QUERY },
+    'host.chronology.interval': { ...read(INTERVAL_RESULT), inputSchema: INTERVAL_QUERY },
     'host.media.resolve': { ...read(hostObject({ ref: MEDIA_REF_SCHEMA, status: { ...string(16), enum: ['available', 'denied', 'unavailable'] }, reasonCode: string(128) }), true), inputSchema: hostObject({ ref: MEDIA_REF_SCHEMA, type: { ...string(8), enum: ['image', 'audio', 'video'] } }) },
     'host.presentation.locale': read(localeSchema, true),
     'host.presentation.setLocale': action(hostObject({ locale: string(64) }), true, localeSchema),

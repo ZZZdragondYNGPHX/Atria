@@ -1,9 +1,13 @@
+import { readChronicle, reviewInterval, readWorldView } from '../../../public/shared/native-chronicle-host.js';
 import { fixedHostTarget, projectConversation, projectSession, projectMessageBlocks, projectSave } from '../../../public/shared/native-frontend-host.js';
 import { bridgeFailure } from '../../../public/shared/native-frontend-bridge.js';
 
 export async function readFixedHost(core, owner, state, base, binding, input) {
     const { service, method } = binding.target;
     if (fixedHostTarget(binding.target, binding.outputSchema?.properties?.data).local) throw bridgeFailure('bridge_host_local_required');
+    if (service === 'host.world' && method === 'view') return readWorldView(base, input);
+    if (service === 'host.history' && method === 'query') return readChronicle(base, input);
+    if (service === 'host.chronology' && method === 'interval') return reviewInterval(base, input);
     if (method === 'status') return projectSession(base);
     if (service === 'host.session' && method === 'saves') return (await core.listSavePoints(owner, state.sessionId)).map(projectSave);
     if (method === 'messages') return projectConversation(base);
