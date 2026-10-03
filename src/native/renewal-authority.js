@@ -20,10 +20,14 @@ function compose(snapshot, s, policy, args, tick) {
     need(Object.keys(r.active).length < p.maxActive, 'active budget');
     const hook = args.hookId ? h.hooks[args.hookId] : null;
     need(!args.hookId || hook?.public && hook.status === 'dormant' && tick - hook.tick >= p.cooldownTicks && source(snapshot, s, hook.sourceId), 'hook not eligible');
-    const actors = sorted(people(s)).filter(x => x.status.kind === 'active' && ageAt(x.identity.birthTick, tick) >= policy.adultAge);
-    const institutions = sorted(s.institutions).filter(activeInstitution), places = sorted(r.places).filter(live);
+    const regionId = s.regional?.currentRegionId, regionalPolicy = policy.regional;
+    const eraIndex = regionalPolicy ? regionalPolicy.eras.findIndex(e => e.id === s.regional.regions[regionId].eraId) : 0;
+    const local = x => !regionId || x.regionId === regionId;
+    const actors = sorted(people(s)).filter(x => local(x) && x.status.kind === 'active' && ageAt(x.identity.birthTick, tick) >= policy.adultAge);
+    const institutions = sorted(s.institutions).filter(x => local(x) && activeInstitution(x)), places = sorted(r.places).filter(x => local(x) && live(x));
     need(actors.length && institutions.length && places.length, 'no eligible world roles');
-    const grammars = p.grammars.filter(g => (!args.grammarId || g.id === args.grammarId) && (!g.historyRequired || hook));
+    const available = g => { const range = regionalPolicy?.grammarEras.find(x => x.grammarId === g.id); return !range || eraIndex >= range.minimum && eraIndex <= range.maximum; };
+    const grammars = p.grammars.filter(g => available(g) && (!args.grammarId || g.id === args.grammarId) && (!g.historyRequired || hook));
     need(grammars.length, 'grammar unavailable');
     for (let attempt = 0; attempt < 64; attempt++) {
         const salt = policy.seed + ':' + r.completed + ':' + r.nextId + ':' + attempt;
@@ -47,6 +51,7 @@ function compose(snapshot, s, policy, args, tick) {
         const m = { id, grammarId: g.id, trigger: g.trigger, opened: tick, deadline: tick + g.responseTicks, escalated: false, status: 'investigating', structure, subjectId: subject.id, institutionId: institution.id, placeId: place.id,
             familyId: family?.id ?? '', artifactId: artifact?.id ?? '', hookId: hook?.id ?? '', sourceId: hook?.sourceId ?? '', refs,
             path: [...g.actions], evidence: [], stage: 0, presentation: '', pressureAtOpen: place.pressure };
+        if (regionId) { m.regionId = regionId; m.eraId = s.regional.regions[regionId].eraId; m.refs.push('location:' + regionId, 'era:' + m.eraId); }
         r.active[id] = m;r.recent.push({ tick, structure, id });if (r.recent.length > p.maxRecent)r.recent.shift();r.last = { operation: 'matter.open', id, refs, summary: g.trigger };
         return;
     }

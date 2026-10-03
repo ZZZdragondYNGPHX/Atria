@@ -32,7 +32,7 @@ on:
       package_check:
         description: 'Select the frozen stage validation (enterprise is not a Gate B rerun)'
         type: choice
-        options: [renewal, enterprise]
+        options: [renewal, enterprise, regional]
         default: renewal
 
 permissions:
@@ -84,6 +84,7 @@ jobs:
           native/lifetime.test.js native/lifetime-session.test.js
           native/renewal.test.js native/renewal-session.test.js
           native/enterprise.test.js native/enterprise-session.test.js
+          native/regional.test.js native/regional-session.test.js
           native/simulation-contract.test.js native/simulation-candidate.test.js native/simulation-task.test.js native/simulation-session.test.js
           native/authority-contract-c1.test.js native/authority-resources-c1.test.js
           native/authority-candidate-c2.test.js native/authority-bounds-c2.test.js native/authority-session-c2.test.js
@@ -119,6 +120,7 @@ jobs:
       - name: Authority source lint
         run: >-
           npx --no-install eslint
+          public/shared/native-regional-contract.js public/shared/native-regional-runtime.js src/native/regional-authority.js
           public/shared/native-enterprise-contract.js public/shared/native-enterprise-runtime.js src/native/enterprise-authority.js
           public/shared/native-renewal-contract.js public/shared/native-renewal-runtime.js src/native/renewal-authority.js
           public/shared/native-authority-contract.js public/shared/native-experience-contract.js
@@ -156,7 +158,7 @@ jobs:
           tests/native/helpers/simulation-candidate-fixture.js tests/native/helpers/simulation-task-fixture.js
 
   renewable-package-candidate:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.package_revision != '' && inputs.package_check != 'enterprise' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.package_revision != '' && inputs.package_check == 'renewal' }}
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
@@ -212,3 +214,32 @@ jobs:
         with:
           name: phase5-enterprise-candidate
           path: package-candidate/original-occult-western-fantasy-game/build/phase5-enterprise.log
+
+  regional-package-candidate:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.package_revision != '' && inputs.package_check == 'regional' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - run: npm ci --ignore-scripts --prefix tests
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.package_revision }}
+          path: package-candidate
+      - name: Actual multi-region 5000-turn / 50-year Phase 6 Package candidate
+        working-directory: package-candidate/original-occult-western-fantasy-game
+        run: |
+          mkdir -p build
+          set -o pipefail
+          node tools/package.mjs validate --regional-only --core "$GITHUB_WORKSPACE" 2>&1 | tee build/phase6-regional.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase6-regional-candidate
+          path: package-candidate/original-occult-western-fantasy-game/build/phase6-regional.log

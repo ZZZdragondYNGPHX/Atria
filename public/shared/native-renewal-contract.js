@@ -8,7 +8,7 @@ export const RENEWAL_DIMENSIONS = ['subject', 'roles', 'truth', 'anomaly', 'path
 export const RENEWAL_OPERATIONS = {
     'matter.open': O({ grammarId: S(), hookId: S() }),
     'matter.act': O({ id: S(), action: S(32), presentation: S(320) }),
-    'world.change': O({ id: S(), operation: S(24, ['found', 'build', 'open_business', 'zone_district', 'expand', 'repurpose', 'rename', 'decline', 'burn', 'demolish', 'rebuild', 'protect', 'merge', 'split', 'dissolve']), otherId: S(), sourceId: S(), name: S(80) }),
+    'world.change': O({ id: S(), operation: S(24, ['found', 'build', 'open_business', 'zone_district', 'expand', 'repurpose', 'rename', 'decline', 'burn', 'demolish', 'rebuild', 'protect', 'merge', 'split', 'dissolve', 'region.travel', 'region.fidelity', 'region.invest']), otherId: S(), sourceId: S(), name: S(80) }),
 };
 export function assertRenewalPolicy(p) {
     assertTaskValue(p, O({ schemaVersion: I(1, 1), maxActive: I(1, 4), maxRecent: I(8, 64), cooldownTicks: I(1440, 5256000), minimumDistance: I(2, 6), maxEntities: I(4, 128),

@@ -21,6 +21,10 @@ function money(e, account, delta, tick, kind, sourceId, isPublic = true) {
     if (account === 'treasury') e.reserves += delta; else e.assets[account].balance += delta;
     const id = next(e); e.movements[id] = { id, account, delta, tick, kind, sourceId, public: isPublic, refs: [] };
 }
+export function spendEnterprise(s, policy, amount, tick, kind, sourceId) {
+    need(policy.enterprise && bank(s), 'bank or legal identity unavailable');
+    money(s.enterprise, 'treasury', -amount, tick, kind, sourceId);
+}
 function legal(s) { const e = s.enterprise; return e.identities[s.continuity.publicIdentityId]?.status === 'active'; }
 function bank(s) { return legal(s) && s.enterprise.bankIdentityId === s.continuity.publicIdentityId; }
 function permission(s, p, name) { return sorted(s.enterprise.roles).some(r => r.status === 'active' && p.roles.find(x => x.id === r.roleId)?.permission === name); }
@@ -78,6 +82,8 @@ export function syncEnterprise(snapshot, s, policy, tick) {
             if (holder !== c.agentId) { const prior = c.agentId; c.agentId = holder; profile(s, policy, holder); log(e, 'delegate_succession', tick, c.officeId, { contractId: c.id, prior, successor: holder }); }
         } else if (!active(all[c.agentId])) { alert(e, c, tick, 'agent_unavailable'); continue; }
         if (c.domain === 'business' && (e.assets[c.targetId]?.status !== 'active' || e.assets[c.targetId].ownerId !== policy.protagonistId)) alert(e, c, tick, 'asset_unavailable');
+        const targetRegion = c.domain === 'business' ? s.renewal.places[e.assets[c.targetId]?.placeId]?.regionId : c.domain === 'investigation' ? s.renewal.active[c.targetId]?.regionId : c.domain === 'research' ? s.renewal.places[c.targetId]?.regionId : '';
+        if (s.regional && targetRegion && all[c.agentId]?.regionId !== targetRegion) alert(e, c, tick, 'agent_outside_region');
         const grant = { business: 'trade', investigation: 'investigate', research: 'research' }[c.domain];
         if (grant && !permission(s, policy.enterprise, grant)) alert(e, c, tick, 'credential_unavailable');
     }
@@ -108,11 +114,12 @@ export function resolveEnterprise(snapshot, s, policy, id, tick, api) {
     }
     if (c.domain === 'business') {
         const place = s.renewal.places[venue.placeId];
-        const cost = safe(years * (6 + Math.floor(place.pressure / 3)));
+        const region = s.regional?.regions[place.regionId];
+        const cost = safe(years * (6 + Math.floor(place.pressure / 3) + (region?.war === 'war' ? 4 : 0) + (region?.law === 'amended' ? 2 : 0)));
         if (cost > c.maxSpend) { alert(e, c, tick, 'capital_authority'); return; }
         if (venue.balance < cost) { venue.debt = safe(venue.debt + cost - venue.balance); if (venue.balance) money(e, venue.id, -venue.balance, tick, 'unpaid_obligations', c.id); venue.status = 'seized'; place.status = 'closed'; place.changed = tick; place.revision++; place.cause = c.id; log(e, 'seizure', tick, c.id, { assetId: venue.id, debt: venue.debt }); alert(e, c, tick, 'insolvency'); return; }
         money(e, venue.id, -cost, tick, 'tax_and_maintenance', c.id);
-        const earnings = safe(years * Math.max(0, Math.floor((skill - 30) / 5) - place.pressure + (org?.agenda === 'profit' ? 2 : 0)));
+        const earnings = safe(years * Math.max(0, Math.floor((skill - 30) / 5) - place.pressure + (org?.agenda === 'profit' ? 2 : 0) + (region?.economy === 'expansion' ? 2 : ['recession', 'banking_crisis'].includes(region?.economy) ? -4 : 0)));
         if (earnings) money(e, venue.id, earnings, tick, 'earned_trade', c.id);
         loss = Math.max(0, cost - earnings);
         const workforce = sorted(e.nodes).filter(n => n.institutionId === c.institutionId).reduce((n, x) => n + x.workforce, 0);
