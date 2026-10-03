@@ -25,15 +25,18 @@ const native = await load('src/native/index.js');
 const manifest = await json('manifest.json');
 const fixture = args.includes('--fixture');
 const boundedV1 = args.includes('--v1-campaign');
+const retainedV1 = args.includes('--retained-v1');
+if(retainedV1 && (mode==='build'||fixture||!boundedV1||!args.includes('--archive')||!args.includes('--release-only')))throw new Error('--retained-v1 requires --v1-campaign --archive <original> --release-only in validate/preview mode');
 if (fixture && boundedV1) throw new Error('Choose only one explicit regression scenario');
+if(args.includes('--century-only')&&(fixture||boundedV1||args.includes('--regional-full')))throw new Error('--century-only is the fixed v2 final acceptance; conflicting regression/soak flags are invalid');
 const { readContent, validateContent } = await import('./content-check.mjs');
 validateContent(await readContent(), manifest);
 manifest.resources = await json('runtime/model-resources.json');
 // Historical v1 remains a distinct fixture; in-progress v2 must never reuse its immutable identity.
 if (!fixture && !boundedV1) {
  const previous = manifest.packageVersionId;
- manifest.version = '2.0.0-phase7';
- manifest.packageVersionId = 'pkgv_' + createHash('sha256').update('occult-long-lived-world-2.0.0-phase7').digest('hex').slice(0, 32);
+ manifest.version = '2.0.0';
+ manifest.packageVersionId = 'pkgv_' + createHash('sha256').update('occult-long-lived-world-2.0.0').digest('hex').slice(0, 32);
  manifest.resources = JSON.parse(JSON.stringify(manifest.resources).replaceAll(previous, manifest.packageVersionId));
 }
 if(fixture){const originalId=manifest.packageId,originalVersion=manifest.packageVersionId;manifest.packageId='pkg_'+createHash('sha256').update('occult-regression-only').digest('hex').slice(0,32);manifest.packageVersionId='pkgv_'+createHash('sha256').update('occult-regression-release-1.0.0').digest('hex').slice(0,32);manifest.version+='-regression';manifest.resources=JSON.parse(JSON.stringify(manifest.resources).replaceAll(originalId,manifest.packageId).replaceAll(originalVersion,manifest.packageVersionId));}
@@ -82,6 +85,8 @@ if (!fixture) {
   opening = compileEnterprise(opening);
   const { compileRegional } = await import('./regional-compile.mjs');
   opening = compileRegional(opening);
+  opening.logic.transactions.find(t=>t.id==='opening.wait').receipt.projection.notice='Advance the canonical clock. Six stances persist; zero minutes changes policy only. Longer intervals resolve aging, births, succession, institutions, regions and retained obligations. Review public attention interruptions before continuing; continuity and reconstruction retain their costs.';
+  opening.logic.transactions.find(t=>t.id==='opening.day').receipt.projection.notice='Resolve the chronological interval and retained obligations through the shared Native lifetime, regional and historical authorities.';
  }
  contract.authorityRuntime.intentObservation.viewIds=['player.overview'];
  Object.assign(contract,{lifecycleRuntime:opening.lifecycle,simulationRuntime:opening.simulation,informationRuntime:opening.information});
@@ -144,10 +149,17 @@ if (mode === 'build' && args.includes('--archive')) throw new Error('--archive i
 const archive = args.includes('--archive') ? await fs.readFile(path.resolve(option('--archive'))) : builtArchive;
 if (args.includes('--archive')) {
  const actual = native.inspectAtriaPackageContainer(archive);
+ if(retainedV1){
+  assert.equal(createHash('sha256').update(archive).digest('hex'),'e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09','Retained v1 bytes must be unchanged');
+  for(const key of Object.keys(manifest))delete manifest[key];Object.assign(manifest,actual.manifest);
+  sourceFiles.clear();for(const [file,bytes]of actual.sourceFiles)sourceFiles.set(file,bytes);
+  assetPayloads.clear();for(const [id,bytes]of actual.assets)assetPayloads.set(id,bytes);
+ }else{
  const expected = native.inspectAtriaPackageContainer(builtArchive);
  assert.deepEqual(actual.manifest, expected.manifest, 'Release manifest must match current source');
  assert.deepEqual(actual.sourceFiles, expected.sourceFiles, 'Release compiled files must match current source');
  assert.deepEqual(actual.assets, expected.assets, 'Release Data must match current source');
+ }
 }
 if (mode === 'build') {
     const out = args.includes('--out') ? path.resolve(option('--out')) : path.join(root, 'build', manifest.version + '.atria');

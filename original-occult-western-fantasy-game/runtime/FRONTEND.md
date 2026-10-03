@@ -2,7 +2,7 @@
 
 ## Long-lived-world Phase 7
 
-Current implementation is `2.0.0-phase7`; this is not a release. It preserves
+Current implementation is `2.0.0`; final release evidence is retained in the Package Record. It preserves
 opening-era flows below and adds three primary destinations, bounded Chronicle
 and public world reads, exact calendar review, complete paged long-term forms,
 public identity/absence, delegation policy edits, real regional travel and

@@ -2,6 +2,15 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { renewalProfile } from './renewal-profile.mjs';
 
+test('amended final acceptance has fixed workload and retained coverage intervals', () => {
+    const p = renewalProfile({ century: true });
+    assert.equal(p.turns, 1000); assert.equal(p.years, 200);
+    assert.equal(p.profile, 'century-acceptance'); assert.equal(p.checkpointEvery, 250);
+    assert.equal(p.hookEvery, 6); assert.equal(p.worldEvery, 24);
+    assert.throws(() => renewalProfile({ century: true, override: '999' }), /exactly 1000/);
+    assert.throws(() => renewalProfile({ century: true, full: true }), /exactly 1000/);
+});
+
 test('regional default is the bounded Phase 6 profile, not Gate B', () => {
     const p = renewalProfile({ regional: true });
     assert.equal(p.profile, 'regional-fast');

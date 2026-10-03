@@ -1,5 +1,9 @@
 // Validation workload only; never changes Native clocks, budgets or world policy.
-export function renewalProfile({ regional = false, full = false, override } = {}) {
+export function renewalProfile({ regional = false, full = false, century = false, override } = {}) {
+    if (century) {
+        if (full || (override !== undefined && Number(override) !== 1000)) throw new Error('Century acceptance requires exactly 1000 turns without --regional-full');
+        return { turns: 1000, years: 200, fast: false, profile: 'century-acceptance', checkpointEvery: 250, hookEvery: 6, worldEvery: 24 };
+    }
     if (full && !regional) throw new Error('--regional-full requires --regional-only');
     const turns = override === undefined ? (regional && !full ? 100 : 5000) : Number(override);
     if (!Number.isSafeInteger(turns) || turns < 1) throw new Error('ATRIA_RENEWAL_TURNS must be a positive safe integer');

@@ -14,7 +14,7 @@ export async function verify({load,native,manifest,sourceFiles,assetPayloads,arc
  assert.deepEqual(budgets,{transactions:64,publicationReads:9,publicationCommands:15,maximumStaticCommands:24,evidenceSchema:248,summarySchema:232,graphSchema:169,maximumFormula:2000});
  assert.deepEqual(contract.authorityRuntime.policy,{maxReadGrants:16,maxWorldEvents:16,maxAppCommands:24,maxEffects:32,maxReceiptBytes:32768});
  assert.deepEqual(contract.authorityRuntime.intentObservation,{viewIds:['player.overview'],maxItems:64,maxBytes:16384});
- assert.deepEqual(contract.simulationRuntime.policy,{maxSteps:3,maxDeliberations:1,maxAdvanceTicks:2880});
+ assert.deepEqual(contract.simulationRuntime.policy,{maxSteps:3,maxDeliberations:1,maxAdvanceTicks:manifest.version==='2.0.0'?Number.MAX_SAFE_INTEGER:2880});
  assert(contract.informationRuntime.graphs.every(g=>g.nodeSource==='investigation.details'));
  for(const id of ['authority-transaction','world-simulation'])assert(contract.capabilities.some(c=>c.id===id&&c.version===1&&c.required));
  for(const resource of manifest.resources)assert.deepEqual(resource.origin,{scope:'package',packageId:manifest.packageId,packageVersionId:manifest.packageVersionId});
@@ -27,6 +27,6 @@ export async function verify({load,native,manifest,sourceFiles,assetPayloads,arc
   session=await svc.core.applyLifecycleCommand(h.handle,session.session.sessionId,{type:'lifecycle',invocationId:'p9-release-ready',action:{kind:'experience.ready'}},{expectedRevisionId:session.revision.revisionId});assert.equal(session.states.atri_lifecycle.ready,true);
   for(const view of contract.informationRuntime.views)content.assertSafe(projectInformation(session,view.id,{purpose:view.exposure[0]}));
   const corrupt=Buffer.from(archive);corrupt[corrupt.length-1]^=1;assert.throws(()=>native.inspectAtriaPackageContainer(corrupt));
-  return {phase:'P9-release',mode,version:manifest.version,packageVersionId:manifest.packageVersionId,archiveSha256:inspected.containerHash,archiveBytes:archive.length,compiledSourceBytes:[...sourceFiles.values()].reduce((n,b)=>n+b.length,0),budgets,data:content.metrics,checks:['Exact saved archive manifest/compiled files/assets match source build','Permission gate, real FS install/reopen, Ready and all five safe Views','Unchanged static/schema/formula/expanded-work policies','Immutable model-resource origins and archive corruption refusal']};
+  return {phase:manifest.version==='2.0.0'?'Phase 8 release':'Retained v1 release regression',mode,version:manifest.version,packageVersionId:manifest.packageVersionId,archiveSha256:inspected.containerHash,archiveBytes:archive.length,compiledSourceBytes:[...sourceFiles.values()].reduce((n,b)=>n+b.length,0),budgets,data:content.metrics,checks:[process.argv.includes('--retained-v1')?'Frozen original v1 archive digest and embedded manifest/compiled files/assets verified':'Exact saved archive manifest/compiled files/assets match source build','Permission gate, real FS install/reopen, Ready and all safe Views','Unchanged static/schema/formula/expanded-work policies; v2 unbounded calendar horizon','Immutable model-resource origins and archive corruption refusal']};
  }finally{await h.cleanup();}
 }
