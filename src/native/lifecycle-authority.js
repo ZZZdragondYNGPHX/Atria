@@ -78,6 +78,25 @@ function protectedRecord(base, state, domainId, record) {
     }
     return mentions(state.outbox, record.id);
 }
+export function protectedTaskResult(base, state, record) {
+    const task = base.manifest.runtime?.experienceContract?.taskRuntime?.tasks.find(item => item.id === record.taskId);
+    // Advice without an Apply command is display-only, including older records
+    // stored as drafts. Executable proposals still need their revision anchor.
+    const advice = record.kind === 'task' && task?.resultPolicy.resultClass === 'advisory' && !task.resultPolicy.applyCommand
+        && !lifecycleDefinition(base)?.interactions?.some(item => item.taskId === record.taskId);
+    return !['turn', 'task'].includes(record.kind) || (record.status === 'draft' && !advice) || record.pinned
+        || mentions(base.timeline, record.invocationId)
+        || Object.entries(base.states).some(([key, value]) => ![NS, 'atri_task_results'].includes(key) && mentions(value, record.invocationId))
+        || base.states.atri_task_results?.records.some(item => item.invocationId !== record.invocationId && mentions(item.payload, record.invocationId))
+        || Object.values(state.domains).some(domain => mentions(domain.records, record.invocationId))
+        || Object.values(state.workflows ?? {}).some(flow => flow.status === 'active' && flow.taskInvocationId === record.invocationId)
+        || (state.outbox ?? []).some(item => item.status === 'pending' && item.invocationId === record.invocationId);
+}
+export function taskResultTombstone(record) {
+    return { invocationId: record.invocationId, fingerprint: record.fingerprint ?? null,
+        kind: record.kind, requestHash: record.requestHash ?? null, status: record.status, branchId: record.branchId, storedRevisionId: record.storedRevisionId,
+        ...(record.anchorRevisionId ? { anchorRevisionId: record.anchorRevisionId } : {}) };
+}
 export function compactLifecycle(base, state, { reserveTask = false, pruneInteractions = false } = {}) {
     const def = lifecycleDefinition(base);
     for (const domain of def.domains) {
@@ -97,14 +116,8 @@ export function compactLifecycle(base, state, { reserveTask = false, pruneIntera
         const records = copy(taskState.records); const limit = def.retention.maxTaskResults - Number(reserveTask);
         for (let i = 0; records.length > limit && i < records.length;) {
             const record = records[i];
-            if (record.status === 'draft' || record.pinned || mentions(base.timeline, record.invocationId)
-                || Object.entries(base.states).some(([key, value]) => ![NS, 'atri_task_results'].includes(key) && mentions(value, record.invocationId))
-                || Object.values(state.domains).some(domain => mentions(domain.records, record.invocationId))
-                || Object.values(state.workflows).some(flow => flow.status === 'active' && flow.taskInvocationId === record.invocationId)
-                || state.outbox.some(item => item.status === 'pending' && item.invocationId === record.invocationId)) { i++; continue; }
-            state.taskTombstones.push({ invocationId: record.invocationId, fingerprint: record.fingerprint ?? null,
-                kind: record.kind, requestHash: record.requestHash ?? null, status: record.status, branchId: record.branchId, storedRevisionId: record.storedRevisionId,
-                ...(record.anchorRevisionId ? { anchorRevisionId: record.anchorRevisionId } : {}) });
+            if (protectedTaskResult(base, state, record)) { i++; continue; }
+            state.taskTombstones.push(taskResultTombstone(record));
             records.splice(i, 1);
         }
         if (records.length > limit) throw new TypeError('Task result retention is pinned or active');

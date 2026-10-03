@@ -488,7 +488,7 @@ describe.each(CONTRACT_HARNESSES)('P4 Session lifecycle - $name', ({ make }) => 
         await open(value => {
             value.lifecycleRuntime.automations = [];
             value.lifecycleRuntime.retention.maxTaskResults = 1;
-            if (protection === 'draft') value.taskRuntime.tasks[0].resultPolicy = { resultClass: 'advisory', sink: 'proposal' };
+            if (protection === 'draft') value.taskRuntime.tasks[0].resultPolicy = { resultClass: 'advisory', sink: 'proposal', applyCommand: 'heal' };
             if (protection === 'current-workflow') value.lifecycleRuntime.workflows[0].initial = 'summary';
             else value.lifecycleRuntime.workflows = [];
         });

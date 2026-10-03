@@ -7,6 +7,7 @@ import { hashNativeDocument } from './repositories/common.js';
 import { historyPolicy, HISTORY_OPERATIONS, ARTIFACT_KINDS } from '../../public/shared/native-history-contract.js';
 import { initialHistory, historyIndex } from '../../public/shared/native-history-runtime.js';
 import { assertTaskValue } from '../../public/shared/native-task-contract.js';
+import { protectedTaskResult, taskResultTombstone } from './lifecycle-authority.js';
 
 const copy = v => structuredClone(v);
 const same = (a, b) => a === undefined || b === undefined ? a === b : hashNativeDocument(a) === hashNativeDocument(b);
@@ -197,14 +198,24 @@ export function checkpointHistory(base, states, timeline, taskRecord) {
     const policy = historyPolicy(base), h = states.atri_lifecycle?.history;
     if (!policy || !h || !taskRecord || taskRecord.kind !== 'turn' || (h.transactions - h.checkpoint < policy.checkpointTurns && !h.checkpointRequested)) return null;
     const tasks = states.atri_task_results;
-    if (tasks?.records.some(r => r.kind !== 'turn' || r.pinned)) throw new TypeError('History checkpoint has protected Task dependencies');
+    const candidate = { ...base, states };
+    if (tasks?.records.some(r => r.pinned || (r.kind !== 'turn' && protectedTaskResult(candidate, states.atri_lifecycle, r)))) throw new TypeError('History checkpoint has protected Task dependencies');
+    const lifecycle = states.atri_lifecycle;
+    const retained = (lifecycle.taskTombstones ?? []).filter(r => r.kind !== 'turn').length
+        + (tasks?.records.filter(r => r.kind !== 'turn').length ?? 0)
+        + (lifecycle.receipts?.length ?? 0) + (lifecycle.activityTombstones?.length ?? 0);
+    if (retained > base.manifest.runtime.experienceContract.lifecycleRuntime.retention?.maxReceipts) throw new TypeError('Lifecycle receipt retention limit reached');
     h.checkpoint = h.transactions; h.checkpointRequested = false;
     states.atri_lifecycle.taskTombstones = (states.atri_lifecycle.taskTombstones ?? []).filter(r => {
         if (r.kind !== 'turn') return true;
         retireInvocation(h, r.invocationId); return false;
     });
     if (tasks) tasks.records = tasks.records.filter(r => {
-        if (r.kind !== 'turn' || r.status !== 'applied' || r.pinned) return true;
+        if (r.kind !== 'turn') {
+            states.atri_lifecycle.taskTombstones.push(taskResultTombstone(r));
+            return false;
+        }
+        if (r.status !== 'applied' || r.pinned) return true;
         retireInvocation(h, r.invocationId); return false;
     });
     const receipts = states.atri_action_receipts;

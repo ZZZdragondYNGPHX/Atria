@@ -118,6 +118,35 @@ describe('Native tiered history', () => {
         retireInvocation(h(s), 'other'); expect(retiredInvocation(h(s), 'other')).toBe(true);
         validateHistory(s);
     });
+    test('checkpoint retires display-only advice and completed results with exact replay tombstones', () => {
+        let s = fixture(); for (let i = 0; i < 64; i++) s = advance(s);
+        s.manifest.runtime.experienceContract.taskRuntime = { tasks: [{ id: 'advice', resultPolicy: { resultClass: 'advisory', sink: 'proposal' } }] };
+        s.states.atri_task_results = { records: [{ kind: 'task', taskId: 'advice', status: 'draft', invocationId: 'advice-1', fingerprint: 'exact' },
+            { kind: 'task', status: 'completed', invocationId: 'display-1' }] };
+        checkpointHistory(s, s.states, [], { kind: 'turn' });
+        expect(s.states.atri_task_results.records).toEqual([]);
+        expect(s.states.atri_lifecycle.taskTombstones).toEqual([expect.objectContaining({ invocationId: 'advice-1', fingerprint: 'exact' }),
+            expect.objectContaining({ invocationId: 'display-1' })]);
+    });
+    test.each(['apply', 'interaction', 'pinned', 'domain', 'timeline', 'task', 'workflow', 'outbox', 'capacity'])('checkpoint preserves %s Task dependencies without mutation', protection => {
+        let s = fixture(); for (let i = 0; i < 64; i++) s = advance(s);
+        const task = { id: 'advice', resultPolicy: { resultClass: 'advisory', sink: 'proposal' } };
+        s.manifest.runtime.experienceContract.taskRuntime = { tasks: [task] };
+        const result = { kind: 'task', taskId: 'advice', status: 'draft', invocationId: 'protected' };
+        s.states.atri_task_results = { records: [result] };
+        if (protection === 'apply') task.resultPolicy.applyCommand = 'update';
+        if (protection === 'interaction') s.manifest.runtime.experienceContract.lifecycleRuntime.interactions = [{ taskId: result.taskId }];
+        if (protection === 'capacity') s.manifest.runtime.experienceContract.lifecycleRuntime.retention = { maxReceipts: 0 };
+        if (protection === 'pinned') result.pinned = true;
+        if (protection === 'domain') s.states.atri_lifecycle.domains.person.records[0].value.task = result.invocationId;
+        if (protection === 'timeline') s.timeline.push({ task: result.invocationId });
+        if (protection === 'task') s.states.atri_task_results.records.push({ kind: 'task', status: 'completed', invocationId: 'dependent', payload: { source: result.invocationId } });
+        if (protection === 'workflow') s.states.atri_lifecycle.workflows = { active: { status: 'active', taskInvocationId: result.invocationId } };
+        if (protection === 'outbox') s.states.atri_lifecycle.outbox = [{ status: 'pending', invocationId: result.invocationId }];
+        const before = clone(s);
+        expect(() => checkpointHistory(s, s.states, [], { kind: 'turn' })).toThrow(protection === 'capacity' ? 'retention limit' : 'protected Task');
+        expect(s).toEqual(before);
+    });
     test('strict policy rejects undeclared fact paths and oversized work limits', () => {
         const s = fixture(), policy = s.manifest.runtime.experienceContract.lifecycleRuntime.history;
         const I = { type: 'integer' }, S = { type: 'string' };
