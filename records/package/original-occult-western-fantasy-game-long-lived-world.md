@@ -938,3 +938,105 @@ Native Frontend v3 37095803048 and cleanup 37095803006 passed on integrated main
 Native Model Prompt Runtime 37095803004 was still running (not reported as passed).
 No Package soak was dispatched; these additional checks do not reopen the
 superseded long-soak stage blocker.
+
+
+## Phase 7 emergency device handoff — 2026-10-03 (INCOMPLETE)
+
+User explicitly requested immediate push to continue on another device. This is
+an emergency WIP checkpoint, not the Phase 7 exit or approval for Phase 8.
+
+### Pushed state
+
+- Package `refactor/original-occult-western-fantasy-long-lived-world`:
+  `6045e9982a6920f04ac2f82a4d7e075d71ca2357`.
+- Independent Core support `feat/player-chronicle-bridge`:
+  `1891176392f3c7d7529ab8b2188d796d509b6ecd`.
+- Core main remains `56df98f50409c7b17817c681f6e3976a564fbb99`.
+- Neither support branch nor Package has been integrated. No release created.
+- Development version changed to `2.0.0-phase7` in Package tool only.
+- Historical release SHA-256 rechecked unchanged:
+  `e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09`.
+
+### Work in progress
+
+Core registers closed `host.history.query`, `host.chronology.interval`, and
+`host.world.view` reads in the existing Host catalogue/service. History wraps
+existing public `queryHistory`; calendar delegates to Native civil/instant/
+anniversary; world views reuse lifetime/enterprise/regional projections. No new
+persistence or raw Lifecycle sandbox binding. World projection and byte/bounds
+behavior still require full Phase 7 review; do not treat current code as accepted.
+
+Package has three primary destinations, section selector, Chronicle list/detail,
+memory mutation wiring, public people/region/delegation reads, calendar review,
+complete stance shape, and schema-derived enterprise/family/travel action drafts.
+The latest edit adds seven-visible-field paging for larger typed forms, reuses
+`opening_wait` and complete nested templates. This last edit and corrected
+transport enums (`coach`, `rail`, `motor`) have NOT been built/browser-tested.
+Existing schema budgets were not raised (last built state 230/256 nodes, 84 bindings).
+
+### Actual evidence and failures
+
+- Additional main CI 37095803004 confirmed success on unchanged main, including
+  integration, lint and listed Native browser cases. No regression to fix there.
+- Core `native/chronicle-host.test.js`: five tests passed (public/hidden exact ID,
+  bounded cursor, marks/provenance, Gregorian intervals, public person/private
+  relationship exclusion and deceased age). This was after world adapter addition.
+- Core existing `native/frontend-bridge.test.js`: 16 tests passed before world
+  adapter addition. Targeted eslint passed on adapter/catalog/service, but final
+  added test/last changes are not claimed fully linted.
+- Existing Package frontend-model check passed before later controller edits.
+- Intermediate Package build succeeded against modified Core; do not mistake its
+  printed base HEAD for a clean tested commit. Latest checkpoint not rebuilt.
+- Real Edge headless six-step creation passed; initial missing script bundle was
+  local setup, then fixed by building Native frontend cache. A subsequent focus
+  request rejection disabled controller; focus calls now tolerate stale targets.
+- Focused Phase 7 browser diagnostic reaches evidence search and Chronicle reads.
+  First failed due to a test locator matching seven rows; corrected to wait for
+  requested fact label. Latest run failed because `history-detail` stayed hidden,
+  with no controller diagnostics. This is still unresolved; no browser pass.
+- Root cause investigation at handoff: repeated `historySelect` is intentionally
+  NOT a NodeRef (Native rejects repeated NodeRefs). Its declarative
+  `historyInspect` interaction ONLY sets `historySelected`, so the controller
+  `event.node === historySelect` handler is never invoked. Existing evidence works
+  because its declarative `inspect` also sets detail/open directly. Inspect
+  `public/scripts/native/frontend/runtime.js` run/createBlock and fix via supported
+  declarative detail/focus or supported controller communication; do not relax
+  Native repeated-node constraints or claim backend helpers are bindings.
+- No Phase 7 acceptance matrix pass, no new 100-turn regional run, no 5k/10k soak,
+  no local MySQL/PostgreSQL success, no Android/physical device/hosted-model claim.
+- `git diff --check` passed in both changed workspaces before emergency commits.
+- Browser screenshots/logs are ignored local build artifacts, NOT portable Git
+  evidence. Reproduce on next device. No caches/config/secrets/builds committed.
+
+### Next implementation/verification priorities
+
+1. Fix real repeated-row detail interaction above; check world rows vs history
+   memory controls and focus/back behavior without polling-dependent updates.
+2. Review unfinished paged form draft/signature handling, page bounds, defaults,
+   boolean labels/affirmative consent, full nested submission, actual authority
+   refusals, revision invalidation and no duplicate writes. Do not trust synthetic
+   action IDs as bindings: they map to `opening_wait`.
+3. Complete approved spec: identity/absence, interval result/interrupt and remaining
+   interval review, hub/Era masthead, lineage/institution/place/artifact history,
+   safe relation selection, real delegation policy and regional travel review.
+   Current screens are incomplete, not substitutes for these requirements.
+4. Fix ordering/races in read navigation, scope cursors/selection to revision and
+   query; preserve list/back state. Verify safe bounds for formatted projections.
+5. Extend the EXISTING frontend/browser checks per approved acceptance matrix.
+   `--frontend-only --phase7-ui-only` is a new focused DIAGNOSTIC path in the same
+   harness, not stage acceptance; it returns before full save/export assertions.
+   Current stance-only diagnostic only checks unchanged clock and needs stronger
+   actual publication/policy proof. Fix before calling it evidence.
+6. Update existing frontend/DESIGN.md actual binding map and runtime/FRONTEND.md;
+   these required docs have not yet been updated. Complete relevant current-stage
+   Record/module reading (earlier large outputs were truncated; do not assume all
+   spec/Record details were reviewed). Skills were loaded locally; do not redesign.
+7. Only after actual Phase 7 implementation and acceptance, commit/push, integrate
+   tested Core support appropriately, update this Record/live HANDOFF, issue the
+   Phase 8 prompt and STOP. No Package final merge or 2.0.0 release now.
+
+Run from game directory, with an independent checkout of the support branch:
+`node tools/package.mjs validate --core <support-checkout> --frontend-only --phase7-ui-only`.
+Frontend harness serves the configured forceDist webpack output; prebuild required
+bundles on a new device before running. Use installed browser channel (default
+msedge; ATRIA_BROWSER_CHANNEL is available). Do not copy device paths into code.
