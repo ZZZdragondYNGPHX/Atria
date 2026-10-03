@@ -57,7 +57,7 @@ export async function networkChecks(h) {
  for(const k of selected)assert.equal(v(calendar,'world_matters').network[k].expired,false);
  for(const [day,k]of [[4,'property'],[5,'burial'],[6,'railway']]){calendar=await prepare(calendar,'opening.wait',{minutes:1440});assert.equal(v(calendar,'world_matters').day,day);assert.equal(v(calendar,'world_matters').network[k].expired,true);}
  let horizon=alternate;while(v(horizon,'world_matters').day<30)horizon=await prepare(horizon,'opening.wait',{minutes:2880});
- const held=structuredClone(horizon);await assert.rejects(prepare(horizon,'opening.wait',{minutes:1440}));assert.deepEqual(horizon,held);
+ if(horizon.states.atri_lifecycle.domains.chronology){const continued=await prepare(horizon,'opening.wait',{minutes:1440});assert(v(continued,'world_matters').day>30);}else{const held=structuredClone(horizon);await assert.rejects(prepare(horizon,'opening.wait',{minutes:1440}));assert.deepEqual(horizon,held);}
  if(process.argv.includes('--network-state'))return {...result,checks:['Native prepared order/routes/dispositions/merge-split matrix; no HTTP or save claims']};
  // Typed live campaign: late discovery, two active supports, injury, settlement,
  // two independent pattern instances, free text equivalence and actual restore.

@@ -2,7 +2,6 @@
 
 [hidden]{display:none!important}[data-repeat]{display:contents}.cover nav button[aria-current="page"]{background:#28545d;border-left:3px solid #cbd7ce}
 
-.register:has([data-node-id="notes"]:not([hidden])) button[value="notes"],.register:has([data-node-id="evidence-page"]:not([hidden])) button[value="evidence"],.register:has([data-node-id="cases-page"]:not([hidden])) button[value="cases"],.register:has([data-node-id="identity-page"]:not([hidden])) button[value="identity"]{background:#28545d;border-left:3px solid #cbd7ce}
 
 button:focus-visible{transition:none}.action-status{font-size:.9rem;color:var(--muted)}
 
@@ -11,8 +10,7 @@ button:focus-visible{transition:none}.action-status{font-size:.9rem;color:var(--
 @media(hover:hover) and (pointer:fine){.cover nav button:hover:not(:disabled){background-color:#28545d}}
 
 /* Phase 7: one folio scroll owner, wrapping navigation and bounded history. */
-:host{font-size:1rem}.history-results{display:grid;grid-template-columns:minmax(0,1fr);gap:24px}.history-results>*{min-width:0}.history-results p,.history-results button,.masthead p{overflow-wrap:anywhere}.history-results .detail{align-self:start}.history-results .case-file{padding:16px 0}.section>h1{margin:24px 0}.section>p{margin-bottom:16px}.action-fields{margin:16px 0}.button-row{gap:8px;flex-wrap:wrap}.cover nav button:focus-visible{outline-color:var(--paper)}.cover nav button{overflow-wrap:anywhere;white-space:normal}.record-title{text-align:left}.masthead{gap:16px;flex-wrap:wrap}.masthead>div{flex-wrap:wrap;gap:8px}#register-section{max-width:32rem}
-.register:has([data-node-id="chronicle-page"]:not([hidden])) [data-node-id="go_chronicle"],.register:has([data-node-id="time-page"]:not([hidden])) [data-node-id="go_arrangements"],.register:has([data-node-id="identity-page"]:not([hidden])) [data-node-id="go_arrangements"]{background:#28545d;border-left:3px solid #cbd7ce}
+:host{font-size:1rem}.history-results{display:grid;grid-template-columns:minmax(0,1fr);gap:24px}.history-results>*{min-width:0}.history-results p,.history-results button,.masthead p{overflow-wrap:anywhere}.history-results .detail{align-self:start;order:0}.history-results .case-file{padding:16px 0}.section>h1{margin:24px 0}.section>p{margin-bottom:16px}.action-fields{margin:16px 0}.button-row{gap:8px;flex-wrap:wrap}.cover nav button:focus-visible{outline-color:var(--paper)}.cover nav button{overflow-wrap:anywhere;white-space:normal}.record-title{text-align:left}.masthead{gap:16px;flex-wrap:wrap}.masthead>div{flex-wrap:wrap;gap:8px}#register-section{max-width:32rem}
 @media(min-width:75rem){.history-results:has([data-node-id="history-detail"]:not([hidden])){grid-template-columns:minmax(0,1fr) minmax(20rem,24rem)}}
 @media(max-width:1199px){.register{display:flex;flex-direction:column}.cover{padding:16px;gap:16px}.cover nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.cover-note{display:none}.folio{flex:1;min-height:0}.brand{font-size:1rem}.registration-mark{font-size:1.5rem}.cover nav button{padding:8px}}
 @media(max-width:767px){.history-results:has([data-node-id="history-detail"]:not([hidden])) [data-node-id="history-list"]{display:none}.folio{padding-left:16px;padding-right:16px}.cover nav{grid-template-columns:repeat(auto-fit,minmax(min(100%,7rem),1fr))}}

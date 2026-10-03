@@ -17,6 +17,8 @@ if (!args.includes('--core')) throw new Error('Usage: node tools/package.mjs bui
 if (!['build', 'validate', 'preview'].includes(mode)) throw new Error('Unknown mode');
 const core = path.resolve(option('--core'));
 const coreHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: core, encoding: 'utf8' }).trim();
+const packageHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+const packageDirty = Boolean(execFileSync('git', ['status', '--porcelain', '--', '.'], { cwd: root, encoding: 'utf8' }).trim());
 const load = rel => import(pathToFileURL(path.join(core, rel)).href);
 const json = async rel => JSON.parse(await fs.readFile(path.join(root, rel), 'utf8'));
 const native = await load('src/native/index.js');
@@ -54,6 +56,7 @@ for (const file of (await fs.readdir(path.join(root, 'data'))).sort()) {
 const seed = await json('data/seed.bootstrap.json');
 const bootstrap = contract.lifecycleRuntime.domains.find(d => d.id === 'entities').commands.find(c => c.id === 'bootstrap');
 bootstrap.assign = { scene: seed.scene, playerStatus: seed.playerStatus, privateNote: seed.privateNote };
+let frontendCatalog;
 const sourceFiles = new Map([['runtime/logic.json', await fs.readFile(path.join(root, 'runtime/logic.json'))]]);
 for (const file of ['frontend/frontend.json', 'frontend/bridge.json', 'frontend/Main.aui']) sourceFiles.set(file, await fs.readFile(path.join(root, file)));
 if (!fixture) {
@@ -92,6 +95,41 @@ if (!fixture) {
  manifest.runtime.experience.features=[{id:'frontend-script',version:1,required:true}];
  const {compileInquiry}=await import('./frontend-compile.mjs');
  const frontend=await compileInquiry({root,opening,contract,load});
+ frontendCatalog=frontend.catalog;
+ if(!boundedV1){
+  // Renderer notices retain the full authored review. Resolver tool descriptions
+  // are concise public metadata; schemas and mechanical validators are unchanged.
+  const descriptions={
+   identity:'Ordinary adult identity; expression grants no external facts or powers.',origin:'Curated ordinary origin; familiarity grants no restricted access.',prior_life:'Curated ordinary prior life; no restricted access.',faith:'Curated faith; no restricted access.',anchor:'One consenting living ordinary Personal Anchor.',reason:'Independent Civil Verifier, family mandate, practice and rent; no Claim.',
+   family:'Consented attributed family testimony; not documentary Truth.',compare:'Independent records conflict; no deep cause established.',preserve:'Witness verified contradictions; Breach and two supported Seeds, no class.',hypothesis:'Revisable proposal; no new evidence or Truth.',lead:'Inquiry proposal; no new evidence or Truth.',private_access:'Denied access leaves an alternative route, no private knowledge.',seed_unlost_evidence:'Candidate recognition of verified contradiction; no mind protection or reconstruction.',seed_name_mismatch:'Candidate designation mismatch; no true names or universal forgery detection.',postpone:'Remain uninvested, strained and unreliable; no formal Price.',consult:'Qualified Seed/Anchor/Price consultation; no self-Investiture or secret cosmology.',invoke:'Granted rule on examined support only; no new evidence or universal detection.',test_copy:'Examine acquired copy; no invented historical evidence.',reopen:'Reopen inquiry; preserve Settlement and evidence.',visit:'Spend time with the living Anchor; no Humanity score.',wait:'Canonical interval; six persistent stances, zero-minute policy; optional attributed history, consent-based lifetimes and costly continuity.',
+   'network.open':'Consented post-Breach property/burial/railway mandate; deadlines persist.',
+   'network.prepare':'Consent, escort and carrier safety; prevents new Injury, preserves prior Injury.',
+   'network.interview':'Consented attributed testimony; not independent documentary Truth.',
+   'network.compare':'Independent acquired roles; duplicates/testimony alone cannot qualify.',
+   'network.property_referral':'Recorded shared-use gives a rail copy referral; no safety or office.',
+   'network.reopen':'Reopen; preserve time, Settlement, access obligations and evidence.',
+   'network.merge':'Revisable cross-case links; no shared-cause proof or evidence ownership change.',
+   'network.split':'Split links; preserve evidence, dispositions and records.',
+   'network.care':'Ordinary wound care; persistent Injury remains.',
+   'network.pattern_open':'Two bounded consenting follow-up slots; ordinary claimant, no external Canon.',
+   'network.pattern_request':'Independent claimant request; no cross-slot evidence reuse.',
+   'network.pattern_reply':'Independent reply requires its claimant request; no cross-slot reuse.',
+   'network.pattern_settle':'Qualified remedy/referral/withdrawal; continuing duty, no historical proof.',
+   'convergence.manage':'Consented mandate and exact institutional terms; preserve debts, ordinary cover, disclosure limits and uncertainty.',
+   'convergence.hearing':'Qualified cross-source compact; six independent terms, residual inquiry; prior locks/exclusions remain.',
+   'convergence.practice':'Consenting per-instance request/reply; remedy and actual bounded fulfilment; fixed family/due date.',
+   'convergence.claim':'Earned rule on supervised consenting carrier; inspected substrate, Investiture and maintained civic/sacred Price; no rewritten history or hidden cause.'
+  };
+  for(const t of opening.logic.transactions){const key=t.id.replace(/^opening\./,'');
+   const concise=descriptions[key]??(key.startsWith('acquire_')?'Automatic authorized source; provenance is not incompatible Truth.':key.startsWith('familiar_')?'Qualified introduction gives the same source; public route remains.':key.startsWith('stabilize_')?'Formal Claim requires verified Breach, Seed, consultation, Anchor and Price; only its narrow rule.':key.startsWith('settle_')?'Qualified incomplete disposition; preserve evidence, Truth and continuing consequences.':key.startsWith('network.acquire_')?'Authorized acquired source; provenance is not causal Truth. Rail inner entry needs safety/escort; public routes remain.':key.startsWith('network.settle_')?'Qualified institutional arrangement; evidence and deadline consequences persist.':key.startsWith('convergence.source_')?'Authorized independent source; no private Truth. Trial needs isolation/consent; documentary routes remain.':null);
+   if(concise)t.intent.description=concise;
+  }
+  sourceFiles.set('runtime/logic.json',Buffer.from(JSON.stringify(opening.logic)));
+  const {resolverRequest}=await load('src/native/authority-turn.js');
+  // Reserve the full public observation cap plus an ordinary prose inquiry.
+  resolverRequest(opening.logic.transactions,{text:'x'.repeat(16370)},'x'.repeat(256));
+ }
+
  for(const [file,bytes]of frontend.files)sourceFiles.set(file,bytes);
  console.error('P8 frontend budgets',JSON.stringify(frontend.budget));
 
@@ -115,8 +153,8 @@ if (mode === 'build') {
     const out = args.includes('--out') ? path.resolve(option('--out')) : path.join(root, 'build', manifest.version + '.atria');
     await fs.mkdir(path.dirname(out), { recursive: true });
     await fs.writeFile(out, archive, { flag: 'wx' });
-    console.log(JSON.stringify({ mode, coreHead, output: out, bytes: archive.length }));
+    console.log(JSON.stringify({ mode, packageHead, packageDirty, coreHead, output: out, bytes: archive.length }));
 } else {
     const { verify } = await import(args.includes('--release-only')&&!fixture ? './release-check.mjs' : args.includes('--frontend-only')&&!fixture ? './frontend-check.mjs' : fixture ? './verify.mjs' : './opening-check.mjs');
-    console.log(JSON.stringify({ coreHead, ...await verify({ load, native, manifest, sourceFiles, assetPayloads, archive, mode }) }, null, 2));
+    console.log(JSON.stringify({ packageHead, packageDirty, coreHead, ...await verify({ load, native, manifest, sourceFiles, assetPayloads, archive, mode, frontendCatalog }) }, null, 2));
 }

@@ -1,6 +1,48 @@
-# P8 — Eastbank Field Register
+# Native frontend — Eastbank Field Register
 
-## Scope and authority
+## Long-lived-world Phase 7
+
+Current implementation is `2.0.0-phase7`; this is not a release. It preserves
+opening-era flows below and adds three primary destinations, bounded Chronicle
+and public world reads, exact calendar review, complete paged long-term forms,
+public identity/absence, delegation policy edits, real regional travel and
+checkpoint-aware Reply Retry. See `frontend/DESIGN.md` for the actual binding map.
+
+Presentation uses 249/256 schema nodes and 90 bindings. Wrapped opening read
+schemas remain 234/6/171/6 nodes. There are still 64 transactions, 9 publication
+reads and 15 publication commands; Lifetime enterprise policy edits reuse the
+existing grouped command budget. Native query rows stay at most 12 per page,
+with revision/query-bound opaque cursors, at most 128 postings and 54 yearly
+intervals. Public world payloads have a 10000-byte page budget; artifact details
+show the latest eight provenance links and the full link count. No limit is raised.
+
+The compiled free-text resolver keeps all declared tools and unchanged input
+schemas. Concise public operation descriptions leave room for the complete
+16 KiB public observation and a 256-character inquiry inside the existing
+64 KiB combined request limit. UI risk notices retain their full authored text.
+The builder checks this reservation through the actual Native resolverRequest.
+
+Long intervals use Gregorian ordinal civil instants. Native simulation exposes
+both the requested and resolved target; optional attention chooses existing
+Lifetime/journey milestones before bounded simulation. Omitted attention retains
+existing programmatic advance behavior. AUI does not calculate eligibility,
+forecast outcomes, simulate days, or convert years by multiplying 365.
+
+The existing `--frontend-only` harness now contains opening regression and the
+Phase 7 acceptance scenarios, followed by real export/import into fresh FS with
+**all states and Timeline** equality. Native setup transitions are distinguished
+from UI actions. `--phase7-ui-only` remains a focused diagnostic and is not stage
+acceptance. Century UI fixtures do not establish Gate C, high-turn growth,
+physical-device behavior, hosted-model quality or old-version migration.
+
+Screenshots cover 375/390/768/1024/1440 widths, 812x375 landscape and 200% root
+text. Back focuses the static result wrapper because repeated NodeRefs are
+forbidden. Current public institution/place details link bounded prior records;
+they do not load a whole historical graph. Local MySQL/PostgreSQL integration is
+not claimed; FS/SQLite are tested locally, with hosted adapter checks recorded
+separately when executed.
+
+## Preserved opening-era scope and authority
 
 P8 presents the existing P5–P7 game through Native Frontend v3. It adds no transaction, gameplay, content catalog expansion, authority domain or world simulation rule. `frontend/DESIGN.md` owns the reviewed visual direction. `frontend/Inquiry.aui`, `inquiry.css`, `inquiry-controller.js` and `inquiry-model.js` are compiled by `tools/frontend-compile.mjs`; the existing Main.aui is retained for the independent regression fixture.
 
@@ -40,10 +82,10 @@ The frontend test uses actual Native compilation/installation/Ready, real browse
 
 The fixture remains a separate Package identity/version. Local synthetic HTTP is not hosted-model evidence. Browser screenshots are not Android/Termux or physical touch-device evidence. Old-version migration and cross-process uncommitted selection recovery remain unsupported.
 
-## Budgets
+## Historical opening-era budgets
 
 Unchanged authority:64 transactions;9 publication reads/15 commands;maximum declared combination24;Evidence schema248/256, summary232/256 and Graph169/256. Intent retains compact nodes rather than the rich Graph bundle. Full default regression observes at most15 reads/17 commands/19 effects and12632 observation bytes. The frontend scenario observes13/14/16 and10463 bytes.
 
-Presentation schema188/256;79 bindings;wrapped read schemas234,6,171,6 nodes. No field/ref/formula/UTF-8/expanded-work budget is increased. `authority-transaction@1`, `world-simulation@1`, Ready, static targets,30-day horizon, <=2880-minute advance and maxSteps3/maxDeliberations1 remain.
+The original v1 baseline used presentation schema188/256;79 bindings;wrapped read schemas234,6,171,6 nodes. No field/ref/formula/UTF-8/expanded-work budget is increased. `authority-transaction@1`, `world-simulation@1`, Ready, static targets,30-day horizon, <=2880-minute advance and maxSteps3/maxDeliberations1 remain.
 
 Exact tested commits, final logs, screenshot evidence, Core prerequisite fixes and artifact hash are recorded in the sole Package Record. P8 does not publish a release; that remains P9.

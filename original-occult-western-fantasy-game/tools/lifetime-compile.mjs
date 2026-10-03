@@ -21,6 +21,9 @@ export function compileLifetimes(opening,manifest,operations,anniversary){
     wait.lifetimes=entries.map(([op,schema])=>({operation:op,when:'resolution.outcome != "impossible" && args.lifetime.operation == '+JSON.stringify(op),
         input:Object.fromEntries(Object.keys(schema.properties).map(k=>[k,template(schema.properties[k],'args.lifetime.'+op.replaceAll('.','_')+'.'+k)]))}));
     wait.intent.description+=' Optional lifetime operations govern consent-based family transitions, causal actors, offices and costly occult continuity.';
+    // Ordinary creation establishes the same public credential used by later
+    // identity rotation, rather than leaving its authored placeholder visible.
+    opening.logic.transactions.find(t=>t.id==='opening.identity').lifetimes=[{operation:'identity.change',when:'resolution.outcome != "impossible"',input:{mode:'retain',name:{formula:'args.name'},method:'legitimate',sourceId:'public_identity.initial'}}];
     opening.logic.transactions.find(t=>t.id==='opening.day').receipt.projection.notice='Resolve the Native interval, retained obligations and relevant human lifetime milestones; no renewable or macro simulation.';
     return opening;
 }

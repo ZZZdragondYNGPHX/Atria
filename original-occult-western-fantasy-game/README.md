@@ -2,15 +2,16 @@
 
 Task: package/original-occult-western-fantasy-game. Long-lived independent package workspace.
 
-## Development: 2.0.0-phase6
+## Development: 2.0.0-phase7
 
-**Future Phase 7 UI/UX:** follow the implementation-ready
+**Phase 7 UI/UX:** implemented against the
 [player-facing experience specification](https://github.com/ZZZdragondYNGPHX/Atria/blob/docs/plans/package/original-occult-western-fantasy-game-long-lived-world/player-facing-experience.md)
 for page structure, register styling, long-life forms, safe data wiring and browser
 acceptance. The [frontend design entry](frontend/DESIGN.md) routes implementers to
-that plan. No final Phase 7 UI is implemented in this stage.
+that plan. Three destinations expose bounded Chronicle reads, public world
+history, reviewed long-term forms, travel, identity and checkpoint-aware Retry.
 
-Task: refactor/original-occult-western-fantasy-long-lived-world. **Phases 1–6** of the approved eight-phase plan; this is not the final 2.0.0 release.
+Task: refactor/original-occult-western-fantasy-long-lived-world. **Phases 1–7** of the approved eight-phase plan; final Phase 8 integration is still required before 2.0.0 release.
 
 Default builds now use an open-ended Native minute clock, Gregorian chronology, stable identity/provenance primitives, persistent Stances and an interval resolver skeleton. Day 31 and year rollover are valid. See [the runtime contract](runtime/LONG-HORIZON.md) for exact scope, Save/Restore semantics and explicit later-phase exclusions.
 
@@ -22,7 +23,7 @@ Phase 4 adds renewable state-bound Matters, semantic cooldown, real Historical H
 
 Phase 5 adds mature progression, identity-linked credentials/property, real delegated cashflow, hidden failures, causal inheritance and institutional autonomy. See [the enterprise contract](runtime/ENTERPRISE-CONTINUITY.md).
 
-Requires Native enterprise Core 14c2f8f30adc980caa04ec85046548f229bcc8fd or a descendant. CI status and integration state are recorded in the same Record/HANDOFF. Historical 1.0.0 remains unchanged. The source manifest is the retained fixture/bootstrap input; tools/package.mjs emits the distinct v2 development identity by default.
+Requires Native Core c8d2d0e0c11c283ade2fa3c730740a0dc480c746 or a descendant for Chronicle, public world/calendar reads, checkpoint retirement and refusal recovery. CI status and integration state are recorded in the same Record/HANDOFF. Historical 1.0.0 remains unchanged. The source manifest is the retained fixture/bootstrap input; tools/package.mjs emits the distinct v2 development identity by default.
 
 ## Retained release 1.0.0
 
@@ -60,7 +61,7 @@ node tools/package.mjs build --core <main-checkout> --out <new-build-path.atria>
 
 Phase 6 adds real-time regional travel, persistent remote hubs, sparse macro history and conditional Era-sensitive content. See [the regional contract](runtime/REGIONAL-HISTORY.md).
 
---regional-only runs the multi-region 5k-turn/50-year candidate; reduced ATRIA_RENEWAL_TURNS runs are smoke evidence only.
+--regional-only runs the user-approved 100-content-turn/50-year focused Phase 6 acceptance. --regional-full explicitly selects the optional original 5k soak; other ATRIA_RENEWAL_TURNS overrides are smoke only.
 
 --enterprise-only runs the focused 50-year Phase 5 candidate with twenty years of delegation, identity/title continuity, institutional resistance and eight actual portable Save/Restore transitions. This is not Gate A/B/C.
 
@@ -74,7 +75,7 @@ Default validation retains the P5/P6/P7 regression matrix against the new founda
 
 - manifest.json and runtime/model-resources.json own immutable Package/model origins. Build-time compilers emit declarations and Native presentation assets, not an alternate authority engine, RNG or persistence service.
 - data/ contains 40 hash-pinned resources / 240 structured assets (482200 bytes; largest 78485 bytes). Hidden Canon and private institutional/actor state remain behind safe projections. Six public Knowledge entries are installed but unbound.
-- runtime/OPENING.md, NETWORK.md and CONVERGENCE.md describe retained stage contracts; their historical version/scope notes are not current release status. runtime/FRONTEND.md describes the unchanged P8 UI.
+- runtime/OPENING.md, NETWORK.md and CONVERGENCE.md describe retained stage contracts; their historical version/scope notes are not current release status. runtime/FRONTEND.md describes the current long-life UI and retained opening-era flows.
 - Historical v1 budgeting: 64/64 transactions, 9 publication reads/15 commands, static maximum24; Evidence248/256, summary232/256, Graph169/256; maximum formula2000/2048. Intent keeps compact investigation.nodes; both full-detail Graphs use investigation.details. P9 observed maximum15 reads/17 commands/19 effects and13492 observation bytes, below16384.
 - Historical v1 fixture only: one world clock, day30 horizon, <=2880 minutes per advance, maxSteps3/maxDeliberations1; Day31 rejects atomically. The default v2 foundation replaces the date/advance ceiling with safe-integer chronology and constant-work intervals. The16 Seeds/32 archetypes are bounded supervised-carrier contracts, not arbitrary Claim Engineering. Extra Pattern instances are bounded. Hearing dimensions remain independent.
 - Normal new operations acquire a current bridge handle. Unknown-commit retry retains original epoch/revision/input/key. Process-local selection pinning, same-anchor RNG, committed idempotency and actual save-container restoration are distinct guarantees.

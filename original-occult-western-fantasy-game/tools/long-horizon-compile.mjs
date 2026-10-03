@@ -137,13 +137,14 @@ export function compileLongHorizon(opening, manifest) {
     simulation.policy = { maxSteps: 3, maxDeliberations: 1, maxAdvanceTicks: MAX_INSTANT };
     simulation.jobs = [{ id: 'chronology.interval', scopeId: 'world', reads: [{ id: 'time', domainId: 'chronology', recordId: 'main', fields: ['tick'] }],
         enabled: 'reads.time.tick < clock.targetTick', due: F('clock.targetTick'), priority: 1, relevance: 'cold',
-        action: { kind: 'transaction', transactionId: 'opening.day', input: { tick: F('clock.tick'), target: F('clock.targetTick'), from: F('reads.time.tick') } } }];
+        action: { kind: 'transaction', transactionId: 'opening.day', input: { tick: F('clock.tick'), target: F('clock.requestedTick'), from: F('reads.time.tick') } } }];
     lifecycle.advances.find(a => a.id === 'advance').maxTicks = MAX_INSTANT;
 
     const wait = logic.transactions.find(t => t.id === 'opening.wait');
-    wait.inputSchema = { ...O({ minutes: I(), stances: stanceSchema }), required: ['minutes'] };
+    wait.inputSchema = { ...O({ minutes: I(), attention: B, stances: stanceSchema }), required: ['minutes'] };
     const hasStance = stanceChoices.career.map(v => 'args.stances.career == ' + JSON.stringify(v)).join(' || ');
     wait.resolution.cases[0].when += ' || (args.minutes == 0 && !(' + hasStance + '))';
+    wait.effects.find(e => e.kind === 'clock.advance').attention = F('args.attention == true');
     wait.effects.find(e => e.kind === 'clock.advance').when += ' && args.minutes > 0';
     wait.effects.splice(1, 0, effect('long_term_stance', 'set', {
         ...Object.fromEntries(Object.keys(stanceChoices).map(key => [key, F('args.stances.' + key)])),
