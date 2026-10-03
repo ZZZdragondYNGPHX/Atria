@@ -36,6 +36,23 @@ This is a Governance Environment Stop for the remote long run, not the Phase 6
 completion boundary. Continue ordinary failures/CI repairs autonomously on the
 same branches. Do not restart the product design or begin final UI.
 
+## Latest continuation check — 2026-10-03 10:46 Asia/Shanghai
+
+- Local and remote main, Core candidate and Package refs match the SHAs above;
+  main, Core, Package and docs worktrees were clean before this documentation update.
+- CI 37089757760 is still in progress on Core 50053928d21e74940c1c2d10b70609e6b83ff253.
+  Native job 111107432009 remains successful. Regional Package job 111107432187
+  is still executing the full candidate step (started 10:26:31 Asia/Shanghai).
+- The run has zero uploaded artifacts at this check. `gh run view --job --log`
+  refuses log retrieval while the run is in progress; no final metrics were available.
+- Confirmed workflow uses `validate --regional-only`, no shortened-turn override,
+  pipefail, and an always-uploaded `phase6-regional-candidate` log artifact.
+- No implementation changes, CI cancellation/restart, main integration or branch
+  cleanup were performed. No additional test/build success is claimed.
+- Remote long-run CI remains the only completion dependency: Environment Stop,
+  not Phase 6 completion. Resume with the existing finish-Phase-6 prompt below;
+  issue the Phase 7 prompt only after full evidence, integration and main validation.
+
 ## Phase 6 implementation
 
 - Native optional regional declarations/state join existing Lifetime event queue,
