@@ -89,3 +89,7 @@ Unchanged authority:64 transactions;9 publication reads/15 commands;maximum decl
 The original v1 baseline used presentation schema188/256;79 bindings;wrapped read schemas234,6,171,6 nodes. No field/ref/formula/UTF-8/expanded-work budget is increased. `authority-transaction@1`, `world-simulation@1`, Ready, static targets,30-day horizon, <=2880-minute advance and maxSteps3/maxDeliberations1 remain.
 
 Exact tested commits, final logs, screenshot evidence, Core prerequisite fixes and artifact hash are recorded in the sole Package Record. P8 does not publish a release; that remains P9.
+
+## Final 2.0.0 evidence
+
+The retained final archive passed the full --frontend-only suite on clean Package ae48a4669dc27359c428f5cb6b1638202d61475f / Core c8d2d0e0c11c283ade2fa3c730740a0dc480c746: 27 provider requests, 10463 maximum observation bytes and 15 reads / 19 commands / 21 effects. Wide and200% text screenshots were inspected. The separate continuous 1000-content-turn /200-year run passed, followed by sparse50-year profiling; these are distinct from century UI fixture setup. Portable reports/screenshots live in the same Record on docs, phase8-evidence.

@@ -2,7 +2,13 @@
 
 Task: package/original-occult-western-fantasy-game. Long-lived independent package workspace.
 
-## Release candidate: 2.0.0
+## Release: 2.0.0
+
+[Download 2.0.0](releases/2.0.0.atria). 237739 bytes; SHA-256 e4d0f3521e6a6e9fd0f3a4220b08a7e8fd5388c7f80ec56fe2671f28de0d2efe.
+
+Completed the user-amended continuous 1,000-content-turn / 200-year acceptance in 24 minutes, plus a separate sparse 50-year advance. Actual alternating Fs/SQLite imports: 48. Full final-archive Native browser, runtime, fixture and installer checks passed. The original 10k soak is optional and was not executed as this final gate.
+
+Install through Atria's Package installer, grant generation permission and open Second Death — Eastbank Convergence. Use Native Core c8d2d0e0c11c283ade2fa3c730740a0dc480c746 or a descendant; configure generation in the Host, enter Ready and complete the six ordinary identity choices. Host owns Save/Restore. Version 2.0.0 has a distinct immutable PackageVersion; old-version save migration is not claimed.
 
 **Phase 7 UI/UX:** implemented against the
 [player-facing experience specification](https://github.com/ZZZdragondYNGPHX/Atria/blob/docs/plans/package/original-occult-western-fantasy-game-long-lived-world/player-facing-experience.md)
@@ -11,19 +17,19 @@ acceptance. The [frontend design entry](frontend/DESIGN.md) routes implementers 
 that plan. Three destinations expose bounded Chronicle reads, public world
 history, reviewed long-term forms, travel, identity and checkpoint-aware Retry.
 
-Task: refactor/original-occult-western-fantasy-long-lived-world. Phase 8 final acceptance uses one continuous 1,000-content-turn / 200-year save with measured checkpoints at 250, 500 and 1,000. Release requires the complete gate and final archive/UI checks.
+Task: refactor/original-occult-western-fantasy-long-lived-world. All eight phases are complete. Final acceptance measured the same continuous save at 250, 500 and 1,000 content turns, spanning 50, 100 and 200 years respectively.
 
-Default builds now use an open-ended Native minute clock, Gregorian chronology, stable identity/provenance primitives, persistent Stances and an interval resolver skeleton. Day 31 and year rollover are valid. See [the runtime contract](runtime/LONG-HORIZON.md) for exact scope, Save/Restore semantics and explicit later-phase exclusions.
+Default builds now use an open-ended Native minute clock, Gregorian chronology, stable identity/provenance primitives, persistent Stances and event-driven human/family/institution/enterprise/regional resolution. Day 31 and year rollover are valid. See [the runtime contract](runtime/LONG-HORIZON.md) for chronology and Save/Restore semantics; its early-stage exclusions describe that historical contract.
 
 Phase 2 adds tiered history, exact canonical facts, artifacts/hooks, subjective memory, indexed Chronicle queries and portable checkpoints. See [the history contract](runtime/HISTORY-MEMORY.md), especially the archive/Retry boundary and growth limitations.
 
 Phase 3 adds human/family/office lifecycle and costly non-terminal reconstruction. See [the lifetime contract](runtime/HUMAN-LIFETIMES.md).
 
-Phase 4 adds renewable state-bound Matters, semantic cooldown, real Historical Hook reuse, portable history promotion and evolving geography/institutions. The first full 5k-turn/50-year candidate passed; this is not final Gate C or a finished 2.0.0 release. See [the renewable-content contract](runtime/RENEWABLE-CONTENT.md).
+Phase 4 adds renewable state-bound Matters, semantic cooldown, real Historical Hook reuse, portable history promotion and evolving geography/institutions. The first full 5k-turn/50-year candidate passed during Phase 4. Final completion is established by the amended Phase 8 acceptance above. See [the renewable-content contract](runtime/RENEWABLE-CONTENT.md).
 
 Phase 5 adds mature progression, identity-linked credentials/property, real delegated cashflow, hidden failures, causal inheritance and institutional autonomy. See [the enterprise contract](runtime/ENTERPRISE-CONTINUITY.md).
 
-Requires Native Core c8d2d0e0c11c283ade2fa3c730740a0dc480c746 or a descendant for Chronicle, public world/calendar reads, checkpoint retirement and refusal recovery. CI status and integration state are recorded in the same Record/HANDOFF. Historical 1.0.0 remains unchanged. The source manifest is the retained fixture/bootstrap input; tools/package.mjs emits the distinct v2 release identity by default.
+Requires Native Core c8d2d0e0c11c283ade2fa3c730740a0dc480c746 or a descendant for Chronicle, public world/calendar reads, checkpoint retirement and refusal recovery. CI status, exact tested heads and integration evidence are in the permanent Package Record. Historical 1.0.0 remains unchanged. The source manifest is the retained fixture/bootstrap input; tools/package.mjs emits the distinct v2 release identity by default.
 
 ## Retained release 1.0.0
 
@@ -31,7 +37,7 @@ Requires Native Core c8d2d0e0c11c283ade2fa3c730740a0dc480c746 or a descendant fo
 
 A bounded 30-day campaign: six-step ordinary character creation, Second Death, six semi-open Signature inquiries, earned Breach/Claim/Price, professional Patterns and the six-dimensional Eastbank Hearing. The Native field register exposes acquired evidence, provenance, attributed testimony, findings and hypotheses without revealing hidden Canon. Deep cause remains unresolved. No new gameplay was added in P9.
 
-The final archive is 201572 bytes, SHA-256 e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09. History is retained; builds never overwrite an existing file. The ignored P8 build is not this release.
+The final archive is 201572 bytes, SHA-256 e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09. History is retained; builds never overwrite an existing file. The separately retained 2.0.0 release has its own immutable identity.
 
 ## Install and play the retained 1.0.0 release
 
