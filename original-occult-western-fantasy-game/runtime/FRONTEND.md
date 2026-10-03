@@ -8,7 +8,7 @@ and public world reads, exact calendar review, complete paged long-term forms,
 public identity/absence, delegation policy edits, real regional travel and
 checkpoint-aware Reply Retry. See `frontend/DESIGN.md` for the actual binding map.
 
-Presentation uses 249/256 schema nodes and 90 bindings. Wrapped opening read
+Presentation uses 254/256 schema nodes and 90 bindings. Wrapped opening read
 schemas remain 234/6/171/6 nodes. There are still 64 transactions, 9 publication
 reads and 15 publication commands; Lifetime enterprise policy edits reuse the
 existing grouped command budget. Native query rows stay at most 12 per page,
