@@ -1,0 +1,735 @@
+{
+  "packageHead": "ae48a4669dc27359c428f5cb6b1638202d61475f",
+  "packageDirty": false,
+  "coreHead": "c8d2d0e0c11c283ade2fa3c730740a0dc480c746",
+  "centuryEvidence": {
+    "protagonistId": "actor_78fd62e4f874657db785310ec4c9ef52",
+    "startTick": 0,
+    "gateTick": 105189120,
+    "finalTick": 131486400,
+    "transitions": [
+      {
+        "kind": "location-lifecycle",
+        "id": "renewal.4",
+        "status": "active"
+      },
+      {
+        "kind": "costly-reconstruction",
+        "hero": "actor_78fd62e4f874657db785310ec4c9ef52",
+        "ownerId": "life.person.16"
+      }
+    ],
+    "fastForward": {
+      "years": 50,
+      "elapsedMs": 1790,
+      "work": {
+        "effects": 12,
+        "worldEvents": 1,
+        "appCommands": 10,
+        "clockAdvances": 1,
+        "workflowTransitions": 0,
+        "readGrants": 14,
+        "readBytes": 8049,
+        "valueBytes": 30846,
+        "recordScans": 16,
+        "ruleEvaluations": 0,
+        "steps": 32,
+        "historySources": 1434,
+        "lifetimeEvents": 74,
+        "lifetimeActors": 91,
+        "historyRecordScans": 1454,
+        "historyLogicalBytes": 1860411
+      },
+      "lifetimeWork": {
+        "actors": 91,
+        "events": 74,
+        "intervals": 1
+      }
+    },
+    "facets": {
+      "year": {
+        "scanned": 13,
+        "items": 12
+      },
+      "actor": {
+        "scanned": 12,
+        "items": 12
+      },
+      "family": {
+        "scanned": 5,
+        "items": 5
+      },
+      "location": {
+        "scanned": 12,
+        "items": 12
+      },
+      "institution": {
+        "scanned": 12,
+        "items": 12
+      },
+      "case": {
+        "scanned": 3,
+        "items": 3
+      },
+      "era": {
+        "scanned": 12,
+        "items": 12
+      },
+      "artifact": {
+        "scanned": 12,
+        "items": 12
+      }
+    },
+    "views": {
+      "player.overview": 8465,
+      "player.investigation": 9301,
+      "narrator.context": 11168,
+      "case.reflection.context": 9304,
+      "claim.advisor.context": 8471
+    },
+    "retrieved": {
+      "id": "history.99",
+      "tick": 403200,
+      "holderId": "life.person.16",
+      "provenanceCount": 2
+    },
+    "officeTerms": 78,
+    "rawHistoryGrowth": 1.0420650095602295,
+    "contextGrowth": 1.0291390728476821
+  },
+  "phase": "Phase 8 continuous century acceptance (Gate A/B/C)",
+  "regionalTrips": [
+    {
+      "from": "eastbank",
+      "to": "northreach",
+      "tick": 5381925
+    },
+    {
+      "from": "northreach",
+      "to": "eastbank",
+      "tick": 21160293
+    },
+    {
+      "from": "eastbank",
+      "to": "salt_coast",
+      "tick": 23801541
+    }
+  ],
+  "eras": [
+    "era.opening",
+    "era.networked",
+    "era.regulated"
+  ],
+  "regionalEvents": 213,
+  "remoteAssetId": "enterprise.2",
+  "remoteReviews": 2,
+  "maximumWork": {
+    "readGrants": 14,
+    "appCommands": 11,
+    "effects": 13,
+    "lifetimeEvents": 74
+  },
+  "profile": "century-acceptance",
+  "elapsedMs": 1444723,
+  "meaningfulContentTurns": 1000,
+  "years": 200,
+  "kinshipEdges": 11,
+  "institutions": 18,
+  "completed": 201,
+  "structures": 200,
+  "semanticStructures": 181,
+  "familyBoundMatters": 59,
+  "semanticAudit": {
+    "early": {
+      "matters": 25,
+      "semanticStructures": 25,
+      "familyBound": 11,
+      "institutions": 3,
+      "paths": {
+        "survey>test>hear": 7,
+        "listen>trace>mediate": 2,
+        "inspect>compare>confront": 9,
+        "authenticate>reconstruct>reopen": 4,
+        "review>interview>adjudicate": 1,
+        "inspect_grid>trace_license>test_containment": 2
+      }
+    },
+    "late": {
+      "matters": 175,
+      "semanticStructures": 160,
+      "familyBound": 48,
+      "institutions": 16,
+      "paths": {
+        "review>interview>adjudicate": 43,
+        "survey>test>hear": 39,
+        "inspect_grid>trace_license>test_containment": 7,
+        "authenticate>reconstruct>reopen": 29,
+        "inspect>compare>confront": 43,
+        "compare_registers>audit_network>review_authority": 11,
+        "listen>trace>mediate": 3
+      }
+    }
+  },
+  "reused": [
+    {
+      "id": "renewal.14",
+      "hookId": "history.213",
+      "sourceId": "history.211",
+      "tick": 2734917
+    },
+    {
+      "id": "renewal.20",
+      "hookId": "history.334",
+      "sourceId": "history.332",
+      "tick": 5890590
+    },
+    {
+      "id": "renewal.26",
+      "hookId": "history.425",
+      "sourceId": "history.423",
+      "tick": 9046264
+    },
+    {
+      "id": "renewal.35",
+      "hookId": "history.547",
+      "sourceId": "history.545",
+      "tick": 12201937
+    },
+    {
+      "id": "renewal.41",
+      "hookId": "history.637",
+      "sourceId": "history.635",
+      "tick": 15357611
+    },
+    {
+      "id": "renewal.47",
+      "hookId": "history.733",
+      "sourceId": "history.731",
+      "tick": 18513285
+    },
+    {
+      "id": "renewal.53",
+      "hookId": "history.901",
+      "sourceId": "history.899",
+      "tick": 21668958
+    },
+    {
+      "id": "renewal.62",
+      "hookId": "history.1024",
+      "sourceId": "history.1022",
+      "tick": 24824632
+    },
+    {
+      "id": "renewal.68",
+      "hookId": "history.1139",
+      "sourceId": "history.1137",
+      "tick": 27980305
+    },
+    {
+      "id": "renewal.74",
+      "hookId": "history.1233",
+      "sourceId": "history.1231",
+      "tick": 31135979
+    },
+    {
+      "id": "renewal.80",
+      "hookId": "history.1318",
+      "sourceId": "history.1316",
+      "tick": 34291653
+    },
+    {
+      "id": "renewal.92",
+      "hookId": "history.1465",
+      "sourceId": "history.1463",
+      "tick": 37447326
+    },
+    {
+      "id": "renewal.98",
+      "hookId": "history.1563",
+      "sourceId": "history.1561",
+      "tick": 40603000
+    },
+    {
+      "id": "renewal.104",
+      "hookId": "history.1668",
+      "sourceId": "history.1666",
+      "tick": 43758673
+    },
+    {
+      "id": "renewal.110",
+      "hookId": "history.1766",
+      "sourceId": "history.1764",
+      "tick": 46914347
+    },
+    {
+      "id": "renewal.122",
+      "hookId": "history.1898",
+      "sourceId": "history.1896",
+      "tick": 50070021
+    },
+    {
+      "id": "renewal.128",
+      "hookId": "history.2022",
+      "sourceId": "history.99",
+      "tick": 53225694
+    },
+    {
+      "id": "renewal.134",
+      "hookId": "history.2154",
+      "sourceId": "history.99",
+      "tick": 56381368
+    },
+    {
+      "id": "renewal.140",
+      "hookId": "history.2243",
+      "sourceId": "history.99",
+      "tick": 59537041
+    },
+    {
+      "id": "renewal.152",
+      "hookId": "history.2386",
+      "sourceId": "history.99",
+      "tick": 62692715
+    },
+    {
+      "id": "renewal.158",
+      "hookId": "history.2497",
+      "sourceId": "history.99",
+      "tick": 65848389
+    },
+    {
+      "id": "renewal.164",
+      "hookId": "history.2611",
+      "sourceId": "history.99",
+      "tick": 69004062
+    },
+    {
+      "id": "renewal.170",
+      "hookId": "history.2712",
+      "sourceId": "history.99",
+      "tick": 72159736
+    },
+    {
+      "id": "renewal.182",
+      "hookId": "history.2866",
+      "sourceId": "history.99",
+      "tick": 75315409
+    },
+    {
+      "id": "renewal.188",
+      "hookId": "history.2981",
+      "sourceId": "history.99",
+      "tick": 78471083
+    },
+    {
+      "id": "renewal.194",
+      "hookId": "history.3099",
+      "sourceId": "history.99",
+      "tick": 81626757
+    },
+    {
+      "id": "renewal.200",
+      "hookId": "history.3218",
+      "sourceId": "history.99",
+      "tick": 84782430
+    },
+    {
+      "id": "renewal.212",
+      "hookId": "history.3348",
+      "sourceId": "history.99",
+      "tick": 87938104
+    },
+    {
+      "id": "renewal.218",
+      "hookId": "history.3460",
+      "sourceId": "history.99",
+      "tick": 91093777
+    },
+    {
+      "id": "renewal.224",
+      "hookId": "history.3596",
+      "sourceId": "history.99",
+      "tick": 94249451
+    },
+    {
+      "id": "renewal.230",
+      "hookId": "history.3722",
+      "sourceId": "history.99",
+      "tick": 97405125
+    },
+    {
+      "id": "renewal.242",
+      "hookId": "history.3856",
+      "sourceId": "history.99",
+      "tick": 100560798
+    },
+    {
+      "id": "renewal.248",
+      "hookId": "history.3986",
+      "sourceId": "history.99",
+      "tick": 103716472
+    }
+  ],
+  "restores": [
+    {
+      "label": "marriage",
+      "bytes": 14475,
+      "saveJsonBytes": 154794,
+      "revisions": 1
+    },
+    {
+      "label": "separation",
+      "bytes": 14751,
+      "saveJsonBytes": 157391,
+      "revisions": 1
+    },
+    {
+      "label": "before-first-birth",
+      "bytes": 15299,
+      "saveJsonBytes": 162945,
+      "revisions": 1
+    },
+    {
+      "label": "first-birth",
+      "bytes": 16747,
+      "saveJsonBytes": 173712,
+      "revisions": 1
+    },
+    {
+      "label": "property-and-delegation",
+      "bytes": 20831,
+      "saveJsonBytes": 198524,
+      "revisions": 1
+    },
+    {
+      "label": "charter-and-location-lifecycle",
+      "bytes": 24794,
+      "saveJsonBytes": 235273,
+      "revisions": 1
+    },
+    {
+      "label": "departure-northreach",
+      "bytes": 32610,
+      "saveJsonBytes": 294150,
+      "revisions": 1
+    },
+    {
+      "label": "arrival-northreach",
+      "bytes": 34510,
+      "saveJsonBytes": 313379,
+      "revisions": 1
+    },
+    {
+      "label": "organization-drift-and-refusal",
+      "bytes": 39447,
+      "saveJsonBytes": 357301,
+      "revisions": 1
+    },
+    {
+      "label": "generation-birth-2",
+      "bytes": 43438,
+      "saveJsonBytes": 396851,
+      "revisions": 1
+    },
+    {
+      "label": "before-inheritance",
+      "bytes": 54703,
+      "saveJsonBytes": 503880,
+      "revisions": 1
+    },
+    {
+      "label": "bodily-death-and-inheritance",
+      "bytes": 56114,
+      "saveJsonBytes": 516383,
+      "revisions": 1
+    },
+    {
+      "label": "costly-reconstruction",
+      "bytes": 55931,
+      "saveJsonBytes": 516501,
+      "revisions": 1
+    },
+    {
+      "label": "generation-birth-3",
+      "bytes": 59675,
+      "saveJsonBytes": 553239,
+      "revisions": 1
+    },
+    {
+      "label": "departure-eastbank",
+      "bytes": 61963,
+      "saveJsonBytes": 570843,
+      "revisions": 1
+    },
+    {
+      "label": "arrival-eastbank",
+      "bytes": 62544,
+      "saveJsonBytes": 575660,
+      "revisions": 1
+    },
+    {
+      "label": "departure-salt_coast",
+      "bytes": 64795,
+      "saveJsonBytes": 598513,
+      "revisions": 1
+    },
+    {
+      "label": "arrival-salt_coast",
+      "bytes": 66699,
+      "saveJsonBytes": 618013,
+      "revisions": 1
+    },
+    {
+      "label": "renewal-250",
+      "bytes": 71539,
+      "saveJsonBytes": 665446,
+      "revisions": 1
+    },
+    {
+      "label": "widowhood-and-office-succession",
+      "bytes": 73124,
+      "saveJsonBytes": 679407,
+      "revisions": 1
+    },
+    {
+      "label": "generation-birth-4",
+      "bytes": 76752,
+      "saveJsonBytes": 716705,
+      "revisions": 1
+    },
+    {
+      "label": "generation-birth-5",
+      "bytes": 94151,
+      "saveJsonBytes": 889012,
+      "revisions": 1
+    },
+    {
+      "label": "generation-birth-6",
+      "bytes": 108667,
+      "saveJsonBytes": 1034209,
+      "revisions": 1
+    },
+    {
+      "label": "renewal-500",
+      "bytes": 112001,
+      "saveJsonBytes": 1068445,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-506",
+      "bytes": 112202,
+      "saveJsonBytes": 1069314,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-536",
+      "bytes": 118402,
+      "saveJsonBytes": 1134364,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-566",
+      "bytes": 121317,
+      "saveJsonBytes": 1162446,
+      "revisions": 1
+    },
+    {
+      "label": "generation-birth-7",
+      "bytes": 124811,
+      "saveJsonBytes": 1199671,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-596",
+      "bytes": 128622,
+      "saveJsonBytes": 1233931,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-626",
+      "bytes": 134281,
+      "saveJsonBytes": 1288686,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-656",
+      "bytes": 138843,
+      "saveJsonBytes": 1332529,
+      "revisions": 1
+    },
+    {
+      "label": "generation-birth-8",
+      "bytes": 140941,
+      "saveJsonBytes": 1351983,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-686",
+      "bytes": 144320,
+      "saveJsonBytes": 1390551,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-716",
+      "bytes": 151163,
+      "saveJsonBytes": 1456599,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-746",
+      "bytes": 156656,
+      "saveJsonBytes": 1504678,
+      "revisions": 1
+    },
+    {
+      "label": "generation-birth-9",
+      "bytes": 160499,
+      "saveJsonBytes": 1547287,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-776",
+      "bytes": 162177,
+      "saveJsonBytes": 1564942,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-806",
+      "bytes": 166722,
+      "saveJsonBytes": 1612615,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-836",
+      "bytes": 172678,
+      "saveJsonBytes": 1677769,
+      "revisions": 1
+    },
+    {
+      "label": "generation-birth-10",
+      "bytes": 176792,
+      "saveJsonBytes": 1715650,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-866",
+      "bytes": 177566,
+      "saveJsonBytes": 1723291,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-896",
+      "bytes": 183664,
+      "saveJsonBytes": 1789670,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-926",
+      "bytes": 189856,
+      "saveJsonBytes": 1846525,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-956",
+      "bytes": 196747,
+      "saveJsonBytes": 1919598,
+      "revisions": 1
+    },
+    {
+      "label": "generation-birth-11",
+      "bytes": 196763,
+      "saveJsonBytes": 1919597,
+      "revisions": 1
+    },
+    {
+      "label": "century-hook-activation-986",
+      "bytes": 202496,
+      "saveJsonBytes": 1972210,
+      "revisions": 1
+    },
+    {
+      "label": "renewal-1000",
+      "bytes": 205161,
+      "saveJsonBytes": 1999215,
+      "revisions": 1
+    },
+    {
+      "label": "sparse-fifty-year-fast-forward",
+      "bytes": 227697,
+      "saveJsonBytes": 2273357,
+      "revisions": 1
+    }
+  ],
+  "samples": [
+    {
+      "turns": 250,
+      "tiers": {
+        "hot": 1,
+        "warm": 10,
+        "cold": 32,
+        "archive": 4
+      },
+      "durable": 553,
+      "rawHistoryBytes": 523,
+      "historyBytes": 528491,
+      "stateBytes": 660941,
+      "timelineItems": 1,
+      "projectionBytes": 755,
+      "compacted": 284,
+      "checkpoint": 347,
+      "retiredInvocations": 694,
+      "tick": 26297280,
+      "activeBytes": 660941,
+      "renewalProjectionBytes": 2,
+      "maximumProjectionBytes": 1073,
+      "completed": 51
+    },
+    {
+      "turns": 500,
+      "tiers": {
+        "hot": 1,
+        "warm": 10,
+        "cold": 32,
+        "archive": 5
+      },
+      "durable": 975,
+      "rawHistoryBytes": 541,
+      "historyBytes": 862479,
+      "stateBytes": 1063940,
+      "timelineItems": 1,
+      "projectionBytes": 773,
+      "compacted": 566,
+      "checkpoint": 634,
+      "retiredInvocations": 1268,
+      "tick": 52594560,
+      "activeBytes": 1063940,
+      "renewalProjectionBytes": 2,
+      "maximumProjectionBytes": 1073,
+      "completed": 101
+    },
+    {
+      "turns": 1000,
+      "tiers": {
+        "hot": 1,
+        "warm": 10,
+        "cold": 32,
+        "archive": 6
+      },
+      "durable": 1998,
+      "rawHistoryBytes": 545,
+      "historyBytes": 1644943,
+      "stateBytes": 1994710,
+      "timelineItems": 1,
+      "projectionBytes": 777,
+      "compacted": 1131,
+      "checkpoint": 1222,
+      "retiredInvocations": 2444,
+      "tick": 105189120,
+      "activeBytes": 1994710,
+      "renewalProjectionBytes": 2,
+      "maximumProjectionBytes": 1079,
+      "completed": 201
+    }
+  ],
+  "caveat": "One continuous 1000 real content-turn / 200-year soak; additional setup, compaction, imports and fast-forward do not inflate the count. Not a 10k soak or hosted-model test. Durable Canon growth is reported separately from transient retention."
+}

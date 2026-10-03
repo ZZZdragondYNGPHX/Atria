@@ -1,7 +1,7 @@
 # Long-Lived World — Verification and Release Gates
 
 **Task ID:** `refactor/original-occult-western-fantasy-long-lived-world`  
-**Status:** Approved implementation; final workload amendment (2026-10-04)
+**Status:** Complete — amended Gate A/B/C, final archive/UI, integration and publication verified (2026-10-04)
 
 ## User amendment — 2026-10-04
 

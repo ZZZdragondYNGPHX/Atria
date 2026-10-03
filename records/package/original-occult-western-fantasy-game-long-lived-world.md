@@ -1149,3 +1149,99 @@ projection bytes,660941 total state bytes and71539 exported bytes; one revision
 and one Timeline item remain after explicit checkpoint. Full states/Timeline
 match after import. Durable facts are measured separately from raw retention.
 The run is still active; Gate C and release are NOT yet complete.
+
+## Phase 8 complete, integrated and published — 2026-10-04
+
+All amended gates passed on one continuous packaged seed1703 save: 250/50years,
+500/100years and1,000/200years. Actual elapsed1444723ms (24.08minutes), including
+setup/portable imports and the additional50-year probe. Exactly1,000 case-state
+mutating turns exclude setup, compaction, imports, clock-only work and prose.
+Gate200-year tick105189120; subsequent sparse probe ends at250-year tick131486400.
+The original10k is optional and was not claimed as executed. The preceding running
+entry is historical; the project is now complete.
+
+Final evidence: [continuous century report](original-occult-western-fantasy-game-long-lived-world/phase8-evidence/century.json),
+[runtime](original-occult-western-fantasy-game-long-lived-world/phase8-evidence/runtime.json),
+[seed matrix](original-occult-western-fantasy-game-long-lived-world/phase8-evidence/seed-matrix.json),
+[final integrated installer/source correspondence](original-occult-western-fantasy-game-long-lived-world/phase8-evidence/integrated-release.json),
+[publication and downloaded digest](original-occult-western-fantasy-game-long-lived-world/phase8-evidence/publication.json).
+
+Generated200 Matters with181 semantic structures (25early/175late Matters,
+25/160 distinct structures); all past64 comparisons remain nonzero and recent
+90-day comparisons satisfy the minimum distance. These are bounded structural
+novelty checks, not a claim that every matter is globally unique forever.
+Actual33 Historical Hook reuses include the opening letter after100years,
+with its original creator/date/content, Canon source and marked/journaled memory
+preserved. Exact lookup and year/actor/family/location/institution/case/Era/artifact
+queries remain bounded; measured facet scans3–13. Safe final Information Views
+are8465/9301/11168/9304/8471bytes.
+
+Multiple generations:11 biological kinship edges,78 office terms,18 institutions.
+All Native lifetime/history invariants are validated after every real publication.
+The same protagonist survives explicit bodily death/reconstruction with durable
+costs; inherited foundry/title/letter preserve provenance. Public marriage,
+separation and widowhood, ordinary aging/retirement/deaths, institutional autonomy/
+founder refusal, split/dissolved predecessor lineage, site construction/reuse/
+decline/demolition/rebuild, three actual regional journeys, decades-away return,
+remote evolution and three Eras are covered.
+
+48 actual alternating Fs/SQLite imports preserve all authoritative states and
+Timeline, including birth, family, organization/property, absence/return, journeys,
+succession, content checkpoints and late Historical Hook activation. Each
+checkpoint export retains exactly one revision; no full turn-tombstone list remains.
+All existing caps remain unchanged.
+
+| Content turns | Years | Durable records | Raw hot bytes | Chronicle context bytes | State bytes | Portable bytes |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 250 | 50 | 553 | 523 | 755 | 660941 | 71539 |
+| 500 | 100 | 975 | 541 | 773 | 1063940 | 112001 |
+| 1000 | 200 | 1998 | 545 | 777 | 1994710 | 205161 |
+
+Raw hot growth1.042x and Chronicle context1.029x across a4x content increase.
+Whole-state/portable growth includes legitimate new Canon, family, institutional,
+property, artifact and macro records; it is reported rather than misrepresented
+as flat storage. Event tiers stay1hot/10warm/32cold/4–6archive, Timeline1.
+The extra50-year advance took1790ms with one interval,74 lifecycle events and91
+actors; this is coarse event resolution, not a daily loop. Maximum actual work
+14reads/11commands/13effects/74lifetime events.
+
+Final runtime regression:59 provider requests, maximum16reads/22commands/24effects.
+Final real Edge/UI archive suite:27requests,10463 observation bytes, maximum
+15reads/19commands/21effects, all prior Phase7 flows/restore/checkpoint Retry
+and responsive/focus/privacy checks passed. Retained fixture and frozen original
+v1 permission/install/Ready/source/data/budget/corruption checks passed.
+Independent Native seeds17/71/731 use the already-green exact Core main CI;
+this is one packaged soak plus the fixture matrix, not three packaged soaks.
+No hosted-model quality, old-version save migration, Android/physical-device,
+screen-reader or OS-crash verification is claimed.
+
+Integration correction: initial checkout normalized the authored AUI and a
+controller newline. Native compiled source offsets/fingerprints then differed;
+Node deepEqual attempted a huge Buffer diff and exhausted array-buffer memory.
+Two repeat installer attempts failed in this diagnostic path, not accepted passes.
+Recovered exact validated source bytes by the archived controller fingerprint,
+preserved frontend bytes through scoped attributes (retaining existing JSON/MJS/
+MD rules), and replaced unbounded whole-Buffer-map diagnostic formatting with
+exact manifest/size/per-file byte equality and bounded messages. CR-at-EOL is
+recognized explicitly without disabling actual trailing-space checks.
+Whitespace-only frontend changes have no semantic diff; current compiled
+manifest, every file and all assets match the ORIGINAL validated archive exactly.
+No rebuilt/changed payload was substituted and no repeated century soak was needed.
+Actual short-branch checkout and fast-forward followed by the complete installer
+check passed on final clean Package HEAD48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e.
+
+Validated source candidate:ae48a4669dc27359c428f5cb6b1638202d61475f;
+Core:c8d2d0e0c11c283ade2fa3c730740a0dc480c746. Final Package/tag target:
+48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e. The same237739byte archive is retained
+as releases/2.0.0.atria, SHA-256
+e4d0f3521e6a6e9fd0f3a4220b08a7e8fd5388c7f80ec56fe2671f28de0d2efe.
+Original1.0.0 SHA remains unchanged. Source/task commits are integrated by
+fast-forward into the existing long-lived package branch; main was not merged
+into Package/docs. Local and remote task branches were deleted.
+
+Published [Eastbank Field Register2.0.0](https://github.com/ZZZdragondYNGPHX/Atria/releases/tag/original-occult-western-fantasy-v2.0.0)
+as a non-draft, non-prerelease game release, without replacing the Atria app
+Latest release. Tag original-occult-western-fantasy-v2.0.0 targets the exact final
+Package HEAD. Uploaded asset digest matches the retained file, and an actual
+GitHub download was independently SHA-256 checked. Requires Corec8d2d0e0 or
+a descendant; Host configures generation. Live HANDOFF is removed at completion.

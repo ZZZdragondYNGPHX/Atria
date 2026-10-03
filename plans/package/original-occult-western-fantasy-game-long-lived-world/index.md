@@ -3,7 +3,7 @@
 **Task ID:** `refactor/original-occult-western-fantasy-long-lived-world`  
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
-**Plan status:** Approved Implementation Plan v1.3 — final workload amendment
+**Plan status:** Complete and released — v1.3 amended acceptance passed (2026-10-04)
 
 **Plan generation:** v1.3
 
@@ -11,7 +11,8 @@
 100-content-turn focused regional acceptance in verification.md; sparse 50-year
 calendar coverage preserves decades-away and generational checks. The original
 5k regional soak is optional, not a stage blocker. Phase 8/Gate C and the existing
-Phase 7 UI specification remain unchanged. Live stage state is in HANDOFF.md.
+Phase 7 UI specification remain unchanged. Completion evidence is in the permanent
+Record; the live HANDOFF is removed after verified integration and publication.
 
 2026-10-04 user amendment: complete and push Phase 7, then continue directly
 through Phase 8 and release. Reduce final validation to measured 250/500/1,000

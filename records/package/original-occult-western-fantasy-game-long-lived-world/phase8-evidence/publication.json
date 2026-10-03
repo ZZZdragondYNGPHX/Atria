@@ -1,0 +1,16 @@
+{
+  "tag": "original-occult-western-fantasy-v2.0.0",
+  "url": "https://github.com/ZZZdragondYNGPHX/Atria/releases/tag/original-occult-western-fantasy-v2.0.0",
+  "target": "48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e",
+  "publishedAt": "2026-10-03T19:35:11Z",
+  "draft": false,
+  "prerelease": false,
+  "asset": {
+    "name": "2.0.0.atria",
+    "url": "https://github.com/ZZZdragondYNGPHX/Atria/releases/download/original-occult-western-fantasy-v2.0.0/2.0.0.atria",
+    "bytes": 237739,
+    "sha256": "e4d0f3521e6a6e9fd0f3a4220b08a7e8fd5388c7f80ec56fe2671f28de0d2efe",
+    "githubDigest": "sha256:e4d0f3521e6a6e9fd0f3a4220b08a7e8fd5388c7f80ec56fe2671f28de0d2efe"
+  },
+  "downloadVerified": true
+}

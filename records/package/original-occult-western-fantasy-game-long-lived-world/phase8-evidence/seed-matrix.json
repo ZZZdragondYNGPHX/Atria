@@ -1,0 +1,44 @@
+{
+  "coreHead": "c8d2d0e0c11c283ade2fa3c730740a0dc480c746",
+  "packageSeed": 1703,
+  "independentNativeSeeds": [
+    17,
+    71,
+    731
+  ],
+  "scope": "One continuous packaged century soak plus independent Native fixture matrix; not three packaged soaks",
+  "fixtures": [
+    {
+      "name": "lifetime",
+      "url": "https://github.com/ZZZdragondYNGPHX/Atria/blob/c8d2d0e0c11c283ade2fa3c730740a0dc480c746/tests/native/lifetime.test.js"
+    },
+    {
+      "name": "renewal",
+      "url": "https://github.com/ZZZdragondYNGPHX/Atria/blob/c8d2d0e0c11c283ade2fa3c730740a0dc480c746/tests/native/renewal.test.js"
+    },
+    {
+      "name": "regional",
+      "url": "https://github.com/ZZZdragondYNGPHX/Atria/blob/c8d2d0e0c11c283ade2fa3c730740a0dc480c746/tests/native/regional.test.js"
+    }
+  ],
+  "ci": [
+    {
+      "name": "Authority",
+      "headSha": "c8d2d0e0c11c283ade2fa3c730740a0dc480c746",
+      "conclusion": "success",
+      "url": "https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37142892595"
+    },
+    {
+      "name": "Frontend",
+      "headSha": "c8d2d0e0c11c283ade2fa3c730740a0dc480c746",
+      "conclusion": "success",
+      "url": "https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37142893222"
+    },
+    {
+      "name": "Model Prompt",
+      "headSha": "c8d2d0e0c11c283ade2fa3c730740a0dc480c746",
+      "conclusion": "success",
+      "url": "https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37142892645"
+    }
+  ]
+}
