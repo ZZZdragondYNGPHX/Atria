@@ -3,9 +3,15 @@
 **Task ID:** `refactor/original-occult-western-fantasy-long-lived-world`  
 **Primary Workspace:** Package  
 **Implementation branch:** `refactor/original-occult-western-fantasy-long-lived-world` (branched from `package@79447c0b8aca028c6929ff8f9842f8835676191f`)  
-**Plan status:** Approved Implementation Plan v1.1 — Phase 7 UX refinement
+**Plan status:** Approved Implementation Plan v1.2 — Phase 6 focused validation
 
-**Plan generation:** v1.1
+**Plan generation:** v1.2
+
+2026-10-03 user amendment: minimize date-validation wall time. Phase 6 uses the
+100-content-turn focused regional acceptance in verification.md; sparse 50-year
+calendar coverage preserves decades-away and generational checks. The original
+5k regional soak is optional, not a stage blocker. Phase 8/Gate C and the existing
+Phase 7 UI specification remain unchanged. Live stage state is in HANDOFF.md.
 
 ## 1. Why this plan exists
 
@@ -409,7 +415,7 @@ Detailed authority: `implementation-staging.md`.
 - branch start before Phase 1: `79447c0b8aca028c6929ff8f9842f8835676191f`
 - source workspace: `package`
 - target release: `2.0.0`
-- implementation checkpoint at this refinement: **Phases 1–4 complete; Phase 5 next, not started**
+- implementation checkpoint at this refinement: **Phases 1–6 complete; Phase 7 next, not started**
 - the 2026-10-03 Phase 7 UX refinement changes planning and Package document
   routing only; it does not implement Phase 7 or authorize skipping Phases 5–6
 - live continuation state is maintained in `docs:HANDOFF.md`

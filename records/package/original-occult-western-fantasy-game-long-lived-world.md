@@ -505,10 +505,10 @@ or 2.0.0 release artifact was added. Phase 5 progression/property/wealth/delegat
 organization autonomy remains unimplemented. Continue only in a new authorized
 Phase 5 round, following live HANDOFF and the frozen Plan modules.
 
-## Final state (updated after Phase 5 below)
+## Final state (updated after Phase 6 below)
 
-The eight-phase project remains active and incomplete. **Phases 1–5 are complete.**
-Phase 6 — Multi-Region / Era / Macro History is next and NOT started.
+The eight-phase project remains active and incomplete. **Phases 1–6 are complete.**
+Phase 7 — Player-Facing Long-Life Experience is next and NOT started.
 The same Package task branch remains active; live HANDOFF contains the current
 read order, verified refs, caveats and bootstrap prompt. Stop at this boundary.
 
@@ -837,3 +837,104 @@ Final current-Core build also passed on 50053928d21e74940c1c2d10b70609e6b83ff253
 - Remote long-run CI remains the only completion dependency: Environment Stop,
   not Phase 6 completion. Resume with the finish-Phase-6 prompt in live HANDOFF;
   issue the Phase 7 prompt only after full evidence, integration and main validation.
+
+
+## Phase 6 complete — focused acceptance amendment (2026-10-03)
+
+### User decision and workload
+
+The user explicitly requested shorter date verification instead of waiting for
+5k-turn/50-year runs, retaining local-first execution. This supersedes the earlier
+Phase 6 pending-long-soak requirement above. Plan v1.2 routes the revised stage
+gate through verification.md; it does not claim Gate B, high-turn growth proof,
+Gate C, final UI or a 2.0.0 release.
+
+- Default regional acceptance is 100 content-mutating turns, 98% fewer than 5000.
+- Keep the sparse event-driven 50-year calendar coverage: long regional absence,
+  generations and Era evolution are substantive features, not 50 years of daily
+  full-fidelity simulation. No production rates, facts or budgets are changed.
+- Force Hook reuse every three completed matters and world/institution changes
+  every six; validate old opening evidence after 25 years, early/late semantics,
+  two kinship edges, institution lineage and ten real portable imports.
+- Original regional soak remains explicitly available with --regional-full.
+  Arbitrary other short counts are labeled smoke; malformed counts fail closed.
+- Optional hosted regional dispatch now defaults to focused acceptance with a
+  20-minute cap; regional-soak opts into 5000 turns with a 180-minute cap. No new
+  remote Package long run was dispatched.
+
+### Exact implementation and retained CI
+
+- Package: 5c8e641b06303eae9020e31cb760dde4061c1e78, on the same task branch.
+  Changes are validation tooling/documentation only, not compiled game policy.
+- Focused test executed on Core 50053928d21e74940c1c2d10b70609e6b83ff253 with
+  the checker/profile patch committed in Package 5c8e641b0. The later CLI guard
+  only rejects --regional-full without --regional-only and was separately tested.
+- Core/main: 56df98f50409c7b17817c681f6e3976a564fbb99. Its only change from
+  50053928d is the workflow; git diff confirmed public/src/tests are identical.
+- CI 37089757760 Native job 111107432009 remains successful: 65 suites / 1793
+  tests, including Fs/SQLite/MySQL/PostgreSQL, plus source lint. These exact-runtime
+  results are retained rather than needlessly rerunning the matrix.
+- That run's Package job 111107432187 was cancelled at 2026-10-03 11:11:02
+  Asia/Shanghai. It is not complete 5k evidence and is no longer a stage blocker.
+
+### Actual focused Package evidence
+
+Command: node tools/package.mjs validate --regional-only --core <Core checkout>.
+Passed, profile regional-fast, measured checker elapsed **427252 ms (7m 7s)**.
+This is local elapsed time, not a controlled same-host comparison with older CI.
+Setup, history compaction, travel and narration do not count toward the 100
+meaningful content turns.
+
+- 50 years; three journeys across Eastbank / Northreach / Salt Coast. The first
+  departure-to-return span is about 32.5 years; ownership survives and six remote
+  delegated reviews execute.
+- Three Eras (opening/networked/regulated), 54 retained regional events, two
+  kinship edges and valid institution predecessor/successor lineage.
+- 21 completed matters (one setup matter), 20 sampled generated structures, all
+  20 semantically distinct. Early/late samples are 10/10; family-bound are 5/4;
+  represented institutions are 3/5. Semantic distance assertions passed.
+- Six historical Hook reuses, including original marked opening evidence decades
+  later. Original evidence remains queryable and marked after compaction.
+- Ten actual alternating SQLite/Fs imports: three departure/arrival pairs plus
+  content checkpoints 25/50/75/100. Every export has exactly one revision; all
+  authoritative state, timeline and session identity compare equal after import.
+- Maximum per-action work: 14 read grants, 11 app commands, 13 effects, five
+  Lifetime events; unchanged limits and atomic-rejection behavior remain.
+
+| Content turns | Active state bytes | History bytes | Maximum projection bytes | Portable archive bytes |
+| ---: | ---: | ---: | ---: | ---: |
+| 25 | 285290 | 226460 | 981 | 31119 |
+| 50 | 414631 | 331876 | 1015 | 43871 |
+| 75 | 527923 | 423758 | 1069 | 56124 |
+| 100 | 651172 | 523036 | 1069 | 67979 |
+
+These measurements exclude accumulated explicit backups. The short sample does
+not establish 5k/10k sublinear growth or replace final stress testing.
+
+### Other actual checks, main integration and limitations
+
+- Four new workload-profile tests passed (default, full, diagnostic and invalid
+  inputs); checker/CLI syntax and negative CLI-selector test passed.
+- Workflow YAML parsed, choice/default assertions passed; changed-workspace
+  whitespace checks passed. No new UI/browser/Android claim is made.
+- Core was fast-forwarded into main. Main regional test invocation yielded 13
+  regional unit passes plus the Fs/SQLite session passes (15 passed total).
+  Its MySQL and PostgreSQL session cases failed only on ECONNREFUSED to absent
+  local services, so the invocation exited 1 and is **not** reported as a full
+  local four-adapter pass. Do not repeat the 15 passes to cosmetically hide the
+  environment result; the unchanged-runtime hosted four-adapter evidence above
+  supplies those two adapters.
+- Main was pushed; the local and remote feat/native-regional-history support
+  branch was deleted after integration. Its existing checkout remains detached;
+  the Package task branch stays active and main was not merged into Package.
+- releases/1.0.0.atria SHA-256 was rechecked unchanged:
+  e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09.
+- Phases 1–6 are complete under the user-approved focused gate. Phase 7 is next,
+  not started. Follow existing player-facing-experience.md; do not restart design,
+  introduce another state authority, release 2.0.0 or enter Phase 8 early.
+
+Automatic main-push CI at the final check: Authority Transaction 37095803039,
+Native Frontend v3 37095803048 and cleanup 37095803006 passed on integrated main.
+Native Model Prompt Runtime 37095803004 was still running (not reported as passed).
+No Package soak was dispatched; these additional checks do not reopen the
+superseded long-soak stage blocker.

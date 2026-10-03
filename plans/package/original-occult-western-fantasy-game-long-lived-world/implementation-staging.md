@@ -269,7 +269,9 @@ Stop after Phase 5.
 - multiple Era transitions;
 - macro events propagate locally;
 - historical materialization remains chronology-consistent;
-- 5k/50y gate re-run across multi-region conditions.
+- user-approved focused regional acceptance (100 content turns with sparse 50-year
+  coverage), as specified in verification.md; optional 5k soak no longer blocks
+  Phase 6. Preserve old saves, facts, permissions, budgets and real turn counting.
 
 Stop after Phase 6.
 

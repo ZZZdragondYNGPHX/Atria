@@ -1,7 +1,7 @@
 # Long-Lived World — Verification and Release Gates
 
 **Task ID:** `refactor/original-occult-western-fantasy-long-lived-world`  
-**Status:** Frozen at design level / implementation not approved
+**Status:** Approved implementation; Phase 6 focused-validation amendment (2026-10-03)
 
 ## 1. Release claim
 
@@ -54,6 +54,38 @@ Purpose:
 - verify long-running business/property state;
 - verify multi-region continuity;
 - stress history retrieval and compaction.
+
+### Phase 6 focused acceptance — 100 content turns / sparse 50-year coverage
+
+The user's 2026-10-03 instruction to shorten date verification supersedes the
+Phase 6 requirement to rerun Gate B. Default regional acceptance uses 100 real
+content-mutating transactions; the 50-year span is reached by the existing sparse
+event-driven clock, not a daily loop. Retaining this inexpensive calendar span is
+necessary for generational chronology, multiple Eras and decades-away return.
+
+Required evidence:
+
+- actual three-region travel, departure/arrival costs and dates, remote owned
+  property/delegation, and return after at least 29 years of absence;
+- three regional Eras, macro propagation and history-consistent materialization;
+- at least two kinship edges and valid institution predecessor/successor lineage;
+- at least three historical Hook reuses, including original opening evidence
+  reused after 25 years, and at least three early and three late semantic cases;
+- actual alternating Fs/SQLite imports at three departures, three arrivals and
+  four content checkpoints (25/50/75/100), preserving all authoritative state;
+- existing exact-runtime Native multi-seed, split/whole, rights/privacy, budget
+  refusal, old SavePoint and four-adapter checkpoint/Retry evidence;
+- explicit profile, actual elapsed time, content-turn count and storage/work
+  measurements. Setup, compaction and prose never count as content turns.
+
+Use local execution by default. The unchanged Native runtime need not repeat an
+already-passed four-adapter suite. Arbitrary shortened diagnostic runs remain
+smoke, not acceptance. --regional-full explicitly opts into the original 5k soak.
+No caps, facts, chronology, authority or persistence guarantees may be weakened.
+
+This is a focused stage gate, **not Gate B**, a 5k growth/stress claim or Gate C.
+Gate A/B remain available for dedicated stress work; the Phase 8 final release
+requirement below is unchanged by this Phase 6 amendment.
 
 ### Gate C — Final release: 10k turns / 200 years
 
