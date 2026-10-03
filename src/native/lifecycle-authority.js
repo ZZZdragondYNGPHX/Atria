@@ -90,6 +90,8 @@ export function protectedTaskResult(base, state, record) {
         || base.states.atri_task_results?.records.some(item => item.invocationId !== record.invocationId && mentions(item.payload, record.invocationId))
         || Object.values(state.domains).some(domain => mentions(domain.records, record.invocationId))
         || Object.values(state.workflows ?? {}).some(flow => flow.status === 'active' && flow.taskInvocationId === record.invocationId)
+        || (state.interactions ?? []).some(item => item.status === 'scheduled' && item.proposalId === record.invocationId)
+        || (state.activities ?? []).some(item => !['completed', 'cancelled', 'stale'].includes(item.status) && mentions(item, record.invocationId))
         || (state.outbox ?? []).some(item => item.status === 'pending' && item.invocationId === record.invocationId);
 }
 export function taskResultTombstone(record) {

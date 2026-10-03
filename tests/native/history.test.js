@@ -128,7 +128,7 @@ describe('Native tiered history', () => {
         expect(s.states.atri_lifecycle.taskTombstones).toEqual([expect.objectContaining({ invocationId: 'advice-1', fingerprint: 'exact' }),
             expect.objectContaining({ invocationId: 'display-1' })]);
     });
-    test.each(['apply', 'interaction', 'pinned', 'domain', 'timeline', 'task', 'workflow', 'outbox', 'capacity'])('checkpoint preserves %s Task dependencies without mutation', protection => {
+    test.each(['apply', 'interaction', 'scheduled', 'activity', 'pinned', 'domain', 'timeline', 'task', 'workflow', 'outbox', 'capacity'])('checkpoint preserves %s Task dependencies without mutation', protection => {
         let s = fixture(); for (let i = 0; i < 64; i++) s = advance(s);
         const task = { id: 'advice', resultPolicy: { resultClass: 'advisory', sink: 'proposal' } };
         s.manifest.runtime.experienceContract.taskRuntime = { tasks: [task] };
@@ -136,6 +136,8 @@ describe('Native tiered history', () => {
         s.states.atri_task_results = { records: [result] };
         if (protection === 'apply') task.resultPolicy.applyCommand = 'update';
         if (protection === 'interaction') s.manifest.runtime.experienceContract.lifecycleRuntime.interactions = [{ taskId: result.taskId }];
+        if (protection === 'scheduled') { result.status = 'applied'; s.states.atri_lifecycle.interactions = [{ status: 'scheduled', proposalId: result.invocationId }]; }
+        if (protection === 'activity') s.states.atri_lifecycle.activities = [{ status: 'settled', narrativeInvocationId: result.invocationId }];
         if (protection === 'capacity') s.manifest.runtime.experienceContract.lifecycleRuntime.retention = { maxReceipts: 0 };
         if (protection === 'pinned') result.pinned = true;
         if (protection === 'domain') s.states.atri_lifecycle.domains.person.records[0].value.task = result.invocationId;
