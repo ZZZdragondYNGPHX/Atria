@@ -2,15 +2,15 @@
 
 Task: package/original-occult-western-fantasy-game. Long-lived independent package workspace.
 
-## Development: 2.0.0-phase5
+## Development: 2.0.0-phase6
 
 **Future Phase 7 UI/UX:** follow the implementation-ready
 [player-facing experience specification](https://github.com/ZZZdragondYNGPHX/Atria/blob/docs/plans/package/original-occult-western-fantasy-game-long-lived-world/player-facing-experience.md)
 for page structure, register styling, long-life forms, safe data wiring and browser
 acceptance. The [frontend design entry](frontend/DESIGN.md) routes implementers to
-that plan. This is planning only; Phases 5–6 remain prerequisites.
+that plan. No final Phase 7 UI is implemented in this stage.
 
-Task: refactor/original-occult-western-fantasy-long-lived-world. **Phases 1–5** of the approved eight-phase plan; this is not the final 2.0.0 release.
+Task: refactor/original-occult-western-fantasy-long-lived-world. **Phases 1–6** of the approved eight-phase plan; this is not the final 2.0.0 release.
 
 Default builds now use an open-ended Native minute clock, Gregorian chronology, stable identity/provenance primitives, persistent Stances and an interval resolver skeleton. Day 31 and year rollover are valid. See [the runtime contract](runtime/LONG-HORIZON.md) for exact scope, Save/Restore semantics and explicit later-phase exclusions.
 
@@ -57,6 +57,10 @@ node tools/package.mjs validate --frontend-only --core <main-checkout>
 node tools/package.mjs preview --v1-campaign --release-only --archive releases/1.0.0.atria --core <main-checkout>
 node tools/package.mjs build --core <main-checkout> --out <new-build-path.atria>
 ~~~
+
+Phase 6 adds real-time regional travel, persistent remote hubs, sparse macro history and conditional Era-sensitive content. See [the regional contract](runtime/REGIONAL-HISTORY.md).
+
+--regional-only runs the multi-region 5k-turn/50-year candidate; reduced ATRIA_RENEWAL_TURNS runs are smoke evidence only.
 
 --enterprise-only runs the focused 50-year Phase 5 candidate with twenty years of delegation, identity/title continuity, institutional resistance and eight actual portable Save/Restore transitions. This is not Gate A/B/C.
 

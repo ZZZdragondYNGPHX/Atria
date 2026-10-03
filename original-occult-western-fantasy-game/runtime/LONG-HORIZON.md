@@ -148,8 +148,8 @@ for ownership, exact contracts and the important archive/Retry boundary.
 
 Phase 3 adds human/family/office lifecycle; see HUMAN-LIFETIMES.md.
 Phase 4 renewable generation has passed its first full 5k-turn/50-year candidate; see RENEWABLE-CONTENT.md.
-Enterprise/delegation, multi-region,
-macro/Era simulation and final Chronicle UI remain unimplemented. The Phase 1
+Phase 5 enterprise and Phase 6 regional/macro/Era systems extend that foundation
+under the contracts linked below. Final Chronicle UI remains Phase 7. The Phase 1
 date test jumping centuries is **not** Gate A/B/C or a century-world simulation.
 Use the dedicated Phase 2 check for history-only development/retrieval evidence.
 
