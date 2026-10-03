@@ -1052,3 +1052,70 @@ with the 200-year span and all semantic, canonical, restore, seed and UI coverag
 retained. The original mandatory 10k becomes optional stress; no reduced run is
 represented as 10k evidence. This supersedes historical Phase 7-only stop prompts
 and the original final turn count, but preserves the Phase 6 focused amendment.
+
+## Phase 7 complete — 2026-10-04
+
+Implemented/pushed/tested Package: 6fdfb5a2a29dff24e48626cb3e60f5900eb53212.
+Clean tested Core main: c8d2d0e0c11c283ade2fa3c730740a0dc480c746.
+The full `--frontend-only` run passed on these exact heads with packageDirty=false.
+Portable evidence: [frontend report](original-occult-western-fantasy-game-long-lived-world/phase7-evidence/frontend.json).
+
+Three destinations retain opening/Evidence/Cases/Composer/advice/Host Save flows.
+Chronicle uses bounded public History/world/calendar adapters and independent
+binding aliases. Paged complete typed forms retain drafts, invalidate consent on
+change and review public obligations before enabling publication. Public refusal
+reasons stay closed; preparation refusal releases only its unpublished selection
+pin, while uncertain provider/finalization failures retain exact retry selection.
+Native navigation locks old filters until the new page is ready; Apply captures
+the actual selector synchronously. Related/source browsing blocks old rows.
+Checkpoint-aware Reply Retry recomputes enabled state after busy submission ends.
+
+Actual full browser evidence (real FS/Native VM/Edge, local synthetic HTTP):
+- all six creation steps, actual provider failure with zero publication and exact
+  retry, original evidence/Graph/Hearing/Claim/advisory and Host Composer;
+- 200-year UI request interrupted at public birth, exact requested/resolved dates
+  and remaining interval; six committed zero-minute stances and invalid policies;
+- marked/journaled early letter, UI Save/Restore and reload without replay;
+- complete nested delegate/policy forms, readonly identifiers and actual refusal;
+- autonomous organization drift/founder refusal, closed/split institution lineage,
+  renamed place and decades-away real travel/changed local Era;
+- two generations, deceased age frozen at death, prior office/current successor;
+- century year/entity/exact-ID retrieval with dates/sources/marks, private exact ID
+  returning no records; latest-eight provenance plus full count and destroyed
+  carrier refusing UI copy without publication;
+- stable protagonist through public identity rotation and real death/reconstruction,
+  absence controls/history and UI return with durable costs;
+- response truncated AFTER a real CAS, competing writes blocked, identical key/
+  input/revision retry with exactly one publication; external revision invalidates
+  consent, explicit checkpoint expires old Reply Retry, later new reply creates
+  an actual pre-effect branch;
+- delayed person read cannot overwrite region choice; 375/390/768/1024/1440,
+  landscape/200% text, keyboard/Back/skip focus, one aria-current, dark-preference
+  paper surface and reduced motion; no hidden enterprise profiles;
+- exported save-container import into fresh FS preserves all state/Timeline and
+  next-day Claim/Hearing continuation. Screenshots inspected wide/compact/200%.
+
+Measured: presentation254/256 nodes, 90 bindings, read schemas234/6/171/6;
+27 provider requests; maximum observation10463 bytes; maximum work15 reads,
+19 application commands,21 effects. Existing ceilings were not raised. Back
+focuses the static result-list wrapper, preserving repeated-NodeRef prohibition.
+Stage dates/setup spanning200years are UI fixtures, not Gate C content evidence.
+
+Core support integrated and branches cleaned. Exact main CI: Authority
+[37142892595](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37142892595),
+Frontend [37142893222](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37142893222),
+Model Prompt [37142892645](https://github.com/ZZZdragondYNGPHX/Atria/actions/runs/37142892645)
+all passed. Support Authority37142417163:65 suites/1811 tests across four adapters,
+including lifetime/renewal/regional seeds17/71/731. Main Frontend275 suites/3370
+ tests; ModelPrompt330 suites/3945 tests plus16 browser tests. Suites overlap;
+counts are separate executions, not a summed unique-test count.
+
+Additional earlier candidate checks actually passed: default runtime59 provider
+requests, retained fixture, explicit bounded-v1 network/convergence, focused
+regional100-content-turn/50-year acceptance, presentation model and syntax/diff
+checks. Earlier local MySQL/PostgreSQL attempts had unavailable services; their
+failures are not local adapter passes. Hosted Authority supplied real DB coverage.
+No hosted model, Android/physical-device/screen-reader or OS-crash claim.
+
+Retained1.0.0 digest remains e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09.
+User authorization explicitly continues through Phase8 now; no phase7-only stop.
