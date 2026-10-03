@@ -227,7 +227,15 @@ export class NativeGenerationHost {
         }
         const selection = await pinned.selection;
         checkCancellation(signal);
-        return this.sessionCore.prepareAuthorityTurn(handle, base, selection, player);
+        try {
+            return await this.sessionCore.prepareAuthorityTurn(handle, base, selection, player);
+        } catch (error) {
+            // A rejected candidate has never reached narration or publication.
+            // Release only this preparation pin; uncertain provider/finalization
+            // failures still retain their original selection for exact retry.
+            if (error?.code === 'AUTHORITY_PREPARATION_FAILED' && this.authoritySelections.get(key) === pinned) this.authoritySelections.delete(key);
+            throw error;
+        }
     }
 
     async prepareTurn(handle, input, signal, onChunk, onAnchor, lanePlan) {

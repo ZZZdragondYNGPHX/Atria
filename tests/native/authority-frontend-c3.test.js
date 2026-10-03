@@ -54,11 +54,21 @@ describe('C3 fixed Native Frontend transaction', () => {
         expect((await call({ input: { ...f.selection.input, amount: 3 } })).ok).toBe(false);
         expect((await call({ idempotencyKey: 'stale' })).ok).toBe(false);
     });
+    test('rejected preparation releases its pin for a newly reviewed draft at the same revision', async () => {
+        const commit = jest.spyOn(f.core._sessions, 'commitSnapshot');
+        expect((await call({ input: { ...f.selection.input, target: 'missing' } })).ok).toBe(false);
+        expect(commit).not.toHaveBeenCalled();
+        expect(durable(await f.core.load(h.handle, f.base.session.sessionId))).toEqual(durable(f.base));
+        expect(f.host.execute).not.toHaveBeenCalled();
+        expect((await call({ idempotencyKey: 'reviewed-again', input: { ...f.selection.input, amount: 3 } })).ok).toBe(true);
+        expect(commit).toHaveBeenCalledTimes(1);
+    });
     test('failed typed Narrator publishes not even its private user draft; retry does not reroll', async () => {
         f.host.execute.mockRejectedValueOnce(new Error('provider failed'));
         expect((await call()).ok).toBe(false);
         expect(durable(await f.core.load(h.handle, f.base.session.sessionId))).toEqual(durable(f.base));
         const receipt = f.host.execute.mock.calls[0][4].lanePlan.authorityContext.receipt;
+        expect((await call({ idempotencyKey: 'replacement', input: { ...f.selection.input, amount: 3 } })).ok).toBe(false);
         expect((await call()).ok).toBe(true);
         expect(f.host.execute.mock.calls[1][4].lanePlan.authorityContext.receipt).toEqual(receipt);
     });
