@@ -13,8 +13,11 @@ verification. Phase8 implementation is pushed at Package
 ae48a4669dc27359c428f5cb6b1638202d61475f. Current emitted version is2.0.0.
 A clean fixed candidate build/2.0.0-candidate.atria is under actual --century-only
 and --frontend-only validation on the same Core. Logs: build/p8-century-final.log
-and build/p8-browser-final.log. Both runs remain pending; no final archive has
-been retained or gate success claimed yet.
+and build/p8-browser-final.log. Full final candidate UI, release-only, retained-v1
+archive and fixture checks passed. The continuous century run passed250 turns /
+50years and is beyond400; default runtime regression remains running. No final
+archive has been retained and Gate C is not claimed yet. Portable passed evidence
+is in the same Record's phase8-evidence directory.
 
 Next: extend existing renewal-profile/renewal-check/opening-check for fixed century
 profile. Preserve investigated paths by advancing only when opening a matter;

@@ -1119,3 +1119,33 @@ No hosted model, Android/physical-device/screen-reader or OS-crash claim.
 
 Retained1.0.0 digest remains e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09.
 User authorization explicitly continues through Phase8 now; no phase7-only stop.
+
+## Phase 8 candidate implementation and running acceptance — 2026-10-04
+
+Pushed clean implementation ae48a4669dc27359c428f5cb6b1638202d61475f;
+unchanged Core c8d2d0e0c11c283ade2fa3c730740a0dc480c746. Default emits the
+distinct immutable 2.0.0 identity pkgv_108cdf069a9cab5d69899024f46c9863.
+The fixed candidate is237739bytes, file SHA-256
+e4d0f3521e6a6e9fd0f3a4220b08a7e8fd5388c7f80ec56fe2671f28de0d2efe.
+Final archive source correspondence, permission/install/Ready/safe views,
+corruption refusal, full Native browser suite and retained fixture passed on
+packageDirty=false. Retained-v1 mode checks the original frozen archive digest
+and embedded resources rather than falsely claiming current frontend equality.
+All unchanged static/schema/formula/expanded-work ceilings remain exact; only
+the already-implemented v2 open calendar policy is normalized in release checks.
+Five workload profile tests, presentation model, content and syntax checks passed.
+
+Passed reports/screenshots are in
+[phase8-evidence](original-occult-western-fantasy-game-long-lived-world/phase8-evidence).
+Wide and200% text final screenshots were inspected. Exact main CI statuses were
+rechecked as success on c8d2d0e0; no unchanged Native suite was needlessly rerun.
+
+The same continuous century save has passed marriage/separation, births,
+autonomous trust/refusal, location build/repurpose/decline/demolish/rebuild,
+property/delegation, bodily death/inheritance/costly reconstruction, three trips,
+widowhood/succession and actual alternating Fs/SQLite imports. The250-turn /
+50-year checkpoint has553 durable history records,523 raw-hot bytes,755 Chronicle
+projection bytes,660941 total state bytes and71539 exported bytes; one revision
+and one Timeline item remain after explicit checkpoint. Full states/Timeline
+match after import. Durable facts are measured separately from raw retention.
+The run is still active; Gate C and release are NOT yet complete.

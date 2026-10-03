@@ -411,7 +411,8 @@ Frozen:
 - compatibility with old v1 save files is not required;
 - the old 30-day campaign is retained as a regression scenario/fixture where practical, not as the global world authority limit;
 - Phase 1 removes the global Day 30 ceiling and establishes the long-horizon runtime foundation;
-- the full 10k-turn / 200-year hard gate runs in Phase 8.
+- the user-amended continuous 1k-content-turn / 200-year hard gate runs in Phase 8;
+  the original 10k stress workload is optional.
 
 Detailed authority: `implementation-staging.md`.
 
