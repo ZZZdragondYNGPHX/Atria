@@ -5,7 +5,7 @@
  * English keys for new patch-conflict UI strings introduced alongside
  * the patch-based session storage. Each iteration-library popup uses
  * these keys via its own translator; the four extensions (CPA, CEA,
- * memory-graph, orchestrator) each register matching zh-CN + zh-TW
+ * memory-graph, orchestrator) each register matching zh-CN
  * translations into their own locale tables.
  */
 export const STR = {

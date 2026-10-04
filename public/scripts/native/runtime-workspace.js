@@ -218,11 +218,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const adapter = field(fields, 'Provider transport', value.providerAdapter || 'provider.openai-compatible', [['provider.openai-compatible', 'OpenAI-compatible messages'], ['provider.raw-text', 'Raw text completions'], ['provider.anthropic', 'Anthropic Messages'], ['provider.gemini', 'Gemini GenerateContent'], ['provider.novelai-image', 'NovelAI 官方图片'], ['provider.novelai-image-compatible', 'NovelAI 第三方兼容图片']]);
             const endpoint = field(fields, 'Completions endpoint URL', value.endpoint); endpoint.type = 'url'; endpoint.required = true;
             const imageFields = node('div', undefined, fields);
-            notice('官方地址为 https://image.novelai.net/ai/generate-image；第三方填写完整生成地址。仅兼容 NovelAI generate 请求，不自动猜测中转协议。', imageFields);
+            notice('Use https://image.novelai.net/ai/generate-image for NovelAI, or the full generation URL for a compatible provider. Only the NovelAI generate protocol is supported; relay protocols are not inferred.', imageFields);
             const imageCapabilities = field(imageFields, '第三方图片能力（按服务文档填写 JSON）', value.options?.imageCapabilities ? JSON.stringify(value.options.imageCapabilities, null, 2) : '', undefined, true);
             const officialRelay = button('采用官方协议透传配置', () => { imageCapabilities.value = JSON.stringify(officialNovelaiCapabilities(), null, 2); }, imageFields);
-            notice('中转站直接转发官方 NovelAI 请求时可采用此配置；若中转改写响应或限制模型/参数，请按其说明调整。', imageFields);
-            notice('responseFormat: zip / json（images[].image base64）/ png；models 中声明模型 ID、characterPrompts、sm、maxPixels、maxSteps、samplers、noiseSchedules。', imageFields);
+            notice('Use this configuration when the relay forwards official NovelAI requests unchanged. If it transforms responses or limits models or parameters, follow its documentation.', imageFields);
+            notice('responseFormat: zip / json (images[].image base64) / png. Declare model IDs, characterPrompts, sm, maxPixels, maxSteps, samplers and noiseSchedules in models.', imageFields);
             const imageExample = node('details', undefined, imageFields); node('summary', '能力格式示例（不代表你的服务支持）', imageExample);
             node('pre', JSON.stringify({ responseFormat: 'zip', models: [officialNovelaiCapabilities().models[0]] }, null, 2), imageExample);
             const compatibility = node('div', undefined, fields);

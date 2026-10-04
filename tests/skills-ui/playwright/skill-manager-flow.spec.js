@@ -125,7 +125,7 @@ test.describe('Skills: manager panel flow', () => {
 
         // callGenericPopup(INPUT, ...) renders a new top-level popup
         // with an input field. We assert the prompt body text matches
-        // the english i18n key (active locale may also be zh-cn / zh-tw,
+        // the english i18n key (active locale may also be zh-cn,
         // so match on a regex).
         const urlPopup = page.locator('.popup:has(textarea), .popup:has(input[type="text"])').last();
         await urlPopup.waitFor({ state: 'visible', timeout: 5_000 });

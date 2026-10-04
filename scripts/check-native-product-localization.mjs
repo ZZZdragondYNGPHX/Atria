@@ -6,7 +6,8 @@ import { SHELL_TEXT_KEYS } from '../public/scripts/atria-shell/localization.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const technical = new Set(['AI', 'JSON', 'JSON Lines', 'URL', 'CSS', 'HTML', 'JavaScript', 'UTF-8', 'Anthropic Messages', 'Gemini GenerateContent']);
-const locales = ['zh-cn', 'zh-tw'].map(lang => JSON.parse(fs.readFileSync(path.join(root, 'public/locales', lang + '.json'), 'utf8')));
+const localeIds = JSON.parse(fs.readFileSync(path.join(root, 'public/locales/lang.json'), 'utf8')).map(item => item.lang).filter(lang => lang !== 'en');
+const locales = localeIds.map(lang => JSON.parse(fs.readFileSync(path.join(root, 'public/locales', lang + '.json'), 'utf8')));
 const linter = new eslint.Linter();
 const literal = node => node?.type === 'Literal' && typeof node.value === 'string' ? node.value : null;
 const leaves = node => node?.type === 'ConditionalExpression' ? [...leaves(node.consequent), ...leaves(node.alternate)] : [node];
@@ -23,7 +24,7 @@ export function auditProductSource(source, filename, catalogs = locales) {
             else if (placeholders(text) !== placeholders(catalogs[index][id])) findings.push({ line: node.loc.start.line, text, locale: index, reason: 'placeholder mismatch' });
         }
     };
-    linter.defineRule('product-copy', { create() {
+    linter.defineRule('product-copy', { create(context) {
         return {
             CallExpression(node) {
                 const name = node.callee.name;
@@ -54,6 +55,13 @@ export function auditProductSource(source, filename, catalogs = locales) {
             },
             AssignmentExpression(node) {
                 if (!['textContent', 'placeholder', 'title'].includes(node.left.property?.name)) return;
+                // Shadow-root style text is CSS, not visible interface copy.
+                if (node.left.property.name === 'textContent' && node.left.object.type === 'Identifier') {
+                    let scope = context.getSourceCode().getScope(node);
+                    while (scope && !scope.set.has(node.left.object.name)) scope = scope.upper;
+                    const init = scope?.set.get(node.left.object.name)?.defs?.[0]?.node?.init;
+                    if (init?.type === 'CallExpression' && init.callee.property?.name === 'createElement' && literal(init.arguments[0]) === 'style') return;
+                }
                 const text = literal(node.right);
                 if (visible(text)) findings.push({ line: node.loc.start.line, reason: 'raw UI copy', text });
             },
@@ -70,13 +78,13 @@ function capabilityCatalogs() {
         if (node?.type !== 'ObjectExpression') return;
         for (const property of node.properties) {
             const key = literal(property.key), value = literal(property.value);
-            if (key && value) catalogs[lang === 'zh-cn' ? 0 : 1][key] = value;
+            if (key && value) catalogs[localeIds.indexOf(lang)][key] = value;
         }
     };
     linter.defineRule('product-catalog', { create() {
         return {
-            CallExpression(node) { if (['zh-cn', 'zh-tw'].includes(literal(node.arguments[0]))) readObject(node.arguments[1], literal(node.arguments[0])); },
-            Property(node) { if (['zh-cn', 'zh-tw'].includes(literal(node.key))) readObject(node.value, literal(node.key)); },
+            CallExpression(node) { if (localeIds.includes(literal(node.arguments[0]))) readObject(node.arguments[1], literal(node.arguments[0])); },
+            Property(node) { if (localeIds.includes(literal(node.key))) readObject(node.value, literal(node.key)); },
         };
     } });
     for (const file of ['agents/orchestrator/i18n.js', 'agents/memory/i18n.js', 'skills/i18n.js', 'extensions/search-tools/main.js']) {
@@ -118,12 +126,12 @@ export function auditProductLocalization() {
     }
     for (const [text, key] of Object.entries(SHELL_TEXT_KEYS)) {
         for (let index = 0; index < locales.length; index++) {
-            if (!locales[index][key] || placeholders(text) !== placeholders(locales[index][key])) findings.push({ filename: 'public/locales/' + ['zh-cn', 'zh-tw'][index] + '.json', text, reason: 'catalog key or placeholders incomplete', key });
+            if (!locales[index][key] || placeholders(text) !== placeholders(locales[index][key])) findings.push({ filename: 'public/locales/' + localeIds[index] + '.json', text, reason: 'catalog key or placeholders incomplete', key });
         }
     }
     return findings;
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     const findings = auditProductLocalization();
-    if (findings.length) { console.error(JSON.stringify(findings, null, 2)); process.exitCode = 1; } else console.log('Native product localization coverage passed (zh-CN / zh-TW).');
+    if (findings.length) { console.error(JSON.stringify(findings, null, 2)); process.exitCode = 1; } else console.log('Native product localization coverage passed (English source / ' + localeIds.join(', ') + ').');
 }

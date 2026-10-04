@@ -3,9 +3,9 @@
 // location.reload() automatically. Assert key labels picked up the
 // translation; persist across server restart.
 //
-// Per `feedback_i18n_text_conventions`: zh-CN, zh-TW, and en must all
+// Per `feedback_i18n_text_conventions`: zh-CN and en must all
 // render correctly. We pick stable strings ("Persona Management" and
-// "User Settings") that exist in all three locales.
+// "User Settings") that exist in both locales.
 
 import { test, expect } from '@playwright/test';
 import { startServer, tearDownServer } from '../_lib/server.js';
@@ -89,7 +89,7 @@ async function setLanguageViaDropdownAndReload(page, baseURL, code) {
 }
 
 test.describe('#103 — i18n language switch via real dropdown persists and labels translate', () => {
-    test('zh-CN -> zh-TW -> en cycles with persistence + label assertions', async ({ page }) => {
+    test('zh-CN -> en cycles with persistence + label assertions', async ({ page }) => {
         await awaitMainUI(page, server.baseURL);
 
         // Baseline: English (or browser default). We don't care what the
@@ -119,11 +119,5 @@ test.describe('#103 — i18n language switch via real dropdown persists and labe
         expect(titles.persona).toBe('Persona Management');
         expect(titles.user).toBe('User Settings');
 
-        // --- zh-TW ---
-        await setLanguageViaDropdownAndReload(page, server.baseURL, 'zh-tw');
-        titles = await drawerTitles(page);
-        expect(titles.stored).toBe('zh-tw');
-        expect(titles.persona, `persona title not localized to zh-TW; got "${titles.persona}"`).toBe('使用者角色管理');
-        expect(titles.user, `user-settings title not localized to zh-TW; got "${titles.user}"`).toBe('使用者設定');
     });
 });

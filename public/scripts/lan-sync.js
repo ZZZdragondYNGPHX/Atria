@@ -173,7 +173,7 @@ function renderCategoryGrid(container, categories, defaultSelected) {
         input.prop('checked', checked);
         // Show English-derived friendly text by default (id → Title Case);
         // data-i18n on the same node lets translate() swap it for the
-        // localized string at attach time when zh-CN/zh-TW are active.
+        // localized string at attach time when zh-CN are active.
         // Without this, English users would see the raw i18n key
         // ("sync.category.characters") because there is no en.json file —
         // the fallback IS the data-i18n value.

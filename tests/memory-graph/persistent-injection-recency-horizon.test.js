@@ -462,8 +462,8 @@ describe('recall pipeline observes seqCutoffFrom (behavior)', () => {
     });
 });
 
-describe('i18n coverage — new label + help entries present in zh-CN and zh-TW', () => {
-    test('English keys exist in both locale maps', async () => {
+describe('i18n coverage — new label + help entries present in zh-CN', () => {
+    test('English keys exist in the Simplified Chinese locale map', async () => {
         const fs = await import('node:fs/promises');
         const path = await import('node:path');
         const url = await import('node:url');
@@ -471,15 +471,12 @@ describe('i18n coverage — new label + help entries present in zh-CN and zh-TW'
         const i18nPath = path.resolve(here, '../../public/scripts/agents/memory/i18n.js');
         const content = await fs.readFile(i18nPath, 'utf8');
         const zhCnIdx = content.indexOf('addLocaleData(\'zh-cn\'');
-        const zhTwIdx = content.indexOf('addLocaleData(\'zh-tw\'');
         expect(zhCnIdx).toBeGreaterThan(-1);
-        expect(zhTwIdx).toBeGreaterThan(zhCnIdx);
-        const zhCnBlock = content.slice(zhCnIdx, zhTwIdx);
-        const zhTwBlock = content.slice(zhTwIdx);
+        const zhCnBlock = content.slice(zhCnIdx);
         const labelKey = '\'Persistent injection recency horizon (assistant turns; 0 = no limit)\':';
         const aboutKey = '\'About Persistent injection recency horizon\':';
         const helpKey = '\'Persistent injection recency horizon help body\':';
-        for (const block of [zhCnBlock, zhTwBlock]) {
+        for (const block of [zhCnBlock]) {
             expect(block).toContain(labelKey);
             expect(block).toContain(aboutKey);
             expect(block).toContain(helpKey);

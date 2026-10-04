@@ -5,7 +5,6 @@ const WORKSPACE_URL = new URL('../../public/scripts/logging/workspace.js', impor
 const STARTUP_URL = new URL('../../public/scripts/logging/startup-analysis.js', import.meta.url);
 const INDEX_URL = new URL('../../public/index.html', import.meta.url);
 const ZH_CN_URL = new URL('../../public/locales/zh-cn.json', import.meta.url);
-const ZH_TW_URL = new URL('../../public/locales/zh-tw.json', import.meta.url);
 
 const workspaceSource = readFileSync(WORKSPACE_URL, 'utf8');
 const startupSource = readFileSync(STARTUP_URL, 'utf8');
@@ -56,7 +55,6 @@ const requiredKeys = [...new Set([
 describe('logging workspace Chinese localization', () => {
     test.each([
         ['zh-cn', ZH_CN_URL],
-        ['zh-tw', ZH_TW_URL],
     ])('%s covers every diagnostics workspace UI key', (_locale, url) => {
         const locale = JSON.parse(readFileSync(url, 'utf8'));
         const missing = requiredKeys.filter(key => !Object.hasOwn(locale, key) || !String(locale[key]).trim());
@@ -64,10 +62,10 @@ describe('logging workspace Chinese localization', () => {
     });
 
     test('dynamic workspace and startup labels flow through the i18n layer', () => {
-        expect(workspaceSource).toContain("import { t, translate } from '../i18n.js';");
+        expect(workspaceSource).toContain('import { t, translate } from \'../i18n.js\';');
         expect(workspaceSource).toContain('translate(item.label)');
         expect(workspaceSource).toContain('ownershipLabel(incident.ownership)');
-        expect(startupSource).toContain("import { t, translate } from '../i18n.js';");
+        expect(startupSource).toContain('import { t, translate } from \'../i18n.js\';');
         expect(startupSource).toContain('localizeStartupLabel(slice.label)');
         expect(startupSource).toContain('localizeStartupLabel(item.scope)');
         expect(startupSource).toContain('localizeStartupLabel(row.label)');

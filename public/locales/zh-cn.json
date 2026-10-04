@@ -8655,5 +8655,8 @@
     "atria.runtime.gateway.2": "始终请求流式响应",
     "atria.runtime.gateway.3": "最低总输出预算",
     "atria.runtime.gateway.4": "用于需要流式响应或更大思考预算的中转服务。0 表示沿用生成参数；正值会提高实际发送额度，但不能超过模型输出上限。",
-    "atria.runtime.gateway.5": "上下文额度包含预留的输出预算。默认可容纳 200,000 输入 token 和 20,000 输出 token。"
+    "atria.runtime.gateway.5": "上下文额度包含预留的输出预算。默认可容纳 200,000 输入 token 和 20,000 输出 token。",
+    "Use https://image.novelai.net/ai/generate-image for NovelAI, or the full generation URL for a compatible provider. Only the NovelAI generate protocol is supported; relay protocols are not inferred.": "官方地址为 https://image.novelai.net/ai/generate-image；第三方填写完整生成地址。仅兼容 NovelAI generate 请求，不自动猜测中转协议。",
+    "Use this configuration when the relay forwards official NovelAI requests unchanged. If it transforms responses or limits models or parameters, follow its documentation.": "中转站直接转发官方 NovelAI 请求时可采用此配置；若中转改写响应或限制模型/参数，请按其说明调整。",
+    "responseFormat: zip / json (images[].image base64) / png. Declare model IDs, characterPrompts, sm, maxPixels, maxSteps, samplers and noiseSchedules in models.": "responseFormat: zip / json（images[].image base64）/ png；models 中声明模型 ID、characterPrompts、sm、maxPixels、maxSteps、samplers、noiseSchedules。"
 }

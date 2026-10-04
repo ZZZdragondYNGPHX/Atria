@@ -106,7 +106,7 @@ describe('SYNC_CATEGORIES registry', () => {
         expect(() => resolveCategoryPaths(bogus, fakeDirs)).toThrow();
     });
 
-    test('every i18n key listed in the registry exists in zh-CN and zh-TW', () => {
+    test('every i18n key listed in the registry exists in zh-CN', () => {
         // Project i18n is flat JSON, keyed by either an English source string
         // OR an explicit dotted namespace key like `var_ops_panel.label.op`.
         // There is no en.json — translate() in public/scripts/i18n.js falls
@@ -114,8 +114,8 @@ describe('SYNC_CATEGORIES registry', () => {
         // "value" of every key is implicitly the key when it reads as English,
         // or — in our case — the descriptive English label the registry
         // declares via its `enFallback` field. We still verify the localized
-        // entries exist in zh-CN and zh-TW exactly.
-        const locales = ['zh-cn', 'zh-tw'];
+        // entries exist in zh-CN exactly.
+        const locales = ['zh-cn'];
         const localeData = {};
         for (const locale of locales) {
             const filePath = path.resolve(__dirname, '../../public/locales', `${locale}.json`);

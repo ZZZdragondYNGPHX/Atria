@@ -275,30 +275,23 @@ describe('spec §5.5 — settings round-trip (clamp semantics)', () => {
     });
 });
 
-describe('spec §5.6 — i18n entries present in zh-CN and zh-TW', () => {
-    test('English key for label exists in both locale maps', async () => {
+describe('spec §5.6 — i18n entries present in zh-CN', () => {
+    test('English key for label exists in the Simplified Chinese locale map', async () => {
         const fs = await import('node:fs/promises');
         const path = await import('node:path');
         const url = await import('node:url');
         const here = path.dirname(url.fileURLToPath(import.meta.url));
         const i18nPath = path.resolve(here, '../../public/scripts/agents/memory/i18n.js');
         const content = await fs.readFile(i18nPath, 'utf8');
-        // Two blocks: addLocaleData('zh-cn', {...}) and addLocaleData('zh-tw', {...}).
         const zhCnIdx = content.indexOf('addLocaleData(\'zh-cn\'');
-        const zhTwIdx = content.indexOf('addLocaleData(\'zh-tw\'');
         expect(zhCnIdx).toBeGreaterThan(-1);
-        expect(zhTwIdx).toBeGreaterThan(zhCnIdx);
-        const zhCnBlock = content.slice(zhCnIdx, zhTwIdx);
-        const zhTwBlock = content.slice(zhTwIdx);
+        const zhCnBlock = content.slice(zhCnIdx);
         const labelKey = '\'Main-context injection window (assistant turns; 0 = no limit)\':';
         const helpKey = '\'0 = inject all always-on nodes (current behavior). N > 0 = drop always-on nodes older than N assistant turns from the main context; recall candidates and recall-selected nodes are unaffected.\':';
         expect(zhCnBlock).toContain(labelKey);
-        expect(zhTwBlock).toContain(labelKey);
         expect(zhCnBlock).toContain(helpKey);
-        expect(zhTwBlock).toContain(helpKey);
     });
 });
-
 // ---------------------------------------------------------------------------
 // Acceptance criteria enforced by code structure — asserted against the
 // actual main.js source so a regression cannot land silently.

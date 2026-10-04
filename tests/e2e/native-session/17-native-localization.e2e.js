@@ -21,8 +21,9 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
-for (const language of ['zh-cn', 'zh-tw']) test(language + ' localizes loading, dynamic Runtime, Library, search and recovery while preserving user names', async ({ page }, info) => {
-    await page.setViewportSize({ width: language === 'zh-cn' ? 390 : 1440, height: 900 });
+for (const width of [390, 1440]) test('zh-cn ' + width + ' localizes loading, dynamic Runtime, Library, search and recovery while preserving user names', async ({ page }, info) => {
+    const language = 'zh-cn';
+    await page.setViewportSize({ width, height: 900 });
     await page.addInitScript(lang => localStorage.setItem('language', lang), language);
     await awaitMainUI(page, server.baseURL);
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openRuntimeSection('routes'));
@@ -30,7 +31,7 @@ for (const language of ['zh-cn', 'zh-tw']) test(language + ' localizes loading, 
     await expect(runtime.locator('.atri-runtime-row')).toContainText('回退路由');
     await expect(runtime).not.toContainText('fallback route');
     await expect(runtime).not.toContainText('Set up Secret');
-    await expect(runtime).toContainText(language === 'zh-cn' ? '配置密钥' : '配置金鑰');
+    await expect(runtime).toContainText('配置密钥');
     await page.screenshot({ path: info.outputPath('runtime-' + language + '.png') });
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openRuntimeSection('models'));
     await expect(runtime.getByRole('heading', { name: 'Save', exact: true })).toBeVisible();
@@ -53,15 +54,15 @@ for (const language of ['zh-cn', 'zh-tw']) test(language + ' localizes loading, 
     const pending = new Promise(resolve => { release = resolve; });
     await page.route('**/api/native/generation/configuration', async route => { await pending; await route.fulfill({ status: 503, json: { error: 'fixture_unavailable' } }); });
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openRuntimeSection('connections'));
-    await expect(runtime).toContainText(language === 'zh-cn' ? '加载' : '載入');
+    await expect(runtime).toContainText('加载');
     release();
-    await expect(runtime.getByRole('alert')).toContainText(/请求|請求/);
+    await expect(runtime.getByRole('alert')).toContainText(/请求/);
     await expect(runtime).not.toContainText('Runtime could not');
     await page.screenshot({ path: info.outputPath('recovery-' + language + '.png') });
     await page.unroute('**/api/native/generation/configuration');
-    await runtime.getByRole('button', { name: language === 'zh-cn' ? '重试加载' : '重試載入', exact: true }).click();
+    await runtime.getByRole('button', { name: '重试加载', exact: true }).click();
     await expect(runtime.locator('.atri-runtime-row')).toHaveCount(1);
     await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openUtility('plugins'));
-    await expect(page.locator('[data-atria-plugin-surface="work"]')).toContainText(language === 'zh-cn' ? '作品插件' : '作品外掛');
-    await expect(page.locator('[data-atria-plugin-surface="global"]')).toContainText(language === 'zh-cn' ? '全局插件' : '全域外掛');
+    await expect(page.locator('[data-atria-plugin-surface="work"]')).toContainText('作品插件');
+    await expect(page.locator('[data-atria-plugin-surface="global"]')).toContainText('全局插件');
 });

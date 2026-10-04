@@ -88,7 +88,7 @@ test.describe('Iter-studio workspace split — CPA', () => {
         await expect(popup.locator('[data-iter-action="switch-tab"][data-iter-tab="preview"]')).toHaveCount(1);
 
         // Preview pane has content — at minimum the Prompts heading (or the
-        // 'No preset loaded' fallback). The active locale may be en/zh-cn/zh-tw.
+        // 'No preset loaded' fallback). The active locale may be en/zh-cn.
         const previewText = await popup.locator('[data-iter-preview-pane]').textContent();
         expect(previewText || '').toMatch(/Prompts|提示词|提示|No preset loaded|未加载|未載入/);
 
@@ -158,7 +158,7 @@ test.describe('Iter-studio workspace split — MG Schema', () => {
         await expect(popup.locator('[data-iter-action="switch-tab"][data-iter-tab="preview"]')).toHaveCount(1);
 
         // Preview pane has content — at minimum the Schema heading (or the
-        // 'No schema loaded' fallback). The active locale may be en/zh-cn/zh-tw.
+        // 'No schema loaded' fallback). The active locale may be en/zh-cn.
         const previewText = await popup.locator('[data-iter-preview-pane]').textContent();
         expect(previewText || '').toMatch(/Schema|分类|分類|No schema loaded|未加载|未載入/);
 
@@ -237,7 +237,7 @@ test.describe('Iter-studio workspace split — Orchestrator', () => {
 
         // Preview pane has content — at minimum a Pipeline / Loop / Agents
         // section title (depending on the active execution mode) or the
-        // 'No profile loaded' fallback. The active locale may be en/zh-cn/zh-tw.
+        // 'No profile loaded' fallback. The active locale may be en/zh-cn.
         const previewText = await popup.locator('[data-iter-preview-pane]').textContent();
         expect(previewText || '').toMatch(/Pipeline|Loop|Agents|Main|流水线|流水線|循环|循環|代理|主代理|No profile loaded|未加载|未載入/);
 
@@ -349,7 +349,7 @@ test.describe('Iter-studio workspace split — CEA Character Iteration', () => {
         await expect(popup.locator('[data-iter-action="switch-tab"][data-iter-tab="preview"]')).toHaveCount(1);
 
         // Preview pane has content — at minimum the Character fields heading
-        // (or the 'No character loaded' fallback). Active locale may be en/zh-cn/zh-tw.
+        // (or the 'No character loaded' fallback). Active locale may be en/zh-cn.
         const previewText = await popup.locator('[data-iter-preview-pane]').textContent();
         expect(previewText || '').toMatch(/Character fields|角色字段|角色欄位|No character loaded|未加载|未載入/);
 
@@ -434,7 +434,7 @@ test.describe('Iter-studio workspace split — CEA Editor', () => {
 
         // Preview pane content — either the World book section header (if the
         // active character has a bound lorebook) or the unbound fallback.
-        // Active locale may be en/zh-cn/zh-tw.
+        // Active locale may be en/zh-cn.
         const previewText = await popup.locator('[data-iter-preview-pane]').textContent();
         expect(previewText || '').toMatch(/World book|世界书|世界書|No world book|未绑定|未綁定/);
 

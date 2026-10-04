@@ -458,7 +458,7 @@ export async function openSkillManagerPanel({ context, initialScope = null, init
         throw new Error('openSkillManagerPanel: context.skills missing');
     }
     // Self-register Skills UI translations so any caller (orchestrator,
-    // completion-preset-assistant, future extensions) gets zh-CN / zh-TW
+    // completion-preset-assistant, future extensions) gets zh-CN
     // strings without having to copy our locale table into their own setup.
     ensureSkillI18n();
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
