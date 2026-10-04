@@ -50,6 +50,27 @@ test('Ready is distinct from Session loaded; one ready and one bounded pump afte
     f.client.cancel(); expect(f.client.ready).toBe(false);
 });
 
+test.each(['ordinary', 'ironman'])('restored %s run becomes locally ready without forbidden raw writes or pump', async mode => {
+    const f = fixture(); f.packageState.descriptor.experienceContract.runPolicy = { schemaVersion: 1 };
+    f.runtime.snapshot.states.atri_lifecycle.ready = true;
+    f.runtime.snapshot.states.atri_run = { mode, status: 'active' };
+    const before = copy(f.runtime.snapshot);
+    await loaded(f);
+    expect(f.client.ready).toBe(true); expect(f.emit).toHaveBeenCalledTimes(1);
+    expect(f.fetchImpl).not.toHaveBeenCalled(); expect(f.runtime.acceptOperationSnapshot).not.toHaveBeenCalled();
+    expect(f.runtime.snapshot).toEqual(before);
+});
+
+test('pending run persists initial Ready once and leaves pumping to authority turns', async () => {
+    const f = fixture(); f.packageState.descriptor.experienceContract.runPolicy = { schemaVersion: 1 };
+    f.runtime.snapshot.states.atri_lifecycle.ready = false;
+    f.runtime.snapshot.states.atri_run = { status: 'pending' };
+    await loaded(f);
+    expect(f.client.ready).toBe(true);
+    expect(f.fetchImpl.mock.calls.map(call => JSON.parse(call[1].body).command.action.kind)).toEqual(['experience.ready']);
+    expect(f.runtime.acceptOperationSnapshot).toHaveBeenCalledTimes(1);
+});
+
 test.each(['packageId', 'packageVersionId', 'entryPointId', 'packageContentHash'])('exact package mismatch %s never becomes ready', async key => {
     const f = fixture(); f.packageState.descriptor[key] = 'different'; const load = f.client.beginLoad();
     await expect(load.prepare(f.packageState)).rejects.toThrow('package_changed');

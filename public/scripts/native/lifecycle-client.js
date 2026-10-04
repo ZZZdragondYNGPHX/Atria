@@ -181,8 +181,11 @@ export function createNativeLifecycleClient({ runtime, fetchImpl = (...args) => 
         // through an unfinished cross-authority transfer.
         if (snapshot.externalEffects?.some(effect => effect.status === 'prepared')) return runtime.snapshot;
         if (token.packageState.descriptor.experienceContract?.lifecycleRuntime) {
-            await command(token, { kind: 'experience.ready' });
-            await pump(token);
+            const governedRun = Boolean(token.packageState.descriptor.experienceContract.runPolicy);
+            // A restored run already owns its Ready state. Run policy also
+            // forbids raw pump; authority turns schedule its bounded outbox.
+            if (!governedRun || !snapshot.states.atri_lifecycle?.ready) await command(token, { kind: 'experience.ready' });
+            if (!governedRun) await pump(token);
         }
         return runtime.snapshot;
     }
