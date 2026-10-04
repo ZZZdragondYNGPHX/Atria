@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Atria - 开放生活志 (精致浅色概念版)</title>
+    <style>
+        /* =========================================
+           高级 CSS 变量与设计令牌 (Design Tokens)
+           ========================================= */
+        :root {
+            /* 浅色系色彩调色板 */
+            --bg-base: #F7F5F0;        /* 象牙暖白基底 */
+            --bg-surface: #FFFFFF;     /* 纯白卡片表面 */
+            --bg-glass: rgba(255, 255, 255, 0.85); /* 磨砂玻璃背景 */
+            
+            --text-ink: #2C2A28;       /* 炭灰黑主文本 (高对比度) */
+            --text-muted: #726E68;     /* 暖灰次级文本 */
+            
+            --accent-gold: #C29B62;    /* 香槟金/黄铜 */
+            --accent-gold-hover: #A88148;
+            --accent-gold-light: rgba(194, 155, 98, 0.15);
+            
+            --border-delicate: rgba(44, 42, 40, 0.08); /* 极细边框 */
+            
+            /* 字体堆栈设定 */
+            --font-serif: "Georgia", "Palatino Linotype", "Noto Serif SC", "Songti SC", serif;
+            --font-sans: "Optima", "Segoe UI", "-apple-system", "PingFang SC", "Microsoft YaHei", sans-serif;
+            
+            /* 间距系统 */
+            --sp-xs: 4px;
+            --sp-sm: 8px;
+            --sp-md: 16px;
+            --sp-lg: 24px;
+            --sp-xl: 40px;
+            --sp-xxl: 64px;
+            
+            /* 圆角系统 */
+            --rad-sm: 4px;
+            --rad-md: 12px;
+            --rad-lg: 20px;
+            --rad-full: 9999px;
+            
+            /* 物理阴影深度 (Elevation) */
+            --shadow-float: 0 12px 32px rgba(44, 42, 40, 0.06), 0 2px 8px rgba(44, 42, 40, 0.04);
+            --shadow-subtle: 0 4px 12px rgba(44, 42, 40, 0.03);
+            
+            /* 动画过渡 */
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --transition-fast: 0.2s var(--ease-out-expo);
+            --transition-smooth: 0.5s var(--ease-out-expo);
+        }
+
+        /* 基础优雅重置 */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-ink);
+            font-family: var(--font-sans);
+            font-size: 16px;
+            line-height: 1.75;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow: hidden; /* 由内部容器控制滚动 */
+        }
+
+        /* 排版提纯 */
+        h1, h2, h3 { font-family: var(--font-serif); font-weight: normal; color: var(--text-ink); }
+        h1 { font-size: clamp(28px, 5vw, 42px); letter-spacing: 2px; text-align: center; margin-bottom: var(--sp-xxl); }
+        h2 { font-size: 22px; margin-bottom: var(--sp-md); color: var(--accent-gold); }
+        p { margin-bottom: var(--sp-lg); }
+        
+        .ornate-divider {
+            display: flex; align-items: center; justify-content: center; margin: var(--sp-xl) 0;
+        }
+        .ornate-divider::before, .ornate-divider::after {
+            content: ""; height: 1px; flex: 1; max-width: 60px; background: var(--accent-gold); opacity: 0.3;
+        }
+        .ornate-divider i {
+            display: inline-block; width: 6px; height: 6px; background: var(--accent-gold); transform: rotate(45deg); margin: 0 12px; opacity: 0.5;
+        }
+
+        /* 高级表单控件 */
+        .fancy-input-group { margin-bottom: var(--sp-xl); position: relative; }
+        .fancy-input-group label {
+            display: block; font-family: var(--font-serif); color: var(--text-muted); font-size: 14px; margin-bottom: var(--sp-sm); letter-spacing: 1px;
+        }
+        .fancy-input, .fancy-textarea {
+            width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--border-delicate);
+            color: var(--text-ink); font-family: var(--font-serif); font-size: 18px; padding: var(--sp-sm) 0;
+            transition: var(--transition-fast); resize: none;
+        }
+        .fancy-input:focus, .fancy-textarea:focus {
+            outline: none; border-bottom-color: var(--accent-gold); box-shadow: 0 1px 0 var(--accent-gold);
+        }
+        .fancy-input::placeholder, .fancy-textarea::placeholder { color: rgba(114, 110, 104, 0.3); font-style: italic; }
+
+        /* 精致按钮 */
+        .btn {
+            appearance: none; background: transparent; border: 1px solid var(--border-delicate);
+            color: var(--text-ink); font-family: var(--font-sans); font-size: 15px; letter-spacing: 1px;
+            padding: 0 var(--sp-xl); height: 48px; border-radius: var(--rad-full);
+            cursor: pointer; transition: var(--transition-fast); display: inline-flex; align-items: center; justify-content: center;
+        }
+        .btn:hover { border-color: var(--accent-gold); color: var(--accent-gold); transform: translateY(-1px); box-shadow: var(--shadow-subtle); }
+        .btn:focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 2px; }
+        .btn-primary { background: var(--text-ink); color: var(--bg-surface); border: none; }
+        .btn-primary:hover { background: var(--accent-gold); color: #fff; border: none; }
+        .btn-text { border: none; padding: 0 var(--sp-md); height: 44px; color: var(--text-muted); }
+        .btn-text:hover { background: var(--accent-gold-light); color: var(--accent-gold-hover); box-shadow: none; transform: none; }
+
+        /* 视图管理系统 */
+        .view {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            display: none; flex-direction: column; opacity: 0;
+            overflow-y: auto; overflow-x: hidden;
+            transition: opacity 0.6s var(--ease-out-expo);
+        }
+        .view.active { display: flex; opacity: 1; z-index: 10; }
+
+        /* --- 视图 1: 概念入口 --- */
+        #view-entry { justify-content: center; align-items: center; padding: var(--sp-lg); background: linear-gradient(135deg, var(--bg-base) 0%, #E9E4DB 100%); }
+        .entry-card {
+            background: var(--bg-surface); padding: var(--sp-xxl) var(--sp-xl); border-radius: var(--rad-lg);
+            box-shadow: var(--shadow-float); max-width: 420px; width: 100%; text-align: center;
+        }
+        .entry-menu { display: flex; flex-direction: column; gap: var(--sp-md); }
+
+        /* --- 视图 2: 书写身份 --- */
+        #view-creation { padding: var(--sp-xxl) var(--sp-lg); align-items: center; }
+        .creation-form { width: 100%; max-width: 600px; background: var(--bg-surface); padding: var(--sp-xxl); border-radius: var(--rad-lg); box-shadow: var(--shadow-subtle); }
+
+        /* --- 视图 3: 核心游戏/叙事区 --- */
+        #view-game { background: var(--bg-base); }
+        
+        /* 顶部通透导航栏 */
+        .game-header {
+            position: sticky; top: 0; z-index: 50; width: 100%;
+            background: var(--bg-glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-delicate);
+            padding: var(--sp-md) var(--sp-lg); display: flex; justify-content: space-between; align-items: center;
+        }
+        .context-bar { display: flex; flex-direction: column; }
+        .context-bar .location { font-family: var(--font-serif); font-size: 18px; color: var(--text-ink); font-weight: bold; }
+        .context-bar .time { font-size: 13px; color: var(--accent-gold); letter-spacing: 1px; text-transform: uppercase; }
+        
+        /* 精致图标按钮 */
+        .btn-icon {
+            width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--border-delicate);
+            background: transparent; color: var(--text-ink); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: var(--transition-fast);
+        }
+        .btn-icon:hover { background: var(--bg-surface); border-color: var(--accent-gold); color: var(--accent-gold); transform: scale(1.05); }
+
+        /* 叙事卷轴 */
+        .story-stream {
+            flex: 1; overflow-y: auto; scroll-behavior: smooth;
+            padding: var(--sp-xl) var(--sp-lg) 200px; /* 底部留足空间给输入框 */
+            display: flex; flex-direction: column; align-items: center; gap: var(--sp-xl);
+        }
+        .story-stream::-webkit-scrollbar { width: 6px; }
+        .story-stream::-webkit-scrollbar-thumb { background: var(--border-delicate); border-radius: 4px; }
+        
+        .message-block { width: 100%; max-width: 680px; position: relative; animation: slideUp 0.6s var(--ease-out-expo) both; }
+        
+        /* 叙述文本 */
+        .msg-narrative { text-align: justify; font-family: var(--font-serif); font-size: 17px; color: var(--text-muted); line-height: 1.8; }
+        
+        /* NPC 对话 */
+        .msg-dialogue { display: flex; flex-direction: column; align-items: flex-start; }
+        .msg-dialogue .speaker { font-family: var(--font-sans); font-size: 13px; font-weight: bold; color: var(--accent-gold); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; margin-left: 2px; }
+        .msg-dialogue .bubble {
+            background: var(--bg-surface); padding: var(--sp-md) var(--sp-lg);
+            border-radius: 2px var(--rad-lg) var(--rad-lg) var(--rad-lg);
+            box-shadow: var(--shadow-subtle); border-left: 3px solid var(--accent-gold);
+            color: var(--text-ink); font-size: 16px;
+        }
+
+        /* 玩家表达 */
+        .msg-player { display: flex; flex-direction: column; align-items: flex-end; }
+        .msg-player .bubble {
+            background: var(--text-ink); color: var(--bg-surface);
+            padding: var(--sp-md) var(--sp-lg);
+            border-radius: var(--rad-lg) 2px var(--rad-lg) var(--rad-lg);
+            font-size: 16px; font-family: var(--font-serif);
+            box-shadow: 0 4px 16px rgba(44, 42, 40, 0.15); max-width: 90%;
+        }
+
+        /* 浮动输入中枢 */
+        .input-console {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+            background: linear-gradient(to top, rgba(247, 245, 240, 1) 50%, rgba(247, 245, 240, 0) 100%);
+            padding: 0 var(--sp-lg) var(--sp-xl); pointer-events: none;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .input-wrapper {
+            pointer-events: auto; width: 100%; max-width: 720px;
+            background: var(--bg-glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-delicate); border-radius: var(--rad-lg);
+            padding: var(--sp-sm) var(--sp-md); box-shadow: var(--shadow-float);
+            display: flex; flex-direction: column; gap: var(--sp-sm); transition: var(--transition-fast);
+        }
+        .input-wrapper:focus-within { border-color: var(--accent-gold); box-shadow: 0 8px 32px rgba(194, 155, 98, 0.15); }
+        
+        .suggestions-bar {
+            display: flex; gap: var(--sp-sm); overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; margin-top: 4px;
+        }
+        .suggestions-bar::-webkit-scrollbar { display: none; }
+        .chip {
+            background: transparent; border: 1px solid var(--border-delicate);
+            color: var(--text-muted); font-size: 13px; padding: 4px 12px; border-radius: var(--rad-full);
+            cursor: pointer; white-space: nowrap; transition: var(--transition-fast); font-family: var(--font-sans);
+        }
+        .chip:hover { border-color: var(--accent-gold); color: var(--accent-gold); background: var(--bg-surface); }
+        
+        .typing-area { display: flex; gap: var(--sp-md); align-items: flex-end; }
+        .typing-area textarea {
+            flex: 1; border: none; background: transparent; font-family: var(--font-serif);
+            font-size: 16px; color: var(--text-ink); resize: none; max-height: 120px; min-height: 28px;
+            padding: var(--sp-xs) 0; overflow-y: auto; line-height: 1.6;
+        }
+        .typing-area textarea:focus { outline: none; }
+        .typing-area textarea::placeholder { color: #AFAAA3; font-style: italic; }
+        
+        .btn-send {
+            background: var(--accent-gold); color: #fff; border: none; width: 36px; height: 36px;
+            border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer;
+            transition: var(--transition-fast); padding: 0; flex-shrink: 0; margin-bottom: 2px;
+        }
+        .btn-send:hover { transform: scale(1.1); box-shadow: 0 4px 12px rgba(194, 155, 98, 0.4); }
+        .btn-send svg { width: 16px; height: 16px; fill: currentColor; }
+
+        /* --- 优雅抽屉菜单系统 --- */
+        .drawer-overlay {
+            position: fixed; inset: 0; background: rgba(44, 42, 40, 0.2); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+            z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.4s var(--ease-out-expo);
+        }
+        .drawer-overlay.active { opacity: 1; pointer-events: auto; }
+        
+        .drawer-panel {
+            position: fixed; top: 0; right: 0; height: 100vh; width: 100%; max-width: 400px;
+            background: var(--bg-surface); box-shadow: -10px 0 40px rgba(0,0,0,0.05);
+            z-index: 101; transform: translateX(100%); transition: transform 0.5s var(--ease-out-expo);
+            display: flex; flex-direction: column;
+        }
+        .drawer-overlay.active + .drawer-panel, .drawer-panel.active { transform: translateX(0); }
+        
+        .drawer-header {
+            padding: var(--sp-xl) var(--sp-lg) var(--sp-md); display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border-delicate);
+        }
+        .drawer-header h2 { margin: 0; color: var(--text-ink); font-size: 20px; }
+        .btn-close {
+            background: transparent; border: none; font-size: 28px; color: var(--text-muted); line-height: 1; cursor: pointer; transition: var(--transition-fast);
+        }
+        .btn-close:hover { color: var(--text-ink); transform: rotate(90deg); }
+        
+        .drawer-content { flex: 1; overflow-y: auto; padding: var(--sp-md) var(--sp-lg); }
+        
+        .card-item {
+            padding: var(--sp-md) 0; border-bottom: 1px solid var(--border-delicate); cursor: pointer; transition: var(--transition-fast);
+            display: flex; flex-direction: column; gap: var(--sp-xs);
+        }
+        .card-item:hover .card-title { color: var(--accent-gold); padding-left: 4px; }
+        .card-title { font-family: var(--font-serif); font-size: 16px; color: var(--text-ink); font-weight: bold; transition: var(--transition-fast); }
+        .card-desc { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+
+        /* 状态指示器 */
+        .status-pill {
+            text-align: center; margin: 0 auto var(--sp-lg); font-family: var(--font-sans); font-size: 13px; color: var(--text-muted);
+            background: rgba(44, 42, 40, 0.04); padding: 4px 16px; border-radius: var(--rad-full); display: inline-flex; align-items: center; gap: 8px; display: none;
+        }
+        .loader-dot { width: 6px; height: 6px; background: var(--accent-gold); border-radius: 50%; animation: pulse 1s infinite alternate; }
+
+        /* 演示控件 (左下角小标签) */
+        .mock-ribbon {
+            position: fixed; bottom: 20px; left: 20px; z-index: 200; background: var(--bg-surface); padding: 8px 12px;
+            border-radius: var(--rad-md); box-shadow: var(--shadow-float); border: 1px solid var(--border-delicate);
+            display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-muted); opacity: 0.5; transition: opacity 0.3s;
+        }
+        .mock-ribbon:hover { opacity: 1; }
+        .mock-ribbon select { background: transparent; border: 1px solid var(--border-delicate); color: var(--text-ink); border-radius: 4px; padding: 2px; }
+
+        /* 动画设定 */
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { from { opacity: 0.3; transform: scale(0.8); } to { opacity: 1; transform: scale(1.2); } }
+
+        /* 无障碍 Reduced Motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- 视图 1: 故事大厅 (Entry) -->
+    <div id="view-entry" class="view active">
+        <div class="entry-card">
+            <h1>Atria</h1>
+            <div class="ornate-divider"><i></i></div>
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: var(--sp-xl);">
+                一部关于生活、旅行与存在的文字志。
+            </p>
+            <div class="entry-menu" id="entry-actions">
+                <!-- 由 JS 渲染入口 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 视图 2: 书写自我 (Character Creation) -->
+    <div id="view-creation" class="view">
+        <div class="creation-form">
+            <h2>落笔书写</h2>
+            <p style="color: var(--text-muted); font-size: 15px;">在信笺上留下你的印记。你可以是任何人，无需局限于特定的职业与使命。</p>
+            <div class="ornate-divider"><i></i></div>
+            
+            <div class="fancy-input-group">
+                <label>如何称呼你？</label>
+                <input type="text" class="fancy-input" id="char-name" value="艾琳">
+            </div>
+            <div class="fancy-input-group">
+                <label>你过往的经历与眼下的处境</label>
+                <textarea class="fancy-textarea" id="char-desc" rows="2" oninput="autoGrow(this)">我在海港城市长大，最近离开了原来的生活。想先找到一份能养活自己的工作，也想看看更远的地方。</textarea>
+            </div>
+            <div class="fancy-input-group">
+                <label>此时的身份 / 职业 (若有)</label>
+                <input type="text" class="fancy-input" id="char-occ" value="暂未决定">
+            </div>
+            <div class="fancy-input-group">
+                <label>内心的打算</label>
+                <input type="text" class="fancy-input" id="char-intent" value="先安顿下来，再决定下一步。">
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--sp-xl);">
+                <button class="btn btn-text" onclick="switchView('view-entry')">封存</button>
+                <button class="btn btn-primary" onclick="enterGame()">踏入世界</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 视图 3: 沉浸式扮演流 (Main Roleplay) -->
+    <div id="view-game" class="view">
+        <header class="game-header">
+            <div class="context-bar">
+                <span class="location" id="ui-location">Eastbank · 港边街道</span>
+                <span class="time" id="ui-time">傍晚</span>
+            </div>
+            <button class="btn-icon" onclick="openDrawer('nav-drawer')" aria-label="打开功能抽屉" title="往事与行囊">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
+        </header>
+
+        <div class="story-stream" id="story-feed">
+            <!-- JS 动态注入对话/叙事 -->
+        </div>
+
+        <div class="input-console">
+            <div id="status-generating" class="status-pill">
+                <div class="loader-dot"></div>正在等待世界的回音...
+            </div>
+            <div class="input-wrapper">
+                <div class="suggestions-bar" id="ui-suggestions">
+                    <!-- JS 动态注入建议标签 -->
+                </div>
+                <div class="typing-area">
+                    <textarea id="player-input" placeholder="写下你的言辞或举动..." oninput="autoGrow(this)"></textarea>
+                    <button class="btn-send" onclick="sendInput()" title="表达意图" aria-label="发送">
+                        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==========================================
+     高阶抽屉系统 (Drawer) 用于替代丑陋的模态框 
+     ========================================== -->
+<div class="drawer-overlay" id="drawer-bg" onclick="closeDrawer()"></div>
+
+<!-- 侧边导航主抽屉 -->
+<div class="drawer-panel" id="nav-drawer">
+    <div class="drawer-header">
+        <h2>卷宗与行囊</h2>
+        <button class="btn-close" onclick="closeDrawer()">&times;</button>
+    </div>
+    <div class="drawer-content">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: var(--sp-md);">轻触翻阅你的世界信息。这些并非待办清单。</p>
+        <div class="card-item" onclick="openSubDrawer('self')">
+            <span class="card-title">自身境况</span>
+            <span class="card-desc">身份设定与近期打算</span>
+        </div>
+        <div class="card-item" onclick="openSubDrawer('people')">
+            <span class="card-title">羁绊与人物</span>
+            <span class="card-desc">认识的人及关系往事</span>
+        </div>
+        <div class="card-item" onclick="openSubDrawer('items')">
+            <span class="card-title">持有之物</span>
+            <span class="card-desc">随身携带的资源与物件</span>
+        </div>
+        <div class="card-item" onclick="openSubDrawer('locations')">
+            <span class="card-title">见闻与地点</span>
+            <span class="card-desc">所处环境及听闻的远方</span>
+        </div>
+        <div class="card-item" onclick="openSubDrawer('memories')">
+            <span class="card-title">记忆录</span>
+            <span class="card-desc">可追溯的重要经历</span>
+        </div>
+        
+        <div class="ornate-divider"><i></i></div>
+        <button class="btn btn-text" style="width: 100%; margin-top: var(--sp-sm);" onclick="alert('此处唤起保存或退出界面。')">系统: 封存记忆 (保存)</button>
+    </div>
+</div>
+
+<!-- 子内容详情抽屉 -->
+<div class="drawer-panel" id="detail-drawer" style="z-index: 102;">
+    <div class="drawer-header">
+        <button class="btn-icon" style="border: none; width:32px; height:32px;" onclick="backToNavDrawer()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h2 id="detail-title">详情</h2>
+        <button class="btn-close" onclick="closeDrawer()">&times;</button>
+    </div>
+    <div class="drawer-content" id="detail-body">
+        <!-- 列表由 JS 注入 -->
+    </div>
+</div>
+
+<!-- 供体验用的情境切换器 -->
+<div class="mock-ribbon">
+    <label>演示情境 (非实际 UI)</label>
+    <select id="mock-scenario-select" onchange="loadScenario(this.value)">
+        <option value="everyday">作坊日常试工</option>
+        <option value="travel">驿站旅行探索</option>
+        <option value="relationship">旧友重逢之夜</option>
+    </select>
+</div>
+
+<script>
+    /* 核心模拟数据映射 (基于 JSON 要求设计的高级文案呈现) */
+    const DATA = {
+        scenarios: {
+            "everyday": {
+                context: { location: "Eastbank · 港边街道", time: "傍晚" },
+                messages: [
+                    { kind: "narrative", text: "作坊的门仍开着，街对面的面包店正在收摊。海风带来远处货轮的汽笛声。你还没有决定今晚住在哪里。作坊主人看见你停在门口，放下了手里的工具。" },
+                    { kind: "dialogue", speaker: "米拉 (作坊主人)", text: "“找人，还是找活干？如果愿意，我们可以先聊聊你做过什么。”" }
+                ],
+                suggestions: [
+                    { label: "询问报酬与住处", draft: "我想问问这里有什么工作，报酬和住处怎么安排？" },
+                    { label: "暂不承诺，试工一天", draft: "我以前做过修补，但不想立刻承诺长期留下。能否先做一天试工？" }
+                ],
+                sampleResponse: "她没有强求你定下长期的契约，只是指向案台上的一件黄铜器具，表示若你能修补好它，今晚的落脚处便有着落。世界的因果在你的选择中展开，而非强制的转职。"
+            },
+            "travel": {
+                context: { location: "北行驿站", time: "清晨" },
+                messages: [
+                    { kind: "narrative", text: "驿站外的车夫正在系紧货物，告示板上写着两条不同方向的线路。旅人提起北方山城的节庆，也有人说沿海路线更容易找到工作。它们是你听到的传闻，不是强制接受的任务。" },
+                    { kind: "dialogue", speaker: "同行旅人", text: "“你打算去哪？如果还没定，也可以先吃点热麦粥，看看天气。”" }
+                ],
+                suggestions: [
+                    { label: "询问路况", draft: "我想问问去北方山城的路况如何。" },
+                    { label: "暂时停留", draft: "我决定先在驿站待一会儿，整理随身物品。" }
+                ],
+                sampleResponse: "旅人吹开麦粥上的热气，向你讲述了他曾走过的一段风雪路。你保留了随时踏上旅途或改变心意的权利。"
+            },
+            "relationship": {
+                context: { location: "瑟琳的酒馆深处", time: "深夜" },
+                messages: [
+                    { kind: "dialogue", speaker: "旧友瑟琳", text: "“你不在的这些日子，店里变了不少。先坐下来吧。你愿意说说这一路怎么样吗？”" },
+                    { kind: "narrative", text: "这里的灯火很暗。没有需要核查的卷宗档案，你可以选择吐露心声、保持沉默，或者询问她这些年的往事。" }
+                ],
+                suggestions: [],
+                sampleResponse: "她安静地听完你的话，为你斟满了一杯带有苦艾香气的酒。关系在对谈中悄然发生着改变。"
+            }
+        },
+        lore: {
+            self: [{ title: "艾琳", desc: "我想先找到一份能养活自己的工作，看看更远的地方。<br><br><span style='color:var(--accent-gold)'>身份</span>：暂未决定<br><span style='color:var(--accent-gold)'>打算</span>：先安顿下来。" }],
+            people: [
+                { title: "米拉", desc: "作坊主人。刚刚认识。公开表示愿意提供试工的机会。" },
+                { title: "瑟琳", desc: "曾经在同一条街生活的旧友。与你拥有一段共进晚餐的记忆。" }
+            ],
+            items: [
+                { title: "旧旅行袋", desc: "随身携带的帆布袋，边角已磨损，里面装着你仅有的一点盘缠和换洗衣物。" },
+                { title: "未寄出的信", desc: "一封被反复折叠的信件。它是你自己的文字，并非系统要求必须提交的'证据'。" }
+            ],
+            locations: [
+                { title: "北方山城", desc: "关于这里的消息来自一位旅人的口述，尚未亲自到访验证。" }
+            ],
+            memories: [
+                { title: "曾经共进晚餐", desc: "离城以前的事。你记得那晚的交谈。它可以影响你的心境与表达，但不等于死板的逻辑限制。" }
+            ]
+        }
+    };
+
+    let currentScenario = 'everyday';
+
+    /* --- 界面跳转机制 --- */
+    function switchView(viewId) {
+        document.querySelectorAll('.view').forEach(el => {
+            el.classList.remove('active');
+            setTimeout(() => { if(!el.classList.contains('active')) el.style.display = 'none'; }, 600);
+        });
+        const target = document.getElementById(viewId);
+        target.style.display = 'flex';
+        setTimeout(() => target.classList.add('active'), 50);
+    }
+
+    function initEntry() {
+        const menu = document.getElementById('entry-actions');
+        const actions = [
+            { label: '起笔新篇', action: () => switchView('view-creation'), class: 'btn btn-primary' },
+            { label: '继续旅程', action: enterGame, class: 'btn' },
+            { label: '翻阅书签 (存档)', action: () => alert('呼出高级存档选择器概念...'), class: 'btn btn-text' }
+        ];
+        actions.forEach(a => {
+            const btn = document.createElement('button');
+            btn.className = a.class; btn.textContent = a.label; btn.onclick = a.action;
+            menu.appendChild(btn);
+        });
+    }
+
+    /* --- 核心游玩区注入逻辑 --- */
+    function enterGame() {
+        switchView('view-game');
+        loadScenario(currentScenario);
+    }
+
+    function loadScenario(scenarioId) {
+        currentScenario = scenarioId;
+        const data = DATA.scenarios[scenarioId];
+        
+        document.getElementById('ui-location').textContent = data.context.location;
+        document.getElementById('ui-time').textContent = data.context.time;
+        
+        const feed = document.getElementById('story-feed');
+        feed.innerHTML = ''; // 清空
+        
+        // 渲染剧本初始消息，增加阶梯式动画延迟展示高级感
+        data.messages.forEach((msg, index) => {
+            setTimeout(() => {
+                appendMessage(msg);
+            }, index * 300);
+        });
+
+        renderSuggestions(data.suggestions);
+        resetInput();
+    }
+
+    function renderSuggestions(suggestions) {
+        const box = document.getElementById('ui-suggestions');
+        box.innerHTML = '';
+        if(suggestions.length === 0) {
+            box.style.display = 'none';
+            return;
+        }
+        box.style.display = 'flex';
+        suggestions.forEach(s => {
+            const el = document.createElement('button');
+            el.className = 'chip'; el.textContent = s.label;
+            el.onclick = () => {
+                const input = document.getElementById('player-input');
+                input.value = s.draft;
+                autoGrow(input);
+                input.focus();
+            };
+            box.appendChild(el);
+        });
+    }
+
+    function appendMessage(msg) {
+        const feed = document.getElementById('story-feed');
+        const wrapper = document.createElement('div');
+        wrapper.className = 'message-block ' + (msg.kind === 'narrative' ? 'msg-narrative' : (msg.speaker === '你' ? 'msg-player' : 'msg-dialogue'));
+        
+        if(msg.kind === 'dialogue') {
+            wrapper.innerHTML = `<span class="speaker">${msg.speaker}</span><div class="bubble">${msg.text}</div>`;
+        } else if (msg.speaker === '你') {
+            wrapper.innerHTML = `<div class="bubble">${msg.text}</div>`;
+        } else {
+            wrapper.innerHTML = msg.text;
+        }
+        
+        feed.appendChild(wrapper);
+        
+        // 优雅滚动至底
+        setTimeout(() => {
+            feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' });
+        }, 100);
+    }
+
+    /* --- 玩家输入与交互 --- */
+    function autoGrow(el) {
+        el.style.height = "5px";
+        el.style.height = (el.scrollHeight) + "px";
+    }
+
+    function resetInput() {
+        const input = document.getElementById('player-input');
+        input.value = ''; autoGrow(input);
+    }
+
+    // 绑定回车发送
+    document.getElementById('player-input').addEventListener('keydown', function(e) {
+        if(e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault(); sendInput();
+        }
+    });
+
+    function sendInput() {
+        const input = document.getElementById('player-input');
+        const text = input.value.trim();
+        if(!text) return;
+
+        appendMessage({ speaker: '你', text: text });
+        resetInput();
+        document.getElementById('ui-suggestions').style.display = 'none';
+
+        // 模拟 AI 生成等待态
+        const loader = document.getElementById('status-generating');
+        loader.style.display = 'inline-flex';
+        const feed = document.getElementById('story-feed');
+        feed.scrollTo({ top: feed.scrollHeight, behavior: 'smooth' });
+
+        setTimeout(() => {
+            loader.style.display = 'none';
+            appendMessage({ kind: 'narrative', text: DATA.scenarios[currentScenario].sampleResponse });
+        }, 1800);
+    }
+
+    /* --- 抽屉 UI 管理 --- */
+    function openDrawer(id) {
+        document.getElementById('drawer-bg').classList.add('active');
+        document.getElementById(id).classList.add('active');
+    }
+    
+    function closeDrawer() {
+        document.getElementById('drawer-bg').classList.remove('active');
+        document.querySelectorAll('.drawer-panel').forEach(el => el.classList.remove('active'));
+    }
+
+    function openSubDrawer(categoryKey) {
+        const titles = { self: "自身境况", people: "人物与羁绊", items: "持有之物", locations: "远方与见闻", memories: "记忆录" };
+        document.getElementById('detail-title').textContent = titles[categoryKey];
+        
+        const body = document.getElementById('detail-body');
+        body.innerHTML = '';
+        const list = DATA.lore[categoryKey];
+        
+        if(!list || list.length === 0) {
+            body.innerHTML = `<p style="color:var(--text-muted); font-style:italic; text-align:center; padding-top:20px;">这里暂时没有相关记录。</p>`;
+        } else {
+            list.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'card-item';
+                el.style.cursor = 'default'; // 在详情页不展示 hover 动画
+                el.innerHTML = `<span class="card-title" style="color:var(--accent-gold); padding-left:0;">${item.title}</span><span class="card-desc">${item.desc}</span>`;
+                body.appendChild(el);
+            });
+        }
+        
+        document.getElementById('detail-drawer').classList.add('active');
+    }
+
+    function backToNavDrawer() {
+        document.getElementById('detail-drawer').classList.remove('active');
+    }
+
+    // 初始化
+    window.onload = initEntry;
+
+</script>
+</body>
+</html>
