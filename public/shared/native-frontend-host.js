@@ -1,3 +1,4 @@
+import { CHRONICLE_QUERY, CHRONICLE_PAGE, WORLD_QUERY, INTERVAL_QUERY, INTERVAL_RESULT } from './native-chronicle-host.js';
 import { fields } from './native-frontend-contract.js';
 import { assertMessageProjection } from './native-message-contract.js';
 
@@ -18,15 +19,20 @@ const action = (inputSchema = HOST_EMPTY, local = false, outputSchema = HOST_EMP
 // Closed Host-owned target catalogue. These are capabilities, never arbitrary
 // method dispatch; both authoring and installed graph validation use this table.
 const targets = {
+    'host.world.view': { ...read(CHRONICLE_PAGE), inputSchema: WORLD_QUERY },
+    'host.history.query': { ...read(CHRONICLE_PAGE), inputSchema: CHRONICLE_QUERY },
+    'host.chronology.interval': { ...read(INTERVAL_RESULT), inputSchema: INTERVAL_QUERY },
     'host.media.resolve': { ...read(hostObject({ ref: MEDIA_REF_SCHEMA, status: { ...string(16), enum: ['available', 'denied', 'unavailable'] }, reasonCode: string(128) }), true), inputSchema: hostObject({ ref: MEDIA_REF_SCHEMA, type: { ...string(8), enum: ['image', 'audio', 'video'] } }) },
     'host.presentation.locale': read(localeSchema, true),
     'host.presentation.setLocale': action(hostObject({ locale: string(64) }), true, localeSchema),
     'host.presentation.announce': action(hostObject({ text: string(4096) }), true),
     'host.conversation.messages': read(MESSAGE_SCHEMA, false, true),
+    'host.conversation.recent': { ...read({ type: 'array', items: MESSAGE_SCHEMA, maxItems: 32 }), inputSchema: hostObject({ beforeSequence: number }, []) },
     'host.conversation.status': read(SESSION_SCHEMA),
     'host.conversation.branches': read(BRANCH_SCHEMA, false, true),
     'host.conversation.alternatives': read(hostObject({ ...MESSAGE_SCHEMA.properties, alternativeBranchId: id }), false, true),
     'host.conversation.inspect': { ...read(rows(MESSAGE_SCHEMA)), inputSchema: hostObject({ revisionId: id }) },
+    'host.conversation.retryStatus': { ...read(hostObject({ messageId: id, eligible: { type: 'boolean' }, reason: string(512) })), inputSchema: hostObject({ messageId: id }, []) },
     'host.conversation.retry': action(hostObject({ messageId: id })),
     'host.conversation.fork': action(hostObject({ revisionId: id, messageId: id }, ['revisionId'])),
     'host.conversation.switch': action(hostObject({ branchId: id })),
@@ -40,6 +46,8 @@ const targets = {
     'host.composer.focus': action(HOST_EMPTY, true),
     'host.composer.submit': action(HOST_EMPTY, true),
     'host.session.status': read(SESSION_SCHEMA),
+    'host.session.begin': action(hostObject({ inputJson: string(65536), invocationId: id })),
+    'host.session.run': read(hostObject({ runId: id, mode: string(16), status: string(16), sequence: number, cleanup: string(16) })),
     'host.session.saves': read(saveSchema, false, true),
     'host.session.save': action(hostObject({ displayName: string(256) }, []), false, saveSchema),
     'host.session.restore': action(hostObject({ saveId: id })),

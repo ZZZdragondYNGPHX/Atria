@@ -1,4 +1,5 @@
-import { SessionRepo } from './session-repo.js';
+import { SessionRepo, withSessionWrite } from './session-repo.js';
+import { assertRunAccess } from '../run-control.js';
 import { NATIVE_RESOURCE_KINDS, assertSavePoint } from '../contracts.js';
 import { NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
@@ -45,7 +46,8 @@ export class SavePointRepo {
         if (!await new SessionRepo({ engine: this._engine }).isCommittedRevision(handle, savePoint.sessionId, savePoint.revisionId)) {
             throw new NotFoundError('committed native session revision', { revisionId: savePoint.revisionId });
         }
-        return this._engine.withTransaction(handle, async (tx) => {
+        return withSessionWrite(handle, savePoint.sessionId, () => this._engine.withTransaction(handle, async (tx) => {
+            const control = await assertRunAccess(tx, handle, savePoint.sessionId, 'save', savePoint.revisionId);
             const revision = await getNativeDocument(tx, {
                 kind: NATIVE_RESOURCE_KINDS.sessionRevision,
                 handle,
@@ -58,12 +60,14 @@ export class SavePointRepo {
                     revisionId: savePoint.revisionId,
                 });
             }
-            return putImmutable(
-                tx,
-                this._key(handle, savePoint.sessionId, savePoint.saveId),
-                savePoint,
-            );
-        });
+            const created = await putImmutable(tx, this._key(handle, savePoint.sessionId, savePoint.saveId), savePoint);
+            if (control?.mode === 'ironman') {
+                for (const old of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.savePoint, handle, sessionId: savePoint.sessionId })) {
+                    if (old.doc.saveId !== savePoint.saveId) await tx.deleteResource(old.key);
+                }
+            }
+            return created;
+        }));
     }
 
     async delete(handle, sessionId, saveId) {

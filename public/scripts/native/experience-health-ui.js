@@ -1,3 +1,4 @@
+import { ensureTaskBindings } from './task-binding-ui.js';
 import { translateShellText as t } from '../atria-shell/localization.js';
 import { ATRIA_EXPERIENCE_CAPABILITIES } from '../../shared/native-experience-contract.js';
 import { presentationNegotiation } from './host-capabilities.js';
@@ -19,6 +20,7 @@ export function mountExperienceHealth({ document, root, runtime, request = nativ
     let disposed = false; let report = null; let plan = null; let busy = false; let taskReport = null;
     const status = document.createElement('p'); status.setAttribute('role', 'status');
     const content = document.createElement('div');
+    const bindingSetup = document.createElement('div');
     const current = () => !disposed && runtime.snapshot?.session.sessionId === sessionId;
     const post = (path, body = {}) => request(path, { sessionId, ...body }, controller.signal);
     function button(label, handler) {
@@ -38,10 +40,22 @@ export function mountExperienceHealth({ document, root, runtime, request = nativ
     }
     function render() {
         content.replaceChildren(button('Refresh health', refresh));
+        if (runtime.snapshot?.manifest?.runtime?.experienceContract?.taskRuntime) content.append(button('Configure model purposes', async () => {
+            const base = runtime.snapshot;
+            const retry = async () => {
+                if (!current()) return;
+                const api = globalThis.Atria?.getContext?.()?.getCapabilityApi?.('game-runtime');
+                const result = await api?.reloadPackage?.();
+                if (!result || result.status !== 'ready') throw new Error('Experience could not restart. Check Experience health.');
+                await refresh();
+            };
+            await ensureTaskBindings({ document, root: bindingSetup, manifest: base.manifest,
+                packageId: base.session.packageId, packageVersionId: base.session.packageVersionId, force: true, isCurrent: current, onReady: retry });
+        }));
         if (!report) return;
         content.append(paragraph('Experience health'), paragraph(report.status));
         content.append(button('Open Diagnostics', () => globalThis.Atria?.shell?.getWorkspaceHost?.()?.openRuntimeSection('diagnostics')));
-        if (runtime.snapshot?.manifest.runtime?.experienceContract?.taskRuntime) content.append(button('Check Task bindings', async () => {
+        if (runtime.snapshot?.manifest?.runtime?.experienceContract?.taskRuntime) content.append(button('Check Task bindings', async () => {
             const base = runtime.snapshot;
             const settings = globalThis.Atria?.getContext?.()?.capabilitySettings ?? {};
             const value = await runtimeRequest('/lifecycle/prepare', { method: 'POST', signal: controller.signal, body: {
@@ -53,7 +67,7 @@ export function mountExperienceHealth({ document, root, runtime, request = nativ
             const details = document.createElement('details'); const summary = document.createElement('summary'); summary.textContent = t('Task binding diagnostics');
             const pre = document.createElement('pre'); pre.textContent = JSON.stringify(taskReport, null, 2); details.append(summary, pre); content.append(details);
         }
-        const presentation = runtime.snapshot?.manifest.runtime?.experienceContract?.presentationRuntime;
+        const presentation = runtime.snapshot?.manifest?.runtime?.experienceContract?.presentationRuntime;
         for (const item of presentationNegotiation(presentation, document, document.defaultView)) content.append(paragraph(`${item.id} · ${t(item.status)}${item.fallback ? ' · ' + item.fallback : ''}`));
         for (const item of report.capabilities) {
             const supported = ATRIA_EXPERIENCE_CAPABILITIES[item.id]?.supported.includes(item.version);
@@ -80,6 +94,6 @@ export function mountExperienceHealth({ document, root, runtime, request = nativ
             }));
         }
     }
-    root.replaceChildren(status, content); render(); void run(refresh);
+    root.replaceChildren(status, bindingSetup, content); render(); void run(refresh);
     return { dispose() { disposed = true; controller.abort(); root.replaceChildren(); root.classList.remove('atri-experience-panel'); } };
 }

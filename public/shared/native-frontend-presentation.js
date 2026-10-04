@@ -148,7 +148,7 @@ export function assertPresentationNode(node) {
     if (node.boundary !== undefined && !['local', 'required'].includes(node.boundary)) throw new TypeError('Invalid Boundary');
     if (!Array.isArray(node.children) || node.children.length > FRONTEND_LIMITS.nodes || (VOID_TAGS.has(node.tag) && node.children.length)) throw new TypeError('Invalid element children');
     for (const [name, value] of Object.entries(node.bindings ?? {})) {
-        if (!['media', 'text', 'prose', 'value', 'checked', 'disabled', 'hidden', 'class', 'title', 'aria-label'].includes(name)) throw new TypeError('Unsupported binding sink');
+        if (!['media', 'text', 'prose', 'value', 'checked', 'disabled', 'hidden', 'class', 'title', 'aria-label', 'aria-current'].includes(name)) throw new TypeError('Unsupported binding sink');
         expression(value);
         if (name === 'prose' && (node.children.length || node.bindings.text)) throw new TypeError('Prose owns its inert children');
     }

@@ -1,3 +1,4 @@
+import { ensureTaskBindings } from './task-binding-ui.js';
 import { mountResourceSetup } from './resource-setup.js';
 import { sessionTitleField, mountSessionRename } from './session-naming.js';
 import { mountSaveDependencyRecovery } from './save-dependency-recovery.js';
@@ -166,9 +167,12 @@ async function workDetail(doc, root, host, id, refresh) {
     const title = sessionTitleField(doc, content);
     const controls = actions(doc, content); const latest = work.sessions?.[0];
     if (latest) action(doc, controls, 'Continue', () => openSession(host, latest.sessionId), { disabled: latest.dependency?.status !== 'ready', primary: true });
+    const modelSetup = el(doc, 'div', '', undefined, content);
     action(doc, controls, 'Start New', async () => {
-        const created = await client.startWork(id, { displayTitle: title.value, packageVersionId: work.packageVersion.packageVersionId, entryPointId: selector.value || entryPoints[0]?.entryPointId });
-        await openSession(host, created.session.sessionId);
+        const options = { displayTitle: title.value, packageVersionId: work.packageVersion.packageVersionId, entryPointId: selector.value || entryPoints[0]?.entryPointId };
+        let created;
+        const start = async () => { created ??= await client.startWork(id, options); await openSession(host, created.session.sessionId); };
+        if (await ensureTaskBindings({ document: doc, root: modelSetup, manifest, packageId: id, packageVersionId: options.packageVersionId, host, onReady: start })) await start();
     }, { disabled: work.status !== 'ready' || !entryPoints.length, primary: !latest });
     const resourceSetup = el(doc, 'div', '', undefined, root);
     action(doc, controls, 'Configure Worlds & Knowledge', () => mountResourceSetup({ document: doc, root: resourceSetup, packageId: id, entryPointId: selector.value || entryPoints[0]?.entryPointId, host }), { disabled: work.status !== 'ready' });
@@ -204,13 +208,17 @@ async function workDetail(doc, root, host, id, refresh) {
             const entries = el(doc, 'select', '', undefined, label); entries.setAttribute('aria-label', tl('Starting point'));
             for (const entry of exact.manifest.entryPoints) { const option = el(doc, 'option', '', entry.displayName, entries); option.value = entry.entryPointId; }
             const versionTitle = sessionTitleField(doc, review);
+            const versionSetup = el(doc, 'div', '', undefined, review);
             let createdSessionId = null;
             action(doc, review, 'Create Session on this version', async () => {
-                if (!createdSessionId) {
-                    const created = await client.startWork(id, { displayTitle: versionTitle.value, packageVersionId: version.packageVersionId, entryPointId: entries.value });
-                    createdSessionId = created.session.sessionId; entries.disabled = true; versionTitle.disabled = true;
-                }
-                await openSession(host, createdSessionId);
+                const start = async () => {
+                    if (!createdSessionId) {
+                        const created = await client.startWork(id, { displayTitle: versionTitle.value, packageVersionId: version.packageVersionId, entryPointId: entries.value });
+                        createdSessionId = created.session.sessionId; entries.disabled = true; versionTitle.disabled = true;
+                    }
+                    await openSession(host, createdSessionId);
+                };
+                if (await ensureTaskBindings({ document: doc, root: versionSetup, manifest: exact.manifest, packageId: id, packageVersionId: version.packageVersionId, host, onReady: start })) await start();
             }, { primary: true, disabled: !exact.manifest.entryPoints.length });
             action(doc, review, 'Cancel', () => review.remove());
         });

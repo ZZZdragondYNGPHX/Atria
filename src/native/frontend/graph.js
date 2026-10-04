@@ -40,7 +40,10 @@ export function componentDependencies(ir, bridge) {
         for (const id of Object.values(node.events ?? {})) if (!Object.hasOwn(presentation.interactions, id)) throw new TypeError('Unknown local interaction');
         for (const id of Object.keys(node.styles ?? {})) if (!Object.hasOwn(presentation.dynamicStyles, id)) throw new TypeError('Undeclared dynamic style sink');
         if (node.tag === 'slot' && !presentation.slots.includes(node.slot ?? 'default')) throw new TypeError('Undeclared Component slot');
-        if (node.bindings?.value || node.bindings?.checked) {
+        // Option values are one-way identities, not writable form models.
+        if (node.tag === 'option' && node.windowSize !== undefined) throw new TypeError('Option lists cannot be virtualized');
+        if (node.tag === 'option' && node.bindings?.checked) throw new TypeError('Option cannot have a checked model');
+        if ((node.bindings?.value && node.tag !== 'option') || node.bindings?.checked) {
             const path = node.bindings.value?.get ?? node.bindings.checked?.get;
             valuePath(path, true);
             if (!['input', 'textarea', 'select'].includes(node.tag)) throw new TypeError('Form model requires an input element');
@@ -79,7 +82,7 @@ export function componentDependencies(ir, bridge) {
 
 // Validate bytes and semantic closure again at the untrusted Package boundary.
 // Hashes alone do not establish that an artifact is safe IR.
-export function validateFrontendGraph({ entry, files, mode, experienceContract = {} }) {
+export function validateFrontendGraph({ entry, files, mode, experienceContract = {}, transactions = [] }) {
     resourcePath(entry);
     const read = path => {
         const bytes = files.get(path);
@@ -110,7 +113,7 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
     const bridgeRef = refs.get('bridge');
     if (!bridgeRef || !refs.has('provenance') || refs.get(index.primaryView)?.kind !== 'view') throw new TypeError('Incomplete Frontend graph');
     const bridge = json(bridgeRef.path);
-    validateCompiledBridge(bridge, experienceContract);
+    validateCompiledBridge(bridge, experienceContract, transactions);
     const visiting = new Set(), visited = new Set();
     const visit = id => {
         if (!refs.has(id)) throw new TypeError('Unknown exact Frontend resource: ' + id);
@@ -216,7 +219,7 @@ export function validateFrontendGraph({ entry, files, mode, experienceContract =
             for (const actions of Object.values(contract.interactions)) for (const action of actions) if (['set', 'toggle'].includes(action.kind)) checkWrite(action.target);
             const walk = node => {
                 if (typeof node === 'string') return;
-                for (const sink of ['value', 'checked']) if (node.bindings?.[sink]) checkWrite(node.bindings[sink].get);
+                for (const sink of ['value', 'checked']) if (node.bindings?.[sink] && !(node.tag === 'option' && sink === 'value')) checkWrite(node.bindings[sink].get);
                 node.children.forEach(walk);
             };
             walk(components.get(id).root);

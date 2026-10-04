@@ -26,20 +26,31 @@ export class FrontendBridgeService {
         if (previous) { const old = this.experiences.get(previous); if (old?.owner === owner && old.sessionId === sessionId) this.close(owner, previous); }
         for (const state of this.experiences.values()) if (state.expires < Date.now()) this.close(state.owner, state.epoch);
         if (this.experiences.size >= this.retention) throw bridgeFailure('bridge_backpressure');
-        const snapshot = await services.core.load(owner, sessionId);
-        const installed = await services.core._openPackage(owner, snapshot.session.packageId, snapshot.session.packageVersionId, snapshot.session.entryPointId);
-        const resolved = resolveNativeRuntimePackage(installed, snapshot.session.entryPointId);
+        let snapshot, terminal;
+        try { snapshot = await services.core.load(owner, sessionId); } catch (error) {
+            if (error.code !== 'native_run_terminal') throw error;
+            terminal = await services.core.runs.status(owner, sessionId);
+            if (!terminal?.origin) throw bridgeFailure('bridge_unavailable');
+        }
+        // The tombstone retains installation identity only, never a recoverable
+        // Session or Timeline. Reopen its installed presentation to show /run.
+        const origin = terminal?.origin ?? snapshot.session;
+        const installed = await services.core._openPackage(owner, origin.packageId, origin.packageVersionId, origin.entryPointId);
+        if (terminal && installed.packageVersion.packageContentHash !== origin.packageContentHash) throw bridgeFailure('bridge_unavailable');
+        const resolved = resolveNativeRuntimePackage(installed, origin.entryPointId);
         const graph = resolved.frontendGraph;
         if (!graph) throw bridgeFailure('bridge_unavailable');
         const scopes = new Map(graph.resources.filter(ref => ref.kind === 'component').map(ref => {
             const ir = JSON.parse(installed.sourceFiles.get(ref.path).toString('utf8')); return [ir.id, new Set(ir.uses)];
         }));
         const epoch = randomUUID();
-        const state = { owner, sessionId, epoch, graph, scopes, installed, branchId: snapshot.revision.branchId,
-            packageHash: snapshot.session.packageContentHash, expires: Date.now() + this.ttl, cursors: new Map(), receipts: new Map(), operations: new Map(), revoked: false };
+        const revision = terminal?.deathRevisionId ?? snapshot.revision.revisionId;
+        const state = { owner, sessionId, epoch, graph, scopes, installed, branchId: snapshot?.revision.branchId ?? null,
+            packageHash: origin.packageContentHash, terminalRevision: terminal ? revision : null,
+            expires: Date.now() + this.ttl, cursors: new Map(), receipts: new Map(), operations: new Map(), revoked: false };
         if (this.experiences.size >= this.retention) throw bridgeFailure('bridge_backpressure');
         this.experiences.set(epoch, state);
-        return bridgeReceipt({ epoch, revision: snapshot.revision.revisionId, data: { descriptorDigest: hash(canonicalJson(graph.bridge)) } });
+        return bridgeReceipt({ epoch, revision, data: { descriptorDigest: hash(canonicalJson(graph.bridge)) } });
     }
     async current(services, state) {
         if (state.revoked || state.expires < Date.now()) { this.close(state.owner, state.epoch); throw bridgeFailure('bridge_epoch_stale'); }
@@ -55,6 +66,25 @@ export class FrontendBridgeService {
             fields(request, ['epoch', 'componentId', 'bindingId', 'method', 'input', 'revision', 'cursor', 'idempotencyKey', 'operationId']);
             state = this.experiences.get(request.epoch);
             if (!state || state.owner !== owner) throw bridgeFailure('bridge_epoch_stale');
+            if (state.terminalRevision) {
+                if (state.revoked || state.expires < Date.now()) { this.close(owner, state.epoch); throw bridgeFailure('bridge_epoch_stale'); }
+                const receipt = values => bridgeReceipt({ epoch: state.epoch, revision: state.terminalRevision, ...values });
+                if (request.method === 'status') return receipt({});
+                binding = state.graph.bridge.bindings.find(item => item.id === request.bindingId);
+                if (!binding || !state.scopes.get(request.componentId)?.has(binding.id)) throw bridgeFailure('bridge_binding_denied');
+                if (request.revision !== state.terminalRevision) throw bridgeFailure('bridge_revision_stale');
+                bridgeValue(request.input ?? {}, binding.inputSchema);
+                if (request.method === 'read.snapshot' && binding.kind === 'read' && binding.target.service === 'host.session' && binding.target.method === 'run') {
+                    const run = await services.core.runStatus(owner, state.sessionId);
+                    return receipt({ bindingId: binding.id, schemaDigest: binding.schemaDigest, data: bridgeValue(run, binding.outputSchema) });
+                }
+                // Host navigation can leave a terminal screen. No gameplay,
+                // saved data or arbitrary local service is authorised here.
+                if (request.method === 'host.authorize' && binding.kind === 'action' && binding.target.service === 'host.session' && binding.target.method === 'exit') {
+                    return receipt({ bindingId: binding.id, schemaDigest: binding.schemaDigest });
+                }
+                throw bridgeFailure('bridge_method_denied');
+            }
             base = await this.current(services, state);
             if (request.method === 'status') return bridgeReceipt({ epoch: state.epoch, revision: base.revision.revisionId });
             binding = state.graph.bridge.bindings.find(item => item.id === request.bindingId);
@@ -78,11 +108,13 @@ export class FrontendBridgeService {
                 const key = binding.id + ':' + request.idempotencyKey;
                 const fingerprint = hash(canonicalJson({ input, revision: request.revision, method: request.method }));
                 const previous = state.receipts.get(key);
-                if (previous) { if (previous.fingerprint !== fingerprint) throw bridgeFailure('bridge_idempotency_conflict'); return await previous.result; }
+                if (previous) { if (previous.fingerprint !== fingerprint) throw bridgeFailure('bridge_idempotency_conflict'); if (previous.result) return await previous.result; }
                 if (state.receipts.size >= 256) throw bridgeFailure('bridge_backpressure');
-                if (request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
+                if (!binding.target.transactionId && request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
                 const result = this.write(services, state, binding, request, input, base, receipt);
-                state.receipts.set(key, { fingerprint, result });
+                const cached = { fingerprint, result };
+                state.receipts.set(key, cached);
+                if (binding.target.transactionId) result.catch(() => { cached.result = null; });
                 return await result;
             }
             if (request.revision !== base.revision.revisionId) throw bridgeFailure('bridge_revision_stale');
@@ -122,6 +154,19 @@ export class FrontendBridgeService {
             return receipt(await writeFixedHost(services.core, state.owner, state, binding, mapped, request.revision));
         }
         const invocationId = 'fb:' + hash(canonicalJson({ epoch: state.epoch, binding: binding.id, key: request.idempotencyKey }));
+        if (binding.kind === 'action' && binding.target.transactionId && request.method === 'action.invoke') {
+            const host = services.generationHost ?? await services.getGenerationHost?.();
+            if (!host) throw bridgeFailure('bridge_operation_unavailable');
+            const tasks = base.manifest.runtime.experienceContract.taskRuntime.tasks;
+            const slotBindings = Object.assign({}, ...await Promise.all(tasks.map(task => services.taskBindings?.(state.owner, base.session.packageId, task) ?? {})));
+            // Epoch is a transport capability, not the durable action identity.
+            const turnId = 'fb-at:' + hash(canonicalJson({ sessionId: state.sessionId, binding: binding.id, key: request.idempotencyKey }));
+            const snapshot = await host.executeTurn(state.owner, { sessionId: state.sessionId, revisionId: request.revision,
+                invocationId: turnId, slotBindings }, undefined, undefined,
+            { transaction: { transactionId: binding.target.transactionId, input: mapped } });
+            if (snapshot.states.atri_run?.status !== 'dead' || snapshot.states.atri_run.mode !== 'ironman') await this.current(services, state);
+            return receipt({ revision: snapshot.revision.revisionId, data: {} });
+        }
         if (binding.kind === 'action' && request.method === 'action.invoke') {
             const snapshot = await services.core.applyLifecycleCommand(state.owner, state.sessionId, { type: 'lifecycle', invocationId,
                 action: { kind: 'app.command', domainId: binding.target.domainId, commandId: binding.target.commandId, recordId: binding.target.recordId ?? binding.target.domainId, args: mapped } },

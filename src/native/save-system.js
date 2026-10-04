@@ -1,3 +1,4 @@
+import { runFailure } from './run-control.js';
 import {
     ATRIA_SAVE_FORMAT,
     ATRIA_SAVE_SCHEMA_VERSION,
@@ -101,7 +102,7 @@ export class NativeSaveSystem {
         return this._core.createSavePoint(handle, sessionId, { ...options, kind: 'manual' });
     }
 
-    async _collectClosure(handle, sessionId, rootRevisionIds) {
+    async _collectClosure(handle, sessionId, rootRevisionIds, { headOnly = false } = {}) {
         const revisions = new Map();
         const branches = new Map();
         const entries = new Map();
@@ -147,10 +148,10 @@ export class NativeSaveSystem {
             if (!core || !Array.isArray(core.branches)) {
                 throw new NativeDependencyError('native_save_core_missing', { sessionId, revisionId });
             }
-            if (core.parentRevisionId) pending.push(core.parentRevisionId);
+            if (!headOnly && core.parentRevisionId) pending.push(core.parentRevisionId);
             for (const node of core.branches) {
-                pending.push(node.headRevisionId);
-                if (node.forkRevisionId) pending.push(node.forkRevisionId);
+                if (!headOnly) pending.push(node.headRevisionId);
+                if (!headOnly && node.forkRevisionId) pending.push(node.forkRevisionId);
                 if (!branches.has(node.branchId)) {
                     const branch = await this._sessions.getBranch(handle, sessionId, node.branchId);
                     if (!branch) throw new NativeDependencyError('native_save_branch_missing', {
@@ -232,7 +233,13 @@ export class NativeSaveSystem {
         };
     }
 
-    async _buildSave(handle, sessionId, { scope, saveId = null }) {
+    async _buildSave(handle, sessionId, options) {
+        return this._sessions.withRunLock(handle, sessionId, () => this._buildSaveLocked(handle, sessionId, options));
+    }
+
+    async _buildSaveLocked(handle, sessionId, { scope, saveId = null }) {
+        const control = await this._core.runs.assert(handle, sessionId, 'export');
+        if (control?.mode === 'ironman') scope = 'resume';
         const current = await this._sessions.get(handle, sessionId);
         if (!current) throw new NativeDependencyError('native_save_session_missing', { sessionId });
 
@@ -245,10 +252,14 @@ export class NativeSaveSystem {
             if (!rootSave) throw new NativeDependencyError('native_save_point_missing', { sessionId, saveId });
             rootRevisionId = rootSave.revisionId;
             savePoints = [rootSave];
-        } else if (scope === 'session') {
+        } else if (scope === 'session' || scope === 'resume') {
             rootRevisionId = current.headRevisionId;
             if (!rootRevisionId) throw new NativeDependencyError('native_save_session_head_missing', { sessionId });
-            savePoints = await this._saves.list(handle, sessionId);
+            savePoints = scope === 'resume' ? [] : await this._saves.list(handle, sessionId);
+            if (saveId) {
+                const requested = await this._saves.get(handle, sessionId, saveId);
+                if (!requested || requested.revisionId !== rootRevisionId) throw runFailure('native_run_rewind_denied');
+            }
         } else {
             throw new TypeError('Unsupported .atriasave scope');
         }
@@ -256,7 +267,15 @@ export class NativeSaveSystem {
         const roots = scope === 'session'
             ? [rootRevisionId, ...savePoints.map(save => save.revisionId)]
             : [rootRevisionId];
-        const closure = await this._collectClosure(handle, sessionId, roots);
+        const closure = await this._collectClosure(handle, sessionId, roots, { headOnly: scope === 'resume' });
+        if (scope === 'resume') {
+            const revision = closure.revisions[0];
+            const record = closure.stateRecords.find(item => item.namespace === SESSION_CORE_NAMESPACE && item.head === revision.stateHeads[SESSION_CORE_NAMESPACE]);
+            record.data.parentRevisionId = null;
+            record.data.branches = [{ branchId: revision.branchId, headRevisionId: revision.revisionId, forkRevisionId: null }];
+            record.head = hashNativeDocument(record.data); revision.stateHeads[SESSION_CORE_NAMESPACE] = record.head;
+            closure.branches = closure.branches.filter(item => item.branchId === revision.branchId).map(item => ({ ...item, parentBranchId: null, forkPoint: null }));
+        }
         const rootRevision = closure.revisions.find(item => item.revisionId === rootRevisionId);
         if (!rootRevision) throw new NativeDependencyError('native_save_root_revision_missing', { rootRevisionId });
 
@@ -271,7 +290,9 @@ export class NativeSaveSystem {
 
         const save = assertAtriaSave({
             format: ATRIA_SAVE_FORMAT,
-            schemaVersion: ATRIA_SAVE_SCHEMA_VERSION,
+            schemaVersion: scope === 'resume' ? 2 : ATRIA_SAVE_SCHEMA_VERSION,
+            ...(scope === 'resume' ? { resume: { mode: 'ironman', sequence: control.sequence, sourceRevisionId: control.resumeSourceRevisionId ?? current.headRevisionId,
+                control: { operations: control.operations, background: control.background, highWaterTurn: control.highWaterTurn } } } : {}),
             nativeSchemaVersion: NATIVE_SCHEMA_VERSION,
             scope,
             exportedAt: Date.now(),
@@ -402,6 +423,10 @@ export class NativeSaveSystem {
 
     async importSave(handle, archive, { password = undefined } = {}) {
         const inspected = inspectAtriaSaveContainer(archive, { password });
+        return this._sessions.withRunLock(handle, inspected.save.root.sessionId, () => this._importSaveLocked(handle, inspected));
+    }
+
+    async _importSaveLocked(handle, inspected) {
         const installed = await this._requirePackage(handle, inspected.save.package);
         const save = this._embedImportedLibraryKnowledge(
             inspected.save,
@@ -409,6 +434,13 @@ export class NativeSaveSystem {
             installed.entryPoint,
         );
 
+        const control = await this._core.runs.assert(handle, save.root.sessionId, 'import');
+        const existingSession = await this._sessions.get(handle, save.root.sessionId);
+        if (save.resume && existingSession) {
+            if (save.root.revisionId !== existingSession.headRevisionId || control?.mode !== 'ironman' || control.sequence !== save.resume.sequence
+                || (control.resumeSourceRevisionId ?? control.headRevisionId) !== save.resume.sourceRevisionId) throw runFailure('native_run_resume_stale');
+            return this._core.load(handle, save.root.sessionId);
+        }
         const newlyAdded = [];
         try {
             for (const ref of save.closure.assetRefs) {
@@ -417,7 +449,7 @@ export class NativeSaveSystem {
                 if (!existing) newlyAdded.push(ref.assetId);
                 await this._assets.put(handle, ref, bytes);
             }
-            await this._sessions.importClosure(handle, save.closure);
+            await this._sessions.importClosure(handle, save.closure, { resume: save.resume });
         } catch (error) {
             for (const assetId of newlyAdded) {
                 try { await this._assets.deleteRef(handle, assetId); } catch { /* orphan blob is GC-safe */ }

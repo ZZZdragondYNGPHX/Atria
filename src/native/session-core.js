@@ -1,3 +1,9 @@
+import { RunControl, runFailure, runPublicationProof } from './run-control.js';
+import { RUN_NAMESPACE, assertRunState } from '../../public/shared/native-run-contract.js';
+import { nativeTaskScheduler } from './task-scheduler.js';
+import { prepareLifetimes, validateLifetimes } from './lifetime-authority.js';
+import { hasAuthorityTransactions, prepareAuthorityTurn, authorityTurnProof, authorityActionRequest, authorityFailure, authorityCatalog, authoritySelection } from './authority-turn.js';
+import { prepareAuthorityPublications, createAuthorityPublicationBudget } from './authority-transaction.js';
 import { resolveNativeRuntimePackage } from './runtime-descriptor.js';
 import { bridgeValue } from '../../public/shared/native-frontend-bridge.js';
 import { invalidateFrontendEpoch } from './frontend/epoch.js';
@@ -21,6 +27,8 @@ import { ConflictError, NotFoundError } from '../storage/errors.js';
 import { ACTION_RECEIPTS_NAMESPACE, assertActionRequest, actionReceipts, assertCompensation } from './action-receipts.js';
 import { TASK_STATE_NAMESPACE, assertTaskValue, assertSemanticOutcome } from '../../public/shared/native-task-contract.js';
 import { prepareTaskAuthority, validateTaskRecords } from './task-authority.js';
+import { checkpointHistory, retiredInvocation, validateHistory, prepareHistory } from './history-authority.js';
+import { queryHistory, historyMetrics } from '../../public/shared/native-history-runtime.js';
 import { initialLifecycle, lifecycleDefinition, validateLifecycle, prepareLifecycle, compactLifecycle, prepareDeclaredTaskResult } from './lifecycle-authority.js';
 import { fields } from '../../public/shared/native-values.js';
 import { applyContinuity, continuityDefinition, continuityDisplay, continuityEffects, projectContinuity, reconcileOwnership } from './continuity-authority.js';
@@ -157,6 +165,8 @@ export class SessionCore {
         this._packages = packageInstaller;
         this._knowledge = knowledgeRepo;
         this._continuity = sessionRepo.continuity;
+        this.runs = new RunControl(sessionRepo);
+        this._lifecycleProof = {};
     }
 
     async _openPackage(handle, packageId, packageVersionId, entryPointId) {
@@ -179,6 +189,8 @@ export class SessionCore {
         const installed = await this._openPackage(handle, session.packageId, session.packageVersionId, session.entryPointId);
         validateTaskRecords({ ...snapshot, manifest: installed.manifest });
         validateLifecycle({ ...snapshot, manifest: installed.manifest });
+        validateLifetimes({ ...snapshot, manifest: installed.manifest }, { complete: true });
+        validateHistory({ ...snapshot, manifest: installed.manifest });
         if (installed.packageVersion.packageContentHash !== session.packageContentHash
             || installed.packageVersion.version !== session.packageVersion) throw new Error('Session PackageVersion dependency mismatch');
         await this._validateProjections(handle, snapshot, snapshot.variants, installed);
@@ -241,6 +253,9 @@ export class SessionCore {
                 entryPoint: installed.entryPoint, knowledgeRepo: this._knowledge,
                 libraryBindingIds, sessionBindings, sessionKnowledge, packageBindingIds }),
         };
+        if (installed.manifest.runtime?.experienceContract?.storyStart) {
+            base.states[RUN_NAMESPACE] = { schemaVersion: 1, mode: 'pending', status: 'pending', sequence: 0 };
+        }
         const lifecycle = initialLifecycle(lifecycleDefinition(base));
         if (lifecycle) base.states.atri_lifecycle = lifecycle;
         const initial = installed.entryPoint.initialTimeline ?? [];
@@ -253,6 +268,50 @@ export class SessionCore {
             variants.push(created.variant);
         }
         return this._publish(handle, base, { timeline: entries, entries, variants, branches: [branch] });
+    }
+
+    async beginStory(handle, sessionId, { input, invocationId, expectedRevisionId }) {
+        if (typeof invocationId !== 'string' || !/^[A-Za-z0-9._:-]{1,96}$/.test(invocationId)) throw runFailure('native_story_invocation_invalid');
+        return this._sessions.withRunLock(handle, sessionId, async () => {
+            const base = await this.load(handle, sessionId);
+            const start = base.manifest.runtime?.experienceContract?.storyStart;
+            if (!start) throw runFailure('native_story_start_undeclared');
+            const fingerprint = hashNativeDocument(input);
+            const run = base.states[RUN_NAMESPACE];
+            if (run?.startInvocationId === invocationId) {
+                if (run.startFingerprint !== fingerprint) throw runFailure('native_story_start_conflict');
+                return base;
+            }
+            await this.runs.assert(handle, sessionId, 'start');
+            if (run?.status !== 'pending' || base.revision.revisionId !== expectedRevisionId
+                || !base.states.atri_lifecycle?.ready) throw runFailure('native_story_start_conflict');
+            if (input?.mode === 'ironman' && !base.manifest.runtime.experienceContract.runPolicy) throw runFailure('native_run_policy_required');
+            const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+            const selection = authoritySelection(await authorityCatalog(base, installed), { transactionId: start.transactionId, input });
+            const player = this._newEntry(base, { role: 'user', content: 'Begin story', metadata: { atri_authority_input: selection } });
+            const prepared = await prepareAuthorityTurn(this, handle, base, installed, selection, player);
+            const narrative = prepared.prepared.receipt.result[start.narrativeField];
+            if (typeof narrative !== 'string' || !narrative.trim()) throw runFailure('native_story_opening_invalid');
+            const candidate = prepared.prepared.candidate;
+            const { entry, variant } = this._newEntry(candidate, { role: 'assistant', content: narrative });
+            const states = { ...candidate.states, [RUN_NAMESPACE]: { schemaVersion: 1, mode: selection.input.mode, status: 'active',
+                sequence: run.sequence, startInvocationId: invocationId, startFingerprint: fingerprint } };
+            return this._publish(handle, base, { states, timeline: [...candidate.timeline, entry],
+                entries: [player.entry, entry], variants: [player.variant, variant], authorityPrepared: true,
+                runAction: 'start', actionRequest: authorityActionRequest(prepared.prepared, selection, invocationId, expectedRevisionId, player) });
+        });
+    }
+
+    async runStatus(handle, sessionId) {
+        assertNativeId(sessionId, 'session');
+        const control = await this.runs.status(handle, sessionId);
+        if (!control && !await this._sessions.get(handle, sessionId)) throw new NotFoundError('native session', { sessionId });
+        if (control?.status === 'terminal' && control.cleanup === 'pending') {
+            try { await this._sessions.delete(handle, sessionId); } catch { /* The tombstone remains authoritative. */ }
+        }
+        const current = await this.runs.status(handle, sessionId);
+        return { runId: sessionId, mode: current?.mode ?? 'ordinary', status: current?.status ?? 'active',
+            sequence: current?.sequence ?? 0, cleanup: current?.cleanup ?? 'none' };
     }
 
     _newEntry(base, draft, sequence = base.timeline.length, allowOutcomes = false) {
@@ -303,20 +362,39 @@ export class SessionCore {
     }
 
     async _publish(handle, base, options = {}) {
-        if (!continuityDefinition(base) && !realmDefinition(base)) return this._publishLocked(handle, base, options);
+        const publish = () => this._sessions.withRunLock(handle, base.session.sessionId, () => this._publishLocked(handle, base, options));
+        if (!continuityDefinition(base) && !realmDefinition(base)) return publish();
         if (!this._continuity) throw new TypeError('Continuity repository required');
-        return this._continuity.lock(handle, base.session.packageId, () => this._publishLocked(handle, base, options));
+        return this._continuity.lock(handle, base.session.packageId, publish);
     }
 
     async _publishLocked(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
         graph = base.graph, branchId = base.revision?.branchId ?? base.session.activeBranchId,
-        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false } = {}) {
+        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false, authorityPrepared = false, authorityBudget = null, runAction = 'write' } = {}) {
+        const control = await this.runs.assert(handle, base.session.sessionId, runAction);
+        if (states[RUN_NAMESPACE]) {
+            const run = assertRunState(states[RUN_NAMESPACE]);
+            states = { ...states, [RUN_NAMESPACE]: { ...run, sequence: Math.max(run.sequence, control?.sequence ?? 0) + 1 } };
+        }
         if (continuityDefinition(base)) states = reconcileOwnership(base, states,
             await this._continuity.load(handle, base.session.packageId), { publication: true, pendingIntentId });
         if (realmDefinition(base)) states = reconcileRealm(base, states,
             await this._sessions.realm.load(handle, base.session.packageId), { publication: true, pendingIntentId: pendingRealmIntentId });
+        if (hasAuthorityTransactions(base) && !authorityPrepared && base.revision && states !== base.states
+            && (hashNativeDocument(states.atri_lifecycle?.domains ?? null) !== hashNativeDocument(base.states.atri_lifecycle?.domains ?? null)
+                || hashNativeDocument(states.atri_lifecycle?.clocks ?? null) !== hashNativeDocument(base.states.atri_lifecycle?.clocks ?? null)
+                || hashNativeDocument(states.atri_world_state ?? null) !== hashNativeDocument(base.states.atri_world_state ?? null))) {
+            const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+            states = (await prepareAuthorityPublications({ ...base, states }, installed, authorityBudget)).candidate.states;
+            if (base.states.atri_lifecycle?.ready && states.atri_lifecycle?.ready && states.atri_lifecycle.history) {
+                states = cloneNativeDocument(states);
+                prepareLifetimes(base, { ...base, states });
+                prepareHistory(base, { ...base, states }, { id: 'host.lifecycle', verb: 'host_lifecycle' }, { outcome: 'automatic' }, null, { countTurn: false });
+            }
+        }
         variants = variants.map(assertVariant);
         await this._validateProjections(handle, { ...base, timeline }, variants);
+        validateLifetimes({ ...base, states }, { complete: true });
         validateWorldState(states, base.manifest, base.entryPoint);
         const revisionId = createNativeId('revision');
         if (sharedPublication) for (const turn of Object.values(states.atri_shared?.turns ?? {})) {
@@ -359,7 +437,10 @@ export class SessionCore {
             publishActivities({ ...base, states }, revisionId, branchId, taskRecord);
             validateLifecycle({ ...base, states });
         }
-        const core = { schemaVersion: 1, parentRevisionId: base.session.headRevisionId,
+        const checkpoint = checkpointHistory(base, states, timeline, taskRecord);
+        if (checkpoint) timeline = checkpoint.timeline;
+        validateHistory({ ...base, states });
+        const core = { schemaVersion: 1, parentRevisionId: checkpoint ? null : base.session.headRevisionId,
             branches: graph.map(node => ({ branchId: node.branchId, forkRevisionId: node.forkRevisionId,
                 headRevisionId: node.branchId === branchId ? revisionId : node.headRevisionId })) };
         const documents = { ...states,
@@ -377,8 +458,15 @@ export class SessionCore {
         const session = assertSession({ ...base.session, activeBranchId: branchId, headRevisionId: revisionId,
             updatedAt: Math.max(Date.now(), base.session.updatedAt) });
         const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
-            entries, variants, branches, expectedRevisionId: base.session.headRevisionId });
+            entries, variants, branches, expectedRevisionId: base.session.headRevisionId, historyCheckpoint: Boolean(checkpoint), runProof: runPublicationProof(), runAction });
         if (branchId !== base.session.activeBranchId) invalidateFrontendEpoch(handle, session.sessionId);
+        if (snapshot.states[RUN_NAMESPACE]?.status === 'dead' && snapshot.states[RUN_NAMESPACE].mode === 'ironman') {
+            invalidateFrontendEpoch(handle, session.sessionId);
+            for (const operation of nativeTaskScheduler.operations.values()) if (operation.owner === handle && operation.view.anchor?.sessionId === session.sessionId && operation.view.status !== 'finalizing') {
+                nativeTaskScheduler.cancel(handle, operation.view.operationId, 'cancelled');
+            }
+            try { await this._sessions.delete(handle, session.sessionId); } catch { /* Durable terminal marker blocks access while cleanup remains pending. */ }
+        }
         const continuity = continuityDefinition(base) ? await this._continuity.load(handle, base.session.packageId) : null;
         return loadRealm(this, handle, { ...snapshot, manifest: base.manifest, entryPoint: base.entryPoint,
             ...(continuityDefinition(base) ? { externalEffects: continuityEffects(continuity, base.session.sessionId), continuityRevisionId: continuity?.revisionId ?? null, continuityViews: continuityDisplay(base, continuity) } : {}),
@@ -430,7 +518,13 @@ export class SessionCore {
         return this._publish(handle, base, { timeline: [...base.timeline, entry], entries: [entry], variants: [variant] });
     }
 
-    async applyLifecycleCommand(handle, sessionId, command, { expectedRevisionId } = {}) {
+    async applyLifecycleCommand(handle, sessionId, command, { expectedRevisionId, hostProof = null } = {}) {
+        const control = await this.runs.status(handle, sessionId);
+        if (control?.mode) {
+            const ready = command?.action?.kind === 'experience.ready' && control.status === 'pending';
+            const cancel = hostProof === this._lifecycleProof && command?.action?.kind === 'scheduled.cancel';
+            if (!ready && !cancel) throw runFailure('native_run_direct_command_denied');
+        }
         try { fields(command, ['type', 'invocationId', 'action'], 'Lifecycle command'); } catch (error) { throw new TypeError(error.message); }
         if (command.type !== 'lifecycle' || !expectedRevisionId || typeof command.invocationId !== 'string'
             || !/^[a-zA-Z0-9._:-]{1,128}$/.test(command.invocationId)) throw new TypeError('Lifecycle invocation and anchor required');
@@ -445,12 +539,13 @@ export class SessionCore {
         if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
         const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
         let prepared;
-        try { prepared = await prepareLifecycle(base, installed, command.action); } catch (error) { throw new TypeError(error.message); }
+        const authorityBudget = hasAuthorityTransactions(base) ? await createAuthorityPublicationBudget(base, installed) : null;
+        try { prepared = await prepareLifecycle(base, installed, command.action, authorityBudget); } catch (error) { throw new TypeError(error.message); }
         if (hashNativeDocument(prepared.states) === hashNativeDocument(base.states)) return base;
         const timeline = [...base.timeline]; const entries = []; const variants = [];
         for (const draft of prepared.drafts) { const created = this._newEntry(base, draft, timeline.length); timeline.push(created.entry); entries.push(created.entry); variants.push(created.variant); }
-        return this._publish(handle, base, { states: prepared.states, timeline, entries, variants, taskResolution: prepared.taskResolution, lifecycleReceipt: { invocationId: command.invocationId,
-            fingerprint, baseRevisionId: expectedRevisionId, action: command.action.kind, events: prepared.events } });
+        return this._publish(handle, base, { states: prepared.states, timeline, entries, variants, authorityBudget, taskResolution: prepared.taskResolution, lifecycleReceipt: { invocationId: command.invocationId,
+            fingerprint, baseRevisionId: expectedRevisionId, action: command.action.kind, events: prepared.events }, runAction: control?.status === 'pending' ? 'ready' : 'write' });
     }
 
     async applyContinuityCommand(handle, sessionId, command, { expectedRevisionId } = {}) {
@@ -474,7 +569,22 @@ export class SessionCore {
         return this._continuity.graph(handle, base.session.packageId, limit);
     }
 
-    async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [] }, { expectedRevisionId } = {}) {
+    async getHistory(handle, sessionId, query = {}) {
+        return queryHistory(await this.load(handle, sessionId), query);
+    }
+
+    async getHistoryMetrics(handle, sessionId) {
+        return historyMetrics(await this.load(handle, sessionId));
+    }
+
+    async prepareAuthorityTurn(handle, base, selection, player = null) {
+        await this.runs.assert(handle, base.session.sessionId, 'generation');
+        if (selection.transactionId === base.manifest.runtime?.experienceContract?.storyStart?.transactionId) throw runFailure('native_story_start_only');
+        const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+        return prepareAuthorityTurn(this, handle, base, installed, selection, player);
+    }
+
+    async finalizeTurn(handle, sessionId, { envelope: raw, invocationId, requestHash = null, provenance = [], authorityProof = null }, { expectedRevisionId } = {}) {
         if (!expectedRevisionId || typeof invocationId !== 'string' || !/^[a-zA-Z0-9._:-]{1,128}$/.test(invocationId)) throw new TypeError('Turn anchor and invocation required');
         const base = await this.load(handle, sessionId);
         let envelope = assertTurnEnvelope(raw);
@@ -482,10 +592,12 @@ export class SessionCore {
         const existing = base.states[TASK_STATE_NAMESPACE]?.records.find(record => record.invocationId === invocationId)
             ?? base.states.atri_lifecycle?.taskTombstones.find(record => record.invocationId === invocationId);
         if (existing) {
-            if (existing.fingerprint !== fingerprint || existing.kind !== 'turn') throw new TypeError('Turn invocation conflict');
+            if (existing.fingerprint !== fingerprint || existing.kind !== 'turn'
+                || (hasAuthorityTransactions(base) && existing.requestHash !== requestHash)) throw new TypeError('Turn invocation conflict');
             return base;
         }
         if (base.revision.revisionId !== expectedRevisionId) throw new ConflictError('native_session_head_conflict', { sessionId });
+        if (retiredInvocation(base.states.atri_lifecycle?.history, invocationId)) throw new TypeError('Archived turn invocation expired');
         const policy = base.manifest.runtime?.experienceContract?.taskRuntime?.turn;
         if (!policy) throw new TypeError('Package Turn contract required');
         if (policy.policy === 'authority-first' && envelope.outcomes.length) throw new TypeError('Authority-first narrative cannot write outcomes');
@@ -495,6 +607,25 @@ export class SessionCore {
             envelope = assertTurnEnvelope({ ...envelope, outcomes: [assertSemanticOutcome(envelope.outcomes[0], interpreter.interpretation)] });
         }
         const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
+        if (hasAuthorityTransactions(base)) {
+            if (policy.policy !== 'authority-first' || envelope.outcomes.length || !envelope.narrative.trim()) throw authorityFailure('native_authority_narrative_invalid');
+            const { prepared, player, selection } = authorityTurnProof(this, handle, base, authorityProof);
+            const request = authorityActionRequest(prepared, selection, invocationId, expectedRevisionId, player);
+            if (actionReceipts(base).some(item => item.authorityId === prepared.identity || item.idempotencyKey === request.idempotencyKey)) throw authorityFailure('native_authority_invocation_conflict');
+            let candidate = prepared.candidate;
+            const runPolicy = base.manifest.runtime.experienceContract.runPolicy;
+            if (candidate.states[RUN_NAMESPACE] && runPolicy?.deathTransactions.includes(selection.transactionId)
+                && prepared.outcome === runPolicy.deathOutcome) {
+                candidate = { ...candidate, states: { ...candidate.states, [RUN_NAMESPACE]: { ...candidate.states[RUN_NAMESPACE], status: 'dead' } } };
+            }
+            const { entry, variant } = this._newEntry(candidate, { role: 'assistant', envelope }, candidate.timeline.length, true);
+            return this._publish(handle, base, { states: candidate.states, timeline: [...candidate.timeline, entry],
+                entries: [...(player ? [player.entry] : []), entry], variants: [...(player ? [player.variant] : []), variant],
+                authorityPrepared: true, actionRequest: { ...request, assistantMessageId: entry.messageId },
+                taskRecord: { kind: 'turn', invocationId, fingerprint, requestHash, provenance, anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId,
+                    outcomes: [], status: 'applied', authorityReceipt: { kind: 'authority', messageId: entry.messageId, authorityId: prepared.identity, inputHash: prepared.inputHash } } });
+        }
+        if (authorityProof) throw authorityFailure('native_authority_capability_required');
         const patch = envelope.outcomes.some(item => item.interpretation.decision !== 'no_change')
             ? await prepareTaskAuthority(base, installed, { outcomes: envelope.outcomes }) : {};
         const { entry, variant } = this._newEntry(base, { role: 'assistant', envelope }, base.timeline.length, true);
@@ -519,8 +650,19 @@ export class SessionCore {
         if (base.states[TASK_STATE_NAMESPACE]?.records.some(item => item.invocationId === record.invocationId)) throw new TypeError('Duplicate Task invocation');
         if (task.resultPolicy.sink === 'app_command') {
             const installed = await this._openPackage(handle, base.session.packageId, base.session.packageVersionId, base.session.entryPointId);
-            const prepared = await prepareDeclaredTaskResult(base, installed, queued, task, variant, { ...record, payload });
-            return this._publish(handle, base, { states: prepared.states, taskResolution: record.invocationId,
+            const authorityBudget = hasAuthorityTransactions(base) ? await createAuthorityPublicationBudget(base, installed) : null;
+            if (queued?.simulation) {
+                const { simulationTaskCurrent } = await import('./simulation-authority.js');
+                if (!authorityBudget || !simulationTaskCurrent(base, queued, authorityBudget)) throw new TypeError('Simulation proposal is stale');
+            }
+            const prepared = await prepareDeclaredTaskResult(base, installed, queued, task, variant, { ...record, payload }, authorityBudget);
+            if (queued?.simulation) {
+                const { prepareWorldSimulation } = await import('./simulation-authority.js');
+                const candidate = { ...base, states: prepared.states };
+                const clockId = base.manifest.runtime.experienceContract.simulationRuntime.clockId;
+                prepared.states = (await prepareWorldSimulation(candidate, installed, candidate.states.atri_lifecycle.clocks[clockId], authorityBudget, { admit: false })).states;
+            }
+            return this._publish(handle, base, { states: prepared.states, authorityBudget, taskResolution: record.invocationId,
                 taskRecord: { ...record, payload, kind: 'task', status: 'applied', resultClass: task.resultPolicy.resultClass,
                     anchorRevisionId: expectedRevisionId, branchId: base.revision.branchId, authorityReceipt: prepared.authorityReceipt } });
         }
@@ -591,6 +733,9 @@ export class SessionCore {
         if (base.manifest.runtime?.experienceContract?.informationRuntime && (Object.hasOwn(values, 'atri_context_derived') || deletes.includes('atri_context_derived'))) {
             throw new TypeError('Information derived state requires typed lifecycle publication');
         }
+        if (hasAuthorityTransactions(base) && (request || ['atri_world_state', 'atri_game_runtime'].some(namespace => Object.hasOwn(values, namespace) || deletes.includes(namespace)))) {
+            throw authorityFailure('native_authority_typed_publication_required');
+        }
         const states = { ...base.states, ...values };
         for (const namespace of deletes) delete states[namespace];
 
@@ -647,9 +792,8 @@ export class SessionCore {
      * Variant. Find the exact ancestor revision whose Timeline HEAD is the
      * preceding user message, then fork from that post-user revision.
      */
-    async retryReply(handle, sessionId, { messageId, expectedRevisionId } = {}) {
+    async _replyRetryBoundary(handle, current, messageId) {
         assertNativeId(messageId, 'message');
-        const current = await this._current(handle, sessionId, expectedRevisionId);
         const assistantIndex = current.timeline.findIndex(item => item.messageId === messageId);
         if (assistantIndex < 0) throw new NotFoundError('native retry assistant message', { messageId });
         const assistant = current.timeline[assistantIndex];
@@ -658,17 +802,52 @@ export class SessionCore {
         }
         let userIndex = assistantIndex - 1;
         while (userIndex >= 0 && current.timeline[userIndex].role !== 'user') userIndex--;
-        if (userIndex < 0) throw new TypeError('Native Retry Reply requires a preceding committed user turn');
+        if (userIndex < 0) throw new TypeError(current.states.atri_lifecycle?.history?.checkpoint ? 'Reply archived at History checkpoint; continue or restore an explicit SavePoint' : 'Native Retry Reply requires a preceding committed user turn');
         const userMessageId = current.timeline[userIndex].messageId;
 
-        const postUser = await this._findTimelineBoundary(handle, sessionId, current, userMessageId);
+        const turn = current.states[TASK_STATE_NAMESPACE]?.records.find(item => item.kind === 'turn' && item.authorityReceipt?.messageId === messageId);
+        const transaction = actionReceipts(current).find(item => item.source === 'frontend' && item.playerMessageId === userMessageId
+            && (item.assistantMessageId === messageId || item.authorityId === turn?.authorityReceipt?.authorityId));
+        const source = transaction ? await this.load(handle, current.session.sessionId, { revisionId: transaction.baseRevisionId }) : await this._findTimelineBoundary(handle, current.session.sessionId, current, userMessageId);
+        return { transaction, source, userIndex, userMessageId };
+    }
+
+    async inspectReplyRetry(handle, sessionId, { messageId } = {}) {
+        const current = await this._current(handle, sessionId), id = messageId || current.timeline.at(-1)?.messageId || '';
+        if ((await this.runs.status(handle, sessionId))?.mode === 'ironman') return { messageId: id, eligible: false, reason: 'This story permits continuing from its current state only.' };
+        try { await this._replyRetryBoundary(handle, current, id); return { messageId: id, eligible: true, reason: 'Retry returns to the committed input boundary; review and resolve the new branch.' }; } catch (error) {
+            if (!(error instanceof TypeError) && !(error instanceof NotFoundError)) throw error;
+            const archived = current.states.atri_lifecycle?.history?.checkpoint && (error instanceof NotFoundError || error.message.includes('archived'));
+            return { messageId: id, eligible: false, reason: archived ? 'Reply archived at History checkpoint. Continue with a new input or restore an explicit SavePoint.' : 'Retry requires the current committed assistant reply and its available user input boundary.' };
+        }
+    }
+
+    async retryReply(handle, sessionId, { messageId, expectedRevisionId } = {}) {
+        await this.runs.assert(handle, sessionId, 'rewind');
+        const current = await this._current(handle, sessionId, expectedRevisionId);
+        const { transaction, source, userIndex, userMessageId } = await this._replyRetryBoundary(handle, current, messageId);
+        if (transaction) {
+            // A typed turn publishes its user input and reply in one CAS. Its
+            // coherent retry boundary is the pre-effect revision plus that input,
+            // not a Timeline slice inheriting the already committed mechanics.
+            const branchId = createNativeId('branch');
+            const last = source.timeline.at(-1);
+            const branch = { branchId, sessionId, parentBranchId: source.revision.branchId,
+                forkPoint: last ? { messageId: last.messageId, variantId: last.activeVariantId } : null, createdAt: Date.now() };
+            const { entry, variant } = this._newEntry({ ...source, revision: { ...source.revision, branchId } }, { role: 'user', content: current.timeline[userIndex].content,
+                metadata: { atri_authority_retry: { revisionId: current.revision.revisionId, playerMessageId: userMessageId } } });
+            return this._publish(handle, { ...source, session: current.session }, { branchId,
+                timeline: [...source.timeline, entry], entries: [entry], variants: [variant], branches: [branch],
+                graph: [...current.graph, { branchId, forkRevisionId: source.revision.revisionId, branch }], runAction: 'rewind' });
+        }
         return this.forkBranch(handle, sessionId, {
-            revisionId: postUser.revision.revisionId,
+            revisionId: source.revision.revisionId,
             expectedRevisionId: current.session.headRevisionId,
         });
     }
 
     async forkBranch(handle, sessionId, { revisionId, messageId, displayName, expectedRevisionId } = {}) {
+        await this.runs.assert(handle, sessionId, 'rewind');
         const current = await this._current(handle, sessionId, expectedRevisionId);
         let source = revisionId ? await this.load(handle, sessionId, { revisionId }) : current;
         let timeline = source.timeline;
@@ -691,16 +870,17 @@ export class SessionCore {
             ...(displayName === undefined ? {} : { displayName }) };
         return this._publish(handle, { ...source, session: current.session }, {
             branchId, timeline, branches: [branch], graph: [...current.graph,
-                { branchId, forkRevisionId: source.revision.revisionId, branch }],
+                { branchId, forkRevisionId: source.revision.revisionId, branch }], runAction: 'rewind',
         });
     }
 
     async switchBranch(handle, sessionId, branchId, { expectedRevisionId } = {}) {
+        await this.runs.assert(handle, sessionId, 'rewind');
         const current = await this._current(handle, sessionId, expectedRevisionId);
         const node = current.graph.find(item => item.branchId === branchId);
         if (!node) throw new NotFoundError('native branch', { branchId });
         const source = await this.load(handle, sessionId, { revisionId: node.headRevisionId });
-        return this._publish(handle, { ...source, session: current.session }, { graph: current.graph });
+        return this._publish(handle, { ...source, session: current.session }, { graph: current.graph, runAction: 'rewind' });
     }
 
     async listSavePoints(handle, sessionId) {
@@ -709,6 +889,7 @@ export class SessionCore {
     }
 
     async createSavePoint(handle, sessionId, { revisionId, expectedRevisionId, kind = 'manual', displayName } = {}) {
+        await this.runs.assert(handle, sessionId, 'save', revisionId);
         // Exact revision is immutable; guarded frontend saves never capture a
         // newer HEAD accidentally even if publication races the SavePoint write.
         if (expectedRevisionId !== undefined) {
@@ -723,6 +904,7 @@ export class SessionCore {
     }
 
     async restoreSavePoint(handle, sessionId, saveId, { expectedRevisionId } = {}) {
+        await this.runs.assert(handle, sessionId, 'rewind');
         const save = await this._saves.get(handle, sessionId, saveId);
         if (!save) throw new NotFoundError('native save point', { saveId });
         const current = await this._current(handle, sessionId, expectedRevisionId);
@@ -756,7 +938,7 @@ export class SessionCore {
             graph: [
                 ...current.graph,
                 { branchId, forkRevisionId: source.revision.revisionId, branch },
-            ],
+            ], runAction: 'rewind',
         });
     }
 }

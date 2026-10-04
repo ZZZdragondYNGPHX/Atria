@@ -56,6 +56,13 @@ export function createNativeGenerationRouter(getHost = services) {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         try { res.json({ cancelled: nativeTaskScheduler.cancel(req.user.profile.handle, req.params.id) }); } catch { res.sendStatus(404); }
     });
+    router.post('/task-bindings/preflight', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try { res.json(await getHost().preflightTaskBindings(handle, req.body)); } catch (error) {
+            res.status(400).json({ error: error.code || 'native_task_binding_preflight_failed' });
+        }
+    });
     router.post('/lifecycle/prepare', async (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);

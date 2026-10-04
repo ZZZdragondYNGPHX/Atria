@@ -2,6 +2,7 @@ import { compileDeclarativeLogic } from '../../public/scripts/native/experience/
 import { lowerDeclarativeMutations } from '../../public/scripts/native/experience/logic/mutations.js';
 import { json } from '../../public/shared/native-values.js';
 import { assertFrontendExperience, frontendFeatureAvailability } from '../../public/shared/native-frontend-contract.js';
+import { frontendTransactions } from './frontend/authority.js';
 import { validateFrontendGraph } from './frontend/graph.js';
 import { validateSchemaValue } from '../../public/scripts/native/experience/world/schema.js';
 
@@ -12,7 +13,7 @@ export function validateFrontendResources(manifest, files, assets) {
         const normalized = assertFrontendExperience(experience);
         frontendFeatureAvailability(normalized.features);
         const graph = validateFrontendGraph({ entry: normalized.frontend.entry, files, mode: normalized.mode,
-            experienceContract: manifest.runtime?.experienceContract });
+            experienceContract: manifest.runtime?.experienceContract, transactions: () => frontendTransactions(manifest, owner, files) });
         validateFrontendCapabilities(normalized, graph, files, manifest.permissions);
         for (const binding of graph.bridge.bindings.filter(item => item.kind === 'read')) {
             if (!binding.target.resourceId) continue;
@@ -44,23 +45,28 @@ export function validateExperienceResources(manifest, files, assets, { lower = f
     for (const voice of manifest.runtime?.experienceContract?.presentationRuntime?.voices ?? []) {
         if (!manifest.actors.some(actor => actor.actorId === voice.actorId)) throw new TypeError('Actor Voice must belong to Package');
     }
+    const contract = manifest.runtime?.experienceContract;
     const logicPaths = new Set();
     for (const entry of manifest.entryPoints) {
         const logic = entry.runtime?.game?.logic ?? manifest.runtime?.game?.logic;
         if (logic) logicPaths.add(logic);
+        else if (contract?.authorityRuntime) throw new TypeError('Authority runtime requires pinned Game Logic v3 for each entry');
     }
     for (const path of logicPaths) {
         const bytes = files.get(path);
-        if (!bytes) continue;
+        if (!bytes) {
+            if (contract?.authorityRuntime) throw new TypeError('Authority runtime requires pinned Game Logic bytes');
+            continue;
+        }
         const raw = JSON.parse(bytes.toString('utf8'));
         const hasAppMapping = raw.interpretations?.some(item => item.appCommand !== undefined);
-        if (raw.schemaVersion !== 2 && !hasAppMapping) continue;
+        if (contract?.authorityRuntime && raw.schemaVersion !== 3) throw new TypeError('Authority runtime requires Game Logic schemaVersion 3');
+        if (raw.schemaVersion !== 2 && raw.schemaVersion !== 3 && raw.transactions === undefined && raw.derivedPublications === undefined && !hasAppMapping) continue;
         const lowered = raw.schemaVersion === 2 ? lowerDeclarativeMutations(raw) : raw;
-        compileDeclarativeLogic(lowered, { data: {} });
+        compileDeclarativeLogic(lowered, { data: {}, experienceContract: contract });
         for (const mapping of lowered.interpretations ?? []) {
             if (!mapping.appCommand) continue;
             const { domainId, commandId } = mapping.appCommand;
-            const contract = manifest.runtime?.experienceContract;
             if (!contract?.lifecycleRuntime?.domains.some(domain => domain.id === domainId && domain.commands.some(command => command.id === commandId))) throw new TypeError('Interpretation references unknown App Command');
             if (!contract.taskRuntime?.tasks.some(task => task.interpretation?.allowedEventTypes.includes(mapping.eventType))) throw new TypeError('App interpretation requires declared semantic Task');
         }

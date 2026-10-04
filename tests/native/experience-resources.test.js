@@ -2,7 +2,7 @@ import { minimalFrontend } from './helpers/frontend-fixture.js';
 import { createHash } from 'node:crypto';
 import express from 'express';
 import request from 'supertest';
-import { beforeEach, afterEach, test, expect } from '@jest/globals';
+import { beforeEach, afterEach, test, expect, jest } from '@jest/globals';
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { sessionFixture, services } from './helpers/session-fixture.js';
 import { buildAtriaPackageContainer, createNativeId, resolveNativeRuntimePackage } from '../../src/native/index.js';
@@ -66,4 +66,39 @@ test('v3 rejects duplicate surface authority and malformed immutable Data before
     const digest = createHash('sha256').update(bytes).digest('hex'); assets.set(assetId, bytes);
     Object.assign(manifest.assets[0], { size: bytes.length, contentHash: digest }); manifest.runtime.experienceContract.dataResources[0].contentHash = digest;
     await expect(svc.packageInstaller.install(h.handle, archive())).rejects.toThrow(/Blocked JSON key/);
+});
+
+
+test('startup batches all declared Data in one authority read and rejects mixed, unknown or corrupt requests', async () => {
+    const ref = manifest.runtime.experienceContract.dataResources[0];
+    for (let index = 0; index < 40; index++) manifest.runtime.experienceContract.dataResources.push({ ...ref, resourceId: 'catalog.entry' + index });
+    await svc.packageInstaller.install(h.handle, archive());
+    const view = await svc.core.create(h.handle, { packageId: manifest.packageId, packageVersionId: manifest.packageVersionId, entryPointId: fixture.entryPointId });
+    const app = express(); app.use(express.json()); app.use((req, _res, next) => { req.user = { profile: { handle: h.handle } }; next(); });
+    app.use(createNativeSessionRouter(() => svc));
+    const load = jest.spyOn(svc.core, 'load');
+    const fetchImpl = jest.fn(async (_url, init) => {
+        const response = await request(app).post('/runtime/resource').send(JSON.parse(init.body));
+        expect(response.headers['cache-control']).toBe('private, no-store');
+        return { ok: response.status === 200, json: async () => response.body };
+    });
+    const data = await loadExperienceData({ sessionId: view.session.sessionId, descriptor: { experienceContract: manifest.runtime.experienceContract } }, { fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledTimes(1); expect(load).toHaveBeenCalledTimes(1);
+    expect(Object.keys(data.catalog)).toHaveLength(41); expect(data.catalog.entry39).toEqual({ price: 3 });
+    const body = { sessionId: view.session.sessionId, resourceIds: ['catalog.item'] };
+    for (const patch of [{ resourceIds: [] }, { resourceIds: 'catalog.item' }, { resourceIds: ['unknown'] },
+        { resourceIds: ['catalog.item', 'catalog.item'] }, { resourceId: 'catalog.item' }, { path: 'ui/main.json' }]) {
+        expect((await request(app).post('/runtime/resource').send({ ...body, ...patch })).status).toBe(400);
+    }
+    const opened = await svc.packageInstaller.open(h.handle, manifest.packageId, manifest.packageVersionId);
+    const open = jest.spyOn(svc.packageInstaller, 'open').mockResolvedValue(opened);
+    opened.assets.set(ref.assetId, Buffer.from('{"price":99}'));
+    expect((await request(app).post('/runtime/resource').send(body)).status).toBe(400);
+    open.mockRestore(); load.mockRestore();
+});
+
+test('empty Data needs no request and malformed batch responses fail closed', async () => {
+    const fetchImpl = jest.fn(async () => ({ ok: true, json: async () => ({ resources: [{ resourceId: 'other', value: {} }] }) }));
+    expect(await loadExperienceData({ descriptor: {} }, { fetchImpl })).toEqual({}); expect(fetchImpl).not.toHaveBeenCalled();
+    await expect(loadExperienceData({ sessionId: 'session', descriptor: { experienceContract: manifest.runtime.experienceContract } }, { fetchImpl })).rejects.toThrow('Invalid Package Data response');
 });

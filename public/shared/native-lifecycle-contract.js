@@ -1,4 +1,6 @@
-import { fields, json } from './native-values.js';
+import { assertLifetimePolicy } from './native-lifetime-contract.js';
+import { assertHistoryPolicy } from './native-history-contract.js';
+import { fields, json, assertJsonDeclaration } from './native-values.js';
 import { compileDataSchema } from './native-data-schema.js';
 import { compileDeclarativeLogic } from '../scripts/native/experience/logic/declarative.js';
 import { assertTaskRuntime, assertTaskValue, taskId } from './native-task-contract.js';
@@ -31,29 +33,8 @@ function reference(items, id, label) {
 function logicalBytes(value) {
     return new TextEncoder().encode(JSON.stringify(value)).byteLength;
 }
-// json supplies the existing depth/node/string budgets and immutable copying.
-// Reject non-JSON objects/hidden fields before it can erase their provenance.
-function declaration(value) {
-    function inspect(item, depth = 0, budget = { nodes: 0 }) {
-        if (depth > 24 || ++budget.nodes > 32768) throw new TypeError('Lifecycle JSON complexity limit');
-        if (!item || typeof item !== 'object') return;
-        const array = Array.isArray(item);
-        const proto = Object.getPrototypeOf(item);
-        if (!array && proto !== null && Object.getPrototypeOf(proto) !== null) throw new TypeError('Lifecycle requires plain JSON objects');
-        const keys = Reflect.ownKeys(item).filter(key => !(array && key === 'length'));
-        if (array && keys.length !== item.length) throw new TypeError('Lifecycle requires dense JSON arrays');
-        for (const key of keys) {
-            const descriptor = Object.getOwnPropertyDescriptor(item, key);
-            if (typeof key !== 'string' || key.length > 256 || !descriptor.enumerable || !Object.hasOwn(descriptor, 'value')
-                || (array && (!/^(0|[1-9][0-9]*)$/.test(key) || Number(key) >= item.length))) throw new TypeError('Lifecycle requires JSON fields');
-            inspect(descriptor.value, depth + 1, budget);
-        }
-    }
-    inspect(value);
-    const result = json(value);
-    if (logicalBytes(result) > MAX_BYTES) throw new TypeError('Lifecycle declaration byte limit');
-    return result;
-}
+// Shared data-only provenance and complexity checks; no executable declarations.
+const declaration = value => assertJsonDeclaration(value, 'Lifecycle', MAX_BYTES);
 export { declaration as assertLifecycleJson };
 function objectSchema(value) {
     const schema = compileDataSchema(value);
@@ -259,7 +240,7 @@ function workflow(item, scopes, clocks) {
 
 export function assertLifecycleRuntime(value, taskRuntime) {
     value = declaration(value);
-    fields(value, ['schemaVersion', 'scopes', 'domains', 'clocks', 'advances', 'automations', 'workflows', 'interactions', 'retention'], 'Lifecycle runtime');
+    fields(value, ['schemaVersion', 'scopes', 'domains', 'clocks', 'advances', 'automations', 'workflows', 'interactions', 'retention', 'history', 'lifetimes'], 'Lifecycle runtime');
     if (value.schemaVersion !== 1) throw new TypeError('Lifecycle schemaVersion must be 1');
     const tasks = taskRuntime === undefined ? undefined : assertTaskRuntime(taskRuntime);
     const scopes = list(value.scopes, 32, scope, 'scope');
@@ -317,5 +298,7 @@ export function assertLifecycleRuntime(value, taskRuntime) {
     // maxReceipts is a fail-closed admission cap on exact replay history, NOT an
     // eviction window. Host checks exact replay first; new work at cap fails.
     // Task result/terminal compaction must never silently erase receipt dedup.
+    if (value.history !== undefined) runtime.history = assertHistoryPolicy(value.history, runtime);
+    if (value.lifetimes !== undefined) runtime.lifetimes = assertLifetimePolicy(value.lifetimes, runtime);
     return declaration(runtime);
 }

@@ -7,7 +7,7 @@ import { validateFrontendGraph } from '../../src/native/frontend/graph.js';
 import { createFrontendResources } from '../../public/scripts/native/frontend/resources.js';
 import { createMediaResolver } from '../../public/scripts/native/frontend/media.js';
 import { mountNativeFrontend } from '../../public/scripts/native/frontend/runtime.js';
-import { createPresentationEnvironment } from '../../public/scripts/native/frontend/platform.js';
+import { createPresentationEnvironment, createNodeHandle } from '../../public/scripts/native/frontend/platform.js';
 import { validateFrontendResources } from '../../src/native/experience-validation.js';
 import { fixedHostTarget } from '../../public/shared/native-frontend-host.js';
 import { previewBridgeTransport } from '../../public/scripts/native/frontend/preview-bridge.js';
@@ -164,6 +164,14 @@ describe('input, environment and failure containment', () => {
         build = fixture.compile(); const index = JSON.parse(build.files.get(build.entry)), descriptor = JSON.parse(build.files.get(index.resources.find(ref => ref.kind === 'bridge').path));
         const transport = previewBridgeTransport({ descriptor, scopes: { Main: ['locale'], Child: [] } }), runtime = await mountNativeFrontend({ ...env, entry: build.entry, bridgeTransport: transport, loadBytes: async path => build.files.get(path) });
         try { find(env.document, '[data-node-id="arabic"]').click(); await wait(); expect(find(env.document, '[data-atria-frontend-boundary]').dir).toBe('rtl'); expect(fixedHostTarget({ service: 'host.media', method: 'resolve' }).outputSchema.properties).not.toHaveProperty('url'); } finally { runtime.dispose(); env.window.close(); }
+    });
+    test('scoped NodeRef focus rejects hidden and revoked targets', () => {
+        const env = environment(), boundary = env.document.body, button = env.document.createElement('button');
+        boundary.append(button); button.getClientRects = () => [button.getBoundingClientRect()]; let active = true;
+        const handle = createNodeHandle(button, boundary, { window: env.window, scheduler: {}, active: () => active, pointers: new Set() });
+        handle.handle.focus(); expect(env.document.activeElement).toBe(button);
+        button.getClientRects = () => []; expect(() => handle.handle.focus()).toThrow('Unavailable focus target');
+        active = false; expect(() => handle.handle.focus()).toThrow('Stale NodeRef'); handle.dispose(); env.window.close();
     });
     test('visual viewport and keyboard occlusion react and dispose listeners', () => {
         const env = environment(), frame = env.document.createElement('div'), viewport = new env.window.EventTarget(); Object.assign(viewport, { width: 390, height: 400, offsetTop: 0, offsetLeft: 0 }); Object.defineProperty(env.window, 'visualViewport', { value: viewport });

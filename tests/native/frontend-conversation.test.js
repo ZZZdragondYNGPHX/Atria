@@ -44,6 +44,18 @@ describe('Phase 4 fixed Conversation / Session Host targets', () => {
         expect((await call('restore', { saveId: save.data.saveId })).ok).toBe(true);
         expect((await call('status')).error.code).toBe('bridge_epoch_stale');
     });
+    test('recent committed messages are bounded, chronological, revision guarded and page backwards by sequence', async () => {
+        for (let i = 0; i < 38; i++) await append('user', 'line ' + i);
+        const projected = projectConversation(base);
+        const latest = await call('recent');
+        expect(latest.ok).toBe(true); expect(latest.data).toEqual(projected.slice(-32));
+        const older = await call('recent', { beforeSequence: latest.data[0].sequence });
+        expect(older.data).toEqual(projected.slice(0, -32));
+        expect((await call('recent', { beforeSequence: 0 })).data).toEqual([]);
+        for (const input of [{ beforeSequence: -1 }, { beforeSequence: 1.5 }, { private: true }]) expect((await call('recent', input)).ok).toBe(false);
+        expect((await call('recent', {}, { componentId: 'Child' })).error.code).toBe('bridge_binding_denied');
+        expect((await call('recent', {}, { revision: 'stale' })).error.code).toBe('bridge_revision_stale');
+    });
     test('retry/fork/switch/restore never rebase stale revisions; alternatives use predecessor and branch lineage', async () => {
         await append('user', 'question'); await append('assistant', 'first');
         const old = base, save = await call('save');

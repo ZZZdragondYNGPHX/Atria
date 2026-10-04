@@ -1,0 +1,251 @@
+name: Authority Transaction
+
+on:
+  push:
+    branches: [main, feat/authority-transaction, feat/world-simulation-scheduling]
+    paths:
+      - 'public/shared/native-*.js'
+      - 'public/scripts/native/**'
+      - 'src/native/**'
+      - 'src/storage/**'
+      - 'tests/native/**'
+      - 'tests/game-runtime/**'
+      - 'tests/storage/**'
+      - '.github/workflows/authority-transaction.yml'
+  pull_request:
+    paths:
+      - 'public/shared/native-*.js'
+      - 'public/scripts/native/context-compiler.js'
+      - 'public/scripts/native/experience/logic/**'
+      - 'public/scripts/native/experience/world/**'
+      - 'src/native/**'
+      - 'tests/native/**'
+      - 'tests/game-runtime/**'
+      - '.github/workflows/authority-transaction.yml'
+  workflow_dispatch:
+    inputs:
+      package_revision:
+        description: 'Exact Package commit for an optional focused or long-run candidate; empty skips it'
+        required: false
+        default: ''
+        type: string
+      package_check:
+        description: 'Focused regional by default; regional-soak explicitly opts into 5000 turns'
+        type: choice
+        options: [renewal, enterprise, regional, regional-soak]
+        default: regional
+
+permissions:
+  contents: read
+
+concurrency:
+  group: authority-transaction-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  authority-contracts-candidates-and-turns:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports: ['3306/tcp']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: atria
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: atria_test
+        ports: ['5432/tcp']
+        options: >-
+          --health-cmd="pg_isready -U atria -d atria_test"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - run: npm ci --ignore-scripts --prefix tests
+      - name: Contract, private candidate, Turn and adjacent Native regressions
+        env:
+          ATRIA_TEST_MYSQL_ROOT_URL: mysql://root:root@127.0.0.1:${{ job.services.mysql.ports['3306'] }}
+          ATRIA_TEST_POSTGRES_URL: postgresql://atria:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/atria_test
+        run: >-
+          npm run test:unit --prefix tests -- --runInBand --verbose=false
+          --runTestsByPath
+          native/history.test.js native/history-session.test.js
+          native/lifetime.test.js native/lifetime-session.test.js
+          native/renewal.test.js native/renewal-session.test.js
+          native/enterprise.test.js native/enterprise-session.test.js
+          native/regional.test.js native/regional-session.test.js
+          native/simulation-contract.test.js native/simulation-candidate.test.js native/simulation-task.test.js native/simulation-session.test.js
+          native/authority-contract-c1.test.js native/authority-resources-c1.test.js
+          native/authority-candidate-c2.test.js native/authority-bounds-c2.test.js native/authority-session-c2.test.js
+          game-runtime/transactions.test.js game-runtime/declarative.test.js
+          native/authoring-contracts.test.js native/contracts.test.js
+          native/experience-resources.test.js native/package-build-install.test.js
+          native/lifecycle-contract-p4.test.js native/lifecycle-runtime-p4.test.js
+          native/turn-app-outcome-g1.test.js native/background-task-app-bridge-g2.test.js
+          native/information-runtime-p6.test.js native/experience-actions.test.js
+          native/task-runtime-p3.test.js native/runtime-lifecycle.test.js
+          native/capability-retirement.test.js
+          game-runtime/logic-package.test.js game-runtime/logic-rules-integration.test.js
+          game-runtime/logic-runtime.test.js game-runtime/rules.test.js game-runtime/rng.test.js
+          game-runtime/world-session.test.js game-runtime/reducers.test.js game-runtime/formula.test.js
+          native/authority-turn-c3.test.js
+          native/authority-frontend-c3.test.js
+          native/authority-publication-c3.test.js
+          native/frontend-v3.test.js
+          native/frontend-bridge.test.js
+          native/frontend-bridge-client.test.js
+          native/frontend-authoring.test.js
+          native/frontend-platform.test.js
+          native/frontend-conversation.test.js
+          native/frontend-presentation.test.js
+          native/frontend-script.test.js
+          native/model-prompt-runtime-p4.test.js
+          native/package-turn-memory-bridge-g3.test.js
+          native/authority-narrator-c3.test.js
+          native/authority-integration-c4.test.js
+          native/save-system.test.js native/storage-round-trip.test.js native/storage-commit-last.test.js
+          native/session-core.contract.test.js native/session-durability.test.js native/session-history-p2.test.js
+          native/information-session-p6.test.js native/session-runtime-http.test.js
+      - name: Authority source lint
+        run: >-
+          npx --no-install eslint
+          public/shared/native-lifetime-runtime.js src/native/lifetime-authority.js
+          public/shared/native-regional-contract.js public/shared/native-regional-runtime.js src/native/regional-authority.js
+          public/shared/native-enterprise-contract.js public/shared/native-enterprise-runtime.js src/native/enterprise-authority.js
+          public/shared/native-renewal-contract.js public/shared/native-renewal-runtime.js src/native/renewal-authority.js
+          public/shared/native-authority-contract.js public/shared/native-experience-contract.js
+          public/shared/native-lifecycle-contract.js public/shared/native-values.js
+          public/scripts/native/experience/logic/transactions.js public/scripts/native/experience/logic/declarative.js
+          public/scripts/native/experience/logic/package.js src/native/experience-validation.js src/native/task-authority.js
+          tests/native/authority-contract-c1.test.js tests/native/authority-resources-c1.test.js
+          tests/native/helpers/authority-fixture.js tests/game-runtime/transactions.test.js tests/native/authoring-contracts.test.js
+          src/native/authority-transaction.js src/native/lifecycle-authority.js
+          public/scripts/native/experience/logic/rules.js public/scripts/native/experience/world/session.js
+          public/shared/native-information-runtime.js
+          tests/native/authority-candidate-c2.test.js tests/native/authority-bounds-c2.test.js
+          tests/native/authority-session-c2.test.js tests/native/helpers/authority-candidate-fixture.js
+          public/scripts/native/context-compiler.js
+          src/native/adapters/generation-host.js
+          src/native/frontend/authoring.js
+          src/native/frontend/bridge.js
+          src/native/frontend/compiler.js
+          src/native/frontend/graph.js
+          src/native/frontend/host-bridge.js
+          src/native/runtime-descriptor.js
+          src/native/session-core.js
+          src/native/authority-turn.js
+          src/native/frontend/authority.js
+          tests/native/authority-frontend-c3.test.js
+          tests/native/authority-narrator-c3.test.js
+          tests/native/authority-publication-c3.test.js
+          tests/native/authority-turn-c3.test.js
+          tests/native/helpers/authority-turn-fixture.js
+          tests/native/authority-integration-c4.test.js
+          tests/native/helpers/authority-restore-process.js
+          public/shared/native-simulation-contract.js public/scripts/native/experience/logic/bound-expressions.js
+          src/native/simulation-authority.js
+          tests/native/simulation-contract.test.js tests/native/simulation-candidate.test.js tests/native/simulation-task.test.js tests/native/simulation-session.test.js
+          tests/native/helpers/simulation-candidate-fixture.js tests/native/helpers/simulation-task-fixture.js
+
+  renewable-package-candidate:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.package_revision != '' && inputs.package_check == 'renewal' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - run: npm ci --ignore-scripts --prefix tests
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.package_revision }}
+          path: package-candidate
+      - name: Actual 5000-turn / 50-year Package candidate
+        working-directory: package-candidate/original-occult-western-fantasy-game
+        run: |
+          mkdir -p build
+          set -o pipefail
+          node tools/package.mjs validate --renewal-only --core "$GITHUB_WORKSPACE" 2>&1 | tee build/phase4-gate-b.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase4-gate-b-candidate
+          path: package-candidate/original-occult-western-fantasy-game/build/phase4-gate-b.log
+
+  enterprise-package-candidate:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.package_revision != '' && inputs.package_check == 'enterprise' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - run: npm ci --ignore-scripts --prefix tests
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.package_revision }}
+          path: package-candidate
+      - name: Focused Phase 5 50-year Package candidate (not Gate B or C)
+        working-directory: package-candidate/original-occult-western-fantasy-game
+        run: |
+          mkdir -p build
+          set -o pipefail
+          node tools/package.mjs validate --enterprise-only --core "$GITHUB_WORKSPACE" 2>&1 | tee build/phase5-enterprise.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase5-enterprise-candidate
+          path: package-candidate/original-occult-western-fantasy-game/build/phase5-enterprise.log
+
+  regional-package-candidate:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.package_revision != '' && (inputs.package_check == 'regional' || inputs.package_check == 'regional-soak') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.package_check == 'regional-soak' && 180 || 20 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm rebuild better-sqlite3 --ignore-scripts=false
+      - run: npm ci --ignore-scripts --prefix tests
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.package_revision }}
+          path: package-candidate
+      - name: Focused multi-region Phase 6 acceptance (optional full soak)
+        working-directory: package-candidate/original-occult-western-fantasy-game
+        env:
+          REGIONAL_CHECK: ${{ inputs.package_check }}
+        run: |
+          mkdir -p build
+          set -o pipefail
+          node --test tools/renewal-profile.test.mjs
+          extra=()
+          if [[ "$REGIONAL_CHECK" == "regional-soak" ]]; then extra+=(--regional-full); fi
+          node tools/package.mjs validate --regional-only "${extra[@]}" --core "$GITHUB_WORKSPACE" 2>&1 | tee build/phase6-regional.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase6-regional-candidate
+          path: package-candidate/original-occult-western-fantasy-game/build/phase6-regional.log

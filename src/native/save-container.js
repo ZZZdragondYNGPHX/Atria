@@ -3,7 +3,6 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync }
 import AdmZip from 'adm-zip';
 
 import {
-    ATRIA_SAVE_SCHEMA_VERSION,
     NATIVE_SCHEMA_VERSION,
     assertAtriaSave,
 } from './contracts.js';
@@ -183,12 +182,12 @@ function validateHeader(header) {
     if (
         header.format !== ATRIA_SAVE_CONTAINER_FORMAT
         || header.containerVersion !== ATRIA_SAVE_CONTAINER_VERSION
-        || header.saveSchemaVersion !== ATRIA_SAVE_SCHEMA_VERSION
+        || ![1, 2].includes(header.saveSchemaVersion)
         || header.nativeSchemaVersion !== NATIVE_SCHEMA_VERSION
     ) {
         throw new Error('Unsupported .atriasave container version');
     }
-    if (!['snapshot', 'session'].includes(header.scope)) throw new Error('.atriasave scope is unsupported');
+    if (!['snapshot', 'session', 'resume'].includes(header.scope) || (header.saveSchemaVersion === 2) !== (header.scope === 'resume')) throw new Error('.atriasave scope is unsupported');
     if (!Number.isSafeInteger(header.exportedAt) || header.exportedAt < 0) {
         throw new Error('.atriasave exportedAt is malformed');
     }
@@ -375,7 +374,8 @@ function inspectPayload(payload, header) {
     }
 
     if (
-        save.scope !== header.scope
+        save.schemaVersion !== header.saveSchemaVersion
+        || save.scope !== header.scope
         || save.exportedAt !== header.exportedAt
         || JSON.stringify(save.package) !== JSON.stringify(header.package)
         || JSON.stringify(save.root) !== JSON.stringify(header.root)

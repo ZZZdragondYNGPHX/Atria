@@ -1,3 +1,4 @@
+import { hashNativeDocument } from './repositories/common.js';
 import { compileDeclarativeLogic } from '../../public/scripts/native/experience/logic/declarative.js';
 import { createGameWorldSession } from '../../public/scripts/native/experience/world/session.js';
 import { createInterpretationMappingRegistry } from '../../public/scripts/native/experience/logic/interpretations.js';
@@ -33,9 +34,22 @@ export function validateTaskRecords(base) {
     }
 }
 
+// Bounded, content-addressed declaration cache. It contains no Session state,
+// candidates, authority proofs or RNG. Exact source/Data/contract changes miss.
+const compiledWorlds = new Map();
+function pinnedLogic(bytes, data, experienceContract) {
+    const text = bytes.toString('utf8');
+    const key = hashNativeDocument({ text, data, experienceContract });
+    if (compiledWorlds.has(key)) return compiledWorlds.get(key);
+    const compiled = compileDeclarativeLogic(JSON.parse(text), { data, experienceContract });
+    if (compiledWorlds.size >= 4) compiledWorlds.delete(compiledWorlds.keys().next().value);
+    compiledWorlds.set(key, compiled);
+    return compiled;
+}
+
 // The existing World/Command/Rule/Reducer engine runs against a private candidate
 // snapshot. Only SessionCore may publish its result, with the narrative, in one CAS.
-export async function createTaskWorld(base, installed, publish = null) {
+export async function createTaskWorld(base, installed, publish = null, authority = null) {
     const runtime = { ...installed.manifest.runtime, ...installed.entryPoint.runtime };
     const path = runtime?.game?.logic;
     const bytes = installed.sourceFiles.get(path);
@@ -48,7 +62,7 @@ export async function createTaskWorld(base, installed, publish = null) {
         for (const key of keys.slice(0, -1)) { target[key] ??= {}; target = target[key]; }
         target[keys.at(-1)] = JSON.parse(bytes.toString('utf8'));
     }
-    const logic = compileDeclarativeLogic(JSON.parse(bytes.toString('utf8')), { data });
+    const logic = pinnedLogic(bytes, data, installed.manifest.runtime?.experienceContract);
     const candidate = structuredClone(base);
     const statePatch = {};
     const adapter = { active: true, snapshot: candidate, commitStatePatch: async patch => {
@@ -58,12 +72,16 @@ export async function createTaskWorld(base, installed, publish = null) {
         return candidate;
     } };
     const world = await createGameWorldSession({ nativeRuntime: adapter, packageState: { runtime,
-        descriptor: { packageVersionId: base.session.packageVersionId, entryPointId: base.session.entryPointId } }, ...logic });
+        descriptor: { packageVersionId: base.session.packageVersionId, entryPointId: base.session.entryPointId } }, ...logic,
+    ...(authority ? { rngSeed: authority.rngSeed, ruleLimits: { onEvaluation: () => authority.rule() },
+        validateEvents: drafts => authority.validateEvents(drafts, logic.reducers),
+        validateState: state => authority.value(state),
+        beforeEvents: drafts => drafts.forEach(draft => authority.effect({ ...draft, kind: 'world.event' })) } : {}) });
     return { world, statePatch, logic, candidate };
 }
 
-export async function prepareTaskAuthority(base, installed, { outcomes = [], command = null }) {
-    const { world, statePatch, logic, candidate } = await createTaskWorld(base, installed);
+export async function prepareTaskAuthority(base, installed, { outcomes = [], command = null }, authority = null) {
+    const { world, statePatch, logic, candidate } = await createTaskWorld(base, installed, null, authority);
     const mapper = createInterpretationMappingRegistry(logic.interpretations, { sessionAuthority: true });
     const requests = installed.manifest.runtime?.experienceContract?.taskRuntime?.tasks ?? [];
     for (const raw of outcomes) {
@@ -76,7 +94,7 @@ export async function prepareTaskAuthority(base, installed, { outcomes = [], com
             if (proposal.kind === 'app.command') {
                 // Lifecycle preparation is private too: no publication, clock
                 // advance or scheduler pump until the enclosing Session CAS.
-                const prepared = await prepareLifecycle(candidate, installed, proposal);
+                const prepared = await prepareLifecycle(candidate, installed, proposal, authority);
                 Object.assign(candidate.states, prepared.states);
                 Object.assign(statePatch, prepared.states);
                 continue;

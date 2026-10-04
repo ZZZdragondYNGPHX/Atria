@@ -5,7 +5,7 @@ import { fixedHostTarget, hostObject, HOST_EMPTY } from '../../../public/shared/
 export function conversationFixture(mode = 'full') {
     const fixture = bridgeFixture(mode);
     const names = {
-        messages: ['conversation', 'messages'], status: ['conversation', 'status'], branches: ['conversation', 'branches'], alternatives: ['conversation', 'alternatives'], inspect: ['conversation', 'inspect'],
+        messages: ['conversation', 'messages'], recent: ['conversation', 'recent'], status: ['conversation', 'status'], branches: ['conversation', 'branches'], alternatives: ['conversation', 'alternatives'], inspect: ['conversation', 'inspect'],
         retry: ['conversation', 'retry'], fork: ['conversation', 'fork'], switch: ['conversation', 'switch'], generation: ['conversation', 'generation'], cancel: ['conversation', 'cancel'], regenerate: ['conversation', 'regenerate'],
         draft: ['composer', 'get'], set: ['composer', 'set'], append: ['composer', 'append'], clear: ['composer', 'clear'], focus: ['composer', 'focus'], submit: ['composer', 'submit'],
         saves: ['session', 'saves'], save: ['session', 'save'], restore: ['session', 'restore'], reload: ['session', 'reload'], recover: ['session', 'recover'], exit: ['session', 'exit'], restart: ['session', 'restart'], diagnostics: ['session', 'diagnostics'],

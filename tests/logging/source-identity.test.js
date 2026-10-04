@@ -60,5 +60,5 @@ test('fallback reuses canonical boot identity and launcher captures before serve
     identity.source.reasons.length = 0;
     expect(getRuntimeIdentity().source.reasons).toContain('startup_identity_not_captured');
     const launcher = await readFile(new URL('../../server.js', import.meta.url), 'utf8');
-    expect(launcher.indexOf('await initializeRuntimeIdentity()')).toBeLessThan(launcher.indexOf("await import('./src/server-main.js')"));
+    expect(launcher.indexOf('await initializeRuntimeIdentity()')).toBeLessThan(launcher.indexOf('await import(\'./src/server-main.js\')'));
 });

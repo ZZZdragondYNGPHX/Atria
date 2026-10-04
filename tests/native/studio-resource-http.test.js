@@ -114,7 +114,7 @@ describe('A2 Native Studio resource HTTP surface', () => {
     });
 });
 
- test('Resource Bundle routes use the authenticated owner and preserve the reviewed token', async () => {
+test('Resource Bundle routes use the authenticated owner and preserve the reviewed token', async () => {
     const studio = { exportResourceBundle: jest.fn(async () => ({ format: 'atria-resource-bundle' })), preflightResourceBundle: jest.fn(async () => ({ canImport: true })), importResourceBundle: jest.fn(async () => ({ resources: [] })) };
     const app = appFor(studio), ref = { scope: 'library', resourceType: 'core.world', resourceId: 'world_a', revision: 'worldv_a' }, bundle = { root: ref }, token = { seed: 'reviewed' };
     expect((await request(app).post('/resources/bundle/export').send({ ref, handle: 'other' })).status).toBe(200);
@@ -125,7 +125,7 @@ describe('A2 Native Studio resource HTTP surface', () => {
     }
     const unauthenticated = express(); unauthenticated.use(createNativeStudioRouter(() => ({ studio })));
     expect((await request(unauthenticated).post('/resources/bundle/import').send({ bundle, token })).status).toBe(401);
- });
+});
 
 test('Package original reads delegate exact identities under the authenticated owner', async () => {
     const studio = { getPackageLibraryResource: jest.fn(async (_handle, ref) => ({ ref, snapshot: {} })) };

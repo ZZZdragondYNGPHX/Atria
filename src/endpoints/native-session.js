@@ -95,6 +95,14 @@ export function createNativeSessionRouter(getServices = services) {
     router.post('/create', route(async (req, res, { core }, handle) => {
         res.json(await core.create(handle, req.body));
     }));
+    router.post('/begin', route(async (req, res, { core }, handle) => {
+        const { sessionId, ...input } = req.body;
+        fields(input, ['input', 'invocationId', 'expectedRevisionId']);
+        res.json(await core.beginStory(handle, sessionId, input));
+    }));
+    router.post('/run', route(async (req, res, { core }, handle) => {
+        res.json(await core.runStatus(handle, req.body.sessionId));
+    }));
     router.post('/load', route(async (req, res, { core }, handle) => {
         res.json(await core.load(handle, req.body.sessionId, { revisionId: req.body.revisionId }));
     }));
@@ -193,14 +201,23 @@ export function createNativeSessionRouter(getServices = services) {
             throw new TypeError('Native Runtime PackageVersion content mismatch');
         }
         // Exact Package Data remains separate from the compiled Frontend graph.
-        if (req.body?.resourceId !== undefined) {
+        if (req.body?.resourceId !== undefined || req.body?.resourceIds !== undefined) {
             const resolved = resolveNativeRuntimePackage(opened, snapshot.session.entryPointId);
-            const ref = resolved.descriptor.experienceContract?.dataResources.find(item => item.resourceId === req.body.resourceId);
-            if (!ref || req.body.path !== undefined) throw new TypeError('Unknown Package Data reference');
-            const bytes = opened.assets.get(ref.assetId);
-            if (!bytes || bytes.length > 2 * 1024 * 1024 || createHash('sha256').update(bytes).digest('hex') !== ref.contentHash) throw new TypeError('Invalid exact Package Data resource');
-            const value = JSON.parse(bytes.toString('utf8'));
-            res.set('Cache-Control', 'private, no-store').json(value);
+            const refs = resolved.descriptor.experienceContract?.dataResources ?? [];
+            const batch = req.body.resourceIds !== undefined;
+            const ids = batch ? req.body.resourceIds : [req.body.resourceId];
+            if (!Array.isArray(ids) || !ids.length || ids.length > refs.length || new Set(ids).size !== ids.length
+                || req.body.path !== undefined || (batch && req.body.resourceId !== undefined)) throw new TypeError('Unknown Package Data reference');
+            // One exact Session/Package snapshot per load, never a cross-request
+            // cache. Each requested resource still passes declaration and hash checks.
+            const resources = ids.map(resourceId => {
+                const ref = refs.find(item => item.resourceId === resourceId);
+                if (!ref) throw new TypeError('Unknown Package Data reference');
+                const bytes = opened.assets.get(ref.assetId);
+                if (!bytes || bytes.length > 2 * 1024 * 1024 || createHash('sha256').update(bytes).digest('hex') !== ref.contentHash) throw new TypeError('Invalid exact Package Data resource');
+                return { resourceId, value: JSON.parse(bytes.toString('utf8')) };
+            });
+            res.set('Cache-Control', 'private, no-store').json(batch ? { resources } : resources[0].value);
             return;
         }
         const path = String(req.body?.path || '').trim();

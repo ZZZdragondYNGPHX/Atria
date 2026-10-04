@@ -166,7 +166,7 @@ export async function mountNativeFrontend(options) {
                     await instance.onEmit?.(args[0], assertValue(args[1], instance.contract.emits[args[0]]), 1);
                 } else if (method === 'node') {
                     const handle = nodeHandle(instance, args[0]);
-                    if (!['measure', 'capturePointer', 'releasePointer'].includes(args[1])) throw new Error('script_node_method');
+                    if (!['measure', 'focus', 'capturePointer', 'releasePointer'].includes(args[1])) throw new Error('script_node_method');
                     return handle[args[1]](args[2]);
                 } else if (method === 'media') {
                     const token = revision, mediaEpoch = media.epoch;
@@ -315,7 +315,7 @@ export async function mountNativeFrontend(options) {
                 void media.fallback(ref).then(url => { if (!gone && request === mediaRequest) node.src = url; }).catch(instance.failBoundary ?? diagnostic);
             } else if (definition.boundary === 'required') (instance.failBoundary ?? diagnostic)(new Error('media_decode_failed'));
         });
-        const input = definition.bindings?.value ?? definition.bindings?.checked;
+        const input = definition.tag === 'option' ? null : definition.bindings?.value ?? definition.bindings?.checked;
         if (input) {
             const change = () => {
                 if (composing.has(node)) return;
@@ -414,6 +414,11 @@ export async function mountNativeFrontend(options) {
             if (['audio', 'video'].includes(definition.tag) && (document.hidden || instance.view.content.inert || node.closest('[hidden]'))) node.pause();
             await childInstance?.update(readProps());
             for (const child of children) await child.update(item);
+            // Dynamic options must exist before synchronizing the selected identity.
+            if (definition.tag === 'select' && definition.bindings?.value && !composing.has(node)) {
+                const value = String(evaluate(definition.bindings.value, ctx) ?? '');
+                if (node.value !== value) node.value = value;
+            }
         }
         await update();
         return { node, update, dispose };
@@ -461,9 +466,17 @@ export async function mountNativeFrontend(options) {
         return { node, update, dispose };
     }
     async function createRepeat(definition, instance, item, parent) {
-        const node = document.createElement('div'); node.dataset.repeat = definition.id; parent.append(node);
+        // A div inside select is not an option container. Keep repeated options
+        // directly in their native select/optgroup between inert range markers.
+        const options = definition.tag === 'option';
+        const node = options ? document.createComment('options:' + definition.id) : document.createElement('div');
+        if (!options) node.dataset.repeat = definition.id;
+        parent.append(node);
+        const endMarker = options ? document.createComment('/options') : null;
+        if (endMarker) parent.append(endMarker);
+        const container = options ? parent : node;
         const rows = new Map(); let gone = false;
-        const dispose = () => { if (gone) return; gone = true; --nodeCount; node.removeEventListener('scroll', onScroll); rows.forEach(row => row.dispose()); node.remove(); instance.cleanups.delete(dispose); };
+        const dispose = () => { if (gone) return; gone = true; --nodeCount; node.removeEventListener('scroll', onScroll); rows.forEach(row => row.dispose()); endMarker?.remove(); node.remove(); instance.cleanups.delete(dispose); };
         instance.cleanups.add(dispose);
         const virtual = definition.windowSize !== undefined;
         const top = document.createElement('div'), bottom = document.createElement('div');
@@ -481,12 +494,12 @@ export async function mountNativeFrontend(options) {
             if (!virtual && values.length > 512) throw new TypeError('Large lists require virtualization');
             const visible = new Set(keys.slice(start, end));
             for (const [key, row] of rows) if (!visible.has(key)) { row.dispose(); rows.delete(key); }
-            let cursor = virtual ? top.nextSibling : node.firstChild;
+            let cursor = options ? node.nextSibling : virtual ? top.nextSibling : node.firstChild;
             for (let index = start; index < end; index++) {
                 const key = keys[index];
-                if (!rows.has(key)) rows.set(key, await createBlock(rowDef, instance, values[index], node));
+                if (!rows.has(key)) rows.set(key, await createBlock(rowDef, instance, values[index], container));
                 const row = rows.get(key); await row.update(values[index]);
-                if (row.node !== cursor) node.insertBefore(row.node, cursor ?? (virtual ? bottom : null));
+                if (row.node !== cursor) container.insertBefore(row.node, cursor ?? (options ? endMarker : virtual ? bottom : null));
                 if (virtual) { row.node.style.height = definition.rowHeight + 'px'; row.node.style.boxSizing = 'border-box'; row.node.style.overflow = 'hidden'; }
                 cursor = row.node.nextSibling;
             }

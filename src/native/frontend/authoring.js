@@ -2,6 +2,7 @@ import { assertFrontendSourceIndex, resourcePath, FRONTEND_LIMITS, fields, front
 import { validateFrontendCapabilities } from '../experience-validation.js';
 import { mediaOrigins } from '../../../public/shared/native-frontend-media.js';
 import { parseAui } from './aui-parser.js';
+import { frontendTransactions } from './authority.js';
 import { compileFrontend } from './compiler.js';
 import { hash } from './bridge.js';
 import { editJson, editNode, replaceSpan } from './source-edits.js';
@@ -80,7 +81,8 @@ export function inspectFrontend({ source, files, ownerId = 'package' }) {
     } catch (error) { diagnostics.push(diagnostic(error, path, files)); }
     if (!entries.length) add('index', 'index', path);
     try {
-        const compiled = compileFrontend({ source: path, files, mode: owner.mode, experienceContract: source.package.runtime?.experienceContract });
+        const compiled = compileFrontend({ source: path, files, mode: owner.mode, experienceContract: source.package.runtime?.experienceContract,
+            transactions: () => frontendTransactions(source.package, source.package.entryPoints.find(item => item.entryPointId === ownerId), files) });
         const index = JSON.parse(compiled.files.get(compiled.entry));
         validateFrontendCapabilities(owner, index, compiled.files, source.package.permissions);
         const get = kind => JSON.parse(compiled.files.get(index.resources.find(ref => ref.kind === kind).path));

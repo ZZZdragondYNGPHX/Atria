@@ -1,3 +1,5 @@
+import { initialLifetimes, validateLifetimes } from './lifetime-authority.js';
+import { initialHistory } from '../../public/shared/native-history-runtime.js';
 import { prepareActivity, validateActivities } from './activity-authority.js';
 import { prepareInformationRollup } from './information-authority.js';
 import { validateInformationState } from '../../public/shared/native-information-runtime.js';
@@ -20,6 +22,8 @@ export function initialLifecycle(definition) {
         scopes: Object.fromEntries(definition.scopes.map(scope => [scope.id, { status: 'active', epoch: 0 }])),
         domains: Object.fromEntries(definition.domains.map(domain => [domain.id, { records: [] }])),
         workflows: Object.fromEntries(definition.workflows.map(flow => [flow.id, { phase: flow.initial, instance: 0, status: 'active', entered: false }])),
+        ...(definition.history ? { history: initialHistory() } : {}),
+        ...(definition.lifetimes ? { lifetimes: initialLifetimes(definition.lifetimes) } : {}),
         ready: false, automations: {}, outbox: [], interactions: [], receipts: [], taskTombstones: [] };
 }
 
@@ -51,6 +55,8 @@ export function validateLifecycle(base) {
         || !Array.isArray(state.outbox) || state.outbox.length > 128) throw new TypeError('Lifecycle retention limit');
     if (new Set(state.receipts.map(item => item.invocationId)).size !== state.receipts.length) throw new TypeError('Duplicate lifecycle receipt');
     for (const receipt of state.receipts) if (!invocation(receipt.invocationId) || receipt.kind !== 'authority') throw new TypeError('Invalid lifecycle receipt');
+    // Canonical source cross-check occurs at the outer transaction boundary.
+    validateLifetimes(base);
     validateActivities(base);
     validateInformationState(base);
     if (typeof state.ready !== 'boolean') throw new TypeError('Invalid lifecycle barrier');
@@ -72,6 +78,27 @@ function protectedRecord(base, state, domainId, record) {
     }
     return mentions(state.outbox, record.id);
 }
+export function protectedTaskResult(base, state, record) {
+    const task = base.manifest.runtime?.experienceContract?.taskRuntime?.tasks.find(item => item.id === record.taskId);
+    // Advice without an Apply command is display-only, including older records
+    // stored as drafts. Executable proposals still need their revision anchor.
+    const advice = record.kind === 'task' && task?.resultPolicy.resultClass === 'advisory' && !task.resultPolicy.applyCommand
+        && !lifecycleDefinition(base)?.interactions?.some(item => item.taskId === record.taskId);
+    return !['turn', 'task'].includes(record.kind) || (record.status === 'draft' && !advice) || record.pinned
+        || mentions(base.timeline, record.invocationId)
+        || Object.entries(base.states).some(([key, value]) => ![NS, 'atri_task_results'].includes(key) && mentions(value, record.invocationId))
+        || base.states.atri_task_results?.records.some(item => item.invocationId !== record.invocationId && mentions(item.payload, record.invocationId))
+        || Object.values(state.domains).some(domain => mentions(domain.records, record.invocationId))
+        || Object.values(state.workflows ?? {}).some(flow => flow.status === 'active' && flow.taskInvocationId === record.invocationId)
+        || (state.interactions ?? []).some(item => item.status === 'scheduled' && item.proposalId === record.invocationId)
+        || (state.activities ?? []).some(item => !['completed', 'cancelled', 'stale'].includes(item.status) && mentions(item, record.invocationId))
+        || (state.outbox ?? []).some(item => item.status === 'pending' && item.invocationId === record.invocationId);
+}
+export function taskResultTombstone(record) {
+    return { invocationId: record.invocationId, fingerprint: record.fingerprint ?? null,
+        kind: record.kind, requestHash: record.requestHash ?? null, status: record.status, branchId: record.branchId, storedRevisionId: record.storedRevisionId,
+        ...(record.anchorRevisionId ? { anchorRevisionId: record.anchorRevisionId } : {}) };
+}
 export function compactLifecycle(base, state, { reserveTask = false, pruneInteractions = false } = {}) {
     const def = lifecycleDefinition(base);
     for (const domain of def.domains) {
@@ -91,13 +118,8 @@ export function compactLifecycle(base, state, { reserveTask = false, pruneIntera
         const records = copy(taskState.records); const limit = def.retention.maxTaskResults - Number(reserveTask);
         for (let i = 0; records.length > limit && i < records.length;) {
             const record = records[i];
-            if (record.status === 'draft' || record.pinned || mentions(base.timeline, record.invocationId)
-                || Object.entries(base.states).some(([key, value]) => ![NS, 'atri_task_results'].includes(key) && mentions(value, record.invocationId))
-                || Object.values(state.domains).some(domain => mentions(domain.records, record.invocationId))
-                || Object.values(state.workflows).some(flow => flow.status === 'active' && flow.taskInvocationId === record.invocationId)
-                || state.outbox.some(item => item.status === 'pending' && item.invocationId === record.invocationId)) { i++; continue; }
-            state.taskTombstones.push({ invocationId: record.invocationId, fingerprint: record.fingerprint ?? null,
-                kind: record.kind, requestHash: record.requestHash ?? null, status: record.status, branchId: record.branchId, storedRevisionId: record.storedRevisionId });
+            if (protectedTaskResult(base, state, record)) { i++; continue; }
+            state.taskTombstones.push(taskResultTombstone(record));
             records.splice(i, 1);
         }
         if (records.length > limit) throw new TypeError('Task result retention is pinned or active');
@@ -144,7 +166,7 @@ function scheduleInteraction(base, candidate, mapping, record) {
         anchorRevisionId: record.storedRevisionId ?? base.revision.revisionId, taskId: record.taskId, variantId: record.variantId, status: 'scheduled' });
 }
 
-export async function prepareDeclaredTaskResult(base, installed, queued, task, variant, record) {
+export async function prepareDeclaredTaskResult(base, installed, queued, task, variant, record, authority = null) {
     const state = base.states[NS];
     if (!state?.ready || !queued || task.resultPolicy.sink !== 'app_command') throw new TypeError('Declared App Command requires durable Lifecycle intent');
     const binding = variant.resultBinding;
@@ -156,49 +178,54 @@ export async function prepareDeclaredTaskResult(base, installed, queued, task, v
     active(state, domain.scopeId);
     if (binding.kind === 'app.command') {
         const action = { ...binding, recordId: binding.recordId ?? 'task-' + hashNativeDocument(record.invocationId).slice(0, 48), args: record.payload };
-        const prepared = await prepareLifecycle(base, installed, action);
+        const prepared = await prepareLifecycle(base, installed, action, authority);
         return { states: prepared.states, authorityReceipt: { kind: 'authority', decision: 'app.command',
             domainId: action.domainId, commandId: action.commandId, recordId: action.recordId, baseRevisionId: base.revision.revisionId } };
     }
     const candidate = { ...base, states: copy(base.states) };
+    authority?.value(record.payload);
     scheduleInteraction(base, candidate, mapping, record);
     compactLifecycle(candidate, candidate.states[NS]);
     return { states: candidate.states, authorityReceipt: { kind: 'authority', decision: 'schedule',
         interactionId: mapping.id, baseRevisionId: base.revision.revisionId } };
 }
-function addOutbox(state, action, scopeId, occurrence, workflowId = null) {
+export function addOutbox(state, action, scopeId, occurrence, workflowId = null) {
     if (state.outbox.length >= 128) throw new TypeError('Scheduled interaction backpressure');
     const invocationId = 'lc:' + hashNativeDocument({ occurrence, scopeId, epoch: state.scopes[scopeId].epoch }).slice(0, 48);
-    if (state.outbox.some(item => item.invocationId === invocationId)) return;
+    const existing = state.outbox.find(item => item.invocationId === invocationId);
+    if (existing) return existing;
     state.outbox.push({ ...copy(action), invocationId, scopeId, scopeEpoch: state.scopes[scopeId].epoch, status: 'pending', workflowId });
+    return state.outbox.at(-1);
 }
 
-export async function prepareLifecycle(base, installed, action) {
+export async function prepareLifecycle(base, installed, action, authority = null) {
     const def = lifecycleDefinition(base);
     if (!def) throw new TypeError('Package lifecycle contract required');
     const candidate = { ...base, states: copy(base.states) }; const state = candidate.states[NS];
     const events = []; let budget = 32; let taskResolution = null; const drafts = [];
     const apply = async (request, occurrence = 'direct', scopeId = null) => {
         if (--budget < 0) throw new TypeError('Lifecycle transaction work limit');
+        authority?.effect(request);
         if (request.kind === 'app.command') {
             fields(request, ['kind', 'domainId', 'recordId', 'commandId', 'args'], 'App Command');
             const domain = def.domains.find(item => item.id === request.domainId); const command = domain?.commands.find(item => item.id === request.commandId);
             if (!command) throw new TypeError('Unknown App Command');
             active(state, domain.scopeId); taskId(request.recordId);
-            const args = assertTaskValue(request.args, command.argsSchema);
+            const args = authority ? authority.typed(request.args, command.argsSchema) : assertTaskValue(request.args, command.argsSchema);
             const records = state.domains[domain.id].records; let record = records.find(item => item.id === request.recordId);
             if (record?.status === 'terminal') throw new TypeError('App record is terminal');
             if (!record) { record = { id: request.recordId, scopeId: domain.scopeId, value: copy(domain.initial), status: 'active', pinned: false, createdLogicalTime: state.logicalTime }; records.push(record); }
             const { terminal: _terminal, ...mutation } = command;
             const logic = compileDeclarativeLogic({ schemaVersion: 2, mutations: [mutation] });
             const event = { type: command.event, payload: args };
-            record.value = assertTaskValue(logic.reducers[0].reduce(record.value, event), domain.recordSchema);
+            const nextValue = logic.reducers[0].reduce(record.value, event);
+            record.value = authority ? authority.typed(nextValue, domain.recordSchema) : assertTaskValue(nextValue, domain.recordSchema);
             record.updatedLogicalTime = state.logicalTime + 1;
             if (command.terminal) { record.status = 'terminal'; record.terminalTicks = copy(state.clocks); }
             events.push({ type: event.type, domainId: domain.id, recordId: record.id, payload: args });
         } else if (request.kind === 'world.command') {
             fields(request, ['kind', 'commandId', 'args'], 'World Process Command');
-            Object.assign(candidate.states, await prepareTaskAuthority(candidate, installed, { command: { id: request.commandId, args: request.args } }));
+            Object.assign(candidate.states, await prepareTaskAuthority(candidate, installed, { command: { id: request.commandId, args: request.args } }, authority));
         } else if (request.kind === 'task') {
             active(state, scopeId); addOutbox(state, request, scopeId, occurrence);
         } else if (request.kind === 'workflow.transition') {
@@ -219,7 +246,9 @@ export async function prepareLifecycle(base, installed, action) {
     const enter = async flow => {
         const current = state.workflows[flow.id]; const node = flow.nodes.find(item => item.id === current.phase);
         if (current.status !== 'active' || current.entered || state.scopes[flow.scopeId].status !== 'active') return;
+        authority?.step();
         if (node.kind === 'model_task') {
+            authority?.effect(node.action);
             const occurrence = `workflow:${flow.id}:${current.instance}`;
             addOutbox(state, node.action, flow.scopeId, occurrence, flow.id);
             current.taskInvocationId = state.outbox.at(-1).invocationId;
@@ -229,9 +258,12 @@ export async function prepareLifecycle(base, installed, action) {
     };
     const pump = async () => {
         if (!state.ready) throw new TypeError('Experience Ready Barrier required');
-        for (const flow of def.workflows) if (budget > 8) await enter(flow);
-        let remaining = Math.min(24, budget);
+        for (const flow of def.workflows) if (authority || budget > 8) await enter(flow);
+        // Legacy pumps may defer work. A bounded Authority candidate must instead
+        // fail if actual expanded work exceeds its shared transaction budget.
+        let remaining = authority ? Infinity : Math.min(24, budget);
         for (const item of state.interactions) {
+            authority?.step();
             if (!remaining || item.status !== 'scheduled' || state.clocks[item.clockId] < item.dueTick) continue;
             if (state.scopes[item.scopeId].status !== 'active' || state.scopes[item.scopeId].epoch !== item.scopeEpoch) { item.status = 'stale'; continue; }
             await apply({ kind: 'app.command', domainId: item.domainId, recordId: item.recordId, commandId: item.commandId, args: item.args });
@@ -239,6 +271,7 @@ export async function prepareLifecycle(base, installed, action) {
             events.push({ type: 'interaction.delivered', proposalId: item.proposalId, clockId: item.clockId, dueTick: item.dueTick });
         }
         for (const automation of def.automations) {
+            authority?.step();
             if (remaining <= 0 || state.scopes[automation.scopeId].status !== 'active') continue;
             const trigger = automation.trigger; const epoch = state.scopes[automation.scopeId].epoch;
             const previous = state.automations[automation.id] ?? { cursor: null, epoch };
@@ -271,12 +304,21 @@ export async function prepareLifecycle(base, installed, action) {
     } else if (action.kind === 'pump') {
         fields(action, ['kind'], 'Lifecycle pump'); await pump();
     } else if (action.kind === 'clock.advance') {
-        fields(action, ['kind', 'commandId', 'ticks'], 'World Clock advance');
+        fields(action, ['kind', 'commandId', 'ticks', 'attention'], 'World Clock advance');
+        if (action.attention !== undefined && typeof action.attention !== 'boolean') throw new TypeError('Invalid attention request');
+        authority?.effect(action);
         const command = def.advances.find(item => item.id === action.commandId);
         if (!command || !Number.isSafeInteger(action.ticks) || action.ticks < 1 || action.ticks > command.maxTicks
             || !integer(state.clocks[command.clockId] + action.ticks)) throw new TypeError('Invalid declared World Clock advance');
-        state.clocks[command.clockId] += action.ticks;
-        events.push({ type: 'world.clock.advanced', clockId: command.clockId, ticks: action.ticks });
+        const fromTick = state.clocks[command.clockId];
+        if (candidate.manifest.runtime.experienceContract.simulationRuntime?.clockId === command.clockId) {
+            if (!authority) throw new TypeError('Simulation requires a shared Authority budget');
+            const { prepareWorldSimulation } = await import('./simulation-authority.js');
+            const prepared = await prepareWorldSimulation(candidate, installed, state.clocks[command.clockId] + action.ticks, authority, { attention: action.attention === true });
+            Object.assign(candidate.states, prepared.states);
+            Object.assign(state, prepared.states[NS]); candidate.states[NS] = state;
+        } else state.clocks[command.clockId] += action.ticks;
+        events.push({ type: 'world.clock.advanced', clockId: command.clockId, ticks: state.clocks[command.clockId] - fromTick });
     } else if (action.kind === 'scope.transition') {
         fields(action, ['kind', 'scopeId', 'status'], 'Scope transition'); const scope = state.scopes[action.scopeId];
         if (!scope || !['active', 'suspended', 'archived'].includes(action.status) || scope.status === 'archived') throw new TypeError('Invalid scope transition');

@@ -103,6 +103,7 @@ export async function createGameWorldSession(options = {}) {
     }
 
     function projectEvents(drafts) {
+        options.validateEvents?.(drafts);
         const identity = nativeIdentity(nativeRuntime);
         const runtimeState = eventState(nativeRuntime);
         let state = getState();
@@ -130,6 +131,7 @@ export async function createGameWorldSession(options = {}) {
                 throw new Error(`World reducer '${type}' must return an object state`);
             }
             assertValidWorldState(next, definition.schema);
+            options.validateState?.(next);
             state = clone(next);
             committed.push(event);
             runtimeState.events.push(clone(event));
@@ -150,6 +152,7 @@ export async function createGameWorldSession(options = {}) {
 
     async function commitEvents(eventDrafts, actionRequest = null) {
         const projected = projectEvents(eventDrafts);
+        options.beforeEvents?.(eventDrafts);
         if (projected.committed.length === 0 && !actionRequest) {
             return {
                 state: clone(projected.state),
@@ -276,6 +279,8 @@ export async function createGameWorldSession(options = {}) {
         simulateCommandInternal(commandId, args) {
             return logicRuntime.simulate(commandId, args);
         },
+
+        simulateEventsInternal: simulateEvents,
 
         commitEventsInternal(eventDrafts) {
             return commitEvents(eventDrafts);

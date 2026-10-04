@@ -39,9 +39,13 @@ function compileMapping(mapping, input, target) {
     }
     return mapping;
 }
-export function compileBridge(source = { version: 1, bindings: [] }, experienceContract = {}) {
+export function compileBridge(source = { version: 1, bindings: [] }, experienceContract = {}, transactions = []) {
     fields(source, ['version', 'bindings'], 'Bridge');
     if (source.version !== 1) throw new TypeError('Bridge version must be 1');
+    // The transaction catalogue is immutable during one compilation. Resolving
+    // its lazy provider for every binding repeats the entire authority compiler.
+    let resolvedTransactions;
+    const transactionCatalogue = () => resolvedTransactions ??= typeof transactions === 'function' ? transactions() : transactions;
     const bindings = list(source.bindings, binding => {
         fields(binding, ['id', 'kind', 'target', 'inputSchema', 'outputSchema', 'mapping', 'collection'], 'Binding');
         identifier(binding.id);
@@ -63,6 +67,13 @@ export function compileBridge(source = { version: 1, bindings: [] }, experienceC
                 outputSchema = binding.collection ? item : { type: 'array', items: item, maxItems: 10000 };
             }
             targetInput = binding.collection ? binding.inputSchema : EMPTY;
+        } else if (binding.kind === 'action' && binding.target.transactionId !== undefined) {
+            fields(binding.target, ['transactionId'], 'Transaction target');
+            taskId(binding.target.transactionId);
+            if (!experienceContract.authorityRuntime || experienceContract.taskRuntime?.turn?.policy !== 'authority-first') throw new TypeError('Transaction Turn authority required');
+            targetContract = transactionCatalogue().find(item => item.id === binding.target.transactionId);
+            targetInput = targetContract?.inputSchema;
+            outputSchema = EMPTY;
         } else if (binding.kind === 'action') {
             fields(binding.target, ['domainId', 'commandId', 'recordId'], 'Action target');
             const domain = experienceContract.lifecycleRuntime?.domains.find(domain => domain.id === binding.target.domainId);
@@ -105,7 +116,7 @@ export function compileBridge(source = { version: 1, bindings: [] }, experienceC
     }, binding => binding.id);
     return { format: 'atria-compiled-bridge', version: 1, bindings };
 }
-export function validateCompiledBridge(value, contract) {
+export function validateCompiledBridge(value, contract, transactions = []) {
     fields(value, ['format', 'version', 'bindings']);
     if (value.format !== 'atria-compiled-bridge' || value.version !== 1 || !Array.isArray(value.bindings)) throw new TypeError('Invalid compiled Bridge');
     const source = { version: 1, bindings: value.bindings.map(binding => {
@@ -113,5 +124,5 @@ export function validateCompiledBridge(value, contract) {
         const { id, kind, target, inputSchema, outputSchema, mapping, collection } = binding;
         return { id, kind, target, inputSchema, outputSchema, ...(mapping === 'identity' ? {} : { mapping }), ...(collection === undefined ? {} : { collection }) };
     }) };
-    if (!equal(compileBridge(source, contract), value)) throw new TypeError('Compiled Bridge identity mismatch');
+    if (!equal(compileBridge(source, contract, transactions), value)) throw new TypeError('Compiled Bridge identity mismatch');
 }
