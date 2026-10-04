@@ -64,8 +64,9 @@ export class IllustrationService {
     }
 
     addImageVersion(handle, sessionId, { annotationId, imageVersionId = createNativeId('imageVersion'), assetId, width, height, alt,
-        prompt = '', negativePrompt = '', parameters = {}, expectedHead, branchId }) {
-        const image = assertIllustrationImage({ annotationId, imageVersionId, assetId, width, height, alt, prompt, negativePrompt, parameters, createdAt: Date.now() });
+        prompt = '', negativePrompt = '', parameters = {}, requestSnapshot, expectedHead, branchId }) {
+        const image = assertIllustrationImage({ annotationId, imageVersionId, assetId, width, height, alt, prompt, negativePrompt, parameters,
+            ...(requestSnapshot === undefined ? {} : { requestSnapshot }), createdAt: Date.now() });
         return this.sessions.updateIllustrations(handle, sessionId, state => {
             const annotation = this._annotation(state, annotationId);
             if (state.images.some(item => item.imageVersionId === imageVersionId)) throw new ConflictError('native_illustration_version_conflict');

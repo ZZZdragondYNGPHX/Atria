@@ -20,6 +20,7 @@ import { assertConnectionProfile, assertExactResourceRef } from '../native/model
 import { prepareProviderDiscovery, discoverProviderModels } from '../native/adapters/provider-discovery.js';
 import { nativeTaskScheduler } from '../native/task-scheduler.js';
 import { IllustrationPromptService } from '../native/illustration-prompt-service.js';
+import { IllustrationImageService } from '../native/illustration-image-service.js';
 
 function services() {
     const { core, packageInstaller } = getNativeSessionServices();
@@ -49,6 +50,23 @@ function services() {
 
 export function createNativeGenerationRouter(getHost = services) {
     const router = express.Router();
+    router.get('/illustration-images', (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try { res.json(new IllustrationImageService({ host: getHost() }).list(handle, req.query)); } catch { res.status(400).json({ error: 'native_illustration_request_invalid' }); }
+    });
+    router.post('/illustration-images', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try { res.status(202).json(await new IllustrationImageService({ host: getHost() }).start(handle, req.body)); } catch (error) {
+            res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_illustration_image_failed' });
+        }
+    });
+    router.get('/illustration-images/:id', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try { res.json(await new IllustrationImageService({ host: getHost() }).status(handle, { operationId: req.params.id })); } catch { res.status(404).json({ error: 'native_illustration_operation_missing' }); }
+    });
     router.get('/illustration-prompts', (req, res) => {
         const handle = req.user?.profile?.handle;
         if (!handle) return res.sendStatus(401);

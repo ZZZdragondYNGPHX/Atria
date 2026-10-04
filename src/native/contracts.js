@@ -902,6 +902,7 @@ export function assertAtriaSave(value) {
                 || !timeline?.some(item => item.messageId === anchor.messageId && item.activeVariantId === anchor.variantId)) throw new TypeError('Invalid illustration source in save');
         }
         for (const image of state.images) {
+            if (image.requestSnapshot && image.requestSnapshot.source.sessionId !== session.sessionId) throw new TypeError('Invalid illustration image session in save');
             const ref = assetRefs.find(item => item.assetId === image.assetId), anchor = annotations.get(image.annotationId).anchor;
             if (!ref || !['image/png', 'image/jpeg', 'image/webp', 'image/avif'].includes(ref.mediaType)
                 || !attachments.some(item => item.assetId === image.assetId && item.messageId === anchor.messageId && item.variantId === anchor.variantId)) throw new TypeError('Missing illustration asset in save');

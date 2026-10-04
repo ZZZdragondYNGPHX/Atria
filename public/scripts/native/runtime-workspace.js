@@ -10,6 +10,7 @@ import { createStudioNativeId } from './studio-authoring.js';
 import { nativeStudioClient } from './studio-client.js';
 import { runtimeReadiness } from './runtime-readiness.js';
 import { mountPromptRuntimeControls } from './prompt-runtime-controls.js';
+import { NOVELAI_IMAGE_ENDPOINT, NOVELAI_IMAGE_ADAPTERS, officialNovelaiCapabilities, novelaiConnectionCapabilities } from '../../shared/novelai-illustration.js';
 
 const sectionLabels = { routes: 'Routes', models: 'Models', connections: 'Connections', retrieval: 'Retrieval', diagnostics: 'Diagnostics' };
 const resourceLabels = { routes: 'route', models: 'model', connections: 'connection' };
@@ -63,9 +64,9 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         if (target) button(fmt('Open ${0}', [translateShellText(sectionLabels[target] || target)]), () => host.openRuntimeSection(target), parent);
         void referenceRemediation(doc, parent, error, host);
     }
-    function field(parent, label, value = '', options) {
+    function field(parent, label, value = '', options, multiline = false) {
         const wrap = node('label', label, parent);
-        const input = node(options ? 'select' : 'input', undefined, wrap);
+        const input = node(options ? 'select' : multiline ? 'textarea' : 'input', undefined, wrap);
         input.name = label; input.autocomplete = 'off'; input.spellcheck = false;
         input.setAttribute('aria-label', translateShellText(label));
         if (options) {
@@ -83,7 +84,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     function bindEditorKeyboard(back) {
         root.onkeydown = event => {
             if (event.key === 'Tab' && root.getAttribute('role') === 'dialog') {
-                const controls = [...root.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), summary')].filter(control => control.getClientRects().length);
+                const controls = [...root.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), summary')].filter(control => control.getClientRects().length);
                 const first = controls[0]; const last = controls.at(-1);
                 if (event.shiftKey && doc.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && doc.activeElement === last) { event.preventDefault(); first.focus(); }
             }
@@ -214,8 +215,14 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         let serialize;
         if (section === 'connections') {
             let fields = group(form, 'Provider connection');
-            const adapter = field(fields, 'Provider transport', value.providerAdapter || 'provider.openai-compatible', [['provider.openai-compatible', 'OpenAI-compatible messages'], ['provider.raw-text', 'Raw text completions'], ['provider.anthropic', 'Anthropic Messages'], ['provider.gemini', 'Gemini GenerateContent']]);
+            const adapter = field(fields, 'Provider transport', value.providerAdapter || 'provider.openai-compatible', [['provider.openai-compatible', 'OpenAI-compatible messages'], ['provider.raw-text', 'Raw text completions'], ['provider.anthropic', 'Anthropic Messages'], ['provider.gemini', 'Gemini GenerateContent'], ['provider.novelai-image', 'NovelAI 官方图片'], ['provider.novelai-image-compatible', 'NovelAI 第三方兼容图片']]);
             const endpoint = field(fields, 'Completions endpoint URL', value.endpoint); endpoint.type = 'url'; endpoint.required = true;
+            const imageFields = node('div', undefined, fields);
+            notice('官方地址为 https://image.novelai.net/ai/generate-image；第三方填写完整生成地址。仅兼容 NovelAI generate 请求，不自动猜测中转协议。', imageFields);
+            const imageCapabilities = field(imageFields, '第三方图片能力（按服务文档填写 JSON）', value.options?.imageCapabilities ? JSON.stringify(value.options.imageCapabilities, null, 2) : '', undefined, true);
+            notice('responseFormat: zip / json（images[].image base64）/ png；models 中声明模型 ID、characterPrompts、sm、maxPixels、maxSteps、samplers、noiseSchedules。', imageFields);
+            const imageExample = node('details', undefined, imageFields); node('summary', '能力格式示例（不代表你的服务支持）', imageExample);
+            node('pre', JSON.stringify({ responseFormat: 'zip', models: [officialNovelaiCapabilities().models[0]] }, null, 2), imageExample);
             const compatibility = node('div', undefined, fields);
             const schemaMode = field(compatibility, 'Tool schema compatibility', value.options?.toolSchemaMode || 'json-schema',
                 [['json-schema', 'Standard JSON Schema'], ['string-enums', 'Gemini gateway: string enums only']]);
@@ -224,7 +231,12 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 [['generation-profile', 'Use generation profile'], ['stream', 'Always request streaming']]);
             const minimumOutputTokens = number(compatibility, 'Minimum total output tokens', value.options?.minimumOutputTokens ?? (original ? 0 : generationDefaults.outputTokens), 0);
             notice('For gateways that need streaming or a larger thinking budget. Zero keeps the generation profile budget; a positive value raises the sent limit, within the model output limit.', compatibility);
-            const syncCompatibility = () => { compatibility.hidden = adapter.value !== 'provider.openai-compatible'; };
+            const syncCompatibility = () => {
+                compatibility.hidden = adapter.value !== 'provider.openai-compatible';
+                imageFields.hidden = !NOVELAI_IMAGE_ADAPTERS.includes(adapter.value);
+                imageCapabilities.parentElement.hidden = adapter.value !== 'provider.novelai-image-compatible';
+                if (adapter.value === 'provider.novelai-image') endpoint.value = NOVELAI_IMAGE_ENDPOINT;
+            };
             adapter.addEventListener('change', syncCompatibility); syncCompatibility();
             notice('OpenAI-compatible messages use the full /v1/chat/completions endpoint, not /v1/completions.', fields);
             fields = group(form, 'Authentication');
@@ -286,6 +298,13 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             serialize = () => {
                 if (creating || !secret.value) throw Object.assign(new Error('Select a stored Secret'), { code: 'native_secret_selection_required' });
                 const options = { ...value.options }; for (const key of ['toolSchemaMode', 'responseMode', 'minimumOutputTokens']) delete options[key];
+                delete options.imageCapabilities;
+                if (NOVELAI_IMAGE_ADAPTERS.includes(adapter.value)) {
+                    const imageOptions = adapter.value === 'provider.novelai-image-compatible' ? { imageCapabilities: JSON.parse(imageCapabilities.value) } : {};
+                    const candidate = { ...value, options: imageOptions, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value, secretRef: { scope: 'player', secretId: secret.value } };
+                    novelaiConnectionCapabilities(candidate);
+                    return candidate;
+                }
                 if (adapter.value === 'provider.openai-compatible') {
                     if (schemaMode.value !== 'json-schema') options.toolSchemaMode = schemaMode.value;
                     if (responseMode.value !== 'generation-profile') options.responseMode = responseMode.value;
@@ -309,9 +328,11 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     }
                 } catch (error) { if (!disposed && editorToken === editorSequence) { probeStatus.replaceChildren(); failure(error, probeStatus); } } finally { probe.disabled = false; probe.removeAttribute('aria-busy'); }
             }, fields);
+            const syncProbe = () => { probe.hidden = NOVELAI_IMAGE_ADAPTERS.includes(adapter.value); };
+            adapter.addEventListener('change', syncProbe); syncProbe();
         } else if (section === 'models') {
             let fields = group(form, 'Model connection');
-            const connection = field(fields, 'Connection', value.connectionProfileRef?.connectionProfileId, options(data.connections, ids.connections)); connection.required = true;
+            const connection = field(fields, 'Connection', value.connectionProfileRef?.connectionProfileId, options(data.connections.filter(item => !NOVELAI_IMAGE_ADAPTERS.includes(item.providerAdapter)), ids.connections)); connection.required = true;
             button('Manage connections', () => host.openRuntimeSection('connections'), fields);
             const remote = field(fields, 'Remote model ID', value.remoteModelId); remote.required = true;
             const discovery = node('div', undefined, fields); discovery.className = 'atri-runtime-group';

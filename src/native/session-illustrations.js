@@ -24,6 +24,7 @@ export async function validateIllustrationDependencies(tx, handle, sessionId, st
             || !timeline?.some(entry => entry.messageId === anchor.messageId && entry.activeVariantId === anchor.variantId)) throw new TypeError('Illustration anchor dependency mismatch');
     }
     for (const image of state.images) {
+        if (image.requestSnapshot && image.requestSnapshot.source.sessionId !== sessionId) throw new TypeError('Illustration image belongs to another session');
         const ref = (await tx.getResource({ kind: K.assetRef, handle, assetId: image.assetId }))?.doc;
         if (!ref || !['image/png', 'image/jpeg', 'image/webp', 'image/avif'].includes(ref.mediaType)) throw new TypeError('Illustration image asset is unavailable');
     }

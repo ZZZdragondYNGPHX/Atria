@@ -2,6 +2,7 @@ import { defaultIllustrationPreset, OFFICIAL_PROMPT_TEMPLATE, assertIllustration
 import { illustrationSettingsClient } from './illustration-client.js';
 import { runtimeRequest } from './runtime-client.js';
 import { nativeProductClient } from './product-client.js';
+import { NOVELAI_IMAGE_ADAPTERS } from '../../shared/novelai-illustration.js';
 import { illustrationNode as node, illustrationField as field, illustrationSelect as select, illustrationButton as button, ILLUSTRATION_CSS } from './illustration-ui.js';
 
 export function renderIllustrationPreset(doc, parent, preset) {
@@ -71,7 +72,8 @@ export function mountIllustrationSettings({ document: doc = globalThis.document,
         const preset = work?.preset ?? value.preset;
         readPreset = renderIllustrationPreset(doc, presetContainer, preset);
         presetContainer.disabled = Boolean(work && !work.preset);
-        const connectionChoices = [['', work ? '继承全局图片连接' : '未选择'], ...(configurationData.connections ?? []).map(item => [item.connectionProfileId, item.displayName || item.connectionProfileId])];
+        const connectionChoices = [['', work ? '继承全局图片连接' : '未选择'], ...(configurationData.connections ?? []).filter(item => NOVELAI_IMAGE_ADAPTERS.includes(item.providerAdapter)).map(item => [item.connectionProfileId, item.displayName || item.connectionProfileId])];
+        node(doc, scope, 'p', '在 Runtime → Connections 创建 NovelAI 官方或第三方兼容图片连接，并选择已有密钥。兼容连接需按服务文档声明模型与响应格式。');
         const routeChoices = [['', work ? '继承全局提示词路线' : '未选择'], ...(configurationData.routes ?? []).filter(item => item.role === 'role.illustration_prompt').map(item => [item.runtimeRouteId, item.displayName || item.runtimeRouteId])];
         select(doc, scope, '默认图片连接', work?.imageConnectionId ?? (work ? '' : value.imageConnectionId), connectionChoices, id => (work ?? value).imageConnectionId = id);
         select(doc, scope, '提示词模型路线', work?.promptRouteId ?? (work ? '' : value.promptRouteId), routeChoices, id => (work ?? value).promptRouteId = id);

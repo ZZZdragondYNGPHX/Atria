@@ -1,7 +1,10 @@
 /** @jest-environment jsdom */
 import { afterEach, expect, jest, test } from '@jest/globals';
+import { serialize, deserialize } from 'node:v8';
 import { mountNativeRuntimeWorkspace } from '../../public/scripts/native/runtime-workspace.js';
 import { runtimeGenerationError } from '../../public/scripts/native/runtime-client.js';
+import { NOVELAI_IMAGE_ENDPOINT, officialNovelaiCapabilities } from '../../public/shared/novelai-illustration.js';
+globalThis.structuredClone ??= value => deserialize(serialize(value));
 const flush = () => new Promise(done => setTimeout(done, 0));
 const config = { connections: [{ schemaVersion: 1, scope: 'player', connectionProfileId: 'conn_11111111111111111111111111111111', displayName: 'Exact connection', endpoint: 'https://example.invalid/chat', providerAdapter: 'provider.openai-compatible', secretRef: { scope: 'player', secretId: 'stored-id' } }], models: [], routes: [], profiles: [], resources: [] };
 const response = (body, ok = true) => ({ ok, json: async () => body });
@@ -59,6 +62,28 @@ function mount() {
     const body = document.createElement('div'); document.body.append(body);
     return mountNativeRuntimeWorkspace({ document, body, section: 'connections', route: { child: { id: 'connections:' + config.connections[0].connectionProfileId } }, host: {} });
 }
+test('NovelAI image connection uses the existing exact Secret store and persists an explicit compatible protocol', async () => {
+    globalThis.fetch = jest.fn(async () => response(config));
+    const view = mount(); await flush();
+    const adapter = view.root.querySelector('[aria-label="Provider transport"]');
+    adapter.value = 'provider.novelai-image'; adapter.dispatchEvent(new Event('change'));
+    expect(view.root.querySelector('[aria-label="Completions endpoint URL"]').value).toBe(NOVELAI_IMAGE_ENDPOINT);
+    expect([...view.root.querySelectorAll('button')].find(button => button.textContent === 'Test connection').hidden).toBe(true);
+    const capabilities = view.root.querySelector('[aria-label="第三方图片能力（按服务文档填写 JSON）"]');
+    expect(capabilities.parentElement.hidden).toBe(true);
+    adapter.value = 'provider.novelai-image-compatible'; adapter.dispatchEvent(new Event('change'));
+    const endpoint = 'https://gateway.invalid/ai/generate-image';
+    view.root.querySelector('[aria-label="Completions endpoint URL"]').value = endpoint;
+    const declared = officialNovelaiCapabilities(); declared.models = [declared.models[1]]; declared.responseFormat = 'json';
+    capabilities.value = JSON.stringify(declared);
+    view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush();
+    expect(view.root.querySelector('.atri-runtime-status [role="alert"]')?.textContent).toBeUndefined();
+    const write = globalThis.fetch.mock.calls.find(([, options]) => options.method === 'PUT');
+    expect(JSON.parse(write[1].body)).toMatchObject({ providerAdapter: 'provider.novelai-image-compatible', endpoint,
+        secretRef: config.connections[0].secretRef, options: { imageCapabilities: declared } });
+    expect(globalThis.fetch.mock.calls.some(([path]) => path.endsWith('/connections/probe'))).toBe(false);
+    view.dispose();
+});
 test('a failed save preserves editable values and never reports success', async () => {
     globalThis.fetch = jest.fn(async (_url, options) => options.method === 'PUT' ? response({ error: 'native_generation_configuration_invalid' }, false) : response(config));
     const view = mount(); await flush();

@@ -1,4 +1,5 @@
 import { assertIllustrationDraft } from './illustration-plugin-contract.js';
+import { renderNovelaiIllustration } from './novelai-illustration.js';
 // Presentation data only: an illustration never changes committed narrative.
 export const ILLUSTRATION_NAMESPACE = 'atri_illustrations';
 export const emptyIllustrations = () => ({ schemaVersion: 1, annotations: [], images: [] });
@@ -44,7 +45,7 @@ function parameters(value) {
         if (++nodes > 1024 || depth > 8) throw new TypeError('Illustration parameters exceed budget');
         if (item === null || typeof item === 'boolean') return item;
         if (typeof item === 'number' && Number.isFinite(item)) return item;
-        if (typeof item === 'string') return text(item, 4096);
+        if (typeof item === 'string') return text(item);
         if (Array.isArray(item)) return item.map(child => visit(child, depth + 1));
         if (!item || Object.prototype.toString.call(item) !== '[object Object]') throw new TypeError('Invalid illustration parameters');
         const out = {};
@@ -61,10 +62,32 @@ function parameters(value) {
     return visit(value, 0);
 }
 export function assertIllustrationImage(value) {
-    record(value, ['imageVersionId', 'annotationId', 'assetId', 'width', 'height', 'alt', 'prompt', 'negativePrompt', 'parameters', 'createdAt']);
+    record(value, ['imageVersionId', 'annotationId', 'assetId', 'width', 'height', 'alt', 'prompt', 'negativePrompt', 'parameters', 'requestSnapshot', 'createdAt']);
     return { imageVersionId: id(value.imageVersionId, 'imgv'), annotationId: id(value.annotationId, 'ann'), assetId: id(value.assetId, 'asset'),
         width: integer(value.width, 1, 32768), height: integer(value.height, 1, 32768), alt: text(value.alt, 2048),
-        prompt: text(value.prompt), negativePrompt: text(value.negativePrompt), parameters: parameters(value.parameters), createdAt: integer(value.createdAt) };
+        prompt: text(value.prompt), negativePrompt: text(value.negativePrompt), parameters: parameters(value.parameters),
+        ...(value.requestSnapshot === undefined ? {} : { requestSnapshot: assertImageRequestSnapshot(value.requestSnapshot, value) }), createdAt: integer(value.createdAt) };
+}
+
+function assertImageRequestSnapshot(value, image) {
+    const snapshot = requestEvidence(value);
+    record(snapshot, ['schemaVersion', 'requestId', 'source', 'connection', 'capabilities', 'promptMode', 'request', 'draft']);
+    record(snapshot.source, ['kind', 'sessionId', 'branchId', 'revisionId', 'annotationId']);
+    record(snapshot.connection, ['connectionProfileId', 'displayName', 'providerAdapter', 'fingerprint']);
+    record(snapshot.request, ['action', 'input', 'model', 'parameters']);
+    if (snapshot.schemaVersion !== 1 || snapshot.requestId !== image.imageVersionId || snapshot.source.kind !== 'session'
+        || snapshot.source.annotationId !== image.annotationId || snapshot.request.action !== 'generate'
+        || !['characters', 'direct'].includes(snapshot.promptMode)) throw new TypeError('Invalid image request snapshot');
+    id(snapshot.source.sessionId, 'ses'); id(snapshot.source.branchId, 'br'); id(snapshot.source.revisionId, 'rev');
+    id(snapshot.connection.connectionProfileId, 'conn'); assertIllustrationHead(snapshot.connection.fingerprint);
+    text(snapshot.connection.displayName, 256); text(snapshot.connection.providerAdapter, 128);
+    text(snapshot.request.input); text(snapshot.request.model, 128);
+    const draft = assertIllustrationDraft(snapshot.draft);
+    const rendered = renderNovelaiIllustration(draft, snapshot.capabilities, snapshot.request.parameters.seed);
+    if (draft.prompt !== image.prompt || draft.preset.negativePrompt !== image.negativePrompt
+        || rendered.promptMode !== snapshot.promptMode || JSON.stringify(rendered.body) !== JSON.stringify(snapshot.request)
+        || JSON.stringify(parameters(snapshot.request.parameters)) !== JSON.stringify(parameters(image.parameters))) throw new TypeError('Image request evidence mismatch');
+    return snapshot;
 }
 export function assertIllustrationState(value) {
     record(value, ['schemaVersion', 'annotations', 'images']);
@@ -84,6 +107,7 @@ export function assertIllustrationState(value) {
     const byImage = new Map(images.map(item => [item.imageVersionId, item]));
     if (byAnnotation.size !== annotations.length || byImage.size !== images.length) throw new TypeError('Duplicate illustration identity');
     for (const image of images) if (!byAnnotation.has(image.annotationId)) throw new TypeError('Missing illustration annotation');
+    for (const image of images) if (image.requestSnapshot && image.requestSnapshot.source.revisionId !== byAnnotation.get(image.annotationId).anchor.revisionId) throw new TypeError('Image source mismatch');
     for (const item of annotations) {
         if (item.selectedImageVersionId && byImage.get(item.selectedImageVersionId)?.annotationId !== item.annotationId) throw new TypeError('Illustration image belongs to another annotation');
         if (item.deletedAt !== undefined && item.selectedImageVersionId !== null) throw new TypeError('Deleted annotation cannot display an image');

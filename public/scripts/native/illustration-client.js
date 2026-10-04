@@ -36,19 +36,23 @@ export function createIllustrationExtensionApi({ runtime, document: doc, generat
     };
     return Object.freeze({
         settings: illustrationSettingsClient,
+        configuration: () => generationRequest('/configuration'),
         snapshot: () => structuredClone({ revisionId: runtime.snapshot?.revision?.revisionId, state: runtime.snapshot?.illustrations ?? emptyIllustrations(), head: runtime.snapshot?.session?.illustrationHead ?? null }),
         toolbarInset: scope => illustrationToolbarInset(doc, scope),
         selection: scope => readIllustrationSelection(doc, scope),
         selectionMode: (scope, enabled) => setIllustrationSelectionMode(doc, scope, enabled),
         subscribe: onIllustrationSurfacesChanged,
-        async prompt(scope, action, input, signal) {
+        async prompt(scope, action, input, signal, step = 'prompts') {
             if (signal?.aborted || runtime.snapshot?.session.sessionId !== scope.sessionId
                 || runtime.snapshot.revision.branchId !== scope.branchId || runtime.history) throw new Error('atri_extension_disposed');
             if (action === 'start' || action === 'cancel') runtime.assertWritable();
             let result;
-            if (action === 'start') result = await generationRequest('/illustration-prompts', { method: 'POST', body: { sessionId: scope.sessionId, branchId: scope.branchId, annotationId: input.annotationId }, signal });
-            else if (action === 'list') result = await generationRequest('/illustration-prompts?sessionId=' + encodeURIComponent(scope.sessionId) + '&branchId=' + encodeURIComponent(scope.branchId), { signal });
-            else if (action === 'status' || action === 'cancel') result = await generationRequest((action === 'status' ? '/illustration-prompts/' : '/operations/') + encodeURIComponent(input.operationId), { method: action === 'cancel' ? 'DELETE' : 'GET', signal });
+            if (!['prompts', 'images'].includes(step)) throw new TypeError('Unknown illustration step');
+            const path = '/illustration-' + step;
+            if (action === 'start') result = await generationRequest(path, { method: 'POST', body: { sessionId: scope.sessionId, branchId: scope.branchId, annotationId: input.annotationId,
+                ...(step === 'images' ? { expectedHead: input.expectedHead } : {}) }, signal });
+            else if (action === 'list') result = await generationRequest(path + '?sessionId=' + encodeURIComponent(scope.sessionId) + '&branchId=' + encodeURIComponent(scope.branchId), { signal });
+            else if (action === 'status' || action === 'cancel') result = await generationRequest((action === 'status' ? path + '/' : '/operations/') + encodeURIComponent(input.operationId), { method: action === 'cancel' ? 'DELETE' : 'GET', signal });
             else throw new TypeError('Unknown illustration prompt action');
             if (action === 'status') {
                 if (result.operation.anchor.sessionId !== scope.sessionId || result.operation.anchor.branchId !== scope.branchId) throw new Error('atri_illustration_operation_mismatch');
@@ -70,6 +74,7 @@ export function createIllustrationExtensionApi({ runtime, document: doc, generat
             }
             return result;
         },
+        image(scope, action, input, signal) { return this.prompt(scope, action, input, signal, 'images'); },
         command(scope, command, input, signal) {
             const captured = structuredClone(input);
             const result = queue.catch(() => {}).then(() => execute(scope, command, captured, signal));

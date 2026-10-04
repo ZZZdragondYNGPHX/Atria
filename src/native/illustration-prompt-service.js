@@ -80,14 +80,14 @@ export class IllustrationPromptService {
     }
     async status(handle, input) {
         const operation = this.scheduler.project(handle, input.operationId);
-        if (!operation.anchor.annotationId) fail('native_illustration_operation_invalid');
+        if (!operation.anchor.annotationId || operation.anchor.illustrationStep === 'image') fail('native_illustration_operation_invalid');
         const presentation = await this.host.sessionCore._sessions.getIllustrations(handle, operation.anchor.sessionId, { branchId: operation.anchor.branchId });
         return { operation, ...(completed.has(operation.status) ? presentation : {}) };
     }
     list(handle, { sessionId, branchId }) {
         assertNativeId(sessionId, 'session'); assertNativeId(branchId, 'branch');
         return [...this.scheduler.operations.values()].filter(entry => entry.owner === handle
-            && entry.view.anchor.sessionId === sessionId && entry.view.anchor.branchId === branchId && entry.view.anchor.annotationId)
+            && entry.view.anchor.sessionId === sessionId && entry.view.anchor.branchId === branchId && entry.view.anchor.annotationId && entry.view.anchor.illustrationStep !== 'image')
             .map(entry => this.scheduler.project(handle, entry.view.operationId));
     }
 }

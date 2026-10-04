@@ -44,7 +44,7 @@ async function fixture() {
     const host = createExtensionRuntime({ document, illustrationApi: api, importModule: async () => ({ activate }) });
     await host.reconcile([plugin], context);
     cleanup = async () => { await host.dispose(); releaseIllustrationSurface(prose); };
-    return { runtime, host, prose, context, settings, entry, generationRequest };
+    return { runtime, host, prose, context, settings, entry, generationRequest, api };
 }
 function selectProse(prose) {
     const range = document.createRange(); range.setStart(prose.querySelector('strong').firstChild, 0); range.setEnd(prose.querySelectorAll('p')[1].firstChild, 3);
@@ -197,4 +197,58 @@ test('terminal prompt refresh waits for queued edits and rejects another branch 
     const api = createIllustrationExtensionApi({ runtime: f.runtime, document, generationRequest: async () => other });
     await expect(api.prompt(scope, 'status', { operationId: 'wrong' })).rejects.toThrow('mismatch');
     expect(f.runtime.request).not.toHaveBeenCalled();
+});
+
+test('image click saves confirmed edits without LLM, keeps independent status/cancel/history and reconnects after UI disposal', async () => {
+    const f = await fixture(); button('正文模式').click(); await flush(); selectProse(f.prose);
+    button('为选文建立标注').click(); await flush(); await flush();
+    const annotation = f.runtime.snapshot.illustrations.annotations[0];
+    const operation = { operationId: 'image-task', status: 'running', anchor: { sessionId: f.context.sessionId, branchId: f.context.branchId, annotationId: annotation.annotationId, illustrationStep: 'image' } };
+    let complete = false;
+    f.generationRequest.mockImplementation(async (path, options = {}) => {
+        if (path === '/illustration-images') return { operationId: operation.operationId };
+        if (path.startsWith('/illustration-prompts?')) return [];
+        if (path.startsWith('/illustration-images?')) return [operation];
+        if (options.method === 'DELETE') return { cancelled: true };
+        return { operation: { ...operation, status: complete ? 'completed' : 'running' }, ...(complete ? { state: f.runtime.snapshot.illustrations, head: 'a'.repeat(64) } : {}) };
+    });
+    input('图片提示词（可直接填写）').value = 'direct confirmed input'; input('图片提示词（可直接填写）').dispatchEvent(new Event('input', { bubbles: true }));
+    expect(button('生成图片').disabled).toBe(false);
+    button('生成图片').click(); await flush(); await flush();
+    const submitted = f.generationRequest.mock.calls.find(([path]) => path === '/illustration-images');
+    expect(submitted[1].body).toMatchObject({ annotationId: annotation.annotationId, expectedHead: expect.any(String) });
+    expect(f.runtime.snapshot.illustrations.annotations[0].draft.prompt).toBe('direct confirmed input');
+    expect(button('图片生成中').disabled).toBe(true); expect(button('生成提示词').disabled).toBe(false);
+    expect(f.generationRequest.mock.calls.some(([path, options]) => path === '/illustration-prompts' && options.method === 'POST')).toBe(false);
+    button('取消图片任务').click(); await flush();
+    expect(f.generationRequest.mock.calls.find(([, options]) => options?.method === 'DELETE')[0]).toBe('/operations/image-task');
+    input('图片提示词（可直接填写）').value = 'unsaved later edit'; input('图片提示词（可直接填写）').dispatchEvent(new Event('input', { bubbles: true }));
+    const image = { imageVersionId: createNativeId('imageVersion'), annotationId: annotation.annotationId, assetId: createNativeId('asset'), width: 832, height: 1216,
+        alt: annotation.anchor.quote, prompt: 'direct confirmed input', negativePrompt: '', parameters: { seed: 42 }, createdAt: 1 };
+    f.runtime.snapshot.illustrations.images.push(image); annotation.selectedImageVersionId = image.imageVersionId;
+    complete = true; await new Promise(resolve => setTimeout(resolve, 820)); await flush();
+    expect(input('图片提示词（可直接填写）').value).toBe('unsaved later edit');
+    expect(document.querySelector('.atri-illustration-history img').alt).toBe(annotation.anchor.quote);
+    expect(document.querySelector('.atri-illustration-history pre').textContent).toContain('42');
+    expect(button('生成图片').disabled).toBe(false);
+    complete = false; button('生成图片').click(); await flush(); await flush();
+    const cancelsBefore = f.generationRequest.mock.calls.filter(([, options]) => options?.method === 'DELETE').length;
+    await f.host.dispose();
+    expect(f.generationRequest.mock.calls.filter(([, options]) => options?.method === 'DELETE')).toHaveLength(cancelsBefore);
+    expect(submitted[1].signal.aborted).toBe(true);
+    const reconnected = createExtensionRuntime({ document, illustrationApi: f.api, importModule: async () => ({ activate }) });
+    const previousCleanup = cleanup; cleanup = async () => { await reconnected.dispose(); await previousCleanup(); };
+    await reconnected.reconcile([plugin], f.context);
+    button('标注与历史').click(); await flush(); await flush();
+    expect(button('图片生成中').disabled).toBe(true); expect(button('取消图片任务')).toBeTruthy();
+});
+
+test('image SDK refuses terminal state from another branch and disposed UI writes', async () => {
+    const f = await fixture(), scope = f.context;
+    const original = f.runtime.snapshot.illustrations;
+    const api = createIllustrationExtensionApi({ runtime: f.runtime, document, generationRequest: async () => ({ operation: { anchor: { ...scope, branchId: 'other' }, status: 'completed' }, state: emptyIllustrations() }) });
+    await expect(api.image(scope, 'status', { operationId: 'wrong' })).rejects.toThrow('mismatch');
+    expect(f.runtime.snapshot.illustrations).toBe(original);
+    const controller = new AbortController(); controller.abort();
+    await expect(api.image(scope, 'start', { annotationId: 'a' }, controller.signal)).rejects.toThrow('disposed');
 });

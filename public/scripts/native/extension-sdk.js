@@ -51,6 +51,7 @@ export function createExtensionSdk({ plugin, context, document: doc, root, isCur
     const illustrations = illustrationApi && Object.freeze({
         snapshot: () => { assertCurrent(); return illustrationApi.snapshot(); },
         settings: Object.freeze({ read: illustrationCall(illustrationApi.settings.read), save: illustrationCall(illustrationApi.settings.save) }),
+        configuration: illustrationCall(() => illustrationApi.configuration()),
         toolbarInset: () => { assertCurrent(); return illustrationApi.toolbarInset?.(context) ?? 16; },
         selection: () => { assertCurrent(); return illustrationApi.selection(context); },
         setSelectionMode(enabled) { assertCurrent(); illustrationApi.selectionMode({ ...context, selectionOwner: plugin.id }, Boolean(enabled)); },
@@ -62,6 +63,10 @@ export function createExtensionSdk({ plugin, context, document: doc, root, isCur
         prompt: illustrationCall((action, input = {}) => {
             if (!context.sessionId || context.historical) throw new Error('atri_extension_session_readonly');
             return illustrationApi.prompt(context, action, input, controller.signal);
+        }),
+        image: illustrationCall((action, input = {}) => {
+            if (!context.sessionId || context.historical) throw new Error('atri_extension_session_readonly');
+            return illustrationApi.image(context, action, input, controller.signal);
         }),
     });
     if (illustrationApi) own(() => illustrationApi.selectionMode({ ...context, selectionOwner: plugin.id }, false));
