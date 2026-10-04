@@ -2,7 +2,7 @@
 
 - Task ID: refactor/original-occult-western-fantasy-open-roleplay
 - Primary Workspace: package
-- Status: Active; Phase 3 complete, Phase 4 pending
+- Status: Complete; Phase 0–5 finished; Core/main and game/package integrated; 3.0.0 retained
 - Plan: plans/package/original-occult-western-fantasy-open-roleplay/index.md
 - Implementation branch: refactor/original-occult-western-fantasy-open-roleplay
 
@@ -278,6 +278,77 @@ UI harness 暂停自动后台派发以专注交互，P3 自动派发证据保持
 
 下一步用户明确继续时仅 Phase 5：核对精确待集成 refs 与工作树，按 staging/verification 完成实际影响所需本地兼容和最终组合验证，再集成 Core main / game package、创建新版本输出并按治理交付。沿用唯一 Record/HANDOFF，完成整体任务后再移除 live HANDOFF/短期分支。P4 更新同一文档并推送后停止。
 
+## Phase 5 集成、版本化与收尾
+
+- Date: 2026-10-04
+- Start docs HEAD: c9110001e10cd2bba0ac8a93d081f98b74260830
+- Start game task HEAD: 25b39d57eb206b4c6b09d4642d0c458c8d9e5784
+- Start stable package / main: 48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e / c8d2d0e0c11c283ade2fa3c730740a0dc480c746
+- New release tooling / clean build and runtime/UI tested HEAD: 324488f575fa9c946d30e2e73b618a0e8ccff973
+- Release retention / integrated, tested and pushed package HEAD: b7eaa4fcc8f5480f075d75c3c71576cf176c077f
+- Integrated, tested and pushed Core main HEAD: 1661af11245c856363bfc1084275c02b55a97452
+- Status: Complete; both task branches removed; live HANDOFF removed
+
+### 实施与集成
+
+按唯一 HANDOFF → index → staging/verification 读取对应记录/实际接口和完整治理，核对五个远端 refs、独立工作树及真实祖先。原 main/package 均未前移。保留 Core AGENTS.md 与 docs 四份治理/模板 dirty，前后 binary diff 逐字节相同；未提交、暂存或清除它们。无子 Agent、第二 Record/HANDOFF 或新游戏分支。
+
+P5 无新 Core 源码变更。先执行相关本地兼容检查，再在独立 Core 工作树把原辅助分支快进集成 main，HEAD 与 P4 tested Core 相同，无合并内容变化。游戏默认 compiler 解除阶段性 build/release-only 阻挡，新增 `roleplay-release-check.mjs`；发布检查验证 saved archive 每个源文件/资产及 manifest 与现源码一致，3.0.0 独立身份、资源 origin、required capability、固定预算、Native v3 图及只读公共 domain、权限拒绝/真实安装重开/Ready/确定性开始、安全视图和损坏拒绝。新增互斥 release/UI 检查模式校验，保持 `wx` 排他构建。
+
+在 clean 324488f57 编译 HEAD 生成候选文件，先对同一实际文件完成发行/内容/浏览器检查，再排他复制到 `releases/3.0.0.atria`，记录安装方式、所需 main HEAD 和限制。随后将原游戏任务快进集成 package；b7eaa4fcc 仅新增发布留存及说明，相比 324488f57 无编译载荷变化。集成后再以实际保留文件执行 focused release-only，验证最终组合与源码对应。没有把 main merge 到 package/docs，也没有把游戏分支合 main。
+
+main/package 已通过一次 atomic push 发布，随后远端精确 HEAD 与本地一致。两个远端短期分支已删除，本地游戏分支在 package 删除、Core 分支在 main 工作树删除。未触及其它活跃工作树/分支，未启动、等待或依赖远端 CI。永久记录/Plan 状态与证据更新后移除 live HANDOFF。
+
+### 发行身份
+
+- Artifact: `original-occult-western-fantasy-game/releases/3.0.0.atria`
+- Bytes: 152692
+- SHA-256: `98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24`
+- PackageVersion: `pkgv_d5f1d44b7a9f4edc7266bf4d547a3112`；同游戏 packageId，不复用历史版本身份。
+- Requires: Core main 1661af11245c856363bfc1084275c02b55a97452 或提供同 required 能力和固定 Host 服务的兼容后继。
+
+1.0.0/2.0.0 发布及原 HTML/TXT 的 SHA-256 均保持 P0/P3/P4 原值。当前 manifest/runtime 历史输入、旧 frontend 和旧发布未覆盖。新版本以新局开始，不声明旧保存迁移。
+
+### 实际最小本地检查
+
+Core 用既有 Node v22.23.3 / SQLite 原生 ABI；Package 用 Node v24.21.0，浏览器沿用 Playwright Chromium 141 headless 和既有 Core QuickJS worker。Core 运行：
+
+```bash
+PATH=/home/henry/.local/lib/atria-phase2-node/node-v22.23.3-linux-x64/bin:$PATH \
+  ATRIA_DISABLE_MYSQL_TESTS=1 ATRIA_DISABLE_POSTGRES_TESTS=1 \
+  npm --prefix tests run test:unit:serial -- --runTestsByPath \
+  native/run-contract-p2.test.js native/generation-budget-p2.test.js native/contracts.test.js
+```
+
+三套件 **56/56** 通过，12.808 s；[core-contract-budget.log](original-occult-western-fantasy-open-roleplay/p5-evidence/core-contract-budget.log)。覆盖 opt-in 声明/旧容器契约与实际后台队列重试、跨 HEAD/重开/普通恢复不退款、stale/preflight 零发送、单次提案及跨窗口 period cap，FS/SQLite 各自实测。主线为快进至相同 tested HEAD，集成后的 Package 内容/发行/UI 通过实际 Core main 模块验证。P2/P4 其它已完成存储/清理契约证据继续按其原范围保留，没有再跑全 23 套件。
+
+游戏从目标目录运行以下命令（本轮候选文件名与原始报告保持实际值）：
+
+```bash
+node tools/package.mjs build --core /home/henry/Projects/Atria-core --out build/3.0.0-p5.atria
+node tools/package.mjs validate --core /home/henry/Projects/Atria-core --archive build/3.0.0-p5.atria --release-only
+node tools/package.mjs validate --core /home/henry/Projects/Atria-core --archive build/3.0.0-p5.atria
+node tools/package.mjs validate --core /home/henry/Projects/Atria-core --archive build/3.0.0-p5.atria --roleplay-ui-only
+node tools/package.mjs validate --core /home/henry/Projects/Atria-core --legacy --release-only --archive releases/2.0.0.atria
+node tools/package.mjs validate --core /home/henry/Projects/Atria-core --v1-campaign --retained-v1 --release-only --archive releases/1.0.0.atria
+# after game/package integration
+node tools/package.mjs validate --core /home/henry/Projects/Atria-core --archive releases/3.0.0.atria --release-only
+```
+
+[release.json](original-occult-western-fantasy-open-roleplay/p5-evidence/release.json) 与 [integrated-release.json](original-occult-western-fantasy-open-roleplay/p5-evidence/integrated-release.json) 证明同一实际发行 hash 在编译 HEAD 和最终 clean package HEAD 通过。19 事务/17 玩家原语/2 jobs，静态最大 23 commands/23 effects、发送声明 2/2/4 与后台 2/4/20/10 不变。[v1.json](original-occult-western-fantasy-open-roleplay/p5-evidence/v1.json) / [v2.json](original-occult-western-fantasy-open-roleplay/p5-evidence/v2.json) 为旧发行安装/Ready/安全视图/损坏拒绝的最小兼容证据；不是重跑旧 campaign/century。
+
+[runtime.json](original-occult-western-fantasy-open-roleplay/p5-evidence/runtime.json) 九组通过，实际回环合成 HTTP 请求 **180** 次；最大前台 prepared work 11 reads/7 commands/8 effects。包括两起点、零发送单 CAS 幂等开始、两机构完整路线和代价/成长/违约、自由文字多意图只裁定一次、失败不提交与同回执恢复、Task 收件箱/模板推广/八槽与三类交互/真实 Save import、预算失败与 stale/普通读档不退款、真实 Host 自动后台派发、个人 Claim/反噬/死亡/具名追查/拘捕与监督补救、普通死亡恢复和铁人 current resume/清理。随机风险由固定新 run identity 决定，本轮发送数与 P3 不同，不修改原报告。
+
+[ui.json](original-occult-western-fantasy-open-roleplay/p5-evidence/ui.json) 九组通过，实际合成 HTTP 请求 **49** 次，page errors 为空，最终 Native diagnostics 断言为空。两问答起点/丢响应恢复、草稿建议/焦点、真实自然语言工作和 Host 保存恢复、实际 Narrator HTTP 失败与保草稿、390/1440 及相关补充视口/横屏/200% Native 字号/44px/reduced motion、长阅读窗口稳定、经历收束、Claim 展示与普通死亡恢复、铁人保存限制和清理后终局均通过。十五张本轮成功截图与报告同目录，包含 [390 故事](original-occult-western-fantasy-open-roleplay/p5-evidence/story-390.png)、[抽屉](original-occult-western-fantasy-open-roleplay/p5-evidence/drawer-390.png)、[普通终局](original-occult-western-fantasy-open-roleplay/p5-evidence/ordinary-terminal.png)、[铁人终局](original-occult-western-fantasy-open-roleplay/p5-evidence/ironman-terminal.png)。只归档报告列出的成功截图，未混入旧构建目录遗留失败截图。
+
+原始 runtime/UI 仍携其既有 P3/P4 harness 标签；本轮是对最终文件的 P5 执行，不改写标签/HEAD/dirty，也不为元数据重复未变化的全闭环。两报告在 clean 编译 HEAD / 相同 Core HEAD 启动；后续留存说明不改变已测 payload。[output-protection.json](original-occult-western-fantasy-open-roleplay/p5-evidence/output-protection.json) 证明同路径重复 build 的 EEXIST 拒绝且 hash 不变、冲突 release/UI flags 拒绝。新增工具 Node 语法、实际编译/运行、目标自有 diff/cached 空白、当前相关文档链接和最终 refs 检查通过。
+
+### 验收边界
+
+本轮发布验收针对确定性规则、容器与真实 Native/存储/Host/provider 路径。P5 未改变玩法或模型提示，因此没有以未执行的生产模型质量检查作为通过项；自然语言选择/叙述质量仍需实际配置模型后评估。无生产 Secret/真实用户保存被读取或用于测试。内容检查的 resolver/narrator/world proposal 是回环合成响应，发送数不是生产推理质量证据。
+
+UI 控制后台派发，实际自动派发证据来自独立内容检查；Claim/死亡的 UI 前置走真实 typed authority，长阅读样本走 native Timeline append，继续不称全点击或生产模型创作。Core FS 单服务进程边界、单 Claim/八总动态身份/有限 scalar、旧墓碑无 origin 的受限兼容都不扩展。本轮未执行 MySQL/PostgreSQL、旧长期 soak、Android/真实软键盘/屏幕阅读器、超大单条消息、跨宿主防作弊或旧档迁移；这些不冒充发布已测项。旧阶段原始证据完整保留。
+
 ## 最终状态
 
-整体任务仍 Active。Phase 0/1/2/3/4 完成，下一阶段为 Phase 5；Core/main 与 game/package 最终集成、新 3.0.0 发布尚未执行。原任务/Core 辅助分支及唯一 live HANDOFF 保留，旧发布/参考和无关 dirty 保留。只做本地最小相关验证，推送核对 refs 仅为发布确认。
+Phase 0–5 全部完成。Open Lives 3.0.0 已作为新资产保留并推送到长期 package，所需 Core 已集成并推送 main；最终精确 HEAD 与发行 hash 如上。唯一永久 Record 和 Plan 完成状态已更新，live HANDOFF 与两个任务短期分支清理。Core/docs 原有无关 dirty 逐字节保持；其它任务/工作树不变。只执行本地最小相关验证，远端 refs 核对仅为发布确认。

@@ -82,3 +82,10 @@ A/B/C 已在 `refactor/open-roleplay-core` 实施，精确 tested HEAD 见唯一
 实际 Native 问卷、单列故事、草稿建议、右缘资料/保存抽屉、普通/铁人终局显示完成，默认 compiler 已替换 neutral shell。真实接入中的两个必要 Host 读口缺口在原 Core 辅助分支修复：有界 recent-message read 与清理后受限终局图重开。精确游戏/Core HEAD、本地浏览器九组检查与相关 Core 三套件/64 项证据见唯一 Record/HANDOFF；前期记录保留。旧发布/参考未改，无新 `.atria`。
 
 下一次用户明确继续时仅执行 P5：先读 HANDOFF → index → staging/verification，按实际风险补对应接口与前端模块。核对待集成 refs 与 protected dirty，在独立 Core 工作树完成必要兼容检查和辅助分支集成；游戏任务资产按治理集成 package，验证精确最终组合后创建全新版本输出，保留旧版本。只做本地最小相关验证，不启动/等待远端 CI，不把 main merge 到 package/docs。尚未执行这些集成、生产模型或发行检查；P4 到此停止。
+
+
+## Phase 5 完成
+
+Core 辅助分支已快进集成 main；游戏任务分支已快进集成 package，新 3.0.0 发布保留在游戏 releases，旧两个版本和参考字节不变。最终 saved archive 的九组内容闭环、九组真实 Native UI、本地 Core 契约/预算和新旧发行安装检查已通过。发布工具新增新 profile 的 release-only，保留排他构建及历史选择。精确 HEAD、命令、原始报告、发送数和未测边界见唯一 Record Phase 5。
+
+两个短期任务分支及 live HANDOFF 已清理；整体完成，不存在下一正式阶段。只做本地最小相关验证和推送后 refs 确认，未执行远端 CI、生产模型、设备或旧长期 soak。

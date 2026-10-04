@@ -200,3 +200,8 @@ Core 辅助分支更新至 `1661af11245c856363bfc1084275c02b55a97452`，继续�
 Package 问卷调用 begin，输入调用 Host composer，资料读取已提交派生输出，保存使用固定 Host save/saves/restore；失效/未知结果保草稿，轮询只有读取且不会重放动作。问答重试保留同 invocation/fingerprint/idempotency/revision/epoch，已提交开始丢响应可通过读取确认。普通终局提供明确旧保存恢复；铁人终局保持不可续玩/回退。
 
 Core 最小风险验证为 run-policy-p2 + frontend-bridge 的 57 项（FS/SQLite，含终局重开、scope/schema/revision/owner/写入和 restore 拒绝），以及 frontend-conversation 的 7 项（有界最新/向前/空窗口与非法参数）。实际 UI 验证另用隔离 FS、编译 Native/QuickJS/Host 与回环合成 provider；没有以浏览器展示覆盖全部模型路线或 P2 全部恢复风险。精确命令、HEAD 与限制见唯一 Record Phase 4。
+
+
+## Phase 5 集成与发行
+
+上述 Core A/B/C 及 P4 读口已以 `1661af11245c856363bfc1084275c02b55a97452` 快进集成 main；前节各阶段的 pending 描述保留当时历史事实。游戏 3.0.0 以同一版本身份正式保留在 package 的 `original-occult-western-fantasy-game/releases/3.0.0.atria`。最终默认 compiler 的 build/release-only 入口已启用，旧历史选择、能力 gate 和保存语义不变；精确发布/测试 HEAD 与证据见唯一 Record Phase 5。整体完成后不再依赖 live HANDOFF 或辅助分支。

@@ -1,0 +1,81 @@
+
+> test:unit:serial
+> node --max-old-space-size=8192 --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.json --runInBand --forceExit --runTestsByPath native/run-contract-p2.test.js native/generation-budget-p2.test.js native/contracts.test.js
+
+(node:152367) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS native/generation-budget-p2.test.js (10.995 s)
+  P2 actual background send budget - FsEngine
+    ✓ queued batch retries spend two sends; reopen and ordinary restore do not refund (1251 ms)
+    ✓ pending attempts survive unrelated HEAD publication; forged Task invocations cannot create another batch (918 ms)
+    ✓ not-due window and stale inputs stop before send; previews/preflight spend no quota (532 ms)
+    ✓ two attempts may produce one bounded proposal; no extra foreground turn or repeated Task publication (775 ms)
+    ✓ separate four-turn windows share the period cap; restoring a save cannot recreate the old allowance (1570 ms)
+  P2 actual background send budget - SqliteEngine
+    ✓ queued batch retries spend two sends; reopen and ordinary restore do not refund (1149 ms)
+    ✓ pending attempts survive unrelated HEAD publication; forged Task invocations cannot create another batch (965 ms)
+    ✓ not-due window and stale inputs stop before send; previews/preflight spend no quota (606 ms)
+    ✓ two attempts may produce one bounded proposal; no extra foreground turn or repeated Task publication (798 ms)
+    ✓ separate four-turn windows share the period cap; restoring a save cannot recreate the old allowance (1708 ms)
+
+PASS native/run-contract-p2.test.js
+  ✓ opt-in story-start requires its explicit versioned capability (76 ms)
+  ✓ opt-in run-policy requires its explicit versioned capability (42 ms)
+  ✓ opt-in generation-budget requires its explicit versioned capability (39 ms)
+  ✓ closed declarations reject unsafe or incoherent run contracts (37 ms)
+  ✓ closed declarations reject unsafe or incoherent run contracts (35 ms)
+  ✓ closed declarations reject unsafe or incoherent run contracts (35 ms)
+  ✓ closed declarations reject unsafe or incoherent run contracts (35 ms)
+  ✓ closed declarations reject unsafe or incoherent run contracts (37 ms)
+  ✓ closed declarations reject unsafe or incoherent run contracts (40 ms)
+  ✓ closed declarations reject unsafe or incoherent run contracts (39 ms)
+  ✓ closed declarations reject unsafe or incoherent run contracts (37 ms)
+  ✓ closed declarations reject unsafe or incoherent run contracts (36 ms)
+  ✓ start/death declarations link to fixed deterministic authority transactions (34 ms)
+  ✓ start/death declarations link to fixed deterministic authority transactions (32 ms)
+  ✓ start/death declarations link to fixed deterministic authority transactions (34 ms)
+  ✓ start/death declarations link to fixed deterministic authority transactions (33 ms)
+  ✓ start/death declarations link to fixed deterministic authority transactions (32 ms)
+  ✓ start/death declarations link to fixed deterministic authority transactions (34 ms)
+  ✓ continuation ledger rejects invented lanes, negative counts and unbounded payloads (33 ms)
+
+PASS native/contracts.test.js
+  ✓ P0 Package Data uses exact existing AssetRefs and strict package-owned declarations (6 ms)
+  ✓ Package Regex normalizes ID-less native rules and rejects duplicate IDs (2 ms)
+  N0 opaque Native identity
+    ✓ defines every frozen Native ID family
+    ✓ creates opaque IDs from UUID entropy and preserves family parsing (1 ms)
+    ✓ rejects human/file/index identity Alice (1 ms)
+    ✓ rejects human/file/index identity Alice.png
+    ✓ rejects human/file/index identity characters/Alice.png
+    ✓ rejects human/file/index identity 0
+    ✓ rejects human/file/index identity chat_12.jsonl
+    ✓ rejects human/file/index identity floor:42 (1 ms)
+  N0 AtriaPackage v2 logical contract
+    ✓ accepts a current package and freezes capability/permission vocabularies
+    ✓ supports zero actors and multiple actors without changing the top-level product type (1 ms)
+    ✓ does not accept Character/Card/Chat authority fields
+    ✓ rejects unresolved Actor identity and undeclared capabilities (1 ms)
+    ✓ renaming presentation data never changes Native identity
+  N0 Session, Timeline, Revision and SavePoint contracts
+    ✓ uses stable message/variant IDs while sequence is ordering only (1 ms)
+    ✓ requires SessionRevision state to use Atria-owned namespaces and opaque heads (1 ms)
+    ✓ Studio Project identity is projectId/packageId, never characterId (4 ms)
+  N0 .atriasave v1 logical contract
+    ✓ validates a coherent snapshot closure (1 ms)
+    ✓ supports full-session scope without pretending Session equals SavePoint
+    ✓ snapshot scope requires a SavePoint pointer (1 ms)
+    ✓ requires exact PackageVersion dependency, not display-name matching
+    ✓ rejects a revision whose state head is absent from the exported closure (1 ms)
+    ✓ rejects raw chat-file authority at the portable artifact boundary
+  N0 Native Store schema v1
+    ✓ reserves first-class Native resource families rather than named_docs (2 ms)
+    ✓ keys Sessions by opaque sessionId and rejects charDir/file/index aliases
+    ✓ keys Session State by session + atri namespace + immutable state head
+
+Test Suites: 3 passed, 3 total
+Tests:       56 passed, 56 total
+Snapshots:   0 total
+Time:        12.808 s, estimated 13 s
+Ran all test suites within paths "native/run-contract-p2.test.js", "native/generation-budget-p2.test.js", "native/contracts.test.js".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

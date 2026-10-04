@@ -1,0 +1,58 @@
+{
+  "packageHead": "324488f575fa9c946d30e2e73b618a0e8ccff973",
+  "packageDirty": false,
+  "coreHead": "1661af11245c856363bfc1084275c02b55a97452",
+  "phase": "Phase 8 release",
+  "mode": "validate",
+  "version": "2.0.0",
+  "packageVersionId": "pkgv_108cdf069a9cab5d69899024f46c9863",
+  "archiveSha256": "e4d0f3521e6a6e9fd0f3a4220b08a7e8fd5388c7f80ec56fe2671f28de0d2efe",
+  "archiveBytes": 237739,
+  "compiledSourceBytes": 799769,
+  "budgets": {
+    "transactions": 64,
+    "publicationReads": 9,
+    "publicationCommands": 15,
+    "maximumStaticCommands": 24,
+    "evidenceSchema": 248,
+    "summarySchema": 232,
+    "graphSchema": 169,
+    "maximumFormula": 2000
+  },
+  "data": {
+    "resources": 41,
+    "assets": 240,
+    "bytes": 490327,
+    "largestResourceBytes": 78485,
+    "counts": {
+      "canon_fragment": 12,
+      "canon_index": 1,
+      "institutional_case_pattern": 10,
+      "signature_case": 8,
+      "actor_a": 12,
+      "actor_b": 30,
+      "anomaly": 8,
+      "artifact_template": 10,
+      "claim_archetype": 32,
+      "claim_primitive": 8,
+      "claim_seed": 16,
+      "tradition": 4,
+      "district": 6,
+      "location": 30,
+      "historical_event": 1,
+      "institution": 10,
+      "public_knowledge": 6,
+      "matter_hook": 10,
+      "civic_office": 4,
+      "origin": 7,
+      "prior_life": 8,
+      "faith": 7
+    }
+  },
+  "checks": [
+    "Exact saved archive manifest/compiled files/assets match source build",
+    "Permission gate, real FS install/reopen, Ready and all safe Views",
+    "Unchanged static/schema/formula/expanded-work policies; v2 unbounded calendar horizon",
+    "Immutable model-resource origins and archive corruption refusal"
+  ]
+}

@@ -75,3 +75,12 @@ ESLint 对全部 23 个变更 JavaScript 文件无错误/警告，git diff --che
 Core 只运行直接相关 run-policy-p2/frontend-bridge 两套件 57 项，以及新增 recent read 对应 frontend-conversation 7 项；FS/SQLite 使用既有 Node22 原生依赖，不启动 MySQL/PostgreSQL。修改 Core JS/test 的 ESLint、Package Node 语法/实际编译、diff 空白和原档 hash 验证通过。没有重跑 P2 全部套件或 P3 全闭环/旧 soak。
 
 浏览器负向 provider 使用实际 HTTP 失败；后期 Claim/死亡前置由真实 typed Native authority 设置，长阅读样本由真实 appendTimeline 追加，不声称全点击或生产模型创造内容。UI harness 控制后台派发，P3 自动派发证据保持独立。手机视口/缩小布局不是 Android 软键盘或辅助技术；极大单条消息、真实屏幕阅读器、生产模型、其它数据库和最终发布尚未验证。P5 按最终集成的实际影响决定最小验证，不自动追加无关检查或远端 CI。
+
+
+## Phase 5 最终文件与集成证据
+
+使用精确 Core main 与新 profile 编译 HEAD，先生成候选文件，对同一文件执行 release-only、内容九组及实际 Native UI 九组检查，全部通过后以排他复制保留 3.0.0。内容检查包含真实自动后台派发、模板推广、预算失败/恢复和普通/铁人终局；UI 包含真实 Host composer/保存/恢复及终局展示。Core 最小兼容检查为 run-contract-p2、generation-budget-p2、contracts 三套件 56 项（FS/SQLite）。旧 1.0.0/2.0.0 仅重跑发布安装检查并核对原哈希，不重跑旧长期链。
+
+Core/game 分别快进集成 main/package 后，对保留文件再次执行 focused release-only，验证最终 clean Package HEAD、payload 对应、权限/安装/Ready/开始及安全视图。输出覆盖拒绝和冲突检查模式也有本地断言。原始内容/UI 报告保留既有 P3/P4 harness 标签和实际 HEAD，不为阶段名称或 clean 元数据改写或重跑。
+
+永久原始证据与十五张本轮成功截图在唯一 Record 的 p5-evidence；实际发送数为内容 180、UI 49。规则/容器/预算/持久化和 Native 交互有本地证明；生产模型的自由语言选择/叙事质量、Android/真实软键盘/辅助技术、其它数据库及旧档迁移仍未测。P5 没有修改模型提示或玩法，沿用既有证据边界，没有把生产模型质量当通过项。精确发行 HEAD、SHA-256 和限制以 Record Phase 5 为准。

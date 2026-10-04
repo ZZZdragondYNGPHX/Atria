@@ -1,0 +1,58 @@
+{
+  "packageHead": "b7eaa4fcc8f5480f075d75c3c71576cf176c077f",
+  "packageDirty": false,
+  "coreHead": "1661af11245c856363bfc1084275c02b55a97452",
+  "phase": 5,
+  "profile": "open-roleplay-release",
+  "mode": "validate",
+  "version": "3.0.0",
+  "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+  "archiveSha256": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24",
+  "archiveBytes": 152692,
+  "compiledSourceBytes": 269595,
+  "budgets": {
+    "transactions": 19,
+    "playerPrimitives": 17,
+    "simulationJobs": 2,
+    "maximumStaticCommands": 23,
+    "maximumStaticEffects": 23
+  },
+  "data": {
+    "resources": 41,
+    "assets": 240,
+    "bytes": 490327,
+    "largestResourceBytes": 78485,
+    "counts": {
+      "canon_fragment": 12,
+      "canon_index": 1,
+      "institutional_case_pattern": 10,
+      "signature_case": 8,
+      "actor_a": 12,
+      "actor_b": 30,
+      "anomaly": 8,
+      "artifact_template": 10,
+      "claim_archetype": 32,
+      "claim_primitive": 8,
+      "claim_seed": 16,
+      "tradition": 4,
+      "district": 6,
+      "location": 30,
+      "historical_event": 1,
+      "institution": 10,
+      "public_knowledge": 6,
+      "matter_hook": 10,
+      "civic_office": 4,
+      "origin": 7,
+      "prior_life": 8,
+      "faith": 7
+    }
+  },
+  "checks": [
+    "Exact archive manifest, compiled Native files and Data assets match source",
+    "Independent v3 identity, immutable origins and required Core capabilities",
+    "Fixed static work and actual-send budget declarations",
+    "Native v3 bridge exposes only two public projections and fixed Host services",
+    "Permission refusal, real FS install/reopen, Ready and deterministic begin",
+    "Disclosure-safe Views and corrupted archive refusal"
+  ]
+}

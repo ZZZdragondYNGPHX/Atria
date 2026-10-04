@@ -5,8 +5,8 @@
 - Implementation branch: `refactor/original-occult-western-fantasy-open-roleplay`
 - Base: `package@48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e`
 - Core baseline: `main@c8d2d0e0c11c283ade2fa3c730740a0dc480c746`
-- Status: Phase 4 Native frontend complete; Phase 5 pending; Core integration pending
-- 当前阶段：Phase 4 真实 Native 前端完成并停止；下一阶段仅执行 Phase 5 集成与版本化交付，使用 HANDOFF 的明确 tested Core / Package。
+- Status: Complete; Phase 0–5 finished; Core integrated into main; Open Lives 3.0.0 retained on package
+- 当前阶段：整体完成。最终 Core / Package HEAD、发布哈希、实际本地验证与未测边界见唯一 Record Phase 5；live HANDOFF 与两个任务短期分支已清理。
 - 日期：2026-10-04。
 
 ## 目标与问题
@@ -48,7 +48,7 @@ Primary Workspace 为 package，因为目标是这个游戏。用户明确要求
 | 4 | 按用户参考重构真实 Native 前端 | index、frontend、player-experience、已定运行接口；verification 的 UI 部分 |
 | 5 | 集成、模式与风险验证、版本化交付 | index、staging、verification，必要的对应领域模块 |
 
-每次先读 live HANDOFF → 本 index → 当前阶段模块 → 同一 Record 的相关章节。不要全量扫描其它 Plans、Records、skills 或 reference 分支。
+任务续接时先读 live HANDOFF → 本 index → 当前阶段模块 → 同一 Record 的相关章节；本任务完成后以唯一 Record 为历史入口。不要全量扫描其它 Plans、Records、skills 或 reference 分支。
 
 ## 设计状态与本轮边界
 
@@ -56,6 +56,6 @@ Primary Workspace 为 package，因为目标是这个游戏。用户明确要求
 
 Phase 1已定位实际authority resolver/准备与提交、动态提案反应、保存闭包和Native桥接；确定Core A无模型开始、B持久续接/发送预算、C铁人模式与死亡清理。Package拥有问答、生活原语、超凡路径、8槽动态内容及有限世界策略。具体设计权威见对应模块，不复制到index。
 
-默认 Open Lives 3.0.0 保持 19 个事务/17 个玩家原语、2 个模拟 job；P4 替换 neutral shell 编译路径为真实 Native 页面。为支持有界最近消息和清理后的铁人终局展示，在原 Core 辅助分支补固定只读服务及终局受限 epoch，当前 Core 为 `1661af11245c856363bfc1084275c02b55a97452`，main 未集成。实际接口以 runtime-contracts Phase 2/3/4 和游戏 `runtime/ROLEPLAY.md` 为准；精确实施 HEAD、本地浏览器/局部 Core 证据及限制见同一 Record / HANDOFF。当前停在 Phase 4，生产模型与新发布/最终集成待 P5。
+默认 Open Lives 3.0.0 保持 19 个事务/17 个玩家原语、2 个模拟 job；P4 替换 neutral shell 编译路径为真实 Native 页面。为支持有界最近消息和清理后的铁人终局展示，在原 Core 辅助分支补固定只读服务及终局受限 epoch，Core 已以相同 HEAD `1661af11245c856363bfc1084275c02b55a97452` 快进集成 main。实际接口以 runtime-contracts Phase 2/3/4 和游戏 `runtime/ROLEPLAY.md` 为准；精确实施 HEAD、本地浏览器/局部 Core 证据及限制见同一 Record / HANDOFF。Phase 5 已完成最终文件的内容/Native UI/发布安装校验，3.0.0 已保留在 package；生产模型叙述质量仍未测。
 
 用户 2026-10-04 最新 AGENTS.md 指令替代此前提供的 AGENTS.md 指令：每阶段及任务完成时，只在本地执行最小相关验证。详见同一 Record Phase 2 / HANDOFF；远端 refs 核对只属于发布确认，不启动/等待/依赖远端 CI。

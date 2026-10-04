@@ -1,0 +1,7 @@
+{
+  "archiveSha256": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24",
+  "checks": [
+    "Existing build output refuses overwrite without byte changes",
+    "Conflicting release/UI validation flags refuse execution"
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "packageHead": "324488f575fa9c946d30e2e73b618a0e8ccff973",
+  "packageDirty": false,
+  "coreHead": "1661af11245c856363bfc1084275c02b55a97452",
+  "profile": "open-roleplay",
+  "phase": "P3",
+  "checks": [
+    "zero-send atomic/idempotent starts; authored fragments/resources/solo relationship",
+    "real work and canonical time",
+    "both institutional witness/Price/grant/use/growth/maintenance/breach/expiry/episode loops",
+    "closed inputs; unknown/empty/unreachable targets; pure expression; one-action natural-language resolver; failed narrator rollback/retry",
+    "invalid/contradictory starts remain pending; changed pre-confirmation choice commits; post-confirmation mode is frozen",
+    "actual bounded Task→private inbox→same-CAS template promotion; invalid batch/kind-template consumed; eight never-reused identities; generated person/place/job interaction; save-container import",
+    "hot 4/warm 8/cold 24-and-recontact; one pending; actual two-send background limit; stale cancellation; ordinary restore does not refund",
+    "actual Host automatic post-turn dispatch: one foreground CAS then one bounded background CAS",
+    "bounded personal Claim research/practice; actual rebound/death; source-backed report→verification→summons→repeat-supported detention→supervised remedy; ordinary recovery; ironman rollback refusal/current resume/terminal cleanup"
+  ],
+  "content": {
+    "resources": 41,
+    "assets": 240,
+    "bytes": 490327,
+    "largestResourceBytes": 78485,
+    "counts": {
+      "canon_fragment": 12,
+      "canon_index": 1,
+      "institutional_case_pattern": 10,
+      "signature_case": 8,
+      "actor_a": 12,
+      "actor_b": 30,
+      "anomaly": 8,
+      "artifact_template": 10,
+      "claim_archetype": 32,
+      "claim_primitive": 8,
+      "claim_seed": 16,
+      "tradition": 4,
+      "district": 6,
+      "location": 30,
+      "historical_event": 1,
+      "institution": 10,
+      "public_knowledge": 6,
+      "matter_hook": 10,
+      "civic_office": 4,
+      "origin": 7,
+      "prior_life": 8,
+      "faith": 7
+    }
+  },
+  "compiled": {
+    "transactions": 19,
+    "playerPrimitives": 17,
+    "simulationJobs": 2,
+    "maximumStaticCommands": 23,
+    "maximumStaticEffects": 23
+  },
+  "requests": 180,
+  "maximumForegroundPreparedWork": {
+    "readGrants": 11,
+    "appCommands": 7,
+    "effects": 8
+  }
+}
