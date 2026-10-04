@@ -39,9 +39,14 @@ export async function readRunControl(tx, handle, sessionId) {
             // Foreground restores publish a new branch/revision, never the old anchor.
             delete control.resumeSourceRevisionId;
         }
-        control = { ...control, mode: run.mode, status: run.status === 'dead' && run.mode === 'ironman' ? 'terminal' : run.status,
+        control = {
+            ...control,
+            origin: { packageId: session.packageId, packageVersionId: session.packageVersionId,
+                entryPointId: session.entryPointId, packageContentHash: session.packageContentHash },
+            mode: run.mode, status: run.status === 'dead' && run.mode === 'ironman' ? 'terminal' : run.status,
             sequence: Math.max(control.sequence ?? 0, run.sequence), headRevisionId: session.headRevisionId,
-            ...(run.status === 'dead' && run.mode === 'ironman' ? { deathRevisionId: session.headRevisionId, cleanup: 'pending' } : {}) };
+            ...(run.status === 'dead' && run.mode === 'ironman' ? { deathRevisionId: session.headRevisionId, cleanup: 'pending' } : {}),
+        };
     }
     if (control && !run && session?.headRevisionId && session.headRevisionId !== control.headRevisionId) {
         control.operations = Object.fromEntries(Object.entries(control.operations).filter(([, op]) => op.lane === 'background')); control.headRevisionId = session.headRevisionId;

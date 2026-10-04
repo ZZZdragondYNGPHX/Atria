@@ -297,6 +297,20 @@ describe.each(CONTRACT_HARNESSES)('P2 run lifecycle - $name', ({ make, name }) =
             expect(death).toMatchObject({ ok: true }); expect(death.revision).not.toBe(started.revision); expect(seen).toHaveLength(1);
             expect((await call('read.snapshot', 'run', death.revision, {})).ok).toBe(false);
             expect(await f.core.runStatus(h.handle, f.base.session.sessionId)).toMatchObject({ status: 'terminal', cleanup: 'complete' });
+            const reopened = await bridge.open({ core: services(h).core }, h.handle, f.base.session.sessionId);
+            const terminalCall = (method, bindingId, extra = {}) => bridge.request({ core: services(h).core }, h.handle,
+                { epoch: reopened.epoch, componentId: 'Main', bindingId, method, revision: reopened.revision, input: {}, ...extra });
+            expect(reopened.revision).toBe(death.revision);
+            expect((await terminalCall('read.snapshot', 'run')).data).toMatchObject({ mode: 'ironman', status: 'terminal', cleanup: 'complete' });
+            expect((await terminalCall('status')).ok).toBe(true);
+            for (const [method, bindingId, extra] of [['read.snapshot', 'run', { componentId: 'Other' }],
+                ['read.snapshot', 'run', { revision: started.revision }], ['read.snapshot', 'run', { input: { forged: true } }],
+                ['action.invoke', 'update', { input: { ...f.selection.input, amount: 2 }, idempotencyKey: 'revive' }],
+                ['action.invoke', 'restore', { input: { saveId: saved.saveId }, idempotencyKey: 'rewind' }]]) {
+                expect((await terminalCall(method, bindingId, extra)).ok).toBe(false);
+            }
+            expect((await bridge.request(svc, 'another-owner', { epoch: reopened.epoch, method: 'status' })).ok).toBe(false);
+            expect(await f.sessionRepo.get(h.handle, f.base.session.sessionId)).toBeNull();
         } finally { bridge.dispose(); }
     });
 

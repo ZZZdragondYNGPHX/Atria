@@ -13,6 +13,10 @@ export async function readFixedHost(core, owner, state, base, binding, input) {
     if (service === 'host.session' && method === 'saves') return (await core.listSavePoints(owner, state.sessionId)).map(projectSave);
     if (service === 'host.conversation' && method === 'retryStatus') return core.inspectReplyRetry(owner, state.sessionId, input);
     if (method === 'messages') return projectConversation(base);
+    if (service === 'host.conversation' && method === 'recent') {
+        const before = Math.min(input.beforeSequence ?? base.timeline.length, base.timeline.length);
+        return projectConversation(base).slice(Math.max(0, before - 32), before);
+    }
     if (method === 'blocks') return projectMessageBlocks(base, binding.target.blockType);
     if (method === 'inspect') return projectConversation(await core.load(owner, state.sessionId, { revisionId: input.revisionId }));
     if (method === 'branches') return base.graph.map(node => ({ branchId: node.branchId, parentBranchId: node.branch?.parentBranchId ?? '', revisionId: node.headRevisionId ?? '', predecessorId: node.branch?.forkPoint?.messageId ?? '' }));

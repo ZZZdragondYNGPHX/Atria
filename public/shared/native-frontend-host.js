@@ -27,6 +27,7 @@ const targets = {
     'host.presentation.setLocale': action(hostObject({ locale: string(64) }), true, localeSchema),
     'host.presentation.announce': action(hostObject({ text: string(4096) }), true),
     'host.conversation.messages': read(MESSAGE_SCHEMA, false, true),
+    'host.conversation.recent': { ...read({ type: 'array', items: MESSAGE_SCHEMA, maxItems: 32 }), inputSchema: hostObject({ beforeSequence: number }, []) },
     'host.conversation.status': read(SESSION_SCHEMA),
     'host.conversation.branches': read(BRANCH_SCHEMA, false, true),
     'host.conversation.alternatives': read(hostObject({ ...MESSAGE_SCHEMA.properties, alternativeBranchId: id }), false, true),
