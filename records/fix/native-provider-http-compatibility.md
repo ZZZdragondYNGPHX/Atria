@@ -101,7 +101,8 @@ Package 的 512 token 预留，和明确选择的 20K wire limit 不一致。已
 最终真实 20K MCP 整回合通过：第一请求 75.3 秒返回并选择合法行动，正文约
 41.1 秒完成，两次均 HTTP 200、stream=true、max_tokens=20,000。已提交 assistant
 正文（104 字符），MCP 390×844 browser 观察并截图通过；没有 pageerror 或 HTTP
-错误。没有用户设备操作、远端 CI 或个人游戏推进。两次请求耗时说明原 60 秒单次
+错误；fixture 导航期间记录了两次 startup/client-timing 请求中止，未将其声称为
+完全无网络事件。没有用户设备操作、远端 CI 或个人游戏推进。两次请求耗时说明原 60 秒单次
 限制会截断此次请求；10 分钟上限并非空配置。
 
 - [最终真实 MCP 验证](native-provider-http-compatibility-evidence/real-mcp.json)

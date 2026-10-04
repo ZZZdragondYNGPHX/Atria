@@ -42,7 +42,8 @@
     "width": 390,
     "height": 844,
     "pageErrors": 0,
-    "httpErrors": 0
+    "httpErrors": 0,
+    "abortedStartupTimingRequests": 2
   },
   "limits": [
     "Desktop Chromium mobile viewport; no physical device",
