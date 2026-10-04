@@ -5,8 +5,8 @@
 - Implementation branch: `refactor/original-occult-western-fantasy-open-roleplay`
 - Base: `package@48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e`
 - Core baseline: `main@c8d2d0e0c11c283ade2fa3c730740a0dc480c746`
-- Status: Approved product direction; staged implementation design pending Phase 1
-- 当前阶段：Phase 0 企划与跨设备交接已完成；下一阶段为 Phase 1 契约核对与实施设计。
+- Status: Phase 1 contract audit and implementation design complete; Phase 2 pending
+- 当前阶段：Phase 1 契约核对与实施设计已完成；下一阶段仅执行 Phase 2 Core最小支持。
 - 日期：2026-10-04。
 
 ## 目标与问题
@@ -52,6 +52,8 @@ Primary Workspace 为 package，因为目标是这个游戏。用户明确要求
 
 ## 设计状态与本轮边界
 
-已冻结产品方向及视觉护栏；具体问答、背景素材、间隔参数、惩罚参数由执行者设计。技术 schema、接口映射和最终页面细节未以本企划冒充已实现，Phase 1 才核对。不能虚构当前 Core 支持自由动作、新机构路线或铁人删档。
+已冻结产品方向及视觉护栏；具体问答、背景素材、间隔参数、惩罚参数由执行者设计。Phase 1已补技术契约与接口设计；最终页面细节留Phase 4，不能把设计冒充已实现。不能虚构当前 Core 支持自由动作、新机构路线或铁人删档。
 
-当前只保存两份参考资产及文档。未替换真实前端，未实现规则，未生成新 .atria，未运行游戏或设备验证。阶段完成后持久化、更新同一 Record 和 HANDOFF并停止。
+Phase 1已定位实际authority resolver/准备与提交、动态提案反应、保存闭包和Native桥接；确定Core A无模型开始、B持久续接/发送预算、C铁人模式与死亡清理。Package拥有问答、生活原语、超凡路径、8槽动态内容及有限世界策略。具体设计权威见对应模块，不复制到index。
+
+实施仍停在参考资产HEAD；未替换真实前端、未写Core/游戏规则、未建立Core辅助分支、未生成新 .atria。Phase 1只有源码与文档验证，未运行游戏或设备验证。更新同一Record/HANDOFF、推送后停止。

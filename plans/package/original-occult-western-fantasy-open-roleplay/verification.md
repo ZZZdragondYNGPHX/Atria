@@ -12,7 +12,15 @@
 
 ## Phase 1 证据
 
-契约与代码定位可追溯，缺口具体，不能凭README或函数名声称sandbox可用。核实各阶段需要的既有验证工具及环境，分析不应自动变成全量实现或soak。未知技术事实明确标注。
+本阶段仅源码契约核对与文档验证，不执行产品实现、发布或真实删档。核对精确main/package/docs/任务refs、package祖先关系与各工作树状态。直接源码证据与反例见runtime-contracts的实际映射表；以原语而非旧resolver函数名认定能力。
+
+必须核对：默认build compiler链与fixture不同；单事务authority resolver；candidate先叙述后原子提交；跨进程pin尚缺；dynamic record表达式与simulation静态目标限制；Task收件箱同次确定性反应；history turns不能直接代替有效轮数；保存闭包含祖先与Reply Retry会回退；SessionRepo.delete范围、FS commit-last与共享转移阻挡；Native Host composer/overlay语义。每个Core缺口要有当前调用路径及后续风险验证门槛。
+
+审阅设计：问答确认无AI、角色/资源/开篇单源；机构及非法路径不依赖固定案件；动态提案只在模板许可内发布；所有静态分支及实际展开工作都计预算；有限轮次与真实发送额度/失败/stale不重置；铁人封住service/repository/HTTP/bridge/import/export/旧branch全部回退口；终局中断先挡续玩再清理，保护其它局。A/B/C和Package/暂缓归属不可混淆。
+
+验证文档内部相对链接、路由模块和引用代码/测试路径存在；新Markdown空白检查；保持唯一Record且Phase 0正文不改写，唯一live HANDOFF更新到Phase 2；只允许本Plan六个修改模块、同Record/HANDOFF的diff，decisions及frontend冻结内容不改。push后核对精确docs HEAD及实施refs未变。
+
+后续测试入口/环境已经按源码定位于implementation-staging。本环境初次核对没有Node，也没有Core/tests node_modules，故Phase 1不声称任何Node/Jest/Package/模型/浏览器检查通过。无需为设计阶段安装整套运行环境；执行Phase 2时准备与其风险测试有关的实际环境。
 
 ## Core与状态风险
 

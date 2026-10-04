@@ -4,13 +4,13 @@
 
 ## Phase 0 企划与换设备交接
 
-产出：完整 Plan Bundle；原样参考 HTML／TXT与来源说明；package派生任务分支；初始 Record；唯一 HANDOFF；相关 refs推送。只做文档与参考资产，不改产品或发布 .atria。本轮执行至此。
+产出：完整 Plan Bundle；原样参考 HTML／TXT与来源说明；package派生任务分支；初始 Record；唯一 HANDOFF；相关 refs推送。只做文档与参考资产，不改产品或发布 .atria。该阶段已完成。
 
 ## Phase 1 契约核对与实施设计
 
 按 index路由核对当前事实，选择最小可玩纵向闭环，给出输入 → 意图 → 权威判定 → 叙述 → 保存的实际映射。逐项标记现有支持、Package即可改、需要Core及暂缓；明确普通／铁人终局、动态内容安全性和AI预算。
 
-产出 runtime-contracts的具体补充、相关模块实质修订、现有检查映射及后续阶段完成定义。只有真实缺口才计划Core变更，避免万能动作引擎或全城市模拟。技术无法按原提案实现时解决普通工程方案；只有涉及冻结产品方向变化才请求用户判断。本阶段不实现产品，完成设计记录后停止。
+已完成的设计产出为runtime-contracts的源码映射和A/B/C缺口、player-experience的五题组合与起点、world-supernatural的机构/非法路径，以及下列检查和完成定义。只有真实缺口才计划Core变更，避免万能动作引擎或全城市模拟。技术无法按原提案实现时解决普通工程方案；只有涉及冻结产品方向变化才请求用户判断。本阶段不实现产品，完成设计记录后停止。
 
 ## Phase 2 Core最小支持
 
@@ -41,3 +41,22 @@
 每阶段尽量形成清楚可审阅的提交。docs记录可引用实现／测试HEAD；实现分支不反向存当前docs提交，避免循环。必要CI按变化面执行，只记录实际发生结果。
 
 新设备恢复不重新开展已完成方向讨论，不重复保存参考，不先运行全部历史soak，不恢复旧Plan中已被本任务替代的默认产品方向。
+
+## Phase 1定案：实施文件与检查路由
+
+路径中的Package相对游戏根，Core相对main根。以下为后续要做的工作/测试，当前未执行，不能据此声称通过。Phase 1只检查源码路径、事实与文档。
+
+| checkpoint | 修改范围与具体产出 | 相关既有验证入口及完成门槛 |
+| --- | --- | --- |
+| Phase 2 A | Core `session-core.js`、`authority-turn.js`、`authority-transaction.js` 的开始准备/提交；固定Native Host catalogue/bridge及实际HTTP服务增加开始动作；声明schema与能力gate | `tests/native/session-core.contract.test.js`、`authority-candidate-c2.test.js`、`authority-turn-c3.test.js`、`frontend-bridge.test.js`、`session-runtime-http.test.js`：0 provider发送、相同开始输入幂等、矛盾/伪造输入拒绝、CAS失败不留半角色、旧Package无声明保持原行为 |
+| Phase 2 B | Core `adapters/generation-host.js`、`authority-turn.js`、`model-prompt-runtime/persistence.js`/发送边界与Session repository既有持久化服务，固定选择与provider attempt ledger；generation-service的retry/fallback共用opt-in限额 | `authority-turn-c3.test.js`、`authority-integration-c4.test.js`、`model-prompt-runtime-persistence.test.js`、`simulation-task.test.js`、`simulation-session.test.js`：进程重开同输入保选择/RNG、旧回执不重复发布、重试/fallback/unknown均扣额、stale/取消后不接旧结果 |
+| Phase 2 C | Core Session/SavePoint repository、`session-core.js`、`save-system.js`/`save-container.js`及容器contract；mode/run根记录、死亡墓碑、head续玩闭包、所有入口的回退与终局限制、固定Host模式状态 | `save-system.test.js`、`session-durability.test.js`、`session-history-p2.test.js`、`frontend-bridge.test.js`、`session-runtime-http.test.js`：普通恢复；铁人直接service/repo/HTTP/bridge回退拒绝；保存/导出/死亡并发；提交/墓碑/清理各中断点恢复；旧容器不得复活；其它局与旧Package不变 |
+| Phase 3 | Package `tools/package.mjs` 新默认角色扮演编译入口及对应build-time compiler、data定义与runtime声明；保留fixture/旧开局显式路径，接Core A/B/C能力与新版本identity | `tools/content-check.mjs`/`content-schema.mjs`区分新内容与历史断言；适配`opening-check.mjs`、`typed-smoke.mjs`、`turn-smoke.mjs`及`package.mjs validate --core <tested-core>`到新profile。两起点、生活原语、两机构完整路径/一个非法路径、真实后果、动态槽稳定、安全投影、有效轮数和预算成立 |
+| Phase 4 | Package `frontend/Inquiry.aui`、CSS/controller/model、`tools/frontend-compile.mjs`按新主流重构（可改名），真实Host接口接入；参考文件保持原样 | 适配`frontend-model-check.mjs`纯展示函数、`frontend-check.mjs`真实Native集成、`frontend-browser-check.mjs`实浏览器。390/1440阅读流与抽屉、按键/焦点/草稿建议、零AI问答、真实保存/终局恢复、长文回读稳定；按影响扩充验证宽度 |
+| Phase 5 | Core/Package精确tested HEAD组合、模式/失败/内容集成及新.atria；版本固化后才集成和清理分支 | 局部契约与实际闭环证据通过后才运行新profile release-check/build；旧.atria排他保护；合并正确工作空间并核对最终refs，结束唯一HANDOFF |
+
+Core测试在main的 `tests/package.json` / Jest配置中运行，例：`npm --prefix tests run test:unit:serial -- --runTestsByPath native/authority-turn-c3.test.js native/save-system.test.js`，根据实施触及面选择列表；需要主产品依赖与tests依赖，不凭文件存在说环境已可执行。Package检查从游戏目录运行，以明确 `--core` 的独立Core工作树加载产品模块；`content-check.mjs`能独立运行，frontend-model/browser-check是导出函数，由集成harness调用，不能把它们当直接CLI执行便声称测过。
+
+现有 `package.mjs validate` 默认进完整旧开局/长期链，并不等价新目标的局部检查；Phase 3须新增明确新profile入口并保留历史选择，避免为新游戏通过而删除旧断言，也避免默认跑所有century/regional soak。浏览器harness现用tests的Playwright及默认msedge频道，需要实际浏览器安装；其selectAction、accept-check、6-step和旧导航断言要随新流程调整。
+
+Phase 2是正式单阶段：A/B/C全部实现并通过对应风险检查，更新同一Record/HANDOFF、提交推送后停止；不提前写游戏/前端。只有实际通过适当兼容验证才按治理集成辅助Core main，记录精确集成HEAD；若保持待集成分支，HANDOFF写清原因和可复现实验HEAD，不伪称main已支持。Phase 3使用明确testedCore，不混用未集成环境。辅助分支不新增Record或HANDOFF。
