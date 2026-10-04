@@ -68,6 +68,16 @@ export function selectNativeRuntimeRoute(routeList, role, routeRef) {
 }
 
 
+function requiredTurnRoles(manifest, entryPoint) {
+    const turn = manifest.runtime?.experienceContract?.taskRuntime?.turn;
+    if (!turn) return [];
+    const roles = turn.narratorTaskId ? [] : ['narrator'];
+    const hasLogic = entryPoint ? (entryPoint.runtime?.game?.logic ?? manifest.runtime?.game?.logic)
+        : manifest.runtime?.game?.logic || manifest.entryPoints?.some(entry => entry.runtime?.game?.logic);
+    if (turn.policy === 'authority-first' && hasLogic) roles.push('intent_resolver');
+    return roles;
+}
+
 function startupTaskVariants(contract) {
     const tasks = contract?.taskRuntime?.tasks ?? [];
     const selected = new Map(tasks.map(task => [task.id, new Set([task.variants[0].id])]));
@@ -317,6 +327,23 @@ export class NativeGenerationHost {
         return { invocationId: input.invocationId, provenance, envelope: { ...draft, outcomes }, ...(authorityTurn ? { authorityProof: authorityTurn.proof } : {}) };
     }
 
+    async preflightTurnRoutes(handle, opened, snapshot) {
+        const checks = [];
+        for (const role of requiredTurnRoles(opened.manifest, snapshot?.entryPoint)) {
+            let error = null;
+            try {
+                await this.execute(handle, { role, requestId: 'preflight:turn:' + role,
+                    ...(snapshot ? { sessionId: snapshot.session.sessionId, revisionId: snapshot.revision.revisionId } : {}),
+                    ...(role === 'intent_resolver' ? { tools: [{ type: 'function', function: {
+                        name: 'atri_route_preflight', parameters: { type: 'object', properties: {} },
+                    } }] } : {}) }, undefined, undefined,
+                { scheduled: true, preflight: true, preflightPackage: opened, preflightSnapshot: snapshot });
+            } catch (cause) { error = cause.code || 'native_task_binding_route_invalid'; }
+            checks.push({ role, requiredCapabilities: role === 'intent_resolver' ? ['generation.tools'] : [], error });
+        }
+        return checks;
+    }
+
     // Read-only, exact installed Package preflight. Never stores player bindings or
     // creates a Session; capability resolution is the same path as lifecycle prepare.
     async preflightTaskBindings(handle, input) {
@@ -327,6 +354,7 @@ export class NativeGenerationHost {
         if (!opened) fail('native_task_binding_package_missing');
         const contract = opened.manifest.runtime?.experienceContract;
         const tasks = contract?.taskRuntime?.tasks ?? [];
+        const turnRoutes = await this.preflightTurnRoutes(handle, opened);
         const selected = startupTaskVariants(contract);
         const routes = tasks.length ? (await this.persistence.listRuntimeRoutes(handle)).filter(route => route.scope === 'player') : [];
         const slots = [];
@@ -356,13 +384,16 @@ export class NativeGenerationHost {
                 error: choice?.compatible ? null : choice?.error || 'native_task_binding_missing' });
         }
         return { packageId: opened.manifest.packageId, packageVersionId: opened.manifest.packageVersionId,
-            ready: slots.every(slot => !slot.error), slots };
+            ready: slots.every(slot => !slot.error) && turnRoutes.every(route => !route.error), slots, turnRoutes };
     }
 
     async prepareLifecycle(handle, input) {
         if (Object.keys(input).some(key => !['sessionId', 'revisionId', 'slotBindings'].includes(key))) fail('native_lifecycle_request_invalid');
         const base = await this.sessionCore.load(handle, input.sessionId);
         if (base.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
+        const turnRoutes = await this.preflightTurnRoutes(handle, { manifest: base.manifest }, base);
+        const blocked = turnRoutes.find(route => route.error);
+        if (blocked) fail(blocked.error);
         const contract = base.manifest.runtime?.experienceContract;
         const tasks = contract?.taskRuntime?.tasks ?? [];
         const selected = startupTaskVariants(contract);
@@ -385,7 +416,7 @@ export class NativeGenerationHost {
         }
         // All checks used one exact authority snapshot. A concurrent Session edit
         // must still fail the barrier, never make stale readiness look current.
-        if (tasks.length && (await this.sessionCore.load(handle, input.sessionId)).revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
+        if ((tasks.length || turnRoutes.length) && (await this.sessionCore.load(handle, input.sessionId)).revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
         return { revisionId: input.revisionId, bindings };
     }
 

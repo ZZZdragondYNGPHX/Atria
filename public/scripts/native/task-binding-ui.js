@@ -6,10 +6,12 @@ import { translateShellText as t, formatShellText as fmt } from '../atria-shell/
 
 const setups = new WeakMap();
 const label = id => id.replace(/[._-]+/g, ' ').replace(/\b[a-z]/g, value => value.toUpperCase());
-export const isTaskBindingFailure = errors => (errors ?? []).some(error => /native_task_binding_missing|generation_capability_(unsupported|unknown)|native_generation_route_missing/.test(error));
+export const isTaskBindingFailure = errors => (errors ?? []).some(error => /native_task_binding_missing|generation_capability_(unsupported|unknown)|native_generation_route_(missing|ambiguous)/.test(error));
 export function taskBindingMessage(code) {
     if (code === 'generation_capability_unsupported') return t('This route does not support the capabilities required by this purpose.');
     if (code === 'generation_capability_unknown') return t('This route has no verified support for the capabilities required by this purpose.');
+    if (code === 'native_generation_route_ambiguous') return t('Several primary routes match this role. Assign distinct roles or link alternatives as fallbacks.');
+    if (code === 'native_generation_route_missing') return t('No route is configured for this role. Create a route with an exact Model, Generation and Prompt.');
     if (code === 'native_task_binding_missing') return t('Choose an available player Runtime Route for this purpose.');
     return t('This route or one of its exact dependencies is unavailable. Configure it in Runtime.');
 }
@@ -19,7 +21,8 @@ export function taskBindingMessage(code) {
 export async function ensureTaskBindings({ document: doc, root, manifest, packageId, packageVersionId,
     host = globalThis.Atria?.shell?.getWorkspaceHost?.(), onReady, isCurrent = () => true, force = false }) {
     setups.get(root)?.abort(); root.replaceChildren();
-    if (!manifest?.runtime?.experienceContract?.taskRuntime?.tasks?.length) return true;
+    const taskRuntime = manifest?.runtime?.experienceContract?.taskRuntime;
+    if (!taskRuntime?.tasks?.length && !taskRuntime?.turn) return true;
     const controller = new AbortController(); setups.set(root, controller);
     const panel = el(doc, 'section', 'atri-library-section', undefined, root); panel.dataset.atriaTaskBindingSetup = 'true';
     const heading = el(doc, 'h3', '', t('Configure model purposes'), panel); heading.tabIndex = -1;
@@ -40,14 +43,22 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
     }
     let save; let report;
     const selected = slot => slot.routes.some(route => route.compatible && draft[slot.id]?.scope === 'player' && route.runtimeRouteId === draft[slot.id]?.runtimeRouteId);
-    function updateSave() { if (save) save.disabled = busy || !report.slots.every(selected); }
+    function updateSave() { if (save) save.disabled = busy || !report.slots.every(selected) || (report.turnRoutes ?? []).some(route => route.error); }
     function draw(next) {
         report = next; content.replaceChildren();
         status.setAttribute('role', 'status');
         const missing = report.slots.filter(slot => slot.error);
+        const missingRoles = (report.turnRoutes ?? []).filter(route => route.error);
         status.textContent = missing.length
             ? fmt('This work needs ${0} model purposes configured before it can start: ${1}.', [missing.length, missing.map(slot => label(slot.id)).join(', ')])
-            : t('Model purposes are ready. You can review your routes before continuing.');
+            : missingRoles.length ? t('Configure the required turn routes before continuing.')
+                : t('Model purposes are ready. You can review your routes before continuing.');
+        for (const route of missingRoles) {
+            const group = el(doc, 'div', 'atri-library-section', undefined, content); group.dataset.atriaTurnRoute = route.role;
+            const roleName = route.role === 'intent_resolver' ? t('Intent resolver') : t('Narrator');
+            el(doc, 'p', 'workspace-hint', roleName + ': ' + taskBindingMessage(route.error), group);
+            if (route.requiredCapabilities.length) el(doc, 'p', 'workspace-hint', fmt('Required capabilities: ${0}', [route.requiredCapabilities.join(', ')]), group);
+        }
         const pickers = new Map();
         for (const slot of report.slots) {
             const group = el(doc, 'div', 'atri-library-section', undefined, content); group.dataset.atriaBindingSlot = slot.id;

@@ -1,4 +1,5 @@
 export const SHELL_TEXT_KEYS = Object.freeze({
+    'Configure the required turn routes before continuing.': 'atria.taskBindings.20',
     'Configure model purposes': 'atria.taskBindings.0',
     'Checking model purposes…': 'atria.taskBindings.1',
     'Choose a Runtime Route…': 'atria.taskBindings.2',

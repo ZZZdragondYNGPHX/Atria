@@ -1,4 +1,5 @@
 {
+    "atria.taskBindings.20": "请先配置此游戏所需的回合路由，再继续。",
     "atria.taskBindings.0": "配置模型用途",
     "atria.taskBindings.1": "正在检查模型用途…",
     "atria.taskBindings.2": "请选择模型路由…",

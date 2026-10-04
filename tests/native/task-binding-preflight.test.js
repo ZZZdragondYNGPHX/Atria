@@ -7,6 +7,8 @@ import { createNativeGenerationRouter } from '../../src/endpoints/native-generat
 import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { services } from './helpers/session-fixture.js';
 import { seedGenerationProfiles } from './helpers/generation-fixture.js';
+import { authorityTurnFixture } from './helpers/authority-turn-fixture.js';
+import { createNativeId } from '../../src/native/identity.js';
 import { taskBindingFixture } from './helpers/task-binding-fixture.js';
 
 let h, f, svc, seeded, host, send;
@@ -83,4 +85,39 @@ test('endpoint authenticates and accepts only read-only exact Package inputs', a
     await request(app).post('/task-bindings/preflight').set('x-user', h.handle).send({ ...input({}), save: true }).expect(400);
     const result = await request(app).post('/task-bindings/preflight').set('x-user', h.handle).send(input({})).expect(200);
     expect(result.body.slots).toHaveLength(2); expect(await svc.sessionRepo.list(h.handle)).toEqual([]);
+});
+
+test('authority-first preflight catches missing resolver even when every authored purpose is configured', async () => {
+    const a = await authorityTurnFixture(h, 'http://127.0.0.1:1/never-send', f => {
+        const fixture = taskBindingFixture();
+        f.contract.taskRuntime = fixture.manifest.runtime.experienceContract.taskRuntime;
+        f.contract.taskRuntime.tasks[0].executionClass = 'turn_blocking';
+        f.contract.taskRuntime.turn = { policy: 'authority-first', stages: [], narratorTaskId: 'narrator' };
+        f.base.manifest.resources = fixture.manifest.resources.map(item => ({ ...item, origin: { scope: 'package',
+            packageId: f.base.manifest.packageId, packageVersionId: f.base.manifest.packageVersionId } }));
+    });
+    a.host.providers['provider.openai-compatible'] = { ...a.host.providers['provider.openai-compatible'], send };
+    await a.seeded.persistence.deleteProfile(h.handle, 'routes', a.seeded.routes[1].runtimeRouteId);
+    // Both purposes deliberately use the sole narrator route, as in the reported setup.
+    const binding = { scope: 'player', runtimeRouteId: a.seeded.routes[0].runtimeRouteId };
+    const query = { packageId: a.base.session.packageId, packageVersionId: a.base.session.packageVersionId,
+        slotBindings: { narrative: binding, structured: binding } };
+    const result = await a.host.preflightTaskBindings(h.handle, query);
+    expect(result.slots.every(slot => !slot.error)).toBe(true);
+    expect(result).toMatchObject({ ready: false, turnRoutes: [{ role: 'intent_resolver', error: 'native_generation_route_missing' }] });
+    const revision = a.base.revision.revisionId;
+    await expect(a.host.prepareLifecycle(h.handle, { sessionId: a.base.session.sessionId, revisionId: revision, slotBindings: query.slotBindings }))
+        .rejects.toMatchObject({ code: 'native_generation_route_missing' });
+    expect((await a.core.load(h.handle, a.base.session.sessionId)).revision.revisionId).toBe(revision);
+    await a.seeded.persistence.saveRuntimeRoute(h.handle, a.seeded.routes[1]);
+    expect(await a.host.preflightTaskBindings(h.handle, query)).toMatchObject({ ready: true, turnRoutes: [{ role: 'intent_resolver', error: null }] });
+    const duplicate = { ...a.seeded.routes[1], runtimeRouteId: createNativeId('runtimeRoute') };
+    await a.seeded.persistence.saveRuntimeRoute(h.handle, duplicate);
+    expect(await a.host.preflightTaskBindings(h.handle, query)).toMatchObject({ ready: false, turnRoutes: [{ error: 'native_generation_route_ambiguous' }] });
+    await a.seeded.persistence.deleteProfile(h.handle, 'routes', duplicate.runtimeRouteId);
+    a.host.providers['provider.openai-compatible'] = { ...a.host.providers['provider.openai-compatible'],
+        resolveCapabilities: async () => [{ capability: 'generation.tools', state: 'unsupported', provenance: [{ kind: 'adapter-metadata', source: 'fixture' }] },
+            { capability: 'generation.structured-output', state: 'supported', provenance: [{ kind: 'adapter-metadata', source: 'fixture' }] }] };
+    expect(await a.host.preflightTaskBindings(h.handle, query)).toMatchObject({ ready: false, turnRoutes: [{ error: 'generation_capability_unsupported' }] });
+    expect(send).not.toHaveBeenCalled();
 });
