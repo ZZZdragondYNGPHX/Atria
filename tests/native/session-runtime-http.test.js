@@ -23,6 +23,22 @@ describe('N4 authenticated immutable runtime HTTP boundary', () => {
 
     afterEach(async () => { await h.cleanup(); });
 
+    test('illustration HTTP operations keep the committed timeline intact and reject foreign source and unknown fields', async () => {
+        const entry = view.timeline.at(-1), sessionId = view.session.sessionId;
+        const body = { sessionId, revisionId: view.revision.revisionId, messageId: entry.messageId, variantId: entry.activeVariantId,
+            start: 0, end: entry.content.length, quote: entry.content, expectedHead: null };
+        const created = await request(app).post('/illustrations/createAnnotation').send(body);
+        expect(created.status).toBe(200);
+        expect((await request(app).post('/illustrations/createAnnotation').send(body)).status).toBe(409);
+        expect((await request(app).post('/illustrations/createAnnotation').send({ ...body, handle: 'another-user' })).status).toBe(400);
+        expect((await request(app).post('/illustrations/createAnnotation').send({ ...body, variantId: createNativeId('variant') })).status).toBe(400);
+        const loaded = await request(app).post('/load').send({ sessionId });
+        expect(loaded.body.revision).toEqual(view.revision); expect(loaded.body.timeline).toEqual(view.timeline);
+        expect((await request(app).post('/illustrations/read').send({ sessionId })).body.head).toBe(created.body.head);
+        const deleted = await request(app).post('/illustrations/deleteAnnotation').send({ sessionId, annotationId: created.body.state.annotations[0].annotationId, expectedHead: created.body.head });
+        expect(deleted.status).toBe(200); expect(deleted.body.state.annotations[0].selectedImageVersionId).toBeNull();
+    });
+
     test('load ignores caller handle, append requires revision CAS, unknown dispatch fails closed', async () => {
         const loaded = await request(app).post('/load').send({
             sessionId: view.session.sessionId,

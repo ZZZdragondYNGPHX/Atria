@@ -2,12 +2,14 @@ import { NATIVE_RESOURCE_KINDS as K, assertBranch, assertSessionRevision, assert
 import { assertNativeId } from './identity.js';
 import { hashNativeDocument } from './repositories/common.js';
 import { NotFoundError } from '../storage/errors.js';
+import { ILLUSTRATION_NAMESPACE, selectIllustrations } from '../../public/shared/native-illustration-contract.js';
+import { readIllustrationState } from './session-illustrations.js';
 
 export const SESSION_CORE_NAMESPACE = 'atri_session_core';
 export const TIMELINE_NAMESPACE = 'atri_timeline';
 export const KNOWLEDGE_NAMESPACE = 'atri_knowledge';
 export const RESERVED_SESSION_NAMESPACES = Object.freeze([
-    SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, 'atri_world_selection', 'atri_action_receipts', 'atri_task_results', 'atri_lifecycle', 'atri_transfers', 'atri_realm_transfers', 'atri_shared', 'atri_run',
+    SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE, ILLUSTRATION_NAMESPACE, 'atri_world_selection', 'atri_action_receipts', 'atri_task_results', 'atri_lifecycle', 'atri_transfers', 'atri_realm_transfers', 'atri_shared', 'atri_run',
 ]);
 
 export async function readCheckedDocument(tx, key) {
@@ -126,5 +128,7 @@ export async function readSessionSnapshot(tx, handle, session, value) {
     if (hashNativeDocument(head) !== hashNativeDocument(revision.timelineHead)) throw new TypeError('Timeline HEAD mismatch');
     const knowledge = states[KNOWLEDGE_NAMESPACE];
     for (const namespace of [SESSION_CORE_NAMESPACE, TIMELINE_NAMESPACE, KNOWLEDGE_NAMESPACE]) delete states[namespace];
-    return { session, revision, graph, timeline: entries, variants, states, knowledge, core };
+    const illustrationHead = revision.branchId === session.activeBranchId ? session.illustrationHead : session.illustrationHeads?.[revision.branchId];
+    const illustrations = illustrationHead ? selectIllustrations(await readIllustrationState(tx, handle, sessionId, illustrationHead), variants) : null;
+    return { session, revision, graph, timeline: entries, variants, states, knowledge, core, ...(illustrations ? { illustrations } : {}) };
 }

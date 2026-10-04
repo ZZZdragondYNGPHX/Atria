@@ -149,6 +149,7 @@ export {
 } from './save-container.js';
 
 export { NativeSaveSystem } from './save-system.js';
+export { IllustrationService } from './illustration-service.js';
 
 export { NativeProductService } from './product-service.js';
 

@@ -89,6 +89,8 @@
 .atria-play-message__header { margin-bottom: 8px; color: var(--atri-text-secondary); font-size: var(--atri-text-footnote); }
 .atria-play-message__header strong { font-weight: 600; }
 .atria-play-message__body { white-space: pre-wrap; font-size: var(--atri-text-reading); line-height: var(--atri-leading-reading); overflow-wrap: anywhere; }
+.atria-narrative-illustration { margin: 16px 0; white-space: normal; }
+.atria-narrative-illustration img { display: block; max-width: 100%; height: auto; border-radius: var(--atri-radius-lg); }
 .atria-play-message[data-role="user"] { background: var(--atri-accent-soft); border-radius: var(--atri-radius-lg); padding: 16px 20px; }
 .atria-play-message[data-role="user"] .atria-play-message__header { color: var(--atri-accent-text); }
 .atria-play-message[data-role="system"] { text-align: center; color: var(--atri-text-secondary); padding-block: 8px; }

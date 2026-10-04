@@ -20,6 +20,7 @@ import {
 } from './session-snapshot.js';
 import { validateKnowledgeBindingSet } from './session-knowledge.js';
 import { hashNativeDocument } from './repositories/common.js';
+import { ILLUSTRATION_NAMESPACE, assertIllustrationState, selectIllustrations } from '../../public/shared/native-illustration-contract.js';
 
 const NON_PORTABLE_STATE_PATTERNS = Object.freeze([
     /^atri_embeddings(?:_|$)/,
@@ -102,7 +103,7 @@ export class NativeSaveSystem {
         return this._core.createSavePoint(handle, sessionId, { ...options, kind: 'manual' });
     }
 
-    async _collectClosure(handle, sessionId, rootRevisionIds, { headOnly = false } = {}) {
+    async _collectClosure(handle, sessionId, rootRevisionIds, { headOnly = false, illustrationHeads = [] } = {}) {
         const revisions = new Map();
         const branches = new Map();
         const entries = new Map();
@@ -112,6 +113,15 @@ export class NativeSaveSystem {
         const assetPayloads = new Map();
         const attachments = new Map();
         const pending = [...new Set(rootRevisionIds)];
+        const presentations = new Map();
+        const presentationHeads = new Map();
+        for (const head of new Set(illustrationHeads.filter(Boolean))) {
+            const data = await this._sessions.getState(handle, sessionId, ILLUSTRATION_NAMESPACE, head);
+            if (!data || hashNativeDocument(data) !== head) throw new NativeDependencyError('native_save_illustration_state_missing', { head });
+            const state = assertIllustrationState(data);
+            presentations.set(head, state);
+            if (!headOnly) for (const item of state.annotations) pending.push(item.anchor.revisionId);
+        }
 
         while (pending.length) {
             const revisionId = pending.pop();
@@ -204,6 +214,20 @@ export class NativeSaveSystem {
             }
         }
 
+        for (const [originalHead, original] of presentations) {
+            const selected = headOnly ? selectIllustrations(original, [...variants.values()]) : original;
+            const data = headOnly ? { ...selected, annotations: selected.annotations.map(item => ({ ...item, anchor: { ...item.anchor, revisionId: rootRevisionIds[0] } })) } : selected;
+            const head = hashNativeDocument(data);
+            presentationHeads.set(originalHead, head);
+            states.set(ILLUSTRATION_NAMESPACE + '\0' + head, { namespace: ILLUSTRATION_NAMESPACE, head, data });
+            const byAnnotation = new Map(data.annotations.map(item => [item.annotationId, item]));
+            for (const image of data.images) {
+                const anchor = byAnnotation.get(image.annotationId).anchor;
+                const attachment = { assetId: image.assetId, messageId: anchor.messageId, variantId: anchor.variantId };
+                attachments.set(attachmentKey(attachment), attachment);
+            }
+        }
+
         for (const attachment of attachments.values()) {
             if (assetRefs.has(attachment.assetId)) continue;
             const asset = await this._assets.read(handle, attachment.assetId);
@@ -230,6 +254,7 @@ export class NativeSaveSystem {
             assetRefs: byIdentity(assetRefs.values(), item => item.assetId),
             attachments: byIdentity(attachments.values(), attachmentKey),
             assetPayloads,
+            presentationHeads,
         };
     }
 
@@ -267,7 +292,9 @@ export class NativeSaveSystem {
         const roots = scope === 'session'
             ? [rootRevisionId, ...savePoints.map(save => save.revisionId)]
             : [rootRevisionId];
-        const closure = await this._collectClosure(handle, sessionId, roots, { headOnly: scope === 'resume' });
+        const presentationHead = scope === 'snapshot' ? rootSave.illustrationHead : current.illustrationHead;
+        const closure = await this._collectClosure(handle, sessionId, roots, { headOnly: scope === 'resume',
+            illustrationHeads: [presentationHead, ...(scope === 'session' ? Object.values(current.illustrationHeads ?? {}) : []), ...savePoints.map(save => save.illustrationHead)] });
         if (scope === 'resume') {
             const revision = closure.revisions[0];
             const record = closure.stateRecords.find(item => item.namespace === SESSION_CORE_NAMESPACE && item.head === revision.stateHeads[SESSION_CORE_NAMESPACE]);
@@ -287,6 +314,13 @@ export class NativeSaveSystem {
                 updatedAt: Math.max(Number(current.createdAt || 0), Number(rootRevision.createdAt || 0)),
             }
             : clone(current);
+
+        if (presentationHead) logicalSession.illustrationHead = closure.presentationHeads.get(presentationHead);
+        else delete logicalSession.illustrationHead;
+        if (scope !== 'session') {
+            if (logicalSession.illustrationHead) logicalSession.illustrationHeads = { [rootRevision.branchId]: logicalSession.illustrationHead };
+            else delete logicalSession.illustrationHeads;
+        }
 
         const save = assertAtriaSave({
             format: ATRIA_SAVE_FORMAT,

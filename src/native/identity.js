@@ -13,6 +13,8 @@ export const NATIVE_ID_FAMILIES = Object.freeze({
     revision: 'rev',
     savePoint: 'save',
     asset: 'asset',
+    annotation: 'ann',
+    imageVersion: 'imgv',
     world: 'world',
     worldRevision: 'worldv',
     knowledgeBase: 'kb',

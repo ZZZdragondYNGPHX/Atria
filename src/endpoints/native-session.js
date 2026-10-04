@@ -4,6 +4,7 @@ import { fields } from '../../public/shared/native-frontend-contract.js';
 import { SharedAuthority } from '../native/shared-authority.js';
 import { inspectExperienceHealth, previewExperienceRepair, applyExperienceRepair } from '../native/experience-health.js';
 import { deliverNativeAsset } from '../native/asset-delivery.js';
+import { IllustrationService } from '../native/illustration-service.js';
 import express from 'express';
 import { createHash } from 'node:crypto';
 import { SessionCore } from '../native/session-core.js';
@@ -103,6 +104,23 @@ export function createNativeSessionRouter(getServices = services) {
     router.post('/run', route(async (req, res, { core }, handle) => {
         res.json(await core.runStatus(handle, req.body.sessionId));
     }));
+    router.post('/illustrations/read', route(async (req, res, { sessionRepo }, handle) => {
+        fields(req.body, ['sessionId']);
+        res.json(await sessionRepo.getIllustrations(handle, req.body.sessionId));
+    }));
+    const illustrationCommands = {
+        createAnnotation: ['revisionId', 'messageId', 'variantId', 'start', 'end', 'quote', 'expectedHead'],
+        deleteAnnotation: ['annotationId', 'expectedHead'],
+        addImageVersion: ['annotationId', 'imageVersionId', 'assetId', 'width', 'height', 'alt', 'prompt', 'negativePrompt', 'parameters', 'expectedHead', 'branchId'],
+        selectImageVersion: ['annotationId', 'imageVersionId', 'expectedHead'],
+    };
+    for (const [command, allowed] of Object.entries(illustrationCommands)) {
+        router.post('/illustrations/' + command, route(async (req, res, { sessionRepo }, handle) => {
+            const { sessionId, ...input } = req.body;
+            fields(input, allowed);
+            res.json(await new IllustrationService({ sessionRepo })[command](handle, sessionId, input));
+        }));
+    }
     router.post('/load', route(async (req, res, { core }, handle) => {
         res.json(await core.load(handle, req.body.sessionId, { revisionId: req.body.revisionId }));
     }));

@@ -2,6 +2,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { RunControl, assertRunAccess, readRunControl, writeRunControl, validRunPublication, runFailure } from '../run-control.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../../public/shared/native-run-contract.js';
 import { normalizeSessionTitle } from '../../../public/scripts/native/session-title-contract.js';
+import { ILLUSTRATION_NAMESPACE, assertIllustrationState } from '../../../public/shared/native-illustration-contract.js';
+import { readIllustrationState, validateIllustrationDependencies } from '../session-illustrations.js';
 import { ContinuityRepo } from './continuity-repo.js';
 import {
     NATIVE_RESOURCE_KINDS,
@@ -22,6 +24,7 @@ import {
     listNativeDocuments,
     putImmutable,
     putMutable,
+    withNativeResourceWrites,
 } from './common.js';
 
 import {
@@ -138,6 +141,49 @@ export class SessionRepo {
             if (title) next.displayTitle = title; else delete next.displayTitle;
             return putMutable(tx, key, assertSession(next), { expectedIntegrity: existing.integrity });
         }));
+    }
+
+    async getIllustrations(handle, sessionId) {
+        return this._engine.withTransaction(handle, async tx => {
+            await assertRunAccess(tx, handle, sessionId, 'inspect');
+            const session = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
+            if (!session) throw new NotFoundError('native session', { sessionId });
+            return { head: session.illustrationHead ?? null, state: await readIllustrationState(tx, handle, sessionId, session.illustrationHead) };
+        });
+    }
+
+    async updateIllustrations(handle, sessionId, update, { expectedHead, branchId } = {}) {
+        assertWritable();
+        return withSessionWrite(handle, sessionId, async () => {
+            const key = this._sessionKey(handle, sessionId);
+            const { existing, targetBranch, state } = await this._engine.withTransaction(handle, async tx => {
+                await assertRunAccess(tx, handle, sessionId, 'write');
+                const existing = await tx.getResource(key);
+                if (!existing) throw new NotFoundError('native session', { sessionId });
+                const targetBranch = branchId ?? existing.doc.activeBranchId;
+                if (!await tx.getResource(this._branchKey(handle, sessionId, targetBranch))) throw new NotFoundError('native branch', { branchId: targetBranch });
+                const revision = await getNativeDocument(tx, this._revisionKey(handle, sessionId, existing.doc.headRevisionId));
+                const core = revision && await getNativeDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, revision.stateHeads[SESSION_CORE_NAMESPACE]));
+                if (!core?.branches.some(item => item.branchId === targetBranch)) throw new NotFoundError('reachable native branch', { branchId: targetBranch });
+                const currentHead = targetBranch === existing.doc.activeBranchId ? existing.doc.illustrationHead : existing.doc.illustrationHeads?.[targetBranch];
+                if (expectedHead !== undefined && (currentHead ?? null) !== expectedHead) throw new ConflictError('native_illustration_head_conflict');
+                const current = await readIllustrationState(tx, handle, sessionId, currentHead);
+                return { existing, targetBranch, state: assertIllustrationState(await update(current)) };
+            });
+            // Acquire asset locks before entering a storage transaction. The
+            // deletion path uses the same order, including on SQLite.
+            return withNativeResourceWrites(handle, state.images.map(item => 'asset:' + item.assetId), () => this._engine.withTransaction(handle, async tx => {
+                await assertRunAccess(tx, handle, sessionId, 'write');
+                await validateIllustrationDependencies(tx, handle, sessionId, state);
+                const head = hashNativeDocument(state);
+                await putImmutable(tx, this._stateKey(handle, sessionId, ILLUSTRATION_NAMESPACE, head), state);
+                await putMutable(tx, key, assertSession({ ...existing.doc,
+                    ...(targetBranch === existing.doc.activeBranchId ? { illustrationHead: head } : {}),
+                    illustrationHeads: { ...existing.doc.illustrationHeads, [targetBranch]: head },
+                    updatedAt: Math.max(Date.now(), existing.doc.updatedAt) }), { expectedIntegrity: existing.integrity });
+                return { head, state };
+            }));
+        });
     }
 
     async getBranch(handle, sessionId, branchId) {
@@ -464,7 +510,7 @@ export class SessionRepo {
     // N3 coherent publication. Every dependency is immutable and checked before
     // publishing the revision manifest; the Session record is the final commit marker.
     async commitSnapshot(handle, { session: sessionValue, revision: revisionValue,
-        branches = [], entries = [], variants = [], states, expectedRevisionId, historyCheckpoint = false, runProof = null, runAction = 'write' }) {
+        branches = [], entries = [], variants = [], states, expectedRevisionId, historyCheckpoint = false, runProof = null, runAction = 'write', illustrationHead = undefined }) {
         assertWritable();
         const session = assertSession(sessionValue);
         const revision = assertSessionRevision(revisionValue);
@@ -516,6 +562,16 @@ export class SessionRepo {
             // not the generation/restore draft captured before a concurrent rename.
             const published = { ...session, updatedAt: Math.max(session.updatedAt, existing?.doc.updatedAt || 0) };
             if (existing) { if (existing.doc.displayTitle == null) delete published.displayTitle; else published.displayTitle = existing.doc.displayTitle; }
+            const branchHeads = { ...existing?.doc.illustrationHeads };
+            if (existing?.doc.illustrationHead) branchHeads[existing.doc.activeBranchId] = existing.doc.illustrationHead;
+            const presentationHead = illustrationHead === undefined
+                ? (session.activeBranchId === existing?.doc.activeBranchId ? existing.doc.illustrationHead : branchHeads[session.activeBranchId] ?? existing?.doc.illustrationHead ?? session.illustrationHead)
+                : illustrationHead;
+            if (presentationHead) published.illustrationHead = presentationHead; else delete published.illustrationHead;
+            if (presentationHead) branchHeads[session.activeBranchId] = presentationHead; else delete branchHeads[session.activeBranchId];
+            const knownBranches = new Set(states[SESSION_CORE_NAMESPACE].branches.map(item => item.branchId));
+            published.illustrationHeads = Object.fromEntries(Object.entries(branchHeads).filter(([id]) => knownBranches.has(id)));
+            if (!Object.keys(published.illustrationHeads).length) delete published.illustrationHeads;
             const snapshot = await readSessionSnapshot(tx, handle, assertSession(published), revision);
             if (historyCheckpoint) {
                 const history = snapshot.states.atri_lifecycle?.history;
@@ -558,7 +614,9 @@ export class SessionRepo {
             throw new TypeError('Imported Session HEAD Revision is missing');
         }
 
-        return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
+        const illustrationAssets = stateRecords.filter(item => item.namespace === ILLUSTRATION_NAMESPACE)
+            .flatMap(item => assertIllustrationState(item.data).images.map(image => 'asset:' + image.assetId));
+        return withSessionWrite(handle, sessionId, () => withNativeResourceWrites(handle, illustrationAssets, () => this._engine.withTransaction(handle, async (tx) => {
             const sessionKey = this._sessionKey(handle, sessionId);
             const control = await assertRunAccess(tx, handle, sessionId, 'import');
             const rootRevision = revisions.find(item => item.revisionId === session.headRevisionId);
@@ -624,6 +682,9 @@ export class SessionRepo {
             for (const revision of revisions) {
                 await readSessionSnapshot(tx, handle, session, revision);
             }
+            for (const head of new Set([session.illustrationHead, ...Object.values(session.illustrationHeads ?? {}), ...savePoints.map(item => item.illustrationHead)].filter(Boolean))) {
+                await validateIllustrationDependencies(tx, handle, sessionId, await readIllustrationState(tx, handle, sessionId, head));
+            }
             const head = revisions.find(item => item.revisionId === session.headRevisionId);
             const snapshot = await readSessionSnapshot(tx, handle, session, head);
 
@@ -631,15 +692,18 @@ export class SessionRepo {
             const imported = await readRunControl(tx, handle, sessionId);
             if (imported) await writeRunControl(tx, handle, sessionId, { ...imported, ...(resume ? { ...resume.control, resumeSourceRevisionId: resume.sourceRevisionId } : {}) });
             return snapshot;
-        }));
+        })));
     }
 
     async _reachableRevisions(tx, handle, sessionId) {
         const session = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
         const pending = session?.headRevisionId ? [session.headRevisionId] : [];
+        const presentationHeads = new Set([session?.illustrationHead, ...Object.values(session?.illustrationHeads ?? {})].filter(Boolean));
         for (const save of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.savePoint, handle, sessionId })) {
             pending.push(save.doc.revisionId);
+            if (save.doc.illustrationHead) presentationHeads.add(save.doc.illustrationHead);
         }
+        for (const head of presentationHeads) for (const item of (await readIllustrationState(tx, handle, sessionId, head)).annotations) pending.push(item.anchor.revisionId);
         const reachable = new Set();
         while (pending.length) {
             const revisionId = pending.pop();

@@ -7,7 +7,9 @@ import { resolveUserDirectory } from '../../constants.js';
 import { NATIVE_RESOURCE_KINDS, assertAssetRef } from '../contracts.js';
 import { ConflictError, NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
-import { getNativeDocument, listNativeDocuments, putImmutable } from './common.js';
+import { getNativeDocument, listNativeDocuments, putImmutable, withNativeResourceWrite } from './common.js';
+import { ILLUSTRATION_NAMESPACE } from '../../../public/shared/native-illustration-contract.js';
+import { readIllustrationState } from '../session-illustrations.js';
 
 function toBuffer(value) {
     if (Buffer.isBuffer(value)) return value;
@@ -21,6 +23,15 @@ function digest(bytes) {
 
 async function resourceSetupAssetReferences(tx, handle, assetId) {
     const references = [];
+    for (const kind of [NATIVE_RESOURCE_KINDS.session, NATIVE_RESOURCE_KINDS.savePoint]) {
+        for (const record of await tx.listResources({ kind, handle })) {
+            for (const head of new Set([record.doc.illustrationHead, ...Object.values(record.doc.illustrationHeads ?? {})].filter(Boolean))) {
+                const state = await readIllustrationState(tx, handle, record.doc.sessionId, head);
+                if (state.images.some(item => item.assetId === assetId)) references.push({ kind: 'session-illustration', sessionId: record.doc.sessionId,
+                    ...(record.doc.saveId ? { saveId: record.doc.saveId } : {}), namespace: ILLUSTRATION_NAMESPACE, head });
+            }
+        }
+    }
     for (const kind of [NATIVE_RESOURCE_KINDS.sessionState, NATIVE_RESOURCE_KINDS.packageState]) {
         for (const record of await tx.listResources({ kind, handle })) {
             const worlds = kind === NATIVE_RESOURCE_KINDS.sessionState
@@ -171,6 +182,10 @@ export class AssetStore {
     }
 
     async deleteRef(handle, assetId) {
+        return withNativeResourceWrite(handle, 'asset:' + assetId, () => this._deleteRef(handle, assetId));
+    }
+
+    async _deleteRef(handle, assetId) {
         assertWritable();
         return this._engine.withTransaction(handle, async (tx) => {
             const references = await resourceSetupAssetReferences(tx, handle, assetId);

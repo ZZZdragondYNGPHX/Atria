@@ -8,6 +8,9 @@ import { assertExperienceDataClosure } from '../../public/shared/native-experien
 import { assertFrontendExperience } from '../../public/shared/native-frontend-contract.js';
 import { validateSkillDeclarations } from '../../public/scripts/native/skill-declarations.js';
 import { assertNativeId } from './identity.js';
+import { assertIllustrationHead, assertIllustrationState, illustrationAnchorMatches, ILLUSTRATION_NAMESPACE } from '../../public/shared/native-illustration-contract.js';
+import { hashNativeDocument } from './repositories/common.js';
+import { illustrationContentHash } from './session-illustrations.js';
 import { assertPackageModelPromptRuntimeMetadata } from './model-prompt-runtime/contracts.js';
 import {
     assertPackageVersionedModelPromptResourceEnvelope,
@@ -339,6 +342,12 @@ export function assertProject(value) {
 
 export function assertSession(value) {
     noLegacyIdentity(value, 'Session');
+    const illustrationHeads = {};
+    if (value.illustrationHeads !== undefined) {
+        plain(value.illustrationHeads, 'Session.illustrationHeads');
+        if (Object.keys(value.illustrationHeads).length > 2048) throw new TypeError('Too many illustration branches');
+        for (const [branchId, head] of Object.entries(value.illustrationHeads)) illustrationHeads[assertNativeId(branchId, 'branch')] = assertIllustrationHead(head);
+    }
     return Object.freeze({
         sessionId: assertNativeId(value.sessionId, 'session', 'Session.sessionId'),
         packageId: assertNativeId(value.packageId, 'package', 'Session.packageId'),
@@ -351,6 +360,8 @@ export function assertSession(value) {
             ? null
             : assertNativeId(value.headRevisionId, 'revision', 'Session.headRevisionId'),
         ...(value.displayTitle == null ? {} : { displayTitle: text(value.displayTitle, 'Session.displayTitle', { maxLength: 256 }) }),
+        ...(value.illustrationHead == null ? {} : { illustrationHead: assertIllustrationHead(value.illustrationHead) }),
+        ...(Object.keys(illustrationHeads).length ? { illustrationHeads } : {}),
         createdAt: timestamp(value.createdAt, 'Session.createdAt'),
         updatedAt: timestamp(value.updatedAt, 'Session.updatedAt'),
     });
@@ -466,6 +477,7 @@ export function assertSavePoint(value) {
         revisionId: assertNativeId(value.revisionId, 'revision', 'SavePoint.revisionId'),
         kind: value.kind,
         ...(value.displayName == null ? {} : { displayName: text(value.displayName, 'SavePoint.displayName', { maxLength: 256 }) }),
+        ...(value.illustrationHead == null ? {} : { illustrationHead: assertIllustrationHead(value.illustrationHead) }),
         createdAt: timestamp(value.createdAt, 'SavePoint.createdAt'),
     });
 }
@@ -871,6 +883,28 @@ export function assertAtriaSave(value) {
             throw new TypeError('SavePoint has an invalid session/branch/revision reference');
         }
     }
+    const presentationHeads = new Set([session.illustrationHead, ...Object.values(session.illustrationHeads ?? {}), ...savePoints.map(item => item.illustrationHead)].filter(Boolean));
+    if (Object.keys(session.illustrationHeads ?? {}).some(branchId => !branchIds.has(branchId))) throw new TypeError('Unknown illustration branch in save');
+    if (session.illustrationHeads?.[session.activeBranchId] && session.illustrationHeads[session.activeBranchId] !== session.illustrationHead) throw new TypeError('Active illustration branch head mismatch');
+    for (const head of presentationHeads) {
+        const record = stateRecords.find(item => item.namespace === ILLUSTRATION_NAMESPACE && item.head === head);
+        if (!record || hashNativeDocument(record.data) !== head) throw new TypeError('Missing or corrupt illustration state');
+        const state = assertIllustrationState(record.data);
+        const annotations = new Map(state.annotations.map(item => [item.annotationId, item]));
+        for (const item of state.annotations) {
+            const { anchor } = item;
+            const variant = variantById.get(anchor.variantId), revision = revisionById.get(anchor.revisionId);
+            const timeline = revision && stateRecords.find(item => item.namespace === 'atri_timeline' && item.head === revision.stateHeads.atri_timeline)?.data;
+            if (variant?.messageId !== anchor.messageId || !illustrationAnchorMatches(anchor, variant.content)
+                || illustrationContentHash(variant.content) !== anchor.contentHash
+                || !timeline?.some(item => item.messageId === anchor.messageId && item.activeVariantId === anchor.variantId)) throw new TypeError('Invalid illustration source in save');
+        }
+        for (const image of state.images) {
+            const ref = assetRefs.find(item => item.assetId === image.assetId), anchor = annotations.get(image.annotationId).anchor;
+            if (!ref || !['image/png', 'image/jpeg', 'image/webp', 'image/avif'].includes(ref.mediaType)
+                || !attachments.some(item => item.assetId === image.assetId && item.messageId === anchor.messageId && item.variantId === anchor.variantId)) throw new TypeError('Missing illustration asset in save');
+        }
+    }
     for (const attachment of attachments) {
         if (!assetIds.has(attachment.assetId)) throw new TypeError('Attachment references an unknown AssetRef');
         if (attachment.messageId && !messageById.has(attachment.messageId)) throw new TypeError('Attachment references an unknown TimelineEntry');
@@ -901,6 +935,7 @@ export function assertAtriaSave(value) {
             || branches[0].parentBranchId || branches[0].forkPoint || core?.parentRevisionId || core?.forkRevisionId
             || core?.branches?.length !== 1 || core.branches[0].headRevisionId !== root.revisionId || core.branches[0].forkRevisionId) throw new TypeError('Invalid ironman head-only resume closure');
         const requiredStates = new Set([...Object.entries(revision.stateHeads).map(([namespace, head]) => namespace + '\0' + head), 'atri_knowledge\0' + revision.knowledgeHead]);
+        if (session.illustrationHead) requiredStates.add(ILLUSTRATION_NAMESPACE + '\0' + session.illustrationHead);
         const timeline = stateRecords.find(item => item.namespace === 'atri_timeline' && item.head === revision.stateHeads.atri_timeline)?.data;
         const selectedMessages = new Set(timeline?.map(item => item.messageId));
         const selectedVariants = new Set(timeline?.flatMap(item => item.variantIds));

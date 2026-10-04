@@ -1,5 +1,6 @@
 // Inert projection of canonical text. Every leaf carries an exact source range;
 // syntax is consumed by this bounded parser, never by an HTML/Markdown engine.
+const sourceMappings = new WeakMap();
 export function safeProseLink(value) {
     if (typeof value !== 'string' || value.length > 2048 || /[\s\u0000-\u001f\u007f]/.test(value)) return null;
     try { const url = new URL(value); return ['https:', 'http:', 'mailto:'].includes(url.protocol) && !url.username && !url.password ? url.href : null; } catch { return null; }
@@ -56,10 +57,17 @@ export function assertSafeProse(ast, content) {
 }
 export function renderSafeProse(root, content, { ast = compileSafeProse(content), openExternal } = {}) {
     const safe = assertSafeProse(ast, content), doc = root.ownerDocument;
+    const leaves = new WeakMap();
     const tags = { paragraph: 'p', listItem: 'li', break: 'br', emphasis: 'em', strong: 'strong', quote: 'blockquote', code: 'code', pre: 'pre', mark: 'mark', link: 'a' };
     function render(item) {
-        if (item.type === 'text') return doc.createTextNode(content.slice(item.start, item.end));
+        if (item.type === 'text') {
+            const leaf = doc.createTextNode(content.slice(item.start, item.end));
+            leaves.set(leaf, { start: item.start, end: item.end });
+            return leaf;
+        }
         const element = doc.createElement(item.type === 'heading' ? 'h' + item.level : item.type === 'list' ? item.ordered ? 'ol' : 'ul' : tags[item.type]);
+        element.dataset.atriaProseStart = String(item.start);
+        element.dataset.atriaProseEnd = String(item.end);
         const target = element;
         if (item.type === 'list' && item.ordered) element.start = item.startNumber;
         if (item.type === 'link') {
@@ -72,4 +80,24 @@ export function renderSafeProse(root, content, { ast = compileSafeProse(content)
         return element;
     }
     root.replaceChildren(...safe.children.map(render));
+    sourceMappings.set(root, { content, leaves });
+}
+
+// Selection is mapped to canonical text, including syntax between selected leaves.
+// Figures and other Host decorations have no canonical mapping.
+export function canonicalProseSelection(root, range) {
+    const mapping = sourceMappings.get(root);
+    if (!mapping || !range || range.collapsed || !root.contains(range.startContainer) || !root.contains(range.endContainer)) return null;
+    const walker = root.ownerDocument.createTreeWalker(root, 4);
+    let leaf, start = null, end = null;
+    while ((leaf = walker.nextNode())) {
+        const source = mapping.leaves.get(leaf);
+        if (!source || !range.intersectsNode(leaf)) continue;
+        const from = range.startContainer === leaf ? range.startOffset : 0;
+        const to = range.endContainer === leaf ? range.endOffset : leaf.length;
+        if (to <= from) continue;
+        start ??= source.start + from;
+        end = source.start + to;
+    }
+    return start === null ? null : { start, end, quote: mapping.content.slice(start, end) };
 }

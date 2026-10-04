@@ -1,6 +1,7 @@
 import { openHostExternal } from './frontend/external.js';
 import { createHeadlessConversation } from './frontend/conversation.js';
 import { renderSafeProse } from '../../shared/native-safe-prose.js';
+import { renderNarrativeIllustrations } from './illustration-renderer.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import {
     NATIVE_SESSION_LIFECYCLE,
@@ -229,6 +230,7 @@ export function mountAtriaPlayProduct({
         // Reconcile projection nodes; streaming must not replace committed prose,
         // disrupt a text selection, or drag a reader away from an earlier turn.
         const entries = headless.messages(), messageBlocks = headless.blocks();
+        const committedEntries = new Map(snapshot.timeline.map(entry => [entry.messageId, entry]));
         const generation = headless.generation();
         const provisional = generation.text || draftText;
         const existing = new Map([...conversation.querySelectorAll('[data-atria-message-id]')]
@@ -240,6 +242,7 @@ export function mountAtriaPlayProduct({
             existing.delete(id);
             const body = node.querySelector('.atria-play-message__body');
             if (body.dataset.canonicalText !== text(entry.content)) { renderSafeProse(body, text(entry.content), { openExternal: openHostExternal }); body.dataset.canonicalText = text(entry.content); }
+            renderNarrativeIllustrations(body, committedEntries.get(entry.messageId), snapshot.illustrations);
             if (!node.querySelector('[data-atria-message-blocks]')) {
                 const blocks = messageBlocks.filter(block => block.messageId === entry.messageId);
                 const blockRoot = documentRef.createElement('section'); blockRoot.dataset.atriaMessageBlocks = 'true';

@@ -4,6 +4,7 @@ import { NATIVE_RESOURCE_KINDS, assertSavePoint } from '../contracts.js';
 import { NotFoundError } from '../../storage/errors.js';
 import { assertWritable } from '../../storage/read-only-mode.js';
 import { getNativeDocument, listNativeDocuments, putImmutable } from './common.js';
+import { readIllustrationState, validateIllustrationDependencies } from '../session-illustrations.js';
 
 export class SavePointRepo {
     constructor({ engine }) {
@@ -60,6 +61,8 @@ export class SavePointRepo {
                     revisionId: savePoint.revisionId,
                 });
             }
+            if (savePoint.illustrationHead) await validateIllustrationDependencies(tx, handle, savePoint.sessionId,
+                await readIllustrationState(tx, handle, savePoint.sessionId, savePoint.illustrationHead));
             const created = await putImmutable(tx, this._key(handle, savePoint.sessionId, savePoint.saveId), savePoint);
             if (control?.mode === 'ironman') {
                 for (const old of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.savePoint, handle, sessionId: savePoint.sessionId })) {

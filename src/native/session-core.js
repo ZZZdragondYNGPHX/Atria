@@ -370,7 +370,7 @@ export class SessionCore {
 
     async _publishLocked(handle, base, { timeline = base.timeline, states = base.states, knowledge = base.knowledge,
         graph = base.graph, branchId = base.revision?.branchId ?? base.session.activeBranchId,
-        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false, authorityPrepared = false, authorityBudget = null, runAction = 'write' } = {}) {
+        entries = [], variants = [], branches = [], actionRequest = null, taskRecord = null, taskResolution = null, lifecycleReceipt = null, pendingIntentId = null, pendingRealmIntentId = null, sharedPublication = false, authorityPrepared = false, authorityBudget = null, runAction = 'write', illustrationHead = undefined } = {}) {
         const control = await this.runs.assert(handle, base.session.sessionId, runAction);
         if (states[RUN_NAMESPACE]) {
             const run = assertRunState(states[RUN_NAMESPACE]);
@@ -458,7 +458,7 @@ export class SessionCore {
         const session = assertSession({ ...base.session, activeBranchId: branchId, headRevisionId: revisionId,
             updatedAt: Math.max(Date.now(), base.session.updatedAt) });
         const snapshot = await this._sessions.commitSnapshot(handle, { session, revision, states: documents,
-            entries, variants, branches, expectedRevisionId: base.session.headRevisionId, historyCheckpoint: Boolean(checkpoint), runProof: runPublicationProof(), runAction });
+            entries, variants, branches, expectedRevisionId: base.session.headRevisionId, historyCheckpoint: Boolean(checkpoint), runProof: runPublicationProof(), runAction, illustrationHead });
         if (branchId !== base.session.activeBranchId) invalidateFrontendEpoch(handle, session.sessionId);
         if (snapshot.states[RUN_NAMESPACE]?.status === 'dead' && snapshot.states[RUN_NAMESPACE].mode === 'ironman') {
             invalidateFrontendEpoch(handle, session.sessionId);
@@ -889,6 +889,10 @@ export class SessionCore {
     }
 
     async createSavePoint(handle, sessionId, { revisionId, expectedRevisionId, kind = 'manual', displayName } = {}) {
+        return this._sessions.withRunLock(handle, sessionId, () => this._createSavePointLocked(handle, sessionId, { revisionId, expectedRevisionId, kind, displayName }));
+    }
+
+    async _createSavePointLocked(handle, sessionId, { revisionId, expectedRevisionId, kind, displayName }) {
         await this.runs.assert(handle, sessionId, 'save', revisionId);
         // Exact revision is immutable; guarded frontend saves never capture a
         // newer HEAD accidentally even if publication races the SavePoint write.
@@ -898,8 +902,11 @@ export class SessionCore {
             revisionId = expectedRevisionId;
         }
         const source = await this.load(handle, sessionId, { revisionId });
+        const illustrationHead = source.revision.branchId === source.session.activeBranchId
+            ? source.session.illustrationHead : source.session.illustrationHeads?.[source.revision.branchId];
         return this._saves.create(handle, { saveId: createNativeId('savePoint'), sessionId,
             branchId: source.revision.branchId, revisionId: source.revision.revisionId, kind, createdAt: Date.now(),
+            ...(illustrationHead ? { illustrationHead } : {}),
             ...(displayName === undefined ? {} : { displayName }) });
     }
 
@@ -911,6 +918,7 @@ export class SessionCore {
         if (
             current.session.headRevisionId === save.revisionId
             && current.session.activeBranchId === save.branchId
+            && (current.session.illustrationHead ?? null) === (save.illustrationHead ?? null)
         ) {
             invalidateFrontendEpoch(handle, sessionId);
             return current;
@@ -938,7 +946,7 @@ export class SessionCore {
             graph: [
                 ...current.graph,
                 { branchId, forkRevisionId: source.revision.revisionId, branch },
-            ], runAction: 'rewind',
+            ], runAction: 'rewind', illustrationHead: save.illustrationHead ?? null,
         });
     }
 }
