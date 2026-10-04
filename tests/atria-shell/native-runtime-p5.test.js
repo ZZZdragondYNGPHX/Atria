@@ -72,6 +72,9 @@ test('NovelAI image connection uses the existing exact Secret store and persists
     const capabilities = view.root.querySelector('[aria-label="第三方图片能力（按服务文档填写 JSON）"]');
     expect(capabilities.parentElement.hidden).toBe(true);
     adapter.value = 'provider.novelai-image-compatible'; adapter.dispatchEvent(new Event('change'));
+    expect(capabilities.value).toBe('');
+    [...view.root.querySelectorAll('button')].find(button => button.textContent === '采用官方协议透传配置').click();
+    expect(JSON.parse(capabilities.value)).toEqual(officialNovelaiCapabilities());
     const endpoint = 'https://gateway.invalid/ai/generate-image';
     view.root.querySelector('[aria-label="Completions endpoint URL"]').value = endpoint;
     const declared = officialNovelaiCapabilities(); declared.models = [declared.models[1]]; declared.responseFormat = 'json';

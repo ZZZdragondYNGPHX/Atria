@@ -220,6 +220,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const imageFields = node('div', undefined, fields);
             notice('官方地址为 https://image.novelai.net/ai/generate-image；第三方填写完整生成地址。仅兼容 NovelAI generate 请求，不自动猜测中转协议。', imageFields);
             const imageCapabilities = field(imageFields, '第三方图片能力（按服务文档填写 JSON）', value.options?.imageCapabilities ? JSON.stringify(value.options.imageCapabilities, null, 2) : '', undefined, true);
+            const officialRelay = button('采用官方协议透传配置', () => { imageCapabilities.value = JSON.stringify(officialNovelaiCapabilities(), null, 2); }, imageFields);
+            notice('中转站直接转发官方 NovelAI 请求时可采用此配置；若中转改写响应或限制模型/参数，请按其说明调整。', imageFields);
             notice('responseFormat: zip / json（images[].image base64）/ png；models 中声明模型 ID、characterPrompts、sm、maxPixels、maxSteps、samplers、noiseSchedules。', imageFields);
             const imageExample = node('details', undefined, imageFields); node('summary', '能力格式示例（不代表你的服务支持）', imageExample);
             node('pre', JSON.stringify({ responseFormat: 'zip', models: [officialNovelaiCapabilities().models[0]] }, null, 2), imageExample);
@@ -235,6 +237,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 compatibility.hidden = adapter.value !== 'provider.openai-compatible';
                 imageFields.hidden = !NOVELAI_IMAGE_ADAPTERS.includes(adapter.value);
                 imageCapabilities.parentElement.hidden = adapter.value !== 'provider.novelai-image-compatible';
+                officialRelay.hidden = adapter.value !== 'provider.novelai-image-compatible';
                 if (adapter.value === 'provider.novelai-image') endpoint.value = NOVELAI_IMAGE_ENDPOINT;
             };
             adapter.addEventListener('change', syncCompatibility); syncCompatibility();
