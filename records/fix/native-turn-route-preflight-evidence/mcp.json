@@ -1,0 +1,157 @@
+{
+  "coreHead": "302edb266c787a8717000e51bbc20f14106ea81a",
+  "pluginHead": "792a87286e881ea62fc31bdc90b8678ccd715f9b",
+  "archiveSha256": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24",
+  "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+  "isolatedData": true,
+  "provider": "Local synthetic HTTP; no paid model",
+  "requests": 0,
+  "checks": [
+    "18 real stdio MCP tools; main source EXACT; mutation/high-risk guards enabled",
+    "Actual 3.0.0 Package rejects narrator-only setup despite complete authored purposes",
+    "Adding the exact role clears readiness with zero provider calls and no Session"
+  ],
+  "routePreflight": {
+    "missing": {
+      "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+      "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+      "ready": false,
+      "slots": [
+        {
+          "id": "narrative",
+          "tasks": [
+            "narrator"
+          ],
+          "requiredCapabilities": [],
+          "routes": [
+            {
+              "runtimeRouteId": "route_48f7f0405344480e8a1b59754ff3ef62",
+              "displayName": "narrator",
+              "compatible": true,
+              "error": null
+            }
+          ],
+          "binding": {
+            "scope": "player",
+            "runtimeRouteId": "route_48f7f0405344480e8a1b59754ff3ef62"
+          },
+          "error": null
+        },
+        {
+          "id": "structured",
+          "tasks": [
+            "world.create"
+          ],
+          "requiredCapabilities": [],
+          "routes": [
+            {
+              "runtimeRouteId": "route_48f7f0405344480e8a1b59754ff3ef62",
+              "displayName": "narrator",
+              "compatible": true,
+              "error": null
+            }
+          ],
+          "binding": {
+            "scope": "player",
+            "runtimeRouteId": "route_48f7f0405344480e8a1b59754ff3ef62"
+          },
+          "error": null
+        }
+      ],
+      "turnRoutes": [
+        {
+          "role": "intent_resolver",
+          "requiredCapabilities": [
+            "generation.tools"
+          ],
+          "error": "native_generation_route_missing"
+        }
+      ]
+    },
+    "ready": {
+      "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+      "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+      "ready": true,
+      "slots": [
+        {
+          "id": "narrative",
+          "tasks": [
+            "narrator"
+          ],
+          "requiredCapabilities": [],
+          "routes": [
+            {
+              "runtimeRouteId": "route_b65c932cf9e647238f1725e41acf5a94",
+              "displayName": "Disposable intent resolver",
+              "compatible": true,
+              "error": null
+            },
+            {
+              "runtimeRouteId": "route_48f7f0405344480e8a1b59754ff3ef62",
+              "displayName": "narrator",
+              "compatible": true,
+              "error": null
+            }
+          ],
+          "binding": {
+            "scope": "player",
+            "runtimeRouteId": "route_48f7f0405344480e8a1b59754ff3ef62"
+          },
+          "error": null
+        },
+        {
+          "id": "structured",
+          "tasks": [
+            "world.create"
+          ],
+          "requiredCapabilities": [],
+          "routes": [
+            {
+              "runtimeRouteId": "route_b65c932cf9e647238f1725e41acf5a94",
+              "displayName": "Disposable intent resolver",
+              "compatible": true,
+              "error": null
+            },
+            {
+              "runtimeRouteId": "route_48f7f0405344480e8a1b59754ff3ef62",
+              "displayName": "narrator",
+              "compatible": true,
+              "error": null
+            }
+          ],
+          "binding": {
+            "scope": "player",
+            "runtimeRouteId": "route_48f7f0405344480e8a1b59754ff3ef62"
+          },
+          "error": null
+        }
+      ],
+      "turnRoutes": [
+        {
+          "role": "intent_resolver",
+          "requiredCapabilities": [
+            "generation.tools"
+          ],
+          "error": null
+        }
+      ]
+    }
+  },
+  "limits": [
+    "MCP installs and reads routes; owning HTTP preflight is read-only",
+    "No Session, browser, real provider or personal configuration touched"
+  ],
+  "mcp": {
+    "runtimeSourceMatch": "EXACT",
+    "actions": [
+      {
+        "action": "package.install.review",
+        "status": "succeeded"
+      },
+      {
+        "action": "package.install",
+        "status": "succeeded"
+      }
+    ]
+  }
+}
