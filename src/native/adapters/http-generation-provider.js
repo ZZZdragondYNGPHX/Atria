@@ -1,6 +1,28 @@
 import { getEncoding } from 'js-tiktoken';
-import { immutable, GenerationError, ProviderFailure } from '../model-prompt-runtime/execution-utils.js';
+import { immutable, GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
+
+function wireTools(tools, mode) {
+    if (mode === 'json-schema') return tools;
+    const rendered = structuredClone(tools);
+    const adapt = schema => {
+        if (!schema || typeof schema !== 'object') return;
+        if (Array.isArray(schema.enum) && schema.enum.some(value => typeof value !== 'string')) {
+            schema.description = [schema.description, 'Allowed values: ' + JSON.stringify(schema.enum) + '.'].filter(Boolean).join(' ');
+            delete schema.enum;
+        }
+        for (const child of Object.values(schema)) {
+            if (Array.isArray(child)) child.forEach(adapt);
+            else if (child && typeof child === 'object') adapt(child);
+        }
+    };
+    for (const tool of rendered) {
+        // Strict schemas promise their full constraints at the provider boundary.
+        if (tool.function.strict) throw new GenerationError('generation_adapter_control_unsupported');
+        adapt(tool.function.parameters);
+    }
+    return rendered;
+}
 
 // Explicit-config transport. No preset, active model, browser settings or secret lookup.
 export function createHttpGenerationProvider({ format = 'openai-compatible', fetchImpl = fetch } = {}) {
@@ -12,7 +34,9 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
         for (const section of messages ? ['providerExtensions'] : ['reasoning', 'cache', 'providerExtensions']) {
             if (Object.keys(generation[section]).length) throw new GenerationError('generation_adapter_control_unsupported');
         }
-        if (Object.keys(connection.networkPolicy).length || Object.keys(connection.options).length
+        const schemaMode = connection.options.toolSchemaMode ?? 'json-schema';
+        if (!['json-schema', 'string-enums'].includes(schemaMode) || (!messages && schemaMode !== 'json-schema')) throw new GenerationError('generation_adapter_control_unsupported');
+        if (Object.keys(connection.networkPolicy).length || Object.keys(connection.options).some(key => key !== 'toolSchemaMode')
             || Object.keys(model.messageFormat).length || Object.keys(model.providerHints).length) throw new GenerationError('generation_adapter_control_unsupported');
         const allowed = { sampling: ['temperature', 'topP'], output: ['maxTokens'], stop: ['sequences'], streaming: ['enabled'], toolChoice: ['value'] };
         if (messages) Object.assign(allowed, { reasoning: ['effort'], cache: ['key', 'retention'] });
@@ -59,7 +83,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
             body.stop = generation.stop.sequences;
         }
         if (promptIr.tools.length) {
-            body.tools = promptIr.tools;
+            body.tools = wireTools(promptIr.tools, schemaMode);
             body.tool_choice = generation.toolChoice.value ?? 'auto';
         } else if (generation.toolChoice.value !== undefined) throw new GenerationError('generation_adapter_prompt_unsupported');
         if (promptIr.outputContract) body.response_format = { type: 'json_schema', json_schema: promptIr.outputContract };
@@ -90,7 +114,7 @@ export function createHttpGenerationProvider({ format = 'openai-compatible', fet
             }
             if (!response.ok) {
                 await response.body?.cancel();
-                throw new ProviderFailure(response.status === 429 || response.status >= 500 ? 'provider' : 'application');
+                throw providerHttpFailure(response.status);
             }
             return response;
         },

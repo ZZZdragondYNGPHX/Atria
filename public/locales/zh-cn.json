@@ -1,4 +1,13 @@
 {
+    "atria.runtime.toolSchema.0": "工具参数兼容模式",
+    "atria.runtime.toolSchema.1": "标准 JSON Schema",
+    "atria.runtime.toolSchema.2": "Gemini 中转：仅字符串枚举",
+    "atria.runtime.toolSchema.3": "若服务拒绝布尔或数字工具枚举，可选择中转兼容模式。游戏仍会验证每次行动的输入。",
+    "atria.runtime.toolSchema.4": "OpenAI 兼容消息协议需要完整的 /v1/chat/completions 地址，请勿使用 /v1/completions。",
+    "atria.runtime.providerHttp.0": "生成接口返回 HTTP 404。OpenAI 兼容消息协议需要填写完整的 /chat/completions 地址。",
+    "atria.runtime.providerHttp.1": "模型服务拒绝了请求（HTTP 400/422）。请检查模型及工具调用、输出 Schema 的兼容性。",
+    "atria.runtime.providerHttp.2": "模型服务拒绝了密钥（HTTP 401/403）。请检查此连接选择的密钥。",
+    "atria.runtime.providerHttp.3": "模型服务未在此路由的时限内返回。请检查服务可用性，或增大路由超时时间。",
     "atria.taskBindings.20": "请先配置此游戏所需的回合路由，再继续。",
     "atria.taskBindings.0": "配置模型用途",
     "atria.taskBindings.1": "正在检查模型用途…",

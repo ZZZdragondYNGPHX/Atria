@@ -199,3 +199,32 @@ test('model discovery requires selection and explicit metadata apply, then prese
         limitProvenance: { contextTokens: [{ kind: 'user-override' }], outputTokens: provenance }, capabilities: [{ capability: 'generation.reasoning', state: 'unsupported', provenance }] });
     view.dispose();
 });
+
+test('connection editor persists explicit gateway compatibility and removes it for native Gemini', async () => {
+    globalThis.fetch = jest.fn(async (url, options = {}) => {
+        if (url.endsWith('/secrets')) return response([{ secretId: 'stored-id', label: 'Stored' }]);
+        if (options.method === 'PUT') return response(JSON.parse(options.body));
+        return response(config);
+    });
+    let view = mount(); await flush(); await flush();
+    const mode = view.root.querySelector('[aria-label="Tool schema compatibility"]');
+    expect(mode.value).toBe('json-schema'); mode.value = 'string-enums';
+    view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush();
+    let write = globalThis.fetch.mock.calls.find(([, options]) => options.method === 'PUT');
+    expect(JSON.parse(write[1].body).options).toEqual({ toolSchemaMode: 'string-enums' });
+    view.dispose(); globalThis.fetch.mockClear();
+    view = mount(); await flush(); await flush();
+    view.root.querySelector('[aria-label="Tool schema compatibility"]').value = 'string-enums';
+    const transport = view.root.querySelector('[aria-label="Provider transport"]');
+    transport.value = 'provider.gemini'; transport.dispatchEvent(new Event('change'));
+    view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush();
+    write = globalThis.fetch.mock.calls.find(([, options]) => options.method === 'PUT');
+    expect(JSON.parse(write[1].body).options).toEqual({}); view.dispose();
+});
+test.each(['generation_provider_endpoint_not_found', 'generation_provider_request_rejected', 'generation_provider_authentication_failed', 'generation_provider_timeout'])('%s has a useful owning remediation', code => {
+    const observed = jest.fn(); document.addEventListener('atria-native-runtime-error', observed);
+    const error = runtimeGenerationError(code, 400);
+    expect(error.code).toBe(code); expect(error.message).not.toContain('could not complete this request');
+    expect(observed.mock.calls[0][0].detail.target).toBe(code.endsWith('timeout') ? 'routes' : 'connections');
+    document.removeEventListener('atria-native-runtime-error', observed);
+});

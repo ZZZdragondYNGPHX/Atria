@@ -104,7 +104,7 @@ export class GenerationService {
                     if (mode === 'confirm' && remaining > 0 && resolved.route.fallbackRouteRefs.length) {
                         throw new GenerationError('generation_fallback_confirmation_required');
                     }
-                    if (mode !== 'automatic' || remaining <= 0) throw new GenerationError('generation_provider_failed');
+                    if (mode !== 'automatic' || remaining <= 0) throw new GenerationError(error.kind === 'timeout' ? 'generation_provider_timeout' : 'generation_provider_failed');
                     remaining--;
                     pending.push(...resolved.route.fallbackRouteRefs.filter(ref => !visited.has(JSON.stringify(ref))));
                     if (!pending.length) throw new GenerationError('generation_provider_failed');

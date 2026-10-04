@@ -215,6 +215,13 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             let fields = group(form, 'Provider connection');
             const adapter = field(fields, 'Provider transport', value.providerAdapter || 'provider.openai-compatible', [['provider.openai-compatible', 'OpenAI-compatible messages'], ['provider.raw-text', 'Raw text completions'], ['provider.anthropic', 'Anthropic Messages'], ['provider.gemini', 'Gemini GenerateContent']]);
             const endpoint = field(fields, 'Completions endpoint URL', value.endpoint); endpoint.type = 'url'; endpoint.required = true;
+            const compatibility = node('div', undefined, fields);
+            const schemaMode = field(compatibility, 'Tool schema compatibility', value.options?.toolSchemaMode || 'json-schema',
+                [['json-schema', 'Standard JSON Schema'], ['string-enums', 'Gemini gateway: string enums only']]);
+            notice('Use gateway compatibility when your provider rejects boolean or numeric tool enums. The game still validates action inputs.', compatibility);
+            const syncCompatibility = () => { compatibility.hidden = adapter.value !== 'provider.openai-compatible'; };
+            adapter.addEventListener('change', syncCompatibility); syncCompatibility();
+            notice('OpenAI-compatible messages use the full /v1/chat/completions endpoint, not /v1/completions.', fields);
             fields = group(form, 'Authentication');
             const secret = field(fields, 'Stored Secret', value.secretRef?.secretId, [['', 'Choose…']]); secret.required = true;
             const feedback = node('div', undefined, fields);
@@ -273,7 +280,9 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             notice('Credentials stay in the Secret store. Gemini uses the API base URL; other transports use the full generation endpoint.', fields);
             serialize = () => {
                 if (creating || !secret.value) throw Object.assign(new Error('Select a stored Secret'), { code: 'native_secret_selection_required' });
-                return { ...value, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value, secretRef: { scope: 'player', secretId: secret.value } };
+                const options = { ...value.options }; delete options.toolSchemaMode;
+                if (adapter.value === 'provider.openai-compatible' && schemaMode.value !== 'json-schema') options.toolSchemaMode = schemaMode.value;
+                return { ...value, options, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value, secretRef: { scope: 'player', secretId: secret.value } };
             };
             const probeStatus = node('div', undefined, fields);
             const probe = button('Test connection', async () => {

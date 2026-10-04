@@ -1,4 +1,4 @@
-import { immutable, GenerationError, ProviderFailure } from '../model-prompt-runtime/execution-utils.js';
+import { immutable, GenerationError, ProviderFailure, providerHttpFailure } from '../model-prompt-runtime/execution-utils.js';
 import { renderPromptMessages } from '../model-prompt-runtime/prompt-renderers.js';
 
 const fail = () => { throw new GenerationError('generation_adapter_control_unsupported'); };
@@ -150,7 +150,7 @@ export function createNativeMessagesProvider({ format, fetchImpl = fetch } = {})
                 if (signal?.aborted) throw new GenerationError('generation_cancelled');
                 throw new ProviderFailure('transport');
             }
-            if (!response.ok) { await response.body?.cancel(); throw new ProviderFailure(response.status === 429 || response.status >= 500 ? 'provider' : 'application'); }
+            if (!response.ok) { await response.body?.cancel(); throw providerHttpFailure(response.status); }
             return { response, binding: request.binding };
         },
         async parseStream({ response, binding }, { onChunk } = {}) {

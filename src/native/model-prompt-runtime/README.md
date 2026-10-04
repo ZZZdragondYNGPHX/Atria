@@ -248,3 +248,16 @@ phase-only workflows. Runtime/resource HTTP tests, poisoned-legacy/concurrency/
 Secret/fallback tests, offline Package tests and real-host desktop/mobile browser
 cases accompany the guards. Historical completed evidence and exclusions remain
 on the docs branch, not in stale API promises.
+
+OpenAI-compatible Connection `options.toolSchemaMode` defaults to `json-schema`.
+An explicitly selected `string-enums` mode supports gateways whose tool schema
+parser rejects boolean/numeric enums: only the wire tool schema moves these enum
+constraints to descriptions. PromptIR, snapshots and canonical action validation
+keep the original schema; invalid arguments still fail before authority commits.
+Strict tools reject this mode. Native Gemini uses `parametersJsonSchema` and does
+not use this compatibility option.
+
+Provider HTTP 404, 400/422 and 401/403 now produce endpoint, request and authentication
+error codes respectively. They do not trigger fallback or expose response bodies.
+A route timeout without fallback is `generation_provider_timeout`; transient
+429/5xx keep existing bounded provider retry/fallback behavior.

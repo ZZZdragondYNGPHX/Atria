@@ -115,6 +115,14 @@ describe('P2 Generation Core with P1 filesystem authorities', () => {
         expect(f.sends).toHaveBeenCalledTimes(1);
     });
 
+    test('a route timeout without fallback is explicit and does not send again', async () => {
+        const f = await fixture({ send: async () => new Promise(() => {}) });
+        f.routes[0].policy.timeoutMs = 10;
+        await f.persistence.saveRuntimeRoute(f.h.handle, f.routes[0]);
+        await expect(f.service.execute(f.request())).rejects.toMatchObject({ code: 'generation_provider_timeout' });
+        expect(f.sends).toHaveBeenCalledTimes(1);
+    });
+
     test('timeout is bounded and eligible for complete fallback', async () => {
         const f = await fixture({ send: async rendered => rendered.body.model === 'a' ? new Promise(() => {}) : { choices: [{ message: { content: 'B' } }] } });
         f.routes[0].policy.timeoutMs = 10;

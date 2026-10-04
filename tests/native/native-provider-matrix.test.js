@@ -106,3 +106,49 @@ test('provider controls map without leaking settings between protocols', () => {
     expect(request.body.max_tokens).toBeUndefined();
     expect(() => createHttpGenerationProvider({ format: 'raw-text' }).renderRequest(openai)).toThrow();
 });
+
+describe.each(['openai-compatible', 'anthropic', 'gemini'])('%s HTTP failures', format => {
+    test.each([[400, 'generation_provider_request_rejected'], [422, 'generation_provider_request_rejected'],
+        [401, 'generation_provider_authentication_failed'], [403, 'generation_provider_authentication_failed'],
+        [404, 'generation_provider_endpoint_not_found']])('HTTP %s exposes only a safe code', async (status, code) => {
+        const fetchImpl = async () => new Response('raw provider failure with test-secret', { status });
+        const provider = format === 'openai-compatible' ? createHttpGenerationProvider({ fetchImpl })
+            : createNativeMessagesProvider({ format, fetchImpl });
+        let failure;
+        try { await provider.send({ endpoint: 'https://example.invalid/endpoint', body: {}, binding: {} },
+            { secret: 'test-secret', signal: new AbortController().signal }); } catch (error) { failure = error; }
+        expect(failure).toMatchObject({ name: 'GenerationError', code, message: code });
+        expect(failure.cause).toBeUndefined();
+        expect(JSON.stringify(failure)).not.toContain('test-secret');
+    });
+    test.each([429, 503])('HTTP %s keeps provider fallback classification', async status => {
+        const fetchImpl = async () => new Response('temporary failure', { status });
+        const provider = format === 'openai-compatible' ? createHttpGenerationProvider({ fetchImpl })
+            : createNativeMessagesProvider({ format, fetchImpl });
+        await expect(provider.send({ endpoint: 'https://example.invalid/endpoint', body: {}, binding: {} },
+            { secret: 'test-secret', signal: new AbortController().signal })).rejects.toMatchObject({ kind: 'provider' });
+    });
+});
+
+test('explicit gateway mode adapts non-string enums on the wire and preserves canonical tool authority', () => {
+    const f = fixture('anthropic');
+    const provider = createHttpGenerationProvider();
+    f.snapshot.promptIr.tools = [{ type: 'function', function: { name: 'confirm', parameters: {
+        type: 'object', properties: { confirmed: { type: 'boolean', enum: [true] },
+            count: { type: 'integer', enum: [1, 2] }, nested: { type: 'array', items: { type: 'string', enum: ['yes', 'no'] } } },
+        required: ['confirmed'], additionalProperties: false,
+    } } }];
+    const canonical = structuredClone(f.snapshot.promptIr.tools);
+    expect(provider.renderRequest(f).body.tools).toEqual(canonical);
+    f.resolved.connection.options = { toolSchemaMode: 'string-enums' };
+    const schema = provider.renderRequest(f).body.tools[0].function.parameters;
+    expect(schema.properties.confirmed).toEqual({ type: 'boolean', description: 'Allowed values: [true].' });
+    expect(schema.properties.count.enum).toBeUndefined();
+    expect(schema.properties.nested.items.enum).toEqual(['yes', 'no']);
+    expect(schema.required).toEqual(['confirmed']); expect(schema.additionalProperties).toBe(false);
+    expect(f.snapshot.promptIr.tools).toEqual(canonical);
+    f.snapshot.promptIr.tools[0].function.strict = true;
+    expect(() => provider.renderRequest(f)).toThrow('generation_adapter_control_unsupported');
+    f.resolved.connection.options = { toolSchemaMode: 'invalid' };
+    expect(() => provider.renderRequest(f)).toThrow('generation_adapter_control_unsupported');
+});

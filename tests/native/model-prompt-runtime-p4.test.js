@@ -1,3 +1,5 @@
+import { authorityTurnFixture } from './helpers/authority-turn-fixture.js';
+import { makeTempFsEngineHarness } from '../storage/harness/contract-harness.js';
 import { skillEntryKey } from '../../public/shared/extension-contract.js';
 import { afterEach, describe, expect, jest, test } from '@jest/globals';
 import express from 'express';
@@ -433,4 +435,37 @@ test('Skill narrative Host budgets always content and runs scoped reference roun
     await f.persistence.saveModelProfile(f.h.handle, { ...f.model, limits: { contextTokens: 700, outputTokens: 512 } });
     await expect(f.host.execute(f.h.handle, { ...f.request, requestId: 'budget' })).rejects.toMatchObject({ code: 'generation_context_budget_exceeded' });
     expect(rounds).toBe(2);
+});
+
+test.each([[404, 'generation_provider_endpoint_not_found'], [400, 'generation_provider_request_rejected']])('HTTP %s remains actionable at the authenticated generation endpoint', async (status, code) => {
+    const f = await fixture({ handler: (_req, res) => {
+        res.writeHead(status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: { message: 'unsafe echo p4-credential' } }));
+    } });
+    const app = express(); app.use(express.json());
+    app.use((req, _res, next) => { req.user = { profile: { handle: f.h.handle } }; next(); });
+    app.use(createNativeGenerationRouter(() => f.host));
+    const result = await supertest(app).post('/execute').send({ ...f.request, fallbackMode: 'automatic' }).expect(400);
+    expect(result.body).toEqual({ error: code });
+    expect(f.requests).toHaveLength(1);
+});
+
+test('gateway wire compatibility cannot accept an action forbidden by canonical boolean enum', async () => {
+    const h = await makeTempFsEngineHarness(); cleanups.push(() => h.cleanup());
+    const f = await authorityTurnFixture(h, 'http://127.0.0.1:1/unused', f => {
+        f.logic.transactions[0].inputSchema.properties.confirmed = { type: 'boolean', enum: [true] };
+        f.logic.transactions[0].inputSchema.required.push('confirmed');
+    });
+    await f.seeded.persistence.saveConnectionProfile(h.handle, { ...f.seeded.connection, options: { toolSchemaMode: 'string-enums' } });
+    let sent;
+    f.host.providers['provider.openai-compatible'] = createHttpGenerationProvider({ fetchImpl: async (_url, options) => {
+        sent = JSON.parse(options.body);
+        return new Response(JSON.stringify({ choices: [{ message: { content: '', tool_calls: [{ id: 'rejected', type: 'function',
+            function: { name: 'atri_transaction_0', arguments: JSON.stringify({ ...f.request.input, confirmed: false }) } }] } }] }),
+        { headers: { 'Content-Type': 'application/json' } });
+    } });
+    await expect(f.host.executeTurn(h.handle, f.input)).rejects.toMatchObject({ code: 'native_authority_selection_invalid' });
+    expect(sent.tools[0].function.parameters.properties.confirmed.enum).toBeUndefined();
+    expect(f.logic.transactions[0].inputSchema.properties.confirmed.enum).toEqual([true]);
+    expect((await f.core.load(h.handle, f.base.session.sessionId)).revision.revisionId).toBe(f.base.revision.revisionId);
 });

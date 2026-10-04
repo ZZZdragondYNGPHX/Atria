@@ -13,6 +13,7 @@ export function immutable(value) {
 
 const ERROR_CODES = new Set([
     'native_generation_budget_exhausted', 'native_generation_background_not_due', 'native_generation_budget_lane_denied',
+    'generation_provider_endpoint_not_found', 'generation_provider_request_rejected', 'generation_provider_authentication_failed', 'generation_provider_timeout',
     'generation_cancelled', 'generation_execution_failed', 'generation_provider_unavailable',
     'generation_route_mismatch', 'generation_profile_mismatch', 'generation_resource_cycle',
     'generation_resource_limit', 'generation_resource_origin_mismatch', 'generation_exact_resource_mismatch',
@@ -42,6 +43,14 @@ export class ProviderFailure extends Error {
         super('Provider send failed');
         this.kind = ['transport', 'provider', 'timeout'].includes(kind) ? kind : 'application';
     }
+}
+
+// Classify only the HTTP status. Never retain provider response bodies or credentials.
+export function providerHttpFailure(status) {
+    if (status === 401 || status === 403) return new GenerationError('generation_provider_authentication_failed');
+    if (status === 404) return new GenerationError('generation_provider_endpoint_not_found');
+    if (status === 400 || status === 422) return new GenerationError('generation_provider_request_rejected');
+    return new ProviderFailure(status === 429 || status >= 500 ? 'provider' : 'application');
 }
 
 export function checkCancellation(signal) {
