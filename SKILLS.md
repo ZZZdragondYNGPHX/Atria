@@ -57,6 +57,16 @@ Skill 不得扩大任务范围，也不得覆盖用户指令、`docs:README.md` 
 - Upstream commit：`d16ebe60d09a5ba2afcb7054ede9d0a10c9f6128`
 - 本地修改：无；仅新增 `UPSTREAM.md` 并附带仓库根 `LICENSE`。
 
+### atria-frontend
+
+- 用途：Atria 前端总路由；确定主程序、宿主 Plugin、Package 游戏 UI 与普通组件的归属，编排设计能力、浏览器验证和文档查询。
+- 适用条件：用户或正式 Plan 明确要求 Atria-specific 前端设计、实现、审查或调试编排；不用于纯后端工作或无关项目。
+- 目录：`atria-frontend/`；入口：[SKILL.md](atria-frontend/SKILL.md)。
+- 来源：Atria local skill。
+- 版本：`1.0.0`。
+- 本地修改：原生创建。
+- 加载边界：调用本路由不自动授权其他 Skills，继续遵循上述 Loading rule。
+
 特别说明：`main:default/skills/**` 是 Atria Runtime Skills / 产品资产，故意不列入本索引，也不迁移到 `skills` 工作空间。
 
 ## Adding a Skill
