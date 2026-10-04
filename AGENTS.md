@@ -32,6 +32,11 @@
 
 不要默认扫描所有 Plans、Records、Skills 或 reference。
 
+## Frontend skill routing
+
+- 本项目提供 `.agents/skills/atria-frontend/`，是 Codex repository-agent Skill，与 `default/skills/**` 的 Atria Runtime 资产分开。
+- 主程序 UI、宿主 Plugin UI、Package 游戏 UI、前端组件及浏览器验证任务按需调用 `atria-frontend`；仍遵循上述用户明确请求 / 正式 Plan 加载规则，不自动加载无关 Skill。
+
 ## Task lifecycle
 
 小任务默认一次性闭环：分析 → 建短期分支 → 修改 → 验证 → commit/push → 必要 CI → Record → 合并 `main` → 验证 `main` → 删除任务分支。
