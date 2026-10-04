@@ -3,7 +3,7 @@ import { updateSecretDisplay } from './secrets.js';
 
 const storageKey = 'language';
 const overrideLanguage = localStorage.getItem(storageKey);
-const requestedLocale = String(overrideLanguage || navigator.language || navigator.userLanguage || 'en').toLowerCase();
+const requestedLocale = String(overrideLanguage || 'en').toLowerCase();
 let localeFile = requestedLocale.startsWith('zh') ? 'zh-cn' : 'en';
 var langs;
 // Don't change to let/const! It will break module loading.
@@ -12,6 +12,7 @@ var localeData;
 
 /** @type {Set<string>|null} Array of translations keys if they should be tracked - if not tracked then null */
 let trackMissingDynamicTranslate = null;
+const originalValues = new WeakMap();
 
 export const getCurrentLocale = () => localeFile;
 
@@ -223,18 +224,21 @@ function splitI18nKeys(raw) {
  */
 function translateElement(element) {
     const keys = splitI18nKeys(element.getAttribute('data-i18n'));
+    let originals = originalValues.get(element);
+    if (!originals) {
+        originals = new Map();
+        originalValues.set(element, originals);
+    }
     for (const key of keys) {
-        const attributeMatch = key.match(/\[(\S+)\](.+)/); // [attribute]key
-        if (attributeMatch) { // attribute-tagged key
-            const localizedValue = localeData?.[attributeMatch[2]];
-            if (localizedValue || localizedValue === '') {
-                element.setAttribute(attributeMatch[1], localizedValue);
-            }
-        } else { // No attribute tag, treat as 'text'
-            const localizedValue = localeData?.[key];
-            if (localizedValue || localizedValue === '') {
-                element.textContent = localizedValue;
-            }
+        const attributeMatch = key.match(/\[(\S+)\](.+)/);
+        const attribute = attributeMatch?.[1];
+        const translationKey = attributeMatch?.[2] || key;
+        if (!originals.has(key)) originals.set(key, attribute ? element.getAttribute(attribute) : element.textContent);
+        const englishValue = !attribute && element.closest('.atri-onboarding-dialog') ? translationKey : originals.get(key);
+        const localizedValue = localeFile === 'en' ? englishValue : localeData?.[translationKey];
+        if (localizedValue !== undefined && localizedValue !== null) {
+            if (attribute) element.setAttribute(attribute, localizedValue);
+            else element.textContent = localizedValue;
         }
     }
 }
@@ -315,7 +319,7 @@ async function getMissingTranslations() {
  * @returns {Document|string} Translated root, in the same format as the input (Document or HTML string)
  */
 export function applyLocale(root = document) {
-    if (!localeData || Object.keys(localeData).length === 0) {
+    if (!localeData) {
         return root;
     }
 
@@ -344,6 +348,20 @@ function addLanguagesToDropdown() {
     uiLanguageSelects.val(localeFile);
 }
 
+/** Apply and persist an explicit interface language choice. */
+export async function setUiLanguage(language, { reload = true } = {}) {
+    const nextLocale = String(language).toLowerCase().startsWith('zh') ? 'zh-cn' : 'en';
+    const nextData = await getLocaleData(nextLocale);
+    localStorage.setItem(storageKey, nextLocale);
+    localeFile = nextLocale;
+    localeData = nextData;
+    document.documentElement.lang = localeFile;
+    $('#ui_language_select, #onboarding_ui_language_select').val(localeFile);
+    applyLocale();
+    document.dispatchEvent(new CustomEvent('atria-language-changed'));
+    if (reload) location.reload();
+}
+
 export async function initLocales() {
     langs = await fetch('/locales/lang.json').then(response => response.json());
     localeData = await getLocaleData(localeFile);
@@ -352,27 +370,8 @@ export async function initLocales() {
     addLanguagesToDropdown();
     updateSecretDisplay();
 
-    $('#ui_language_select, #onboarding_ui_language_select').on('change', async function () {
-        const language = String($(this).val());
-
-        if (language) {
-            localStorage.setItem(storageKey, language);
-        } else {
-            localStorage.removeItem(storageKey);
-        }
-
-        if (this.closest('.atri-onboarding')) {
-            localeFile = language.startsWith('zh') ? 'zh-cn' : 'en';
-            localeData = await getLocaleData(localeFile);
-            if (localeFile === 'en') {
-                this.closest('.atri-onboarding-dialog')?.querySelectorAll('[data-i18n]').forEach(node => {
-                    const key = node.getAttribute('data-i18n');
-                    if (!key.startsWith('[')) node.textContent = key;
-                });
-            }
-            applyLocale();
-            document.dispatchEvent(new CustomEvent('atria-language-changed'));
-        } else location.reload();
+    $('#ui_language_select').on('change', function () {
+        void setUiLanguage(String($(this).val()));
     });
 
     observer.observe(document, {

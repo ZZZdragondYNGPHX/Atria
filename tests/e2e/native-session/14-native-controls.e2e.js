@@ -17,6 +17,36 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => { await tearDownServer(server); });
 
+test('Chinese browser starts in English; confirmed Chinese applies to Shell and survives reload', async ({ browser }) => {
+    const seed = await seedNativeSessionDataRoot({ suffix: 'npc-language' });
+    const path = resolve(seed.dataRoot, seed.handle, 'settings.json');
+    const settings = JSON.parse(readFileSync(path, 'utf8')); settings.firstRun = true; writeFileSync(path, JSON.stringify(settings));
+    const fresh = await startServer({ batchKey: 'generation', scenarioId: 'npc-language', useExistingDataRoot: seed.dataRoot });
+    const context = await browser.newContext({ locale: 'zh-CN', viewport: { width: 390, height: 900 } });
+    const page = await context.newPage();
+    try {
+        await page.goto(fresh.baseURL);
+        const dialog = page.locator('.atri-onboarding-dialog[open]');
+        await expect(dialog).toBeVisible({ timeout: 60000 });
+        await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+        await expect(dialog.locator('select')).toHaveValue('en');
+        await expect(dialog.getByRole('heading', { name: 'Welcome to Atria' })).toBeVisible();
+        await dialog.locator('.popup-input').fill('中文读者');
+        await dialog.locator('select').selectOption('zh-cn');
+        // Confirmation immediately after selection must wait for the language load.
+        await dialog.locator('.popup-button-ok').click();
+        await expect(dialog).toBeHidden({ timeout: 60000 });
+        await expect(page.locator('html')).toHaveAttribute('lang', 'zh-cn');
+        await expect(page.locator('.atri-learning-center h2')).toHaveText('认识导航', { timeout: 60000 });
+        await expect(page.locator('#ui_language_select')).toHaveValue('zh-cn');
+        await expect.poll(() => page.evaluate(() => localStorage.getItem('language'))).toBe('zh-cn');
+        await page.reload();
+        await expect(page.locator('.atri-learning-center h2')).toHaveText('认识导航', { timeout: 60000 });
+        await expect(page.locator('html')).toHaveAttribute('lang', 'zh-cn');
+        await expect(dialog).toBeHidden();
+    } finally { await context.close(); await tearDownServer(fresh); }
+});
+
 test('fresh identity and live language lead into the permanent guide; progress resumes after reload', async ({ page }) => {
     const seed = await seedNativeSessionDataRoot({ suffix: 'npc-learning' });
     const path = resolve(seed.dataRoot, seed.handle, 'settings.json');
@@ -24,7 +54,6 @@ test('fresh identity and live language lead into the permanent guide; progress r
     const fresh = await startServer({ batchKey: 'generation', scenarioId: 'npc-learning', useExistingDataRoot: seed.dataRoot });
     try {
         await page.setViewportSize({ width: 390, height: 900 });
-        await page.addInitScript(() => localStorage.setItem('language', 'en'));
         await page.goto(fresh.baseURL);
         const dialog = page.locator('.atri-onboarding-dialog[open]');
         await expect(dialog).toBeVisible({ timeout: 60000 });
@@ -33,6 +62,8 @@ test('fresh identity and live language lead into the permanent guide; progress r
         await expect(dialog.getByRole('button', { name: '下一课', exact: true })).toBeVisible();
         await expect(dialog.locator('.popup-input')).toHaveValue('Learning Reader');
         await dialog.locator('select').selectOption('en');
+        await expect(dialog.getByRole('heading', { name: 'Welcome to Atria' })).toBeVisible();
+        await expect(page.locator('html')).toHaveAttribute('lang', 'en');
         await dialog.getByRole('button', { name: 'Next lesson', exact: true }).click();
         const guide = page.locator('.atri-learning-center');
         await expect(guide.getByRole('heading', { name: 'Find your way around' })).toBeVisible();

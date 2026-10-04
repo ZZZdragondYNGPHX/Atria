@@ -266,7 +266,7 @@ import {
     formatInstructModeStoryString,
     getInstructStoppingSequences,
 } from './scripts/instruct-mode.js';
-import { initLocales, t, translate as translateText } from './scripts/i18n.js';
+import { initLocales, getCurrentLocale, setUiLanguage, t, translate as translateText } from './scripts/i18n.js';
 import { getFriendlyTokenizerName, getTokenCount, getTokenCountAsync, initTokenizers, saveTokenCacheDebounced, flushTokenCacheSave } from './scripts/tokenizers.js';
 import { consumeLastUsage } from './scripts/last-usage.js';
 import {
@@ -15354,7 +15354,8 @@ export function setUserName(value, { toastPersonaNameChange = true } = {}) {
 }
 
 async function doOnboarding(avatarId) {
-    const template = $('#onboarding_template .onboarding').clone(true);
+    const template = $('#onboarding_template .onboarding').clone();
+    let languageChange = Promise.resolve();
     const popup = new Popup(template, POPUP_TYPE.INPUT, currentUser?.name || name1, {
         cancelButton: false,
         okButton: t`Next lesson`,
@@ -15362,6 +15363,8 @@ async function doOnboarding(avatarId) {
             if (instance.result !== POPUP_RESULT.AFFIRMATIVE) return true;
             if (instance.mainInput.value.trim()) {
                 try {
+                    await languageChange;
+                    await setUiLanguage(String(languageSelect.val()), { reload: false });
                     await saveAccountName(instance.mainInput.value);
                     return true;
                 } catch (error) {
@@ -15381,6 +15384,12 @@ async function doOnboarding(avatarId) {
     popup.mainInput.setAttribute('aria-describedby', `atri-persona-help-${popup.id}`);
     template.find('.atri-persona-help').attr('id', `atri-persona-help-${popup.id}`);
     const languageSelect = template.find('#onboarding_ui_language_select');
+    languageSelect.val(getCurrentLocale());
+    languageSelect.on('change', function () {
+        const language = String($(this).val());
+        languageChange = languageChange.catch(() => {}).then(() => setUiLanguage(language, { reload: false }));
+        void languageChange.catch(error => toastr.error(error.message));
+    });
     languageSelect.attr('id', `atri-onboarding-language-${popup.id}`);
     template.find('#onboarding-UI-language-block label').attr('for', languageSelect.attr('id'));
     popup.mainInput.addEventListener('input', () => {
@@ -15706,17 +15715,20 @@ export async function getSettings(options = {}) {
             if (isLoaderVisible()) {
                 await hideLoader();
             }
+            const onboardingLocale = getCurrentLocale();
             onboardingTask = doOnboarding(user_avatar)
                 .then(async completed => {
                     if (!completed) return;
                     firstRun = false;
+                    const { continueLearningAfterIdentity } = await import('./scripts/atria-shell/learning-center.js');
+                    continueLearningAfterIdentity();
                     try {
+                        // Persist the guide checkpoint as well as firstRun before rebuilding Shell.
                         await saveSettings(0, { directSave: true });
+                        if (onboardingLocale !== getCurrentLocale()) location.reload();
                     } catch (error) {
                         console.error('Failed to persist firstRun completion', error);
                     }
-                    const { continueLearningAfterIdentity } = await import('./scripts/atria-shell/learning-center.js');
-                    continueLearningAfterIdentity();
                 })
                 .catch((error) => {
                     console.error('Onboarding failed', error);

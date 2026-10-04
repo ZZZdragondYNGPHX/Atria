@@ -377,7 +377,7 @@ export function createAtriaSpinner(documentRef, { label = '' } = {}) {
 function readLocale() {
     try {
         const stored = globalThis.localStorage?.getItem?.('language');
-        return String(stored || globalThis.navigator?.language || 'en');
+        return String(stored || 'en');
     } catch {
         return 'en';
     }
