@@ -10,7 +10,22 @@ export async function browserChecks({load,url,root,getSession,fresh,act,getReque
  page.setDefaultTimeout(30000);
  const node=id=>page.locator('[data-node-id="'+id+'"]');
  const check=text=>{checks.push(text);console.error('P4 PASS',text);};
- const shot=async name=>{if(name.startsWith('story-'))await node('scene').evaluate(e=>e.scrollIntoView({block:'start'}));if(name==='claim-drawer')await node('detail-row').filter({hasText:'超凡与义务'}).evaluate(e=>e.scrollIntoView({block:'center'}));if(name.endsWith('terminal')){await settle();await node('error').waitFor({state:'hidden'});await node('terminal').evaluate(e=>e.scrollIntoView({block:'center'}));}await page.screenshot({path:path.join(output,name+'.png')});screenshots.push(name+'.png');};
+ const shot=async name=>{
+  const target=name.includes('drawer')?'drawer':name==='desktop-entry'?'entry':name==='desktop-review'?'review':'story';
+  const loading=target==='drawer'?'drawer-loading':'loading';let capture,ready=false;
+  for(let attempt=0;attempt<3;attempt++){
+   await node(target).waitFor({state:'visible'});await node(loading).waitFor({state:'hidden'});
+   if(name.startsWith('story-'))await node('scene').evaluate(e=>e.scrollIntoView({block:'start'}));
+   if(name==='claim-drawer')await node('detail-row').filter({hasText:'超凡与义务'}).evaluate(e=>e.scrollIntoView({block:'center'}));
+   if(name.endsWith('terminal')){await node('error').waitFor({state:'hidden'});await node('terminal').evaluate(e=>e.scrollIntoView({block:'center'}));}
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   capture=await page.screenshot({animations:'disabled'});
+   ready=capture.length>4096&&await node(target).isVisible()&&!await node(loading).isVisible();
+   if(ready)break;
+  }
+  assert(ready,'Native viewport capture must contain its ready destination');
+  await fs.writeFile(path.join(output,name+'.png'),capture);screenshots.push(name+'.png');
+ };
  const settle=async()=>{await node('lives').waitFor();await node('loading').waitFor({state:'hidden'});};
  const choose=async label=>{await node('choose').filter({hasText:label}).click();await node('choose').filter({hasText:label}).and(page.locator('[aria-current="true"]')).waitFor();await node('nextQuestion').click();};
  const waitUntil=async fn=>{const end=Date.now()+30000;while(!fn()&&Date.now()<end)await page.waitForTimeout(100);assert(fn(),'Expected Native state was not published');};
