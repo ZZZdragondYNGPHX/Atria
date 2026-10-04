@@ -1,14 +1,18 @@
 # Original Occult Western Fantasy — Open Lives
 
-Task: refactor/original-occult-western-fantasy-open-roleplay. Phase 4 Native interface complete; new release/integration remains Phase 5.
+Task: refactor/original-occult-western-fantasy-open-roleplay. Open Lives 3.0.0 is the current release.
 
-The default validator compiles ordinary adult lives from five authored choices, with everyday work/relationships/travel, two institutional supernatural paths, bounded personal engineering and eight stable local encounters. Its Native questionnaire, story reader, draft suggestions and companion drawer consume real Host services and public committed projections. See [the content and interface contract](runtime/ROLEPLAY.md). Version 3.0.0 has an independent PackageVersion and requires auxiliary Core `1661af11245c856363bfc1084275c02b55a97452`; main has not integrated it. No 3.0.0 archive is published in this stage.
+The default compiler builds ordinary adult lives from five authored choices, with everyday work/relationships/travel, two institutional supernatural paths, bounded personal engineering and eight stable local encounters. Its Native questionnaire, story reader, draft suggestions and companion drawer consume real Host services and public committed projections. See [the content and interface contract](runtime/ROLEPLAY.md).
+
+[Download 3.0.0](releases/3.0.0.atria). 152692 bytes; SHA-256 `98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24`. PackageVersion: `pkgv_d5f1d44b7a9f4edc7266bf4d547a3112`. Requires Core main `1661af11245c856363bfc1084275c02b55a97452` or a descendant supporting its required capabilities and fixed Host reads. Import the archive through Atria's Package installer, grant generation permission, configure Host generation and open **A life in the city**. Review ordinary/ironman mode with the five choices before beginning. Ordinary death allows explicit earlier-save restoration; ironman only permits current-head continuation and ends the run on authoritative death. This is a new-version story; migration from v1/v2 saves is not claimed.
 
 ```bash
 node tools/content-check.mjs
-node tools/package.mjs validate --core <tested-P2-Core-checkout>
-node tools/package.mjs validate --fixture --core <tested-P2-Core-checkout>
-node tools/package.mjs validate --roleplay-ui-only --core <tested-P4-Core-checkout>
+node tools/package.mjs validate --core <main-checkout> --archive releases/3.0.0.atria --release-only
+node tools/package.mjs validate --core <main-checkout> --archive releases/3.0.0.atria
+node tools/package.mjs validate --roleplay-ui-only --core <main-checkout> --archive releases/3.0.0.atria
+node tools/package.mjs validate --fixture --core <main-checkout>
+node tools/package.mjs build --core <main-checkout> --out <new-build-path.atria>
 ```
 
 These are local isolated Native/HTTP synthetic-provider checks. The UI check also mounts the compiled Native components in Playwright Chromium with the Core QuickJS worker bundle available. It verifies questionnaire, draft preservation, conversation, public drawer, save/restore and terminal presentation; production-model narrative quality and actual mobile operating systems remain untested. The new profile does not require a fixed profession, Second Death, family, long life or historical campaign completion. `--legacy` selects the retained v2 compiler; historical-only flags, `--v1-campaign` and `--fixture` remain explicit regression paths. Native frontend-model/browser exports run through their harness, not as standalone validation commands.
