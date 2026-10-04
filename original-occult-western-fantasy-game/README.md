@@ -11,11 +11,14 @@ node tools/content-check.mjs
 node tools/package.mjs validate --core <main-checkout> --archive releases/3.0.0.atria --release-only
 node tools/package.mjs validate --core <main-checkout> --archive releases/3.0.0.atria
 node tools/package.mjs validate --roleplay-ui-only --core <main-checkout> --archive releases/3.0.0.atria
+node tools/mcp-smoke.mjs --core <main-checkout> --mcp <plugin-checkout>/atria-mcp
 node tools/package.mjs validate --fixture --core <main-checkout>
 node tools/package.mjs build --core <main-checkout> --out <new-build-path.atria>
 ```
 
 These are local isolated Native/HTTP synthetic-provider checks. The UI check also mounts the compiled Native components in Playwright Chromium with the Core QuickJS worker bundle available. It verifies questionnaire, draft preservation, conversation, public drawer, save/restore and terminal presentation; production-model narrative quality and actual mobile operating systems remain untested. The new profile does not require a fixed profession, Second Death, family, long life or historical campaign completion. `--legacy` selects the retained v2 compiler; historical-only flags, `--v1-campaign` and `--fixture` remain explicit regression paths. Native frontend-model/browser exports run through their harness, not as standalone validation commands.
+
+The MCP smoke requires an installed plugin and the Core Node/dependency ABI (locally Node 22). It starts fresh temporary Atria data, calls the real stdio MCP for exact release capture/review/install/start, chat and save/restore, and observes the real shell-mounted game at mobile, landscape, reduced-height and desktop viewports. Fixture setup opens the Session and supplies local routes; Ready/begin uses the owning HTTP authority. Approvals are deterministic test-client form responses. Evidence goes to `build/mcp-3.0.0/`; no personal data, paid model, physical device or OS keyboard is used.
 
 The material below documents the retained releases and their historical acceptance.
 
