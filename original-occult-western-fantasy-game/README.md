@@ -114,3 +114,10 @@ Explicit `--legacy` validation retains the P5/P6/P7 regression matrix against th
 - No claim of cross-process uncommitted journal recovery, old-version save migration, hosted-model behavior, physical-device/screen-reader or OS-crash verification. Paper/light UI is intentional, not a separate dark theme. Later-state browser setup uses Native transactions, not every action clicked.
 
 Exact tested/pushed HEADs and durable P9 reports/screenshots are in the same Package Record on docs. package remains independent; main is not merged into it.
+
+A focused route regression can be run with `--route-preflight-only` added to the
+MCP smoke command. It installs the exact 3.0.0 release in disposable data, checks
+that narrator-only configuration cannot start despite complete purpose bindings,
+then adds Intent resolver and verifies readiness. It uses MCP installation and
+route reads, the owning HTTP preflight, zero inference calls and no browser.
+Evidence goes to `build/mcp-route-preflight-3.0.0/`.

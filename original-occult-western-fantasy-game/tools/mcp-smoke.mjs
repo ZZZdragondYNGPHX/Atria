@@ -10,6 +10,7 @@ import {fileURLToPath,pathToFileURL} from 'node:url';
 import {setTimeout as delay} from 'node:timers/promises';
 
 const arg=name=>{const i=process.argv.indexOf(name);assert(i>=0&&process.argv[i+1],name+' is required');return path.resolve(process.argv[i+1]);};
+const routePreflightOnly=process.argv.includes('--route-preflight-only');
 const core=arg('--core'),mcp=arg('--mcp'),root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const load=p=>import(pathToFileURL(path.join(core,p)).href);
 const sdk=p=>import(pathToFileURL(path.join(mcp,'node_modules/@modelcontextprotocol/sdk/dist/esm',p)).href);
@@ -19,7 +20,7 @@ const archive=await fs.readFile(path.join(root,'releases/3.0.0.atria'));
 const {manifest,sourceFiles,containerHash}=inspectAtriaPackageContainer(archive);
 const logic=JSON.parse(sourceFiles.get('runtime/logic.json'));
 const scratch=await fs.mkdtemp(path.join(tmpdir(),'atria-open-lives-mcp-'));
-const output=path.join(root,'build/mcp-3.0.0');await fs.mkdir(output,{recursive:true});
+const output=path.join(root,routePreflightOnly?'build/mcp-route-preflight-3.0.0':'build/mcp-3.0.0');await fs.mkdir(output,{recursive:true});
 await fs.mkdir(path.join(core,'.artifacts'),{recursive:true});
 const artifactDir=await fs.mkdtemp(path.join(core,'.artifacts/open-lives-mcp-'));
 const artifactPath=path.relative(core,path.join(artifactDir,'3.0.0.atria')).split(path.sep).join('/');
@@ -27,9 +28,9 @@ await fs.writeFile(path.join(core,artifactPath),archive);
 const reserve=http.createServer();await new Promise(r=>reserve.listen(0,'127.0.0.1',r));const port=reserve.address().port;await new Promise(r=>reserve.close(r));
 const origin='http://127.0.0.1:'+port;
 const config=path.join(scratch,'config.yaml');await fs.writeFile(config,await fs.readFile(path.join(core,'default/config.yaml')));
-const actions=['package.install.review','package.install','work.start','chat.send','session.save','session.restore','session.delete'];
+const actions=routePreflightOnly?['package.install.review','package.install']:['package.install.review','package.install','work.start','chat.send','session.save','session.restore','session.delete'];
 const policy=path.join(scratch,'policy.json');await fs.writeFile(policy,JSON.stringify({version:1,actionIds:actions}));
-let client,setup,proxy,provider,runtime,log='',sessionId,requests=0,failNarrator=false;
+let client,setup,proxy,provider,runtime,log='',sessionId,requests=0,failNarrator=false,diagnostics=null,routePreflight=null;
 const approvals=[],receipts=[],checks=[],captures=[],httpErrors=[];
 const sockets=new Set();
 const check=s=>{checks.push(s);console.log('PASS '+s);};
@@ -58,7 +59,7 @@ try{
  const dirs=Object.fromEntries(Object.entries(USER_DIRECTORY_TEMPLATE).map(([k,v])=>[k,path.join(scratch,'data',DEFAULT_USER.handle,v)]));
  const engine=new FsEngine({directoriesByHandle:handle=>{assert.equal(handle,DEFAULT_USER.handle);return dirs;}});
  const {seedGenerationProfiles}=await load('tests/native/helpers/generation-fixture.js');
- const seeded=await seedGenerationProfiles({engine,handle:DEFAULT_USER.handle,endpoint:'http://127.0.0.1:'+provider.address().port+'/v1/chat/completions',roles:['narrator','intent_resolver']});
+ const seeded=await seedGenerationProfiles({engine,handle:DEFAULT_USER.handle,endpoint:'http://127.0.0.1:'+provider.address().port+'/v1/chat/completions',roles:routePreflightOnly?['narrator']:['narrator','intent_resolver']});
  await fs.writeFile(path.join(dirs.root,'secrets.json'),JSON.stringify({api_key_openai:[{id:'p4-synthetic-key',value:'local-synthetic-only',label:'Disposable MCP fixture',active:true}]}));
  const binding={scope:'player',runtimeRouteId:seeded.routes[0].runtimeRouteId},slotBindings={narrative:binding,structured:binding};
  // Onboarding is outside this game's scope; seed its completed flag in the
@@ -100,6 +101,20 @@ try{
  assert.equal(captured.contentHash,containerHash);const preflight=await read('package.install.preflight',{artifactId});
  const reviewed=await mutate('interact','package.install.review',{artifactId,preflightHash:preflight.preflightHash,grantedPermissions:['generation']});
  await mutate('mutate','package.install',{artifactId,reviewReceiptId:reviewed.receipt.receiptId});
+ if(routePreflightOnly){
+  const query={packageId:manifest.packageId,packageVersionId:manifest.packageVersionId,slotBindings};
+  const before=await read('route.list');assert.deepEqual(before.routes.map(r=>r.role),['role.narrator']);
+  const missing=await post('/api/native/generation/task-bindings/preflight',query);
+  assert(missing.slots.every(slot=>!slot.error),'Authored purposes should accept the narrator route');
+  assert.equal(missing.ready,false);assert.deepEqual(missing.turnRoutes.map(r=>[r.role,r.error]),[['intent_resolver','native_generation_route_missing']]);
+  check('Actual 3.0.0 Package rejects narrator-only setup despite complete authored purposes');
+  const resolver={...seeded.routes[0],runtimeRouteId:'route_'+crypto.randomUUID().replaceAll('-',''),displayName:'Disposable intent resolver',role:'role.intent_resolver'};
+  await seeded.persistence.saveRuntimeRoute(DEFAULT_USER.handle,resolver);
+  const after=await read('route.list');assert.deepEqual(after.routes.map(r=>r.role).sort(),['role.intent_resolver','role.narrator']);
+  const ready=await post('/api/native/generation/task-bindings/preflight',query);assert.equal(ready.ready,true);assert(ready.turnRoutes.every(r=>!r.error));
+  routePreflight={missing,ready};
+  assert.equal(requests,0);check('Adding the exact role clears readiness with zero provider calls and no Session');
+ }else{
  const started=await mutate('mutate','work.start',{packageId:manifest.packageId,packageVersionId:manifest.packageVersionId,entryPointId:manifest.entryPoints[0].entryPointId,displayTitle:'MCP local Open Lives'});
  sessionId=started.receipt.created.find(item=>item.kind==='session').id;check('MCP captures exact released 3.0.0 bytes, reviews permission, installs and starts Work');
  let base=await snapshot();
@@ -127,9 +142,10 @@ try{
   await fs.writeFile(path.join(output,`game-${width}x${height}.json`),JSON.stringify(observed,null,2));captures.push({width,height,file:name});
  }
  check('MCP observes real shell-mounted Native game at 375/390 mobile, landscape, reduced-height and desktop viewports');
- const diagnostics=json(await call('atri_browser_diagnostics'));assert(!diagnostics.events.some(e=>e.type==='pageerror'||e.type==='http-error'),JSON.stringify(diagnostics));assert.deepEqual(httpErrors,[]);await call('atri_browser_close');
- const summary={coreHead:execFileSync('git',['-C',core,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),pluginHead:execFileSync('git',['-C',mcp,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),archiveSha256:containerHash,packageVersionId:manifest.packageVersionId,isolatedData:true,provider:'Local synthetic HTTP; no paid model',requests,checks,captures,approvals,receipts,status,diagnostics,httpErrors,
-  limits:['Desktop Chromium viewports; not Android or physical soft keyboard','Trusted disposable shell bootstrap opens Session; MCP browser performs observation only','Ready/begin fixture uses owning HTTP authority; subsequent install/start/chat/save/restore use real MCP','Deterministic client form approvals test protocol, not human approval UX']};
+ diagnostics=json(await call('atri_browser_diagnostics'));assert(!diagnostics.events.some(e=>e.type==='pageerror'||e.type==='http-error'),JSON.stringify(diagnostics));assert.deepEqual(httpErrors,[]);await call('atri_browser_close');
+ }
+ const summary={coreHead:execFileSync('git',['-C',core,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),pluginHead:execFileSync('git',['-C',mcp,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),archiveSha256:containerHash,packageVersionId:manifest.packageVersionId,isolatedData:true,provider:'Local synthetic HTTP; no paid model',requests,checks,captures,approvals,receipts,status,diagnostics,httpErrors,routePreflight,
+  limits:routePreflightOnly?['MCP installs and reads routes; owning HTTP preflight is read-only','No Session, browser, real provider or personal configuration touched']:['Desktop Chromium viewports; not Android or physical soft keyboard','Trusted disposable shell bootstrap opens Session; MCP browser performs observation only','Ready/begin fixture uses owning HTTP authority; subsequent install/start/chat/save/restore use real MCP','Deterministic client form approvals test protocol, not human approval UX']};
  await fs.writeFile(path.join(output,'summary.json'),JSON.stringify(summary,null,2)+'\n');console.log('Evidence: '+output);
 }catch(error){await fs.writeFile(path.join(output,'failure.txt'),error.stack+'\n');if(client){for(const tool of ['atri_browser_diagnostics','atri_browser_observe','atri_browser_screenshot'])try{const r=await client.callTool({name:tool,arguments:{}});const img=r.content?.find(c=>c.type==='image');if(img)await fs.writeFile(path.join(output,'failure.jpg'),Buffer.from(img.data,'base64'));else await fs.writeFile(path.join(output,'failure-'+tool+'.json'),JSON.stringify(r,null,2));}catch{}}throw error;
 }finally{await client?.close();await setup?.dispose();for(const s of sockets)s.destroy();for(const s of [proxy,provider])if(s){s.closeAllConnections();await new Promise(r=>s.close(r));}await stop();await fs.writeFile(path.join(output,'runtime.log'),log);await fs.rm(artifactDir,{recursive:true,force:true});await fs.rm(scratch,{recursive:true,force:true});}
