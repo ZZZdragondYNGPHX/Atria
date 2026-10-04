@@ -95,6 +95,14 @@ export function createNativeSessionRouter(getServices = services) {
     router.post('/create', route(async (req, res, { core }, handle) => {
         res.json(await core.create(handle, req.body));
     }));
+    router.post('/begin', route(async (req, res, { core }, handle) => {
+        const { sessionId, ...input } = req.body;
+        fields(input, ['input', 'invocationId', 'expectedRevisionId']);
+        res.json(await core.beginStory(handle, sessionId, input));
+    }));
+    router.post('/run', route(async (req, res, { core }, handle) => {
+        res.json(await core.runStatus(handle, req.body.sessionId));
+    }));
     router.post('/load', route(async (req, res, { core }, handle) => {
         res.json(await core.load(handle, req.body.sessionId, { revisionId: req.body.revisionId }));
     }));

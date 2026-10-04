@@ -12,6 +12,7 @@ export function immutable(value) {
 }
 
 const ERROR_CODES = new Set([
+    'native_generation_budget_exhausted', 'native_generation_background_not_due', 'native_generation_budget_lane_denied',
     'generation_cancelled', 'generation_execution_failed', 'generation_provider_unavailable',
     'generation_route_mismatch', 'generation_profile_mismatch', 'generation_resource_cycle',
     'generation_resource_limit', 'generation_resource_origin_mismatch', 'generation_exact_resource_mismatch',

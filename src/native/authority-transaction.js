@@ -299,7 +299,7 @@ export async function prepareAuthorityTransaction(base, installed, rawRequest) {
         const projection = budget.typed(template(transaction.receipt.projection, { args, resolution }), transaction.receipt.schema);
         const receipt = bounded({ schemaVersion: 1, authorityId: identity, transactionId: transaction.id, verb: transaction.verb,
             anchor: request.anchor, playerMessageId: player.messageId, result: projection }, transaction.receipt.maxBytes);
-        return freeze({ candidate, receipt, identity, inputHash, work: { ...budget.counts } });
+        return freeze({ candidate, receipt, identity, inputHash, outcome: resolution.outcome, work: { ...budget.counts } });
     } catch (error) { throw failure('transaction preparation', authorityPublicRefusal(error)); }
 }
 

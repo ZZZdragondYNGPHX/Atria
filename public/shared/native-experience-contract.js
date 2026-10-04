@@ -1,3 +1,4 @@
+import { assertStoryStart, assertRunPolicy, assertGenerationBudget } from './native-run-contract.js';
 import { assertSimulationRuntime } from './native-simulation-contract.js';
 import { assertAuthorityRuntime } from './native-authority-contract.js';
 import { assertSharedRuntime } from './native-shared-contract.js';
@@ -20,6 +21,9 @@ export const ATRIA_EXPERIENCE_CAPABILITIES = Object.freeze(Object.fromEntries([
     ['action', [2], [2]],
     ['authority-transaction', [1], [1]],
     ['world-simulation', [1], [1]],
+    ['story-start', [1], [1]],
+    ['generation-budget', [1], [1]],
+    ['run-policy', [1], [1]],
     ['declarative-mutation', [1], [1]],
     ['message-projection', [1], [1]],
     ['turn-contract', [1], [1]],
@@ -71,7 +75,7 @@ function list(value, label, validate, key) {
 // presentation is native@3 Core, not a legacy Component Model capability.
 // No generic config/extension/persistence/exposure payload belongs in this seam.
 export function assertNativeExperienceContract(value) {
-    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime', 'presentationRuntime', 'informationRuntime', 'contentRuntime', 'continuityRuntime', 'sharedRuntime', 'authorityRuntime', 'simulationRuntime'], 'ExperienceContract');
+    fields(value, ['schemaVersion', 'capabilities', 'dataResources', 'taskRuntime', 'lifecycleRuntime', 'presentationRuntime', 'informationRuntime', 'contentRuntime', 'continuityRuntime', 'sharedRuntime', 'authorityRuntime', 'simulationRuntime', 'storyStart', 'generationBudget', 'runPolicy'], 'ExperienceContract');
     if (value.schemaVersion !== ATRIA_EXPERIENCE_CONTRACT_VERSION) {
         throw new TypeError('ExperienceContract.schemaVersion must be 1');
     }
@@ -108,7 +112,19 @@ export function assertNativeExperienceContract(value) {
     if (Boolean(simulationCapability) !== (value.simulationRuntime !== undefined)
         || (simulationCapability && (!simulationCapability.required || !capabilities.some(item => item.id === 'authority-transaction' && item.required)))) throw new TypeError('World simulation requires both required capabilities and simulationRuntime');
     const simulationRuntime = value.simulationRuntime === undefined ? undefined : assertSimulationRuntime(value.simulationRuntime, lifecycleRuntime, taskRuntime, authorityRuntime);
+    for (const [capability, field] of [['story-start', 'storyStart'], ['generation-budget', 'generationBudget'], ['run-policy', 'runPolicy']]) {
+        const declared = capabilities.find(item => item.id === capability);
+        if (Boolean(declared) !== (value[field] !== undefined) || (declared && (!declared.required || !authorityRuntime))) throw new TypeError(capability + ' requires its runtime declaration and required authority capability');
+    }
+    if ((value.storyStart || value.generationBudget || value.runPolicy) && !capabilities.some(item => item.id === 'authority-transaction' && item.required)) throw new TypeError('Run capabilities require authority-transaction');
+    if (value.runPolicy && (value.continuityRuntime || value.sharedRuntime)) throw new TypeError('Run policy v1 does not support cross-run transfers');
+    const storyStart = value.storyStart === undefined ? undefined : assertStoryStart(value.storyStart, authorityRuntime);
+    const runPolicy = value.runPolicy === undefined ? undefined : assertRunPolicy(value.runPolicy, storyStart);
+    const generationBudget = value.generationBudget === undefined ? undefined : assertGenerationBudget(value.generationBudget, lifecycleRuntime);
     return Object.freeze({ schemaVersion: ATRIA_EXPERIENCE_CONTRACT_VERSION, capabilities, dataResources,
+        ...(storyStart === undefined ? {} : { storyStart }),
+        ...(runPolicy === undefined ? {} : { runPolicy }),
+        ...(generationBudget === undefined ? {} : { generationBudget }),
         ...(simulationRuntime === undefined ? {} : { simulationRuntime }),
         ...(authorityRuntime === undefined ? {} : { authorityRuntime }),
         ...(taskRuntime === undefined ? {} : { taskRuntime }),

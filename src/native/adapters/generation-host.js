@@ -7,7 +7,7 @@ import { RouteResolver } from '../model-prompt-runtime/route-resolver.js';
 import { PromptCompiler } from '../model-prompt-runtime/prompt-compiler.js';
 import { createNativeSessionContextAdapter } from './native-session-context.js';
 import { assertInformationActorAvailable, informationDefinition, informationContext } from '../../../public/shared/native-information-runtime.js';
-import { immutable, ProviderFailure, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
+import { immutable, ProviderFailure, GenerationError, checkCancellation } from '../model-prompt-runtime/execution-utils.js';
 import { getVersionedModelPromptResourceIdentity } from '../model-prompt-runtime/resources.js';
 import { assertTaskValue } from '../../../public/shared/native-task-contract.js';
 import { nativeTaskScheduler } from '../task-scheduler.js';
@@ -128,6 +128,7 @@ export class NativeGenerationHost {
                 || (hasAuthorityTransactions(base) && (previous.branchId !== base.revision.branchId || previous.anchorRevisionId !== input.revisionId))) fail('native_turn_invocation_conflict');
             return base;
         }
+        await this.sessionCore.runs.assert(handle, input.sessionId, 'generate');
         if (base.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
         const runtime = base.manifest.runtime?.experienceContract?.taskRuntime;
         if (!runtime?.turn) fail('native_turn_contract_required');
@@ -145,7 +146,7 @@ export class NativeGenerationHost {
             if (!lane) fail('native_task_binding_missing');
             lanes.push(lane);
         }
-        const lanePlan = { memoryEvidence: normalizeHostMemoryEvidence(input.hostMemoryEvidence, base), transaction };
+        const lanePlan = { budgetContext: { snapshot: base, anchor: { branchId: base.revision.branchId, revisionId: base.revision.revisionId } }, memoryEvidence: normalizeHostMemoryEvidence(input.hostMemoryEvidence, base), transaction };
         const resources = (await Promise.all(lanes.map(lane => this.executionResources(handle, lane, input.sessionId, lanePlan)))).flat();
         let expectedRevisionId = input.revisionId;
         const operation = nativeTaskScheduler.submit({ owner: handle, kind: 'turn',
@@ -199,12 +200,16 @@ export class NativeGenerationHost {
         const key = handle + ':' + base.session.sessionId + ':' + base.revision.branchId + ':' + base.revision.revisionId;
         const fingerprint = hashNativeDocument({ player: player?.entry.messageId ?? base.timeline.at(-1).messageId,
             typed: typed ?? null, userInput: typed ? null : base.timeline.at(-1).content });
+        const persistent = base.manifest.runtime.experienceContract.generationBudget;
+        const anchor = { branchId: base.revision.branchId, revisionId: base.revision.revisionId };
+        const retained = persistent ? await this.sessionCore.runs.selection(handle, base.session.sessionId, anchor, fingerprint) : null;
         let pinned = this.authoritySelections.get(key);
         if (pinned && pinned.fingerprint !== fingerprint) fail('native_authority_input_conflict');
         if (!pinned) {
             // Never evict an unresolved pin to allow a silent re-resolution.
             if (this.authoritySelections.size >= 128) fail('native_authority_retry_retention_limit');
             const selecting = async () => {
+                if (retained) return authoritySelection(catalog, retained);
                 if (typed) return authoritySelection(catalog, typed);
                 // Branch Retry of a typed action retains its fixed authored input.
                 const replay = base.timeline.at(-1).metadata?.atri_authority_retry;
@@ -226,6 +231,10 @@ export class NativeGenerationHost {
             pinned.selection.catch(() => { if (this.authoritySelections.get(key) === pinned) this.authoritySelections.delete(key); });
         }
         const selection = await pinned.selection;
+        if (persistent) {
+            await this.sessionCore.runs.selection(handle, base.session.sessionId, anchor, fingerprint, selection);
+            if (this.authoritySelections.get(key) === pinned) this.authoritySelections.delete(key);
+        }
         checkCancellation(signal);
         try {
             return await this.sessionCore.prepareAuthorityTurn(handle, base, selection, player);
@@ -402,7 +411,7 @@ export class NativeGenerationHost {
                 if (!simulationTaskCurrent(snapshot, item, budget)) {
                     snapshot = await this.sessionCore.applyLifecycleCommand(handle, input.sessionId,
                         { type: 'lifecycle', invocationId: 'stale-' + item.invocationId, action: { kind: 'scheduled.cancel', invocationId: item.invocationId } },
-                        { expectedRevisionId: snapshot.revision.revisionId });
+                        { expectedRevisionId: snapshot.revision.revisionId, hostProof: this.sessionCore._lifecycleProof });
                     continue;
                 }
             }
@@ -447,6 +456,12 @@ export class NativeGenerationHost {
                 || hashNativeDocument(intent.input) !== hashNativeDocument(payload)) fail('native_task_lifecycle_intent_required');
         }
         const captured = lanePlan ?? {};
+        if (lifecycleInvocation && snapshot.manifest.runtime.experienceContract.generationBudget) {
+            const intent = snapshot.states.atri_lifecycle?.outbox.find(item => item.invocationId === input.invocationId);
+            if (!intent?.simulation || intent.status !== 'pending' || intent.taskId !== task.id || intent.variantId !== variant.id
+                || hashNativeDocument(intent.input) !== hashNativeDocument(payload)) fail('native_generation_budget_lane_denied');
+            captured.budgetContext = { snapshot, background: true, anchor: { invocationId: intent.invocationId } };
+        }
         const resources = lanePlan ? [] : await this.executionResources(handle, route, input.sessionId, captured);
         const work = { owner: handle, anchor, kind: ['background', 'maintenance'].includes(task.executionClass) ? 'auxiliary_task' : 'model_task', executionClass: task.executionClass,
             resources,
@@ -511,6 +526,11 @@ export class NativeGenerationHost {
         } else if (preflight && preflightPackage) {
             runtime = preflightPackage.manifest.runtime;
         } else fail('native_generation_context_required');
+        const budget = runtime?.experienceContract?.generationBudget;
+        if (snapshot && !preview && !preflight) {
+            await this.sessionCore.runs.assert(handle, input.sessionId, 'generate');
+            if (budget && !lanePlan?.budgetContext) fail('native_generation_budget_lane_denied');
+        }
         const packageIdentity = snapshot?.session ?? preflightPackage?.manifest;
         const routeList = lanePlan ? Object.values(lanePlan.routes) : await this.persistence.listRuntimeRoutes(handle);
         let route = selectNativeRuntimeRoute(routeList, role, input.routeRef);
@@ -636,6 +656,13 @@ export class NativeGenerationHost {
                         const attempt = { runtimeRouteId: resolved.route.runtimeRouteId, retry, status: 'pending' };
                         attempts.push(attempt);
                         try {
+                            if (budget) {
+                                const context = lanePlan.budgetContext;
+                                try { await this.sessionCore.runs.charge(handle, context.snapshot, { anchor: context.anchor, role: input.role, background: context.background === true }, budget); } catch (error) {
+                                    if (['native_generation_budget_exhausted', 'native_generation_background_not_due', 'native_generation_budget_lane_denied'].includes(error.code)) throw new GenerationError(error.code);
+                                    throw error;
+                                }
+                            }
                             const response = await provider.send(rendered, boundary);
                             attempt.status = 'success';
                             return response;

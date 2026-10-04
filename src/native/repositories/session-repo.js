@@ -1,3 +1,6 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { RunControl, assertRunAccess, readRunControl, writeRunControl, validRunPublication, runFailure } from '../run-control.js';
+import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../../public/shared/native-run-contract.js';
 import { normalizeSessionTitle } from '../../../public/scripts/native/session-title-contract.js';
 import { ContinuityRepo } from './continuity-repo.js';
 import {
@@ -6,6 +9,7 @@ import {
     assertSession,
     assertSessionRevision,
     assertSavePoint,
+    assertAtriaSave, ATRIA_SAVE_FORMAT,
     assertTimelineEntry,
     assertVariant,
 } from '../contracts.js';
@@ -29,10 +33,12 @@ import {
 // also retains its native transaction/CAS protection. Multi-process FS writers are
 // not supported by the storage engine.
 const sessionWrites = new Map();
-async function withSessionWrite(handle, sessionId, operation) {
+const heldSessionWrites = new AsyncLocalStorage();
+export async function withSessionWrite(handle, sessionId, operation) {
     const key = JSON.stringify([handle, sessionId]);
+    if (heldSessionWrites.getStore()?.has(key)) return operation();
     const previous = sessionWrites.get(key) || Promise.resolve();
-    const next = previous.catch(() => {}).then(operation);
+    const next = previous.catch(() => {}).then(() => heldSessionWrites.run(new Set([...(heldSessionWrites.getStore() ?? []), key]), operation));
     sessionWrites.set(key, next);
     try { return await next; } finally {
         if (sessionWrites.get(key) === next) sessionWrites.delete(key);
@@ -47,6 +53,8 @@ export class SessionRepo {
         this.realm = new ContinuityRepo({ engine, rootKind: NATIVE_RESOURCE_KINDS.realm, revisionKind: NATIVE_RESOURCE_KINDS.realmRevision });
         this.sharedAccess = new ContinuityRepo({ engine, rootKind: NATIVE_RESOURCE_KINDS.sharedAccess, revisionKind: NATIVE_RESOURCE_KINDS.sharedAccessRevision, lockPrefix: 'shared-access:', keyField: 'sessionId' });
     }
+
+    withRunLock(handle, sessionId, operation) { return withSessionWrite(handle, sessionId, operation); }
 
     _sessionKey(handle, sessionId) {
         return { kind: NATIVE_RESOURCE_KINDS.session, handle, sessionId };
@@ -92,24 +100,30 @@ export class SessionRepo {
     }
 
     async create(handle, value) {
-        assertWritable();
-        const session = assertSession(value);
-        return this._engine.withTransaction(handle, tx => putMutable(
-            tx,
-            this._sessionKey(handle, session.sessionId),
-            session,
-            { expectedIntegrity: null },
-        ));
+        return withSessionWrite(handle, value.sessionId, async () => {
+            await new RunControl(this).assert(handle, value.sessionId, 'write');
+            assertWritable();
+            const session = assertSession(value);
+            return this._engine.withTransaction(handle, tx => putMutable(
+                tx,
+                this._sessionKey(handle, session.sessionId),
+                session,
+                { expectedIntegrity: null },
+            ));
+        });
     }
 
     async save(handle, value, options = {}) {
-        assertWritable();
-        const session = assertSession(value);
-        return this._engine.withTransaction(handle, async tx => {
-            if (await this._isCoreSession(tx, handle, session.sessionId)) {
-                throw new ConflictError('native_session_requires_snapshot');
-            }
-            return putMutable(tx, this._sessionKey(handle, session.sessionId), session, options);
+        return withSessionWrite(handle, value.sessionId, async () => {
+            await new RunControl(this).assert(handle, value.sessionId, 'write');
+            assertWritable();
+            const session = assertSession(value);
+            return this._engine.withTransaction(handle, async tx => {
+                if (await this._isCoreSession(tx, handle, session.sessionId)) {
+                    throw new ConflictError('native_session_requires_snapshot');
+                }
+                return putMutable(tx, this._sessionKey(handle, session.sessionId), session, options);
+            });
         });
     }
 
@@ -143,13 +157,16 @@ export class SessionRepo {
     }
 
     async saveBranch(handle, value, options = {}) {
-        assertWritable();
-        const branch = assertBranch(value);
-        return this._engine.withTransaction(handle, async tx => {
-            if (await this._isCoreSession(tx, handle, branch.sessionId)) {
-                return putImmutable(tx, this._branchKey(handle, branch.sessionId, branch.branchId), branch);
-            }
-            return putMutable(tx, this._branchKey(handle, branch.sessionId, branch.branchId), branch, options);
+        return withSessionWrite(handle, value.sessionId, async () => {
+            await new RunControl(this).assert(handle, value.sessionId, 'write');
+            assertWritable();
+            const branch = assertBranch(value);
+            return this._engine.withTransaction(handle, async tx => {
+                if (await this._isCoreSession(tx, handle, branch.sessionId)) {
+                    return putImmutable(tx, this._branchKey(handle, branch.sessionId, branch.branchId), branch);
+                }
+                return putMutable(tx, this._branchKey(handle, branch.sessionId, branch.branchId), branch, options);
+            });
         });
     }
 
@@ -313,13 +330,16 @@ export class SessionRepo {
     }
 
     async saveTimelineEntry(handle, value, options = {}) {
-        assertWritable();
-        const entry = assertTimelineEntry(value);
-        return this._engine.withTransaction(handle, async tx => {
-            if (await this._isCoreSession(tx, handle, entry.sessionId)) {
-                return putImmutable(tx, this._timelineKey(handle, entry.sessionId, entry.branchId, entry.messageId), entry);
-            }
-            return putMutable(tx, this._timelineKey(handle, entry.sessionId, entry.branchId, entry.messageId), entry, options);
+        return withSessionWrite(handle, value.sessionId, async () => {
+            await new RunControl(this).assert(handle, value.sessionId, 'write');
+            assertWritable();
+            const entry = assertTimelineEntry(value);
+            return this._engine.withTransaction(handle, async tx => {
+                if (await this._isCoreSession(tx, handle, entry.sessionId)) {
+                    return putImmutable(tx, this._timelineKey(handle, entry.sessionId, entry.branchId, entry.messageId), entry);
+                }
+                return putMutable(tx, this._timelineKey(handle, entry.sessionId, entry.branchId, entry.messageId), entry, options);
+            });
         });
     }
 
@@ -341,13 +361,16 @@ export class SessionRepo {
     }
 
     async putVariant(handle, value) {
-        assertWritable();
-        const variant = assertVariant(value);
-        return this._engine.withTransaction(handle, tx => putImmutable(
-            tx,
-            this._variantKey(handle, variant.sessionId, variant.messageId, variant.variantId),
-            variant,
-        ));
+        return withSessionWrite(handle, value.sessionId, async () => {
+            await new RunControl(this).assert(handle, value.sessionId, 'write');
+            assertWritable();
+            const variant = assertVariant(value);
+            return this._engine.withTransaction(handle, tx => putImmutable(
+                tx,
+                this._variantKey(handle, variant.sessionId, variant.messageId, variant.variantId),
+                variant,
+            ));
+        });
     }
 
     async getState(handle, sessionId, namespace, head) {
@@ -358,13 +381,16 @@ export class SessionRepo {
     }
 
     async putState(handle, sessionId, namespace, head, value) {
-        assertWritable();
-        const doc = cloneNativeDocument(value, 'SessionState');
-        return this._engine.withTransaction(handle, tx => putImmutable(
-            tx,
-            this._stateKey(handle, sessionId, namespace, head),
-            doc,
-        ));
+        return withSessionWrite(handle, sessionId, async () => {
+            await new RunControl(this).assert(handle, sessionId, 'write');
+            assertWritable();
+            const doc = cloneNativeDocument(value, 'SessionState');
+            return this._engine.withTransaction(handle, tx => putImmutable(
+                tx,
+                this._stateKey(handle, sessionId, namespace, head),
+                doc,
+            ));
+        });
     }
 
     async getRevision(handle, sessionId, revisionId) {
@@ -384,55 +410,61 @@ export class SessionRepo {
     }
 
     async putRevision(handle, value) {
-        assertWritable();
-        const revision = assertSessionRevision(value);
-        return this._engine.withTransaction(handle, tx => putImmutable(
-            tx,
-            this._revisionKey(handle, revision.sessionId, revision.revisionId),
-            revision,
-        ));
-    }
-
-    async commitRevision(handle, value) {
-        assertWritable();
-        const revision = assertSessionRevision(value);
-        return this._engine.withTransaction(handle, async (tx) => {
-            const sessionKey = this._sessionKey(handle, revision.sessionId);
-            const session = await getNativeDocument(tx, sessionKey);
-            if (!session) throw new NotFoundError('native session', { sessionId: revision.sessionId });
-            if (await this._isCoreSession(tx, handle, revision.sessionId)) {
-                throw new ConflictError('native_session_requires_snapshot');
-            }
-            const branch = await getNativeDocument(
-                tx,
-                this._branchKey(handle, revision.sessionId, revision.branchId),
-            );
-            if (!branch) throw new NotFoundError('native session branch', {
-                sessionId: revision.sessionId,
-                branchId: revision.branchId,
-            });
-
-            // Publish immutable revision first; Session HEAD is the commit marker.
-            await putImmutable(
+        return withSessionWrite(handle, value.sessionId, async () => {
+            await new RunControl(this).assert(handle, value.sessionId, 'write');
+            assertWritable();
+            const revision = assertSessionRevision(value);
+            return this._engine.withTransaction(handle, tx => putImmutable(
                 tx,
                 this._revisionKey(handle, revision.sessionId, revision.revisionId),
                 revision,
-            );
-            const next = assertSession({
-                ...session,
-                activeBranchId: revision.branchId,
-                headRevisionId: revision.revisionId,
-                updatedAt: Math.max(Date.now(), Number(session.updatedAt || 0)),
+            ));
+        });
+    }
+
+    async commitRevision(handle, value) {
+        return withSessionWrite(handle, value.sessionId, async () => {
+            await new RunControl(this).assert(handle, value.sessionId, 'write');
+            assertWritable();
+            const revision = assertSessionRevision(value);
+            return this._engine.withTransaction(handle, async (tx) => {
+                const sessionKey = this._sessionKey(handle, revision.sessionId);
+                const session = await getNativeDocument(tx, sessionKey);
+                if (!session) throw new NotFoundError('native session', { sessionId: revision.sessionId });
+                if (await this._isCoreSession(tx, handle, revision.sessionId)) {
+                    throw new ConflictError('native_session_requires_snapshot');
+                }
+                const branch = await getNativeDocument(
+                    tx,
+                    this._branchKey(handle, revision.sessionId, revision.branchId),
+                );
+                if (!branch) throw new NotFoundError('native session branch', {
+                    sessionId: revision.sessionId,
+                    branchId: revision.branchId,
+                });
+
+                // Publish immutable revision first; Session HEAD is the commit marker.
+                await putImmutable(
+                    tx,
+                    this._revisionKey(handle, revision.sessionId, revision.revisionId),
+                    revision,
+                );
+                const next = assertSession({
+                    ...session,
+                    activeBranchId: revision.branchId,
+                    headRevisionId: revision.revisionId,
+                    updatedAt: Math.max(Date.now(), Number(session.updatedAt || 0)),
+                });
+                await putMutable(tx, sessionKey, next);
+                return revision;
             });
-            await putMutable(tx, sessionKey, next);
-            return revision;
         });
     }
 
     // N3 coherent publication. Every dependency is immutable and checked before
     // publishing the revision manifest; the Session record is the final commit marker.
     async commitSnapshot(handle, { session: sessionValue, revision: revisionValue,
-        branches = [], entries = [], variants = [], states, expectedRevisionId, historyCheckpoint = false }) {
+        branches = [], entries = [], variants = [], states, expectedRevisionId, historyCheckpoint = false, runProof = null, runAction = 'write' }) {
         assertWritable();
         const session = assertSession(sessionValue);
         const revision = assertSessionRevision(revisionValue);
@@ -442,6 +474,16 @@ export class SessionRepo {
         return withSessionWrite(handle, session.sessionId, () => this._engine.withTransaction(handle, async tx => {
             const key = this._sessionKey(handle, session.sessionId);
             const existing = await tx.getResource(key);
+            const control = await assertRunAccess(tx, handle, session.sessionId, runAction);
+            const run = states[RUN_NAMESPACE];
+            if ((control?.mode || run) && !validRunPublication(runProof)) throw runFailure('native_run_publication_proof_required');
+            if (control?.mode && !run) throw runFailure('native_run_state_required');
+            if (run) {
+                assertRunState(run);
+                if (control && run.sequence <= control.sequence) throw runFailure('native_run_sequence_conflict');
+                if (control?.mode && control.mode !== 'pending' && control.mode !== run.mode) throw runFailure('native_run_mode_conflict');
+                if (control?.mode === 'ironman' && (session.activeBranchId !== existing?.doc.activeBranchId || branches.length)) throw runFailure('native_run_rewind_denied');
+            }
             if (expectedRevisionId === undefined || (existing?.doc.headRevisionId ?? null) !== expectedRevisionId
                 || (!existing && expectedRevisionId !== null)) {
                 throw new ConflictError('native_session_head_conflict', { sessionId: session.sessionId });
@@ -484,11 +526,20 @@ export class SessionRepo {
             } else if (snapshot.core.parentRevisionId !== expectedRevisionId) throw new TypeError('Revision parent must match expected HEAD');
             await putImmutable(tx, this._revisionKey(handle, session.sessionId, revision.revisionId), revision);
             await putMutable(tx, key, published, { expectedIntegrity: existing?.integrity ?? null });
+            const updated = await readRunControl(tx, handle, session.sessionId);
+            if (updated) {
+                await writeRunControl(tx, handle, session.sessionId, updated);
+                if (updated.mode === 'ironman') {
+                    for (const saved of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.savePoint, handle, sessionId: session.sessionId })) {
+                        if (saved.doc.revisionId !== session.headRevisionId) await tx.deleteResource(saved.key);
+                    }
+                }
+            }
             return snapshot;
         }));
     }
 
-    async importClosure(handle, closure) {
+    async importClosure(handle, closure, { resume = null } = {}) {
         assertWritable();
         if (!closure || typeof closure !== 'object' || Array.isArray(closure)) {
             throw new TypeError('Native Session import closure must be an object');
@@ -509,6 +560,20 @@ export class SessionRepo {
 
         return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
             const sessionKey = this._sessionKey(handle, sessionId);
+            const control = await assertRunAccess(tx, handle, sessionId, 'import');
+            const rootRevision = revisions.find(item => item.revisionId === session.headRevisionId);
+            const run = stateRecords.find(item => item.namespace === RUN_NAMESPACE && item.head === rootRevision.stateHeads[RUN_NAMESPACE])?.data;
+            if (run) assertRunState(run);
+            if (control?.mode && control.mode !== run?.mode) throw runFailure('native_run_mode_conflict');
+            if (run?.mode === 'ironman') {
+                if (resume) assertRunContinuation(resume.control);
+                if (!resume || resume.mode !== 'ironman' || resume.sequence !== run.sequence || revisions.length !== 1 || branches.length !== 1 || savePoints.length
+                    || run.status !== 'active') throw runFailure('native_run_resume_required');
+                assertAtriaSave({ format: ATRIA_SAVE_FORMAT, schemaVersion: 2, nativeSchemaVersion: 1, scope: 'resume', exportedAt: session.updatedAt, resume,
+                    package: { packageId: session.packageId, packageVersionId: session.packageVersionId, packageVersion: session.packageVersion, packageContentHash: session.packageContentHash, entryPointId: session.entryPointId },
+                    root: { sessionId, revisionId: session.headRevisionId, saveId: null }, closure });
+                if (control && (resume.sequence !== control.sequence || resume.sourceRevisionId !== (control.resumeSourceRevisionId ?? control.headRevisionId))) throw runFailure('native_run_resume_stale');
+            } else if (resume) throw runFailure('native_run_resume_invalid');
             if (await tx.getResource(sessionKey)) {
                 throw new ConflictError('native_session_import_conflict', { sessionId });
             }
@@ -563,6 +628,8 @@ export class SessionRepo {
             const snapshot = await readSessionSnapshot(tx, handle, session, head);
 
             await putMutable(tx, sessionKey, session, { expectedIntegrity: null });
+            const imported = await readRunControl(tx, handle, sessionId);
+            if (imported) await writeRunControl(tx, handle, sessionId, { ...imported, ...(resume ? { ...resume.control, resumeSourceRevisionId: resume.sourceRevisionId } : {}) });
             return snapshot;
         }));
     }
@@ -623,6 +690,7 @@ export class SessionRepo {
 
     async loadSnapshot(handle, sessionId, { revisionId = null } = {}) {
         return this._engine.withTransaction(handle, async tx => {
+            await assertRunAccess(tx, handle, sessionId, 'inspect', revisionId);
             const session = assertSession(await readCheckedDocument(tx, this._sessionKey(handle, sessionId)));
             if (session.sessionId !== sessionId) throw new TypeError('Session resource identity mismatch');
             const target = revisionId || session.headRevisionId;
@@ -737,8 +805,14 @@ export class SessionRepo {
     async delete(handle, sessionId) {
         assertWritable();
         const session = await this.get(handle, sessionId);
-        if (!session) return false;
+        if (!session) return withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async tx => {
+            const control = await readRunControl(tx, handle, sessionId);
+            if (control?.status === 'terminal') await writeRunControl(tx, handle, sessionId, { ...control, cleanup: 'complete', operations: {}, background: {} });
+            return false;
+        }));
         return this.continuity.lock(handle, session.packageId, () => withSessionWrite(handle, sessionId, () => this._engine.withTransaction(handle, async (tx) => {
+            const control = await readRunControl(tx, handle, sessionId);
+            if (control?.mode === 'ironman') await writeRunControl(tx, handle, sessionId, { ...control, status: 'terminal', cleanup: 'pending' });
             const root = await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.playerContinuity, handle, packageId: session.packageId });
             const continuity = root && await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.playerContinuityRevision, handle, packageId: session.packageId, revisionId: root.revisionId });
             const realmRoot = await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.realm, handle, packageId: session.packageId });
@@ -757,7 +831,9 @@ export class SessionRepo {
                     await tx.deleteResource(record.key);
                 }
             }
-            return tx.deleteResource(this._sessionKey(handle, sessionId));
+            const removed = await tx.deleteResource(this._sessionKey(handle, sessionId));
+            if (control?.mode === 'ironman') await writeRunControl(tx, handle, sessionId, { ...control, status: 'terminal', cleanup: 'complete', operations: {}, background: {} });
+            return removed;
         })));
     }
 }

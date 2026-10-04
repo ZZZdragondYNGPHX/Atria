@@ -1,3 +1,4 @@
+import { assertRunTransactions } from '../../../../shared/native-run-contract.js';
 import { LIFETIME_OPERATIONS } from '../../../../shared/native-lifetime-contract.js';
 import { HISTORY_OPERATIONS } from '../../../../shared/native-history-contract.js';
 import { assertSimulationTransactions } from '../../../../shared/native-simulation-contract.js';
@@ -155,6 +156,7 @@ export function compileTransactionDeclarations(raw, options) {
         return transaction;
     }, 'transactions');
     assertSimulationTransactions(contract.simulationRuntime, transactions, lifecycle);
+    assertRunTransactions(contract, transactions);
     if (!transactions.length) throw new TypeError('Game Logic v3 requires Transactions');
     if (new Set(transactions.map(item => item.verb)).size !== transactions.length) throw new TypeError('Duplicate Transaction verb');
     const commandIds = new Set((raw.commands ?? []).map(item => item.id));

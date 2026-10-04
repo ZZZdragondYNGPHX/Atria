@@ -134,7 +134,7 @@ export class FrontendBridgeService {
             const snapshot = await host.executeTurn(state.owner, { sessionId: state.sessionId, revisionId: request.revision,
                 invocationId: turnId, slotBindings }, undefined, undefined,
             { transaction: { transactionId: binding.target.transactionId, input: mapped } });
-            await this.current(services, state);
+            if (snapshot.states.atri_run?.status !== 'dead' || snapshot.states.atri_run.mode !== 'ironman') await this.current(services, state);
             return receipt({ revision: snapshot.revision.revisionId, data: {} });
         }
         if (binding.kind === 'action' && request.method === 'action.invoke') {

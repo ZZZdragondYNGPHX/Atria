@@ -45,6 +45,8 @@ const targets = {
     'host.composer.focus': action(HOST_EMPTY, true),
     'host.composer.submit': action(HOST_EMPTY, true),
     'host.session.status': read(SESSION_SCHEMA),
+    'host.session.begin': action(hostObject({ inputJson: string(65536), invocationId: id })),
+    'host.session.run': read(hostObject({ runId: id, mode: string(16), status: string(16), sequence: number, cleanup: string(16) })),
     'host.session.saves': read(saveSchema, false, true),
     'host.session.save': action(hostObject({ displayName: string(256) }, []), false, saveSchema),
     'host.session.restore': action(hostObject({ saveId: id })),

@@ -1,3 +1,4 @@
+import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../public/shared/native-run-contract.js';
 import { assertInformationClosure } from '../../public/shared/native-information-contract.js';
 import { assertMessageProjection, assertTurnEnvelope } from '../../public/shared/native-message-contract.js';
 export { assertMessageProjection, assertTurnEnvelope, assertConversationThread } from '../../public/shared/native-message-contract.js';
@@ -71,6 +72,7 @@ export const NATIVE_RESOURCE_KINDS = Object.freeze({
     knowledgeEntry: 'atri_knowledge_entry',
     knowledgeBinding: 'atri_knowledge_binding',
     session: 'atri_session',
+    runControl: 'atri_run_control',
     branch: 'atri_session_branch',
     timelineEntry: 'atri_timeline_entry',
     timelineVariant: 'atri_timeline_variant',
@@ -99,6 +101,7 @@ export const NATIVE_STORE_FAMILIES = Object.freeze([
     'knowledge_entries',
     'knowledge_bindings',
     'sessions',
+    'run_controls',
     'session_branches',
     'timeline_entries',
     'timeline_variants',
@@ -729,6 +732,7 @@ const SAVE_KEYS = new Set([
     'package',
     'root',
     'closure',
+    'resume',
 ]);
 
 function assertSavePackage(value) {
@@ -776,9 +780,10 @@ export function assertAtriaSave(value) {
     noLegacyIdentity(value, '.atriasave');
     assertOnlyKeys(value, SAVE_KEYS, '.atriasave');
     if (value.format !== ATRIA_SAVE_FORMAT) throw new TypeError(`.atriasave format must be '${ATRIA_SAVE_FORMAT}'`);
-    if (value.schemaVersion !== ATRIA_SAVE_SCHEMA_VERSION) throw new TypeError('.atriasave schemaVersion must be 1');
+    if ((value.schemaVersion !== 1 && value.schemaVersion !== 2) || (value.schemaVersion === 2) !== (value.scope === 'resume')) throw new TypeError('Unsupported .atriasave schema/scope');
+    if (value.schemaVersion === 1 && value.resume !== undefined) throw new TypeError('Legacy saves cannot carry resume control');
     if (value.nativeSchemaVersion !== NATIVE_SCHEMA_VERSION) throw new TypeError('.atriasave nativeSchemaVersion must be 1');
-    if (!ATRIA_SAVE_SCOPES.includes(value.scope)) throw new TypeError('.atriasave scope must be snapshot or session');
+    if (![...ATRIA_SAVE_SCOPES, 'resume'].includes(value.scope)) throw new TypeError('.atriasave scope must be snapshot, session or resume');
 
     const packageDependency = assertSavePackage(value.package);
     const root = assertSaveRoot(value.root, value.scope);
@@ -881,9 +886,32 @@ export function assertAtriaSave(value) {
         }
     }
 
+    let resume;
+    if (value.scope === 'resume') {
+        plain(value.resume, '.atriasave.resume');
+        assertOnlyKeys(value.resume, new Set(['mode', 'sequence', 'sourceRevisionId', 'control']), '.atriasave.resume');
+        resume = { mode: value.resume.mode, sequence: value.resume.sequence, sourceRevisionId: assertNativeId(value.resume.sourceRevisionId, 'revision'), control: assertRunContinuation(value.resume.control) };
+        const revision = revisionById.get(root.revisionId);
+        const run = stateRecords.find(item => item.namespace === RUN_NAMESPACE && item.head === revision.stateHeads[RUN_NAMESPACE])?.data;
+        assertRunState(run);
+        const core = stateRecords.find(item => item.namespace === 'atri_session_core' && item.head === revision.stateHeads.atri_session_core)?.data;
+        if (resume.sourceRevisionId !== root.revisionId || resume.mode !== 'ironman' || run.mode !== 'ironman' || run.status !== 'active' || resume.sequence !== run.sequence
+            || revisions.length !== 1 || branches.length !== 1 || savePoints.length || root.saveId !== null
+            || session.headRevisionId !== root.revisionId || session.activeBranchId !== revision.branchId
+            || branches[0].parentBranchId || branches[0].forkPoint || core?.parentRevisionId || core?.forkRevisionId
+            || core?.branches?.length !== 1 || core.branches[0].headRevisionId !== root.revisionId || core.branches[0].forkRevisionId) throw new TypeError('Invalid ironman head-only resume closure');
+        const requiredStates = new Set([...Object.entries(revision.stateHeads).map(([namespace, head]) => namespace + '\0' + head), 'atri_knowledge\0' + revision.knowledgeHead]);
+        const timeline = stateRecords.find(item => item.namespace === 'atri_timeline' && item.head === revision.stateHeads.atri_timeline)?.data;
+        const selectedMessages = new Set(timeline?.map(item => item.messageId));
+        const selectedVariants = new Set(timeline?.flatMap(item => item.variantIds));
+        if (!Array.isArray(timeline) || stateRecords.length !== requiredStates.size || stateRecords.some(item => !requiredStates.has(item.namespace + '\0' + item.head))
+            || timelineEntries.length !== selectedMessages.size || timelineEntries.some(item => !selectedMessages.has(item.messageId))
+            || variants.length !== selectedVariants.size || variants.some(item => !selectedVariants.has(item.variantId))) throw new TypeError('Resume closure contains unreachable recovery data');
+    }
     return Object.freeze({
         format: ATRIA_SAVE_FORMAT,
-        schemaVersion: ATRIA_SAVE_SCHEMA_VERSION,
+        schemaVersion: value.schemaVersion,
+        ...(resume ? { resume } : {}),
         nativeSchemaVersion: NATIVE_SCHEMA_VERSION,
         scope: value.scope,
         exportedAt: timestamp(value.exportedAt, '.atriasave.exportedAt'),
@@ -928,6 +956,7 @@ const RESOURCE_KEY_SPECS = Object.freeze({
     [NATIVE_RESOURCE_KINDS.knowledgeEntry]: [['handle', 'handle'], ['knowledgeBaseId', 'knowledgeBase'], ['knowledgeRevisionId', 'knowledgeRevision'], ['knowledgeEntryId', 'knowledgeEntry']],
     [NATIVE_RESOURCE_KINDS.knowledgeBinding]: [['handle', 'handle'], ['knowledgeBindingId', 'knowledgeBinding']],
     [NATIVE_RESOURCE_KINDS.session]: [['handle', 'handle'], ['sessionId', 'session']],
+    [NATIVE_RESOURCE_KINDS.runControl]: [['handle', 'handle'], ['sessionId', 'session']],
     [NATIVE_RESOURCE_KINDS.branch]: [['handle', 'handle'], ['sessionId', 'session'], ['branchId', 'branch']],
     [NATIVE_RESOURCE_KINDS.timelineEntry]: [['handle', 'handle'], ['sessionId', 'session'], ['branchId', 'branch'], ['messageId', 'message']],
     [NATIVE_RESOURCE_KINDS.timelineVariant]: [['handle', 'handle'], ['sessionId', 'session'], ['messageId', 'message'], ['variantId', 'variant']],

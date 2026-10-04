@@ -500,6 +500,7 @@ describe('N0 Native Store schema v1', () => {
             'knowledge_entries',
             'knowledge_bindings',
             'sessions',
+            'run_controls',
             'session_branches',
             'timeline_entries',
             'timeline_variants',
