@@ -892,6 +892,8 @@ export function assertAtriaSave(value) {
         const state = assertIllustrationState(record.data);
         const annotations = new Map(state.annotations.map(item => [item.annotationId, item]));
         for (const item of state.annotations) {
+            if ((item.promptContext && item.promptContext.source.sessionId !== session.sessionId)
+                || item.promptVersions?.some(version => version.requestSnapshot.contextPlan.source.sessionId !== session.sessionId)) throw new TypeError('Invalid illustration context session in save');
             const { anchor } = item;
             const variant = variantById.get(anchor.variantId), revision = revisionById.get(anchor.revisionId);
             const timeline = revision && stateRecords.find(item => item.namespace === 'atri_timeline' && item.head === revision.stateHeads.atri_timeline)?.data;

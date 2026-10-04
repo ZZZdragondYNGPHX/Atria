@@ -14,6 +14,8 @@ export async function readIllustrationState(tx, handle, sessionId, head) {
 
 export async function validateIllustrationDependencies(tx, handle, sessionId, state) {
     for (const item of state.annotations) {
+        if ((item.promptContext && item.promptContext.source.sessionId !== sessionId)
+            || item.promptVersions?.some(version => version.requestSnapshot.contextPlan.source.sessionId !== sessionId)) throw new TypeError('Illustration context belongs to another session');
         const { anchor } = item;
         const variant = (await tx.getResource({ kind: K.timelineVariant, handle, sessionId, messageId: anchor.messageId, variantId: anchor.variantId }))?.doc;
         const revision = (await tx.getResource({ kind: K.sessionRevision, handle, sessionId, revisionId: anchor.revisionId }))?.doc;

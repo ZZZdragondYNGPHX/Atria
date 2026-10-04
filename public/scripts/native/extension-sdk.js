@@ -59,6 +59,10 @@ export function createExtensionSdk({ plugin, context, document: doc, root, isCur
             if (!context.sessionId || context.historical) throw new Error('atri_extension_session_readonly');
             return illustrationApi.command(context, command, input, controller.signal);
         }),
+        prompt: illustrationCall((action, input = {}) => {
+            if (!context.sessionId || context.historical) throw new Error('atri_extension_session_readonly');
+            return illustrationApi.prompt(context, action, input, controller.signal);
+        }),
     });
     if (illustrationApi) own(() => illustrationApi.selectionMode({ ...context, selectionOwner: plugin.id }, false));
     return {

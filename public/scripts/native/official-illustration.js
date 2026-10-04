@@ -1,4 +1,4 @@
-import { createIllustrationDraft, assertIllustrationDraft, matchDrawingCharacters } from '../../shared/illustration-plugin-contract.js';
+import { createIllustrationDraft, assertIllustrationDraft, matchDrawingCharacters, composeIllustrationPrompt } from '../../shared/illustration-plugin-contract.js';
 import { illustrationNode as node, illustrationField as field, illustrationSelect as select, illustrationButton as button, ILLUSTRATION_CSS } from './illustration-ui.js';
 import { renderIllustrationPreset, mountIllustrationSettings } from './illustration-settings-ui.js';
 import { nativeAssetUrl } from './session-projection.js';
@@ -16,7 +16,40 @@ export async function activate(sdk) {
     const panel = node(doc, root, 'aside', undefined, 'atri-illustration-panel'); panel.hidden = true; panel.setAttribute('aria-label', '标注卡片');
     const status = node(doc, toolbar, 'span'); status.setAttribute('role', 'status');
     let mode = false, pending = null, selectedId = null, settings = (await sdk.illustrations.settings.read()).value, configEditor;
-    const drafts = new Map();
+    const drafts = new Map(), operations = new Map(), watchers = new Map();
+    const terminal = new Set(['completed', 'failed', 'cancelled', 'stale']);
+    const promptErrors = { native_generation_route_missing: '请先创建“绘图提示词”用途的模型路线，并在插图配置中选择。', native_generation_route_ambiguous: '有多条提示词模型路线，请在插图配置中明确选择。', generation_secret_unavailable: '提示词模型连接的密钥不可用，请检查该连接。', native_illustration_source_unavailable: '此旧存档缺少原始历史上下文；可以直接填写提示词。', generation_context_budget_exceeded: '选文与角色描述超过模型容量，请选择容量更大的提示词模型。', native_illustration_prompt_invalid: '模型输出格式不正确，请重试提示词步骤。' };
+    const taskLabels = { queued: '等待提示词模型', running: '正在生成提示词', streaming: '正在生成提示词', retrying: '正在重试提示词', finalizing: '正在保存提示词版本', completed: '提示词版本已保存', failed: '提示词生成失败，可重试本步骤', cancelled: '提示词任务已取消', stale: '标注已删除或不可用，结果未写入' };
+    function watch(operation, submitted) {
+        const id = operation.operationId;
+        if (watchers.has(id) || disposed) return;
+        watchers.set(id, null);
+        const poll = async () => {
+            if (disposed) return;
+            try {
+                const result = await sdk.illustrations.prompt('status', { operationId: id });
+                if (disposed) return;
+                const annotationId = result.operation.anchor.annotationId;
+                operations.set(annotationId, result.operation);
+                if (terminal.has(result.operation.status)) {
+                    watchers.delete(id);
+                    if (selectedId === annotationId) readDraft();
+                    const local = drafts.get(annotationId);
+                    if (submitted && JSON.stringify(local) === submitted) drafts.delete(annotationId);
+                    if (selectedId === annotationId && !panel.hidden && !configEditor) renderCard();
+                    const failureDetail = result.operation.errorCode === 'generation_context_budget_exceeded' ? '；选文与角色描述超过模型容量，请选择容量更大的提示词模型' : result.operation.errorCode === 'native_illustration_prompt_invalid' ? '；模型输出格式不正确，请重试提示词步骤' : '';
+                    notify(taskLabels[result.operation.status] + failureDetail + (result.operation.status === 'completed' && drafts.has(annotationId) ? '；当前编辑已保留，可从历史应用新版本。' : '。'), result.operation.status === 'failed');
+                    return;
+                }
+                const indicator = panel.querySelector('[data-prompt-status="' + annotationId + '"]');
+                if (indicator) indicator.textContent = taskLabels[result.operation.status];
+                watchers.set(id, setTimeout(poll, 750));
+            } catch (error) {
+                watchers.delete(id); if (!disposed) notify('任务状态读取失败；重新打开卡片可恢复查看。', true);
+            }
+        };
+        void poll();
+    }
     let readDraft = () => {}, busy = false, disposed = false;
     const writable = Boolean(sdk.context.sessionId && !sdk.context.historical);
     toolbar.hidden = !sdk.context.sessionId;
@@ -24,8 +57,21 @@ export async function activate(sdk) {
     const run = callback => async () => {
         if (busy || disposed) return;
         busy = true;
-        try { await callback(); } catch (error) { notify(error.status === 409 ? '标注已变化，编辑已保留。请重新打开卡片后合并。' : error.message, true); } finally { busy = false; }
+        try { await callback(); } catch (error) { notify(error.status === 409 ? '标注已变化，编辑已保留。请重新打开卡片后合并。' : promptErrors[error.code] ?? error.message, true); } finally { busy = false; }
     };
+    // Reconnect to server-owned tasks. UI disposal only releases polling.
+    async function refreshTasks() {
+        if (!writable) return;
+        try {
+            const latest = new Map((await sdk.illustrations.prompt('list')).map(operation => [operation.anchor.annotationId, operation]));
+            for (const [annotationId, operation] of latest) {
+                operations.set(annotationId, operation);
+                if (!terminal.has(operation.status)) watch(operation);
+                else if (operation.status === 'completed') await sdk.illustrations.prompt('status', { operationId: operation.operationId });
+            }
+        } catch { /* The card remains editable if task inventory is unavailable. */ }
+    }
+    await refreshTasks();
     function capture() {
         root.style.setProperty('--atri-illustration-controls-inset', sdk.illustrations.toolbarInset() + 'px');
         if (!mode || disposed) return;
@@ -52,7 +98,7 @@ export async function activate(sdk) {
     // Keep desktop selection on the explicit action. Touch uses its captured
     // canonical range and leaves native selection handles under browser control.
     sdk.events.listen(create, 'mousedown', event => event.preventDefault());
-    button(doc, toolbar, '标注与历史', run(() => { readDraft(); if (!mode && writable) { mode = true; toggle.textContent = '生图模式'; toggle.setAttribute('aria-pressed', 'true'); sdk.illustrations.setSelectionMode(true); create.hidden = false; } renderCard(); }));
+    button(doc, toolbar, '标注与历史', run(async () => { readDraft(); await refreshTasks(); if (!mode && writable) { mode = true; toggle.textContent = '生图模式'; toggle.setAttribute('aria-pressed', 'true'); sdk.illustrations.setSelectionMode(true); create.hidden = false; } renderCard(); }));
     button(doc, toolbar, '插图配置', run(() => {
         readDraft(); readDraft = () => {}; configEditor?.dispose(); panel.replaceChildren(); panel.hidden = false;
         button(doc, panel, '关闭配置', run(async () => { configEditor?.dispose(); configEditor = null; settings = (await sdk.illustrations.settings.read()).value; panel.hidden = true; }));
@@ -114,9 +160,47 @@ export async function activate(sdk) {
             readDraft(); await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft, expectedHead: snapshot.head });
             drafts.delete(annotation.annotationId); notify('卡片已保存。'); renderCard();
         }));
-        const promptButton = button(doc, actions, '生成提示词', () => {}); promptButton.disabled = true; promptButton.title = '提示词生成功能尚未可用';
+        const operation = operations.get(annotation.annotationId);
+        const active = operation && !terminal.has(operation.status);
+        const promptButton = button(doc, actions, active ? '提示词生成中' : '生成提示词', run(async () => {
+            readDraft(); const submitted = structuredClone(draft);
+            await sdk.illustrations.command('updateAnnotation', { annotationId: annotation.annotationId, draft: submitted, expectedHead: sdk.illustrations.snapshot().head });
+            const started = await sdk.illustrations.prompt('start', { annotationId: annotation.annotationId });
+            const operation = { operationId: started.operationId, status: 'queued', anchor: { annotationId: annotation.annotationId } };
+            operations.set(annotation.annotationId, operation); watch(operation, JSON.stringify(submitted));
+            notify('提示词任务已提交；可以继续阅读或编辑卡片。'); renderCard();
+        })); promptButton.disabled = Boolean(active); promptButton.setAttribute('aria-busy', String(Boolean(active)));
+        const taskStatus = node(doc, actions, 'span', operation ? taskLabels[operation.status] : '');
+        taskStatus.dataset.promptStatus = annotation.annotationId; taskStatus.setAttribute('role', 'status');
+        if (active) button(doc, actions, '取消提示词任务', run(async () => {
+            await sdk.illustrations.prompt('cancel', { operationId: operation.operationId }); notify('已请求取消提示词任务。');
+        }));
         const imageButton = button(doc, actions, '生成图片', () => {}); imageButton.disabled = true; imageButton.title = '图片生成功能尚未可用';
-        node(doc, editor, 'p', '提示词生成与图片生成分开操作；当前可以直接编辑并保存提示词。');
+        node(doc, editor, 'p', '生成提示词会保存新版本；图片生成单独操作。也可直接填写提示词。');
+        button(doc, editor, '按当前分块组合提示词', run(() => { readDraft(); draft.prompt = composeIllustrationPrompt(draft); renderCard(); }));
+        button(doc, editor, '显式应用最新角色与预设', run(async () => {
+            readDraft(); settings = (await sdk.illustrations.settings.read()).value;
+            draft.characters = draft.characters.map(item => {
+                const character = settings.characters.find(current => current.id === item.character.id);
+                return character ? { ...item, character: structuredClone(character) } : item;
+            });
+            draft.preset = structuredClone(settings.works[sdk.context.packageId]?.preset ?? settings.preset);
+            notify('已更新角色与预设快照；完整提示词保留，可按分块重新组合。'); renderCard();
+        }));
+        const preview = node(doc, editor, 'details'); node(doc, preview, 'summary', '预览最终图片输入');
+        const previewText = node(doc, preview, 'pre');
+        const previewInput = () => { previewText.textContent = JSON.stringify({ prompt: draft.prompt, negativePrompt: draft.preset.negativePrompt, parameters: draft.preset.parameters }, null, 2); };
+        editor.addEventListener('input', () => { if (preview.open) previewInput(); });
+        previewInput(); preview.addEventListener('toggle', () => { if (preview.open) { try { readDraft(); previewInput(); } catch (error) { notify(error.message, true); } } });
+        const promptHistory = node(doc, card, 'details'); promptHistory.dataset.section = 'prompts'; promptHistory.open = openDetails.has('prompts'); node(doc, promptHistory, 'summary', '提示词历史');
+        for (const version of [...(annotation.promptVersions ?? [])].reverse()) {
+            const row = node(doc, promptHistory, 'article');
+            node(doc, row, 'p', new Date(version.createdAt).toLocaleString()); node(doc, row, 'pre', version.draft.prompt);
+            const evidence = node(doc, row, 'details'); node(doc, evidence, 'summary', '生成时的上下文、角色与模型路线');
+            node(doc, evidence, 'pre', JSON.stringify({ characters: version.draft.characters, preset: version.draft.preset, template: version.template, request: version.requestSnapshot }, null, 2));
+            const apply = button(doc, row, '应用此提示词版本', run(() => { readDraft(); drafts.set(annotation.annotationId, structuredClone(version.draft)); renderCard(); notify('版本已载入编辑区，保存卡片后生效。'); })); apply.disabled = !writable || deleted;
+        }
+        if (!annotation.promptVersions?.length) node(doc, promptHistory, 'p', '暂无提示词生成版本。');
         button(doc, editor, '删除标注', run(async () => {
             await sdk.illustrations.command('deleteAnnotation', { annotationId: annotation.annotationId, expectedHead: snapshot.head });
             drafts.delete(annotation.annotationId); notify('标注已删除，图片历史仍保留。'); renderCard();
@@ -139,5 +223,5 @@ export async function activate(sdk) {
         }
         if (deleted) node(doc, card, 'p', '此标注已删除，仅保留图片历史。');
     }
-    return () => { disposed = true; configEditor?.dispose(); drafts.clear(); };
+    return () => { disposed = true; for (const timer of watchers.values()) clearTimeout(timer); watchers.clear(); configEditor?.dispose(); drafts.clear(); };
 }

@@ -1,4 +1,5 @@
 import { extensionsRequest } from './extensions-client.js';
+import { runtimeRequest } from './runtime-client.js';
 import { emptyIllustrations } from '../../shared/native-illustration-contract.js';
 import { readIllustrationSelection, setIllustrationSelectionMode, repaintIllustrationSurfaces, onIllustrationSurfacesChanged, illustrationToolbarInset } from './illustration-surfaces.js';
 
@@ -7,7 +8,7 @@ export const illustrationSettingsClient = Object.freeze({
     save: (value, expectedRevision) => extensionsRequest('/official/illustration', { method: 'PUT', body: { value, expectedRevision } }),
 });
 
-export function createIllustrationExtensionApi({ runtime, document: doc }) {
+export function createIllustrationExtensionApi({ runtime, document: doc, generationRequest = runtimeRequest }) {
     let queue = Promise.resolve();
     const execute = async (scope, command, input, signal) => {
         if (signal?.aborted) throw new Error('atri_extension_disposed');
@@ -40,6 +41,35 @@ export function createIllustrationExtensionApi({ runtime, document: doc }) {
         selection: scope => readIllustrationSelection(doc, scope),
         selectionMode: (scope, enabled) => setIllustrationSelectionMode(doc, scope, enabled),
         subscribe: onIllustrationSurfacesChanged,
+        async prompt(scope, action, input, signal) {
+            if (signal?.aborted || runtime.snapshot?.session.sessionId !== scope.sessionId
+                || runtime.snapshot.revision.branchId !== scope.branchId || runtime.history) throw new Error('atri_extension_disposed');
+            if (action === 'start' || action === 'cancel') runtime.assertWritable();
+            let result;
+            if (action === 'start') result = await generationRequest('/illustration-prompts', { method: 'POST', body: { sessionId: scope.sessionId, branchId: scope.branchId, annotationId: input.annotationId }, signal });
+            else if (action === 'list') result = await generationRequest('/illustration-prompts?sessionId=' + encodeURIComponent(scope.sessionId) + '&branchId=' + encodeURIComponent(scope.branchId), { signal });
+            else if (action === 'status' || action === 'cancel') result = await generationRequest((action === 'status' ? '/illustration-prompts/' : '/operations/') + encodeURIComponent(input.operationId), { method: action === 'cancel' ? 'DELETE' : 'GET', signal });
+            else throw new TypeError('Unknown illustration prompt action');
+            if (action === 'status') {
+                if (result.operation.anchor.sessionId !== scope.sessionId || result.operation.anchor.branchId !== scope.branchId) throw new Error('atri_illustration_operation_mismatch');
+                if (result.state && !signal?.aborted && runtime.snapshot?.session.sessionId === scope.sessionId && runtime.snapshot.revision.branchId === scope.branchId && !runtime.history) {
+                    // Fetch current presentation after terminal delivery so a slow
+                    // status response cannot overwrite a more recent card edit.
+                    const refresh = queue.catch(() => {}).then(async () => {
+                        if (signal?.aborted) return;
+                        const latest = await runtime.request('illustrations/read', { sessionId: scope.sessionId, branchId: scope.branchId });
+                        if (!signal?.aborted && runtime.snapshot?.session.sessionId === scope.sessionId && runtime.snapshot.revision.branchId === scope.branchId && !runtime.history) {
+                            runtime.snapshot.illustrations = latest.state; runtime.snapshot.session.illustrationHead = latest.head;
+                            runtime.snapshot.session.illustrationHeads = { ...runtime.snapshot.session.illustrationHeads, [scope.branchId]: latest.head };
+                            repaintIllustrationSurfaces(scope, latest.state);
+                            result = { ...result, ...latest };
+                        }
+                    });
+                    queue = refresh; await refresh;
+                }
+            }
+            return result;
+        },
         command(scope, command, input, signal) {
             const captured = structuredClone(input);
             const result = queue.catch(() => {}).then(() => execute(scope, command, captured, signal));

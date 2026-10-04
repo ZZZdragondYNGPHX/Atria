@@ -13,10 +13,10 @@ import { mountPromptRuntimeControls } from './prompt-runtime-controls.js';
 
 const sectionLabels = { routes: 'Routes', models: 'Models', connections: 'Connections', retrieval: 'Retrieval', diagnostics: 'Diagnostics' };
 const resourceLabels = { routes: 'route', models: 'model', connections: 'connection' };
-const roleLabels = { intent_resolver: 'Intent resolver', event_interpreter: 'Event interpreter', orchestrator: 'Orchestrator', studio: 'Studio', memory: 'Memory', search: 'Search', narrator: 'Narrator', actor: 'Actor', summarizer: 'Summarizer', planner: 'Planner', critic: 'Critic', embedding: 'Embedding', reranker: 'Reranker', director: 'Director', authoring: 'Authoring' };
+const roleLabels = { illustration_prompt: '绘图提示词', intent_resolver: 'Intent resolver', event_interpreter: 'Event interpreter', orchestrator: 'Orchestrator', studio: 'Studio', memory: 'Memory', search: 'Search', narrator: 'Narrator', actor: 'Actor', summarizer: 'Summarizer', planner: 'Planner', critic: 'Critic', embedding: 'Embedding', reranker: 'Reranker', director: 'Director', authoring: 'Authoring' };
 const ids = { connections: 'connectionProfileId', models: 'modelProfileId', routes: 'runtimeRouteId' };
 const prefixes = { connections: 'conn', models: 'model', routes: 'route' };
-const roles = ['narrator', 'intent_resolver', 'event_interpreter', 'orchestrator', 'studio', 'memory', 'search'];
+const roles = ['narrator', 'intent_resolver', 'event_interpreter', 'orchestrator', 'studio', 'memory', 'search', 'illustration_prompt'];
 const clone = value => JSON.parse(JSON.stringify(value));
 const exact = item => ({ scope: 'library', resourceType: item.resourceType, resourceId: item.resourceId, revision: item.currentRevision });
 const refKey = value => JSON.stringify(value, Object.keys(value).sort());

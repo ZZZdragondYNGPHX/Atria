@@ -105,8 +105,8 @@ export function createNativeSessionRouter(getServices = services) {
         res.json(await core.runStatus(handle, req.body.sessionId));
     }));
     router.post('/illustrations/read', route(async (req, res, { sessionRepo }, handle) => {
-        fields(req.body, ['sessionId']);
-        res.json(await sessionRepo.getIllustrations(handle, req.body.sessionId));
+        fields(req.body, ['sessionId', 'branchId']);
+        res.json(await sessionRepo.getIllustrations(handle, req.body.sessionId, { branchId: req.body.branchId }));
     }));
     const illustrationCommands = {
         createAnnotation: ['revisionId', 'messageId', 'variantId', 'start', 'end', 'quote', 'draft', 'expectedHead', 'branchId'],
@@ -116,10 +116,10 @@ export function createNativeSessionRouter(getServices = services) {
         selectImageVersion: ['annotationId', 'imageVersionId', 'expectedHead', 'branchId'],
     };
     for (const [command, allowed] of Object.entries(illustrationCommands)) {
-        router.post('/illustrations/' + command, route(async (req, res, { sessionRepo }, handle) => {
+        router.post('/illustrations/' + command, route(async (req, res, { sessionRepo, core }, handle) => {
             const { sessionId, ...input } = req.body;
             fields(input, allowed);
-            res.json(await new IllustrationService({ sessionRepo })[command](handle, sessionId, input));
+            res.json(await new IllustrationService({ sessionRepo, sessionCore: core })[command](handle, sessionId, input));
         }));
     }
     router.post('/load', route(async (req, res, { core }, handle) => {

@@ -3,10 +3,13 @@ import { createNativeId } from './identity.js';
 import { illustrationContentHash } from './session-illustrations.js';
 import { assertIllustrationImage, assertIllustrationAnchor } from '../../public/shared/native-illustration-contract.js';
 import { ConflictError, NotFoundError } from '../storage/errors.js';
+import { hashNativeDocument } from './repositories/common.js';
+import { assertIllustrationPromptVersions } from '../../public/shared/native-illustration-contract.js';
+import { captureIllustrationContext } from './illustration-context.js';
 
 // Both UI and future generation adapters write through the same SessionRepo.
 export class IllustrationService {
-    constructor({ sessionRepo }) { this.sessions = sessionRepo; }
+    constructor({ sessionRepo, sessionCore }) { this.sessions = sessionRepo; this.core = sessionCore; }
 
     async createAnnotation(handle, sessionId, { revisionId, messageId, variantId, start, end, quote, draft, expectedHead, branchId }) {
         const snapshot = await this.sessions.loadSnapshot(handle, sessionId, { revisionId });
@@ -15,6 +18,13 @@ export class IllustrationService {
         if (branchId !== undefined && branchId !== snapshot.revision.branchId) throw new ConflictError('native_illustration_branch_conflict');
         const anchor = assertIllustrationAnchor({ revisionId, messageId, variantId, start, end, quote, contentHash: illustrationContentHash(entry.content) });
         const annotation = { annotationId: createNativeId('annotation'), anchor, selectedImageVersionId: null, createdAt: Date.now(), ...(draft === undefined ? {} : { draft: assertIllustrationDraft(draft) }) };
+        if (this.core) {
+            try { annotation.promptContext = await captureIllustrationContext(this.core, handle, sessionId, anchor); } catch (error) {
+                // A legacy head-only save can lack this source's history. Manual
+                // prompting remains available; generation must not invent facts.
+                if (error.code !== 'native_illustration_source_unavailable') throw error;
+            }
+        }
         return this.sessions.updateIllustrations(handle, sessionId, state => ({ ...state, annotations: [...state.annotations, annotation] }), { expectedHead, branchId: snapshot.revision.branchId });
     }
 
@@ -31,6 +41,19 @@ export class IllustrationService {
             if (annotation.deletedAt !== undefined) throw new ConflictError('native_illustration_deleted');
             return { ...state, annotations: state.annotations.map(item => item !== annotation ? item : { ...item, draft: normalized }) };
         }, { expectedHead, branchId });
+    }
+
+    addPromptVersion(handle, sessionId, { annotationId, version, baseDraftHash, branchId }) {
+        version = assertIllustrationPromptVersions([version])[0];
+        return this.sessions.updateIllustrations(handle, sessionId, state => {
+            const annotation = this._annotation(state, annotationId);
+            if (annotation.deletedAt !== undefined) throw new ConflictError('native_illustration_deleted');
+            if ((annotation.promptVersions ?? []).some(item => item.promptVersionId === version.promptVersionId)) throw new ConflictError('native_illustration_version_conflict');
+            return { ...state, annotations: state.annotations.map(item => item !== annotation ? item : {
+                ...item, promptVersions: [...(item.promptVersions ?? []), version],
+                ...(hashNativeDocument(item.draft ?? null) === baseDraftHash ? { draft: version.draft } : {}),
+            }) };
+        }, { branchId });
     }
 
     deleteAnnotation(handle, sessionId, { annotationId, expectedHead, branchId }) {

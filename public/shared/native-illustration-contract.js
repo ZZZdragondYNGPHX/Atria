@@ -71,10 +71,13 @@ export function assertIllustrationState(value) {
     if (value.schemaVersion !== 1 || !Array.isArray(value.annotations) || value.annotations.length > 2048
         || !Array.isArray(value.images) || value.images.length > 8192) throw new TypeError('Invalid illustration state');
     const annotations = value.annotations.map(item => {
-        record(item, ['annotationId', 'anchor', 'selectedImageVersionId', 'createdAt', 'deletedAt', 'draft']);
+        record(item, ['annotationId', 'anchor', 'selectedImageVersionId', 'createdAt', 'deletedAt', 'draft', 'promptVersions', 'promptContext']);
         return { annotationId: id(item.annotationId, 'ann'), anchor: assertIllustrationAnchor(item.anchor),
             selectedImageVersionId: item.selectedImageVersionId === null ? null : id(item.selectedImageVersionId, 'imgv'),
-            createdAt: integer(item.createdAt), ...(item.draft === undefined ? {} : { draft: assertIllustrationDraft(item.draft) }), ...(item.deletedAt === undefined ? {} : { deletedAt: integer(item.deletedAt) }) };
+            createdAt: integer(item.createdAt), ...(item.draft === undefined ? {} : { draft: assertIllustrationDraft(item.draft) }),
+            ...(item.promptVersions === undefined ? {} : { promptVersions: assertIllustrationPromptVersions(item.promptVersions) }),
+            ...(item.promptContext === undefined ? {} : { promptContext: assertIllustrationPromptContext(item.promptContext) }),
+            ...(item.deletedAt === undefined ? {} : { deletedAt: integer(item.deletedAt) }) };
     });
     const images = value.images.map(assertIllustrationImage);
     const byAnnotation = new Map(annotations.map(item => [item.annotationId, item]));
@@ -88,6 +91,66 @@ export function assertIllustrationState(value) {
     const state = { schemaVersion: 1, annotations, images };
     if (JSON.stringify(state).length > 8 * 1024 * 1024) throw new TypeError('Illustration state exceeds budget');
     return state;
+}
+
+// Non-secret request evidence is frozen with each generated version. It belongs
+// to the existing presentation/save closure, never to narrative state.
+function requestEvidence(value) {
+    let nodes = 0;
+    const visit = (item, depth) => {
+        if (++nodes > 16000 || depth > 24) throw new TypeError('Illustration evidence exceeds budget');
+        if (item === null || typeof item === 'boolean') return item;
+        if (typeof item === 'number' && Number.isFinite(item)) return item;
+        if (typeof item === 'string') return text(item, 256 * 1024);
+        if (Array.isArray(item)) return item.map(child => visit(child, depth + 1));
+        record(item, Object.keys(item ?? {}));
+        const out = {};
+        for (const [key, child] of Object.entries(item)) {
+            if (/^(?:__proto__|prototype|constructor|secretRef|secret|api.?key|password|authorization|credentials|accessToken|refreshToken)$/i.test(key)) throw new TypeError('Secret evidence forbidden');
+            out[key] = visit(child, depth + 1);
+        }
+        return out;
+    };
+    const result = visit(value, 0);
+    if (JSON.stringify(result).length > 512 * 1024) throw new TypeError('Illustration evidence exceeds budget');
+    return result;
+}
+export function assertIllustrationPromptVersions(value) {
+    if (!Array.isArray(value) || value.length > 128) throw new TypeError('Invalid illustration prompt history');
+    const versions = value.map(item => {
+        record(item, ['promptVersionId', 'createdAt', 'draft', 'requestSnapshot', 'template', 'settingsRevision']);
+        const promptVersionId = id(item.promptVersionId, 'prmv'), snapshot = requestEvidence(item.requestSnapshot);
+        record(snapshot, Object.keys(snapshot ?? {}));
+        if (snapshot.schemaVersion !== 1 || snapshot.requestId !== promptVersionId || snapshot.contextPlan?.requestId !== promptVersionId
+            || snapshot.contextPlan.schemaVersion !== 1 || snapshot.promptIr?.requestId !== promptVersionId || snapshot.promptIr.schemaVersion !== 1) throw new TypeError('Invalid illustration request snapshot');
+        id(snapshot.runtimeRouteId, 'route'); id(snapshot.modelProfileId, 'model'); id(snapshot.connectionProfileId, 'conn');
+        const source = snapshot.contextPlan.source;
+        record(source, ['kind', 'sessionId', 'branchId', 'revisionId']);
+        if (source.kind !== 'session') throw new TypeError('Invalid illustration request source');
+        id(source.sessionId, 'ses'); id(source.branchId, 'br'); id(source.revisionId, 'rev');
+        return { promptVersionId, createdAt: integer(item.createdAt), draft: assertIllustrationDraft(item.draft),
+            requestSnapshot: snapshot, template: text(item.template), settingsRevision: assertIllustrationHead(item.settingsRevision) };
+    });
+    if (new Set(versions.map(item => item.promptVersionId)).size !== versions.length) throw new TypeError('Duplicate prompt version');
+    return versions;
+}
+
+export function assertIllustrationPromptContext(value) {
+    record(value, ['schemaVersion', 'source', 'items']);
+    record(value.source, ['kind', 'sessionId', 'branchId', 'revisionId']);
+    if (value.schemaVersion !== 1 || value.source.kind !== 'session' || !Array.isArray(value.items) || value.items.length > 1024) throw new TypeError('Invalid illustration context');
+    const source = { kind: 'session', sessionId: id(value.source.sessionId, 'ses'), branchId: id(value.source.branchId, 'br'), revisionId: id(value.source.revisionId, 'rev') };
+    const normalized = requestEvidence(value);
+    const ids = new Set();
+    for (const item of normalized.items) {
+        record(item, ['id', 'kind', 'content', 'provenance']);
+        if (!['context.history', 'context.fact'].includes(item.kind) || !text(item.id, 256) || ids.has(item.id) || !Array.isArray(item.provenance)) throw new TypeError('Invalid illustration context item');
+        ids.add(item.id);
+        if (item.kind === 'context.fact') text(item.content, 256 * 1024);
+        else { record(item.content, ['role', 'content']); if (item.content.role !== 'user') throw new TypeError('Invalid illustration history'); text(item.content.content, 256 * 1024); }
+        for (const ref of item.provenance) { record(ref, ['source', 'ref']); text(ref.source, 192); if (ref.ref !== undefined) text(ref.ref, 512); }
+    }
+    return { schemaVersion: 1, source, items: normalized.items };
 }
 export function selectIllustrations(state, variants) {
     const contents = new Map(variants.map(item => [item.variantId, item]));

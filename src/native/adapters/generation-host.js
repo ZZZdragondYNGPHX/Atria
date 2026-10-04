@@ -62,7 +62,7 @@ function normalizeHostMemoryEvidence(value, snapshot) {
             ...(Number.isFinite(tokenCount) && tokenCount >= 0 && tokenCount <= 32768 ? { tokenCount: Math.floor(tokenCount) } : {}) };
     });
 }
-const ROLES = new Set(['narrator', 'intent_resolver', 'event_interpreter', 'orchestrator', 'studio', 'memory', 'search']);
+const ROLES = new Set(['narrator', 'intent_resolver', 'event_interpreter', 'orchestrator', 'studio', 'memory', 'search', 'illustration_prompt']);
 
 export function selectNativeRuntimeRoute(routeList, role, routeRef) {
     if (routeRef) {
@@ -538,9 +538,10 @@ export class NativeGenerationHost {
         return operation.result;
     }
 
-    async execute(handle, value, signal, onChunk, { preview = false, taskPlan = null, scheduled = false, lanePlan = null, preflight = false, preflightPackage = null, preflightSnapshot = null } = {}) {
+    async execute(handle, value, signal, onChunk, { preview = false, taskPlan = null, scheduled = false, lanePlan = null, illustrationPlan = null, preflight = false, preflightPackage = null, preflightSnapshot = null } = {}) {
         const input = immutable(value);
         if (!ROLES.has(input.role)) fail('native_generation_role_invalid');
+        if (input.role === 'illustration_prompt' && !illustrationPlan) fail('native_generation_context_required');
         // The HTTP host currently owns player routes only. Never reinterpret an
         // explicit session/foreign scope or silently choose one of two contexts.
         if (input.sessionId && input.projectId) fail('native_generation_context_ambiguous');
@@ -550,10 +551,10 @@ export class NativeGenerationHost {
         const role = 'role.' + input.role;
         let snapshot; let project; let source; let runtime;
         if (input.sessionId) {
-            snapshot = immutable((preflight ? preflightSnapshot : null) ?? lanePlan?.authorityContext?.snapshot ?? await this.sessionCore.load(handle, input.sessionId));
+            snapshot = immutable(illustrationPlan?.snapshot ?? (preflight ? preflightSnapshot : null) ?? lanePlan?.authorityContext?.snapshot ?? await this.sessionCore.load(handle, input.sessionId));
             if (snapshot.revision.revisionId !== input.revisionId) fail('native_generation_revision_conflict');
             if (!preflight && snapshot.externalEffects?.some(effect => effect.status === 'prepared')) fail('native_transfer_pending');
-            source = { kind: 'session', sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
+            source = illustrationPlan?.source ?? { kind: 'session', sessionId: input.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId };
             runtime = snapshot.manifest.runtime;
         } else if (input.projectId) {
             project = immutable(await this.studio.getProject(handle, input.projectId));
@@ -569,7 +570,7 @@ export class NativeGenerationHost {
         } else if (preflight && preflightPackage) {
             runtime = preflightPackage.manifest.runtime;
         } else fail('native_generation_context_required');
-        const budget = runtime?.experienceContract?.generationBudget;
+        const budget = illustrationPlan ? null : runtime?.experienceContract?.generationBudget;
         if (snapshot && !preview && !preflight) {
             await this.sessionCore.runs.assert(handle, input.sessionId, 'generate');
             if (budget && !lanePlan?.budgetContext) fail('native_generation_budget_lane_denied');
@@ -635,7 +636,7 @@ export class NativeGenerationHost {
         if (preview && input.previewRefs) persistence.getRuntimeRoute = async (owner, id) => id === route.runtimeRouteId ? route : this.persistence.getRuntimeRoute(owner, id);
         const resolver = new RouteResolver({ persistence, library: this.library, providers: this.providers, getScopedResource });
         if (preflight) return resolver.resolve({ handle, routeRef: { scope: 'player', runtimeRouteId: route.runtimeRouteId }, role, requirements });
-        if (snapshot) assertInformationActorAvailable(snapshot, lanePlan?.authorityContext ? undefined : taskPlan?.task.id);
+        if (snapshot && !illustrationPlan) assertInformationActorAvailable(snapshot, lanePlan?.authorityContext ? undefined : taskPlan?.task.id);
         const authorityContext = lanePlan?.authorityContext;
         if (!authorityContext && informationDefinition(snapshot) && input.messages?.length) fail('native_information_unscoped_messages');
         const nativeContext = snapshot && authorityContext?.mode !== 'resolver' ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
@@ -649,6 +650,7 @@ export class NativeGenerationHost {
         if (skills?.tools.length && !requirements.includes('generation.tools')) requirements.push('generation.tools');
         const skillTranscript = [];
         const contextProvider = { buildRequestContextPlan: async (request, resolved) => {
+            if (illustrationPlan) return illustrationPlan.buildContext(request, resolved, resolver.provider(resolved.connection.providerAdapter), compiler);
             const selected = nativeContext ? await nativeContext.buildRequestContextPlan(request, resolved) : {
                 schemaVersion: 1, requestId: request.requestId, source, items: [], provenance: [],
                 budget: { maxTokens: resolved.model.limits.contextTokens - resolved.model.limits.outputTokens, reservedOutputTokens: resolved.model.limits.outputTokens },

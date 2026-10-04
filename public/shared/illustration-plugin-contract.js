@@ -74,3 +74,8 @@ export function createIllustrationDraft(quote, settings, packageId) {
     const matches = matchDrawingCharacters(quote, settings.characters, work?.characterIds ?? []);
     return { draft: { characters: matches.matched.map(character => ({ character: structuredClone(character), dynamicPrompt: '', clothing: character.defaultClothing })), scene: '', prompt: '', preset: structuredClone(work?.preset ?? settings.preset) }, ambiguous: matches.ambiguous };
 }
+
+export function composeIllustrationPrompt(draft) {
+    return [draft.preset.style, draft.preset.quality, draft.scene, ...draft.characters.map(item =>
+        [item.character.fixedPrompt, item.clothing, item.dynamicPrompt].filter(Boolean).join(', '))].filter(Boolean).join(', ');
+}

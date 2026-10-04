@@ -44,7 +44,7 @@ export function createNativeExtensionsHost({ document: doc = globalThis.document
         try {
             const [inventory, scope, official] = await Promise.all([client.list(), readPreset(), officialSettings.read().catch(failure => ({ value: { enabled: false }, error: String(failure.message || failure) }))]);
             if (disposed || token !== sequence) return;
-            plugins = [...inventory, { id: OFFICIAL_ILLUSTRATION_ID, name: 'Atria 插图', kind: 'official', enabled: official.value.enabled, revision: 's2', entrypoint: 'official-illustration.js', targets: { global: true, presets: [], works: [] } }]; presetId = scope.preset?.presetId ?? null; error = official.error ?? null; refreshing = false;
+            plugins = [...inventory, { id: OFFICIAL_ILLUSTRATION_ID, name: 'Atria 插图', kind: 'official', enabled: official.value.enabled, revision: 's3', entrypoint: 'official-illustration.js', targets: { global: true, presets: [], works: [] } }]; presetId = scope.preset?.presetId ?? null; error = official.error ?? null; refreshing = false;
             contextIdentity = JSON.stringify(context());
             notify();
             // Module activation is never awaited by Session lifecycle publication.

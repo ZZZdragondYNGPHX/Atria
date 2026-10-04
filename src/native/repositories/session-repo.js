@@ -2,8 +2,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { RunControl, assertRunAccess, readRunControl, writeRunControl, validRunPublication, runFailure } from '../run-control.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../../public/shared/native-run-contract.js';
 import { normalizeSessionTitle } from '../../../public/scripts/native/session-title-contract.js';
-import { ILLUSTRATION_NAMESPACE, assertIllustrationState } from '../../../public/shared/native-illustration-contract.js';
-import { readIllustrationState, validateIllustrationDependencies } from '../session-illustrations.js';
+import { ILLUSTRATION_NAMESPACE, assertIllustrationState, illustrationAnchorMatches } from '../../../public/shared/native-illustration-contract.js';
+import { readIllustrationState, validateIllustrationDependencies, illustrationContentHash } from '../session-illustrations.js';
 import { ContinuityRepo } from './continuity-repo.js';
 import {
     NATIVE_RESOURCE_KINDS,
@@ -143,12 +143,14 @@ export class SessionRepo {
         }));
     }
 
-    async getIllustrations(handle, sessionId) {
+    async getIllustrations(handle, sessionId, { branchId } = {}) {
         return this._engine.withTransaction(handle, async tx => {
             await assertRunAccess(tx, handle, sessionId, 'inspect');
             const session = await getNativeDocument(tx, this._sessionKey(handle, sessionId));
             if (!session) throw new NotFoundError('native session', { sessionId });
-            return { head: session.illustrationHead ?? null, state: await readIllustrationState(tx, handle, sessionId, session.illustrationHead) };
+            if (branchId !== undefined && !await tx.getResource(this._branchKey(handle, sessionId, branchId))) throw new NotFoundError('native branch', { branchId });
+            const head = branchId && branchId !== session.activeBranchId ? session.illustrationHeads?.[branchId] : session.illustrationHead;
+            return { head: head ?? null, state: await readIllustrationState(tx, handle, sessionId, head) };
         });
     }
 
@@ -752,9 +754,11 @@ export class SessionRepo {
         });
     }
 
-    async loadSnapshot(handle, sessionId, { revisionId = null } = {}) {
+    async loadSnapshot(handle, sessionId, { revisionId = null, illustrationAnchor } = {}) {
         return this._engine.withTransaction(handle, async tx => {
-            await assertRunAccess(tx, handle, sessionId, 'inspect', revisionId);
+            // Host-only presentation reads do not restore or publish history.
+            // They are constrained to the exact source variant's ancestry below.
+            await assertRunAccess(tx, handle, sessionId, 'inspect', illustrationAnchor ? undefined : revisionId);
             const session = assertSession(await readCheckedDocument(tx, this._sessionKey(handle, sessionId)));
             if (session.sessionId !== sessionId) throw new TypeError('Session resource identity mismatch');
             const target = revisionId || session.headRevisionId;
@@ -766,7 +770,22 @@ export class SessionRepo {
             if (revision.revisionId !== target || (!revisionId && revision.branchId !== session.activeBranchId)) {
                 throw new TypeError('Session HEAD identity mismatch');
             }
-            return readSessionSnapshot(tx, handle, session, revision);
+            const snapshot = await readSessionSnapshot(tx, handle, session, revision);
+            if (illustrationAnchor) {
+                let cursor = illustrationAnchor.revisionId;
+                const visited = new Set();
+                while (cursor && cursor !== target) {
+                    if (visited.has(cursor)) throw new TypeError('Illustration ancestry cycle');
+                    visited.add(cursor);
+                    const ancestor = await readCheckedDocument(tx, this._revisionKey(handle, sessionId, cursor));
+                    const core = await getNativeDocument(tx, this._stateKey(handle, sessionId, SESSION_CORE_NAMESPACE, ancestor.stateHeads[SESSION_CORE_NAMESPACE]));
+                    cursor = core?.parentRevisionId;
+                }
+                const entry = snapshot.timeline.find(item => item.messageId === illustrationAnchor.messageId && item.activeVariantId === illustrationAnchor.variantId);
+                if (cursor !== target) throw new TypeError('Invalid illustration source ancestry');
+                if (!entry || !illustrationAnchorMatches(illustrationAnchor, entry.content) || illustrationContentHash(entry.content) !== illustrationAnchor.contentHash) throw Object.assign(new TypeError('native_illustration_source_boundary'), { code: 'native_illustration_source_boundary' });
+            }
+            return snapshot;
         });
     }
 

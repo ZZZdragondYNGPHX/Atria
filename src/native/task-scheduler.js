@@ -114,6 +114,7 @@ export class NativeTaskScheduler {
             view.status = 'completed'; view.provisionalPresentation = ''; operation.resolve(result);
         } catch (error) {
             if (!terminal.has(view.status)) view.status = error.code === 'native_session_head_conflict' ? 'stale' : 'failed';
+            if (/^(?:native_illustration_|native_generation_|generation_|operation_|prompt_)[a-z_]{1,100}$/.test(error.code ?? '')) view.errorCode = error.code;
             view.provisionalPresentation = ''; operation.reject(error);
         } finally {
             clearTimeout(timer); operation.cleanup(); this.running.delete(operation); this.drain();

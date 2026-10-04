@@ -19,6 +19,7 @@ import { createNativeMessagesProvider } from '../native/adapters/native-messages
 import { assertConnectionProfile, assertExactResourceRef } from '../native/model-prompt-runtime/contracts.js';
 import { prepareProviderDiscovery, discoverProviderModels } from '../native/adapters/provider-discovery.js';
 import { nativeTaskScheduler } from '../native/task-scheduler.js';
+import { IllustrationPromptService } from '../native/illustration-prompt-service.js';
 
 function services() {
     const { core, packageInstaller } = getNativeSessionServices();
@@ -48,6 +49,21 @@ function services() {
 
 export function createNativeGenerationRouter(getHost = services) {
     const router = express.Router();
+    router.get('/illustration-prompts', (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try { res.json(new IllustrationPromptService({ host: getHost() }).list(handle, req.query)); } catch { res.status(400).json({ error: 'native_illustration_request_invalid' }); }
+    });
+    router.post('/illustration-prompts', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try { res.status(202).json(await new IllustrationPromptService({ host: getHost() }).start(handle, req.body)); } catch (error) { res.status(error.code?.includes('conflict') ? 409 : 400).json({ error: error.code || 'native_illustration_prompt_failed' }); }
+    });
+    router.get('/illustration-prompts/:id', async (req, res) => {
+        const handle = req.user?.profile?.handle;
+        if (!handle) return res.sendStatus(401);
+        try { res.json(await new IllustrationPromptService({ host: getHost() }).status(handle, { operationId: req.params.id })); } catch { res.status(404).json({ error: 'native_illustration_operation_missing' }); }
+    });
     router.get('/operations/:id', (req, res) => {
         if (!req.user?.profile?.handle) return res.sendStatus(401);
         try { res.json(nativeTaskScheduler.project(req.user.profile.handle, req.params.id)); } catch { res.sendStatus(404); }

@@ -15,6 +15,7 @@ export const NATIVE_ID_FAMILIES = Object.freeze({
     asset: 'asset',
     annotation: 'ann',
     imageVersion: 'imgv',
+    promptVersion: 'prmv',
     world: 'world',
     worldRevision: 'worldv',
     knowledgeBase: 'kb',

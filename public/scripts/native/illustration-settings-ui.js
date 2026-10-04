@@ -72,7 +72,7 @@ export function mountIllustrationSettings({ document: doc = globalThis.document,
         readPreset = renderIllustrationPreset(doc, presetContainer, preset);
         presetContainer.disabled = Boolean(work && !work.preset);
         const connectionChoices = [['', work ? '继承全局图片连接' : '未选择'], ...(configurationData.connections ?? []).map(item => [item.connectionProfileId, item.displayName || item.connectionProfileId])];
-        const routeChoices = [['', work ? '继承全局提示词路线' : '未选择'], ...(configurationData.routes ?? []).map(item => [item.runtimeRouteId, item.displayName || item.runtimeRouteId])];
+        const routeChoices = [['', work ? '继承全局提示词路线' : '未选择'], ...(configurationData.routes ?? []).filter(item => item.role === 'role.illustration_prompt').map(item => [item.runtimeRouteId, item.displayName || item.runtimeRouteId])];
         select(doc, scope, '默认图片连接', work?.imageConnectionId ?? (work ? '' : value.imageConnectionId), connectionChoices, id => (work ?? value).imageConnectionId = id);
         select(doc, scope, '提示词模型路线', work?.promptRouteId ?? (work ? '' : value.promptRouteId), routeChoices, id => (work ?? value).promptRouteId = id);
         const template = node(doc, content, 'details'); template.dataset.section = 'template'; template.open = templateOpen; node(doc, template, 'summary', '提示词整理模板');

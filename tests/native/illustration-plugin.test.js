@@ -39,11 +39,12 @@ async function fixture() {
         if (path.endsWith('selectImageVersion')) state.annotations.find(item => item.annotationId === data.annotationId).selectedImageVersionId = data.imageVersionId;
         return { state: assertIllustrationState(state), head: String(runtime.request.mock.calls.length).padStart(64, '0') };
     });
-    const api = { ...createIllustrationExtensionApi({ runtime, document }), settings: { read: async () => ({ value: settings, revision: 'settings' }), save: jest.fn() } };
+    const generationRequest = jest.fn(async () => []);
+    const api = { ...createIllustrationExtensionApi({ runtime, document, generationRequest }), settings: { read: async () => ({ value: settings, revision: 'settings' }), save: jest.fn() } };
     const host = createExtensionRuntime({ document, illustrationApi: api, importModule: async () => ({ activate }) });
     await host.reconcile([plugin], context);
     cleanup = async () => { await host.dispose(); releaseIllustrationSurface(prose); };
-    return { runtime, host, prose, context, settings, entry };
+    return { runtime, host, prose, context, settings, entry, generationRequest };
 }
 function selectProse(prose) {
     const range = document.createRange(); range.setStart(prose.querySelector('strong').firstChild, 0); range.setEnd(prose.querySelectorAll('p')[1].firstChild, 3);
@@ -58,7 +59,7 @@ test('cross-paragraph selection creates one independent card, preserves prose an
     expect(f.runtime.request.mock.calls[0][1].branchId).toBe(f.context.branchId);
     expect(f.prose.querySelector('strong').firstChild).toBe(leaf);
     expect(input('服装 · Alice').value).toBe('coat');
-    expect(button('生成提示词').disabled).toBe(true); expect(button('生成图片').disabled).toBe(true);
+    expect(button('生成提示词').disabled).toBe(false); expect(button('生成图片').disabled).toBe(true);
     input('图片提示词（可直接填写）').value = 'my prompt'; input('图片提示词（可直接填写）').dispatchEvent(new Event('input'));
     button('关闭卡片').click(); await flush(); button('标注与历史').click(); await flush();
     expect(input('图片提示词（可直接填写）').value).toBe('my prompt');
@@ -150,4 +151,50 @@ test('unavailable official preferences do not prevent independent extensions fro
     const host = createNativeExtensionsHost({ document, runtime: { active: false, snapshot: null }, client: { list: async () => [{ ...plugin, id: 'ext_other', kind: 'local', entrypoint: 'index.js' }] }, officialSettings: { read: async () => { throw new Error('official unavailable'); } },
         readPreset: async () => ({ preset: null }), nativeApi: () => null, importModule: async () => ({ activate: activateModule }), onLifecycle: () => () => {}, onConfiguration: () => () => {}, onChanged: () => () => {} });
     cleanup = () => host.dispose(); await host.refresh(); expect(activateModule).toHaveBeenCalledTimes(1); expect(host.getStatus().error).toBe('official unavailable');
+});
+
+test('prompt task is separate, preserves in-flight edits, supports explicit composition/config/history and releases only UI subscription', async () => {
+    const f = await fixture(); button('正文模式').click(); await flush(); selectProse(f.prose);
+    button('为选文建立标注').click(); await flush(); await flush();
+    const annotation = f.runtime.snapshot.illustrations.annotations[0];
+    const operationId = 'task-fixture'; let complete = false;
+    const operation = { operationId, status: 'running', anchor: { sessionId: f.context.sessionId, branchId: f.context.branchId, annotationId: annotation.annotationId } };
+    f.generationRequest.mockImplementation(async (path, options = {}) => {
+        if (path === '/illustration-prompts') return { operationId };
+        if (options.method === 'DELETE') return { cancelled: true };
+        return { operation: { ...operation, status: complete ? 'completed' : 'running' }, ...(complete ? { state: f.runtime.snapshot.illustrations, head: 'a'.repeat(64) } : {}) };
+    });
+    button('生成提示词').click(); await flush(); await flush();
+    expect(button('提示词生成中').disabled).toBe(true); expect(button('生成图片').disabled).toBe(true);
+    expect(button('取消提示词任务')).toBeTruthy();
+    input('图片提示词（可直接填写）').value = 'edit during request'; input('图片提示词（可直接填写）').dispatchEvent(new Event('input'));
+    const generated = structuredClone(annotation.draft); generated.scene = 'generated scene'; generated.prompt = 'generated prompt';
+    f.runtime.snapshot.illustrations.annotations[0].draft = generated;
+    const promptVersionId = createNativeId('promptVersion');
+    f.runtime.snapshot.illustrations.annotations[0].promptVersions = [{ promptVersionId, createdAt: 1, draft: generated,
+        requestSnapshot: { schemaVersion: 1, requestId: promptVersionId, modelProfileId: createNativeId('modelProfile'), connectionProfileId: createNativeId('connectionProfile'), runtimeRouteId: createNativeId('runtimeRoute'),
+            contextPlan: { schemaVersion: 1, requestId: promptVersionId, source: { kind: 'session', sessionId: f.context.sessionId, branchId: f.context.branchId, revisionId: f.runtime.snapshot.revision.revisionId } }, promptIr: { schemaVersion: 1, requestId: promptVersionId } }, template: 'fixture', settingsRevision: 'a'.repeat(64) }];
+    complete = true; await new Promise(resolve => setTimeout(resolve, 820)); await flush();
+    expect(input('图片提示词（可直接填写）').value).toBe('edit during request');
+    button('应用此提示词版本').click(); await flush(); expect(input('图片提示词（可直接填写）').value).toBe('generated prompt');
+    f.settings.characters[0].fixedPrompt = 'updated fixed'; f.settings.preset.style = 'updated style';
+    button('显式应用最新角色与预设').click(); await flush(); await flush();
+    expect(input('图片提示词（可直接填写）').value).toBe('generated prompt');
+    button('按当前分块组合提示词').click(); await flush();
+    expect(input('图片提示词（可直接填写）').value).toContain('updated fixed');
+    expect(input('图片提示词（可直接填写）').value).toContain('updated style');
+    button('保存卡片').click(); await flush(); await flush();
+    button('生成提示词').click(); await flush(); await flush();
+    await f.host.dispose();
+    expect(f.generationRequest.mock.calls.filter(([, options]) => options?.method === 'DELETE')).toHaveLength(0);
+    expect(f.generationRequest.mock.calls.some(([, options]) => options?.signal?.aborted)).toBe(true);
+});
+
+test('terminal prompt refresh waits for queued edits and rejects another branch task identity', async () => {
+    const f = await fixture();
+    const scope = f.context;
+    const other = { operation: { anchor: { sessionId: scope.sessionId, branchId: 'other', annotationId: 'a' }, status: 'completed' }, state: emptyIllustrations() };
+    const api = createIllustrationExtensionApi({ runtime: f.runtime, document, generationRequest: async () => other });
+    await expect(api.prompt(scope, 'status', { operationId: 'wrong' })).rejects.toThrow('mismatch');
+    expect(f.runtime.request).not.toHaveBeenCalled();
 });
