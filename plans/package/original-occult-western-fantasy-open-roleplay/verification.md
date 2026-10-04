@@ -67,3 +67,11 @@ ESLint 对全部 23 个变更 JavaScript 文件无错误/警告，git diff --che
 默认新 profile 校验使用真实 FS 安装、Session/authority/Task/Save、回环合成 HTTP 和同一 tested P2 Core。九组闭环、19 个事务/17 个公开原语、两种起点、两机构、个人 Claim/反噬/死亡、因果追查与拘捕限制、八槽稳定身份/模板核验、生成失败与发送额度、普通/铁人恢复均有实际断言。恶意 Task 额外 Claim 字段在 publication 前拒绝；无效批次与 kind/template 消费收件箱，不发布实体。大部分负向场景控制自动配送时机并显式驱动真实 outbox；另有未替换 queueSimulation 的前台→后台自动派发检查。发送次数是 provider 请求计数，非成功次数。
 
 原始 runtime/fixture/content 报告及精确 HEAD、Node 版本、命令、限制见唯一 Record Phase 3。旧 fixture 回归仅确认受影响的入口与历史声明兼容；不以它或旧长期 soak 替代新闭环。原发布/参考 SHA-256 未变。未测试生产模型自由意图质量、真实 Native 页面/浏览器、SQLite/MySQL/PostgreSQL、Android、屏幕阅读器或新版本发行；Core P2 的存储/清理风险证据仍保留其原范围。
+
+## Phase 4 已执行的最小检查
+
+`tools/package.mjs validate --core <P4-Core> --roleplay-ui-only` 安装内存新容器并用真实 Native/QuickJS/bridge、Host composer/save/restore、隔离 FS 和回环合成 provider 运行 Chromium 页面。九组涵盖问答校验与零发送/一次提交/丢响应恢复、建议草稿与资料/焦点返回、实际生活行动/保存恢复、Narrator 失败与草稿/恢复、相关视口与 200% 字号/reduced-motion/44px 目标、长窗口回读保留、第二开局与经历收束、Claim 展示/普通死亡恢复、铁人保存限制/清理后终局。截图和原始 HEAD/dirty 元数据保存在同一 Record 的 p4-evidence。
+
+Core 只运行直接相关 run-policy-p2/frontend-bridge 两套件 57 项，以及新增 recent read 对应 frontend-conversation 7 项；FS/SQLite 使用既有 Node22 原生依赖，不启动 MySQL/PostgreSQL。修改 Core JS/test 的 ESLint、Package Node 语法/实际编译、diff 空白和原档 hash 验证通过。没有重跑 P2 全部套件或 P3 全闭环/旧 soak。
+
+浏览器负向 provider 使用实际 HTTP 失败；后期 Claim/死亡前置由真实 typed Native authority 设置，长阅读样本由真实 appendTimeline 追加，不声称全点击或生产模型创造内容。UI harness 控制后台派发，P3 自动派发证据保持独立。手机视口/缩小布局不是 Android 软键盘或辅助技术；极大单条消息、真实屏幕阅读器、生产模型、其它数据库和最终发布尚未验证。P5 按最终集成的实际影响决定最小验证，不自动追加无关检查或远端 CI。

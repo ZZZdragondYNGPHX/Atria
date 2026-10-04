@@ -43,3 +43,13 @@
 阶段4用真实Native页面与Host服务验证主流程，390与1440宽度先行，再按实际问题补相关断点、横屏、200%文字和键盘／reduced-motion。当前浏览器策略阻止过本地 file协议预览，本轮只读取源码，不能引用它为浏览器验证证据。未来使用受支持的正常预览环境，不规避工具安全策略。
 
 实施前端阶段正式要求使用本地 frontend-design、ui-ux-pro-max 和 emil-design-eng；以用户护栏和本模块为更高权威，不重新生成不同审美方向。只在阶段4加载相关 Skill；其它阶段不默认读取。
+
+## Phase 4 已实施
+
+默认新 profile 编译 `OpenLives.aui` / `Companion.aui`、roleplay CSS/controller/model 和仅含问答/互斥/公开地点的作者 catalogue；旧 Inquiry 页面与原参考保留。两视图通过 Native overlay 显示右缘随身记事，使用宿主 focus/inert/Escape/返回能力。问答按钮卡片使用 Native 支持的 aria-current 选中语义，开始前复核；建议只写草稿。
+
+主区为纸色单列阅读流，已提交背景置于可展开段落，地点/时间低干扰显示；侧栏含自身、人物、物件、地点见闻与保存。Claim 只从公共 overview 显示实际 rule/Anchor/Price。输入随文档流排布、可增高，避免固定 footer 覆盖故事；历史窗口在新回复到来时保留，明确按钮返回最新。读取失败保留内容与草稿、封锁写入并继续尝试读取；不向玩家显示内部 bridge 错误码。
+
+黄铜 #C29B62 保留作装饰，小字用 #795B32：纸色/白底对比分别 5.74/6.26。正文、辅助字与错误字的纸色/白底对比也均超过 4.5。按钮最小 44px、输入 18px 起；真实 Native Chromium 检查覆盖 390/1440、补充 375/768/1024、横屏、200% Native 字号、缩小手机视口、焦点/草稿与 reduced motion。缩小视口检查不代表 Android 软键盘真机验证。
+
+普通模式保存与明确恢复、普通死亡后的旧存档恢复、铁人 current save 禁用回退、清理后终局已用实际 Host/Native 页面验证。问答/发送/资料/保存均为真实接入，合成 provider 仅用于可复现本地规则与交互；后期 Claim/死亡用真实 typed authority 设置展示前置，不算全部玩家点击路线。详细原始报告、截图、局部 Core 测试和未测边界见唯一 Record Phase 4。

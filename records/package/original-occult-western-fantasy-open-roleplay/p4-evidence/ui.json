@@ -1,0 +1,38 @@
+{
+  "packageHead": "25b39d57eb206b4c6b09d4642d0c458c8d9e5784",
+  "packageDirty": false,
+  "coreHead": "1661af11245c856363bfc1084275c02b55a97452",
+  "phase": 4,
+  "scope": "actual Native browser / isolated FS / synthetic HTTP provider",
+  "requests": 43,
+  "browser": "Playwright Chromium headless",
+  "checks": [
+    "invalid name and incompatible choices leave character pending; back/edit, single-CAS zero-provider begin, committed response loss recovers",
+    "suggestions only fill draft; public self/relationship drawer, Escape and focus return preserve draft",
+    "visible Host Composer resolves a real work transaction; visible Host save and explicit restore recover committed resources",
+    "actual narrator failure preserves draft, publishes no turn, blocks unconfirmed resubmission until explicit Host recovery",
+    "390/1440 plus 375/768/1024, landscape and Native 200% text have no horizontal overflow; visible touch targets are at least 44px; resized mobile viewport keeps send reachable; drawer focus stays inside; reduced motion removes drawer animation",
+    "bounded recent/earlier Timeline windows; an actual new reply leaves the earlier reading window unchanged until explicit return to latest",
+    "second ordinary traveller/solo start uses approved fragments and actual lodging; episode closure stays distinct from death",
+    "actual accepted Claim shows its public rule/Anchor/Price; ordinary death stops sending and explicit earlier-save restore resumes the saved life",
+    "ironman current save exposes no rollback; real qualified authority death renders terminal and disables continuation; terminal drawer reads no deleted state or saves"
+  ],
+  "screenshots": [
+    "desktop-entry.png",
+    "desktop-review.png",
+    "desktop-drawer.png",
+    "story-390.png",
+    "drawer-390.png",
+    "story-1440.png",
+    "story-375.png",
+    "story-768.png",
+    "story-1024.png",
+    "landscape.png",
+    "text-scale-200.png",
+    "traveller.png",
+    "claim-drawer.png",
+    "ordinary-terminal.png",
+    "ironman-terminal.png"
+  ],
+  "errors": []
+}

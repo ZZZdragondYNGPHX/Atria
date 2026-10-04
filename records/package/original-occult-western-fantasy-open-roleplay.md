@@ -204,6 +204,80 @@ node tools/package.mjs validate --fixture --core /home/henry/Projects/Atria-core
 
 下一次用户明确继续时仅 Phase 4：按 frontend/玩家体验/已实施运行接口和 UI 验证路由接真实 Native 前端，使用上述 tested 组合；沿用当前任务分支，完成最小相关本地检查后提交推送并停止。Core/main、game/package 最终集成及新发布留 P5。
 
+## Phase 4 真实 Native 前端
+
+- Date: 2026-10-04
+- Start docs HEAD: 9cc1b33e8d066efa45ac0a18fccecd97ac44122d
+- Start Package task HEAD: 2aa07d7adfdfd51552d82545d3457dd003fe6675
+- End Package task HEAD: 25b39d57eb206b4c6b09d4642d0c458c8d9e5784
+- Start Core HEAD: 5f9e8feb0c7166b45e30c330104a7444beb7692e
+- End Core HEAD: 1661af11245c856363bfc1084275c02b55a97452
+- Stable package / unchanged main: 48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e / c8d2d0e0c11c283ade2fa3c730740a0dc480c746
+- Status: Complete on original game/Core auxiliary branches; stop before Phase 5; integration pending
+
+### 实施
+
+沿用 HANDOFF → index → P4 前端/玩家体验/实际运行接口与 UI 验证模块，在目标游戏内工作。按正式 frontend Plan 使用本地 frontend-design、ui-ux-pro-max、emil-design-eng，另使用 playwright-cli 的本地浏览器验证指引；没有读取 skills/reference 分支、重开方向问卷、分派子 Agent 或建立第二 Record/HANDOFF。Core 与 docs 使用已有独立工作树。
+
+新增 OpenLives/Companion Native 模板、scoped 纸色 CSS、受限 controller/model、frontend 编译器和真实 UI 检查/挂载工具；默认 package compiler 改为实际新 Native 图，替换 P3 内存 neutral shell。仅保留 questions/incompatibilities/places 在前端 authored catalogue，不携完整世界/超凡定义。两 Package domain 绑定仅为派生 roleplay_summary / roleplay_visible；不绑定私有 aggregate、proposal、调度、规则写口或裸 App Command。
+
+界面包含新故事、姓名/个人修饰/模式、五题按钮卡片、可回退复核与正式开始；单列叙事/选中背景、地点/时间、可增长多行输入、只填草稿的建议；右缘随身记事的自身/人物/物件/地点见闻/保存页。普通恢复为侧栏内明确选档确认；铁人提示当前续玩限制并禁用回退。经历收束与真正死亡分开；普通死亡可明确读回早期保存，铁人清理后的主区/资料只显示终局、不读取删除状态。
+
+begin 未确认时保留同 input/invocation/epoch/revision/idempotency，不以新确认绕过；提交成功但响应损坏通过只读确认恢复。Host composer get/set/submit、generation/cancel/recover 控制真实输入；失败保留草稿并封锁未经确认的再发送。轮询只读，读失败封锁写口并继续恢复读取；抽屉开关保草稿，Native overlay 负责 focus/inert/Escape/返回。新回复不替换回读窗口，明确返回最新按钮读取最多 32 条近期已提交消息。
+
+CSS 保留 #F7F5F0 / #FFFFFF / #2C2A28 / #C29B62 护栏，衬线叙事及输入、sans 控件、1.8 正文行高；黄铜小字改 #795B32，纸/白底对比分别 5.74/6.26。炭灰 13.12/14.30、辅助字 5.46/5.95、错误字 7.20/7.84；实测配对均超过 4.5。按钮至少 44px、输入起始 18px；输入随文档流、不固定覆盖故事；drawer 只做 transform/opacity 动画并尊重 reduced motion。运行错误提示用玩家可理解的文字，内部 bridge 码仅保留在检查日志。
+
+### 必要 Core 修复
+
+实际接入暴露两处宿主读口缺口，已在原 refactor/open-roleplay-core 提交并推送，main 未变：
+
+1. 新增固定 host.conversation.recent read.snapshot，closed 可选 beforeSequence，返回原始顺序/内容的至多 32 条已提交消息，支持向前窗口，原 messages 接口不改。
+2. 原铁人删除 Session 后 bridge.open 无法重开终局图。外部控制墓碑增加安装身份 origin/hash，不含可恢复 state/Timeline；终局新 epoch 只允许 status、受 owner/component/schema/精确 revision 校验的 run read 和 Host exit，拒绝其它读写/restore，原死亡 epoch 仍撤销、Session 不重建。旧墓碑缺 origin 时仍有 /run，不声明 Native 图重开兼容。
+
+这些是 P4 消费既有权威的必要最小读口补足，不追加新玩法/恢复通道。准确接口已同步 runtime-contracts Phase 4 和游戏 runtime/ROLEPLAY.md。
+
+### 实际本地验证与证据
+
+Package/UI 用 Node v24.21.0；Core FS/SQLite 用现有 Node v22.23.3，匹配 P2 的 better-sqlite3 原生 ABI。最初用默认 Node24 运行时 SQLite 报 ABI 错，FS/bridge 已通过；改用现有 Node22 后最终 57 项全部通过，没有把最初失败记为通过，也未重装或改依赖锁。浏览器为 Playwright Chromium 141.0.7390.37 headless；只构建 Core QuickJS worker entry，未做全产品构建。
+
+```bash
+# target game
+node tools/package.mjs validate --core /home/henry/Projects/Atria-core --roleplay-ui-only
+
+# auxiliary Core, Node22 directory prepended to PATH
+ATRIA_DISABLE_MYSQL_TESTS=1 ATRIA_DISABLE_POSTGRES_TESTS=1 \
+  npm --prefix tests run test:unit:serial -- --runTestsByPath \
+  native/run-policy-p2.test.js native/frontend-bridge.test.js
+ATRIA_DISABLE_MYSQL_TESTS=1 ATRIA_DISABLE_POSTGRES_TESTS=1 \
+  npm --prefix tests run test:unit:serial -- --runTestsByPath \
+  native/frontend-conversation.test.js
+
+./node_modules/.bin/eslint public/shared/native-frontend-host.js \
+  src/native/run-control.js src/native/frontend/host-bridge.js \
+  src/native/frontend/host-services.js
+# tests directory
+../node_modules/.bin/eslint native/run-policy-p2.test.js \
+  native/frontend-conversation.test.js native/helpers/frontend-conversation-fixture.js
+```
+
+最终 UI 九组全部通过，真实编译 Native/QuickJS/bridge 和 Host composer/save/restore 在隔离 FS/回环合成 HTTP 运行，页面错误与 Native diagnostics 为空。精确发送数/运行父 HEAD/dirty 标记见原始 [ui.json](original-occult-western-fantasy-open-roleplay/p4-evidence/ui.json)，不改写元数据；最终报告运行于上述 clean End Package HEAD / 精确 End Core HEAD（Core 仅用户 AGENTS.md 仍 dirty）。归档复核发现早期截屏命中 epoch 重绘中的空白或入口读取帧，补截图 destination/读取就绪及内容检查后执行这次最终验证；不是为 clean 元数据重写报告或重复未变化检查。游戏主体提交为 4dc0e548c81657adfedd91406d32713947528969，End 提交只加截图检查。
+
+UI 覆盖：无效称呼/互斥组合不建角、回退修改、一次 CAS / 零 provider begin、成功响应丢失恢复；建议不请求权威、公开背景/关系、Escape/焦点返回/草稿；实际自然语言修补增加收入、保存与明确恢复；真实 Narrator HTTP 失败不发布有效轮、草稿保留且须恢复；390/1440 及 375/768/1024 无横溢、至少 44px 目标、横屏、Native 200% 字号、缩小手机视口可滚动到发送、焦点留在 drawer、reduced motion；38 条长阅读样本跨近期/早期窗口，真实新表达回复不改当前回读窗口；旅人独行起点/无伪关系、经历收束仍 active；实际 accepted Claim 的 rule/Anchor/Price、普通死亡后明确恢复；铁人 current save 禁回退、实际死亡清理后终局主区/侧栏无删除数据与保存。
+
+Core 两套件 **57/57**（17.895 s，FS/SQLite）以及一套件 **7/7**（3.068 s）分别通过，共三套件 64 项；原始 [core-run-bridge.log](original-occult-western-fantasy-open-roleplay/p4-evidence/core-run-bridge.log) / [core-conversation.log](original-occult-western-fantasy-open-roleplay/p4-evidence/core-conversation.log) 保留。新增断言覆盖清理后新 Core 实例重开、终局 run/status、scope/owner/schema/revision、游戏/restore 拒绝和 Session 不重建；近期/向前/空窗口及非法参数/跨组件/stale 拒绝。未重跑 P2 全部套件、P3 内容九组或旧长期 soak。
+
+相关 Package JS 通过 Node 语法与实际 Native 编译/浏览器执行；修改 Core JS/tests 各自 ESLint 通过。自有 diff/cached 空白、本地文档链接/路由和 refs 确认通过。浏览器实施中发现的未完成读取及 Native rerender/焦点时序问题已修正，失败截图不混入最终证据。15 张真实视口截图在 p4-evidence，包含 [390 故事](original-occult-western-fantasy-open-roleplay/p4-evidence/story-390.png)、[390 抽屉](original-occult-western-fantasy-open-roleplay/p4-evidence/drawer-390.png)、[Claim](original-occult-western-fantasy-open-roleplay/p4-evidence/claim-drawer.png)、[普通终局](original-occult-western-fantasy-open-roleplay/p4-evidence/ordinary-terminal.png)、[铁人终局](original-occult-western-fantasy-open-roleplay/p4-evidence/ironman-terminal.png)。截图是视口展示，不等于全局资料或生产叙述质量。
+
+### 证据边界、发布与下一 checkpoint
+
+UI harness 暂停自动后台派发以专注交互，P3 自动派发证据保持其范围。普通工作/表达/经历收束走可见 Host composer；后期 Claim/死亡由真实 typed Native authority 设置前置，不算全点击或生产模型意图路线。阅读样本由 Native appendTimeline 追加，不增加权威轮数；测试 Narrator 是固定合成文本，不能当真实死亡文案/生产模型质量。typed setup 的技术输入会出现在对应测试 Timeline，正式页面无这类演示按钮。
+
+未测试 Android/真实软键盘、屏幕阅读器、生产模型自由理解/叙述、最大单条超长消息、其它数据库、真实用户旧存档迁移或新发行。Native 字号/视口缩小检查不冒充 OS 证据；Core FS 仍按既有单服务进程写入边界。依赖目录、临时存储、浏览器缓存与构建产物不入库，不触及个人保存。
+
+旧发布 v1/v2 与参考 HTML/TXT SHA-256 均保持 P0/P3 值；历史 frontend/源码/发布未覆盖。Core AGENTS.md、docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 的无关 dirty 全部保留。只推送原游戏任务/Core 辅助/docs refs；不 merge main/package、不建新 .atria、不启动/等待远端 CI。
+
+下一步用户明确继续时仅 Phase 5：核对精确待集成 refs 与工作树，按 staging/verification 完成实际影响所需本地兼容和最终组合验证，再集成 Core main / game package、创建新版本输出并按治理交付。沿用唯一 Record/HANDOFF，完成整体任务后再移除 live HANDOFF/短期分支。P4 更新同一文档并推送后停止。
+
 ## 最终状态
 
-整体任务仍 Active。Phase 0/1/2/3 完成，下一阶段为 Phase 4；Core 辅助分支仍待最终集成。游戏任务分支及唯一 live HANDOFF 保留，旧发布/参考和未授权 dirty 保留。按用户更新约定，仅本地最小相关验证，推送核对 refs 仅为发布确认。
+整体任务仍 Active。Phase 0/1/2/3/4 完成，下一阶段为 Phase 5；Core/main 与 game/package 最终集成、新 3.0.0 发布尚未执行。原任务/Core 辅助分支及唯一 live HANDOFF 保留，旧发布/参考和无关 dirty 保留。只做本地最小相关验证，推送核对 refs 仅为发布确认。

@@ -1,0 +1,22 @@
+
+> test:unit:serial
+> node --max-old-space-size=8192 --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.json --runInBand --forceExit --runTestsByPath native/frontend-conversation.test.js
+
+(node:139065) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS native/frontend-conversation.test.js
+  Phase 4 fixed Conversation / Session Host targets
+    ✓ committed collection shares exact Managed projection, keeps opaque paging and excludes provider drafts (228 ms)
+    ✓ SavePoint exact guard, same-key replay, lists and no-op restore revoke Epoch (173 ms)
+    ✓ recent committed messages are bounded, chronological, revision guarded and page backwards by sequence (930 ms)
+    ✓ retry/fork/switch/restore never rebase stale revisions; alternatives use predecessor and branch lineage (429 ms)
+    ✓ Message Blocks remain typed projections, canonical prose unchanged; unknown type/data fail commit (210 ms)
+    ✓ fixed local handles require installed scope authorization, schema, CAS and reuse idempotency (191 ms)
+    ✓ unknown fixed service, forged output and wrong target kind fail compilation (84 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       7 passed, 7 total
+Snapshots:   0 total
+Time:        3.068 s
+Ran all test suites within paths "native/frontend-conversation.test.js".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

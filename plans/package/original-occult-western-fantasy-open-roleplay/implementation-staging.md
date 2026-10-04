@@ -76,3 +76,9 @@ A/B/C 已在 `refactor/open-roleplay-core` 实施，精确 tested HEAD 见唯一
 本地检查为 `content-check.mjs`、默认 profile 的 `package.mjs validate --core <tested-Core>` 及显式 `--fixture`；九组真实 FS/Native/回环 HTTP 内容闭环通过，旧 fixture 既有条件/typed bridge/有限模拟回归通过，未跑历史 century/regional soak、远端 CI 或页面。静态槽推广聚合设计和实际绑定入口见 runtime-contracts Phase 3 / 游戏 `runtime/ROLEPLAY.md`，精确报告在唯一 Record。
 
 下一次只执行 Phase 4。先读 HANDOFF → index → frontend/player-experience/已实施 runtime-contracts → verification UI 部分；按已归档 HTML/TXT 与冻结视觉护栏接入新默认 compiler/profile，不把 placeholder 或旧 Inquiry 页面当新 UI。继续原游戏任务分支/唯一 Record/HANDOFF，完成 Phase 4 最小相关本地验证后提交推送并停止，不提前推进 Phase 5。
+
+## Phase 4 完成与 Phase 5 入口
+
+实际 Native 问卷、单列故事、草稿建议、右缘资料/保存抽屉、普通/铁人终局显示完成，默认 compiler 已替换 neutral shell。真实接入中的两个必要 Host 读口缺口在原 Core 辅助分支修复：有界 recent-message read 与清理后受限终局图重开。精确游戏/Core HEAD、本地浏览器九组检查与相关 Core 三套件/64 项证据见唯一 Record/HANDOFF；前期记录保留。旧发布/参考未改，无新 `.atria`。
+
+下一次用户明确继续时仅执行 P5：先读 HANDOFF → index → staging/verification，按实际风险补对应接口与前端模块。核对待集成 refs 与 protected dirty，在独立 Core 工作树完成必要兼容检查和辅助分支集成；游戏任务资产按治理集成 package，验证精确最终组合后创建全新版本输出，保留旧版本。只做本地最小相关验证，不启动/等待远端 CI，不把 main merge 到 package/docs。尚未执行这些集成、生产模型或发行检查；P4 到此停止。

@@ -188,3 +188,15 @@ Core 辅助分支为 `refactor/open-roleplay-core`；精确 tested HEAD 以本�
 八个静态槽写入分支共用一个 `world.reconcile` job，与确定性日费/维护/追查一起处理；另一个 job 为 `world.create`。原逐槽 job 设计会在每次扫描中重复消耗私有读取，超过 16-read 展开上限，因此改为同一静态事务内的逐槽分支。模板、稳定身份、同 scope、单 pending 和 Task-result 一次 CAS 约束保持。sourceBatchId/sourceRevision 可关联真实 queue input 的 batchId/batchRevision 与 Core Task invocation；模型不能选择写入槽或覆写旧身份。十九个事务/两个 jobs，所有分支加 publication 最大 23 App Commands / 23 effects，实际运行最大前台 prepared readGrants 11 / appCommands 7 / effects 8。
 
 生命周期/免费开始、两个机构闭环、个人载体/缩窄条件的实际管辖、反噬/死亡、具名证据追查/拘捕/求助、八槽发布/交互/保存、生成失败/额度/stale/普通回退、真实 Host 后台派发及铁人 current resume/终局清理已用隔离 FS 与回环合成 provider 验证。原 fixture 回归通过；Core 无新产品改动。生产模型、真实 Native 页面、浏览器、其它数据库和新发布不属于本次通过证据。详情和原始报告见同一 Record Phase 3。
+
+## Phase 4 实际前端与最小 Host 补口（2026-10-04）
+
+Core 辅助分支更新至 `1661af11245c856363bfc1084275c02b55a97452`，继续保持 main 未集成。真实 Native 消费暴露两处读口缺口：旧 conversation.messages 从起点分页，无法一次取得最新有界窗口；铁人清理 Session 后旧 epoch 被撤销，原 bridge.open 又只能 load Session，导致真实新页面无法读终局。这些是 P4 接入所必需的最小补口，不另建玩法权威或恢复通道。
+
+固定 `host.conversation.recent` 使用 `read.snapshot`，closed 输入为可选非负 integer `beforeSequence`，返回当前已提交 branch 的至多 32 条 MESSAGE_SCHEMA、原顺序/sequence/content，默认取最新，指定 sequence 向前读。保留原 messages 接口与字段。Package 新消息页绑定使用此固定服务，公开 domain 仍只有 roleplay_summary / roleplay_visible。
+
+`atri_run_control` 增存安装身份 origin（packageId/packageVersionId/entryPointId/packageContentHash），不携可恢复 Session 或 Timeline。清理后 bridge.open 只从宿主墓碑定位和核对安装 hash，产生终局 revision 的新 epoch。该 epoch 只允许 status、经过 component scope/closed schema/精确 revision 校验的 host.session.run 读取，以及 host.session.exit 宿主导航；所有游戏、保存、restore 和其它数据读口拒绝。原死亡 epoch 继续失效，Session 不重建，清理语义不变。旧墓碑若无 origin，仍可用 /run，但不声明支持重开该 Native 图。
+
+Package 问卷调用 begin，输入调用 Host composer，资料读取已提交派生输出，保存使用固定 Host save/saves/restore；失效/未知结果保草稿，轮询只有读取且不会重放动作。问答重试保留同 invocation/fingerprint/idempotency/revision/epoch，已提交开始丢响应可通过读取确认。普通终局提供明确旧保存恢复；铁人终局保持不可续玩/回退。
+
+Core 最小风险验证为 run-policy-p2 + frontend-bridge 的 57 项（FS/SQLite，含终局重开、scope/schema/revision/owner/写入和 restore 拒绝），以及 frontend-conversation 的 7 项（有界最新/向前/空窗口与非法参数）。实际 UI 验证另用隔离 FS、编译 Native/QuickJS/Host 与回环合成 provider；没有以浏览器展示覆盖全部模型路线或 P2 全部恢复风险。精确命令、HEAD 与限制见唯一 Record Phase 4。

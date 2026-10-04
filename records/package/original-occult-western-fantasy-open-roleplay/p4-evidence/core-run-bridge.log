@@ -1,0 +1,76 @@
+
+> test:unit:serial
+> node --max-old-space-size=8192 --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.config.json --runInBand --forceExit --runTestsByPath native/run-policy-p2.test.js native/frontend-bridge.test.js
+
+(node:137026) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+PASS native/run-policy-p2.test.js (15.834 s)
+  ✓ FS HEAD commit before tombstone write is recovered from the committed death state (93 ms)
+  P2 run lifecycle - FsEngine
+    ✓ validated multi-domain begin is one CAS, zero sends and durable/idempotent (153 ms)
+    ✓ invalid start, forged fields and late validation failure publish no character/opening (109 ms)
+    ✓ pending runs block generation, raw commands and premature saves before any send (46 ms)
+    ✓ fresh process retains selected input, Fortune and spent Narrator sends (1515 ms)
+    ✓ provider internal retries cannot exceed actual-send quota or publish a partial candidate (253 ms)
+    ✓ ordinary authority death stops direct play and permits coherent save restore (333 ms)
+    ✓ ironman rollback denied through core, repository, HTTP and fixed Host (314 ms)
+    ✓ ironman exports only current resume closure; clean import preserves ledger and stale/legacy import fails (375 ms)
+    ✓ ironman death tombstones only its run and cleans saves; old resume cannot revive it (319 ms)
+    ✓ committed death remains blocked across cleanup failure and restart; run status resumes cleanup (281 ms)
+    ✓ HTTP begin and fixed Host begin share the same durable invocation (73 ms)
+    ✓ route fallback and a new request ID consume the same anchored quota (564 ms)
+    ✓ send interruption is charged before the provider is entered (573 ms)
+    ✓ CAS rejection leaves start pending and can be retried without half-character publication (79 ms)
+    ✓ partial deletion and final-marker interruption recover without reviving a run (276 ms)
+    ✓ forged death text and stale death candidate cannot tombstone a live run (310 ms)
+    ✓ death, save and export serialize; no managed recovery data remains after terminal commit (305 ms)
+    ✓ compiled Native bridge begins without generation, denies restore and returns the committed death receipt (499 ms)
+    ✓ terminal publication cancels other run operations and prevents late finalization (336 ms)
+    ✓ resume export carries a failed turn selection and spent sends to a fresh store (621 ms)
+  P2 run lifecycle - SqliteEngine
+    ✓ validated multi-domain begin is one CAS, zero sends and durable/idempotent (98 ms)
+    ✓ invalid start, forged fields and late validation failure publish no character/opening (112 ms)
+    ✓ pending runs block generation, raw commands and premature saves before any send (52 ms)
+    ✓ fresh process retains selected input, Fortune and spent Narrator sends (1518 ms)
+    ✓ provider internal retries cannot exceed actual-send quota or publish a partial candidate (264 ms)
+    ✓ ordinary authority death stops direct play and permits coherent save restore (320 ms)
+    ✓ ironman rollback denied through core, repository, HTTP and fixed Host (327 ms)
+    ✓ ironman exports only current resume closure; clean import preserves ledger and stale/legacy import fails (397 ms)
+    ✓ ironman death tombstones only its run and cleans saves; old resume cannot revive it (360 ms)
+    ✓ committed death remains blocked across cleanup failure and restart; run status resumes cleanup (296 ms)
+    ✓ HTTP begin and fixed Host begin share the same durable invocation (93 ms)
+    ✓ route fallback and a new request ID consume the same anchored quota (529 ms)
+    ✓ send interruption is charged before the provider is entered (658 ms)
+    ✓ CAS rejection leaves start pending and can be retried without half-character publication (96 ms)
+    ✓ partial deletion and final-marker interruption recover without reviving a run (297 ms)
+    ✓ forged death text and stale death candidate cannot tombstone a live run (322 ms)
+    ✓ death, save and export serialize; no managed recovery data remains after terminal commit (300 ms)
+    ✓ compiled Native bridge begins without generation, denies restore and returns the committed death receipt (518 ms)
+    ✓ terminal publication cancels other run operations and prevents late finalization (294 ms)
+    ✓ resume export carries a failed turn selection and spent sends to a fresh store (712 ms)
+
+PASS native/frontend-bridge.test.js
+  Frontend Host Bridge v1 data plane
+    ✓ compiled mappings, target digests and query policies are closed and scope is inferred (85 ms)
+    ✓ denies undeclared/kind/scope mismatch read.snapshot missing (55 ms)
+    ✓ denies undeclared/kind/scope mismatch action.invoke save (50 ms)
+    ✓ denies undeclared/kind/scope mismatch read.snapshot save (52 ms)
+    ✓ denies undeclared/kind/scope mismatch read.page notes (49 ms)
+    ✓ only typed Application command writes; public Receipt has no Authority snapshot; replay is once-only (93 ms)
+    ✓ snapshot subscription rebinds on revision and scoped handles share compiled semantics (95 ms)
+    ✓ isolated Controllers preserve typed writes, Component uses, Epoch revocation and Session Authority across VM recreation (210 ms)
+    ✓ Collection pages use formal projection; cursor binds query/revision/order/epoch (143 ms)
+    ✓ branch switch and reload revoke handles, including away-and-back between reads (82 ms)
+    ✓ Operation delegates scheduler/provider work to typed Host, exposes bounded status and cancels on Epoch (89 ms)
+    ✓ late Action completion cannot publish into a revoked Experience (50 ms)
+    ✓ HTTP uses authenticated owner and installed graph, rejecting supplied descriptors/target selectors (65 ms)
+    ✓ Operation completion projects only the declared typed output and replays the same start (84 ms)
+    ✓ Epoch cancellation discards even a non-cooperative Operation completion (85 ms)
+    ✓ restore of the current SavePoint is still an Epoch boundary without a new authority revision (45 ms)
+
+Test Suites: 2 passed, 2 total
+Tests:       57 passed, 57 total
+Snapshots:   0 total
+Time:        17.895 s
+Ran all test suites within paths "native/run-policy-p2.test.js", "native/frontend-bridge.test.js".
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
