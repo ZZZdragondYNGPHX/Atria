@@ -89,3 +89,48 @@ S1 commit/push 后停止。下一目标是 S2：沿同一分支完成官方插�
 ### Next checkpoint
 
 S2 完成后停止。下一阶段 S3：读 Git → live HANDOFF → Plan index/core/plugin/generation → 本 Record，沿用本分支接入独立提示词模型路线、历史上下文快照、固定/动态描述组合与编辑保护。不要提前执行 NovelAI 请求或全局批量触发。
+
+## S3 — 提示词生成
+
+- Start HEAD: `27c387300`
+- End/Tested HEAD: `e39b10f9d`
+- Status: Complete（仅 S3；整个任务仍 Active）
+- 实施分支: `feat/novelai-illustration`，沿用独立产品 worktree
+
+### Decisions
+
+核对真实 Git 与 live HANDOFF 后读取 Plan index/core/plugin/generation 和本 Record；没有读取 reference。沿现有 NativeGenerationHost、RouteResolver、GenerationService、PromptCompiler、密钥边界、NativeTaskScheduler 与呈现存储实施，不建立独立模型/任务/配置 authority。按 Plan 使用本地 ui-ux-pro-max 指导状态、取消、编辑保护及预览；S3 只做本地最小相关验证，没有启动浏览器或真实模型。
+
+上下文必须对应选中回复的正文边界，而非创建标注时已经前进的 HEAD。新标注在服务器创建时冻结相关历史上下文，保持 resume 导出裁剪剧情历史后的可用性；这一可选呈现字段不会变更剧情。内核新增仅供 Host 使用的源文读取参数，检查选中 variant、正文 hash/范围、可达性与源文祖先路径，允许绘图读取已提交资料；公开 load/restore/rewind 权限没有放宽。提示词属于辅助用途，不占用剧情 resolver/narrator 的轮次预算，仍检查 Run 状态并使用现有调度资源、超时与连接请求边界。
+
+### Completed
+
+- 正式增加 `role.illustration_prompt` 用途，Runtime 可创建对应模型路线；官方插件只列出该用途的路线，作品选择优先于全局选择。模型、连接、路线和准确 Prompt/Generation 资源随任务捕获，排队后修改配置不改变已提交请求。
+- 标注创建只冻结资料，不请求模型。主体保留完整选文；所在及相邻段落、之前两个完整对话轮次和既有 context compiler 选出的相关知识/场景事实来自准确源文边界。Information/Perspective 权限继续约束可进入模型的历史与事实，不扫描整个角色/知识目录，也不纳入后续剧情、兄弟分支或未选回复。
+- 使用实际 Provider token counting 计入准确 Prompt modules 与输出预留，辅助内容目标约 4000 tokens；先移除整个背景条目，再移除完整轮次/段落，记录省略项。主体与所选角色不会被静默截断；容量不足明确失败且不进入 Provider send。
+- 严格解析场景/构图、给定角色动态描述与可选剧情服装的 JSON 输出，拒绝额外角色/固定外观字段。程序组合冻结的风格、质量、固定外观、服装和动态描述；明确剧情服装覆盖默认服装，null 保留已选服装，负面词/NovelAI 参数保持独立。
+- 每次成功生成保存独立 `prmv_*` 版本，包含完整 draft、实际 RequestContextPlan/PromptIR、准确模型路线及非秘密 effective config、模板和配置 revision。沿现有标注呈现记录进入 Session/SavePoint/存档闭包，验证证据结构、重复身份、跨 Session 归属与秘密字段，支持干净存储导入及 resume 后再次生成。
+- 同一 Session/分支/标注只有一个进行中的提示词任务。HTTP 返回 202，现有服务器调度器持有执行；浏览器关闭或插件卸载不自动取消，重新启用/打开历史可重新订阅。原分支结果不受当前 HEAD 或当前读者分支变化影响。
+- 取消及删除标注阻止迟到提示词进入已删除位置；失败仅重试提示词步骤，不调用图片后端。保存时比对生成前的 draft hash：期间发生的正式编辑保留，新结果进入提示词历史，由用户显式应用。客户端保留未保存编辑，并串行刷新呈现，拒绝另一 Session/分支任务的结果。
+- 单卡片启用独立“生成提示词”，提供排队/执行/失败/完成反馈与取消；“生成图片”继续明确不可用。支持直接填写、按分块组合、完整最终图片输入预览、提示词历史载入与证据查看，以及显式应用最新角色/预设。自动配置更新不覆盖当前提示词，无全局批量入口。
+- 产品提交已推送 origin/feat/novelai-illustration；本阶段停止，不合并 main，不执行 S4。
+
+### Validation
+
+- 分次运行 8 套本地相关 Jest，实际通过项合计 85：illustration-prompt（17）、illustration-plugin（11）、illustration-core（19）、session-runtime-http（10）、lifecycle-scheduler-p4（6）、atria-shell/native-generation-p4（6）、generation-budget-p2（10）与 run-policy-p2 的相关筛选（6）。筛选的 run-policy 其余 37 项明确未执行；后续只重跑发生变化的套件，没有全仓测试。
+- 实际执行 FS/SQLite 的历史源文快照、排队路线冻结、继续剧情/切换分支、去重、编辑保护、取消/删除晚到结果、实际 token 裁剪、主体超限拒绝、错误模型输出和仅重试本步骤。
+- 本地 Provider fake 与认证 HTTP/supertest 验证 202 后任务继续、当前用户的查询/取消隔离、请求字段校验及提示词/图片两步骤独立。不需要用户密钥；没有请求外部 LLM 或 NovelAI。
+- 实际执行铁人模式的受限历史源文读取、公开历史/回滚继续拒绝、提示词不消耗剧情次数、resume 干净导入保留上下文和版本、导入后再次生成；缺失源文上下文的旧 resume 标注明确拒绝猜测式模型请求，仍可手动填写。
+- DOM 集成验证生成期间未保存编辑保留、显式历史/配置应用、分块组合与 SDK 卸载只释放 UI 订阅；没有 S3 浏览器交互、手机模拟视口、虚拟键盘或真机通过声明。
+- 使用本地 Node 22.23.3，与现有 SQLite native module 匹配；MySQL/PostgreSQL 明确关闭。21 个触及 JS 文件 ESLint、产品 `git diff --check` 通过。未运行远程 CI、构建、真实模型/生图、APK 或真机验证。
+
+### Known limitations
+
+- 图片生成与 NovelAI 官方/第三方兼容接口、图片任务和取消/历史集成留 S4；当前不会执行图片请求。
+- 任务投影沿既有服务器内存调度器，仅承诺服务器存活时不受浏览器关闭影响，不承诺服务器重启后续跑。
+- S2 或更早的 head-only resume 若已丢失原文历史且没有冻结绘图上下文，不以当前场景冒充原始场景；这类旧标注继续支持直接填写提示词。新 S3 标注及其上下文随存档闭包保存。
+- 实际模型能否稳定返回规定 JSON 尚无外部 Provider 证据；不正确输出作为本步骤失败处理，可单独重试。手机长按/原生拖柄、真实 WebView 与虚拟键盘继续沿用 S2 的未验证限制。
+
+### Next checkpoint
+
+S3 完成后停止。用户续接时进入 S4：读 Git → live HANDOFF → Plan index/core/plugin/generation/novelai → 本 Record，沿用同一分支实施 NovelAI 两类接口、独立图片任务/取消、图片历史与最终集成。只做本地最小相关验证；S4 全部完成后才合并并验证 main、清理任务分支与 live HANDOFF。
