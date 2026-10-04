@@ -1,0 +1,252 @@
+{
+  "schemaVersion": 1,
+  "rulesVersion": "open-roleplay-1",
+  "questions": [
+    {
+      "id": "residence",
+      "prompt": "你如今如何落脚？",
+      "options": [
+        {
+          "id": "local",
+          "label": "本地街区住民",
+          "text": "你在河岸熟悉的街区有一间租住小屋。",
+          "location": "location.old_ferry"
+        },
+        {
+          "id": "arrival",
+          "label": "刚到城的旅人",
+          "text": "你刚到三渡旅舍，今日有床位可住。",
+          "location": "location.lodging"
+        },
+        {
+          "id": "guest",
+          "label": "寄住熟人家",
+          "text": "你经熟人介绍暂住河岸的一间客房；接待是普通借宿，不授家族身份。",
+          "location": "location.old_ferry"
+        }
+      ]
+    },
+    {
+      "id": "livelihood",
+      "prompt": "什么维持你的生活？",
+      "options": [
+        {
+          "id": "craft",
+          "label": "手艺与短工",
+          "text": "修补工具随身，你能接普通搬运或修补短工。",
+          "coins": 20,
+          "tool": "repair_kit"
+        },
+        {
+          "id": "letters",
+          "label": "读写与账目",
+          "text": "笔与纸随身，旅舍和大学都可询问普通抄写工作。",
+          "coins": 20,
+          "tool": "writing_kit"
+        },
+        {
+          "id": "savings",
+          "label": "积蓄找方向",
+          "text": "你暂有较宽的生活缓冲，未来做什么仍由你决定。",
+          "coins": 40,
+          "tool": "none"
+        }
+      ]
+    },
+    {
+      "id": "attachment",
+      "prompt": "你牵挂什么？",
+      "options": [
+        {
+          "id": "friend",
+          "label": "一位熟人",
+          "text": "旅舍接待员米拉是你认识的普通成年人；她愿意在公开柜台与你交谈。"
+        },
+        {
+          "id": "promise",
+          "label": "对某人的承诺",
+          "text": "你答应在两日内替旅舍接待员米拉完成一次普通帮工。"
+        },
+        {
+          "id": "solo",
+          "label": "暂想独自生活",
+          "text": "没有预设家族、关系或必须维系的活人锚点。"
+        }
+      ]
+    },
+    {
+      "id": "contact",
+      "prompt": "你怎样接触过异常？",
+      "options": [
+        {
+          "id": "rumour",
+          "label": "只有传闻",
+          "text": "教会礼仪与大学公开课程可能解释传闻；你还没有超凡力量。"
+        },
+        {
+          "id": "demonstration",
+          "label": "旁观机构示范",
+          "text": "你见过大学隔离身份载体的公开演示，尚未亲自复核或取得资格。"
+        },
+        {
+          "id": "unexplained",
+          "label": "经历未解释异象",
+          "text": "你记得一次标签似乎与眼前物件不符；这只是你的经历，不证明深层原因。"
+        }
+      ]
+    },
+    {
+      "id": "aim",
+      "prompt": "眼下最想做什么？",
+      "options": [
+        {
+          "id": "settle",
+          "label": "安顿谋生",
+          "text": "河岸有搬运短工，旅舍有抄写与床位。先打听或接活都可以。"
+        },
+        {
+          "id": "belong",
+          "label": "寻求归属",
+          "text": "都城圣契共同体接待社区帮手，市立大学开放助理课程。加入与否由你决定。"
+        },
+        {
+          "id": "explore",
+          "label": "探索城外",
+          "text": "废弃信号屋有公开步道；更远的路需要准备，城市内仍可安顿。"
+        },
+        {
+          "id": "understand",
+          "label": "理解那次异常",
+          "text": "你可以向机构请教，也可先生活。任何异常回忆都还不是可执行的 Claim。"
+        }
+      ]
+    }
+  ],
+  "incompatibilities": [
+    {
+      "residence": "guest",
+      "attachment": "solo",
+      "reason": "寄住熟人需要保留这一段普通关系；请选择熟人或承诺，或改为独立落脚。"
+    }
+  ],
+  "places": [
+    {
+      "id": "location.old_ferry",
+      "label": "旧渡口阶梯",
+      "text": "河岸日常往来，有公开短工。"
+    },
+    {
+      "id": "location.lodging",
+      "label": "三渡旅舍",
+      "text": "米拉在公开柜台接待，床位每天十枚硬币。"
+    },
+    {
+      "id": "location.cathedral",
+      "label": "大教堂庭院",
+      "text": "都城圣契共同体提供公开礼仪与见证训练。"
+    },
+    {
+      "id": "location.ontology",
+      "label": "应用本体研究所",
+      "text": "市立大学开放隔离演示与命名边界课程。"
+    },
+    {
+      "id": "location.signal_house",
+      "label": "废弃信号屋",
+      "text": "公开步道尽头有旧校准台。这里没有机构监督；强行实践尤其危险。"
+    },
+    {
+      "id": "location.abnormal_office",
+      "label": "矛盾事务所",
+      "text": "异常调查署接受危险异常求助与具名报告，不因传闻定罪。"
+    }
+  ],
+  "routes": [
+    {
+      "from": "location.old_ferry",
+      "to": "location.lodging",
+      "minutes": 20
+    },
+    {
+      "from": "location.old_ferry",
+      "to": "location.cathedral",
+      "minutes": 20
+    },
+    {
+      "from": "location.lodging",
+      "to": "location.ontology",
+      "minutes": 20
+    },
+    {
+      "from": "location.old_ferry",
+      "to": "location.signal_house",
+      "minutes": 20
+    },
+    {
+      "from": "location.ontology",
+      "to": "location.abnormal_office",
+      "minutes": 20
+    },
+    {
+      "from": "location.cathedral",
+      "to": "location.abnormal_office",
+      "minutes": 20
+    }
+  ],
+  "institutions": [
+    {
+      "id": "church",
+      "definitionId": "institution.church",
+      "label": "都城圣契共同体",
+      "place": "location.cathedral",
+      "seed": "claim.seed.unlost_evidence",
+      "carrier": "church_token",
+      "secondCarrier": "church_copy",
+      "rule": "保留对亲自复核、分离保存的一个矛盾事实的识别。不能改变他人记忆或恢复毁文。",
+      "training": "礼仪后两位自愿见证人与你复核一枚封存承诺牌：独立封印与当场记录各自完整，却指向相斥的承诺日期。你保存两项事实，不决定哪个历史是真的。",
+      "anchor": "church_token：保留牌与共同誓约",
+      "price": "每日维护见证载体，不明知否认亲自见证的事实；失约将使能力失效。",
+      "fee": 0
+    },
+    {
+      "id": "academy",
+      "definitionId": "institution.academy",
+      "label": "市立大学",
+      "place": "location.ontology",
+      "seed": "claim.seed.name_mismatch",
+      "carrier": "academy_gauge",
+      "secondCarrier": "academy_copy",
+      "rule": "识别一个已亲自检验身份载体的命名不匹配。不能发现真名或普遍识破伪造。",
+      "training": "导师与你隔离检验一个校准件：独立签名标签和实测边界均通过检验，却给出不兼容的身份指示。你分别保存检验记录，不宣称深层原因。",
+      "anchor": "academy_gauge：导师监督的校准载体",
+      "price": "每日记录误差、限定用途并支付两枚硬币校准；失约将使能力失效。",
+      "fee": 2
+    }
+  ],
+  "dynamicTemplates": [
+    {
+      "id": "neighbour",
+      "kind": "person",
+      "role": "ordinary_neighbour",
+      "wage": 0
+    },
+    {
+      "id": "workbench",
+      "kind": "place",
+      "role": "public_workbench",
+      "wage": 0
+    },
+    {
+      "id": "short_job",
+      "kind": "affair",
+      "role": "ordinary_short_job",
+      "wage": 8
+    }
+  ],
+  "illegal": {
+    "warning": "没有外部见证的私设锚点缺少保护。准备后的窄尝试仍有反噬；受伤时强行再试可能死亡。名、记忆之外的效力无法发布。",
+    "carrier": "personal_token",
+    "rule": "只在个人已复核载体上保留矛盾识别；无强迫、真名、复生或历史改写。",
+    "price": "更重的个人载体维护，每日四枚硬币；不取得机构资格。"
+  }
+}

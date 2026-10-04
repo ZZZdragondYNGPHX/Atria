@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { assertShape, schemaFor } from './content-schema.mjs';
+import { validateRoleplay } from './roleplay-schema.mjs';
 const root = new URL('../', import.meta.url);
 const idPattern = /^(district|location|institution|office|actor|artifact|event|matter|canon|tradition|primitive|claim|anomaly|origin|prior_life|faith|knowledge)\.[a-z][a-z0-9_.]*$/;
 const principles = new Set(['Witness', 'Name', 'Boundary', 'Bond', 'Memory', 'Echo', 'Form', 'Possibility']);
@@ -25,7 +26,7 @@ export function validateContent(resources, manifest) {
  for (const [file, { bytes, value }] of resources) {
   total += bytes.length; max = Math.max(max, bytes.length);
   assert(bytes.length < 256 * 1024, 'Resource soft ceiling: ' + file);
-  if (file === 'seed.bootstrap') continue;
+  if (file === 'seed.bootstrap' || file === 'roleplay.foundation') continue;
   assert.deepEqual(Object.keys(value).sort(), ['items', 'schemaVersion']);
   assert.equal(value.schemaVersion, 1);
   assert(Array.isArray(value.items));
@@ -48,6 +49,7 @@ export function validateContent(resources, manifest) {
  }
  assert(total < 2 * 1024 * 1024, 'P4 total low-megabyte soft budget');
  for (const a of all.values()) for (const ref of a.dependencies) assert(all.has(ref), a.id + ': dangling ' + ref);
+ if(resources.has('roleplay.foundation'))validateRoleplay(resources.get('roleplay.foundation').value,all,assertShape);
  const byKind = kind => [...all.values()].filter(a => a.kind === kind);
  const range = (kind, lo, hi) => assert(byKind(kind).length >= lo && byKind(kind).length <= hi, 'Count: ' + kind);
  range('district', 6, 6); range('location', 25, 35); range('institution', 10, 10); range('actor_a', 12, 16); range('actor_b', 30, 50);

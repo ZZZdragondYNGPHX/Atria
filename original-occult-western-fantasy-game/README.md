@@ -1,8 +1,22 @@
-# Original Occult Western Fantasy — Eastbank Field Register
+# Original Occult Western Fantasy — Open Lives
+
+Task: refactor/original-occult-western-fantasy-open-roleplay. Phase 3 content profile; actual Native interface is Phase 4 and new release/integration is Phase 5.
+
+The default validator now compiles ordinary adult lives from five authored choices, with everyday work/relationships/travel, two institutional supernatural paths, bounded personal engineering and eight stable local encounters. See [the content contract](runtime/ROLEPLAY.md). Version 3.0.0 has an independent PackageVersion and requires the tested P2 auxiliary Core `5f9e8feb0c7166b45e30c330104a7444beb7692e`; main has not integrated it. No 3.0.0 archive is published in this stage.
+
+```bash
+node tools/content-check.mjs
+node tools/package.mjs validate --core <tested-P2-Core-checkout>
+node tools/package.mjs validate --fixture --core <tested-P2-Core-checkout>
+```
+
+These are local isolated Native/HTTP synthetic-provider checks. They do not validate the pending interface or production-model narrative quality. The new content-stage profile does not require a fixed profession, Second Death, family, long life or historical campaign completion. `--legacy` selects the retained v2 compiler; historical-only flags, `--v1-campaign` and `--fixture` remain explicit regression paths. Native frontend-model/browser exports run through their harness, not as standalone validation commands.
+
+The material below documents the retained releases and their historical acceptance.
 
 Task: package/original-occult-western-fantasy-game. Long-lived independent package workspace.
 
-## Release: 2.0.0
+## Retained release: 2.0.0
 
 [Download 2.0.0](releases/2.0.0.atria). 237739 bytes; SHA-256 e4d0f3521e6a6e9fd0f3a4220b08a7e8fd5388c7f80ec56fe2671f28de0d2efe.
 
@@ -19,7 +33,7 @@ history, reviewed long-term forms, travel, identity and checkpoint-aware Retry.
 
 Task: refactor/original-occult-western-fantasy-long-lived-world. All eight phases are complete. Final acceptance measured the same continuous save at 250, 500 and 1,000 content turns, spanning 50, 100 and 200 years respectively.
 
-Default builds now use an open-ended Native minute clock, Gregorian chronology, stable identity/provenance primitives, persistent Stances and event-driven human/family/institution/enterprise/regional resolution. Day 31 and year rollover are valid. See [the runtime contract](runtime/LONG-HORIZON.md) for chronology and Save/Restore semantics; its early-stage exclusions describe that historical contract.
+Explicit `--legacy` builds use an open-ended Native minute clock, Gregorian chronology, stable identity/provenance primitives, persistent Stances and event-driven human/family/institution/enterprise/regional resolution. Day 31 and year rollover are valid. See [the runtime contract](runtime/LONG-HORIZON.md) for chronology and Save/Restore semantics; its early-stage exclusions describe that historical contract.
 
 Phase 2 adds tiered history, exact canonical facts, artifacts/hooks, subjective memory, indexed Chronicle queries and portable checkpoints. See [the history contract](runtime/HISTORY-MEMORY.md), especially the archive/Retry boundary and growth limitations.
 
@@ -29,7 +43,7 @@ Phase 4 adds renewable state-bound Matters, semantic cooldown, real Historical H
 
 Phase 5 adds mature progression, identity-linked credentials/property, real delegated cashflow, hidden failures, causal inheritance and institutional autonomy. See [the enterprise contract](runtime/ENTERPRISE-CONTINUITY.md).
 
-Requires Native Core c8d2d0e0c11c283ade2fa3c730740a0dc480c746 or a descendant for Chronicle, public world/calendar reads, checkpoint retirement and refusal recovery. CI status, exact tested heads and integration evidence are in the permanent Package Record. Historical 1.0.0 remains unchanged. The source manifest is the retained fixture/bootstrap input; tools/package.mjs emits the distinct v2 release identity by default.
+Requires Native Core c8d2d0e0c11c283ade2fa3c730740a0dc480c746 or a descendant for Chronicle, public world/calendar reads, checkpoint retirement and refusal recovery. CI status, exact tested heads and integration evidence are in the permanent Package Record. Historical 1.0.0 remains unchanged. The source manifest is the retained fixture/bootstrap input; tools/package.mjs emits the distinct v2 release identity under `--legacy`.
 
 ## Retained release 1.0.0
 
@@ -49,8 +63,7 @@ Run with Node and an independent current Atria main checkout with its dependenci
 
 ~~~text
 node tools/content-check.mjs
-node tools/frontend-model-check.mjs
-node tools/package.mjs validate --core <main-checkout>
+node tools/package.mjs validate --legacy --core <main-checkout>
 node tools/package.mjs validate --fixture --core <main-checkout>
 node tools/package.mjs validate --long-horizon-only --core <main-checkout>
 node tools/package.mjs validate --history-only --core <main-checkout>
@@ -63,7 +76,7 @@ node tools/package.mjs validate --campaign-only --core <main-checkout>
 node tools/package.mjs validate --campaign-only --v1-campaign --core <main-checkout>
 node tools/package.mjs validate --frontend-only --core <main-checkout>
 node tools/package.mjs preview --v1-campaign --retained-v1 --release-only --archive releases/1.0.0.atria --core <main-checkout>
-node tools/package.mjs build --core <main-checkout> --out <new-build-path.atria>
+node tools/package.mjs build --legacy --core <main-checkout> --out <new-build-path.atria>
 ~~~
 
 Phase 6 adds real-time regional travel, persistent remote hubs, sparse macro history and conditional Era-sensitive content. See [the regional contract](runtime/REGIONAL-HISTORY.md).
@@ -74,7 +87,7 @@ Phase 6 adds real-time regional travel, persistent remote hubs, sparse macro his
 
 --renewal-only runs the actual 5,000-content-turn/50-year candidate with two generations, late history reuse, structural repetition audit and five real portable checkpoint imports. Measured exports use existing Native history.compact; compaction/setup/clock-only actions do not inflate the content count. A smaller ATRIA_RENEWAL_TURNS override is smoke evidence only.
 
-Default validation retains the P5/P6/P7 regression matrix against the new foundation; this is not a repeat of the v1 completeness audit. --long-horizon-only checks the Phase 1 time/identity/stance and actual Fs/SQLite Save/Restore contract. --lifetime-only checks Phase 3 human/family/office lifecycles over 90 years and nine real Fs/SQLite save imports (see runtime/HUMAN-LIFETIMES.md). --history-only runs the history-only 1k-turn/10-year development gate, repeated real Save/Restore, early century-retrieval analogue and checkpoint growth audit; it is not full Gate A lifecycle/content coverage. --opening-only stops after the retained opening checks. --v1-campaign explicitly selects the old bounded campaign. --fixture retains P2/P3/P4 under a distinct immutable regression identity. --campaign-only performs a continuous committed campaign, interleaved Signatures, actual Branch Retry and save-container continuation beyond Day 30 (or bounded day30 under --v1-campaign). --frontend-only requires Edge Chromium (or ATRIA_BROWSER_CHANNEL) and the Core Playwright/browser bundle; screenshots go to build/ui-<version>. These are real Native/UI tests with a local synthetic HTTP provider, not hosted-model evidence.
+Explicit `--legacy` validation retains the P5/P6/P7 regression matrix against the new foundation; this is not a repeat of the v1 completeness audit. --long-horizon-only checks the Phase 1 time/identity/stance and actual Fs/SQLite Save/Restore contract. --lifetime-only checks Phase 3 human/family/office lifecycles over 90 years and nine real Fs/SQLite save imports (see runtime/HUMAN-LIFETIMES.md). --history-only runs the history-only 1k-turn/10-year development gate, repeated real Save/Restore, early century-retrieval analogue and checkpoint growth audit; it is not full Gate A lifecycle/content coverage. --opening-only stops after the retained opening checks. --v1-campaign explicitly selects the old bounded campaign. --fixture retains P2/P3/P4 under a distinct immutable regression identity. --campaign-only performs a continuous committed campaign, interleaved Signatures, actual Branch Retry and save-container continuation beyond Day 30 (or bounded day30 under --v1-campaign). --frontend-only requires Edge Chromium (or ATRIA_BROWSER_CHANNEL) and the Core Playwright/browser bundle; screenshots go to build/ui-<version>. These are real Native/UI tests with a local synthetic HTTP provider, not hosted-model evidence.
 
 --retained-v1 verifies the unchanged original archive digest and its embedded assets through the release-only installer checks; it does not assert correspondence with the current v2 frontend or migrate old saves.
 
@@ -88,7 +101,7 @@ Default validation retains the P5/P6/P7 regression matrix against the new founda
 - data/ contains 40 hash-pinned resources / 240 structured assets (482200 bytes; largest 78485 bytes). Hidden Canon and private institutional/actor state remain behind safe projections. Six public Knowledge entries are installed but unbound.
 - runtime/OPENING.md, NETWORK.md and CONVERGENCE.md describe retained stage contracts; their historical version/scope notes are not current release status. runtime/FRONTEND.md describes the current long-life UI and retained opening-era flows.
 - Historical v1 budgeting: 64/64 transactions, 9 publication reads/15 commands, static maximum24; Evidence248/256, summary232/256, Graph169/256; maximum formula2000/2048. Intent keeps compact investigation.nodes; both full-detail Graphs use investigation.details. P9 observed maximum15 reads/17 commands/19 effects and13492 observation bytes, below16384.
-- Historical v1 fixture only: one world clock, day30 horizon, <=2880 minutes per advance, maxSteps3/maxDeliberations1; Day31 rejects atomically. The default v2 foundation replaces the date/advance ceiling with safe-integer chronology and constant-work intervals. The16 Seeds/32 archetypes are bounded supervised-carrier contracts, not arbitrary Claim Engineering. Extra Pattern instances are bounded. Hearing dimensions remain independent.
+- Historical v1 fixture only: one world clock, day30 horizon, <=2880 minutes per advance, maxSteps3/maxDeliberations1; Day31 rejects atomically. The retained v2 foundation replaces the date/advance ceiling with safe-integer chronology and constant-work intervals. The16 Seeds/32 archetypes are bounded supervised-carrier contracts, not arbitrary Claim Engineering. Extra Pattern instances are bounded. Hearing dimensions remain independent.
 - Normal new operations acquire a current bridge handle. Unknown-commit retry retains original epoch/revision/input/key. Process-local selection pinning, same-anchor RNG, committed idempotency and actual save-container restoration are distinct guarantees.
 - No claim of cross-process uncommitted journal recovery, old-version save migration, hosted-model behavior, physical-device/screen-reader or OS-crash verification. Paper/light UI is intentional, not a separate dark theme. Later-state browser setup uses Native transactions, not every action clicked.
 
