@@ -99,8 +99,25 @@ export function registerMutationActions(registry, browser) {
     const routeRef = z.strictObject({ scope: z.literal('player'), runtimeRouteId: id });
     add('chat.send', 'MUTATE', 'Native Generation turn / immutable Session commit', { ...sessionInput, invocationId: id, userInput: text.min(1),
         routeRef: routeRef.optional(), slotBindings: z.record(id, routeRef).optional() }, sessionGuard,
-    (i, { before }) => write('POST', generation + '/turn/start', { sessionId: i.sessionId, revisionId: i.expectedRevisionId, invocationId: i.invocationId,
-        userInput: i.userInput, routeRef: i.routeRef, slotBindings: i.slotBindings }, before, sessionEvidence), ['generation', 'provider-network', 'mayIncurCost']);
+    async (i, { before }) => {
+        const appended = await request('POST', session + '/command', { sessionId: i.sessionId, expectedRevisionId: i.expectedRevisionId,
+            command: { type: 'timeline', commands: [{ type: 'append', draft: { role: 'user', content: i.userInput } }] } }, before);
+        if (!appended.ok) return output(appended);
+        const committed = snapshotIdentity(appended.data);
+        const message = appended.data.timeline.at(-1);
+        const evidence = { after: { input: committed }, created: [{ kind: 'message', id: message.messageId, sessionId: i.sessionId }],
+            recovery: 'User input is committed. Read Session and generation.status before recovery; never automatically resubmit chat.send.' };
+        if (appended.serverBootId !== before.serverBootId) return { ...output(appended, evidence), ok: false, partial: true };
+        let response;
+        try {
+            response = await request('POST', generation + '/turn/start', { sessionId: i.sessionId, revisionId: committed.revisionId, invocationId: i.invocationId,
+                userInput: i.userInput, routeRef: i.routeRef, slotBindings: i.slotBindings }, before);
+        } catch {
+            return { ...output({ ok: false, status: null, serverBootId: null, data: { error: 'Generation response unconfirmed; inspect owning authority.' } }, evidence), partial: true };
+        }
+        const uncertain = !response.ok || response.serverBootId !== before.serverBootId;
+        return { ...output(response, { ...evidence, after: { input: committed, generation: response.data } }), ok: !uncertain, partial: uncertain };
+    }, ['generation', 'provider-network', 'mayIncurCost']);
     for (const action of ['chat.regenerate', 'chat.reenter']) add(action, 'MUTATE', 'Native Session coherent boundary + Native Generation turn',
         { ...sessionInput, messageId: id, invocationId: id, userInput: action === 'chat.reenter' ? text.min(1) : z.literal('').default(''), routeRef: routeRef.optional(), slotBindings: z.record(id, routeRef).optional() },
         async i => {
