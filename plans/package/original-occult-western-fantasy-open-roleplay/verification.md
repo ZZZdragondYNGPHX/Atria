@@ -1,6 +1,6 @@
 # 验证与证据边界
 
-只运行与当前阶段及实际改动对应的现有检查。没有运行的测试、浏览器、AI服务、数据库、Android或真机不得记为通过。Plan列出目标不等于已验证。
+用户 2026-10-04 最新 AGENTS.md 指令替代此前提供的 AGENTS.md 指令：每阶段及任务完成时，只在本地执行最小相关验证。不主动启动、等待或依赖远端 CI/GitHub Actions，远端 refs 核对仅是发布确认。没有运行的测试、浏览器、AI服务、数据库、Android或真机不得记为通过。Plan列出目标不等于已验证。
 
 ## Phase 0 文档与参考
 
@@ -8,7 +8,7 @@
 
 原样HTML可能保留生成器的行尾空格／CRLF；不为文档准备改写用户案例。只对新增自有Markdown执行空白检查，参考原文件采用逐字节／hash一致验证。
 
-不运行游戏、全仓库构建或历史长期压力检查，不给阶段0创建CI／测试基础设施。远端保护若触发现有必要检查，按实际结果记录。
+不运行游戏、全仓库构建或历史长期压力检查，不给阶段0创建CI／测试基础设施。远端发布只核对实际 refs，不把 CI 当验收。
 
 ## Phase 1 证据
 
@@ -49,3 +49,14 @@
 模型预算以实际调用记录计数，不能把预写mock当成模型／world演化证明。短期可玩闭环、制度／非法路线和模式安全性是首要门槛；旧1000回合／200年压力不会自动转成本任务必选验收。只有新改动风险或明确要求才扩大验证。
 
 最终保存精确testedCore/PackageHEAD、命令、输出摘要、已知限制与必要可携证据。旧存档迁移、生产模型质量、真机／屏幕阅读器等只在实际完成时声称。
+
+
+## Phase 2 已执行证据
+
+`run-contract-p2.test.js` 校验 opt-in capability、closed schema、bootstrap / death 的声明链接和 ledger 边界；`run-policy-p2.test.js` 在 FS/SQLite 上校验开始单 CAS / 0 发送 / 幂等、非法输入和迟到校验、独立 Node 进程 pin/抽样/额度、route retry/fallback/未知发送、普通死亡与恢复、Core/repository/HTTP/固定 Host/编译 Native bridge 的铁人限制、当前 resume 与 spent-ledger portability、stale/伪造死亡、死亡/保存/导出并发、其它局保护、部分清理/完成标记恢复及 Task 取消。FS 另有死亡 HEAD 提交后墓碑写入失败的 commit-last 故障注入。
+
+`generation-budget-p2.test.js` 使用真实 adapter→回环合成 HTTP provider，校验实际后台队列重试的两次发送、跨 HEAD / 重开 / restore 不返还、未到窗口与 stale 输入不发送、preview/preflight 零发送、受控提案一次发布及跨窗口 period 上限。period 上限用较小的声明值触发实测边界，实际 Package 初值仍为 runtime-contracts 的 2/4/10/20。上述新增 70 项与既有 320 项共同组成最终 23 套件 / 390 项通过；准确命令和 tested HEAD 在唯一 Record。
+
+ESLint 对全部 23 个变更 JavaScript 文件无错误/警告，git diff --check 通过。执行环境 Node v22.23.3，运行包的官方 SHA-256 已核验；Core/tests 锁定依赖通过 npm ci 安装，SQLite 原生依赖已构建。无真实个人档案、旧发布或用户数据被用于删档测试。
+
+未执行 MySQL/PostgreSQL、远端 CI、生产模型、游戏/Package新 profile、浏览器、Android、屏幕阅读器或新版本发布。编译 Native bridge / 路由测试证明 Core 接口语义，真实产品前端与游戏闭环仍按后续阶段验收。

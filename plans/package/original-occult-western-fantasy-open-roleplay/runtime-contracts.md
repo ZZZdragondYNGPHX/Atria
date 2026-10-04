@@ -2,7 +2,7 @@
 
 ## Phase 1 定案与证据基线
 
-2026-10-04完成源码契约核对；以下是后续实施设计，不是已实现能力。核对基线：任务分支 `d7be6f1abff4d9d756f2dfa24c5492104e72aa75`、package `48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e`、main `c8d2d0e0c11c283ade2fa3c730740a0dc480c746`。精确实施历史见唯一 Record。
+2026-10-04完成 Phase 1 源码契约核对及 Phase 2 Core 最小支持；下方审计表保留 Phase 1 基线，Phase 2 已实施接口见末节。游戏内容与前端设计仍待接入。核对基线：任务分支 `d7be6f1abff4d9d756f2dfa24c5492104e72aa75`、package `48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e`、main `c8d2d0e0c11c283ade2fa3c730740a0dc480c746`。精确实施历史见唯一 Record。
 
 路径标记 `Package:` 相对游戏根 `original-occult-western-fantasy-game/`，`Core:` 相对 main 根。下面的函数、字段和限制均从对应代码读取；设计中的新增契约名称尚未存在。继续复用 SessionCore、Lifecycle、authority transaction、Information、Simulation、Task 和 Native frontend，不另建游戏执行器、数据库或调度权威。
 
@@ -121,3 +121,57 @@ Phase 4沿用Native现成dialog/focus/inert能力，问答以有语义的button�
 Package负责问答、原语、因果/风险、机构/野路子、8槽动态发布、有效轮数与批次策略、内容编译及全部前端。暂缓：任意模型发明可执行Claim/规则、任意职业专用引擎、无限实体、全城逐轮模拟、自动世代接管、全量经济、强制长生/千回合验收、旧保存无损迁移、OS级防回退。
 
 Phase 2完成必须以隔离数据证明：开始0发送且原子/幂等；跨进程重试保同选择/抽样与quota；失败/fallback不超额；非法proposal及stale结果无发布；普通恢复可用；铁人全部回退路径拒绝；死亡/清理中断后墓碑有效；无关局不变。已有局部测试与具体Phase 3/4闭环检查路由见 [implementation-staging.md](implementation-staging.md)，Phase 1源码证据验收见 [verification.md](verification.md)。
+
+## Phase 2 已实施接口（2026-10-04）
+
+Core 辅助分支为 `refactor/open-roleplay-core`；精确 tested HEAD 以本任务唯一 Record / HANDOFF 为准。上方源码映射表保留 Phase 1 的 main 基线审计事实；A/B/C 已在辅助分支实现，main 和游戏资产尚未接入。
+
+三个能力都以 ExperienceContract 的 required `@1` 声明启用，且要求 required `authority-transaction@1`。对应声明如下；没有声明的旧 Package 沿用原执行与保存路径。
+
+```json
+{
+  "storyStart": {
+    "schemaVersion": 1,
+    "transactionId": "story.begin",
+    "narrativeField": "opening"
+  },
+  "generationBudget": {
+    "schemaVersion": 1,
+    "resolverAttempts": 2,
+    "narratorAttempts": 2,
+    "turnAttempts": 4,
+    "backgroundAttempts": 2,
+    "backgroundWindowTurns": 4,
+    "backgroundPeriodTurns": 20,
+    "backgroundPeriodAttempts": 10,
+    "turnCounter": {
+      "domainId": "play_progress",
+      "recordId": "main",
+      "field": "effectiveTurns"
+    }
+  },
+  "runPolicy": {
+    "schemaVersion": 1,
+    "deathTransactions": ["risk.resolve"],
+    "deathOutcome": "death"
+  }
+}
+```
+
+**A 开始。** `story.begin` 必须是未暴露给 resolver 的确定性 player Transaction；其 closed input 必须要求 `mode`，枚举为 `ordinary` / `ironman`，其 receipt 的 `opening` 为有界字符串。开始事务不能推进时钟或 workflow；可复用现有 World Event、App Command、validator、derived publication 写入角色与多个 domain。Package 把五题组合校验写在声明中，开篇投影只使用已校验输入与确定性结果。Core 先要求 Ready、准备整个 candidate，再以一次 Session CAS 同时提交角色、开篇、Action receipt 和宿主模式。
+
+正式入口是 `SessionCore.beginStory(handle, sessionId, { input, invocationId, expectedRevisionId })`；HTTP Session router 的 `/begin` 使用同一参数。固定 Native Host 为 `host.session.begin`，输入 `{ inputJson, invocationId }`，其中 `inputJson` 是 closed bootstrap input 的 JSON 字符串；它不是 effect/patch 接口。同 invocation / fingerprint 返回当前已提交局，不再次开始；不同输入或再次选模式拒绝。pending 局只允许检查、Ready、正式开始，模型执行和保存被阻挡。
+
+**B 续接与发送。** 新的宿主资源 `atri_run_control` 按 owner / session 存储，独立于可回退 Session states。它保留当前 anchor 的输入 fingerprint、选定 Transaction/input、每 lane 的已用 attempts、后台窗口和有效轮数 high-water。相同 anchor 换 invocation/requestId 继续共用额度；重开进程从固定选择重算私有 proof / Fortune，旧 Package 的 WeakMap 行为保持原契约。已完成 foreground anchor 随 HEAD 推进退出活动续接集；普通 restore 创建新 Revision / Branch，不能重新发布那个旧 anchor。pending 后台批次的 attempts 跨其它 HEAD 发布保留，已消费后台窗口与 high-water 随普通读档保留。
+
+每次进入 provider `send` 之前以现有存储 CAS 扣额，包括 route retry、fallback 和 Task scheduler retry。provider 边界内的未知失败也已消费；发送前编译、preflight、preview 不消费。foreground scope 使用原始 authority anchor，Narrator 读取 candidate 不改变计费 anchor。后台只能使用实际 simulation outbox 的固定 invocation；非排队 Task / 裸 generation 不能新建额度。窗口索引按 high-water 的 `floor(turn / windowTurns)`，period 按 `floor(turn / periodTurns)`，不结转额度；低于首个有效窗口不发送。轮数来源必须是已声明 domain 的有界非负 integer 字段。
+
+**C 模式与终局。** Core 写受保护的 `atri_run` state，并在外部控制记录中固定 mode / 单调 sequence。`host.session.run` 与 HTTP `/run` 返回 `{ runId, mode, status, sequence, cleanup }`。有效游玩轮数仍由上述 Package 字段负责。v1 的 runPolicy 明确拒绝与 player continuity / shared realm 同时启用，首版不处理跨局转移。
+
+普通权威死亡停止直接继续；同一已提交 invocation 可返回旧结果，明确 restore / fork / retry 可恢复旧状态。铁人的 restore、branch fork/switch、已提交 Reply Retry、历史 Revision load/save、变体路线与无私有 publication proof 的 repository HEAD 写均受服务端限制。铁人每次发布清除旧 HEAD 的 SavePoint，新建保存只保留当前 HEAD。
+
+铁人导出使用 `.atriasave schemaVersion: 2, scope: resume`，容器外层版本仍为 1，普通/旧导出仍为 schema 1。resume 闭包只有当前 Revision、单 root Branch、当前所需 states / 展示 Timeline / 必要依赖，无 parent/fork root、历史 SavePoint 或不可达 state/message/variant；`resume.sourceRevisionId` 等于闭包 root，附带经过闭合校验的发送续接 ledger。fresh store 导入继续该 HEAD；同宿主既有 run 只确认相等 HEAD / sequence，旧文件与普通容器不能回退铁人。正常重开局使用新的 sessionId。
+
+终局依据声明的 authority outcome，文本和 app.command 无删档权。死亡 HEAD 的 CAS 是先行封锁点，随后持久 tombstone、取消该局其它未 finalizing 的 Task / frontend epoch，再隔离清理该局 Session / Branch / Timeline / state / revision / SavePoint。tombstone 不在保存闭包中，删除该局后仍有效。HEAD→墓碑间中断由当前死亡 state 恢复；墓碑后部分删除和 root 删除后完成标记中断均由 `/run` / `runStatus` 继续清理。死亡 bridge 动作返回已提交 receipt，后续 epoch 失效；清理后的重试读取终局状态，不重建旧叙述或旧局。
+
+此实现遵循现有 FS 单服务进程写入边界；独立进程恢复已测，不承诺多进程同时写 FS。回环 HTTP 合成 provider 用于发送计数与失败测试，不代表生产模型质量或 OS / 跨宿主防作弊。Phase 3 必须使用明确 tested Core，接入真实 Package 后再验证游戏条件和内容。

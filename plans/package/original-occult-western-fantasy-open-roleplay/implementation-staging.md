@@ -38,7 +38,7 @@
 
 ## 共同提交与证据
 
-每阶段尽量形成清楚可审阅的提交。docs记录可引用实现／测试HEAD；实现分支不反向存当前docs提交，避免循环。必要CI按变化面执行，只记录实际发生结果。
+每阶段尽量形成清楚可审阅的提交。docs记录可引用实现／测试HEAD；实现分支不反向存当前docs提交，避免循环。按用户 2026-10-04 最新 AGENTS.md 指令：每阶段及任务完成时，只在本地执行最小相关验证。该指令替代此前提供的 AGENTS.md 指令；不启动/等待/依赖远端 CI，推送后 refs 核对是发布确认。
 
 新设备恢复不重新开展已完成方向讨论，不重复保存参考，不先运行全部历史soak，不恢复旧Plan中已被本任务替代的默认产品方向。
 
@@ -60,3 +60,10 @@ Core测试在main的 `tests/package.json` / Jest配置中运行，例：`npm --p
 现有 `package.mjs validate` 默认进完整旧开局/长期链，并不等价新目标的局部检查；Phase 3须新增明确新profile入口并保留历史选择，避免为新游戏通过而删除旧断言，也避免默认跑所有century/regional soak。浏览器harness现用tests的Playwright及默认msedge频道，需要实际浏览器安装；其selectAction、accept-check、6-step和旧导航断言要随新流程调整。
 
 Phase 2是正式单阶段：A/B/C全部实现并通过对应风险检查，更新同一Record/HANDOFF、提交推送后停止；不提前写游戏/前端。只有实际通过适当兼容验证才按治理集成辅助Core main，记录精确集成HEAD；若保持待集成分支，HANDOFF写清原因和可复现实验HEAD，不伪称main已支持。Phase 3使用明确testedCore，不混用未集成环境。辅助分支不新增Record或HANDOFF。
+
+
+## Phase 2 完成与 Phase 3 入口
+
+A/B/C 已在 `refactor/open-roleplay-core` 实施，精确 tested HEAD 见唯一 Record / HANDOFF。实际新增检查为 `tests/native/run-contract-p2.test.js`、`run-policy-p2.test.js`、`generation-budget-p2.test.js`；配合上表相关的旧 authority、simulation、Session、保存、HTTP、Native bridge 和存储检查，23 个套件 / 390 项通过，所有变更 JavaScript 的 ESLint 与 diff 空白检查通过。验证使用隔离 FS / SQLite 和回环合成 HTTP provider，包含真实 Node 子进程重开；未启动 MySQL/PostgreSQL 服务，未运行远端 CI、生产模型或浏览器/设备。
+
+辅助 Core 保持独立待集成，main 仍为原审计基线；本阶段按分阶段交付保留辅助分支，主线集成留在后续阶段；额外数据库检查按实际风险在本地决定，不默认追加 CI 或更广验证。Phase 3 使用 HANDOFF 的精确 tested Core checkout，先核对 refs，按玩家体验/世界超凡与已实施 A/B/C 编写游戏默认 compiler、声明和内容，并执行该阶段的编译与局部闭环。Phase 2 本轮到此停止，不做 Phase 3/4 或新版本发布。
