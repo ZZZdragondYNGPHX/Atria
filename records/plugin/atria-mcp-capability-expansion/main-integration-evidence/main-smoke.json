@@ -1,0 +1,246 @@
+{
+  "coreHead": "71254a88c3338a2cfb54c3bbd535d0b46e6395a6",
+  "pluginHeadAtGeneralSmoke": "fbdc372ee05556394d244ab84dac8457954aa7f9",
+  "coreTests": {
+    "suites": 11,
+    "passed": 132,
+    "engines": [
+      "FS",
+      "SQLite"
+    ]
+  },
+  "changedFileEslint": "passed in integrated main",
+  "releaseCompatibility": {
+    "packageHead": "b7eaa4fcc8f5480f075d75c3c71576cf176c077f",
+    "packageDirty": true,
+    "coreHead": "71254a88c3338a2cfb54c3bbd535d0b46e6395a6",
+    "phase": 5,
+    "profile": "open-roleplay-release",
+    "mode": "validate",
+    "version": "3.0.0",
+    "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+    "archiveSha256": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24",
+    "archiveBytes": 152692,
+    "compiledSourceBytes": 269595,
+    "budgets": {
+      "transactions": 19,
+      "playerPrimitives": 17,
+      "simulationJobs": 2,
+      "maximumStaticCommands": 23,
+      "maximumStaticEffects": 23
+    },
+    "data": {
+      "resources": 41,
+      "assets": 240,
+      "bytes": 490327,
+      "largestResourceBytes": 78485,
+      "counts": {
+        "canon_fragment": 12,
+        "canon_index": 1,
+        "institutional_case_pattern": 10,
+        "signature_case": 8,
+        "actor_a": 12,
+        "actor_b": 30,
+        "anomaly": 8,
+        "artifact_template": 10,
+        "claim_archetype": 32,
+        "claim_primitive": 8,
+        "claim_seed": 16,
+        "tradition": 4,
+        "district": 6,
+        "location": 30,
+        "historical_event": 1,
+        "institution": 10,
+        "public_knowledge": 6,
+        "matter_hook": 10,
+        "civic_office": 4,
+        "origin": 7,
+        "prior_life": 8,
+        "faith": 7
+      }
+    },
+    "checks": [
+      "Exact archive manifest, compiled Native files and Data assets match source",
+      "Independent v3 identity, immutable origins and required Core capabilities",
+      "Fixed static work and actual-send budget declarations",
+      "Native v3 bridge exposes only two public projections and fixed Host services",
+      "Permission refusal, real FS install/reopen, Ready and deterministic begin",
+      "Disclosure-safe Views and corrupted archive refusal"
+    ]
+  },
+  "runtimeSourceMatch": "EXACT",
+  "provenanceChecks": {
+    "changedSource": "not requested",
+    "differentRevision": "not requested",
+    "restart": "STALE",
+    "reload": "CURRENT"
+  },
+  "routes": 168,
+  "client": {
+    "version": "Codex CLI 0.160.0",
+    "toolCount": 18,
+    "status": "real app-server MCP startup, exact 18 tools, schemas, status, discovery, READ and image content passed"
+  },
+  "semanticReceipts": [
+    {
+      "action": "build.frontend.evaluate",
+      "status": "succeeded"
+    },
+    {
+      "action": "chat.branch.fork",
+      "status": "succeeded"
+    },
+    {
+      "action": "build.change.apply",
+      "status": "succeeded"
+    },
+    {
+      "action": "build.preview.close",
+      "status": "succeeded"
+    },
+    {
+      "action": "build.simulate",
+      "status": "succeeded"
+    },
+    {
+      "action": "session.rename",
+      "status": "succeeded"
+    },
+    {
+      "action": "session.save",
+      "status": "succeeded"
+    },
+    {
+      "action": "chat.branch.fork",
+      "status": "succeeded"
+    },
+    {
+      "action": "session.restore",
+      "status": "succeeded"
+    },
+    {
+      "action": "work.start",
+      "status": "succeeded"
+    },
+    {
+      "action": "settings.patch",
+      "status": "succeeded"
+    },
+    {
+      "action": "library.world.revision.create",
+      "status": "succeeded"
+    },
+    {
+      "action": "library.world.revision.create",
+      "status": "succeeded"
+    },
+    {
+      "action": "connection.update",
+      "status": "succeeded"
+    },
+    {
+      "action": "connection.update",
+      "status": "succeeded"
+    },
+    {
+      "action": "build.package.create",
+      "status": "succeeded"
+    },
+    {
+      "action": "package.install.review",
+      "status": "succeeded"
+    },
+    {
+      "action": "package.install",
+      "status": "succeeded"
+    },
+    {
+      "action": "library.revision.delete",
+      "status": "succeeded"
+    },
+    {
+      "action": "session.delete.owned",
+      "status": "succeeded"
+    },
+    {
+      "action": "session.delete",
+      "status": "succeeded"
+    },
+    {
+      "action": "work.delete",
+      "status": "succeeded"
+    },
+    {
+      "action": "build.project.create",
+      "status": "succeeded"
+    },
+    {
+      "action": "build.project.delete.owned",
+      "status": "succeeded"
+    }
+  ],
+  "memoryReceipts": [
+    {
+      "action": "memory.node.create",
+      "status": "succeeded"
+    },
+    {
+      "action": "memory.node.edit",
+      "status": "succeeded"
+    },
+    {
+      "action": "memory.node.create",
+      "status": "succeeded"
+    },
+    {
+      "action": "memory.relation.upsert",
+      "status": "succeeded"
+    },
+    {
+      "action": "memory.relation.delete",
+      "status": "succeeded"
+    },
+    {
+      "action": "memory.compact",
+      "status": "succeeded"
+    },
+    {
+      "action": "memory.node.delete",
+      "status": "succeeded"
+    },
+    {
+      "action": "memory.node.delete",
+      "status": "succeeded"
+    },
+    {
+      "action": "memory.node.delete",
+      "status": "succeeded"
+    }
+  ],
+  "epochStates": {
+    "before": "OBSERVED",
+    "stale": "STALE"
+  },
+  "nativeUiScope": "Real Atria editor/renderer in a disposable test-mounted surface; not full shell navigation or human approval UX",
+  "mobileViewport": {
+    "width": 390,
+    "height": 844
+  },
+  "diagnosticCount": 14,
+  "diagnosticContext": "Controlled restart causes connection-refused and aborted background requests; no zero-error claim.",
+  "limits": [
+    "Source change/different revision opt-ins not repeated",
+    "Deterministic approvals and fixtures; no paid model, human approval UX or Android"
+  ],
+  "finalCoreHead": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+  "resumeFixTests": {
+    "suites": 1,
+    "passed": 33,
+    "changedFileEslint": "passed"
+  },
+  "pluginTestsAfterChatFix": {
+    "passed": 48,
+    "skipped": 0,
+    "syntaxChecks": "passed"
+  }
+}

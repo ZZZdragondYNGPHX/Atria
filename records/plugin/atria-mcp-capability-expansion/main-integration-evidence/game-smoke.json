@@ -1,0 +1,3056 @@
+{
+  "coreHead": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+  "pluginHead": "792a87286e881ea62fc31bdc90b8678ccd715f9b",
+  "archiveSha256": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24",
+  "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+  "isolatedData": true,
+  "provider": "Local synthetic HTTP; no paid model",
+  "requests": 4,
+  "checks": [
+    "18 real stdio MCP tools; main source EXACT; mutation/high-risk guards enabled",
+    "MCP captures exact released 3.0.0 bytes, reviews permission, installs and starts Work",
+    "Owned HTTP fixture Ready/begin starts an ordinary life with zero provider sends",
+    "MCP free text resolves two Native work turns, rejects stale revision and restores exact saved resources",
+    "MCP observes real shell-mounted Native game at 375/390 mobile, landscape, reduced-height and desktop viewports"
+  ],
+  "captures": [
+    {
+      "width": 375,
+      "height": 812,
+      "file": "game-375x812.jpg"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "file": "game-390x844.jpg"
+    },
+    {
+      "width": 844,
+      "height": 390,
+      "file": "game-844x390.jpg"
+    },
+    {
+      "width": 390,
+      "height": 400,
+      "file": "game-390x400.jpg"
+    },
+    {
+      "width": 1440,
+      "height": 900,
+      "file": "game-1440x900.jpg"
+    }
+  ],
+  "approvals": [
+    {
+      "action": "package.install.review",
+      "binding": "795964dbf28feb4816ef788c8740226cac216d51400e4b3f141dfbc36b400b2a"
+    },
+    {
+      "action": "package.install",
+      "binding": "8376e016513a11f12a3812bcdab86bc5f8cb1b65171478840fdeeed38cda9370"
+    },
+    {
+      "action": "work.start",
+      "binding": "6f23742fbe01170006a6b968625e08d2f48584dfe37632fd066fbaa3ca51af5a"
+    },
+    {
+      "action": "chat.send",
+      "binding": "67a6cb4489ad06be413e8b5bd3e70ce9f23529cbfe4ba1c646cb864031073b5e"
+    },
+    {
+      "action": "session.save",
+      "binding": "50fc2dafee0b55586dd8cb29630b43f9408ad434f2680aae702440497615e1ed"
+    },
+    {
+      "action": "chat.send",
+      "binding": "51df4649a0a7f6cf0c06b9e3c482e021b3aeffd92d9b42a9051593fabec52446"
+    },
+    {
+      "action": "session.restore",
+      "binding": "7b5951b20a01eb90db0d8ded2b9b7e90dca8e6488a552684c225e3007be5e8c0"
+    }
+  ],
+  "receipts": [
+    {
+      "action": "package.install.review",
+      "risk": "INTERACT",
+      "status": "succeeded",
+      "startedAt": "2026-10-04T07:54:47.174Z",
+      "endedAt": "2026-10-04T07:54:48.116Z",
+      "target": {
+        "artifactId": "fd886779-1439-43a5-a1ff-755e6fc74f61",
+        "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+        "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112"
+      },
+      "before": {
+        "target": {
+          "artifactId": "fd886779-1439-43a5-a1ff-755e6fc74f61",
+          "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112"
+        },
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "artifactHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24",
+        "preflight": {
+          "format": "atria-package-container",
+          "containerVersion": 2,
+          "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+          "name": "Original Occult Western Fantasy — Open Lives",
+          "version": "3.0.0",
+          "capabilities": [
+            "narrative",
+            "world-simulation"
+          ],
+          "permissions": [
+            {
+              "permission": "generation",
+              "required": true,
+              "reason": "Declared Model Tasks require a player-configured model route."
+            }
+          ],
+          "requiredPermissions": [
+            "generation"
+          ],
+          "payloadBytes": 151944,
+          "packageContentHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24",
+          "update": {
+            "previous": null,
+            "comparisonAvailable": true,
+            "addedPermissions": [
+              {
+                "permission": "generation",
+                "required": true,
+                "reason": "Declared Model Tasks require a player-configured model route."
+              }
+            ],
+            "removedPermissions": [],
+            "changedPermissions": [],
+            "addedCapabilities": [
+              "narrative",
+              "world-simulation"
+            ],
+            "removedCapabilities": [],
+            "pinnedSessions": [],
+            "permissionModel": "installation-consent"
+          }
+        },
+        "preflightHash": "1a85aecc46270cf66ef294e8852eed0f09e8cd8393e0efbd09959c29ce28aaab",
+        "baseVersionId": null,
+        "grantedPermissions": [
+          "generation"
+        ]
+      },
+      "after": {
+        "reviewed": true
+      },
+      "created": [],
+      "changed": [],
+      "deleted": [],
+      "externalEffects": [],
+      "recovery": "Inspect owning authority before retrying; no automatic rollback.",
+      "evaluation": null,
+      "packageReview": {
+        "target": {
+          "artifactId": "fd886779-1439-43a5-a1ff-755e6fc74f61",
+          "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112"
+        },
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "artifactHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24",
+        "preflight": {
+          "format": "atria-package-container",
+          "containerVersion": 2,
+          "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+          "name": "Original Occult Western Fantasy — Open Lives",
+          "version": "3.0.0",
+          "capabilities": [
+            "narrative",
+            "world-simulation"
+          ],
+          "permissions": [
+            {
+              "permission": "generation",
+              "required": true,
+              "reason": "Declared Model Tasks require a player-configured model route."
+            }
+          ],
+          "requiredPermissions": [
+            "generation"
+          ],
+          "payloadBytes": 151944,
+          "packageContentHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24",
+          "update": {
+            "previous": null,
+            "comparisonAvailable": true,
+            "addedPermissions": [
+              {
+                "permission": "generation",
+                "required": true,
+                "reason": "Declared Model Tasks require a player-configured model route."
+              }
+            ],
+            "removedPermissions": [],
+            "changedPermissions": [],
+            "addedCapabilities": [
+              "narrative",
+              "world-simulation"
+            ],
+            "removedCapabilities": [],
+            "pinnedSessions": [],
+            "permissionModel": "installation-consent"
+          }
+        },
+        "preflightHash": "1a85aecc46270cf66ef294e8852eed0f09e8cd8393e0efbd09959c29ce28aaab",
+        "baseVersionId": null,
+        "grantedPermissions": [
+          "generation"
+        ]
+      },
+      "delegation": null,
+      "childReceiptIds": [],
+      "parentReceiptId": null,
+      "provenance": {
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "review": {
+          "source": {
+            "algorithm": "atria-source-v1",
+            "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+            "branch": "main",
+            "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+            "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+            "reasons": []
+          },
+          "server": {
+            "version": 1,
+            "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+            "mutationGuards": 1,
+            "highRiskGuards": 1,
+            "processStartedAt": 1791100470692,
+            "appVersion": "2.7.0",
+            "source": {
+              "algorithm": "atria-source-v1",
+              "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+              "branch": "main",
+              "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+              "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+              "reasons": []
+            }
+          },
+          "runtimeSourceMatch": "EXACT",
+          "browser": null,
+          "browserFreshness": "UNVERIFIABLE",
+          "experience": null,
+          "preview": null,
+          "scopeNote": "Scoped evidence is the last observed owning-authority response, not a live freshness assertion. Missing fields cannot establish exact authoring verification."
+        },
+        "attribution": null
+      },
+      "error": null,
+      "version": 1,
+      "receiptId": "4e6f960f-9fb0-4260-92a0-9d742e7e3b44",
+      "mcpInstanceId": "2fbf7768-7015-41f2-b8c2-ac44ab66da92",
+      "issuedAt": 1791100488116,
+      "expiresAt": 1791104088116
+    },
+    {
+      "action": "package.install",
+      "risk": "MUTATE",
+      "status": "succeeded",
+      "startedAt": "2026-10-04T07:54:48.118Z",
+      "endedAt": "2026-10-04T07:54:49.263Z",
+      "target": {
+        "artifactId": "fd886779-1439-43a5-a1ff-755e6fc74f61",
+        "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+        "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112"
+      },
+      "before": {
+        "target": {
+          "artifactId": "fd886779-1439-43a5-a1ff-755e6fc74f61",
+          "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112"
+        },
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "artifactHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24",
+        "preflight": {
+          "format": "atria-package-container",
+          "containerVersion": 2,
+          "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+          "name": "Original Occult Western Fantasy — Open Lives",
+          "version": "3.0.0",
+          "capabilities": [
+            "narrative",
+            "world-simulation"
+          ],
+          "permissions": [
+            {
+              "permission": "generation",
+              "required": true,
+              "reason": "Declared Model Tasks require a player-configured model route."
+            }
+          ],
+          "requiredPermissions": [
+            "generation"
+          ],
+          "payloadBytes": 151944,
+          "packageContentHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24",
+          "update": {
+            "previous": null,
+            "comparisonAvailable": true,
+            "addedPermissions": [
+              {
+                "permission": "generation",
+                "required": true,
+                "reason": "Declared Model Tasks require a player-configured model route."
+              }
+            ],
+            "removedPermissions": [],
+            "changedPermissions": [],
+            "addedCapabilities": [
+              "narrative",
+              "world-simulation"
+            ],
+            "removedCapabilities": [],
+            "pinnedSessions": [],
+            "permissionModel": "installation-consent"
+          }
+        },
+        "preflightHash": "1a85aecc46270cf66ef294e8852eed0f09e8cd8393e0efbd09959c29ce28aaab",
+        "baseVersionId": null,
+        "grantedPermissions": [
+          "generation"
+        ]
+      },
+      "after": {
+        "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+        "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+        "artifactHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24"
+      },
+      "created": [],
+      "changed": [],
+      "deleted": [],
+      "externalEffects": [
+        "package-installation",
+        "reviewed-permission-grants"
+      ],
+      "recovery": "Inspect owning authority before retrying; no automatic rollback.",
+      "evaluation": null,
+      "packageReview": {
+        "target": {
+          "artifactId": "fd886779-1439-43a5-a1ff-755e6fc74f61",
+          "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112"
+        },
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "artifactHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24",
+        "preflight": {
+          "format": "atria-package-container",
+          "containerVersion": 2,
+          "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+          "name": "Original Occult Western Fantasy — Open Lives",
+          "version": "3.0.0",
+          "capabilities": [
+            "narrative",
+            "world-simulation"
+          ],
+          "permissions": [
+            {
+              "permission": "generation",
+              "required": true,
+              "reason": "Declared Model Tasks require a player-configured model route."
+            }
+          ],
+          "requiredPermissions": [
+            "generation"
+          ],
+          "payloadBytes": 151944,
+          "packageContentHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24",
+          "update": {
+            "previous": null,
+            "comparisonAvailable": true,
+            "addedPermissions": [
+              {
+                "permission": "generation",
+                "required": true,
+                "reason": "Declared Model Tasks require a player-configured model route."
+              }
+            ],
+            "removedPermissions": [],
+            "changedPermissions": [],
+            "addedCapabilities": [
+              "narrative",
+              "world-simulation"
+            ],
+            "removedCapabilities": [],
+            "pinnedSessions": [],
+            "permissionModel": "installation-consent"
+          }
+        },
+        "preflightHash": "1a85aecc46270cf66ef294e8852eed0f09e8cd8393e0efbd09959c29ce28aaab",
+        "baseVersionId": null,
+        "grantedPermissions": [
+          "generation"
+        ]
+      },
+      "delegation": null,
+      "childReceiptIds": [],
+      "parentReceiptId": "4e6f960f-9fb0-4260-92a0-9d742e7e3b44",
+      "provenance": {
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "review": {
+          "source": {
+            "algorithm": "atria-source-v1",
+            "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+            "branch": "main",
+            "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+            "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+            "reasons": []
+          },
+          "server": {
+            "version": 1,
+            "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+            "mutationGuards": 1,
+            "highRiskGuards": 1,
+            "processStartedAt": 1791100470692,
+            "appVersion": "2.7.0",
+            "source": {
+              "algorithm": "atria-source-v1",
+              "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+              "branch": "main",
+              "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+              "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+              "reasons": []
+            }
+          },
+          "runtimeSourceMatch": "EXACT",
+          "browser": null,
+          "browserFreshness": "UNVERIFIABLE",
+          "experience": null,
+          "preview": null,
+          "scopeNote": "Scoped evidence is the last observed owning-authority response, not a live freshness assertion. Missing fields cannot establish exact authoring verification."
+        },
+        "attribution": null
+      },
+      "error": null,
+      "version": 1,
+      "receiptId": "5be785c1-08a9-42b0-820e-2eec06c2c75b",
+      "mcpInstanceId": "2fbf7768-7015-41f2-b8c2-ac44ab66da92",
+      "issuedAt": 1791100489263,
+      "expiresAt": 1791104089263
+    },
+    {
+      "action": "work.start",
+      "risk": "MUTATE",
+      "status": "succeeded",
+      "startedAt": "2026-10-04T07:54:49.279Z",
+      "endedAt": "2026-10-04T07:54:50.471Z",
+      "target": {
+        "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+        "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+        "entryPointId": "entry_1e0df9035d386c417c3f88380748cad0"
+      },
+      "before": {
+        "target": {
+          "packageId": "pkg_27ccdf2fcb5fdeeccb000b081e2bf350",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+          "entryPointId": "entry_1e0df9035d386c417c3f88380748cad0"
+        },
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "manifestHash": "0bef4ee7ca67e6b56fcb3237c25d06eaadb096f029a0be1a636d2b59a48b3bb5",
+        "setupHash": "ca2824fd295d511f817ccfde1896ea47e162c128bf5420a9cf25c79f59723a56"
+      },
+      "after": {
+        "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7",
+        "revisionId": "rev_0a0920d047294e10a8031f416e3b3a87",
+        "branchId": "br_da110281c134451cbdd9cf6941300370",
+        "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+        "packageContentHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24"
+      },
+      "created": [
+        {
+          "kind": "session",
+          "id": "ses_b0f7cb7fb7164aea8c442a4c14d819c7",
+          "initialRevision": "rev_0a0920d047294e10a8031f416e3b3a87",
+          "mcpInstanceId": "2fbf7768-7015-41f2-b8c2-ac44ab66da92",
+          "creatingReceiptId": "b21d106a-c16a-4c9e-af21-0a6efd0586a8"
+        }
+      ],
+      "changed": [],
+      "deleted": [],
+      "externalEffects": [],
+      "recovery": "Committed Timeline remains immutable; prior branches/revisions remain in Session history.",
+      "evaluation": null,
+      "packageReview": null,
+      "delegation": null,
+      "childReceiptIds": [],
+      "parentReceiptId": null,
+      "provenance": {
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "review": {
+          "source": {
+            "algorithm": "atria-source-v1",
+            "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+            "branch": "main",
+            "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+            "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+            "reasons": []
+          },
+          "server": {
+            "version": 1,
+            "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+            "mutationGuards": 1,
+            "highRiskGuards": 1,
+            "processStartedAt": 1791100470692,
+            "appVersion": "2.7.0",
+            "source": {
+              "algorithm": "atria-source-v1",
+              "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+              "branch": "main",
+              "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+              "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+              "reasons": []
+            }
+          },
+          "runtimeSourceMatch": "EXACT",
+          "browser": null,
+          "browserFreshness": "UNVERIFIABLE",
+          "experience": null,
+          "preview": null,
+          "scopeNote": "Scoped evidence is the last observed owning-authority response, not a live freshness assertion. Missing fields cannot establish exact authoring verification."
+        },
+        "attribution": null
+      },
+      "error": null,
+      "version": 1,
+      "receiptId": "b21d106a-c16a-4c9e-af21-0a6efd0586a8",
+      "mcpInstanceId": "2fbf7768-7015-41f2-b8c2-ac44ab66da92",
+      "issuedAt": 1791100490471,
+      "expiresAt": 1791104090471
+    },
+    {
+      "action": "chat.send",
+      "risk": "MUTATE",
+      "status": "succeeded",
+      "startedAt": "2026-10-04T07:54:50.986Z",
+      "endedAt": "2026-10-04T07:54:52.109Z",
+      "target": {
+        "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7"
+      },
+      "before": {
+        "target": {
+          "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7"
+        },
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "identity": {
+          "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7",
+          "revisionId": "rev_1ea5524c10cd4a66963401ed1d2407f3",
+          "branchId": "br_da110281c134451cbdd9cf6941300370",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+          "packageContentHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24"
+        }
+      },
+      "after": {
+        "input": {
+          "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7",
+          "revisionId": "rev_bc11741c8b484462ae37c10a472bdb07",
+          "branchId": "br_da110281c134451cbdd9cf6941300370",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+          "packageContentHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24"
+        },
+        "generation": {
+          "operationId": "f5cf4484-bcbc-4d46-ab3e-56abeebc4cbd"
+        }
+      },
+      "created": [
+        {
+          "kind": "message",
+          "id": "msg_ce23909c0182424d9deaf69e47ea1dcb",
+          "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7",
+          "mcpInstanceId": "2fbf7768-7015-41f2-b8c2-ac44ab66da92",
+          "creatingReceiptId": "34608e3e-9bb3-4b62-852c-a137bdb03b58"
+        }
+      ],
+      "changed": [],
+      "deleted": [],
+      "externalEffects": [
+        "generation",
+        "provider-network",
+        "mayIncurCost"
+      ],
+      "recovery": "User input is committed. Read Session and generation.status before recovery; never automatically resubmit chat.send.",
+      "evaluation": null,
+      "packageReview": null,
+      "delegation": null,
+      "childReceiptIds": [],
+      "parentReceiptId": null,
+      "provenance": {
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "review": {
+          "source": {
+            "algorithm": "atria-source-v1",
+            "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+            "branch": "main",
+            "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+            "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+            "reasons": []
+          },
+          "server": {
+            "version": 1,
+            "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+            "mutationGuards": 1,
+            "highRiskGuards": 1,
+            "processStartedAt": 1791100470692,
+            "appVersion": "2.7.0",
+            "source": {
+              "algorithm": "atria-source-v1",
+              "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+              "branch": "main",
+              "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+              "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+              "reasons": []
+            }
+          },
+          "runtimeSourceMatch": "EXACT",
+          "browser": null,
+          "browserFreshness": "UNVERIFIABLE",
+          "experience": null,
+          "preview": null,
+          "scopeNote": "Scoped evidence is the last observed owning-authority response, not a live freshness assertion. Missing fields cannot establish exact authoring verification."
+        },
+        "attribution": null
+      },
+      "error": null,
+      "version": 1,
+      "receiptId": "34608e3e-9bb3-4b62-852c-a137bdb03b58",
+      "mcpInstanceId": "2fbf7768-7015-41f2-b8c2-ac44ab66da92",
+      "issuedAt": 1791100492110,
+      "expiresAt": 1791104092110
+    },
+    {
+      "action": "session.save",
+      "risk": "MUTATE",
+      "status": "succeeded",
+      "startedAt": "2026-10-04T07:54:53.047Z",
+      "endedAt": "2026-10-04T07:54:54.125Z",
+      "target": {
+        "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7"
+      },
+      "before": {
+        "target": {
+          "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7"
+        },
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "identity": {
+          "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7",
+          "revisionId": "rev_fcccd368b668473eaaf55a94558cfe9e",
+          "branchId": "br_da110281c134451cbdd9cf6941300370",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+          "packageContentHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24"
+        }
+      },
+      "after": {
+        "saveId": "save_c97705e14f2643f782ff12d42da660b8",
+        "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7",
+        "branchId": "br_da110281c134451cbdd9cf6941300370",
+        "revisionId": "rev_fcccd368b668473eaaf55a94558cfe9e",
+        "kind": "manual",
+        "displayName": "MCP before second work",
+        "createdAt": 1791100494121
+      },
+      "created": [
+        {
+          "kind": "save",
+          "id": "save_c97705e14f2643f782ff12d42da660b8",
+          "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7",
+          "mcpInstanceId": "2fbf7768-7015-41f2-b8c2-ac44ab66da92",
+          "creatingReceiptId": "aaa5ffb7-b075-40de-98ff-1cac9522e949"
+        }
+      ],
+      "changed": [],
+      "deleted": [],
+      "externalEffects": [],
+      "recovery": "Inspect owning authority before retrying; no automatic rollback.",
+      "evaluation": null,
+      "packageReview": null,
+      "delegation": null,
+      "childReceiptIds": [],
+      "parentReceiptId": null,
+      "provenance": {
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "review": {
+          "source": {
+            "algorithm": "atria-source-v1",
+            "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+            "branch": "main",
+            "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+            "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+            "reasons": []
+          },
+          "server": {
+            "version": 1,
+            "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+            "mutationGuards": 1,
+            "highRiskGuards": 1,
+            "processStartedAt": 1791100470692,
+            "appVersion": "2.7.0",
+            "source": {
+              "algorithm": "atria-source-v1",
+              "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+              "branch": "main",
+              "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+              "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+              "reasons": []
+            }
+          },
+          "runtimeSourceMatch": "EXACT",
+          "browser": null,
+          "browserFreshness": "UNVERIFIABLE",
+          "experience": null,
+          "preview": null,
+          "scopeNote": "Scoped evidence is the last observed owning-authority response, not a live freshness assertion. Missing fields cannot establish exact authoring verification."
+        },
+        "attribution": null
+      },
+      "error": null,
+      "version": 1,
+      "receiptId": "aaa5ffb7-b075-40de-98ff-1cac9522e949",
+      "mcpInstanceId": "2fbf7768-7015-41f2-b8c2-ac44ab66da92",
+      "issuedAt": 1791100494125,
+      "expiresAt": 1791104094125
+    },
+    {
+      "action": "chat.send",
+      "risk": "MUTATE",
+      "status": "succeeded",
+      "startedAt": "2026-10-04T07:54:54.169Z",
+      "endedAt": "2026-10-04T07:54:55.264Z",
+      "target": {
+        "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7"
+      },
+      "before": {
+        "target": {
+          "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7"
+        },
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "identity": {
+          "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7",
+          "revisionId": "rev_fcccd368b668473eaaf55a94558cfe9e",
+          "branchId": "br_da110281c134451cbdd9cf6941300370",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+          "packageContentHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24"
+        }
+      },
+      "after": {
+        "input": {
+          "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7",
+          "revisionId": "rev_3714c8491642425fbcc61cda7bc6e0c3",
+          "branchId": "br_da110281c134451cbdd9cf6941300370",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+          "packageContentHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24"
+        },
+        "generation": {
+          "operationId": "c0b3bb79-1abe-44bb-992e-ec71745a1878"
+        }
+      },
+      "created": [
+        {
+          "kind": "message",
+          "id": "msg_c98fbb68547749118918fc9b82dc5f12",
+          "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7",
+          "mcpInstanceId": "2fbf7768-7015-41f2-b8c2-ac44ab66da92",
+          "creatingReceiptId": "9c318b87-2135-4f92-ba4c-18b4a23dd611"
+        }
+      ],
+      "changed": [],
+      "deleted": [],
+      "externalEffects": [
+        "generation",
+        "provider-network",
+        "mayIncurCost"
+      ],
+      "recovery": "User input is committed. Read Session and generation.status before recovery; never automatically resubmit chat.send.",
+      "evaluation": null,
+      "packageReview": null,
+      "delegation": null,
+      "childReceiptIds": [],
+      "parentReceiptId": null,
+      "provenance": {
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "review": {
+          "source": {
+            "algorithm": "atria-source-v1",
+            "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+            "branch": "main",
+            "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+            "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+            "reasons": []
+          },
+          "server": {
+            "version": 1,
+            "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+            "mutationGuards": 1,
+            "highRiskGuards": 1,
+            "processStartedAt": 1791100470692,
+            "appVersion": "2.7.0",
+            "source": {
+              "algorithm": "atria-source-v1",
+              "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+              "branch": "main",
+              "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+              "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+              "reasons": []
+            }
+          },
+          "runtimeSourceMatch": "EXACT",
+          "browser": null,
+          "browserFreshness": "UNVERIFIABLE",
+          "experience": null,
+          "preview": null,
+          "scopeNote": "Scoped evidence is the last observed owning-authority response, not a live freshness assertion. Missing fields cannot establish exact authoring verification."
+        },
+        "attribution": null
+      },
+      "error": null,
+      "version": 1,
+      "receiptId": "9c318b87-2135-4f92-ba4c-18b4a23dd611",
+      "mcpInstanceId": "2fbf7768-7015-41f2-b8c2-ac44ab66da92",
+      "issuedAt": 1791100495264,
+      "expiresAt": 1791104095264
+    },
+    {
+      "action": "session.restore",
+      "risk": "MUTATE",
+      "status": "succeeded",
+      "startedAt": "2026-10-04T07:54:56.230Z",
+      "endedAt": "2026-10-04T07:54:57.479Z",
+      "target": {
+        "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7"
+      },
+      "before": {
+        "target": {
+          "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7"
+        },
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "identity": {
+          "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7",
+          "revisionId": "rev_87e91524514844069e2399fbd9213981",
+          "branchId": "br_da110281c134451cbdd9cf6941300370",
+          "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+          "packageContentHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24"
+        }
+      },
+      "after": {
+        "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7",
+        "revisionId": "rev_df3cb80fd7d04051a58740abb3c22627",
+        "branchId": "br_4ffcdd6bf0b041cd95a2f7c240fdce90",
+        "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+        "packageContentHash": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24"
+      },
+      "created": [],
+      "changed": [],
+      "deleted": [],
+      "externalEffects": [],
+      "recovery": "Committed Timeline remains immutable; prior branches/revisions remain in Session history.",
+      "evaluation": null,
+      "packageReview": null,
+      "delegation": null,
+      "childReceiptIds": [],
+      "parentReceiptId": null,
+      "provenance": {
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "review": {
+          "source": {
+            "algorithm": "atria-source-v1",
+            "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+            "branch": "main",
+            "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+            "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+            "reasons": []
+          },
+          "server": {
+            "version": 1,
+            "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+            "mutationGuards": 1,
+            "highRiskGuards": 1,
+            "processStartedAt": 1791100470692,
+            "appVersion": "2.7.0",
+            "source": {
+              "algorithm": "atria-source-v1",
+              "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+              "branch": "main",
+              "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+              "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+              "reasons": []
+            }
+          },
+          "runtimeSourceMatch": "EXACT",
+          "browser": null,
+          "browserFreshness": "UNVERIFIABLE",
+          "experience": null,
+          "preview": null,
+          "scopeNote": "Scoped evidence is the last observed owning-authority response, not a live freshness assertion. Missing fields cannot establish exact authoring verification."
+        },
+        "attribution": null
+      },
+      "error": null,
+      "version": 1,
+      "receiptId": "2f193fff-45de-431e-ad8f-7a7b11e88611",
+      "mcpInstanceId": "2fbf7768-7015-41f2-b8c2-ac44ab66da92",
+      "issuedAt": 1791100497479,
+      "expiresAt": 1791104097479
+    }
+  ],
+  "status": {
+    "product": {
+      "root": "/home/henry/Projects/Atria-core",
+      "head": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+      "trackedWorkingTreeDirty": true
+    },
+    "origin": "http://127.0.0.1:34325",
+    "browser": {
+      "started": false,
+      "headed": false,
+      "channel": "chromium"
+    },
+    "policyCeiling": {
+      "version": 1,
+      "profile": "exact-action-ids",
+      "eligibleActionIds": [
+        "session.list",
+        "session.get",
+        "session.saves",
+        "chat.branches",
+        "chat.history",
+        "chat.read",
+        "session.snapshot",
+        "session.health",
+        "session.runtime",
+        "session.continuity.graph",
+        "session.continuity.projection",
+        "generation.status",
+        "build.project.list",
+        "build.project.get",
+        "build.project.revision",
+        "build.source.list",
+        "build.resource.closure",
+        "build.source.read",
+        "build.history",
+        "build.diff",
+        "build.resources",
+        "build.validate",
+        "build.preflight",
+        "build.frontend.inspect",
+        "build.preview.list",
+        "build.preview.get",
+        "library.list",
+        "library.search",
+        "library.get",
+        "library.exact",
+        "library.graph",
+        "library.registry",
+        "library.references",
+        "library.usedby",
+        "library.delete.safety",
+        "library.bundle.inspect",
+        "library.fork.preflight",
+        "library.package.original",
+        "work.list",
+        "work.get",
+        "work.versions",
+        "work.sessions",
+        "work.status",
+        "work.resources",
+        "package.version.get",
+        "package.manifest",
+        "connection.list",
+        "model.list",
+        "route.list",
+        "generation.profiles",
+        "generation.configuration",
+        "generation.resources",
+        "generation.presets",
+        "generation.preset.get",
+        "generation.retrieval",
+        "connection.secrets",
+        "connection.probe",
+        "settings.catalog",
+        "settings.get",
+        "settings.search",
+        "agents.presets.persisted",
+        "agents.bindings.persisted",
+        "diagnostics.modules",
+        "diagnostics.ownership",
+        "diagnostics.provenance",
+        "diagnostics.runtime",
+        "diagnostics.logs",
+        "diagnostics.incidents",
+        "diagnostics.incident.get",
+        "diagnostics.incident.export",
+        "diagnostics.startup.list",
+        "diagnostics.startup.get",
+        "diagnostics.startup.compare",
+        "agents.project.tasks",
+        "agents.project.task.get",
+        "agents.project.task.context",
+        "memory.status",
+        "memory.schema",
+        "memory.nodes.list",
+        "memory.graph.edges",
+        "memory.node.get",
+        "memory.nodes.get",
+        "memory.candidates",
+        "memory.node.brief",
+        "memory.edges",
+        "memory.graph.expand",
+        "memory.search.keyword",
+        "memory.search.vector",
+        "memory.resolve",
+        "memory.recall",
+        "memory.compaction.candidates",
+        "memory.injection",
+        "memory.recall.last",
+        "agents.run.get",
+        "agents.checkpoints",
+        "agents.binding",
+        "agents.tools",
+        "game.llm.status",
+        "game.presentation",
+        "memory.schema.scope",
+        "agents.presets.list",
+        "game.loaded.identity",
+        "build.change.prepare",
+        "build.change.inspect",
+        "memory.mutation.inspect",
+        "package.artifact.capture",
+        "package.artifact.inspect",
+        "package.install.preflight",
+        "agent.delegation.inspect",
+        "package.install.review",
+        "package.install",
+        "work.start",
+        "chat.send",
+        "session.save",
+        "session.restore",
+        "session.delete"
+      ],
+      "approvalGrants": false
+    },
+    "phase": 6,
+    "productMutationAvailable": true,
+    "authenticationStateLoaded": false,
+    "runtimeSourceMatch": "EXACT",
+    "provenance": {
+      "observedAt": "2026-10-04T07:54:47.060Z",
+      "source": {
+        "algorithm": "atria-source-v1",
+        "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+        "branch": "main",
+        "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+        "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+        "reasons": []
+      },
+      "server": {
+        "version": 1,
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "mutationGuards": 1,
+        "highRiskGuards": 1,
+        "processStartedAt": 1791100470692,
+        "appVersion": "2.7.0",
+        "source": {
+          "algorithm": "atria-source-v1",
+          "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+          "branch": "main",
+          "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+          "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+          "reasons": []
+        }
+      },
+      "runtimeSourceMatch": "EXACT",
+      "browser": null,
+      "browserFreshness": "UNVERIFIABLE",
+      "experience": null,
+      "preview": null,
+      "scopeNote": "Scoped evidence is the last observed owning-authority response, not a live freshness assertion. Missing fields cannot establish exact authoring verification."
+    },
+    "fixedBrowserAdapters": [
+      {
+        "id": "memory.status",
+        "risk": "READ",
+        "authority": "memory-graph schema scope / current injection",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.schema",
+        "risk": "READ",
+        "authority": "memory-graph.openReadSession.getSchema",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.nodes.list",
+        "risk": "READ",
+        "authority": "memory-graph.openReadSession.listNodes",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "types": {
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "activeOnly": {
+              "default": true,
+              "type": "boolean"
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "activeOnly",
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.graph.edges",
+        "risk": "READ",
+        "authority": "memory-graph.openReadSession.listEdges",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "to": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "types": {
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "excludeInternal": {
+              "default": true,
+              "type": "boolean"
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "excludeInternal",
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.node.get",
+        "risk": "READ",
+        "authority": "memory-graph.openReadSession.getNode",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "id",
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.nodes.get",
+        "risk": "READ",
+        "authority": "memory-graph.openReadSession.getNode (bounded ids)",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "ids": {
+              "minItems": 1,
+              "maxItems": 50,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "ids",
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.candidates",
+        "risk": "READ",
+        "authority": "memory-graph.openReadSession.listVisibleCandidates",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "types": {
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "excludeRecentMessages": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "excludeRecentMessages",
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.node.brief",
+        "risk": "READ",
+        "authority": "memory-graph.openReadSession.getNodeBrief",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "id",
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.edges",
+        "risk": "READ",
+        "authority": "memory-graph.openReadSession.getEdgeSummary",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "limit": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "id",
+            "limit",
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.graph.expand",
+        "risk": "READ",
+        "authority": "memory-graph.openReadSession.expandFromSeeds",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "ids": {
+              "minItems": 1,
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "hops": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            },
+            "edgeTypes": {
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "ids",
+            "hops",
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.search.keyword",
+        "risk": "READ",
+        "authority": "memory-graph.openReadSession.keywordSearch",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "types": {
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "k": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "query",
+            "k",
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.search.vector",
+        "risk": "READ",
+        "authority": "memory-graph.openReadSession.vectorSearch",
+        "externalEffects": [
+          "embedding-provider-network",
+          "mayIncurCost"
+        ],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "types": {
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "k": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "query",
+            "k",
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.resolve",
+        "risk": "READ",
+        "authority": "memory-graph.openReadSession.findByName",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "types": {
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "query",
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.recall",
+        "risk": "READ",
+        "authority": "memory-graph.previewRecall (no persistent reconciliation/access accounting)",
+        "externalEffects": [
+          "embedding-rerank-provider-network",
+          "mayIncurCost"
+        ],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "query",
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.compaction.candidates",
+        "risk": "READ",
+        "authority": "memory-graph.openReadSession.compactionCandidates",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "depth": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "type",
+            "depth",
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.injection",
+        "risk": "READ",
+        "authority": "memory-graph.getCurrentInjection",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.recall.last",
+        "risk": "READ",
+        "authority": "memory-graph.getLoadedRecallProjection",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "agents.run.get",
+        "risk": "READ",
+        "authority": "orchestrator.getRunObservation",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "runId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "nodeId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "stepId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "agents.checkpoints",
+        "risk": "READ",
+        "authority": "orchestrator.listRuntimeCheckpoints",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "agents.binding",
+        "risk": "READ",
+        "authority": "orchestrator.getPresetBinding",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "scope": {
+              "type": "string",
+              "enum": [
+                "global",
+                "character",
+                "chat",
+                "package"
+              ]
+            },
+            "subjectId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "scope",
+            "subjectId",
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "agents.tools",
+        "risk": "READ",
+        "authority": "orchestrator.listExtensionTools",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "game.llm.status",
+        "risk": "READ",
+        "authority": "game-runtime.getLlmRuntimeState (browser-loaded LLM routing, not committed Conversation or GenerationProjection)",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "game.presentation",
+        "risk": "READ",
+        "authority": "game-runtime.getPresentationCapabilities",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "outputOffset": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1048576
+            },
+            "outputLimit": {
+              "default": 24000,
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 64000
+            }
+          },
+          "required": [
+            "outputOffset",
+            "outputLimit"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#"
+              }
+            },
+            {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "$ref": "#"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "memory.schema.scope",
+        "risk": "READ",
+        "authority": "memory-graph.getSchemaScopeInfo",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "scope": {
+              "type": "string",
+              "enum": [
+                "character",
+                "global"
+              ]
+            },
+            "hasOverride": {
+              "type": "boolean"
+            },
+            "hasAvatar": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "scope",
+            "hasOverride",
+            "hasAvatar"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "id": "agents.presets.list",
+        "risk": "READ",
+        "authority": "orchestrator.listWorkspacePresets",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "maxItems": 200,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "mode": {
+                "type": "string",
+                "maxLength": 256
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "mode"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      {
+        "id": "game.loaded.identity",
+        "risk": "READ",
+        "authority": "game-runtime.getPackageState (browser-loaded state)",
+        "externalEffects": [],
+        "approval": "none",
+        "availability": "MCP-owned same-origin page and exact first-party method must exist; outputs bounded and projected",
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "maxLength": 256
+            },
+            "active": {
+              "type": "boolean"
+            },
+            "sessionId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "packageVersionId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "packageContentHash": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "entryPointId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 256
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "status",
+            "active",
+            "sessionId",
+            "packageVersionId",
+            "packageContentHash",
+            "entryPointId"
+          ],
+          "additionalProperties": false
+        }
+      }
+    ],
+    "adaptersRegistered": true
+  },
+  "diagnostics": {
+    "events": [
+      {
+        "time": "2026-10-04T07:54:58.747Z",
+        "type": "requestfailed",
+        "method": "POST",
+        "url": "http://127.0.0.1:34325/api/startup/client-timing",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "time": "2026-10-04T07:54:59.516Z",
+        "type": "requestfailed",
+        "method": "POST",
+        "url": "http://127.0.0.1:34325/api/startup/client-timing",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "time": "2026-10-04T07:55:05.179Z",
+        "type": "requestfailed",
+        "method": "POST",
+        "url": "http://127.0.0.1:34325/api/startup/client-timing",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "time": "2026-10-04T07:55:05.777Z",
+        "type": "requestfailed",
+        "method": "POST",
+        "url": "http://127.0.0.1:34325/api/startup/client-timing",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "time": "2026-10-04T07:55:10.941Z",
+        "type": "requestfailed",
+        "method": "POST",
+        "url": "http://127.0.0.1:34325/api/startup/client-timing",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "time": "2026-10-04T07:55:11.525Z",
+        "type": "requestfailed",
+        "method": "POST",
+        "url": "http://127.0.0.1:34325/api/startup/client-timing",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "time": "2026-10-04T07:55:16.744Z",
+        "type": "requestfailed",
+        "method": "POST",
+        "url": "http://127.0.0.1:34325/api/startup/client-timing",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "time": "2026-10-04T07:55:17.341Z",
+        "type": "requestfailed",
+        "method": "POST",
+        "url": "http://127.0.0.1:34325/api/startup/client-timing",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "time": "2026-10-04T07:55:22.567Z",
+        "type": "requestfailed",
+        "method": "POST",
+        "url": "http://127.0.0.1:34325/api/startup/client-timing",
+        "error": "net::ERR_ABORTED"
+      },
+      {
+        "time": "2026-10-04T07:55:23.157Z",
+        "type": "requestfailed",
+        "method": "POST",
+        "url": "http://127.0.0.1:34325/api/startup/client-timing",
+        "error": "net::ERR_ABORTED"
+      }
+    ],
+    "count": 10,
+    "limit": 100,
+    "note": "Warning/error logs only; URLs omit query strings. No request/response bodies or headers captured. Free-text redaction is best effort; use development data.",
+    "provenance": {
+      "observedAt": "2026-10-04T07:55:27.820Z",
+      "source": {
+        "algorithm": "atria-source-v1",
+        "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+        "branch": "main",
+        "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+        "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+        "reasons": []
+      },
+      "server": {
+        "version": 1,
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "mutationGuards": 1,
+        "highRiskGuards": 1,
+        "processStartedAt": 1791100470692,
+        "appVersion": "2.7.0",
+        "source": {
+          "algorithm": "atria-source-v1",
+          "revision": "e8a5b9fba80f68b7aaa05cf4943737fb6a608f28",
+          "branch": "main",
+          "workspaceId": "f8151576de4d744b1604446d9d73ca942f1632c12971ba8a9b38902f931285f1",
+          "fingerprint": "6797badcc7a820e91593661be43464978f0ec68245bc248c292b0043d8d7417d",
+          "reasons": []
+        }
+      },
+      "runtimeSourceMatch": "EXACT",
+      "browser": {
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "capturedAt": "2026-10-04T07:55:22.128Z",
+        "documentGeneration": 5
+      },
+      "browserFreshness": "CURRENT",
+      "experience": {
+        "identity": {
+          "sessionId": "ses_b0f7cb7fb7164aea8c442a4c14d819c7",
+          "experienceEpoch": "2bb49992-a5e0-4614-831d-1077fddb0b68",
+          "revisionId": "rev_df3cb80fd7d04051a58740abb3c22627",
+          "descriptorDigest": "39c4f2188194e9ac3cc41b2087c268aa8aea679e0d0ff6571d8da0745b436552"
+        },
+        "state": "OBSERVED",
+        "serverBootId": "67eabcec-f8ab-48cf-a12d-977bba5da152",
+        "documentGeneration": 5,
+        "observedAt": "2026-10-04T07:55:27.368Z"
+      },
+      "preview": null,
+      "scopeNote": "Scoped evidence is the last observed owning-authority response, not a live freshness assertion. Missing fields cannot establish exact authoring verification."
+    },
+    "evidenceInterval": "NOT_MEASURED"
+  },
+  "httpErrors": [],
+  "limits": [
+    "Desktop Chromium viewports; not Android or physical soft keyboard",
+    "Trusted disposable shell bootstrap opens Session; MCP browser performs observation only",
+    "Ready/begin fixture uses owning HTTP authority; subsequent install/start/chat/save/restore use real MCP",
+    "Deterministic client form approvals test protocol, not human approval UX"
+  ]
+}

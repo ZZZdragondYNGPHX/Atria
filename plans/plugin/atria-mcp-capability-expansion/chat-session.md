@@ -58,6 +58,8 @@ It should:
 - expose generation/cost side-effect metadata;
 - return resulting message/revision/branch identity and runtime provenance.
 
+The 2026-10-04 compatibility fix commits a user Timeline message through the owning Session append authority before starting generation at the returned exact revision. Both steps share the reviewed payload, one approval and the expected server boot. A generation-start rejection or lost response after append retains the committed message/revision evidence and reports an indeterminate partial result; no automatic resubmission is permitted. An accepted asynchronous start must still be polled to establish completion.
+
 ### 12.4 Regenerate / retry
 
 `atri_chat_regenerate` maps to Native retry semantics:

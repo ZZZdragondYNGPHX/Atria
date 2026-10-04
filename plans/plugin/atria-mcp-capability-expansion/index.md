@@ -3,7 +3,7 @@
 - Task ID: `plugin/atria-mcp-capability-expansion`
 - Primary Workspace: `plugin`
 - Status: Approved Implementation Plan v1.1 — Post-Frontend-Refactor Revalidated; Phase 6 acceptance remains open.
-- Live state: `docs:HANDOFF.md` and `records/plugin/atria-mcp-capability-expansion.md`.
+- Live state: `records/plugin/atria-mcp-capability-expansion.md`; the earlier HANDOFF is historical and no longer present.
 
 ## Goal
 
@@ -49,6 +49,8 @@ For the current Phase 6 checkpoint, do not load `build-studio.md` or `library-pa
 ## Validation strategy
 
 Normative acceptance criteria live in `acceptance.md`. Actual executed evidence, remaining environment gates and exact HEADs live in the Record/HANDOFF.
+
+The explicit 2026-10-04 user instruction authorizes integrating the existing `feat/mcp-development-authority` support into `main` after minimal relevant local validation, followed by disposable Atria MCP automation without user device operation. This supersedes the earlier requirement to defer that Core integration until every Phase 6 client/provider acceptance item is complete. No remote CI, paid provider, physical device or human approval UX is required for this integration checkpoint. Unexecuted broader acceptance items remain open; deterministic provider/client tests do not satisfy them.
 
 ## Material routing/design changes
 
