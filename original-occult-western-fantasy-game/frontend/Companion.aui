@@ -1,0 +1,11 @@
+<template>
+<aside node-id="companion" class="drawer-shell" lang="zh-CN" aria-label="随身记事">
+ <div node-id="drawer" class="drawer"><header node-id="drawer-header" class="drawer-header"><div node-id="drawer-heading-wrap"><span node-id="drawer-book" class="muted">随身记事</span><h1 node-id="drawer-heading" bind:text="component.heading"/></div><button node-id="closeCompanion" on:click="closeCompanion" class="quiet">返回故事</button></header>
+ <nav node-id="drawer-tabs" class="drawer-tabs" aria-label="资料分类"><button node-id="chooseTab" on:click="chooseTab" each="component.tabs" item-key="id"  bind:aria-current="item.selected" bind:text="item.label"/></nav>
+ <p node-id="drawer-loading" if="component.loading" role="status">正在读取资料…</p><p node-id="drawer-error" if="component.error" role="alert" class="error" bind:text="component.error"/><p node-id="drawer-notice" if="component.notice" role="status" bind:text="component.notice"/>
+ <section node-id="drawer-rows"><article node-id="detail-row" each="component.rows" item-key="id" class="detail-row"><h2 node-id="detail-label" bind:text="item.label"/><p node-id="detail-text" class="prose" bind:text="item.text"/></article></section>
+ <section node-id="save-section" if="component.isSaves"><p node-id="save-mode" class="prose" bind:text="component.modeLabel"/><p node-id="save-terminal" if="component.terminal" bind:text="component.terminalText"/><button node-id="save" class="primary" bind:disabled="component.saveDisabled">保存当前进度</button><div node-id="save-list" class="options"><button node-id="chooseSave" on:click="chooseSave" each="component.saves" item-key="id" class="choice"  bind:aria-current="item.selected" bind:text="item.label" bind:disabled="component.restoreDisabled"/></div><div node-id="restore-review" if="component.restoreReview" class="feedback"><p node-id="restore-warning">恢复将以这份保存替换当前经历。当前未保存的进展不会保留。</p><button node-id="restore" class="primary" bind:disabled="component.restoreDisabled">确认恢复这份保存</button><button node-id="cancelRestore" class="quiet">取消</button></div></section>
+ <footer node-id="drawer-footer"><button node-id="drawer-refresh" class="quiet">重新读取资料</button><p node-id="drawer-boundary" class="muted">这里只记下已公开的境况与见闻。</p></footer>
+ </div>
+</aside>
+</template>

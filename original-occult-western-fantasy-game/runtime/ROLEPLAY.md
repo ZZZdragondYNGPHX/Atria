@@ -1,6 +1,6 @@
-# Open Lives — Phase 3 content contract
+# Open Lives — content and Native interface contract
 
-The default `tools/package.mjs validate|preview --core <checkout>` compiles this profile. It requires the tested `refactor/open-roleplay-core` implementation `5f9e8feb0c7166b45e30c330104a7444beb7692e`, with required authority-transaction/story-start/generation-budget/run-policy @1. The old main baseline does not provide these opt-in capabilities. Phase 4 owns the actual Native question/composer interface; the content-stage archive uses a neutral Native shell and is held in memory. Phase 5 owns new archive publication and Core integration.
+The default `tools/package.mjs validate|preview --core <checkout>` compiles this profile with its actual Native interface. It requires `refactor/open-roleplay-core` implementation `1661af11245c856363bfc1084275c02b55a97452`, with required authority-transaction/story-start/generation-budget/run-policy @1 plus fixed Host recent-message and terminal presentation reads. The old main baseline does not provide these opt-in capabilities. The validation archive is held in memory. Phase 5 owns new archive publication and Core integration.
 
 The package identity remains the same game. Version 3.0.0 has a distinct immutable PackageVersion compiled by `ROLEPLAY_VERSION_ID` in `tools/roleplay-compile.mjs`; it never reuses the v1/v2 identity. No old-save migration is claimed. `manifest.json`, historical runtime inputs and both retained releases remain historical compiler inputs/assets.
 
@@ -64,4 +64,24 @@ node tools/package.mjs validate --core <tested-P2-Core-checkout>
 node tools/package.mjs validate --fixture --core <tested-P2-Core-checkout>
 ```
 
-The new verifier uses real isolated FS install/Session/authority/Save/Task/provider paths with a local synthetic HTTP provider. It validates rule effects and actual sends, not production-model interpretation or narrative quality. It is not UI/browser, SQLite/MySQL/PostgreSQL, Android, a century soak or a new release acceptance. It does not touch personal saves. P2 already holds the corresponding Core FS/SQLite risk evidence. `--legacy` explicitly retains the v2 compiler/checks; `--v1-campaign` and `--fixture` retain their existing identities. Historical-only flags also select the historical compiler. No old `.atria` is overwritten or repackaged by the new profile.
+The content verifier uses real isolated FS install/Session/authority/Save/Task/provider paths with a local synthetic HTTP provider. It validates rule effects and actual sends, not production-model interpretation or narrative quality. It is not UI/browser, SQLite/MySQL/PostgreSQL, Android, a century soak or a new release acceptance. It does not touch personal saves. P2 already holds the corresponding Core FS/SQLite risk evidence. `--legacy` explicitly retains the v2 compiler/checks; `--v1-campaign` and `--fixture` retain their existing identities. Historical-only flags also select the historical compiler. No old `.atria` is overwritten or repackaged by the new profile.
+
+## Phase 4 Native interface
+
+`tools/roleplay-frontend-compile.mjs` compiles `frontend/OpenLives.aui` and `frontend/Companion.aui`, their sandboxed controllers, scoped CSS and an authored public choice/place catalogue. The default compiler no longer substitutes a neutral shell. Historical frontend sources remain separate. Two app-root views use the Native companion overlay for the right-edge drawer, including Host focus containment, Escape and focus return.
+
+The questionnaire keeps selections local until a final review and one `host.session.begin`. Its unknown-result retry retains the exact input, invocation, epoch, revision and idempotency key; rereading an already committed start does not repeat creation or send a model request. The story displays the committed background and chronological Timeline, location and time. Suggestions append only to the local draft. The fixed Host composer owns actual submit, cancellation and recovery. Failure preserves the draft and blocks another submit until Host recovery or an observed completed reply; no poll replays actions.
+
+Only `roleplay_summary` and `roleplay_visible` are Package read bindings. The companion displays public conditions, people, belongings, institutions and the accepted Claim's rule/Anchor/Price. Ordinary restoration requires a selected SavePoint and explicit inline confirmation. Ironman may save its current progress but exposes no rollback. Episode closure and authority death have distinct text and continuation behavior.
+
+The fixed `host.conversation.recent` read returns at most 32 committed messages in chronological order, optionally before a sequence for earlier pages. Incoming replies keep the earlier reading window until the player chooses the latest page. The initial technical `Begin story` input marker is omitted from presentation; authored opening prose is preserved. Extremely large individual messages near Host maximums are not a browser acceptance claim.
+
+After ironman cleanup removes Session/Timeline, the bridge may reopen the installed Native graph from the control tombstone's installation identity and content hash. The new epoch allows only terminal run status and Host exit, without exposing deleted state or authorizing gameplay/restoration. Tombstones written before this Core fix without installation identity still retain `/run` recovery but cannot reopen the Native graph this way.
+
+Run the focused interface check with an existing Core QuickJS worker bundle and Playwright Chromium:
+
+```bash
+node tools/package.mjs validate --core <tested-P4-Core-checkout> --roleplay-ui-only
+```
+
+This local check uses real compiled Native components, QuickJS/bridge/Host composer, isolated FS and a synthetic HTTP provider. Background dispatch is held to keep UI cases focused; P3 owns its separate automatic-dispatch evidence. Later Claim/death states use real typed Native authority setup, and long reading samples use native Timeline appends; neither is described as player-click/model coverage. Desktop/mobile viewport, keyboard focus, reduced motion, landscape and Native 200% text are checked. Android keyboards, assistive technology, production models and a published archive remain outside this stage.

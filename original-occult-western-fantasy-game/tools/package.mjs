@@ -29,7 +29,8 @@ const boundedV1 = args.includes('--v1-campaign');
 const legacyFlags=['--network-only','--convergence-only','--opening-only','--campaign-only','--frontend-only','--long-horizon-only','--lifetime-only','--history-only','--renewal-only','--enterprise-only','--regional-only','--century-only','--state-only'];
 const roleplay = !fixture && !boundedV1 && !args.includes('--legacy') && !legacyFlags.some(flag=>args.includes(flag));
 if(args.includes('--roleplay-only') && !roleplay)throw new Error('--roleplay-only conflicts with a historical profile');
-if(roleplay && (args.includes('--release-only') || mode==='build'))throw new Error('P3 content profile is validation/preview only; new release/build is Phase 5. Use --legacy for historical tooling.');
+if(roleplay && (args.includes('--release-only') || mode==='build'))throw new Error('Open Lives is validation/preview only until Phase 5 release/integration. Use --legacy for historical tooling.');
+if(!roleplay && args.includes('--roleplay-ui-only'))throw new Error('--roleplay-ui-only requires the default Open Lives profile');
 const retainedV1 = args.includes('--retained-v1');
 if(retainedV1 && (mode==='build'||fixture||!boundedV1||!args.includes('--archive')||!args.includes('--release-only')))throw new Error('--retained-v1 requires --v1-campaign --archive <original> --release-only in validate/preview mode');
 if (fixture && boundedV1) throw new Error('Choose only one explicit regression scenario');
@@ -73,8 +74,11 @@ if(roleplay) {
  const compiled=compileRoleplayWorld(compileRoleplay({manifest,contract,data:await json('data/roleplay.foundation.json'),institutions:(await json('data/defs.institutions.json')).items}));
  sourceFiles.set('runtime/logic.json',Buffer.from(JSON.stringify(compiled.logic)));
  sourceFiles.set('frontend/bridge.json',Buffer.from(JSON.stringify(compiled.bridge)));
- // Content-stage Native shell only. Real question/composer UI belongs to P4.
- sourceFiles.set('frontend/Main.aui',Buffer.from('<template><main node-id="root"><p node-id="notice">Open Lives — A life in the city.</p></main></template><contract>{"interactions":{}}</contract>'));
+ const {compileRoleplayFrontend}=await import('./roleplay-frontend-compile.mjs');
+ const frontend=await compileRoleplayFrontend({root,compiled,manifest,data:await json('data/roleplay.foundation.json'),load});
+ sourceFiles.delete('frontend/Main.aui');
+ for(const [file,bytes]of frontend.files)sourceFiles.set(file,bytes);
+ console.error('Open Lives frontend budgets',JSON.stringify(frontend.budget));
 } else if (!fixture) {
  const { compileOpening } = await import('./opening-compile.mjs');
  let opening=compileOpening({manifest,contract,backgrounds:(await json('data/defs.origins.json')).items,seeds:(await json('data/defs.claims.seeds.json')).items,caseAsset:(await json('data/cases.signature.second_death.json')).items[0]});
@@ -184,6 +188,6 @@ if (mode === 'build') {
     await fs.writeFile(out, archive, { flag: 'wx' });
     console.log(JSON.stringify({ mode, packageHead, packageDirty, coreHead, output: out, bytes: archive.length }));
 } else {
-    const { verify } = await import(roleplay ? './roleplay-check.mjs' : args.includes('--release-only')&&!fixture ? './release-check.mjs' : args.includes('--frontend-only')&&!fixture ? './frontend-check.mjs' : fixture ? './verify.mjs' : './opening-check.mjs');
+    const { verify } = await import(roleplay ? args.includes('--roleplay-ui-only')?'./roleplay-frontend-check.mjs':'./roleplay-check.mjs' : args.includes('--release-only')&&!fixture ? './release-check.mjs' : args.includes('--frontend-only')&&!fixture ? './frontend-check.mjs' : fixture ? './verify.mjs' : './opening-check.mjs');
     console.log(JSON.stringify({ packageHead, packageDirty, coreHead, ...await verify({ load, native, manifest, sourceFiles, assetPayloads, archive, mode, frontendCatalog }) }, null, 2));
 }

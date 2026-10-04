@@ -1,16 +1,17 @@
 # Original Occult Western Fantasy — Open Lives
 
-Task: refactor/original-occult-western-fantasy-open-roleplay. Phase 3 content profile; actual Native interface is Phase 4 and new release/integration is Phase 5.
+Task: refactor/original-occult-western-fantasy-open-roleplay. Phase 4 Native interface complete; new release/integration remains Phase 5.
 
-The default validator now compiles ordinary adult lives from five authored choices, with everyday work/relationships/travel, two institutional supernatural paths, bounded personal engineering and eight stable local encounters. See [the content contract](runtime/ROLEPLAY.md). Version 3.0.0 has an independent PackageVersion and requires the tested P2 auxiliary Core `5f9e8feb0c7166b45e30c330104a7444beb7692e`; main has not integrated it. No 3.0.0 archive is published in this stage.
+The default validator compiles ordinary adult lives from five authored choices, with everyday work/relationships/travel, two institutional supernatural paths, bounded personal engineering and eight stable local encounters. Its Native questionnaire, story reader, draft suggestions and companion drawer consume real Host services and public committed projections. See [the content and interface contract](runtime/ROLEPLAY.md). Version 3.0.0 has an independent PackageVersion and requires auxiliary Core `1661af11245c856363bfc1084275c02b55a97452`; main has not integrated it. No 3.0.0 archive is published in this stage.
 
 ```bash
 node tools/content-check.mjs
 node tools/package.mjs validate --core <tested-P2-Core-checkout>
 node tools/package.mjs validate --fixture --core <tested-P2-Core-checkout>
+node tools/package.mjs validate --roleplay-ui-only --core <tested-P4-Core-checkout>
 ```
 
-These are local isolated Native/HTTP synthetic-provider checks. They do not validate the pending interface or production-model narrative quality. The new content-stage profile does not require a fixed profession, Second Death, family, long life or historical campaign completion. `--legacy` selects the retained v2 compiler; historical-only flags, `--v1-campaign` and `--fixture` remain explicit regression paths. Native frontend-model/browser exports run through their harness, not as standalone validation commands.
+These are local isolated Native/HTTP synthetic-provider checks. The UI check also mounts the compiled Native components in Playwright Chromium with the Core QuickJS worker bundle available. It verifies questionnaire, draft preservation, conversation, public drawer, save/restore and terminal presentation; production-model narrative quality and actual mobile operating systems remain untested. The new profile does not require a fixed profession, Second Death, family, long life or historical campaign completion. `--legacy` selects the retained v2 compiler; historical-only flags, `--v1-campaign` and `--fixture` remain explicit regression paths. Native frontend-model/browser exports run through their harness, not as standalone validation commands.
 
 The material below documents the retained releases and their historical acceptance.
 
