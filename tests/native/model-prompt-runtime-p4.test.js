@@ -469,3 +469,32 @@ test('gateway wire compatibility cannot accept an action forbidden by canonical 
     expect(f.logic.transactions[0].inputSchema.properties.confirmed.enum).toEqual([true]);
     expect((await f.core.load(h.handle, f.base.session.sessionId)).revision.revisionId).toBe(f.base.revision.revisionId);
 });
+
+test('an authority Turn accommodates both configured route deadlines and completes after the scheduler default', async () => {
+    const h = await makeTempFsEngineHarness(); cleanups.push(() => h.cleanup());
+    const f = await authorityTurnFixture(h, 'http://127.0.0.1:1/unused');
+    for (const route of f.seeded.routes) await f.seeded.persistence.saveRuntimeRoute(h.handle, {
+        ...route, policy: { ...route.policy, timeoutMs: 180000, maxFallbackAttempts: 0 },
+    });
+    let requests = 0;
+    f.host.providers['provider.openai-compatible'] = createHttpGenerationProvider({ fetchImpl: async (_url, options) => {
+        requests++;
+        const body = JSON.parse(options.body);
+        await new Promise(resolve => setTimeout(resolve, 25));
+        const message = body.tools?.length ? { content: '', tool_calls: [{ id: 'selected', type: 'function',
+            function: { name: 'atri_transaction_0', arguments: JSON.stringify(f.request.input) } }] } : { content: 'Narrated outcome.' };
+        return new Response(JSON.stringify({ choices: [{ message }] }), { headers: { 'Content-Type': 'application/json' } });
+    } });
+    const previousTimeout = nativeTaskScheduler.timeoutMs;
+    const submit = jest.spyOn(nativeTaskScheduler, 'submit');
+    nativeTaskScheduler.timeoutMs = 10;
+    try {
+        const result = await f.host.executeTurn(h.handle, f.input);
+        expect(requests).toBe(2);
+        expect(result.timeline.at(-1).role).toBe('assistant');
+        expect(submit.mock.calls[0][0].timeoutMs).toBeGreaterThanOrEqual(360000);
+    } finally {
+        nativeTaskScheduler.timeoutMs = previousTimeout;
+        submit.mockRestore();
+    }
+});

@@ -70,6 +70,9 @@ test('clearing Generation temperature removes the old control instead of retaini
 
 test('canonical Generation editor retains provider controls across modes and validates stop sequences', async () => {
     const { root, onSave } = editor('core.generation-profile');
+    expect(root.querySelector('[aria-label="Maximum output tokens"]').value).toBe('20000');
+    expect(root.querySelector('[aria-label="Streaming"]').value).toBe('true');
+    root.querySelector('[aria-label="Streaming"]').value = '';
     root.querySelector('[aria-label="Reasoning effort (OpenAI / Anthropic adaptive)"]').value = 'high';
     root.querySelector('[aria-label="Cache key (OpenAI)"]').value = 'exact-cache';
     root.querySelector('[aria-label="Cache retention (OpenAI)"]').value = '24h';

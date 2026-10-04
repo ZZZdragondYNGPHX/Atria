@@ -1,4 +1,5 @@
 import { renderRetrievalWorkspace } from './retrieval-workspace.js';
+import { NATIVE_GENERATION_DEFAULTS as generationDefaults } from '../../shared/native-generation-defaults.js';
 import { formatShellText as fmt, translateShellText } from '../atria-shell/localization.js';
 import { runtimeRequest, runtimeRemediation, getRuntimeEvidence } from './runtime-client.js';
 import { nativeSessionRuntime } from './session-runtime.js';
@@ -219,6 +220,10 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             const schemaMode = field(compatibility, 'Tool schema compatibility', value.options?.toolSchemaMode || 'json-schema',
                 [['json-schema', 'Standard JSON Schema'], ['string-enums', 'Gemini gateway: string enums only']]);
             notice('Use gateway compatibility when your provider rejects boolean or numeric tool enums. The game still validates action inputs.', compatibility);
+            const responseMode = field(compatibility, 'Gateway response mode', value.options?.responseMode || (original ? 'generation-profile' : 'stream'),
+                [['generation-profile', 'Use generation profile'], ['stream', 'Always request streaming']]);
+            const minimumOutputTokens = number(compatibility, 'Minimum total output tokens', value.options?.minimumOutputTokens ?? (original ? 0 : generationDefaults.outputTokens), 0);
+            notice('For gateways that need streaming or a larger thinking budget. Zero keeps the generation profile budget; a positive value raises the sent limit, within the model output limit.', compatibility);
             const syncCompatibility = () => { compatibility.hidden = adapter.value !== 'provider.openai-compatible'; };
             adapter.addEventListener('change', syncCompatibility); syncCompatibility();
             notice('OpenAI-compatible messages use the full /v1/chat/completions endpoint, not /v1/completions.', fields);
@@ -280,8 +285,14 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             notice('Credentials stay in the Secret store. Gemini uses the API base URL; other transports use the full generation endpoint.', fields);
             serialize = () => {
                 if (creating || !secret.value) throw Object.assign(new Error('Select a stored Secret'), { code: 'native_secret_selection_required' });
-                const options = { ...value.options }; delete options.toolSchemaMode;
-                if (adapter.value === 'provider.openai-compatible' && schemaMode.value !== 'json-schema') options.toolSchemaMode = schemaMode.value;
+                const options = { ...value.options }; for (const key of ['toolSchemaMode', 'responseMode', 'minimumOutputTokens']) delete options[key];
+                if (adapter.value === 'provider.openai-compatible') {
+                    if (schemaMode.value !== 'json-schema') options.toolSchemaMode = schemaMode.value;
+                    if (responseMode.value !== 'generation-profile') options.responseMode = responseMode.value;
+                    const minimum = Number(minimumOutputTokens.value);
+                    if (!Number.isSafeInteger(minimum) || minimum < 0) throw Object.assign(new Error('Invalid output budget'), { code: 'generation_adapter_output_budget' });
+                    if (minimum) options.minimumOutputTokens = minimum;
+                }
                 return { ...value, options, providerAdapter: adapter.value, transport: 'transport.http', endpoint: endpoint.value, secretRef: { scope: 'player', secretId: secret.value } };
             };
             const probeStatus = node('div', undefined, fields);
@@ -325,8 +336,9 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             }, discovery);
             connection.addEventListener('change', () => { discoveryVersion += 1; discovered = []; choices.replaceChildren(); choices.disabled = true; discoveryStatus.replaceChildren(); });
             fields = group(form, 'Token budget');
-            const context = number(fields, 'Context tokens', value.limits?.contextTokens || 16000, 1);
-            const output = number(fields, 'Output token limit', value.limits?.outputTokens || 1024, 1);
+            const context = number(fields, 'Context tokens', value.limits?.contextTokens || generationDefaults.contextTokens, 1);
+            const output = number(fields, 'Output token limit', value.limits?.outputTokens || generationDefaults.outputTokens, 1);
+            notice('Context tokens include the reserved output budget. The defaults provide 200,000 input tokens and 20,000 output tokens.', fields);
             const budgetSources = { ...value.limitProvenance };
             for (const [key, input] of [['contextTokens', context], ['outputTokens', output]]) input.addEventListener('input', () => { budgetSources[key] = [{ kind: 'user-override', source: 'Runtime Models' }]; });
             const encoding = field(fields, 'Tokenizer encoding', value.tokenizer?.encoding || 'cl100k_base', [['cl100k_base', 'cl100k_base'], ['o200k_base', 'o200k_base']]);
@@ -433,7 +445,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             notice('Fallback routes must use the same role. They are tried in the order shown.', fields);
             showFallbacks();
             fields = group(form, 'Request policy');
-            const timeout = number(fields, 'Timeout milliseconds', value.policy?.timeoutMs || 60000, 1);
+            const timeout = number(fields, 'Timeout milliseconds', value.policy?.timeoutMs || generationDefaults.timeoutMs, 1);
             const retries = number(fields, 'Retries before fallback', value.policy?.maxRetries ?? 0, 0);
             const attempts = number(fields, 'Maximum fallback attempts', value.policy?.maxFallbackAttempts ?? 0, 0);
             notice('Fallback mode is chosen per request: automatic, confirm or disabled. Game Runtime requests automatic; other callers default to disabled. Zero attempts disables fallback.', fields);

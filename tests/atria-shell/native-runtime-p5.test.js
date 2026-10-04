@@ -209,12 +209,16 @@ test('connection editor persists explicit gateway compatibility and removes it f
     let view = mount(); await flush(); await flush();
     const mode = view.root.querySelector('[aria-label="Tool schema compatibility"]');
     expect(mode.value).toBe('json-schema'); mode.value = 'string-enums';
+    view.root.querySelector('[aria-label="Gateway response mode"]').value = 'stream';
+    view.root.querySelector('[aria-label="Minimum total output tokens"]').value = '20000';
     view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush();
     let write = globalThis.fetch.mock.calls.find(([, options]) => options.method === 'PUT');
-    expect(JSON.parse(write[1].body).options).toEqual({ toolSchemaMode: 'string-enums' });
+    expect(JSON.parse(write[1].body).options).toEqual({ toolSchemaMode: 'string-enums', responseMode: 'stream', minimumOutputTokens: 20000 });
     view.dispose(); globalThis.fetch.mockClear();
     view = mount(); await flush(); await flush();
     view.root.querySelector('[aria-label="Tool schema compatibility"]').value = 'string-enums';
+    view.root.querySelector('[aria-label="Gateway response mode"]').value = 'stream';
+    view.root.querySelector('[aria-label="Minimum total output tokens"]').value = '20000';
     const transport = view.root.querySelector('[aria-label="Provider transport"]');
     transport.value = 'provider.gemini'; transport.dispatchEvent(new Event('change'));
     view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush();

@@ -152,3 +152,24 @@ test('explicit gateway mode adapts non-string enums on the wire and preserves ca
     f.resolved.connection.options = { toolSchemaMode: 'invalid' };
     expect(() => provider.renderRequest(f)).toThrow('generation_adapter_control_unsupported');
 });
+
+test('explicit streaming and output floor support thinking gateways within the reserved model budget', () => {
+    const f = fixture('anthropic', { output: { maxTokens: 512 }, streaming: { enabled: false } });
+    const provider = createHttpGenerationProvider();
+    expect(provider.renderRequest(f).body).toMatchObject({ max_tokens: 512, stream: false });
+    f.resolved.connection.options = { minimumOutputTokens: 4096, responseMode: 'stream' };
+    expect(provider.renderRequest(f).body).toMatchObject({ max_tokens: 4096, stream: true });
+    expect(f.resolved.generation.output.maxTokens).toBe(512);
+    expect(f.resolved.generation.streaming.enabled).toBe(false);
+    f.resolved.generation.reasoning = { effort: 'low' };
+    const body = provider.renderRequest(f).body;
+    expect(body.max_completion_tokens).toBe(4096); expect(body.max_tokens).toBeUndefined();
+    f.resolved.connection.options.minimumOutputTokens = 4097;
+    expect(() => provider.renderRequest(f)).toThrow('generation_adapter_output_budget');
+});
+
+test.each([{ minimumOutputTokens: -1 }, { minimumOutputTokens: 1.5 }, { responseMode: 'guess' }])('invalid gateway controls fail before sending: %j', options => {
+    const f = fixture('anthropic'); f.resolved.connection.options = options;
+    expect(() => createHttpGenerationProvider().renderRequest(f)).toThrow('generation_adapter_control_unsupported');
+    expect(() => createHttpGenerationProvider({ format: 'raw-text' }).renderRequest(f)).toThrow('generation_adapter_control_unsupported');
+});

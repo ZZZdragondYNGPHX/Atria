@@ -18,6 +18,15 @@ import { assertTurnEnvelope } from '../../../public/shared/native-message-contra
 
 const fail = code => { throw Object.assign(new Error(code), { code }); };
 
+function executionTimeout(capture, requestLimit) {
+    const routes = Object.values(capture.routes ?? {});
+    const requestMs = Math.max(0, ...routes.map(route => route.policy.timeoutMs));
+    const attempts = requestLimit ?? (1 + Math.max(0, ...routes.map(route => route.policy.maxFallbackAttempts))) * (1 + nativeTaskScheduler.retries);
+    // Route deadlines cover send and response consumption. A parent Turn must
+    // leave time for every bounded request, plus queue/preparation overhead.
+    return Math.min(2147483647, Math.max(nativeTaskScheduler.timeoutMs, requestMs * attempts + 30000));
+}
+
 function normalizeHostMemoryEvidence(value, snapshot) {
     if (value === undefined) return [];
     if (!Array.isArray(value) || value.length > 32) fail('native_turn_memory_evidence_invalid');
@@ -160,6 +169,8 @@ export class NativeGenerationHost {
         const resources = (await Promise.all(lanes.map(lane => this.executionResources(handle, lane, input.sessionId, lanePlan)))).flat();
         let expectedRevisionId = input.revisionId;
         const operation = nativeTaskScheduler.submit({ owner: handle, kind: 'turn',
+            timeoutMs: executionTimeout(lanePlan, base.manifest.runtime.experienceContract.generationBudget?.turnAttempts
+                ?? Math.max(1, lanes.length) * (1 + Math.max(0, ...Object.values(lanePlan.routes).map(route => route.policy.maxFallbackAttempts)))),
             anchor: { sessionId: input.sessionId, branchId: base.revision.branchId, revisionId: input.revisionId },
             executionClass: 'turn_blocking', resources, key: input.sessionId + ':' + input.invocationId + ':turn', fingerprint: requestHash, retry: false, signal, onChunk,
             fresh: async () => (await this.sessionCore.load(handle, input.sessionId)).revision.revisionId === expectedRevisionId,
@@ -495,6 +506,7 @@ export class NativeGenerationHost {
         }
         const resources = lanePlan ? [] : await this.executionResources(handle, route, input.sessionId, captured);
         const work = { owner: handle, anchor, kind: ['background', 'maintenance'].includes(task.executionClass) ? 'auxiliary_task' : 'model_task', executionClass: task.executionClass,
+            timeoutMs: executionTimeout(captured, captured.budgetContext?.background ? snapshot.manifest.runtime.experienceContract.generationBudget.backgroundAttempts : undefined),
             resources,
             key: input.sessionId + ':' + (task.queuePolicy === 'latest' ? anchor.branchId + ':' + task.id + ':' + variant.id : input.invocationId),
             supersede: task.queuePolicy === 'latest', fingerprint, signal, onChunk,
@@ -569,6 +581,7 @@ export class NativeGenerationHost {
             const captured = {};
             const resources = await this.executionResources(handle, route, input.sessionId, captured);
             return nativeTaskScheduler.submit({ owner: handle, anchor: source, executionClass: 'interactive', resources,
+                timeoutMs: executionTimeout(captured),
                 key: (input.sessionId ?? input.projectId) + ':' + role + ':' + input.requestId, fingerprint: hashNativeDocument(input), signal, onChunk,
                 fresh: async () => input.sessionId ? (await this.sessionCore.load(handle, input.sessionId)).revision.revisionId === input.revisionId
                     : (await this.studio.getProject(handle, input.projectId)).revision.revision === input.revision,

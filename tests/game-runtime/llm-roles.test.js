@@ -42,6 +42,7 @@ describe('R5 Runtime Role routing', () => {
 
     test('ships role-specific defaults instead of one cloned chat policy', () => {
         const defaults = getDefaultRuntimeRoleConfigs();
+        expect(Object.values(defaults).every(role => role.timeoutMs === 600000)).toBe(true);
 
         expect(defaults.narrator.reasoningPolicy).toBe('quality');
         expect(defaults.intent_resolver.reasoningPolicy).toBe('low_variance');

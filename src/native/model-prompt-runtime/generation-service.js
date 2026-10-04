@@ -180,6 +180,7 @@ export class GenerationService {
                 response = await cancellable(() => provider.normalizeResponse(parsed), controller.signal);
             } catch {
                 checkCancellation(signal);
+                if (controller.signal.aborted) throw new GenerationError('generation_provider_timeout');
                 throw new GenerationError('generation_response_invalid');
             }
             checkCancellation(signal);

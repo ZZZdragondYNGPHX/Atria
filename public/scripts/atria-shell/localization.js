@@ -1,4 +1,11 @@
 export const SHELL_TEXT_KEYS = Object.freeze({
+    'Gateway response mode': 'atria.runtime.gateway.0',
+    'Use generation profile': 'atria.runtime.gateway.1',
+    'Always request streaming': 'atria.runtime.gateway.2',
+    'Minimum total output tokens': 'atria.runtime.gateway.3',
+    'For gateways that need streaming or a larger thinking budget. Zero keeps the generation profile budget; a positive value raises the sent limit, within the model output limit.': 'atria.runtime.gateway.4',
+    'Context tokens include the reserved output budget. The defaults provide 200,000 input tokens and 20,000 output tokens.': 'atria.runtime.gateway.5',
+
     'Tool schema compatibility': 'atria.runtime.toolSchema.0',
     'Standard JSON Schema': 'atria.runtime.toolSchema.1',
     'Gemini gateway: string enums only': 'atria.runtime.toolSchema.2',

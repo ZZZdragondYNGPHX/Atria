@@ -111,6 +111,19 @@ describe('P3 Host scheduler', () => {
         await expect(work.result).rejects.toThrow('cancelled');
         expect(scheduler.running.size).toBe(1); gate.resolve(); await tick(); expect(scheduler.running.size).toBe(0);
     });
+
+    test('a Host operation deadline can accommodate a slow bounded request', async () => {
+        const scheduler = new NativeTaskScheduler({ timeoutMs: 10 });
+        const work = scheduler.submit(job({ timeoutMs: 100, run: () => new Promise(resolve => setTimeout(() => resolve('done'), 25)) }));
+        expect(await work.result).toBe('done');
+        expect(scheduler.project('alice', work.operationId).status).toBe('completed');
+    });
+
+    test.each([0, -1, NaN, 2147483648])('rejects invalid operation deadline %s before scheduling', timeoutMs => {
+        const scheduler = new NativeTaskScheduler();
+        expect(() => scheduler.submit(job({ timeoutMs }))).toThrow('operation_timeout_invalid');
+        expect(scheduler.operations.size).toBe(0);
+    });
 });
 
 describe.each(CONTRACT_HARNESSES)('P3 Session authority - $name', ({ make }) => {

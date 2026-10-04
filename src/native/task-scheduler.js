@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { NATIVE_GENERATION_DEFAULTS } from '../../public/shared/native-generation-defaults.js';
 import { immutable } from './model-prompt-runtime/execution-utils.js';
 
 const terminal = new Set(['completed', 'failed', 'cancelled', 'stale']);
@@ -7,7 +8,7 @@ const failure = code => Object.assign(new Error(code), { code });
 // Host-only transient projection. Session records are published by SessionCore.
 // Workers that ignore abort retain their permits until they actually settle.
 export class NativeTaskScheduler {
-    constructor({ concurrency = 4, perResource = 2, queueLimit = 64, retention = 256, timeoutMs = 120000, retries = 1, backoffMs = 250 } = {}) {
+    constructor({ concurrency = 4, perResource = 2, queueLimit = 64, retention = 256, timeoutMs = NATIVE_GENERATION_DEFAULTS.timeoutMs, retries = 1, backoffMs = 250 } = {}) {
         for (const value of [concurrency, perResource, queueLimit, retention, timeoutMs]) if (!Number.isSafeInteger(value) || value < 1) throw new TypeError('Invalid scheduler limit');
         Object.assign(this, { concurrency, perResource, queueLimit, retention, timeoutMs, retries, backoffMs });
         this.operations = new Map(); this.running = new Set(); this.queue = []; this.serial = 0;
@@ -27,7 +28,8 @@ export class NativeTaskScheduler {
         if (!this.running.has(operation)) operation.cleanup();
         this.queue = this.queue.filter(item => item !== operation); this.drain(); return true;
     }
-    submit({ owner, anchor, kind = 'model_task', executionClass, resources, key, fingerprint, supersede = false, retry = true, signal, run, finalize, fresh, onChunk }) {
+    submit({ owner, anchor, kind = 'model_task', executionClass, resources, key, fingerprint, supersede = false, retry = true, timeoutMs = this.timeoutMs, signal, run, finalize, fresh, onChunk }) {
+        if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 2147483647) throw failure('operation_timeout_invalid');
         if (!['turn', 'model_task', 'auxiliary_task'].includes(kind)) throw failure('operation_kind_invalid');
         if (!['turn_blocking', 'interactive', 'background', 'maintenance'].includes(executionClass)) throw failure('operation_class_invalid');
         for (const operation of this.operations.values()) {
@@ -57,7 +59,7 @@ export class NativeTaskScheduler {
         operation.cleanup = () => { clearTimeout(operation.timer); signal?.removeEventListener('abort', abort); };
         operation.handle = Object.freeze({ operationId, result });
         this.operations.set(operationId, operation);
-        operation.timer = setTimeout(() => this.cancel(owner, operationId), this.timeoutMs);
+        operation.timer = setTimeout(() => this.cancel(owner, operationId), timeoutMs);
         this.queue.push(operation); this.drain();
         return operation.handle;
     }

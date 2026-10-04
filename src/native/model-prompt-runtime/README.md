@@ -257,7 +257,22 @@ keep the original schema; invalid arguments still fail before authority commits.
 Strict tools reject this mode. Native Gemini uses `parametersJsonSchema` and does
 not use this compatibility option.
 
+OpenAI-compatible connections also support explicit `responseMode: stream` and
+`minimumOutputTokens`. The latter raises the wire completion limit above an
+authored Generation Profile when selected by the player, but never above the
+reserved Model output budget. This helps gateways that count thinking against a
+small completion limit. Both controls appear in the request snapshot's effective
+connection and rendered preview. Existing profiles keep their authored controls
+unless these options are selected; Package assets and saved Sessions are unchanged.
+
+New Runtime models reserve 200,000 input and 20,000 output tokens (220,000 total).
+New Generation Profiles use 20,000 output tokens and streaming; new OpenAI-compatible
+connections request streaming and a 20,000-token minimum. New route and role
+timeouts are ten minutes per request. Host operation deadlines accommodate the
+captured route deadlines and bounded Turn request budget, rather than truncating
+a multi-request Turn at an unrelated fixed two-minute limit.
+
 Provider HTTP 404, 400/422 and 401/403 now produce endpoint, request and authentication
 error codes respectively. They do not trigger fallback or expose response bodies.
-A route timeout without fallback is `generation_provider_timeout`; transient
+A route timeout, including response consumption, is `generation_provider_timeout`; transient
 429/5xx keep existing bounded provider retry/fallback behavior.

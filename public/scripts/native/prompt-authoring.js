@@ -8,6 +8,7 @@ import { createStudioNativeId } from './studio-authoring.js';
 import { runtimeRequest } from './runtime-client.js';
 import { nativeStudioClient } from './studio-client.js';
 import { comparePromptModules } from '../../shared/prompt-module-order.js';
+import { NATIVE_GENERATION_DEFAULTS as generationDefaults } from '../../shared/native-generation-defaults.js';
 
 export const PROMPT_TYPES = Object.freeze({
     'core.prompt-program': ['Prompt Programs', 'promptProgramId', 'pprog'],
@@ -21,7 +22,7 @@ export function newPromptResource(type) {
     return { schemaVersion: 1, [id]: createStudioNativeId(prefix), revision: createStudioNativeId('rev'), displayName: 'Untitled',
         ...(type === 'core.prompt-module' ? { target: 'system.foundation', stages: ['stage.main'], body: '' } : {}),
         ...(type === 'core.prompt-program' ? { stages: [{ stageId: 'stage.main', moduleRefs: [] }], responseDirective: {} } : {}),
-        ...(type === 'core.generation-profile' ? { output: { maxTokens: 512 } } : {}),
+        ...(type === 'core.generation-profile' ? { output: { maxTokens: generationDefaults.outputTokens }, streaming: { enabled: generationDefaults.streaming } } : {}),
     };
 }
 export function resourceRef(type, resource, scope) {
@@ -64,7 +65,7 @@ function generationFields(doc, fields, draft) {
         if (max !== undefined) field.max = max;
         return field;
     };
-    const max = numeric('Maximum output tokens', draft.output?.maxTokens || 512, 1, undefined, true); max.required = true;
+    const max = numeric('Maximum output tokens', draft.output?.maxTokens || generationDefaults.outputTokens, 1, undefined, true); max.required = true;
     const temperature = numeric('Temperature', draft.sampling?.temperature ?? '', 0);
     const topP = numeric('Top P (optional)', draft.sampling?.topP ?? '', 0, 1);
     const stream = select(doc, fields, 'Streaming', [['', 'Default'], ['true', 'Enabled'], ['false', 'Disabled']], draft.streaming?.enabled === undefined ? '' : String(draft.streaming.enabled));

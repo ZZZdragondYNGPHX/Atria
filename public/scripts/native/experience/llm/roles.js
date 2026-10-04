@@ -1,4 +1,5 @@
 import { cloneGameLlmValue } from './clone.js';
+import { NATIVE_GENERATION_DEFAULTS } from '../../../../shared/native-generation-defaults.js';
 
 export const GAME_RUNTIME_ROLES = Object.freeze([
     'narrator',
@@ -13,7 +14,7 @@ const DEFAULT_ROLE_CONFIGS = Object.freeze({
     narrator: Object.freeze({
         primaryProfile: '',
         fallbackProfiles: Object.freeze([]),
-        timeoutMs: 120000,
+        timeoutMs: NATIVE_GENERATION_DEFAULTS.timeoutMs,
         retries: 1,
         reasoningPolicy: 'quality',
         requirements: Object.freeze({ tools: false, structuredOutput: false }),
@@ -21,7 +22,7 @@ const DEFAULT_ROLE_CONFIGS = Object.freeze({
     intent_resolver: Object.freeze({
         primaryProfile: '',
         fallbackProfiles: Object.freeze([]),
-        timeoutMs: 45000,
+        timeoutMs: NATIVE_GENERATION_DEFAULTS.timeoutMs,
         retries: 1,
         reasoningPolicy: 'low_variance',
         requirements: Object.freeze({ tools: true, structuredOutput: false }),
@@ -29,7 +30,7 @@ const DEFAULT_ROLE_CONFIGS = Object.freeze({
     event_interpreter: Object.freeze({
         primaryProfile: '',
         fallbackProfiles: Object.freeze([]),
-        timeoutMs: 45000,
+        timeoutMs: NATIVE_GENERATION_DEFAULTS.timeoutMs,
         retries: 1,
         reasoningPolicy: 'low_variance',
         requirements: Object.freeze({ tools: false, structuredOutput: true }),
@@ -37,7 +38,7 @@ const DEFAULT_ROLE_CONFIGS = Object.freeze({
     orchestrator: Object.freeze({
         primaryProfile: '',
         fallbackProfiles: Object.freeze([]),
-        timeoutMs: 120000,
+        timeoutMs: NATIVE_GENERATION_DEFAULTS.timeoutMs,
         retries: 1,
         reasoningPolicy: 'planning',
         requirements: Object.freeze({ tools: true, structuredOutput: false }),
@@ -45,7 +46,7 @@ const DEFAULT_ROLE_CONFIGS = Object.freeze({
     studio: Object.freeze({
         primaryProfile: '',
         fallbackProfiles: Object.freeze([]),
-        timeoutMs: 120000,
+        timeoutMs: NATIVE_GENERATION_DEFAULTS.timeoutMs,
         retries: 1,
         reasoningPolicy: 'coding',
         requirements: Object.freeze({ tools: true, structuredOutput: false }),
