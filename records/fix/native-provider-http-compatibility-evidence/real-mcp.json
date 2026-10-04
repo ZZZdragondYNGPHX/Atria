@@ -1,0 +1,51 @@
+{
+  "coreHead": "d0cb08b36dd6e925e50131dcf243d3c761c768e4",
+  "pluginHead": "792a87286e881ea62fc31bdc90b8678ccd715f9b",
+  "archiveSha256": "98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24",
+  "packageVersionId": "pkgv_d5f1d44b7a9f4edc7266bf4d547a3112",
+  "isolatedData": true,
+  "personalSessionWrites": 0,
+  "provider": "Authorized real gateway; Secret retained only in memory",
+  "model": "gemini-3.8-flash",
+  "inputTokens": 200000,
+  "outputTokens": 20000,
+  "timeoutMs": 600000,
+  "realEvidence": {
+    "requests": [
+      {
+        "hasTools": true,
+        "maxTokens": 20000,
+        "stream": true,
+        "http": 200,
+        "headersMs": 75299,
+        "contentCharacters": 0,
+        "finishReason": "stop",
+        "completedMs": 75319
+      },
+      {
+        "hasTools": false,
+        "maxTokens": 20000,
+        "stream": true,
+        "http": 200,
+        "headersMs": 40195,
+        "contentCharacters": 106,
+        "finishReason": "stop",
+        "completedMs": 41067
+      }
+    ],
+    "completeGameTurn": true,
+    "personalSessionWrites": 0,
+    "narrativeCharacters": 104
+  },
+  "mcpRuntimeSourceMatch": "EXACT",
+  "browser": {
+    "width": 390,
+    "height": 844,
+    "pageErrors": 0,
+    "httpErrors": 0
+  },
+  "limits": [
+    "Desktop Chromium mobile viewport; no physical device",
+    "Background simulation paused only in disposable fixture; foreground resolver and narrator tested"
+  ]
+}

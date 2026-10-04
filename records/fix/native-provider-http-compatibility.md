@@ -2,10 +2,10 @@
 
 - Task ID: native-provider-http-compatibility
 - Primary Workspace: main
-- Status: Complete — local implementation/integration; full real-provider turn remains unverified.
+- Status: Complete — integrated, actual project updated, real 20K MCP turn verified.
 - Plan: 小型局部修复，无独立 Plan。
 - Start HEAD: 302edb266c787a8717000e51bbc20f14106ea81a
-- End/Tested HEAD: 2f9251b33d7b6a5bf146b3d96b9e5af5d2301949
+- End/Tested HEAD: d0cb08b36dd6e925e50131dcf243d3c761c768e4
 
 ## Problem and findings
 
@@ -51,20 +51,65 @@
 - [结构化验证证据](native-provider-http-compatibility-evidence/validation.json)。
 - Core AGENTS.md 与 docs 四个已有 dirty 文件保护，未运行远端 CI/设备测试。
 
-## Real API limits / next verification
+## Slow gateway and final defaults
 
-共 8 次用户授权的 API 请求：原地址 404；正确消息地址的 canonical tools 请求 400；
-兼容 Schema 的消息请求与原生 Gemini 请求分别在 60 秒无响应；一次 120 秒原生请求
-被已有 Task scheduler 时限终止。两次极简文本 minimal-thinking 探针被上游明确拒绝
-`THINKING_LEVEL_MINIMAL`，最后一次 low-thinking 极简文本在 30 秒超时。这些
-thinking 设置仅属于诊断探针，没有持久化到用户配置。
+用户确认 SillyTavern 的可用连接是 OpenAI-compatible、同一中转域名、
+`Gemini 3.8 Flash`、流式。模型列表分别列出 `gemini-3-flash-preview` 与
+`gemini-3.8-flash`，原配置并不是用户确认可用的模型。极简流式探针约 54 秒才收到
+HTTP 200；后续真实 MCP 请求约 60 秒才返回。不能将此前超时解释为 API 不可用。
 
-不能据此声称完整真实模型游戏回合已通过，也不能断言所有客户端都不可用。已询问
-用户同一模型在其它客户端是否能够响应；待得到可用服务/模型证据后，再做最小完整
-回合验证。历史 .atria 没有改动；不新增个人数据、Secret、日志或本地路径到仓库。
+隔离完整 3.0.0 游戏回合：3.8 Flash、流式、4096 输出预算下，意图解析返回合法
+`ask_work` 行动，接着正文返回并成功提交；共两次真实模型发送，未推进个人 Session。
+512 预算的流式探针未得到合法行动。未拿到 finish reason，故不把截断机制当成已证实事实。
+
+用户进一步明确要求默认等待十分钟、输入 200K、输出 20K。已完成：
+
+- 共享默认值：单次 600,000 ms、输入 200,000、输出 20,000，合计上下文 220,000。
+  新 Runtime Models、Routes、Generation Profiles 与 Runtime Role 使用相应默认值；
+  新生成参数开启流式。已有自定义 Profile 不自动覆盖。
+- OpenAI-compatible Connection 可明确选 `responseMode: stream` 与
+  `minimumOutputTokens`。提高实际发送预算时仍必须处于 Model 的预留输出额度内；
+  快照 effectiveConfig 与预览均记录选项。默认新连接流式、最低输出 20,000；其它
+  transport 不沿用这些选项。原游戏包和 pinned Session 无需修改。
+- Host scheduler 接受内部 operation deadline；Turn 按冻结 routes 与有界请求次数
+  计算总时限，避免单次 timeout 调大后仍被固定 120 秒的总上限提前取消。
+  无新增重发、fallback 或后台轮询。
+- 响应头之后的流式/body timeout 也报告 `generation_provider_timeout`，不再伪装为
+  无效响应；手动取消仍保留原语义。
+- 追加最小本地验证：六个直接相关 suites 最终 143 项通过；scheduler 11 项通过
+  （其它 41 项未运行）；Context/protocol 11 项通过（其它 35 项未运行）。新增选项默认/边界/保留 authored snapshot、慢 body 不重发、
+  两段真实 Host Turn 超过 scheduler 默认后仍提交、新生成参数默认与清除逻辑通过。
+  变更文件 ESLint、diff check、main 上产品文件 ESLint 通过。
+- 实际游玩副本快进到新 main 并沿用既有可执行文件和环境重启。通过 fingerprint /
+  boot guard 更新既有 Connection、Model 与两条 Route，模型为 3.8 Flash，预算和
+  超时采用用户所需值；路由绑定、Secret ref、Package、Session 保留。配置 list 重读
+  按 ID 比较（返回排序可能变化），MCP 状态 EXACT、Connection 读取生效。
+
+## Final real MCP acceptance
+
+最终 20K 配置在独立临时账号/Session 中验证，真实 stdio MCP 完成精确包捕获、安装、
+开故事及 free-text 发送；本地代理只把 synthetic credential 换成内存中的授权 Secret，
+不改模型请求 body。验证断言发送为 3.8 Flash、stream=true、max_tokens=20,000。
+Fixture 只暂停后台 simulation，限定本次 resolver + narrator 两次发送。
+20K 请求中的有效行动收到后，MCP 仍失败。用收到的行动在本地重放，确认失败码为
+`generation_adapter_output_budget`：Native context compiler 与 Context Provider 仍按
+Package 的 512 token 预留，和明确选择的 20K wire limit 不一致。已统一使用有效
+输出预留，先保留完整模型输出额度，再编译输入上下文；超过 Model 上限仍拒绝。
+最小 Host 回归覆盖真正的 resolver + narrator 路径。纯本地响应重放经 MCP 提交并在
+390×844 实际 Native shell 中展示通过，不发生新的真实 API 调用。
+
+最终真实 20K MCP 整回合通过：第一请求 75.3 秒返回并选择合法行动，正文约
+41.1 秒完成，两次均 HTTP 200、stream=true、max_tokens=20,000。已提交 assistant
+正文（104 字符），MCP 390×844 browser 观察并截图通过；没有 pageerror 或 HTTP
+错误。没有用户设备操作、远端 CI 或个人游戏推进。两次请求耗时说明原 60 秒单次
+限制会截断此次请求；10 分钟上限并非空配置。
+
+- [最终真实 MCP 验证](native-provider-http-compatibility-evidence/real-mcp.json)
+- [实际 Native shell 截图](native-provider-http-compatibility-evidence/game-390x844.jpg)
 
 ## Final state
 
-实现推送并集成 main；实际游玩副本和运行实例更新；已知本地配置与 Schema 问题已
-修正。完整真实 API acceptance 保留上述限制，未伪报通过。短期实现分支/worktree
-完成记录后删除；无需代码任务的 live HANDOFF。
+Core main 与实际游玩项目均为 `d0cb08b36dd6e925e50131dcf243d3c761c768e4`，代码已推送；
+实际运行实例和 10 分钟 / 200K 输入 / 20K 输出 / 流式 / 3.8 Flash 配置重读确认。
+原包版本和个人 Session 保留，现有无关 dirty 文件保护。记录完成后清理短期实现
+分支/worktree。普通 bug/default-config 闭环无需新的阶段 Plan 或 live HANDOFF。

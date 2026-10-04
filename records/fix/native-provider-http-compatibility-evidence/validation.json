@@ -1,5 +1,5 @@
 {
-  "coreHead": "2f9251b33d7b6a5bf146b3d96b9e5af5d2301949",
+  "coreHead": "d0cb08b36dd6e925e50131dcf243d3c761c768e4",
   "localValidation": {
     "nativeProviderMatrixAndHost": 69,
     "generationCore": 34,
@@ -10,7 +10,6 @@
   "realApi": {
     "authorizedByUser": true,
     "model": "gemini-3-flash-preview",
-    "attempts": 8,
     "personalSessionWrites": 0,
     "cases": [
       {
@@ -52,14 +51,40 @@
         "result": "TimeoutError"
       }
     ],
-    "completeGameTurn": "not verified"
+    "completeGameTurn": "verified in disposable fixture",
+    "initialAttempts": 8,
+    "complete4096GameTurn": {
+      "model": "gemini-3.8-flash",
+      "stream": true,
+      "minimumOutputTokens": 4096,
+      "providerCalls": 2,
+      "result": "completed",
+      "personalSessionWrites": 0
+    },
+    "final20000Mcp": "completed",
+    "recordedResolverMcpReplay": {
+      "result": "completed",
+      "additionalPaidCalls": 0,
+      "browserViewport": {
+        "width": 390,
+        "height": 844
+      }
+    },
+    "finalEvidence": "real-mcp.json"
   },
   "gameInstallation": {
-    "head": "2f9251b33d7b6a5bf146b3d96b9e5af5d2301949",
+    "head": "d0cb08b36dd6e925e50131dcf243d3c761c768e4",
+    "model": "gemini-3.8-flash",
     "connectionPath": "/v1/chat/completions",
     "toolSchemaMode": "string-enums",
-    "modelsAndRoutesUnchanged": true,
-    "personalSessionWrites": 0
+    "inputTokens": 200000,
+    "outputTokens": 20000,
+    "contextTokens": 220000,
+    "timeoutMs": 600000,
+    "responseMode": "stream",
+    "minimumOutputTokens": 20000,
+    "personalSessionWrites": 0,
+    "routeBindingsAndSecretRefPreserved": true
   },
   "mcp": {
     "runtimeSourceMatch": "EXACT",
@@ -69,5 +94,14 @@
     "toolSchemaMode": "string-enums",
     "providerAdapter": "provider.openai-compatible",
     "paidModelCalls": 0
+  },
+  "additionalLocalValidation": {
+    "directlyRelatedSuites": 143,
+    "scheduler": 11,
+    "total": 165,
+    "changedFileEslint": "passed",
+    "mainProductFileEslint": "passed",
+    "contextAndProtocol": 11,
+    "effectiveReserveHostAndGenerationRecheck": 71
   }
 }
