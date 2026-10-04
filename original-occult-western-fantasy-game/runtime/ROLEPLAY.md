@@ -1,3 +1,7 @@
+# 异闻之城 — 当前中文发行版
+
+3.0.1 为原 Open Lives 的简体中文修订版。游戏列表显示“异闻之城”，入口显示“异闻之城：从凡人开始”。角色创建、确定性开篇、机构与人物名称、状态反馈、能力规则/锚点/代价、存读档及公开城市常识均使用中文。叙述与城中际遇提示要求自然简体中文，保留规则标识与英文枚举供运行时解析，不向玩家显示它们。规则、行动、经济与存档语义沿用下述契约；新发行版使用独立 PackageVersion，旧存档不自动迁移。
+
 # Open Lives — content and Native interface contract
 
 The default `tools/package.mjs build|validate|preview --core <checkout>` compiles this profile with its actual Native interface. It requires Core main `1661af11245c856363bfc1084275c02b55a97452` or a compatible descendant, with required authority-transaction/story-start/generation-budget/run-policy @1 plus fixed Host recent-message and terminal presentation reads. The old main baseline does not provide these opt-in capabilities. The saved release is `releases/3.0.0.atria`; `--archive <file>` checks its payload against the current compiler, and `--release-only` performs the focused version/budget/permission/installer/safe-view/corruption checks. Builds use exclusive creation and never overwrite an existing output.

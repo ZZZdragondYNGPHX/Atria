@@ -16,14 +16,14 @@ const load=p=>import(pathToFileURL(path.join(core,p)).href);
 const sdk=p=>import(pathToFileURL(path.join(mcp,'node_modules/@modelcontextprotocol/sdk/dist/esm',p)).href);
 const {Client}=await sdk('client/index.js'),{StdioClientTransport}=await sdk('client/stdio.js'),{ElicitRequestSchema}=await sdk('types.js');
 const {inspectAtriaPackageContainer}=await load('src/native/index.js');
-const archive=await fs.readFile(path.join(root,'releases/3.0.0.atria'));
+const archive=await fs.readFile(path.join(root,'releases/3.0.1.atria'));
 const {manifest,sourceFiles,containerHash}=inspectAtriaPackageContainer(archive);
 const logic=JSON.parse(sourceFiles.get('runtime/logic.json'));
 const scratch=await fs.mkdtemp(path.join(tmpdir(),'atria-open-lives-mcp-'));
-const output=path.join(root,routePreflightOnly?'build/mcp-route-preflight-3.0.0':'build/mcp-3.0.0');await fs.mkdir(output,{recursive:true});
+const output=path.join(root,routePreflightOnly?'build/mcp-route-preflight-3.0.1':'build/mcp-3.0.1');await fs.mkdir(output,{recursive:true});
 await fs.mkdir(path.join(core,'.artifacts'),{recursive:true});
 const artifactDir=await fs.mkdtemp(path.join(core,'.artifacts/open-lives-mcp-'));
-const artifactPath=path.relative(core,path.join(artifactDir,'3.0.0.atria')).split(path.sep).join('/');
+const artifactPath=path.relative(core,path.join(artifactDir,'3.0.1.atria')).split(path.sep).join('/');
 await fs.writeFile(path.join(core,artifactPath),archive);
 const reserve=http.createServer();await new Promise(r=>reserve.listen(0,'127.0.0.1',r));const port=reserve.address().port;await new Promise(r=>reserve.close(r));
 const origin='http://127.0.0.1:'+port;
@@ -42,7 +42,7 @@ try{
   if(body.tools?.length){const text=body.messages.at(-1)?.content||'';const selection=text.includes('修补')?{id:'roleplay.work',input:{method:'repair'}}:{id:'roleplay.express',input:{method:'say',text:'今天暂且如此。'}};
    const i=logic.transactions.filter(t=>t.intent.expose).findIndex(t=>t.id===selection.id);assert(i>=0);
    message={content:'',tool_calls:[{id:'local-mcp-action',type:'function',function:{name:body.tools[i].function.name,arguments:JSON.stringify(selection.input)}}]};
-  }else if(JSON.stringify(body.messages).includes('Return one bounded local proposal'))message={content:JSON.stringify({decision:'defer',batchId:'world_batch_01',kind:'person',name:'',description:'',parentId:'location.old_ferry',templateId:'neighbour'})};
+  }else if(body.response_format?.json_schema?.schema?.properties?.batchId)message={content:JSON.stringify({decision:'defer',batchId:'world_batch_01',kind:'person',name:'',description:'',parentId:'location.old_ferry',templateId:'neighbour'})};
   else {if(failNarrator){res.writeHead(503,{'Content-Type':'application/json'});res.end('{}');return;}message={content:JSON.stringify('河岸的日常仍在继续。你方才的言行已有回应，下一步如何，你可以再做决定。')};}
   res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({choices:[{message}]}));
  }catch(e){res.writeHead(500,{'Content-Type':'application/json'});res.end(JSON.stringify({error:e.message}));}});
@@ -107,7 +107,7 @@ try{
   const missing=await post('/api/native/generation/task-bindings/preflight',query);
   assert(missing.slots.every(slot=>!slot.error),'Authored purposes should accept the narrator route');
   assert.equal(missing.ready,false);assert.deepEqual(missing.turnRoutes.map(r=>[r.role,r.error]),[['intent_resolver','native_generation_route_missing']]);
-  check('Actual 3.0.0 Package rejects narrator-only setup despite complete authored purposes');
+  check('Actual 3.0.1 Package rejects narrator-only setup despite complete authored purposes');
   const resolver={...seeded.routes[0],runtimeRouteId:'route_'+crypto.randomUUID().replaceAll('-',''),displayName:'Disposable intent resolver',role:'role.intent_resolver'};
   await seeded.persistence.saveRuntimeRoute(DEFAULT_USER.handle,resolver);
   const after=await read('route.list');assert.deepEqual(after.routes.map(r=>r.role).sort(),['role.intent_resolver','role.narrator']);
@@ -116,7 +116,7 @@ try{
   assert.equal(requests,0);check('Adding the exact role clears readiness with zero provider calls and no Session');
  }else{
  const started=await mutate('mutate','work.start',{packageId:manifest.packageId,packageVersionId:manifest.packageVersionId,entryPointId:manifest.entryPoints[0].entryPointId,displayTitle:'MCP local Open Lives'});
- sessionId=started.receipt.created.find(item=>item.kind==='session').id;check('MCP captures exact released 3.0.0 bytes, reviews permission, installs and starts Work');
+ sessionId=started.receipt.created.find(item=>item.kind==='session').id;check('MCP captures exact released 3.0.1 bytes, reviews permission, installs and starts Work');
  let base=await snapshot();
  base=await post('/api/native/session/command',{sessionId,expectedRevisionId:base.revision.revisionId,command:{type:'lifecycle',invocationId:'mcp-fixture-ready',action:{kind:'experience.ready'}}});
  const sendsBefore=requests;

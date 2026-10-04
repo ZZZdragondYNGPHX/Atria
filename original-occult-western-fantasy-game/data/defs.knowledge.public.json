@@ -4,7 +4,7 @@
     {
       "id": "knowledge.civil_requests",
       "kind": "public_knowledge",
-      "name": "Civil copy requests",
+      "name": "申请文书副本",
       "purpose": "Reusable public_knowledge foundation",
       "authority": "definition",
       "dependencies": [
@@ -18,7 +18,7 @@
       ],
       "canon": {
         "issuer": "institution.police",
-        "text": "A Civil Verifier may request a specific copy with documented interest. This is not a warrant for every archive.",
+        "text": "民事核验员可以说明相关利益，申请一份指定文书的副本。这并不代表可以查阅所有档案。",
         "epistemicStatus": "attributed_public_information"
       },
       "perspective": {
@@ -31,7 +31,7 @@
     {
       "id": "knowledge.ordinary_rites",
       "kind": "public_knowledge",
-      "name": "Communal rites",
+      "name": "共同体礼仪",
       "purpose": "Reusable public_knowledge foundation",
       "authority": "definition",
       "dependencies": [
@@ -45,7 +45,7 @@
       ],
       "canon": {
         "issuer": "institution.church",
-        "text": "The communion maintains naming, marriage and burial practices. Membership does not grant sacred office or deep theory.",
+        "text": "共同体主持命名、婚姻和安葬礼仪。成为成员，并不等于担任圣职，也不意味着通晓深层教义。",
         "epistemicStatus": "attributed_public_information"
       },
       "perspective": {
@@ -58,7 +58,7 @@
     {
       "id": "knowledge.public_history",
       "kind": "public_knowledge",
-      "name": "Official Eastbank history",
+      "name": "东岸的官方历史",
       "purpose": "Reusable public_knowledge foundation",
       "authority": "definition",
       "dependencies": [
@@ -72,7 +72,7 @@
       ],
       "canon": {
         "issuer": "institution.press",
-        "text": "Official accounts describe fire, transport disruption, telegraph failure and reconstruction approximately forty years ago. This attributed account is not a complete causal explanation.",
+        "text": "官方记载提到，约四十年前东岸曾发生火灾、交通中断与电报失灵，之后进行了重建。这是官方的说法，尚不足以解释所有前因后果。",
         "epistemicStatus": "attributed_public_information"
       },
       "perspective": {
@@ -85,7 +85,7 @@
     {
       "id": "knowledge.claim_procedure",
       "kind": "public_knowledge",
-      "name": "Claims procedure",
+      "name": "索赔手续",
       "purpose": "Reusable public_knowledge foundation",
       "authority": "definition",
       "dependencies": [
@@ -99,7 +99,7 @@
       ],
       "canon": {
         "issuer": "institution.insurer",
-        "text": "A claimant must identify the subject and authority to act. An accepted financial claim does not prove every historical assertion.",
+        "text": "索赔人须说明索赔对象，以及自己提出申请的依据。经济赔偿获准，并不意味着相关历史叙述都已得到证实。",
         "epistemicStatus": "attributed_public_information"
       },
       "perspective": {
@@ -112,7 +112,7 @@
     {
       "id": "knowledge.safe_inquiry",
       "kind": "public_knowledge",
-      "name": "Safe inquiry",
+      "name": "安全调查",
       "purpose": "Reusable public_knowledge foundation",
       "authority": "definition",
       "dependencies": [
@@ -126,7 +126,7 @@
       ],
       "canon": {
         "issuer": "institution.police",
-        "text": "Separate witnesses, record time, preserve boundaries and avoid casually moving contradictory relics or records. Escalate persistent identity discrepancies.",
+        "text": "分别询问见证人，记录时间，守住检验边界，不要随意移动相互矛盾的遗物或记录。若身份错位持续出现，应交由具备资格的机构处理。",
         "epistemicStatus": "attributed_public_information"
       },
       "perspective": {
@@ -139,7 +139,7 @@
     {
       "id": "knowledge.city_routes",
       "kind": "public_knowledge",
-      "name": "City districts",
+      "name": "城市街区",
       "purpose": "Reusable public_knowledge foundation",
       "authority": "definition",
       "dependencies": [
@@ -153,7 +153,7 @@
       ],
       "canon": {
         "issuer": "institution.railway",
-        "text": "The city links the Old Quarter, Civic District, Exchange, University Quarter, Industrial Belt and Docks. A ticket does not grant track or warehouse access.",
+        "text": "城中有旧城区、市政区、交易区、大学区、工业带和码头。买了车票，也不意味着可以进入轨道或仓库。",
         "epistemicStatus": "attributed_public_information"
       },
       "perspective": {

@@ -23,7 +23,7 @@ export async function verify({load,native,manifest,archive,sourceFiles}) {
   try{const chunks=[];for await(const chunk of req)chunks.push(chunk);const body=JSON.parse(Buffer.concat(chunks));seen.push(body);content.assertSafe(body);
    let message;
    if(body.tools?.length){const tools=logic.transactions.filter(t=>t.intent.expose);const index=tools.findIndex(t=>t.id===selection.transactionId);message={content:'',tool_calls:[{id:'first_action',type:'function',function:{name:body.tools[index].function.name,arguments:JSON.stringify(selection.input)}}]};}
-   else if(JSON.stringify(body.messages).includes('Return one bounded local proposal')){if(failTask){res.writeHead(503);res.end('{}');return;}message={content:JSON.stringify(proposal)};}
+   else if(body.response_format?.json_schema?.schema?.properties?.batchId){if(failTask){res.writeHead(503);res.end('{}');return;}message={content:JSON.stringify(proposal)};}
    else if(failNarrator){res.writeHead(503);res.end('{}');return;}
    else message={content:JSON.stringify('The Host-approved outcome is recorded. Further intentions await your decision.')};
    res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({choices:[{message}]}));

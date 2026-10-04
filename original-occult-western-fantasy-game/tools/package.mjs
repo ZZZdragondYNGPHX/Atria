@@ -55,7 +55,7 @@ for (const file of (await fs.readdir(path.join(root, 'data'))).sort()) {
     const bytes = await fs.readFile(path.join(root, 'data', file));
     const resourceId = file.slice(0, -5);
     const contentHash = createHash('sha256').update(bytes).digest('hex');
-    const assetId = 'asset_' + createHash('sha256').update(resourceId).digest('hex').slice(0, 32);
+    const assetId = 'asset_' + createHash('sha256').update(roleplay ? resourceId + ':' + contentHash : resourceId).digest('hex').slice(0, 32);
     contract.dataResources.push({ resourceId, assetId, contentHash });
     manifest.assets.push({ assetId, contentHash, size: bytes.length, mediaType: 'application/json' });
     assetPayloads.set(assetId, bytes);

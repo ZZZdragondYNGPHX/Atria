@@ -1,16 +1,20 @@
-# Original Occult Western Fantasy — Open Lives
+# 异闻之城
 
-Task: refactor/original-occult-western-fantasy-open-roleplay. Open Lives 3.0.0 is the current release.
+从普通人的生活出发，在西幻城市中谋生、结交人物，逐步接触超凡力量。
 
-The default compiler builds ordinary adult lives from five authored choices, with everyday work/relationships/travel, two institutional supernatural paths, bounded personal engineering and eight stable local encounters. Its Native questionnaire, story reader, draft suggestions and companion drawer consume real Host services and public committed projections. See [the content and interface contract](runtime/ROLEPLAY.md).
+当前版本为 **3.0.1 简体中文版**（原名 Open Lives / 开放生活志）。角色创建、开篇、人物与机构名称、能力与代价、状态反馈、随身记事、存读档和公开城市常识均已汉化；故事叙述与新增当地际遇也明确使用自然的简体中文。当前版本的玩法以 [内容与界面约定](runtime/ROLEPLAY.md) 为准。
 
-[Download 3.0.0](releases/3.0.0.atria). 152692 bytes; SHA-256 `98e5208b1013370bd377b278d089a8e9f231d507df0a0ce6df0124591649db24`. PackageVersion: `pkgv_d5f1d44b7a9f4edc7266bf4d547a3112`. Requires Core main `1661af11245c856363bfc1084275c02b55a97452` or a descendant supporting its required capabilities and fixed Host reads. Import the archive through Atria's Package installer, grant generation permission, configure Host generation and open **A life in the city**. Review ordinary/ironman mode with the five choices before beginning. Ordinary death allows explicit earlier-save restoration; ironman only permits current-head continuation and ends the run on authoritative death. This is a new-version story; migration from v1/v2 saves is not claimed.
+[下载《异闻之城》3.0.1](releases/3.0.1.atria)。156341 字节；SHA-256：`31b5e467e1e6109e1c9a10a053c41c5bdd96286b973c8c3db436b855fe7cd86b`。PackageVersion：`pkgv_5006e5160cce49ca333e07efbde34189`。
+
+通过 Atria 的 Package 安装入口导入，允许生成权限，配置模型后打开 **异闻之城：从凡人开始**。开始前选择普通或铁人模式，并完成五项生活境况选择。普通模式死亡后可以读取较早存档；铁人模式只能继续当前进度，死亡后本局结束并清理存档。
+
+3.0.1 使用新的独立版本标识；旧版本存档继续属于原版本，不承诺迁移。1.0.0、2.0.0、3.0.0 成品完整保留。游戏要求支持 story-start、generation-budget、run-policy 和固定 Host 读取的 Core；Atria 首次语言设置的修复随产品 main 提供。
 
 ```bash
 node tools/content-check.mjs
-node tools/package.mjs validate --core <main-checkout> --archive releases/3.0.0.atria --release-only
-node tools/package.mjs validate --core <main-checkout> --archive releases/3.0.0.atria
-node tools/package.mjs validate --roleplay-ui-only --core <main-checkout> --archive releases/3.0.0.atria
+node tools/package.mjs validate --core <main-checkout> --archive releases/3.0.1.atria --release-only
+node tools/package.mjs validate --core <main-checkout> --archive releases/3.0.1.atria
+node tools/package.mjs validate --roleplay-ui-only --core <main-checkout> --archive releases/3.0.1.atria
 node tools/mcp-smoke.mjs --core <main-checkout> --mcp <plugin-checkout>/atria-mcp
 node tools/package.mjs validate --fixture --core <main-checkout>
 node tools/package.mjs build --core <main-checkout> --out <new-build-path.atria>
@@ -18,7 +22,7 @@ node tools/package.mjs build --core <main-checkout> --out <new-build-path.atria>
 
 These are local isolated Native/HTTP synthetic-provider checks. The UI check also mounts the compiled Native components in Playwright Chromium with the Core QuickJS worker bundle available. It verifies questionnaire, draft preservation, conversation, public drawer, save/restore and terminal presentation; production-model narrative quality and actual mobile operating systems remain untested. The new profile does not require a fixed profession, Second Death, family, long life or historical campaign completion. `--legacy` selects the retained v2 compiler; historical-only flags, `--v1-campaign` and `--fixture` remain explicit regression paths. Native frontend-model/browser exports run through their harness, not as standalone validation commands.
 
-The MCP smoke requires an installed plugin and the Core Node/dependency ABI (locally Node 22). It starts fresh temporary Atria data, calls the real stdio MCP for exact release capture/review/install/start, chat and save/restore, and observes the real shell-mounted game at mobile, landscape, reduced-height and desktop viewports. Fixture setup opens the Session and supplies local routes; Ready/begin uses the owning HTTP authority. Approvals are deterministic test-client form responses. Evidence goes to `build/mcp-3.0.0/`; no personal data, paid model, physical device or OS keyboard is used.
+The MCP smoke requires an installed plugin and the Core Node/dependency ABI (locally Node 22). It starts fresh temporary Atria data, calls the real stdio MCP for exact release capture/review/install/start, chat and save/restore, and observes the real shell-mounted game at mobile, landscape, reduced-height and desktop viewports. Fixture setup opens the Session and supplies local routes; Ready/begin uses the owning HTTP authority. Approvals are deterministic test-client form responses. Evidence goes to `build/mcp-3.0.1/`; no personal data, paid model, physical device or OS keyboard is used.
 
 The material below documents the retained releases and their historical acceptance.
 
@@ -116,8 +120,8 @@ Explicit `--legacy` validation retains the P5/P6/P7 regression matrix against th
 Exact tested/pushed HEADs and durable P9 reports/screenshots are in the same Package Record on docs. package remains independent; main is not merged into it.
 
 A focused route regression can be run with `--route-preflight-only` added to the
-MCP smoke command. It installs the exact 3.0.0 release in disposable data, checks
+MCP smoke command. It installs the exact 3.0.1 release in disposable data, checks
 that narrator-only configuration cannot start despite complete purpose bindings,
 then adds Intent resolver and verifies readiness. It uses MCP installation and
 route reads, the owning HTTP preflight, zero inference calls and no browser.
-Evidence goes to `build/mcp-route-preflight-3.0.0/`.
+Evidence goes to `build/mcp-route-preflight-3.0.1/`.

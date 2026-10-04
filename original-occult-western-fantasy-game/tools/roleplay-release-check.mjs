@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import {ROLEPLAY_VERSION_ID} from './roleplay-compile.mjs';
+import fs from 'node:fs/promises';
+import {ROLEPLAY_VERSION,ROLEPLAY_VERSION_ID} from './roleplay-compile.mjs';
 import {readContent,validateContent} from './content-check.mjs';
 
 export async function verify({load,native,manifest,sourceFiles,assetPayloads,archive,mode}) {
@@ -9,9 +10,15 @@ export async function verify({load,native,manifest,sourceFiles,assetPayloads,arc
   assert.equal(actual.size,expected.size);
   for(const [id,bytes]of expected)assert(actual.get(id)?.equals(bytes),'Release payload differs: '+id);
  }
- assert.equal(manifest.version,'3.0.0');assert.equal(manifest.packageVersionId,ROLEPLAY_VERSION_ID);
+ assert.equal(manifest.name,'异闻之城');assert.equal(manifest.entryPoints[0].displayName,'异闻之城：从凡人开始');
+ assert.equal(manifest.version,ROLEPLAY_VERSION);assert.equal(manifest.packageVersionId,ROLEPLAY_VERSION_ID);
  const contract=manifest.runtime.experienceContract,logic=JSON.parse(sourceFiles.get('runtime/logic.json'));
  const publications=logic.derivedPublications.flatMap(p=>p.effects);
+ for(const t of logic.transactions){const text=t.id==='story.begin'?t.receipt.projection.opening:t.receipt.projection.notice;assert(/[\u4e00-\u9fff]/.test(text),'Chinese receipt: '+t.id);}
+ const initial=contract.lifecycleRuntime.domains.find(d=>d.id==='roleplay_world').initial;
+ assert.equal(initial.routes.church.institutionName,'都城圣契共同体');assert.equal(initial.routes.academy.institutionName,'市立大学');
+ assert(!initial.conditions.notice.includes('Claim'));
+ for(const entry of manifest.knowledge.flatMap(k=>k.entries))assert(/[\u4e00-\u9fff]/.test(entry.content));
  const budgets={transactions:logic.transactions.length,playerPrimitives:logic.transactions.filter(t=>t.intent.expose).length,simulationJobs:contract.simulationRuntime.jobs.length,
   maximumStaticCommands:Math.max(...logic.transactions.map(t=>[...t.effects,...publications].filter(e=>e.kind==='app.command').length)),
   maximumStaticEffects:Math.max(...logic.transactions.map(t=>t.effects.length+publications.length))};
@@ -34,7 +41,11 @@ export async function verify({load,native,manifest,sourceFiles,assetPayloads,arc
  try{
   const svc=services(h);
   await assert.rejects(svc.packageInstaller.install(h.handle,archive),/permission grant/);
+  const previous=await fs.readFile(new URL('../releases/3.0.0.atria',import.meta.url));
+  const retained=native.inspectAtriaPackageContainer(previous);
+  await svc.packageInstaller.install(h.handle,previous,{grantedPermissions:['generation']});
   await svc.packageInstaller.install(h.handle,archive,{grantedPermissions:['generation']});
+  assert.deepEqual((await svc.packageInstaller.open(h.handle,retained.manifest.packageId,retained.manifest.packageVersionId)).manifest,retained.manifest);
   const opened=await svc.packageInstaller.open(h.handle,manifest.packageId,manifest.packageVersionId);
   assert.deepEqual(opened.manifest,inspected.manifest);
   let session=await svc.core.create(h.handle,{packageId:manifest.packageId,packageVersionId:manifest.packageVersionId,entryPointId:manifest.entryPoints[0].entryPointId});
@@ -45,6 +56,6 @@ export async function verify({load,native,manifest,sourceFiles,assetPayloads,arc
   for(const view of contract.informationRuntime.views)content.assertSafe(projectInformation(session,view.id,{purpose:view.exposure[0]}));
   const corrupt=Buffer.from(archive);corrupt[corrupt.length-1]^=1;
   assert.throws(()=>native.inspectAtriaPackageContainer(corrupt));
-  return {phase:5,profile:'open-roleplay-release',mode,version:manifest.version,packageVersionId:manifest.packageVersionId,archiveSha256:inspected.containerHash,archiveBytes:archive.length,compiledSourceBytes:[...sourceFiles.values()].reduce((n,b)=>n+b.length,0),budgets,data:content.metrics,checks:['Exact archive manifest, compiled Native files and Data assets match source','Independent v3 identity, immutable origins and required Core capabilities','Fixed static work and actual-send budget declarations','Native v3 bridge exposes only two public projections and fixed Host services','Permission refusal, real FS install/reopen, Ready and deterministic begin','Disclosure-safe Views and corrupted archive refusal']};
+  return {phase:5,profile:'open-roleplay-release',mode,version:manifest.version,packageVersionId:manifest.packageVersionId,archiveSha256:inspected.containerHash,archiveBytes:archive.length,compiledSourceBytes:[...sourceFiles.values()].reduce((n,b)=>n+b.length,0),budgets,data:content.metrics,checks:['Exact archive manifest, compiled Native files and Data assets match source','Independent v3 identity, immutable origins and required Core capabilities','Fixed static work and actual-send budget declarations','Native v3 bridge exposes only two public projections and fixed Host services','Permission refusal, retained 3.0.0/new 3.0.1 co-install without immutable-asset conflicts, real FS reopen, Ready and deterministic begin','Disclosure-safe Views and corrupted archive refusal']};
  }finally{await h.cleanup();}
 }
