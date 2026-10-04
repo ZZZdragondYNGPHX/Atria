@@ -1,3 +1,4 @@
+import { updateIllustrationSurface, releaseIllustrationSurface } from '../illustration-surfaces.js';
 import { createMediaResolver } from './media.js';
 import { createScriptSupervisor } from './script.js';
 import { createCanvasSurface } from './canvas.js';
@@ -255,7 +256,7 @@ export async function mountNativeFrontend(options) {
             ? document.createElementNS('http://www.w3.org/2000/svg', definition.tag) : document.createElement(definition.tag);
         const disposers = [], children = []; let proseText = null;
         const dispose = () => {
-            if (gone) return; gone = true; composing.delete(node); ++mediaRequest; mediaRelease?.(); --nodeCount; childInstance?.dispose(); children.forEach(child => child.dispose()); disposers.forEach(clean => clean());
+            if (gone) return; gone = true; releaseIllustrationSurface(node); composing.delete(node); ++mediaRequest; mediaRelease?.(); --nodeCount; childInstance?.dispose(); children.forEach(child => child.dispose()); disposers.forEach(clean => clean());
             if (instance.nodes.get(definition.id) === node) instance.nodes.delete(definition.id); node.remove(); instance.cleanups.delete(dispose);
         };
         instance.cleanups.add(dispose);
@@ -383,7 +384,7 @@ export async function mountNativeFrontend(options) {
             for (const [sink, expr] of Object.entries(definition.bindings ?? {})) {
                 const value = evaluate(expr, ctx);
                 if (sink === 'media') continue;
-                if (sink === 'prose') { const text = String(value ?? ''); if (proseText !== text) { renderSafeProse(node, text, { openExternal: options.hostActions?.openExternal }); proseText = text; } } else if (sink === 'text') { if (children.length) throw new TypeError('Text binding cannot replace declared children'); node.textContent = String(value ?? ''); } else if (sink === 'value') { if (!composing.has(node) && node.value !== String(value ?? '')) node.value = String(value ?? ''); } else if (['checked', 'disabled', 'hidden'].includes(sink)) node[sink] = Boolean(value);
+                if (sink === 'prose') { const text = String(value ?? ''); if (proseText !== text) { renderSafeProse(node, text, { openExternal: options.hostActions?.openExternal }); proseText = text; } updateIllustrationSurface(node, options.hostServices?.proseSurface?.(text, item)); } else if (sink === 'text') { if (children.length) throw new TypeError('Text binding cannot replace declared children'); node.textContent = String(value ?? ''); } else if (sink === 'value') { if (!composing.has(node) && node.value !== String(value ?? '')) node.value = String(value ?? ''); } else if (['checked', 'disabled', 'hidden'].includes(sink)) node[sink] = Boolean(value);
                 else node.setAttribute(sink, String(value ?? ''));
             }
             if (definition.message) node.textContent = localization.text(definition.message, Object.fromEntries(Object.entries(definition.messageArgs ?? {}).map(([key, expr]) => [key, evaluate(expr, ctx)])));

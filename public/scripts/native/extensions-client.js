@@ -9,7 +9,7 @@ export async function extensionsRequest(path, { method = 'GET', body, signal } =
     const payload = await response.json();
     if (!response.ok) throw Object.assign(new Error(payload.error || 'Extension request failed'), { status: response.status });
     if (method !== 'GET') for (const listener of listeners) {
-        try { listener({ path, id: payload.id }); } catch (error) { console.warn('[Atria Extensions] observer failed', error); }
+        try { listener({ path, id: payload.id, ...(path === '/official/illustration' ? { enabled: payload.value.enabled } : {}) }); } catch (error) { console.warn('[Atria Extensions] observer failed', error); }
     }
     return payload;
 }
@@ -23,6 +23,7 @@ export const nativeExtensionsClient = Object.freeze({
 });
 
 export function extensionFileUrl(plugin, path = plugin.entrypoint) {
+    if (plugin.id === 'atri_official_illustration' && plugin.kind === 'official' && path === 'official-illustration.js') return '/scripts/native/official-illustration.js';
     if (typeof path !== 'string' || !/^[A-Za-z0-9_./-]+$/.test(path) || path.split('/').some(part => !part || ['.', '..', '.git'].includes(part))) throw new TypeError('Invalid extension file path');
     return '/api/native/extensions/files/' + encodeURIComponent(plugin.id) + '/' + encodeURIComponent(plugin.revision) + '/' + path;
 }

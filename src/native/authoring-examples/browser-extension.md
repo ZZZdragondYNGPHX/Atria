@@ -98,3 +98,43 @@ is isolated from the other activations; edit/enable/refresh to retry.
 Startup happens after APP_READY and never holds the app's boot barrier.
 The existing shell legacy-recovery mode skips this extension Host. Dedicated
 Extensions management UI belongs to the next phase.
+
+## Illustration presentation SDK
+
+Atria ships the optional `atri_official_illustration` plugin. Enable it under
+Extensions → Plugins → 官方插件; its code comes from the product distribution,
+not an installed repository. Disabling it removes editing controls and owned
+selection highlights; Host-rendered illustrations and Session history remain.
+
+`sdk.illustrations` exposes the existing presentation authority:
+
+- `snapshot()`: copied `{revisionId, head, state}` for the open Session.
+- `selection()`: one exact canonical `{revisionId, messageId, variantId, start,
+  end, quote}` from a Host-registered prose surface, or `null`. The range must
+  stay inside one committed message, and may cross adjacent paragraphs.
+- `setSelectionMode(boolean)`: owned native-selection/highlight mode, cleared
+  automatically on disposal. It does not rewrite or wrap text nodes.
+- `onSurfacesChanged(fn)`: owned notification when Host prose surfaces update.
+- `settings.read()` / `settings.save(value, expectedRevision)`: authenticated,
+  CAS-protected drawing preferences in the existing Native resource store.
+- `command(name, input)`: `createAnnotation`, `updateAnnotation`,
+  `deleteAnnotation`, or `selectImageVersion`; forwards to IllustrationService.
+  Pass `expectedHead` from `snapshot()` to detect concurrent presentation edits.
+  Commands capture the Session/branch identity, preserve committed narrative,
+  and reject obsolete SDK results. History is read-only.
+
+`createAnnotation` accepts the selection fields and optional `draft`.
+`updateAnnotation` accepts `annotationId` and `draft`. The optional draft has
+`characters` (frozen character description, dynamic prompt and clothing),
+`scene`, editable `prompt`, and a `preset` containing style, quality,
+negative prompt and non-secret image parameters. These values are versioned
+with the annotation and participate in the existing save/import/restore closure.
+Global library changes do not replace saved card prompts or character snapshots.
+
+For custom Native Frontend Packages, bind committed conversation rows through
+`each="bridge.messages.data"` (or a typed recent-message collection), retain the
+row's `item.messageId`, and use `bind:prose="item.content"`. The Host verifies
+that identity and canonical content before registering a selection surface and
+rendering illustrations. Provisional generation text and arbitrary text-only
+bindings are not illustration surfaces. There is no arbitrary Package DOM
+mutation or requirement for the Package to import plugin code.

@@ -1,3 +1,4 @@
+import { defaultIllustrationSettings, assertIllustrationSettings } from '../../public/shared/illustration-plugin-contract.js';
 import { randomUUID } from 'node:crypto';
 import { NATIVE_RESOURCE_KINDS as K } from './contracts.js';
 import { getNativeDocument, hashNativeDocument, listNativeDocuments, putMutable, withNativeResourceWrite } from './repositories/common.js';
@@ -19,6 +20,18 @@ export function assertExtensionFiles(files, entrypoint) {
 }
 export class ExtensionsStore {
     constructor({ engine }) { this.engine = engine; }
+    async illustrationSettings(handle) {
+        const value = await this.engine.withTransaction(handle, tx => getNativeDocument(tx, key(handle, 'official', 'illustration'))) ?? defaultIllustrationSettings();
+        return { value, revision: hashNativeDocument(value) };
+    }
+    async saveIllustrationSettings(handle, input, expectedRevision) {
+        const value = assertIllustrationSettings(input); assertWritable();
+        return withNativeResourceWrite(handle, 'extensions', async () => {
+            if ((await this.illustrationSettings(handle)).revision !== expectedRevision) throw new ConflictError('atri_extensions_conflict');
+            await this.engine.withTransaction(handle, tx => putMutable(tx, key(handle, 'official', 'illustration'), value));
+            return this.illustrationSettings(handle);
+        });
+    }
     async settings(handle) {
         const value = await this.engine.withTransaction(handle, tx => getNativeDocument(tx, key(handle, 'settings', 'account'))) ?? defaults();
         return { value, revision: hashNativeDocument(value) };

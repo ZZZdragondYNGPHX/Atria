@@ -12,6 +12,8 @@ export function createNativeExtensionsRouter({ store = () => new ExtensionsStore
     const route = fn => async (req, res) => {
         try { res.set('Cache-Control', 'private, no-store'); await fn(req, res, store(), req.user.profile.handle); } catch (error) { res.status(error.name === 'ConflictError' ? 409 : error.name === 'NotFoundError' ? 404 : 400).json({ error: error.code ?? error.message }); }
     };
+    router.get('/official/illustration', route(async (_req, res, api, handle) => res.json(await api.illustrationSettings(handle))));
+    router.put('/official/illustration', route(async (req, res, api, handle) => res.json(await api.saveIllustrationSettings(handle, req.body.value, req.body.expectedRevision))));
     router.get('/settings', route(async (_req, res, api, handle) => res.json(await api.settings(handle))));
     router.put('/settings', route(async (req, res, api, handle) => res.json(await api.saveSettings(handle, req.body.value, req.body.expectedRevision))));
     router.get('/catalog', route(async (req, res) => res.json(listAuthoringReferences(req.query.query))));

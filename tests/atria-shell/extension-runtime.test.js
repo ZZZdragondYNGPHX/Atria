@@ -108,7 +108,7 @@ test('Host follows lifecycle/config/CRUD signals without polling, rejects stale 
     const runtime = { active: true, snapshot: { session: { sessionId: 's', packageId: 'w', packageVersionId: 'v' }, revision: { branchId: 'b' } } };
     const client = { list: jest.fn(async () => inventory) };
     const activate = jest.fn(api => { sdk = api; const cleanup = jest.fn(); cleanups.push(cleanup); return cleanup; });
-    const host = createNativeExtensionsHost({ document, runtime, client, readPreset: async () => ({ preset: { presetId } }),
+    const host = createNativeExtensionsHost({ document, runtime, officialSettings: { read: async () => ({ value: { enabled: false } }) }, client, readPreset: async () => ({ preset: { presetId } }),
         nativeApi: () => ({ isExperienceReady: () => true }), importModule: async () => ({ activate }),
         onLifecycle: (type, callback) => { lifecycle.set(type, callback); return () => lifecycle.delete(type); },
         onConfiguration: callback => { configuration = callback; return () => {}; }, onChanged: callback => { changed = callback; return () => {}; } });
@@ -139,7 +139,7 @@ test('nested Ready/load ordering and own command publication preserve the active
     const api = { isExperienceReady: () => ready, lifecycleCommand: async () => {
         lifecycle.get('SESSION_LOADED')(); return { committed: true };
     } };
-    const host = createNativeExtensionsHost({ document, runtime, client: { list: async () => [plugin()] },
+    const host = createNativeExtensionsHost({ document, runtime, officialSettings: { read: async () => ({ value: { enabled: false } }) }, client: { list: async () => [plugin()] },
         readPreset: async () => ({ preset: null }), nativeApi: () => api, importModule: async () => ({ activate }),
         onLifecycle: (type, callback) => { lifecycle.set(type, callback); return () => lifecycle.delete(type); },
         onConfiguration: () => () => {}, onChanged: () => () => {} });

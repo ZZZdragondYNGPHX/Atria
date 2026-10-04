@@ -1,3 +1,7 @@
+import { createNativeId } from '../../src/native/identity.js';
+import { illustrationContentHash } from '../../src/native/session-illustrations.js';
+import { emptyIllustrations } from '../../public/shared/native-illustration-contract.js';
+import { createHeadlessConversation } from '../../public/scripts/native/frontend/conversation.js';
 import { bridgeReceipt, bridgeDescriptorDigest } from '../../public/shared/native-frontend-bridge.js';
 import { describe, expect, test, jest } from '@jest/globals';
 import { JSDOM } from 'jsdom';
@@ -78,6 +82,32 @@ describe('Native Frontend v3 presentation', () => {
         await new Promise(resolve => setTimeout(resolve, 30));
         expect(callback).not.toHaveBeenCalled(); expect(storage.write).toHaveBeenCalledWith('prefs', 'compact', 'player', true);
         expect(() => handle.measure()).toThrow(/Stale/); expect(env.document.querySelector('[data-atria-frontend-boundary]')).toBeNull(); env.dom.window.close();
+    });
+    test('Package prose bindings register exact committed rows and keep illustrations after plugin disable', async () => {
+        const fixture = presentationFixture(), env = environment();
+        const content = '**Alice** at the window.\n\nBob waits.';
+        const entry = { messageId: createNativeId('message'), activeVariantId: createNativeId('variant'), role: 'assistant', content };
+        const revision = { revisionId: createNativeId('revision'), branchId: createNativeId('branch') };
+        const annotationId = createNativeId('annotation'), imageVersionId = createNativeId('imageVersion');
+        const state = emptyIllustrations();
+        state.annotations.push({ annotationId, anchor: { messageId: entry.messageId, variantId: entry.activeVariantId, revisionId: revision.revisionId, contentHash: illustrationContentHash(content), start: 2, end: content.length, quote: content.slice(2) }, selectedImageVersionId: imageVersionId, createdAt: 1 });
+        state.images.push({ annotationId, imageVersionId, assetId: createNativeId('asset'), width: 512, height: 768, alt: 'Window scene', prompt: '', negativePrompt: '', parameters: {}, createdAt: 1 });
+        editContract(fixture, contract => {
+            contract.state.ui.schema.properties.rows.items.properties.messageId = { type: 'string', maxLength: 128 };
+            contract.state.ui.schema.properties.rows.items.required.push('messageId');
+            contract.state.ui.initial.rows.forEach((row, index) => { row.messageId = index === 0 ? entry.messageId : ''; });
+            contract.state.ui.initial.rows[0].label = content;
+        });
+        const source = fixture.files.get('frontend/Main.aui').toString().replace('<span node-id="rowLabel" bind:text="item.label" />', '<div node-id="rowLabel" bind:prose="item.label" />');
+        fixture.files.set('frontend/Main.aui', Buffer.from(source));
+        const build = fixture.compile(), headless = createHeadlessConversation({ runtime: { snapshot: { session: { sessionId: createNativeId('session') }, revision, timeline: [entry], illustrations: state } } });
+        const runtime = await mountNativeFrontend({ ...env, entry: build.entry, loadBytes: async path => build.files.get(path), hostServices: headless });
+        const find = (root, selector) => root.querySelector(selector) ?? [...root.querySelectorAll('*')].filter(node => node.shadowRoot).map(node => find(node.shadowRoot, selector)).find(Boolean);
+        const prose = find(env.document, '[data-node-id="rowLabel"]');
+        expect(prose.querySelector('figure img').alt).toBe('Window scene'); expect(prose.querySelector('strong').textContent).toBe('Alice');
+        // The Host renderer works with no enabled extension or plugin UI.
+        expect(env.document.querySelector('[data-atri-extension]')).toBeNull();
+        runtime.dispose(); env.dom.window.close();
     });
     test('production dispatcher loads compiled bytes without calling World selectors or commands', async () => {
         const build = presentationFixture('component').compile(), env = environment(), calls = [];

@@ -11,6 +11,12 @@ export function createHeadlessConversation({ runtime, composer, generate, stop, 
         return value;
     };
     return Object.freeze({
+        proseSurface(content, item) {
+            const snapshot = current()?.snapshot;
+            const entry = snapshot?.timeline?.find(entry => entry.messageId === item?.messageId);
+            if (!entry || entry.content !== content || !['user', 'assistant'].includes(entry.role)) return null;
+            return { sessionId: snapshot.session.sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId, entry, state: snapshot.illustrations };
+        },
         messages: () => current()?.snapshot ? projectConversation(current().snapshot) : [],
         blocks: type => current()?.snapshot ? projectMessageBlocks(current().snapshot, type) : [],
         generation: () => ({ ...(current()?.generationProjection ?? { state: 'idle', text: '', error: '' }) }),

@@ -109,10 +109,11 @@ export function createNativeSessionRouter(getServices = services) {
         res.json(await sessionRepo.getIllustrations(handle, req.body.sessionId));
     }));
     const illustrationCommands = {
-        createAnnotation: ['revisionId', 'messageId', 'variantId', 'start', 'end', 'quote', 'expectedHead'],
-        deleteAnnotation: ['annotationId', 'expectedHead'],
+        createAnnotation: ['revisionId', 'messageId', 'variantId', 'start', 'end', 'quote', 'draft', 'expectedHead', 'branchId'],
+        updateAnnotation: ['annotationId', 'draft', 'expectedHead', 'branchId'],
+        deleteAnnotation: ['annotationId', 'expectedHead', 'branchId'],
         addImageVersion: ['annotationId', 'imageVersionId', 'assetId', 'width', 'height', 'alt', 'prompt', 'negativePrompt', 'parameters', 'expectedHead', 'branchId'],
-        selectImageVersion: ['annotationId', 'imageVersionId', 'expectedHead'],
+        selectImageVersion: ['annotationId', 'imageVersionId', 'expectedHead', 'branchId'],
     };
     for (const [command, allowed] of Object.entries(illustrationCommands)) {
         router.post('/illustrations/' + command, route(async (req, res, { sessionRepo }, handle) => {

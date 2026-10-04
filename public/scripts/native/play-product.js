@@ -1,7 +1,7 @@
 import { openHostExternal } from './frontend/external.js';
 import { createHeadlessConversation } from './frontend/conversation.js';
 import { renderSafeProse } from '../../shared/native-safe-prose.js';
-import { renderNarrativeIllustrations } from './illustration-renderer.js';
+import { updateIllustrationSurface, releaseIllustrationSurface } from './illustration-surfaces.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import {
     NATIVE_SESSION_LIFECYCLE,
@@ -199,6 +199,7 @@ export function mountAtriaPlayProduct({
             renderedSession = null;
             draftText = '';
             runtimeError.hidden = true;
+            for (const body of conversation.querySelectorAll('.atria-play-message__body')) releaseIllustrationSurface(body);
             conversation.replaceChildren();
             composerStatus.textContent = '';
             send.disabled = true;
@@ -220,6 +221,7 @@ export function mountAtriaPlayProduct({
 
         const sessionId = snapshot.session?.sessionId;
         if (renderedSession !== sessionId) {
+            for (const body of conversation.querySelectorAll('.atria-play-message__body')) releaseIllustrationSurface(body);
             conversation.replaceChildren();
             renderedSession = sessionId;
             following = true;
@@ -242,7 +244,7 @@ export function mountAtriaPlayProduct({
             existing.delete(id);
             const body = node.querySelector('.atria-play-message__body');
             if (body.dataset.canonicalText !== text(entry.content)) { renderSafeProse(body, text(entry.content), { openExternal: openHostExternal }); body.dataset.canonicalText = text(entry.content); }
-            renderNarrativeIllustrations(body, committedEntries.get(entry.messageId), snapshot.illustrations);
+            updateIllustrationSurface(body, { sessionId, branchId: snapshot.revision.branchId, revisionId: snapshot.revision.revisionId, entry: committedEntries.get(entry.messageId), state: snapshot.illustrations, controlsTop: () => composerComponent.getBoundingClientRect().top });
             if (!node.querySelector('[data-atria-message-blocks]')) {
                 const blocks = messageBlocks.filter(block => block.messageId === entry.messageId);
                 const blockRoot = documentRef.createElement('section'); blockRoot.dataset.atriaMessageBlocks = 'true';
@@ -259,7 +261,7 @@ export function mountAtriaPlayProduct({
             }
             if (conversation.children[index] !== node) conversation.insertBefore(node, conversation.children[index] || null);
         });
-        for (const node of existing.values()) node.remove();
+        for (const node of existing.values()) { releaseIllustrationSurface(node.querySelector('.atria-play-message__body')); node.remove(); }
         provisionalNode.hidden = !generating() || !provisional;
         provisionalNode.textContent = provisional;
         provisionalNode.dataset.generationState = generation.state;
@@ -396,6 +398,7 @@ export function mountAtriaPlayProduct({
             bodyObserver.disconnect();
             for (const unsubscribe of unsubscribers) unsubscribe();
             composer.removeEventListener('submit', submit);
+            for (const body of conversation.querySelectorAll('.atria-play-message__body')) releaseIllustrationSurface(body);
             product.remove();
         },
     });

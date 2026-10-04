@@ -101,3 +101,20 @@ export function canonicalProseSelection(root, range) {
     }
     return start === null ? null : { start, end, quote: mapping.content.slice(start, end) };
 }
+
+// Stable highlight ranges over existing text leaves; no wrapping/replacing prose.
+export function canonicalProseRanges(root, start, end) {
+    const mapping = sourceMappings.get(root), ranges = [];
+    if (!mapping) return ranges;
+    const walker = root.ownerDocument.createTreeWalker(root, 4);
+    let leaf;
+    while ((leaf = walker.nextNode())) {
+        const source = mapping.leaves.get(leaf);
+        if (!source || source.end <= start || source.start >= end) continue;
+        const range = root.ownerDocument.createRange();
+        range.setStart(leaf, Math.max(start, source.start) - source.start);
+        range.setEnd(leaf, Math.min(end, source.end) - source.start);
+        ranges.push(range);
+    }
+    return ranges;
+}

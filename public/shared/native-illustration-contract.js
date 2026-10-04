@@ -1,3 +1,4 @@
+import { assertIllustrationDraft } from './illustration-plugin-contract.js';
 // Presentation data only: an illustration never changes committed narrative.
 export const ILLUSTRATION_NAMESPACE = 'atri_illustrations';
 export const emptyIllustrations = () => ({ schemaVersion: 1, annotations: [], images: [] });
@@ -70,10 +71,10 @@ export function assertIllustrationState(value) {
     if (value.schemaVersion !== 1 || !Array.isArray(value.annotations) || value.annotations.length > 2048
         || !Array.isArray(value.images) || value.images.length > 8192) throw new TypeError('Invalid illustration state');
     const annotations = value.annotations.map(item => {
-        record(item, ['annotationId', 'anchor', 'selectedImageVersionId', 'createdAt', 'deletedAt']);
+        record(item, ['annotationId', 'anchor', 'selectedImageVersionId', 'createdAt', 'deletedAt', 'draft']);
         return { annotationId: id(item.annotationId, 'ann'), anchor: assertIllustrationAnchor(item.anchor),
             selectedImageVersionId: item.selectedImageVersionId === null ? null : id(item.selectedImageVersionId, 'imgv'),
-            createdAt: integer(item.createdAt), ...(item.deletedAt === undefined ? {} : { deletedAt: integer(item.deletedAt) }) };
+            createdAt: integer(item.createdAt), ...(item.draft === undefined ? {} : { draft: assertIllustrationDraft(item.draft) }), ...(item.deletedAt === undefined ? {} : { deletedAt: integer(item.deletedAt) }) };
     });
     const images = value.images.map(assertIllustrationImage);
     const byAnnotation = new Map(annotations.map(item => [item.annotationId, item]));

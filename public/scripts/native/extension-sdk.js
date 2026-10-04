@@ -2,7 +2,7 @@ import { extensionFileUrl } from './extensions-client.js';
 
 // User-enabled page code, not a sandbox. Ownership covers SDK resources and
 // registered cleanup; direct DOM/network/global side effects remain the author's responsibility.
-export function createExtensionSdk({ plugin, context, document: doc, root, isCurrent, nativeApi, subscribe, report = () => {} }) {
+export function createExtensionSdk({ plugin, context, document: doc, root, isCurrent, nativeApi, illustrationApi, subscribe, report = () => {} }) {
     const controller = new AbortController();
     const resources = new Set();
     let closed = false;
@@ -43,6 +43,24 @@ export function createExtensionSdk({ plugin, context, document: doc, root, isCur
             return structuredClone(result);
         };
     }
+    const illustrationCall = callback => async (...args) => {
+        assertCurrent();
+        const result = await callback(...structuredClone(args));
+        assertCurrent(); return structuredClone(result);
+    };
+    const illustrations = illustrationApi && Object.freeze({
+        snapshot: () => { assertCurrent(); return illustrationApi.snapshot(); },
+        settings: Object.freeze({ read: illustrationCall(illustrationApi.settings.read), save: illustrationCall(illustrationApi.settings.save) }),
+        toolbarInset: () => { assertCurrent(); return illustrationApi.toolbarInset?.(context) ?? 16; },
+        selection: () => { assertCurrent(); return illustrationApi.selection(context); },
+        setSelectionMode(enabled) { assertCurrent(); illustrationApi.selectionMode({ ...context, selectionOwner: plugin.id }, Boolean(enabled)); },
+        onSurfacesChanged(callback) { assertCurrent(); if (typeof callback !== 'function') throw new TypeError('Listener must be a function'); return own(illustrationApi.subscribe(() => invoke(callback))); },
+        command: illustrationCall((command, input) => {
+            if (!context.sessionId || context.historical) throw new Error('atri_extension_session_readonly');
+            return illustrationApi.command(context, command, input, controller.signal);
+        }),
+    });
+    if (illustrationApi) own(() => illustrationApi.selectionMode({ ...context, selectionOwner: plugin.id }, false));
     return {
         sdk: Object.freeze({
             apiVersion: 1, context: Object.freeze({ ...context }), signal: controller.signal,
@@ -75,6 +93,7 @@ export function createExtensionSdk({ plugin, context, document: doc, root, isCur
                 return own(() => clearInterval(id));
             } }),
             native: Object.freeze(native),
+            ...(illustrations ? { illustrations } : {}),
         }),
         dispose() {
             if (closed) return Promise.resolve();

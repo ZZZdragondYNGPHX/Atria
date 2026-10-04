@@ -3,7 +3,7 @@ import { extensionFileUrl } from './extensions-client.js';
 import { createExtensionSdk } from './extension-sdk.js';
 
 export function createExtensionRuntime({ document: doc, parent = doc.body, importModule = url => import(url),
-    nativeApi = () => null, subscribe = () => () => {}, onStatus = () => {}, isContextCurrent = () => true } = {}) {
+    nativeApi = () => null, illustrationApi, subscribe = () => () => {}, onStatus = () => {}, isContextCurrent = () => true } = {}) {
     const runs = new Map();
     const retirements = new Map();
     const statuses = new Map();
@@ -57,7 +57,7 @@ export function createExtensionRuntime({ document: doc, parent = doc.body, impor
                 const root = doc.createElement('div'); root.dataset.atriExtension = id; parent.append(root);
                 const run = { plugin, identity, live: true };
                 run.owner = createExtensionSdk({ plugin, context, document: doc, root, isCurrent: () => run.live && !disposed && isContextCurrent(context),
-                    nativeApi, subscribe, report: error => { if (run.live) status(plugin, 'error', error); } });
+                    nativeApi, illustrationApi, subscribe, report: error => { if (run.live) status(plugin, 'error', error); } });
                 runs.set(id, run); status(plugin, 'loading');
                 pending.push(launch(run, retirements.get(id)));
             }

@@ -1,3 +1,4 @@
+import { mountIllustrationSettings } from './illustration-settings-ui.js';
 import { el, action, field, feedback, confirmLibraryAction } from './library-ui.js';
 import { nativeExtensionsClient } from './extensions-client.js';
 import { nativeProductClient } from './product-client.js';
@@ -53,7 +54,7 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
     confirm = confirmLibraryAction, ...dependencies } = {}) {
     const root = el(doc, 'section', 'atri-extension-plugins', undefined, body);
     let kind = 'external', disposed = false, sequence = 0, builtins;
-    const tabs = extensionTabs(doc, root, [['external', 'External plugins'], ['local', 'Local scripts'], ['builtin', 'Built-in tools']], kind, async next => { kind = next; await load(); });
+    const tabs = extensionTabs(doc, root, [['external', 'External plugins'], ['local', 'Local scripts'], ['builtin', 'Built-in tools'], ['official', '官方插件']], kind, async next => { kind = next; await load(); });
     const tools = el(doc, 'div', 'atria-utility-workspace__actions', undefined, root);
     const content = el(doc, 'div', 'atri-extension-list', undefined, root);
     const runtimeStatus = el(doc, 'p', '', undefined, root); runtimeStatus.setAttribute('role', 'status');
@@ -72,6 +73,12 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
         for (const button of tabs.children) { const active = button.dataset.extensionTab === kind; button.classList.toggle('is-selected', active); button.setAttribute('aria-current', active ? 'page' : 'false'); }
         action(doc, tools, 'Refresh', load);
         try {
+            if (kind === 'official') {
+                content.replaceChildren();
+                builtins = mountIllustrationSettings({ document: doc, parent: content });
+                el(doc, 'p', '', '', builtins.root).dataset.extensionStatus = 'atri_official_illustration';
+                status(); return;
+            }
             if (kind === 'builtin') {
                 const mount = el(doc, 'div'); content.replaceChildren(mount);
                 const value = await mountPluginsUtility({ document: doc, body: mount, productClient, ...dependencies, builtinsOnly: true });

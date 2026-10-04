@@ -1,3 +1,5 @@
+import { OFFICIAL_ILLUSTRATION_ID } from '../../shared/illustration-plugin-contract.js';
+import { createIllustrationExtensionApi, illustrationSettingsClient } from './illustration-client.js';
 import { createExtensionRuntime } from './extension-runtime.js';
 import { nativeExtensionsClient, onExtensionsChanged } from './extensions-client.js';
 import { nativeSessionRuntime } from './session-runtime.js';
@@ -17,7 +19,7 @@ export function extensionHostContext(runtime, presetId, epoch, ready) {
 }
 
 export function createNativeExtensionsHost({ document: doc = globalThis.document, runtime = nativeSessionRuntime,
-    client = nativeExtensionsClient, readPreset = () => runtimeRequest('/prompt-scope'),
+    client = nativeExtensionsClient, officialSettings = illustrationSettingsClient, readPreset = () => runtimeRequest('/prompt-scope'),
     onLifecycle = onNativeSessionLifecycle, onConfiguration = onRuntimeConfigurationChanged, onChanged = onExtensionsChanged,
     nativeApi = () => globalThis.Atria?.getContext?.()?.getCapabilityApi?.('game-runtime'), importModule } = {}) {
     let disposed = false, sequence = 0, epoch = 0, presetId = null, plugins = [], refreshing = false;
@@ -27,7 +29,7 @@ export function createNativeExtensionsHost({ document: doc = globalThis.document
     const notify = () => { for (const observer of observers) { try { observer(); } catch { /* Observer only. */ } } };
     const context = () => extensionHostContext(runtime, presetId, epoch, Boolean(runtime.active && nativeApi()?.isExperienceReady?.()));
     let contextIdentity = JSON.stringify(context());
-    const host = createExtensionRuntime({ document: doc, nativeApi, importModule, onStatus: notify,
+    const host = createExtensionRuntime({ document: doc, nativeApi, illustrationApi: createIllustrationExtensionApi({ runtime, document: doc }), importModule, onStatus: notify,
         isContextCurrent: captured => !refreshing && JSON.stringify(captured) === JSON.stringify(context()),
         subscribe(type, callback) {
             const bucket = events.get(type); if (!bucket) throw new TypeError('Unknown Native lifecycle event');
@@ -40,9 +42,9 @@ export function createNativeExtensionsHost({ document: doc = globalThis.document
         host.suspend();
         refreshing = true;
         try {
-            const [inventory, scope] = await Promise.all([client.list(), readPreset()]);
+            const [inventory, scope, official] = await Promise.all([client.list(), readPreset(), officialSettings.read().catch(failure => ({ value: { enabled: false }, error: String(failure.message || failure) }))]);
             if (disposed || token !== sequence) return;
-            plugins = inventory; presetId = scope.preset?.presetId ?? null; error = null; refreshing = false;
+            plugins = [...inventory, { id: OFFICIAL_ILLUSTRATION_ID, name: 'Atria 插图', kind: 'official', enabled: official.value.enabled, revision: 's2', entrypoint: 'official-illustration.js', targets: { global: true, presets: [], works: [] } }]; presetId = scope.preset?.presetId ?? null; error = official.error ?? null; refreshing = false;
             contextIdentity = JSON.stringify(context());
             notify();
             // Module activation is never awaited by Session lifecycle publication.
@@ -63,7 +65,7 @@ export function createNativeExtensionsHost({ document: doc = globalThis.document
         for (const callback of events.get(type)) callback(Object.freeze({ type, context: Object.freeze(context()) }));
     }));
     const changed = () => { suspend(); void refresh(); };
-    unsubscribers.push(onConfiguration(changed), onChanged(event => { if (event.path !== '/settings') changed(); }));
+    unsubscribers.push(onConfiguration(changed), onChanged(event => { if (event.path === '/official/illustration' && plugins.find(item => item.id === OFFICIAL_ILLUSTRATION_ID)?.enabled === event.enabled) return; if (event.path !== '/settings') changed(); }));
     return Object.freeze({
         refresh, suspend,
         getStatus: () => ({ error, plugins: host.getStatus() }),

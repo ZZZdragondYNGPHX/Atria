@@ -1,3 +1,4 @@
+import { createIllustrationDraft, defaultIllustrationSettings } from '../../public/shared/illustration-plugin-contract.js';
 import { createHash } from 'node:crypto';
 import { createNativeId, IllustrationService, assertAtriaSave } from '../../src/native/index.js';
 import { ILLUSTRATION_NAMESPACE } from '../../public/shared/native-illustration-contract.js';
@@ -56,6 +57,36 @@ describe.each([['FS', makeTempFsEngineHarness], ['SQLite', makeTempSqliteEngineH
         const published = await f.core._publish(h.handle, view);
         expect(published.session.illustrationHead).toBe(head);
         expect(published.illustrations.annotations).toHaveLength(3);
+    });
+
+    test('card edits are presentation-only, CAS protected, saved and branch isolated', async () => {
+        const { draft } = createIllustrationDraft('Opening', defaultIllustrationSettings(), view.session.packageId);
+        const initial = await f.illustrations.createAnnotation(h.handle, f.sessionId, { ...selection(view), draft, expectedHead: null });
+        const annotationId = initial.state.annotations[0].annotationId;
+        const branchId = view.revision.branchId;
+        draft.prompt = 'hand edited'; draft.scene = 'at the window';
+        const edited = await f.illustrations.updateAnnotation(h.handle, f.sessionId, { annotationId, draft, expectedHead: initial.head, branchId });
+        await expect(f.illustrations.updateAnnotation(h.handle, f.sessionId, { annotationId, draft, expectedHead: initial.head, branchId })).rejects.toThrow('head_conflict');
+        const loaded = await f.core.load(h.handle, f.sessionId);
+        expect(loaded.revision).toEqual(view.revision); expect(loaded.variants).toEqual(view.variants);
+        const saved = await f.saveSystem.manualSave(h.handle, f.sessionId);
+        draft.prompt = 'newer edit';
+        await f.illustrations.updateAnnotation(h.handle, f.sessionId, { annotationId, draft, expectedHead: edited.head, branchId });
+        const exported = await f.saveSystem.exportSnapshot(h.handle, f.sessionId, saved.saveId);
+        expect(exported.save.closure.stateRecords.find(item => item.namespace === ILLUSTRATION_NAMESPACE).data.annotations[0].draft.prompt).toBe('hand edited');
+        const target = await makeHarness();
+        try {
+            const other = services(target); await other.packageInstaller.install(target.handle, await f.assetStore.readBlob(h.handle, view.session.packageContentHash));
+            const imported = await other.saveSystem.importSave(target.handle, exported.archive);
+            expect(imported.illustrations.annotations[0].draft.prompt).toBe('hand edited');
+        } finally { await target.cleanup(); }
+        const restored = await f.core.restoreSavePoint(h.handle, f.sessionId, saved.saveId, { expectedRevisionId: view.revision.revisionId });
+        expect(restored.illustrations.annotations[0].draft.prompt).toBe('hand edited');
+        draft.prompt = 'late original branch edit';
+        await f.illustrations.updateAnnotation(h.handle, f.sessionId, { annotationId, draft, branchId });
+        expect((await f.core.load(h.handle, f.sessionId)).illustrations.annotations[0].draft.prompt).toBe('hand edited');
+        await f.illustrations.deleteAnnotation(h.handle, f.sessionId, { annotationId, branchId: restored.revision.branchId });
+        await expect(f.illustrations.updateAnnotation(h.handle, f.sessionId, { annotationId, draft, branchId: restored.revision.branchId })).rejects.toThrow('deleted');
     });
 
     test('images stay with their annotation; deleting a mark preserves history and rejects cross-mark selection', async () => {
