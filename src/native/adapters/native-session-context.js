@@ -1,6 +1,6 @@
 import { compileNativeContextPlan } from '../../../public/scripts/native/context-compiler.js';
 import { createNativeSessionContextProvider } from '../model-prompt-runtime/context-providers.js';
-import { immutable } from '../model-prompt-runtime/execution-utils.js';
+import { immutable, effectiveOutputReserve } from '../model-prompt-runtime/execution-utils.js';
 
 // Host bridge to the existing Native selection authority. No Timeline/Knowledge scan here.
 export function createNativeSessionContextAdapter({ readSnapshot, options = {} }) {
@@ -13,7 +13,7 @@ export function createNativeSessionContextAdapter({ readSnapshot, options = {} }
             ...config, countTokens, providers: contextPorts,
             memoryEvidence: config.memoryEvidence ?? [],
             modelContextLimit: resolved.model.limits.contextTokens,
-            responseReserve: resolved.generation.output.maxTokens ?? resolved.model.limits.outputTokens,
+            responseReserve: effectiveOutputReserve(resolved),
         });
         return { source, plan };
     });

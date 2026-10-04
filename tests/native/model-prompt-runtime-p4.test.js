@@ -473,6 +473,8 @@ test('gateway wire compatibility cannot accept an action forbidden by canonical 
 test('an authority Turn accommodates both configured route deadlines and completes after the scheduler default', async () => {
     const h = await makeTempFsEngineHarness(); cleanups.push(() => h.cleanup());
     const f = await authorityTurnFixture(h, 'http://127.0.0.1:1/unused');
+    await f.seeded.persistence.saveConnectionProfile(h.handle, { ...f.seeded.connection, options: { minimumOutputTokens: 4096 } });
+    await f.seeded.persistence.saveModelProfile(h.handle, { ...f.seeded.model, limits: { contextTokens: 220000, outputTokens: 20000 } });
     for (const route of f.seeded.routes) await f.seeded.persistence.saveRuntimeRoute(h.handle, {
         ...route, policy: { ...route.policy, timeoutMs: 180000, maxFallbackAttempts: 0 },
     });
@@ -480,6 +482,7 @@ test('an authority Turn accommodates both configured route deadlines and complet
     f.host.providers['provider.openai-compatible'] = createHttpGenerationProvider({ fetchImpl: async (_url, options) => {
         requests++;
         const body = JSON.parse(options.body);
+        expect(body.max_tokens).toBe(4096);
         await new Promise(resolve => setTimeout(resolve, 25));
         const message = body.tools?.length ? { content: '', tool_calls: [{ id: 'selected', type: 'function',
             function: { name: 'atri_transaction_0', arguments: JSON.stringify(f.request.input) } }] } : { content: 'Narrated outcome.' };

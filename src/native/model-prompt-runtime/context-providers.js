@@ -1,5 +1,5 @@
 import { assertRequestContextPlan } from './contracts.js';
-import { immutable } from './execution-utils.js';
+import { immutable, effectiveOutputReserve } from './execution-utils.js';
 import { promptError } from './prompt-values.js';
 
 // Host readers return already selected facts. These providers neither discover facts
@@ -10,7 +10,7 @@ function createContextProvider(kind, readContext) {
         async buildRequestContextPlan(request, resolved) {
             const value = await readContext(immutable(request), resolved);
             if (value.source?.kind !== kind) promptError('context_source');
-            const reservedOutputTokens = resolved.generation.output.maxTokens ?? value.budget?.reservedOutputTokens;
+            const reservedOutputTokens = effectiveOutputReserve(resolved, value.budget?.reservedOutputTokens);
             const maxTokens = Math.min(value.budget?.maxTokens ?? Infinity, resolved.model.limits.contextTokens - reservedOutputTokens);
             return immutable(assertRequestContextPlan({
                 schemaVersion: 1, requestId: request.requestId, source: value.source,

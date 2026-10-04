@@ -37,6 +37,15 @@ export class GenerationError extends Error {
     }
 }
 
+export function effectiveOutputReserve(resolved, fallback = resolved.model.limits.outputTokens) {
+    const floor = resolved.connection?.providerAdapter === 'provider.openai-compatible'
+        ? resolved.connection.options?.minimumOutputTokens ?? 0 : 0;
+    if (!Number.isSafeInteger(floor) || floor < 0) throw new GenerationError('generation_adapter_control_unsupported');
+    const reserve = Math.max(resolved.generation.output.maxTokens ?? fallback, floor);
+    if (!Number.isSafeInteger(reserve) || reserve < 1 || reserve > resolved.model.limits.outputTokens) throw new GenerationError('generation_adapter_output_budget');
+    return reserve;
+}
+
 // Only adapters may classify a failed send as eligible for route fallback.
 export class ProviderFailure extends Error {
     constructor(kind) {
