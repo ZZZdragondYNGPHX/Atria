@@ -2,7 +2,7 @@
 
 ## Phase 1 定案与证据基线
 
-2026-10-04完成 Phase 1 源码契约核对及 Phase 2 Core 最小支持；下方审计表保留 Phase 1 基线，Phase 2 已实施接口见末节。游戏内容与前端设计仍待接入。核对基线：任务分支 `d7be6f1abff4d9d756f2dfa24c5492104e72aa75`、package `48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e`、main `c8d2d0e0c11c283ade2fa3c730740a0dc480c746`。精确实施历史见唯一 Record。
+2026-10-04完成 Phase 1 源码契约核对及 Phase 2 Core 最小支持；下方审计表保留 Phase 1 基线，Phase 2 已实施接口见末节。游戏内容已在 Phase 3 接入，真实前端留 Phase 4。核对基线：任务分支 `d7be6f1abff4d9d756f2dfa24c5492104e72aa75`、package `48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e`、main `c8d2d0e0c11c283ade2fa3c730740a0dc480c746`。精确实施历史见唯一 Record。
 
 路径标记 `Package:` 相对游戏根 `original-occult-western-fantasy-game/`，`Core:` 相对 main 根。下面的函数、字段和限制均从对应代码读取；设计中的新增契约名称尚未存在。继续复用 SessionCore、Lifecycle、authority transaction、Information、Simulation、Task 和 Native frontend，不另建游戏执行器、数据库或调度权威。
 
@@ -124,7 +124,7 @@ Phase 2完成必须以隔离数据证明：开始0发送且原子/幂等；跨�
 
 ## Phase 2 已实施接口（2026-10-04）
 
-Core 辅助分支为 `refactor/open-roleplay-core`；精确 tested HEAD 以本任务唯一 Record / HANDOFF 为准。上方源码映射表保留 Phase 1 的 main 基线审计事实；A/B/C 已在辅助分支实现，main 和游戏资产尚未接入。
+Core 辅助分支为 `refactor/open-roleplay-core`；精确 tested HEAD 以本任务唯一 Record / HANDOFF 为准。上方源码映射表保留 Phase 1 的 main 基线审计事实；A/B/C 已在辅助分支实现；Phase 2 结束时 main 和游戏资产尚未接入，Phase 3 的消费见末节。
 
 三个能力都以 ExperienceContract 的 required `@1` 声明启用，且要求 required `authority-transaction@1`。对应声明如下；没有声明的旧 Package 沿用原执行与保存路径。
 
@@ -175,3 +175,16 @@ Core 辅助分支为 `refactor/open-roleplay-core`；精确 tested HEAD 以本�
 终局依据声明的 authority outcome，文本和 app.command 无删档权。死亡 HEAD 的 CAS 是先行封锁点，随后持久 tombstone、取消该局其它未 finalizing 的 Task / frontend epoch，再隔离清理该局 Session / Branch / Timeline / state / revision / SavePoint。tombstone 不在保存闭包中，删除该局后仍有效。HEAD→墓碑间中断由当前死亡 state 恢复；墓碑后部分删除和 root 删除后完成标记中断均由 `/run` / `runStatus` 继续清理。死亡 bridge 动作返回已提交 receipt，后续 epoch 失效；清理后的重试读取终局状态，不重建旧叙述或旧局。
 
 此实现遵循现有 FS 单服务进程写入边界；独立进程恢复已测，不承诺多进程同时写 FS。回环 HTTP 合成 provider 用于发送计数与失败测试，不代表生产模型质量或 OS / 跨宿主防作弊。Phase 3 必须使用明确 tested Core，接入真实 Package 后再验证游戏条件和内容。
+
+
+## Phase 3 已实施 Package 接口（2026-10-04）
+
+精确 tested Package 为 `2aa07d7adfdfd51552d82545d3457dd003fe6675`，Core 沿用 `5f9e8feb0c7166b45e30c330104a7444beb7692e`。默认 `tools/package.mjs validate|preview --core <tested-Core>` 编译新 profile；`--legacy`、历史 only flags、`--v1-campaign`、`--fixture` 保留显式历史编译路径，新素材不进入旧 profile Data 载荷。3.0.0 的 PackageVersion 为 `pkgv_d5f1d44b7a9f4edc7266bf4d547a3112`，packageId 不变；正式构建/发布留 Phase 5，本阶段仅内存容器。
+
+实际字段与原语的唯一游戏说明在 `Package:runtime/ROLEPLAY.md`；选择素材/schema 为 `data/roleplay.foundation.json`、`tools/roleplay-schema.mjs`。`story.begin` 输入为 mode/name/appearance/residence/livelihood/attachment/contact/aim；五维素材分别组合，无笛卡尔 entryPoints。Timeline 写预写引子，选中背景/关系片段同次写入状态与公共 overview，P4 从这些已提交值展示。
+
+为满足真实 expanded budget，把私有 proposal/schedule、动态槽和其它逻辑组聚合于 `roleplay_world.main`，角色于 `roleplay_player.main`。内部 progress 在同次发布中生成受保护 `play_progress.main.effectiveTurns`，Core 预算只读这个已声明 scalar；资料、纯表达和后台不增。公开绑定只有派生 `roleplay_summary`/`roleplay_visible`，不绑定原始 world aggregate 或模型收件箱。动态 public index 只包含已推广公共字段及空槽占位，空/远方 ID 不可交互。
+
+八个静态槽写入分支共用一个 `world.reconcile` job，与确定性日费/维护/追查一起处理；另一个 job 为 `world.create`。原逐槽 job 设计会在每次扫描中重复消耗私有读取，超过 16-read 展开上限，因此改为同一静态事务内的逐槽分支。模板、稳定身份、同 scope、单 pending 和 Task-result 一次 CAS 约束保持。sourceBatchId/sourceRevision 可关联真实 queue input 的 batchId/batchRevision 与 Core Task invocation；模型不能选择写入槽或覆写旧身份。十九个事务/两个 jobs，所有分支加 publication 最大 23 App Commands / 23 effects，实际运行最大前台 prepared readGrants 11 / appCommands 7 / effects 8。
+
+生命周期/免费开始、两个机构闭环、个人载体/缩窄条件的实际管辖、反噬/死亡、具名证据追查/拘捕/求助、八槽发布/交互/保存、生成失败/额度/stale/普通回退、真实 Host 后台派发及铁人 current resume/终局清理已用隔离 FS 与回环合成 provider 验证。原 fixture 回归通过；Core 无新产品改动。生产模型、真实 Native 页面、浏览器、其它数据库和新发布不属于本次通过证据。详情和原始报告见同一 Record Phase 3。

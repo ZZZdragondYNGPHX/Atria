@@ -60,3 +60,10 @@
 ESLint 对全部 23 个变更 JavaScript 文件无错误/警告，git diff --check 通过。执行环境 Node v22.23.3，运行包的官方 SHA-256 已核验；Core/tests 锁定依赖通过 npm ci 安装，SQLite 原生依赖已构建。无真实个人档案、旧发布或用户数据被用于删档测试。
 
 未执行 MySQL/PostgreSQL、远端 CI、生产模型、游戏/Package新 profile、浏览器、Android、屏幕阅读器或新版本发布。编译 Native bridge / 路由测试证明 Core 接口语义，真实产品前端与游戏闭环仍按后续阶段验收。
+
+
+## Phase 3 已执行证据
+
+默认新 profile 校验使用真实 FS 安装、Session/authority/Task/Save、回环合成 HTTP 和同一 tested P2 Core。九组闭环、19 个事务/17 个公开原语、两种起点、两机构、个人 Claim/反噬/死亡、因果追查与拘捕限制、八槽稳定身份/模板核验、生成失败与发送额度、普通/铁人恢复均有实际断言。恶意 Task 额外 Claim 字段在 publication 前拒绝；无效批次与 kind/template 消费收件箱，不发布实体。大部分负向场景控制自动配送时机并显式驱动真实 outbox；另有未替换 queueSimulation 的前台→后台自动派发检查。发送次数是 provider 请求计数，非成功次数。
+
+原始 runtime/fixture/content 报告及精确 HEAD、Node 版本、命令、限制见唯一 Record Phase 3。旧 fixture 回归仅确认受影响的入口与历史声明兼容；不以它或旧长期 soak 替代新闭环。原发布/参考 SHA-256 未变。未测试生产模型自由意图质量、真实 Native 页面/浏览器、SQLite/MySQL/PostgreSQL、Android、屏幕阅读器或新版本发行；Core P2 的存储/清理风险证据仍保留其原范围。

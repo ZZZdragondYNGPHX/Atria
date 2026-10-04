@@ -67,3 +67,12 @@ Phase 2是正式单阶段：A/B/C全部实现并通过对应风险检查，更�
 A/B/C 已在 `refactor/open-roleplay-core` 实施，精确 tested HEAD 见唯一 Record / HANDOFF。实际新增检查为 `tests/native/run-contract-p2.test.js`、`run-policy-p2.test.js`、`generation-budget-p2.test.js`；配合上表相关的旧 authority、simulation、Session、保存、HTTP、Native bridge 和存储检查，23 个套件 / 390 项通过，所有变更 JavaScript 的 ESLint 与 diff 空白检查通过。验证使用隔离 FS / SQLite 和回环合成 HTTP provider，包含真实 Node 子进程重开；未启动 MySQL/PostgreSQL 服务，未运行远端 CI、生产模型或浏览器/设备。
 
 辅助 Core 保持独立待集成，main 仍为原审计基线；本阶段按分阶段交付保留辅助分支，主线集成留在后续阶段；额外数据库检查按实际风险在本地决定，不默认追加 CI 或更广验证。Phase 3 使用 HANDOFF 的精确 tested Core checkout，先核对 refs，按玩家体验/世界超凡与已实施 A/B/C 编写游戏默认 compiler、声明和内容，并执行该阶段的编译与局部闭环。Phase 2 本轮到此停止，不做 Phase 3/4 或新版本发布。
+
+
+## Phase 3 完成与 Phase 4 入口
+
+默认 Open Lives 内容 profile 已在 `2aa07d7adfdfd51552d82545d3457dd003fe6675` 完成；精确 Core 仍为 `5f9e8feb0c7166b45e30c330104a7444beb7692e`，主线未集成。新 schema、五题单次开始、生活/机构/个人路径、八个动态身份与两个有界 job、模式/预算声明和局部验证工具均已落入目标游戏。默认生成的 Native shell 用于内容编译验收；实际问答、故事阅读流、草稿建议、抽屉和保存/终局显示留 Phase 4。旧发布和参考 hash 保留，未创建 3.0.0 `.atria`。
+
+本地检查为 `content-check.mjs`、默认 profile 的 `package.mjs validate --core <tested-Core>` 及显式 `--fixture`；九组真实 FS/Native/回环 HTTP 内容闭环通过，旧 fixture 既有条件/typed bridge/有限模拟回归通过，未跑历史 century/regional soak、远端 CI 或页面。静态槽推广聚合设计和实际绑定入口见 runtime-contracts Phase 3 / 游戏 `runtime/ROLEPLAY.md`，精确报告在唯一 Record。
+
+下一次只执行 Phase 4。先读 HANDOFF → index → frontend/player-experience/已实施 runtime-contracts → verification UI 部分；按已归档 HTML/TXT 与冻结视觉护栏接入新默认 compiler/profile，不把 placeholder 或旧 Inquiry 页面当新 UI。继续原游戏任务分支/唯一 Record/HANDOFF，完成 Phase 4 最小相关本地验证后提交推送并停止，不提前推进 Phase 5。

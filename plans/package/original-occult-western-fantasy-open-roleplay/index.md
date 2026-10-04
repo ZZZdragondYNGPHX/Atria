@@ -5,8 +5,8 @@
 - Implementation branch: `refactor/original-occult-western-fantasy-open-roleplay`
 - Base: `package@48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e`
 - Core baseline: `main@c8d2d0e0c11c283ade2fa3c730740a0dc480c746`
-- Status: Phase 2 Core A/B/C complete on auxiliary branch; Phase 3 pending
-- 当前阶段：Phase 2 Core最小支持已完成并停止；下一阶段仅执行 Phase 3 游戏内容，使用 HANDOFF 的明确 tested Core。
+- Status: Phase 3 content complete; Phase 4 pending; Core integration pending
+- 当前阶段：Phase 3 游戏内容已完成并停止；下一阶段仅执行 Phase 4 真实 Native 前端，使用 HANDOFF 的明确 tested Core / Package。
 - 日期：2026-10-04。
 
 ## 目标与问题
@@ -52,10 +52,10 @@ Primary Workspace 为 package，因为目标是这个游戏。用户明确要求
 
 ## 设计状态与本轮边界
 
-已冻结产品方向及视觉护栏；具体问答、背景素材、间隔参数、惩罚参数由执行者设计。Phase 1已补技术契约与接口设计；最终页面细节留Phase 4，不能把设计冒充已实现。游戏自由动作与新机构内容尚待接入；Core 铁人支持以 Phase 2 辅助分支的实际接口和证据为准。
+已冻结产品方向及视觉护栏；Phase 3 已编写问答/背景素材、生活与超凡原语、更新及处罚规则，并完成本地内容闭环；最终页面细节和 Native 问答/输入交互留 Phase 4。Core 铁人支持以 Phase 2 辅助分支的实际接口和证据为准。
 
 Phase 1已定位实际authority resolver/准备与提交、动态提案反应、保存闭包和Native桥接；确定Core A无模型开始、B持久续接/发送预算、C铁人模式与死亡清理。Package拥有问答、生活原语、超凡路径、8槽动态内容及有限世界策略。具体设计权威见对应模块，不复制到index。
 
-游戏资产仍停在参考资产HEAD；Core A/B/C 已在 main 派生的 `refactor/open-roleplay-core` 实施，23 个 FS/SQLite 等相关套件、390 项检查和变更文件 ESLint 通过。main 未集成辅助分支，MySQL/PostgreSQL、远端 CI、生产模型与真实 UI 未验证；游戏规则、前端重构和新发布仍待后续阶段。实际接口以 runtime-contracts 的 Phase 2 节为准，精确 tested HEAD / 命令 / 限制见同一 Record / HANDOFF。更新推送后停在 Phase 2。
+游戏内容已在原任务分支 `2aa07d7adfdfd51552d82545d3457dd003fe6675` 编译为默认 Open Lives 3.0.0 profile，19 个事务/17 个玩家原语、2 个模拟 job；九组真实 Native/回环合成 HTTP 闭环及旧 fixture 本地回归通过。Core A/B/C 沿用 `5f9e8feb0c7166b45e30c330104a7444beb7692e`，main 未集成。实际接口以 runtime-contracts 的 Phase 2/3 节和游戏 `runtime/ROLEPLAY.md` 为准；精确命令/限制见同一 Record / HANDOFF。当前停在 Phase 3，真实前端、生产模型与新发布/最终集成待后续阶段。
 
 用户 2026-10-04 最新 AGENTS.md 指令替代此前提供的 AGENTS.md 指令：每阶段及任务完成时，只在本地执行最小相关验证。详见同一 Record Phase 2 / HANDOFF；远端 refs 核对只属于发布确认，不启动/等待/依赖远端 CI。

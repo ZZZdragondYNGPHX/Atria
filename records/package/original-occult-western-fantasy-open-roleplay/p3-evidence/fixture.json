@@ -1,0 +1,61 @@
+{
+  "packageHead": "d7be6f1abff4d9d756f2dfa24c5492104e72aa75",
+  "packageDirty": true,
+  "coreHead": "5f9e8feb0c7166b45e30c330104a7444beb7692e",
+  "mode": "validate",
+  "checks": [
+    "actual FS Package install",
+    "reopen / required authority-transaction@1 runtime resolution",
+    "pre-Ready transaction rejected",
+    "Ready / bootstrap initialization / derived publication / repeat-Ready idempotence",
+    "all five Views / two Graphs resolve; hidden seed excluded from observation and context",
+    "diagnostic private candidate / safe receipt / zero preparation publication",
+    "over-limit policy / broken static target / missing Task resource / undeclared Agenda decision rejected",
+    {
+      "phase": "P4",
+      "resources": 41,
+      "assets": 240,
+      "bytes": 490327,
+      "largestResourceBytes": 78485,
+      "counts": {
+        "canon_fragment": 12,
+        "canon_index": 1,
+        "institutional_case_pattern": 10,
+        "signature_case": 8,
+        "actor_a": 12,
+        "actor_b": 30,
+        "anomaly": 8,
+        "artifact_template": 10,
+        "claim_archetype": 32,
+        "claim_primitive": 8,
+        "claim_seed": 16,
+        "tradition": 4,
+        "district": 6,
+        "location": 30,
+        "historical_event": 1,
+        "institution": 10,
+        "public_knowledge": 6,
+        "matter_hook": 10,
+        "civic_office": 4,
+        "origin": 7,
+        "prior_life": 8,
+        "faith": 7
+      },
+      "staticPublicationReadGrants": 7,
+      "staticPublicationAppCommands": 10,
+      "negativeChecks": 15,
+      "initialMaterialization": "P3 fixture only; no P4 entity copies",
+      "knowledge": "Six installed public entries; no active fixture binding"
+    },
+    "P2 nine real transaction preparations / same-anchor retry / closed inputs; 80 actual non-Uncertain + 75 Uncertain preparations across ordinals/bands; exhaustive 600 eligibility-risk-Fortune cases, non-Uncertain effects and safe-result invariance",
+    "nine fixed typed bridge actions (one CAS each, zero-mutation typed failure/retry) plus local HTTP resolver + exact Narrator Task; failure zero publication, same-process retry and idempotent finalization",
+    "P3 actual FS two-day install/Ready simulation; Cold/Warm deterministic phases, rent/hearing/clinic, conditional Cold blocking/stale cancellation, actual foreground-to-background HTTP dispatch, one bounded HTTP Agenda failure/retry, atomic intent/filing/Entity/projection acceptance, no hidden-input leak, committed replay, real save-container export/import to fresh FS, recurring days 3–30, imported-save third-day continuation, no repeated clinic/deliberation, unchanged expanded budgets, day-31 atomic horizon rejection"
+  ],
+  "dataResources": 40,
+  "tasks": 4,
+  "limits": [
+    "FS integration only",
+    "No hosted model or UI execution",
+    "Thirty-day bounded synthetic accounting, at most two days per command; no full gameplay or cross-process uncommitted selection claim"
+  ]
+}

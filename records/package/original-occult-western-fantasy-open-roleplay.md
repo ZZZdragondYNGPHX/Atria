@@ -2,7 +2,7 @@
 
 - Task ID: refactor/original-occult-western-fantasy-open-roleplay
 - Primary Workspace: package
-- Status: Active; Phase 1 complete, Phase 2 pending
+- Status: Active; Phase 3 complete, Phase 4 pending
 - Plan: plans/package/original-occult-western-fantasy-open-roleplay/index.md
 - Implementation branch: refactor/original-occult-western-fantasy-open-roleplay
 
@@ -154,6 +154,56 @@ MySQL/PostgreSQL 本地服务未启动；最终明确禁用这两套 harness，�
 
 下一步只执行 Phase 3 游戏内容：核对远端和工作树，按 index 的 Phase 3 路由读取玩家体验/世界超凡/runtime-contracts 已实施接口与 staging/verification 游戏部分；在原 package 任务分支建立新默认 compiler/profile、开始组合、生活原语、机构/非法路径与受控动态槽位，使用精确 tested Core 验证。本阶段更新同一 HANDOFF / Record、提交推送后停止，不进入 Phase 3/4。
 
+## Phase 3 Package 体验与内容
+
+- Date: 2026-10-04
+- Start docs HEAD: 58e839fe506dca3f3e8d48a88e2b5ba1a2221a88
+- Start Package task HEAD: d7be6f1abff4d9d756f2dfa24c5492104e72aa75
+- End / tested Package task HEAD: 2aa07d7adfdfd51552d82545d3457dd003fe6675
+- Tested Core HEAD: 5f9e8feb0c7166b45e30c330104a7444beb7692e（无新增产品改动；main 集成 pending）
+- Stable package / main: 48b1d97fa660ab5fdd5e2a0c1e50c5e91a57148e / c8d2d0e0c11c283ade2fa3c730740a0dc480c746
+- Status: Complete; stop before Phase 4
+
+### 已完成
+
+按唯一 HANDOFF/index 的 P3 路由核对远端与工作树，使用精确 P2 Core，在原 package 任务分支内完成九个相关资产/工具文件的提交。旧 manifest/runtime fixture、旧 frontend 源码及设计参考、1.0.0/2.0.0 发布保留。Core 的用户 AGENTS.md dirty，以及 docs 的 README/WEB-PERSISTENT-PROMPT/templates 四份既有 dirty 保留，未纳入本阶段提交。
+
+新增 `data/roleplay.foundation.json` 与 closed schema：五题普通成年处境、姓名/个人修饰边界、guest+solo 互斥、两日资源/工具、单一真实关系或无关系、六个普通公开地点与邻接路线、两机构见证载体/Anchor/Price、受限工程选项及三种动态模板。开始不授核验执照、家族委托或力量；预写引子及选中背景/关系素材和实际资源同次提交。开始输入更改/模式冻结/幂等均走 Core 已实施入口。
+
+`roleplay-compile.mjs` / `roleplay-world-compile.mjs` 接管默认内容 profile，保留显式历史编译路径。新版本 3.0.0 / `pkgv_d5f1d44b7a9f4edc7266bf4d547a3112`，同 packageId；19 个声明式事务，其中 17 个公开玩家原语。生活、自由表达、工作、交流、邻接旅行、休息、关注、经历收束/继续、两机构完整超凡路线和个人载体/缩窄管辖均使用 Core 权威。Seed/载体/Price/成长不来自模型 patch；真实后果包含收入/耗时、疲劳/伤、维护费/违约、能力失效、署名报告/核实/传唤/重复实践后的拘捕及监督补救、明确严重条件下的死亡。
+
+私有收件箱/调度及世界逻辑组为有界 aggregate，安全 summary/index 为受保护派生输出。有效轮数与 canonical 分钟同次推进并原子发布给 Core 的 protected scalar。八个 never-recycled 槽保存稳定 ID、来源/修订/引入轮数与状态；候选只有公开名称/描述、当前 parent 和模板，实际排队身份/输入/clock anchor 由 Core 核验。推广、收件箱消费和公开引入一次 CAS；满额停止引入，既有 person/place/affair 能实际交流/拜访/完成工作并保留身份。
+
+为满足真实模拟每次扫描的 read budget，将原设计的八个逐槽 job 聚合为一个含八静态写分支的 `world.reconcile`，同时处理确定性日费/维护/追查；另一个 job 是单 pending `world.create`。全部静态分支和 publication 最大 23 App Commands / 23 effects；不用互斥减去声明开销。hot/warm/cold 为 4/8/24 加重逢准入，最多三个已知关联对象合批；实际 send quota 由 P2 Core 控制，失败与 restore 不退额度。详细接口单源在游戏 `runtime/ROLEPLAY.md` 和 Plan runtime-contracts Phase 3。
+
+### 本地验证与原始证据
+
+Node v24.21.0；游戏/Core 依赖沿用既有独立 checkout。执行：
+
+```bash
+node tools/content-check.mjs
+node tools/package.mjs validate --core /home/henry/Projects/Atria-core
+node tools/package.mjs validate --fixture --core /home/henry/Projects/Atria-core
+```
+
+默认 profile 最终在上述 **clean Package HEAD / 精确 Core HEAD** 上通过九组真实闭环，实际本地合成 provider 请求 **175 次**，测得最大前台 prepared readGrants 11 / appCommands 7 / effects 8。Fortune run identity 为新临时局，因此重跑总发送数可随实际实践/死亡轮数变化；窗口/单次限制的断言固定。原始 [runtime.json](original-occult-western-fantasy-open-roleplay/p3-evidence/runtime.json) 保留运行器自身 HEAD/dirty 元数据。
+
+覆盖无模型/单 CAS/幂等开始、选中素材与资源一致、独行不造关系、无效组合/输入零状态改变、两机构资格与明确代价/窄运用/重复不刷成长/违约/失效/维护/收束、一个自然语言多意图只裁定第一个行动、纯表达与 impossible 不增轮、Narrator 失败不发布且保同 receipt 重试。世界检查实际交付 Task 到 private inbox 并推广，拒绝伪造 batch/kind-template 及额外 Claim 字段，八槽填满不重用、三类动态交互、实际 ordinary save-container 新 FS import、hot/warm/cold、后台两次失败用尽窗口/再次请求不发送、stale 取消和 ordinary restore 不退款。负向/额度检查控制自动配送时机并调用真实 executeLifecycle；独立实测原 queueSimulation 自动路径，前台一次 CAS 后后台再一次 CAS。
+
+非法路径实际取得个人 Claim，缩窄后离开 practice place 不可运用；错误力量族无资格。失败/partial 造成伤，知情严重重复可真实死亡；署名证据推进核实/传唤，重复实践后拘捕限制可阻挡普通工作，正式求助保留证据并改变限制。ordinary 从真实死亡恢复早期 SavePoint；ironman 服务端回退拒绝，真实 schema-2 resume 新 FS import 保持当前状态/HEAD；权威死亡完成该局 cleanup，旧 resume 不可复活。
+
+显式旧 fixture 校验也通过其既有条件/五处境 Fortune、typed bridge、有限模拟/后台及保存回归；[fixture.json](original-occult-western-fantasy-open-roleplay/p3-evidence/fixture.json) 原样记录运行时父 HEAD+dirty=true（实施中的工作树），相应历史分支源码随后包含于 End HEAD。没有为元数据重写报告或重复跑无关旧长期检查。authoring schema / 240 个既有定义和 41 个读取资源的检查见 [content.json](original-occult-western-fantasy-open-roleplay/p3-evidence/content.json)；历史 profile 载荷排除新素材，保留其 40 个 Data resources。
+
+新增/修改 JS 通过 Node 语法与实际编译/运行，新增自有文件通过 git diff --check/cached --check。未声称 ESLint（package 无专用该配置）或全仓测试。原发布 SHA-256 为 v1 e696ffdc19129bce4e83e7829138fc981b04186afb187718f1b5984fff8dcd09 / v2 e4d0f3521e6a6e9fd0f3a4220b08a7e8fd5388c7f80ec56fe2671f28de0d2efe，参考 HTML/TXT hash 仍为 Phase 0 原值。
+
+### 边界与下一 checkpoint
+
+验证是隔离 FS / 实际 Native / 回环合成 HTTP provider 的规则与发送证明，没有真实用户数据。SQLite/MySQL/PostgreSQL、生产模型的自由语言理解/叙事质量、浏览器/真实 Native 新页面、Android/屏幕阅读器及旧状态迁移本轮未测；P2 的 FS/SQLite/中断等 Core 证据仍按原范围保留。首版单当前 Claim/八个总动态身份/有限 scalar bounds 保持明确，任意新法术/无限实体、旧存档无损迁移和 OS/跨宿主绝对防作弊继续暂缓。
+
+默认编译的 neutral Native shell 仅支持内容容器验收，实际问答/故事阅读/建议草稿/抽屉/保存/终局交互留 P4。没有新 `.atria` 输出，不合并 main 或 package，不运行/等待远端 CI。阶段发布只推当前游戏任务与 docs refs，保护无关 dirty；Record/HANDOFF 继续唯一。
+
+下一次用户明确继续时仅 Phase 4：按 frontend/玩家体验/已实施运行接口和 UI 验证路由接真实 Native 前端，使用上述 tested 组合；沿用当前任务分支，完成最小相关本地检查后提交推送并停止。Core/main、game/package 最终集成及新发布留 P5。
+
 ## 最终状态
 
-整体任务仍 Active。Phase 0/1/2 完成，Core A/B/C 已在辅助分支验证；main 集成、游戏内容、真实前端和新发布仍待后续阶段。原游戏任务分支与唯一 live HANDOFF 保留，下一阶段为 Phase 3，需用户明确继续。
+整体任务仍 Active。Phase 0/1/2/3 完成，下一阶段为 Phase 4；Core 辅助分支仍待最终集成。游戏任务分支及唯一 live HANDOFF 保留，旧发布/参考和未授权 dirty 保留。按用户更新约定，仅本地最小相关验证，推送核对 refs 仅为发布确认。

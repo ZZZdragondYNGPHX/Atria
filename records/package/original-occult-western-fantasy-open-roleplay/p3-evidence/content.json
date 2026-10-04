@@ -1,0 +1,30 @@
+{
+  "resources": 41,
+  "assets": 240,
+  "bytes": 490327,
+  "largestResourceBytes": 78485,
+  "counts": {
+    "canon_fragment": 12,
+    "canon_index": 1,
+    "institutional_case_pattern": 10,
+    "signature_case": 8,
+    "actor_a": 12,
+    "actor_b": 30,
+    "anomaly": 8,
+    "artifact_template": 10,
+    "claim_archetype": 32,
+    "claim_primitive": 8,
+    "claim_seed": 16,
+    "tradition": 4,
+    "district": 6,
+    "location": 30,
+    "historical_event": 1,
+    "institution": 10,
+    "public_knowledge": 6,
+    "matter_hook": 10,
+    "civic_office": 4,
+    "origin": 7,
+    "prior_life": 8,
+    "faith": 7
+  }
+}
