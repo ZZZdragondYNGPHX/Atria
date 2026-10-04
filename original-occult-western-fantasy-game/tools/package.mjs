@@ -29,7 +29,7 @@ const boundedV1 = args.includes('--v1-campaign');
 const legacyFlags=['--network-only','--convergence-only','--opening-only','--campaign-only','--frontend-only','--long-horizon-only','--lifetime-only','--history-only','--renewal-only','--enterprise-only','--regional-only','--century-only','--state-only'];
 const roleplay = !fixture && !boundedV1 && !args.includes('--legacy') && !legacyFlags.some(flag=>args.includes(flag));
 if(args.includes('--roleplay-only') && !roleplay)throw new Error('--roleplay-only conflicts with a historical profile');
-if(roleplay && (args.includes('--release-only') || mode==='build'))throw new Error('Open Lives is validation/preview only until Phase 5 release/integration. Use --legacy for historical tooling.');
+if(args.includes('--release-only') && args.includes('--roleplay-ui-only'))throw new Error('Choose release-only or roleplay-ui-only validation');
 if(!roleplay && args.includes('--roleplay-ui-only'))throw new Error('--roleplay-ui-only requires the default Open Lives profile');
 const retainedV1 = args.includes('--retained-v1');
 if(retainedV1 && (mode==='build'||fixture||!boundedV1||!args.includes('--archive')||!args.includes('--release-only')))throw new Error('--retained-v1 requires --v1-campaign --archive <original> --release-only in validate/preview mode');
@@ -188,6 +188,6 @@ if (mode === 'build') {
     await fs.writeFile(out, archive, { flag: 'wx' });
     console.log(JSON.stringify({ mode, packageHead, packageDirty, coreHead, output: out, bytes: archive.length }));
 } else {
-    const { verify } = await import(roleplay ? args.includes('--roleplay-ui-only')?'./roleplay-frontend-check.mjs':'./roleplay-check.mjs' : args.includes('--release-only')&&!fixture ? './release-check.mjs' : args.includes('--frontend-only')&&!fixture ? './frontend-check.mjs' : fixture ? './verify.mjs' : './opening-check.mjs');
+    const { verify } = await import(roleplay ? args.includes('--release-only')?'./roleplay-release-check.mjs':args.includes('--roleplay-ui-only')?'./roleplay-frontend-check.mjs':'./roleplay-check.mjs' : args.includes('--release-only')&&!fixture ? './release-check.mjs' : args.includes('--frontend-only')&&!fixture ? './frontend-check.mjs' : fixture ? './verify.mjs' : './opening-check.mjs');
     console.log(JSON.stringify({ packageHead, packageDirty, coreHead, ...await verify({ load, native, manifest, sourceFiles, assetPayloads, archive, mode, frontendCatalog }) }, null, 2));
 }
