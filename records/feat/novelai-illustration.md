@@ -2,7 +2,7 @@
 
 - Task ID: `atria-novelai-illustration`
 - Primary Workspace: main 产品源码 / `feat/novelai-illustration`
-- Status: Active
+- Status: Complete（S1–S4 已集成 main）
 - Plan: [入口](../../plans/feat/novelai-illustration/index.md)
 
 ## S1 — 内核基础
@@ -134,3 +134,43 @@ S2 完成后停止。下一阶段 S3：读 Git → live HANDOFF → Plan index/c
 ### Next checkpoint
 
 S3 完成后停止。用户续接时进入 S4：读 Git → live HANDOFF → Plan index/core/plugin/generation/novelai → 本 Record，沿用同一分支实施 NovelAI 两类接口、独立图片任务/取消、图片历史与最终集成。只做本地最小相关验证；S4 全部完成后才合并并验证 main、清理任务分支与 live HANDOFF。
+
+## S4 — NovelAI 与最终集成
+
+- Start HEAD: `e39b10f9d`
+- End/Tested HEAD: `8cb5be336`（主实现 `c662e7d0a`，官方协议中转配置 `8cb5be336`）
+- Status: Complete；已快进集成 main，并完成 main 最小相关本地验证
+- 实施分支: `feat/novelai-illustration`，沿用独立产品 worktree
+
+### Decisions
+
+按真实 Git → live HANDOFF → Plan index/core/plugin/generation/novelai → 本 Record 续接。main 的 AGENTS.md 与 docs 的治理/模板 dirty changes 保留；没有读取 reference。按 Plan 使用本地 ui-ux-pro-max 指导异步按钮、状态、取消、错误反馈、编辑保留及能力表单。
+
+核对 [NovelAI 官方 OpenAPI](https://image.novelai.net/docs/doc.json) 与 [多人提示词说明](https://docs.novelai.net/en/image/multiplecharacters/)，实现 generate 请求、V4 caption 与 ZIP/JSON base64 响应。当前官方适配范围为 V3/V4/V4.5，未声称支持所有官方型号或执行过官方真实请求。用户本轮明确实际第三方路线是“实际调用官方 NovelAI，只不过要走中转站”；据此按官方协议透传中转接入，提供“采用官方协议透传配置”快捷入口。中转连接仍显式保存模型/参数能力与响应格式；若中转改写响应或限制模型/参数，可按其说明调整，不自动假设所有中转完全相同。未提供/使用实际站点地址与密钥，本地兼容证据不等于真实中转请求证据。
+
+### Completed
+
+- 在现有 Runtime ConnectionProfile 中增加 NovelAI 官方图片与第三方兼容图片两类适配，独立保存连接，沿现有密钥系统选择精确 Secret ID。官方地址固定；第三方完整接口地址、模型 ID、角色 caption、SM、采样器、噪声调度、尺寸/步数上限及 ZIP/JSON/PNG 响应由显式能力声明约束。图片连接不会进入文本模型连接选择；没有建立平行配置/密钥 authority。
+- 单标注图片请求只读取已确认并持久化的 draft，通过 expectedHead 检查提交版本。直接手填完整提示词原样发送；分块组合内容在支持的 V4 模型上拆为共用场景与逐角色固定/服装/动态 caption，V3 发送完整组合。图片步骤不再调用 LLM，也不会提交其它草稿。
+- 图片任务复用 NativeTaskScheduler、连接/provider 资源限制、服务器持有执行、独立去重/状态/取消。冻结提交时的连接、精确 Secret、提示词、参数与实际随机 seed；排队后的配置变更不影响请求。Run 状态和备份只读写闸继续有效，不占用剧情生成次数，不推进正文/Timeline。
+- 返回图片经过有界读取、ZIP 条目/解压上限、严格 base64、PNG CRC 与实际像素解码，拒绝错误协议、损坏图片、超限或多图响应。HTTP 错误/限流没有隐式重发，只有用户明确重试图片步骤才发新请求；不回显 Provider 原始错误/密钥。PNG 解码显式依赖已存在锁版本的 pngjs，不修改公共依赖安装或重建 native modules。
+- 结果经现有 AssetStore 与 IllustrationService 登记原 Session/分支/标注的新图片版本。保存实际尺寸、完整 draft、实际请求 body、模型、能力声明、连接 ID/名称/fingerprint 和非秘密参数；可选 requestSnapshot 沿原有呈现/存档闭包进入存储。拒绝跨 Session/源文归属、请求证据篡改与秘密字段，旧图片记录保持兼容。
+- 删除标注后到达的图片可进入该标注历史，不能恢复已删除位置；用户取消后迟到响应不产生资产/图片记录。图片登记失败清除仅此次新建的资产引用；旧版本/存档引用保护继续有效。重生成保留完整历史，用户选择一个展示版本或隐藏。
+- 卡片启用独立生成图片按钮，保留提示词独立状态；图片任务提供排队/执行/保存/失败/取消反馈。提交后可继续编辑/阅读，未保存编辑保留；关闭 UI 只释放订阅，不取消服务器任务，重新启用恢复订阅。最终输入预览可按已选择连接显示实际协议组织方式，图片历史可查看请求快照和实际 seed。
+
+### Validation
+
+- 分次执行 7 套本地相关 Jest，最新通过项合计 96：illustration-image（22）、illustration-plugin（13）、illustration-prompt（17）、illustration-core（19）、illustration-settings（4）、illustration-renderer（3）、atria-shell/native-runtime-p5（18）。变化后只重跑受影响套件，没有全仓检查。
+- FS/SQLite 实际执行图片任务去重、提交配置/精确 Secret 冻结、继续剧情/切换分支/正式编辑、独立失败重试、取消后迟到响应、删除后保留历史、备份写闸、登记失败资产引用清理，以及选择历史/资产删除保护。
+- 本地 loopback HTTP + 认证 supertest 实际执行 NovelAI 兼容 ZIP 请求/PNG 存储、202 后服务器继续、当前用户状态隔离、提示词与图片状态接口隔离、确认 head 冲突与非法输入拒绝。另以本地 fetch fake 验证 ZIP/JSON base64/PNG、损坏/超限/多图拒绝和限流无隐式重发。不需要用户密钥。
+- 实际执行保存时刻图片隔离、Session/铁人 resume 干净存储导入、图片 bytes/请求证据保留、resume 导入后再次生成及剧情次数不增加。四阶段闭环使用本地 LLM fake：标注 → 提示词 → 独立图片点击 → 两类历史/选中版本 → 干净导入，正文与 revision 保持不变。
+- DOM 实际执行直接填写触发图片、两步骤独立、图片取消入口、历史/实际 seed、未保存编辑保护、SDK 归属/卸载与新 UI 实例重新订阅；Runtime DOM 验证两类连接和显式兼容能力/精确 Secret 保存。
+- 使用本地 Node 22.23.3，与已有 SQLite native module 匹配；MySQL/PostgreSQL 未执行。17 个触及 JS 文件 ESLint 与产品 diff check 通过。
+- 官方协议透传快捷配置增加后，仅重跑 Runtime 18 项及触及文件 lint。main 快进到相同产品 HEAD 后，最小复验图片 22、renderer 3、Runtime 18，共 3 套 43 项通过，main diff check 通过；原 AGENTS.md 的内容 hash 在合并前后相同。
+- 未运行远程 CI、构建、外部 LLM/官方 NovelAI/用户实际第三方服务、浏览器或手机真机；S2 长按/拖柄/WebView/虚拟键盘限制仍有效。
+
+### Final integration and limitations
+
+- S1–S4 产品提交均在 `main`，最终产品 HEAD `8cb5be336`。产品与最终 docs 记录推送 origin；任务分支及独立任务 worktree 清理，live HANDOFF 删除。main 的 AGENTS.md 与 docs 治理/模板无关 dirty changes 保留。
+- 真实官方/中转请求仍未执行；用户实际使用时需在 Runtime 创建精确 Secret、第三方兼容图片连接和完整生成地址，选择官方透传配置或显式调整能力，并在插图配置选中该连接。真实外部 API 不作为本任务完成条件，不能称为已验证。
+- 服务器内存任务不承诺服务器重启续跑。当前官方适配范围之外的型号/中转改写协议仍需针对其能力做明确适配；手机长按/拖柄/WebView/虚拟键盘/真机限制沿用 S2。
