@@ -1,0 +1,73 @@
+{
+  "coreHead": "2f9251b33d7b6a5bf146b3d96b9e5af5d2301949",
+  "localValidation": {
+    "nativeProviderMatrixAndHost": 69,
+    "generationCore": 34,
+    "runtimeUI": 17,
+    "total": 120,
+    "changedFileEslint": "passed"
+  },
+  "realApi": {
+    "authorizedByUser": true,
+    "model": "gemini-3-flash-preview",
+    "attempts": 8,
+    "personalSessionWrites": 0,
+    "cases": [
+      {
+        "endpointPath": "/v1/completions",
+        "result": "HTTP 404",
+        "bodyFormat": "non-JSON"
+      },
+      {
+        "endpointPath": "/v1/chat/completions",
+        "result": "HTTP 400",
+        "errorCode": "invalid_argument",
+        "reason": "Tool boolean enum [true] rejected by upstream TYPE_STRING enum field"
+      },
+      {
+        "transport": "native Gemini",
+        "timeoutMs": 60000,
+        "result": "No response before route timeout"
+      },
+      {
+        "transport": "OpenAI-compatible; boolean enum compatibility probe",
+        "timeoutMs": 60000,
+        "result": "No response before route timeout"
+      },
+      {
+        "transport": "native Gemini",
+        "timeoutMs": 120000,
+        "result": "No response before scheduler timeout"
+      },
+      {
+        "transport": "OpenAI-compatible minimal text control",
+        "reasoningEffort": "minimal",
+        "attempts": 2,
+        "result": "HTTP 400: Thinking level unsupported: THINKING_LEVEL_MINIMAL"
+      },
+      {
+        "transport": "OpenAI-compatible minimal text control",
+        "reasoningEffort": "low",
+        "timeoutMs": 30000,
+        "result": "TimeoutError"
+      }
+    ],
+    "completeGameTurn": "not verified"
+  },
+  "gameInstallation": {
+    "head": "2f9251b33d7b6a5bf146b3d96b9e5af5d2301949",
+    "connectionPath": "/v1/chat/completions",
+    "toolSchemaMode": "string-enums",
+    "modelsAndRoutesUnchanged": true,
+    "personalSessionWrites": 0
+  },
+  "mcp": {
+    "runtimeSourceMatch": "EXACT",
+    "readTool": "atri_read",
+    "action": "connection.list",
+    "connectionPath": "/v1/chat/completions",
+    "toolSchemaMode": "string-enums",
+    "providerAdapter": "provider.openai-compatible",
+    "paidModelCalls": 0
+  }
+}
