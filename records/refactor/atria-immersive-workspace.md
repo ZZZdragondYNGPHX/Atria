@@ -771,6 +771,32 @@ docs whitespace、Markdown 相对链接/锚点、index/coverage/HANDOFF/Record �
 
 本轮按用户要求完成 Worlds 映射后停止。下一轮按 live HANDOFF → index → worlds-mapping → delivery/coverage S12/S07/states/validation → 本 Record B1 Worlds mapping，只实施 Worlds 展示与局部防护并验证共用 editor 的 Library 回归；不自动进入 Knowledge/B2/F。首轮支持范围冻结、Shared 描述停用、完整矩阵与最终集成待验收保持。
 
+## Stage B1 Worlds — Display checkpoint
+
+- Date: 2026-10-05
+- Product start HEAD: `f40bca67b56eb42c0b4340d8ca9dfc44f848101a`; end/tested HEAD: `9ee9cadba`，已 commit/push。
+- Status: Worlds display complete. 用户更新为连续完成剩余 B/F 并最终推送合并，覆盖默认阶段停止规则；Shared 描述继续停用。
+
+### Implementation and evidence
+
+复用原 mountWorldEditor、单草稿、project.save/human Workspace/ChangeSet 与 Library revision service。Fields 展示身份/名称、schema/baseline/metadata 递归结构和两类依赖，打开不补缺省字段。完整集合 Source、exact World 选择/显式 ID 变更/排序/树定位保留邻接 source；Review 前防 snapshot identity/pin、strict root、duplicate/local-dependency overlap、未声明 refs 和悬空 EntryPoint。项目 revision 不伪装 Library 修订，也不推进已安装 Session。409 可复制 malformed Source 原文、明确取消或确认重载。
+
+catalog 独立于 Source/本地字段加载，binding 使用 allSettled、保留失败声明与确切 asset contentHash；原编辑器增加 dispose/epoch 检查，迟到响应不重建 Source 或夺焦。Library 裸 content 仍走原服务校验；installed 原 World 只读规则保持。G01/G04/G05 展示缺口关闭、G02/G03 局部防护完成；G06 有限 graph/binding pin/Fork 和后端其它调用方限制保持，未新增平行 authority。
+
+实际 **8 个不同 suites / 35 个不同 unit passed，2 个不同 Chrome 场景 passed**：
+
+```powershell
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/world-editor.test.js atria-shell/studio-worlds-editor.test.js atria-shell/studio-workspace-a7.test.js
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/studio-workspace-a7.test.js --testNamePattern=Worlds
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/library-revisions.test.js native/library-authoring.test.js native/persona-context.test.js atria-shell/studio-authoring.test.js atria-shell/studio-agent-a8.test.js --testNamePattern='immutable and compare|Attach pins|accepted Persona lane|A7 Studio authoring helpers|Agent Commit is blocked'
+$env:PW_NATIVE_CHANNEL='chrome'; $env:PW_WORKERS='1'; npm --prefix tests run test:e2e -- native-session/30-studio-worlds.e2e.js
+$env:PW_NATIVE_CHANNEL='chrome'; $env:PW_WORKERS='1'; npm --prefix tests run test:e2e -- native-session/30-studio-worlds.e2e.js --grep Chinese
+```
+
+前三命令分别 25、2（新增 Workspace）、8 passed，不重复累计旧测试。浏览器 English 首次通过，Chinese 首次错误期望已有“世界基线”文案，修为实际“世界初始状态”后通过；初次默认 Playwright chromium 缺失，使用已安装 Chrome，无产品失败伪记通过。English 真实 FS/HTTP/disk/build/decrypt canonical、Review Cancel/Apply、增删排序/未知根/重复/缺引用拒绝、Session/Save exact 隔离与 Simulation 新 baseline 通过；中文 320→720、真实最大 font_scale=1.5、light/Fast UI/reduced-motion/Tab/Shift+Tab、并发 source revision 409/复制/焦点/取消/确认重载通过。wide、中文 fields/conflict 截图本地查看。新增 jsdom fixtures 按已有 v8 structuredClone 方式补齐，ESLint formatting 已修正。
+
+touched JS ESLint、Native localization、产品 whitespace 通过。没有执行全量 tests、cache/全产品 build、远端 CI、外部 DB/模型、真机/IME/WebView；首轮冻结范围和完整矩阵限制保持。仅提交指定 source/test，不提交旧日志/依赖或 ignored 浏览器产物。下一 checkpoint 为 Knowledge 映射→展示，随后连续 B2/B3/B4/F。
+
 ## Final state
 
-Task ongoing. A1–A5 local checkpoints and B1 Actors/EntryPoints mapping/display complete; B1 Worlds mapping complete. 本轮按用户要求停在 Worlds 映射后，未替换展示；下一独立 checkpoint 为 Worlds 展示与局部防护。Shared 描述继续停用；完整设备/引擎/字段矩阵与最终集成仍待后续。产品 HEAD 保持、docs 本轮持久化，未合并 main。
+Task ongoing. A1–A5 首轮与 B1 Actors/EntryPoints/Worlds mapping/display 完成。产品 `9ee9cadba` 已 push；Shared 描述停用。用户已授权连续完成剩余阶段并最终推送合并，下一 checkpoint Knowledge；尚未合并 main。

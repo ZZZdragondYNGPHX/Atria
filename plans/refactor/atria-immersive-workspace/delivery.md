@@ -53,7 +53,7 @@ A3 checkpoint 已完成上述原编辑器保留与接线；真实 20 view 可达
 
 ## Stage boundary and persistence
 
-依 repository Governance，每个正式阶段结束：本地最小相关验证 → 持久化/push → 必要 Plan 更新 → 同一 Record → live HANDOFF → 停止。新一轮按 HANDOFF → index → 当前阶段模块恢复，不一次加载整套历史。
+2026-10-05 用户明确授权连续完成剩余阶段并推送合并，覆盖默认阶段停止规则。每个 checkpoint 仍独立完成映射、实现、本地验证、持久化/push、必要 Plan 更新与同一 Record/live HANDOFF；简短报告后继续下一 checkpoint，最终 F 才合并 main 和清理。恢复仍按 HANDOFF → index → 当前阶段模块，不一次加载整套历史。
 
 Primary Workspace 是 `main`；docs 是文档辅助空间，package 只提供兼容验证资产。本任务不得在 package 分支实现产品或将 main merge 到 package。实现使用适当隔离分支并保护无关变更；Plan 不固定某台机器路径或客户端方式。
 

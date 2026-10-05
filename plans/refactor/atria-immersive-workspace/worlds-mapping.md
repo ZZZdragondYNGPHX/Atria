@@ -2,6 +2,8 @@
 
 ## Scope and evidence
 
+展示 checkpoint 已于 `9ee9cadba` 实施，局部防护与 N01–N08 的实际支持范围见 [Record B1 Worlds display](../../../records/refactor/atria-immersive-workspace.md#stage-b1-worlds--display-checkpoint)。以下保留替换前映射基线；不得把 G06 或全设备矩阵推定为已关闭。
+
 本模块是 [delivery replacement gate](delivery.md#editor-replacement-gate-for-b-stages) 所需的 Worlds 映射，覆盖 [coverage S12/S07](coverage.md)、[baseline S12/S07](baseline-inventory.md)、[states](states.md) 与 [validation V12/V07](validation.md)。基于产品 `refactor/atria-immersive-workspace@f40bca67b56eb42c0b4340d8ca9dfc44f848101a` 的真实源码。**本 checkpoint 只完成映射，未修改产品、未替换展示**；实际验证见 [Record B1 Worlds mapping](../../../records/refactor/atria-immersive-workspace.md#stage-b1-worlds--mapping-checkpoint)。Actors/EntryPoints 不重做，Knowledge/B2/F 不进入；Shared Persona description 仍 `shared_scope_unsupported`。
 
 World 已有 `core.world` descriptor、`WorldRepo` 和资源 graph。不能照抄 Actor/EntryPoint 的“无独立资源”结论，也不能把 descriptor 的 `native-library` authority 套到所有 World：项目内 `source.worlds[]` graph 节点的 authority 是 `project-source`、`immutable:false`，由项目 Git revision 管理；Library World root 可变、WorldRevision 不可变；已安装 Package World 是 exact snapshot 只读来源。Session 的当前 World state 是另一运行时 authority，不是作者 baseline 草稿。
