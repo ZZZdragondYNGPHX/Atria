@@ -4,7 +4,7 @@
 
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`。
 - Primary Workspace: `main`；Plan / Record / HANDOFF 在长期 `docs`。
-- 当前阶段：S0 调研与正式企划发布；下一段从 S1 技术契约冻结连续推进至 S3，抵达 CP1 后停止汇报，尚未开始。
+- 当前阶段：S0 已完成，正式企划已推送；下一段从 S1 技术契约冻结连续推进至 S3，抵达 CP1 后停止汇报，尚未开始。
 - 产品基线：远端 `main`，`4ac8affbf01bfb5fb576834bb7eedbeefd03c007`。
 - 文档发布目标：远端 `docs`；本轮使用以 `origin/docs` 为起点的独立工作树。起点 `5104ee5ef78f65a75194f2894d8b4ac935744c89`，发布后的文档 HEAD 以实际远端 `docs` ref 为准。
 - 产品开发分支：未创建；本轮没有实现代码。
@@ -22,7 +22,7 @@ Package 定义玩法，Atria 强制固定领域规则和平台合法性。脚本
 ## 验证状态
 
 - 研究是源码静态追踪，没有执行产品测试、构建或运行时复现。
-- 发布前已重新 fetch main / docs，main 基线未变化。
+- 发布前已重新 fetch main / docs，main 基线未变化；正式企划提交 `03e52f7eaa2727ae1fc8c4b094a6be76b1432272` 已经远端 `docs` ref 核验，远端 main 仍为上述基线。
 - 文档发布检查已通过：9 份文档、33 个相对链接、27 个 main 代码入口及 UTF-8 编码；`git diff --cached --check` 通过。远端 refs 为事实依据。
 
 ## 下一目标：S1 → S3，至 CP1 停止

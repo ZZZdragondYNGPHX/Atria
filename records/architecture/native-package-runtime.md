@@ -2,7 +2,7 @@
 
 - Task ID: `ARCH-NATIVE-PACKAGE-RUNTIME`
 - Primary Workspace: `main`。
-- Status: Active — S0 调研与正式企划发布；S1 技术设计待开始。
+- Status: Active — S0 已完成并推送；下一段 S1 → S3 至 CP1，尚未开始。
 - Plan：[唯一入口](../../plans/architecture/native-package-runtime/index.md)。
 - 实时恢复：[HANDOFF](../../HANDOFF.md)。
 
@@ -35,7 +35,7 @@
 - 发布检查已通过：9 份文档、33 个相对链接、27 个 main 代码入口及 UTF-8 编码检查；`git diff --cached --check` 通过。
 - 本轮重新 fetch 远端 `main` / `docs`；main 仍与研究基线一致。
 - 产品测试、构建、运行时复现和新增 UI 验证：未执行，本阶段没有产品实现。
-- 远端发布以实际 `origin/docs` ref 为准；本阶段只提交 docs 企划与交接。
+- 正式企划发布提交：`03e52f7eaa2727ae1fc8c4b094a6be76b1432272`；已通过 `git ls-remote` 核对远端 `docs` 指向该提交，远端 `main` 仍为产品基线。本阶段只提交 docs 企划与交接；后续交接状态补记的文档 HEAD 以实际 `origin/docs` ref 为准。
 
 ### 限制与下一 checkpoint
 
