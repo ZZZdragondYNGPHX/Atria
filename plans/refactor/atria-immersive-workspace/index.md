@@ -3,7 +3,7 @@
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
 - Status: **Frozen for staged implementation — 2026-10-05；用户已授权开工与自主处理，新增契约已完成 D1 设计核对。**
-- Current stage: A3 创作、运行配置、智能体与扩展接线完成，下一 checkpoint 为 A4a 用户设定原生持久化与会话 / 请求契约。
+- Current stage: A4a 原生用户设定资源、会话 / 请求与 Save / shared / Host 服务契约完成，下一 checkpoint 为 A4b 管理、迁移、备份与入口开放；入口仍关闭。
 
 ## Goal
 
@@ -53,7 +53,7 @@
 
 A1 → A2 → A3；A4a 依赖稳定会话 / 请求 authority，A4b 依赖 A4a 与 A2 的资料库/游玩入口；A5 同时依赖 A1–A4b。B 阶段在 A5 验收后开始。共享席位、自有界面和存档兼容属于 A4 开放条件，不能留到入口开放后再处理。
 
-目前 S00–S20 均有设计覆盖，均**未完成产品集成验收**。布局偏好已经确认，Native 用户设定的 schema/API、迁移 ledger、旧会话兼容设计已在 personas 冻结，产品实现与合约验证留在 A4a/A4b。不要把占位 HTML 的字段和服务样例复制到产品中作为现有编辑器的替代。
+目前 S00–S20 均有设计覆盖，均**未完成产品集成验收**。布局偏好已经确认，Native 用户设定的 schema/API、迁移 ledger、旧会话兼容设计已在 personas 冻结，A4a 服务合约已实现并本地验证；迁移、账户备份、产品接线及完整开放验收留在 A4b。不要把占位 HTML 的字段和服务样例复制到产品中作为现有编辑器的替代。
 
 A1–A3 已实现并完成各阶段本地针对性验证；执行证据与限制见 [Record 的 A1](../../../records/refactor/atria-immersive-workspace.md#stage-a1--floating-shell-navigation-and-shared-state)。A2 的详细证据见 [Record 的 A2](../../../records/refactor/atria-immersive-workspace.md#stage-a2--play-library-install-and-recovery)。A3 的详细证据见 [Record 的 A3](../../../records/refactor/atria-immersive-workspace.md#stage-a3--authoring-runtime-agents-and-extensions)。这只关闭 A1–A3 checkpoints，不表示 S00–S20 全矩阵或最终集成验收完成。
 
@@ -71,3 +71,5 @@ A1–A3 已实现并完成各阶段本地针对性验证；执行证据与限制
 - 2026-10-05 A2：平台正文 serif/头像回退与消息序号、P01 输入策略和 Stop、历史分叉/切换/只读、游玩退出、Library 独立安装/导入流程与 exact 旧版本恢复完成；完整资源编辑器保持。产品 `2d0df2cef` 已 push，下一阶段 A3。
 
 - 2026-10-05 A3：20 个 Studio view、资源引用页签与 exact lifecycle、独立人工 Apply / Agent Commit、保存回执/长任务/草稿、Runtime 修复返回原启动、Agents Session 范围和扩展/插图接线完成。产品 `57a37bc8ac69ed0274d04ce0a8d1016d96ac4496` 已 push，下一阶段 A4a；未开放 Persona。
+
+- 2026-10-05 A4a：原生 Persona 资源/头像/CAS/default、受保护 Session 身份和输入快照、显式 Prompt consumer/预算 evidence、两类 reply retry、Save v3 三 scope、共享席位/头像与 gated Host capability 完成；产品 `e35e900077b6c2963cd032cdccfc45c24ab90102` 已 push。FS root 增加 publishedRevisionIds 发布闭包，Shared authorization 固定主体/epoch；共享描述暂明示停用，A4b 才补迁移/账户备份/picker/UI 和开放证据。

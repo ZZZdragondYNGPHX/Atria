@@ -312,6 +312,64 @@ npm --prefix tests run test:e2e -- e2e/native-session/20-extensions-ui.e2e.js --
 
 下一阶段 A4a：按 HANDOFF → index → personas/states/validation → 本 Record A3，继续同一产品分支；先做 Native Persona 资源/资产、Session/message/request 快照、Prompt evidence、branch/save/shared 服务契约与合约测试。A4b 入口开放仍要独立 checkpoint。本轮完成 A3 持久化后停止，不自动进入 A4a，不合并 main。
 
+## Stage A4a — Native Persona resource and Session contracts
+
+- Date: 2026-10-05
+- Product start HEAD: `57a37bc8ac69ed0274d04ce0a8d1016d96ac4496`
+- Product End/Tested HEAD: `e35e900077b6c2963cd032cdccfc45c24ab90102`；同一工作分支，已 commit/push，未合并 main。
+- Docs start HEAD: `cf8fffabf53a2427c4cd525c71f27d5bad612fb2`
+- Docs End/Tested content: 本 A4a 提交中的 index/personas/validation、同一 Record 与 live HANDOFF；不自引用 hash。
+- Status: A4a complete; A4b next; Persona product entrances remain closed.
+
+### Implemented authority and decisions
+
+核对真实 Git/远端 refs，按 HANDOFF → index → personas/states/validation → Record A3 路由；只触及当前任务，无 reference 或 Skill 加载。
+
+新增 persona ID 和四个 Native kinds，FS/SQL 共用既有 native resource key 注册。PersonaRepo 提供 owner 限定 CRUD/exact revision/list/search/pagination/归档/default CAS/Used By/delete/avatar，Native Product POST 家族及原 client adapter 接同一 repo。名字可重名；内容大小按 Unicode code points/UTF-8 拒绝超限；unknown fields/缺 CAS 前提拒绝。revision immutable，root/default 独立 CAS；成功直接返回发布回执，不依赖刷新。
+
+FS 不具 rollback；本轮实现核对发现，仅 currentRevisionId 无法区分已发布旧修订与失败后孤立修订，因此 root 同步 CAS `publishedRevisionIds`。exact get/revisions 不暴露未发布内容；崩溃试件实际留下 orphan revision，已验证 root 与历史保持旧值。Persona/Asset 引用锁保护发布，永久删除重查真实 default、所有持久化 Persona state 与 migration target；管理备注中出现 ID 不算引用。引用策略保守保留历史/存储快照，不自动清理迁移 receipt。
+
+头像允许 PNG/JPEG/WebP/AVIF、8 MiB/4096²/像素限制；先读取尺寸再实际解码，拒绝伪 MIME/坏图/超尺寸。现有 Jimp 浏览器 WASM 初始化在 Node fetch 本地 URL 失败，改为从已安装 codec 的本地 WASM 字节初始化；不下载、不新增依赖。PNG 复用 pngjs CRC 检查；四种格式的真实小图片均走服务验证。原 AssetStore immutable ref/hash/blob、正式 delivery 与 GC 路径保持；Persona published revision、state、migration Avatar ref 纳入删除保护。
+
+SessionCore 捕获 default/explicit/none 到 reserved `atri_player_persona`；资源锁保持至 Session HEAD 发布。solo select 重验 exact/归档/头像、HEAD、run/lifecycle、原 task scheduler（含取消后未 settle 的 worker）；与发送竞争仅一方 CAS 发布。匹配现有 Continuity → Session 锁序，避免在 Session 内反向重入资源锁。未开始故事允许专用 persona 操作，但普通 generation/raw write/save 的 pending 禁用仍保持。
+
+统一 `_newEntry` 服务捕获正式 user metadata `atri_player_identity`，覆盖普通输入、typed transaction 和 beginStory；拒绝客户端自造身份，notes 不入 namespace/message/request。旧 revision 读取不补写。非 transaction retry 回准确 post-user fork；transaction retry 从 pre-effect state 重建输入，并核对原 identity 一致，保留原 ref/display/hash 与上下文。显式 fork/restore 仍按原 revision；ironman 不绕过 rewind 限制。
+
+新增 `player_persona` lane / `player_provided` / `context.player-persona`，只读接受的 Session snapshot。Prompt stage `contextConsumers` 显式 opt-in，typed task 还需 context 声明且排除 background/maintenance；普通 role 只准 narrator。预算选择与真实 Effective Request Snapshot 记录 exact ref、snapshotHash、token/omission 和 consumerStages，编译保留 stage 条件、选中阶段和 Package freeze。none/empty/legacy/not_consumed/lane_cap 有实际断言；管理备注不入请求，维护任务与客户端 prompt.host 伪造拒绝。受控本地 HTTP Provider 捕获了真实参数；修订 Persona 后仍发送原接受快照，preview 无发送/Secret/Session 写入。
+
+有身份的 Save 使用 v3，容器 v1 magic 保留，snapshot/session/ironman resume 三 scope；v1/v2 legacy 读取保持。身份 state/hash/message display 及 exact avatar assetRefs/attachments/bytes 校验形成闭包；跨账户 import 仅恢复独立 Session snapshot，不创建个人库或默认。缺头像/旧 schema 装入 Persona evidence 拒绝，历史/存档头像引用阻断删除。
+
+Shared 服务按 access → 排序账户 Persona → 原 Continuity/Session 锁操作，认证 member 自己账户取 exact selection，observer/其他 seat/Host 代选拒绝，重验 ACL/Session revision 与 access/scope epoch。seat selection 记录无明文 handle 的 authorization，projection 仅 status/name/avatar；成员变更清理当前 seat，旧 Branch 的主体/epoch 不匹配时不泄漏旧身份。头像授权复制到 owner AssetStore，delivery 白名单只加当前授权 peer snapshot，不放开个人库。Shared 输入 receipt 捕获席位显示身份。
+
+Host 只增 `host.persona.status/openSelector` 固定白名单；status 无描述/账户库，selector 复用原 epoch/revision/宿主 guard，缺 picker 明确 unavailable。没有 Library 第四分类/Host picker UI/管理入口。Shared 描述消费当前明确 `shared_scope_unsupported`，避免回退 owner solo/global；这是保留给 A4b 开放审阅的显式停用范围。
+
+### Actual minimal local validation
+
+新增 5 suites 最终 22 个不同用例（resources 7、session 5、context 2、shared-host 3、save-backup 5）。连同原 history 10 / Prompt freeze 9，以及按名字选择的 22 个 Save/Shared/run/typed frontend 回归，本轮共 **11 suites / 63 个不同用例**有最终通过证据。复验重叠不累加。
+
+```bash
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/persona-resources.test.js native/persona-session.test.js native/persona-context.test.js native/persona-shared-host.test.js native/persona-save-backup.test.js native/session-history-p2.test.js native/model-prompt-runtime-p6.test.js
+# 当时 7 suites / 40 tests passed；resources 最后增加 migration target 引用回归 → 不同用例数为 41
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/save-system.test.js native/shared-runtime-p8.test.js native/run-policy-p2.test.js native/authority-frontend-c3.test.js --testNamePattern '^(?!.*(?:MysqlEngine|PgEngine)).*(logical snapshot|snapshot export/import|full-session export/import|ACL cannot be forged|shared inputs settle|concurrent submissions|guest cannot commit|pending runs block|validated multi-domain begin|ironman exports only|ironman rollback denied|fixed binding uses|typed Branch Retry)'
+# 4 suites / 22 selected tests passed；其余 skipped 不计通过
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/persona-resources.test.js native/persona-session.test.js native/persona-context.test.js native/persona-shared-host.test.js native/persona-save-backup.test.js
+# 最后 5 suites / 21 tests passed；最后引用 resolver/新增回归仅复验以下两项
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/persona-resources.test.js native/persona-save-backup.test.js
+# 2 suites / 12 tests passed，final resources 7 + save/avatar 5
+```
+
+所有触及生产 JS 的 ESLint 与 git diff --check 通过；新 index/repository exports 也 lint 验证。PNG/JPEG/WebP/AVIF 真实解码，Shared 两账户 FS/SQLite 与头像 HTTP 授权/拒绝，typed retry/begin/ironman v3，Save 独立恢复均为本地真实服务入口；没有显著 UI 修改，未运行浏览器或截图。
+
+首次测试出现夹具单账户限制、误用不存在的 export()、未传 Context budget 和重复构建 ZIP hash 不同，均按真实接口/原 archive/双账户目录修正并复验。较早不带过滤的 Save/Shared 集合因本地 MySQL 53306 / Postgres 55432 未启而 ECONNREFUSED；没有归因为产品回归，后续只运行 FS/SQLite 的相关选择。ImageMagick 的 AVIF encoder 未安装，试件改由本地已安装 AVIF WASM 编码生成；没有加入二进制或下载产物。
+
+### Limits and next checkpoint
+
+A4a 未执行迁移 preflight/apply/receipt API/逐项 replay、账户 native backup Persona manifest/default adoption/跨引擎 restore、真实 Host picker/Library Persona/UI 草稿流程、真实设备/模型服务、全量 tests/构建/远端 CI。新 persona-save-backup suite 当前只证明 Save/avatar 闭包，不能冒充账户备份。C20.5 migration prepared/root/receipt 每断点恢复留 A4b；现有 registered migration kind/引用读取不等于已实施迁移服务。
+
+Shared 描述停用仍需 A4b 明示产品状态并决定有权限 consumer 的接线/证据；当前选择/展示/头像不表示共享描述已发送。Host picker 未开放，完整 epoch/nonce/恢复入口浏览器证据仍待 A4b；C20/V20/S00–S20 的完整开放与集成不因本轮合约通过而自动关闭。
+
+保留产品 AGENTS.md 与 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 的原有 dirty changes，不提交；package/plugin/skills/reference 未改/未读。产品新分支不合并 main。下一阶段 A4b；本轮完成实现、本地验证、commit/push 与 Record/HANDOFF 后停止。
+
 ## Final state
 
-Task ongoing. A1–A3 implemented and locally verified; A4a next. S00–S20 full integration and final release remain pending.
+Task ongoing. A1–A4a implemented and locally verified; A4b next. Persona entrances remain closed; S00–S20 full integration and final release remain pending.

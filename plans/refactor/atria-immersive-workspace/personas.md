@@ -6,7 +6,7 @@
 
 来源：旧 `public/scripts/personas.js`、`public/index.html`、`public/script.js`，以及 [SillyTavern Personas 文档](https://docs.sillytavern.app/usage/core-concepts/personas/)。旧备份不含头像二进制和聊天绑定，因此不能宣称仅凭该 JSON 恢复完整身份资产。
 
-本模块不是旧管理抽屉重显示，也不恢复整套 SillyTavern 产品迁移。它新增 Native 资源、会话/请求 evidence、数据转换与完整恢复。D1 已核对基线并冻结下文实施契约；新增类型/endpoint 仍未实现，不表示产品已经具备这些能力。
+本模块不是旧管理抽屉重显示，也不恢复整套 SillyTavern 产品迁移。它新增 Native 资源、会话/请求 evidence、数据转换与完整恢复。D1 已核对基线并冻结下文实施契约；A4a 已实现资源/会话/请求/Save/共享选择与 Host capability 合约；迁移、账户备份扩展和产品入口仍属 A4b，完整开放证据见本任务 Record。
 
 ## Native authority design
 
@@ -115,10 +115,12 @@
 
 Persona 使用独立 Native kinds，全部经既有 Storage Engine 注册/读写，不进入 Prompt 资源类型白名单。新增 ID family `persona`（`persona_*` opaque UUID）；修订使用既有 `revision`（`rev_*`）。新增 key：
 
-- `atri_persona`：handle + personaId；root = schemaVersion/personaId/currentRevisionId/archived；CAS integrity 由服务返回。
+- `atri_persona`：handle + personaId；root = schemaVersion/personaId/currentRevisionId/archived/publishedRevisionIds；CAS integrity 由服务返回。
 - `atri_persona_revision`：handle + personaId + revisionId；immutable = schemaVersion/personaId/revisionId/name/avatar/description/managementNotes。avatar 是完整 AssetRef 或 null；contentIdentity 是既有 canonical JSON SHA-256。
 - `atri_persona_default`：handle；schemaVersion/selection，selection 为 exact ref 或 null；缺记录等价 none，但 CAS 使用 hash(null)。
 - `atri_persona_migration`：handle + sourceDigest；账本见后文。所有 key 的 handle 来自认证 principal，不从客户端身份字段采信。
+
+A4a 的 FS 发布核对补充：`publishedRevisionIds` 随 root CAS 一并发布，exact get/revisions 只读取该集合；只写完 immutable revision、尚未发布 root 的修订不成为可读/可选历史。它是 root 的发布闭包，不是另一套 revision authority。
 
 Exact ref = personaId/revisionId/contentIdentity；服务读取并核对内容 hash。列表默认排除 archived，仍可按 ID/exact revision 读取历史。名字允许重名，新建/复制由服务分配 ID；修改总是发布新修订。root、default 与 receipt 的 mutable CAS 使用 expectedFingerprint；创建以 hash(null) 为前提，缺少前提拒绝。
 
@@ -132,7 +134,7 @@ Session 在既有 Native Session 路由新增 persona/read、persona/select；se
 
 ### Frozen Session, input and retry contract
 
-新增受保护 `atri_player_persona` namespace，schemaVersion 1，包含 solo selection 和按 seatId 的 selections。每个选择为 none 或服务捕获的 exact ref + snapshot（name/avatar/description）+ snapshotHash/source；source 区分 explicit/default/migration/restored。managementNotes 不在 Session/message/request 投影中。完整内容哈希只用于 exact ref 验证，不能据它重构备注。旧 revision 缺 namespace 等价 legacy-unbound，读取不写回；不回填 personaId。
+新增受保护 `atri_player_persona` namespace，schemaVersion 1，包含 solo selection 和按 seatId 的 selections。每个选择为 none 或服务捕获的 exact ref + snapshot（name/avatar/description）+ snapshotHash/source；source 区分 explicit/default/migration/restored；共享选择另含服务捕获的 authorization（principalHash/accessEpoch/scopeEpoch），不存明文账户 handle。managementNotes 不在 Session/message/request 投影中。完整内容哈希只用于 exact ref 验证，不能据它重构备注。旧 revision 缺 namespace 等价 legacy-unbound，读取不写回；不回填 personaId。
 
 SessionCore 专用操作在既有 Session 写锁与 HEAD CAS 内发布；Persona 资源写锁先于 Session 锁，同一锁序用于默认捕获、切换、引用检查和删除，避免 TOCTOU。共享操作先取得既有 shared access lock、再按相同顺序进入资源/Session authority，不在 Session 锁内反向请求个人库锁。服务重验 run/lifecycle/生成状态、可写权限、resource revision/archived，不能只依赖 UI disabled。archive 不破坏已捕获快照；修改默认/资源也不隐式推进其他 Session。
 
@@ -154,7 +156,7 @@ Effective Request Snapshot 增加 versioned personaEvidence（保持旧 snapshot
 
 ### Frozen shared, Host and assets contract
 
-共享选择由认证 member principal 从自己的账户库读取，不由 Session owner 代读/代选。请求接 owner/sessionId/seatId/expectedAccessRevisionId/expectedRevisionId/selection；member-seat-scope/epoch 必须相符，observer 与其他席位拒绝，host 首轮也不能替另一主体选。服务把明确授权的快照发布到 owner 的 Session seat state；公共投影只给 name/avatar，描述仅给授权消费任务，备注/私人库列表/owner handle 不进入玩家投影。
+共享选择由认证 member principal 从自己的账户库读取，不由 Session owner 代读/代选。请求接 owner/sessionId/seatId/expectedAccessRevisionId/expectedRevisionId/selection；member-seat-scope/epoch 必须相符，observer 与其他席位拒绝，host 首轮也不能替另一主体选。服务把明确授权的快照发布到 owner 的 Session seat state；公共投影只给 status/name/avatar，并按捕获的主体 hash 与当前 access/scope epoch 重验；恢复旧 Branch 不给后来占用相同 seat 的账户旧身份。描述仅给授权消费任务，备注/私人库列表/owner handle 不进入玩家投影。
 
 头像在个人库留原 Asset，同时以授权快照复制到 owner 的 AssetStore 闭包，记录原 hash，避免跨账户任意资产读取。共享资源投影与 asset delivery 白名单增加准确 seat snapshot 头像，校验成员关系；不开放整个个人库，也不把头像伪装为 Package asset。跨账户转移是 blob/ref 准备 → Session HEAD 发布，失败仅产生可回收未引用资源，不承诺跨引擎事务。
 
@@ -175,6 +177,10 @@ FS 不提供整批原子性：先 durable prepared receipt → blob/ref/immutabl
 有 Persona namespace/evidence 的新 .atriasave 使用 schemaVersion 3，支持 snapshot/session/resume；容器 magic/version 保持 v1，header 明确匹配 scope/schema。继续读取 v1/v2，缺身份保持 legacy-unbound；旧读端必须因新版本明确拒绝，不能漏掉头像后伪成功。完整 Persona snapshot 存在 stateRecords，历史显示证据存在 Timeline metadata；avatar 加入 assetRefs/attachments/字节/hash 校验，包含 branch/save/request 使用的准确闭包。跨账户恢复以独立快照可读，不把原 personaId 自动认领为目标个人库或采用其默认。
 
 账户备份继续使用 native 选项、现有 manifest 与 native_resources/nativeBlobs，不另建 archive/服务。增加 schema 1 Persona manifest 索引（root/revision/hash/receipt/avatar）；默认恢复是 Native 范围内独立审阅选项，默认保留目标账户默认，显式 adopt 才 CAS 更新。恢复 preflight 校验完整闭包/ID冲突/hash，冲突返回审阅，禁止按名字合并。旧备份无该索引且无 Persona kinds 仍可恢复；出现 Persona kinds 却缺索引时拒绝完整身份恢复并报缺契约。FS↔SQLite↔MySQL↔Postgres 的注册/dump/selection/restore 路径同样纳入 C20 测试。
+
+## A4a implementation checkpoint
+
+产品实现已接既有 Storage/Session/Context/Save/Host 路径，证据见 [Record A4a](../../../records/refactor/atria-immersive-workspace.md#stage-a4a--native-persona-resource-and-session-contracts)。首轮 Shared 描述 consumer 明确返回 `shared_scope_unsupported`，不回退为 owner solo/global Persona；席位选择、展示和头像授权已实现。Host `status/openSelector` 为白名单合约，picker action 缺实现时明确 unavailable。A4b 仍需关闭迁移/账户备份 manifest/default adoption、共享消费停用策略与真实 picker/UI 的剩余开放门。
 
 ## Release gate
 

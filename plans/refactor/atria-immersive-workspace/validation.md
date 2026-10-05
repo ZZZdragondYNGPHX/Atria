@@ -28,7 +28,7 @@
 | V17 | native/hybrid/custom presentation、自有字体/Shadow DOM、恢复可达；共享席位/观察者/过期 | `tests/native/{frontend-heavy,frontend-platform,shared-runtime-p8}.test.js`；`tests/e2e/atria-shell/03-game-surfaces.e2e.js` |
 | V18 | 两种语言、真实 font_scale/Custom CSS/Enter、条件账户操作/头像/密码/备份恢复范围 | `tests/atria-shell/{appearance,utility-workspaces,localization,product-localization-coverage}.test.js`；`tests/storage/endpoints/native-backup-roundtrip.test.js` |
 | V19 | Guided/Startup/Expert、真实来源/事件、清理范围、复制导出失败 | `tests/logging/{frontend-adapters,startup-store}.test.js`；`tests/e2e/atria-shell/04-navigation.e2e.js` 的 A1 global utilities 场景 |
-| V20 | Native Persona 的全部开放门 | **需新增** persona resource/session/request/migration/backup/shared/host contracts 与产品 E2E；旧 `tests/e2e/personas/` 仅证明 legacy，不能直接冒充 Native 验收 |
+| V20 | Native Persona 的全部开放门 | A4a 已新增 resource/session/request/save/shared/host 服务合约；迁移/账户 backup/产品 E2E 仍需 A4b 补齐；旧 `tests/e2e/personas/` 仅证明 legacy，不能直接冒充 Native 验收 |
 
 实际测试位置以最新源码为准，进入实施阶段时更新新增测试路径。每阶段及任务完成时，只在本地执行最小相关验证；不发起或等待远端 CI。本表不能用“已有测试文件”替代未覆盖场景。
 
@@ -57,9 +57,9 @@ V20 必须包含：不同账户同名、多个修订/缺头像、归档默认、
 
 迁移试件：空数据、损坏 JSON、未知版本/字段、重名/ID冲突、图片丢失/损坏、多旧绑定、无法映射 Lorebook/位置、`{{user}}`/多 Actor `{{char}}`/未知宏、重复导入、失败后重试、默认变更、备份闭包与恢复冲突。确认原始配置可恢复且不丢未知项；管理备注不在请求 evidence 中。
 
-## D1 frozen C20 contract test map (planned, not executed)
+## D1 frozen C20 contract map — phase-scoped implementation
 
-下列新增测试名是 A4 实施目标，文件尚未创建。每个文件只验证真实 authority 行为，既有入口在实际修改时按触及面选择；D1 不运行产品测试。
+下表保留 D1 冻结目标。A4a 已创建 persona-resources/session/context/shared-host/save-backup 五个真实服务合约文件；storage 的 CAS/root crash 验证目前在 resources 与 Session suites，migration/backup/picker 与产品 E2E 尚未创建/执行。不要把文件存在或部分断言通过当作整行开放门全部通过；实际命令与限制只见 Record A4a。
 
 | ID | 冻结契约 / 阶段 | 待新增测试与关键断言 |
 | --- | --- | --- |
