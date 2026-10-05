@@ -154,7 +154,7 @@ describe('A7 Atria Studio workspace', () => {
         click(center, 'Source'); const source = center.querySelector('[aria-label="Actors resource JSON"]');
         const draft = JSON.parse(source.value); expect(draft.displayName).toBe('Draft A'); expect(draft.profile.plugin).toEqual({ nested: [null, true, 4] });
         click(center, 'Collection Source'); expect(source.isConnected).toBe(true);
-        click(slot.querySelector('.atria-studio-resource-tree'), 'EntryPoints'); expect(source.isConnected).toBe(true);
+        click(slot.querySelector('.atria-studio-resource-tree'), 'Actors'); expect(source.isConnected).toBe(true);
         click(center, 'Review Changes'); await flush();
         const inspected = requests.find(item => item.path.endsWith('/workspaces/inspect')).body;
         expect(inspected.baseRevision).toBe(revision); expect(inspected.origin.kind).toBe('human');
@@ -204,6 +204,110 @@ describe('A7 Atria Studio workspace', () => {
         failRead = false; click(activity, 'Reload Latest'); await flush(); expect(writes).toBe(1);
         click(center, 'Actor fields'); expect(center.querySelector('[aria-label="Actors resource"]').value).toBe('actor_' + 'b'.repeat(32));
         expect(center.querySelector('[name="profile.description"]').value).toBe('Original b'); controller.dispose();
+    });
+
+    function entryPointsFixture() {
+        const detail = projectDetail();
+        detail.source.package.entryPoints = ['a', 'b'].map(letter => ({ entryPointId: 'entry_' + letter.repeat(32), displayName: 'Same name', actorIds: [], worldIds: [], knowledgeBindingIds: [], initialStateOverlay: { description: 'Original ' + letter }, runtime: { plugin: { nested: [null, true, 4] } } }));
+        const previous = globalThis.fetch;
+        globalThis.fetch = jest.fn((url, options) => url === `/api/native/studio/projects/${projectId}` ? Promise.resolve(response(detail)) : previous(url, options));
+        return detail;
+    }
+
+    test('EntryPoints exact identity, Source and view cancellation keep one draft; Review Cancel retains advanced data', async () => {
+        const detail = entryPointsFixture(), slot = document.querySelector('#slot');
+        const controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        click(slot.querySelector('.atria-studio-resource-tree'), 'EntryPoints'); await flush();
+        const center = slot.querySelector('.atria-studio-center'), chooser = center.querySelector('[aria-label="EntryPoints resource"]');
+        const input = center.querySelector('[name="displayName"]'); fill(input, 'Draft A');
+        const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false);
+        chooser.value = detail.source.package.entryPoints[1].entryPointId; chooser.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(chooser.value).toBe(detail.source.package.entryPoints[0].entryPointId); expect(center.querySelector('[name="displayName"]')).toBe(input);
+        click(center, 'Source'); const source = center.querySelector('[aria-label="EntryPoints resource JSON"]');
+        const draft = JSON.parse(source.value); expect(draft.displayName).toBe('Draft A'); expect(draft.runtime.plugin).toEqual({ nested: [null, true, 4] });
+        click(center, 'Collection Source'); expect(source.isConnected).toBe(true);
+        click(slot.querySelector('.atria-studio-resource-tree'), 'Actors'); expect(source.isConnected).toBe(true);
+        click(center, 'Review Changes'); await flush();
+        const inspected = requests.find(item => item.path.endsWith('/workspaces/inspect')).body;
+        expect(inspected.baseRevision).toBe(revision); expect(inspected.origin.kind).toBe('human');
+        expect(inspected.operations[0].operationType).toBe('project.save'); expect(inspected.operations[0].input.source.package.entryPoints[0]).toEqual(draft);
+        click(slot.querySelector('.atria-studio-activity'), 'Cancel'); await flush();
+        expect(source.value).toBe(JSON.stringify(draft, null, 2)); expect(requests.some(item => item.path.endsWith('/workspaces/execute'))).toBe(false);
+        confirm.mockReturnValue(true); chooser.value = detail.source.package.entryPoints[1].entryPointId; chooser.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(center.querySelector('[name="initialStateOverlay.description"]').value).toBe('Original b');
+        controller.dispose();
+    });
+
+    test('EntryPoints conflict exposes exact malformed Source for copy and requires explicit discard before reload', async () => {
+        const detail = entryPointsFixture(), previous = globalThis.fetch;
+        globalThis.fetch = jest.fn((url, options) => String(url).endsWith('/workspaces/execute') ? Promise.resolve(response({ message: 'Stale revision' }, 409)) : previous(url, options));
+        const slot = document.querySelector('#slot'), controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        click(slot.querySelector('.atria-studio-resource-tree'), 'EntryPoints'); await flush();
+        const center = slot.querySelector('.atria-studio-center'), activity = slot.querySelector('.atria-studio-activity');
+        fill(center.querySelector('[name="displayName"]'), 'Conflict draft'); click(center, 'Review Changes'); await flush();
+        click(activity, 'Apply ChangeSet'); await flush();
+        click(center, 'Source'); const source = center.querySelector('[aria-label="EntryPoints resource JSON"]'); fill(source, '{ malformed after review');
+        click(activity, 'Copy EntryPoints draft'); await flush();
+        expect(activity.querySelector('[data-atria-entry-points-draft-copy]').value).toBe(source.value);
+        const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false); click(activity, 'Reload Latest'); await flush();
+        expect(source.isConnected).toBe(true); expect(source.value).toBe('{ malformed after review');
+        detail.source.package.entryPoints.reverse(); confirm.mockReturnValue(true); click(activity, 'Reload Latest'); await flush();
+        expect(center.querySelector('[aria-label="EntryPoints resource"]').value).toBe('entry_' + 'a'.repeat(32));
+        expect(center.querySelector('[name="displayName"]').value).toBe('Same name'); controller.dispose();
+    });
+
+    test('EntryPoints collection save receipt blocks edits after read failure and reload never replays execute', async () => {
+        const detail = entryPointsFixture(), previous = globalThis.fetch; let committed = false, failRead = true, writes = 0;
+        globalThis.fetch = jest.fn(async (url, options = {}) => {
+            if (String(url).endsWith('/workspaces/execute')) {
+                writes++; const body = JSON.parse(options.body); detail.source = body.operations[0].input.source;
+                detail.revision.revision = 'b'.repeat(40); committed = true; return previous(url, options);
+            }
+            if (url === `/api/native/studio/projects/${projectId}` && committed && failRead) return response({ message: 'Read unavailable' }, 503);
+            return previous(url, options);
+        });
+        const slot = document.querySelector('#slot'), controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        click(slot.querySelector('.atria-studio-resource-tree'), 'EntryPoints'); await flush();
+        const center = slot.querySelector('.atria-studio-center'), activity = slot.querySelector('.atria-studio-activity');
+        const chooser = center.querySelector('[aria-label="EntryPoints resource"]'); chooser.value = 'entry_' + 'b'.repeat(32); chooser.dispatchEvent(new Event('change', { bubbles: true }));
+        click(center, 'Collection Source'); fill(center.querySelector('textarea'), JSON.stringify([...detail.source.package.entryPoints].reverse()));
+        click(center, 'Review Changes'); await flush(); click(activity, 'Apply ChangeSet'); await flush();
+        expect(center.inert).toBe(true); expect(activity.textContent).toContain('Saved, but'); expect(writes).toBe(1);
+        failRead = false; click(activity, 'Reload Latest'); await flush(); expect(writes).toBe(1);
+        click(center, 'EntryPoint fields'); expect(center.querySelector('[aria-label="EntryPoints resource"]').value).toBe('entry_' + 'b'.repeat(32));
+        expect(center.querySelector('[name="initialStateOverlay.description"]').value).toBe('Original b'); controller.dispose();
+    });
+
+    test.each(['empty', 'duplicate'])('EntryPoints %s source routes to repair and never guesses a single-entry patch', async mode => {
+        const detail = entryPointsFixture(), entries = detail.source.package.entryPoints;
+        detail.source.package.entryPoints = mode === 'empty' ? [] : [entries[0], entries[0]];
+        const slot = document.querySelector('#slot'), controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        click(slot.querySelector('.atria-studio-resource-tree'), 'EntryPoints'); await flush();
+        const center = slot.querySelector('.atria-studio-center'); expect(center.querySelector('[aria-label="EntryPoints resource"]')).toBeNull();
+        const source = center.querySelector('[aria-label="EntryPoints collection JSON"]'); expect(source).not.toBeNull();
+        click(center, 'Review Changes'); await flush(); expect(requests.some(item => item.path.endsWith('/workspaces/inspect'))).toBe(false);
+        fill(source, JSON.stringify([entries[0]])); click(center, 'Review Changes'); await flush();
+        expect(requests.find(item => item.path.endsWith('/workspaces/inspect')).body.operations[0].input.source.package.entryPoints).toEqual([entries[0]]);
+        controller.dispose();
+    });
+
+    test('EntryPoints explicit ID save restores that identity, preserves source neighbors and exposes the project graph boundary', async () => {
+        const detail = entryPointsFixture(), previous = globalThis.fetch;
+        globalThis.fetch = jest.fn(async (url, options) => {
+            if (String(url).endsWith('/workspaces/execute')) detail.source = JSON.parse(options.body).operations[0].input.source;
+            return previous(url, options);
+        });
+        const slot = document.querySelector('#slot'), controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        click(slot.querySelector('.atria-studio-resource-tree'), 'EntryPoints'); await flush();
+        const center = slot.querySelector('.atria-studio-center'), original = JSON.parse(JSON.stringify(detail.source));
+        const chooser = center.querySelector('[aria-label="EntryPoints resource"]'); chooser.value = original.package.entryPoints[1].entryPointId; chooser.dispatchEvent(new Event('change', { bubbles: true }));
+        const id = 'entry_' + 'c'.repeat(32); fill(center.querySelector('[name="entryPointId"]'), id); click(center, 'Review Changes'); await flush();
+        click(slot.querySelector('.atria-studio-activity'), 'Apply ChangeSet'); await flush();
+        expect(center.querySelector('[aria-label="EntryPoints resource"]').value).toBe(id);
+        expect(slot.querySelector('[data-atria-studio-entry-point-id][data-active="true"]').dataset.atriaStudioEntryPointId).toBe(id);
+        expect(detail.source).toEqual({ ...original, package: { ...original.package, entryPoints: [original.package.entryPoints[0], { ...original.package.entryPoints[1], entryPointId: id }] } });
+        expect(slot.querySelector('.atria-studio-inspector').textContent).toContain('no independent EntryPoint resource');
+        controller.dispose();
     });
 
     test('relationship detach exposes consumers before review and navigates to the exact project owner', async () => {

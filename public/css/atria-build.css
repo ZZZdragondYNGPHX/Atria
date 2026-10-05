@@ -162,8 +162,10 @@
 .atri-prompt-condition fieldset { margin-inline: 0; }
 .atri-prompt-parameters fieldset, .atri-prompt-derive fieldset { min-width: 0; margin: 12px 0; }
 
-.atri-studio-actors-section { min-width: 0; margin-block: 20px; }
-.atri-studio-actors-section h4 { margin: 0 0 12px; }
-.atri-studio-actors-section p { color: var(--atri-text-secondary); line-height: 1.5; overflow-wrap: anywhere; }
+.atri-studio-actors-section, .atri-studio-entrypoints-section { min-width: 0; margin-block: 20px; }
+.atri-studio-actors-section h4, .atri-studio-entrypoints-section h4 { margin: 0 0 12px; }
+.atri-studio-actors-section p, .atri-studio-entrypoints-section p, .atri-studio-action-target { color: var(--atri-text-secondary); line-height: 1.5; overflow-wrap: anywhere; }
 .atri-studio-actor-id { font-size: var(--atri-text-footnote); }
-.atri-studio-actors-section textarea { min-height: 120px; resize: vertical; }
+.atri-studio-actors-section textarea, .atri-studio-entrypoints-section textarea { min-height: 120px; resize: vertical; }
+
+.atri-studio-entrypoints-section button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }

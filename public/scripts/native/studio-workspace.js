@@ -11,6 +11,7 @@ import { mountWorldEditor } from './world-editor.js';
 import { validateKnowledgeEditorValue } from './knowledge-contracts.js';
 import { mountStudioValueEditor } from './studio-value-editor.js';
 import { mountStudioActorsEditor, patchStudioActors } from './studio-actors-editor.js';
+import { mountStudioEntryPointsEditor, patchStudioEntryPoints } from './studio-entrypoints-editor.js';
 import { createAtriaShellEnvironment } from '../atria-shell/environment.js';
 import { mountStudioPromptTools } from './prompt-authoring.js';
 import {
@@ -215,7 +216,6 @@ function displayNameFor(item, view) {
 function normalizeCollectionPatch(source, view, index, value) {
     const next = clone(source);
     if (view === 'actors') next.package.actors[index] = value;
-    else if (view === 'entrypoints') next.package.entryPoints[index] = value;
     else if (view === 'worlds') next.worlds[index] = value;
     else if (view === 'knowledge') next.knowledge[index] = value;
     else if (view === 'assets') next.assetFiles[index] = value;
@@ -305,15 +305,17 @@ function createResourceTree(documentRef, state, selectView) {
 
             row.setAttribute('aria-current', state.activeView === id ? 'page' : 'false');
             if (!Array.isArray(items)) continue;
+            const exactEntrySelection = id === 'entrypoints' && !state.entryPointCollection && new Set(items.map(item => item.entryPointId)).size === items.length;
             items.forEach((item, index) => {
                 const name = displayNameFor(item, id);
                 if (needle && !sectionMatch && !name.toLowerCase().includes(needle)) return;
                 const child = button(documentRef, name || `${label} ${index + 1}`, () => {
                     selectView(id, index);
-                }, { active: state.activeView === id && state.collectionSelection[id] === index });
+                }, { active: state.activeView === id && (id === 'entrypoints' ? exactEntrySelection && item.entryPointId === state.entryPointSelection : state.collectionSelection[id] === index) });
                 child.textContent = name || `${label} ${index + 1}`;
                 child.className = 'atria-studio-resource-tree__item atria-studio-resource-tree__item--child';
                 child.dataset.atriaStudioResourceItem = id + ':' + index;
+                if (id === 'entrypoints') { child.dataset.atriaStudioEntryPointId = item.entryPointId; child.title = item.entryPointId; }
                 list.append(child);
             });
         }
@@ -374,7 +376,6 @@ function renderCollectionEditor(documentRef, body, state, view, stageProject) {
             if (view === 'knowledge') parsed.forEach(validateKnowledgeEditorValue);
             const next = clone(state.source);
             if (view === 'actors') next.package.actors = parsed;
-            else if (view === 'entrypoints') next.package.entryPoints = parsed;
             else next[view] = parsed;
             return stageProject(next, formatProductText('Update ${0} collection', [title]));
         } });
@@ -440,6 +441,58 @@ function renderActorsEditor(documentRef, body, state, stageProject) {
     state.actorEditor = mountStudioActorsEditor({ document: documentRef, root: body, value: collection ? actors : actor, projectSource: state.source, collection,
         onReview: parsed => stageProject(patchStudioActors(state.source, actor?.actorId, parsed, collection), formatProductText(collection ? 'Update ${0} collection' : 'Update ${0} resource', ['Actors'])),
     });
+}
+
+function renderEntryPointsEditor(documentRef, body, state, stageProject) {
+    const workspaceRoot = body.closest('[data-atria-studio-workspace]');
+    const entries = state.source.package.entryPoints || [];
+    const duplicateIds = new Set(entries.map(entry => entry.entryPointId)).size !== entries.length;
+    if (!entries.some(entry => entry.entryPointId === state.entryPointSelection)) state.entryPointSelection = entries[0]?.entryPointId;
+    const collection = state.entryPointCollection || !entries.length || duplicateIds;
+    body.append(heading(documentRef, 'EntryPoints', 'Edit project starting points, then review changes before applying. Existing Sessions and Saves keep their exact package.'));
+    appendFirstEntryTarget(documentRef, body, state.source);
+    body.append(actionRow(documentRef,
+        button(documentRef, 'EntryPoint fields', () => {
+            if (!state.confirmEditorLeave()) return;
+            state.entryPointCollection = false; state.renderEditor();
+            workspaceRoot.querySelector('[aria-label="EntryPoints resource"]')?.focus();
+        }, { active: !collection, disabled: !entries.length || duplicateIds || !collection }),
+        button(documentRef, 'Collection Source', () => {
+            if (!state.confirmEditorLeave()) return;
+            state.entryPointCollection = true; state.renderEditor();
+            workspaceRoot.querySelector('[aria-label="EntryPoints collection JSON"]')?.focus();
+        }, { active: collection, disabled: collection }),
+    ));
+    if (!entries.length) body.append(panel(documentRef, 'empty', 'No EntryPoints', 'Repair collection Source with at least one EntryPoint before review.'));
+    if (duplicateIds) body.append(panel(documentRef, 'error', 'Duplicate EntryPoint IDs', 'EntryPoint identity is ambiguous. Repair duplicate IDs in collection Source.'));
+    const entry = entries.find(item => item.entryPointId === state.entryPointSelection);
+    if (!collection) {
+        const chooser = selectInput(documentRef, state.entryPointSelection, entries.map(item => item.entryPointId), 'EntryPoints resource');
+        [...chooser.options].forEach((option, index) => { option.textContent = entries[index].displayName + ' · ' + entries[index].entryPointId; });
+        chooser.addEventListener('change', () => {
+            if (!state.confirmEditorLeave()) { chooser.value = state.entryPointSelection; return; }
+            state.entryPointSelection = chooser.value;
+            state.collectionSelection.entrypoints = entries.findIndex(item => item.entryPointId === chooser.value);
+            state.selectedGraphNode = null;
+            state.renderEditor(); void state.renderInspector();
+            workspaceRoot.querySelector('[aria-label="EntryPoints resource"]')?.focus();
+        });
+        body.append(field(documentRef, 'EntryPoint', chooser));
+        state.collectionSelection.entrypoints = entries.findIndex(item => item.entryPointId === state.entryPointSelection);
+    }
+    state.entryPointEditor = mountStudioEntryPointsEditor({ document: documentRef, root: body, value: collection ? entries : entry, projectSource: state.source, collection,
+        onReview: async parsed => {
+            const accepted = await stageProject(patchStudioEntryPoints(state.source, entry?.entryPointId, parsed, collection), formatProductText(collection ? 'Update ${0} collection' : 'Update ${0} resource', ['EntryPoints']));
+            if (accepted) state.pending.entryPointSelection = collection ? state.entryPointSelection : parsed.entryPointId;
+        },
+    });
+}
+
+function appendFirstEntryTarget(doc, parent, source) {
+    const entry = entryPoint(source);
+    const note = doc.createElement('p'); note.className = 'atri-studio-action-target';
+    note.textContent = formatProductText('Preview / Experience / UI use the first committed EntryPoint: ${0}. Reordering the collection changes this default; selecting an editor does not.', [entry ? entry.displayName + ' · ' + entry.entryPointId : t('Not specified')]);
+    parent.append(note);
 }
 
 async function loadProjectSupport(projectId) {
@@ -532,6 +585,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         if (!state.confirmEditorLeave()) return false;
         if (index !== undefined) state.collectionSelection[view] = index;
         if (view === 'actors' && index !== undefined) { state.actorSelection = state.source.package.actors[index]?.actorId; state.actorCollection = false; }
+        if (view === 'entrypoints' && index !== undefined) { state.entryPointSelection = state.source.package.entryPoints[index]?.entryPointId; state.entryPointCollection = false; }
         if (pluginType) state.selectedPluginResourceType = pluginType;
         state.selectedGraphNode = null;
         state.activeView = view;
@@ -684,6 +738,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 return;
             }
             const forked = state.pending.workspace.operations.find(operation => operation.operationType === 'resource.fork');
+            if (state.pending.entryPointSelection) state.entryPointSelection = state.pending.entryPointSelection;
             state.pending = null;
             state.refreshRequired = result.changeSet;
             center.dispatchEvent(new documentRef.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
@@ -793,6 +848,9 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         const inspectorToken = ++inspectorSequence;
         inspector.replaceChildren(heading(documentRef, 'Inspector', 'Explore references and the resources that use this item.'));
         inspector.append(button(documentRef, 'Close Inspector', () => { state.inspectorOpen = false; updateMobile(); topActions.querySelector('[aria-controls="atri-studio-inspector"]')?.focus(); }));
+        if (state.activeView === 'entrypoints') {
+            const note = documentRef.createElement('p'); note.textContent = t('EntryPoints belong to project source and its revision. Inspector shows limited project references; there is no independent EntryPoint resource or complete Used By graph.'); inspector.append(note);
+        }
         let node = state.selectedGraphNode;
         if (!node) {
             const type = state.activeView === 'plugin-resource' ? state.selectedPluginResourceType : (viewResourceType(state.activeView) || 'core.project');
@@ -892,6 +950,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     function renderExperience(body) {
         const current = experienceFromProject(state.source);
         body.append(heading(documentRef, 'Experience', 'Choose how readers experience this work. Component, hybrid and full modes use your project interface.'));
+        appendFirstEntryTarget(documentRef, body, state.source);
         const mode = selectInput(documentRef, current.mode || 'text', ['text', 'component', 'hybrid', 'full'], 'Experience mode');
         const frontend = textInput(documentRef, current.frontend?.source || 'frontend/index.json', 'Frontend source index');
         const features = documentRef.createElement('textarea'); features.className = 'text_pole'; features.value = JSON.stringify(current.features || [], null, 2); features.setAttribute('aria-label', translateShellText('Runtime features'));
@@ -956,6 +1015,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     }
 
     async function renderUi(body) {
+        appendFirstEntryTarget(documentRef, body, state.source);
         const experience = experienceFromProject(state.source);
         if (experience.frontend?.version === 3) {
             body.append(heading(documentRef, 'Native Frontend', 'Browse source identities, edit native components and inspect compiler diagnostics before Build.'));
@@ -1026,6 +1086,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                         if (!state.confirmEditorLeave()) return true;
                         state.activeView = ({ 'core.entrypoint': 'entrypoints', 'core.world': 'worlds', 'core.knowledge': 'knowledge', 'core.knowledge-binding': 'knowledge', 'core.asset': 'assets' })[node.resourceType] || 'source';
                         state.collectionSelection[state.activeView] = (sourceSection(state.source, state.activeView) || []).findIndex(value => viewResourceId(value, state.activeView) === node.resourceId);
+                        if (state.activeView === 'entrypoints') { state.entryPointSelection = node.resourceId; state.entryPointCollection = false; }
                         state.mobileView = 'editor'; renderEditor(); updateMobile(); return true;
                     } });
                     return;
@@ -1061,6 +1122,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
 
     async function renderPreview(body) {
         body.append(heading(documentRef, 'Native Preview', 'Explore the committed project interface without creating a play session.'));
+        appendFirstEntryTarget(documentRef, body, state.source);
         if (!state.preview) {
             body.append(panel(documentRef, 'empty', 'No active preview', 'Run Preview from the Studio toolbar.'));
             return;
@@ -1068,6 +1130,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         const meta = documentRef.createElement('pre');
         meta.textContent = JSON.stringify({
             previewId: state.preview.previewId,
+            entryPointId: state.preview.entryPointId,
             experience: state.preview.experience,
             packageVersionId: state.preview.packageVersionId,
             persisted: state.preview.persisted,
@@ -1105,6 +1168,14 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         const fixture = documentRef.createElement('textarea'); fixture.className = 'text_pole atria-studio-editor__textarea';
         fixture.value = state.scenarioDraft ?? '{\n  "schemaVersion": 1,\n  "steps": []\n}';
         fixture.addEventListener('input', () => { state.scenarioDraft = fixture.value; }); label.append(fixture); body.append(label);
+        const target = documentRef.createElement('p'); target.className = 'atri-studio-action-target'; body.append(target);
+        const updateTarget = () => {
+            try {
+                const scenario = JSON.parse(fixture.value);
+                target.textContent = formatProductText('Simulation uses scenario.entryPointId when specified, otherwise the first committed EntryPoint. Current target: ${0}', [scenario.entryPointId ?? entryPoint(state.source)?.entryPointId ?? t('Not specified')]);
+            } catch { target.textContent = t('Invalid scenario JSON. Repair it before running Simulation.'); }
+        };
+        fixture.addEventListener('input', updateTarget); updateTarget();
         body.append(actionRow(documentRef, button(documentRef, 'Load scenario fixture', async () => {
             const file = await nativeStudioClient.readSource(projectId, 'scenarios/main.json');
             if (state.disposed) return;
@@ -1143,6 +1214,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
 
     function renderEditor() {
         state.actorEditor = null;
+        state.entryPointEditor = null;
         state.structuredEditor?.dispose(); state.structuredEditor = null;
         state.previewMount?.dispose(); state.previewMount = null;
         if (state.disposed) return;
@@ -1170,7 +1242,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         else if (['prompt-authoring', 'runtime-design'].includes(state.activeView)) void mountStudioPromptTools({ document: documentRef, body, state, stageProject, host, runtimeDesign: state.activeView === 'runtime-design' });
         else if (state.activeView === 'experience') renderExperience(body);
         else if (state.activeView === 'actors') renderActorsEditor(documentRef, body, state, stageProject);
-        else if (['entrypoints', 'worlds', 'knowledge'].includes(state.activeView)) {
+        else if (state.activeView === 'entrypoints') { renderEntryPointsEditor(documentRef, body, state, stageProject); tree.render(); } else if (['worlds', 'knowledge'].includes(state.activeView)) {
             renderCollectionEditor(documentRef, body, state, state.activeView, stageProject);
         } else if (state.activeView === 'logic') renderPackageJson(body, 'Game Logic', 'processors', 'Structured logic/processors remain part of project source.');
         else if (state.activeView === 'ui') void renderUi(body);
@@ -1318,21 +1390,25 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             body.append(title);
             if (state.pending.conflict) {
                 body.append(panel(documentRef, 'error', 'Revision conflict', 'The project advanced. Studio never silently rebases authoring changes. Reload the latest revision and review your edits again.'));
-                if (state.activeView === 'actors' && state.actorEditor) {
-                    body.append(button(documentRef, 'Copy Actors draft', async () => {
-                        let source = body.querySelector('[data-atria-actors-draft-copy]');
+                const draftEditor = state.activeView === 'actors' ? state.actorEditor : state.activeView === 'entrypoints' ? state.entryPointEditor : null;
+                if (draftEditor) {
+                    const entryPoints = state.activeView === 'entrypoints';
+                    body.append(button(documentRef, entryPoints ? 'Copy EntryPoints draft' : 'Copy Actors draft', async () => {
+                        let source = body.querySelector('[data-atria-studio-draft-copy]');
                         if (!source) {
                             source = documentRef.createElement('textarea'); source.readOnly = true; source.className = 'atria-studio-editor__textarea';
-                            source.dataset.atriaActorsDraftCopy = 'true'; source.setAttribute('aria-label', t('Actor draft Source'));
+                            source.dataset.atriaStudioDraftCopy = 'true';
+                            if (entryPoints) source.dataset.atriaEntryPointsDraftCopy = 'true'; else source.dataset.atriaActorsDraftCopy = 'true';
+                            source.setAttribute('aria-label', t(entryPoints ? 'EntryPoint draft Source' : 'Actor draft Source'));
                             const hint = documentRef.createElement('p'); hint.textContent = t('Copy this Source before discarding the draft and reloading.');
                             body.append(hint, source);
                         }
-                        source.value = state.actorEditor.getSource(); source.focus(); source.select();
+                        source.value = draftEditor.getSource(); source.focus(); source.select();
                         try { await documentRef.defaultView.navigator.clipboard?.writeText(source.value); } catch { /* The selected Source remains available for manual copy. */ }
                     }));
                 }
                 body.append(actionRow(documentRef, button(documentRef, 'Reload Latest', async () => {
-                    if (state.activeView === 'actors' && !state.confirmEditorLeave()) return;
+                    if (['actors', 'entrypoints'].includes(state.activeView) && !state.confirmEditorLeave()) return;
                     await refreshProject();
                     state.pending = null;
                     renderEditor();
