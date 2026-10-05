@@ -30,6 +30,8 @@
 
 A1 的外壳离开检查接到现有 navigation authority，覆盖跨域、子路由和 browser Back：原生确认框取消时保留当前控制器/表面/字段，确认时丢弃并导航。World/Knowledge 的实际模型草稿与 Studio 的待审阅状态提供 dirty 标记，普通字段仅观察值差异；Library/Runtime 写入成功回执清除观察，不依赖后续列表刷新。这不是新增跨路由草稿持久化。控制器内部换页与更细的冲突/恢复操作仍由 A2/A3 原路径负责。
 
+A2 在 Library revision / Prompt editor 与 preset 内部 Back 复用相同 dirty 判定；取消保留原字段和 Source，保存失败保留草稿。revision 与 preset 已保存后的读取失败显示真实回执并仅重试读取。安装/导入的结果页保留 write receipt，打开失败不能再提交；文件/候选 response 只更新原流程。Native 未被接受的输入在失败时恢复到原 Session/基准 revision；已提交输入和新 Session 不接收旧草稿。Stop 在实际生成期间保持可用，防重复提交不覆盖它。历史面板按 facade 实时 capability 禁用动作并在 handler 重验；切换 Session 关闭旧 drawer。
+
 ## Review authority
 
 - Library/Runtime 管理走各自原生编辑与 revision 操作。

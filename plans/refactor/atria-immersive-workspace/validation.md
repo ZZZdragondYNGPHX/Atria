@@ -13,10 +13,10 @@
 | V02 | 实际最近会话/作品、继续、空态、缺依赖 | `tests/atria-shell/native-play-controls.test.js`；Native Session 产品 UI E2E |
 | V03 | committed/transient 投影、读者位置、流式 stop/失败、IME/发送策略 | `tests/atria-shell/{native-play-product,native-generation-p4}.test.js`、`tests/native/{session-projection,frontend-conversation}.test.js` |
 | V04 | history/live、完整可用回合动作、variants/branches/save、生成时禁用 | `tests/atria-shell/{session-history,native-reply-variants,native-play-controls}.test.js`；`tests/native/{session-history-p2,save-system}.test.js` |
-| V05 | 四项 exact 依赖、实际文件/密码/损坏/尺寸、冲突、取消/重试、结果打开 | `tests/atria-shell/save-dependency-recovery.test.js`、`tests/native/save-system.test.js` |
-| V06 | 安装权限/版本/重复与并发、旧版本启动、命名冲突、作品/会话删除区别 | `tests/atria-shell/{library-interactions,package-permissions,session-naming}.test.js`；`tests/e2e/atria-shell/06-library-runtime.e2e.js` |
+| V05 | 四项 exact 依赖、实际文件/密码/损坏/尺寸、冲突、取消/重试、结果打开 | `tests/atria-shell/{save-dependency-recovery,library-import-flow}.test.js`、`tests/native/save-system.test.js`；`tests/e2e/native-session/07-play-redesign.e2e.js` 的 A2 exact/history 与旧版本恢复场景 |
+| V06 | 安装权限/版本/重复与并发、旧版本启动、命名冲突、作品/会话删除区别 | `tests/atria-shell/{library-interactions,library-import-flow,package-permissions,session-naming}.test.js`；`tests/e2e/atria-shell/06-library-runtime.e2e.js` |
 | V07 | World/Knowledge 编辑规则、全部字段/条目/Source、闭包/缺引用/导入/Fork | `tests/atria-shell/{package-library-resources,knowledge-editor,world-editor,resource-bundle-controls,reference-remediation}.test.js`；`tests/native/library-revisions.test.js` |
-| V08 | 4 类完整 Prompt 资源、类别/模块/阶段/Regex、revision/归档/Used By；choices 不改作者资源 | `tests/atria-shell/{prompt-authoring-p6,prompt-runtime-controls,prompt-semantics}.test.js`；`tests/native/prompt-presets.test.js` |
+| V08 | 4 类完整 Prompt 资源、类别/模块/阶段/Regex、revision/归档/Used By；choices 不改作者资源 | `tests/atria-shell/{prompt-authoring-p6,prompt-preset-receipt,prompt-runtime-controls,prompt-semantics}.test.js`；`tests/native/prompt-presets.test.js` |
 | V09 | Secret 不回显、提供商字段/能力、连接实测分类、保存成功读取失败 | `tests/atria-shell/native-runtime-p5.test.js`；`tests/native/{runtime-http,model-prompt-runtime-contracts}.test.js` |
 | V10 | 全角色路由/模型发现/能力、exact ref/fallback、缺项修复回原任务 | `tests/atria-shell/{runtime-readiness,runtime-route-picker}.test.js`；`tests/native/model-prompt-runtime-p6.test.js` |
 | V11 | Embedding/Rerank 完整配置；编译预算/上下文证据且不发送/解析 Secret/写会话 | `tests/native/{retrieval-runtime,model-prompt-runtime-p4}.test.js`；Runtime diagnostics UI 场景 |

@@ -44,6 +44,10 @@
 
 A1 已补 navigation authority 的离开 guard、模型草稿标记及真实写入成功回执，并补分来源/owner 搜索结果与重试。S01/S18/S19 继续挂载原控制器；诊断保持 Guided/Startup/Expert、当前来源清理和真实导出服务。实际验证仅覆盖 A1 的变动集合，见同一 Record；控制器内部换页、完整账户条件、真实设备和全部后续域仍按所属阶段验证。
 
+A2 已把安装/导入接到 Library 的 `install` / `import-save` 子路由；WorkspaceHost 通过同一 navigation authority 一次提交域/子路由。列表与详情往返保留各分类查询（当前 controller 生命周期内的 UI 状态，不是持久化资源或跨账户 authority）。最近会话/Library Session 的缺依赖路径复用 exact recovery，安装匹配旧版本保留新版默认。写入回执与打开/读取失败分开，取消/异步过期/重试仍作用于原文件与对象。
+
+S03 平台正文使用 serif，元数据采用原 sans；头像目前为真实显示名的首字回退，Native Actor 没有接入新头像资源 authority。Persona 选择及真实 Persona 头像仍归 A4，不开放第四分类。Native AUTO/显式 send_on_enter、Shift/modifier/IME/229 已接；历史/生成/过期 drawer 的写动作拒绝，已有 Runtime fork/switch/retry 接到历史预览，退出走 Session.close。World/Knowledge/Prompt 全部字段、Source 和 installed original 编辑规则保持；内部 Back 及成功后刷新失败补齐。完整共享权限/自有前端字体矩阵仍待 A4/A5，A2 不声称新增共享协议或模拟持久化。
+
 S20 是确定新增工作。其他域以保留并重组为主；若要新增实体/协议/权限，必须在所属阶段更新本表与 Plan，不能从 UI 文案倒推服务已经存在。
 
 ## Acceptance ownership

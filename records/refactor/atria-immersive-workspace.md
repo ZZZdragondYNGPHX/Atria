@@ -169,6 +169,72 @@ npm run test:e2e -- e2e/atria-shell/04-navigation.e2e.js --workers=1 --grep 'A1 
 
 A2 从真实 HEAD 继续同一分支，按 index 阅读 experience/states、coverage S02–S08/S17 与 validation；保留所有编辑能力与 exact authority，执行 P01 AUTO/显式发送策略。不重复 D1，不提前开放 A4 Persona。正式 A1 完成持久化与 Record/HANDOFF 后停止。
 
+## Stage A2 — Play, Library, install and recovery
+
+- Date: 2026-10-05
+- Product start HEAD: `f56b3d8526507719353d5905b0148eb5d4d1d56a`
+- Product End/Tested HEAD: `2d0df2cef1d5580358555f553203a9cf5616700a`；源码内容与最后分触及面的本地验证一致，已 push。
+- Docs start HEAD: `09740ec7631e83d19b8146d18850b6c8f21f1d81`
+- Docs End/Tested content: 本 A2 提交的 index/coverage/states/validation、同一 Record 和 live HANDOFF（实际 hash 从 Git 读取）。
+- Status: A2 complete; A3 next。继续同一 `refactor/atria-immersive-workspace` 分支；未合并 main。
+
+### Completed and authority
+
+- S02：继续和最近作品使用原 product inventory / Session opener；某个 inventory 失败仍保留另一集合，错误与重试就近呈现。缺 exact Package 的会话可审阅/安装匹配文件并重查，不能用 latest 替换。新增 More → 返回游玩首页，调用原 Session.close；未发送输入离开取消保留，确认退出后可继续真实 Session。
+- S03/P01：平台叙事 serif、元数据 sans、显示名首字头像回退和消息序号并列；悬浮输入卡片有 no-blur 回退。复用当前 powerUserSettings.send_on_enter：AUTO(0)/DISABLED(-1) Enter 换行，Ctrl/Cmd+Enter 发送；ENABLED(1) 也可直接 Enter，Shift/Alt/composition/229 不发送。未接受的失败输入只恢复到同一 Session/基准 revision；已提交输入不重复发送。pending submit 禁止重复发送，但真实生成期间 Stop 仍可用；不新增聊天/请求 authority。
+- S04：历史与存档默认关闭，顶栏明确入口；历史预览接到原 facade 和 Runtime.forkRevision/switchBranch/retry，查看保持只读，恢复当前入口保持。旧 drawer 回合/Load 动作在生成、历史、失败或基准过期时禁用且 handler 重验；切 Session 关闭旧 drawer。save 使用真实 expectedRevisionId；重命名、嵌入 Knowledge、export、Prompt choices 与共享工具保持原路径。
+- S05/S06：Library `install` / `import-save` 为完整流程页，选文件 → 预检 → 权限/exact 依赖/密码 → 写入 → receipt/打开。128MiB Work / 64MiB Save 在读取前拒绝超限，坏文件可重新选择/重试，来源变化与 409 可重新审阅。成功写入后打开失败只能重试打开；不会把成功安装/导入当作失败重放。匹配依赖安装固定 packageId/packageVersionId/version/contentHash，并保留当前默认版本；实际 import 前再预检且服务侧继续重验。
+- S07/S08：保持 World/Knowledge 原版不同权限、全部字段/Source、immutable revisions、闭包/Fork/Used By 与四类 Prompt 资源、preset categories/modules/stages/Regex。列表/详情及分类往返保留查询；内部 Back 检查模型草稿，保存失败保留。revision/preset 保存成功但读取失败保留 receipt 和只读重试入口。界面状态位不替代 resource/service/persistence authority。
+- S17：保留作品 Shadow DOM 与现有宿主边界，serif 仅平台正文；独立 Full recovery 的 save/stop 根据原 Runtime capability 更新/点击重验，防重复保存，结束后重查状态；真实 save handler 拒绝历史/生成。Exit/diagnostics/reload 继续原 handler。自有 UI 内容清空不移除独立 recovery；Persona Host chooser 仍归 A4。
+
+### Findings and decisions
+
+首次安装浏览器场景发现 WorkspaceHost 只接受旧 Library section，新 `install` 被当成 Works 首页。修正既有 authority 的域/子路由提交和 flow 路由，未增加 router；复验通过。首次 history 新场景只 Explore branch，没有选择该分支的具体 Preview revision，因此 Switch 正确禁用；测试改为先预览 exact revision，再 switch 后通过。
+
+补模型 Source 内部 Back 与 preset 上层 Back 后，取消确实保留原编辑器；没有添加跨路由自动存草稿。保存 receipt 必须在刷新前清除 dirty；revision reload 先构造新表面，失败时保留原 receipt，preset read failure 不再次 PUT。防重复发送轮发现 submit 的 busy 位若直接用于禁用发送按钮会禁用正在生成的 Stop；已拆分提交等待/真实生成条件，补 pending Promise + real Stop handler 单测。
+
+早期 unit 失败还包含旧 Timeline 标签与新增 Library 编辑器测试使用了 Studio 的保存标签，均修正对应实际入口；这些失败不计为通过。一次验证命令使用错误 cwd，文件编辑未执行，已在正确产品目录重做并复验。
+
+### Local validation actually executed
+
+仅本地、分触及面的最小集合；没有发起或等待远端 CI。多轮计数重叠，不相加为不同场景。
+
+在产品 `tests` 目录：
+
+```bash
+npm run test:unit -- --runInBand --runTestsByPath atria-shell/native-play-product.test.js atria-shell/native-play-controls.test.js atria-shell/library-import-flow.test.js atria-shell/library-interactions.test.js atria-shell/save-dependency-recovery.test.js atria-shell/prompt-authoring-p6.test.js atria-shell/prompt-preset-receipt.test.js atria-shell/workspace-leave-guard.test.js atria-shell/navigation-authority.test.js atria-shell/workspace-host.test.js atria-shell/session-history.test.js atria-shell/package-library-resources.test.js atria-shell/library-runtime-workspaces.test.js atria-shell/library-revision-history.test.js game-runtime/ui-full-host.test.js
+# 15 suites / 73 tests passed；最终小修改仅复验下列相关集合
+npm run test:unit -- --runInBand --runTestsByPath atria-shell/library-interactions.test.js atria-shell/library-import-flow.test.js
+# 2 suites / 9 tests passed，补 inventory 部分失败
+npm run test:unit -- --runInBand --runTestsByPath atria-shell/native-play-product.test.js
+# 1 suite / 12 tests passed，补实际 pending submit 期间的 Stop；上述最终 75 个不同 unit 用例均有通过证据
+```
+
+Chromium fixture-server E2E：
+
+```bash
+npm run test:e2e -- e2e/native-session/07-play-redesign.e2e.js e2e/native-session/08-library-redesign.e2e.js --workers=1 --grep 'landing has|reading preserves|save, inspector|320px light|Works retry|World and Knowledge'
+# 首轮 4 passed / 1 failed / 1 skipped；Work flow 路由失败已修复
+npm run test:e2e -- e2e/native-session/07-play-redesign.e2e.js --workers=1 --grep 'A2 exact|A2 save recovery'
+# 首轮 history preview 定位 1 failed / 1 skipped；修正场景后复验
+npm run test:e2e -- e2e/native-session/07-play-redesign.e2e.js e2e/native-session/08-library-redesign.e2e.js --workers=1 --grep 'A2 exact|A2 save recovery|Works retry|World and Knowledge'
+# 4 passed，含两项失败场景的复验
+npm run test:e2e -- e2e/native-session/07-play-redesign.e2e.js e2e/native-session/16-prompt-presets.e2e.js --workers=1 --grep 'A2 exact|Full Game recovery|Chinese landing|module filtering.*390|Preset Regex.*390'
+# 5 passed，含 history capability 修改后的复验
+npm run test:e2e -- e2e/native-session/07-play-redesign.e2e.js e2e/native-session/08-library-redesign.e2e.js --workers=1 --grep 'A2 exact|Works retry'
+# 2 passed，含退出草稿取消/确认/继续与 Library 部分失败最终修改后的复验
+```
+
+合计 12 个不同 browser 场景最终通过：真实 Session resume / committed timeline、流式 reader position / node identity、Save 与旧 drawer response、320px 输入/仿真键盘/Context Sheet、安装权限/失败重试、World/Knowledge 详情、history inspect/fork/switch/生成禁用/退出草稿、加密 Save exact 旧版本恢复与新版默认保留、Full recovery/focus/Escape、中文/大字/横屏、390px preset module 返回位置/菜单、Regex 归属/portable ownership。Save recovery 场景调用实际 FS 后端安装/导出/删除/导入，断言实际 Session.packageVersionId 与 Work.currentVersionId；没有用内存样例代替存储。
+
+触及的生产 JS ESLint、根目录 `npm run check:native-localization`（English/简体中文）和 `git diff --check` 通过。查看过本地阶段 reading/history 与 install-retry 截图；截图/fixture/测试产物仅 ignored 本地证据，不入库。最后 sender 元数据去重复与 Stop 条件由 native-play-product 针对性 unit 复验。
+
+### Limits and next checkpoint
+
+未执行全量测试/完整 E2E/构建/真机/WebView/真实中文 IME/真实模型发送/远端 CI；composition/229 是合成事件，键盘和 safe area 是浏览器仿真。Full recovery 浏览器为宿主 fixture，不能冒充完整自有作品崩溃、字体或共享席位验收；共享 UI/Session authority 保持原实现，权限全矩阵仍归 A4/A5。未另跑后端 Save/SQL parity 全矩阵，实际 FS browser 往返只证明上述 fixture。Avatar 为显示名首字回退，未引入 Actor/Persona 头像资源协议；Persona/第四分类/Host 身份选择未开放。分类查询只在当前 controller 生命周期保留，不是跨账户/跨刷新持久化。
+
+A3 按 index 路由读取 states、coverage S09–S16、delivery 的完整编辑保留清单、validation，再核对本 Record A2 与实际 Git；继续同一分支，推进创作/运行配置/智能体/扩展，不提前实施 A4。
+
 ## Final state
 
-Task ongoing. A1 implemented and locally verified; A2 next. S00–S20 full integration and final release remain pending.
+Task ongoing. A1/A2 implemented and locally verified; A3 next. S00–S20 full integration and final release remain pending.
