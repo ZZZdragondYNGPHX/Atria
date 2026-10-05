@@ -1,8 +1,10 @@
 /** @jest-environment jsdom */
 
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
+import { serialize, deserialize } from 'node:v8';
 
 import { mountNativeStudioWorkspace } from '../../public/scripts/native/studio-workspace.js';
+globalThis.structuredClone = value => deserialize(serialize(value));
 
 async function flush(rounds = 3) {
     for (let index = 0; index < rounds; index += 1) {
@@ -310,6 +312,49 @@ describe('A7 Atria Studio workspace', () => {
         controller.dispose();
     });
 
+    function worldsFixture() {
+        const detail = projectDetail();
+        detail.source.worlds = ['a', 'b'].map(letter => ({ world: { worldId: 'world_' + letter.repeat(32), displayName: 'Same name', currentRevisionId: 'worldv_' + letter.repeat(32) }, revision: { worldId: 'world_' + letter.repeat(32), worldRevisionId: 'worldv_' + letter.repeat(32), metadata: { opaque: [null, false, 3] } } }));
+        detail.source.package.entryPoints[0].worldIds = [detail.source.worlds[0].world.worldId];
+        const previous = globalThis.fetch;
+        globalThis.fetch = jest.fn((url, options) => url === `/api/native/studio/projects/${projectId}` ? Promise.resolve(response(detail)) : previous(url, options));
+        return detail;
+    }
+    test('Worlds exact choice, collection reorder and explicit ID save preserve one project draft and selection', async () => {
+        const detail = worldsFixture(), previous = globalThis.fetch;
+        globalThis.fetch = jest.fn(async (url, options) => {
+            if (String(url).endsWith('/workspaces/execute')) detail.source = JSON.parse(options.body).operations[0].input.source;
+            return previous(url, options);
+        });
+        const slot = document.querySelector('#slot'), controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        click(slot.querySelector('.atria-studio-resource-tree'), 'Worlds'); await flush();
+        const center = slot.querySelector('.atria-studio-center');
+        const chooser = center.querySelector('[aria-label="Worlds resource"]'); chooser.value = detail.source.worlds[1].world.worldId; chooser.dispatchEvent(new Event('change')); await flush();
+        fill(center.querySelector('[aria-label="World name"]'), 'Changed');
+        click(center, 'Source'); const editor = center.querySelector('textarea'), draft = JSON.parse(editor.value); draft.world.worldId = draft.revision.worldId = 'world_' + 'c'.repeat(32); fill(editor, JSON.stringify(draft));
+        click(center, 'Review Changes'); await flush(); click(slot.querySelector('.atria-studio-activity'), 'Cancel'); await flush(); expect(editor.value).toBe(JSON.stringify(draft));
+        click(center, 'Review Changes'); await flush(); click(slot.querySelector('.atria-studio-activity'), 'Apply ChangeSet'); await flush();
+        expect(center.querySelector('[aria-label="Worlds resource"]').value).toBe(draft.world.worldId);
+        expect(detail.source.worlds[0].world.displayName).toBe('Same name');
+        click(center, 'Collection Source'); fill(center.querySelector('textarea'), JSON.stringify([...detail.source.worlds].reverse()));
+        click(center, 'Review Changes'); await flush(); click(slot.querySelector('.atria-studio-activity'), 'Apply ChangeSet'); await flush(); click(center, 'World fields'); await flush();
+        expect(center.querySelector('[aria-label="Worlds resource"]').value).toBe(draft.world.worldId);
+        expect(slot.querySelector('[data-atria-studio-world-id][data-active="true"]').dataset.atriaStudioWorldId).toBe(draft.world.worldId);
+        controller.dispose();
+    });
+    test('Worlds 409 copies malformed Source and requires explicit discard', async () => {
+        worldsFixture(); const previous = globalThis.fetch;
+        globalThis.fetch = jest.fn((url, options) => String(url).endsWith('/workspaces/execute') ? Promise.resolve(response({ message: 'Stale' }, 409)) : previous(url, options));
+        const slot = document.querySelector('#slot'), controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        click(slot.querySelector('.atria-studio-resource-tree'), 'Worlds'); await flush(); const center = slot.querySelector('.atria-studio-center'), activity = slot.querySelector('.atria-studio-activity');
+        fill(center.querySelector('[aria-label="World name"]'), 'Unsaved'); click(center, 'Review Changes'); await flush(); click(activity, 'Apply ChangeSet'); await flush();
+        click(center, 'Source'); fill(center.querySelector('textarea'), '{ malformed'); click(activity, 'Copy Worlds draft'); await flush();
+        expect(activity.querySelector('[data-atria-worlds-draft-copy]').value).toBe('{ malformed');
+        const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false); click(activity, 'Reload Latest'); await flush(); expect(center.querySelector('textarea').value).toBe('{ malformed');
+        confirm.mockReturnValue(true); click(activity, 'Reload Latest'); await flush(); expect(center.querySelector('[aria-label="World name"]').value).toBe('Same name');
+        controller.dispose(); confirm.mockRestore();
+    });
+
     test('relationship detach exposes consumers before review and navigates to the exact project owner', async () => {
         const previous = globalThis.fetch;
         const detail = projectDetail(); const worldId = 'world_' + 'b'.repeat(32), worldRevisionId = 'worldv_' + 'c'.repeat(32);
@@ -340,7 +385,6 @@ describe('A7 Atria Studio workspace', () => {
         navigate('Worlds'); expect(slot.querySelector('[aria-label="Project display name"]')).toBe(field); expect(field.value).toBe('Draft');
         confirm.mockReturnValue(true); navigate('Worlds'); await flush();
         const source = slot.querySelector('.atri-studio-value-editor');
-        [...source.querySelectorAll('button')].find(node => node.textContent === 'Source').click();
         const editor = source.querySelector('textarea'); editor.value = '[{"custom":true}]'; editor.dispatchEvent(new Event('input', { bubbles: true }));
         [...slot.querySelectorAll('button')].find(node => node.textContent === 'Library references').click();
         expect(editor.isConnected).toBe(true);
