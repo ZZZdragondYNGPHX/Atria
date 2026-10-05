@@ -19,6 +19,8 @@ const action = (inputSchema = HOST_EMPTY, local = false, outputSchema = HOST_EMP
 // Closed Host-owned target catalogue. These are capabilities, never arbitrary
 // method dispatch; both authoring and installed graph validation use this table.
 const targets = {
+    'host.persona.status': read(hostObject({ status: string(32), name: string(512), avatarId: id, avatarHash: string(64), revisionId: id })),
+    'host.persona.openSelector': action(HOST_EMPTY, true),
     'host.world.view': { ...read(CHRONICLE_PAGE), inputSchema: WORLD_QUERY },
     'host.history.query': { ...read(CHRONICLE_PAGE), inputSchema: CHRONICLE_QUERY },
     'host.chronology.interval': { ...read(INTERVAL_RESULT), inputSchema: INTERVAL_QUERY },
@@ -86,4 +88,10 @@ export function projectMessageBlocks(snapshot, type) {
 }
 export function projectSave(save) {
     return { saveId: save.saveId, revisionId: save.revisionId, branchId: save.branchId, displayName: save.displayName ?? '', createdAt: save.createdAt };
+}
+
+export function projectPersonaStatus(snapshot) {
+    const state = snapshot.states?.atri_player_persona, selection = state?.solo;
+    return { status: !state ? 'legacy-unbound' : selection ? 'selected' : 'none', name: selection?.snapshot.name ?? '',
+        avatarId: selection?.snapshot.avatar?.assetId ?? '', avatarHash: selection?.snapshot.avatar?.contentHash ?? '', revisionId: snapshot.revision.revisionId };
 }

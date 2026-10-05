@@ -65,7 +65,7 @@ export async function assertRunAccess(tx, handle, sessionId, action, revisionId 
     if (!control) return null;
     if (control.status === 'terminal' && !['status', 'cleanup'].includes(action)) throw runFailure('native_run_terminal');
     if (control.status === 'dead' && !['status', 'inspect', 'rewind', 'save', 'export', 'import'].includes(action)) throw runFailure('native_run_dead');
-    if (control.status === 'pending' && !['status', 'inspect', 'ready', 'start'].includes(action)) throw runFailure('native_story_not_started');
+    if (control.status === 'pending' && !['status', 'inspect', 'ready', 'start', 'persona'].includes(action)) throw runFailure('native_story_not_started');
     if (control.mode === 'ironman' && (action === 'rewind' || (revisionId && revisionId !== control.headRevisionId))) throw runFailure('native_run_rewind_denied');
     return control;
 }

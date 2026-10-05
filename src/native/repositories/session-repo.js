@@ -1,3 +1,4 @@
+import { PERSONA_NAMESPACE, personaAvatars } from '../persona-contract.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { RunControl, assertRunAccess, readRunControl, writeRunControl, validRunPublication, runFailure } from '../run-control.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../../public/shared/native-run-contract.js';
@@ -519,7 +520,12 @@ export class SessionRepo {
         if (session.headRevisionId !== revision.revisionId || session.activeBranchId !== revision.branchId) {
             throw new TypeError('Session HEAD must match committed Revision');
         }
-        return withSessionWrite(handle, session.sessionId, () => this._engine.withTransaction(handle, async tx => {
+        const avatars = personaAvatars(states[PERSONA_NAMESPACE]);
+        return withSessionWrite(handle, session.sessionId, () => withNativeResourceWrites(handle, avatars.map(ref => 'asset:' + ref.assetId), () => this._engine.withTransaction(handle, async tx => {
+            for (const avatar of avatars) {
+                const ref = await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.assetRef, handle, assetId: avatar.assetId });
+                if (!ref || hashNativeDocument(ref) !== hashNativeDocument(avatar)) throw new TypeError('Missing Persona avatar');
+            }
             const key = this._sessionKey(handle, session.sessionId);
             const existing = await tx.getResource(key);
             const control = await assertRunAccess(tx, handle, session.sessionId, runAction);
@@ -594,7 +600,7 @@ export class SessionRepo {
                 }
             }
             return snapshot;
-        }));
+        })));
     }
 
     async importClosure(handle, closure, { resume = null } = {}) {
@@ -616,8 +622,8 @@ export class SessionRepo {
             throw new TypeError('Imported Session HEAD Revision is missing');
         }
 
-        const illustrationAssets = stateRecords.filter(item => item.namespace === ILLUSTRATION_NAMESPACE)
-            .flatMap(item => assertIllustrationState(item.data).images.map(image => 'asset:' + image.assetId));
+        const illustrationAssets = [...stateRecords.filter(item => item.namespace === PERSONA_NAMESPACE).flatMap(item => personaAvatars(item.data).map(avatar => 'asset:' + avatar.assetId)), ...stateRecords.filter(item => item.namespace === ILLUSTRATION_NAMESPACE)
+            .flatMap(item => assertIllustrationState(item.data).images.map(image => 'asset:' + image.assetId))];
         return withSessionWrite(handle, sessionId, () => withNativeResourceWrites(handle, illustrationAssets, () => this._engine.withTransaction(handle, async (tx) => {
             const sessionKey = this._sessionKey(handle, sessionId);
             const control = await assertRunAccess(tx, handle, sessionId, 'import');
@@ -629,7 +635,7 @@ export class SessionRepo {
                 if (resume) assertRunContinuation(resume.control);
                 if (!resume || resume.mode !== 'ironman' || resume.sequence !== run.sequence || revisions.length !== 1 || branches.length !== 1 || savePoints.length
                     || run.status !== 'active') throw runFailure('native_run_resume_required');
-                assertAtriaSave({ format: ATRIA_SAVE_FORMAT, schemaVersion: 2, nativeSchemaVersion: 1, scope: 'resume', exportedAt: session.updatedAt, resume,
+                assertAtriaSave({ format: ATRIA_SAVE_FORMAT, schemaVersion: stateRecords.some(item => item.namespace === PERSONA_NAMESPACE) ? 3 : 2, nativeSchemaVersion: 1, scope: 'resume', exportedAt: session.updatedAt, resume,
                     package: { packageId: session.packageId, packageVersionId: session.packageVersionId, packageVersion: session.packageVersion, packageContentHash: session.packageContentHash, entryPointId: session.entryPointId },
                     root: { sessionId, revisionId: session.headRevisionId, saveId: null }, closure });
                 if (control && (resume.sequence !== control.sequence || resume.sourceRevisionId !== (control.resumeSourceRevisionId ?? control.headRevisionId))) throw runFailure('native_run_resume_stale');

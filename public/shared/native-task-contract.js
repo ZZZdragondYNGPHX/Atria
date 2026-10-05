@@ -51,7 +51,7 @@ export function assertTaskRuntime(value) {
         if (!slots.some(slot => slot.id === item.bindingSlotId)) throw new TypeError('Unknown Task slot');
         choice(item.executionClass, EXECUTION_CLASSES);
         const inputSchema = compileDataSchema(item.inputSchema);
-        const context = list(item.context, 5, v => choice(v, ['input', 'history', 'world', 'knowledge', 'projection']));
+        const context = list(item.context, 6, v => choice(v, ['input', 'history', 'world', 'knowledge', 'projection', 'player_persona']));
         fields(item.resultPolicy, ['resultClass', 'sink', 'applyCommand'], 'Task result policy');
         const policies = { advisory: 'proposal', turn_context: 'turn', presentation: 'artifact', world_outcome_proposal: 'proposal', declared_app_command: 'app_command' };
         if (!Object.hasOwn(policies, item.resultPolicy.resultClass) || policies[item.resultPolicy.resultClass] !== item.resultPolicy.sink) throw new TypeError('Result authority/sink mismatch');

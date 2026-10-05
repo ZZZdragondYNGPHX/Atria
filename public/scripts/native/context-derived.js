@@ -10,6 +10,7 @@ export const CONTEXT_POLICIES = Object.freeze(['economy', 'balanced', 'rich']);
 
 const PRODUCERS = new Set(['runtime', 'orchestrator', 'utility', 'distiller']);
 const SOURCE_KINDS = new Set([
+    'player_persona',
     'timeline',
     'event',
     'knowledge',
@@ -63,6 +64,9 @@ export function normalizeContextSourceRef(value) {
         'revisionId',
         'branchId',
         'providerId',
+        'personaId',
+        'contentIdentity',
+        'snapshotHash',
     ]) {
         const normalized = text(value[key]);
         if (normalized) ref[key] = normalized;

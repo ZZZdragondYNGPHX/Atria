@@ -29,7 +29,7 @@ export function freezePackagePromptPrograms(entries, owner) {
                 if (!output.some(old => old.resourceType === frozen.resourceType && old.resource.promptModuleId === item.id && old.resource.revision === revision)) output.push(frozen);
                 refs.push(refFor(frozen));
             }
-            return { stageId: stage.stageId, targets: stage.targets, condition: stage.condition, consumes: stage.consumes, moduleRefs: refs };
+            return { ...(stage.contextConsumers ? { contextConsumers: stage.contextConsumers } : {}), stageId: stage.stageId, targets: stage.targets, condition: stage.condition, consumes: stage.consumes, moduleRefs: refs };
         });
         output.push({ ...entry, resource: assertPromptProgram({ ...entry.resource, parentRef: null, derive: [], stages,
             parameters: flat.parameters, locals: flat.locals, artifacts: flat.artifacts, exclusiveTargets: flat.exclusiveTargets,

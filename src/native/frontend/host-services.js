@@ -1,5 +1,5 @@
 import { readChronicle, reviewInterval, readWorldView } from '../../../public/shared/native-chronicle-host.js';
-import { fixedHostTarget, projectConversation, projectSession, projectMessageBlocks, projectSave } from '../../../public/shared/native-frontend-host.js';
+import { fixedHostTarget, projectPersonaStatus, projectConversation, projectSession, projectMessageBlocks, projectSave } from '../../../public/shared/native-frontend-host.js';
 import { bridgeFailure } from '../../../public/shared/native-frontend-bridge.js';
 
 export async function readFixedHost(core, owner, state, base, binding, input) {
@@ -9,6 +9,7 @@ export async function readFixedHost(core, owner, state, base, binding, input) {
     if (service === 'host.history' && method === 'query') return readChronicle(base, input);
     if (service === 'host.chronology' && method === 'interval') return reviewInterval(base, input);
     if (service === 'host.session' && method === 'run') return core.runStatus(owner, state.sessionId);
+    if (service === 'host.persona' && method === 'status') return projectPersonaStatus(base);
     if (method === 'status') return projectSession(base);
     if (service === 'host.session' && method === 'saves') return (await core.listSavePoints(owner, state.sessionId)).map(projectSave);
     if (service === 'host.conversation' && method === 'retryStatus') return core.inspectReplyRetry(owner, state.sessionId, input);

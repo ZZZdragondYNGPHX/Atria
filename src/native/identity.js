@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 export const NATIVE_ID_FAMILIES = Object.freeze({
+    persona: 'persona',
     package: 'pkg',
     packageVersion: 'pkgv',
     actor: 'actor',

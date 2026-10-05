@@ -13,6 +13,10 @@ export class NativeTaskScheduler {
         Object.assign(this, { concurrency, perResource, queueLimit, retention, timeoutMs, retries, backoffMs });
         this.operations = new Map(); this.running = new Set(); this.queue = []; this.serial = 0;
     }
+    hasSessionWork(owner, sessionId) {
+        return [...this.operations.values()].some(operation => operation.owner === owner && operation.view.anchor?.sessionId === sessionId
+            && (!terminal.has(operation.view.status) || this.running.has(operation)));
+    }
     project(owner, id) {
         const operation = this.operations.get(id);
         if (!operation || operation.owner !== owner) throw failure('operation_not_found');

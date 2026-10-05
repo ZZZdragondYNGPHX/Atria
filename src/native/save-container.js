@@ -182,12 +182,12 @@ function validateHeader(header) {
     if (
         header.format !== ATRIA_SAVE_CONTAINER_FORMAT
         || header.containerVersion !== ATRIA_SAVE_CONTAINER_VERSION
-        || ![1, 2].includes(header.saveSchemaVersion)
+        || ![1, 2, 3].includes(header.saveSchemaVersion)
         || header.nativeSchemaVersion !== NATIVE_SCHEMA_VERSION
     ) {
         throw new Error('Unsupported .atriasave container version');
     }
-    if (!['snapshot', 'session', 'resume'].includes(header.scope) || (header.saveSchemaVersion === 2) !== (header.scope === 'resume')) throw new Error('.atriasave scope is unsupported');
+    if (!['snapshot', 'session', 'resume'].includes(header.scope) || (header.saveSchemaVersion < 3 && (header.saveSchemaVersion === 2) !== (header.scope === 'resume'))) throw new Error('.atriasave scope is unsupported');
     if (!Number.isSafeInteger(header.exportedAt) || header.exportedAt < 0) {
         throw new Error('.atriasave exportedAt is malformed');
     }

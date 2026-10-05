@@ -23,6 +23,14 @@ export function createHeadlessConversation({ runtime, composer, generate, stop, 
         async invoke(target, input, revision) {
             const value = guard(revision), key = target.service + '.' + target.method;
             const draft = () => { if (!composer) throw bridgeFailure('bridge_host_unavailable'); return composer; };
+            if (key === 'host.persona.openSelector') {
+                if (value.failed || value.history) throw bridgeFailure('bridge_session_readonly');
+                value.assertWritable?.();
+                // A4a reserves the capability; A4b supplies the guarded Host picker.
+                if (!actions.openPersonaSelector) throw bridgeFailure('bridge_host_unavailable');
+                await actions.openPersonaSelector({ revision, sessionId: value.snapshot.session.sessionId });
+                guard(revision); return {};
+            }
             if (key === 'host.conversation.generation') return this.generation();
             if (key === 'host.session.diagnostics') return { ...projectSession(value.snapshot), failed: Boolean(value.failed), historical: Boolean(value.history) };
             if (key === 'host.composer.get') return { text: draft().getDraft() };

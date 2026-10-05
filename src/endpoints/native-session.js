@@ -1,3 +1,5 @@
+import { getPersonaRepo } from '../storage/index.js';
+import { personaFields } from '../native/persona-contract.js';
 import { frontendBridgeService } from '../native/frontend/host-bridge.js';
 import { bridgeReceipt, publicBridgeError } from '../../public/shared/native-frontend-bridge.js';
 import { fields } from '../../public/shared/native-frontend-contract.js';
@@ -19,6 +21,7 @@ function services() {
     const packageInstaller = new PackageInstaller({ packageRepo: getPackageRepo(), assetStore: assets });
     const core = new SessionCore({ sessionRepo, savePointRepo: getSavePointRepo(),
         packageInstaller,
+        personaRepo: getPersonaRepo(),
         knowledgeRepo: getKnowledgeRepo() });
     return { core, assets, sessionRepo, packageInstaller };
 }
@@ -35,7 +38,7 @@ export function createNativeSessionRouter(getServices = services) {
             await operation(request, response, getServices(), request.user.profile.handle);
         } catch (error) {
             if (response.headersSent) { response.destroy(); return; }
-            const status = error.name === 'ConflictError' || error.code?.includes('conflict') ? 409
+            const status = error?.code === 'native_persona_scope_denied' ? 403 : error?.code === 'native_persona_unavailable' ? 404 : error?.code === 'storage_read_only' ? 503 : error.name === 'ConflictError' || error.code?.includes('conflict') ? 409
                 : error instanceof TypeError ? 400 : error.name === 'NotFoundError' ? 404 : 500;
             response.status(status).json({ error: error.code || (status === 400 ? 'native_invalid_command' : 'native_session_failed') });
         }
@@ -79,6 +82,11 @@ export function createNativeSessionRouter(getServices = services) {
         if (typeof owner !== 'string' || !/^[a-zA-Z0-9_-]{1,64}$/.test(owner)) throw new TypeError('Shared owner handle required');
         res.set('Cache-Control', 'private, no-store').json(await new SharedAuthority(core)[method](owner, sessionId, handle, method === 'snapshot' ? cursor : action));
     }));
+    router.post('/shared/persona/select', route(async (req, res, { core }, handle) => {
+        personaFields(req.body, ['owner', 'sessionId', 'seatId', 'expectedAccessRevisionId', 'expectedRevisionId', 'accessEpoch', 'scopeEpoch', 'selection']);
+        const { owner, sessionId, ...input } = req.body;
+        res.json(await new SharedAuthority(core).selectPersona(owner, sessionId, handle, input));
+    }));
     router.post('/shared/realm', route(async (req, res, { core }, handle) => {
         res.json(await new SharedAuthority(core).realm(req.body.owner, req.body.sessionId, handle, req.body.command, req.body.expectedRevisionId, req.body.expectedAccessRevisionId));
     }));
@@ -92,6 +100,15 @@ export function createNativeSessionRouter(getServices = services) {
         const view = base.realmViews?.[req.body.viewId];
         if (!view) throw new TypeError('Declared Realm view required');
         res.json(view);
+    }));
+    router.post('/persona/read', route(async (req, res, { core }, handle) => {
+        personaFields(req.body, ['sessionId']);
+        res.json(await core.readPersona(handle, req.body.sessionId));
+    }));
+    router.post('/persona/select', route(async (req, res, { core }, handle) => {
+        personaFields(req.body, ['sessionId', 'expectedRevisionId', 'selection']);
+        if (!Object.hasOwn(req.body, 'selection')) throw new TypeError('Explicit selection required');
+        res.json(await core.selectPersona(handle, req.body));
     }));
     router.post('/create', route(async (req, res, { core }, handle) => {
         res.json(await core.create(handle, req.body));
@@ -311,7 +328,9 @@ export function createNativeSessionRouter(getServices = services) {
         const owner = await resourceOwner(req, core, handle);
         if (owner !== handle) {
             const base = await core.load(owner, req.query.sessionId, { skipPackageEdits: true });
-            if (!base.manifest.assets.some(ref => ref.assetId === req.params.assetId)) throw new TypeError('Shared asset must belong to exact Package closure');
+            const view = await new SharedAuthority(core).snapshot(owner, req.query.sessionId, handle);
+            const avatars = view.personas.flatMap(item => item.avatar ? [item.avatar] : []);
+            if (![...base.manifest.assets, ...avatars].some(ref => ref.assetId === req.params.assetId)) throw new TypeError('Shared asset outside authorized closure');
         }
         handle = owner;
         assertNativeId(req.params.assetId, 'asset');

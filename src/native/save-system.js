@@ -1,3 +1,4 @@
+import { PERSONA_NAMESPACE, personaAvatars } from './persona-contract.js';
 import { runFailure } from './run-control.js';
 import {
     ATRIA_SAVE_FORMAT,
@@ -145,6 +146,7 @@ export class NativeSaveSystem {
                         });
                     }
                     states.set(stateKey, { namespace, head, data: clone(data) });
+                    if (namespace === PERSONA_NAMESPACE) for (const avatar of personaAvatars(data)) attachments.set(attachmentKey({ assetId: avatar.assetId }), { assetId: avatar.assetId });
                     if (namespace === 'atri_world_selection') for (const world of data.worlds || []) for (const assetId of world.revision.assetIds || []) {
                         const attachment = { assetId }; attachments.set(attachmentKey(attachment), attachment);
                     }
@@ -324,7 +326,7 @@ export class NativeSaveSystem {
 
         const save = assertAtriaSave({
             format: ATRIA_SAVE_FORMAT,
-            schemaVersion: scope === 'resume' ? 2 : ATRIA_SAVE_SCHEMA_VERSION,
+            schemaVersion: closure.stateRecords.some(item => item.namespace === PERSONA_NAMESPACE) ? 3 : scope === 'resume' ? 2 : ATRIA_SAVE_SCHEMA_VERSION,
             ...(scope === 'resume' ? { resume: { mode: 'ironman', sequence: control.sequence, sourceRevisionId: control.resumeSourceRevisionId ?? current.headRevisionId,
                 control: { operations: control.operations, background: control.background, highWaterTurn: control.highWaterTurn } } } : {}),
             nativeSchemaVersion: NATIVE_SCHEMA_VERSION,

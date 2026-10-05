@@ -1,3 +1,4 @@
+import { PERSONA_NAMESPACE, personaAvatars, personaDocumentReferences } from '../persona-contract.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -23,6 +24,17 @@ function digest(bytes) {
 
 async function resourceSetupAssetReferences(tx, handle, assetId) {
     const references = [];
+    for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.personaRevision, handle })) {
+        if (record.doc.avatar?.assetId !== assetId) continue;
+        const root = await getNativeDocument(tx, { kind: NATIVE_RESOURCE_KINDS.persona, handle, personaId: record.doc.personaId });
+        if (root?.publishedRevisionIds?.includes(record.doc.revisionId)) references.push({ kind: 'persona-revision', personaId: record.doc.personaId, revisionId: record.doc.revisionId });
+    }
+    for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.personaMigration, handle })) {
+        if (personaDocumentReferences(record.doc.items, 'assetId', assetId)) references.push({ kind: 'persona-migration', sourceDigest: record.key.sourceDigest });
+    }
+    for (const record of await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.sessionState, handle })) {
+        if (record.key.namespace === PERSONA_NAMESPACE && personaAvatars(record.doc).some(ref => ref.assetId === assetId)) references.push({ kind: 'persona-snapshot', sessionId: record.key.sessionId, head: record.key.head });
+    }
     for (const kind of [NATIVE_RESOURCE_KINDS.session, NATIVE_RESOURCE_KINDS.savePoint]) {
         for (const record of await tx.listResources({ kind, handle })) {
             for (const head of new Set([record.doc.illustrationHead, ...Object.values(record.doc.illustrationHeads ?? {})].filter(Boolean))) {

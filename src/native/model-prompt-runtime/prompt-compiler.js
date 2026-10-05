@@ -45,7 +45,8 @@ export function flattenPromptProgram(resolved, { validateBindings = true } = {})
             if (existing) {
                 if (JSON.stringify(existing.condition) !== JSON.stringify(stage.condition)
                     || JSON.stringify(existing.targets) !== JSON.stringify(stage.targets)
-                    || JSON.stringify(existing.consumes) !== JSON.stringify(stage.consumes || [])) promptError('derive_stage_conflict');
+                    || JSON.stringify(existing.consumes) !== JSON.stringify(stage.consumes || [])
+                    || JSON.stringify(existing.contextConsumers || []) !== JSON.stringify(stage.contextConsumers || [])) promptError('derive_stage_conflict');
                 for (const moduleRef of stage.moduleRefs) {
                     if (existing.modules.some(item => item.id === moduleRef.resourceId)) promptError('duplicate_module');
                     existing.modules.push({ id: moduleRef.resourceId, ref: moduleRef, module: read(moduleRef, 'core.prompt-module'), config: {} });
@@ -136,6 +137,7 @@ export class PromptCompiler {
             env.artifact[name] = typedValue(artifact.value, definition.type);
         }
         const blocks = [];
+        const personaStages = [];
         const diagnostics = [];
         const provenance = [...plan.provenance, ...program.provenance];
         for (const [index, stage] of program.stages.entries()) {
@@ -152,6 +154,7 @@ export class PromptCompiler {
                 diagnostics.push({ stageId: stage.stageId, status: 'condition-false' });
                 continue;
             }
+            if (stage.contextConsumers?.includes('player_persona')) personaStages.push(stage.stageId);
             for (const name of stage.consumes) if (!Object.hasOwn(env.artifact, name)) promptError('artifact_missing');
             const modules = [...stage.modules].sort(comparePromptModules);
             for (const entry of modules) {
@@ -191,7 +194,9 @@ export class PromptCompiler {
             provenance.push(...item.provenance);
             if (item.kind === 'context.history') ir.history.push(item.content);
             else if (item.kind === 'context.input') input.push(item.content);
-            else if (item.kind === 'context.directive') ir.directives.push(item.content);
+            else if (item.kind === 'context.player-persona') {
+                if (personaStages.length) ir.contextSlots.push({ target: 'context.before_history', content: item.content });
+            } else if (item.kind === 'context.directive') ir.directives.push(item.content);
             else ir.contextSlots.push({ target: 'context.before_history', content: item.content });
         }
         if (input.some(item => typeof item !== 'string')) promptError('context_input');
@@ -202,7 +207,8 @@ export class PromptCompiler {
             else if (block.target === 'response.prefill') ir.prefill = block.content;
             else ir.contextSlots.push(block);
         }
-        ir.compilation = { parameters: env.param, modules: diagnostics, selectedStages: stages.filter(id => selected.includes(id)) };
+        ir.compilation = { ...(plan.personaEvidence ? { personaEvidence: { ...plan.personaEvidence, consumerStages: personaStages,
+            reason: plan.personaEvidence.reason === 'selected' && !personaStages.length ? 'not_consumed' : plan.personaEvidence.reason } } : {}), parameters: env.param, modules: diagnostics, selectedStages: stages.filter(id => selected.includes(id)) };
         return immutable({ promptIr: assertPromptIR(ir), diagnostics, selectedStages: ir.compilation.selectedStages });
     }
 }

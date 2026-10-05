@@ -640,7 +640,13 @@ export class NativeGenerationHost {
         const authorityContext = lanePlan?.authorityContext;
         if (!authorityContext && informationDefinition(snapshot) && input.messages?.length) fail('native_information_unscoped_messages');
         const nativeContext = snapshot && authorityContext?.mode !== 'resolver' ? createNativeSessionContextAdapter({ readSnapshot: async () => ({ source, snapshot }),
-            options: { informationTaskId: authorityContext ? undefined : taskPlan?.task.id, memoryEvidence: lanePlan?.memoryEvidence ?? [], authorityTurn: Boolean(authorityContext) } }) : null;
+            options: {
+                personaBlockedReason: snapshot.manifest.runtime?.experienceContract?.sharedRuntime ? 'shared_scope_unsupported' : undefined,
+                personaAllowed: !snapshot.manifest.runtime?.experienceContract?.sharedRuntime && (taskPlan
+                    ? taskPlan.task.context.includes('player_persona') && !['background', 'maintenance'].includes(taskPlan.task.executionClass)
+                    : role === 'role.narrator'),
+                informationTaskId: authorityContext ? undefined : taskPlan?.task.id, memoryEvidence: lanePlan?.memoryEvidence ?? [], authorityTurn: Boolean(authorityContext),
+            } }) : null;
         const skills = !authorityContext && this.skillRepository && isNarrativeSkillInvocation(input.role, taskPlan, runtime)
             ? await prepareNarrativeSkills({ repository: this.skillRepository(handle), settings: (await this.extensions.settings(handle)).value,
                 context: snapshot ? { packageId: snapshot.session.packageId, packageVersionId: snapshot.session.packageVersionId,
@@ -657,10 +663,11 @@ export class NativeGenerationHost {
             };
             // A task/tool transcript follows the selected turn input. Do not
             // append the original user turn again after a tool result.
-            const safeItems = authorityContext ? selected.items.filter(item => item.id.startsWith('projection:') || item.kind === 'context.history' || item.kind === 'context.input'
+            const safeItems = authorityContext ? selected.items.filter(item => item.id.startsWith('projection:') || item.kind === 'context.player-persona' || item.kind === 'context.history' || item.kind === 'context.input'
                 || (informationDefinition(snapshot) && (item.id.startsWith('knowledge:') || item.id.startsWith('memory:')))) : selected.items;
             const exposed = taskPlan ? safeItems.filter(item => {
                 const context = taskPlan.task.context;
+                if (item.kind === 'context.player-persona') return context.includes('player_persona');
                 if (item.id.startsWith('projection:')) return context.includes('projection');
                 if (item.id.startsWith('memory:')) return true;
                 return item.kind === 'context.history' ? context.includes('history')

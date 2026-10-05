@@ -1,3 +1,4 @@
+import { PersonaRepo } from '../native/repositories/persona-repo.js';
 import { FsEngine } from './engines/fs-engine.js';
 import { SqliteEngine } from './engines/sqlite-engine.js';
 import { MysqlEngine } from './engines/mysql-engine.js';
@@ -34,6 +35,7 @@ let _knowledgeRepo = null;
 let _sessionRepo = null;
 let _savePointRepo = null;
 let _assetStore = null;
+let _personaRepo = null;
 
 export function initStorage({
     mode = 'fs',
@@ -83,6 +85,7 @@ export function initStorage({
     _sessionRepo = new SessionRepo({ engine: _engine });
     _savePointRepo = new SavePointRepo({ engine: _engine });
     _assetStore = new AssetStore({ engine: _engine, directoriesByHandle });
+    _personaRepo = new PersonaRepo({ engine: _engine, assetStore: _assetStore, handles: async () => (await import('../users.js')).getAllUserHandles() });
 }
 
 export function getChatRepo() {
@@ -153,4 +156,9 @@ export function getSavePointRepo() {
 export function getAssetStore() {
     if (!_assetStore) throw new Error('storage not initialized; call initStorage() first');
     return _assetStore;
+}
+
+export function getPersonaRepo() {
+    if (!_personaRepo) throw new Error('storage not initialized; call initStorage() first');
+    return _personaRepo;
 }

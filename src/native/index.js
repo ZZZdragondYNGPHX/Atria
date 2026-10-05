@@ -267,3 +267,6 @@ export { GenerationError, ProviderFailure } from './model-prompt-runtime/executi
 export { PromptCompiler, flattenPromptProgram, PROMPT_TARGETS } from './model-prompt-runtime/prompt-compiler.js';
 export { createTaskContextProvider, createStudioContextProvider, createNativeSessionContextProvider } from './model-prompt-runtime/context-providers.js';
 export { renderPromptMessages, renderPromptProtocol } from './model-prompt-runtime/prompt-renderers.js';
+
+export { PersonaRepo } from './repositories/persona-repo.js';
+export { PERSONA_NAMESPACE, EMPTY_PERSONA_FINGERPRINT, assertPersonaContent, assertPersonaRef, assertPersonaState, assertPersonaSelection, assertPersonaIdentity } from './persona-contract.js';

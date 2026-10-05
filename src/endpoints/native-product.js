@@ -1,3 +1,4 @@
+import { getPersonaRepo } from '../storage/index.js';
 import express from 'express';
 import { sanitizeProductDetails } from '../../public/scripts/native/product-error-details.js';
 
@@ -42,6 +43,7 @@ function services() {
         savePointRepo,
         packageInstaller,
         knowledgeRepo,
+        personaRepo: getPersonaRepo(),
     });
     const saveSystem = new NativeSaveSystem({
         sessionCore,
@@ -83,7 +85,7 @@ export function createNativeProductRouter(getServices = services) {
                 request.user.profile.handle,
             );
         } catch (error) {
-            const status = error?.name === 'ConflictError' || String(error?.code || '').includes('conflict')
+            const status = error?.code === 'native_persona_scope_denied' ? 403 : error?.code === 'native_persona_unavailable' ? 404 : error?.code === 'storage_read_only' ? 503 : error?.name === 'ConflictError' || String(error?.code || '').includes('conflict')
                 || String(error?.code || '').includes('referenced')
                 ? 409
                 : error?.name === 'NotFoundError'
@@ -103,6 +105,11 @@ export function createNativeProductRouter(getServices = services) {
         }
     };
 
+    const personaMethods = { list: 'list', get: 'get', revisions: 'revisions', create: 'create', revise: 'revise', archive: 'archive',
+        'default/read': 'readDefault', 'default/set': 'setDefault', 'used-by': 'usedBy', delete: 'delete', avatar: 'avatar' };
+    for (const [command, method] of Object.entries(personaMethods)) router.post('/personas/' + command, route(async (req, res, service, handle) => {
+        res.json(await (service.personas ?? getPersonaRepo())[method](handle, req.body));
+    }));
     router.get('/works', route(async (_req, res, { product }, handle) => {
         res.json(await product.listWorks(handle));
     }));

@@ -1,3 +1,4 @@
+import { PERSONA_NAMESPACE, assertPersonaState, assertPersonaIdentity, personaIdentity, personaAvatars } from './persona-contract.js';
 import { RUN_NAMESPACE, assertRunState, assertRunContinuation } from '../../public/shared/native-run-contract.js';
 import { assertInformationClosure } from '../../public/shared/native-information-contract.js';
 import { assertMessageProjection, assertTurnEnvelope } from '../../public/shared/native-message-contract.js';
@@ -59,6 +60,10 @@ export const ATRIA_PACKAGE_PERMISSIONS = Object.freeze([
 
 export const NATIVE_STORE_SCHEMA_VERSION = 1;
 export const NATIVE_RESOURCE_KINDS = Object.freeze({
+    persona: 'atri_persona',
+    personaRevision: 'atri_persona_revision',
+    personaDefault: 'atri_persona_default',
+    personaMigration: 'atri_persona_migration',
     package: 'atri_package',
     packageVersion: 'atri_package_version',
     packageState: 'atri_package_state',
@@ -393,6 +398,7 @@ export function assertBranch(value) {
 
 export function assertTimelineEntry(value) {
     noLegacyIdentity(value, 'TimelineEntry');
+    if (value.metadata?.atri_player_identity) assertPersonaIdentity(value.metadata.atri_player_identity);
     if (!Number.isSafeInteger(value.sequence) || value.sequence < 0) {
         throw new TypeError('TimelineEntry.sequence must be a non-negative ordering integer');
     }
@@ -792,7 +798,7 @@ export function assertAtriaSave(value) {
     noLegacyIdentity(value, '.atriasave');
     assertOnlyKeys(value, SAVE_KEYS, '.atriasave');
     if (value.format !== ATRIA_SAVE_FORMAT) throw new TypeError(`.atriasave format must be '${ATRIA_SAVE_FORMAT}'`);
-    if ((value.schemaVersion !== 1 && value.schemaVersion !== 2) || (value.schemaVersion === 2) !== (value.scope === 'resume')) throw new TypeError('Unsupported .atriasave schema/scope');
+    if (![1, 2, 3].includes(value.schemaVersion) || (value.schemaVersion < 3 && (value.schemaVersion === 2) !== (value.scope === 'resume'))) throw new TypeError('Unsupported .atriasave schema/scope');
     if (value.schemaVersion === 1 && value.resume !== undefined) throw new TypeError('Legacy saves cannot carry resume control');
     if (value.nativeSchemaVersion !== NATIVE_SCHEMA_VERSION) throw new TypeError('.atriasave nativeSchemaVersion must be 1');
     if (![...ATRIA_SAVE_SCOPES, 'resume'].includes(value.scope)) throw new TypeError('.atriasave scope must be snapshot, session or resume');
@@ -881,6 +887,24 @@ export function assertAtriaSave(value) {
             || !revisionById.has(savePoint.revisionId)
         ) {
             throw new TypeError('SavePoint has an invalid session/branch/revision reference');
+        }
+    }
+    const personaRecords = stateRecords.filter(item => item.namespace === PERSONA_NAMESPACE);
+    const hasIdentity = timelineEntries.some(item => item.metadata?.atri_player_identity) || variants.some(item => item.metadata?.atri_player_identity);
+    if ((personaRecords.length || hasIdentity) && value.schemaVersion !== 3) throw new TypeError('Persona evidence requires Save v3');
+    for (const entry of [...timelineEntries, ...variants]) {
+        const identity = entry.metadata?.atri_player_identity;
+        if (!identity) continue;
+        assertPersonaIdentity(identity);
+        const expected = hashNativeDocument(identity);
+        if (!personaRecords.some(record => hashNativeDocument(personaIdentity(identity.seatId ? record.data.seats?.[identity.seatId] : record.data.solo, identity.seatId) ?? null) === expected)) throw new TypeError('Missing Persona input snapshot');
+    }
+    for (const record of personaRecords) {
+        assertPersonaState(record.data);
+        if (hashNativeDocument(record.data) !== record.head) throw new TypeError('Corrupt Persona state');
+        for (const avatar of personaAvatars(record.data)) {
+            const ref = assetRefs.find(item => item.assetId === avatar.assetId);
+            if (!ref || hashNativeDocument(ref) !== hashNativeDocument(avatar) || !attachments.some(item => item.assetId === avatar.assetId)) throw new TypeError('Missing Persona avatar closure');
         }
     }
     const presentationHeads = new Set([session.illustrationHead, ...Object.values(session.illustrationHeads ?? {}), ...savePoints.map(item => item.illustrationHead)].filter(Boolean));
@@ -978,6 +1002,10 @@ export function validateAtriaSave(value) {
 }
 
 const RESOURCE_KEY_SPECS = Object.freeze({
+    [NATIVE_RESOURCE_KINDS.persona]: [['handle', 'handle'], ['personaId', 'persona']],
+    [NATIVE_RESOURCE_KINDS.personaRevision]: [['handle', 'handle'], ['personaId', 'persona'], ['revisionId', 'revision']],
+    [NATIVE_RESOURCE_KINDS.personaDefault]: [['handle', 'handle']],
+    [NATIVE_RESOURCE_KINDS.personaMigration]: [['handle', 'handle'], ['sourceDigest', 'hash']],
     [NATIVE_RESOURCE_KINDS.package]: [['handle', 'handle'], ['packageId', 'package']],
     [NATIVE_RESOURCE_KINDS.packageVersion]: [['handle', 'handle'], ['packageId', 'package'], ['packageVersionId', 'packageVersion']],
     [NATIVE_RESOURCE_KINDS.packageState]: [['handle', 'handle'], ['packageId', 'package'], ['namespace', 'namespace']],
@@ -1011,6 +1039,7 @@ const RESOURCE_KEY_SPECS = Object.freeze({
 });
 
 function assertResourceKeyField(value, type, field) {
+    if (type === 'hash') return sha256(value, field);
     if (type === 'handle') return text(value, field, { maxLength: 256 });
     if (type === 'namespace') return assertNamespace(value, field);
     if (type === 'stateHead') return assertStateHead(value, field);

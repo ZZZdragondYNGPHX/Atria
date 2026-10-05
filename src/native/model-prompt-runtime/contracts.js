@@ -495,9 +495,10 @@ function assertArtifactDefinitions(value) {
 
 function assertProgramStage(value, field) {
     object(value, field);
-    only(value, ['stageId', 'targets', 'moduleRefs', 'condition', 'consumes'], field);
+    only(value, ['stageId', 'targets', 'moduleRefs', 'condition', 'consumes', 'contextConsumers'], field);
     if (!Array.isArray(value.moduleRefs)) throw new TypeError(field + '.moduleRefs must be an array');
     return Object.freeze({
+        ...(value.contextConsumers === undefined ? {} : { contextConsumers: uniqueStrings(value.contextConsumers, field + '.contextConsumers').map(lane => { if (lane !== 'player_persona') throw new TypeError('Unknown context consumer'); return lane; }) }),
         stageId: namespaced(value.stageId, field + '.stageId'),
         targets: uniqueStrings(value.targets || [], field + '.targets', { namespacedValues: true }),
         moduleRefs: freezeArray(value.moduleRefs.map(
@@ -714,7 +715,7 @@ function assertProvenance(value, field) {
 
 export function assertRequestContextPlan(value) {
     object(value, 'RequestContextPlan');
-    only(value, ['schemaVersion', 'requestId', 'source', 'items', 'budget', 'provenance'], 'RequestContextPlan');
+    only(value, ['schemaVersion', 'requestId', 'source', 'items', 'budget', 'provenance', 'personaEvidence'], 'RequestContextPlan');
     if (value.schemaVersion !== 1) throw new TypeError('RequestContextPlan.schemaVersion must be 1');
     if (!Array.isArray(value.items)) throw new TypeError('RequestContextPlan.items must be an array');
     object(value.budget, 'RequestContextPlan.budget');
@@ -732,6 +733,7 @@ export function assertRequestContextPlan(value) {
     });
     return Object.freeze({
         schemaVersion: 1,
+        ...(value.personaEvidence === undefined ? {} : { personaEvidence: clone(value.personaEvidence, 'RequestContextPlan.personaEvidence') }),
         requestId: token(value.requestId, 'RequestContextPlan.requestId'),
         source: assertContextSource(value.source),
         items: freezeArray(items),

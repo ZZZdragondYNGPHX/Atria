@@ -1,3 +1,4 @@
+import { playerPersonaContext } from '../../shared/native-persona-context.js';
 import {
     KNOWLEDGE_AUTHORITY,
     compileNativeKnowledgePlan,
@@ -24,6 +25,7 @@ export const CONTEXT_LANES = Object.freeze({
     narrative: 'narrative_spine',
     memory: 'memory',
     targetAgent: 'target_agent',
+    playerPersona: 'player_persona',
 });
 
 const LANE_VALUES = new Set(Object.values(CONTEXT_LANES));
@@ -802,6 +804,7 @@ export class SessionContextCompiler {
         const rejectedMemoryIds = new Set(
             (knowledge.plan.authorityEvidence?.memory?.rejected ?? []).map(item => String(item.memoryId || '')),
         );
+        const persona = playerPersonaContext(snapshot, options.playerPersona);
         let candidates = [
             ...currentStateItems(snapshot),
             ...knowledge.items,
@@ -869,6 +872,7 @@ export class SessionContextCompiler {
             }) : [];
             candidates = [...information.items.map(normalizeContextItem), ...(information.knowledge ? knowledge.items : []), ...memoryItems(memory, snapshot, rejectedMemoryIds)];
         }
+        candidates.push(...persona.items.map(normalizeContextItem));
         const rejected = [...preRejected];
         candidates = candidates.filter(item => {
             if (visibleTo(item, target)) return true;
@@ -1017,6 +1021,8 @@ export class SessionContextCompiler {
             },
             coverage,
             diagnostics,
+            personaEvidence: { ...persona.evidence, reason: persona.items.length ? (included.some(item => item.contextItemId === persona.evidence.contextItemId) ? 'selected' : rejected.find(item => item.contextItemId === persona.evidence.contextItemId)?.reason ?? 'budget') : persona.evidence.reason,
+                tokenCount: included.find(item => item.contextItemId === persona.evidence.contextItemId)?.tokenCount ?? rejected.find(item => item.contextItemId === persona.evidence.contextItemId)?.tokenCount ?? 0 },
             knowledgePlan: {
                 revisionId: knowledge.plan.revisionId,
                 branchId: knowledge.plan.branchId,

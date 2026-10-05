@@ -1,3 +1,4 @@
+import { PERSONA_NAMESPACE, assertPersonaState, personaIdentity, personaFailure } from './persona-contract.js';
 import { RunControl, runFailure, runPublicationProof } from './run-control.js';
 import { RUN_NAMESPACE, assertRunState } from '../../public/shared/native-run-contract.js';
 import { nativeTaskScheduler } from './task-scheduler.js';
@@ -156,7 +157,7 @@ function appendRuntimeTimeline(core, base, commands = []) {
 
 /** Native commands only. Runtime projection, generation and state providers are later phases. */
 export class SessionCore {
-    constructor({ sessionRepo, savePointRepo, packageInstaller, knowledgeRepo = null }) {
+    constructor({ sessionRepo, savePointRepo, packageInstaller, knowledgeRepo = null, personaRepo = null }) {
         if (!sessionRepo || !savePointRepo || !packageInstaller) {
             throw new TypeError('SessionCore requires SessionRepo, SavePointRepo and PackageInstaller');
         }
@@ -164,6 +165,7 @@ export class SessionCore {
         this._saves = savePointRepo;
         this._packages = packageInstaller;
         this._knowledge = knowledgeRepo;
+        this.personas = personaRepo;
         this._continuity = sessionRepo.continuity;
         this.runs = new RunControl(sessionRepo);
         this._lifecycleProof = {};
@@ -195,6 +197,7 @@ export class SessionCore {
             || installed.packageVersion.version !== session.packageVersion) throw new Error('Session PackageVersion dependency mismatch');
         await this._validateProjections(handle, snapshot, snapshot.variants, installed);
         validateWorldState(snapshot.states, installed.manifest, installed.entryPoint);
+        if (snapshot.states[PERSONA_NAMESPACE]) assertPersonaState(snapshot.states[PERSONA_NAMESPACE]);
         const knowledge = validateKnowledgeBindingSet(snapshot.knowledge, installed.manifest, installed.entryPoint);
         const worlds = selectedWorlds(snapshot.states, installed.manifest, installed.entryPoint);
         const base = { ...snapshot, knowledge, manifest: packageKnowledgeManifest(installed.manifest, knowledge), entryPoint: installed.entryPoint, worlds };
@@ -233,8 +236,52 @@ export class SessionCore {
         return loadRealm(this, handle, base, Boolean(options.revisionId));
     }
 
-    async create(handle, { packageId, packageVersionId, entryPointId, displayTitle,
-        libraryBindingIds = [], sessionBindings = [], sessionKnowledge = [], packageBindingIds, worldSelection, resolvedKnowledge }) {
+    async create(handle, input) {
+        if (!this.personas) {
+            if (Object.hasOwn(input, 'personaSelection')) throw personaFailure('native_persona_unavailable');
+            return this._create(handle, input);
+        }
+        return this.personas.lock(handle, async () => {
+            const selection = await this.personas.capture(handle, input.personaSelection);
+            return this._create(handle, input, { schemaVersion: 1, solo: selection, seats: {} });
+        });
+    }
+
+    async readPersona(handle, sessionId) {
+        const base = await this.load(handle, sessionId, { skipPackageEdits: true });
+        return { revisionId: base.revision.revisionId, state: base.states[PERSONA_NAMESPACE] ?? null, legacyUnbound: !base.states[PERSONA_NAMESPACE] };
+    }
+
+    async selectPersona(handle, { sessionId, expectedRevisionId, selection }) {
+        if (!this.personas) throw personaFailure('native_persona_unavailable');
+        return this.personas.lock(handle, () => this.withPersonaSession(handle, sessionId, async () => {
+            const base = await this._current(handle, sessionId, expectedRevisionId);
+            if (!expectedRevisionId) throw personaFailure();
+            if (base.manifest.runtime?.experienceContract?.sharedRuntime) throw personaFailure('native_persona_scope_denied');
+            this.assertPersonaWritable(handle, base);
+            const captured = await this.personas.capture(handle, selection);
+            const state = base.states[PERSONA_NAMESPACE] ?? { schemaVersion: 1, solo: null, seats: {} };
+            return this._publishLocked(handle, base, { states: { ...base.states, [PERSONA_NAMESPACE]: { ...state, solo: captured } }, runAction: 'persona' });
+        }));
+    }
+
+    async withPersonaSession(handle, sessionId, operation) {
+        const base = await this.load(handle, sessionId, { skipPackageEdits: true });
+        const enter = () => this._sessions.withRunLock(handle, sessionId, operation);
+        // Match existing Continuity -> Session order. Persona updates do not
+        // enter _publish again while already holding these authority locks.
+        return continuityDefinition(base) || realmDefinition(base) ? this._continuity.lock(handle, base.session.packageId, enter) : enter();
+    }
+
+    assertPersonaWritable(handle, base) {
+        if (nativeTaskScheduler.hasSessionWork(handle, base.session.sessionId)
+            || base.externalEffects?.some(effect => effect.status === 'prepared')
+            || base.states.atri_lifecycle?.ready === false
+            || Object.values(base.states.atri_shared?.turns ?? {}).some(turn => turn.status === 'collecting')) throw personaFailure('native_persona_conflict', { reason: 'busy' });
+    }
+
+    async _create(handle, { packageId, packageVersionId, entryPointId, displayTitle,
+        libraryBindingIds = [], sessionBindings = [], sessionKnowledge = [], packageBindingIds, worldSelection, resolvedKnowledge }, personaState) {
         const installed = await this._openPackage(handle, packageId, packageVersionId, entryPointId);
         const now = Date.now();
         const sessionId = createNativeId('session');
@@ -253,6 +300,7 @@ export class SessionCore {
                 entryPoint: installed.entryPoint, knowledgeRepo: this._knowledge,
                 libraryBindingIds, sessionBindings, sessionKnowledge, packageBindingIds }),
         };
+        if (personaState) base.states[PERSONA_NAMESPACE] = personaState;
         if (installed.manifest.runtime?.experienceContract?.storyStart) {
             base.states[RUN_NAMESPACE] = { schemaVersion: 1, mode: 'pending', status: 'pending', sequence: 0 };
         }
@@ -315,7 +363,12 @@ export class SessionCore {
     }
 
     _newEntry(base, draft, sequence = base.timeline.length, allowOutcomes = false) {
+        if (Object.hasOwn(draft.metadata ?? {}, 'atri_player_identity')) throw personaFailure();
         const { entryDraft, projection, diagnostics } = normalizeMessageDraft(draft, allowOutcomes);
+        if (draft.role === 'user') {
+            const identity = personaIdentity(base.states[PERSONA_NAMESPACE]?.solo);
+            if (identity) entryDraft.metadata = { ...entryDraft.metadata, atri_player_identity: identity };
+        }
         const messageId = createNativeId('message');
         const variantId = createNativeId('variant');
         if (draft.actorId && !base.manifest.actors.some(actor => actor.actorId === draft.actorId)) {
@@ -834,6 +887,10 @@ export class SessionCore {
             const last = source.timeline.at(-1);
             const branch = { branchId, sessionId, parentBranchId: source.revision.branchId,
                 forkPoint: last ? { messageId: last.messageId, variantId: last.activeVariantId } : null, createdAt: Date.now() };
+            const originalIdentity = current.timeline[userIndex].metadata?.atri_player_identity;
+            // The transaction's base captured the input; no later selection is read.
+            const retryState = source.states[PERSONA_NAMESPACE];
+            if (originalIdentity && hashNativeDocument(personaIdentity(retryState?.solo) ?? null) !== hashNativeDocument(originalIdentity)) throw personaFailure('native_persona_conflict');
             const { entry, variant } = this._newEntry({ ...source, revision: { ...source.revision, branchId } }, { role: 'user', content: current.timeline[userIndex].content,
                 metadata: { atri_authority_retry: { revisionId: current.revision.revisionId, playerMessageId: userMessageId } } });
             return this._publish(handle, { ...source, session: current.session }, { branchId,

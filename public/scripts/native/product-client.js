@@ -31,6 +31,17 @@ function encode(value) {
 }
 
 export const nativeProductClient = Object.freeze({
+    listPersonas: input => request('personas/list', { method: 'POST', body: input ?? {} }),
+    getPersona: input => request('personas/get', { method: 'POST', body: input }),
+    getPersonaRevisions: personaId => request('personas/revisions', { method: 'POST', body: { personaId } }),
+    createPersona: input => request('personas/create', { method: 'POST', body: input }),
+    revisePersona: input => request('personas/revise', { method: 'POST', body: input }),
+    archivePersona: input => request('personas/archive', { method: 'POST', body: input }),
+    readPersonaDefault: () => request('personas/default/read', { method: 'POST', body: {} }),
+    setPersonaDefault: input => request('personas/default/set', { method: 'POST', body: input }),
+    getPersonaUsedBy: personaId => request('personas/used-by', { method: 'POST', body: { personaId } }),
+    deletePersona: input => request('personas/delete', { method: 'POST', body: input }),
+    uploadPersonaAvatar: input => request('personas/avatar', { method: 'POST', body: input }),
     getGameRegex: packageId => request(`works/${encode(packageId)}/regex`),
     saveGameRegex: (packageId, input) => request(`works/${encode(packageId)}/regex`, { method: 'PUT', body: input }),
     getPackageKnowledge: (packageId, knowledgeBaseId) => request(`works/${encode(packageId)}/knowledge/${encode(knowledgeBaseId)}`),

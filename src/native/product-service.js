@@ -236,6 +236,7 @@ export class NativeProductService {
             packageId,
             packageVersionId,
             entryPointId,
+            ...(Object.hasOwn(options, 'personaSelection') ? { personaSelection: options.personaSelection } : {}),
             ...(options.displayTitle === undefined || normalizeSessionTitle(options.displayTitle) === null ? {} : { displayTitle: normalizeSessionTitle(options.displayTitle) }),
             libraryBindingIds: options.libraryBindingIds || [],
             sessionBindings: options.sessionBindings || [],

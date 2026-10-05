@@ -14,7 +14,7 @@ function createContextProvider(kind, readContext) {
             const maxTokens = Math.min(value.budget?.maxTokens ?? Infinity, resolved.model.limits.contextTokens - reservedOutputTokens);
             return immutable(assertRequestContextPlan({
                 schemaVersion: 1, requestId: request.requestId, source: value.source,
-                items: value.items, provenance: value.provenance || [], budget: { maxTokens, reservedOutputTokens },
+                items: value.items, ...(value.personaEvidence ? { personaEvidence: value.personaEvidence } : {}), provenance: value.provenance || [], budget: { maxTokens, reservedOutputTokens },
             }));
         },
     });
@@ -33,7 +33,7 @@ export function createNativeSessionContextProvider(readSelectedContext) {
             // Consume selected items exactly once; renderedWarmContext is a duplicate projection.
             items: plan.included.map(item => ({
                 id: item.contextItemId,
-                kind: item.lane === 'current_user' ? 'context.input'
+                kind: item.lane === 'player_persona' ? 'context.player-persona' : item.lane === 'current_user' ? 'context.input'
                     : item.lane === 'recent_raw' ? 'context.history'
                         : item.lane === 'runtime_system' ? 'context.directive' : 'context.fact',
                 // Native selection already renders complete, speaker-labelled TurnGroups.
@@ -44,6 +44,7 @@ export function createNativeSessionContextProvider(readSelectedContext) {
                     ...(item.sourceRefs || []).map(ref => ({ source: 'native.context-source', ref: JSON.stringify(ref) })),
                 ],
             })),
+            personaEvidence: plan.personaEvidence,
             budget: {
                 maxTokens: plan.budget.promptCeiling - plan.budget.safetyMargin,
                 reservedOutputTokens: plan.budget.responseReserve,
