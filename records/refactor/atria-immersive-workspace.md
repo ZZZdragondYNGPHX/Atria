@@ -830,3 +830,9 @@ Task ongoing. B1 Actors/EntryPoints/Worlds/Knowledge complete，产品 f0584c157
 实际验证：11 个相关 unit suites / 89 个不同测试通过（Prompt semantics/authoring/choices/receipt/presets、Runtime、全 retrieval provider contract、FS/SQLite immutable revision、compiler preview 与 Persona Shared refusal；部分测试命令用 name pattern，不算跳过项）。最后因焦点修复重跑 Prompt authoring 全14通过。真实 Chrome：Runtime/检索 full Source canonical HTTP 与中文320最大font/FastUI/reduced-motion共2场景通过；Generation revision非法JSON/真实保存与旧route pin、fallback顺序角色过滤、exact Project compile preview共3场景通过。旧 Generation Library定位改为exact资源入口；最初测试失败追出 dirty 校验焦点副作用，已修复；后续preset定位更新到当前实际owner。没有发送外部模型/解析Secret/写preview Session。localized coverage、touched ESLint、diff check通过。截图将在 F 对最终实现集中查看，当前不声称已查看B2截图。
 
 产品提交以真实Git为准，已commit/push；B2 mapping完整留存。B3 mapping已创建，继续本阶段；外部完整设备/数据库/模型矩阵仍未测，不扩大结论。
+
+## Stage B3 — Agents, Memory and Trace checkpoint
+
+四模式原 specialized inspectors/权限/预算/工具/Route、plan compiler与settings/library存储复用。Raw Plan JSON原文跨inspector close/reopen保留、dirty/离开可追踪；独立候选验证失败不污染Fields，未Apply JSON不可Save/Export/duplicate丢弃；旧defaults/duplicate重验scope。Memory maintenance pending去重、同步错误和dispose/迟到load/图重绘防护；原reset确认Session/branch/revision guard保持。Trace导入同scope普通redraw仍可完成，Session lifecycle epoch改变不接受旧回放。
+
+实际unit：8suites/54不同测试通过，包括四模式route+Source、owner删除/conditional graph约束、编译预算、旧admitted快照、Trace事件private过滤、Memory route+pending/dispose。真实Chrome四场景：Memory任务路线/原advanced设置、320px多Agent exact route、跨Session reset拒绝、新320px RawPlan JSON malformed/close/Apply/save。新场景最初遗漏重开自动关闭的More菜单，定位已修正并通过。B3截图保存，F集中查看。touched ESLint已修复测试格式并无产品lint错误；局部native@3/真实设备/外部模型矩阵未测，Shared description停用。B3实现commit/push完成，B4 mapping先行并继续。
