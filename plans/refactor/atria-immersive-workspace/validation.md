@@ -28,7 +28,7 @@
 | V17 | native/hybrid/custom presentation、自有字体/Shadow DOM、恢复可达；共享席位/观察者/过期 | `tests/native/{frontend-heavy,frontend-platform,shared-runtime-p8}.test.js`；`tests/e2e/atria-shell/03-game-surfaces.e2e.js` |
 | V18 | 两种语言、真实 font_scale/Custom CSS/Enter、条件账户操作/头像/密码/备份恢复范围 | `tests/atria-shell/{appearance,utility-workspaces,localization,product-localization-coverage}.test.js`；`tests/storage/endpoints/native-backup-roundtrip.test.js` |
 | V19 | Guided/Startup/Expert、真实来源/事件、清理范围、复制导出失败 | `tests/logging/{frontend-adapters,startup-store}.test.js`；`tests/e2e/atria-shell/04-navigation.e2e.js` 的 A1 global utilities 场景 |
-| V20 | Native Persona 的全部开放门 | A4a 服务合约和 A4b 迁移/账户 backup/产品接线有本地针对性证据；Shared 描述停用、全矩阵待 A5；旧 `tests/e2e/personas/` 仅证明 legacy，不能直接冒充 Native 验收 |
+| V20 | Native Persona 的全部开放门 | A4a/A4b 与 A5 跨域/旧 Session/Save/focus 有本地针对性证据；Shared 描述停用、完整设备/引擎矩阵仍待后续验收；旧 `tests/e2e/personas/` 仅证明 legacy，不能直接冒充 Native 验收 |
 
 实际测试位置以最新源码为准，进入实施阶段时更新新增测试路径。每阶段及任务完成时，只在本地执行最小相关验证；不发起或等待远端 CI。本表不能用“已有测试文件”替代未覆盖场景。
 
@@ -116,3 +116,9 @@ npm run test:e2e -- e2e/atria-shell/04-navigation.e2e.js
 Context suite 扩展 Shared 停用且不回退 solo 的断言，并复验受控 HTTP Provider 真正发送；Play suite 增加接受时姓名/头像与后来选择分离。Shared Host suite 验证 seat/access/scope/CAS anchors 与 observer/pending 拒绝。Chromium 390px 的四个产品场景包括管理/迁移重放/局部源预检、solo/Host/独立恢复及草稿/focus、中文管理、真实服务 Shared 自己席位选择与描述停用。实际数量/命令/失败修复/截图限制见 Record。
 
 没有执行全量 tests/构建/Android/真实手机IME/WebView/MySQL/Postgres/远端模型/远端 CI；完整矩阵继续归 A5/B/F。支持范围入口已开放，Shared 描述仍为停用；不能把有权限的 Shared 显示/选择误记为描述已消费。
+
+## A5 first-round local integration checkpoint
+
+新增 `tests/e2e/atria-shell/09-immersive-integration.e2e.js`：Persona/Knowledge/Save/Director exact owner 搜索与查询返回、Persona 来源级失败重试、服务启动前已有旧 Session、修订/default 与现有 Session 隔离、picker 草稿和旧 revision、Save 同 ID 冲突与恢复、真实最大 font_scale/Fast UI、中文/light/减少动效、320px 与 719/720/1179/1180 边界、双向 Tab/Esc/focus。WorkspaceHost suite 补九种目标原子导航及拒绝后 owner 保持。
+
+A5 首轮支持范围已冻结；实际 S00–S20 证据映射、最终相关 tested HEAD、28 suites/181 不同 unit 与18 不同 Chromium 场景、初始失败和未测范围只见 Record A5。缓存构建首次实际编译、最后 libraries key 命中，不能误报全产品打包。共享描述仍为 `shared_scope_unsupported`，无启用授权。后续 B1–B4 每类仍须字段/动作/状态/authority 映射与最小本地验证；真实设备、MySQL/Postgres、远端模型和完整 Bridge/字段矩阵未关闭，不能因 A5 本地 checkpoint 完成改写为最终验收通过。

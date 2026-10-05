@@ -430,6 +430,82 @@ npm run check:native-localization
 
 产品 AGENTS.md 与 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 原 dirty changes未提交；package/plugin/skills/reference 未触及。本轮产品/docs 持久化后停止，不进入 A5、不合并 main。
 
+## Stage A5 — First-round integration and compatibility
+
+- Date: 2026-10-05
+- Primary Workspace / branch: `main` / `refactor/atria-immersive-workspace`
+- Start HEAD: `6bbb69484eabb8e6685bde589af7c8be695306d6`
+- End / final touched-surface tested HEAD: `784bb91a83e205669f14445fa1ef49ed248b9799`，已 commit/push，未合并 main。最后相关检查在相同文件内容的 pre-commit 工作树执行；先前无关域合约在 Start HEAD 执行，不虚称全部重跑于 End HEAD。
+- Status: **A5 local integration checkpoint complete; B1 Actors mapping next.** 首轮支持范围冻结，设备/外部引擎/完整字段与 Bridge 组合未验收；Shared 描述继续停用。
+
+### Implementation and findings
+
+按真实 Git/远端 → HANDOFF → index → delivery/validation → Record A4b 恢复。失败按 coverage/states/personas 的 authority 路由；没有重做 A1–A4b、加载 Skill/reference 或进入 B/F。
+
+浏览器发现从 Play 搜索打开 Persona/Knowledge 详情时，WorkspaceHost 先写父域再写子页，导致一次 Back 只回到父页而不回原查询；若第一步被离开 guard 拒绝，第二步仍可能把目标 child 写到原 owner。Library、Build、Agents sections/Orchestration、Skill 和全局 Utility 的同源接线统一调用既有 Navigation Authority 一次提交完整 domain/child，保留 utility 的中立 Play owner 和 breadcrumb。没有新增 router、持久化或编辑 authority。新增回归覆盖九种目标的单 history entry、一次拒绝判定及拒绝后 owner 不变。
+
+320px/真实 `font_scale=1.5` 下，原生 Persona dialog 循环 Tab 会让焦点离开弹层。沿用现有 Runtime 的可见/可用控件筛选规则，补 Tab/Shift+Tab 首尾循环；Esc/Cancel、成功回执和返回触发焦点保持原路径。没有重新开启 Shared 描述、库 CRUD 或 caller opt-in。
+
+新增 `tests/e2e/atria-shell/09-immersive-integration.e2e.js` 三个真实 FS/HTTP 场景：缓存搜索命中原 Persona exact revision（后来改名不自动 latest）、Knowledge exact entry、来源级 Personas retry、Save history 与 Director 搜索返回查询；服务启动前真实持久化旧 Session 不回填，新默认/修订不改已有 Session，picker 留住 Composer 草稿和旧 revision，Save 同 ID 冲突不改写、删除测试 Session 后导入恢复而不新建 Persona；中文/light/Fast UI/减少动效/真实最大字号、320/719/720/1179/1180 边界和双向 Tab/Esc/focus。
+
+### S00–S20 first-round evidence map
+
+下表只映射本轮实际相关证据，证明现有外壳接线与支持范围兼容；不把控制器保留、视图可达或历史证据冒充逐字段/逐设备验收。
+
+| Rows | A5 actual local evidence |
+| --- | --- |
+| S00 | WorkspaceHost/leave-guard/Search 合约；A5 exact Persona/Knowledge/Save/Director 跨域与 Back；九类取消后 owner 不变 |
+| S01 | learning-center 与 startup-loader 合约；真实 fresh/default-user 启动与 A1 全局工具重入。多账户登录条件未全测 |
+| S02–S03 | Play landing retry/empty/real resume；阅读节点/位置、合成 draft stream/IME；320px/light/safe-area/模拟 visualViewport；Native generation ABI 与受控 HTTP Provider实际请求 |
+| S04–S06 | A2 exact history/fork/switch/只读与 busy guard；密码重试/安装确切旧版本/保留新默认/导入；Save v1/session 和 v2/resume、Persona v3 及新旧 Session |
+| S07–S08 | Studio exact Library Attach/Update/Fork/Detach；Knowledge exact 搜索与原详情；Prompt controls/presets 完整导出闭包、immutable refs、Regex 与作者/玩家 authority 分离 |
+| S09–S11 | Runtime readiness/save receipt/Secret/late response、Memory task exact route、Retrieval FS/SQLite revisions 和受控 HTTP/本地 vectors；Persona preview/预算/无关角色过滤 |
+| S12 | 真实 20 Studio view 与 exact 引用 lifecycle；review/Source/草稿/人工回执/late Preview 合约。没有逐字段重造编辑器 |
+| S13–S14 | 四模式 Agent settings restore/import exact route；真实 Director 搜索；确认期间切换 Session 后拒绝 Memory reset；Memory route/save 与 scoped diagnostics |
+| S15–S16 | Extensions CRUD/scope/冲突/迟到响应合约；真实插图全设置 draft/取消/保存和 Session tools；插图 FS/SQLite CAS/冻结草稿 |
+| S17 | Component/Hybrid/Full 与失败恢复 1440/390px；真实 solo Host picker/stale revision/独立恢复；Shared 自己席位选择与描述停用。frontend 用受控 fixture，不代表任意作品故障或完整 lease/nonce |
+| S18–S19 | appearance/utility-workspaces/logging 合约；A1 学习/设置/Guided/Startup/Expert；真实中文 font_scale/Fast UI；Persona 账户备份 FS↔SQLite。账户头像/密码全条件未重跑 |
+| S20 | Session/context/shared-host/save/account-backup/UI 合约与 A4b 四个 browser dependency 场景；A5 新旧 Session/默认/exact search/Save/focus。migration/storage 的其余断点沿用 A4b，不计新执行 |
+
+### Actual minimal local validation
+
+本轮 **28 suites / 181 个不同 unit** 和 **18 个不同 Chromium 场景**有最终通过证据；重叠复验不累加。仅在本地运行下列与 A5 接线/兼容相关的集合，不执行完整矩阵或远端 CI。
+
+```bash
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/persona-session.test.js native/persona-save-backup.test.js native/persona-context.test.js native/persona-shared-host.test.js atria-shell/product-search.test.js atria-shell/workspace-leave-guard.test.js atria-shell/runtime-readiness.test.js atria-shell/save-dependency-recovery.test.js atria-shell/studio-workspace-a7.test.js atria-shell/memory-native-routing.test.js --silent
+# 10 suites / 43 passed
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/learning-center.test.js atria-shell/prompt-runtime-controls.test.js atria-shell/native-runtime-p5.test.js native/retrieval-runtime.test.js native/agent-settings.test.js native/extensions-workspace.test.js atria-shell/appearance.test.js atria-shell/utility-workspaces.test.js logging/frontend-adapters.test.js native/save-system.test.js --silent
+# 9 suites passed；save-system 的 13 本地用例通过，MySQL/Postgres 两项连接失败；不能将整条命令记作通过
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/save-system.test.js --testNamePattern '^(?!.*(MysqlEngine|PgEngine)).*$' --silent
+# FS/SQLite 范围最终 13 passed / 2 skipped；加上前项九个 suite，96 个不同 passed
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/native-generation-p4.test.js frontend-startup-loader.test.js native/prompt-presets.test.js native/illustration-settings.test.js native/persona-account-backup.test.js --silent
+# 5 suites / 23 passed
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/workspace-host.test.js atria-shell/workspace-leave-guard.test.js atria-shell/native-personas.test.js --silent
+# 最后生产修正后 3 suites / 25 passed；leave-guard 8 已在首项，新增不同用例 17
+ATRIA_DISABLE_MYSQL_TESTS=1 ATRIA_DISABLE_POSTGRES_TESTS=1 npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/run-policy-p2.test.js --testNamePattern 'ironman exports only current resume closure' --silent
+# v2/resume FS/SQLite 最终 2 passed / 41 非本轮目标 skipped；此前未过滤引擎的同一目标因 DB 缺环境失败
+npm --prefix tests run test:e2e -- e2e/atria-shell/03-game-surfaces.e2e.js e2e/native-session/07-play-redesign.e2e.js e2e/native-session/10-studio-redesign.e2e.js e2e/native-session/12-native-agent-routes.e2e.js e2e/native-session/20-extensions-ui.e2e.js --grep 'Native Component|A2 |A3 ' --workers=1
+# 7 passed；生产接线修正前，非相同触及面证据不冒充 End HEAD 全部重跑
+npm --prefix tests run test:e2e -- e2e/native-session/07-play-redesign.e2e.js e2e/atria-shell/04-navigation.e2e.js --grep 'landing has retry|reading preserves position|320px light|A1 global utilities' --workers=1 --output=.e2e-scratch/a5-shell-compat-results
+# 4 passed
+npm --prefix tests run test:e2e -- e2e/atria-shell/09-immersive-integration.e2e.js e2e/atria-shell/08-personas.e2e.js e2e/atria-shell/04-navigation.e2e.js --grep 'A5 |A4b |A1 global utilities' --workers=1 --output=.e2e-scratch/a5-final-results
+# 最后全部生产修正后 8 passed；A1 utilities 已在上项，故本轮不同 Chromium 场景合计 18
+npm run frontend:prebuild-cache -- --dataRoot tests/.e2e-scratch/a5-build-cache
+# 首次 webpack 编译成功；最终同一 libraries key 94907547ba0121e2 cache hit（不虚称第二次重新编译）
+npm run check:native-localization
+# English source / zh-cn 通过；两处生产 JS 和两处 test ESLint、git diff --check 通过
+```
+
+已本地查看最终中文320最大字号 Persona picker、390 Save history/search 和 Shared seat display 截图。截图/trace/dataRoot/前端缓存均 ignored，不提交。Viewport/visualViewport/IME 为浏览器仿真或合成事件；Provider 是受控本地 HTTP，不是远端模型证明。
+
+### Resolved test failures and remaining limits
+
+除上述真实路由与焦点 bug 外，新试件初稿误用不存在的 browser identity module、Knowledge header/row selector、Retry 的可读名称、revision 作为 content、未从 Library 切回 Play；逐项按真实接口/DOM 修正。首次 Save 同账户同 ID import 正确拒绝，改为显式断言冲突不改数据后删除新建测试 Session再恢复。两次主动终止已知不正确/缺 serial dependency 的浏览器选择集合，不计通过；最终 A4b 全四场景保留串行管理/迁移先建资源的依赖。没有为迁就测试关闭校验或绕过权限。
+
+Save 与 run-policy 的 MySQL/Postgres 试探均连接拒绝（本地服务未运行），明确排除这两引擎后仅验 FS/SQLite；不能宣称 SQL 全 parity。Android/真实手机/软键盘/中文 IME/WebView、远端模型、全量 tests/完整 E2E、全部 native@3 lease/nonce/任意作品崩溃组合未测。首轮证据映射覆盖 S00–S20，但不是全部字段、状态、设备和 V20 全矩阵的无条件通过；这些限制继续进入 B/F。共享描述明确停用，显示/头像/选择不等于消费。
+
+原产品 AGENTS.md 和 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md dirty changes 保持未提交；package/plugin/skills/reference 未读/未改。A5 持久化后停止，不进入 B/F、不合并 main。下一 checkpoint 为 B1 Actors：先旧字段/动作/模式/advanced Source/draft/revision/authority 映射，再逐类替换展示；不把整个 B1 组当一次自动连跑阶段。
+
 ## Final state
 
-Task ongoing. A1–A4b locally implemented/verified; A5 next. 支持范围的 Persona 管理/选择入口已开放，Shared 描述明确停用。S00–S20 全矩阵与最终集成仍未完成。
+Task ongoing. A1–A5 local checkpoints complete; B1 Actors mapping next. 支持范围首轮结果冻结，Shared 描述明确停用。完整设备/引擎/字段矩阵和最终集成仍未完成；本轮未合并 main。
