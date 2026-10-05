@@ -1,0 +1,56 @@
+# Experience、Lifecycle、Tool 与 Processing
+
+本模块拥有 Package 编排、交互和数据处理的阶段边界。领域操作依赖 [authority-script.md](authority-script.md)，模型任务与产物依赖 [context-generation.md](context-generation.md)。
+
+## Experience 与原生能力
+
+Experience Script 组合获准读视图、Command、Task、UI 和 Lifecycle，负责决定下一步工作。能力通过声明和原生宿主/Bridge 提供；便利性不能形成任意正式 State 写入。
+
+扩展现有 Controller、Capability 与 Bridge 的作者表达，按用途提供清晰领域服务。复用现有原生组件、页面/交互定义和消息 Block，不以全局宿主对象、旧函数库或消息 iframe 为中心。
+
+## Lifecycle 与运行编排
+
+Package 定义何时开展工作，Atria 负责受控触发、调度、恢复及与正式提交的关系。
+
+事务内必须强制的游戏规则由 Authority 执行；提交后的正式事实可驱动后续编排。Task / Generation 的运行通知与 UI 挂载、更新和卸载按各自用途消费，不能混同为已经发生的游戏事实。
+
+复用 Scope、工作流、时钟、自动化、持久 Task 意图、重复调用与结果有效性机制。Experience 的事件反应仍是提出后续任务或 Intent，正式变化继续经过领域规则和平台校验。
+
+后续工作与其正式原因、运行范围和资源依据保持可追踪关系。恢复、重复处理、取消及迟到结果不能重复产生未经允许的领域效果；具体事件目录、调度交付和推进策略由技术设计确定。
+
+## Tool 调用与操作路由
+
+模型只能使用获准、声明的工具。工具输入受 Schema 与 Capability 约束；业务写入通过固定 Command / Intent 的领域规则执行，模型不能临时选择 validator、规则实现或任意写补丁。
+
+只读查询、辅助任务和领域操作有各自结果边界。复用现有 Task / Generation 输出约束和 Authority 路径，避免另建工具专属状态写入 Authority。
+
+## Processing 的用途与产物
+
+| 用途 | 产物与归属 |
+| --- | --- |
+| 生成输出处理 | 整理后的候选消息、结构化数据或领域建议；正式采用走对应 Authority |
+| 上下文处理 | 请求使用的历史表示或片段；保留来源、授权和最终请求预算 |
+| 呈现处理 | 排版、组件数据和 UI 呈现；保留正式来源与 MessageProjection 一致性 |
+| 正式消息编辑 | 显式操作，形成新正式消息版本或 Revision |
+
+处理契约表达阶段、用途、输入输出、固定资源、作用范围、顺序、预算及失败语义。Regex 是文本转换的一种实现；复杂提取与格式化允许受限脚本，模型推理由显式 Task 承载。
+
+可执行逻辑来自正式资源，模型字符串与组件数据保持数据身份。重新渲染不自动编辑历史或推进游戏；流式片段、候选结果和正式采用产物需要可区分。
+
+交互由声明的组件和 Controller / Experience 处理，再提出获准操作。模型提到“获得 100 金币”可以被提取成候选建议；实际金额和入账由固定规则决定，正式掉落卡消费已确认结果。
+
+## 阶段交付
+
+S4 先贯通 Experience 的领域请求、Task / Tool 调度与 Lifecycle；S5 统一处理阶段和原生交互，并完善作者声明与预览。具体宿主接口、事件和 Processor 粒度由阶段设计补入本模块。
+
+## 行为验证
+
+- 事务内规则不依赖 UI 监听是否存在；运行范围结束、恢复与重复投递不重复提交不合法效果。
+- Tool、按钮、脚本和自动化使用相同领域规则路径，调用入口不能改变合法性。
+- 消息重新呈现保持正式历史与 State 不变；正式编辑产生正确版本关系。
+- 输出解析成功不直接授予奖励或写权；未声明组件类型、超界数据和文本内代码不取得执行能力。
+- Processor 顺序、作用范围、失败和预算可解释，原生请求与呈现链路真正消费声明的处理结果。
+
+## 起读代码
+
+`src/native/lifecycle-authority.js`、`session-core.js` 的 Lifecycle 与 Task 提交；`public/shared/native-lifecycle-contract.js`、`native-task-contract.js`；`src/native/task-scheduler.js`；`src/native/frontend/bridge.js`；`public/scripts/native/frontend/script.js`、`runtime.js`、`conversation.js`；`public/scripts/extensions/regex/engine.js`；`public/shared/native-message-contract.js`、`native-frontend-host.js`。
