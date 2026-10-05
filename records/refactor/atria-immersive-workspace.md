@@ -2,7 +2,7 @@
 
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
-- Status: Active — A1–A3 complete; A4a next
+- Status: Active — A1–A5 local checkpoints complete; B1 Actors mapping complete, display replacement next
 - Plan: [Plan index](../../plans/refactor/atria-immersive-workspace/index.md)
 
 ## Summary
@@ -506,6 +506,47 @@ Save 与 run-policy 的 MySQL/Postgres 试探均连接拒绝（本地服务未�
 
 原产品 AGENTS.md 和 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md dirty changes 保持未提交；package/plugin/skills/reference 未读/未改。A5 持久化后停止，不进入 B/F、不合并 main。下一 checkpoint 为 B1 Actors：先旧字段/动作/模式/advanced Source/draft/revision/authority 映射，再逐类替换展示；不把整个 B1 组当一次自动连跑阶段。
 
+## Stage B1 Actors — Mapping checkpoint
+
+- Date: 2026-10-05
+- Primary Workspace / product branch: `main` / `refactor/atria-immersive-workspace`
+- Product Start / End / locally tested HEAD: `784bb91a83e205669f14445fa1ef49ed248b9799`，产品代码未改；原分支已 push，未合并 main。
+- Docs start HEAD: `ff22eb5d2e5164a898b059c08039d4193fed8c9e`
+- Mapping commit: `2d19fdf28`（docs），已提交；本轮 Record/HANDOFF 持久化提交以真实 Git HEAD 为准，不自引用 hash。
+- Status: **Mapping complete; Actors display replacement pending.** 用户本轮指定先完成字段/动作/authority 映射，故停在 replacement gate 前，不把整个 Actors checkpoint 记为完成。
+
+### Mapping and findings
+
+按真实 Git/远端 → live HANDOFF → index → delivery、coverage S12/S07、Actors baseline、states/validation → Record A5 路由；产品与远端 task branch 一致，docs 与远端 docs 一致。保护原 dirty changes；没有加载 Skill/reference、改产品或跨进其它 B1 类型。
+
+新增 [Actors mapping](../../plans/refactor/atria-immersive-workspace/actors-mapping.md)，并在 index 增加模块/阶段路由。映射旧字段、空/单/多 Actor、Fields/Source/任意 JSON/各 host 条件、draft 与 exact project revision、展示目标、原 handler/HTTP/service/ProjectStore、规范输出、错误/冲突/离开、原测试 T01–T09 和替换验收 N01–N07。字段表完整保留五个 canonical 顶层字段与 profile/metadata 任意 JSON，区分 projection 消费者读取的六个 profile 常用键及 mes_example alias；Actor 没有 role enum、独立 mode、Library revision 或 Avatar authority。
+
+Actor 为项目内 `core.actor` / `project-source`；原 graph 节点 revision:null，Git project revision 是编辑基准。人工仍走 `project.save` → human Workspace/inspect → pending Review/Apply → execute/base check/snapshot/validation/commit；Agent Task/Commit 分开。已有 Session/Save/PackageVersion 不随项目编辑自动推进。Shared Persona description 在 context 层强制 `shared_scope_unsupported`，无 caller opt-in、owner solo 回退或自动 scope/Actor 映射。
+
+本轮明确记录四类真实缺口，**没有宣称修复**：
+
+- G01：空 Actors 可用集合 Source；非空只有单 Actor editor，且全站 Source view 排除 manifest、禁止通过 source.write 更新 manifest，不能当整集合管理路径。下一轮补 Actors 集合 Source 始终可达，仍复用 project.save。
+- G02：assertActor 返回 canonical 五字段，顶层 unknown 会静默丢弃，ProjectStore.get 也先归一化；profile/metadata 内未知 JSON 保留。替换时 Review 前拒绝未知顶层/显式修复，不能声称 UI 可恢复已经被读路径剔除的原始字段。
+- G03：Project assertPackageSource 接受重复 Actor IDs，Package manifest 拒绝；graph 当前只有 project contains Actor 边，不是 EntryPoint/信息/声音全部引用闭包。Review 通过不能冒充可构建或安全删除；下一轮明确前置重复 ID/引用错误，后端未修复范围需如实说明。
+- G04：原 conflict Reload Latest 重绘丢弃草稿且无导出按钮；下一轮提供复制/保留 Source 与明确放弃重载，不 silent rebase。
+
+### Actual minimal local validation
+
+仅在 unchanged 产品 HEAD 做现有最小相关验证，没有新增镜像实现的测试：
+
+1. 在产品 tests workspace 执行 `npm run test:unit -- --runInBand --runTestsByPath atria-shell/studio-value-editor.test.js atria-shell/studio-authoring.test.js native/contracts.test.js --testNamePattern='Studio local structured draft|A7 Studio authoring helpers|N0 AtriaPackage v2 logical contract'`：**3 suites / 12 tests passed；26 tests skipped**。证明既有通用草稿、JSON/focus、单次 Review、human workspace、零/多 Actor/package identity；不是 Actor 替换后的端到端验收。
+2. 执行 `npm run test:unit -- --runInBand --runTestsByPath native/persona-context.test.js --testNamePattern='accepted Persona lane is separate'`：**1 suite / 1 test passed；1 test skipped**。包括 shared 调用显式 enabled 仍 unsupported、description 不进入 plan。
+3. 临时本地 Node assertion probe（未保存/提交脚本）：**9 assertions passed**，直接调用 assertActor/assertAtriaProjectSource，核对 profile/metadata 任意 JSON 保留、顶层 unknown 丢弃、null role 省略、缺失 profile→{}、数组 profile/legacy identity 拒绝、Project duplicate Actor IDs 当前接受、悬空 EntryPoint.actorIds 拒绝。包含对已知缺口的现状确认，不是“无损兼容通过”。
+4. docs 最小检查：映射中 **33 个不同既有 source/test 路径**、相对链接、N01–N07 条目与 shared 阻断文字、尾部空白检查通过；本轮受控文件 `git diff --check` / staged whitespace 检查通过。收尾检查覆盖 Record/HANDOFF 路由和真实 HEAD。
+
+总计 **4 suites / 13 tests passed；27 tests skipped**，另有 9 个边界 assertion；不与 A5 历史数量累加。没有运行 UI/Chromium/E2E、全量测试、构建、真机/Android/WebView/真实 IME、外部数据库、远端模型或 CI。本轮 docs 检查不能当产品开放门。T04–T08/N01–N07 的 Actors 具体输出和状态仍待展示替换后最小相关验证。
+
+### Persistence, limits and next checkpoint
+
+映射先单独提交到 docs，再更新同一 Record/live HANDOFF；产品 task branch 未修改、未合并 main。原产品 AGENTS.md 与 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 保持未提交；package/plugin/skills/reference 未读/未改。
+
+下一轮按 HANDOFF → index → actors-mapping 与其 delivery/coverage S12/S07/states/validation 依赖恢复，只实施 B1 Actors 展示与映射中相关缺口，复用原 controller/persistence。Actors 独立 checkpoint 实现/最小本地验证/commit/push 后刷新同一 Record/HANDOFF 并停止；不自动进入 EntryPoints/Worlds/Knowledge/B2/F。A5 首轮支持范围和未测设备/引擎/完整字段矩阵保持，共享描述继续停用。
+
 ## Final state
 
-Task ongoing. A1–A5 local checkpoints complete; B1 Actors mapping next. 支持范围首轮结果冻结，Shared 描述明确停用。完整设备/引擎/字段矩阵和最终集成仍未完成；本轮未合并 main。
+Task ongoing. A1–A5 local checkpoints complete; B1 Actors mapping complete, display replacement next. 支持范围首轮结果冻结，Shared 描述明确停用。完整设备/引擎/字段矩阵和最终集成仍未完成；本轮未改产品、未合并 main。

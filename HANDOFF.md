@@ -5,15 +5,17 @@
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`（产品）；docs 为文档辅助空间。
 - Product branch / HEAD: `refactor/atria-immersive-workspace` / `784bb91a83e205669f14445fa1ef49ed248b9799`；已 commit/push，未合并 main。
-- Docs branch: `docs`；本 A5 持久化提交以真实 Git HEAD 为准，不自引用 hash。
-- Current stage: **A5 local integration checkpoint complete; B1 Actors mapping next**。本轮停在 A5。
+- Docs branch: `docs`；Actors mapping commit `2d19fdf28`；本轮 Record/HANDOFF 持久化提交以真实 Git HEAD 为准，不自引用 hash。
+- Current stage: **B1 Actors mapping complete; display replacement next**。本轮按用户“先完成映射”指令停在 replacement gate 前，未改产品，不表示 Actors checkpoint 已完成。
 - Plan entrypoint: [index](plans/refactor/atria-immersive-workspace/index.md)
-- Next required modules: delivery、coverage S12/S07 和 Actors 对应 baseline 小节、states、validation；冻结决策按实际需要路由。
-- Record: [record](records/refactor/atria-immersive-workspace.md)，续接重点读 A5；A4a/A4b authority 与迁移历史保留。
+- Next required modules: [Actors mapping](plans/refactor/atria-immersive-workspace/actors-mapping.md)、delivery、coverage S12/S07 和 Actors 对应 baseline 小节、states、validation；冻结决策按实际需要路由。
+- Record: [record](records/refactor/atria-immersive-workspace.md)，续接重点读 B1 Actors mapping checkpoint；A5 支持范围与 A4a/A4b authority/迁移历史保留。
 
 ## Completed
 
 D1/P01–P06、A1–A4b 保持。A5 将 S00–S20 首轮支持范围的实际本地证据映射写入同一 Record；验证跨域搜索、Runtime/Save 恢复、20 Studio view、Agents Session 隔离、扩展/插图、native/hybrid/full 呈现、新旧 Session 和 Persona/default/Save 边界。
+
+B1 Actors 已提交字段/动作/所有条件/Source/draft/revision/handler/authority/错误冲突离开/测试映射（docs `2d19fdf28`），只读核对产品，没有展示替换。Actor 是 project-source，不是 Library/Persona；profile/metadata 任意 JSON 必须保留。G01 非空集合 Source 不可达、G02 顶层 unknown canonical 静默丢弃、G03 Project 重复 ID/Actor graph 引用闭包不完整、G04 冲突 reload 丢草稿已如实映射，未修复。T01–T09 既有测试与 N01–N07 替换验收门区分。
 
 WorkspaceHost 的 Library/Build/Agents sections/Orchestration/Skill/Utility 原父子两步导航改为既有 Navigation Authority 一次提交完整目标，避免一次 Back 落到中间父页、取消后 child 写到原 owner。Utility 仍属于中立 Play host；没有新 router 或持久化 authority。Persona dialog 按原 Runtime 控件筛选规则补 Tab/Shift+Tab 首尾焦点循环；Esc/Cancel/回执与返回触发焦点保持。
 
@@ -23,7 +25,7 @@ WorkspaceHost 的 Library/Build/Agents sections/Orchestration/Skill/Utility 原�
 
 ## Pending / next target
 
-A5 首轮本地 checkpoint 完成；下一正式 checkpoint 是 B1 Actors。先真实 Git/远端 → 本 HANDOFF → index → delivery/coverage S12/S07 与 Actors baseline/states/validation → 同一 Record A5。先提交旧字段/动作/所有模式/advanced Source/draft/revision/handler/authority/错误冲突离开/对应测试的映射，再按映射替换展示，复用原 controller/持久化。B1 的 Actors、EntryPoints、Worlds、Knowledge 各为独立 checkpoint，不能自动连跑整组或进入 B2/F。
+A5 首轮本地 checkpoint 完成；B1 Actors 映射已提交，下一目标是 Actors 展示实现。先真实 Git/远端 → 本 HANDOFF → index → actors-mapping、delivery/coverage S12/S07 与 Actors baseline/states/validation → 同一 Record B1 mapping。不要重复映射调查或把发现当已修复；按字段表/动作表/authority/状态与 G01–G04、N01–N07 实施，复用原 controller/持久化。Actor 身份不依名称/index，项目 canonical 输出与真实差异验收；未修复后端限制需明示。B1 的 Actors、EntryPoints、Worlds、Knowledge 各为独立 checkpoint，不能自动连跑整组或进入 B2/F。
 
 首轮支持范围冻结，不声称 S00–S20 全部字段/状态/设备组合或 V20 无条件完整通过。MySQL/Postgres 在 Save/run-policy 两 suite 的最初试探均因本地数据库未运行而连接拒绝；明确排除后只验证 FS/SQLite。真实手机/软键盘/中文 IME/WebView/Android、远端模型、完整 native@3 lease/nonce/任意真实作品故障组合未测；保留进入后续验收，不能将 browser 仿真或受控 frontend fixture 记作真机/完整作品证明。
 
@@ -43,6 +45,8 @@ Host solo picker 走原白名单/epoch/revision/宿主 guards；Full root 故障
 
 ## Actual local validation
 
+本轮 B1 mapping 在 unchanged 产品 `784bb91a8`：**4 suites / 13 tests passed、27 skipped**（value editor/human authoring/Package Actor logical contract 12，Persona context/shared block 1）；另有 **9 个临时 boundary assertions**，包含确认顶层 loss/Project duplicate IDs 的现状，不能当无损兼容通过。docs 检查 33 个不同 source/test 路径、映射链接/验收门/whitespace 与收尾 Record/HANDOFF 路由。未跑浏览器/E2E/构建/新 UI/完整矩阵/CI；Actors 展示尚未实现，以下 A5 数量是历史，不累加、不冒充本轮重跑。
+
 A5 **28 suites / 181 个不同 unit；18 个不同 Chromium 场景**有最终通过证据，重叠复验不累加。最终触及面 3 suites/25 unit 和 8 browser 全通过；其他未受修正影响的相关域测试在 Start HEAD 执行，不能虚称全都于 End HEAD 重跑。详细命令、数量、S00–S20 映射、试件失败修正与缺环境在 Record A5。
 
 FS/SQLite Session/context/shared/avatar/Save v3、Save v1、v2 ironman resume、账户备份双向闭包/默认/冲突通过；受控本地 HTTP Provider 真实发送和 Shared 停用断言通过，非远端模型。20 Studio view/exact 引用、旧版本安装/密码重试/恢复、Agents Session 隔离、插图 settings、呈现/failure recovery 等均在相关 browser 选择集合执行。
@@ -57,4 +61,4 @@ FS/SQLite Session/context/shared/avatar/Save v3、Save v1、v2 ironman resume、
 
 ## New-chat bootstrap prompt
 
-继续 Atria 的 refactor/atria-immersive-workspace，执行 B1 Actors checkpoint。先核对真实 Git/远端 → docs:HANDOFF.md → plans/refactor/atria-immersive-workspace/index.md → delivery/coverage S12/S07 与 Actors baseline/states/validation → 同一 Record A5。产品分支 refactor/atria-immersive-workspace@784bb91a83e205669f14445fa1ef49ed248b9799，A5 已实现/本地验收/commit/push，首轮支持范围冻结；共享描述明确停用，没有重启授权。先做 Actors 完整字段/动作/模式/Source/draft/revision/authority/状态/测试映射，再改展示；复用原 Native/Session/Context/Save/backup/Bridge authority。每阶段只做最小本地相关验证，不发起/等待远端 CI；保护原 dirty changes。Actors checkpoint 完成实现/验证/commit/push 后更新同一 Record/HANDOFF、给接手提示词并停止，不自动进入 EntryPoints/Worlds/Knowledge/B2/F、不合并 main。真实设备、外部数据库和完整矩阵未测范围继续如实保留。
+继续 Atria 的 refactor/atria-immersive-workspace，只实施 B1 Actors 展示 checkpoint。先核对真实 Git/远端 → docs:HANDOFF.md → plans/refactor/atria-immersive-workspace/index.md → actors-mapping.md 及 delivery/coverage S12/S07/Actors baseline/states/validation → 同一 Record B1 Actors mapping。产品仍 refactor/atria-immersive-workspace@784bb91a83e205669f14445fa1ef49ed248b9799；映射已提交 docs@2d19fdf28，本轮产品未改，A5 首轮支持范围冻结。不要重做映射，按 G01–G04 缺口与 N01–N07 门实现展示并比较 canonical 输出；复用原 project.save/Workspace/ChangeSet/controller/持久化，Actor 不新增 Library/Avatar/Persona authority，profile/metadata 任意 JSON 保留，顶层未知明确拒绝/显式修复且不声称读路径数据可恢复。Shared 描述仍 shared_scope_unsupported，没有重启授权，无 opt-in/solo 回退/自动 Actor 映射。每阶段只做最小本地相关验证，不发起/等待远端 CI；保护原 dirty changes。Actors 实现/验证/commit/push 后更新同一 Record/HANDOFF、给接手提示词并停止，不自动进入 EntryPoints/Worlds/Knowledge/B2/F、不合并 main。真实设备、外部数据库和完整矩阵未测范围继续如实保留。
