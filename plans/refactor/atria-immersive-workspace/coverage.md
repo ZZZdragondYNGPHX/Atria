@@ -75,4 +75,8 @@ C20.5/6/7/8 的新增本地证据进入同一 Record A4b；不把上述 checkpoi
 
 ## B1 Actors checkpoint
 
-S12 Actors 已替换专属常用字段、任意结构/高级提示词与单 Actor Source；空/非空均可达集合 Source。复用原 value editor 草稿、exact actorId 选择、project.save/Workspace/ChangeSet，不新增 Actor Library/Persona/头像 authority。Review 前拒绝顶层 unknown/legacy、重复 ID 和悬空 EntryPoint 引用，冲突可复制草稿再明确放弃重载；服务归一化和有限 graph 限制保持。canonical FS/HTTP/save/build 与 exact Session/Save、本地状态/中文窄屏证据见 [Record B1 display](../../../records/refactor/atria-immersive-workspace.md#stage-b1-actors--display-checkpoint)。Shared 描述停用；S07 World/Knowledge 展示未重构，下一 EntryPoints checkpoint 未开始。
+S12 Actors 已替换专属常用字段、任意结构/高级提示词与单 Actor Source；空/非空均可达集合 Source。复用原 value editor 草稿、exact actorId 选择、project.save/Workspace/ChangeSet，不新增 Actor Library/Persona/头像 authority。Review 前拒绝顶层 unknown/legacy、重复 ID 和悬空 EntryPoint 引用，冲突可复制草稿再明确放弃重载；服务归一化和有限 graph 限制保持。canonical FS/HTTP/save/build 与 exact Session/Save、本地状态/中文窄屏证据见 [Record B1 display](../../../records/refactor/atria-immersive-workspace.md#stage-b1-actors--display-checkpoint)。Shared 描述停用；S07 World/Knowledge 展示未重构，EntryPoints 映射 checkpoint 已完成，展示替换待下一轮。
+
+## B1 EntryPoints mapping checkpoint
+
+S12 EntryPoints 的 [字段/动作/authority 映射](entrypoints-mapping.md) 已完成；产品仍沿用原通用 editor，未替换展示。canonical 字段/任意高级 JSON、exact Actor/World/Binding、非空集合/项目 revision/人工 Workspace、运行初始状态与消息、第一入口 Preview/Experience/UI 目标已定位。G01–G05 分别记录非空集合 Source 缺失、顶层归一化数据丢失、重复 ID/index 与无入口 graph、冲突恢复仅 Actors 已覆盖、第一入口动作与启动验证差额；N01–N08 为未来替换门，不能记作通过。下一轮只实施 EntryPoints，Actors 不重做，Shared 描述继续停用。实际最小本地验证见 [Record B1 EntryPoints mapping](../../../records/refactor/atria-immersive-workspace.md#stage-b1-entrypoints--mapping-checkpoint)。
