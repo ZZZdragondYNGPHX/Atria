@@ -11,6 +11,23 @@ function editor(type = 'core.prompt-module', onSave = jest.fn()) {
     return { root, resource, onSave };
 }
 
+test('opening Simple or Advanced preserves omitted Prompt defaults, exact module order and advanced payloads', () => {
+    for (const type of ['core.prompt-module', 'core.prompt-program', 'core.generation-profile']) {
+        const resource = newPromptResource(type);
+        if (type === 'core.prompt-program') { delete resource.responseDirective; resource.locals = { opaque: { type: 'json', default: [null, false, 3] } }; resource.stages[0].moduleRefs = ['z', 'a'].map(letter => ({ scope: 'library', resourceType: 'core.prompt-module', resourceId: 'pmod_' + letter.repeat(32), revision: 'old-' + letter })); }
+        if (type === 'core.generation-profile') { resource.output = {}; resource.providerExtensions = { opaque: [null, false, 5] }; }
+        const root = mountPromptEditor({ document, parent: document.body, entry: { resource, ref: resourceRef(type, resource, { scope: 'library' }) }, entries: [], onSave: jest.fn(), onBack: jest.fn() });
+        button(root, 'Advanced editor').click(); expect(JSON.parse(root.querySelector('textarea').value)).toEqual(resource);
+        button(root, 'Simple editor').click(); button(root, 'Advanced editor').click(); expect(JSON.parse(root.querySelector('textarea').value)).toEqual(resource); root.remove();
+    }
+});
+
+test('Prompt cannot resubmit through a mode change while the original save is pending', async () => {
+    let resolve; const onSave = jest.fn(() => new Promise(done => { resolve = done; })); const { root } = editor('core.prompt-module', onSave);
+    button(root, 'Review / save revision').click(); expect(root.inert).toBe(true); button(root, 'Advanced editor').click(); button(root, 'Review / save revision').click(); expect(onSave).toHaveBeenCalledTimes(1);
+    resolve({}); await flush(); expect(root.inert).toBe(false); expect(root.dataset.atriaDraftDirty).toBe('false');
+});
+
 test('internal Prompt Back preserves a dirty Source on cancel and permits discard or a committed return', async () => {
     const onBack = jest.fn(); const onSave = jest.fn();
     const resource = newPromptResource('core.prompt-module');
@@ -151,4 +168,11 @@ test('P7 translated editor chrome never translates user resource names or JSON p
         expect(document.querySelector('article h3').textContent).toBe('Routes');
         expect(document.querySelector('pre').textContent).toContain('"displayName": "Routes"'); mounted.dispose();
     } finally { globalThis.__i18n = previous; }
+});
+
+test('Generation dirty tracking leaves focus on the current control while JSON is invalid', async () => {
+    const { root } = editor('core.generation-profile'); const stop = root.querySelector('[aria-label="Stop sequences (JSON array)"]'); stop.value = 'bad';
+    const name = root.querySelector('[aria-label="Display name"]'); name.focus(); stop.dispatchEvent(new Event('change', { bubbles:true })); await flush();
+    expect(document.activeElement).toBe(name); expect(root.dataset.atriaDraftDirty).toBe('true');
+    button(root, 'Review / save revision').click(); await flush(); expect(root.querySelector('[role="alert"]').textContent).toContain('JSON array');
 });

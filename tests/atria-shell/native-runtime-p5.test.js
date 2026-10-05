@@ -298,3 +298,41 @@ test('Retrieval commits once, retains a read-only receipt after list failure and
     expect(globalThis.fetch.mock.calls.filter(([, options]) => options.method === 'POST')).toHaveLength(1);
     view.dispose(); globalThis.crypto.randomUUID = randomUUID;
 });
+
+test('Runtime Source keeps exact identity, advanced JSON, malformed drafts and the original configuration write', async () => {
+    globalThis.fetch = jest.fn(async () => response(config));
+    const view = mount(); await flush(); await flush();
+    const click = label => [...view.root.querySelectorAll('button')].find(node => node.textContent === label).click();
+    click('Source'); let source = view.root.querySelector('[aria-label="Runtime resource JSON"]');
+    const draft = JSON.parse(source.value); draft.networkPolicy = { private: { nested: [null, false, 7] } }; draft.options = { advanced: { values: [null, true, 'opaque'] } }; source.value = JSON.stringify(draft);
+    click('Fields'); await flush(); click('Source'); source = view.root.querySelector('[aria-label="Runtime resource JSON"]'); expect(JSON.parse(source.value).networkPolicy).toEqual(draft.networkPolicy);
+    source.value = '{ malformed'; click('Fields'); await flush(); expect(view.root.querySelector('[aria-label="Runtime resource JSON"]').value).toBe('{ malformed');
+    source.value = JSON.stringify({ ...draft, connectionProfileId: 'other' }); view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush(); expect(globalThis.fetch.mock.calls.filter(([, options]) => options.method === 'PUT')).toHaveLength(0);
+    source.value = JSON.stringify(draft); view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush();
+    expect(JSON.parse(globalThis.fetch.mock.calls.find(([, options]) => options.method === 'PUT')[1].body)).toEqual(draft); view.dispose();
+});
+
+test('Runtime malformed advanced shapes remain in Source instead of replacing the editor', async () => {
+    const modelId = 'model_' + 'a'.repeat(32), model = { schemaVersion: 1, scope: 'player', modelProfileId: modelId, displayName: 'Model', connectionProfileRef: { scope: 'player', connectionProfileId: config.connections[0].connectionProfileId }, remoteModelId: 'Remote', limits: { contextTokens: 100, outputTokens: 20 }, capabilities: [], tokenizer: { encoding: 'cl100k_base', source: 'provider', advanced: { value: [null, false, 3] } } };
+    const data = { ...config, models: [model] }; globalThis.fetch = jest.fn(async () => response(data));
+    const body = document.createElement('main'); document.body.append(body); const view = mountNativeRuntimeWorkspace({ document, body, section: 'models', route: { child: { id: 'model:' + modelId } }, host: {} }); await flush();
+    const click = label => [...view.root.querySelectorAll('button')].find(node => node.textContent === label).click();
+    click('Source'); const source = view.root.querySelector('[aria-label="Runtime resource JSON"]'); expect(JSON.parse(source.value).tokenizer).toEqual(model.tokenizer);
+    const invalid = JSON.stringify({ ...model, capabilities: {} }); source.value = invalid; click('Fields'); await flush(); expect(source.isConnected).toBe(true); expect(source.value).toBe(invalid);
+    source.value = JSON.stringify(model); click('Fields'); await flush(); view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush();
+    expect(JSON.parse(globalThis.fetch.mock.calls.find(([, options]) => options.method === 'PUT')[1].body).tokenizer).toEqual(model.tokenizer); view.dispose();
+});
+
+test('Retrieval provider options survive switching, Source and immutable revision review without moving its exact identity', async () => {
+    const randomUUID = globalThis.crypto.randomUUID; globalThis.crypto.randomUUID = () => '12345678-1234-4234-8234-123456789abc';
+    const profile = { retrievalProfileId: 'retr_' + 'a'.repeat(32), revision: 'rev_' + 'a'.repeat(32), displayName: 'Jina', mode: 'embed', source: 'jina', model: 'jina', endpoint: 'https://jina.invalid', secretRef: { secretId: 'stored' }, options: { dimensions: 512, task: 'retrieval.query', lateChunking: true } };
+    globalThis.fetch = jest.fn(async path => response(path.endsWith('/secrets') ? [{ secretId: 'stored', label: 'Stored' }] : [profile]));
+    const body = document.createElement('main'); document.body.append(body); const view = mountNativeRuntimeWorkspace({ document, body, section: 'retrieval', route: {}, host: {} }); await flush();
+    const click = label => [...view.root.querySelectorAll('button')].find(node => node.textContent === label).click(); click('Create revision'); await flush();
+    view.root.querySelector('[aria-label="Dimensions"]').value = '1024'; const provider = view.root.querySelector('[aria-label="Provider"]'); provider.value = 'ollama'; provider.dispatchEvent(new Event('change')); provider.value = 'jina'; provider.dispatchEvent(new Event('change')); expect(view.root.querySelector('[aria-label="Dimensions"]').value).toBe('1024');
+    click('Source'); let source = view.root.querySelector('[aria-label="Retrieval resource JSON"]'), draft = JSON.parse(source.value); expect(draft.options).toEqual({ dimensions: 1024, task: 'retrieval.query', lateChunking: true }); expect(draft.revision).not.toBe(profile.revision);
+    click('Fields'); await flush(); click('Source'); source = view.root.querySelector('[aria-label="Retrieval resource JSON"]'); expect(JSON.parse(source.value)).toEqual(draft);
+    source.value = JSON.stringify({ ...draft, options: { wrong: true } }); click('Fields'); await flush(); expect(view.root.querySelector('[aria-label="Retrieval resource JSON"]')).toBe(source);
+    source.value = JSON.stringify(draft); view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush(); expect(JSON.parse(globalThis.fetch.mock.calls.find(([, options]) => options.method === 'POST')[1].body)).toEqual(draft);
+    expect(profile.options.dimensions).toBe(512); view.dispose(); globalThis.crypto.randomUUID = randomUUID;
+});

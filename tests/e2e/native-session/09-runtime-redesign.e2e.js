@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import { resolve } from 'node:path';
 import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
 import { createNativeId } from '../../../src/native/identity.js';
+import { assertModelProfile } from '../../../src/native/model-prompt-runtime/contracts.js';
+import { assertRetrievalProfile } from '../../../public/scripts/native/retrieval-contracts.js';
 import { seedGenerationProfiles } from '../../native/helpers/generation-fixture.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
 
@@ -24,6 +26,40 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => { await tearDownServer(server); });
+
+test('B2 Runtime and retrieval Source retain advanced canonical fields and exact identities through real HTTP', async ({ page }, info) => {
+    await boot(page, 1440); await open(page, 'models');
+    await root(page).getByRole('button', { name: 'Edit P4 model', exact: true }).click();
+    await root(page).getByRole('button', { name: 'Source', exact: true }).click();
+    let editor = root(page).getByLabel('Runtime resource JSON', { exact: true }), draft = JSON.parse(await editor.inputValue());
+    draft.tokenizer = { ...draft.tokenizer, source: 'provider', opaque: { values: [null, false, 7] } }; draft.providerHints = { vendor: { values: [null, true, 'advanced'] } }; draft.messageFormat = { extra: [null, false, 3] };
+    await editor.fill('{ malformed'); await root(page).getByRole('button', { name: 'Fields', exact: true }).click(); await expect(editor).toHaveValue('{ malformed');
+    await editor.fill(JSON.stringify(draft)); await root(page).getByRole('button', { name: 'Fields', exact: true }).click();
+    await root(page).getByRole('button', { name: 'Source', exact: true }).click(); expect(JSON.parse(await editor.inputValue()).tokenizer).toEqual(draft.tokenizer);
+    await root(page).getByRole('button', { name: 'Save', exact: true }).click(); await expect(root(page).getByRole('button', { name: 'Edit P4 model', exact: true })).toBeVisible();
+    const configuration = await page.evaluate(async () => (await fetch('/api/native/generation/configuration', { headers: window.Atria.getContext().getRequestHeaders() })).json());
+    expect(configuration.models.find(item => item.modelProfileId === draft.modelProfileId)).toEqual(assertModelProfile(draft));
+    await open(page, 'retrieval'); await root(page).getByRole('button', { name: 'New retrieval resource' }).click(); await root(page).getByRole('button', { name: 'Source', exact: true }).click();
+    editor = root(page).getByLabel('Retrieval resource JSON', { exact: true }); const empty = JSON.parse(await editor.inputValue());
+    draft = { ...empty, displayName: 'B2 local embedding', source: 'transformers', model: 'exact-local-model', endpoint: '', options: {} }; delete draft.secretRef;
+    await editor.fill(JSON.stringify(draft)); await root(page).getByRole('button', { name: 'Fields', exact: true }).click(); await expect(root(page).getByLabel('Provider', { exact: true })).toHaveValue('transformers');
+    await root(page).getByRole('button', { name: 'Source', exact: true }).click(); expect(JSON.parse(await editor.inputValue())).toEqual(draft);
+    await page.screenshot({ path: info.outputPath('b2-retrieval-source-wide.png'), fullPage: true });
+    await root(page).getByRole('button', { name: 'Save exact revision' }).click(); await expect(root(page).getByRole('heading', { name: 'B2 local embedding' })).toBeVisible();
+    const profiles = await page.evaluate(async () => (await fetch('/api/native/generation/retrieval', { headers: window.Atria.getContext().getRequestHeaders() })).json());
+    expect(profiles.find(item => item.retrievalProfileId === draft.retrievalProfileId)).toEqual(assertRetrievalProfile(draft));
+    const after = await page.evaluate(async () => (await fetch('/api/native/generation/configuration', { headers: window.Atria.getContext().getRequestHeaders() })).json()); expect(after.routes).toEqual(configuration.routes);
+});
+
+test('B2 Chinese Source retains malformed JSON and keyboard focus at 320px maximum font size', async ({ page }, info) => {
+    await boot(page, 320, 'zh-cn'); await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.evaluate(() => { const control = document.getElementById('font_scale'); control.value = control.max; window.$(control).trigger('input', { forced: true }); window.$('#fast_ui_mode').prop('checked', true).trigger('change'); });
+    await open(page, 'models'); await root(page).getByRole('button', { name: '编辑 P4 model', exact: true }).click();
+    await root(page).getByRole('button', { name: '源码', exact: true }).click(); const editor = root(page).getByLabel('运行资源 JSON', { exact: true }); const valid = await editor.inputValue();
+    await expect(editor).toBeFocused(); await editor.fill('{ 未完成'); await root(page).getByRole('button', { name: '字段', exact: true }).click(); await expect(editor).toHaveValue('{ 未完成'); await expect(editor).toBeFocused();
+    await page.screenshot({ path: info.outputPath('b2-runtime-source-zh-320.png'), fullPage: true }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await editor.fill(valid); await root(page).getByRole('button', { name: '字段', exact: true }).click(); await expect(root(page).getByLabel('远端模型 ID', { exact: true })).toBeVisible();
+});
 
 test('Runtime setup identifies missing Secret and opens its owner at 320px', async ({ page }, info) => {
     await boot(page, 320); await open(page, 'routes');
@@ -163,7 +199,7 @@ test('Model capability overrides save through Native configuration and retain ex
 
 test('Profile validation retains draft in Library and an immutable save does not repin routes', async ({ page }, info) => {
     await boot(page, 320); await light(page);
-    await page.evaluate(() => window.Atria.shell.getWorkspaceHost().openLibrarySection('generation-profiles'));
+    await page.evaluate(ref => window.Atria.shell.getWorkspaceHost().openLibraryResource(ref), resources.routes[0].generationProfileRef);
     const library = page.locator('.atri-prompt-library');
     await library.getByRole('button', { name: 'New revision', exact: true }).first().click();
     await library.getByLabel('Stop sequences (JSON array)').fill('not json');
@@ -185,8 +221,8 @@ test('Profile validation retains draft in Library and an immutable save does not
     await open(page, 'routes');
     await root(page).getByRole('button', { name: 'Edit narrator', exact: true }).click();
     expect(JSON.parse(await root(page).getByLabel('Generation — exact revision').inputValue()).revision).toBe('r1');
-    await root(page).getByRole('button', { name: 'Open Generation Profiles', exact: true }).click();
-    await expect(page.locator('.atri-prompt-library')).toBeVisible();
+    await root(page).getByRole('button', { name: 'Prompt Presets', exact: true }).click();
+    await expect(page.locator('.atri-prompt-preset').getByRole('button', { name: 'New preset', exact: true })).toBeVisible();
 });
 
 test('Fallback edits filter roles and preserve ordering and route identity', async ({ page }, info) => {

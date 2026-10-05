@@ -6,16 +6,20 @@ export function mountNativeRegexRules({ parent, scripts = [], save }) {
     const selected = new Set();
     const node = (tag, text, root = parent) => { const el = doc.createElement(tag); if (text) el.textContent = tl(text); root.append(el); return el; };
     const status = node('p'); status.setAttribute('role', 'status');
+    const current = () => status.isConnected && parent.contains(status);
     const button = (root, text, run) => {
         const el = node('button', text, root); el.type = 'button'; el.className = 'atri-library-button';
         el.addEventListener('click', async () => {
+            if (el.disabled || !current()) return;
             el.disabled = true;
             try { await run(); } catch (error) { status.textContent = error.message; } finally { el.disabled = false; }
         }); return el;
     };
     const edit = async script => {
         const { editNativeRegexRule } = await import('../extensions/regex/index.js');
+        if (!current()) return;
         await editNativeRegexRule(script, async rule => {
+            if (!current()) return;
             if (!rule.id) rule.id = crypto.randomUUID();
             await save(script ? scripts.map(item => item.id === script.id ? rule : item) : [...scripts, rule]);
         });
@@ -27,6 +31,7 @@ export function mountNativeRegexRules({ parent, scripts = [], save }) {
     button(tools, 'Import selected rules', async () => {
         if (!input.files.length) { input.focus(); return; }
         const value = JSON.parse(await input.files[0].text());
+        if (!current()) return;
         const imported = (Array.isArray(value) ? value : [value]).map(rule => ({ ...rule, id: crypto.randomUUID() }));
         await save([...scripts, ...imported]);
     });
@@ -46,7 +51,7 @@ export function mountNativeRegexRules({ parent, scripts = [], save }) {
         button(row, 'Edit rule', () => edit(rule));
         button(row, 'Delete rule', async () => {
             const { Popup, POPUP_TYPE } = await import('../popup.js');
-            if (await new Popup(tl('Delete this Regex rule?'), POPUP_TYPE.CONFIRM).show()) await save(scripts.filter(item => item.id !== rule.id));
+            if (await new Popup(tl('Delete this Regex rule?'), POPUP_TYPE.CONFIRM).show() && current()) await save(scripts.filter(item => item.id !== rule.id));
         });
         for (const [label, delta] of [['Move rule up', -1], ['Move rule down', 1]]) {
             button(row, label, async () => { const next = [...scripts]; [next[index], next[index + delta]] = [next[index + delta], next[index]]; await save(next); }).disabled = index + delta < 0 || index + delta >= scripts.length;

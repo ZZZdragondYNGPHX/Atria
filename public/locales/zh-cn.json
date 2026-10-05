@@ -8857,5 +8857,9 @@
     "atria.studio.knowledge.12": "知识库 ID 有歧义",
     "atria.studio.knowledge.13": "知识库",
     "atria.studio.knowledge.14": "复制知识库草稿",
-    "atria.studio.knowledge.15": "知识库草稿 Source"
+    "atria.studio.knowledge.15": "知识库草稿 Source",
+    "atria.resource.source.0": "Source 必须保留当前资源身份和作用域。",
+    "atria.resource.source.1": "运行资源 JSON",
+    "atria.resource.source.2": "检索资源 JSON",
+    "atria.resource.source.3": "资源字段类型不受支持："
 }

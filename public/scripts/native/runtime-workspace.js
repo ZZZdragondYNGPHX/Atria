@@ -1,5 +1,6 @@
 import { confirmAtriaDraftLeave, observeAtriaDrafts } from '../atria-shell/workspace-leave-guard.js';
 import { renderRetrievalWorkspace } from './retrieval-workspace.js';
+import { mountResourceSource } from './resource-source-editor.js';
 import { NATIVE_GENERATION_DEFAULTS as generationDefaults } from '../../shared/native-generation-defaults.js';
 import { formatShellText as fmt, translateShellText } from '../atria-shell/localization.js';
 import { runtimeRequest, runtimeRemediation, getRuntimeEvidence } from './runtime-client.js';
@@ -22,6 +23,15 @@ const roles = ['narrator', 'intent_resolver', 'event_interpreter', 'orchestrator
 const clone = value => JSON.parse(JSON.stringify(value));
 const exact = item => ({ scope: 'library', resourceType: item.resourceType, resourceId: item.resourceId, revision: item.currentRevision });
 const refKey = value => JSON.stringify(value, Object.keys(value).sort());
+// Guard renderer shapes only. The Runtime service validates the complete contract.
+function assertRuntimeEditorShape(value) {
+    const reject = key => { throw new TypeError(translateShellText('Unsupported resource field shape:') + ' ' + key); };
+    for (const key of ['displayName', 'providerAdapter', 'transport', 'endpoint', 'remoteModelId', 'role']) if (value[key] !== undefined && typeof value[key] !== 'string') reject(key);
+    for (const key of ['options', 'networkPolicy', 'secretRef', 'connectionProfileRef', 'modelProfileRef', 'generationProfileRef', 'promptProgramRef', 'policy', 'limits', 'limitProvenance', 'tokenizer', 'messageFormat', 'providerHints', 'promptParameters']) if (value[key] !== undefined && (!value[key] || typeof value[key] !== 'object' || Array.isArray(value[key]))) reject(key);
+    for (const key of ['capabilities', 'fallbackRouteRefs', 'requirements']) if (value[key] !== undefined && !Array.isArray(value[key])) reject(key);
+    for (const item of value.capabilities || []) if (!item || typeof item !== 'object' || Array.isArray(item)) reject('capabilities');
+    for (const item of Object.values(value.limitProvenance || {})) if (!Array.isArray(item)) reject('limitProvenance');
+}
 
 export function mountNativeRuntimeWorkspace({ document: doc, body, section, route, host }) {
     let disposed = false; let data; let scopedResources = []; let selectedRoute = route; let activeEditor = null; let restoreShell = () => {};
@@ -190,10 +200,10 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         }
         search.addEventListener('input', fill); fill();
     }
-    async function edit(original, fresh = false) {
+    async function edit(original, fresh = false, cached = false) {
         const editorToken = ++editorSequence;
         activeEditor = original?.[ids[section]] || 'new';
-        if (section === 'routes') {
+        if (section === 'routes' && !cached) {
             root.replaceChildren(createAtriaStatePanel(doc, 'loading', { title: translateShellText('Loading Native Runtime…') }));
             try {
                 const resources = await runtimeRequest('/resources', { signal: controller.signal });
@@ -408,7 +418,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             connection.addEventListener('change', resetMetadata);
             remote.addEventListener('input', () => { choices.value = ''; resetMetadata(); });
             serialize = () => ({ ...value, connectionProfileRef: { scope: 'player', connectionProfileId: connection.value }, remoteModelId: remote.value,
-                limits: { contextTokens: Number(context.value), outputTokens: Number(output.value) }, tokenizer: { encoding: encoding.value, source: 'user' },
+                limits: { contextTokens: Number(context.value), outputTokens: Number(output.value) }, tokenizer: original && encoding.value === (value.tokenizer?.encoding || 'cl100k_base') ? { ...value.tokenizer } : { ...value.tokenizer, encoding: encoding.value, source: 'user' },
                 limitProvenance: { contextTokens: budgetSources.contextTokens || [{ kind: 'user-override', source: 'Runtime Models' }], outputTokens: budgetSources.outputTokens || [{ kind: 'user-override', source: 'Runtime Models' }] },
                 capabilities: [...(value.capabilities || []).filter(item => !capabilities.some(entry => entry.capability === item.capability)), ...capabilities.filter(item => item.input.value).map(item => !item.dirty && item.existing?.state === item.input.value ? item.existing : { capability: item.capability, state: item.input.value, provenance: [{ kind: 'user-override', source: 'Runtime Models' }] })] });
         } else {
@@ -489,6 +499,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                 remove.disabled = true;
                 try {
                     if (!await confirmLibraryAction('Delete this Runtime resource? Referenced items cannot be deleted.')) return;
+                    if (disposed || editorToken !== editorSequence) return;
                     await runtimeRequest('/configuration/' + section + '/' + encodeURIComponent(value[ids[section]]), { method: 'DELETE', signal: controller.signal });
                     if (disposed || editorToken !== editorSequence) return;
                     selectedRoute = { ...selectedRoute, child: { id: section } };
@@ -502,13 +513,16 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         }
         form.append(actions);
         const save = node('button', 'Save', actions); save.type = 'submit';
+        const sourceEditor = mountResourceSource({ document: doc, form, label: 'Runtime resource JSON', readFields: () => ({ ...serialize(), displayName: name.value }), identity: { [ids[section]]: value[ids[section]], scope: value.scope, schemaVersion: value.schemaVersion },
+            onFields: parsed => { assertRuntimeEditorShape(parsed); return edit(parsed, fresh || !original, true); }, isCurrent: () => !disposed && editorToken === editorSequence && form.isConnected,
+        });
         form.addEventListener('submit', async event => {
             event.preventDefault(); if (save.disabled) return;
             const fields = [...form.querySelectorAll('input,textarea,select,button')];
             const disabled = fields.map(input => input.disabled); fields.forEach(input => input.disabled = true);
             status.replaceChildren(); notice('Saving…', status); save.setAttribute('aria-busy', 'true'); save.disabled = true; back.disabled = true; let saved = false;
             try {
-                await runtimeRequest('/configuration/' + section, { method: 'PUT', body: { ...serialize(), displayName: name.value }, signal: controller.signal, onCommitted: () => {
+                await runtimeRequest('/configuration/' + section, { method: 'PUT', body: sourceEditor.read(), signal: controller.signal, onCommitted: () => {
                     saved = true; form.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
                 } });
                 if (disposed || editorToken !== editorSequence) return;

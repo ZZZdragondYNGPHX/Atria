@@ -60,13 +60,14 @@ function error(doc, parent, value) {
     void referenceRemediation(doc, parent, value);
 }
 
-function generationFields(doc, fields, draft) {
+function generationFields(doc, fields, draft, isTracking = () => false) {
     const numeric = (label, value, min, max, integer = false) => {
         const field = input(doc, fields, label, value); field.type = 'number'; field.min = min; field.step = integer ? '1' : 'any';
         if (max !== undefined) field.max = max;
         return field;
     };
     const max = numeric('Maximum output tokens', draft.output?.maxTokens || generationDefaults.outputTokens, 1, undefined, true); max.required = true;
+    let maxEdited = false; max.addEventListener('input', () => { maxEdited = true; });
     const temperature = numeric('Temperature', draft.sampling?.temperature ?? '', 0);
     const topP = numeric('Top P (optional)', draft.sampling?.topP ?? '', 0, 1);
     const stream = select(doc, fields, 'Streaming', [['', 'Default'], ['true', 'Enabled'], ['false', 'Disabled']], draft.streaming?.enabled === undefined ? '' : String(draft.streaming.enabled));
@@ -88,11 +89,13 @@ function generationFields(doc, fields, draft) {
         field: choices ? select(doc, fields, label, [['', 'Default'], ...choices], draft[section]?.[key] || '') : input(doc, fields, label, draft[section]?.[key] || '') }));
     const budget = numeric('Thinking budget tokens (Anthropic / Gemini)', draft.reasoning?.budgetTokens ?? '', -1, undefined, true);
     return () => {
-        for (const field of [max, temperature, topP, budget]) if (!field.checkValidity()) { field.reportValidity(); field.focus(); throw new Error(translateShellText('Check the numeric limits.')); }
+        for (const field of [max, temperature, topP, budget]) if (!field.checkValidity()) { if (!isTracking()) { field.reportValidity(); field.focus(); } throw new Error(translateShellText('Check the numeric limits.')); }
         let sequences;
-        try { sequences = JSON.parse(stop.value); if (!Array.isArray(sequences) || sequences.some(item => typeof item !== 'string')) throw new Error(); } catch { stop.focus(); throw new Error(translateShellText('Enter a JSON array of text strings.')); }
+        try { sequences = JSON.parse(stop.value); if (!Array.isArray(sequences) || sequences.some(item => typeof item !== 'string')) throw new Error(); } catch { if (!isTracking()) stop.focus(); throw new Error(translateShellText('Enter a JSON array of text strings.')); }
         const result = { output: { ...draft.output, maxTokens: Number(max.value) }, sampling: { ...draft.sampling }, streaming: { ...draft.streaming },
             stop: { ...draft.stop, sequences }, reasoning: { ...draft.reasoning }, cache: { ...draft.cache }, toolChoice: tools.value ? { ...draft.toolChoice, value: tools.value } : {} };
+        if (draft.output?.maxTokens === undefined && !maxEdited && Number(max.value) === generationDefaults.outputTokens) delete result.output.maxTokens;
+        if (draft.stop?.sequences === undefined && !sequences.length) delete result.stop.sequences;
         if (stream.value === '') delete result.streaming.enabled;
         else if (['true', 'false'].includes(stream.value)) result.streaming.enabled = stream.value === 'true';
         else throw new Error(translateShellText('Choose a supported streaming option.'));
@@ -100,6 +103,7 @@ function generationFields(doc, fields, draft) {
         for (const [key, field] of [['temperature', temperature], ['topP', topP]]) { if (field.value === '') delete result.sampling[key]; else result.sampling[key] = Number(field.value); }
         if (budget.value === '') delete result.reasoning.budgetTokens; else result.reasoning.budgetTokens = Number(budget.value);
         for (const { section, key, field } of controls) { if (field.value) result[section][key] = field.value; else delete result[section][key]; }
+        for (const key of Object.keys(result)) if (draft[key] === undefined && !Object.keys(result[key]).length) delete result[key];
         return result;
     };
 }
@@ -160,7 +164,7 @@ export function forkPromptClosure(entries, selected, { derive = false, scope = {
 }
 
 export function mountPromptEditor({ document: doc, parent, entry, entries, onSave, onBack, librarySurface = false, presetSurface = false, foldState = new Map() }) {
-    let draft = clone(entry.resource); let advanced = false; let submitted = false;
+    let draft = clone(entry.resource); let advanced = false; let submitted = false; let submitting = false;
     const initialDraft = JSON.stringify(draft);
     const root = element(doc, 'section', undefined, parent); root.className = 'atri-prompt-editor';
     root.dataset.atriPromptEditor = 'true';
@@ -186,12 +190,13 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
         action(doc, toolbar, 'Back to resources', () => { if (confirmAtriaDraftLeave(doc, root)) return onBack(); });
         const status = element(doc, 'div', undefined, root);
         if (librarySurface) status.className = 'atri-prompt-editor-status';
-        let read;
+        let read; let tracking = false;
         const trackDraft = () => queueMicrotask(() => {
-            try { root.dataset.atriaDraftDirty = String(!submitted && JSON.stringify(read()) !== initialDraft); } catch { root.dataset.atriaDraftDirty = 'true'; }
+            try { tracking = true; root.dataset.atriaDraftDirty = String(!submitted && JSON.stringify(read()) !== initialDraft); } catch { root.dataset.atriaDraftDirty = 'true'; } finally { tracking = false; }
         });
         root.oninput = trackDraft; root.onchange = trackDraft;
         action(doc, toolbar, advanced ? 'Simple editor' : 'Advanced editor', () => {
+            if (submitting) return;
             try { draft = read(); advanced = !advanced; render(); } catch (e) { status.replaceChildren(); error(doc, status, e); }
         });
         if (advanced) {
@@ -227,7 +232,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                     { id: a.resourceId, module: modules.get(exactKey(a)) || {} },
                     { id: b.resourceId, module: modules.get(exactKey(b)) || {} },
                 );
-                const syncConditions = () => { for (const [stage, read] of stageConditions) if (stages.includes(stage)) stage.condition = read(); };
+                const syncConditions = () => { for (const [stage, read] of stageConditions) if (stages.includes(stage)) { const condition = read(); if (stage.condition !== undefined || condition !== null) stage.condition = condition; } };
                 const treeBox = fold(fields, 'stages', 'Stage / module tree', () => formatShellText('${0} stages · ${1} modules', [stages.length, stages.reduce((count, stage) => count + stage.moduleRefs.length, 0)]));
                 const tree = element(doc, 'section', undefined, treeBox); tree.className = 'atri-prompt-stages';
                 const stageKeys = new WeakMap(stages.map(stage => [stage, 'stage:' + stage.stageId]));
@@ -239,7 +244,6 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                     rememberFolds();
                     stageConditions.clear(); tree.replaceChildren();
                     stages.forEach((stage, index) => {
-                        stage.moduleRefs.sort(compareRefs);
                         if (!stageKeys.has(stage)) stageKeys.set(stage, 'stage:' + stage.stageId);
                         const stageBox = fold(tree, stageKeys.get(stage), formatShellText('Stage ${0}', [index + 1], undefined, 'atria.product.stageIndex'), () => stage.stageId + ' · ' + formatShellText('${0} modules', [stage.moduleRefs.length]));
                         const row = element(doc, 'fieldset', undefined, stageBox);
@@ -251,7 +255,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                         });
                         const conditionBox = fold(row, stageKeys.get(stage) + ':condition', 'Condition', () => conditionBox.querySelector('select')?.value ? translateShellText('Configured') : translateShellText('Always'));
                         stageConditions.set(stage, guarded(mountPromptCondition(doc, conditionBox, stage.condition), conditionBox));
-                        for (const ref of stage.moduleRefs) {
+                        for (const ref of [...stage.moduleRefs].sort(compareRefs)) {
                             const line = element(doc, 'div', undefined, row); const module = entries.find(item => exactKey(item.ref) === exactKey(ref));
                             element(doc, 'span', (module?.resource.displayName || ref.resourceId) + ' · ' + ref.revision + ' · ' + ref.scope, line);
                             action(doc, line, 'Remove module', () => { stage.moduleRefs = stage.moduleRefs.filter(v => v !== ref); renderStages(index); });
@@ -261,7 +265,7 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                         picker.dataset.atriStageModulePicker = 'true';
                         action(doc, row, 'Add module', () => {
                             if (!picker.value || stage.moduleRefs.some(v => exactKey(v) === picker.value)) return;
-                            stage.moduleRefs.push(JSON.parse(picker.value)); renderStages(index, picker);
+                            stage.moduleRefs.push(JSON.parse(picker.value)); stage.moduleRefs.sort(compareRefs); renderStages(index, picker);
                         });
                         action(doc, row, 'Move stage up', () => { if (index) { [stages[index - 1], stages[index]] = [stages[index], stages[index - 1]]; renderStages(index - 1); } });
                         action(doc, row, 'Remove stage', () => { if (stages.length > 1) { stages.splice(index, 1); renderStages(Math.min(index, stages.length - 1)); } });
@@ -281,8 +285,8 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
                 action(doc, treeBox, 'Add stage', () => { let index = stages.length + 1; while (stages.some(stage => stage.stageId === 'stage.step' + index)) index++; stages.push({ stageId: 'stage.step' + index, moduleRefs: [] }); renderStages(stages.length - 1); }); renderStages();
                 const directiveBox = fold(fields, 'response', 'Response Directive', () => directive.value.trim() ? translateShellText('Configured') : translateShellText('Not configured'));
                 const directive = input(doc, directiveBox, 'Response Directive', draft.responseDirective?.body || '', true);
-                specific = () => { syncConditions(); return { stages, responseDirective: { ...draft.responseDirective, body: directive.value } }; };
-            } else specific = generationFields(doc, fields, draft);
+                specific = () => { syncConditions(); const responseDirective = { ...draft.responseDirective, body: directive.value }; if (draft.responseDirective?.body === undefined && !directive.value) delete responseDirective.body; return { stages, responseDirective }; };
+            } else specific = generationFields(doc, fields, draft, () => tracking);
             fields = sections;
             const parameterBox = prompt ? fold(fields, 'parameters', 'Typed parameters', () => formatShellText('${0} parameters', [parameterBox.querySelectorAll('.atri-prompt-parameters > fieldset').length])) : null;
             const readParameters = prompt ? guarded(mountPromptParameters(doc, parameterBox, draft.parameters), parameterBox) : null;
@@ -291,18 +295,23 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
             const deriveBox = entry.ref.resourceType === 'core.prompt-program' ? fold(fields, 'derive', 'Derive operations', () => formatShellText('${0} operations', [deriveBox.querySelectorAll('.atri-prompt-derive > fieldset').length])) : null;
             const readDerive = deriveBox ? guarded(mountPromptDerive(doc, deriveBox, draft, entries, entry.ref, () => specific().stages), deriveBox) : null;
             for (const box of [parameterBox, conditionBox, deriveBox]) box?.querySelector('h4, legend')?.remove();
-            read = () => ({ ...draft, displayName: name.value, revision: revision.value, ...specific(),
-                ...(readParameters ? { parameters: readParameters() } : {}), ...(readCondition ? { condition: readCondition() } : {}), ...(readDerive ? readDerive() : {}),
-            });
+            read = () => {
+                const value = { ...draft, displayName: name.value, revision: revision.value, ...specific(),
+                    ...(readParameters ? { parameters: readParameters() } : {}), ...(readCondition ? { condition: readCondition() } : {}), ...(readDerive ? readDerive() : {}),
+                };
+                for (const key of ['parameters', 'condition', 'parentRef', 'derive', 'responseDirective']) if (draft[key] === undefined && (value[key] == null || typeof value[key] === 'object' && !Object.keys(value[key]).length)) delete value[key];
+                if (draft.priority === undefined && value.priority === 0) delete value.priority;
+                return value;
+            };
             const provenance = fold(root, 'provenance', 'System provenance (read-only)');
             element(doc, 'pre', JSON.stringify(draft.provenance || [], null, 2), provenance);
         }
         const save = action(doc, root, librarySurface ? 'Save revision' : 'Review / save revision', async () => {
-            if (save.disabled) return; save.disabled = true; save.setAttribute('aria-busy', 'true'); status.replaceChildren();
+            if (save.disabled || submitting || submitted || !root.isConnected) return; submitting = true; save.disabled = true; save.setAttribute('aria-busy', 'true'); status.replaceChildren();
             try {
-                rememberFolds(); const value = read(); await onSave(value); element(doc, 'p', librarySurface ? 'Saved immutable Library revision.' : 'Revision submitted. Studio changes require human Review / Apply.', status); submitted = true; root.dataset.atriaDraftDirty = 'false';
+                rememberFolds(); const value = read(); root.inert = true; await onSave(value); element(doc, 'p', librarySurface ? 'Saved immutable Library revision.' : 'Revision submitted. Studio changes require human Review / Apply.', status); submitted = true; root.dataset.atriaDraftDirty = 'false';
                 root.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
-            } catch (e) { error(doc, status, e); } finally { save.disabled = submitted; save.removeAttribute('aria-busy'); }
+            } catch (e) { if (root.isConnected) error(doc, status, e); } finally { submitting = false; root.inert = false; save.disabled = submitted; save.removeAttribute('aria-busy'); }
         });
         save.disabled = submitted;
         title.focus();

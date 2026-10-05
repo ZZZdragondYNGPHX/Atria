@@ -1,4 +1,8 @@
 export const SHELL_TEXT_KEYS = Object.freeze({
+    'Source must retain this resource identity and scope.': 'atria.resource.source.0',
+    'Runtime resource JSON': 'atria.resource.source.1',
+    'Retrieval resource JSON': 'atria.resource.source.2',
+    'Unsupported resource field shape:': 'atria.resource.source.3',
     'Knowledge identity': 'atria.studio.knowledge.0',
     'Knowledge name': 'atria.studio.knowledge.1',
     'is unsupported': 'atria.studio.knowledge.2',

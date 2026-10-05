@@ -2,6 +2,7 @@ import { RETRIEVAL_PROVIDERS, assertRetrievalProfile } from './retrieval-contrac
 import { listRetrievalProfiles, commitRetrievalProfile, listBrowserEmbeddingModels } from './retrieval-client.js';
 import { runtimeRequest } from './runtime-client.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
+import { mountResourceSource } from './resource-source-editor.js';
 
 export async function renderRetrievalWorkspace(ui) {
     const { root, node, field, group, button, notice, bindEditorKeyboard, enter, leave, confirmLeave = () => true, signal } = ui;
@@ -27,7 +28,7 @@ export async function renderRetrievalWorkspace(ui) {
         }
     };
     search.addEventListener('input', fill); fill();
-    function edit(previous) {
+    function edit(previous, draft = previous) {
         root.replaceChildren(); enter();
         const head = node('header'); head.className = 'atri-runtime-editor-header';
         const back = button('Back to retrieval', () => { if (confirmLeave()) return reload(); }, head);
@@ -35,11 +36,11 @@ export async function renderRetrievalWorkspace(ui) {
         node('h2', previous ? 'Create retrieval revision' : 'New retrieval resource', head);
         const form = node('form'); form.className = 'atri-runtime-form';
         const identity = group(form, 'Identity');
-        const name = field(identity, 'Display name', previous?.displayName); name.required = true; name.maxLength = 120;
-        const mode = field(identity, 'Retrieval task', previous?.mode || 'embed', [['embed', 'Embedding'], ['rerank', 'Rerank']]);
+        const name = field(identity, 'Display name', draft?.displayName); name.required = true; name.maxLength = 120;
+        const mode = field(identity, 'Retrieval task', draft?.mode || 'embed', [['embed', 'Embedding'], ['rerank', 'Rerank']]);
         const provider = group(form, 'Provider connection');
-        const source = field(provider, 'Provider', previous?.source || 'openai', []);
-        const model = field(provider, 'Model', previous?.model); model.required = true;
+        const source = field(provider, 'Provider', draft?.source || 'openai', []);
+        const model = field(provider, 'Model', draft?.model); model.required = true;
         const browserModels = node('div', undefined, provider);
         const browserModelStatus = node('div', undefined, browserModels);
         const browse = button('Browse browser models', async () => {
@@ -56,10 +57,10 @@ export async function renderRetrievalWorkspace(ui) {
                 if (form.isConnected) notice('Could not load browser models. Retry to continue.', browserModelStatus, true);
             } finally { browse.disabled = false; }
         }, browserModels);
-        const endpoint = field(provider, 'Endpoint URL', previous?.endpoint); endpoint.type = 'url';
+        const endpoint = field(provider, 'Endpoint URL', draft?.endpoint); endpoint.type = 'url';
         const help = notice('', provider);
         const auth = group(form, 'Authentication');
-        const secret = field(auth, 'Stored Secret', previous?.secretRef?.secretId, [['', 'No authentication']]);
+        const secret = field(auth, 'Stored Secret', draft?.secretRef?.secretId, [['', 'No authentication']]);
         const secretStatus = node('div', undefined, auth);
         const secrets = async () => {
             secret.disabled = true; secretStatus.replaceChildren(); notice('Loading stored Secrets…', secretStatus);
@@ -92,10 +93,15 @@ export async function renderRetrievalWorkspace(ui) {
         create.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); store.click(); } });
         const advanced = group(form, 'Provider options');
         const options = {};
+        const optionDrafts = new Map(); let selectedProvider;
+        const readOptions = () => Object.fromEntries(Object.entries(options).filter(([, input]) => input.value !== '').map(([key, input]) => [key, ['keep', 'lateChunking'].includes(key) ? input.value === 'true' : key === 'dimensions' ? Number(input.value) : input.value]));
         function updateOptions() {
+            if (selectedProvider) optionDrafts.set(selectedProvider, readOptions());
             advanced.replaceChildren(); node('legend', 'Provider options', advanced);
             for (const key of Object.keys(options)) delete options[key];
-            const original = source.value === previous?.source ? previous.options : {};
+            const providerKey = source.value + ':' + mode.value;
+            const original = optionDrafts.get(providerKey) || (source.value === draft?.source && mode.value === draft?.mode ? draft.options : {});
+            selectedProvider = providerKey;
             if (source.value === 'jina' && mode.value === 'embed') {
                 options.dimensions = field(advanced, 'Dimensions', original?.dimensions); options.dimensions.type = 'number'; options.dimensions.min = '1'; options.dimensions.max = '65536';
                 options.task = field(advanced, 'Embedding task', original?.task, [['', 'Provider default'], ...['retrieval.query', 'retrieval.passage', 'text-matching', 'classification', 'separation'].map(value => [value, value])]);
@@ -123,14 +129,19 @@ export async function renderRetrievalWorkspace(ui) {
         const actions = node('footer', undefined, form); actions.className = 'atri-runtime-actions';
         const save = node('button', 'Save exact revision', actions); save.type = 'submit';
         const status = node('div', undefined, form);
-        const id = previous?.retrievalProfileId || 'retr_' + crypto.randomUUID().replaceAll('-', '');
-        const revision = 'rev_' + crypto.randomUUID().replaceAll('-', '');
+        const id = draft?.retrievalProfileId || 'retr_' + crypto.randomUUID().replaceAll('-', '');
+        const revision = draft !== previous && draft?.revision ? draft.revision : 'rev_' + crypto.randomUUID().replaceAll('-', '');
+        const readFields = () => {
+            const local = ['transformers', 'webllm'].includes(source.value);
+            return { retrievalProfileId: id, revision, displayName: name.value, mode: mode.value, source: source.value, model: model.value, endpoint: local ? '' : endpoint.value, ...(!local && secret.value ? { secretRef: { secretId: secret.value } } : {}), options: readOptions() };
+        };
+        const sourceEditor = mountResourceSource({ document: root.ownerDocument, form, label: 'Retrieval resource JSON', readFields, identity: { retrievalProfileId: id, revision },
+            onFields: parsed => edit(previous, assertRetrievalProfile(parsed)), isCurrent: () => !signal.aborted && form.isConnected,
+        });
         form.addEventListener('submit', async event => {
             event.preventDefault(); if (save.disabled) return; status.replaceChildren(); let saved = false;
             try {
-                const values = Object.fromEntries(Object.entries(options).filter(([, input]) => input.value !== '').map(([key, input]) => [key, ['keep', 'lateChunking'].includes(key) ? input.value === 'true' : key === 'dimensions' ? Number(input.value) : input.value]));
-                const local = ['transformers', 'webllm'].includes(source.value);
-                const profile = assertRetrievalProfile({ retrievalProfileId: id, revision, displayName: name.value, mode: mode.value, source: source.value, model: model.value, endpoint: local ? '' : endpoint.value, ...(!local && secret.value ? { secretRef: { secretId: secret.value } } : {}), options: values });
+                const profile = assertRetrievalProfile(sourceEditor.read());
                 save.disabled = back.disabled = true;
                 for (const fields of form.querySelectorAll('fieldset')) fields.disabled = true;
                 await commitRetrievalProfile(profile); saved = true;
