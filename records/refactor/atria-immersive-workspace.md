@@ -836,3 +836,13 @@ Task ongoing. B1 Actors/EntryPoints/Worlds/Knowledge complete，产品 f0584c157
 四模式原 specialized inspectors/权限/预算/工具/Route、plan compiler与settings/library存储复用。Raw Plan JSON原文跨inspector close/reopen保留、dirty/离开可追踪；独立候选验证失败不污染Fields，未Apply JSON不可Save/Export/duplicate丢弃；旧defaults/duplicate重验scope。Memory maintenance pending去重、同步错误和dispose/迟到load/图重绘防护；原reset确认Session/branch/revision guard保持。Trace导入同scope普通redraw仍可完成，Session lifecycle epoch改变不接受旧回放。
 
 实际unit：8suites/54不同测试通过，包括四模式route+Source、owner删除/conditional graph约束、编译预算、旧admitted快照、Trace事件private过滤、Memory route+pending/dispose。真实Chrome四场景：Memory任务路线/原advanced设置、320px多Agent exact route、跨Session reset拒绝、新320px RawPlan JSON malformed/close/Apply/save。新场景最初遗漏重开自动关闭的More菜单，定位已修正并通过。B3截图保存，F集中查看。touched ESLint已修复测试格式并无产品lint错误；局部native@3/真实设备/外部模型矩阵未测，Shared description停用。B3实现commit/push完成，B4 mapping先行并继续。
+
+## Stage B4 — UI, Assets, Skills, Plugins and illustration checkpoint
+
+保留原native source graph/semantic editor、asset manifest/files、Skill Source/tree/CAS、Plugins file/scope/runtime及官方插图任务/历史。UI结构草稿按exact component/node/owner暂存，切换source graph不丢输入、disposed evaluate不stage；显式Reload丢弃当前文件的结构草稿。Assets Cancel/Edit重开遵循dirty guard，迟到source/bytes/引用查询不stage旧表面。插件迟到Update/Delete确认复验sequence/dispose。Skill逐文件Source与原sha随草稿保留、save期间禁止换文件、close前明确放弃、旧read取消；复杂YAML名字交原服务canonical validator，不引入第二个parser。插图完整JSON Source/Fields沿原CAS，全部角色/作品覆盖/模板/NovelAI参数与独立prompt/image cancel/history契约保留；非法JSON/409保留原文，dirty校验不夺焦点，saving去重。Runtime Source经截图检查改为标签上置的完整宽度。
+
+实际unit：9suites/120不同测试通过，51+67初始相关集合、后续新增Skill canonical YAML与active-file rename草稿回归各1个测试；涵盖原frontend compiler/Studio human与Agent/精确hash/任意高级JSON、assets、Skills、Plugins和插图FS/SQLite/HTTP任务/取消/Save闭包。新增UI lifecycle2、Asset late cancel1、Plugin late confirm1、Skill Source/hash/YAML/rename3、插图Source/CAS1。illustration-plugin jsdom首次因模块初始化前缺structuredClone失败，添加仅测试的polyfill并通过，不改产品clone authority。ESLint/localization/diff check通过。
+
+真实Chrome 1440/320完整Skill file Source切换/原hash保存及script/scope/runtime；390官方插图fullSource非法JSON/参数/角色/作品配置/Session工具共3场景通过。最初Skill新browser步骤用筛选前first row定位隐藏行，改定位当前Folder内实际行后3场景全通过。B2/B3/B4关键截图已经实看，最终Source宽度复验已通过，详见F记录。SDK/任务queue/旧Session拒绝与独立prompt/image执行见unit，不声称实测外部NovelAI/远端模型。用户连续授权下继续F，不阶段停止。
+
+B4 end/tested HEAD `4ac8affbf` 已commit/push。最后复查发现active Skill rename后的render可能覆盖pending Source，已保留当前content/base与新sha并补回归；Skill全部24测试通过。

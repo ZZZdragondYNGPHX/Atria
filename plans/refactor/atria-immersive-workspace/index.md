@@ -3,7 +3,7 @@
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
 - Status: **Frozen for staged implementation — 2026-10-05；用户已授权开工与自主处理，新增契约已完成 D1 设计核对。**
-- Current stage: B1 Actors/EntryPoints/Worlds/Knowledge 映射与展示 checkpoint 已完成；B2 Prompt/Runtime/检索已完成；B3 Agents/Memory已完成；正在 B4 UI/Assets/Skills/Plugins/官方插图。用户已授权连续完成剩余 B/F 并最终推送合并；逐类保留独立映射和验证门，不再阶段暂停。Shared 描述明确停用，外部设备/引擎等未测范围继续明示。
+- Current stage: B1 Actors/EntryPoints/Worlds/Knowledge 映射与展示 checkpoint 已完成；B2 Prompt/Runtime/检索已完成；B3 Agents/Memory已完成；B4 UI/Assets/Skills/Plugins/官方插图已完成；正在 F最终验收、合并和清理。用户已授权连续完成剩余 B/F 并最终推送合并；逐类保留独立映射和验证门，不再阶段暂停。Shared 描述明确停用，外部设备/引擎等未测范围继续明示。
 
 ## Goal
 

@@ -2,9 +2,9 @@
 
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`（产品），docs 辅助；package 不承载产品实现。
-- Product branch / tested HEAD: `refactor/atria-immersive-workspace` / `23829d9ff`，已 push，未合并 main。
+- Product branch / tested HEAD: `refactor/atria-immersive-workspace` / `4ac8affbf`，已 push，未合并 main。
 - Docs branch: `docs`，提交以真实 Git 为准。
-- Current stage: B1/B2/B3完成；B4映射完成，正在局部Source/异步状态修复。
+- Current stage: B1–B4实现/局部验证完成；F集成检查已通过相关unit，F集成与Source布局复验完成，正在main合并与清理。
 - Plan: [index](plans/refactor/atria-immersive-workspace/index.md) → delivery、coverage S12/S15/S16、states、validation → b4-mapping。
 - Record: [同一 Record](records/refactor/atria-immersive-workspace.md#stage-b1-worlds--display-checkpoint)。历史阶段不重做。
 
