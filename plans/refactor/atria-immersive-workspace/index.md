@@ -2,8 +2,8 @@
 
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
-- Status: **Frozen for staged implementation — 2026-10-05；用户已授权开工与自主处理，新增契约已完成 D1 设计核对。**
-- Current stage: B1 Actors/EntryPoints/Worlds/Knowledge 映射与展示 checkpoint 已完成；B2 Prompt/Runtime/检索已完成；B3 Agents/Memory已完成；B4 UI/Assets/Skills/Plugins/官方插图已完成；正在 F最终验收、合并和清理。用户已授权连续完成剩余 B/F 并最终推送合并；逐类保留独立映射和验证门，不再阶段暂停。Shared 描述明确停用，外部设备/引擎等未测范围继续明示。
+- Status: **Completed — 2026-10-06；A5冻结本地支持范围内 A1–B4/F 完成，已合并并推送 main `4ac8affbf`。**
+- Current stage: F完成，任务分支/live HANDOFF已清理；逐类字段/动作/Source/authority映射和实际验证保留。Shared description固定停用；未执行外部矩阵详见Record F。
 
 ## Goal
 
@@ -60,9 +60,9 @@
 
 A1 → A2 → A3；A4a 依赖稳定会话 / 请求 authority，A4b 依赖 A4a 与 A2 的资料库/游玩入口；A5 同时依赖 A1–A4b。B 阶段在 A5 验收后开始。共享席位、自有界面和存档兼容属于 A4 开放条件，不能留到入口开放后再处理。
 
-目前 S00–S20 均有设计覆盖，A5 已建立首轮支持范围的实际本地证据映射，**完整字段/设备/引擎矩阵与最终集成验收仍未完成**。布局偏好已经确认，Native 用户设定的 schema/API、迁移 ledger、旧会话兼容设计已在 personas 冻结，A4a 服务合约与 A4b 迁移、账户备份和产品接线已实现并完成针对性本地验证；支持范围入口开放，共享描述停用，剩余矩阵与最终验收继续归 B/F。不要把占位 HTML 的字段和服务样例复制到产品中作为现有编辑器的替代。
+目前 S00–S20 均有设计覆盖，A5 已建立首轮支持范围的实际本地证据映射，**B1–B4与F已完成冻结本地支持范围的编辑器和集成验收；完整设备/引擎/外部服务矩阵未执行**。布局偏好已经确认，Native 用户设定的 schema/API、迁移 ledger、旧会话兼容设计已在 personas 冻结，A4a 服务合约与 A4b 迁移、账户备份和产品接线已实现并完成针对性本地验证；支持范围入口开放，共享描述停用，实际B/F结论和未执行矩阵限制见Record F。不要把占位 HTML 的字段和服务样例复制到产品中作为现有编辑器的替代。
 
-A1–A3 已实现并完成各阶段本地针对性验证；执行证据与限制见 [Record 的 A1](../../../records/refactor/atria-immersive-workspace.md#stage-a1--floating-shell-navigation-and-shared-state)。A2 的详细证据见 [Record 的 A2](../../../records/refactor/atria-immersive-workspace.md#stage-a2--play-library-install-and-recovery)。A3 的详细证据见 [Record 的 A3](../../../records/refactor/atria-immersive-workspace.md#stage-a3--authoring-runtime-agents-and-extensions)。这只关闭 A1–A3 checkpoints，不表示 S00–S20 全矩阵或最终集成验收完成。
+A1–A3 已实现并完成各阶段本地针对性验证；执行证据与限制见 [Record 的 A1](../../../records/refactor/atria-immersive-workspace.md#stage-a1--floating-shell-navigation-and-shared-state)。A2 的详细证据见 [Record 的 A2](../../../records/refactor/atria-immersive-workspace.md#stage-a2--play-library-install-and-recovery)。A3 的详细证据见 [Record 的 A3](../../../records/refactor/atria-immersive-workspace.md#stage-a3--authoring-runtime-agents-and-extensions)。该段为A1–A3的历史checkpoint；后续B/F已完成冻结本地支持范围验收，不表示外部全矩阵通过。
 
 ## Validation strategy
 
@@ -93,3 +93,5 @@ A1–A3 已实现并完成各阶段本地针对性验证；执行证据与限制
 - 2026-10-05 B1 EntryPoints display：专属身份/引用/primary/初始状态和消息/高级 JSON 与原 Source 共用草稿；集合 Source、exact ID 选择与树高亮、Review 前防丢失/重复/引用检查、冲突复制与确认重载完成。复用原 project.save/Workspace/ChangeSet，明示第一入口与 scenario 目标；真实 FS/HTTP/.atria/Session/Save 和中文窄屏本地证据见 Record。本 checkpoint 完成后停止，Shared 描述停用；下一轮先做 Worlds 映射。
 
 - 2026-10-05 B1 Worlds mapping：基于产品 `f40bca67b` 完成 worlds-mapping；区分 project-source snapshot、Library immutable revision/CAS、installed 原版只读与 Session state，完整字段/动作/模式/Source/冲突/离开/引用闭包映射及 G01–G06、N01–N08 已记录。只改文档，未替换展示；按用户要求停止。下一独立 checkpoint 为 Worlds 展示与局部防护，Shared 描述停用。
+
+- 2026-10-06 F：B1–B4全类映射和展示/Source草稿修复完成；最终本地11 suites/93不同unit、8不同Chrome集成场景通过，B4单独9 suites/120及3Chrome场景；frontend cache首次构建和main缓存验证通过。产品`4ac8affbf`已fast-forward合并并推送main，任务分支和live HANDOFF已清理。外部设备/DB/模型矩阵未执行，Shared描述停用，详情见[Record F](../../../records/refactor/atria-immersive-workspace.md#stage-f--final-local-integration-merge-and-cleanup)。

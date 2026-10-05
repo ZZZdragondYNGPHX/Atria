@@ -2,12 +2,12 @@
 
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
-- Status: Active — A1–A5 and B1 Actors/EntryPoints mapping/display checkpoints complete; B1 Worlds mapping complete; stopped before Worlds display
+- Status: Completed — A1–A5, B1–B4 and F complete within the frozen local support scope; merged and pushed to main `4ac8affbf` on 2026-10-06
 - Plan: [Plan index](../../plans/refactor/atria-immersive-workspace/index.md)
 
 ## Summary
 
-本任务承接用户的“整理 Atria 前端界面”讨论。经 v0.2–v0.8 多轮交互原型和确认，2026-10-05 整理成新的 Plan Bundle。旧前端重设计与 Native Frontend v3 的已完成历史保持不变。D1 已完成契约核对与范围冻结，A1–A3 已实现浮动外壳、游玩/资料库恢复、创作/运行配置/智能体/扩展接线并完成各阶段本地针对性验证；S00–S20 全矩阵与最终集成验收仍待后续阶段。
+本任务承接用户的“整理 Atria 前端界面”讨论。经 v0.2–v0.8 多轮交互原型和确认，2026-10-05 整理成新的 Plan Bundle。旧前端重设计与 Native Frontend v3 的已完成历史保持不变。D1 完成契约核对与范围冻结，A1–A5 完成浮动工作空间、跨域接线和原生 Persona；B1–B4 完成逐类映射、完整 Source/高级字段与原 authority 下的草稿和生命周期修复。F 已完成冻结本地支持范围的集成验收，验证实现 `4ac8affbf` 已合并并推送 main；Shared description 继续 `shared_scope_unsupported`。完整设备/数据库/外部模型矩阵未执行，具体证据与限制见各阶段及末尾 F。
 
 ## Stage D0 — Discussion consolidation and Draft Bundle
 
@@ -819,9 +819,6 @@ $env:PW_NATIVE_CHANNEL='chrome'; $env:PW_WORKERS='1'; npm --prefix tests run tes
 
 touched JS ESLint、Native localization、diff whitespace通过。未执行全量build/tests/远端CI/外部DB或模型/真机IMEWebView；后端局部调用方与有限graph限制、Shared描述停用、首轮冻结范围保持。产品依赖/旧日志/ignored artifacts不提交。继续B2映射→实现→验证并持久化，不阶段停止。
 
-## Final state
-
-Task ongoing. B1 Actors/EntryPoints/Worlds/Knowledge complete，产品 f0584c157 已 push；连续 B2/B3/B4/F 待完成，Shared 描述停用，未合并 main。
 
 ## Stage B2 — Prompt, Runtime and retrieval checkpoint
 
@@ -846,3 +843,30 @@ Task ongoing. B1 Actors/EntryPoints/Worlds/Knowledge complete，产品 f0584c157
 真实Chrome 1440/320完整Skill file Source切换/原hash保存及script/scope/runtime；390官方插图fullSource非法JSON/参数/角色/作品配置/Session工具共3场景通过。最初Skill新browser步骤用筛选前first row定位隐藏行，改定位当前Folder内实际行后3场景全通过。B2/B3/B4关键截图已经实看，最终Source宽度复验已通过，详见F记录。SDK/任务queue/旧Session拒绝与独立prompt/image执行见unit，不声称实测外部NovelAI/远端模型。用户连续授权下继续F，不阶段停止。
 
 B4 end/tested HEAD `4ac8affbf` 已commit/push。最后复查发现active Skill rename后的render可能覆盖pending Source，已保留当前content/base与新sha并补回归；Skill全部24测试通过。
+
+## Stage F — Final local integration, merge and cleanup
+
+- Date: 2026-10-06 (Asia/Shanghai).
+- Tested implementation / merged main / origin/main: `4ac8affbf01bfb5fb576834bb7eedbeefd03c007`.
+- Status: completed within the A5 frozen local support scope. Original authorities and exact refs retained; Shared description remains `shared_scope_unsupported`.
+
+最终相关 unit 为 **11 suites / 93 不同测试通过**：10 suites/91 的集合，再加 UI semantic draft/lifecycle 2；B4 已单独记录 9 suites/120，重跑不重复累计。原 human Workspace inspect/execute ChangeSet、Agent Commit 独立、exact refs/旧 Session/Save、Persona context/shared refusal、FS/SQLite 与 package install/resource closure 均在下面实际执行范围内。最后 active Skill rename 修复另重跑全部24 tests通过，见B4。
+
+```powershell
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/workspace-host.test.js atria-shell/studio-authoring.test.js atria-shell/studio-workspace-a7.test.js atria-shell/native-runtime-p5.test.js native/persona-context.test.js native/persona-session.test.js native/persona-save-backup.test.js native/library-build-closure.test.js native/package-build-install.test.js native/illustration-plugin.test.js
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/studio-frontend-editor.test.js
+$env:PW_NATIVE_CHANNEL='chrome'; $env:PW_WORKERS='2'; npm --prefix tests run test:e2e -- native-session/09-runtime-redesign.e2e.js native-session/10-studio-redesign.e2e.js atria-shell/09-immersive-integration.e2e.js --grep 'B2 |at 320px|all twenty|existing Session|Chinese Persona' --output .e2e-scratch/workspace-final-qa
+npm run frontend:prebuild-cache
+```
+
+真实 Chrome **8 个不同最终集成场景通过**：英文/中文 Runtime 和 retrieval Source、320px Runtime Secret owner、Diagnostics exact project compile preview、320px Studio Source/review/conflict/Agent、390px 全20 Studio views和exact Attach/Update/Fork/Detach、已有Session/Save/default隔离、中文Persona maxfont/键盘与320/719/720/1179/1180布局。初次组合运行7通过1失败：Source测试保存的高级模型字段影响后续compiler fixture，补真实HTTP恢复original model后，英文Source+Diagnostics复验2/2通过；没有把失败计作通过。Source最终标签/完整宽度修正后英文/中文2场景再次通过，输出在 `.e2e-scratch/workspace-source-layout`。B4三个真实Chrome场景另见上一节，不重复累计。
+
+B2中文Runtime和wide retrieval、B3 Raw Plan JSON 320px、B4 Skill Source 320px与插图full Source 390px截图已实际查看；wide Source根据检查改标签上置，最终截图复看。touched JS/tests ESLint、Native localization coverage和git diff whitespace通过。`frontend:prebuild-cache` 首次实际webpack 5.106.1构建成功，cache key `d62f033ad687470c`；合并main后再次检查命中同一缓存并正常ready。此命令只证明frontend bundle cache，不冒充全产品/Android构建。
+
+最终fetch确认main无新分叉，任务分支比main超前14 commits；在产品工作树切换main并 `git merge --ff-only refactor/atria-immersive-workspace`，与tested HEAD `git diff --exit-code` 一致后推送。实际 `HEAD/main/origin/main` 同为上述SHA，`git ls-remote`确认远端main。main验证后删除本地/远端短期任务分支；产品工作树保留在main，无关node_modules-shared与p7旧日志保持，不删除工作树。package仍 `a13bce997`，未将main合入package。docs独立记录并删除live HANDOFF，不改旧任务历史。
+
+未执行全量测试、远端CI、Android/真机/WebView/软键盘/中文IME、外部MySQL/Postgres、远端模型/NovelAI或完整native@3故障组合。首轮冻结支持范围、原后端局部调用方/有限graph、FS无整批rollback、publishedRevisionIds闭包与独立CAS等既有边界保持；这些限制没有被标成验收通过，也没有扩展Shared描述或自动迁移旧Actor/Persona/席位。
+
+## Final state
+
+Task complete within the frozen local support scope. A1–A5 / B1–B4 / F implemented, locally validated, committed, pushed and merged into main `4ac8affbf`. Original authorities/exact refs and disabled Shared description preserved. Task branches and live HANDOFF removed; persistent Plan mappings and this Record retained. External matrix limits are listed above.
