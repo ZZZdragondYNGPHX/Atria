@@ -2,14 +2,14 @@
 
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
-- Status: **Draft — 2026-10-05；布局与范围偏好已确认，整体实施方案尚未批准。**
-- Current stage: D0 文档整理完成，下一 checkpoint 为 D1 审阅与冻结。
+- Status: **Frozen for staged implementation — 2026-10-05；用户已授权开工与自主处理，新增契约已完成 D1 设计核对。**
+- Current stage: D1 契约审阅与范围冻结完成，下一 checkpoint 为 A1 外壳与入口。
 
 ## Goal
 
 将 Atria 的游玩、资料库、创作、智能体和运行配置统一到用户确认的浮动工作空间中，突出阅读与当前任务，重组管理、审阅和恢复入口；完整保留现有编辑能力。将隐藏的用户设定管理重构为原生、账户拥有、会话独立选择的模块。
 
-这是一项新的后续改造，不重写已完成的 [旧前端设计历史](../atria-product-frontend-redesign/index.md)。原有 tokens、外观、Environment、导航和控制器是复用基线；本 Bundle 批准后，其明确列出的新布局规则覆盖旧设计对应条目。未涉及的 Native Frontend v3 边界仍由 [v3 Plan](../native-frontend-runtime-v3/index.md) 与实际契约负责。
+这是一项新的后续改造，不重写已完成的 [旧前端设计历史](../atria-product-frontend-redesign/index.md)。原有 tokens、外观、Environment、导航和控制器是复用基线；本 Bundle 已获分阶段实施授权，其明确列出的新布局规则覆盖旧设计对应条目。未涉及的 Native Frontend v3 边界仍由 [v3 Plan](../native-frontend-runtime-v3/index.md) 与实际契约负责。
 
 ## Confirmed core principles
 
@@ -53,12 +53,14 @@
 
 A1 → A2 → A3；A4a 依赖稳定会话 / 请求 authority，A4b 依赖 A4a 与 A2 的资料库/游玩入口；A5 同时依赖 A1–A4b。B 阶段在 A5 验收后开始。共享席位、自有界面和存档兼容属于 A4 开放条件，不能留到入口开放后再处理。
 
-目前 S00–S20 均有设计覆盖，均**未完成产品集成验收**。布局偏好已经确认，Native 用户设定的具体 schema/API、迁移 ledger、旧会话兼容实现仍须 D1 完成契约核对。不要把占位 HTML 的字段和服务样例复制到产品中作为现有编辑器的替代。
+目前 S00–S20 均有设计覆盖，均**未完成产品集成验收**。布局偏好已经确认，Native 用户设定的 schema/API、迁移 ledger、旧会话兼容设计已在 personas 冻结，产品实现与合约验证留在 A4a/A4b。不要把占位 HTML 的字段和服务样例复制到产品中作为现有编辑器的替代。
 
 ## Validation strategy
 
-以 [validation.md](validation.md) 的真实 authority、状态和设备矩阵验收；执行实际修改对应的测试，再按新增风险拓宽。不计算原型“等价通过率”。仅文档检查通过不能推进产品开放门。
+以 [validation.md](validation.md) 的真实 authority、状态和设备矩阵验收；每阶段只在本地执行最小相关验证；实际修改与未解决风险决定检查范围。不计算原型“等价通过率”。仅文档检查通过不能推进产品开放门。
 
 ## Material routing / design changes
 
 - 2026-10-05：新建 Draft Bundle，整理 v0.2–v0.8 确认；增加 S20 独立原生能力与迁移工作包；旧设计完成状态保持原样。
+
+- 2026-10-05 D1：用户开工授权；冻结 P01–P06 与 Persona kind/schema/API、Session/重试、Context/共享/Host、迁移账本、Save v3 和现有备份扩展契约。A1 准备就绪，未开始产品修改。

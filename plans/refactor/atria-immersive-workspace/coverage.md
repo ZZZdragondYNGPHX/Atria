@@ -30,7 +30,7 @@
 | S17 共享/作品界面 | 会话工具、自有界面与独立宿主恢复 | `public/scripts/native/shared-session-ui.js`、`public/scripts/native/frontend/`、`public/scripts/native/experience/ui/{full-host,surfaces,host-surfaces}.js` | 席位/观察者、回合权限/过期、Shadow DOM/字体；Host 入口 capability，身份绑定关联 S20 | A2 + A4 / V17 |
 | S18 设置/账户 | 全局工具内原控制器 | `public/scripts/atria-shell/{utility-workspaces,appearance}.js`、`public/scripts/user.js`、`public/scripts/templates/{userProfile,userLanSync,userReset}.html` | font_scale/Custom CSS/语言/Enter 行为；头像、密码、备份同步/重置实际条件；账户画像与 Persona 区分 | A1 + A4 / V18 |
 | S19 全局诊断 | 统一入口内 Guided/Startup/Expert | `public/scripts/logging/workspace.js` | 来源与事件、摘要/完整上下文、复制导出失败、当前来源清理；与编译/Trace 分开 | A1 / V19 |
-| S20 用户设定 | Library 第四分类；输入区与 Host 身份选择 | 新 Native authority 复用现有 Storage/Asset/Session/Context；旧 `public/scripts/personas.js` 仅作为迁移来源 | 稳定 ID/不可变 revision、会话快照、请求 provenance、迁移 ledger、备份闭包、共享席位权限 | A4a/A4b / V20 |
+| S20 用户设定 | Library 第四分类；输入区与 Host 身份选择 | D1 personas 契约：新增 Persona kind/服务、protected Session namespace、Context lane；复用现有 Storage/Asset/Session/Context；旧 `public/scripts/personas.js` 仅作为迁移来源 | 稳定 ID/不可变 revision、会话快照、请求 provenance、迁移 ledger、备份闭包、共享席位权限 | A4a/A4b / V20 |
 
 ## Resource lifecycle inside Studio
 

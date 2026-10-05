@@ -6,11 +6,11 @@
 
 来源：旧 `public/scripts/personas.js`、`public/index.html`、`public/script.js`，以及 [SillyTavern Personas 文档](https://docs.sillytavern.app/usage/core-concepts/personas/)。旧备份不含头像二进制和聊天绑定，因此不能宣称仅凭该 JSON 恢复完整身份资产。
 
-本模块不是旧管理抽屉重显示，也不恢复整套 SillyTavern 产品迁移。它新增 Native 资源、会话/请求 evidence、数据转换与完整恢复。具体 API 字段/版本须在 D1 契约核对后锁定；以下为拟定语义，不表示类型/endpoint 已存在。
+本模块不是旧管理抽屉重显示，也不恢复整套 SillyTavern 产品迁移。它新增 Native 资源、会话/请求 evidence、数据转换与完整恢复。D1 已核对基线并冻结下文实施契约；新增类型/endpoint 仍未实现，不表示产品已经具备这些能力。
 
 ## Native authority design
 
-| 对象 | 拟定语义与拥有者 | 实现复用点 / D1 要核定的契约 |
+| 对象 | 冻结语义与拥有者 | 实现复用点 / A4 要实现的契约 |
 | --- | --- | --- |
 | Persona | authenticated account 内稳定 `personaId`；名字不作主键 | `src/native/contracts.js`、identity、既有 Storage；resource kind / validator / CRUD ports |
 | Persona revision | 不可变姓名、头像 Asset ref、描述、管理备注及结构版本 | existing repository immutable/CAS discipline；分离管理备注与请求投影 |
@@ -21,7 +21,7 @@
 | Migration receipt | 账户内 source digest、legacy key→native ID/revision、完成/待处理项 | 既有 Storage 事务/receipt；稳定 schema、重放与恢复 |
 | Avatar asset | formal Asset ref/content hash；账户隔离与引用闭包 | `repositories/asset-store.js`、asset delivery、backup；增加 persona/session/save 引用解析 |
 
-服务以认证 owner 为准，不信任浏览器提交账户标识。客户端可展示 revision 与草稿，但不能提交自造 `prompt.host` 或越过原生 context authority。完整 API、错误码、大小/图片限制与兼容版本在 A4a 前必须得到验证器与测试契约；不以 UI 草案里的假字段名直接充当 wire contract。
+服务以认证 owner 为准，不信任浏览器提交账户标识。客户端可展示 revision 与草稿，但不能提交自造 `prompt.host` 或越过原生 context authority。下文冻结的 API、错误码、大小/图片限制与兼容版本在 A4a 必须落实为验证器与测试契约；不以 UI 草案里的假字段名直接充当 wire contract。
 
 ## Session lifecycle
 
@@ -30,7 +30,7 @@
 3. 切换只作用于当前可写上下文的后续输入/生成，保留输入草稿，不影响其他 Session 或历史。生成/停止中、历史预览、无写权限时禁用，并由服务侧重验。
 4. 身份切换为原生会话状态操作，使用当前 revision 的 CAS。切换与发送并发时，仅一次被接受的上下文决定输入身份；另一次返回冲突，不能出现显示甲、请求乙。
 5. 分叉继承分叉点的身份状态；新分支后续可独立切换。保存/恢复携带准确快照和资源/资产闭包，不依赖当前账户默认。
-6. 同一已接受请求的重试原则上固定原身份证据；重新输入/重开通过现有原生生命周期产生新上下文。具体 retry 类型与 fork/rollback 的差异属于 D1 必核项，不允许绕过不可变 Timeline。
+6. 同一已接受请求的重试原则上固定原身份证据；重新输入/重开通过现有原生生命周期产生新上下文。retry 类型与 fork/rollback 的差异按下文 D1 核定规则实施，不允许绕过不可变 Timeline。
 7. 旧会话按既有已提交 display metadata 保留历史。可由可证明的旧来源建立未来身份选择，来源不明确时要求显式选择；不回填虚构 personaId 到旧请求。
 
 来源归档或删除不得破坏历史显示；离线快照用于可读恢复，真实缺失状态仍需标明。缺头像可以占位但保留原 asset ref/原因，不能偷偷替换快照。
@@ -74,7 +74,7 @@
 
 读取旧本地数据或用户选择的旧 JSON，先验证结构/版本/大小和所有条目；预检只读。审阅显示新建副本、同名/ID 冲突、默认选择、图片/绑定/注入待处理和转换 diff。名称碰撞创建副本，不覆盖原项。
 
-按账户 + source digest + legacy key 建 ledger：重复执行返回已完成映射，未完成项可重试；有内容变化形成新的受审阅来源，不盲目覆写之前转换。账本记录原始数据、头像映射、警告和目标 exact revision。批次与单项原子边界、失败补偿与恢复流程在 D1 以实际存储引擎核定。
+按账户 + source digest + legacy key 建 ledger：重复执行返回已完成映射，未完成项可重试；有内容变化形成新的受审阅来源，不盲目覆写之前转换。账本记录原始数据、头像映射、警告和目标 exact revision。批次与单项发布、失败补偿与恢复按下文 D1 核定规则实施。
 
 转换先创建资源/资产，验证闭包后才发布可选结果，最后可显式采用默认。取消预检不写数据；部分失败保留已完成 receipt 和可解释未完成项。保留旧数据以支持回退/重新审阅；回退不能删掉转换后已被会话使用的快照或重放历史。
 
@@ -88,7 +88,7 @@
 
 作品自有 UI 通过 Host capability 打开身份选择；失效/崩溃时仍有宿主入口。游戏不获得个人库任意读写能力。
 
-## D1 required contract audit
+## D1 audit coverage
 
 - Resource kind/identity/schema、revision hash/CAS、归档与删除引用解析、Storage 引擎 parity。
 - Session state namespace / lifecycle / save format 版本与旧 save 兼容；旧 metadata 到未来选择的可证明范围。
@@ -96,7 +96,85 @@
 - Shared seat principal/capability、Host Bridge 的 scope、个人描述可见边界。
 - Ledger 单项/批次原子性、图片引用补偿、可重试恢复、备份 manifest 和冲突策略。
 
-该 audit 需产出可验证的契约与测试清单；不要求用户替实现者选择 API 名称。
+以下为 D1 的源码证据与冻结契约；测试设计在 validation 的 C20 清单中维护。技术命名是实施选择，不记作用户逐项答复。
+
+## D1 source audit — baseline 783bb6fd3
+
+| 已核对代码 | 已有能力 | 本任务必须补齐的差额 |
+| --- | --- | --- |
+| `src/native/{identity,contracts}.js`；`src/storage/engines/native-resource-key.js` | opaque ID、Native kind/key 注册、统一 native_resources | 无 Persona ID/kind/validator；不能直接借用只接受 Prompt 类型的 VersionedJsonResourceHandler |
+| `src/native/repositories/{common,session-repo}.js`；`src/storage/engines/fs-engine.js` | immutable integrity、CAS、进程内写串行、Session commit-last；SQL Native handlers | FS withTransaction 直接执行回调，无跨文件回滚；Persona 资源/默认/ledger 需同等发布纪律 |
+| `src/native/{session-core,session-snapshot}.js` | hashed namespace、revision/branch/save；保留 Timeline metadata | 无身份状态或输入捕获；需加入 reserved namespace，禁止通用 runtime patch 自造身份 |
+| `src/native/adapters/{generation-host,native-session-context}.js`；`public/scripts/native/context-compiler.js` | 接受准确 revision、上下文选择/预算、拒绝客户端 prompt.host | 无玩家身份贡献；typed task context 仅 input/history/world/knowledge/projection，需显式扩展 |
+| `src/native/shared-authority.js`；`src/native/frontend/{host-bridge,host-services}.js` | member principal/seat/scope/epoch、observer 限制、显式 Host method 白名单 | 无席位身份选择/个人资料投影/Host picker；现有共享 Asset endpoint 仅允许 Package 闭包 |
+| `src/native/{save-system,save-container,contracts}.js`；`src/native/repositories/asset-store.js` | Save v1 snapshot/session、v2 resume；Asset hash、save closure、引用检查 | state 已可携带新增 namespace，但不会自动收集 Persona 头像；需完整导出/导入/GC/删除路径 |
+| `src/users.js`；`src/endpoints/users-private.js`；`src/storage/migration/selection-mapping.js` | native 备份选项包含 Native 数据、projects、nativeBlobs，DB native_resources dump/跨引擎恢复 | Persona 索引/引用预检与可选默认恢复需扩展现有管线；不能增加第二个备份服务 |
+| `public/scripts/personas.js` onBackupPersonas | 无版本号 JSON：personas/persona_descriptions/default_persona | 不带头像字节、聊天锁定；旧 restore 会补默认头像，Native 转换不得仿造这种完整恢复 |
+
+### Frozen resource and service contract (new, schema 1)
+
+Persona 使用独立 Native kinds，全部经既有 Storage Engine 注册/读写，不进入 Prompt 资源类型白名单。新增 ID family `persona`（`persona_*` opaque UUID）；修订使用既有 `revision`（`rev_*`）。新增 key：
+
+- `atri_persona`：handle + personaId；root = schemaVersion/personaId/currentRevisionId/archived；CAS integrity 由服务返回。
+- `atri_persona_revision`：handle + personaId + revisionId；immutable = schemaVersion/personaId/revisionId/name/avatar/description/managementNotes。avatar 是完整 AssetRef 或 null；contentIdentity 是既有 canonical JSON SHA-256。
+- `atri_persona_default`：handle；schemaVersion/selection，selection 为 exact ref 或 null；缺记录等价 none，但 CAS 使用 hash(null)。
+- `atri_persona_migration`：handle + sourceDigest；账本见后文。所有 key 的 handle 来自认证 principal，不从客户端身份字段采信。
+
+Exact ref = personaId/revisionId/contentIdentity；服务读取并核对内容 hash。列表默认排除 archived，仍可按 ID/exact revision 读取历史。名字允许重名，新建/复制由服务分配 ID；修改总是发布新修订。root、default 与 receipt 的 mutable CAS 使用 expectedFingerprint；创建以 hash(null) 为前提，缺少前提拒绝。
+
+限制是新 Persona 契约，不宣称现有 AssetRef validator 已检查像素：name 非空、最多 256 Unicode code points；description 最多 64 KiB UTF-8；managementNotes 最多 16 KiB。不截断超限内容，迁移保留原文并转 pending。头像首轮 PNG/JPEG/WebP/AVIF，最大 8 MiB、4096×4096、总像素不超过 16,777,216；服务解码核对真实类型/尺寸，拒绝损坏或伪造 MIME。复用 AssetStore 的不可变 hash/blob 管线，裁剪结果另建 Asset；大小限制不能只在浏览器实现。
+
+在既有 Native Product 路由/服务注入中新增 `personas` 操作族，统一认证、错误和客户端适配；首轮采用 POST JSON 命令：list、get、revisions、create、revise、archive、default/read、default/set、used-by、delete、avatar、migration/preflight、migration/apply、migration/receipt。list 接 query/includeArchived/cursor/limit（1–100），返回 items/nextCursor；get/revisions 只接受本账户 ID/exact ref。create/revise 接内容与 expectedFingerprint；archive 接 ID/archived/expectedFingerprint；default/set 接 selection/expectedFingerprint；delete 接 ID/expectedFingerprint 并服务侧重查引用。avatar 接 base64 bytes 与 declared mediaType，由服务返回 AssetRef；不接文件路径或其他账户 handle。
+
+Session 在既有 Native Session 路由新增 persona/read、persona/select；select 接 sessionId/expectedRevisionId/selection，返回正式 Session snapshot。create 接可选 personaSelection：省略读取当时可用默认、null 显式 none、exact ref 显式选择。省略时默认已归档/缺失则返回可解释 unavailable，要求选择或显式 none，不能静默替换。默认读和发布捕获同一受保护资源版本；发生竞争返回冲突。
+
+新增错误码 `native_persona_invalid`、`native_persona_conflict`、`native_persona_unavailable`、`native_persona_referenced`、`native_persona_scope_denied`、`native_persona_migration_conflict`。HTTP 分别按 400/409/404（本账户资源缺失）/409/403/409；未认证 401，其他账户 ID 不暴露存在性，unknown fields 拒绝。read-only 使用现有 storage_read_only 处理；预检失败不写数据，持久化成功后刷新失败返回可识别 receipt，客户端不盲目重建资源。
+
+### Frozen Session, input and retry contract
+
+新增受保护 `atri_player_persona` namespace，schemaVersion 1，包含 solo selection 和按 seatId 的 selections。每个选择为 none 或服务捕获的 exact ref + snapshot（name/avatar/description）+ snapshotHash/source；source 区分 explicit/default/migration/restored。managementNotes 不在 Session/message/request 投影中。完整内容哈希只用于 exact ref 验证，不能据它重构备注。旧 revision 缺 namespace 等价 legacy-unbound，读取不写回；不回填 personaId。
+
+SessionCore 专用操作在既有 Session 写锁与 HEAD CAS 内发布；Persona 资源写锁先于 Session 锁，同一锁序用于默认捕获、切换、引用检查和删除，避免 TOCTOU。共享操作先取得既有 shared access lock、再按相同顺序进入资源/Session authority，不在 Session 锁内反向请求个人库锁。服务重验 run/lifecycle/生成状态、可写权限、resource revision/archived，不能只依赖 UI disabled。archive 不破坏已捕获快照；修改默认/资源也不隐式推进其他 Session。
+
+输入接受和身份捕获共用同一 CAS。正式 Timeline user entry metadata 增加 `atri_player_identity`（schemaVersion/ref/显示 name/avatar/snapshotHash、共享 seatId）；描述保留在该 revision 的身份状态，不复制管理备注。typed frontend action 的输入、authority receipt、assistant 同批发布也必须捕获同一证据；beginStory 与所有发送入口使用同一路径。
+
+重试分三类，不能统称原 HTTP 重发：
+
+1. Provider retry/fallback 仍在 generation-host 已捕获的上下文内，不重读账户默认/最新 Persona。
+2. retryReply 非 transaction 路径回到准确的 post-user revision 并 fork；transaction 路径回到 pre-effect revision 并新建 user entry（当前只带 atri_authority_retry）。A4a 须复制原输入身份证据，并把原身份 snapshot 纳入新分支上下文；不得取重试按钮点击时的当前选择。
+3. 显式 fork/rollback/restore 继承所选 revision 的身份；重新输入是新请求，取其接受时新分支的状态。ironman/history checkpoint 不可重试时沿用原限制，不为 Persona 绕过。
+
+### Frozen Context and request evidence contract
+
+在 Native Context compiler 增加 `player_persona` lane 和 authority `player_provided`，stable item ID 与 exact ref/snapshotHash 关联。独立 provider 只读接受的 Session snapshot；不扫个人库，不拼接 system directive。Context Provider 映射为 `context.player-persona`；Prompt consume/render/预算/provenance 校验同时接线，既有 context.fact 与 canonical world 不承载个人描述。
+
+作品 EntryPoint 和 typed task context 增加显式 `player-persona` opt-in；未声明的旧作品默认不消费描述，身份显示仍成立。typed task validator 需增加该项并调整最大项数；只有当前玩家输入相关的 Session task 可消费。Studio、背景维护/记忆任务与无席位关联调用拒绝该 opt-in；多个 Actor/共享席位按任务 scope 过滤。Prompt 程序未消费/禁用/无权限/空描述/预算省略分别产生 no-consumer/disabled/scope-denied/empty/budget-omitted。
+
+Effective Request Snapshot 增加 versioned personaEvidence（保持旧 snapshot 可读）：exact ref、snapshotHash、contextItemId、selected/omitted、reason、consumer stage IDs 与预算结果。描述只经实际 context item 出现；备注完全排除。native_generation_host_readonly 继续拒绝客户端 prompt.host，预览也由服务选取准确 revision，不解析 Secret、不发送、不写 Session。角色过滤必须在 context selection 与最终 generation-host task filtering 两处成立，不能只新增 provider 后被旧过滤器丢掉或泄漏。
+
+### Frozen shared, Host and assets contract
+
+共享选择由认证 member principal 从自己的账户库读取，不由 Session owner 代读/代选。请求接 owner/sessionId/seatId/expectedAccessRevisionId/expectedRevisionId/selection；member-seat-scope/epoch 必须相符，observer 与其他席位拒绝，host 首轮也不能替另一主体选。服务把明确授权的快照发布到 owner 的 Session seat state；公共投影只给 name/avatar，描述仅给授权消费任务，备注/私人库列表/owner handle 不进入玩家投影。
+
+头像在个人库留原 Asset，同时以授权快照复制到 owner 的 AssetStore 闭包，记录原 hash，避免跨账户任意资产读取。共享资源投影与 asset delivery 白名单增加准确 seat snapshot 头像，校验成员关系；不开放整个个人库，也不把头像伪装为 Package asset。跨账户转移是 blob/ref 准备 → Session HEAD 发布，失败仅产生可回收未引用资源，不承诺跨引擎事务。
+
+Host bridge 新增显式 `host.persona` capability：status 读当前授权身份，openSelector 打开宿主 picker，由宿主经相同服务选择。沿用 epoch/nonce/scope/expected revision 和 method 白名单；作品不获得 list/CRUD 服务。桥失效时独立宿主入口仍可用。
+
+Persona revise/session/save/migration receipt 全修订引用加入 Used By 和 AssetStore 删除/GC 检查。永久删除在受保护引用检查后才可执行；存在 migration receipt 也算引用，首轮不自动清除 receipt。取消上传不创建有效 Persona 引用，孤立 blob 按现有 GC 回收，不能删除曾进入闭包的头像。
+
+### Frozen migration, save and backup contract
+
+旧 JSON 明确支持无版本号 personas/persona_descriptions/default_persona；未知显式版本拒绝 apply，但可展示原文和原因。sourceDigest 对上传原始字节作 SHA-256；preflight 上限 16 MiB、最多 1000 条，先只读全量结构/头像/宏/绑定审查。服务捕获的本地来源另含头像 hash 与绑定来源 digest；不同字节/依赖组成新来源。浏览器任意路径不得成为本地读取权限。
+
+账本 schemaVersion/sourceDigest/sourceFormat/rawSource（原字节 base64）/planDigest/items/defaultAdoption；每个 legacyKey 保存预分配 personaId/revisionId、原配置、Asset 映射、warnings/pending、status（prepared/published/failed）、target exact ref。apply 必须带已审阅 planDigest 与 expectedFingerprint；改变宏/绑定/默认映射后重新预检，不让旧审批自动应用新方案。
+
+FS 不提供整批原子性：先 durable prepared receipt → blob/ref/immutable revision → verified root 发布 → receipt published；任何位置中断重试均核对预分配 ID/hash/root，root 已发布但 receipt 未完成时补 receipt，不创建第二份。列表与选择只暴露完成的资源发布，migration 未完成不能通过 revision ID 绕过。SQL 也保持同一可观察语义，使用其事务加强单项发布；批次允许部分完成，不宣称整批回滚。默认采用是批后独立 CAS，失败保留旧默认。回退只归档已转换资源，不能撤回已使用历史。
+
+缺头像在 UI 用占位并保留 pending/source filename，不写假 AssetRef；旧位置/NONE/Lorebook/宏/绑定仅在可验证 typed mapping 后消费，否则保存未处理来源可导出。首轮迁移不自动改旧 Session；用户对目标 Session 显式选择，既有历史不改。
+
+有 Persona namespace/evidence 的新 .atriasave 使用 schemaVersion 3，支持 snapshot/session/resume；容器 magic/version 保持 v1，header 明确匹配 scope/schema。继续读取 v1/v2，缺身份保持 legacy-unbound；旧读端必须因新版本明确拒绝，不能漏掉头像后伪成功。完整 Persona snapshot 存在 stateRecords，历史显示证据存在 Timeline metadata；avatar 加入 assetRefs/attachments/字节/hash 校验，包含 branch/save/request 使用的准确闭包。跨账户恢复以独立快照可读，不把原 personaId 自动认领为目标个人库或采用其默认。
+
+账户备份继续使用 native 选项、现有 manifest 与 native_resources/nativeBlobs，不另建 archive/服务。增加 schema 1 Persona manifest 索引（root/revision/hash/receipt/avatar）；默认恢复是 Native 范围内独立审阅选项，默认保留目标账户默认，显式 adopt 才 CAS 更新。恢复 preflight 校验完整闭包/ID冲突/hash，冲突返回审阅，禁止按名字合并。旧备份无该索引且无 Persona kinds 仍可恢复；出现 Persona kinds 却缺索引时拒绝完整身份恢复并报缺契约。FS↔SQLite↔MySQL↔Postgres 的注册/dump/selection/restore 路径同样纳入 C20 测试。
 
 ## Release gate
 

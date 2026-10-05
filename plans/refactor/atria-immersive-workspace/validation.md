@@ -30,7 +30,7 @@
 | V19 | Guided/Startup/Expert、真实来源/事件、清理范围、复制导出失败 | `tests/logging/{frontend-adapters,startup-store}.test.js`；需要补当前全局诊断 UI 场景 |
 | V20 | Native Persona 的全部开放门 | **需新增** persona resource/session/request/migration/backup/shared/host contracts 与产品 E2E；旧 `tests/e2e/personas/` 仅证明 legacy，不能直接冒充 Native 验收 |
 
-实际测试位置以最新源码为准，进入实施阶段时更新新增测试路径。本表不能用“已有测试文件”替代未覆盖场景。
+实际测试位置以最新源码为准，进入实施阶段时更新新增测试路径。每阶段及任务完成时，只在本地执行最小相关验证；不发起或等待远端 CI。本表不能用“已有测试文件”替代未覆盖场景。
 
 ## Cross-domain state scenarios
 
@@ -50,6 +50,23 @@
 V20 必须包含：不同账户同名、多个修订/缺头像、归档默认、并发保存/切换/发送、无描述 consumer、预算省略/拒绝、不相关角色任务、原请求 retry、分叉与旧 save、新 save 资源闭包、缺来源仍可读、共享不同席位/观察者、自有 UI Host 入口。
 
 迁移试件：空数据、损坏 JSON、未知版本/字段、重名/ID冲突、图片丢失/损坏、多旧绑定、无法映射 Lorebook/位置、`{{user}}`/多 Actor `{{char}}`/未知宏、重复导入、失败后重试、默认变更、备份闭包与恢复冲突。确认原始配置可恢复且不丢未知项；管理备注不在请求 evidence 中。
+
+## D1 frozen C20 contract test map (planned, not executed)
+
+下列新增测试名是 A4 实施目标，文件尚未创建。每个文件只验证真实 authority 行为，既有入口在实际修改时按触及面选择；D1 不运行产品测试。
+
+| ID | 冻结契约 / 阶段 | 待新增测试与关键断言 |
+| --- | --- | --- |
+| C20.1 | Resource/owner/CAS/Asset / A4a | `tests/native/persona-resources.test.js`：同名跨账户隔离、unknown fields/边界大小、immutable hash、新修订不改旧 ref、default CAS/归档不可选、Used By 删除阻断、伪 MIME/损坏/超大像素与缺头像 |
+| C20.2 | Session/input/retry / A4a | `tests/native/persona-session.test.js`：显式 none/默认捕获、旧 revision 只读不回填、switch/send 竞争、生成中禁用、草稿保留；typed turn/retryReply 两条路径、begin/Provider retry/fork/restore、ironman 限制及旧 metadata fingerprint 不变 |
+| C20.3 | Context/evidence / A4a | `tests/native/persona-context.test.js`：player_provided 与 world 分离、opt-in/未消费/empty/预算遗漏原因、notes 不入请求、准确 ref/stage/budget、客户端伪造拒绝、Studio/维护/记忆过滤；受控 Provider 捕获实际发送参数，preview 无发送/Secret/写入 |
+| C20.4 | Shared/Host / A4a–A4b | `tests/native/persona-shared-host.test.js`：不同席位独立、principal/seat/access epoch/revision 重验、observer/host 越权拒绝、投影不泄漏描述/账户库、授权头像闭包、Host 白名单/epoch/picker/宿主恢复 |
+| C20.5 | FS commit-last/SQL parity / A4a–A4b | `tests/native/persona-storage.test.js`：并发写/default/delete 引用重查、prepared/revision/root/receipt 每个断点重放不重复、不暴露半成品；FS/SQLite 本地引擎往返，MySQL/Postgres 本地可用时验证，缺环境明确未测不声称 parity |
+| C20.6 | Migration / A4b | `tests/native/persona-migration.test.js`：无版本旧 JSON/未知显式版本、损坏/空/超限/未知字段、planDigest 变化、名称/ID冲突、缺图/坏图/旧位置/Lorebook/宏/多绑定 pending、逐项失败/重复/重试、默认独立 CAS、保留原文与历史 |
+| C20.7 | Save/backup/GC / A4a–A4b | `tests/native/persona-save-backup.test.js`：Save v1/v2 legacy-unbound、v3 三种 scope/header/hash/头像闭包、跨账户 snapshot 不自动入库、旧读端拒绝新版本；现有账户 native 备份往返/默认审阅/缺 manifest/冲突及 FS↔SQL 恢复、所有历史引用阻断 Asset GC |
+| C20.8 | Product wiring / A4b | `tests/atria-shell/native-personas.test.js` 与 `tests/e2e/atria-shell/08-personas.e2e.js`：Library CRUD/分页/搜索/归档/默认、会话切换草稿/刷新失败、真实服务迁移预检/apply/恢复与 Host 入口，390px/focus/语言；入口开放前逐项满足 V20 |
+
+A2 的 P01 接线在现有 `tests/atria-shell/native-play-product.test.js` 添加 AUTO/ENABLED/DISABLED、Shift/modifier/IME/229 场景；legacy shouldSendOnEnter 行为保持。A1 只使用 V00/V01/V18/V19 中与实际变动相关的集合，不提前执行 C20 或打开占位 Persona 入口。
 
 ## Browser / platform matrix
 
@@ -79,7 +96,7 @@ npm run test:unit -- --runInBand --runTestsByPath atria-shell/app-shell.test.js 
 npm run test:e2e -- e2e/atria-shell/04-navigation.e2e.js
 ```
 
-针对性修改文件 lint、相关 Native 合约测试、真实产品 E2E 是每阶段基本验证。A5/F 再执行相应跨域集合和实际构建。不要盲目套用不存在的 root `npm test` / `npm run build`。E2E 配置由各 spec 提供独立 fixture server；legacy browser integration 需要额外环境，不能把其跳过结果标为 E2E 通过。
+按阶段触及面选择最小相关检查：D1 只检查文档与源码证据路径；产品阶段选择对应 lint/合约或浏览器场景，显著 UI 修改保留本地浏览器证据。A5/F 选择集成触及面的最小相关集合与必要构建，不重复全量无关检查。不要盲目套用不存在的 root `npm test` / `npm run build`。E2E 配置由各 spec 提供独立 fixture server；legacy browser integration 需要额外环境，不能把其跳过结果标为 E2E 通过。
 
 ## Evidence gate
 

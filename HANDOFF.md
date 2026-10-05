@@ -4,37 +4,38 @@
 
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`（产品）；docs 为文档辅助空间。
-- Current branch/workspace: `docs`；产品只读基线 `main @ 783bb6fd30729263a97bb69842befcd1d25c1885`。
-- Current HEAD: docs D0 持久化提交（读取当前 Git HEAD，不用文档自引用 hash）。
-- Current stage: D0 complete; D1 review / contract audit / freeze next。
+- Current product branch: `refactor/atria-immersive-workspace`
+- Product HEAD: `783bb6fd30729263a97bb69842befcd1d25c1885`（D1 无产品源码改动）。
+- Current docs branch / HEAD: `docs`；本 D1 持久化提交（读取真实 Git HEAD，不自引用 hash）。
+- Current stage: D1 complete; A1 implementation next。
 - Plan entrypoint: [index](plans/refactor/atria-immersive-workspace/index.md)
-- Stage-required modules: decisions、personas、delivery、validation；coverage 按审阅行读取。
+- A1 required modules: experience、states、coverage 的 S00/S01/S18/S19、validation。
 - Record: [record](records/refactor/atria-immersive-workspace.md)
 
 ## Completed
 
-多轮 v0.2–v0.8 讨论和用户确认已整理为 9 模块 Draft Bundle。覆盖 S00–S20、完整旧字段/动作基线、工作区接线/状态、A/B 分阶段及 Persona 原生能力/迁移开放门。旧完成 Plan 的状态没有改写。
+D0 的 9 模块 Bundle 保持。D1 核对真实产品基线、冻结 P01–P06 与 Native Persona schema/API/CAS、Session/输入/retry、Context/任务过滤、Shared/Host、迁移账本、Save v3/现有备份扩展；validation C20 为待实现测试设计。用户已授权开工及普通问题自行处理，关键处理方式简要通报，不重复索要常规确认。
+
+远端已 fetch；main/docs 已 fast-forward。产品任务分支已创建并推送，整个多阶段任务沿用。尚未开始产品实现，S00–S20 均未完成本任务验收。
 
 ## Pending / next target
 
-D1 审阅建议 P01–P06，补齐 Persona 原生 schema/API/Session state/Context/共享权限/Host/迁移 ledger/备份兼容契约与测试清单，然后冻结整体实施范围。总体 Plan 未批准，产品实现未开始。
+A1：按现有 tokens/Environment 改造浮动外壳、五域/子路由、共享反馈/审阅骨架、分组搜索、认证/学习、设置/全局诊断；保留原 authority/控制器和离开草稿路径。实际新增能力差额记录到所属模块，不用模拟内存替代持久化。完成本地最小相关验证、push、同一 Record/HANDOFF 后停止。
 
 ## Key decisions
 
-已有 D01–D20 确认，不重复询问：游玩优先、保留浮动/配色；手机阅读顶部导航；Studio Inspector/AI 切换；Runtime 用途就绪；Library 分类默认作品、第四类用户设定；Agents 固定会话默认运行；管理与会话工具分开；搜索分组；安装/导入完整页；资源页引用；首轮完整编辑器/JSON 保留；Persona 会话独立、历史保持。
+D01–D20 不重开；P01–P06 见 decisions。Native AUTO 换行与显式 send_on_enter 配置在 A2 统一。Persona 是 A4 新增能力，A1 不提前开放占位入口。FS 不支持整批 rollback；retryReply 有两条分支边界；旧 Persona JSON 无版本/头像/绑定。详细契约只读 personas 权威模块，不建立平行 Prompt/Session/备份 authority。旧整站迁移仍退役。
 
-Native Persona 是确定新增能力，不能只把 legacy Drawer 显示出来。旧整站迁移仍退役。不要建立并行 Prompt/Session/备份 authority。
+## Validation
 
-## Validation / CI
+D1 仅本地文档链接/路径/矩阵/阶段一致性与本任务 diff whitespace 检查；源码静态核对不等于产品合约通过。未运行产品测试、构建、E2E、真机/IME、模型实发或远端 CI。用户要求各阶段及任务完成时仅本地最小相关验证，不发起或等待远端 CI。
 
-D0 文档内部链接、154 源码/测试路径、21 coverage/acceptance 行、原文基线一致性与 diff whitespace 检查；不代替产品测试。v0.8 原型证据和未测边界在 Record。产品测试/构建/E2E 未运行，无本任务 CI 结果。
+## Read first / preserve / do not repeat
 
-## Read first / do not repeat
+核对真实 Git/远端 → 本 HANDOFF → index → A1 指定模块 → Record D1 限制。不要全量扫描历史/skills/reference，不重复 D0 原型讨论或 D1 契约审阅，不把旧任务 Complete 当成本任务验收。
 
-先读本 HANDOFF → Plan index → D1 指定模块 → Record D0 的限制。按问题加载 baseline 或特定源码，不遍历全部 docs/history。不要重做已确认布局问题、原型演示流程，或把老任务的 Complete 当成新任务验收。
-
-package 不是产品源码；保护其 `dist/`、`node_modules/`、`tests/`。产品 main 原有 `node_modules-shared/` 与 p7 日志未动。不要在 package 实现 UI 或合并 main。
+保留产品 AGENTS.md 以及 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 的原有 dirty changes；提交仅包含当前任务文件。package 不是产品源码，本轮未改。不要在 package 实现 UI 或将 main merge 进独立长期工作空间。
 
 ## New-chat bootstrap prompt
 
-继续 Atria 的 `refactor/atria-immersive-workspace`，Primary Workspace main，docs 是辅助文档。先读 docs:HANDOFF.md → plans/refactor/atria-immersive-workspace/index.md，再按 D1 路由读 decisions/personas/delivery/validation 和 records/refactor/atria-immersive-workspace.md。D0 已完成 9 模块 Draft 与 S00–S20 接线/验收矩阵；产品基线 main@783bb6fd3 未改。下一步做 D1 契约核对与整体方案冻结；不要重复询问 D01–D20，不把内存原型当实现，不在 package 改产品。正式阶段结束更新同一 Record/HANDOFF 后停止。
+继续 Atria 的 refactor/atria-immersive-workspace，执行 A1。先核对真实 Git 状态，读 docs:HANDOFF.md → plans/refactor/atria-immersive-workspace/index.md → experience/states、coverage S00/S01/S18/S19、validation，再读同一 Record 的 D1 限制。D1 已冻结且用户授权开工/普通问题自行处理，无需重问 D01–D20/P01–P06。产品分支 refactor/atria-immersive-workspace@783bb6fd3，尚无本任务产品修改。A1 保留原控制器/authority，不提前开放 Persona；每阶段只运行本地最小相关验证，完成实现/验证/push 后更新同一 Record/HANDOFF 并停止。

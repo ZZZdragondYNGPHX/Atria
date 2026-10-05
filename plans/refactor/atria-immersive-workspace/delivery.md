@@ -9,7 +9,7 @@
 | Stage | 范围与产物 | 完成门 |
 | --- | --- | --- |
 | D0 | 整理确认、源码基线、S00–S20 矩阵与 Draft Bundle | 文件/路由完整，原型证据与产品状态区分；本阶段不改产品 |
-| D1 | 审阅草案、冻结范围；核对 personas 的 Native 契约与 capability 差额 | 提议项有明确处置，schema/API/迁移与兼容测试计划可实施；获得整体实施批准 |
+| D1 | 审阅草案、冻结范围；核对 personas 的 Native 契约与 capability 差额 | 提议项有明确处置，schema/API/迁移与兼容测试计划可实施；用户本轮已授权分阶段开工；新增契约设计与 C20 测试映射已冻结 |
 | A1 | 现有 tokens/Environment 上的浮动外壳、导航、共享反馈/审阅骨架、搜索、认证/学习、设置/全局诊断 | V00/V01/V18/V19；Back/Esc/深链及草稿离开路径成立 |
 | A2 | 阅读/输入/历史、作品与资源导航、完整安装/导入恢复页、共享和自有 UI 宿主入口 | V02–V08/V17；完整旧控制器保留，真实流式/停止/确切依赖闭环 |
 | A3 | Studio 完整挂载和引用页签；Runtime、Agents、Extensions / 插图的布局与接线 | V09–V16；全编辑表面可达，人工/AI authority 分开 |
@@ -22,7 +22,7 @@
 | B4 | UI/Assets/Skills/Plugins/官方插图编辑器逐类改造 | 完整源码/manifest、资产闭包、参数/历史版本与取消 |
 | F | 全任务验收、最终集成与交接清理 | 验证通过的实现 HEAD、同一 Record 完结，旧任务历史不改写 |
 
-B1–B4 是草案排序，批准时可调整；每个资源类型为独立 checkpoint，不允许以“该组大体完成”跨过未验证编辑器。A1–A3 的布局改造不是重造控制器；若新增工作量属于实际能力缺失，在该阶段 Record/Plan 精确记录。
+D1 冻结采用 B1–B4 顺序；每个资源类型为独立 checkpoint，不允许以“该组大体完成”跨过未验证编辑器。A1–A3 的布局改造不是重造控制器；若新增工作量属于实际能力缺失，在该阶段 Record/Plan 精确记录。
 
 ## Complete editor preservation gate for A3
 
@@ -51,7 +51,7 @@ Runtime、Library、Agents、Extensions 的旧字段与动作同样按 [baseline
 
 ## Stage boundary and persistence
 
-依 repository Governance，每个正式阶段结束：验证 → 持久化/push → 必要 Plan 更新 → 同一 Record → live HANDOFF → 停止。新一轮按 HANDOFF → index → 当前阶段模块恢复，不一次加载整套历史。
+依 repository Governance，每个正式阶段结束：本地最小相关验证 → 持久化/push → 必要 Plan 更新 → 同一 Record → live HANDOFF → 停止。新一轮按 HANDOFF → index → 当前阶段模块恢复，不一次加载整套历史。
 
 Primary Workspace 是 `main`；docs 是文档辅助空间，package 只提供兼容验证资产。本任务不得在 package 分支实现产品或将 main merge 到 package。实现使用适当隔离分支并保护无关变更；Plan 不固定某台机器路径或客户端方式。
 
