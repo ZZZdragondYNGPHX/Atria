@@ -239,6 +239,7 @@ export function registerLocaleData() {
         'Allow': '允许',
         'Deny': '禁止',
         'Match agent permissions': '与智能体权限一致',
+        'Apply Plan JSON to the draft before saving or exporting.': '保存或导出前，请先将计划 JSON 应用到草稿。',
         'Definition valid.': '定义校验通过。',
         'Close inspector': '关闭检查器',
         'Advanced Plan': '高级 Plan',

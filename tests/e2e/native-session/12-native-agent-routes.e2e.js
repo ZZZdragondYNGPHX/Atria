@@ -169,6 +169,20 @@ test('Agents saves distinct exact role routes at 320px', async ({ page }, info) 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test('B3 Plan Source keeps malformed drafts across inspector close and saves through the original preset authority', async ({ page }, info) => {
+    await page.setViewportSize({ width:320,height:900 }); await page.addInitScript(()=>localStorage.setItem('language','en'));
+    await page.route('**/api/horde/text-models',route=>route.fulfill({ json:[] })); await page.route('**/api/horde/status',route=>route.fulfill({ json:{ ok:false } }));
+    await awaitMainUI(page,server.baseURL); await page.evaluate(()=>window.Atria.shell.getWorkspaceHost().openAgentSection('orchestration'));
+    const workspace = page.locator('#agent-memory-workspace'); await workspace.locator('.workspace-more-menu > summary').click(); await workspace.getByRole('button',{ name:'Duplicate',exact:true }).click();
+    await workspace.locator('.workspace-more-menu > summary').click(); await workspace.getByRole('button',{ name:'Preset settings',exact:true }).click();
+    const inspector = workspace.locator('.atria-workspace-inspector'); await inspector.getByText('Advanced Plan',{ exact:true }).click(); await inspector.getByText('Raw Plan JSON',{ exact:true }).click();
+    let editor = inspector.getByLabel('Native Plan JSON',{ exact:true }); const baseline = JSON.parse(await editor.inputValue()); await editor.fill('{ incomplete'); await inspector.getByRole('button',{ name:'Apply JSON to draft',exact:true }).click(); await expect(editor).toHaveValue('{ incomplete');
+    await inspector.getByRole('button',{ name:'Close inspector',exact:true }).click(); await workspace.locator('.workspace-more-menu > summary').click(); await workspace.getByRole('button',{ name:'Preset settings',exact:true }).click(); await inspector.getByText('Advanced Plan',{ exact:true }).click(); await inspector.getByText('Raw Plan JSON',{ exact:true }).click(); await expect(editor).toHaveValue('{ incomplete');
+    const next = structuredClone(baseline); next.agents[0].instructions = 'B3 exact Source saved'; await editor.fill(JSON.stringify(next,null,2)); await page.screenshot({ path:info.outputPath('b3-plan-source-320.png'),fullPage:true }); expect(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await inspector.getByRole('button',{ name:'Apply JSON to draft',exact:true }).click(); await inspector.getByRole('button',{ name:'Save',exact:true }).click();
+    const saved = await page.evaluate(()=>window.Atria.getContext().capabilitySettings.orchestrator.agentWorkspace.presets.find(p=>!p.id.startsWith('builtin-')).planTemplate); expect(saved).toEqual(next);
+});
+
 test('Native browser retrieval offers bundled embedding models without extension inference globals', async ({ page }) => {
     page.setDefaultTimeout(15000);
     await page.addInitScript(() => localStorage.setItem('language', 'en'));
@@ -182,8 +196,8 @@ test('Native browser retrieval offers bundled embedding models without extension
     await root.getByRole('button', { name: 'Browse browser models', exact: true }).click();
     const choices = root.getByLabel('Browser embedding model', { exact: true });
     await expect(choices).toBeVisible({ timeout: 30000 });
-    const id = await choices.locator('option').nth(1).getAttribute('value');
-    expect(id).toBeTruthy(); await choices.selectOption(id);
+    const id = choices.locator('option').nth(1);
+    await expect(id).toHaveAttribute('value' ); await choices.selectOption(id);
     await expect(root.getByLabel('Model', { exact: true })).toHaveValue(id);
     await expect(root.getByText('The model downloads when retrieval first runs. This browser must support WebGPU.', { exact: true })).toBeVisible();
     await expect(root.getByLabel('Endpoint URL', { exact: true })).toBeHidden();

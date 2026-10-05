@@ -70,6 +70,7 @@ export function createMemoryWorkspace({ getContext }) {
         let computed = null;
         let loadError = '';
         let refreshVersion = 0;
+        const pending = new Set();
 
         parent.replaceChildren();
         if (inspector) {
@@ -128,6 +129,7 @@ export function createMemoryWorkspace({ getContext }) {
         };
 
         const loadData = async () => {
+            if (disposed || !page.isConnected) return;
             const version = ++refreshVersion;
             loadError = '';
             const current = settings();
@@ -141,6 +143,7 @@ export function createMemoryWorkspace({ getContext }) {
             status.textContent = i18n('Loading memory…');
             try {
                 const nextSnapshot = await service.load();
+                if (disposed || version !== refreshVersion) return;
                 const nextComputed = await service.inspect(nextSnapshot);
                 nextSnapshot.assertCurrent();
                 if (disposed || version !== refreshVersion) return;
@@ -158,15 +161,23 @@ export function createMemoryWorkspace({ getContext }) {
             }
         };
 
-        const setControl = async (name, value) => {
+        const operation = async (key, control, action, refresh = true) => {
+            if (disposed || !page.isConnected || pending.has(key)) return;
+            pending.add(key); if (control) { control.disabled = true; control.setAttribute('aria-busy', 'true'); }
             try {
-                status.textContent = i18n('Saving…');
-                await service.setControl?.(name, value);
-                await loadData();
+                status.textContent = i18n('Working…');
+                const result = await action();
+                if (disposed || !page.isConnected) return;
+                if (result?.cancelled) status.textContent = '';
+                else if (refresh) await loadData();
+                else status.textContent = i18n('Done.');
             } catch (error) {
-                status.textContent = error?.message || String(error);
+                if (!disposed && page.isConnected) { status.textContent = error?.message || String(error); status.setAttribute('role', 'alert'); }
+            } finally {
+                pending.delete(key); if (control) { control.disabled = false; control.removeAttribute('aria-busy'); }
             }
         };
+        const setControl = (name, value) => operation('control:' + name, null, () => service.setControl?.(name, value));
 
         const showRecord = (record, kind) => {
             if (!inspector || !snapshot) return;
@@ -326,7 +337,9 @@ export function createMemoryWorkspace({ getContext }) {
             const list = el('section', undefined, body);
             list.className = 'workspace-memory-record-list';
 
+            let paintVersion = 0;
             const paint = () => {
+                const version = ++paintVersion;
                 query = search.value;
                 entityType = type.value;
                 includeHistory = history.checked;
@@ -367,7 +380,7 @@ export function createMemoryWorkspace({ getContext }) {
                     return;
                 }
                 void service.loadGraphLibrary().then(cytoscape => {
-                    if (disposed || !graph.isConnected) return;
+                    if (disposed || !graph.isConnected || version !== paintVersion) return;
                     graphInstance?.destroy?.();
                     graph.replaceChildren();
                     graphInstance = cytoscape({
@@ -454,12 +467,8 @@ export function createMemoryWorkspace({ getContext }) {
             actions.className = 'workspace-memory-maintenance-actions';
 
             const runAction = (name, action, { refresh = true } = {}) => {
-                button(actions, name, () => {
-                    status.textContent = i18n('Working…');
-                    Promise.resolve(action?.())
-                        .then(() => refresh ? loadData() : (status.textContent = i18n('Done.')))
-                        .catch(error => { status.textContent = error?.message || String(error); });
-                });
+                const control = button(actions, name, () => void operation(name, control, () => action?.(), refresh));
+                control.disabled = pending.has(name);
             };
 
             runAction('History build / rollback', service.openHistory);
@@ -474,33 +483,17 @@ export function createMemoryWorkspace({ getContext }) {
             importInput.type = 'file';
             importInput.accept = '.json,application/json';
             importInput.setAttribute('aria-label', i18n('Import memory'));
-            importInput.addEventListener('change', async () => {
-                const file = importInput.files?.[0];
-                importInput.value = '';
-                if (!file) return;
-                try {
-                    status.textContent = i18n('Importing memory…');
-                    await service.importGraph?.(file);
-                    await loadData();
-                } catch (error) {
-                    status.textContent = error?.message || String(error);
-                }
+            importInput.addEventListener('change', () => {
+                const file = importInput.files?.[0]; importInput.value = '';
+                if (file) void operation('import', importInput, () => service.importGraph?.(file));
             });
 
             const danger = el('section', undefined, content);
             danger.className = 'workspace-memory-danger-zone';
             el('h3', 'Danger zone', danger);
             el('p', 'Reset removes the current chat memory graph and its vector index. This cannot be undone.', danger).className = 'workspace-hint';
-            const reset = button(danger, 'Reset current chat memory', async () => {
-                try {
-                    status.textContent = i18n('Working…');
-                    const result = await service.resetGraph?.();
-                    if (!result?.cancelled) await loadData();
-                    else status.textContent = '';
-                } catch (error) {
-                    status.textContent = error?.message || String(error);
-                }
-            });
+            const reset = button(danger, 'Reset current chat memory', () => void operation('reset', reset, () => service.resetGraph?.()));
+            reset.disabled = pending.has('reset');
             reset.className = 'workspace-danger';
 
             const advanced = el('details', undefined, content);

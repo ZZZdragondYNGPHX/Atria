@@ -12,11 +12,11 @@ window.eval(fs.readFileSync(new URL('../../public/lib/jquery-3.5.1.min.js', impo
 globalThis.$ = window.jQuery;
 globalThis.toastr = { success: jest.fn(), info: jest.fn(), error: jest.fn() };
 const popups = [];
-let mainPreset = 'Daily RP';
+let _mainPreset = 'Daily RP';
 const manager = {
     findPreset: jest.fn(() => undefined),
-    savePreset: jest.fn(async (name, data, options) => { if (!options?.skipUpdate) mainPreset = name; }),
-    updateList: jest.fn((name, data, options) => { if (options?.select !== false) mainPreset = name; }),
+    savePreset: jest.fn(async (name, data, options) => { if (!options?.skipUpdate) _mainPreset = name; }),
+    updateList: jest.fn((name, data, options) => { if (options?.select !== false) _mainPreset = name; }),
 };
 jest.unstable_mockModule('../../public/scripts/popup.js', () => ({
     callGenericPopup: jest.fn(async () => 0),
@@ -43,7 +43,7 @@ function workspaceUi() {
     return { host, ui: { ...baseUi, inspector } };
 }
 beforeEach(() => {
-    document.body.replaceChildren(); popups.length = 0; mainPreset = 'Daily RP';
+    document.body.replaceChildren(); popups.length = 0; _mainPreset = 'Daily RP';
     manager.savePreset.mockClear(); manager.updateList.mockClear();
     globalThis.fetch = jest.fn(async url => ({ ok: true, json: async () => JSON.parse(fs.readFileSync(new URL(`../../public${url}`, import.meta.url), 'utf8')) }));
 });
@@ -76,4 +76,24 @@ test('Runtime help opens the Native route owner without importing presets', () =
     document.querySelector('[data-atria-runtime-route-help]').click();
     expect(openRuntimeSection).toHaveBeenCalledWith('routes');
     expect(manager.savePreset).not.toHaveBeenCalled();
+});
+
+const findButton = (root, label) => [...root.querySelectorAll('button')].find(item => item.textContent === label);
+for (const mode of ['spec','loop','agenda','director']) test(mode + ' Source preserves malformed and invalid plans without poisoning Fields or saving stale raw text', () => {
+    Element.prototype.scrollIntoView = jest.fn();
+    const preset = createWorkspaceFactoryPreset(mode, 'raw-' + mode); let original = structuredClone(preset);
+    const settings = { agentWorkspace: updatePresetLibrary(emptyPresetLibrary(), { type:'save', preset }) }; const save = jest.fn(); const { host, ui } = workspaceUi();
+    createPresetAuthoring({ getSettings:()=>settings, save, getScope:()=>({}) })(host, ui); original = structuredClone(settings.agentWorkspace.presets.find(item=>item.id === preset.id)); findButton(host,'Preset settings').click();
+    let editor = ui.inspector.querySelector('[aria-label="Native Plan JSON"]'); editor.value = '{ malformed'; editor.dispatchEvent(new Event('input',{ bubbles:true }));
+    expect(host.dataset.atriaDraftDirty).toBe('true'); findButton(ui.inspector,'Apply JSON to draft').click(); findButton(ui.inspector,'Save').click(); expect(save).not.toHaveBeenCalled();
+    findButton(ui.inspector,'Close inspector').click(); findButton(host,'Preset settings').click(); editor = ui.inspector.querySelector('[aria-label="Native Plan JSON"]'); expect(editor.value).toBe('{ malformed');
+    const invalid = { ...original.planTemplate, agents:[] }; editor.value = JSON.stringify(invalid); editor.dispatchEvent(new Event('input',{ bubbles:true })); findButton(ui.inspector,'Apply JSON to draft').click(); expect(settings.agentWorkspace.presets[0]).toEqual(original);
+    findButton(ui.inspector,'Close inspector').click(); host.querySelector('.workspace-agent-card').click(); expect(ui.inspector.textContent).toContain(original.planTemplate.agents[0].name || original.planTemplate.agents[0].id);
+    findButton(host,'Preset settings').click(); editor = ui.inspector.querySelector('[aria-label="Native Plan JSON"]'); const next = structuredClone(original.planTemplate); next.agents[0].instructions = 'B3 applied source'; editor.value = JSON.stringify(next); editor.dispatchEvent(new Event('input',{ bubbles:true })); findButton(ui.inspector,'Apply JSON to draft').click(); findButton(ui.inspector,'Save').click();
+    expect(settings.agentWorkspace.presets[0].planTemplate).toEqual(next); expect(save).toHaveBeenCalledTimes(1); expect(host.dataset.atriaDraftDirty).toBe('false');
+});
+test('old preset defaults and duplicate actions refuse a changed settings owner or scope', () => {
+    Element.prototype.scrollIntoView = jest.fn(); const old = { enabled:false, agentWorkspace: updatePresetLibrary(emptyPresetLibrary(), { type:'save', preset:createWorkspaceFactoryPreset('loop','old') }) }; let settings = old;
+    const save = jest.fn(); const { host,ui } = workspaceUi(); createPresetAuthoring({ getSettings:()=>settings,save,getScope:()=>({}) })(host,ui); const count = old.agentWorkspace.presets.length; settings = { enabled:false,agentWorkspace:emptyPresetLibrary() };
+    const enabled = host.querySelector('.workspace-authoring-defaults input'); enabled.checked = true; enabled.dispatchEvent(new Event('change')); findButton(host,'Duplicate').click(); expect(save).not.toHaveBeenCalled(); expect(old.enabled).toBe(false); expect(settings.enabled).toBe(false); expect(old.agentWorkspace.presets).toHaveLength(count);
 });

@@ -13,6 +13,7 @@ import { renderDiagnosticsPage } from './diagnostics/page.js';
 
 let shell, unsubscribe, frame, previousFocus, timer, drafts;
 let scopeSubscriptions = [];
+let scopeEpoch = 0;
 let ports = {}, open = false, disposePage;
 let hostMount = null;
 let requestedPresetId = null;
@@ -303,6 +304,7 @@ function renderMemoryPage(run, view) {
 }
 
 function renderDiagnostics(run, view) {
+    const epoch = scopeEpoch;
     shell.inspector.hidden = true;
     disposePage = renderDiagnosticsPage({
         parent: shell.main,
@@ -314,6 +316,7 @@ function renderDiagnostics(run, view) {
         view,
         replay,
         onReplay: runtime => {
+            if (!open || section !== 'diagnostics' || epoch !== scopeEpoch) return;
             replay = { runId: `replay:${runtime.runs[0].runId}`, mode: 'trace', status: 'replay', runtime };
             selection = {};
             render();
@@ -443,7 +446,7 @@ function mount(options = {}) {
         },
     });
     drafts = observeAtriaDrafts({ document, root: shell.root });
-    scopeSubscriptions = [NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, NATIVE_SESSION_LIFECYCLE.SESSION_METADATA_CHANGED].map(type => onNativeSessionLifecycle(type, () => { selection = {}; replay = null; render(); }));
+    scopeSubscriptions = [NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, NATIVE_SESSION_LIFECYCLE.SESSION_METADATA_CHANGED].map(type => onNativeSessionLifecycle(type, () => { scopeEpoch++; selection = {}; replay = null; render(); }));
     bindNavigationKeyboard(shell.nav, !embedded);
     shell.environment = createAtriaShellEnvironment(shell.root);
     let inspectorTrigger = null;

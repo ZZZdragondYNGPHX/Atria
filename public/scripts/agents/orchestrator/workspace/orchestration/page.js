@@ -21,6 +21,8 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
     let draftScope = null;
     let selectedAgentId = null;
     let inspectorMode = null;
+    let rawDraft = null;
+    const rawDirty = () => rawDraft !== null && rawDraft !== JSON.stringify(draft.planTemplate, null, 2);
 
     const modeLabel = mode => i18n({
         spec: 'Fixed workflow · Spec',
@@ -53,7 +55,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
         selectedId = selected.id;
         if (!draft || draftPresetId !== selected.id) {
             const presetChanged = draftPresetId !== selected.id;
-            draft = structuredClone(selected);
+            draft = structuredClone(selected); rawDraft = null;
             draftScope = structuredClone(currentScope);
             draftPresetId = selected.id;
             if (!draft.planTemplate.agents.some(agent => agent.id === selectedAgentId)) {
@@ -70,8 +72,8 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
         const status = el('p', notice, parent);
         status.className = 'workspace-status';
         status.setAttribute('role', 'status');
-        parent.dataset.atriaDraftDirty = String(JSON.stringify(draft) !== JSON.stringify(selected));
-        const markDirty = () => { parent.dataset.atriaDraftDirty = String(JSON.stringify(draft) !== JSON.stringify(selected)); };
+        parent.dataset.atriaDraftDirty = String(rawDirty() || JSON.stringify(draft) !== JSON.stringify(selected));
+        const markDirty = () => { parent.dataset.atriaDraftDirty = String(rawDirty() || JSON.stringify(draft) !== JSON.stringify(selected)); };
         parent.oninput = markDirty; parent.onchange = markDirty;
         if (inspector) { inspector.oninput = markDirty; inspector.onchange = markDirty; }
         if (JSON.stringify(currentScope) !== JSON.stringify(scope)) {
@@ -80,7 +82,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
         }
 
         const refresh = ({ resetDraft = false } = {}) => {
-            if (resetDraft) draft = null;
+            if (resetDraft) { draft = null; rawDraft = null; }
             parent.replaceChildren();
             inspector?.replaceChildren();
             renderPresets(parent, ui);
@@ -88,6 +90,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
 
         const showError = error => {
             status.textContent = i18n(error.message || String(error));
+            status.setAttribute('role', 'alert');
             status.tabIndex = -1;
             status.focus();
             status.scrollIntoView({ block: 'nearest' });
@@ -130,10 +133,13 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
             }
         };
 
-        const saveDraft = (message = 'Changes saved.') => transact({ type: 'save', preset: draft }, message);
+        const requireAppliedSource = () => { if (rawDirty()) throw new Error('Apply Plan JSON to the draft before saving or exporting.'); };
+        const assertScope = () => { if (!status.isConnected || getSettings() !== settings || JSON.stringify(getScope()) !== JSON.stringify(scope)) throw new Error('Workspace scope changed. Reopen the preset editor.'); };
+        const saveDraft = (message = 'Changes saved.') => { try { requireAppliedSource(); transact({ type: 'save', preset: draft }, message); } catch (error) { showError(error); } };
 
         const duplicateDraft = () => {
             try {
+                assertScope(); requireAppliedSource();
                 const source = nativePreset ? selected : draft;
                 validatePreset(source);
                 let next = getWorkspaceLibrary(settings);
@@ -153,6 +159,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
 
         const exportDraft = () => {
             try {
+                requireAppliedSource();
                 const url = URL.createObjectURL(new Blob([exportWorkspacePreset(draft)], { type: 'application/json' }));
                 const anchor = document.createElement('a');
                 anchor.href = url;
@@ -339,12 +346,15 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
             el('summary', 'Raw Plan JSON', raw);
             const editor = el('textarea', undefined, raw);
             editor.rows = 18;
-            editor.value = JSON.stringify(draft.planTemplate, null, 2);
+            editor.value = rawDraft ?? JSON.stringify(draft.planTemplate, null, 2);
+            editor.addEventListener('input', () => { rawDraft = editor.value; markDirty(); });
             editor.setAttribute('aria-label', i18n('Native Plan JSON'));
             button(raw, 'Apply JSON to draft', () => {
                 try {
-                    draft.planTemplate = JSON.parse(editor.value);
-                    validatePreset(draft);
+                    assertScope();
+                    const candidate = { ...draft, planTemplate: JSON.parse(editor.value) };
+                    validatePreset(candidate);
+                    draft = candidate; rawDraft = null; markDirty();
                     notice = i18n('Definition valid.');
                     renderCanvas();
                     renderPresetInspector();
@@ -654,8 +664,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
         enabled.type = 'checkbox';
         enabled.checked = settings.enabled === true;
         enabled.addEventListener('change', () => {
-            getSettings().enabled = enabled.checked;
-            save();
+            try { assertScope(); settings.enabled = enabled.checked; save(); } catch (error) { enabled.checked = settings.enabled === true; showError(error); }
         });
         el('p', 'Agents without an override use the orchestrator role’s primary Runtime Route. Prompt, generation and fallback policies are configured in Runtime.', defaults).className = 'workspace-hint';
         button(defaults, 'Open Runtime Routes', () => globalThis.Atria?.shell?.getWorkspaceHost?.().openRuntimeSection('routes'));
