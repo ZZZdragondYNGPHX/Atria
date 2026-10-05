@@ -10,6 +10,7 @@ import { mountKnowledgeEditor } from './knowledge-editor.js';
 import { mountWorldEditor } from './world-editor.js';
 import { validateKnowledgeEditorValue } from './knowledge-contracts.js';
 import { mountStudioValueEditor } from './studio-value-editor.js';
+import { mountStudioActorsEditor, patchStudioActors } from './studio-actors-editor.js';
 import { createAtriaShellEnvironment } from '../atria-shell/environment.js';
 import { mountStudioPromptTools } from './prompt-authoring.js';
 import {
@@ -400,6 +401,47 @@ function renderCollectionEditor(documentRef, body, state, view, stageProject) {
     });
 }
 
+function renderActorsEditor(documentRef, body, state, stageProject) {
+    const workspaceRoot = body.closest('[data-atria-studio-workspace]');
+    const actors = state.source.package.actors || [];
+    const duplicateIds = new Set(actors.map(actor => actor.actorId)).size !== actors.length;
+    if (!actors.some(actor => actor.actorId === state.actorSelection)) state.actorSelection = actors[0]?.actorId;
+    const collection = state.actorCollection || !actors.length || duplicateIds;
+    body.append(heading(documentRef, 'Actors', 'Edit project Actors, then review changes before applying. Existing sessions keep their exact package version.'));
+    body.append(actionRow(documentRef,
+        button(documentRef, 'Actor fields', () => {
+            if (!state.confirmEditorLeave()) return;
+            state.actorCollection = false; state.renderEditor();
+            workspaceRoot.querySelector('[aria-label="Actors resource"]')?.focus();
+        }, { active: !collection, disabled: !actors.length || duplicateIds || !collection }),
+        button(documentRef, 'Collection Source', () => {
+            if (!state.confirmEditorLeave()) return;
+            state.actorCollection = true; state.renderEditor();
+            workspaceRoot.querySelector('[aria-label="Actors collection JSON"]')?.focus();
+        }, { active: collection, disabled: collection }),
+    ));
+    if (!actors.length) body.append(panel(documentRef, 'empty', 'No Actors', 'Use collection Source to define project Actors. An empty collection is valid.'));
+    if (duplicateIds) body.append(panel(documentRef, 'error', 'Duplicate Actor IDs', 'Actor identity is ambiguous. Repair duplicate IDs in collection Source.'));
+    const actor = actors.find(item => item.actorId === state.actorSelection);
+    if (!collection) {
+        const chooser = selectInput(documentRef, state.actorSelection, actors.map(item => item.actorId), 'Actors resource');
+        [...chooser.options].forEach((option, index) => { option.textContent = actors[index].displayName + ' · ' + actors[index].actorId; });
+        chooser.addEventListener('change', () => {
+            if (!state.confirmEditorLeave()) { chooser.value = state.actorSelection; return; }
+            state.actorSelection = chooser.value;
+            state.collectionSelection.actors = actors.findIndex(item => item.actorId === chooser.value);
+            state.selectedGraphNode = null;
+            state.renderEditor(); void state.renderInspector();
+            workspaceRoot.querySelector('[aria-label="Actors resource"]')?.focus();
+        });
+        body.append(field(documentRef, 'Actor', chooser));
+        state.collectionSelection.actors = actors.findIndex(item => item.actorId === state.actorSelection);
+    }
+    state.actorEditor = mountStudioActorsEditor({ document: documentRef, root: body, value: collection ? actors : actor, projectSource: state.source, collection,
+        onReview: parsed => stageProject(patchStudioActors(state.source, actor?.actorId, parsed, collection), formatProductText(collection ? 'Update ${0} collection' : 'Update ${0} resource', ['Actors'])),
+    });
+}
+
 async function loadProjectSupport(projectId) {
     const keys = ['registry', 'graph', 'resources', 'library', 'history'];
     const results = await Promise.allSettled([
@@ -489,6 +531,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     function resourceTreeSelect(view, index, pluginType) {
         if (!state.confirmEditorLeave()) return false;
         if (index !== undefined) state.collectionSelection[view] = index;
+        if (view === 'actors' && index !== undefined) { state.actorSelection = state.source.package.actors[index]?.actorId; state.actorCollection = false; }
         if (pluginType) state.selectedPluginResourceType = pluginType;
         state.selectedGraphNode = null;
         state.activeView = view;
@@ -627,6 +670,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     async function applyPending() {
         if (!state.pending?.workspace || state.pending.conflict || state.applying) return;
         state.applying = true;
+        renderActivity(); updateMobile();
         try {
             const result = await nativeStudioClient.executeWorkspace(projectId, state.pending.workspace);
             state.validation = result.changeSet?.validation || null;
@@ -798,6 +842,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 const items = sourceSection(state.source, view) || [];
                 const index = items.findIndex(value => viewResourceId(value, view) === (item.metadata?.knowledgeBaseId || item.resourceId));
                 if (index >= 0) state.collectionSelection[view] = index;
+                if (view === 'actors' && index >= 0) { state.actorSelection = items[index].actorId; state.actorCollection = false; }
                 renderEditor(); updateMobile(); return true;
             };
             const manageNode = item => { if (!state.confirmEditorLeave()) return; state.highlightLibraryReference = resourceReferenceForNode(item); state.activeView = item.resourceType === 'core.world' ? 'worlds' : item.resourceType === 'core.asset' ? 'assets' : 'knowledge'; state.mobileView = 'editor'; renderEditor(); updateMobile(); };
@@ -1097,6 +1142,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     }
 
     function renderEditor() {
+        state.actorEditor = null;
         state.structuredEditor?.dispose(); state.structuredEditor = null;
         state.previewMount?.dispose(); state.previewMount = null;
         if (state.disposed) return;
@@ -1123,7 +1169,8 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         if (state.activeView === 'overview') renderOverview(body);
         else if (['prompt-authoring', 'runtime-design'].includes(state.activeView)) void mountStudioPromptTools({ document: documentRef, body, state, stageProject, host, runtimeDesign: state.activeView === 'runtime-design' });
         else if (state.activeView === 'experience') renderExperience(body);
-        else if (['actors', 'entrypoints', 'worlds', 'knowledge'].includes(state.activeView)) {
+        else if (state.activeView === 'actors') renderActorsEditor(documentRef, body, state, stageProject);
+        else if (['entrypoints', 'worlds', 'knowledge'].includes(state.activeView)) {
             renderCollectionEditor(documentRef, body, state, state.activeView, stageProject);
         } else if (state.activeView === 'logic') renderPackageJson(body, 'Game Logic', 'processors', 'Structured logic/processors remain part of project source.');
         else if (state.activeView === 'ui') void renderUi(body);
@@ -1271,7 +1318,21 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             body.append(title);
             if (state.pending.conflict) {
                 body.append(panel(documentRef, 'error', 'Revision conflict', 'The project advanced. Studio never silently rebases authoring changes. Reload the latest revision and review your edits again.'));
+                if (state.activeView === 'actors' && state.actorEditor) {
+                    body.append(button(documentRef, 'Copy Actors draft', async () => {
+                        let source = body.querySelector('[data-atria-actors-draft-copy]');
+                        if (!source) {
+                            source = documentRef.createElement('textarea'); source.readOnly = true; source.className = 'atria-studio-editor__textarea';
+                            source.dataset.atriaActorsDraftCopy = 'true'; source.setAttribute('aria-label', t('Actor draft Source'));
+                            const hint = documentRef.createElement('p'); hint.textContent = t('Copy this Source before discarding the draft and reloading.');
+                            body.append(hint, source);
+                        }
+                        source.value = state.actorEditor.getSource(); source.focus(); source.select();
+                        try { await documentRef.defaultView.navigator.clipboard?.writeText(source.value); } catch { /* The selected Source remains available for manual copy. */ }
+                    }));
+                }
                 body.append(actionRow(documentRef, button(documentRef, 'Reload Latest', async () => {
+                    if (state.activeView === 'actors' && !state.confirmEditorLeave()) return;
                     await refreshProject();
                     state.pending = null;
                     renderEditor();

@@ -131,6 +131,81 @@ describe('A7 Atria Studio workspace', () => {
         });
     });
 
+    function actorsFixture() {
+        const detail = projectDetail();
+        detail.source.package.actors = ['a', 'b'].map(letter => ({ actorId: 'actor_' + letter.repeat(32), displayName: 'Same name', profile: { description: 'Original ' + letter, plugin: { nested: [null, true, 4] } }, metadata: { opaque: false } }));
+        detail.source.package.entryPoints[0].actorIds = [detail.source.package.actors[0].actorId];
+        const previous = globalThis.fetch;
+        globalThis.fetch = jest.fn((url, options) => url === `/api/native/studio/projects/${projectId}` ? Promise.resolve(response(detail)) : previous(url, options));
+        return detail;
+    }
+    const click = (root, label) => [...root.querySelectorAll('button')].find(node => node.textContent === label).click();
+    const fill = (input, value) => { input.value = value; input.dispatchEvent(new Event('input', { bubbles: true })); };
+
+    test('Actors exact identity, Source and view cancellation keep one draft; Review Cancel retains advanced data', async () => {
+        const detail = actorsFixture(), slot = document.querySelector('#slot');
+        const controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        click(slot.querySelector('.atria-studio-resource-tree'), 'Actors'); await flush();
+        const center = slot.querySelector('.atria-studio-center'), chooser = center.querySelector('[aria-label="Actors resource"]');
+        const input = center.querySelector('[name="displayName"]'); fill(input, 'Draft A');
+        const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false);
+        chooser.value = detail.source.package.actors[1].actorId; chooser.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(chooser.value).toBe(detail.source.package.actors[0].actorId); expect(center.querySelector('[name="displayName"]')).toBe(input);
+        click(center, 'Source'); const source = center.querySelector('[aria-label="Actors resource JSON"]');
+        const draft = JSON.parse(source.value); expect(draft.displayName).toBe('Draft A'); expect(draft.profile.plugin).toEqual({ nested: [null, true, 4] });
+        click(center, 'Collection Source'); expect(source.isConnected).toBe(true);
+        click(slot.querySelector('.atria-studio-resource-tree'), 'EntryPoints'); expect(source.isConnected).toBe(true);
+        click(center, 'Review Changes'); await flush();
+        const inspected = requests.find(item => item.path.endsWith('/workspaces/inspect')).body;
+        expect(inspected.baseRevision).toBe(revision); expect(inspected.origin.kind).toBe('human');
+        expect(inspected.operations[0].operationType).toBe('project.save'); expect(inspected.operations[0].input.source.package.actors[0]).toEqual(draft);
+        click(slot.querySelector('.atria-studio-activity'), 'Cancel'); await flush();
+        expect(source.value).toBe(JSON.stringify(draft, null, 2)); expect(requests.some(item => item.path.endsWith('/workspaces/execute'))).toBe(false);
+        confirm.mockReturnValue(true); chooser.value = detail.source.package.actors[1].actorId; chooser.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(center.querySelector('[name="profile.description"]').value).toBe('Original b');
+        controller.dispose();
+    });
+
+    test('Actors conflict exposes exact malformed Source for copy and requires explicit discard before reload', async () => {
+        const detail = actorsFixture(), previous = globalThis.fetch;
+        globalThis.fetch = jest.fn((url, options) => String(url).endsWith('/workspaces/execute') ? Promise.resolve(response({ message: 'Stale revision' }, 409)) : previous(url, options));
+        const slot = document.querySelector('#slot'), controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        click(slot.querySelector('.atria-studio-resource-tree'), 'Actors'); await flush();
+        const center = slot.querySelector('.atria-studio-center'), activity = slot.querySelector('.atria-studio-activity');
+        fill(center.querySelector('[name="displayName"]'), 'Conflict draft'); click(center, 'Review Changes'); await flush();
+        click(activity, 'Apply ChangeSet'); await flush();
+        click(center, 'Source'); const source = center.querySelector('[aria-label="Actors resource JSON"]'); fill(source, '{ malformed after review');
+        click(activity, 'Copy Actors draft'); await flush();
+        expect(activity.querySelector('[data-atria-actors-draft-copy]').value).toBe(source.value);
+        const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false); click(activity, 'Reload Latest'); await flush();
+        expect(source.isConnected).toBe(true); expect(source.value).toBe('{ malformed after review');
+        detail.source.package.actors.reverse(); confirm.mockReturnValue(true); click(activity, 'Reload Latest'); await flush();
+        expect(center.querySelector('[aria-label="Actors resource"]').value).toBe('actor_' + 'a'.repeat(32));
+        expect(center.querySelector('[name="displayName"]').value).toBe('Same name'); controller.dispose();
+    });
+
+    test('Actors collection save receipt blocks edits after read failure and reload never replays execute', async () => {
+        const detail = actorsFixture(), previous = globalThis.fetch; let committed = false, failRead = true, writes = 0;
+        globalThis.fetch = jest.fn(async (url, options = {}) => {
+            if (String(url).endsWith('/workspaces/execute')) {
+                writes++; const body = JSON.parse(options.body); detail.source = body.operations[0].input.source;
+                detail.revision.revision = 'b'.repeat(40); committed = true; return previous(url, options);
+            }
+            if (url === `/api/native/studio/projects/${projectId}` && committed && failRead) return response({ message: 'Read unavailable' }, 503);
+            return previous(url, options);
+        });
+        const slot = document.querySelector('#slot'), controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        click(slot.querySelector('.atria-studio-resource-tree'), 'Actors'); await flush();
+        const center = slot.querySelector('.atria-studio-center'), activity = slot.querySelector('.atria-studio-activity');
+        const chooser = center.querySelector('[aria-label="Actors resource"]'); chooser.value = 'actor_' + 'b'.repeat(32); chooser.dispatchEvent(new Event('change', { bubbles: true }));
+        click(center, 'Collection Source'); fill(center.querySelector('textarea'), JSON.stringify([...detail.source.package.actors].reverse()));
+        click(center, 'Review Changes'); await flush(); click(activity, 'Apply ChangeSet'); await flush();
+        expect(center.inert).toBe(true); expect(activity.textContent).toContain('Saved, but'); expect(writes).toBe(1);
+        failRead = false; click(activity, 'Reload Latest'); await flush(); expect(writes).toBe(1);
+        click(center, 'Actor fields'); expect(center.querySelector('[aria-label="Actors resource"]').value).toBe('actor_' + 'b'.repeat(32));
+        expect(center.querySelector('[name="profile.description"]').value).toBe('Original b'); controller.dispose();
+    });
+
     test('relationship detach exposes consumers before review and navigates to the exact project owner', async () => {
         const previous = globalThis.fetch;
         const detail = projectDetail(); const worldId = 'world_' + 'b'.repeat(32), worldRevisionId = 'worldv_' + 'c'.repeat(32);

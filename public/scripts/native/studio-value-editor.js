@@ -3,9 +3,9 @@ import { translateShellText as t } from '../atria-shell/localization.js';
 let editorSequence = 0;
 
 // A local projection of the existing resource value. Only onReview may stage it.
-export function mountStudioValueEditor({ document: doc, root, value, label, onReview, fieldOptions = () => undefined, validate = () => {} }) {
+export function mountStudioValueEditor({ document: doc, root, value, label, onReview, fieldOptions = () => undefined, validate = () => {}, renderFields, startSource = false }) {
     let draft = JSON.parse(JSON.stringify(value));
-    let advanced = false;
+    let advanced = startSource;
     let sourceText = JSON.stringify(draft, null, 2);
     const shell = doc.createElement('section'); shell.className = 'atri-studio-value-editor';
     root.append(shell);
@@ -79,7 +79,8 @@ export function mountStudioValueEditor({ document: doc, root, value, label, onRe
             const editor = doc.createElement('textarea'); editor.className = 'atria-studio-editor__textarea';
             editor.value = sourceText; editor.setAttribute('aria-label', label); editor.spellcheck = false;
             editor.addEventListener('input', () => { sourceText = editor.value; }); content.append(editor);
-        } else renderValue(content, draft, '', next => { draft = next; });
+        } else if (renderFields) renderFields({ parent: content, draft, renderValue, rerender: render });
+        else renderValue(content, draft, '', next => { draft = next; });
         markDirty();
     }
     toggle.addEventListener('click', () => {
@@ -103,4 +104,6 @@ export function mountStudioValueEditor({ document: doc, root, value, label, onRe
         } catch (error) { fail(error); } finally { review.disabled = false; review.removeAttribute('aria-busy'); }
     });
     render();
+    // Expose the same draft, including malformed Source, for explicit conflict recovery.
+    return { getSource: () => advanced ? sourceText : JSON.stringify(draft, null, 2) };
 }
