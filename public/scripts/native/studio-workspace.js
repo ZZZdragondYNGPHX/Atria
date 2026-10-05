@@ -6,9 +6,8 @@ import { mountAssetEditor } from './asset-editor.js';
 import { mountProjectDeletion } from './project-lifecycle.js';
 import { mountSkillDeclarationsEditor } from './skill-declarations-editor.js';
 import { renderResourceReferenceRows } from './resource-reference-rows.js';
-import { mountKnowledgeEditor } from './knowledge-editor.js';
+import { mountStudioKnowledgeEditor, patchStudioKnowledge } from './studio-knowledge-editor.js';
 import { mountStudioWorldsEditor, patchStudioWorlds } from './studio-worlds-editor.js';
-import { validateKnowledgeEditorValue } from './knowledge-contracts.js';
 import { mountStudioValueEditor } from './studio-value-editor.js';
 import { mountStudioActorsEditor, patchStudioActors } from './studio-actors-editor.js';
 import { mountStudioEntryPointsEditor, patchStudioEntryPoints } from './studio-entrypoints-editor.js';
@@ -213,15 +212,6 @@ function displayNameFor(item, view) {
     return '';
 }
 
-function normalizeCollectionPatch(source, view, index, value) {
-    const next = clone(source);
-    if (view === 'actors') next.package.actors[index] = value;
-    else if (view === 'worlds') next.worlds[index] = value;
-    else if (view === 'knowledge') next.knowledge[index] = value;
-    else if (view === 'assets') next.assetFiles[index] = value;
-    return next;
-}
-
 function projectListCard(documentRef, record, host, onDeleted) {
     const project = record.project || record;
     const row = documentRef.createElement('article'); row.className = 'atri-studio-project-row';
@@ -306,17 +296,19 @@ function createResourceTree(documentRef, state, selectView) {
             row.setAttribute('aria-current', state.activeView === id ? 'page' : 'false');
             if (!Array.isArray(items)) continue;
             const exactEntrySelection = id === 'entrypoints' && !state.entryPointCollection && new Set(items.map(item => item.entryPointId)).size === items.length;
+            const exactKnowledgeSelection = id === 'knowledge' && !state.knowledgeCollection && new Set(items.map(item => item.knowledgeBase?.knowledgeBaseId)).size === items.length && !items.some(item => state.source.dependencies.knowledge.some(ref => ref.knowledgeBaseId === item.knowledgeBase?.knowledgeBaseId));
             const exactWorldSelection = id === 'worlds' && !state.worldCollection && new Set(items.map(item => item.world?.worldId)).size === items.length && !items.some(item => state.source.dependencies.worlds.some(ref => ref.worldId === item.world?.worldId));
             items.forEach((item, index) => {
                 const name = displayNameFor(item, id);
                 if (needle && !sectionMatch && !name.toLowerCase().includes(needle)) return;
                 const child = button(documentRef, name || `${label} ${index + 1}`, () => {
                     selectView(id, index);
-                }, { active: state.activeView === id && (id === 'entrypoints' ? exactEntrySelection && item.entryPointId === state.entryPointSelection : id === 'worlds' ? exactWorldSelection && item.world?.worldId === state.worldSelection : state.collectionSelection[id] === index) });
+                }, { active: state.activeView === id && (id === 'entrypoints' ? exactEntrySelection && item.entryPointId === state.entryPointSelection : id === 'worlds' ? exactWorldSelection && item.world?.worldId === state.worldSelection : id === 'knowledge' ? exactKnowledgeSelection && item.knowledgeBase?.knowledgeBaseId === state.knowledgeSelection : state.collectionSelection[id] === index) });
                 child.textContent = name || `${label} ${index + 1}`;
                 child.className = 'atria-studio-resource-tree__item atria-studio-resource-tree__item--child';
                 child.dataset.atriaStudioResourceItem = id + ':' + index;
                 if (id === 'entrypoints') { child.dataset.atriaStudioEntryPointId = item.entryPointId; child.title = item.entryPointId; }
+                if (id === 'knowledge') { child.dataset.atriaStudioKnowledgeId = item.knowledgeBase?.knowledgeBaseId; child.title = item.knowledgeBase?.knowledgeBaseId || ''; }
                 if (id === 'worlds') { child.dataset.atriaStudioWorldId = item.world?.worldId; child.title = item.world?.worldId || ''; }
                 list.append(child);
             });
@@ -363,45 +355,6 @@ function renderJsonSection(documentRef, body, {
 }) {
     body.append(heading(documentRef, title, description));
     mountStudioValueEditor({ document: documentRef, root: body, value, label: title + ' JSON', onReview: onStage });
-}
-
-function renderCollectionEditor(documentRef, body, state, view, stageProject) {
-    const items = sourceSection(state.source, view) || [];
-    const index = Math.min(state.collectionSelection[view] || 0, Math.max(0, items.length - 1));
-    state.collectionSelection[view] = index;
-    const title = STUDIO_VIEWS.find(item => item[0] === view)?.[1] || view;
-    body.append(heading(documentRef, title, 'Edit the selected resource, then review your changes before applying.'));
-    if (!items.length) {
-        body.append(panel(documentRef, 'empty', 'No project-owned resources', 'Use Source below to define this collection, or attach an available Library resource.'));
-        mountStudioValueEditor({ document: documentRef, root: body, value: [], label: title + ' collection JSON', onReview: parsed => {
-            if (!Array.isArray(parsed)) throw new TypeError('A resource collection must be an array.');
-            if (view === 'knowledge') parsed.forEach(validateKnowledgeEditorValue);
-            const next = clone(state.source);
-            if (view === 'actors') next.package.actors = parsed;
-            else next[view] = parsed;
-            return stageProject(next, formatProductText('Update ${0} collection', [title]));
-        } });
-        return;
-    }
-
-    const chooser = selectInput(documentRef, String(index), items.map((_, itemIndex) => String(itemIndex)), formatProductText('${0} resource', [title]));
-    [...chooser.options].forEach((option, optionIndex) => {
-        option.textContent = displayNameFor(items[optionIndex], view) || `${title} ${optionIndex + 1}`;
-    });
-    chooser.addEventListener('change', () => {
-        if (!state.confirmEditorLeave()) { chooser.value = String(index); return; }
-        state.collectionSelection[view] = Number(chooser.value);
-        state.selectedGraphNode = null;
-        state.renderEditor();
-        void state.renderInspector();
-    });
-    body.append(field(documentRef, title, chooser));
-
-    const mountEditor = view === 'knowledge' ? mountKnowledgeEditor : mountStudioValueEditor;
-    mountEditor({ document: documentRef, root: body, value: items[index], label: title + ' resource JSON',
-        projectSource: state.source, library: state.library,
-        onReview: parsed => stageProject(normalizeCollectionPatch(state.source, view, index, parsed), formatProductText('Update ${0} resource', [title])),
-    });
 }
 
 function renderActorsEditor(documentRef, body, state, stageProject) {
@@ -490,46 +443,51 @@ function renderEntryPointsEditor(documentRef, body, state, stageProject) {
     });
 }
 
-function renderWorldsEditor(documentRef, body, state, stageProject) {
+function renderLibraryContentEditor(documentRef, body, state, stageProject, view) {
+    const isWorld = view === 'worlds', title = isWorld ? 'Worlds' : 'Knowledge';
+    const selectionKey = isWorld ? 'worldSelection' : 'knowledgeSelection', collectionKey = isWorld ? 'worldCollection' : 'knowledgeCollection', editorKey = isWorld ? 'worldEditor' : 'knowledgeEditor';
+    const identity = item => isWorld ? item.world.worldId : item.knowledgeBase.knowledgeBaseId;
+    const name = item => isWorld ? item.world.displayName : item.knowledgeBase.displayName;
+    const mount = isWorld ? mountStudioWorldsEditor : mountStudioKnowledgeEditor, patch = isWorld ? patchStudioWorlds : patchStudioKnowledge;
     const workspaceRoot = body.closest('[data-atria-studio-workspace]');
-    const worlds = state.source.worlds || [];
-    const ambiguous = new Set(worlds.map(item => item.world?.worldId)).size !== worlds.length || worlds.some(item => state.source.dependencies.worlds.some(ref => ref.worldId === item.world?.worldId));
-    if (!worlds.some(item => item.world?.worldId === state.worldSelection)) state.worldSelection = worlds[0]?.world?.worldId;
-    const collection = state.worldCollection || !worlds.length || ambiguous;
-    body.append(heading(documentRef, 'Worlds', 'Edit project Worlds, then review changes before applying. Library revisions and existing Sessions keep their versions.'));
+    const worlds = state.source[view] || [];
+    const ambiguous = new Set(worlds.map(item => identity(item))).size !== worlds.length || worlds.some(item => state.source.dependencies[view].some(ref => (isWorld ? ref.worldId : ref.knowledgeBaseId) === identity(item)));
+    if (!worlds.some(item => identity(item) === state[selectionKey])) state[selectionKey] = worlds[0] && identity(worlds[0]);
+    const collection = state[collectionKey] || !worlds.length || ambiguous;
+    body.append(heading(documentRef, title, isWorld ? 'Edit project Worlds, then review changes before applying. Library revisions and existing Sessions keep their versions.' : 'Edit project Knowledge, then review changes before applying. Library revisions and existing Sessions keep their versions.'));
     body.append(actionRow(documentRef,
-        button(documentRef, 'World fields', () => {
+        button(documentRef, isWorld ? 'World fields' : 'Knowledge fields', () => {
             if (!state.confirmEditorLeave()) return;
-            state.worldCollection = false; state.renderEditor();
-            workspaceRoot.querySelector('[aria-label="Worlds resource"]')?.focus();
+            state[collectionKey] = false; state.renderEditor();
+            workspaceRoot.querySelector('[aria-label="' + title + ' resource"]')?.focus();
         }, { active: !collection, disabled: !worlds.length || ambiguous || !collection }),
         button(documentRef, 'Collection Source', () => {
             if (!state.confirmEditorLeave()) return;
-            state.worldCollection = true; state.renderEditor();
-            workspaceRoot.querySelector('[aria-label="Worlds collection JSON"]')?.focus();
+            state[collectionKey] = true; state.renderEditor();
+            workspaceRoot.querySelector('[aria-label="' + title + ' collection JSON"]')?.focus();
         }, { active: collection, disabled: collection }),
     ));
     if (!worlds.length) body.append(panel(documentRef, 'empty', 'No project-owned resources', 'Use Source below to define this collection, or attach an available Library resource.'));
-    if (ambiguous) body.append(panel(documentRef, 'error', 'Ambiguous World IDs', 'Duplicate or attached World ID. Repair collection Source before review.'));
-    const world = worlds.find(item => item.world?.worldId === state.worldSelection);
+    if (ambiguous) body.append(panel(documentRef, 'error', isWorld ? 'Ambiguous World IDs' : 'Ambiguous Knowledge IDs', isWorld ? 'Duplicate or attached World ID. Repair collection Source before review.' : 'Duplicate or attached Knowledge ID. Repair collection Source before review.'));
+    const world = worlds.find(item => identity(item) === state[selectionKey]);
     if (!collection) {
-        const chooser = selectInput(documentRef, state.worldSelection, worlds.map(item => item.world.worldId), 'Worlds resource');
-        [...chooser.options].forEach((option, index) => { option.textContent = worlds[index].world.displayName + ' · ' + worlds[index].world.worldId; });
+        const chooser = selectInput(documentRef, state[selectionKey], worlds.map(item => identity(item)), title + ' resource');
+        [...chooser.options].forEach((option, index) => { option.textContent = name(worlds[index]) + ' · ' + identity(worlds[index]); });
         chooser.addEventListener('change', () => {
-            if (!state.confirmEditorLeave()) { chooser.value = state.worldSelection; return; }
-            state.worldSelection = chooser.value; state.selectedGraphNode = null;
+            if (!state.confirmEditorLeave()) { chooser.value = state[selectionKey]; return; }
+            state[selectionKey] = chooser.value; state.selectedGraphNode = null;
             state.renderEditor(); void state.renderInspector();
-            workspaceRoot.querySelector('[aria-label="Worlds resource"]')?.focus();
+            workspaceRoot.querySelector('[aria-label="' + title + ' resource"]')?.focus();
         });
-        body.append(field(documentRef, 'World', chooser));
-        state.collectionSelection.worlds = worlds.findIndex(item => item.world.worldId === state.worldSelection);
+        body.append(field(documentRef, isWorld ? 'World' : 'Knowledge', chooser));
+        state.collectionSelection[view] = worlds.findIndex(item => identity(item) === state[selectionKey]);
     }
     const sequence = state.editorSequence;
-    state.worldEditor = mountStudioWorldsEditor({ document: documentRef, root: body, value: collection ? worlds : world, projectSource: state.source, collection, library: state.supportFailures.some(item => item.source === 'library') ? null : state.library,
+    state[editorKey] = mount({ document: documentRef, root: body, value: collection ? worlds : world, projectSource: state.source, collection, library: state.supportFailures.some(item => item.source === 'library') ? null : state.library,
         isCurrent: () => !state.disposed && state.editorSequence === sequence,
         onReview: async parsed => {
-            const accepted = await stageProject(patchStudioWorlds(state.source, world?.world.worldId, parsed, collection), formatProductText(collection ? 'Update ${0} collection' : 'Update ${0} resource', ['Worlds']));
-            if (accepted) state.pending.worldSelection = collection ? state.worldSelection : parsed.world.worldId;
+            const accepted = await stageProject(patch(state.source, world && identity(world), parsed, collection), formatProductText(collection ? 'Update ${0} collection' : 'Update ${0} resource', [title]));
+            if (accepted) state.pending[selectionKey] = collection ? state[selectionKey] : identity(parsed);
         },
     });
 }
@@ -633,6 +591,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         if (view === 'actors' && index !== undefined) { state.actorSelection = state.source.package.actors[index]?.actorId; state.actorCollection = false; }
         if (view === 'entrypoints' && index !== undefined) { state.entryPointSelection = state.source.package.entryPoints[index]?.entryPointId; state.entryPointCollection = false; }
         if (view === 'worlds' && index !== undefined) { state.worldSelection = state.source.worlds[index]?.world?.worldId; state.worldCollection = false; }
+        if (view === 'knowledge' && index !== undefined) { state.knowledgeSelection = state.source.knowledge[index]?.knowledgeBase?.knowledgeBaseId; state.knowledgeCollection = false; }
         if (pluginType) state.selectedPluginResourceType = pluginType;
         state.selectedGraphNode = null;
         state.activeView = view;
@@ -787,6 +746,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             const forked = state.pending.workspace.operations.find(operation => operation.operationType === 'resource.fork');
             if (state.pending.entryPointSelection) state.entryPointSelection = state.pending.entryPointSelection;
             if (state.pending.worldSelection) state.worldSelection = state.pending.worldSelection;
+            if (state.pending.knowledgeSelection) state.knowledgeSelection = state.pending.knowledgeSelection;
             state.pending = null;
             state.refreshRequired = result.changeSet;
             center.dispatchEvent(new documentRef.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
@@ -798,6 +758,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 const index = items.findIndex(item => viewResourceId(item, state.activeView) === id);
                 if (index >= 0) state.collectionSelection[state.activeView] = index;
                 if (state.activeView === 'worlds' && index >= 0) { state.worldSelection = id; state.worldCollection = false; }
+                if (state.activeView === 'knowledge' && index >= 0) { state.knowledgeSelection = id; state.knowledgeCollection = false; }
             }
             renderEditor();
             renderInspector();
@@ -951,6 +912,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 if (index >= 0) state.collectionSelection[view] = index;
                 if (view === 'actors' && index >= 0) { state.actorSelection = items[index].actorId; state.actorCollection = false; }
                 if (view === 'worlds' && index >= 0) { state.worldSelection = items[index].world.worldId; state.worldCollection = false; }
+                if (view === 'knowledge' && index >= 0) { state.knowledgeSelection = items[index].knowledgeBase.knowledgeBaseId; state.knowledgeCollection = false; }
                 renderEditor(); updateMobile(); return true;
             };
             const manageNode = item => { if (!state.confirmEditorLeave()) return; state.highlightLibraryReference = resourceReferenceForNode(item); state.activeView = item.resourceType === 'core.world' ? 'worlds' : item.resourceType === 'core.asset' ? 'assets' : 'knowledge'; state.mobileView = 'editor'; renderEditor(); updateMobile(); };
@@ -1138,6 +1100,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                         state.collectionSelection[state.activeView] = (sourceSection(state.source, state.activeView) || []).findIndex(value => viewResourceId(value, state.activeView) === node.resourceId);
                         if (state.activeView === 'entrypoints') { state.entryPointSelection = node.resourceId; state.entryPointCollection = false; }
                         if (state.activeView === 'worlds') { state.worldSelection = node.resourceId; state.worldCollection = false; }
+                        if (state.activeView === 'knowledge') { state.knowledgeSelection = node.metadata?.knowledgeBaseId || node.resourceId; state.knowledgeCollection = false; }
                         state.mobileView = 'editor'; renderEditor(); updateMobile(); return true;
                     } });
                     return;
@@ -1267,6 +1230,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         state.actorEditor = null;
         state.entryPointEditor = null;
         state.worldEditor?.dispose?.(); state.worldEditor = null;
+        state.knowledgeEditor?.dispose?.(); state.knowledgeEditor = null;
         state.structuredEditor?.dispose(); state.structuredEditor = null;
         state.previewMount?.dispose(); state.previewMount = null;
         if (state.disposed) return;
@@ -1294,9 +1258,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         else if (['prompt-authoring', 'runtime-design'].includes(state.activeView)) void mountStudioPromptTools({ document: documentRef, body, state, stageProject, host, runtimeDesign: state.activeView === 'runtime-design' });
         else if (state.activeView === 'experience') renderExperience(body);
         else if (state.activeView === 'actors') renderActorsEditor(documentRef, body, state, stageProject);
-        else if (state.activeView === 'entrypoints') { renderEntryPointsEditor(documentRef, body, state, stageProject); tree.render(); } else if (state.activeView === 'worlds') { renderWorldsEditor(documentRef, body, state, stageProject); tree.render(); } else if (state.activeView === 'knowledge') {
-            renderCollectionEditor(documentRef, body, state, state.activeView, stageProject);
-        } else if (state.activeView === 'logic') renderPackageJson(body, 'Game Logic', 'processors', 'Structured logic/processors remain part of project source.');
+        else if (state.activeView === 'entrypoints') { renderEntryPointsEditor(documentRef, body, state, stageProject); tree.render(); } else if (['worlds', 'knowledge'].includes(state.activeView)) { renderLibraryContentEditor(documentRef, body, state, stageProject, state.activeView); tree.render(); } else if (state.activeView === 'logic') renderPackageJson(body, 'Game Logic', 'processors', 'Structured logic/processors remain part of project source.');
         else if (state.activeView === 'ui') void renderUi(body);
         else if (state.activeView === 'assets') renderAssets(body);
         else if (state.activeView === 'memory') renderPackageJson(body, 'Memory', 'memory', 'Project memory configuration is structured package source.');
@@ -1442,17 +1404,17 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             body.append(title);
             if (state.pending.conflict) {
                 body.append(panel(documentRef, 'error', 'Revision conflict', 'The project advanced. Studio never silently rebases authoring changes. Reload the latest revision and review your edits again.'));
-                const draftEditor = state.activeView === 'actors' ? state.actorEditor : state.activeView === 'entrypoints' ? state.entryPointEditor : state.activeView === 'worlds' ? state.worldEditor : null;
+                const draftEditor = state.activeView === 'actors' ? state.actorEditor : state.activeView === 'entrypoints' ? state.entryPointEditor : state.activeView === 'worlds' ? state.worldEditor : state.activeView === 'knowledge' ? state.knowledgeEditor : null;
                 if (draftEditor) {
                     const entryPoints = state.activeView === 'entrypoints';
-                    const worlds = state.activeView === 'worlds';
-                    body.append(button(documentRef, worlds ? 'Copy Worlds draft' : entryPoints ? 'Copy EntryPoints draft' : 'Copy Actors draft', async () => {
+                    const worlds = state.activeView === 'worlds', knowledge = state.activeView === 'knowledge';
+                    body.append(button(documentRef, knowledge ? 'Copy Knowledge draft' : worlds ? 'Copy Worlds draft' : entryPoints ? 'Copy EntryPoints draft' : 'Copy Actors draft', async () => {
                         let source = body.querySelector('[data-atria-studio-draft-copy]');
                         if (!source) {
                             source = documentRef.createElement('textarea'); source.readOnly = true; source.className = 'atria-studio-editor__textarea';
                             source.dataset.atriaStudioDraftCopy = 'true';
-                            if (worlds) source.dataset.atriaWorldsDraftCopy = 'true'; else if (entryPoints) source.dataset.atriaEntryPointsDraftCopy = 'true'; else source.dataset.atriaActorsDraftCopy = 'true';
-                            source.setAttribute('aria-label', t(worlds ? 'World draft Source' : entryPoints ? 'EntryPoint draft Source' : 'Actor draft Source'));
+                            if (knowledge) source.dataset.atriaKnowledgeDraftCopy = 'true'; else if (worlds) source.dataset.atriaWorldsDraftCopy = 'true'; else if (entryPoints) source.dataset.atriaEntryPointsDraftCopy = 'true'; else source.dataset.atriaActorsDraftCopy = 'true';
+                            source.setAttribute('aria-label', t(knowledge ? 'Knowledge draft Source' : worlds ? 'World draft Source' : entryPoints ? 'EntryPoint draft Source' : 'Actor draft Source'));
                             const hint = documentRef.createElement('p'); hint.textContent = t('Copy this Source before discarding the draft and reloading.');
                             body.append(hint, source);
                         }
@@ -1461,7 +1423,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                     }));
                 }
                 body.append(actionRow(documentRef, button(documentRef, 'Reload Latest', async () => {
-                    if (['actors', 'entrypoints', 'worlds'].includes(state.activeView) && !state.confirmEditorLeave()) return;
+                    if (['actors', 'entrypoints', 'worlds', 'knowledge'].includes(state.activeView) && !state.confirmEditorLeave()) return;
                     await refreshProject();
                     state.pending = null;
                     renderEditor();

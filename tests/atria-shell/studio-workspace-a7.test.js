@@ -355,6 +355,48 @@ describe('A7 Atria Studio workspace', () => {
         controller.dispose(); confirm.mockRestore();
     });
 
+    function knowledgeFixture() {
+        const detail = projectDetail();
+        detail.source.knowledge = ['a', 'b'].map(letter => ({ knowledgeBase: { knowledgeBaseId: 'kb_' + letter.repeat(32), displayName: 'Same name', currentRevisionId: 'kbv_' + letter.repeat(32) }, revision: { knowledgeBaseId: 'kb_' + letter.repeat(32), knowledgeRevisionId: 'kbv_' + letter.repeat(32), entryIds: [], metadata: { opaque: [null, false, 3] } }, entries: [] }));
+        const previous = globalThis.fetch;
+        globalThis.fetch = jest.fn((url, options) => url === `/api/native/studio/projects/${projectId}` ? Promise.resolve(response(detail)) : previous(url, options));
+        return detail;
+    }
+    test('Knowledge exact choice, collection reorder and explicit ID save preserve one project draft and selection', async () => {
+        const detail = knowledgeFixture(), previous = globalThis.fetch;
+        globalThis.fetch = jest.fn(async (url, options) => {
+            if (String(url).endsWith('/workspaces/execute')) detail.source = JSON.parse(options.body).operations[0].input.source;
+            return previous(url, options);
+        });
+        const slot = document.querySelector('#slot'), controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        click(slot.querySelector('.atria-studio-resource-tree'), 'Knowledge'); await flush();
+        const center = slot.querySelector('.atria-studio-center');
+        const chooser = center.querySelector('[aria-label="Knowledge resource"]'); chooser.value = detail.source.knowledge[1].knowledgeBase.knowledgeBaseId; chooser.dispatchEvent(new Event('change')); await flush();
+        fill(center.querySelector('[aria-label="Knowledge name"]'), 'Changed');
+        click(center, 'Source'); const editor = center.querySelector('textarea'), draft = JSON.parse(editor.value); draft.knowledgeBase.knowledgeBaseId = draft.revision.knowledgeBaseId = 'kb_' + 'c'.repeat(32); fill(editor, JSON.stringify(draft));
+        click(center, 'Review Changes'); await flush(); click(slot.querySelector('.atria-studio-activity'), 'Cancel'); await flush(); expect(editor.value).toBe(JSON.stringify(draft));
+        click(center, 'Review Changes'); await flush(); click(slot.querySelector('.atria-studio-activity'), 'Apply ChangeSet'); await flush();
+        expect(center.querySelector('[aria-label="Knowledge resource"]').value).toBe(draft.knowledgeBase.knowledgeBaseId);
+        expect(detail.source.knowledge[0].knowledgeBase.displayName).toBe('Same name');
+        click(center, 'Collection Source'); fill(center.querySelector('textarea'), JSON.stringify([...detail.source.knowledge].reverse()));
+        click(center, 'Review Changes'); await flush(); click(slot.querySelector('.atria-studio-activity'), 'Apply ChangeSet'); await flush(); click(center, 'Knowledge fields'); await flush();
+        expect(center.querySelector('[aria-label="Knowledge resource"]').value).toBe(draft.knowledgeBase.knowledgeBaseId);
+        expect(slot.querySelector('[data-atria-studio-knowledge-id][data-active="true"]').dataset.atriaStudioKnowledgeId).toBe(draft.knowledgeBase.knowledgeBaseId);
+        controller.dispose();
+    });
+    test('Knowledge 409 copies malformed Source and requires explicit discard', async () => {
+        knowledgeFixture(); const previous = globalThis.fetch;
+        globalThis.fetch = jest.fn((url, options) => String(url).endsWith('/workspaces/execute') ? Promise.resolve(response({ message: 'Stale' }, 409)) : previous(url, options));
+        const slot = document.querySelector('#slot'), controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        click(slot.querySelector('.atria-studio-resource-tree'), 'Knowledge'); await flush(); const center = slot.querySelector('.atria-studio-center'), activity = slot.querySelector('.atria-studio-activity');
+        fill(center.querySelector('[aria-label="Knowledge name"]'), 'Unsaved'); click(center, 'Review Changes'); await flush(); click(activity, 'Apply ChangeSet'); await flush();
+        click(center, 'Source'); fill(center.querySelector('textarea'), '{ malformed'); click(activity, 'Copy Knowledge draft'); await flush();
+        expect(activity.querySelector('[data-atria-knowledge-draft-copy]').value).toBe('{ malformed');
+        const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false); click(activity, 'Reload Latest'); await flush(); expect(center.querySelector('textarea').value).toBe('{ malformed');
+        confirm.mockReturnValue(true); click(activity, 'Reload Latest'); await flush(); expect(center.querySelector('[aria-label="Knowledge name"]').value).toBe('Same name');
+        controller.dispose(); confirm.mockRestore();
+    });
+
     test('relationship detach exposes consumers before review and navigates to the exact project owner', async () => {
         const previous = globalThis.fetch;
         const detail = projectDetail(); const worldId = 'world_' + 'b'.repeat(32), worldRevisionId = 'worldv_' + 'c'.repeat(32);

@@ -8841,5 +8841,21 @@
     "atria.studio.worlds.25": "世界 ID 存在歧义",
     "atria.studio.worlds.26": "世界",
     "atria.studio.worlds.27": "复制世界草稿",
-    "atria.studio.worlds.28": "世界草稿 Source"
+    "atria.studio.worlds.28": "世界草稿 Source",
+    "atria.studio.knowledge.0": "知识库身份",
+    "atria.studio.knowledge.1": "知识库名称",
+    "atria.studio.knowledge.2": "不支持此字段",
+    "atria.studio.knowledge.3": "知识库快照的身份和修订引用必须一致。",
+    "atria.studio.knowledge.4": "知识库名称必须为 1–256 个字符。",
+    "atria.studio.knowledge.5": "修订 entryIds 必须与条目完全一致。请在 Source 中明确修复。",
+    "atria.studio.knowledge.6": "知识库身份有歧义。请修复集合 Source。",
+    "atria.studio.knowledge.7": "Knowledge 必须是数组。",
+    "atria.studio.knowledge.8": "知识库 ID 重复或与已附加资源重叠。请先修复集合 Source 再审阅。",
+    "atria.studio.knowledge.9": "知识库仍被绑定引用：",
+    "atria.studio.knowledge.10": "编辑项目知识库后审阅并应用。资料库修订与已有会话保留各自版本。",
+    "atria.studio.knowledge.11": "知识库字段",
+    "atria.studio.knowledge.12": "知识库 ID 有歧义",
+    "atria.studio.knowledge.13": "知识库",
+    "atria.studio.knowledge.14": "复制知识库草稿",
+    "atria.studio.knowledge.15": "知识库草稿 Source"
 }
