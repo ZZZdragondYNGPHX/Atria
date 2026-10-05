@@ -143,3 +143,7 @@ EntryPoint **没有独立 mode discriminator**。`runtime.mode` 不是 assertEnt
 | N08 | 真实项目→新表面→FS/HTTP canonical→.atria Build；显示 Preview/Experience/UI 第一入口与 scenario exact/default 的实际目标，排序影响可评估；已安装 exact Session/Save 不推进；Shared 描述仍 unsupported；English/中文、320 最大字号/Tab/focus 选择最小本地场景，不冒充真机 |
 
 本轮停在 replacement gate 前。下一独立 checkpoint 只实施 B1 EntryPoints 展示与映射对应的局部防护，复用原 controller/persistence；实现/最小本地验证/commit/push 后更新同一 Record/live HANDOFF 并停止。不自动进入 Worlds/Knowledge/B2/F、不合并 main。
+
+## Display checkpoint result
+
+2026-10-05：本映射的下一展示 checkpoint 已完成，具体实施/命令/失败修正/输出证据见 [Record B1 EntryPoints display](../../../records/refactor/atria-immersive-workspace.md#stage-b1-entrypoints--display-checkpoint)。专属 renderer 复用原 value editor 草稿与项目 Workspace/ChangeSet；G01/G04 关闭，G02/G03 的 Review 前局部防护和 G05 目标/分层提示完成。没有新增入口 registry、repository 或独立 revision；后端归一化读损失、Project duplicate 与有限 graph 保持。N01–N08 已有本轮针对性本地证据，未测矩阵不因此关闭。Shared 描述仍停用，后续先做 Worlds 映射，不自动进入替换。

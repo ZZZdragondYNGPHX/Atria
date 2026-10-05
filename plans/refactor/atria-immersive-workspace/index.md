@@ -3,7 +3,7 @@
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
 - Status: **Frozen for staged implementation — 2026-10-05；用户已授权开工与自主处理，新增契约已完成 D1 设计核对。**
-- Current stage: A5 首轮支持范围的本地集成/兼容 checkpoint 完成；B1 Actors 映射与展示 checkpoint 已完成；B1 EntryPoints 字段/动作/authority 映射 checkpoint 已完成；下一 checkpoint 只做 EntryPoints 展示替换。Shared 描述明确停用，完整设备/引擎/字段矩阵仍未验收。
+- Current stage: A5 首轮支持范围的本地集成/兼容 checkpoint 完成；B1 Actors 映射与展示 checkpoint 已完成；B1 EntryPoints 映射与展示 checkpoint 已完成；下一 checkpoint 先做 Worlds 字段/动作/authority 映射，不自动替换。Shared 描述明确停用，完整设备/引擎/字段矩阵仍未验收。
 
 ## Goal
 
@@ -84,3 +84,5 @@ A1–A3 已实现并完成各阶段本地针对性验证；执行证据与限制
 - 2026-10-05 B1 Actors display：专属字段/高级结构与 Source 共用原草稿；集合 Source 始终可达、exact actorId 选择、Review 前拒绝 unknown/legacy/duplicate/悬空 EntryPoint 引用、冲突复制与明确放弃重载完成。复用 project.save/Workspace/ChangeSet，产品 `9991c6ef0` 已 push；具体本地证据与后端限制见 Record B1 display。Shared 描述停用；停在 Actors，EntryPoints/Worlds/Knowledge/B2/F 未开始。
 
 - 2026-10-05 B1 EntryPoints mapping：基于产品 `9991c6ef0` 完成 entrypoints-mapping；覆盖 canonical 全字段、引用与 primary、任意高级 JSON、集合 Source、exact ID/项目 revision/人工与 Agent authority、运行约束/第一入口动作、G01–G05 与 N01–N08 替换门。只改文档，未替换产品；Shared 描述停用。按用户要求完成映射后停止。
+
+- 2026-10-05 B1 EntryPoints display：专属身份/引用/primary/初始状态和消息/高级 JSON 与原 Source 共用草稿；集合 Source、exact ID 选择与树高亮、Review 前防丢失/重复/引用检查、冲突复制与确认重载完成。复用原 project.save/Workspace/ChangeSet，明示第一入口与 scenario 目标；真实 FS/HTTP/.atria/Session/Save 和中文窄屏本地证据见 Record。本 checkpoint 完成后停止，Shared 描述停用；下一轮先做 Worlds 映射。

@@ -2,7 +2,7 @@
 
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
-- Status: Active — A1–A5 and B1 Actors mapping/display checkpoints complete; B1 EntryPoints mapping complete, display replacement next
+- Status: Active — A1–A5 and B1 Actors mapping/display checkpoints complete; B1 EntryPoints mapping/display complete; next checkpoint is Worlds mapping
 - Plan: [Plan index](../../plans/refactor/atria-immersive-workspace/index.md)
 
 ## Summary
@@ -644,6 +644,89 @@ npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/stu
 
 本轮按用户要求完成映射后停止，不合并 main、不删除活跃分支。下一轮按 live HANDOFF → index → entrypoints-mapping → 对应 delivery/coverage S12/states/validation → 本 Record 恢复，只实施 B1 EntryPoints 展示与局部防护；Actors 不重做，不自动进入 Worlds/Knowledge/B2/F。Shared 描述停用与首轮支持范围冻结保持，完整字段/设备/引擎/最终集成仍待后续阶段。
 
+
+## Stage B1 EntryPoints — Display checkpoint
+
+- Date: 2026-10-05
+- Product start HEAD: `9991c6ef03941ac6d6c321843d692b77841b7797`（与远端一致）。
+- Product end/tested HEAD: `f40bca67b56eb42c0b4340d8ca9dfc44f848101a`；本轮实现/最小本地验证完成，已 commit/push，未合并 main。
+- Docs start HEAD: `dc9f9b496d77713e607ebe312b32c837d3b39f41`；docs 持久化提交以真实 Git HEAD 为准，不自引用 hash。
+- Status: **EntryPoints display checkpoint complete — stopped before Worlds mapping.**
+
+### Implementation and authority
+
+按 live HANDOFF → index → entrypoints-mapping → delivery/coverage S12/EntryPoints baseline/states/validation → 同一 Record 续接。复用同一产品分支，新增 `public/scripts/native/studio-entrypoints-editor.js` 并挂入原 `studio-workspace.js`；不重做 Actors、不进入其它 B 类型、不加载 Skill/reference。
+
+- 专属身份/名称、三类 exact 引用及可选 primary、初始 overlay/timeline、runtime/recommendations/orchestration/memory 与完整 Source 共用原 `mountStudioValueEditor` 单草稿。便捷字段只 patch 对应键；高级缺失/null/array/primitive/unknown nested 不转换默认值或删改。引用按钮只从项目 snapshot/dependency 声明中添加，顺序保留；本地 World/Knowledge 来源展示确切修订，dependency binding 保持原声明 ID，不声称此处已解析其闭包。
+- 单入口修改按 exact entryPointId 克隆全项目，仅替换一个唯一匹配入口；集合 Source 对空/非空始终可达，新增/删除/排序只改 entryPoints；最后一个入口删除拒绝。重复 ID 自动进入集合修复，不根据名字/index 猜 patch。chooser 和资源树高亮按 exact ID，排序/显式 ID 修改提交后保留该身份；ID 修改不重写 scenario/ref/Session。
+- Review 前拒绝非空/ID/名称/重复/三类引用/primary/unknown 顶层（含 retired ui/world/legacy）错误与 Package-owned experienceContract。保留非法 Source 原文并就近反馈。它是 UI 局部 pre-review 防护，最终 Source/Frontend/Build/Session schema 与消息 authority 仍由原服务验证，不建立平行 validator authority。
+- 人工 Review/Apply 仍使用原 `project.save` / exact project baseRevision / human Workspace / ChangeSet/controller。Cancel 不写、不清草稿；提交/inspect 仍禁写；409 可复制当前原文（含非法 JSON）、手动选中回退，Reload Latest 明确丢弃确认，取消保留表面。成功读取失败保留 resultingRevision receipt，inert 与只读重试不重放 execute。Agent Commit 继续独立 task authority。
+- EntryPoints/Experience/UI/Preview 明示第一 committed 入口与排序影响，chooser 不联动执行默认；Preview details 显示实际 immutable entryPointId。Simulation 显示 scenario.entryPointId 或第一入口默认。原动作和 source file/Frontend 编译路径保持，没有新增启动协议或自动迁移。
+- Inspector 明示项目修订与有限项目引用，无 `core.entrypoint` registry/repository/独立 revision/完整 Used By graph。World detach 的临时 exact 入口定位继续可达。
+- Shared description 保持 `shared_scope_unsupported`，没有 caller opt-in、solo 回退、Actor/席位自动映射或初始消息/runtime 绕路；相关产品代码未改。
+
+G01/G04 的展示缺口关闭；G02/G03/G05 的局部防护和真实目标/分层提示完成。Project 直接 API 的 duplicate 接受、顶层归一化读损失与有限 graph 保持，不能把 UI 防护当成全项目/Agent/后端修复。Session 启动约束不被固化为 Source 新限制；可保存任意 JSON 不等于可启动。
+
+### Actual minimal local validation
+
+本轮共 **10 个不同 suites / 45 个不同 unit tests passed、2 个不同 Chromium 场景 passed**。重复运行不累加；未重跑的旧阶段证据不计入。最终微调（树高亮/ID 恢复/Preview identity）后只复验直接关联 EntryPoints Workspace/English 浏览器场景，其它本轮证据未虚称同时重跑。
+
+1. 草稿/Workspace/Source/真实 FS Session：
+
+```bash
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/studio-entrypoints-editor.test.js atria-shell/studio-workspace-a7.test.js atria-shell/studio-value-editor.test.js native/entrypoints-start.test.js
+```
+
+4 suites / 31 tests passed（当时 Workspace 13 个用例）。之后 Workspace 增加 empty/duplicate 修复与显式 ID 保存/树高亮三个用例，按下列命令复验全部 6 个 EntryPoints 用例，6 passed / 10 skipped；不重复计已有三个。
+
+```bash
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/studio-workspace-a7.test.js --testNamePattern=EntryPoints
+```
+
+2. 原人工/Agent/service/shared/runtime 边界：
+
+```bash
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/studio-authoring.test.js atria-shell/studio-agent-a8.test.js native/studio-service.test.js native/persona-context.test.js native/runtime-descriptor.test.js --testNamePattern='A7 Studio authoring helpers|Agent Commit is blocked|routes human and agent|rolls back|accepted Persona lane|compiles exact PackageVersion|forbids EntryPoint requirement overrides'
+```
+
+5 suites / 9 passed / 25 skipped。Shared caller opt-in 仍被拒绝；没有运行该 suite 的 controlled HTTP Provider capture。
+
+3. 原 initial projection/envelope 的真实消费者：
+
+```bash
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/studio-workspace-a7.test.js native/message-projection-contract.test.js --testNamePattern='EntryPoints|creation validates projected opening'
+```
+
+其中 projection suite 的 FS 与 SQLite 两个 opening 用例 passed（82 skipped）；Workspace 新增 ID fixture 首次缺 jsdom structuredClone 后按第 1 项修复复验。只计这两个 native 用例，Workspace 不重复计数。
+
+4. 本地 Chromium / 真实 FS/HTTP：
+
+```bash
+PW_NATIVE_CHANNEL=chromium PW_WORKERS=1 npm --prefix tests run test:e2e -- native-session/29-studio-entrypoints.e2e.js
+PW_NATIVE_CHANNEL=chromium PW_WORKERS=1 npm --prefix tests run test:e2e -- native-session/29-studio-entrypoints.e2e.js --grep 'real FS/HTTP'
+```
+
+全文件 2/2 passed；随后 English 场景因树高亮/真实 Preview 和 Simulation 断言补充复验，1/1 passed，不计第三个场景。真实项目 Source→UI→Review/Cancel/Apply→磁盘 `atria.project.json` / HTTP→实际 .atria container decrypt 的 canonical entryPoints 相同；其它 package/source 集合保留。构建同 packageId 不改变已安装 Session exact manifest/identity 与 Save package/closure（仅 export timestamp 正规化比较）。Preview 返回排序后默认第一入口；Simulation 显式选择原入口并断言其新 opening。English 1440、中文 320→720、实际 font_scale=1.5/light/Fast UI/reduced-motion、Tab/Shift+Tab、真实并发 source revision 409、复制/焦点/取消/确认重载通过。wide fields、中文 320 fields/conflict 和 720 截图本地查看；测试 dataRoot/trace/screenshot ignored，不提交产物。
+
+5. touched JS 的 ESLint、`npm run check:native-localization`（English/zh-cn）、产品/docs whitespace、本轮文档链接/路由/显式源码证据检查通过。没有执行全产品 bundle/前端缓存构建/全量 tests/远端 CI。
+
+首次问题与修正：新 canonical test 的 jsdom 缺 structuredClone，按已有测试方式补 v8 clone；新增 Workspace fixture 改为普通 JSON clone。ESLint 指出 helper 名称笔误/引号与 brace-style，已修正。浏览器首次直接填隐藏 timeline item，改为显式打开原 details；中文 Tab 首次错误假定跳过 summary，改为验证真实 summary 焦点。截图发现排序后的树仍用旧 index 高亮，产品修复为 exact ID 并加 unit/browser 断言。扩展 Simulation 检查首次误读返回 envelope，改为原 `status/result.status` 并核对 opening；这些失败未记作通过。
+
+### Gate evidence and limits
+
+- N01/N02/N06：集合 Source、增删排序/最后删除拒绝、同名/exact ID/显式 ID/duplicate 修复、Source 非法与 unknown/legacy 不丢原文，由专属/Workspace unit 和 English 浏览器证明；错误空/duplicate 项目修复为 mock UI 证据，不伪称 ProjectStore 能保存空项目。
+- N03/N05：三类数组/缺失/null/顺序/重复/悬空/primary 移除与成员条件、exact dependency 声明、高级六类 JSON 缺失/null/primitive/array/nested 的真实 canonical 往返由专属 unit 证明；browser 实际项目为零 Actor/World/Binding 的叙事作品。不是所有真实依赖库/Frontend/Game/Runtime consumer 组合的完整验收。
+- N04：真实 FS world-less/单 World 回退/多 World primary 与浅 overlay、nested metadata、null/missing 默认、非法 shape/受保护 metadata 启动拒绝；原 projection/envelope opening 在 FS/SQLite 验证。没有改变 Source 的宽 JSON 契约，也不生成或伪造消息/session/revision IDs。
+- N07/N08：人工 origin/base/inspect/execute、Cancel/409/失败/receipt retry、原 service rollback、独立 Agent，以及真实 FS/HTTP/.atria/Preview/scenario/Session/Save 和语言/窄屏已覆盖。入口↔集合/chooser/view 的取消由本轮 unit 证明；owner/Back 继续复用原全局 guard，未声称新增完整跨 owner/Back/设备矩阵。
+
+未执行 Android/真机/WebView/软键盘/中文 IME、外部 MySQL/Postgres、远端模型、完整 native@3 lease/nonce/任意作品故障组合、全字段/设备/引擎矩阵。首轮支持范围继续冻结，Shared 描述停用。
+
+### Persistence and next checkpoint
+
+产品/docs 本轮只提交指定产品/测试和 index/coverage/validation/mapping 注记、同一 Record/live HANDOFF。产品 AGENTS.md 与 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 原 dirty changes 保持未提交；package/plugin/skills/reference 未读/未改。
+
+按用户要求停在 EntryPoints 展示 checkpoint，未合并 main、不删除活跃任务分支，不进入 Worlds/Knowledge/B2/F。下一轮先做 B1 Worlds 字段/动作/authority 映射，再独立决定展示 checkpoint；Actors/EntryPoints 不重做。
+
 ## Final state
 
-Task ongoing. A1–A5 local checkpoints complete; B1 Actors mapping and display checkpoint complete. B1 EntryPoints mapping checkpoint complete. Next: EntryPoints display replacement, not started. Shared 描述明确停用；完整设备/引擎/字段矩阵和最终集成仍未完成。产品/docs 已 push，未合并 main，本轮停止于 EntryPoints 映射，不进入展示替换。
+Task ongoing. A1–A5 local checkpoints and B1 Actors/EntryPoints mapping/display complete. 本轮停在 EntryPoints 展示后；下一 checkpoint 为 Worlds 映射，尚未开始。Shared 描述继续停用；完整设备/引擎/字段矩阵与最终集成仍待后续。产品/docs 已 push，未合并 main。
