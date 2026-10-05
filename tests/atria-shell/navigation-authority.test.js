@@ -103,3 +103,12 @@ describe('R7D Navigation Authority', () => {
         navigation.dispose();
     });
 });
+
+
+test('A1 a fresh exact entity deep link retains its detail return surface', () => {
+    window.history.replaceState(null, '', '/?atriaRoute=library&atriaChild=knowledge%3Aentry%3Aexact-ref');
+    const navigation = createAtriaNavigationAuthority({ window });
+    expect(navigation.getRoute().child).toMatchObject({ id: 'knowledge:entry:exact-ref', kind: 'detail' });
+    navigation.clearChild(); expect(navigation.getRoute().domain).toBe('library'); expect(navigation.getRoute().child).toBeNull();
+    navigation.dispose();
+});

@@ -8658,5 +8658,7 @@
     "atria.runtime.gateway.5": "上下文额度包含预留的输出预算。默认可容纳 200,000 输入 token 和 20,000 输出 token。",
     "Use https://image.novelai.net/ai/generate-image for NovelAI, or the full generation URL for a compatible provider. Only the NovelAI generate protocol is supported; relay protocols are not inferred.": "官方地址为 https://image.novelai.net/ai/generate-image；第三方填写完整生成地址。仅兼容 NovelAI generate 请求，不自动猜测中转协议。",
     "Use this configuration when the relay forwards official NovelAI requests unchanged. If it transforms responses or limits models or parameters, follow its documentation.": "中转站直接转发官方 NovelAI 请求时可采用此配置；若中转改写响应或限制模型/参数，请按其说明调整。",
-    "responseFormat: zip / json (images[].image base64) / png. Declare model IDs, characterPrompts, sm, maxPixels, maxSteps, samplers and noiseSchedules in models.": "responseFormat: zip / json（images[].image base64）/ png；models 中声明模型 ID、characterPrompts、sm、maxPixels、maxSteps、samplers、noiseSchedules。"
+    "responseFormat: zip / json (images[].image base64) / png. Declare model IDs, characterPrompts, sm, maxPixels, maxSteps, samplers and noiseSchedules in models.": "responseFormat: zip / json（images[].image base64）/ png；models 中声明模型 ID、characterPrompts、sm、maxPixels、maxSteps、samplers、noiseSchedules。",
+    "atria.workspace.leaveDraft": "离开工作区并丢弃未保存的修改？取消以继续编辑。",
+    "atria.search.openFailed": "无法打开结果。请刷新此来源或选择其他结果。"
 }

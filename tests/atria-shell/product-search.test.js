@@ -130,3 +130,31 @@ test('overlapping refresh and disposed requests cannot replace newer results or 
     const pending = index.refresh(); index.dispose();
     expect(await pending).toBe(false); expect(registry.getSearchStatus()).toBeNull();
 });
+
+
+test('A1 retries only a failed source or owner and keeps successful child projections', async () => {
+    const registry = createCommandRegistry(), sources = completeSources();
+    sources.productClient.listWorks = jest.fn(async () => [{ package: { packageId: 'pkg', displayName: 'Good work' } }]);
+    sources.productClient.listSessions = jest.fn(async () => [{ sessionId: 'good', displayTitle: 'Good session' }, { sessionId: 'bad', displayTitle: 'Bad session' }]);
+    sources.productClient.getSession = jest.fn(async id => {
+        if (id === 'bad') throw new Error('offline');
+        return { saves: [{ saveId: 'save', revisionId: 'r1', displayName: 'Good save' }] };
+    });
+    sources.loadSkills = jest.fn(async () => { throw new Error('skills offline'); });
+    const index = createProductSearchIndex({ registry, host: {}, ...sources });
+    await index.refresh();
+    sources.productClient.listWorks.mockClear(); sources.productClient.listSessions.mockClear(); sources.productClient.getSession.mockClear();
+    sources.productClient.getSession.mockImplementation(async id => ({ saves: [{ saveId: id + '-save', revisionId: 'r2', displayName: 'Recovered save' }] }));
+    await registry.getSearchStatus().retry('SavePoints', 'bad');
+    expect(sources.productClient.getSession.mock.calls).toEqual([['bad']]);
+    expect(sources.productClient.listSessions).not.toHaveBeenCalled();
+    expect(sources.productClient.listWorks).not.toHaveBeenCalled();
+    expect(registry.search('Good save')).toHaveLength(1);
+    expect(registry.search('Recovered save')).toHaveLength(1);
+    expect(registry.getSearchStatus().failures).toEqual([{ domain: 'Skills', message: 'skills offline' }]);
+    sources.loadSkills.mockResolvedValue([{ name: 'Recovered skill', scope: 'account' }]);
+    await index.retry('Skills');
+    expect(registry.getSearchStatus().failures).toEqual([]);
+    expect(registry.search('Good work')).toHaveLength(1);
+    index.dispose();
+});

@@ -1111,6 +1111,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
 
     function renderActivity() {
         if (state.disposed) return;
+        shell.dataset.atriaDraftDirty = String(Boolean(state.pending || state.agentReview));
         activity.replaceChildren();
         const tabs = documentRef.createElement('nav');
         tabs.className = 'atria-studio-activity-tabs';

@@ -14,6 +14,9 @@ export function mountWorldEditor({ document: doc, root, value, label = 'World re
     let draft = clone(value); let source = ''; let advanced = false; let catalog = null;
     const revision = () => draft.revision || draft;
     const shell = el(doc, 'section', 'atri-world-editor atri-knowledge-fields', undefined, root);
+    let initialDraft = JSON.stringify(draft);
+    const trackDraft = () => queueMicrotask(() => { shell.dataset.atriaDraftDirty = String(JSON.stringify(draft) !== initialDraft || (advanced && source !== JSON.stringify(draft, null, 2))); });
+    for (const event of ['input', 'change', 'click']) shell.addEventListener(event, trackDraft);
     const toolbar = el(doc, 'div', 'atri-library-actions', undefined, shell);
     const body = el(doc, 'div', 'atri-knowledge-fields', undefined, shell);
     const status = el(doc, 'div', '', undefined, shell);
@@ -99,7 +102,7 @@ export function mountWorldEditor({ document: doc, root, value, label = 'World re
             for (const binding of projectSource?.knowledgeBindings || []) bindings.push({ id: binding.knowledgeBindingId, name: binding.metadata?.displayName || projectSource.knowledge.find(item => item.knowledgeBase.knowledgeBaseId === binding.source.knowledgeBaseId)?.knowledgeBase.displayName || binding.knowledgeBindingId, exact: binding.source.knowledgeRevisionId, source: 'project' });
             const assets = entries.filter(item => item.resourceType === 'core.asset' && (!projectSource || projectSource.dependencies.assets.some(ref => ref.assetId === item.resourceId && ref.contentHash === item.currentRevision))).map(item => ({ id: item.resourceId, name: item.displayName, exact: item.currentRevision, source: 'library' }));
             for (const item of projectSource?.assetFiles || []) assets.push({ id: item.assetId, name: item.logicalName || item.path, source: item.path });
-            catalog = { bindings, assets }; status.replaceChildren(); toggle.disabled = false; render();
+            catalog = { bindings, assets }; status.replaceChildren(); toggle.disabled = false; render(); initialDraft = JSON.stringify(draft);
         } catch (error) { status.replaceChildren(); feedback(doc, status, error.message, true); action(doc, status, 'Try again', load); }
     }
     void load();

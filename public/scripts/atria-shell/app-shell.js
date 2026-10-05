@@ -197,6 +197,7 @@ export function createAtriaAppShell({
     const titleGroup = element(documentRef, 'div', 'atria-toolbar__titles');
     const title = element(documentRef, 'h1', 'atria-toolbar__title', tl('Play'));
     title.id = 'atria-shell-title';
+    title.tabIndex = -1;
     titleGroup.append(title);
     toolbarLeading.append(backButton, titleGroup);
 
@@ -221,10 +222,10 @@ export function createAtriaAppShell({
         element(documentRef, 'span', 'atria-toolbar-search__label', tl('Search')),
         searchKey,
     );
-    const menuButton = buttonElement(documentRef, 'atria-icon-button atria-toolbar__menu', tl('Account & Settings'));
+    const menuButton = buttonElement(documentRef, 'atria-icon-button atria-toolbar__menu', tl('Primary navigation'));
     menuButton.setAttribute('aria-haspopup', 'menu');
     menuButton.setAttribute('aria-expanded', 'false');
-    menuButton.append(createAtriaIcon(documentRef, 'account', { size: 22 }));
+    menuButton.append(createAtriaIcon(documentRef, 'grid', { size: 22 }));
     const inspectorToggle = buttonElement(documentRef, 'atria-icon-button atria-toolbar__inspector', tl('Show inspector'));
     inspectorToggle.setAttribute('aria-pressed', 'false');
     inspectorToggle.setAttribute('aria-controls', 'atria-context-dock');
@@ -361,7 +362,7 @@ export function createAtriaAppShell({
     menuScrim.tabIndex = -1;
     const menu = element(documentRef, 'div', 'atria-shell-menu');
     menu.setAttribute('role', 'menu');
-    menu.setAttribute('aria-label', tl('Account & Settings'));
+    menu.setAttribute('aria-label', tl('Global controls'));
     menuLayer.append(menuScrim, menu);
     transientLayer.append(menuLayer);
 
@@ -381,6 +382,9 @@ export function createAtriaAppShell({
     let commandResults = [];
     let activeCommandIndex = 0;
     let commandReturnFocus = null;
+    let commandError = '';
+    let searchOrigin = null;
+    let searchDestination = null;
     let menuOpen = false;
     let disposed = false;
     let lastRouteSignature = '';
@@ -459,10 +463,15 @@ export function createAtriaAppShell({
 
         root.dataset.atriaDomain = route.domain;
         root.dataset.atriaRouteKind = utility ? 'utility' : route.child?.kind || 'root';
+        for (const item of menuItems) {
+            const selected = item.dataset.atriaPrimaryShortcut === route.domain && !utilityId;
+            item.setAttribute('aria-current', selected ? 'page' : 'false');
+        }
 
         const playActive = route.domain === 'play' && !utilityId;
         stage.hidden = !playActive;
         workspace.hidden = playActive;
+        updateReadingPresentation();
     }
 
     function navigate(domainId, options = {}) {
@@ -607,10 +616,21 @@ export function createAtriaAppShell({
         : null;
     focusObserver?.observe(focus, { childList: true, subtree: true });
 
+    function updateReadingPresentation() {
+        const route = navigationAuthority.getRoute();
+        const reading = route.domain === 'play' && !activeUtilityId(route)
+            && Boolean(stage.dataset.atriaStageOwner || stage.querySelector('[data-atria-product-play="true"]:not([hidden])'));
+        root.dataset.atriaReading = String(reading);
+        bottomNavigation.hidden = !isCompact() || reading;
+    }
+    const readingObserver = typeof dockObserverType === 'function'
+        ? new dockObserverType(updateReadingPresentation) : null;
+    readingObserver?.observe(stage, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'data-atria-stage-owner'] });
+
     function updateResponsiveChrome(state) {
         const compact = isCompact(state);
         rail.hidden = compact;
-        bottomNavigation.hidden = !compact;
+        updateReadingPresentation();
         menuButton.hidden = !compact;
         if (!compact) closeMenu();
         commandSurface.dataset.atriaCommandPresentation = compact ? 'sheet' : 'palette';
@@ -642,24 +662,34 @@ export function createAtriaAppShell({
         if (scroll) active.scrollIntoView?.({ block: 'nearest' });
     }
 
-    function renderCommands() {
+    function renderCommands({ preserveSelection = false } = {}) {
+        const selectedId = preserveSelection ? commandResults[activeCommandIndex]?.dataset.atriaCommandId : null;
         const coverageOpen = Boolean(searchStatus.querySelector('details')?.open);
         searchStatus.replaceChildren();
         const status = registry.getSearchStatus?.();
+        if (commandError) {
+            const failure = element(documentRef, 'p', 'atria-command-error', commandError);
+            failure.setAttribute('role', 'alert'); searchStatus.append(failure);
+        }
         if (status?.loading) searchStatus.append(element(documentRef, 'span', '', tl('Refreshing search…')));
         if (status?.failures?.length) {
             searchStatus.append(element(documentRef, 'span', '', tl('Some results unavailable')));
-            const retry = buttonElement(documentRef, 'atria-command-cancel', tl('Retry'));
-            retry.textContent = tl('Retry');
-            retry.addEventListener('click', () => { void status.retry(); });
-            searchStatus.append(retry);
+            for (const failure of status.failures) {
+                const row = element(documentRef, 'div', 'atria-command-source-failure');
+                row.append(element(documentRef, 'span', '', [tl(failure.domain), failure.owner, failure.message].filter(Boolean).join(' · ')));
+                const retry = buttonElement(documentRef, 'atria-command-cancel', `${tl('Retry')} · ${tl(failure.domain)}`);
+                retry.textContent = tl('Retry');
+                retry.disabled = Boolean(status.sources?.find(source => source.domain === failure.domain)?.loading);
+                retry.addEventListener('click', () => { void status.retry(failure.domain, failure.owner); });
+                row.append(retry); searchStatus.append(row);
+            }
         }
         if (status?.domains) {
             const details = element(documentRef, 'details');
             details.open = coverageOpen;
             details.append(element(documentRef, 'summary', '', tl('Search coverage')));
             details.append(element(documentRef, 'p', '', status.domains.map(tl).join(' · ')));
-            for (const failure of status.failures || []) details.append(element(documentRef, 'p', '', [tl(failure.domain), failure.owner, failure.message].filter(Boolean).join(' · ')));
+            for (const source of status.sources || []) if (source.loading) details.append(element(documentRef, 'p', '', `${tl(source.domain)} · ${tl('Refreshing search…')}`));
             searchStatus.append(details);
         }
         commandList.replaceChildren();
@@ -720,32 +750,37 @@ export function createAtriaAppShell({
                     if (activeCommandIndex !== index) setActiveCommand(index, { scroll: false });
                 });
                 button.addEventListener('click', async () => {
+                    if (button.disabled) return;
+                    button.disabled = true;
+                    searchOrigin = navigationAuthority.getRoute();
                     closeCommand({ restoreFocus: false });
                     try {
                         await registry.execute(command.id, commandContext());
+                        searchDestination = navigationAuthority.getRoute();
+                        if (JSON.stringify(searchDestination) !== JSON.stringify(searchOrigin)) title.focus({ preventScroll: true });
+                        else openCommand({ preserveError: true });
                     } catch (error) {
-                        console.error('[atria-shell] Command execution failed', {
-                            command: command.id,
-                            error,
-                        });
-                    }
+                        commandError = `${tl('Could not open result. Refresh this source or choose another result.')} ${String(error?.message || error)}`;
+                        openCommand({ preserveError: true });
+                    } finally { button.disabled = false; }
                 });
                 section.append(button);
                 commandResults.push(button);
             }
             commandList.append(section);
         }
-        setActiveCommand(Math.min(activeCommandIndex, commandResults.length - 1), { scroll: false });
+        const preserved = commandResults.findIndex(button => button.dataset.atriaCommandId === selectedId);
+        setActiveCommand(preserved >= 0 ? preserved : 0, { scroll: false });
     }
 
-    function openCommand() {
+    function openCommand({ preserveError = false } = {}) {
         if (commandOpen) return false;
         closeMenu();
         commandOpen = true;
+        if (!preserveError) commandError = '';
         commandReturnFocus = documentRef.activeElement;
         commandSurface.hidden = false;
-        activeCommandIndex = 0;
-        documentRef.dispatchEvent(new windowRef.CustomEvent('atria-command-open'));
+        documentRef.dispatchEvent(new windowRef.CustomEvent('atria-command-open', { detail: { refresh: !preserveError } }));
         renderCommands();
         queueMicrotask(() => commandInput.focus());
         return true;
@@ -755,7 +790,6 @@ export function createAtriaAppShell({
         if (!commandOpen) return false;
         commandOpen = false;
         commandSurface.hidden = true;
-        commandInput.value = '';
         commandInput.removeAttribute('aria-activedescendant');
         const target = commandReturnFocus;
         commandReturnFocus = null;
@@ -774,6 +808,7 @@ export function createAtriaAppShell({
         renderCommands();
     });
     commandInput.addEventListener('keydown', event => {
+        if (event.isComposing || event.keyCode === 229) return;
         if (event.key === 'Escape') {
             event.preventDefault();
             closeCommand();
@@ -792,7 +827,7 @@ export function createAtriaAppShell({
     });
     commandPanel.addEventListener('keydown', event => {
         if (event.key !== 'Tab') return;
-        const focusable = [commandInput, commandCancel].filter(node => node.offsetParent !== null || node === commandInput);
+        const focusable = [commandInput, commandCancel, ...searchStatus.querySelectorAll('button:not(:disabled), summary')];
         const index = focusable.indexOf(documentRef.activeElement);
         event.preventDefault();
         const next = focusable[(index + (event.shiftKey ? -1 : 1) + focusable.length) % focusable.length] || commandInput;
@@ -806,10 +841,11 @@ export function createAtriaAppShell({
     const menuItems = [];
     function openMenu() {
         if (menuOpen) return false;
+        closeCommand({ restoreFocus: false });
         menuOpen = true;
         menuLayer.hidden = false;
         menuButton.setAttribute('aria-expanded', 'true');
-        queueMicrotask(() => menuItems[0]?.focus());
+        queueMicrotask(() => menuItems.find(item => !item.disabled)?.focus());
         return true;
     }
 
@@ -828,17 +864,19 @@ export function createAtriaAppShell({
     });
     menuScrim.addEventListener('click', () => closeMenu({ restoreFocus: true }));
     menu.addEventListener('keydown', event => {
-        const index = menuItems.indexOf(documentRef.activeElement);
+        const available = menuItems.filter(item => !item.disabled);
+        const index = available.indexOf(documentRef.activeElement);
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault();
             const step = event.key === 'ArrowDown' ? 1 : -1;
-            menuItems[(index + step + menuItems.length) % menuItems.length]?.focus();
+            available[(index + step + available.length) % available.length]?.focus();
         } else if (event.key === 'Escape') {
             event.preventDefault();
             event.stopPropagation();
             closeMenu({ restoreFocus: true });
         } else if (event.key === 'Tab') {
-            closeMenu();
+            event.preventDefault();
+            available[(index + (event.shiftKey ? -1 : 1) + available.length) % available.length]?.focus();
         }
     });
 
@@ -1027,6 +1065,18 @@ export function createAtriaAppShell({
         utilityButtons.set(utility.id, button);
     }
 
+    const domainHeading = element(documentRef, 'div', 'atria-shell-menu__heading', tl('Workspaces'));
+    menu.append(domainHeading);
+    for (const domain of ATRIA_PRIMARY_DOMAINS) {
+        const item = buttonElement(documentRef, 'atria-shell-menu__item', tl(domain.label));
+        item.setAttribute('role', 'menuitem');
+        item.dataset.atriaPrimaryShortcut = domain.id;
+        item.append(createAtriaIcon(documentRef, domain.glyph, { size: 20 }), element(documentRef, 'span', '', tl(domain.label)));
+        item.addEventListener('click', () => navigate(domain.id, { reason: 'global-navigation' }));
+        menu.append(item); menuItems.push(item);
+    }
+    menu.append(element(documentRef, 'div', 'atria-shell-menu__heading', tl('Utilities')));
+
     for (const utilityId of MENU_UTILITIES) {
         const utility = ATRIA_GLOBAL_UTILITIES.find(item => item.id === utilityId);
         if (!utility) continue;
@@ -1059,7 +1109,7 @@ export function createAtriaAppShell({
     }
 
     const unsubscribeRegistry = registry.subscribe(() => {
-        if (commandOpen) renderCommands();
+        if (commandOpen) renderCommands({ preserveSelection: true });
     });
 
     const unsubscribeNavigation = navigationAuthority.subscribe((state) => {
@@ -1068,6 +1118,10 @@ export function createAtriaAppShell({
             lastRouteSignature = routeSignature;
             closeMenu();
             updateDomainPresentation(state.route);
+            if (searchOrigin && searchDestination && JSON.stringify(state.route) === JSON.stringify(searchOrigin)) {
+                searchOrigin = null; searchDestination = null;
+                queueMicrotask(() => { if (!disposed) openCommand(); });
+            }
         }
         updateContextPresentation(state.context, environment.get());
     });
@@ -1154,6 +1208,7 @@ export function createAtriaAppShell({
             closeCommand({ restoreFocus: false });
             closeSheet();
             dockObserver?.disconnect();
+            readingObserver?.disconnect();
             focusObserver?.disconnect();
             largeTitleObserver?.disconnect();
             largeTitles.clear();

@@ -15,6 +15,7 @@ import {
 } from './library-runtime-workspaces.js';
 import { formatShellText, translateShellText } from './localization.js';
 import { createProductSearchIndex } from './product-search.js';
+import { installAtriaWorkspaceLeaveGuard } from './workspace-leave-guard.js';
 
 function createLocalizedStatePanel(documentRef, kind, options = {}) {
     return createAtriaStatePanel(documentRef, kind, {
@@ -264,7 +265,8 @@ export function createAtriaWorkspaceHost({
     let lastRouteSignature = JSON.stringify(navigation.getRoute());
     const commandDisposers = [];
     let productSearch = null;
-    const refreshSearchOnOpen = () => { void productSearch?.refresh?.().catch(error => console.warn('[atria-shell] Search refresh failed', error)); };
+    const leaveGuard = installAtriaWorkspaceLeaveGuard({ document: documentRef, window: windowRef, navigation, shell });
+    const refreshSearchOnOpen = event => { if (event.detail?.refresh === false) return; void productSearch?.refresh?.().catch(error => console.warn('[atria-shell] Search refresh failed', error)); };
     documentRef.addEventListener('atria-command-open', refreshSearchOnOpen);
 
     function contextState() {
@@ -753,6 +755,7 @@ export function createAtriaWorkspaceHost({
             documentRef.removeEventListener('click', onLegacyClick, true);
             documentRef.removeEventListener('atria-command-open', refreshSearchOnOpen);
             unsubscribeNavigation?.();
+            leaveGuard.dispose();
             productSearch?.dispose?.();
             productSearch = null;
             for (const dispose of commandDisposers.splice(0)) dispose();

@@ -65,7 +65,7 @@ function readUrlRoute(windowRef) {
         return {
             domain,
             child: childId
-                ? { id: childId, label: childId, kind: 'workspace' }
+                ? { id: childId, label: childId, kind: /^(work|world|knowledge|project|resource|orchestration):/.test(childId) ? 'detail' : 'workspace' }
                 : null,
         };
     } catch {
@@ -126,6 +126,7 @@ export function createAtriaNavigationAuthority({
     }
 
     const listeners = new Set();
+    const routeGuards = new Set();
     let disposed = false;
 
     const historyState = windowRef.history.state?.[HISTORY_KEY];
@@ -188,6 +189,7 @@ export function createAtriaNavigationAuthority({
             && sameArray(route.breadcrumb, normalized.breadcrumb);
         if (same) return route;
 
+        if (![...routeGuards].every(guard => guard(normalized, route, reason) !== false)) return route;
         route = normalized;
         if (history === 'push') {
             historyIndex += 1;
@@ -280,14 +282,22 @@ export function createAtriaNavigationAuthority({
         if (disposed) return;
         const state = event?.state?.[HISTORY_KEY];
         const url = readUrlRoute(windowRef);
-        historyIndex = Number.isInteger(state?.index) && state.index >= 0
+        const previousIndex = historyIndex;
+        const nextIndex = Number.isInteger(state?.index) && state.index >= 0
             ? state.index
             : 0;
-        route = freezeRoute(
+        const nextRoute = freezeRoute(
             state?.domain || url.domain || initialDomain,
             state?.child || url.child,
             state?.breadcrumb,
         );
+        if (![...routeGuards].every(guard => guard(nextRoute, route, 'popstate') !== false)) {
+            // Restore the rejected history entry before any controller is disposed.
+            if (previousIndex !== nextIndex) windowRef.history.go(previousIndex - nextIndex);
+            else writeHistory('replace');
+            return;
+        }
+        historyIndex = nextIndex; route = nextRoute;
         notify('popstate');
     }
 
@@ -306,6 +316,10 @@ export function createAtriaNavigationAuthority({
         getContext: () => context,
         getState,
         canGoBackWithinAtria: () => historyIndex > 0,
+        addRouteGuard(guard) {
+            routeGuards.add(guard);
+            return () => routeGuards.delete(guard);
+        },
         subscribe(listener) {
             if (typeof listener !== 'function') {
                 throw new TypeError('Navigation listener must be a function');
@@ -317,6 +331,7 @@ export function createAtriaNavigationAuthority({
             if (disposed) return;
             disposed = true;
             listeners.clear();
+            routeGuards.clear();
             windowRef.removeEventListener?.('popstate', onPopState);
         },
     });

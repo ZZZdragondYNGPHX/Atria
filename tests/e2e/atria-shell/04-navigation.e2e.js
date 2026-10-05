@@ -52,6 +52,97 @@ async function openShell(page, viewport) {
     return root;
 }
 
+test('A1 floating frame, top navigation, draft Back guard and returned search query', async ({ page }) => {
+    const root = await openShell(page, { width: 390, height: 844 });
+    await page.evaluate(() => {
+        const stage = window.Atria.shell.getShell().slots.stage;
+        const story = document.createElement('section'); story.dataset.atriaProductPlay = 'true'; story.id = 'a1-reading-fixture';
+        stage.append(story);
+    });
+    await expect(root).toHaveAttribute('data-atria-reading', 'true');
+    await expect(root.locator('.atria-bottom-navigation')).toBeHidden();
+    await expect(root.locator('.atria-toolbar__menu')).toBeVisible();
+    await root.locator('.atria-toolbar__menu').click();
+    await expect(root.locator('[data-atria-primary-shortcut]')).toHaveCount(5);
+    await root.locator('[data-atria-primary-shortcut="library"]').click();
+    await expect(page).toHaveURL(/atriaRoute=library/);
+    await expect(root.locator('.atria-bottom-navigation')).toBeVisible();
+    await root.locator('[data-atria-utility="command"]').click();
+    await root.locator('.atria-command-input').fill('runtime');
+    await root.locator('[data-atria-command-id="navigate.runtime"]').click();
+    await expect(page).toHaveURL(/atriaRoute=runtime/);
+    await page.goBack();
+    await expect(root.locator('.atria-command-input')).toBeVisible();
+    await expect(root.locator('.atria-command-input')).toHaveValue('runtime');
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => {
+        const editor = document.createElement('section'); editor.className = 'atri-library-revision-editor';
+        editor.innerHTML = '<input aria-label="A1 draft" value="Original">';
+        window.Atria.shell.getShell().slots.workspace.append(editor);
+    });
+    await root.getByRole('textbox', { name: 'A1 draft' }).fill('Keep this draft');
+    page.once('dialog', dialog => dialog.dismiss());
+    await page.goBack();
+    await expect(page).toHaveURL(/atriaRoute=library/);
+    await expect(root.getByRole('textbox', { name: 'A1 draft' })).toHaveValue('Keep this draft');
+    await page.setViewportSize({ width: 320, height: 720 });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
+    await root.locator('.atria-toolbar__menu').click();
+    await expect(root.locator('.atria-shell-menu')).toBeVisible();
+    await page.screenshot({ path: '.e2e-scratch/a1-compact-navigation.png' });
+    await page.keyboard.press('Escape');
+    page.once('dialog', dialog => dialog.accept());
+    await root.locator('.atria-bottom-navigation [data-atria-domain="play"]').click();
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(root).toHaveAttribute('data-atria-viewport', 'expanded');
+    const frame = await root.evaluate(node => ({
+        gap: getComputedStyle(node).gap,
+        radius: getComputedStyle(node.querySelector('.atria-focus-area')).borderRadius,
+        overflow: node.scrollWidth > node.clientWidth,
+    }));
+    expect(frame).toMatchObject({ gap: '12px', radius: '20px', overflow: false });
+    await page.screenshot({ path: '.e2e-scratch/a1-expanded-frame.png' });
+});
+
+test('A1 global utilities reuse learning, preferences and scoped diagnostic evidence', async ({ page }) => {
+    const root = await openShell(page, { width: 390, height: 844 });
+    const openUtility = async id => {
+        await root.locator('.atria-toolbar__menu').click();
+        await root.locator(`[data-atria-utility-shortcut="${id}"]`).click();
+    };
+    await openUtility('learning');
+    await expect(root.locator('.atri-learning-center')).toBeVisible();
+    await root.locator('.atri-learning-center').getByRole('button', { name: 'Close guide', exact: true }).click();
+    await page.evaluate(() => { window.__a1LanguageControl = document.getElementById('ui_language_select'); });
+    await openUtility('settings');
+    await expect(root.locator('#font_scale')).toBeVisible();
+    expect(await page.evaluate(() => window.__a1LanguageControl === document.getElementById('ui_language_select'))).toBe(true);
+    await openUtility('diagnostics');
+    const diagnostics = root.locator('.atriaLogsWorkspace');
+    await expect(diagnostics).toBeVisible();
+    for (const mode of ['startup', 'expert', 'guided']) {
+        await diagnostics.locator(`[data-mode="${mode}"].atriaLogsModeButton`).click();
+        await expect(diagnostics).toHaveAttribute('data-mode', mode);
+    }
+    await diagnostics.locator('.atriaLogsReportNow').click();
+    await expect(diagnostics.locator('.atriaLogsCopySummary')).toBeVisible();
+    await page.evaluate(() => {
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('Clipboard unavailable for A1'); } } });
+    });
+    const exported = page.waitForResponse(response => response.url().includes('/api/diagnostics/incidents/') && response.url().endsWith('/export') && response.status() === 200);
+    await diagnostics.locator('.atriaLogsCopySummary').click(); await exported;
+    await expect(diagnostics.locator('.atriaLogsFeedback')).toContainText('Clipboard unavailable for A1');
+    await expect(diagnostics.locator('.atriaLogsFeedback')).toHaveAttribute('data-error', 'true');
+    await diagnostics.locator('.atriaLogsModeButton[data-mode="expert"]').click();
+    await diagnostics.locator('.atriaLogsSource').selectOption('frontend');
+    await diagnostics.locator('.atriaLogsClear').click();
+    const review = page.locator('dialog.popup[open]');
+    await expect(review).toContainText('frontend raw logs');
+    await review.locator('.popup-button-cancel').click();
+    await expect(review).toBeHidden();
+    await page.screenshot({ path: '.e2e-scratch/a1-compact-diagnostics.png' });
+});
+
 test.describe('R7D Desktop / Mobile Navigation', () => {
     test('320px search and utility-menu focus preserve viewport alignment across theme changes', async ({ page }) => {
         const root = await openShell(page, { width: 320, height: 844 });

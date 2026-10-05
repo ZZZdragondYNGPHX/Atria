@@ -1,4 +1,6 @@
 export const SHELL_TEXT_KEYS = Object.freeze({
+    'Leave this workspace and discard unsaved changes? Cancel to keep editing.': 'atria.workspace.leaveDraft',
+    'Could not open result. Refresh this source or choose another result.': 'atria.search.openFailed',
     'Gateway response mode': 'atria.runtime.gateway.0',
     'Use generation profile': 'atria.runtime.gateway.1',
     'Always request streaming': 'atria.runtime.gateway.2',

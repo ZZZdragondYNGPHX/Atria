@@ -16,6 +16,9 @@ export function mountKnowledgeEditor({ document: doc, root, value, initialEntryI
     let selected = Math.max(0, draft.entries.findIndex(entry => entry.knowledgeEntryId === initialEntryId)); let editing = Boolean(initialEntryId) && openEntry; let entryFields; let browser;
     let advanced = false; let source = ''; let openSections = new Set(['Discovery', 'Delivery', 'Lifecycle']);
     const shell = el(doc, 'section', 'atri-knowledge-editor', undefined, root);
+    let initialDraft = JSON.stringify(draft);
+    const trackDraft = () => queueMicrotask(() => { shell.dataset.atriaDraftDirty = String(JSON.stringify(draft) !== initialDraft || (advanced && source !== JSON.stringify(draft, null, 2))); });
+    for (const event of ['input', 'change', 'click']) shell.addEventListener(event, trackDraft);
     const controls = el(doc, 'div', 'atri-library-actions', undefined, shell);
     const fields = el(doc, 'div', 'atri-knowledge-fields', undefined, shell);
     const status = el(doc, 'div', '', undefined, shell);
@@ -76,6 +79,7 @@ export function mountKnowledgeEditor({ document: doc, root, value, initialEntryI
         input(parent, 'Exclusive group', relations.exclusiveGroup || '', value => { if (value) relations.exclusiveGroup = value; else delete relations.exclusiveGroup; });
     }
     function render() {
+        trackDraft();
         controls.replaceChildren(); fields.replaceChildren(); status.replaceChildren();
         action(doc, controls, advanced ? 'Fields' : 'Source', () => {
             try {
@@ -132,7 +136,7 @@ export function mountKnowledgeEditor({ document: doc, root, value, initialEntryI
             } catch (error) { showError(error); } finally { fields.inert = false; }
         }, { primary: true });
     }
-    render();
+    render(); initialDraft = JSON.stringify(draft);
     if (initialAction === 'delete') queueMicrotask(() => { void deleteSelectedEntry().catch(showError); });
     return { getDraft: () => clone(draft) };
 }

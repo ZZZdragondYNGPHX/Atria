@@ -505,6 +505,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
             try {
                 await runtimeRequest('/configuration/' + section, { method: 'PUT', body: { ...serialize(), displayName: name.value }, signal: controller.signal });
                 saved = true;
+                form.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
                 if (disposed || editorToken !== editorSequence) return;
                 status.replaceChildren();
                 notice('Saved. Refreshing…', status);

@@ -43,38 +43,17 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
         resultDisposers.push(registry.register({ ...command, literalTitle: true }));
     }
 
-    async function refresh() {
-        const token = ++revision;
-        const failures = [];
-        registry.setSearchStatus?.({ loading: true, domains: PRODUCT_SEARCH_DOMAINS, failures: [], retry: refresh });
-        const sessions = Promise.resolve().then(() => productClient.listSessions());
-        const knowledge = Promise.resolve().then(() => productClient.listKnowledge());
-        async function children(items, load, domain) {
-            const results = await Promise.allSettled(items.map(item => Promise.resolve().then(() => load(item))));
-            return results.flatMap((entry, index) => {
-                if (entry.status === 'fulfilled') return entry.value;
-                failures.push({ domain, owner: items[index].sessionId || items[index].knowledgeBase?.knowledgeBaseId, message: String(entry.reason?.message || entry.reason) });
-                return [];
-            });
-        }
-        const sources = [
-            () => productClient.listWorks(), () => productClient.listWorlds(), () => knowledge,
-            () => productClient.listProjects(), loadRuntime, loadResources, () => sessions,
-            async () => children(await sessions, async session => {
-                const detail = await productClient.getSession(session.sessionId);
-                return (detail.saves || []).map(save => ({ ...save, sessionTitle: session.displayTitle, sessionId: session.sessionId }));
-            }, 'SavePoints'),
-            async () => children(await knowledge, async item => {
-                const base = item.knowledgeBase;
-                if (!base.currentRevisionId) return [];
-                const detail = await productClient.getKnowledge(base.knowledgeBaseId, base.currentRevisionId);
-                return (detail.entries || []).map(entry => ({ ...entry, knowledgeBaseId: base.knowledgeBaseId, revisionId: base.currentRevisionId }));
-            }, 'Knowledge entries'),
-            loadSkills, loadOrchestration,
-        ];
-        const result = await Promise.allSettled(sources.map(load => Promise.resolve().then(load)));
-        if (disposed || token !== revision) return false;
+    const sources = PRODUCT_SEARCH_DOMAINS.map(domain => ({ domain, token: 0, loading: false, result: { status: 'fulfilled', value: [] }, failures: [] }));
+    let sessionOwners = [], knowledgeOwners = [];
 
+    function publish() {
+        if (disposed) return;
+        if (registry.batchUpdate) registry.batchUpdate(publishResults);
+        else publishResults();
+    }
+
+    function publishResults() {
+        const result = sources.map(source => source.result);
         clearResults();
         const [works, worlds, knowledgeBases, projects] = result.map(fulfilled);
 
@@ -172,11 +151,101 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
             add({ id: 'orchestration.' + encodeURIComponent(item.id), title: item.name, description: 'Orchestration', group: 'Agents', keywords: ['orchestration', item.mode, item.id],
                 run: () => host.openOrchestration(item.id, item.name) });
         }
-        result.forEach((entry, index) => {
-            if (entry.status === 'rejected') failures.push({ domain: PRODUCT_SEARCH_DOMAINS[index], message: String(entry.reason?.message || entry.reason) });
+        registry.setSearchStatus?.({
+            loading: sources.some(source => source.loading), domains: PRODUCT_SEARCH_DOMAINS,
+            sources: sources.map(({ domain, loading }) => ({ domain, loading })),
+            failures: sources.flatMap(source => source.failures), retry,
         });
-        registry.setSearchStatus?.({ loading: false, domains: PRODUCT_SEARCH_DOMAINS, failures, retry: refresh });
+    }
+
+    async function loadChildren(items, load, domain) {
+        const results = await Promise.allSettled(items.map(item => Promise.resolve().then(() => load(item))));
+        const failures = [];
+        const value = results.flatMap((entry, index) => {
+            if (entry.status === 'fulfilled') return entry.value;
+            failures.push({ domain, owner: items[index].sessionId || items[index].knowledgeBase?.knowledgeBaseId, message: String(entry.reason?.message || entry.reason) });
+            return [];
+        });
+        return { value, failures };
+    }
+
+    const childLoaders = {
+        SavePoints: async session => {
+            const detail = await productClient.getSession(session.sessionId);
+            return (detail.saves || []).map(save => ({ ...save, sessionTitle: session.displayTitle, sessionId: session.sessionId }));
+        },
+        'Knowledge entries': async item => {
+            const base = item.knowledgeBase;
+            if (!base.currentRevisionId) return [];
+            const detail = await productClient.getKnowledge(base.knowledgeBaseId, base.currentRevisionId);
+            return (detail.entries || []).map(entry => ({ ...entry, knowledgeBaseId: base.knowledgeBaseId, revisionId: base.currentRevisionId }));
+        },
+    };
+    const loaders = [
+        () => productClient.listWorks(), () => productClient.listWorlds(), () => productClient.listKnowledge(),
+        () => productClient.listProjects(), loadRuntime, loadResources, () => productClient.listSessions(),
+        null, null, loadSkills, loadOrchestration,
+    ];
+
+    async function loadSource(index, load, { owner = null, batch = revision } = {}) {
+        const source = sources[index], token = ++source.token;
+        source.loading = true;
+        publish();
+        try {
+            const loaded = await load();
+            if (disposed || batch !== revision || token !== source.token) return false;
+            const child = Boolean(childLoaders[source.domain]);
+            const value = child ? loaded.value : loaded;
+            if (index === 6) sessionOwners = value;
+            if (index === 2) knowledgeOwners = value;
+            // Retrying one owner only replaces that owner's projection.
+            const ownerKey = source.domain === 'SavePoints' ? 'sessionId' : 'knowledgeBaseId';
+            source.result = { status: 'fulfilled', value: owner
+                ? [...fulfilled(source.result).filter(item => item[ownerKey] !== owner), ...value] : value };
+            source.failures = [...(owner ? source.failures.filter(item => item.owner !== owner) : []), ...(child ? loaded.failures : [])];
+        } catch (error) {
+            if (disposed || batch !== revision || token !== source.token) return false;
+            // Successful sources stay available; a failed source cannot offer stale results.
+            if (!owner) source.result = { status: 'rejected', reason: error };
+            source.failures = [...(owner ? source.failures.filter(item => item.owner !== owner) : []), { domain: source.domain, ...(owner ? { owner } : {}), message: String(error?.message || error) }];
+            if (index === 6) sessionOwners = [];
+            if (index === 2) knowledgeOwners = [];
+        }
+        source.loading = false;
+        publish();
         return true;
+    }
+
+    async function refresh() {
+        const batch = ++revision;
+        const sessions = Promise.resolve().then(loaders[6]);
+        const knowledge = Promise.resolve().then(loaders[2]);
+        const tasks = sources.map((source, index) => loadSource(index,
+            index === 6 ? () => sessions : index === 2 ? () => knowledge
+                : index === 7 ? async () => loadChildren(await sessions, childLoaders.SavePoints, source.domain)
+                    : index === 8 ? async () => loadChildren(await knowledge, childLoaders['Knowledge entries'], source.domain) : loaders[index], { batch }));
+        await Promise.all(tasks);
+        return !disposed && batch === revision;
+    }
+
+    async function retry(domain, owner = null) {
+        if (disposed) return false;
+        if (!domain) {
+            const failures = sources.filter(source => source.failures.length);
+            return (await Promise.all(failures.map(source => retry(source.domain)))).every(Boolean);
+        }
+        const index = PRODUCT_SEARCH_DOMAINS.indexOf(domain), source = sources[index];
+        if (!source || source.loading) return false;
+        const childLoad = childLoaders[domain];
+        let load = loaders[index];
+        if (childLoad) {
+            const owners = domain === 'SavePoints' ? sessionOwners : knowledgeOwners;
+            const selected = owner ? owners.filter(item => (item.sessionId || item.knowledgeBase?.knowledgeBaseId) === owner) : owners;
+            // If discovery failed, retry only this child's prerequisite source.
+            load = async () => loadChildren(selected.length || owners.length ? selected
+                : await loaders[domain === 'SavePoints' ? 6 : 2](), childLoad, domain);
+        }
+        return loadSource(index, load, { owner });
     }
 
     function packageIdForProject(item) {
@@ -187,6 +256,7 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
 
     return Object.freeze({
         refresh,
+        retry,
         dispose() {
             if (disposed) return;
             disposed = true;

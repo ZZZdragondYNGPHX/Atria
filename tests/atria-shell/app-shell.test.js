@@ -230,3 +230,43 @@ describe('R7A Atria AppShell foundation', () => {
         shell.destroy();
     });
 });
+
+
+describe('A1 immersive navigation and search recovery', () => {
+    beforeEach(() => {
+        document.body.replaceChildren(); window.history.replaceState(null, '', '/'); setViewport(390, 844);
+    });
+    test('reading hides tabs independently of keyboard and the top menu reaches every domain', async () => {
+        const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry() });
+        const story = document.createElement('section'); story.dataset.atriaProductPlay = 'true'; shell.slots.stage.append(story);
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(shell.root.dataset.atriaReading).toBe('true');
+        expect(shell.root.querySelector('.atria-bottom-navigation').hidden).toBe(true);
+        const trigger = shell.root.querySelector('.atria-toolbar__menu'); trigger.click();
+        expect(shell.root.querySelectorAll('[data-atria-primary-shortcut]')).toHaveLength(5);
+        shell.root.querySelector('[data-atria-primary-shortcut="library"]').click();
+        expect(shell.getRoute().domain).toBe('library');
+        expect(shell.root.dataset.atriaReading).toBe('false');
+        expect(shell.root.querySelector('.atria-bottom-navigation').hidden).toBe(false);
+        trigger.click(); await Promise.resolve();
+        document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect(document.activeElement).toBe(trigger);
+        shell.destroy();
+    });
+    test('keeps the query and exposes failed result feedback with keyboard-accessible source retry', async () => {
+        const registry = createCommandRegistry();
+        registry.register({ id: 'missing', title: 'Missing story', group: 'Play', run: async () => { throw new Error('gone'); } });
+        const retry = jest.fn(); registry.setSearchStatus({ domains: ['Works'], failures: [{ domain: 'Works', message: 'offline' }], retry });
+        const shell = createAtriaAppShell({ document, window, registry }); shell.openCommand();
+        const input = shell.root.querySelector('.atria-command-input'); input.value = 'Missing'; input.dispatchEvent(new Event('input'));
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true }));
+        expect(shell.isCommandOpen()).toBe(true);
+        shell.root.querySelector('[data-atria-command-id="missing"]').click();
+        await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+        expect(shell.isCommandOpen()).toBe(true); expect(input.value).toBe('Missing');
+        expect(shell.root.querySelector('[role="alert"]').textContent).toContain('gone');
+        shell.root.querySelector('.atria-command-source-failure button').click(); expect(retry).toHaveBeenCalledWith('Works', undefined);
+        shell.closeCommand(); shell.openCommand(); expect(input.value).toBe('Missing');
+        shell.destroy();
+    });
+});

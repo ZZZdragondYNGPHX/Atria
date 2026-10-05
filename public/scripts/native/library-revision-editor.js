@@ -39,6 +39,7 @@ export function mountLibraryRevisionEditor({ document: doc, root, detail, knowle
                 try {
                     const input = { baseRevisionId, content: draft };
                     const saved = await (saveRevision ? saveRevision(input) : knowledge ? client.commitKnowledgeRevision(resource.knowledgeBaseId, input) : client.commitWorldRevision(resource.worldId, input));
+                    section.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
                     save.remove(); back.remove();
                     await onSaved(saved);
                 } catch (error) { feedback(doc, review, libraryError(error), true); } finally { close.disabled = back.disabled = false; }

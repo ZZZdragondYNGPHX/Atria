@@ -57,3 +57,14 @@ describe('Atria command registry', () => {
         await expect(registry.execute('missing')).rejects.toThrow('Unknown Atria command');
     });
 });
+
+
+test('A1 exact domain query wins over resource substring matches and updates notify atomically', () => {
+    const registry = createCommandRegistry(), listener = jest.fn(); registry.subscribe(listener);
+    registry.batchUpdate(() => {
+        registry.register({ id: 'skill.runtime', title: 'atri-native-runtime-authoring', group: 'Library', run() {} });
+        registry.register({ id: 'navigate.runtime', title: 'Go to Runtime', group: 'Navigation', run() {} });
+    });
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(registry.search('runtime')[0].id).toBe('navigate.runtime');
+});

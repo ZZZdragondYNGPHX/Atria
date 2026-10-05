@@ -42,6 +42,7 @@ function scoreCommand(command, query) {
     const title = normalizeText(command.title);
     const translated = normalizeText([command.literalTitle ? '' : translateShellText(command.title), command.literalDescription ? '' : translateShellText(command.description), translateShellText(command.group)].join(' '));
     const id = normalizeText(command.id);
+    if (id === `navigate.${query}`) return 120;
     const description = normalizeText(command.description);
     const group = normalizeText(command.group);
     const words = query.split(/\s+/).filter(Boolean);
@@ -66,8 +67,10 @@ export function createCommandRegistry() {
     let searchStatus = null;
     const commands = new Map();
     const listeners = new Set();
+    let batchDepth = 0, notificationPending = false;
 
     function notify() {
+        if (batchDepth) { notificationPending = true; return; }
         for (const listener of listeners) {
             try {
                 listener();
@@ -152,6 +155,13 @@ export function createCommandRegistry() {
     }
 
     return Object.freeze({
+        batchUpdate(operation) {
+            batchDepth++;
+            try { return operation(); } finally {
+                batchDepth--;
+                if (!batchDepth && notificationPending) { notificationPending = false; notify(); }
+            }
+        },
         setSearchStatus(value) { searchStatus = value; notify(); },
         getSearchStatus: () => searchStatus,
         register,

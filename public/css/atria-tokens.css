@@ -55,6 +55,9 @@
     /* Typography */
     --atri-font-sans: system-ui, -apple-system, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", "Noto Sans", sans-serif;
     --atri-font-display: system-ui, -apple-system, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", "Noto Sans", sans-serif;
+    --atri-font-serif: "Iowan Old Style", "Palatino Linotype", "Noto Serif CJK SC", "Songti SC", "SimSun", Georgia, serif;
+    --atri-frame-gap: 12px;
+    --atri-frame-inset: 12px;
     --atri-font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Menlo, Consolas, "Noto Sans Mono", monospace;
     --atri-base: var(--mainFontSize, 15px);
     --atri-text-large-title: calc(var(--atri-base) * 2.133);
