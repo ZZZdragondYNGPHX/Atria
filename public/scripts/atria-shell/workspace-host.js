@@ -469,27 +469,19 @@ export function createAtriaWorkspaceHost({
         return navigation.navigate(domain, { history, reason });
     }
 
+    function navigateToChild(domain, child, options) {
+        if (navigation.getRoute().domain !== domain) return navigation.navigate(domain, { ...options, child });
+        return navigation.navigateChild(child, options);
+    }
+
     function openAgentSection(section = 'home') {
         const normalized = String(section || 'home').trim().toLowerCase();
-        if (navigation.getRoute().domain !== 'agents') {
-            navigation.navigate('agents', {
-                reason: 'workspace-agents',
-                history: 'push',
-            });
-        }
-
         if (normalized === 'home' || !AGENT_SECTION_LABELS[normalized]) {
-            if (navigation.getRoute().child) {
-                navigation.clearChild({
-                    history: 'push',
-                    reason: 'workspace-agents-home',
-                });
-            }
-            return navigation.getRoute();
+            return navigateToDomain('agents', { reason: 'workspace-agents-home' });
         }
 
         const id = normalized === 'diagnostics' ? 'agent-diagnostics' : normalized;
-        return navigation.navigateChild({
+        return navigateToChild('agents', {
             id,
             label: AGENT_SECTION_LABELS[normalized],
             kind: 'workspace',
@@ -524,20 +516,12 @@ export function createAtriaWorkspaceHost({
     }
 
     function openLibraryDetail(id, label, kind, reason) {
-        if (navigation.getRoute().domain !== 'library') {
-            navigation.navigate('library', {
-                reason: reason + '-domain',
-                history: 'push',
-            });
-        }
-        return navigation.navigateChild({
+        const child = {
             id,
             label: String(label || id),
             kind,
-        }, {
-            reason,
-            history: 'push',
-        });
+        };
+        return navigateToChild('library', child, { reason, history: 'push' });
     }
 
     function openLibraryWork(packageId, label = '') {
@@ -581,13 +565,11 @@ export function createAtriaWorkspaceHost({
     }
 
     function openSkill(scope, name) {
-        if (navigation.getRoute().domain !== 'play') navigation.navigate('play', { history: 'push', reason: 'workspace-skill-host' });
-        return navigation.navigateChild({ id: 'skills:' + encodeURIComponent(JSON.stringify({ scope, name })), label: 'Extensions', kind: 'workspace' }, { history: 'push', reason: 'workspace-skill' });
+        return navigateToChild('play', { id: 'skills:' + encodeURIComponent(JSON.stringify({ scope, name })), label: 'Extensions', kind: 'workspace' }, { history: 'push', reason: 'workspace-skill' });
     }
 
     function openOrchestration(presetId, label) {
-        if (navigation.getRoute().domain !== 'agents') navigation.navigate('agents', { history: 'push', reason: 'workspace-orchestration-domain' });
-        return navigation.navigateChild({ id: 'orchestration:' + encodeURIComponent(presetId), label, kind: 'detail' }, { history: 'push', reason: 'workspace-orchestration-preset' });
+        return navigateToChild('agents', { id: 'orchestration:' + encodeURIComponent(presetId), label, kind: 'detail' }, { history: 'push', reason: 'workspace-orchestration-preset' });
     }
 
     function openLibraryResource(ref, label = '') {
@@ -634,13 +616,7 @@ export function createAtriaWorkspaceHost({
             }
             return route;
         }
-        if (route.domain !== 'build') {
-            navigation.navigate('build', {
-                reason: 'workspace-build-domain',
-                history: 'push',
-            });
-        }
-        return navigation.navigateChild({
+        return navigateToChild('build', {
             id: `project:${id}`,
             label: String(label || 'Project'),
             kind: 'detail',
@@ -661,29 +637,9 @@ export function createAtriaWorkspaceHost({
             throw new Error(`Unknown Atria workspace utility: ${id}`);
         }
 
-        // Utilities are global surfaces, not children of whichever primary
-        // domain happened to launch/search them. Canonicalize their parent to
-        // the neutral Play host, then replace that same history entry with the
-        // utility child route. This prevents e.g. Settings searched from
-        // Agents from appearing as an Agents-owned page.
-        const route = navigation.getRoute();
-        if (route.domain !== 'play') {
-            navigation.navigate('play', {
-                reason: `workspace-utility-${utilityId}-host`,
-                history: 'push',
-            });
-            return navigation.navigateChild({
-                id: `utility.${utilityId}`,
-                label,
-                kind: 'workspace',
-            }, {
-                breadcrumb: [label],
-                reason: `workspace-utility-${utilityId}`,
-                history: 'replace',
-            });
-        }
-
-        return navigation.navigateChild({
+        // Global utilities belong to the neutral Play host. Commit the full
+        // destination together so a rejected leave preserves the current owner.
+        return navigateToChild('play', {
             id: `utility.${utilityId}`,
             label,
             kind: 'workspace',

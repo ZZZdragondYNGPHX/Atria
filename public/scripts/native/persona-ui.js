@@ -215,6 +215,12 @@ export function openPersonaSelector({ document: doc, runtime, client = nativePro
     }
     const close = () => { closed = true; dialog.close(); dialog.remove(); if (focus?.isConnected) focus.focus(); };
     dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
+    dialog.addEventListener('keydown', event => {
+        if (event.key !== 'Tab') return;
+        const controls = [...dialog.querySelectorAll('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), summary')].filter(control => control.getClientRects().length);
+        const first = controls[0], last = controls.at(-1);
+        if (!first) { event.preventDefault(); dialog.focus(); } else if (event.shiftKey && (doc.activeElement === first || !controls.includes(doc.activeElement))) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && (doc.activeElement === last || !controls.includes(doc.activeElement))) { event.preventDefault(); first.focus(); }
+    });
     action(doc, dialog, 'Cancel', close);
     const results = el(doc, 'div', 'atri-library-grouped-list', undefined, dialog);
     const selectExact = async selection => {

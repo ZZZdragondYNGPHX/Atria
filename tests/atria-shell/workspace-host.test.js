@@ -82,6 +82,39 @@ describe('R7G WorkspaceHost', () => {
         `;
     });
 
+    test('cross-domain destinations commit one history entry and a rejected leave never changes owner', async () => {
+        const navigation = createAtriaNavigationAuthority({ window });
+        const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry(), navigation });
+        const records = [];
+        const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters: Object.fromEntries(['library', 'agents', 'build', 'plugins', 'settings', 'runtime'].map(kind => [kind, makeAdapter(kind, records)])) });
+        const pushes = jest.spyOn(window.history, 'pushState');
+        try {
+            const targets = [['library', () => host.openLibraryWork('pinned-work')], ['library', () => host.openLibraryWorld('world')],
+                ['library', () => host.openLibraryPersona({ personaId: 'p', revisionId: 'r', contentIdentity: 'hash' })],
+                ['library', () => host.openKnowledgeEntry('kb', 'rev', 'entry', 'Lore')],
+                ['build', () => host.openBuild('project')], ['agents', () => host.openAgentSection('memory')],
+                ['agents', () => host.openOrchestration('preset', 'Director')], ['play', () => host.openSkill('user', 'skill')],
+                ['play', () => host.openUtility('settings')]];
+            for (const [domain, open] of targets) {
+                navigation.navigate('runtime'); await flushWorkspace(); pushes.mockClear();
+                open(); await flushWorkspace();
+                expect(pushes).toHaveBeenCalledTimes(1);
+                expect(navigation.getRoute().domain).toBe(domain);
+                expect(navigation.getRoute().child).not.toBeNull();
+            }
+            navigation.navigate('runtime'); await flushWorkspace(); pushes.mockClear();
+            const before = navigation.getRoute();
+            const guard = jest.fn(() => false), remove = navigation.addRouteGuard(guard);
+            for (const [_domain, open] of targets) {
+                guard.mockClear(); open();
+                expect(guard).toHaveBeenCalledTimes(1);
+                expect(navigation.getRoute()).toEqual(before);
+                expect(pushes).not.toHaveBeenCalled();
+            }
+            remove();
+        } finally { pushes.mockRestore(); host.dispose(); shell.destroy(); navigation.dispose(); }
+    });
+
     test('search deep links preserve entity identity and Native owners', async () => {
         const navigation = createAtriaNavigationAuthority({ window });
         const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry(), navigation });
