@@ -72,3 +72,7 @@ S15–S16 Skills/Plugins 复用原文件、scope、manifest、偏好和更新禁
 S20 第四 Library 分类、账户内 exact 搜索/详情、草稿与回执、CRUD/头像/归档/default/Used By 已接 PersonaRepo。S03 输入区打开 solo picker、保持草稿，消息显示接受时快照；S17 自己席位 picker 与独立宿主恢复控制已接，Shared 描述固定停用且无 owner solo 回退。S18 现有账户备份扩展 Persona manifest、来源冲突与默认独立 adoption 审阅。S04 Save v3 仍复用 A4a，未新增 save authority；S06 会话默认捕获保持 A4a exact 路径。
 
 C20.5/6/7/8 的新增本地证据进入同一 Record A4b；不把上述 checkpoint 当作 S00–S20/完整 V20 或真实设备验收。现有入口仅承诺支持范围；Shared 描述/高级 legacy 自动映射明确不提供。下一阶段 A5，不提前进入 B/F。
+
+## B1 Actors checkpoint
+
+S12 Actors 已替换专属常用字段、任意结构/高级提示词与单 Actor Source；空/非空均可达集合 Source。复用原 value editor 草稿、exact actorId 选择、project.save/Workspace/ChangeSet，不新增 Actor Library/Persona/头像 authority。Review 前拒绝顶层 unknown/legacy、重复 ID 和悬空 EntryPoint 引用，冲突可复制草稿再明确放弃重载；服务归一化和有限 graph 限制保持。canonical FS/HTTP/save/build 与 exact Session/Save、本地状态/中文窄屏证据见 [Record B1 display](../../../records/refactor/atria-immersive-workspace.md#stage-b1-actors--display-checkpoint)。Shared 描述停用；S07 World/Knowledge 展示未重构，下一 EntryPoints checkpoint 未开始。

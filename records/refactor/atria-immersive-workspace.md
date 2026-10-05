@@ -547,6 +547,58 @@ Actor 为项目内 `core.actor` / `project-source`；原 graph 节点 revision:n
 
 下一轮按 HANDOFF → index → actors-mapping 与其 delivery/coverage S12/S07/states/validation 依赖恢复，只实施 B1 Actors 展示与映射中相关缺口，复用原 controller/persistence。Actors 独立 checkpoint 实现/最小本地验证/commit/push 后刷新同一 Record/HANDOFF 并停止；不自动进入 EntryPoints/Worlds/Knowledge/B2/F。A5 首轮支持范围和未测设备/引擎/完整字段矩阵保持，共享描述继续停用。
 
+## Stage B1 Actors — Display checkpoint
+
+- Date: 2026-10-05
+- Primary Workspace / product branch: `main` / `refactor/atria-immersive-workspace`
+- Start HEAD: `784bb91a83e205669f14445fa1ef49ed248b9799`
+- End / tested tree persisted as HEAD: `9991c6ef03941ac6d6c321843d692b77841b7797`；已 commit/push，未合并 main。
+- Docs start HEAD: `eba827ee067cc6ad4c4d1e8656b3e29d70395af2`；本轮 docs 提交以真实 HEAD 为准，不自引用。
+- Status: **Actors display checkpoint complete; stopped after Actors.** EntryPoints/Worlds/Knowledge/B2/F 未开始。
+
+### Implementation and authority
+
+按 live HANDOFF/index/actors-mapping 及 delivery、coverage S12/S07、baseline、states/validation 续接。复用 `mountStudioValueEditor` 的单一本地 draft，添加 Fields renderer、集合 Source 初始模式和只读 `getSource`；新增 `studio-actors-editor.js`，接到原 Studio controller 的 `stageProject → project.save → human Workspace inspect/review → execute`。没有新增 Actor repository/revision、Library/头像/Persona authority，也没有后端写入旁路。
+
+名称与可选自由 role、常用 profile 多行文本、高级提示词、任意结构/metadata、完整 Actor Source 保留。缺失键只在用户输入时创建；已存在非 string 常用键走原结构/Source，不 stringify 或重建 profile。examples/mes_example 两键保留，提示明确非 null 优先级；profile.systemPrompt/postHistoryInstructions 不等同新增 Prompt consumer。role 可显式移除；顶层 unknown/legacy、无效 identity/role/object、重复 ID 和悬空 EntryPoint 引用在 Actors Review 前拒绝并保留草稿。
+
+Actor chooser 的 value、patch 目标与排序后的选择绑定 exact actorId，支持同名身份，ID 修改不自动改引用。空/单/多 Actor 均可打开集合 Source，集合增删/排序仍只提交原 project.save；从空集合首次 Apply 后显示新 Actor，显式集合模式在提交后保持。Actor↔集合属于不同编辑目标，按原离开确认丢弃/取消，不额外持久化或自动合并草稿。Inspector/tree 定位沿用原 exact identity/handler。
+
+Review Cancel 保留 DOM/Source；Apply 开始立即用原 applying 状态禁用中心区，避免提交窗口仍可编辑。冲突活动区可复制当前 Actor/集合 Source，包括非法 JSON 原文；始终提供选中文本的手动复制回退。Reload Latest 在 Actors dirty 时需显式放弃，取消保留表面，不 silent rebase。成功后读取失败保留只读 receipt，Reload 只读不重放 execute。新增 English/简体中文文本与沿用 Studio tokens 的最小样式。
+
+### Replacement gates and evidence
+
+| Gate | 实际证据与边界 |
+| --- | --- |
+| N01 | Unit 的完整 project clone 保留非 actors sentinel resources/dependencies；真实 FS/HTTP 的空集合创建、非空新增/删除/排序、被引用删除拒绝；实际项目非 actors canonical 字段不变。 |
+| N02 | 同名 A/B exact ID 选择、改名 ID 保留、ID 改动不映射引用、role 缺失/null/移除/空串/长度、重复 ID 前置拒绝；排序后仍选原 ID。 |
+| N03 | 任意 nested JSON/null/array/bool/number、空对象、缺失与非 string 常用字段、双示例键及高级提示词；Fields/Source/Review/Cancel 共用草稿；真实输出与 assertActor 比较。 |
+| N04 | unknown/legacy 顶层列出 key 并拒绝；malformed JSON 与错误 root 不 stage、原 Source 保留/可修正。没有自动迁移或恢复已剔除字段。 |
+| N05 | 原 human origin/baseRevision/project.save/inspect/execute；取消不写、409、原 service validation/operation rollback、成功后读取失败不重放；原 Agent Review/Commit 独立测试保持。 |
+| N06 | Actor A/B、集合/view 取消保留、原全局 owner/Back guard/model marker；真实并发 FS revision 冲突复制/确认与取消重载；中文 320/720、真实 font_scale=1.5、Fast UI/light/reduced-motion、双向 Tab/focus，截图本地查看。没有真机/IME 证据。 |
+| N07 | 持久化项目读取→新表面→FS/HTTP canonical→真实 .atria Build manifest；与已安装版本同 packageId 的作者项目编辑后，已有 exact Session manifest/session 与 Save package/closure 不变。信息引用既有 test、声音引用临时 assertions 和 Shared 阻断保持；不是完整作品/引擎矩阵。 |
+
+### Actual minimal local validation
+
+本轮 **10 个不同 suites / 42 个不同 unit passed，90 skipped；2 个不同 Chromium 场景 passed**。重叠复验不累加，不与 A5/mapping 历史数量相加。最后小修（非法 root 的 Fields 只提示 Source 修复、示例 null 优先级文案、高级提示词 fixture）后重跑 3 suites/24 tests 与两个 Chromium 场景；未受小修影响的其它 7 suites/18 tests 有本轮证据，不能说全十 suites 同时重跑。
+
+1. `npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/studio-actors-editor.test.js atria-shell/studio-value-editor.test.js atria-shell/studio-workspace-a7.test.js atria-shell/studio-authoring.test.js native/persona-context.test.js`：初次 5 suites/28 passed；最后 Actors/value/workspace 子集 3 suites/24 passed（Actors 新增第 6 个用例），覆盖 actor 专属草稿、任意 JSON、Source/focus、human authority/receipt、Shared description 阻断与受控本地 HTTP capture。
+2. `npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/studio-service.test.js native/contracts.test.js native/information-runtime-p6.test.js --testNamePattern='batch execution rolls back|operation errors roll back|N0 AtriaPackage v2 logical contract|Actor and World references close'`：3 suites/8 passed、81 skipped。
+3. `npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/studio-agent-a8.test.js atria-shell/workspace-leave-guard.test.js --testNamePattern='model tool loop stops at Review|Agent Commit is blocked|every authority entry|rejected browser Back|model draft markers'`：2 suites/5 passed、9 skipped。
+4. `PW_NATIVE_CHANNEL=chromium PW_WORKERS=1 npm --prefix tests run test:e2e -- native-session/28-studio-actors.e2e.js`：2/2 passed（真实 FS/HTTP；1440 与中文 320→720）。补身份区截图后仅重跑中文场景，1/1 passed，不计第三个场景。wide Source、中文 320 identity/fields/conflict 和 720 字段截图本地查看；截图/trace/dataRoot 均 ignored。
+5. 临时 Node 直接 `validateExperienceResources` 的 **2 个声音引用 assertions**：合法 Actor voice 接受、不存在 Actor voice 拒绝；未保存脚本、不冒充 UI/完整作品证据。
+6. 触及 production/test JS ESLint、`node scripts/check-native-product-localization.mjs`（English source/zh-cn）、产品/docs diff whitespace 与文档路由/链接检查通过。浏览器内执行真实 Studio Build；没有声称额外全产品 bundle/Android 构建。
+
+初轮发现并修正 role 新输入后 Remove role 禁用、Apply 开始中心区未立即 inert；后续试件失败来自提交等待条件、Save 每次 export 的 exportedAt 差异、中文按钮译名、空集合保存后自动进入 Actor fields。Save 比较仅排除每次导出的时间戳，其 exact package/closure 全部比较。最初错误的测试路径与 jsdom 后端契约 import、localization quote lint 已纠正；最终检查没有遗留失败。
+
+### Limits and persistence
+
+G01/G04 展示缺口关闭。G02/G03 的 UI 防护只作用于新 Actors Review：**后端 assertActor 顶层归一化、Project duplicate ID 接受和有限 Actor graph 未修复**；直接 API/其它全项目 editor/Agent 不因 UI 获得这些前置保障。已在 ProjectStore.get 丢失的 unknown 顶层数据无法从 UI 恢复。graph 不补全部消费者，引用影响提示明示有限 EntryPoint 清单，信息/声音等仍由原 Validate/Build authority 检查。
+
+Shared Persona description 继续固定 `shared_scope_unsupported`，无 caller opt-in、owner solo 回退、自动 Actor/席位映射或迁移。没有资源/default 编辑自动推进 Session/Save。FS 浏览器 fixture 与受控 HTTP 不代替远端模型/完整任意作品；外部数据库、真机/Android/WebView/软键盘/中文 IME、完整 native@3 lease/nonce 和完整设备/字段/呈现矩阵仍未测。未运行全量 tests/CI。
+
+产品 AGENTS.md 和 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 原 dirty changes 保留未提交；package/plugin/skills/reference 未读/未改。使用本地 ui-ux-pro-max Skill 的相关表单错误/键盘/布局检查，没有额外设计系统/资产。产品与 docs 单独 commit/push，同一 Record/live HANDOFF 更新；不合并 main、不删除活跃 task branch。下一 checkpoint 为 EntryPoints，先映射；按用户“完成 Actors 后停止”已停止。
+
 ## Final state
 
-Task ongoing. A1–A5 local checkpoints complete; B1 Actors mapping complete, display replacement next. 支持范围首轮结果冻结，Shared 描述明确停用。完整设备/引擎/字段矩阵和最终集成仍未完成；本轮未改产品、未合并 main。
+Task ongoing. A1–A5 local checkpoints complete; B1 Actors mapping and display checkpoint complete. Next: EntryPoints mapping, not started. Shared 描述明确停用；完整设备/引擎/字段矩阵和最终集成仍未完成。产品/docs 已 push，未合并 main，本轮停止于 Actors。

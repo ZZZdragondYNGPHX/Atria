@@ -20,7 +20,7 @@
 | V09 | Secret 不回显、提供商字段/能力、连接实测分类、保存成功读取失败 | `tests/atria-shell/native-runtime-p5.test.js`；`tests/native/{runtime-http,model-prompt-runtime-contracts}.test.js` |
 | V10 | 全角色路由/模型发现/能力、exact ref/fallback、缺项修复回原任务 | `tests/atria-shell/{runtime-readiness,runtime-route-picker}.test.js`；`tests/native/model-prompt-runtime-p6.test.js` |
 | V11 | Embedding/Rerank 完整配置；编译预算/上下文证据且不发送/解析 Secret/写会话 | `tests/native/{retrieval-runtime,model-prompt-runtime-p4}.test.js`；Runtime diagnostics UI 场景 |
-| V12 | 20 视图/完整源码、资源引用/闭包、人工 Apply vs AI Commit、长任务/冲突、真实 preview/simulate/build | `tests/atria-shell/{studio-workspace-a7,studio-authoring,studio-agent-a8,source-editor,asset-editor,project-lifecycle}.test.js`；`tests/native/{studio-service,project-agent,library-build-closure}.test.js` |
+| V12 | 20 视图/完整源码、资源引用/闭包、人工 Apply vs AI Commit、长任务/冲突、真实 preview/simulate/build | `tests/atria-shell/{studio-workspace-a7,studio-actors-editor,studio-authoring,studio-agent-a8,source-editor,asset-editor,project-lifecycle}.test.js`；`tests/native/{studio-service,project-agent,library-build-closure}.test.js`；`tests/e2e/native-session/28-studio-actors.e2e.js`（B1 Actors canonical/Session/Save/中文窄屏） |
 | V13 | 四模式专属字段/JSON/工具权限/预算、scope 绑定/清除、预设 CRUD/import/export | `tests/native/agent-settings.test.js`；现有 orchestrator 与 iterstudio 模式测试按本阶段选择 |
 | V14 | Run graph/timeline/分页；Memory OS/实体关系/来源/检索/维护；会话范围 reset；Trace replay/live | `tests/atria-shell/memory-native-routing.test.js`；`tests/orchestrator/runtime-trace-export.test.js`；按实际 Memory UI 新增真实场景 |
 | V15 | Skills 文件树与 CRUD、来源只读、scope；Plugins 更新禁用、仓库失败、工具配置 | `tests/native/{extensions-foundation,extensions-workspace}.test.js`；`tests/e2e/atria-shell/07-plugins-settings.e2e.js` |

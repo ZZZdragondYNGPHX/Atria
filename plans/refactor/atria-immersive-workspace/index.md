@@ -3,7 +3,7 @@
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
 - Status: **Frozen for staged implementation — 2026-10-05；用户已授权开工与自主处理，新增契约已完成 D1 设计核对。**
-- Current stage: A5 首轮支持范围的本地集成/兼容 checkpoint 完成；B1 Actors 字段/动作/authority 映射已提交，展示替换尚未开始。Shared 描述明确停用，完整设备/引擎/字段矩阵仍未验收。
+- Current stage: A5 首轮支持范围的本地集成/兼容 checkpoint 完成；B1 Actors 映射与展示 checkpoint 已完成；下一 checkpoint 为 EntryPoints，先映射，尚未开始。Shared 描述明确停用，完整设备/引擎/字段矩阵仍未验收。
 
 ## Goal
 
@@ -79,3 +79,5 @@ A1–A3 已实现并完成各阶段本地针对性验证；执行证据与限制
 
 - 2026-10-05 A5：首轮跨域/旧 Session/Save v1–v3/FS↔SQLite/呈现/语言/键盘本地 checkpoint 完成，支持范围冻结；修正跨域父子两步导航和 Persona Tab 焦点。产品 `784bb91a8` 已 push，28 suites/181 不同 unit、18 不同 Chromium 场景的实际范围见 Record A5。Shared 描述停用，缺环境与未执行矩阵继续明示；下一 checkpoint 为 B1 Actors，先做逐字段/动作/状态/authority 映射。
 - 2026-10-05 B1 Actors mapping：基于同一产品 HEAD 提交 actors-mapping；明确 Actor 为 project-source、profile/metadata 任意 JSON、集合 Source/顶层归一化/重复 ID/冲突草稿缺口与替换验收门。本轮只完成映射，未改产品、未执行展示替换；Shared 描述继续停用，下一轮只实施 Actors。
+
+- 2026-10-05 B1 Actors display：专属字段/高级结构与 Source 共用原草稿；集合 Source 始终可达、exact actorId 选择、Review 前拒绝 unknown/legacy/duplicate/悬空 EntryPoint 引用、冲突复制与明确放弃重载完成。复用 project.save/Workspace/ChangeSet，产品 `9991c6ef0` 已 push；具体本地证据与后端限制见 Record B1 display。Shared 描述停用；停在 Actors，EntryPoints/Worlds/Knowledge/B2/F 未开始。

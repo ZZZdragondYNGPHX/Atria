@@ -2,9 +2,9 @@
 
 ## Scope and evidence
 
-本模块是 [delivery 的 B 阶段 replacement gate](delivery.md#editor-replacement-gate-for-b-stages) 所需的 Actors 范围映射。基于产品 `refactor/atria-immersive-workspace@784bb91a83e205669f14445fa1ef49ed248b9799` 的真实源码；本轮只提交映射，不替换展示，不宣称 B1 Actors 实现/验收完成。对应 coverage S12/V12；S07/V07 只提供 World/Knowledge 的对照边界，不能套用到 Actor。
+本模块是 [delivery 的 B 阶段 replacement gate](delivery.md#editor-replacement-gate-for-b-stages) 所需的 Actors 范围映射。基于产品 `refactor/atria-immersive-workspace@784bb91a83e205669f14445fa1ef49ed248b9799` 的真实源码；本映射保存替换前基线。展示 checkpoint 已完成，实施/验证与仍存后端限制见 [Record B1 display](../../../records/refactor/atria-immersive-workspace.md#stage-b1-actors--display-checkpoint)。对应 coverage S12/V12；S07/V07 只提供 World/Knowledge 的对照边界，不能套用到 Actor。
 
-Actors 是 `source.package.actors[]`、`core.actor`、`project-source` authority。原生注册描述只声明 project ownership；没有 Actor Library revision、Attach/Fork/Update、Persona CRUD 或独立 Actor persistence。graph Actor 节点 `revision:null`、`contentIdentity:hash(actor)`、`immutable:false`；编辑基准是项目 Git revision，而不是 Actor revision 或数组下标。下标只是当前列表选择。
+Actors 是 `source.package.actors[]`、`core.actor`、`project-source` authority。原生注册描述只声明 project ownership；没有 Actor Library revision、Attach/Fork/Update、Persona CRUD 或独立 Actor persistence。graph Actor 节点 `revision:null`、`contentIdentity:hash(actor)`、`immutable:false`；编辑基准是项目 Git revision，而不是 Actor revision 或数组下标。下标只是基线列表选择；新 Actors 展示以 exact actorId 绑定草稿与选择。
 
 源码定位均相对产品 workspace：
 
@@ -19,7 +19,7 @@ Actors 是 `source.package.actors[]`、`core.actor`、`project-source` authority
 
 ## Field and output mapping
 
-下表“替换位置”是下一轮展示实现的目标位置，尚未实现。拟用 Actors 专属编辑表面承载常用字段，嵌入原 value editor 承载任意结构；维持一个 Actor 草稿。共同输出为 `normalizeCollectionPatch` 克隆全项目后只替换所选 actor，再由 `stageProject` 发出 `project.save`，绝不直接写 ProjectStore。集合编辑则只替换 `package.actors`。
+下表保留旧字段与已冻结的替换要求。已用 `studio-actors-editor.js` 的专属 Fields renderer 嵌入原 `mountStudioValueEditor`，维持一个 Actor 草稿；`patchStudioActors` 按 exact actorId 克隆全项目并只替换目标，集合编辑只替换 `package.actors`，再由原 `stageProject` 发出 `project.save`，绝不直接写 ProjectStore。Actor Fields/Source 往返同一草稿；Actor 与集合是不同编辑目标，切换走原离开确认。
 
 | 旧字段/形态 | 当前编辑与 canonical 校验/输出 | 替换位置与保留要求 | 测试映射 |
 | --- | --- | --- | --- |
@@ -132,6 +132,6 @@ Actor 没有独立 mode discriminator。真正的条件是集合空/非空、当
 | N06 | Actor A/B、集合、view/owner/Back 的脏草稿取消保留；冲突复制草稿/确认放弃重载；320px/中文/最大字号/键盘 focus 在实际替换后选择最小相关场景 |
 | N07 | 真实旧项目读取→新编辑器审阅→canonical manifest/build 输出比较；改项目不改已有 exact Session/Save；信息/声音约束继续拒绝无效 Actor；共享 Persona description 仍 unsupported |
 
-G01 非空集合 Source 不可达、G02 顶层静默丢字段、G03 duplicate/graph 不完整、G04 冲突 reload 丢草稿均为现状，不是已修复结论。下一轮先处理 Actors 展示涉及的门；不扩大到独立 Actor Library、批量迁移、重写全部 graph/experience authority 或其它 B1 编辑器。若某个后端缺口仍未修复，需明确其限制及 UI 防护的范围，不能宣称服务完整修复。
+上述 G01–G04 是映射时基线。展示已补 G01 集合 Source 和 G04 草稿复制/明确放弃重载；G02/G03 在 Actors Review 前拒绝顶层 unknown/legacy/duplicate ID/悬空 EntryPoint 引用。后端 assertActor 归一化、Project duplicate ID 与有限 graph 未重写；UI 防护不覆盖直接 API、其它原全项目 editor 或 Agent，无法恢复读路径已剔除的字段。信息/声音引用仍交原 Validate/Build 校验，不将有限 Used By 当完整闭包。
 
-映射提交后本轮停止；下一轮完成 Actors 展示实现与最小本地相关验证，再更新同一 Record/HANDOFF。EntryPoints/Worlds/Knowledge/B2/F 保持未开始。
+Actors 展示 checkpoint 已实现、最小本地验证并持久化；本轮更新同一 Record/HANDOFF 后停止。下一 checkpoint 为 EntryPoints，先字段/动作/状态/authority 映射。EntryPoints/Worlds/Knowledge/B2/F 保持未开始。

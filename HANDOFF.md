@@ -4,32 +4,24 @@
 
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`（产品）；docs 为文档辅助空间。
-- Product branch / HEAD: `refactor/atria-immersive-workspace` / `784bb91a83e205669f14445fa1ef49ed248b9799`；已 commit/push，未合并 main。
-- Docs branch: `docs`；Actors mapping commit `2d19fdf28`；本轮 Record/HANDOFF 持久化提交以真实 Git HEAD 为准，不自引用 hash。
-- Current stage: **B1 Actors mapping complete; display replacement next**。本轮按用户“先完成映射”指令停在 replacement gate 前，未改产品，不表示 Actors checkpoint 已完成。
+- Product branch / HEAD: `refactor/atria-immersive-workspace` / `9991c6ef03941ac6d6c321843d692b77841b7797`；已 commit/push，未合并 main。
+- Docs branch: `docs`；本轮 Record/HANDOFF 持久化提交以真实 Git HEAD 为准，不自引用 hash。
+- Current stage: **B1 Actors display checkpoint complete — stopped after Actors**。
 - Plan entrypoint: [index](plans/refactor/atria-immersive-workspace/index.md)
-- Next required modules: [Actors mapping](plans/refactor/atria-immersive-workspace/actors-mapping.md)、delivery、coverage S12/S07 和 Actors 对应 baseline 小节、states、validation；冻结决策按实际需要路由。
-- Record: [record](records/refactor/atria-immersive-workspace.md)，续接重点读 B1 Actors mapping checkpoint；A5 支持范围与 A4a/A4b authority/迁移历史保留。
+- Next required modules: delivery、coverage S12 和 EntryPoints baseline 小节、states、validation；Actors mapping 仅按关联需要读，不重做 Actors。
+- Record: [record](records/refactor/atria-immersive-workspace.md)，续接重点读 B1 Actors display；mapping/A5/A4a/A4b 历史保留。
 
 ## Completed
 
-D1/P01–P06、A1–A4b 保持。A5 将 S00–S20 首轮支持范围的实际本地证据映射写入同一 Record；验证跨域搜索、Runtime/Save 恢复、20 Studio view、Agents Session 隔离、扩展/插图、native/hybrid/full 呈现、新旧 Session 和 Persona/default/Save 边界。
+D1/P01–P06、A1–A5 首轮 checkpoint 保持，支持范围冻结。B1 Actors mapping 与展示完成：专属名称/自由 role/常用 profile/高级提示词/任意结构与 metadata/Source 共用原 value editor 草稿；空/非空集合 Source、exact actorId 选择、排序后保留身份、Review 前拒绝 unknown/legacy/duplicate/悬空 EntryPoint 引用、冲突复制与明确放弃重载、提交期间禁写及 receipt 只读重试完成。复用原 project.save/Workspace/ChangeSet/controller，Agent Commit 独立。
 
-B1 Actors 已提交字段/动作/所有条件/Source/draft/revision/handler/authority/错误冲突离开/测试映射（docs `2d19fdf28`），只读核对产品，没有展示替换。Actor 是 project-source，不是 Library/Persona；profile/metadata 任意 JSON 必须保留。G01 非空集合 Source 不可达、G02 顶层 unknown canonical 静默丢弃、G03 Project 重复 ID/Actor graph 引用闭包不完整、G04 冲突 reload 丢草稿已如实映射，未修复。T01–T09 既有测试与 N01–N07 替换验收门区分。
-
-WorkspaceHost 的 Library/Build/Agents sections/Orchestration/Skill/Utility 原父子两步导航改为既有 Navigation Authority 一次提交完整目标，避免一次 Back 落到中间父页、取消后 child 写到原 owner。Utility 仍属于中立 Play host；没有新 router 或持久化 authority。Persona dialog 按原 Runtime 控件筛选规则补 Tab/Shift+Tab 首尾焦点循环；Esc/Cancel/回执与返回触发焦点保持。
-
-新增 A5 三个真实 FS/HTTP browser 场景：缓存搜索原 Persona exact revision、Knowledge entry、Persona 来源级 retry、Save history/Director 返回查询；启动前已存在旧 Session 不回填、修订/default 不改已有 Session、显式 picker 草稿/旧 revision、Save 同 ID 冲突不改写及清除新建测试 Session 后恢复；中文真实 font_scale=1.5/Fast UI/light/reduced motion、320/719/720/1179/1180 和双向 Tab/Esc/focus。
-
-**共享描述明确停用**：Shared UI 与 Context provider 固定 `shared_scope_unsupported`，无 caller opt-in 或 owner solo 回退。自己席位姓名/头像/选择和 authorized avatar closure 不表示描述被消费；用户没有授权重新启用。
+真实 FS/HTTP UI 往返与 .atria Build 比较 canonical Actor 输出；同 packageId 的作者项目更改不改变已安装 exact Session 与 Save package/closure。Shared 描述仍 `shared_scope_unsupported`，没有重新开启。G01/G04 展示缺口关闭；G02/G03 原后端归一化/Project duplicate IDs/有限 graph 保持，Actors UI 防护不覆盖直接 API、其它全项目 editor 或 Agent，不能恢复读路径已丢字段，也不声称 Used By 完整闭包。
 
 ## Pending / next target
 
-A5 首轮本地 checkpoint 完成；B1 Actors 映射已提交，下一目标是 Actors 展示实现。先真实 Git/远端 → 本 HANDOFF → index → actors-mapping、delivery/coverage S12/S07 与 Actors baseline/states/validation → 同一 Record B1 mapping。不要重复映射调查或把发现当已修复；按字段表/动作表/authority/状态与 G01–G04、N01–N07 实施，复用原 controller/持久化。Actor 身份不依名称/index，项目 canonical 输出与真实差异验收；未修复后端限制需明示。B1 的 Actors、EntryPoints、Worlds、Knowledge 各为独立 checkpoint，不能自动连跑整组或进入 B2/F。
+**已按用户“完成 Actors 后停止”停在本阶段。** 下一独立 checkpoint 是 B1 EntryPoints，先字段/动作/所有条件/Source/draft/revision/handler/authority/错误冲突离开/测试映射，再按 replacement gate 替换。先真实 Git/远端 → 本 HANDOFF → index → delivery/coverage S12 与 EntryPoints baseline/states/validation → 同一 Record B1 display。Actors 已完成，不重复其映射/实现；EntryPoints/Worlds/Knowledge/B2/F 未开始，不自动连跑。
 
-首轮支持范围冻结，不声称 S00–S20 全部字段/状态/设备组合或 V20 无条件完整通过。MySQL/Postgres 在 Save/run-policy 两 suite 的最初试探均因本地数据库未运行而连接拒绝；明确排除后只验证 FS/SQLite。真实手机/软键盘/中文 IME/WebView/Android、远端模型、完整 native@3 lease/nonce/任意真实作品故障组合未测；保留进入后续验收，不能将 browser 仿真或受控 frontend fixture 记作真机/完整作品证明。
-
-没有旧高级 scope/Actor/绑定/注入自动映射、整站迁移或历史批量改写。新展示必须保留原结构化字段和 Source 全能力。
+首轮支持范围冻结，不声称 S00–S20 全字段/设备/引擎矩阵通过。后续保留外部 MySQL/Postgres、真机/软键盘/中文 IME/WebView/Android、远端模型、完整 native@3 lease/nonce/任意真实作品故障组合。没有旧高级 scope/Actor/绑定/注入自动映射、整站迁移或历史批量改写。新表面保留原结构化字段和 Source 全能力。
 
 ## Key decisions / carry forward
 
@@ -45,15 +37,11 @@ Host solo picker 走原白名单/epoch/revision/宿主 guards；Full root 故障
 
 ## Actual local validation
 
-本轮 B1 mapping 在 unchanged 产品 `784bb91a8`：**4 suites / 13 tests passed、27 skipped**（value editor/human authoring/Package Actor logical contract 12，Persona context/shared block 1）；另有 **9 个临时 boundary assertions**，包含确认顶层 loss/Project duplicate IDs 的现状，不能当无损兼容通过。docs 检查 33 个不同 source/test 路径、映射链接/验收门/whitespace 与收尾 Record/HANDOFF 路由。未跑浏览器/E2E/构建/新 UI/完整矩阵/CI；Actors 展示尚未实现，以下 A5 数量是历史，不累加、不冒充本轮重跑。
+本轮 B1 Actors **10 个不同 suites / 42 个不同 unit passed、90 skipped；2 个不同 Chromium 场景 passed**，另有 2 个临时声音引用 assertions。最后 Actors/value/workspace 3 suites/24 tests 与两个 browser 场景通过；新增身份区截图后中文场景复验通过，重复不累加。其余未受小修影响的相关 suite 有本轮证据，未虚称全部同时重跑。详细命令/初轮问题/修正见 Record B1 display；不与 A5 或 mapping 数量相加。
 
-A5 **28 suites / 181 个不同 unit；18 个不同 Chromium 场景**有最终通过证据，重叠复验不累加。最终触及面 3 suites/25 unit 和 8 browser 全通过；其他未受修正影响的相关域测试在 Start HEAD 执行，不能虚称全都于 End HEAD 重跑。详细命令、数量、S00–S20 映射、试件失败修正与缺环境在 Record A5。
+验证任意 profile/metadata JSON 与双示例键/高级提示词、空/同名/集合增删排序、字段↔Source↔Review↔Cancel、unknown/legacy/duplicate/引用拒绝、非法 Source 复制、真实并发 409/明确放弃重载、receipt 读取失败不重放、原 service rollback/Agent/Back guards、canonical FS/HTTP/.atria Build 与已有 Session/Save 不推进、共享描述停用。English/zh-cn、320 最大 font_scale=1.5/Tab/focus/Fast UI/light/reduced-motion 与 720 截图本地查看；不是 Android/真机/完整设备矩阵。触及 JS ESLint、localization、产品/docs whitespace 与文档链接/路由检查通过；未运行全量 tests/远端 CI/全产品 bundle。
 
-FS/SQLite Session/context/shared/avatar/Save v3、Save v1、v2 ironman resume、账户备份双向闭包/默认/冲突通过；受控本地 HTTP Provider 真实发送和 Shared 停用断言通过，非远端模型。20 Studio view/exact 引用、旧版本安装/密码重试/恢复、Agents Session 隔离、插图 settings、呈现/failure recovery 等均在相关 browser 选择集合执行。
-
-最后 A5/依赖 A4b/A1 utilities 的 8 个 Chromium 场景全通过，关键中文320最大字号 picker、390 Save history/search 和 Shared seat display 截图已本地查看。截图/trace/dataRoot/缓存均 ignored。IME/visualViewport/safe-area 仅合成/仿真。
-
-触及生产/test JS ESLint、English/zh-cn localization、diff whitespace 通过。前端缓存首次 webpack 真编译通过，最后同一 libraries key cache hit；不虚称全产品 bundle/Android 构建。没有全量 tests/完整 E2E/远端 CI。
+A5 历史 28 suites/181 不同 unit、18 不同 browser 的支持范围只见 Record A5，未在本轮重跑/累加。Shared 描述固定停用，所有未测范围继续保留。
 
 ## Preserve / do not repeat
 
@@ -61,4 +49,4 @@ FS/SQLite Session/context/shared/avatar/Save v3、Save v1、v2 ironman resume、
 
 ## New-chat bootstrap prompt
 
-继续 Atria 的 refactor/atria-immersive-workspace，只实施 B1 Actors 展示 checkpoint。先核对真实 Git/远端 → docs:HANDOFF.md → plans/refactor/atria-immersive-workspace/index.md → actors-mapping.md 及 delivery/coverage S12/S07/Actors baseline/states/validation → 同一 Record B1 Actors mapping。产品仍 refactor/atria-immersive-workspace@784bb91a83e205669f14445fa1ef49ed248b9799；映射已提交 docs@2d19fdf28，本轮产品未改，A5 首轮支持范围冻结。不要重做映射，按 G01–G04 缺口与 N01–N07 门实现展示并比较 canonical 输出；复用原 project.save/Workspace/ChangeSet/controller/持久化，Actor 不新增 Library/Avatar/Persona authority，profile/metadata 任意 JSON 保留，顶层未知明确拒绝/显式修复且不声称读路径数据可恢复。Shared 描述仍 shared_scope_unsupported，没有重启授权，无 opt-in/solo 回退/自动 Actor 映射。每阶段只做最小本地相关验证，不发起/等待远端 CI；保护原 dirty changes。Actors 实现/验证/commit/push 后更新同一 Record/HANDOFF、给接手提示词并停止，不自动进入 EntryPoints/Worlds/Knowledge/B2/F、不合并 main。真实设备、外部数据库和完整矩阵未测范围继续如实保留。
+继续 Atria 的 refactor/atria-immersive-workspace。先核对真实 Git/远端 → docs:HANDOFF.md → plans/refactor/atria-immersive-workspace/index.md → delivery/coverage S12 与 EntryPoints baseline/states/validation → 同一 Record B1 Actors display。产品 `9991c6ef03941ac6d6c321843d692b77841b7797` 已 push；Actors mapping/display checkpoint 完成，不重做。若开始下一轮，只做 B1 EntryPoints 独立 checkpoint，先逐字段/动作/状态/authority 映射并按 replacement gate 替换；复用原 controller/persistence，保留完整结构/Source/exact ID 与 project revision。Actors G02/G03 后端限制未重写，UI 拒绝只在新 Actors Review；不要扩展为后端全面修复。Shared 描述仍 shared_scope_unsupported，无重启授权/opt-in/solo 回退/自动 Actor 映射。每阶段只做最小本地相关验证，不发起/等待远端 CI，保护原 dirty changes。新 checkpoint 实现/验证/commit/push 后更新同一 Record/HANDOFF、给接手提示词并停止；不自动进入 Worlds/Knowledge/B2/F、不合并 main。真机、外部数据库与完整矩阵仍未测。
