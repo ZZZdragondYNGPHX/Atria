@@ -30,7 +30,7 @@ export async function mountFrontendEditor({ document: doc, root, projectId, owne
     previewRoot.hidden = true;
     let graph, selected, loaded, disposed = false, sequence = 0;
     let previewMount, previewId;
-    const drafts = new Map(), originals = new Map();
+    const drafts = new Map(), originals = new Map(), semanticDrafts = new Map();
     label.dataset.atriaDraftDirty = ownerLabel.dataset.atriaDraftDirty = 'false';
     const alive = token => !disposed && token === sequence;
     async function evaluate(operations, render = false) {
@@ -56,7 +56,7 @@ export async function mountFrontendEditor({ document: doc, root, projectId, owne
         } catch (error) { await client.closePreview(id); throw error; }
     }
     const sourceText = () => loaded?.text?.includes('\r\n') ? editor.value.replace(/\r?\n/g, '\r\n') : editor.value;
-    function markDirty() { sourceLabel.dataset.atriaDraftDirty = String([...drafts].some(([path, text]) => text !== originals.get(path))); }
+    function markDirty() { sourceLabel.dataset.atriaDraftDirty = String([...drafts].some(([path, text]) => text !== originals.get(path)) || [...semanticDrafts.values()].some(item => item.dirty)); }
     function remember() { if (loaded && !loaded.readOnly) drafts.set(loaded.path, sourceText()); markDirty(); }
     function showDiff() { markDirty(); diff.textContent = sourceTextDiff(loaded?.text || '', sourceText()).text; }
     function showDiagnostics(items) {
@@ -79,6 +79,7 @@ export async function mountFrontendEditor({ document: doc, root, projectId, owne
     function semanticForm(entry) {
         structured.replaceChildren();
         if (!['component', 'node', 'binding', 'view', 'style', 'state', 'interaction', 'message'].includes(entry.kind)) return;
+        const draftKey = JSON.stringify([ownerId, entry.kind, entry.id, entry.componentId, entry.locale]);
         el(doc, 'h4', '', t('Structured edit'), structured);
         const key = field(doc, structured, entry.kind === 'node' ? 'Attribute or text' : 'JSON field path', entry.kind === 'node' ? 'text' : '');
         if (entry.kind === 'style') key.hidden = true;
@@ -86,6 +87,9 @@ export async function mountFrontendEditor({ document: doc, root, projectId, owne
         const valueLabel = el(doc, 'label', 'atri-library-field', t('Value'), structured);
         const value = el(doc, 'textarea', 'text_pole', undefined, valueLabel); value.setAttribute('aria-label', t('Structured value'));
         value.value = entry.kind === 'node' ? entry.value?.text || '' : entry.kind === 'style' ? entry.value || '' : JSON.stringify(entry.value ?? {}, null, 2);
+        const initial = { key: key.value, value: value.value }; const pending = semanticDrafts.get(draftKey);
+        if (pending) { key.value = pending.key; value.value = pending.value; }
+        const rememberSemantic = () => { semanticDrafts.set(draftKey, { file: entry.file, key: key.value, value: value.value, dirty: key.value !== initial.key || value.value !== initial.value }); markDirty(); };
         key.addEventListener('input', () => {
             sequence++;
             if (entry.kind === 'node') value.value = key.value === 'text' ? entry.value?.text || '' : entry.value?.attributes?.[key.value] || '';
@@ -93,8 +97,9 @@ export async function mountFrontendEditor({ document: doc, root, projectId, owne
                 const selectedValue = key.value ? key.value.split('/').reduce((item, part) => item?.[part], entry.value) : entry.value;
                 value.value = JSON.stringify(selectedValue ?? null, null, 2);
             }
+            rememberSemantic();
         });
-        value.addEventListener('input', () => { sequence++; });
+        value.addEventListener('input', () => { sequence++; rememberSemantic(); });
         el(doc, 'p', '', t('Node text and attributes use plain text. Other structured values use JSON; styles use CSS. Review validates the complete source graph.'), structured);
         action(doc, structured, 'Review structured edit', async () => {
             remember();
@@ -104,8 +109,9 @@ export async function mountFrontendEditor({ document: doc, root, projectId, owne
                 ...(entry.kind === 'node' ? { field: key.value } : { path: key.value ? key.value.split('/') : [] }),
                 value: ['node', 'style'].includes(entry.kind) ? value.value : JSON.parse(value.value) };
             const operations = [createAuthoringOperation({ operationType: 'frontend.patch', target: { resourceType: 'core.project', resourceId: projectId }, input })];
-            await evaluate(operations, true);
-            await stageOperations(operations, t('Review structured edit'));
+            const token = sequence; await evaluate(operations, true);
+            if (!alive(token)) return;
+            if (await stageOperations(operations, t('Review structured edit')) !== false) { semanticDrafts.delete(draftKey); markDirty(); }
         });
     }
     async function loadEntry() {
@@ -145,7 +151,7 @@ export async function mountFrontendEditor({ document: doc, root, projectId, owne
         if (result.stale || result.status === 'failed') return;
         await evaluate([...drafts].map(([path, content]) => sourceWriteOperation(path, content)), true);
     });
-    action(doc, controls, 'Reload file', async () => { if (!confirmAtriaDraftLeave(doc, shell)) return; if (loaded) drafts.delete(loaded.path); loaded = null; await loadEntry(); });
+    action(doc, controls, 'Reload file', async () => { if (!confirmAtriaDraftLeave(doc, shell)) return; if (loaded) { drafts.delete(loaded.path); for (const [key, value] of semanticDrafts) if (value.file === loaded.path) semanticDrafts.delete(key); } loaded = null; await loadEntry(); });
     editor.addEventListener('input', () => { sequence++; remember(); showDiff(); });
     chooser.addEventListener('change', () => void loadEntry());
     async function loadGraph() {

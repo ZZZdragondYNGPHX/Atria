@@ -1,4 +1,5 @@
 /** @jest-environment jsdom */
+import '../util/structured-clone.js';
 import { jest } from '@jest/globals';
 import { serialize, deserialize } from 'node:v8';
 import { createNativeId } from '../../src/native/identity.js';
@@ -251,4 +252,11 @@ test('image SDK refuses terminal state from another branch and disposed UI write
     expect(f.runtime.snapshot.illustrations).toBe(original);
     const controller = new AbortController(); controller.abort();
     await expect(api.image(scope, 'start', { annotationId: 'a' }, controller.signal)).rejects.toThrow('disposed');
+});
+
+test('B4 full settings Source retains malformed JSON, advanced parameters, characters and work overrides through Fields and original CAS save', async () => {
+    const value = defaultIllustrationSettings(); value.preset.parameters = { ...value.preset.parameters, seed:-1,sampler:'k_euler',noiseSchedule:'native',sm:true,smDyn:false }; value.works.book = { characterIds:[],preset:structuredClone(value.preset) };
+    const client = { read:async()=>({ revision:'r1',value }),save:jest.fn(async next=>({ revision:'r2',value:next })) }; const editor = mountIllustrationSettings({ document,parent:document.body,client,configuration:async()=>({}),works:async()=>[],packageId:'book' });cleanup = ()=>editor.dispose();await editor.ready;
+    button('Source').click();const source = input('Illustration settings JSON');const valid = source.value;source.value = '{ invalid';source.dispatchEvent(new Event('input',{ bubbles:true }));button('Fields').click();await flush();expect(source.value).toBe('{ invalid');expect(editor.root.dataset.atriaDraftDirty).toBe('true');
+    source.value = valid;source.dispatchEvent(new Event('input',{ bubbles:true }));button('Fields').click();await flush();button('Source').click();expect(JSON.parse(input('Illustration settings JSON').value)).toEqual(value);button('保存配置').click();await flush();expect(client.save).toHaveBeenCalledWith(value,'r1');expect(editor.root.dataset.atriaDraftDirty).toBe('false');
 });

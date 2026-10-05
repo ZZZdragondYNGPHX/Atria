@@ -40,3 +40,7 @@ test('replacement keeps exact asset ID and metadata; invalid metadata retains ed
     metadata.value = '{"credit":"New painter"}'; const picker = ui.row.querySelector('[type=file]'); Object.defineProperty(picker, 'files', { value: [{ arrayBuffer: async () => new Uint8Array([1, 2]).buffer }] });
     ui.button('Review asset changes').click(); await tick(); const operations = ui.stageOperations.mock.calls[0][0]; expect(operations[0].input).toEqual({ encoding: 'base64', content: 'AQI=' }); expect(operations[1].input.source.assetFiles[0].assetId).toBe(asset.assetId); expect(operations[1].input.source.assetFiles[0].metadata.credit).toBe('New painter');
 });
+
+test('cancelled asset form cannot stage a late source read and keeps its original asset',async()=>{
+    const ui = setup();let resolve;ui.client.listSources.mockImplementation(()=>new Promise(r=>resolve = r));ui.button('Edit asset').click();await tick();ui.button('Review asset changes').click();await tick();ui.button('Cancel').click();await tick();resolve([]);await tick();expect(ui.stageOperations).not.toHaveBeenCalled();expect(ui.source.assetFiles[0]).toEqual(asset);
+});

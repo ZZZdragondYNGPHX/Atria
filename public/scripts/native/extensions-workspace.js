@@ -118,10 +118,10 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
                 el(doc, 'p', '', '', card).dataset.extensionStatus = item.id;
                 action(doc, card, 'Edit', () => edit(item.id));
                 if (kind === 'external') action(doc, card, 'Update', async () => {
-                    if (await confirm('Update this plugin? It will be disabled until you enable it again.')) { receipt = await client.install(item.sourceUrl, { id: item.id, expectedRevision: item.revision }); await load(); }
+                    if (await confirm('Update this plugin? It will be disabled until you enable it again.') && !disposed && token === sequence) { receipt = await client.install(item.sourceUrl, { id: item.id, expectedRevision: item.revision }); await load(); }
                 });
                 action(doc, card, 'Delete', async () => {
-                    if (await confirm('Delete this extension?')) { await client.remove(item.id, item.revision); await load(); }
+                    if (await confirm('Delete this extension?') && !disposed && token === sequence) { await client.remove(item.id, item.revision); await load(); }
                 }, { danger: true });
             }
             if (receipt) { feedback(doc, content, 'Saved successfully.'); receipt = null; }

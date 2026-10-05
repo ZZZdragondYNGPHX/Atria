@@ -1,5 +1,6 @@
 export const SHELL_TEXT_KEYS = Object.freeze({
     'Source must retain this resource identity and scope.': 'atria.resource.source.0',
+    'Illustration settings JSON': 'atria.product.illustrationSettingsJson',
     'Runtime resource JSON': 'atria.resource.source.1',
     'Retrieval resource JSON': 'atria.resource.source.2',
     'Unsupported resource field shape:': 'atria.resource.source.3',

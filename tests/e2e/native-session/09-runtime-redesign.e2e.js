@@ -31,7 +31,7 @@ test('B2 Runtime and retrieval Source retain advanced canonical fields and exact
     await boot(page, 1440); await open(page, 'models');
     await root(page).getByRole('button', { name: 'Edit P4 model', exact: true }).click();
     await root(page).getByRole('button', { name: 'Source', exact: true }).click();
-    let editor = root(page).getByLabel('Runtime resource JSON', { exact: true }), draft = JSON.parse(await editor.inputValue());
+    let editor = root(page).getByLabel('Runtime resource JSON', { exact: true }), draft = JSON.parse(await editor.inputValue()); const originalModel = structuredClone(draft);
     draft.tokenizer = { ...draft.tokenizer, source: 'provider', opaque: { values: [null, false, 7] } }; draft.providerHints = { vendor: { values: [null, true, 'advanced'] } }; draft.messageFormat = { extra: [null, false, 3] };
     await editor.fill('{ malformed'); await root(page).getByRole('button', { name: 'Fields', exact: true }).click(); await expect(editor).toHaveValue('{ malformed');
     await editor.fill(JSON.stringify(draft)); await root(page).getByRole('button', { name: 'Fields', exact: true }).click();
@@ -49,6 +49,7 @@ test('B2 Runtime and retrieval Source retain advanced canonical fields and exact
     const profiles = await page.evaluate(async () => (await fetch('/api/native/generation/retrieval', { headers: window.Atria.getContext().getRequestHeaders() })).json());
     expect(profiles.find(item => item.retrievalProfileId === draft.retrievalProfileId)).toEqual(assertRetrievalProfile(draft));
     const after = await page.evaluate(async () => (await fetch('/api/native/generation/configuration', { headers: window.Atria.getContext().getRequestHeaders() })).json()); expect(after.routes).toEqual(configuration.routes);
+    await page.evaluate(async model => { const response = await fetch('/api/native/generation/configuration/models', { method:'PUT', headers:window.Atria.getContext().getRequestHeaders(), body:JSON.stringify(model) }); if (!response.ok) throw new Error('Fixture restore failed'); }, originalModel);
 });
 
 test('B2 Chinese Source retains malformed JSON and keyboard focus at 320px maximum font size', async ({ page }, info) => {

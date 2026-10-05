@@ -460,6 +460,27 @@ describe('openSkillEditor — integration scenarios', () => {
         expect(textarea.value).toContain('NOTES BODY');
     });
 
+    test('file switch preserves pending Source and its original sha even when the disk changes',async()=>{
+        const { ctx,mount } = await bootstrap({ ctxOpts:{ files:[{ path:'SKILL.md' },{ path:'notes.md' }] } });
+        const original = '---\nname: x\ndescription: y\n---\nB4 pending';mount.querySelector('textarea').value = original;
+        const row = path=>[...mount.querySelectorAll('[data-file-path]')].find(n=>n.getAttribute('data-file-path') === path && !n.getAttribute('data-editor-action'));
+        row('notes.md').click();for(let i = 0;i < 6;i++)await Promise.resolve();ctx.__skillsApi.readFile.mockImplementationOnce(async()=>({ content:'DISK CHANGED',sha256:'sha-new' }));row('SKILL.md').click();for(let i = 0;i < 6;i++)await Promise.resolve();
+        expect(mount.querySelector('textarea').value).toBe(original);mount.querySelector('[data-editor-save]').click();for(let i = 0;i < 6;i++)await Promise.resolve();expect(ctx.__skillsApi.writeFile).toHaveBeenCalledWith(expect.objectContaining({ content:original,expectedSha256:'sha-initial' }));
+    });
+
+    test('renaming the active file preserves its pending Source and updates only the file identity',async()=>{
+        const { ctx,mount } = await bootstrap({ ctxOpts:{ files:[{ path:'SKILL.md' },{ path:'notes.md' }],scenarios:{ input:()=> 'renamed.md' } } });
+        const row = [...mount.querySelectorAll('[data-file-path]')].find(n=>n.getAttribute('data-file-path') === 'notes.md' && !n.getAttribute('data-editor-action'));row.click();for(let i = 0;i < 6;i++)await Promise.resolve();
+        mount.querySelector('textarea').value = 'pending advanced Source';ctx.__skillsApi.renameFile = jest.fn(async()=>({ sha256:'sha-renamed' }));
+        mount.querySelector('[data-editor-action="rename-file"]').click();for(let i = 0;i < 12;i++)await Promise.resolve();
+        expect(mount.querySelector('textarea').value).toBe('pending advanced Source');mount.querySelector('[data-editor-save]').click();for(let i = 0;i < 6;i++)await Promise.resolve();
+        expect(ctx.__skillsApi.writeFile).toHaveBeenCalledWith(expect.objectContaining({ path:'renamed.md',content:'pending advanced Source',expectedSha256:'sha-renamed' }));
+    });
+
+    test('canonical YAML name syntax reaches the original server validator without losing Source',async()=>{
+        const { ctx,mount } = await bootstrap({ ctxOpts:{ files:[{ path:'SKILL.md' }] } });const source = '---\nname: x # original comment\ndescription: >\n  full multiline description\nmetadata:\n  advanced: [null, false, 7]\n---\nBody';mount.querySelector('textarea').value = source;mount.querySelector('[data-editor-save]').click();for(let i = 0;i < 6;i++)await Promise.resolve();expect(ctx.__skillsApi.writeFile).toHaveBeenCalledWith(expect.objectContaining({ content:source,expectedSha256:'sha-initial' }));
+    });
+
     test('save flow: writeFile called with expectedSha256 from initial read', async () => {
         const files = [{ path: 'SKILL.md', size: 50, isBinary: false }];
         const { ctx, mount } = await bootstrap({

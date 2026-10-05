@@ -1,3 +1,4 @@
+import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { el, action, field, feedback, disclosure } from './library-ui.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { nativeStudioClient } from './studio-client.js';
@@ -18,10 +19,11 @@ export function mountAssetEditor({ document: doc, root, source, projectId, stage
     const clone = () => JSON.parse(JSON.stringify(source));
     async function references(asset, parent) {
         const refs = (await client.getResourceReferences({ scope: 'project/' + projectId, resourceType: 'core.asset', resourceId: asset.assetId }, { reverse: true })).filter(item => item.edge?.kind !== 'contains');
+        if (!editor.isConnected || !parent.isConnected) return refs;
         parent.replaceChildren(); renderResourceReferenceRows({ document: doc, root: parent, references: refs, host }); return refs;
     }
     async function preview(asset, parent) {
-        const file = await client.readSource(projectId, asset.path); parent.replaceChildren();
+        const file = await client.readSource(projectId, asset.path); if (!editor.isConnected || !parent.isConnected) return; parent.replaceChildren();
         el(doc, 'p', 'atri-library-meta', `${asset.mediaType || tl('Unknown file type')} · ${file.size ?? atob(file.content).length} ${tl('bytes')}`, parent);
         const media = String(asset.mediaType || '').toLowerCase();
         const tag = /^image\/(png|jpeg|gif|webp|avif|bmp)$/.test(media) ? 'img' : /^audio\/(mpeg|ogg|wav|webm|mp4)$/.test(media) ? 'audio' : /^video\/(mp4|webm|ogg)$/.test(media) ? 'video' : null;
@@ -34,6 +36,7 @@ export function mountAssetEditor({ document: doc, root, source, projectId, stage
     }
     function form(parent, asset = null) {
         const box = el(doc, 'div', 'atri-asset-form', undefined, parent);
+        box.dataset.atriaDraftDirty = 'false'; box.oninput = box.onchange = () => { box.dataset.atriaDraftDirty = 'true'; };
         const name = field(doc, box, 'Asset name', asset?.logicalName || '');
         const path = field(doc, box, 'Asset path', asset?.path || 'assets/');
         const media = field(doc, box, 'Media type', asset?.mediaType || '');
@@ -42,10 +45,12 @@ export function mountAssetEditor({ document: doc, root, source, projectId, stage
         const file = field(doc, box, asset ? 'Replace asset file' : 'Import project asset', '', 'file');
         file.addEventListener('change', () => { const selected = file.files?.[0]; if (!selected) return; if (!asset) { name.value = selected.name; path.value = 'assets/' + selected.name.replace(/[\\/<>:"|?*\x00-\x1f]/g, '_'); } media.value = selected.type; });
         action(doc, box, 'Review asset changes', async () => {
+            if (!box.isConnected) return;
             const selected = file.files?.[0];
             if (!asset && !selected) throw new Error(tl('Choose an asset file first.'));
             if (!name.value.trim()) throw new Error(tl('Enter an asset name.'));
-            const nextPath = validateAssetPath(path.value.trim(), await client.listSources(projectId), assets, asset);
+            const files = await client.listSources(projectId); if (!box.isConnected) return;
+            const nextPath = validateAssetPath(path.value.trim(), files, assets, asset);
             const extra = JSON.parse(metadata.value);
             if (!extra || typeof extra !== 'object' || Array.isArray(extra)) throw new Error(tl('Asset metadata must be a JSON object.'));
             const updated = { ...(asset || { assetId: createStudioNativeId('asset') }), path: nextPath, logicalName: name.value.trim(), metadata: extra };
@@ -54,26 +59,29 @@ export function mountAssetEditor({ document: doc, root, source, projectId, stage
             const operations = [];
             if (asset && nextPath !== asset.path) operations.push(createAuthoringOperation({ operationType: 'source.move', target: { path: asset.path }, input: { toPath: nextPath } }));
             if (selected) operations.push(sourceWriteOperation(nextPath, encode(await selected.arrayBuffer()), { encoding: 'base64' }));
+            if (!box.isConnected) return;
             operations.push(projectSaveOperation(projectId, next));
             await stageOperations(operations, tl('Update project assets'));
         }, { primary: true });
-        if (asset) action(doc, box, 'Cancel', () => box.remove());
+        if (asset) action(doc, box, 'Cancel', () => { if (confirmAtriaDraftLeave(doc, box)) box.remove(); });
     }
     for (const asset of assets) {
         const row = el(doc, 'article', 'atri-library-version', undefined, editor); row.dataset.atriaAssetId = asset.assetId;
         el(doc, 'h4', '', asset.logicalName || asset.assetId, row); el(doc, 'p', 'atri-library-meta', asset.path, row);
         const previewBox = el(doc, 'div', '', undefined, row);
         action(doc, row, 'Preview asset', () => preview(asset, previewBox));
-        action(doc, row, 'Edit asset', () => { row.querySelector('.atri-asset-form')?.remove(); form(row, asset); });
+        action(doc, row, 'Edit asset', () => { const existing = row.querySelector('.atri-asset-form'); if (existing && !confirmAtriaDraftLeave(doc, existing)) return; existing?.remove(); form(row, asset); });
         const refsBox = el(doc, 'div', '', undefined, row);
         action(doc, row, 'Used By', () => references(asset, refsBox));
         action(doc, row, 'Remove', async () => {
             row.querySelector('[data-asset-removal]')?.remove();
-            if ((await references(asset, refsBox)).length) { feedback(doc, row, tl('Remove the references before deleting this asset.'), true); return; }
+            const refs = await references(asset, refsBox); if (!row.isConnected) return;
+            if (refs.length) { feedback(doc, row, tl('Remove the references before deleting this asset.'), true); return; }
             const confirm = el(doc, 'div', '', undefined, row); confirm.dataset.assetRemoval = 'true';
             el(doc, 'p', '', tl('Remove this asset and its project file? Installed Works are unchanged.'), confirm);
             action(doc, confirm, 'Review asset removal', async () => {
-                if ((await references(asset, refsBox)).length) throw new Error(tl('Remove the references before deleting this asset.'));
+                const refs = await references(asset, refsBox); if (!confirm.isConnected) return;
+                if (refs.length) throw new Error(tl('Remove the references before deleting this asset.'));
                 const next = clone(); next.assetFiles = assets.filter(item => item.assetId !== asset.assetId);
                 await stageOperations([sourceDeleteOperation(asset.path), projectSaveOperation(projectId, next)], tl('Remove project asset'));
             }, { danger: true });

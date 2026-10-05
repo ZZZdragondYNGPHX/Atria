@@ -5,7 +5,7 @@ export function mountResourceSource({ document: doc, form, label, readFields, on
     let advanced = false;
     const toolbar = doc.createElement('div'); toolbar.className = 'atri-runtime-toolbar';
     const toggle = doc.createElement('button'); toggle.type = 'button'; toggle.textContent = t('Source'); toolbar.append(toggle);
-    const wrap = doc.createElement('label'); wrap.className = 'atri-library-field'; wrap.hidden = true;
+    const wrap = doc.createElement('label'); wrap.className = 'atri-library-field atri-resource-source'; wrap.hidden = true;
     const caption = doc.createElement('span'); caption.textContent = t(label);
     const source = doc.createElement('textarea'); source.rows = 18; source.setAttribute('aria-label', t(label)); wrap.append(caption, source);
     const status = doc.createElement('p'); status.setAttribute('role', 'alert');

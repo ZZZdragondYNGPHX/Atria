@@ -8861,5 +8861,6 @@
     "atria.resource.source.0": "Source 必须保留当前资源身份和作用域。",
     "atria.resource.source.1": "运行资源 JSON",
     "atria.resource.source.2": "检索资源 JSON",
-    "atria.resource.source.3": "资源字段类型不受支持："
+    "atria.resource.source.3": "资源字段类型不受支持：",
+    "atria.product.illustrationSettingsJson": "插图配置 JSON"
 }

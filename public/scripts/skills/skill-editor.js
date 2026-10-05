@@ -80,7 +80,7 @@ export function parseFrontmatterShape(content) {
     const name = String(nameMatch[1]).trim().replace(/^["']|["']$/g, '');
     const description = String(descMatch[1]).trim().replace(/^["']|["']$/g, '');
     if (!/^[a-z0-9_-]+$/.test(name)) {
-        return { ok: false, error: 'SKILL.md name must match [a-z0-9_-]+' };
+        return { ok: false, canonicalRequired: /^[|>!&*]/.test(nameMatch[1].trim()) || nameMatch[1].includes('#') || /^"/.test(nameMatch[1].trim()), error: 'SKILL.md name must match [a-z0-9_-]+' };
     }
     if (!description) {
         return { ok: false, error: 'SKILL.md frontmatter must include description' };
@@ -282,6 +282,7 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
         activePath: null,
         sha256: '',
         mountId: `atria_skill_editor_${Date.now()}`,
+        drafts: new Map(), loadSequence: 0, closed: false,
     };
 
     const initialHtml = `<div id="${state.mountId}"></div>`;
@@ -292,11 +293,22 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
         wider: true,
         large: true,
         allowVerticalScrolling: true,
+        onClosing: async () => {
+            if (state.saving) return false;
+            rememberActive();
+            if (![...state.drafts.values()].some(item => item.content !== item.base)) return true;
+            return isAffirmative(await context.callGenericPopup(t('Discard unsaved file changes?'), context.POPUP_TYPE.CONFIRM, '', { okButton: t('Discard'), cancelButton: t('Cancel') }));
+        },
+        onClose: () => { state.closed = true; state.loadSequence++; },
     });
 
+    function rememberActive() {
+        const mount = document.getElementById(state.mountId), textarea = mount?.querySelector('[data-editor-textarea]');
+        if (textarea && state.activePath) state.drafts.set(state.activePath, { content: textarea.value, base: state.originalContent, sha256: state.sha256 });
+    }
     function render() {
         const mount = document.getElementById(state.mountId);
-        if (!mount) return;
+        if (!mount || state.closed) return;
         // Two-pane layout — the atria-studio root class lets the design
         // tokens cascade in (sidebar tree + large editor pane).
         mount.innerHTML = `
@@ -320,12 +332,17 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
     }
 
     async function loadFile(path) {
+        if (state.closed || state.saving) return; rememberActive(); const token = ++state.loadSequence;
         try {
             const r = await context.skills.readFile({ scope, name, path });
+            if (state.closed || token !== state.loadSequence) return;
+            const draft = state.drafts.get(path);
             state.activePath = path;
-            state.currentContent = r?.content || '';
-            state.sha256 = r?.sha256 || '';
+            state.currentContent = draft?.content ?? r?.content ?? '';
+            state.originalContent = draft?.base ?? r?.content ?? '';
+            state.sha256 = draft?.sha256 ?? r?.sha256 ?? '';
         } catch (e) {
+            if (state.closed || token !== state.loadSequence) return;
             toast(t('Failed to read ${0}: ${1}')
                 .replace('${0}', path)
                 .replace('${1}', e?.message || String(e)), 'error');
@@ -333,7 +350,7 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
     }
 
     async function saveActive(mount) {
-        if (!state.activePath || state.saving) return;
+        if (!state.activePath || state.saving || state.closed) return;
         const textarea = mount.querySelector('[data-editor-textarea]');
         if (!textarea) return;
         const content = String(textarea.value || '');
@@ -348,14 +365,14 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
         // canonically; this is purely a fast-fail for the user.
         if (state.activePath === 'SKILL.md') {
             const check = parseFrontmatterShape(content);
-            if (!check.ok) {
+            if (!check.ok && !check.canonicalRequired) {
                 report(t('Cannot save: ${0}').replace('${0}', check.error), true);
                 toast(t('Cannot save: ${0}').replace('${0}', check.error), 'error');
                 return;
             }
         }
 
-        state.saving = true;
+        state.saving = true; textarea.disabled = true;
         const saveButton = mount.querySelector('[data-editor-save]');
         if (saveButton) { saveButton.disabled = true; saveButton.setAttribute('aria-busy', 'true'); }
         try {
@@ -367,7 +384,7 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
                 expectedSha256: state.sha256 || undefined,
             });
             state.sha256 = r?.sha256 || state.sha256;
-            state.currentContent = content;
+            state.currentContent = content; state.originalContent = content; state.drafts.delete(state.activePath);
             report(t('Saved ${0}').replace('${0}', state.activePath));
             toast(t('Saved ${0}').replace('${0}', state.activePath), 'success');
             // Refresh the parent panel so updated description / new files
@@ -385,19 +402,20 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
                 toast(t('Save failed: ${0}').replace('${0}', msg), 'error');
             }
         } finally {
-            state.saving = false;
+            state.saving = false; textarea.disabled = false;
             if (saveButton) { saveButton.disabled = false; saveButton.setAttribute('aria-busy', 'false'); }
         }
     }
 
     async function createNewFile(mount) {
+        if (state.closed || state.saving) return; rememberActive();
         const input = await context.callGenericPopup(
             t('New file path (relative to skill root, e.g. references/notes.md):'),
             context.POPUP_TYPE.INPUT,
             '',
             { okButton: t('Create'), cancelButton: t('Cancel') },
         );
-        if (!input || typeof input !== 'string') return;
+        if (state.closed || state.saving || !input || typeof input !== 'string') return;
         const check = validateNewFilePath(input);
         if (!check.ok) {
             toast(t('Cannot create: ${0}').replace('${0}', check.error), 'error');
@@ -425,6 +443,7 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
     }
 
     async function deleteFile(path) {
+        if (state.closed || state.saving) return; rememberActive();
         if (path === 'SKILL.md') {
             toast(t('Cannot delete SKILL.md from the editor — delete the whole skill from the manager.'), 'error');
             return;
@@ -435,13 +454,14 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
             '',
             { okButton: t('Delete'), cancelButton: t('Cancel') },
         );
-        if (!isAffirmative(ok)) return;
+        if (state.closed || state.saving || !isAffirmative(ok)) return;
         try {
             await context.skills.deleteFile({ scope, name, path });
             toast(t('Deleted ${0}').replace('${0}', path), 'success');
+            state.drafts.delete(path);
             // If the deleted file was active, fall back to SKILL.md.
             if (state.activePath === path) {
-                state.activePath = 'SKILL.md';
+                state.activePath = null;
                 await loadFile('SKILL.md');
             }
             await refreshFiles();
@@ -455,6 +475,7 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
     }
 
     async function renameFile(path) {
+        if (state.closed || state.saving) return; rememberActive();
         if (path === 'SKILL.md') {
             toast(t('Cannot rename SKILL.md from the editor — rename the whole skill from the manager.'), 'error');
             return;
@@ -465,7 +486,7 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
             path,
             { okButton: t('Rename'), cancelButton: t('Cancel') },
         );
-        if (!input || typeof input !== 'string') return;
+        if (state.closed || state.saving || !input || typeof input !== 'string') return;
         const check = validateNewFilePath(input);
         if (!check.ok) {
             toast(t('Cannot rename: ${0}').replace('${0}', check.error), 'error');
@@ -479,10 +500,13 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
             toast(t('Renamed: ${0} -> ${1}')
                 .replace('${0}', path)
                 .replace('${1}', check.path), 'success');
+            const pending = state.drafts.get(path); if (pending) { state.drafts.delete(path); state.drafts.set(check.path, { ...pending, sha256: r?.sha256 || pending.sha256 }); }
             // If the renamed file was active, follow it.
             if (state.activePath === path) {
                 state.activePath = check.path;
-                state.sha256 = r?.sha256 || '';
+                state.currentContent = pending?.content ?? state.currentContent;
+                state.originalContent = pending?.base ?? state.originalContent;
+                state.sha256 = r?.sha256 || pending?.sha256 || state.sha256;
             }
             await refreshFiles();
             render();
@@ -507,7 +531,7 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
                     const act = ev.target.getAttribute('data-editor-action');
                     if (act === 'delete-file' || act === 'rename-file') return;
                 }
-                if (path === state.activePath) return;
+                if (path === state.activePath || state.saving || state.closed) return;
                 await loadFile(path);
                 render();
             });
@@ -581,7 +605,7 @@ export async function openSkillEditor({ context, scope, name, t = (s) => s, onCh
         render();
     });
 
-    await popupPromise;
+    await popupPromise; state.closed = true; state.loadSequence++;
 }
 
 /**

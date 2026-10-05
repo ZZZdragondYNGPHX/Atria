@@ -41,6 +41,9 @@ for (const width of [1440, 320]) test(`Extensions script and Skill settings at $
     await root.locator('.atri-skill-organization').getByLabel('Folder', { exact: true }).selectOption({ label: 'Methods ' + width });
     await root.evaluate(node => { node.scrollTop = 0; });
     await page.screenshot({ path: info.outputPath(`skills-${width}.png`), fullPage: true });
+    await root.locator('[data-skill-folder]').filter({ has:page.locator('summary',{ hasText:'Methods ' + width }) }).locator('[data-skill-action="edit"]').click(); const popup = page.locator('dialog.popup[open]'); const skill = popup.locator('.atria_skill_editor'); const textarea = skill.locator('[data-editor-textarea]'); await expect(textarea).toBeVisible(); const original = await textarea.inputValue(); const pending = original + '\nB4 full file Source draft'; await textarea.fill(pending);
+    await skill.locator('[data-file-path]:not([data-file-path="SKILL.md"]):not([data-editor-action])').first().click(); await expect(textarea).not.toHaveValue(pending); await skill.locator('[data-file-path="SKILL.md"]:not([data-editor-action])').click(); await expect(textarea).toHaveValue(pending);
+    await page.screenshot({ path:info.outputPath('b4-skill-source-' + width + '.png'),fullPage:true }); await skill.locator('[data-editor-save]').click(); await expect(skill.locator('[data-editor-status]')).toContainText('Saved SKILL.md'); await popup.locator('.popup-button-ok').click(); await expect(popup).toBeHidden();
     await root.locator('[data-extension-tab="plugins"]').click();
     await root.getByRole('button', { name: 'Local scripts', exact: true }).click();
     await root.getByRole('button', { name: 'New script', exact: true }).click();
@@ -90,6 +93,10 @@ test('A3 official Illustration retains the full settings draft and exposes Sessi
     page.once('dialog', dialog => dialog.dismiss()); await root.locator('[data-extension-tab="skills"]').click();
     await expect(settings.getByLabel('姓名', { exact: true })).toHaveValue('A3 drawing character');
     await expect(settings.getByLabel('风格词', { exact: true })).toHaveValue('A3 illustration style');
+    await settings.getByRole('button', { name:'Source',exact:true }).click(); const source = settings.getByLabel('Illustration settings JSON',{ exact:true }); const valid = await source.inputValue();
+    await source.fill('{ incomplete'); await settings.getByRole('button',{ name:'Fields',exact:true }).click(); await expect(source).toHaveValue('{ incomplete');
+    const settingsDraft = JSON.parse(valid); settingsDraft.preset.parameters.seed = -1; settingsDraft.preset.parameters.sm = true; await source.fill(JSON.stringify(settingsDraft,null,2));
+    await page.screenshot({ path:info.outputPath('b4-illustration-source-390.png'),fullPage:true }); await settings.getByRole('button',{ name:'Fields',exact:true }).click(); await expect(settings.getByLabel('NovelAI 参数',{ exact:true })).toHaveValue(/"seed": -1/);
     await settings.getByRole('button', { name: '保存配置', exact: true }).click(); await expect(settings).toContainText('配置已保存。');
     await root.getByRole('button', { name: 'Local scripts', exact: true }).click();
     await expect(root.getByRole('button', { name: 'New script', exact: true })).toBeVisible();

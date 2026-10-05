@@ -101,3 +101,7 @@ test('extension tab cancellation retains source; a saved write followed by list 
     expect(button('Save')).toBeUndefined(); unavailable = false; button('Refresh').click(); await flush(); expect(client.save).toHaveBeenCalledTimes(1);
     controller.dispose(); confirm.mockRestore();
 });
+
+test('plugin confirmation completed after disposal cannot update or delete its old owner',async()=>{
+    let resolve;const record = { id:'ext_old',revision:'r1',kind:'external',name:'Old',sourceUrl:'https://example.org/old.git' };const client = { list:async()=>[record],install:jest.fn(),remove:jest.fn() };const controller = mountExtensionPlugins({ body:document.body,client,confirm:()=>new Promise(r=>resolve = r) });await flush();button('Update').click();await flush();controller.dispose();resolve(true);await flush();expect(client.install).not.toHaveBeenCalled();expect(client.remove).not.toHaveBeenCalled();
+});

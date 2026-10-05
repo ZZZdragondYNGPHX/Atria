@@ -1,3 +1,4 @@
+import { translateShellText as t } from '../atria-shell/localization.js';
 import { defaultIllustrationPreset, OFFICIAL_PROMPT_TEMPLATE, assertIllustrationSettings } from '../../shared/illustration-plugin-contract.js';
 import { illustrationSettingsClient } from './illustration-client.js';
 import { runtimeRequest } from './runtime-client.js';
@@ -11,7 +12,7 @@ export function renderIllustrationPreset(doc, parent, preset) {
     field(doc, parent, '负面提示词', preset.negativePrompt, value => preset.negativePrompt = value, { multiline: true });
     let parameters = JSON.stringify(preset.parameters, null, 2);
     const input = field(doc, parent, 'NovelAI 参数', parameters, value => parameters = value, { multiline: true });
-    const read = () => { try { preset.parameters = JSON.parse(parameters); input.setCustomValidity(''); } catch { input.setCustomValidity('请填写有效 JSON 参数'); input.reportValidity(); throw new Error('请填写有效 JSON 参数'); } };
+    const read = ({ silent = false } = {}) => { try { preset.parameters = JSON.parse(parameters); input.setCustomValidity(''); } catch { input.setCustomValidity('请填写有效 JSON 参数'); if (!silent) input.reportValidity(); throw new Error('请填写有效 JSON 参数'); } };
     return read;
 }
 
@@ -23,17 +24,40 @@ export function mountIllustrationSettings({ document: doc = globalThis.document,
     const status = node(doc, root, 'p', '读取配置…'); status.setAttribute('role', 'status');
     const content = node(doc, root, 'div');
     let savedValue = '';
+    let advanced = false, rawDraft = '', saving = false;
     let disposed = false, record, value, selectedCharacter = '', workId = packageId ?? '', configurationData = {}, workRows = [], readPreset = () => {};
     const fail = error => { if (!disposed) { status.textContent = error.status === 409 ? '配置已被另一处修改，当前编辑已保留。请重新打开配置后合并。' : error.message; status.setAttribute('role', 'alert'); } };
-    const run = fn => async () => { try { await fn(); } catch (error) { fail(error); } };
+    const run = fn => async () => { if (disposed || saving) return; try { await fn(); } catch (error) { fail(error); } };
     const markDirty = () => {
-        try { readPreset(); root.dataset.atriaDraftDirty = String(JSON.stringify(value) !== savedValue); } catch { root.dataset.atriaDraftDirty = 'true'; }
+        try { if (!advanced) readPreset({ silent: true }); root.dataset.atriaDraftDirty = String(JSON.stringify(advanced ? JSON.parse(rawDraft) : value) !== savedValue); } catch { root.dataset.atriaDraftDirty = 'true'; }
     };
     content.addEventListener('input', markDirty); content.addEventListener('change', markDirty);
+    async function saveSettings() {
+        if (disposed || saving) return;
+        if (!advanced) readPreset();
+        const validated = assertIllustrationSettings(advanced ? JSON.parse(rawDraft) : value);
+        saving = true; const fields = [...content.querySelectorAll('input,textarea,select,button')], disabled = fields.map(input => input.disabled);
+        fields.forEach(input => input.disabled = true);
+        try {
+            const next = await client.save(validated, record.revision);
+            if (disposed) return;
+            record = next; value = structuredClone(next.value); savedValue = JSON.stringify(value); rawDraft = JSON.stringify(value, null, 2);
+            root.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true })); status.setAttribute('role', 'status'); status.textContent = '配置已保存。'; render();
+        } finally { saving = false; fields.forEach((input, index) => input.disabled = disabled[index]); }
+    }
     function render() {
         const libraryOpen = Boolean(selectedCharacter || content.querySelector('[data-section=characters]')?.open);
         const templateOpen = Boolean(content.querySelector('[data-section=template]')?.open);
         content.replaceChildren();
+        const modes = node(doc, content, 'div', undefined, 'atri-illustration-actions');
+        button(doc, modes, advanced ? t('Fields') : t('Source'), run(() => {
+            if (advanced) { const parsed = JSON.parse(rawDraft); assertIllustrationSettings(parsed); value = parsed; } else { readPreset(); rawDraft = JSON.stringify(value, null, 2); }
+            advanced = !advanced; status.textContent = ''; status.setAttribute('role', 'status'); render();
+        }));
+        if (advanced) {
+            const source = field(doc, content, t('Illustration settings JSON'), rawDraft, text => { rawDraft = text; }, { multiline: true }); source.rows = 18;
+            button(doc, content, '保存配置', run(saveSettings)); source.focus(); markDirty(); return;
+        }
         if (showEnabled) field(doc, content, '启用官方插图插件', value.enabled, enabled => value.enabled = enabled, { type: 'checkbox' });
         node(doc, content, 'p', '角色库与默认配置的修改只影响新标注；已有提示词保持原样。');
         const library = node(doc, content, 'details'); library.dataset.section = 'characters'; library.open = libraryOpen; node(doc, library, 'summary', '全局绘图角色库');
@@ -88,15 +112,7 @@ export function mountIllustrationSettings({ document: doc = globalThis.document,
         button(doc, template, '恢复官方模板', run(() => { readPreset(); value.template = OFFICIAL_PROMPT_TEMPLATE; render(); }));
         const save = node(doc, content, 'div', undefined, 'atri-illustration-actions');
         button(doc, save, '恢复默认预设', run(() => { if (work) ownWork().preset = defaultIllustrationPreset(); else value.preset = defaultIllustrationPreset(); render(); }));
-        button(doc, save, '保存配置', run(async () => {
-            readPreset(); const validated = assertIllustrationSettings(value);
-            const fields = [...content.querySelectorAll('input,textarea,select,button')];
-            const disabled = fields.map(input => input.disabled); fields.forEach(input => input.disabled = true);
-            let next;
-            try { next = await client.save(validated, record.revision); } finally { fields.forEach((input, index) => input.disabled = disabled[index]); }
-            if (disposed) return; record = next; value = structuredClone(next.value); savedValue = JSON.stringify(value);
-            root.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true })); status.setAttribute('role', 'status'); status.textContent = '配置已保存。'; render();
-        }));
+        button(doc, save, '保存配置', run(saveSettings));
         markDirty();
     }
     const ready = (async () => {

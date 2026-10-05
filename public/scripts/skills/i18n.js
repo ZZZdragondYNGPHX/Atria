@@ -40,6 +40,8 @@ const TRANSLATIONS = {
         'Skill': 'Skill',
         'Skill Manager': 'Skill 管理器',
         'Loading skills...': '正在加载 Skills……',
+        'Discard unsaved file changes?': '放弃尚未保存的文件修改？',
+        'Discard': '放弃',
         'Edit skill': '编辑 Skill',
         'Installed': '已安装',
         'Browse bundled': '浏览 Atria 内置 Skills',
