@@ -4,58 +4,53 @@
 
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`（产品）；docs 为文档辅助空间。
-- Current product branch: `refactor/atria-immersive-workspace`
-- Product HEAD / tested content: `e35e900077b6c2963cd032cdccfc45c24ab90102`；已 commit/push，未合并 main。
-- Current docs branch / HEAD: `docs`；本 A4a 持久化提交（读取真实 Git HEAD，不自引用 hash）。
-- Current stage: A4a complete; A4b next；Persona 入口仍关闭。
+- Product branch / HEAD: `refactor/atria-immersive-workspace` / `6bbb69484eabb8e6685bde589af7c8be695306d6`；实现 `6114a597f`，已 commit/push，未合并 main。
+- Docs branch: `docs`；本 A4b 持久化提交（以真实 Git HEAD 为准，不自引用 hash）。
+- Current stage: **A4b local checkpoint complete; A5 next**。用户已确认本轮执行 A4b 并停在 A4b。
 - Plan entrypoint: [index](plans/refactor/atria-immersive-workspace/index.md)
-- A4b required modules: personas、coverage 的 S20/关联行、validation。
-- Record: [record](records/refactor/atria-immersive-workspace.md)，续接重点读 A4a。
+- A5 required modules: delivery、validation；失败项再按其权威模块路由。
+- Record: [record](records/refactor/atria-immersive-workspace.md)，续接重点读 A4b；A4a 服务/Save 历史证据保留。
 
 ## Completed
 
-D1/P01–P06、A1–A3 保持。A4a 新增 Persona ID/四个 Native kinds 与 PersonaRepo；owner/exact immutable revision、root/default CAS、归档/Used By/delete/avatar、Native Product POST 家族与原 client 接线。FS/SQLite 实测。FS root 同步发布 `publishedRevisionIds`，未完成 revision 不成为历史/选择；这是发布闭包，不是新 authority。头像 PNG/JPEG/WebP/AVIF 先尺寸检查再实际解码，8MiB/4096²/像素/伪 MIME/损坏拒绝；本地已安装 WASM 初始化不 fetch 本地 URL，PNG 检查 CRC。
+D1/P01–P06、A1–A4a 保持。A4b 将 Persona 管理/选择接入现有 Product client/PersonaRepo/Session CAS：Library 第四分类、exact owner 搜索/路由、排序/分页、创建/复制/修订/头像/归档/默认/Used By/无引用删除；草稿离开检查与成功回执，刷新失败不重放。solo picker 保留 Composer 草稿、重验 revision/session/history/generation；消息展示接受时姓名/头像，之后身份变化不改旧消息。来源归档/缺失保留快照并解释。
 
-Session `atri_player_persona` protected namespace 捕获 default/explicit/none，不读全局 name1。solo select 持 Persona 锁到 HEAD 发布，匹配原 Continuity→Session 锁序，重验 HEAD/run/lifecycle/scheduler（含取消未 settle）。`_newEntry` 捕获 input display identity，普通/typed/begin 共用，客户端伪造拒绝，notes 不入任何 Session/message/request。旧 revision 不回填。non-transaction retry 按原 post-user fork，transaction retry 按原 pre-effect + 输入身份，ironman 禁用保持。
+迁移新增上传 JSON 与认证账户旧设定 preflight/apply/receipt/default-adoption。local source 仅读 Persona namespace 与受限头像目录，包含 namespace/avatar/binding digest，apply 再捕获重验；不接受浏览器路径。16MiB/1000项、未知版本/结构、原文/unknown/宏 diff/pending 处理。durable prepared ID → blob/ref/revision/root → published receipt，断点/部分失败恢复不重复建资源；default 是独立 CAS，加 prepared/adopted 回执恢复。旧 JSON 缺图、未映射 bindings/位置/Lorebook/宏明确 pending，没有旧 Session/history 自动重写。
 
-Context `player_persona` lane / `player_provided` 与 World 分离，Prompt stage `contextConsumers` 显式 opt-in；typed task 还需 context 声明，background/maintenance 不获得描述。预算/遗漏、exact ref/snapshotHash、consumer stages 进入真实 Effective Request Snapshot；本地受控 HTTP Provider 确认发送接受时旧快照，preview 不发送/解析 Secret/写会话。notes 未发送。
+账户备份继续原 native 选项/manifest/native_resources/nativeBlobs/staging/snapshot/rollback/runner，追加 schema 1 Persona 索引及所有 revision/avatar/receipt/hash/default。probe staging 检查，apply 再验闭包/冲突。按 exact IDs 合入 Persona并保留目标库；merge/overwrite/full 都明示此身份策略，其他 Native 范围保持原逻辑。默认保留目标，显式 CAS adopt 才变更；缺 Persona manifest/归档默认不能 adoption。目标头像闭包在 overwrite 下保留。
 
-有身份的 Save v3 保留容器 v1，snapshot/session/resume 三 scope；旧 v1/v2 legacy 保持。state/hash/input evidence/avatar refs/attachments/bytes 闭包校验；独立跨账户恢复不自动入库/采用默认。AssetStore 引用/删除保护覆盖发布 Persona 全修订、存储快照与 migration target。
-
-Shared 自己账户/席位授权、ACL/Session CAS/access/scope epoch 重验与 owner 头像复制；projection 仅 status/name/avatar，avatar HTTP 白名单不放开 owner 其他资产。authorization 存主体 hash 与 epoch，成员变更清理当前 seat，旧 Branch 不给后来主体旧身份。Host 仅固定 `status/openSelector` 合约，缺 picker 时 unavailable，无第四 Library 分类或 Host picker UI。
+Shared 自己席位 UI 经原 authenticated transport 捕获 seat/access/scope/revision anchors；观察者与 pending retry 拒绝，姓名/头像投影授权。**共享描述明确停用**：UI/Context provider 固定 `shared_scope_unsupported`，无 caller opt-in 或 owner solo 回退。Host shared status 为 seat-required；共享席位选择走 Shared controls。solo Host picker 接原白名单/guards；Full presentation root 失效时独立 recovery 入口仍打开真实 picker，作品无个人库 CRUD。
 
 ## Pending / next target
 
-A4b：Persona 管理/选择/搜索与草稿/UI、迁移 preflight/apply/receipt 和逐项 replay、账户 native backup manifest/default 独立 adoption/restore，完整 Shared/Host 产品接线与开放门。先读 personas/coverage S20/validation 和 Record A4a 的限制；不能把当前服务 tests 当整套 V20。
+A5：首阶段集成与兼容验收。先核对真实 Git/远端与本 HANDOFF → index → delivery/validation → Record A4b，再按实际失败项路由。只执行与当前触及面相称的最小本地验证；不直接全跑矩阵、不发起/等待远端 CI，不提前进入 B/F 或合并 main。
 
-当前 Shared 描述消费明确返回 `shared_scope_unsupported`，没有退回 owner solo/global；A4b 必须明示停用状态并关闭授权 consumer 的产品审阅/接线证据，再按实际支持范围决定开放。当前 persona-save-backup suite 只验证 Save/avatar，不是账户备份。migration kind/Used By 能识别真实 target，但迁移 API/validator/ledger 仍未实现；C20.5 prepared/revision/root/receipt 每断点回放归 A4b。
+支持范围的管理/solo/Shared 席位显示选择入口已开放；这不是完整 V20/S00–S20/最终集成证明。Shared 描述继续停用，不能把选择/显示/头像当成描述已消费；用户没有授权重新启用。旧高级 scope/Actor/绑定/注入自动映射、整站迁移和历史批量改写不提供。
 
-Host capability 白名单存在但 picker 没有实现；epoch/nonce/宿主恢复入口的真实 UI 证据归 A4b。Library 第四分类/Host picker 仍不能提前打开。S00–S20 全矩阵、真实设备/provider 与最终集成继续归 A5/B/F。
-
-每阶段只做本地最小相关验证；实现/验证/commit/push 后更新同一 Record/live HANDOFF，给接手提示词并停止。不自动跨阶段，不提前合并 main。用户已授权普通问题自行处理。
+MySQL/Postgres、真实手机/软键盘/中文 IME/WebView/远端模型/完整 native@3 lease/nonce 设备组合未测。A4b Chromium 独立 Host 恢复场景使用真实宿主/服务，故障 root 是测试创建的 Full Host；不能当作任意真实作品 frontend 的崩溃覆盖。正常 Bridge epoch/nonce 原 authority未重写。本轮无构建/Android/全量 tests/完整 E2E/远端 CI。
 
 ## Key decisions / carry forward
 
-D01–D20/P01–P06 不重开。Native AUTO(0)/DISABLED(-1) Enter 换行，Ctrl/Cmd+Enter 发送；ENABLED(1) 直接 Enter；Shift/Alt/IME/229 不发送，legacy AUTO 不改。未接受草稿只恢复同 Session/基准 revision；已提交输入不重发，Stop 在生成期间可用。
+D01–D20/P01–P06 不重开。原资源/请求/Session/task authority保持，exact ref/contentHash 不自动 latest；default/资源编辑不隐式推进 Session，legacy-unbound 不回填。
 
-原资源/请求/Session/task authority 保持；无跨路由自动草稿持久化。资源 exact revision/contentHash 不自动 latest；Library/Save 旧依赖恢复保留新版默认，历史动作先 Preview exact。Native chatKey ABI 保留，Runtime repair 仍是临时原控制器返回记录，不能持久化成新 authority。S16 会话工具仍由原 SDK 清理，外壳层只在 Play 显示。
+FS withTransaction 无整批 rollback。Persona root publishedRevisionIds 保持发布闭包；migration 要 durable preallocated IDs/plan digest/receipt，不用普通 create 重放。部分失败保留已有成果；回退通过 archive 保持已使用 snapshot。管理备注只留账户库，不进 Session/message/request。
 
-Persona source/notes 只在个人库；源归档/缺失不破坏历史 snapshot。Default/资源编辑不隐式推进 Session。FS withTransaction 无批量 rollback；migration 需 durable prepared → blob/ref/revision → root → receipt，账本 preallocated IDs/plan digest/default 独立 CAS；不能用普通 create() 重放代替迁移。保留旧 JSON 原字节/未知项/绑定 pending；旧整站迁移退役。
+Save v3 的 snapshot/session/resume 与旧 v1/v2 保持 A4a；跨账户恢复独立快照不自动认领个人库/default。账户备份新 manifest 才提供完整身份闭包，旧无 Persona kinds 的 Native 备份继续兼容。恢复 Persona 策略保留目标库/默认，冲突要 review，不能按名字静默合并。
 
-## Validation
+Native AUTO(0)/DISABLED(-1) Enter 换行，Ctrl/Cmd+Enter 发送；ENABLED(1) 直接 Enter；Shift/Alt/IME/229 不发送，legacy AUTO 不改。未接受草稿只恢复原 Session/基准，已接受输入不重发，Stop 在生成期间可用。
 
-A4a 最终 11 suites / 63 个不同 unit 用例有本地通过证据：新增 Persona 五 suites 22 tests，原 history 10 / Prompt freeze 9，加 22 个选中的 Save/Shared/run/typed frontend 回归。最后所有新 suites 21 tests，再针对引用 resolver 与新增 migration target case 复验 resources 7 + save/avatar 5；重叠不相加。
+## Actual local validation
 
-实际 FS/SQLite、双账户目录、真实头像四格式解码、Shared avatar HTTP 授权/拒绝、typed retry/begin/ironman Save v3、独立 Save restore，以及受控本地 HTTP Provider 的真正发送参数均有断言。触及生产 JS ESLint 与 diff whitespace 通过。MySQL/Postgres 本地未启（初始未过滤命令 ECONNREFUSED）；后续仅 FS/SQLite 的最小相关集合通过，不声称四引擎 parity。
+A4b 13 suites / **74 个不同 unit** 有通过证据（重叠复验不累加）：新 migration8/storage4/account-backup4/UI4；resources7/context2/shared-host3/Play13/Library4/Search6/Shared client6/Full Host5/原 Native backup8。FS↔SQLite 真正账户备份、PNG/blob闭包、各 migration断点、default回执恢复、受控本地 HTTP Provider实际发送与 Shared provider停用断言均通过。
 
-未运行 Persona 浏览器/完整 E2E/全量 tests/构建/Android/真机/WebView/真实中文 IME/真实远端模型/远端 CI；没有显著 UI 修改。没有迁移、账户 backup 或真实 Host picker 验收。A3 历史 99 unit/10 Chromium 场景证据仍在 Record，不能转算成 A4 证据。
+Chromium `tests/e2e/atria-shell/08-personas.e2e.js` 最终 **4 场景通过**：390px 管理/草稿/default/JSON重放/账户源预检；solo/Host picker/草稿/focus/独立恢复；zh-cn 管理；真实服务 Shared 自己席位显示选择与描述停用。截图已本地查看；fixture/截图/trace 均 ignored，不提交。
 
-## Read first / preserve / do not repeat
+触及生产 JS ESLint、`npm run check:native-localization`（English/zh-cn）、diff whitespace 通过。详细命令/失败修复/最后验证在 Record A4b。A4a/A3 历史证据不转算为本轮新测试；本轮未测范围见 Pending。
 
-核对真实 Git/远端 → 本 HANDOFF → index → A4b personas/coverage S20/validation → Record A4a。不要全扫 Plans/Records/Skills/reference；不要重做 D1/A1–A4a 或把 shared 描述停用宣称完整消费。
+## Preserve / do not repeat
 
-保留产品 AGENTS.md 与 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 原有 dirty changes；只提交任务文件。package/plugin/skills 未改，reference 未读。不要将 main merge 进独立长期工作空间。
+产品 AGENTS.md，以及 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 原 dirty changes保持未提交。package/plugin/skills/reference未改/未读。不得 main merge 到独立长期空间。不要重新实施 A1–A4b，不恢复旧共享 global Persona 或整站迁移。
 
 ## New-chat bootstrap prompt
 
-继续 Atria 的 refactor/atria-immersive-workspace，执行 A4b。先核对真实 Git 状态，读 docs:HANDOFF.md → plans/refactor/atria-immersive-workspace/index.md → personas/coverage 的 S20 和关联行/validation，再读同一 Record A4a。产品分支 refactor/atria-immersive-workspace@e35e900077b6c2963cd032cdccfc45c24ab90102，A4a 已实现/本地验证/push，用户已授权普通问题自行处理。复用现有 PersonaRepo、Session CAS、Context evidence 与 Save v3，推进管理/选择/UI、迁移 ledger 逐项回放、账户 backup manifest/default adoption、Shared 授权消费和 Host picker/宿主恢复证据；当前 shared_scope_unsupported 必须明确，入口只在本阶段 V20 开放门满足后打开。每阶段只做本地最小相关验证；实现/验证/push 后更新同一 Record/HANDOFF，给接手提示词并停止。不提前合并 main。
+继续 Atria 的 refactor/atria-immersive-workspace，执行 A5。先核对真实 Git/远端 → docs:HANDOFF.md → plans/refactor/atria-immersive-workspace/index.md → delivery/validation → 同一 Record A4b。产品分支 refactor/atria-immersive-workspace@6bbb69484eabb8e6685bde589af7c8be695306d6，A4b 已实现/本地验证/push，支持范围的 Persona 管理/选择入口开放；共享描述明确停用，不能宣称或自动开启消费。复用原 Native/Session/Context/Save/backup/Bridge authority，按实际触及面推进首阶段集成与兼容验收，每阶段只做最小本地相关验证、不发起/等待远端 CI。用户已授权普通问题自行处理；A5 完成实现/验证/commit/push后更新同一 Record/HANDOFF、给接手提示词并停止，不进入 B/F、不提前合并 main；保护原有 dirty changes。

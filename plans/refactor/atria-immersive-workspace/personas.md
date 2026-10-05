@@ -6,7 +6,7 @@
 
 来源：旧 `public/scripts/personas.js`、`public/index.html`、`public/script.js`，以及 [SillyTavern Personas 文档](https://docs.sillytavern.app/usage/core-concepts/personas/)。旧备份不含头像二进制和聊天绑定，因此不能宣称仅凭该 JSON 恢复完整身份资产。
 
-本模块不是旧管理抽屉重显示，也不恢复整套 SillyTavern 产品迁移。它新增 Native 资源、会话/请求 evidence、数据转换与完整恢复。D1 已核对基线并冻结下文实施契约；A4a 已实现资源/会话/请求/Save/共享选择与 Host capability 合约；迁移、账户备份扩展和产品入口仍属 A4b，完整开放证据见本任务 Record。
+本模块不是旧管理抽屉重显示，也不恢复整套 SillyTavern 产品迁移。它新增 Native 资源、会话/请求 evidence、数据转换与完整恢复。D1 已核对基线并冻结下文实施契约；A4a 已实现资源/会话/请求/Save/共享选择与 Host capability 合约；A4b 已完成迁移、账户备份扩展和支持范围的产品入口，实际本地证据与未验范围见本任务 Record；Shared 描述明确停用。
 
 ## Native authority design
 
@@ -185,3 +185,14 @@ FS 不提供整批原子性：先 durable prepared receipt → blob/ref/immutabl
 ## Release gate
 
 A4a 完成后才能接 A4b；入口开放需 V20 的账户隔离、revision/CAS、默认/会话/历史、Prompt 证据与过滤、branch/save/旧格式、共享/自有 UI、迁移幂等/失败恢复、图片/备份闭包全部通过。没有模型实发证据时只承诺编译与受控测试所证明的范围。任何兼容能力尚缺时明确保持入口未开放，保留旧数据，不以关闭 warning 代替验收。
+
+
+## A4b supported-range checkpoint
+
+A4b 已实现并本地验证管理/搜索/排序/分页/修订/头像/归档/默认/Used By、solo 会话 picker 与 Shared 自己席位 picker。普通输入展示接受时姓名/头像；失败或来源归档/缺失保留原快照与解释。Host 白名单经原 Bridge 接宿主 solo picker，作品库 CRUD 不开放；Shared Host status 明示 seat-required，席位选择走 Shared 控制，不回退 owner solo。共享描述继续明确停用，Context provider 也强制 `shared_scope_unsupported`，不能用 caller opt-in 绕过。
+
+迁移上传和账户旧设定均只读预检；账户捕获仅取 Persona 设置 namespace 与认证头像目录内的合法文件，文件名不授予浏览器路径读取权限。局部源包含 namespace/avatar/binding digest 和 pending；apply 重新捕获并重验 planDigest。原上传 JSON 字节/unknown 来源、宏 diff、未映射注入/绑定/Lorebook 与图片缺失均留在 receipt；没有自动改旧 Session。
+
+账户恢复选择的首轮策略是按 exact IDs 合入 Persona、保留目标已有 Persona；冲突拒绝并要求审阅，不按名字合并。这个策略在 merge/overwrite/full 下同样保护身份资源；其他 Native 数据仍服从原恢复范围。预检和 UI 明示此策略，默认独立保留，显式 CAS adopt 才改变；缺 Persona manifest/归档默认不能进行新默认 adoption。保留目标头像闭包，继续由现有 staging、snapshot/rollback、runner 和 AssetStore 恢复，没有新备份 authority。
+
+支持范围的本地开放证据见 Record A4b：FS/SQLite、受控 HTTP Provider 和 Chromium 390px。Shared 描述、旧高级注入/绑定自动映射和历史批量改写均明确未提供；MySQL/Postgres、真实手机/IME/WebView/远端模型及完整 S00–S20 仍未验收。A4b checkpoint 完成不等于完整 V20/最终产品集成验收；下一正式阶段为 A5。

@@ -370,6 +370,66 @@ Shared 描述停用仍需 A4b 明示产品状态并决定有权限 consumer 的�
 
 保留产品 AGENTS.md 与 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 的原有 dirty changes，不提交；package/plugin/skills/reference 未改/未读。产品新分支不合并 main。下一阶段 A4b；本轮完成实现、本地验证、commit/push 与 Record/HANDOFF 后停止。
 
+## Stage A4b — Persona management migration backup and product selectors
+
+- Date: 2026-10-05
+- Product start HEAD: `e35e900077b6c2963cd032cdccfc45c24ab90102`
+- Product End/Tested content HEAD: `6bbb69484`；实现 `6114a597f`，另加归档默认恢复拒绝断言；同一工作分支，已 commit/push，未合并 main。
+- Docs start HEAD: `ef8cf221cd8e75c921425619f7b622c631f82eb9`
+- Docs End/Tested content: 本次 index/personas/coverage/validation、同一 Record 与 live HANDOFF；不自引用 hash。
+- Status: A4b local checkpoint complete; A5 next. 支持范围入口开放，Shared 描述明确停用。
+
+### Implementation and scope
+
+按 HANDOFF → index → personas/coverage S20/validation → Record A4a 路由，保护原有 dirty changes。用户确认“A4a 是已有停点，本轮执行 A4b 并停在 A4b”。没有加载 Skill/reference、没有跨正式阶段或合并 main。
+
+Persona 管理与 solo picker 接既有 authenticated Product client/PersonaRepo/Session CAS。Library 第四分类、exact owner 搜索路由、排序/分页、姓名/描述/管理备注、头像上传/移除/预览、创建/复制/新修订/归档/恢复/default/Used By/无引用删除均保留 authority。编辑失败保留草稿；成功保留 immutable receipt，刷新失败不重放。内部取消和原外壳 route guard 保留草稿；状态切换不更改 Composer 未发送内容。历史输入读取正式 Timeline identity，当前设定重命名不追随；头像失败显示回退。
+
+迁移有上传 JSON 与认证账户旧 Persona settings 两个 preflight/apply 入口。preflight 全量只读，16MiB/1000项、显式未知版本/坏结构/超限/坏上传拒绝；原文、unknown fields、宏转换 diff 与 pending 保留，复制同名而不覆盖。local source 只捕获 Persona settings namespace/受限头像目录，来源追加 namespace/avatar/binding digest，拒绝路径遍历/符号链接；apply 重新捕获来源且必须匹配 review digest。旧 bindings/位置/Lorebook/未知宏明确 pending，不自动改旧会话或历史。
+
+账本先 durable prepared（persona/revision/asset IDs）→ blob/ref → immutable revision/root → published receipt；任何断点重试核对 exact 预分配目标，root 已发布但 receipt 未完成只补回执。部分失败保留失败项与已有发布，UI 明示重预检重试。default adoption 是独立 CAS，另有 prepared/adopted receipt，default 已发布后 receipt 中断可恢复而不再发布默认。来源/映射与备份引用保护删除/GC，回退通过归档资源保持历史，没有批量重署名。
+
+现有账户 backup/native 选项追加 schema 1 Persona manifest（all records/hash/avatar/default/receipt）；下载前闭包校验，probe 真正 staging 检查，restore 在任何 live 写入前再验。缺 manifest、改 hash、缺图、ID 冲突拒绝；旧无 Persona kinds 的 Native archive 仍兼容。按 exact IDs 合入 Persona并保留目标库，原 overwrite/full 其他 Native 范围保持；UI 明示策略。默认保留目标，显式 adopt 才 CAS，归档 source default 拒绝新 adoption；目标 Persona 头像即便 Native overwrite 也保持。复用原 snapshot/rollback/runner/native blobs，无并行备份服务。
+
+Shared 自己席位选择经原 authenticated transport 捕获 seat/access/scope/revision anchors，observer/未结输入重试拒绝；UI 展示授权姓名/头像。描述在 UI 和 Context provider 固定停用 `shared_scope_unsupported`，无 opt-in 或 owner solo fallback；Host shared status 也不投影 owner solo。solo Host picker 接原 headless/白名单/Session guards，作品无个人库读写。Full Host 独立 recovery picker 在 presentation root 失效时仍工作。
+
+### Actual minimal local validation
+
+本轮 13 suites / 74 个不同 unit 用例具有最终通过证据（重试与交叉集合不累加）：新 migration 8 / storage 4 / account-backup 4 / UI 4；resources 7 / context 2 / shared-host 3 / Play 13 / Library routing 4 / Search 6 / Shared client 6 / Full Host 5 / 原 Native backup 8。其中 Save/session 的其余 A4a 证据沿用历史，不转算成新执行。
+
+```bash
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/persona-migration.test.js native/persona-storage.test.js native/persona-account-backup.test.js --silent
+# 3 suites / 16 tests passed，含 local source、avatar 断点与 default receipt 回放
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/persona-migration.test.js native/persona-storage.test.js native/persona-context.test.js native/persona-account-backup.test.js atria-shell/native-personas.test.js --silent
+# 5 suites / 22 passed，最后 Shared provider 停用修正后复验
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/native-personas.test.js atria-shell/native-play-product.test.js native/persona-shared-host.test.js native/persona-account-backup.test.js --silent
+# 4 suites / 24 passed
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/persona-resources.test.js native/persona-migration.test.js atria-shell/native-personas.test.js atria-shell/native-play-product.test.js --silent
+# 当时 4 suites / 30 passed；后来 Play 追加身份显示断言并在上项通过
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/native-personas.test.js atria-shell/library-runtime-workspaces.test.js atria-shell/product-search.test.js native/persona-shared-host.test.js --silent
+# 4 suites / 17 passed
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath game-runtime/shared-host-p8.test.js --silent
+# 1 suite / 6 passed；Full Host 5 在相关三 suite 命令通过，早期 Shared UUID 试件失败已修正
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/persona-migration.test.js storage/endpoints/native-backup-roundtrip.test.js
+# 当时 2 suites / 15 passed（migration 当时 7，原 backup 8）
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/persona-account-backup.test.js --silent
+# 最后追加 archived default adoption 拒绝，1 suite / 4 passed
+npm --prefix tests run test:e2e -- e2e/atria-shell/08-personas.e2e.js --workers=1
+# 最终 Chromium 4 场景通过；390px/English/zh-cn/真实 FS HTTP
+npm run check:native-localization
+# English source / zh-cn 通过；所有触及生产 JS 的 ESLint、git diff --check 通过
+```
+
+实际 FS/SQLite 双向账户备份、真实 PNG 字节和目标保留头像、迁移断点与并发发布均有断言。受控本地 HTTP Provider 再次捕获真实发送的接受时 Persona，排除管理备注/后来重命名与无关任务；不是远端模型证明。Chromium 四场景验证真实服务的管理、default、JSON replay/local preflight、solo picker/草稿/focus、Host stale guard/独立恢复、中文与 Shared own-seat；截图已本地查看，截图/trace/用户 fixture 不提交。
+
+### Failures resolved and limits
+
+首次浏览器发现新建/详情仅换 DOM 而路由未更新，返回同一 list route 仍停编辑器；改为原 WorkspaceHost persona:new/exact route 后复验。选择成功但刷新失败时，通用 action finally 曾重启选择按钮；加入 completed 状态保留 receipt并阻止重放。backup probe test 的 multer prefix 被重复注册导致500，修正 fixture；旧泛型所有 kind 试件为 Persona kinds 写入假 schema，改为非 Persona kind generic fixture，实际 Persona 用新 account-backup 契约覆盖。中文测试 init script 每次覆盖 en，改为独立 zh-cn 页面；Shared client 新试件需注入现有 invocationId，避免 jsdom 缺 crypto.randomUUID。上述失败均不计通过。
+
+未执行全量 tests/完整 E2E/构建/Android/真机/软键盘或真实中文 IME/WebView/MySQL/Postgres/远端模型/远端 CI。原 Bridge epoch/nonce authority未重写；本轮浏览器证明 picker 实际 Host调用、stale revision、focus和独立恢复，并未把所有 native@3 lease/nonce/设备组合重新验收。共享描述保持停用；高级 legacy 自动 scope/Actor 映射、整站迁移和历史批量改写未提供。全部 S00–S20/完整 V20 与最终集成仍待 A5/B/F。
+
+产品 AGENTS.md 与 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 原 dirty changes未提交；package/plugin/skills/reference 未触及。本轮产品/docs 持久化后停止，不进入 A5、不合并 main。
+
 ## Final state
 
-Task ongoing. A1–A4a implemented and locally verified; A4b next. Persona entrances remain closed; S00–S20 full integration and final release remain pending.
+Task ongoing. A1–A4b locally implemented/verified; A5 next. 支持范围的 Persona 管理/选择入口已开放，Shared 描述明确停用。S00–S20 全矩阵与最终集成仍未完成。

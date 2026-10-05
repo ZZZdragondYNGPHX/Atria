@@ -28,7 +28,7 @@
 | V17 | native/hybrid/custom presentation、自有字体/Shadow DOM、恢复可达；共享席位/观察者/过期 | `tests/native/{frontend-heavy,frontend-platform,shared-runtime-p8}.test.js`；`tests/e2e/atria-shell/03-game-surfaces.e2e.js` |
 | V18 | 两种语言、真实 font_scale/Custom CSS/Enter、条件账户操作/头像/密码/备份恢复范围 | `tests/atria-shell/{appearance,utility-workspaces,localization,product-localization-coverage}.test.js`；`tests/storage/endpoints/native-backup-roundtrip.test.js` |
 | V19 | Guided/Startup/Expert、真实来源/事件、清理范围、复制导出失败 | `tests/logging/{frontend-adapters,startup-store}.test.js`；`tests/e2e/atria-shell/04-navigation.e2e.js` 的 A1 global utilities 场景 |
-| V20 | Native Persona 的全部开放门 | A4a 已新增 resource/session/request/save/shared/host 服务合约；迁移/账户 backup/产品 E2E 仍需 A4b 补齐；旧 `tests/e2e/personas/` 仅证明 legacy，不能直接冒充 Native 验收 |
+| V20 | Native Persona 的全部开放门 | A4a 服务合约和 A4b 迁移/账户 backup/产品接线有本地针对性证据；Shared 描述停用、全矩阵待 A5；旧 `tests/e2e/personas/` 仅证明 legacy，不能直接冒充 Native 验收 |
 
 实际测试位置以最新源码为准，进入实施阶段时更新新增测试路径。每阶段及任务完成时，只在本地执行最小相关验证；不发起或等待远端 CI。本表不能用“已有测试文件”替代未覆盖场景。
 
@@ -59,7 +59,7 @@ V20 必须包含：不同账户同名、多个修订/缺头像、归档默认、
 
 ## D1 frozen C20 contract map — phase-scoped implementation
 
-下表保留 D1 冻结目标。A4a 已创建 persona-resources/session/context/shared-host/save-backup 五个真实服务合约文件；storage 的 CAS/root crash 验证目前在 resources 与 Session suites，migration/backup/picker 与产品 E2E 尚未创建/执行。不要把文件存在或部分断言通过当作整行开放门全部通过；实际命令与限制只见 Record A4a。
+下表保留 D1 冻结目标。A4a 已创建 persona-resources/session/context/shared-host/save-backup 五个真实服务合约文件；storage 的 CAS/root crash 验证在 resources/Session suites，A4b 已新增 migration/storage/account-backup/picker/UI 与产品 E2E，并按实际改动本地执行；完整设备/引擎矩阵仍未验收。不要把文件存在或部分断言通过当作整行开放门全部通过；实际命令与限制只见 Record A4a。
 
 | ID | 冻结契约 / 阶段 | 待新增测试与关键断言 |
 | --- | --- | --- |
@@ -107,3 +107,12 @@ npm run test:e2e -- e2e/atria-shell/04-navigation.e2e.js
 ## Evidence gate
 
 每个 checkpoint 记录实际 tested HEAD、执行命令、pass/fail、浏览器/设备范围、新旧数据验证与剩余限制。首次开放 Persona 必须有持久化及服务端请求 evidence；没有真实模型实发则限定验证结论。最终集成前验证对应实现提交，并记录实际 Git 状态，不借用历史任务的“Complete”。
+
+
+## A4b actual targeted entrypoints
+
+新增 `tests/native/persona-{migration,storage,account-backup}.test.js`、`tests/atria-shell/native-personas.test.js` 与 `tests/e2e/atria-shell/08-personas.e2e.js`；Save suite 仍只证明 Save/avatar，账户备份证据由 account-backup 和原 storage Native roundtrip 提供。迁移验证 prepared/blob/ref/revision/root/receipt、并发同源及 default prepared receipt 恢复；账户验证 FS↔SQLite、缺 manifest/hash/avatar、ID 冲突、默认 CAS/归档拒绝与保留目标头像。
+
+Context suite 扩展 Shared 停用且不回退 solo 的断言，并复验受控 HTTP Provider 真正发送；Play suite 增加接受时姓名/头像与后来选择分离。Shared Host suite 验证 seat/access/scope/CAS anchors 与 observer/pending 拒绝。Chromium 390px 的四个产品场景包括管理/迁移重放/局部源预检、solo/Host/独立恢复及草稿/focus、中文管理、真实服务 Shared 自己席位选择与描述停用。实际数量/命令/失败修复/截图限制见 Record。
+
+没有执行全量 tests/构建/Android/真实手机IME/WebView/MySQL/Postgres/远端模型/远端 CI；完整矩阵继续归 A5/B/F。支持范围入口已开放，Shared 描述仍为停用；不能把有权限的 Shared 显示/选择误记为描述已消费。

@@ -65,3 +65,10 @@ S13–S14 默认 Run，Session 范围固定并显示 ID/名称；四模式原专
 S15–S16 Skills/Plugins 复用原文件、scope、manifest、偏好和更新禁用行为。扩展与插图的草稿/保存回执补齐；官方插图角色/作品覆盖/模板/参数保留，仅查看作品范围不生成修改。会话工具进入现有外壳工具层，跟随 Play/utility 路由可见性，原 SDK cleanup 与 Prompt/图片 task authority 不变。
 
 这里只记录 A3 实施归属；本地验证证据与限制见 [Record A3](../../../records/refactor/atria-immersive-workspace.md#stage-a3--authoring-runtime-agents-and-extensions)。V09–V16 的局部验证不等同于全字段/全设备/所有 provider 的最终集成验收。
+
+
+## A4b S20 and associated wiring checkpoint
+
+S20 第四 Library 分类、账户内 exact 搜索/详情、草稿与回执、CRUD/头像/归档/default/Used By 已接 PersonaRepo。S03 输入区打开 solo picker、保持草稿，消息显示接受时快照；S17 自己席位 picker 与独立宿主恢复控制已接，Shared 描述固定停用且无 owner solo 回退。S18 现有账户备份扩展 Persona manifest、来源冲突与默认独立 adoption 审阅。S04 Save v3 仍复用 A4a，未新增 save authority；S06 会话默认捕获保持 A4a exact 路径。
+
+C20.5/6/7/8 的新增本地证据进入同一 Record A4b；不把上述 checkpoint 当作 S00–S20/完整 V20 或真实设备验收。现有入口仅承诺支持范围；Shared 描述/高级 legacy 自动映射明确不提供。下一阶段 A5，不提前进入 B/F。
