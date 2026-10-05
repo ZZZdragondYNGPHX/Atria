@@ -3,7 +3,7 @@
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
 - Status: **Frozen for staged implementation — 2026-10-05；用户已授权开工与自主处理，新增契约已完成 D1 设计核对。**
-- Current stage: D1 契约审阅与范围冻结完成，下一 checkpoint 为 A1 外壳与入口。
+- Current stage: A1 外壳与入口完成，下一 checkpoint 为 A2 游玩、资料库、安装与恢复。
 
 ## Goal
 
@@ -55,6 +55,8 @@ A1 → A2 → A3；A4a 依赖稳定会话 / 请求 authority，A4b 依赖 A4a �
 
 目前 S00–S20 均有设计覆盖，均**未完成产品集成验收**。布局偏好已经确认，Native 用户设定的 schema/API、迁移 ledger、旧会话兼容设计已在 personas 冻结，产品实现与合约验证留在 A4a/A4b。不要把占位 HTML 的字段和服务样例复制到产品中作为现有编辑器的替代。
 
+A1 已实现并完成本地针对性验证；执行证据与限制见 [Record 的 A1](../../../records/refactor/atria-immersive-workspace.md#stage-a1--floating-shell-navigation-and-shared-state)。这只关闭 A1 checkpoint，不表示 S00–S20 全矩阵或最终集成验收完成。
+
 ## Validation strategy
 
 以 [validation.md](validation.md) 的真实 authority、状态和设备矩阵验收；每阶段只在本地执行最小相关验证；实际修改与未解决风险决定检查范围。不计算原型“等价通过率”。仅文档检查通过不能推进产品开放门。
@@ -64,3 +66,4 @@ A1 → A2 → A3；A4a 依赖稳定会话 / 请求 authority，A4b 依赖 A4a �
 - 2026-10-05：新建 Draft Bundle，整理 v0.2–v0.8 确认；增加 S20 独立原生能力与迁移工作包；旧设计完成状态保持原样。
 
 - 2026-10-05 D1：用户开工授权；冻结 P01–P06 与 Persona kind/schema/API、Session/重试、Context/共享/Host、迁移账本、Save v3 和现有备份扩展契约。A1 准备就绪，未开始产品修改。
+- 2026-10-05 A1：浮动外壳、compact 阅读顶栏五域菜单、来源/owner 级搜索重试与查询返回、authority 离开草稿检查完成；复用认证/学习/设置/诊断。离开取消保留原编辑表面，确认离开丢弃；不新增跨路由草稿持久化 authority。下一阶段 A2。

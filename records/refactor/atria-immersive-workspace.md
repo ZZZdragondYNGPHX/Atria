@@ -2,12 +2,12 @@
 
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
-- Status: Active — D1 complete; A1 implementation next
+- Status: Active — A1 complete; A2 next
 - Plan: [Plan index](../../plans/refactor/atria-immersive-workspace/index.md)
 
 ## Summary
 
-本任务承接用户的“整理 Atria 前端界面”讨论。经 v0.2–v0.8 多轮交互原型和确认，2026-10-05 整理成新的 Plan Bundle 草案。旧前端重设计与 Native Frontend v3 的已完成历史保持不变。D1 已完成契约核对与范围冻结，产品工作尚未实施，S00–S20 均未进行本任务的集成验收。
+本任务承接用户的“整理 Atria 前端界面”讨论。经 v0.2–v0.8 多轮交互原型和确认，2026-10-05 整理成新的 Plan Bundle。旧前端重设计与 Native Frontend v3 的已完成历史保持不变。D1 已完成契约核对与范围冻结，A1 已实现浮动外壳与入口并完成本地针对性验证；S00–S20 全矩阵与最终集成验收仍待后续阶段。
 
 ## Stage D0 — Discussion consolidation and Draft Bundle
 
@@ -97,6 +97,78 @@ A4 新增契约均待实现；MySQL/Postgres 注册路径仅静态核对，未�
 
 依 Governance 在正式 D1 阶段完成持久化与交接后停止，本轮不跨入 A1。
 
+## Stage A1 — Floating shell, navigation and shared state
+
+- Date: 2026-10-05
+- Product start HEAD: `783bb6fd30729263a97bb69842befcd1d25c1885`
+- Docs start HEAD: `491393594c462b60edf0fabae4e67d256a7867f7`
+- Product End/Tested HEAD: `f56b3d8526507719353d5905b0148eb5d4d1d56a`（验证的最终源码内容与提交一致；提交后没有产品修改）。
+- Product branch: `refactor/atria-immersive-workspace`；阶段提交已 push。
+- Docs End/Tested content: 本 A1 提交的 index/coverage/states/validation、同一 Record 和 live HANDOFF。
+- Status: A1 complete; A2 next；未合并 main，沿用同一分支。
+
+### Completed and authority
+
+- 复用原 tokens、Environment、appearance、导航与控制器，外壳改为有间隔/圆角/边界的浮动 Rail、顶栏、Focus 和 Dock；compact 安全区域与 44px 顶栏目标保留。新增平台 serif token，正文应用留到 A2。
+- compact 实际阅读挂载时隐藏底部五域导航，独立于键盘状态；顶栏菜单保留五域与全局工具。管理页恢复底部导航；Medium Dock/compact Context Sheet 继续使用原焦点与弹层 ownership。
+- 搜索结果渐进发布并保持选中 identity；按来源/owner 展示失败与局部重试，保留其他成功结果。过期结果执行失败回到原查询并给可读错误；Back 回原入口恢复查询；搜索 Enter 不抢 IME composing/229。
+- URL exact 资源前缀识别 detail 类型；旧 navigation authority 新增统一离开 guard，跨域、子路由与 browser Back 在 dispose 前检查草稿。取消保留当前表面与字段，确认离开丢弃；不引入第二套草稿持久化或写入 authority。
+- World/Knowledge 观察真实 detached 模型草稿，Studio 接 pending ChangeSet/Agent review。Library/Runtime 在成功写入回执后清除未保存观察，即使后续读取失败也不误报；既有 Review/Apply/Commit 路径保留。
+- 原认证/启动条件未改；学习中心、设置、账户和 Guided/Startup/Expert 诊断继续挂载原控制器与服务。没有新增 Persona 占位入口。
+- 产品/文档原有 dirty changes 保留；package/plugin/skills 未改，未读取 reference，未提交截图/fixture 用户数据/生成产物。
+
+### Findings and decisions
+
+首轮浏览器 320px 场景发现 `runtime` 可能先命中包含该词的 Skill，而非 Runtime 主域。修正 exact `navigate.<query>` 的排序优先级，加针对性测试并复验失败场景。
+
+直接复用原 controller 不足以保护新增跨域/Back 出口：离开会 dispose 编辑器。A1 把判定放在现有 navigation authority；草稿继续由原编辑器持有。收尾补模型 dirty 标记优先于选择控件值差异，并补 Library/Runtime 成功回执，避免仅换选择控件或已保存但刷新失败时出现错误提示。
+
+没有把原生 confirm 的“取消保留当前表面”描述成跨页面自动保存草稿。控制器内部换页、完整会话阅读/输入、资源分类与恢复流仍在 A2/A3 的原 authority 上实施。
+
+### Local validation actually executed
+
+仅本地最小相关集合；分轮按修改触及面执行，下列计数有重叠，不能相加为独立测试总数。
+
+在产品仓库 `tests` 目录执行 unit：
+
+```bash
+npm run test:unit -- --runInBand --runTestsByPath atria-shell/app-shell.test.js atria-shell/navigation-authority.test.js atria-shell/product-search.test.js atria-shell/workspace-host.test.js atria-shell/utility-workspaces.test.js atria-shell/learning-center.test.js atria-shell/appearance.test.js
+# 7 suites / 38 tests passed（外壳/原工具基线）
+npm run test:unit -- --runInBand --runTestsByPath atria-shell/app-shell.test.js atria-shell/product-search.test.js atria-shell/workspace-leave-guard.test.js atria-shell/knowledge-editor.test.js atria-shell/world-editor.test.js atria-shell/studio-workspace-a7.test.js
+# 6 suites / 27 tests passed（草稿接线轮）
+npm run test:unit -- --runInBand --runTestsByPath atria-shell/app-shell.test.js atria-shell/command-registry.test.js atria-shell/navigation-authority.test.js atria-shell/product-search.test.js atria-shell/workspace-leave-guard.test.js atria-shell/native-runtime-p5.test.js atria-shell/world-editor.test.js atria-shell/knowledge-editor.test.js
+# 8 suites / 52 tests passed（排序/成功回执轮）
+npm run test:unit -- --runInBand --runTestsByPath atria-shell/workspace-leave-guard.test.js atria-shell/knowledge-editor.test.js atria-shell/world-editor.test.js atria-shell/package-library-resources.test.js
+# 4 suites / 13 tests passed（最终模型标记/Library 回执修改）
+npm run test:unit -- --runInBand --runTestsByPath atria-shell/workspace-leave-guard.test.js
+# 1 suite / 6 tests passed（补真实 Library 编辑器 save 成功后 refresh 失败的 unit 场景）
+```
+
+同目录 Chromium fixture-server E2E：
+
+```bash
+npm run test:e2e -- e2e/atria-shell/04-navigation.e2e.js --workers=1 --grep 'A1 floating|Expanded Rail|320|Compact Bottom Navigation|Compact keyboard'
+# 首轮 4 passed / 1 failed：runtime 查询排序问题；已修复
+npm run test:e2e -- e2e/atria-shell/04-navigation.e2e.js --workers=1 --grep 'A1 floating|320px|Medium keeps'
+# 3 passed，含失败的 320px 场景复验
+npm run test:e2e -- e2e/atria-shell/04-navigation.e2e.js --workers=1 --grep 'A1 global utilities'
+# 1 passed
+npm run test:e2e -- e2e/atria-shell/04-navigation.e2e.js --workers=1 --grep 'A1 floating'
+# 1 passed，最终 guard 修改后复验
+```
+
+上述合计 7 个不同浏览器场景最终通过：Expanded Back/Forward/refresh、320px 深/浅色和菜单焦点、compact 导航/Context Sheet、仿真键盘/visual viewport、Medium Dock、A1 阅读外壳/返回查询/离开草稿、A1 学习/设置/诊断。新增诊断场景调用真实 fixture incident/export 服务，强制 clipboard 拒绝后验证失败反馈，并验证 frontend 当前来源清理审阅可取消。新增外壳阅读与草稿 fixture 为 DOM 接线场景，不代替真实 Session/编辑器全流程。
+
+本地浏览器截图已查看：`tests/.e2e-scratch/a1-expanded-frame.png`、`a1-compact-navigation.png`、`a1-compact-diagnostics.png`；ignored，仅本地证据，不入库。
+
+触及的生产 JS 通过针对性 ESLint（收尾再次检查 workspace-leave-guard、library-revision-editor、knowledge-editor）。根目录 `npm run check:native-localization` 通过；本任务源码/文档 diff whitespace、内部链接/源码测试路径与阶段一致性通过。
+
+### Limits and next checkpoint
+
+未执行完整 E2E、全量测试、构建、实际手机/WebView/软键盘/中文 IME、真实模型实发或远端 CI。composition/keyboard 单元事件和 viewport 仿真不构成真机证明；认证全部配置、账户备份/密码/头像及所有诊断来源未重新验收。serif 目前仅 token；完整正文、自有 UI/共享恢复与输入策略统一归 A2。
+
+A2 从真实 HEAD 继续同一分支，按 index 阅读 experience/states、coverage S02–S08/S17 与 validation；保留所有编辑能力与 exact authority，执行 P01 AUTO/显式发送策略。不重复 D1，不提前开放 A4 Persona。正式 A1 完成持久化与 Record/HANDOFF 后停止。
+
 ## Final state
 
-Task ongoing. D1 design frozen and staged work authorized; no product implementation, integration or release accepted yet.
+Task ongoing. A1 implemented and locally verified; A2 next. S00–S20 full integration and final release remain pending.

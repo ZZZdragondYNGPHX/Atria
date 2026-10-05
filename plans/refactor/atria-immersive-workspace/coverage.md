@@ -10,7 +10,7 @@
 
 | ID / 页面 | 新归属与主路径 | 复用入口 / authority | 结果及必须保留的边界 | Stage / 验收 ID |
 | --- | --- | --- | --- | --- |
-| S00 外壳/搜索 | 五域、全局工具、分组快速搜索 | `public/scripts/atria-shell/{app-shell,navigation-authority,back-resolver,workspace-host,product-search}.js` | route、确切拥有者/子项定位；部分失败、过期结果和焦点 | A1 / V00 |
+| S00 外壳/搜索 | 五域、全局工具、分组快速搜索 | `public/scripts/atria-shell/{app-shell,navigation-authority,back-resolver,workspace-host,product-search,workspace-leave-guard}.js` | route、确切拥有者/子项定位；部分失败、过期结果和焦点；离开取消保留当前草稿 | A1 / V00 |
 | S01 登录/启动/学习 | 条件认证、可重入学习、启动恢复 | `public/login.html`、`public/scripts/atria-entry-startup.js`、`public/scripts/atria-shell/learning-center.js` | 保留服务器开放条件、GitHub/Discord、恢复码；真实超时不是模拟倒计时 | A1 / V01 |
 | S02 游玩首页 | 继续优先、最近会话/作品 | `public/scripts/native/play-controls.js` renderLanding | 打开真实 Session/Work；无依赖进入准确恢复 | A2 / V02 |
 | S03 正文/输入 | 元数据与正文、悬浮输入、身份入口 | `public/scripts/native/{play-product,play-generation,generation-client}.js`、`public/scripts/native/frontend/conversation.js` | 流式/停止/错误、IME、历史只读；身份关联 S20，不能改旧全局 name1 替代 | A2 + A4 / V03 |
@@ -41,6 +41,8 @@
 ## Remaining capability work
 
 首轮必须识别并实现：现有草稿是否支持新增返回路线、子项搜索来源是否支持部分失败、移动页是否保留完整表面、宿主是否暴露可用恢复动作。控制器缺失就记录具体能力差额，不能默认用原型的内存变量补齐。
+
+A1 已补 navigation authority 的离开 guard、模型草稿标记及真实写入成功回执，并补分来源/owner 搜索结果与重试。S01/S18/S19 继续挂载原控制器；诊断保持 Guided/Startup/Expert、当前来源清理和真实导出服务。实际验证仅覆盖 A1 的变动集合，见同一 Record；控制器内部换页、完整账户条件、真实设备和全部后续域仍按所属阶段验证。
 
 S20 是确定新增工作。其他域以保留并重组为主；若要新增实体/协议/权限，必须在所属阶段更新本表与 Plan，不能从 UI 文案倒推服务已经存在。
 

@@ -28,6 +28,8 @@
 
 保存失败保留草稿；保存成功但刷新失败显示真实成功，并单独重试读取。冲突可导出/保留草稿，再加载最新重新比较。首轮可以复用现有 editor draft 生命周期，但须证明它覆盖新的导航出口；不为了统一 UI 引入第二套资源写入路径。
 
+A1 的外壳离开检查接到现有 navigation authority，覆盖跨域、子路由和 browser Back：原生确认框取消时保留当前控制器/表面/字段，确认时丢弃并导航。World/Knowledge 的实际模型草稿与 Studio 的待审阅状态提供 dirty 标记，普通字段仅观察值差异；Library/Runtime 写入成功回执清除观察，不依赖后续列表刷新。这不是新增跨路由草稿持久化。控制器内部换页与更细的冲突/恢复操作仍由 A2/A3 原路径负责。
+
 ## Review authority
 
 - Library/Runtime 管理走各自原生编辑与 revision 操作。

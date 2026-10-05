@@ -8,7 +8,7 @@
 
 | ID | 必须证明的行为 | 已存在的针对性入口（不代表已执行或已完整覆盖） |
 | --- | --- | --- |
-| V00 | 五域/子路由/拥有者深链、Back/Esc/focus、搜索来源级失败/过期与子项 | `tests/atria-shell/{app-shell,navigation-authority,back-resolver,workspace-host,product-search}.test.js`；`tests/e2e/atria-shell/04-navigation.e2e.js` |
+| V00 | 五域/子路由/拥有者深链、Back/Esc/focus、搜索来源级失败/过期与子项 | `tests/atria-shell/{app-shell,command-registry,navigation-authority,back-resolver,workspace-host,product-search,workspace-leave-guard}.test.js`；`tests/e2e/atria-shell/04-navigation.e2e.js` 的 A1 外壳/查询/Back 场景 |
 | V01 | 真实认证条件/错误、启动等待/超时、学习进度/重入 | `tests/atria-shell/learning-center.test.js`、`tests/frontend-startup-loader.test.js`；认证现有 E2E 按实际配置选取 |
 | V02 | 实际最近会话/作品、继续、空态、缺依赖 | `tests/atria-shell/native-play-controls.test.js`；Native Session 产品 UI E2E |
 | V03 | committed/transient 投影、读者位置、流式 stop/失败、IME/发送策略 | `tests/atria-shell/{native-play-product,native-generation-p4}.test.js`、`tests/native/{session-projection,frontend-conversation}.test.js` |
@@ -27,7 +27,7 @@
 | V16 | canonical anchors、Prompt/图片独立生成与取消、角色/参数、覆盖、历史/过期 | `tests/native/{illustration-core,illustration-prompt,illustration-image,illustration-renderer,illustration-settings}.test.js` |
 | V17 | native/hybrid/custom presentation、自有字体/Shadow DOM、恢复可达；共享席位/观察者/过期 | `tests/native/{frontend-heavy,frontend-platform,shared-runtime-p8}.test.js`；`tests/e2e/atria-shell/03-game-surfaces.e2e.js` |
 | V18 | 两种语言、真实 font_scale/Custom CSS/Enter、条件账户操作/头像/密码/备份恢复范围 | `tests/atria-shell/{appearance,utility-workspaces,localization,product-localization-coverage}.test.js`；`tests/storage/endpoints/native-backup-roundtrip.test.js` |
-| V19 | Guided/Startup/Expert、真实来源/事件、清理范围、复制导出失败 | `tests/logging/{frontend-adapters,startup-store}.test.js`；需要补当前全局诊断 UI 场景 |
+| V19 | Guided/Startup/Expert、真实来源/事件、清理范围、复制导出失败 | `tests/logging/{frontend-adapters,startup-store}.test.js`；`tests/e2e/atria-shell/04-navigation.e2e.js` 的 A1 global utilities 场景 |
 | V20 | Native Persona 的全部开放门 | **需新增** persona resource/session/request/migration/backup/shared/host contracts 与产品 E2E；旧 `tests/e2e/personas/` 仅证明 legacy，不能直接冒充 Native 验收 |
 
 实际测试位置以最新源码为准，进入实施阶段时更新新增测试路径。每阶段及任务完成时，只在本地执行最小相关验证；不发起或等待远端 CI。本表不能用“已有测试文件”替代未覆盖场景。
