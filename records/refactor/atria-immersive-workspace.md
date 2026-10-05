@@ -797,6 +797,28 @@ $env:PW_NATIVE_CHANNEL='chrome'; $env:PW_WORKERS='1'; npm --prefix tests run tes
 
 touched JS ESLint、Native localization、产品 whitespace 通过。没有执行全量 tests、cache/全产品 build、远端 CI、外部 DB/模型、真机/IME/WebView；首轮冻结范围和完整矩阵限制保持。仅提交指定 source/test，不提交旧日志/依赖或 ignored 浏览器产物。下一 checkpoint 为 Knowledge 映射→展示，随后连续 B2/B3/B4/F。
 
+## Stage B1 Knowledge — Mapping and display checkpoint
+
+- Date: 2026-10-05; start HEAD `9ee9cadba`; end/tested HEAD `f0584c157`，已 push。
+- Status: B1 four editor checkpoints complete; continuous B2 next，Shared description 停用。
+
+先提交范围到 [knowledge-mapping](../../plans/refactor/atria-immersive-workspace/knowledge-mapping.md)，随后复用原 Knowledge editor/contracts/browser。打开 Fields 不再隐式创建 discovery/applicability/conditions/lifecycle/relations/delivery，缺省 section 只在显式字段操作时入草稿；同一 section 的多项编辑组合，priority 允许原 canonical 的有限小数。条目 chooser 使用 exact ID，deferred Delete 后重验同一 entry/draft/当前表面；审阅锁整 editor、防双提交，失败保留 Source。Source 不自动覆盖错误 entryIds；Fields 明确增删/移动时同步派生目录。
+
+Studio 知识库身份/名称、集合 Source、exact chooser/tree/reorder/ID变更、root/pin/entry/metadata/duplicate/local-dependency/binding闭包 guard 与 409 原文复制/明确丢弃重载完成。World/Knowledge 的外层导航复用同一内容编辑路由，各自仍保留原 mount、patch 和服务。Library裸content、installed原Knowledge显式编辑、immutable/CAS/Fork不改；没有新增 Knowledge/Session authority或自动latest。
+
+实际 **8 suites / 50 不同 unit passed，2 Chrome 场景 passed**。Knowledge editor原3、新wrapper5、Workspace20、下面原服务22（不重复累加重跑）。
+
+```powershell
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/studio-knowledge-editor.test.js atria-shell/knowledge-editor.test.js atria-shell/studio-workspace-a7.test.js
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/studio-knowledge-editor.test.js atria-shell/studio-workspace-a7.test.js --testNamePattern='Knowledge|Worlds'
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/library-revisions.test.js native/library-authoring.test.js atria-shell/package-library-resources.test.js native/world-knowledge.test.js atria-shell/resource-bundle-controls.test.js --testNamePattern='immutable and compare|Fork creates|Package Knowledge|N0 Knowledge|enabled is optional|Package v2|KnowledgeBinding source|bundle review|oversized and malformed'
+$env:PW_NATIVE_CHANNEL='chrome'; $env:PW_WORKERS='1'; npm --prefix tests run test:e2e -- native-session/31-studio-knowledge.e2e.js
+```
+
+原world-editor/worlds-wrapper另9tests亦通过，不计入以上Knowledge数。初次通用路由替换出现 identity递归，原Worlds回归发现后修正；首次小数priority被HTML默认step阻止，改step=any；browser首次Edit entry text命中button+summary，改role精确定位，第二次2/2通过。无失败记为通过。真实FS/HTTP/disk/build/decrypt的canonical snapshot和全部邻接保持，取消不写、集合unknown/duplicate/nullmetadata/entry目录错误拒绝、增删排序exact选择、旧installed Session/Save不变；中文320→720/maxfont/light/FastUI/reducedmotion/Tab与并发409复制/取消/确认重载通过，wide/320截图本地查看。
+
+touched JS ESLint、Native localization、diff whitespace通过。未执行全量build/tests/远端CI/外部DB或模型/真机IMEWebView；后端局部调用方与有限graph限制、Shared描述停用、首轮冻结范围保持。产品依赖/旧日志/ignored artifacts不提交。继续B2映射→实现→验证并持久化，不阶段停止。
+
 ## Final state
 
-Task ongoing. A1–A5 首轮与 B1 Actors/EntryPoints/Worlds mapping/display 完成。产品 `9ee9cadba` 已 push；Shared 描述停用。用户已授权连续完成剩余阶段并最终推送合并，下一 checkpoint Knowledge；尚未合并 main。
+Task ongoing. B1 Actors/EntryPoints/Worlds/Knowledge complete，产品 f0584c157 已 push；连续 B2/B3/B4/F 待完成，Shared 描述停用，未合并 main。

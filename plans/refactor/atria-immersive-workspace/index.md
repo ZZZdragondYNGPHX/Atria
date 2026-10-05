@@ -3,7 +3,7 @@
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
 - Status: **Frozen for staged implementation — 2026-10-05；用户已授权开工与自主处理，新增契约已完成 D1 设计核对。**
-- Current stage: B1 Worlds 映射与展示 checkpoint 已完成。用户已授权连续完成 Knowledge → B2 → B3 → B4 → F，并最终推送合并；逐类保留独立映射和验证门，不再阶段暂停。Shared 描述明确停用，外部设备/引擎等未测范围继续明示。
+- Current stage: B1 Actors/EntryPoints/Worlds/Knowledge 映射与展示 checkpoint 已完成；正在 B2 Prompt/Runtime/检索。用户已授权连续完成剩余 B/F 并最终推送合并；逐类保留独立映射和验证门，不再阶段暂停。Shared 描述明确停用，外部设备/引擎等未测范围继续明示。
 
 ## Goal
 
@@ -35,6 +35,7 @@
 | [validation.md](validation.md) | 验证矩阵、证据要求与执行入口 | coverage、states、personas |
 | [entrypoints-mapping.md](entrypoints-mapping.md) | B1 EntryPoints 字段/动作/模式、Source/draft/revision/handler/authority、错误冲突离开、缺口与替换测试门 | delivery、coverage S12、baseline、states、validation |
 | [worlds-mapping.md](worlds-mapping.md) | B1 Worlds snapshot/Library/只读原版字段与动作、Source/draft/revision/handler/authority、错误冲突离开、缺口与替换测试门 | delivery、coverage S12/S07、baseline、states、validation |
+| [knowledge-mapping.md](knowledge-mapping.md) | B1 Knowledge snapshot/裸 content/可编辑原版、条目全字段与操作、exact refs/草稿/冲突/authority | delivery、coverage S12/S07、baseline、states、validation |
 | [actors-mapping.md](actors-mapping.md) | B1 Actors 旧字段/动作/模式、展示去向、draft/revision/authority、已知缺口与测试门 | delivery、coverage S12/S07、baseline、states、validation |
 
 ## Stage routing
