@@ -6,10 +6,10 @@
 - Primary Workspace: `main`（产品）；docs 为文档辅助空间。
 - Product branch / HEAD: `refactor/atria-immersive-workspace` / `f40bca67b56eb42c0b4340d8ca9dfc44f848101a`；已 commit/push，未合并 main。
 - Docs branch: `docs`；本轮 Record/HANDOFF 持久化提交以真实 Git HEAD 为准，不自引用 hash。
-- Current stage: **B1 EntryPoints display checkpoint complete — stopped before Worlds mapping**。
+- Current stage: **B1 Worlds mapping checkpoint complete — stopped before Worlds display**。
 - Plan entrypoint: [index](plans/refactor/atria-immersive-workspace/index.md)
-- Next required modules: delivery、coverage S12/S07 和 baseline 的 Worlds 小节、states、validation；entrypoints-mapping 仅在关联需要时读，不重做 Actors/EntryPoints。
-- Record: [record](records/refactor/atria-immersive-workspace.md)，续接重点读 B1 EntryPoints display；历史阶段保留。
+- Next required modules: [worlds-mapping](plans/refactor/atria-immersive-workspace/worlds-mapping.md)、delivery、coverage S12/S07 和 baseline 的 Worlds 小节、states、validation；EntryPoints/Actors 映射仅按关联需要读，不重做。
+- Record: [record](records/refactor/atria-immersive-workspace.md#stage-b1-worlds--mapping-checkpoint)，续接重点读 B1 Worlds mapping；历史阶段保留。
 
 ## Completed
 
@@ -19,9 +19,13 @@ D1/P01–P06、A1–A5 首轮 checkpoint 和 B1 Actors mapping/display 保持，
 
 G01/G04 展示缺口关闭；G02/G03/G05 局部防护和目标/分层提示完成。Project 顶层归一化读损失、直接 API duplicate 接受、有限 project graph 保持；UI 防护不覆盖其它全项目 editor/Agent，不能恢复已丢字段。EntryPoints 没有独立 registry/repository/revision/完整 Used By 图，未建立平行 authority。
 
+**本轮 B1 Worlds 映射完成，未改产品/未替换展示。** 完整 World/root/revision/snapshot 字段与原模式/动作/Source/draft/baseRevision/handler/authority 已映射。World 有 core.world/WorldRepo/graph；项目内 snapshot 为 project-source，Library root/不可变修订/CAS、installed 原版只读、Session 当前 state 分层保持。未知 World 顶层严格拒绝；schema/baseline/metadata 内部任意 JSON 保留。binding ID 不是 immutable binding revision pin；三种 Fork 的依赖复制范围不同，不自动 latest。
+
+Worlds G01–G06（本轮均未修复）：非空集合 Source/身份名称metadata可达性、Fields `||=` 默认改写与 null/root 校验差额、Project duplicate/local-dependency overlap/index 歧义、409 原文复制/明确丢弃重载缺口、catalog 整体失败锁住 Source/无 dispose 防护、有限 graph/binding pin/Fork 区别。下一展示门 N01–N08 在 worlds-mapping，不能称为已通过。
+
 ## Pending / next target
 
-**已按用户“完成该 checkpoint 后停止”停在 B1 EntryPoints 展示完成处。** 下一独立 checkpoint 先做 B1 Worlds 字段/动作/状态/authority 映射，不自动替换展示。先真实 Git/远端 → 本 HANDOFF → index → delivery/coverage S12/S07 与 Worlds baseline/states/validation → 同一 Record B1 EntryPoints display；只按关联需要读 EntryPoints/Actors 映射。Worlds/Knowledge/B2/F 尚未开始，不自动连跑，不合并 main。
+**已按用户“映射完成后停止”停在 B1 Worlds mapping。** 下一独立 checkpoint 只实施 Worlds 展示与映射中的局部防护，复用原 editor/controller/project.save/Library 服务，并验证共用 editor 的 Library 裸 revision-content 回归。先真实 Git/远端 → 本 HANDOFF → index → worlds-mapping → delivery/coverage S12/S07 与 Worlds baseline/states/validation → 同一 Record B1 Worlds mapping。Worlds 展示、Knowledge/B2/F 尚未开始，不自动连跑、不合并 main。
 
 首轮支持范围冻结，不声称 S00–S20 全字段/设备/引擎矩阵通过。外部 MySQL/Postgres、真机/软键盘/中文 IME/WebView/Android、远端模型、完整 native@3 lease/nonce/任意作品故障组合仍未测。没有旧高级 scope/Actor/绑定/注入自动映射、整站迁移或历史批量改写。新表面保留原结构化字段和完整 Source 能力。
 
@@ -39,16 +43,14 @@ Host solo picker 走原白名单/epoch/revision/宿主 guards；Full root 故障
 
 ## Actual local validation
 
-本轮 EntryPoints display：**10 个不同 suites / 45 个不同 unit passed、2 个不同 Chromium 场景 passed**，重复复验不累加；具体命令、失败修正、最后局部复验和 gate 范围见 [Record B1 EntryPoints display](records/refactor/atria-immersive-workspace.md#stage-b1-entrypoints--display-checkpoint)。触及 JS ESLint、English/zh-cn localization、产品/docs whitespace/链接/路由/证据路径检查通过。
+本轮 Worlds mapping：**7 个不同 suites / 26 个不同 unit passed，40 个临时 canonical assertions passed**，命令与范围见 [Record B1 Worlds mapping](records/refactor/atria-immersive-workspace.md#stage-b1-worlds--mapping-checkpoint)。World Fields/Source/refs/catalog retry、World history diff、Attach exact/explicit Update、strict World/Revision/Package contract、FS/SQLite immutable/CAS/并发基准、Workspace detach/离开取消/同草稿与 receipt、Shared accepted lane 局部验证。probe 确认 nested clone/缺失/null/root/unknown/legacy/pin/未声明 refs 与 Project duplicate/overlap 接受、Package duplicate 拒绝等现状；不是展示无损门通过。
 
-覆盖完整高级 JSON/Source/canonical、三类 refs/primary、集合增删排序/空及重复修复、exact ID 和显式 ID 提交恢复、Review/Cancel/Apply/非法 Source/409复制与取消确认重载、receipt 不重放、原 human/Agent/service rollback/Shared 阻断。FS 真实 Session world-less/单/多 World overlay/message metadata/default/shape/protected rejection；原 projection/envelope opening 在 FS/SQLite 验证。Chromium English 1440 与中文 320→720、font_scale=1.5/light/Fast UI/reduced-motion/Tab/Shift+Tab、真实 FS/HTTP/项目文件/.atria decrypt、Preview第一入口与 scenario exact opening、旧 Session/Save 不推进；四类截图本地查看。
-
-未执行全量 tests/全产品 bundle/前端缓存 build/远端 CI、Android/真机/WebView/软键盘/中文 IME、外部 DB/远端模型。browser 项目为零 Actor/World/Binding 的叙事作品；依赖/primary 由 unit 与真实 Session 的局部证据验证，不冒充所有真实依赖/Frontend/Game 组合。跨 owner/Back 继续复用原 guard，未声称新完整 UI 矩阵。Actors/A5 历史不与本轮数量累加，也未重跑它们的完整证据。
+docs whitespace/链接锚点/路由/显式源码测试路径检查通过；产品 tracked 文件未改。本轮没有新 browser/全量 tests/build/缓存构建/远端 CI、Android/真机/WebView/软键盘/中文 IME、外部 DB/远端模型。EntryPoints display 历史仍为 10 suites/45 unit、2 Chromium 场景；既有 Session/Save/opening/语言窄屏证据保留，不重跑或累加为本轮结果。完整字段/设备/引擎矩阵未验收。
 
 ## Preserve / do not repeat
 
-产品 AGENTS.md，以及 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 原 dirty changes 保持未提交。package/plugin/skills/reference 未改/未读，不 main merge 到独立长期空间。不要重复 A1–A5 或 Actors/EntryPoints；不恢复旧共享 global Persona，不重新开启共享描述。
+真实本地工作树没有前轮记录所述 tracked dirty；产品 AGENTS/docs Governance/templates 未改。package 的 dist/node_modules/tests、产品依赖目录与旧日志等原 untracked 保持，不提交/删除。package 与远端一致；docs fast-forward 12 commits，产品独立工作树检出同一远端 task branch。plugin/skills/reference 未改/未读，不 main merge 到独立长期空间。不要重复 A1–A5 或 Actors/EntryPoints/Worlds 映射；不恢复旧共享 global Persona，不重新开启共享描述。
 
 ## New-chat bootstrap prompt
 
-按 HANDOFF 继续 Atria 的 refactor/atria-immersive-workspace，先核对真实 Git/远端 → docs:HANDOFF.md → plans/refactor/atria-immersive-workspace/index.md → delivery/coverage S12/S07 与 Worlds baseline/states/validation → 同一 Record B1 EntryPoints display。产品 `f40bca67b56eb42c0b4340d8ca9dfc44f848101a` 已 push；Actors/EntryPoints 映射与展示已完成，本轮按用户要求停止。下一 checkpoint 只做 B1 Worlds 字段/动作/模式/Source/draft/revision/handler/authority/错误冲突离开/测试门映射，完成映射后停止，不自动替换或进入 Knowledge/B2/F。复用现有服务与 persistence，EntryPoints 的 project-owned/无独立 registry/归一化/duplicate/有限 graph/分层启动与第一入口默认边界保持；Shared description 仍 shared_scope_unsupported，无 opt-in/solo 回退/Actor 或席位自动映射。每阶段只做最小本地相关验证，不发起/等待远端 CI；保护原 dirty changes。沿用同一分支和 Record/live HANDOFF，不合并 main、不删除活跃分支。完整设备/外部数据库/远端模型/字段矩阵仍未验收。
+按 HANDOFF 继续 Atria 的 refactor/atria-immersive-workspace，先真实 Git/远端 → docs:HANDOFF.md → plans/refactor/atria-immersive-workspace/index.md → worlds-mapping.md → delivery/coverage S12/S07 与 Worlds baseline/states/validation → 同一 Record B1 Worlds mapping。产品 `f40bca67b56eb42c0b4340d8ca9dfc44f848101a` 保持；Actors/EntryPoints 映射展示、Worlds 映射已完成，本轮按用户要求停在映射后。下一 checkpoint 只实施 B1 Worlds 展示与 G01–G06 局部防护，按 N01–N08 最小本地验证，完成后停止，不进入 Knowledge/B2/F。复用原 World editor 单草稿/project.save/human Workspace/ChangeSet 与 Library immutable revision/CAS/persistence；区分项目 snapshot、Library、installed 原版只读、Session state，验证共用 editor 的 Library 裸 content；不新增 authority、不自动 latest、不伪造修订或深复制 binding。Shared description 仍 shared_scope_unsupported，无 opt-in/solo 回退/Actor/席位自动映射。不重做历史，保护原 dirty/untracked；不发起/等待远端 CI，沿用同一分支/Record/live HANDOFF，不合并 main、不删除活跃分支。完整设备/外部数据库/远端模型/字段矩阵仍未验收。

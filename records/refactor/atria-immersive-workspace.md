@@ -2,7 +2,7 @@
 
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
-- Status: Active — A1–A5 and B1 Actors mapping/display checkpoints complete; B1 EntryPoints mapping/display complete; next checkpoint is Worlds mapping
+- Status: Active — A1–A5 and B1 Actors/EntryPoints mapping/display checkpoints complete; B1 Worlds mapping complete; stopped before Worlds display
 - Plan: [Plan index](../../plans/refactor/atria-immersive-workspace/index.md)
 
 ## Summary
@@ -727,6 +727,50 @@ PW_NATIVE_CHANNEL=chromium PW_WORKERS=1 npm --prefix tests run test:e2e -- nativ
 
 按用户要求停在 EntryPoints 展示 checkpoint，未合并 main、不删除活跃任务分支，不进入 Worlds/Knowledge/B2/F。下一轮先做 B1 Worlds 字段/动作/authority 映射，再独立决定展示 checkpoint；Actors/EntryPoints 不重做。
 
+## Stage B1 Worlds — Mapping checkpoint
+
+- Date: 2026-10-05
+- Product start/end/tested HEAD: `f40bca67b56eb42c0b4340d8ca9dfc44f848101a`；检出并跟踪远端同一 task branch，未修改产品、未合并 main。
+- Docs start HEAD: `12a739853`；从本地 `a66f2eb38` fast-forward 12 commits；本轮 docs 提交以真实 Git HEAD 为准，不自引用 hash。
+- Status: **Worlds mapping complete — stopped before display replacement.**
+
+### Scope and findings
+
+先检查真实 Git/远端并 fetch；package 与远端一致，实际推进在 docs 和 task branch。独立产品工作树检出 `refactor/atria-immersive-workspace`，docs 工作树 fast-forward 后按 HANDOFF → index → delivery/coverage S12/S07/Worlds baseline/states/validation → Record B1 EntryPoints display 续接。新增 [Worlds mapping](../../plans/refactor/atria-immersive-workspace/worlds-mapping.md)，更新 index/coverage 路由。本轮没有产品实现、展示替换、Skill/reference 读取或其它 B 类型工作。
+
+- 完整 World/root/revision/snapshot 字段、exact identity/pin、schema/baseline/metadata arbitrary nested JSON、refs/时间戳/strict keys、模式与原 handler/draft/base revision 已映射。World 有真实 descriptor/repository/graph；项目内 graph authority 是 project-source，不能复制 Actors/EntryPoints 的无独立资源结论。
+- 项目 snapshot 使用原 project.save/human Workspace/ChangeSet，Library revision-content 使用原 commitWorldRevision/WorldRepo/immutable/CAS，installed World 原版保持只读；Session 当前 state 与 baseline 分开。三种 Fork 的依赖独立性不同，binding ID 不是 immutable binding revision pin，原 exact ref/contentHash 不自动 latest。
+- G01：非空集合 Source 与专属身份/名称/metadata 可达性缺口；G02：Fields 的 `||=` 默认补值与 load 重置初始草稿，UI `?? {}` 接受 null 而 canonical 拒绝；G03：duplicate local World 与 local/dependency 重叠被 Project 接受，index 目标有歧义，closure 与 Package 的验证层不同。
+- G04：Worlds 冲突无复制原文/明确丢弃重载；G05：catalog Promise.all 整体失败锁住 Fields/Source、无局部失败/dispose 检查；G06：binding pin/有限项目 graph/三种 Fork 边界。六项均为现状确认，未修复；N01–N08 是下一展示 checkpoint 的要求，不是已通过状态。
+- World envelope/root/revision unknown 顶层严格拒绝，与 Actor/EntryPoint 顶层归一化损失不同；metadata/schema/baseline 内部 arbitrary JSON 和根 object 约束分层保持。没有自动迁移旧 WorldInfo/Actor/Persona/席位，Shared description 仍 shared_scope_unsupported。
+
+### Actual minimal local validation
+
+本轮 **7 个不同 suites / 26 个不同 unit tests passed**，另有 **40 个临时 canonical assertions passed**。没有编写/提交新测试，也没有 browser/build/远端 CI 验收；这些是原行为与已知缺口的确认，不是未来展示门通过。
+
+```bash
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/world-editor.test.js atria-shell/library-revision-history.test.js native/library-revisions.test.js native/library-authoring.test.js native/world-knowledge.test.js native/persona-context.test.js --testNamePattern='World|Library dependency|missing World|immutable revisions use CAS|Attach pins|accepted Persona lane'
+```
+
+5 suites / 21 passed，19 skipped；Library revisions suite 的用例名称未命中过滤（1 suite skipped），随后按下列实际命令补验，没有把跳过记为通过。
+
+```bash
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/library-revisions.test.js
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/studio-workspace-a7.test.js --testNamePattern='relationship detach|internal navigation cancellation|committed human ChangeSet'
+```
+
+Library revisions：1 suite / 2 passed，真实 FS/SQLite immutable/CAS/并发基准验证；Workspace：1 suite / 3 passed，13 skipped，覆盖 exact detach consumer 定位、内部离开取消与引用页签同草稿、保存成功读取失败不重放。
+
+临时 `node --input-type=module` stdin probe（未保存/提交脚本）40 assertions passed：直接调用 assertWorld/assertWorldRevision/assertPackagedWorldSnapshot/assertAtriaProjectSource/assertAtriaPackageManifest，核对 core.world descriptor。证明 root/head、缺失 canonical、任意 nested JSON clone、strict unknown/legacy、null/array/primitive 根拒绝、长度/非有限数/重复引用/坏 ID、双 identity/snapshot exact pin、未声明 binding/asset 拒绝；同时确认 Project local duplicate/local-dependency overlap 接受与 Package duplicate 拒绝现状。没有把这些缺口叫兼容通过。
+
+docs whitespace、Markdown 相对链接/锚点、index/coverage/HANDOFF/Record 路由、mapping 显式源码/测试路径检查通过；产品 tracked 文件未改。此前阶段 browser/Session/Save 证据仍为历史，本轮没有重跑并累加。未执行全量 unit/E2E、缓存或全产品 build、Android/真机/WebView/软键盘/中文 IME、外部 MySQL/Postgres、远端模型、完整字段/设备/引擎矩阵。
+
+### Persistence and next checkpoint
+
+只提交 worlds-mapping/index/coverage/同一 Record/live HANDOFF 到 docs；产品 task branch HEAD 与远端不变。实际工作树无 HANDOFF 所述旧 tracked dirty；现有 package 的 dist/node_modules/tests、产品依赖目录与旧日志等 untracked 均保持，不提交、不删除。没有将 main merge 到 package/docs、没有更改 AGENTS/Governance 或删除活跃分支。
+
+本轮按用户要求完成 Worlds 映射后停止。下一轮按 live HANDOFF → index → worlds-mapping → delivery/coverage S12/S07/states/validation → 本 Record B1 Worlds mapping，只实施 Worlds 展示与局部防护并验证共用 editor 的 Library 回归；不自动进入 Knowledge/B2/F。首轮支持范围冻结、Shared 描述停用、完整矩阵与最终集成待验收保持。
+
 ## Final state
 
-Task ongoing. A1–A5 local checkpoints and B1 Actors/EntryPoints mapping/display complete. 本轮停在 EntryPoints 展示后；下一 checkpoint 为 Worlds 映射，尚未开始。Shared 描述继续停用；完整设备/引擎/字段矩阵与最终集成仍待后续。产品/docs 已 push，未合并 main。
+Task ongoing. A1–A5 local checkpoints and B1 Actors/EntryPoints mapping/display complete; B1 Worlds mapping complete. 本轮按用户要求停在 Worlds 映射后，未替换展示；下一独立 checkpoint 为 Worlds 展示与局部防护。Shared 描述继续停用；完整设备/引擎/字段矩阵与最终集成仍待后续。产品 HEAD 保持、docs 本轮持久化，未合并 main。

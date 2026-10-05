@@ -3,7 +3,7 @@
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
 - Status: **Frozen for staged implementation — 2026-10-05；用户已授权开工与自主处理，新增契约已完成 D1 设计核对。**
-- Current stage: A5 首轮支持范围的本地集成/兼容 checkpoint 完成；B1 Actors 映射与展示 checkpoint 已完成；B1 EntryPoints 映射与展示 checkpoint 已完成；下一 checkpoint 先做 Worlds 字段/动作/authority 映射，不自动替换。Shared 描述明确停用，完整设备/引擎/字段矩阵仍未验收。
+- Current stage: A5 首轮支持范围及 B1 Actors/EntryPoints 映射与展示 checkpoint 已完成；B1 Worlds 字段/动作/authority 映射已完成，按用户要求停止在展示替换前。下一独立 checkpoint 为 Worlds 展示与局部防护。Shared 描述明确停用，完整设备/引擎/字段矩阵仍未验收。
 
 ## Goal
 
@@ -34,6 +34,7 @@
 | [delivery.md](delivery.md) | 分阶段实施、完整编辑能力保留、依赖和阶段门 | coverage、personas |
 | [validation.md](validation.md) | 验证矩阵、证据要求与执行入口 | coverage、states、personas |
 | [entrypoints-mapping.md](entrypoints-mapping.md) | B1 EntryPoints 字段/动作/模式、Source/draft/revision/handler/authority、错误冲突离开、缺口与替换测试门 | delivery、coverage S12、baseline、states、validation |
+| [worlds-mapping.md](worlds-mapping.md) | B1 Worlds snapshot/Library/只读原版字段与动作、Source/draft/revision/handler/authority、错误冲突离开、缺口与替换测试门 | delivery、coverage S12/S07、baseline、states、validation |
 | [actors-mapping.md](actors-mapping.md) | B1 Actors 旧字段/动作/模式、展示去向、draft/revision/authority、已知缺口与测试门 | delivery、coverage S12/S07、baseline、states、validation |
 
 ## Stage routing
@@ -48,7 +49,7 @@
 | A4a | 用户设定原生持久化与会话 / 请求契约 | personas、states、validation |
 | A4b | 用户设定管理、选择、迁移、备份与入口开放 | personas、coverage 的 S20 与关联行、validation |
 | A5 | 首阶段集成与兼容验收 | delivery、validation，失败项再路由到其权威模块 |
-| B1–B4 | 编辑器逐类重构（每类独立阶段） | delivery、对应 coverage 行与 baseline 小节、states、validation；B1 Actors 增读 actors-mapping；B1 EntryPoints 增读 entrypoints-mapping |
+| B1–B4 | 编辑器逐类重构（每类独立阶段） | delivery、对应 coverage 行与 baseline 小节、states、validation；B1 Actors 增读 actors-mapping；B1 EntryPoints 增读 entrypoints-mapping；B1 Worlds 增读 worlds-mapping |
 | F | 最终验收、集成与清理 | delivery、validation |
 
 ## Dependencies and current design state
@@ -86,3 +87,5 @@ A1–A3 已实现并完成各阶段本地针对性验证；执行证据与限制
 - 2026-10-05 B1 EntryPoints mapping：基于产品 `9991c6ef0` 完成 entrypoints-mapping；覆盖 canonical 全字段、引用与 primary、任意高级 JSON、集合 Source、exact ID/项目 revision/人工与 Agent authority、运行约束/第一入口动作、G01–G05 与 N01–N08 替换门。只改文档，未替换产品；Shared 描述停用。按用户要求完成映射后停止。
 
 - 2026-10-05 B1 EntryPoints display：专属身份/引用/primary/初始状态和消息/高级 JSON 与原 Source 共用草稿；集合 Source、exact ID 选择与树高亮、Review 前防丢失/重复/引用检查、冲突复制与确认重载完成。复用原 project.save/Workspace/ChangeSet，明示第一入口与 scenario 目标；真实 FS/HTTP/.atria/Session/Save 和中文窄屏本地证据见 Record。本 checkpoint 完成后停止，Shared 描述停用；下一轮先做 Worlds 映射。
+
+- 2026-10-05 B1 Worlds mapping：基于产品 `f40bca67b` 完成 worlds-mapping；区分 project-source snapshot、Library immutable revision/CAS、installed 原版只读与 Session state，完整字段/动作/模式/Source/冲突/离开/引用闭包映射及 G01–G06、N01–N08 已记录。只改文档，未替换展示；按用户要求停止。下一独立 checkpoint 为 Worlds 展示与局部防护，Shared 描述停用。

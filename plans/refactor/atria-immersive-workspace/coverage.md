@@ -84,3 +84,7 @@ S12 EntryPoints 的 [字段/动作/authority 映射](entrypoints-mapping.md) 已
 ## B1 EntryPoints display checkpoint
 
 S12 EntryPoints 已接入专属字段与完整 Source，空/非空可达集合 Source，exact entryPointId 选择/树高亮与排序保留身份。三类引用和可移除 primary、任意初始 JSON/runtime/高级字段保持原契约；Review 前拒绝 unknown/legacy/重复/悬空引用，冲突保留原文复制和明确丢弃重载。复用原 human Workspace、project.save、receipt 只读重试与独立 Agent；明示 Preview/Experience/UI 第一入口与 Simulation scenario 目标。G01/G04 展示缺口关闭；G02/G03/G05 后端归一化/duplicate/有限 graph/分层启动约束保持，UI 局部防护不扩成后端修复。实际 N01–N08 支持范围见 [Record B1 EntryPoints display](../../../records/refactor/atria-immersive-workspace.md#stage-b1-entrypoints--display-checkpoint)。Shared 描述停用；Worlds/Knowledge/B2/F 尚未开始，完整矩阵未验收。
+
+## B1 Worlds mapping checkpoint
+
+S12/S07 的 [Worlds 字段/动作/authority 映射](worlds-mapping.md) 已完成。项目内 snapshot 仍走 project.save/项目 Git revision/human Workspace；Library root 与 immutable WorldRevision/CAS、installed 原版只读、Session 当前 state 分开。完整 identity/pin/schema/baseline/metadata/两类 refs、集合与 Source、Attach/Fork/Update/Detach/Used By、冲突/离开与三种 Fork 差异已定位。G01–G06 记录非空集合 Source/字段可达、Fields 默认改写、duplicate/index/本地依赖歧义、Worlds 冲突恢复、catalog 整体失败/迟到响应与有限 graph/绑定 pin 边界；N01–N08 为未来替换门，未记作通过。只改文档、不替换展示、不重做 Actors/EntryPoints，Shared 描述继续停用；实际最小本地证据见 [Record B1 Worlds mapping](../../../records/refactor/atria-immersive-workspace.md#stage-b1-worlds--mapping-checkpoint)。本轮按用户要求停止；下一独立 checkpoint 为 Worlds 展示与局部防护，不自动进入 Knowledge/B2/F。
