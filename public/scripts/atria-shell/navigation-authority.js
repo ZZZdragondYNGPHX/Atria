@@ -202,6 +202,7 @@ export function createAtriaNavigationAuthority({
     }
 
     function navigate(domainId, {
+        child = null,
         history = 'push',
         breadcrumb,
         reason = 'primary-navigation',
@@ -211,8 +212,8 @@ export function createAtriaNavigationAuthority({
 
         return commitRoute({
             domain: domain.id,
-            child: null,
-            breadcrumb: breadcrumb || [domain.label],
+            child,
+            breadcrumb,
         }, { history, reason });
     }
 

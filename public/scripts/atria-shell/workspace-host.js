@@ -452,35 +452,20 @@ export function createAtriaWorkspaceHost({
         if (section === 'skills') return openUtility('plugins');
         const raw = String(section || 'works').trim().toLowerCase();
         const requested = ['prompt-programs', 'prompt-modules', 'generation-profiles'].includes(raw) ? 'prompt-presets' : raw;
-        const child = requested === 'worlds' || requested === 'knowledge'
-            ? requested
-            : null;
+        const flows = { install: 'Install / Update .atria', 'import-save': 'Import .atriasave' };
+        const child = requested === 'worlds' || requested === 'knowledge' || flows[requested] ? requested : null;
         const item = child
-            ? LIBRARY_SECTIONS.find(candidate => candidate.id === 'worlds-knowledge')
+            ? LIBRARY_SECTIONS.find(candidate => candidate.id === (flows[requested] ? 'works' : 'worlds-knowledge'))
             : LIBRARY_SECTIONS.find(candidate => candidate.id === requested) || LIBRARY_SECTIONS[0];
-        if (navigation.getRoute().domain !== 'library') {
-            navigation.navigate('library', {
-                reason: 'workspace-library-domain',
-                history: 'push',
-            });
-        }
-        if (item.id === 'works' && !child) {
-            if (navigation.getRoute().child) {
-                return navigation.clearChild({
-                    history: 'push',
-                    reason: 'workspace-library-works',
-                });
-            }
-            return navigation.getRoute();
-        }
-        return navigation.navigateChild({
+        const target = item.id === 'works' && !child ? null : {
             id: child || item.id,
-            label: child === 'worlds' ? 'Worlds' : child === 'knowledge' ? 'Knowledge Bases' : item.label,
+            label: flows[child] || (child === 'worlds' ? 'Worlds' : child === 'knowledge' ? 'Knowledge Bases' : item.label),
             kind: 'workspace',
-        }, {
-            reason: `workspace-library-${child || item.id}`,
-            history: 'push',
-        });
+        };
+        const options = { reason: `workspace-library-${child || item.id}`, history: 'push' };
+        if (navigation.getRoute().domain !== 'library') return navigation.navigate('library', { ...options, child: target });
+        if (target) return navigation.navigateChild(target, options);
+        return navigation.getRoute().child ? navigation.clearChild(options) : navigation.getRoute();
     }
 
     function openLibraryDetail(id, label, kind, reason) {

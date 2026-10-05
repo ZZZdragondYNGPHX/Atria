@@ -13,7 +13,7 @@ import { mountKnowledgeEntryBrowser } from './knowledge-entry-browser.js';
 import { createAtriaStatePanel } from '../atria-shell/primitives.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { arrayBufferToBase64, nativeProductClient as client } from './product-client.js';
-import { el, action, heading, disclosure, field, cover, feedback, libraryError, confirmLibraryAction, savePassword, referenceRemediation, worldParameterSummary } from './library-ui.js';
+import { el, action, heading, disclosure, field, cover, feedback, libraryError, confirmLibraryAction, referenceRemediation, worldParameterSummary } from './library-ui.js';
 
 const actions = (doc, parent) => el(doc, 'div', 'atri-library-actions', undefined, parent);
 const time = value => value ? new Date(value).toLocaleString() : '—';
@@ -37,63 +37,94 @@ function download(doc, payload, filename) {
     anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-function importSurface(doc, parent, kind, host, refresh) {
+function importSurface(doc, parent, kind, host) {
     const isPackage = kind === 'package';
-    const root = disclosure(doc, parent, isPackage ? 'Install / Update .atria' : 'Import .atriasave');
-    root.classList.add('atri-library-import');
+    const root = el(doc, 'section', 'atri-library-import', undefined, parent);
     root.dataset[isPackage ? 'atriaNativeInstall' : 'atriaNativeSaveImport'] = 'true';
-    el(doc, 'p', '', tl(isPackage ? 'Choose a work to review its permissions before installing.' : 'Import an Atria save. Its matching work must already be installed.'), root);
+    heading(doc, root, isPackage ? 'Install / Update .atria' : 'Import .atriasave',
+        isPackage ? 'Choose a work to review its permissions before installing.' : 'Import an Atria save. Its matching work must already be installed.');
     const input = field(doc, root, isPackage ? 'Choose an Atria work' : 'Choose an Atria save', '', 'file');
     input.accept = isPackage ? '.atria,application/octet-stream' : '.atriasave,application/octet-stream';
-    action(doc, root, isPackage ? 'Choose an Atria work' : 'Choose an Atria save', () => input.click());
+    const choose = action(doc, root, isPackage ? 'Choose an Atria work' : 'Choose an Atria save', () => input.click());
     const result = el(doc, 'div', 'atri-library-import-result', undefined, root);
     result.setAttribute('aria-live', 'polite');
-    let sequence = 0;
+    let sequence = 0; let processing = false;
+    const reset = () => { if (processing) return; sequence++; input.value = ''; result.replaceChildren(); input.focus(); };
+    action(doc, root, 'Cancel', () => { if (processing) return; sequence++; host.openLibrarySection('works'); });
     input.addEventListener('change', async () => {
         const file = input.files?.[0]; if (!file) return;
         const token = ++sequence;
+        const current = () => token === sequence && root.isConnected;
         result.replaceChildren(); state(doc, result, 'loading', 'Checking file', 'Reading metadata…');
         try {
+            if (file.size > (isPackage ? 128 : 64) * 1024 * 1024) throw new Error(tl('The file exceeds the supported size.'));
             const data = arrayBufferToBase64(await file.arrayBuffer());
-            const preflight = await (isPackage ? client.preflightPackage(data) : client.preflightSave(data));
-            if (token !== sequence || !root.isConnected) return;
-            result.replaceChildren();
-            const ready = isPackage || preflight.dependency?.status === 'ready';
-            const review = el(doc, 'section', 'atri-library-import-review', undefined, result);
-            review.dataset[isPackage ? 'atriaPackagePreflight' : 'atriaSavePreflight'] = isPackage ? preflight.packageId : preflight.dependency?.status || 'unknown';
-            el(doc, 'h4', '', isPackage ? preflight.name : tl('Atria save'), review);
-            el(doc, 'p', '', isPackage ? `${tl('Version')} ${preflight.version}` : tl(ready ? 'Ready to import this save.' : 'Install the matching work in Library before importing this save.'), review);
-            const grants = new Map();
-            if (isPackage) renderPackageUpdateReview(doc, review, preflight);
-            if (isPackage && (preflight.permissions?.length || preflight.requiredPermissions.length)) {
-                const permissions = el(doc, 'fieldset', 'atri-library-permissions', undefined, review);
-                el(doc, 'legend', '', tl('Requested permissions'), permissions);
-                for (const permission of preflight.permissions || preflight.requiredPermissions.map(permission => ({ permission, required: true }))) {
-                    const checkbox = permissionRow(doc, permissions, permission, { checkbox: permission.required });
-                    if (checkbox) grants.set(permission.permission, checkbox);
+            const inspect = async () => {
+                const preflight = await (isPackage ? client.preflightPackage(data) : client.preflightSave(data));
+                if (!current()) return;
+                result.replaceChildren();
+                const ready = isPackage || preflight.dependency?.status === 'ready';
+                const review = el(doc, 'section', 'atri-library-import-review', undefined, result);
+                review.dataset[isPackage ? 'atriaPackagePreflight' : 'atriaSavePreflight'] = isPackage ? preflight.packageId : preflight.dependency?.status || 'unknown';
+                el(doc, 'h4', '', isPackage ? preflight.name : file.name, review);
+                el(doc, 'p', '', isPackage ? `${tl('Version')} ${preflight.version}` : tl(ready ? 'Ready to import this save.' : 'Install the matching work in Library before importing this save.'), review);
+                const grants = new Map();
+                if (isPackage) renderPackageUpdateReview(doc, review, preflight);
+                if (isPackage && (preflight.permissions?.length || preflight.requiredPermissions.length)) {
+                    const permissions = el(doc, 'fieldset', 'atri-library-permissions', undefined, review);
+                    el(doc, 'legend', '', tl('Requested permissions'), permissions);
+                    for (const permission of preflight.permissions || preflight.requiredPermissions.map(permission => ({ permission, required: true }))) {
+                        const checkbox = permissionRow(doc, permissions, permission, { checkbox: permission.required });
+                        if (checkbox) grants.set(permission.permission, checkbox);
+                    }
                 }
-            }
-            disclosure(doc, review, 'Details', isPackage ? { capabilities: preflight.capabilities, packageId: preflight.packageId } : preflight.dependency?.required || preflight.package);
-            if (!ready) {
-                mountSaveDependencyRecovery({ document: doc, root: review, preflight, saveData: data, host, onReady: () => input.dispatchEvent(new doc.defaultView.Event('change')) }); return;
-            }
-            const controls = actions(doc, review);
-            action(doc, controls, isPackage ? 'Install / Update' : 'Import Save', async () => {
-                if (token !== sequence) return;
-                if (isPackage) {
-                    const missing = preflight.requiredPermissions.filter(permission => !grants.get(permission)?.checked);
-                    if (missing.length) throw new Error(tl('Grant required permissions before installation:') + ' ' + missing.join(', '));
-                    await client.installPackage(data, preflight.requiredPermissions, preflight.update?.previous?.packageVersionId || null);
-                    await refresh();
-                } else {
-                    const password = await savePassword(); if (password === false || password === null) return;
-                    const imported = await client.importSave(data, password);
-                    await openSession(host, imported.session.sessionId);
+                disclosure(doc, review, 'Details', isPackage ? { capabilities: preflight.capabilities, packageId: preflight.packageId, packageVersionId: preflight.packageVersionId } : preflight.dependency?.required || preflight.package);
+                if (!ready) {
+                    mountSaveDependencyRecovery({ document: doc, root: review, preflight, saveData: data, host, isCurrent: current, onReady: inspect }); return;
                 }
-            }, { primary: true });
+                const passwordInput = isPackage ? null : field(doc, review, 'Save password (leave blank if none)', '', 'password');
+                const controls = actions(doc, review);
+                const submit = action(doc, controls, isPackage ? 'Install / Update' : 'Import Save', async () => {
+                    if (!current()) return;
+                    processing = true; input.disabled = choose.disabled = true;
+                    try {
+                        let imported;
+                        if (isPackage) {
+                            const missing = preflight.requiredPermissions.filter(permission => !grants.get(permission)?.checked);
+                            if (missing.length) throw new Error(tl('Grant required permissions before installation:') + ' ' + missing.join(', '));
+                            await client.installPackage(data, preflight.requiredPermissions, preflight.update?.previous?.packageVersionId || null);
+                        } else {
+                            const password = passwordInput.value; if (!current()) return;
+                            // Dependencies may have changed since review; the service revalidates import too.
+                            const checked = await client.preflightSave(data);
+                            if (!current()) return;
+                            if (checked.dependency?.status !== 'ready') { await inspect(); return; }
+                            imported = await client.importSave(data, password);
+                        }
+                        if (!current()) return;
+                        result.replaceChildren();
+                        feedback(doc, result, tl(isPackage ? 'Work installed.' : 'Save imported.'));
+                        // Keep the write receipt on screen. Opening/refresh failure must never replay a write.
+                        action(doc, result, isPackage ? 'Open Work' : 'Open Session', () => isPackage
+                            ? host.openLibraryWork(preflight.packageId, preflight.name)
+                            : openSession(host, imported.session.sessionId), { primary: true });
+                        if (isPackage) disclosure(doc, result, 'Details', { packageId: preflight.packageId, packageVersionId: preflight.packageVersionId, version: preflight.version });
+                        action(doc, result, 'Choose another file', reset);
+                        void host.refreshSearch?.();
+                    } catch (error) {
+                        if (!current()) return;
+                        feedback(doc, controls, libraryError(error), true);
+                        if (error.status === 409) action(doc, controls, 'Review file again', inspect);
+                    } finally { processing = false; input.disabled = choose.disabled = false; }
+                }, { primary: true });
+                action(doc, controls, 'Cancel', reset);
+                submit.focus();
+            };
+            await inspect();
         } catch (error) {
-            if (token !== sequence) return;
+            if (!current()) return;
             result.replaceChildren(); feedback(doc, result, libraryError(error), true);
+            action(doc, result, 'Try again', () => input.dispatchEvent(new doc.defaultView.Event('change')));
         }
     });
     return root;
@@ -119,23 +150,34 @@ function sessionRow(doc, parent, session, host, refresh, workName) {
         if (!await confirmLibraryAction('Delete this Native Session and all of its SavePoints?')) return;
         await client.deleteSession(session.sessionId); await refresh();
     }, { danger: true });
-    if (!ready) disclosure(doc, content, 'Dependency details', dependency.required || dependency);
+    if (!ready) {
+        disclosure(doc, content, 'Dependency details', dependency.required || dependency);
+        mountSaveDependencyRecovery({ document: doc, root: content, preflight: { dependency }, host,
+            recheck: async () => (await client.listSessions(session.packageId)).find(item => item.sessionId === session.sessionId),
+            onReady: async () => { await openSession(host, session.sessionId); } });
+    }
     return row;
 }
 
-async function works(doc, root, host, refresh) {
-    const [items, sessions] = await Promise.all([client.listWorks(), client.listSessions()]);
+async function works(doc, root, host, refresh, browseState) {
+    const [workResult, sessionResult] = await Promise.allSettled([client.listWorks(), client.listSessions()]);
+    const items = workResult.status === 'fulfilled' ? workResult.value : [];
+    const sessions = sessionResult.status === 'fulfilled' ? sessionResult.value : [];
     heading(doc, root, 'Works', 'Your collection of interactive stories.');
     const imports = el(doc, 'div', 'atri-library-imports', undefined, root);
-    importSurface(doc, imports, 'package', host, refresh); importSurface(doc, imports, 'save', host, refresh);
-    const filter = field(doc, root, 'Search works', '', 'search');
+    action(doc, imports, 'Install / Update .atria', () => host.openLibrarySection('install'));
+    action(doc, imports, 'Import .atriasave', () => host.openLibrarySection('import-save'));
+    const filter = field(doc, root, 'Search works', browseState.query || '', 'search');
     const count = el(doc, 'p', 'atri-library-meta', '', root); count.setAttribute('role', 'status');
     const grid = el(doc, 'div', 'atri-library-posters', undefined, root); grid.dataset.atriaNativeWorks = 'true';
     const render = () => {
         grid.replaceChildren();
         const matching = items.filter(item => `${item.package.displayName} ${item.manifest?.description || ''}`.toLowerCase().includes(filter.value.trim().toLowerCase()));
         count.textContent = `${matching.length} ${tl('Works')}`;
-        if (!matching.length) state(doc, grid, 'empty', items.length ? 'No matching works' : 'No Works installed', items.length ? 'Try another search.' : 'Install an Atria work to begin your collection.');
+        if (workResult.status === 'rejected') {
+            state(doc, grid, 'error', 'Library could not be loaded', libraryError(workResult.reason));
+            action(doc, grid, 'Try again', refresh);
+        } else if (!matching.length) state(doc, grid, 'empty', items.length ? 'No matching works' : 'No Works installed', items.length ? 'Try another search.' : 'Install an Atria work to begin your collection.');
         for (const work of matching) {
             const card = el(doc, 'article', 'atri-library-work', undefined, grid); card.dataset.atriaWorkId = work.package.packageId;
             const open = action(doc, card, 'Open', () => host.openLibraryWork(work.package.packageId, work.package.displayName));
@@ -145,9 +187,12 @@ async function works(doc, root, host, refresh) {
             el(doc, 'p', 'atri-library-meta', work.status === 'ready' ? `${tl('Version')} ${work.packageVersion?.version || '—'}` : tl('Unavailable'), card);
         }
     };
-    filter.addEventListener('input', render); render();
+    filter.addEventListener('input', () => { browseState.query = filter.value; render(); }); render();
     const games = section(doc, root, 'My Games', 'atriaMyGames');
-    if (!sessions.length) state(doc, games, 'empty', 'No game progress yet', 'Open a work and start a new story.');
+    if (sessionResult.status === 'rejected') {
+        state(doc, games, 'error', 'Library could not be loaded', libraryError(sessionResult.reason));
+        action(doc, games, 'Try again', refresh);
+    } else if (!sessions.length) state(doc, games, 'empty', 'No game progress yet', 'Open a work and start a new story.');
     sessions.forEach(item => sessionRow(doc, games, item, host, refresh, items.find(work => work.package.packageId === item.packageId)?.package.displayName));
 }
 
@@ -157,6 +202,7 @@ async function workDetail(doc, root, host, id, refresh) {
     hero.append(cover(doc, id, work.package.displayName));
     const content = el(doc, 'div', 'atri-library-hero-content', undefined, hero);
     heading(doc, content, work.package.displayName, manifest?.description || '', true);
+    action(doc, content, 'Back to collection', () => host.openLibrarySection('works'));
     el(doc, 'p', 'atri-library-meta', `${tl('Version')} ${work.packageVersion?.version || '—'}`, content);
     if (work.status !== 'ready') state(doc, content, 'error', 'This work is unavailable', 'Reinstall the matching work to continue. Your progress is kept.');
     const entryPoints = manifest?.entryPoints || [];
@@ -256,6 +302,7 @@ async function worldKnowledge(doc, root, route, host, browseState = {}) {
         const resource = knowledge ? detail.knowledgeBase : detail.world;
         const hero = heading(doc, root, resource.displayName, tl(knowledge ? 'Knowledge available to your stories.' : 'A shared setting for your stories.'), true);
         hero.dataset[knowledge ? 'atriaKnowledgeDetail' : 'atriaWorldDetail'] = id;
+        action(doc, hero, 'Back to collection', () => host.openLibrarySection(knowledge ? 'knowledge' : 'worlds'));
         if (target) {
             const entry = detail.entries.find(item => item.knowledgeEntryId === target.entryId);
             if (!entry) throw new Error(tl('Knowledge entry unavailable'));
@@ -274,7 +321,10 @@ async function worldKnowledge(doc, root, route, host, browseState = {}) {
         resourceLibraryCopy(doc, revisionActions, { scope: 'library', resourceType: knowledge ? 'core.knowledge' : 'core.world', resourceId: id, revision: resource.currentRevisionId }, host);
         const editRevision = (initialEntryId, entryEnabled, entryAction) => {
             const reload = async saved => {
-                root.replaceChildren(); await worldKnowledge(doc, root, route, host, browseState);
+                const next = doc.createElement('section');
+                await worldKnowledge(doc, next, route, host, browseState);
+                if (!root.isConnected) return;
+                root.replaceChildren(...next.childNodes);
                 if (initialEntryId) [...root.querySelectorAll('[data-atria-knowledge-entry-id]')].find(row => row.dataset.atriaKnowledgeEntryId === initialEntryId)?.querySelector('summary')?.focus();
                 if (saved) feedback(doc, root, tl('Saved immutable Library revision.') + ' ' + (saved.worldRevisionId || saved.knowledgeRevisionId));
             };
@@ -328,7 +378,7 @@ async function worldKnowledge(doc, root, route, host, browseState = {}) {
     }, { primary: true });
     name.addEventListener('input', () => name.setCustomValidity(''));
     form.addEventListener('submit', event => { event.preventDefault(); create.click(); });
-    const search = field(doc, root, 'Search resources', '', 'search');
+    const search = field(doc, root, 'Search resources', browseState.query || '', 'search');
     const list = el(doc, 'div', 'atri-library-grouped-list', undefined, root); list.dataset[knowledge ? 'atriaKnowledgeLibrary' : 'atriaWorldLibrary'] = 'true';
     const render = () => {
         list.replaceChildren();
@@ -343,11 +393,11 @@ async function worldKnowledge(doc, root, route, host, browseState = {}) {
             action(doc, row, 'Open', () => open(resource));
         }
     };
-    search.addEventListener('input', render); render();
+    search.addEventListener('input', () => { browseState.query = search.value; render(); }); render();
     await mountPackageLibraryList({ document: doc, root, knowledge, host });
 }
 
-function mount({ document: doc, body, route, host }, mode) {
+function mount({ document: doc, body, route, host, browseStates = new Map() }, mode) {
     let disposed = false; let sequence = 0; let currentRoute = route;
     async function render(nextRoute = currentRoute) {
         currentRoute = nextRoute;
@@ -355,9 +405,13 @@ function mount({ document: doc, body, route, host }, mode) {
         state(doc, body, 'loading', mode === 'works' ? 'Works' : 'Worlds & Knowledge', 'Loading your Library…');
         const root = el(doc, 'section', 'atria-native-library'); root.dataset.atriaNativeLibrary = mode;
         try {
-            if (mode !== 'works') await worldKnowledge(doc, root, nextRoute, host);
+            const child = String(nextRoute?.child?.id || '');
+            const key = mode === 'works' ? 'works' : child.startsWith('knowledge') ? 'knowledge' : 'worlds';
+            if (!browseStates.has(key)) browseStates.set(key, {});
+            if (mode !== 'works') await worldKnowledge(doc, root, nextRoute, host, browseStates.get(key));
+            else if (child === 'install' || child === 'import-save') importSurface(doc, root, child === 'install' ? 'package' : 'save', host);
             else if (String(nextRoute?.child?.id || '').startsWith('work:')) await workDetail(doc, root, host, nextRoute.child.id.slice(5), () => render());
-            else await works(doc, root, host, () => render());
+            else await works(doc, root, host, () => render(), browseStates.get(key));
             if (!disposed && token === sequence) {
                 body.replaceChildren(root);
                 const title = root.querySelector('h2'); title?.setAttribute('tabindex', '-1');

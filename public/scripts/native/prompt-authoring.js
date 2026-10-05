@@ -1,3 +1,4 @@
+import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { referenceRemediation, confirmLibraryAction } from './library-ui.js';
 import { resourceBundleExport, mountResourceBundleImport } from './resource-bundle-controls.js';
@@ -160,6 +161,7 @@ export function forkPromptClosure(entries, selected, { derive = false, scope = {
 
 export function mountPromptEditor({ document: doc, parent, entry, entries, onSave, onBack, librarySurface = false, presetSurface = false, foldState = new Map() }) {
     let draft = clone(entry.resource); let advanced = false; let submitted = false;
+    const initialDraft = JSON.stringify(draft);
     const root = element(doc, 'section', undefined, parent); root.className = 'atri-prompt-editor';
     root.dataset.atriPromptEditor = 'true';
     if (librarySurface) root.dataset.atriLibraryEditor = 'true';
@@ -181,10 +183,14 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
         const title = element(doc, 'h3', undefined, root); title.textContent = draft.displayName; title.tabIndex = -1;
         element(doc, 'p', presetSurface ? 'Save changes to this preset. Other presets and pinned sessions stay unchanged.' : librarySurface ? 'Save a new revision. Existing references keep their exact version.' : 'New exact revision · existing references stay pinned. Review changes before committing in Studio.', root);
         const toolbar = element(doc, 'div', undefined, root); toolbar.className = 'atri-prompt-actions';
-        action(doc, toolbar, 'Back to resources', onBack);
+        action(doc, toolbar, 'Back to resources', () => { if (confirmAtriaDraftLeave(doc, root)) return onBack(); });
         const status = element(doc, 'div', undefined, root);
         if (librarySurface) status.className = 'atri-prompt-editor-status';
         let read;
+        const trackDraft = () => queueMicrotask(() => {
+            try { root.dataset.atriaDraftDirty = String(!submitted && JSON.stringify(read()) !== initialDraft); } catch { root.dataset.atriaDraftDirty = 'true'; }
+        });
+        root.oninput = trackDraft; root.onchange = trackDraft;
         action(doc, toolbar, advanced ? 'Simple editor' : 'Advanced editor', () => {
             try { draft = read(); advanced = !advanced; render(); } catch (e) { status.replaceChildren(); error(doc, status, e); }
         });
@@ -293,7 +299,10 @@ export function mountPromptEditor({ document: doc, parent, entry, entries, onSav
         }
         const save = action(doc, root, librarySurface ? 'Save revision' : 'Review / save revision', async () => {
             if (save.disabled) return; save.disabled = true; save.setAttribute('aria-busy', 'true'); status.replaceChildren();
-            try { rememberFolds(); const value = read(); await onSave(value); element(doc, 'p', librarySurface ? 'Saved immutable Library revision.' : 'Revision submitted. Studio changes require human Review / Apply.', status); submitted = true; } catch (e) { error(doc, status, e); } finally { save.disabled = submitted; save.removeAttribute('aria-busy'); }
+            try {
+                rememberFolds(); const value = read(); await onSave(value); element(doc, 'p', librarySurface ? 'Saved immutable Library revision.' : 'Revision submitted. Studio changes require human Review / Apply.', status); submitted = true; root.dataset.atriaDraftDirty = 'false';
+                root.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
+            } catch (e) { error(doc, status, e); } finally { save.disabled = submitted; save.removeAttribute('aria-busy'); }
         });
         save.disabled = submitted;
         title.focus();

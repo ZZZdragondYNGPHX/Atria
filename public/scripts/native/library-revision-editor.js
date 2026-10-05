@@ -1,3 +1,4 @@
+import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { mountWorldEditor } from './world-editor.js';
 import { mountKnowledgeEditor } from './knowledge-editor.js';
 import { createStudioNativeId } from './studio-authoring.js';
@@ -19,7 +20,7 @@ export function mountLibraryRevisionEditor({ document: doc, root, detail, knowle
     const section = el(doc, 'section', 'atri-library-section atri-library-revision-editor', undefined, root);
     heading(doc, section, resource.displayName, tl(saveRevision ? 'Edit the installed Knowledge original. Bound worlds keep their parameters and progress.' : 'Create an immutable revision. Existing exact references keep their original revision.'), true);
     disclosure(doc, section, 'Editing base revision', { resourceId: resource.knowledgeBaseId || resource.worldId, revisionId: baseRevisionId });
-    const close = action(doc, section, 'Back to resource', onClose);
+    const close = action(doc, section, 'Back to resource', () => { if (confirmAtriaDraftLeave(doc, section)) return onClose(); });
     const editor = el(doc, 'div', '', undefined, section);
     const review = el(doc, 'section', 'atri-library-section', undefined, section); review.hidden = true;
     const mountEditor = knowledge ? mountKnowledgeEditor : mountWorldEditor;
@@ -41,7 +42,11 @@ export function mountLibraryRevisionEditor({ document: doc, root, detail, knowle
                     const saved = await (saveRevision ? saveRevision(input) : knowledge ? client.commitKnowledgeRevision(resource.knowledgeBaseId, input) : client.commitWorldRevision(resource.worldId, input));
                     section.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
                     save.remove(); back.remove();
-                    await onSaved(saved);
+                    feedback(doc, review, tl('Saved immutable Library revision.'));
+                    try { await onSaved(saved); } catch (error) {
+                        feedback(doc, review, tl('Saved. The view could not be refreshed.') + ' ' + libraryError(error), true);
+                        action(doc, review, 'Try again', () => onSaved(saved));
+                    }
                 } catch (error) { feedback(doc, review, libraryError(error), true); } finally { close.disabled = back.disabled = false; }
             }, { primary: true });
             save.focus();

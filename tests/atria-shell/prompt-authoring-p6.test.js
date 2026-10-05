@@ -11,6 +11,21 @@ function editor(type = 'core.prompt-module', onSave = jest.fn()) {
     return { root, resource, onSave };
 }
 
+test('internal Prompt Back preserves a dirty Source on cancel and permits discard or a committed return', async () => {
+    const onBack = jest.fn(); const onSave = jest.fn();
+    const resource = newPromptResource('core.prompt-module');
+    const root = mountPromptEditor({ document, parent: document.body, entry: { resource, ref: resourceRef('core.prompt-module', resource, { scope: 'library' }) }, entries: [], onSave, onBack, librarySurface: true });
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false);
+    button(root, 'Advanced editor').click();
+    const source = root.querySelector('textarea'); const draft = JSON.parse(source.value); draft.body = 'Unsaved'; source.value = JSON.stringify(draft); source.dispatchEvent(new Event('input', { bubbles: true }));
+    await flush(); button(root, 'Back to resources').click();
+    expect(onBack).not.toHaveBeenCalled(); expect(source.value).toContain('Unsaved');
+    confirm.mockReturnValue(true); button(root, 'Back to resources').click(); expect(onBack).toHaveBeenCalledTimes(1);
+    button(root, 'Save revision').click(); await flush();
+    confirm.mockClear(); button(root, 'Back to resources').click();
+    expect(confirm).not.toHaveBeenCalled(); expect(onBack).toHaveBeenCalledTimes(2); confirm.mockRestore();
+});
+
 test('program stages use compiler ordering and adding keeps focus on the stage module picker', async () => {
     const program = newPromptResource('core.prompt-program');
     const entries = [

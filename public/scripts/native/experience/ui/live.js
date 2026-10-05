@@ -56,6 +56,7 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
         let runtime;
         const fullHost = mode === 'full' ? createFullGameHost(documentRef, {
             shell: shellFoundation, nativePlayHost,
+            getCapabilities: options.hostActions?.getCapabilities,
             onExit: options.hostActions?.exitExperience,
             onStopGeneration: options.hostActions?.stopGeneration,
             onSave: options.hostActions?.save,

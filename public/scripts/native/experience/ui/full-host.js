@@ -1,3 +1,4 @@
+import { NATIVE_SESSION_LIFECYCLE, onNativeSessionLifecycle } from '../../session-lifecycle.js';
 import { translateShellText as tl } from '../../../atria-shell/localization.js';
 const HIDDEN_TARGET_IDS = Object.freeze([
     'sheld',
@@ -86,7 +87,7 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
     recovery.id = 'atria-game-full-recovery';
     recovery.dataset.atriaGameHostRecovery = 'true';
     recovery.setAttribute('role', 'toolbar');
-    recovery.setAttribute('aria-label', 'Game UI recovery');
+    recovery.setAttribute('aria-label', tl('Experience controls'));
     recovery.dataset.atriaGameHostScope = shellScoped ? 'host-recovery' : 'viewport';
     recovery.style.position = 'fixed';
     recovery.style.top = 'max(8px, env(safe-area-inset-top, 0px))';
@@ -114,26 +115,35 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
     recoveryStatus.setAttribute('role', 'status');
     recoveryPanel.append(recoveryTitle, recoveryActions, recoveryStatus);
     recovery.append(recoveryPanel);
+    const buttons = new Map(), pending = new Set();
+    const allowed = action => options.getCapabilities?.()?.[action] !== false;
+    const sync = () => { for (const [action, button] of buttons) button.disabled = pending.has(action) || !allowed(action); };
     for (const [action, label, handler] of actions) {
         if (typeof handler !== 'function') continue;
         const button = makeButton(documentRef, action, label);
         button.addEventListener('click', async event => {
             event.preventDefault();
             event.stopPropagation();
-            button.disabled = true;
+            if (pending.has(action) || !allowed(action)) return;
+            pending.add(action); sync(); recoveryStatus.textContent = '';
             try {
                 await handler();
+                if (action === 'save') recoveryStatus.textContent = tl('Saved');
             } catch (error) {
                 recoveryStatus.textContent = error?.message || 'The action could not be completed. Try again.';
                 console.error('[game-runtime] Full UI recovery action failed', {
                     action,
                     error,
                 });
-            } finally { button.disabled = false; }
+            } finally { pending.delete(action); sync(); }
         });
-        recoveryActions.appendChild(button);
+        buttons.set(action, button); recoveryActions.appendChild(button);
     }
 
+    const observer = new MutationObserver(sync);
+    observer.observe(documentRef.body, { attributes: true, attributeFilter: ['data-generating', 'data-atria-native-session-active'] });
+    const unsubscribers = Object.values(NATIVE_SESSION_LIFECYCLE).map(type => onNativeSessionLifecycle(type, sync));
+    sync();
     (shellScoped ? shellStage : documentRef.body).appendChild(root);
     (shellScoped ? shellRecovery : documentRef.body).appendChild(recovery);
 
@@ -194,6 +204,7 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
     function dispose() {
         if (disposed) return;
         disposed = true;
+        observer.disconnect(); for (const unsubscribe of unsubscribers) unsubscribe();
         active = false;
         documentRef.removeEventListener('keydown', onEscape, true);
 

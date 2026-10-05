@@ -41,6 +41,30 @@ test('late list responses cannot replace a newer Work detail or disposed surface
     expect(document.body.textContent).toBe('Next workspace');
 });
 
+test('return from Work detail retains the collection query without replacing resource authority', async () => {
+    globalThis.fetch = jest.fn(async path => ({ ok: true, json: async () => path.endsWith('/works') ? [
+        { package: { packageId: 'a', displayName: 'Harbour' }, status: 'ready' },
+        { package: { packageId: 'b', displayName: 'Forest' }, status: 'ready' },
+    ] : path.endsWith('/sessions') ? [] : { package: { packageId: 'a', displayName: 'Harbour' }, manifest: { entryPoints: [] }, versions: [], sessions: [], status: 'ready' } }));
+    const controller = mountNativeWorksWorkspace({ document, body: document.body, route: { child: { id: 'works' } }, host: {} });
+    await flush(); const filter = document.querySelector('[type=search]'); filter.value = 'Harbour'; filter.dispatchEvent(new Event('input'));
+    controller.updateRoute({ child: { id: 'work:a' } }); await flush();
+    controller.updateRoute({ child: { id: 'works' } }); await flush();
+    expect(document.querySelector('[type=search]').value).toBe('Harbour');
+    expect(document.querySelectorAll('[data-atria-work-id]')).toHaveLength(1); controller.dispose();
+});
+
+test('unavailable Works inventory preserves Sessions and the full install entry', async () => {
+    globalThis.fetch = jest.fn(async path => path.endsWith('/works')
+        ? { ok: false, status: 503, json: async () => ({}) }
+        : { ok: true, json: async () => [{ sessionId: 'progress', packageId: 'pkg', displayTitle: 'Kept progress', dependency: { status: 'ready' } }] });
+    const controller = mountNativeWorksWorkspace({ document, body: document.body, route: { child: { id: 'works' } }, host: {} }); await flush();
+    expect(document.body.textContent).toContain('Library could not be loaded');
+    expect(document.querySelector('[data-atria-session-id=progress]').textContent).toContain('Kept progress');
+    expect([...document.querySelectorAll('button')].some(node => node.textContent === 'Install / Update .atria')).toBe(true);
+    controller.dispose();
+});
+
 test('authored resource names and prose are literal even when they match a UI translation key', () => {
     globalThis.__i18n = { translate: () => 'TRANSLATED' };
     heading(document, document.body, 'Works', 'Saved', true);

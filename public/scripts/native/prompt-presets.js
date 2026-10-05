@@ -1,3 +1,4 @@
+import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { runtimeRequest } from './runtime-client.js';
 import { newPromptResource, resourceRef, PROMPT_TYPES, mountPromptEditor } from './prompt-authoring.js';
@@ -35,19 +36,33 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
     const fail = error => { if (!disposed) { const el = node('p', error.message); el.setAttribute('role', 'alert'); } };
     const button = (parent, text, callback) => {
         const el = node('button', text, parent); el.type = 'button'; el.className = 'atri-library-button';
-        el.addEventListener('click', async () => { el.disabled = true; try { await callback(); } catch (e) { fail(e); } finally { el.disabled = false; } }); return el;
+        el.addEventListener('click', async () => { if (el.disabled) return; el.disabled = true; try { await callback(); } catch (e) { fail(e); } finally { el.disabled = false; } }); return el;
     };
     const field = (parent, label, value = '') => { const wrap = node('label', label, parent); wrap.className = 'atri-library-field'; const el = node('input', undefined, wrap); el.value = value; el.setAttribute('aria-label', tl(label)); return el; };
     const select = (parent, label, values, value) => { const wrap = node('label', label, parent); wrap.className = 'atri-library-field'; const el = node('select', undefined, wrap); el.setAttribute('aria-label', tl(label)); for (const [id, title] of values) { const opt = node('option', undefined, el); opt.textContent = title; opt.value = id; } el.value = value || ''; return el; };
     const save = async next => {
         const token = sequence;
-        await runtimeRequest('/presets/' + preset.presetId, { method: 'PUT', body: { preset: next, expectedRevision: preset.revision }, onCommitted: async result => {
-            const saved = await runtimeRequest('/presets/' + result.presetId);
+        let receipt;
+        const refresh = async () => {
+            const saved = await runtimeRequest('/presets/' + receipt.presetId);
             if (disposed || token !== sequence) return;
             preset = saved; renderDetail(); restoreListPosition();
-            // Search reads fresh inventories when opened. Do not rebuild every
-            // domain (including all historical resources) after each module edit.
-        } });
+        };
+        try {
+            await runtimeRequest('/presets/' + preset.presetId, { method: 'PUT', body: { preset: next, expectedRevision: preset.revision }, onCommitted: async result => {
+                receipt = result;
+                if (disposed || token !== sequence) return;
+                body.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
+                await refresh();
+            } });
+        } catch (error) {
+            if (!receipt) throw error;
+            if (disposed || token !== sequence) return;
+            body.replaceChildren();
+            node('p', 'Saved. The view could not be refreshed.').setAttribute('role', 'status');
+            literal('p', error.message, body).setAttribute('role', 'alert');
+            button(body, 'Try again', refresh);
+        }
     };
     const open = async id => { const token = ++sequence; closeMenu(); categoryFilter = 'all'; listPosition = null; body.replaceChildren(); node('p', 'Loading exact resources…'); const value = await runtimeRequest('/presets/' + id); if (disposed || token !== sequence) return; preset = value; section = null; renderDetail(); };
     const create = async (value, importing = false) => { const result = await runtimeRequest('/presets', { method: 'POST', body: { preset: value, importing } }); await open(result.presetId); };
@@ -179,8 +194,8 @@ export function mountPromptPresets({ document: doc, body, host, route }) {
         closeMenu();
         body.replaceChildren(); const root = node('section'); root.className = 'atri-prompt-preset'; root.dataset.atriPromptPreset = preset.presetId;
         const nav = node('div', undefined, root); nav.className = 'atri-prompt-actions';
-        button(nav, 'Back to presets', list);
-        if (section) button(nav, 'Back to preset', () => { section = null; renderDetail(); });
+        button(nav, 'Back to presets', () => { if (confirmAtriaDraftLeave(doc, body)) return list(); });
+        if (section) button(nav, 'Back to preset', () => { if (confirmAtriaDraftLeave(doc, body)) { section = null; renderDetail(); } });
         literal('h2', preset.entries.find(e => idOf(e) === preset.programId).resource.displayName, root);
         if (!section) {
             node('p', 'This preset owns its program, modules, generation settings and Regex rules. Changes affect only this preset.', root);

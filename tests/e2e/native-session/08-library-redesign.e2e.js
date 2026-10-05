@@ -61,7 +61,7 @@ test('Works retry, search, real install permission review and preserved failed i
     }];
     const { archive } = buildAtriaPackageContainer({ manifest: fixture.manifest, sourceFiles: new Map(), assetPayloads: new Map() });
     const install = page.locator('[data-atria-native-install]');
-    await install.locator('summary').first().click();
+    await page.getByRole('button', { name: 'Install / Update .atria', exact: true }).click();
     await install.getByLabel('Choose an Atria work').setInputFiles({ name: 'harbour.atria', mimeType: 'application/octet-stream', buffer: archive });
     const submit = install.getByRole('button', { name: 'Install / Update', exact: true });
     await submit.click();
@@ -74,6 +74,9 @@ test('Works retry, search, real install permission review and preserved failed i
     await shot(page, info, 'install-retry');
     await page.unroute('**/api/native/product/packages/install');
     await submit.click();
+    await expect(install.getByRole('status')).toContainText('Work installed.');
+    await install.getByRole('button', { name: 'Open Work', exact: true }).click();
+    await page.getByRole('button', { name: 'Back to collection', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Open The quiet harbour', exact: true })).toBeVisible();
     await shot(page, info, 'works-desktop');
 });

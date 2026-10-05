@@ -34,7 +34,19 @@ function messageNode(documentRef, snapshot, entry) {
     header.className = 'atria-play-message__header';
     const name = documentRef.createElement('strong');
     name.textContent = actorName(snapshot, entry);
-    header.append(name);
+    const avatar = documentRef.createElement('span');
+    avatar.className = 'atria-play-message__avatar';
+    avatar.setAttribute('aria-hidden', 'true');
+    avatar.textContent = name.textContent.slice(0, 1);
+    const role = documentRef.createElement('span');
+    role.className = 'atria-play-message__role';
+    role.textContent = tl(entry?.role === 'user' ? 'You' : entry?.role === 'system' ? 'System' : 'Narrator');
+    role.hidden = role.textContent === name.textContent;
+    const sequence = documentRef.createElement('span');
+    sequence.className = 'atria-play-message__sequence';
+    sequence.textContent = String((entry?.sequence ?? 0) + 1);
+    sequence.setAttribute('aria-label', tl('Story timeline'));
+    header.append(avatar, name, role, sequence);
 
     const body = documentRef.createElement('div');
     body.className = 'atria-play-message__body';
@@ -277,8 +289,8 @@ export function mountAtriaPlayProduct({
         }
 
         const writable = runtimeWritable(runtime);
-        textarea.disabled = !writable || generating();
-        send.disabled = !writable;
+        textarea.disabled = !writable || generating() || submitting;
+        send.disabled = !writable || (submitting && !generating());
         const action = generating() ? 'Stop' : 'Send';
         if (send.getAttribute('aria-label') !== tl(action)) {
             send.setAttribute('aria-label', tl(action));
@@ -299,7 +311,8 @@ export function mountAtriaPlayProduct({
     async function submitDraft({ revision } = {}) {
         const runtime = activeRuntime();
         if (revision && runtime?.snapshot?.revision?.revisionId !== revision) throw new Error('Composer revision changed');
-        const value = textarea.value.trim();
+        const originalDraft = textarea.value;
+        const value = originalDraft.trim();
         if (submitting || generating()) throw new Error(tl('Generation is already running.'));
         if (!value || !runtimeWritable(runtime)) throw new Error(tl('Native Composer is not ready.'));
         const generate = globalThis.Atria?.getContext?.()?.generate;
@@ -309,7 +322,17 @@ export function mountAtriaPlayProduct({
         native.sendTextarea.dispatchEvent(new Event('input', { bubbles: true }));
         textarea.value = ''; resizeInput(); following = true;
         runtimeError.hidden = true; composerStatus.textContent = tl('Generating…');
-        try { return await generate('normal'); } finally { submitting = false; render(); }
+        const sessionId = runtime.snapshot.session.sessionId;
+        const baseRevision = runtime.snapshot.revision.revisionId;
+        render();
+        try { return await generate('normal'); } catch (error) {
+            // Restore only unaccepted input. A committed user turn must never be sent twice.
+            if (activeRuntime() === runtime && runtime.snapshot.session.sessionId === sessionId
+                && runtime.snapshot.revision.revisionId === baseRevision && !textarea.value) {
+                textarea.value = originalDraft; resizeInput();
+            }
+            throw error;
+        } finally { submitting = false; render(); }
     }
     async function submitCommitted(snapshot) {
         const runtime = activeRuntime();
@@ -337,8 +360,10 @@ export function mountAtriaPlayProduct({
 
     composer.addEventListener('submit', submit);
     textarea.addEventListener('keydown', event => {
-        // Keep Enter for paragraphs and IME composition; explicit modifier sends.
-        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.isComposing) {
+        // AUTO/DISABLED use paragraphs; ENABLED also accepts plain Enter.
+        const preference = Number(globalThis.Atria?.getContext?.()?.powerUserSettings?.send_on_enter ?? 0);
+        if (event.key === 'Enter' && !event.shiftKey && !event.altKey && !event.isComposing
+            && event.keyCode !== 229 && (event.ctrlKey || event.metaKey || preference === 1)) {
             event.preventDefault();
             submit(event);
         }

@@ -13,10 +13,15 @@ export function mountSessionHistory({ document: doc, root, sessionId, onInspect,
     const body = el(doc, 'div', 'atri-library-section', undefined, section); body.style.overflowWrap = 'anywhere';
     const facade = createReplyVariantFacade({ sessionId, loadHistory, getContext,
         onInspect: onInspect ? target => onInspect(target.revisionId) : undefined, onSwitchBranch, onRetry, onFork });
+    const capabilityButtons = new Map();
+    const track = (button, target, capability) => { capabilityButtons.set(button, { target, capability }); return button; };
+    const syncCapabilities = () => {
+        for (const [button, { target, capability }] of capabilityButtons) button.disabled = !facade.capabilities(target)[capability];
+    };
     let loaded = false, loading = false, disposed = false, attempted = false, selectedBranch = null, selectedRevision = null;
     const load = async (refresh = false) => {
         if (loading || disposed) return;
-        loading = true; body.replaceChildren(); body.setAttribute('aria-busy', 'true'); feedback(doc, body, tl('Loading history…'));
+        loading = true; capabilityButtons.clear(); body.replaceChildren(); body.setAttribute('aria-busy', 'true'); feedback(doc, body, tl('Loading history…'));
         try {
             const model = await facade.load({ refresh });
             if (disposed) return;
@@ -98,16 +103,16 @@ export function mountSessionHistory({ document: doc, root, sessionId, onInspect,
             navigation.hidden = !replies.count;
             const commands = el(doc, 'div', 'atri-library-actions', undefined, preview);
             const permissions = facade.capabilities(value);
-            if (onInspect) action(doc, commands, 'Inspect revision', () => facade.inspect(value), { disabled: !permissions.inspect });
+            if (onInspect) track(action(doc, commands, 'Inspect revision', () => facade.inspect(value), { disabled: !permissions.inspect }), value, 'inspect');
             const mutate = method => async () => {
                 let error;
                 try { await facade[method](value); } catch (failure) { error = failure; }
                 await load(true);
                 if (error) feedback(doc, body, libraryError(error), true);
             };
-            if (onSwitchBranch) action(doc, commands, 'Switch branch', mutate('switchBranch'), { disabled: !permissions.switch });
-            if (onRetry) action(doc, commands, 'Retry reply', mutate('retry'), { disabled: !permissions.retry });
-            if (onFork) action(doc, commands, 'Fork from revision', mutate('fork'), { disabled: !permissions.fork });
+            if (onSwitchBranch) track(action(doc, commands, 'Switch branch', mutate('switchBranch'), { disabled: !permissions.switch }), value, 'switch');
+            if (onRetry) track(action(doc, commands, 'Retry reply', mutate('retry'), { disabled: !permissions.retry }), value, 'retry');
+            if (onFork) track(action(doc, commands, 'Fork from revision', mutate('fork'), { disabled: !permissions.fork }), value, 'fork');
             el(doc, 'p', 'atri-library-meta', tl('Switching restores the branch head, including its narrative and state. Preview does not switch branches.'), preview);
             if (focus) heading.focus();
             if (onPreview) await onPreview(value);
@@ -136,7 +141,7 @@ export function mountSessionHistory({ document: doc, root, sessionId, onInspect,
                 if (revision.edge === 'fork') marker(row, 'Branch fork');
                 if (revision.edge === 'switch') marker(row, 'Branch switch');
                 // Keep the existing single-argument inspect integration intact.
-                if (onInspect) action(doc, row, 'Inspect revision', () => facade.inspect(revision), { disabled: Boolean(revision.issues.length) });
+                if (onInspect) track(action(doc, row, 'Inspect revision', () => facade.inspect(revision), { disabled: Boolean(revision.issues.length) }), revision, 'inspect');
                 action(doc, row, 'Preview revision', () => showPreview(revision, true), { disabled: Boolean(revision.issues.length) });
                 disclosure(doc, row, 'Exact revision details', revision);
             }
@@ -156,6 +161,6 @@ export function mountSessionHistory({ document: doc, root, sessionId, onInspect,
         else if (!loaded && !attempted) { attempted = true; void load(); }
     };
     section.addEventListener('toggle', toggle);
-    section.atriaHistory = { facade, refresh: () => load(true), dispose() { disposed = true; facade.dispose(); section.removeEventListener('toggle', toggle); } };
+    section.atriaHistory = { facade, syncCapabilities, refresh: () => load(true), dispose() { disposed = true; capabilityButtons.clear(); facade.dispose(); section.removeEventListener('toggle', toggle); } };
     return section;
 }

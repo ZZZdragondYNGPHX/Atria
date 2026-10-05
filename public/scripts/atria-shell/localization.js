@@ -1041,6 +1041,20 @@ export const SHELL_TEXT_KEYS = Object.freeze({
     'Open global appearance, language and interaction preferences': 'atria.shell.command.openSettings.desc',
     'Open Account': 'atria.shell.command.openAccount',
     'Open identity, snapshots, backup and account storage': 'atria.shell.command.openAccount.desc',
+    'Saved. The view could not be refreshed.': 'atria.workspace.savedRefreshFailed',
+    'The file exceeds the supported size.': 'atria.library.fileTooLarge',
+    'Work installed.': 'atria.library.installed',
+    'Save imported.': 'atria.library.imported',
+    'Open Session': 'atria.library.openSession',
+    'Choose another file': 'atria.library.anotherFile',
+    'Review file again': 'atria.library.reviewAgain',
+    'Back to collection': 'atria.library.backCollection',
+    'This item is no longer available.': 'atria.library.itemMissing',
+    'Back to Play': 'atria.play.backLanding',
+    'Closing session': 'atria.play.closingSession',
+    'History & saves': 'atria.play.historySaves',
+    'Game dialog': 'atria.play.gameDialog',
+    'Game panel': 'atria.play.gamePanel',
 });
 
 function resolveTranslator(translate) {

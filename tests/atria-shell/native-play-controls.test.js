@@ -122,6 +122,15 @@ describe('N9 Native Play product controls', () => {
         controls.dispose();
     });
 
+    test('failed recent Sessions do not remove the available Works shelf', async () => {
+        globalThis.fetch = jest.fn(async path => path.endsWith('/sessions') ? response({}, 503)
+            : response([{ package: { packageId: 'available', displayName: 'Available story' } }]));
+        const controls = mountNativePlayControls({ document, root: document.getElementById('root') }); await flush();
+        expect(controls.landing.querySelector('[role=alert]').textContent).toContain('could not be loaded');
+        expect(controls.landing.querySelector('[data-atria-landing-work=available]').textContent).toContain('Available story');
+        expect(findButton(controls.landing, 'Try again')).toBeTruthy(); controls.dispose();
+    });
+
     test('active Native Session exposes product actions, Timeline and Context diagnostics', async () => {
         const root = document.getElementById('root');
         const sheld = document.getElementById('sheld');
@@ -151,7 +160,7 @@ describe('N9 Native Play product controls', () => {
             'Save',
             'Quick Save',
             'Load',
-            'Timeline',
+            'History & saves',
             'Context',
         ]) {
             expect(findButton(controls.root, label)).toBeTruthy();
@@ -186,13 +195,24 @@ describe('N9 Native Play product controls', () => {
         expect(controls.drawer.querySelector('[data-atria-context-plan="true"]').textContent)
             .toContain('"reason": "budget"');
 
-        findButton(controls.root, 'Timeline').click();
+        findButton(controls.root, 'History & saves').click();
         await flush();
         expect(controls.drawer.querySelectorAll('[data-atria-timeline-message-id]')).toHaveLength(3);
         expect(controls.drawer.querySelector('[data-atria-save-id]')).not.toBeNull();
         expect(controls.drawer.querySelector('[data-atria-embedded-knowledge]')).not.toBeNull();
         expect(findButton(controls.drawer, 'Save to my Library')).toBeTruthy();
         expect(findButton(controls.drawer, 'Restart From Here')).toBeTruthy();
+
+        const restart = findButton(controls.drawer, 'Restart From Here');
+        document.body.dataset.generating = 'true'; await flush();
+        expect(restart.disabled).toBe(true);
+        restart.dispatchEvent(new MouseEvent('click', { bubbles: true })); await flush();
+        expect(globalThis.Atria.restartNativeFrom).not.toHaveBeenCalled();
+        document.body.dataset.generating = 'false'; runtime.history = true; controls.sync();
+        expect(restart.disabled).toBe(true);
+        runtime.history = false; runtime.snapshot = { ...runtime.snapshot }; controls.sync();
+        expect(restart.disabled).toBe(true);
+        delete document.body.dataset.generating;
 
         controls.dispose();
     });

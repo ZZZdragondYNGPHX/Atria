@@ -6,7 +6,6 @@ import { mountSaveDependencyRecovery } from './save-dependency-recovery.js';
 import { mountEmbeddedKnowledgePromotion } from './embedded-knowledge-promotion.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import {
-    arrayBufferToBase64,
     nativeProductClient,
 } from './product-client.js';
 import { NATIVE_SESSION_LIFECYCLE, onNativeSessionLifecycle } from './session-lifecycle.js';
@@ -67,21 +66,6 @@ function downloadBase64(documentRef, payload) {
     setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-function dependencyMessage(preflight) {
-    const dependency = preflight?.dependency;
-    if (!dependency || dependency.status === 'ready') return 'Exact Package dependency is installed.';
-    const required = dependency.required || {};
-    return [
-        dependency.status === 'missing'
-            ? 'Required Package is not installed.'
-            : 'Installed Package does not match this Save.',
-        formatProductText('packageId: ${0}', [required.packageId || 'unknown']),
-        formatProductText('packageVersionId: ${0}', [required.packageVersionId || 'unknown']),
-        formatProductText('version: ${0}', [required.packageVersion || 'unknown']),
-        formatProductText('content hash: ${0}', [required.packageContentHash || 'unknown']),
-        'Install/update that exact .atria Package in Library before importing.',
-    ].join('\n');
-}
 
 export function mountNativePlayControls({
     document: documentRef = globalThis.document,
@@ -117,18 +101,27 @@ export function mountNativePlayControls({
     let drawerRequest = 0;
     let disposed = false;
     let experiencePanel = null;
+    let historyPanel = null;
+    const drawerWrites = new Map();
+    const writable = () => Boolean(activeRuntime()?.active && !activeRuntime()?.history && !activeRuntime()?.failed && !busy && documentRef.body.dataset.generating !== 'true');
     let unsubscribeNavigation = null;
     let inspectorWasOpen = false;
+    let drawerSessionId = null;
     const shell = () => globalThis.Atria?.shell?.getShell?.();
     function hideDrawer() {
         experiencePanel?.dispose(); experiencePanel = null;
+        historyPanel?.atriaHistory?.dispose(); historyPanel = null;
+        drawerWrites.clear();
         drawerRequest++;
         if (shell()?.slots?.dock?.contains(drawer)) shell().setDockOpen(false);
         else drawer.hidden = true;
         if (returnFocus?.isConnected) returnFocus.focus();
     }
     function openDrawer(title) {
+        drawerSessionId = currentSessionId();
         experiencePanel?.dispose(); experiencePanel = null;
+        historyPanel?.atriaHistory?.dispose(); historyPanel = null;
+        drawerWrites.clear();
         if (!drawer.contains(documentRef.activeElement)) {
             returnFocus = documentRef.activeElement?.closest?.('.atria-play-more')?.querySelector('summary') || documentRef.activeElement;
         }
@@ -200,82 +193,30 @@ export function mountNativePlayControls({
         return new Popup(tl(title), POPUP_TYPE.INPUT, value).show();
     }
 
-    async function importPortableSave(file, target) {
-        target.textContent = tl('Inspecting .atriasave…');
-        const data = arrayBufferToBase64(await file.arrayBuffer());
-        const preflight = await nativeProductClient.preflightSave(data);
-        target.replaceChildren();
-
-        const message = documentRef.createElement('p');
-        message.dataset.atriaSavePreflight = preflight.dependency?.status || 'unknown';
-        message.textContent = preflight.dependency?.status === 'ready'
-            ? tl('Ready to import this save.') : tl('Install the matching work in Library before importing this save.');
-        target.append(message);
-        if (preflight.dependency?.status !== 'ready') {
-            const details = documentRef.createElement('details');
-            const label = documentRef.createElement('summary'); label.textContent = tl('Details');
-            const pre = documentRef.createElement('pre'); pre.textContent = dependencyMessage(preflight);
-            details.append(label, pre); target.append(details);
-        }
-
-        if (preflight.dependency?.status !== 'ready') {
-            mountSaveDependencyRecovery({ document: documentRef, root: target, preflight, saveData: data, host: globalThis.Atria?.shell?.getWorkspaceHost?.(), onReady: () => importPortableSave(file, target) }); return;
-        }
-
-        const importButton = actionButton(documentRef, 'Import & Open', async () => {
-            importButton.disabled = true;
-            try {
-                const password = await ask('Save password (leave blank if none)');
-                if (password === false || password === null) return;
-                const imported = await nativeProductClient.importSave(data, password);
-                await globalThis.Atria.openNativeSession(imported.session.sessionId);
-                hideDrawer();
-            } catch (error) {
-                const failure = documentRef.createElement('p');
-                failure.setAttribute('role', 'alert');
-                failure.textContent = error?.status === 409
-                    ? tl('This save conflicts with existing session data. Import into a separate account to keep both versions.')
-                    : tl('Could not import this save. Check the file and password, then try again.');
-                target.append(failure);
-            } finally {
-                importButton.disabled = false;
-            }
-        });
-        target.append(importButton);
-    }
-
-    function appendPortableImport(documentTarget) {
-        const section = documentRef.createElement('details');
-        section.className = 'atria-native-portable-save';
-        const title = documentRef.createElement('summary');
-        title.textContent = tl('Import save');
-        const input = documentRef.createElement('input');
-        input.type = 'file';
-        input.accept = '.atriasave,application/octet-stream';
-        input.dataset.atriaSaveImport = 'true';
-        input.setAttribute('aria-label', tl('Choose an Atria save'));
-        const result = documentRef.createElement('div');
-        result.className = 'atria-native-portable-save__result';
-        result.setAttribute('role', 'status');
-        input.addEventListener('change', () => {
-            const file = input.files?.[0];
-            if (file) void importPortableSave(file, result).catch(error => {
-                result.textContent = error?.message || String(error);
-            });
-        });
-        section.append(title, input, result);
-        documentTarget.append(section);
+    function appendPortableImport(target) {
+        target.append(actionButton(documentRef, 'Import save', () => globalThis.Atria?.shell?.getWorkspaceHost?.()?.openLibrarySection('import-save')));
     }
 
     async function showTimeline() {
         const runtime = activeRuntime();
         if (!runtime?.active) return;
-        const request = openDrawer('Timeline & Saves');
+        const request = openDrawer('History & saves');
         drawerBody.textContent = tl('Loading…');
         try {
-            const detail = await nativeProductClient.getSession(runtime.snapshot.session.sessionId);
-            if (disposed || request !== drawerRequest) return;
+            const base = runtime.snapshot;
+            const detail = await nativeProductClient.getSession(base.session.sessionId);
+            if (disposed || request !== drawerRequest || activeRuntime() !== runtime || runtime.snapshot !== base) return;
+            const mutate = (label, operation) => run(label, async () => {
+                if (activeRuntime() !== runtime || runtime.snapshot !== base || !runtime.active || runtime.history || runtime.failed || documentRef.body.dataset.generating === 'true') throw new Error(tl('Historical revisions are read-only.'));
+                return operation();
+            });
+            const writeButton = (label, handler) => {
+                const button = actionButton(documentRef, label, handler); drawerWrites.set(button, () => writable() && activeRuntime() === runtime && runtime.snapshot === base); button.disabled = !writable(); return button;
+            };
+
             drawerBody.replaceChildren();
+            const mode = documentRef.createElement('p'); mode.setAttribute('role', 'status');
+            mode.textContent = tl(runtime.history ? 'Historical revisions are read-only.' : 'Live'); drawerBody.append(mode);
 
             const portableActions = documentRef.createElement('div');
             portableActions.className = 'atria-domain-workspace__actions';
@@ -306,7 +247,7 @@ export function mountNativePlayControls({
                 label.textContent = `${save.displayName || save.kind} · ${new Date(save.createdAt).toLocaleString()}`;
                 const saveActions = documentRef.createElement('div');
                 saveActions.className = 'atria-native-play-timeline-row__actions';
-                const load = actionButton(documentRef, 'Load', () => run('Loading save', async () => {
+                const load = writeButton('Load', () => mutate('Loading save', async () => {
                     await runtime.restoreSavePoint(save.saveId);
                     await showTimeline();
                 }));
@@ -334,7 +275,7 @@ export function mountNativePlayControls({
             const timelineTitle = documentRef.createElement('h4');
             timelineTitle.textContent = tl('Story timeline');
             drawerBody.append(timelineTitle);
-            const timeline = detail.snapshot.timeline || [];
+            const timeline = base.timeline || [];
             timeline.forEach((entry, index) => {
                 const row = documentRef.createElement('article');
                 row.className = 'atria-native-play-timeline-row';
@@ -344,12 +285,12 @@ export function mountNativePlayControls({
                 content.textContent = `${index + 1}. ${entry.role}: ${preview(entry.content)}`;
                 const rowActions = documentRef.createElement('div');
                 rowActions.className = 'atria-native-play-timeline-row__actions';
-                rowActions.append(actionButton(documentRef, 'Restart From Here', () => run('Restarting', async () => {
+                rowActions.append(writeButton('Restart From Here', () => mutate('Restarting', async () => {
                     await globalThis.Atria.restartNativeFrom(index);
                     hideDrawer();
                 })));
                 if (entry.role === 'user' && index > 0) {
-                    rowActions.append(actionButton(documentRef, 'Re-enter Turn', () => run('Re-entering turn', async () => {
+                    rowActions.append(writeButton('Re-enter Turn', () => mutate('Re-entering turn', async () => {
                         await globalThis.Atria.reenterNativeTurn(index);
                         hideDrawer();
                     })));
@@ -358,9 +299,17 @@ export function mountNativePlayControls({
                 drawerBody.append(row);
             });
 
-            mountSessionHistory({ document: documentRef, root: drawerBody, sessionId: detail.snapshot.session.sessionId, onInspect: async revisionId => {
-                await globalThis.Atria.openNativeSession(detail.snapshot.session.sessionId, { revisionId }); hideDrawer();
-            } });
+            historyPanel = mountSessionHistory({ document: documentRef, root: drawerBody, sessionId: detail.snapshot.session.sessionId,
+                getContext: () => ({ sessionId: currentSessionId(), revisionId: activeRuntime()?.snapshot?.revision?.revisionId,
+                    branchId: activeRuntime()?.snapshot?.revision?.branchId, isHistory: activeRuntime()?.history,
+                    busy: busy || documentRef.body.dataset.generating === 'true' || activeRuntime()?.failed,
+                    canWrite: writable(), canFork: Boolean(activeRuntime()?.active && !activeRuntime()?.failed && !busy && documentRef.body.dataset.generating !== 'true'),
+                    tailMessageId: activeRuntime()?.snapshot?.timeline?.at(-1)?.messageId }),
+                onSwitchBranch: async branchId => { await runtime.switchBranch(branchId); hideDrawer(); },
+                onFork: async target => { await runtime.forkRevision(target.revisionId); hideDrawer(); },
+                onRetry: async () => { await globalThis.Atria.retryNativeReply(); hideDrawer(); }, onInspect: async revisionId => {
+                    await globalThis.Atria.openNativeSession(detail.snapshot.session.sessionId, { revisionId }); hideDrawer();
+                } });
         } catch (error) {
             if (disposed || request !== drawerRequest) return;
             drawerBody.textContent = error?.message || String(error);
@@ -410,11 +359,13 @@ export function mountNativePlayControls({
         landing.append(content);
         appendPortableImport(landing);
         try {
-            const [sessions, works] = await Promise.all([
+            const [sessionResult, workResult] = await Promise.allSettled([
                 nativeProductClient.listSessions(), nativeProductClient.listWorks(),
             ]);
             if (disposed || !content.isConnected) return;
             content.replaceChildren();
+            const sessions = sessionResult.status === 'fulfilled' ? sessionResult.value : [];
+            const works = workResult.status === 'fulfilled' ? workResult.value : [];
             const section = (label, className) => {
                 const group = documentRef.createElement('section');
                 const heading = documentRef.createElement('h2'); heading.textContent = tl(label);
@@ -422,7 +373,10 @@ export function mountNativePlayControls({
                 group.append(heading, items); content.append(group); return items;
             };
             const continued = section('Continue', 'atria-play-session-list');
-            if (!sessions.length) {
+            if (sessionResult.status === 'rejected') {
+                const error = documentRef.createElement('p'); error.setAttribute('role', 'alert'); error.textContent = tl('Your stories could not be loaded.') + ' ' + sessionResult.reason.message;
+                continued.append(error, actionButton(documentRef, 'Try again', renderLanding));
+            } else if (!sessions.length) {
                 const empty = documentRef.createElement('p');
                 empty.textContent = tl('Your next story is waiting in Library. Start a work to keep your progress here.');
                 continued.append(empty);
@@ -442,9 +396,16 @@ export function mountNativePlayControls({
                 open.disabled = !ready;
                 open.prepend(createAtriaIcon(documentRef, 'play', { size: 18 }));
                 row.append(label, meta, open); continued.append(row);
+                if (!ready) mountSaveDependencyRecovery({ document: documentRef, root: row, preflight: { dependency: session.dependency },
+                    host: globalThis.Atria?.shell?.getWorkspaceHost?.(),
+                    recheck: async () => (await nativeProductClient.listSessions(session.packageId)).find(item => item.sessionId === session.sessionId),
+                    onReady: () => globalThis.Atria.openNativeSession(session.sessionId) });
             }
             const recent = section('Recent works', 'atria-play-work-shelf');
-            if (!works.length) {
+            if (workResult.status === 'rejected') {
+                const error = documentRef.createElement('p'); error.setAttribute('role', 'alert'); error.textContent = tl('Your stories could not be loaded.') + ' ' + workResult.reason.message;
+                recent.append(error, actionButton(documentRef, 'Try again', renderLanding));
+            } else if (!works.length) {
                 const empty = documentRef.createElement('p');
                 empty.textContent = tl('Installed works will appear here.'); recent.append(empty);
             }
@@ -491,24 +452,24 @@ export function mountNativePlayControls({
         void showTimeline();
     });
     const save = actionButton(documentRef, 'Save', async () => {
-        const sessionId = currentSessionId();
-        if (!sessionId) return;
+        const base = activeRuntime()?.snapshot; const sessionId = base?.session.sessionId;
+        if (!sessionId || !writable()) return;
         const displayName = await ask('Save name');
-        if (displayName === false || displayName === null) return;
+        if (displayName === false || displayName === null || activeRuntime()?.snapshot !== base || !writable()) return;
         void run('Saving', () => nativeProductClient.createSave(sessionId, {
             kind: 'manual',
-            displayName,
+            displayName, expectedRevisionId: base.revision.revisionId,
         }));
     });
     const quickSave = actionButton(documentRef, 'Quick Save', () => {
         const sessionId = currentSessionId();
         if (!sessionId) return;
-        void run('Quick saving', () => nativeProductClient.createSave(sessionId, { kind: 'quick' }));
+        void run('Quick saving', () => nativeProductClient.createSave(sessionId, { kind: 'quick', expectedRevisionId: activeRuntime()?.snapshot?.revision?.revisionId }));
     });
     const load = actionButton(documentRef, 'Load', () => {
         void showTimeline();
     });
-    const timeline = actionButton(documentRef, 'Timeline', () => {
+    const timeline = actionButton(documentRef, 'History & saves', () => {
         void showTimeline();
     });
     const context = actionButton(documentRef, 'Context', showContext);
@@ -531,7 +492,14 @@ export function mountNativePlayControls({
         openDrawer('Shared session');
         experiencePanel = mountSharedSessionPanel({ document: documentRef, root: drawerBody, runtime: activeRuntime() });
     });
-    moreActions.append(health, sharing, retry, reenter, restart, quickSave, load);
+    const leave = actionButton(documentRef, 'Back to Play', async () => {
+        const runtime = activeRuntime();
+        if (!runtime?.active || runtime.failed || busy || documentRef.body.dataset.generating === 'true') return;
+        const draft = root.querySelector('.atria-play-composer__input')?.value;
+        if (draft && !documentRef.defaultView.confirm(tl('Leave this workspace and discard unsaved changes? Cancel to keep editing.'))) return;
+        await run('Closing session', async () => { await runtime.close(); hideDrawer(); });
+    });
+    moreActions.append(health, sharing, retry, reenter, restart, quickSave, load, leave);
     moreActions.addEventListener('click', () => {
         more.open = false;
         if (moreActions.contains(documentRef.activeElement)) moreLabel.focus();
@@ -587,6 +555,7 @@ export function mountNativePlayControls({
     let landingRender = null;
     let wasActive = null;
     function sync() {
+        if (drawerSessionId && drawerSessionId !== currentSessionId()) { hideDrawer(); drawerSessionId = null; }
         syncBindings();
         const active = documentRef.body.dataset.atriaNativeSessionActive === 'true';
         toolbar.hidden = !active;
@@ -602,15 +571,18 @@ export function mountNativePlayControls({
         }
         wasActive = active;
         const runtime = activeRuntime();
-        const writable = Boolean(active && runtime?.active && !runtime.history && !runtime.failed && !busy && documentRef.body.dataset.generating !== 'true');
-        retry.disabled = !writable || latestIndex('assistant') < 0;
-        reenter.disabled = !writable || latestIndex('user') <= 0;
-        restart.disabled = !writable || !(runtime?.snapshot?.timeline?.length);
-        save.disabled = !writable;
-        quickSave.disabled = !writable;
+        const canWrite = writable();
+        for (const [button, allowed] of drawerWrites) button.disabled = !allowed();
+        historyPanel?.atriaHistory?.syncCapabilities();
+        retry.disabled = !canWrite || latestIndex('assistant') < 0;
+        reenter.disabled = !canWrite || latestIndex('user') <= 0;
+        restart.disabled = !canWrite || !(runtime?.snapshot?.timeline?.length);
+        save.disabled = !canWrite;
+        quickSave.disabled = !canWrite;
         load.disabled = !active;
         timeline.disabled = !active;
         context.disabled = !active;
+        leave.disabled = !runtime?.active || runtime.failed || busy || documentRef.body.dataset.generating === 'true';
     }
 
     const observer = new MutationObserver(sync);
@@ -628,6 +600,8 @@ export function mountNativePlayControls({
         sync,
         dispose() {
             experiencePanel?.dispose(); experiencePanel = null;
+            historyPanel?.atriaHistory?.dispose(); historyPanel = null;
+            drawerWrites.clear();
             disposed = true;
             documentRef.removeEventListener('pointerdown', dismissMore);
             root.removeEventListener('atria-play-action-error', reportActionError);

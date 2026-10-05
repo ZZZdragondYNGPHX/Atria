@@ -280,6 +280,8 @@ function stopCurrentGeneration() {
 }
 
 async function saveCurrentGameSession() {
+    nativeSessionRuntime.assertWritable();
+    if (nativeSessionRuntime.generation || document.body.dataset.generating === 'true') throw new Error('Generation is already running.');
     const sessionId = String(
         currentPackage.sessionId
         || nativeSessionRuntime.snapshot?.session?.sessionId
@@ -442,6 +444,7 @@ export async function reloadGamePackage() {
                         settings: getRuntimeSettingsRoot, save: saveSettingsDebounced });
                 },
                 hostActions: {
+                    getCapabilities: () => ({ save: Boolean(nativeSessionRuntime.active && !nativeSessionRuntime.history && !nativeSessionRuntime.failed && !nativeSessionRuntime.generation && document.body.dataset.generating !== 'true'), stop: document.body.dataset.generating === 'true' }),
                     exitExperience: exitCurrentGameUi,
                     stopGeneration: stopCurrentGeneration,
                     save: saveCurrentGameSession,

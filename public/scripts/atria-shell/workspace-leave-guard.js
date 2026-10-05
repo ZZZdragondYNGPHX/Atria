@@ -1,6 +1,11 @@
 import { translateShellText as tl } from './localization.js';
 
-const EDITORS = '.atri-library-revision-editor, .atri-runtime-form, .atria-studio-editor-surface, .atri-source-editor, .atri-studio-value-editor';
+export function confirmAtriaDraftLeave(doc, root) {
+    if (!root.querySelector('[data-atria-draft-dirty="true"]') && root.dataset.atriaDraftDirty !== 'true') return true;
+    return doc.defaultView.confirm(tl('Leave this workspace and discard unsaved changes? Cancel to keep editing.'));
+}
+
+const EDITORS = '.atri-prompt-editor, .atri-library-revision-editor, .atri-runtime-form, .atria-studio-editor-surface, .atri-source-editor, .atri-studio-value-editor';
 
 /** Observe existing editable surfaces; never own or persist their draft values. */
 export function installAtriaWorkspaceLeaveGuard({ document: doc, window: win, navigation, shell }) {

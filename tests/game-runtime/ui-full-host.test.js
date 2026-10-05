@@ -19,6 +19,24 @@ describe('Full Game UI host recovery shell', () => {
         `;
     });
 
+    test('independent recovery rechecks live capabilities and serializes saving after content fails', async () => {
+        let finish;
+        const save = jest.fn(() => new Promise(resolve => { finish = resolve; }));
+        const capabilities = { save: false, stop: false };
+        const host = createFullGameHost(document, { onSave: save, onStopGeneration: jest.fn(), getCapabilities: () => capabilities });
+        host.activate(); host.root.replaceChildren();
+        const button = host.recovery.querySelector('[data-atria-game-recovery-action=save]');
+        expect(button.disabled).toBe(true);
+        capabilities.save = true; document.body.dataset.generating = 'false';
+        await new Promise(resolve => setTimeout(resolve, 0));
+        button.click(); button.click(); expect(save).toHaveBeenCalledTimes(1);
+        capabilities.save = false; finish(); await new Promise(resolve => setTimeout(resolve, 0));
+        expect(button.disabled).toBe(true);
+        expect(host.recovery.querySelector('[role=status]').textContent).toBe('Saved');
+        expect(host.recovery.isConnected).toBe(true);
+        host.dispose(); delete document.body.dataset.generating;
+    });
+
     test('hides native host only after activation and restores it on dispose', () => {
         const sheld = document.getElementById('sheld');
         sheld.style.display = 'flex';

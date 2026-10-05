@@ -8,16 +8,19 @@ export function matchesSavePackage(required, candidate) {
         && required.packageVersion === candidate.version && required.packageContentHash === candidate.packageContentHash);
 }
 
-export function mountSaveDependencyRecovery({ document: doc, root, preflight, saveData, host, onReady }) {
+export function mountSaveDependencyRecovery({ document: doc, root, preflight, saveData, host, onReady, recheck, isCurrent = () => root.isConnected }) {
     const required = preflight.dependency?.required || preflight.package;
     const section = el(doc, 'section', 'atri-library-section', undefined, root); section.dataset.atriaSaveRecovery = 'true';
     el(doc, 'h4', '', tl('Recover matching Work'), section);
     el(doc, 'p', '', tl('Choose the exact Work file required by this save. Its identity, version and content hash must all match.'), section);
     disclosure(doc, section, 'Required Work details', required);
     const check = async () => {
-        const next = await client.preflightSave(saveData);
+        if (!isCurrent()) return;
+        const next = await (recheck ? recheck() : client.preflightSave(saveData));
+        if (!isCurrent()) return;
+        if (!next) throw new Error(tl('This item is no longer available.'));
         if (next.dependency?.status !== 'ready') { feedback(doc, section, tl('The exact Work is still unavailable. Install the matching file or inspect the installed Work.'), true); return; }
-        if (section.isConnected) await onReady();
+        if (section.isConnected && isCurrent()) await onReady();
     };
     action(doc, section, 'Check installed dependency again', check);
     action(doc, section, 'Inspect installed Work', async () => {
@@ -31,7 +34,7 @@ export function mountSaveDependencyRecovery({ document: doc, root, preflight, sa
         try {
             if (file.size > 128 * 1024 * 1024) throw new Error(tl('The Work file exceeds the supported size.'));
             const data = arrayBufferToBase64(await file.arrayBuffer()), candidate = await client.preflightPackage(data);
-            if (token !== sequence) return;
+            if (token !== sequence || !isCurrent()) return;
             if (!matchesSavePackage(required, candidate)) {
                 feedback(doc, review, tl('This file is not the exact Work required by the save. Nothing was installed.'), true); return;
             }
@@ -39,20 +42,25 @@ export function mountSaveDependencyRecovery({ document: doc, root, preflight, sa
             el(doc, 'p', '', tl('Installing this dependency preserves any existing default Work version. Your save remains ready for the next import step.'), review);
             const permissions = el(doc, 'fieldset', 'atri-library-permissions', undefined, review); el(doc, 'legend', '', tl('Requested permissions'), permissions);
             const grants = new Map();
-            for (const permission of candidate.permissions) {
+            for (const permission of candidate.permissions || candidate.requiredPermissions.map(permission => ({ permission, required: true }))) {
                 const checkbox = permissionRow(doc, permissions, permission, { checkbox: permission.required });
                 if (checkbox) grants.set(permission.permission, checkbox);
             }
             action(doc, review, 'Install matching Work', async () => {
+                if (token !== sequence || !isCurrent()) return;
                 const missing = candidate.requiredPermissions.filter(permission => !grants.get(permission)?.checked);
                 if (missing.length) { feedback(doc, review, tl('Grant required permissions before installation:'), true); return; }
                 picker.disabled = true; choose.disabled = true;
                 try {
                     await client.installPackage(data, candidate.requiredPermissions, candidate.update?.previous?.packageVersionId || null, required);
+                    if (!isCurrent()) return;
+                    review.replaceChildren();
+                    const receipt = el(doc, 'section', '', undefined, review); feedback(doc, receipt, tl('Work installed.'));
+                    action(doc, review, 'Check installed dependency again', check);
                     void host?.refreshSearch?.(); await check();
                 } finally { picker.disabled = false; choose.disabled = false; }
             }, { primary: true });
-        } catch (error) { if (token === sequence) feedback(doc, review, error.message, true); }
+        } catch (error) { if (token === sequence && isCurrent()) feedback(doc, review, error.message, true); }
     });
     return section;
 }

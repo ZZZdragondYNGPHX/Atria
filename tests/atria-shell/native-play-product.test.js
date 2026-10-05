@@ -197,4 +197,69 @@ describe('A6 Atria-native Play product', () => {
         expect(recover.hidden).toBe(true);
         product.dispose();
     });
+
+    test.each([-1, 0, 1])('Native preference %s respects Shift, modifiers, IME and keyCode 229', async preference => {
+        const generate = jest.fn(async () => {});
+        const settings = { send_on_enter: preference };
+        globalThis.Atria.getContext = () => ({ generate, powerUserSettings: settings });
+        const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
+            sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
+        } });
+        for (const flags of [{ shiftKey: true, ctrlKey: true }, { shiftKey: true }, { altKey: true }, { isComposing: true, ctrlKey: true }, { keyCode: 229, metaKey: true }]) {
+            product.composerApi.setDraft('Keep this paragraph');
+            const key = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...flags });
+            product.textarea.dispatchEvent(key); await flush();
+            expect(key.defaultPrevented).toBe(false);
+            expect(generate).not.toHaveBeenCalled();
+        }
+        product.textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+        await flush(); expect(generate).toHaveBeenCalledTimes(preference === 1 ? 1 : 0);
+        generate.mockClear();
+        for (const modifier of ['ctrlKey', 'metaKey']) {
+            product.composerApi.setDraft('Send this choice');
+            product.textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', [modifier]: true, bubbles: true, cancelable: true }));
+            await flush();
+        }
+        expect(generate).toHaveBeenCalledTimes(2);
+        settings.send_on_enter = 1; product.composerApi.setDraft('Live setting');
+        product.textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); await flush();
+        expect(generate).toHaveBeenCalledTimes(3);
+        product.dispose();
+    });
+
+    test('failed unaccepted input keeps the draft; accepted input and another Session never receive it', async () => {
+        const generate = jest.fn(async () => { throw new Error('Prepare failed'); });
+        globalThis.Atria.getContext = () => ({ generate });
+        const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
+            sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
+        } });
+        product.composerApi.setDraft('Original input');
+        await expect(product.composerApi.submit()).rejects.toThrow('Prepare failed');
+        expect(product.textarea.value).toBe('Original input');
+        generate.mockImplementationOnce(async () => { runtime.snapshot.revision.revisionId = 'accepted'; throw new Error('Provider failed'); });
+        await expect(product.composerApi.submit()).rejects.toThrow('Provider failed');
+        expect(product.textarea.value).toBe('');
+        product.composerApi.setDraft('Old Session input');
+        generate.mockImplementationOnce(async () => { runtime.snapshot.session.sessionId = 'other'; throw new Error('Switched'); });
+        await expect(product.composerApi.submit()).rejects.toThrow('Switched');
+        expect(product.textarea.value).toBe(''); product.dispose();
+    });
+
+    test('one pending submit blocks duplicate sending while keeping the real Stop action available', async () => {
+        let finish;
+        const stopGeneration = jest.fn();
+        const generate = jest.fn(() => { document.body.dataset.generating = 'true'; return new Promise(resolve => { finish = resolve; }); });
+        globalThis.Atria.getContext = () => ({ generate, stopGeneration });
+        const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: {
+            sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea'),
+        } });
+        product.composerApi.setDraft('Choice'); const pending = product.composerApi.submit(); await flush();
+        expect(product.textarea.disabled).toBe(true);
+        await expect(product.composerApi.submit()).rejects.toThrow('running');
+        const stop = product.composer.querySelector('button[type=submit]');
+        expect(stop.disabled).toBe(false); expect(stop.getAttribute('aria-label')).toBe('Stop');
+        stop.click(); await flush(); expect(stopGeneration).toHaveBeenCalledTimes(1); expect(generate).toHaveBeenCalledTimes(1);
+        document.body.dataset.generating = 'false'; finish(); await pending;
+        delete document.body.dataset.generating; product.dispose();
+    });
 });

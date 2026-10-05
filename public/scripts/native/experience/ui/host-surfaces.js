@@ -7,7 +7,7 @@ function createAnchor(documentRef, surfaceId) {
     anchor.setAttribute(SURFACE_ANCHOR_ATTRIBUTE, surfaceId);
     anchor.className = 'atria-game-host-surface';
     if (transient) {
-        anchor.setAttribute('aria-label', surfaceId === 'modal' ? 'Game dialog' : 'Game panel');
+        anchor.setAttribute('aria-label', tl(surfaceId === 'modal' ? 'Game dialog' : 'Game panel'));
         const close = documentRef.createElement('button');
         close.type = 'button';
         close.className = 'atria-game-surface-close';

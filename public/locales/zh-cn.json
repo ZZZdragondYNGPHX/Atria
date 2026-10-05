@@ -8660,5 +8660,19 @@
     "Use this configuration when the relay forwards official NovelAI requests unchanged. If it transforms responses or limits models or parameters, follow its documentation.": "中转站直接转发官方 NovelAI 请求时可采用此配置；若中转改写响应或限制模型/参数，请按其说明调整。",
     "responseFormat: zip / json (images[].image base64) / png. Declare model IDs, characterPrompts, sm, maxPixels, maxSteps, samplers and noiseSchedules in models.": "responseFormat: zip / json（images[].image base64）/ png；models 中声明模型 ID、characterPrompts、sm、maxPixels、maxSteps、samplers、noiseSchedules。",
     "atria.workspace.leaveDraft": "离开工作区并丢弃未保存的修改？取消以继续编辑。",
-    "atria.search.openFailed": "无法打开结果。请刷新此来源或选择其他结果。"
+    "atria.search.openFailed": "无法打开结果。请刷新此来源或选择其他结果。",
+    "atria.workspace.savedRefreshFailed": "已保存，但无法刷新页面。",
+    "atria.library.fileTooLarge": "文件超出支持的大小。",
+    "atria.library.installed": "作品已安装。",
+    "atria.library.imported": "存档已导入。",
+    "atria.library.openSession": "打开会话",
+    "atria.library.anotherFile": "选择其他文件",
+    "atria.library.reviewAgain": "重新检查文件",
+    "atria.library.backCollection": "返回列表",
+    "atria.library.itemMissing": "此项目已不可用。",
+    "atria.play.historySaves": "历史与存档",
+    "atria.play.gameDialog": "作品对话框",
+    "atria.play.gamePanel": "作品面板",
+    "atria.play.backLanding": "返回游玩首页",
+    "atria.play.closingSession": "正在关闭会话"
 }

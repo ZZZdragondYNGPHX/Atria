@@ -86,9 +86,9 @@
 .atria-play-conversation-component { grid-row: 3; position: relative; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; }
 .atria-play-conversation { grid-row: 2; overflow: auto; min-width: 0; min-height: 0; overscroll-behavior: contain; padding: 40px max(24px, calc((100% - var(--atri-reading-max)) / 2)); scroll-padding-block: 24px; }
 .atria-play-message { padding: 0; margin: 0 0 32px; overflow-wrap: anywhere; }
-.atria-play-message__header { margin-bottom: 8px; color: var(--atri-text-secondary); font-size: var(--atri-text-footnote); }
+.atria-play-message__header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; color: var(--atri-text-secondary); font-size: var(--atri-text-footnote); }
 .atria-play-message__header strong { font-weight: 600; }
-.atria-play-message__body { white-space: pre-wrap; font-size: var(--atri-text-reading); line-height: var(--atri-leading-reading); overflow-wrap: anywhere; }
+.atria-play-message__body { font-family: var(--atri-font-serif); white-space: pre-wrap; font-size: var(--atri-text-reading); line-height: var(--atri-leading-reading); overflow-wrap: anywhere; }
 .atria-narrative-illustration { margin: 16px 0; white-space: normal; }
 .atria-narrative-illustration img { display: block; max-width: 100%; height: auto; border-radius: var(--atri-radius-lg); }
 .atria-play-message[data-role="user"] { background: var(--atri-accent-soft); border-radius: var(--atri-radius-lg); padding: 16px 20px; }
@@ -202,3 +202,16 @@ dialog.atria-game-host-surface--transient::backdrop { background: var(--atri-scr
     inset: max(12px, var(--atri-safe-area-top)) 0 auto;
     margin: 0 auto;
 }
+
+.atria-play-message__avatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--atri-fill); font-family: var(--atri-font-sans); }
+.atria-play-message__sequence { margin-inline-start: auto; font-variant-numeric: tabular-nums; }
+.atria-play-message__role { font-size: var(--atri-text-caption); }
+.atria-play-product > .atria-play-composer-component .atria-play-composer { background: var(--atri-elevated); }
+@supports (backdrop-filter: blur(1px)) {
+    body:not(.no-blur) .atria-play-product > .atria-play-composer-component .atria-play-composer {
+        background: color-mix(in srgb, var(--atri-elevated) 88%, transparent);
+        -webkit-backdrop-filter: var(--atri-material-filter);
+        backdrop-filter: var(--atri-material-filter);
+    }
+}
+.atria-play-product > .atria-play-composer-component { background: transparent; padding-top: 12px; }

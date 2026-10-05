@@ -205,6 +205,7 @@ function createDomainController({
     let disposed = false;
     let sequence = 0;
     let sectionController = null;
+    const browseStates = new Map();
     let currentSection = normalizeSection(route);
 
     const frame = buildDomainFrame(documentRef, {
@@ -248,6 +249,7 @@ function createDomainController({
                 slot,
                 route: nextRoute,
                 host,
+                browseStates,
             });
         } catch (error) {
             if (disposed || token !== sequence) return;
