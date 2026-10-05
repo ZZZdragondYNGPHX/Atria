@@ -822,3 +822,11 @@ touched JS ESLint、Native localization、diff whitespace通过。未执行全�
 ## Final state
 
 Task ongoing. B1 Actors/EntryPoints/Worlds/Knowledge complete，产品 f0584c157 已 push；连续 B2/B3/B4/F 待完成，Shared 描述停用，未合并 main。
+
+## Stage B2 — Prompt, Runtime and retrieval checkpoint
+
+沿原 specialized editors 和 services 修复：Prompt 未编辑的 optional 默认与 stage refs 不隐式改写；提交期间禁止重复保存/模式切换；后台 dirty 校验不夺焦点。Runtime/检索完整 Source 与 Fields 共用原表单保存，保留 exact identity/schema/scope、模型高级 tokenizer/options/provenance，检索 provider options 切换不丢草稿。Regex/Runtime 延迟弹窗复验表面，原 compiler/immutable revision/preset/Session 选择 authority 保持。Shared 描述仍拒绝。
+
+实际验证：11 个相关 unit suites / 89 个不同测试通过（Prompt semantics/authoring/choices/receipt/presets、Runtime、全 retrieval provider contract、FS/SQLite immutable revision、compiler preview 与 Persona Shared refusal；部分测试命令用 name pattern，不算跳过项）。最后因焦点修复重跑 Prompt authoring 全14通过。真实 Chrome：Runtime/检索 full Source canonical HTTP 与中文320最大font/FastUI/reduced-motion共2场景通过；Generation revision非法JSON/真实保存与旧route pin、fallback顺序角色过滤、exact Project compile preview共3场景通过。旧 Generation Library定位改为exact资源入口；最初测试失败追出 dirty 校验焦点副作用，已修复；后续preset定位更新到当前实际owner。没有发送外部模型/解析Secret/写preview Session。localized coverage、touched ESLint、diff check通过。截图将在 F 对最终实现集中查看，当前不声称已查看B2截图。
+
+产品提交以真实Git为准，已commit/push；B2 mapping完整留存。B3 mapping已创建，继续本阶段；外部完整设备/数据库/模型矩阵仍未测，不扩大结论。

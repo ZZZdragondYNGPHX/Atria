@@ -2,10 +2,10 @@
 
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`（产品），docs 辅助；package 不承载产品实现。
-- Product branch / tested HEAD: `refactor/atria-immersive-workspace` / `f0584c157`，已 push，未合并 main。
+- Product branch / tested HEAD: `refactor/atria-immersive-workspace` / `68610a545`，已 push，未合并 main。
 - Docs branch: `docs`，提交以真实 Git 为准。
-- Current stage: B1 四类 mapping/display 完成；正在 B2 Prompt/Runtime/检索 mapping。
-- Plan: [index](plans/refactor/atria-immersive-workspace/index.md) → delivery、coverage S07/S12、Knowledge baseline、states、validation → Knowledge mapping。
+- Current stage: B1/B2完成；B3 Agents/Memory映射完成，正在状态修复。
+- Plan: [index](plans/refactor/atria-immersive-workspace/index.md) → delivery、coverage S13/S14、states、validation → b3-mapping。
 - Record: [同一 Record](records/refactor/atria-immersive-workspace.md#stage-b1-worlds--display-checkpoint)。历史阶段不重做。
 
 ## Authorization and next target
@@ -28,6 +28,6 @@ package 与 origin/package 一致；docs/product 原 tracked clean。package dis
 
 ## New-chat bootstrap prompt
 
-继续 Atria refactor/atria-immersive-workspace：先真实 Git/远端 → 此 HANDOFF → Plan index → 当前 B2 模块 → Record 最近 checkpoint。Worlds 已完成，不重做；用户已授权连续剩余 B/F 并最终推送合并，不按阶段停止。先 B2 字段/模式/动作/草稿/authority 映射，再展示与 canonical/状态/browser 验证。原服务/修订/exact refs 与 Shared 描述停用保持；保护 dirty/untracked。逐类 commit/push 和更新同一 Record/HANDOFF，最终 F 后才合并 main、验证和清理。缺环境如实记录，不声称完整矩阵通过。
+继续 Atria refactor/atria-immersive-workspace：先真实 Git/远端 → 此 HANDOFF → Plan index → 当前 B3 模块 → Record 最近 checkpoint。Worlds 已完成，不重做；用户已授权连续剩余 B/F 并最终推送合并，不按阶段停止。先 B3 字段/模式/动作/草稿/authority 映射，再展示与 canonical/状态/browser 验证。原服务/修订/exact refs 与 Shared 描述停用保持；保护 dirty/untracked。逐类 commit/push 和更新同一 Record/HANDOFF，最终 F 后才合并 main、验证和清理。缺环境如实记录，不声称完整矩阵通过。
 
 Knowledge f0584c157 已完成，8 suites/50不同unit、2Chrome场景；真实FS/HTTP/.atria/旧Session/Save、中文窄屏/冲突通过，见Record最新Knowledge小节。勿重做B1；当前B2重点检查Prompt默认改写/模块隐式排序、Runtime完整Source与检索provider切换草稿。
