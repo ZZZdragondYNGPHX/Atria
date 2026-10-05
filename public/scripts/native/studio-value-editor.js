@@ -65,6 +65,13 @@ export function mountStudioValueEditor({ document: doc, root, value, label, onRe
             parent.append(input);
         }
     }
+    function markDirty() {
+        try {
+            const current = advanced ? JSON.parse(sourceText) : draft;
+            shell.dataset.atriaDraftDirty = String(JSON.stringify(current) !== JSON.stringify(value) || [...content.querySelectorAll('input,textarea,select')].some(input => !input.checkValidity()));
+        } catch { shell.dataset.atriaDraftDirty = 'true'; }
+    }
+    shell.addEventListener('input', markDirty); shell.addEventListener('change', markDirty);
     function render() {
         content.replaceChildren(); feedback.hidden = true;
         toggle.textContent = t(advanced ? 'Fields' : 'Source'); toggle.setAttribute('aria-pressed', String(advanced));
@@ -73,6 +80,7 @@ export function mountStudioValueEditor({ document: doc, root, value, label, onRe
             editor.value = sourceText; editor.setAttribute('aria-label', label); editor.spellcheck = false;
             editor.addEventListener('input', () => { sourceText = editor.value; }); content.append(editor);
         } else renderValue(content, draft, '', next => { draft = next; });
+        markDirty();
     }
     toggle.addEventListener('click', () => {
         try {

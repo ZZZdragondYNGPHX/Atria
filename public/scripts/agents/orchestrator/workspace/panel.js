@@ -1,3 +1,5 @@
+import { confirmAtriaDraftLeave, observeAtriaDrafts } from '../../../atria-shell/workspace-leave-guard.js';
+import { onNativeSessionLifecycle, NATIVE_SESSION_LIFECYCLE } from '../../../native/session-lifecycle.js';
 import { nativePromptUiActive } from '../../../native/generation-compat.js';
 import { createAtriaShellEnvironment } from '../../../atria-shell/environment.js';
 import { subscribe, getCurrentRun, requestRunStop, inspectEngineNode } from '../run-state/store.js';
@@ -9,7 +11,8 @@ import { i18n, i18nFormat } from '../i18n.js';
 import { createWorkspaceShell, syncWorkspaceNavigation, focusWorkspaceSection } from './shell.js';
 import { renderDiagnosticsPage } from './diagnostics/page.js';
 
-let shell, unsubscribe, frame, previousFocus, timer;
+let shell, unsubscribe, frame, previousFocus, timer, drafts;
+let scopeSubscriptions = [];
 let ports = {}, open = false, disposePage;
 let hostMount = null;
 let requestedPresetId = null;
@@ -59,7 +62,11 @@ function paged(parent, items, draw, size = 50) {
     paint();
 }
 
-const selectedRun = () => replay || getCurrentRun();
+const selectedRun = () => {
+    if (replay) return replay;
+    const run = getCurrentRun(), context = ports.getWorkspaceContext?.();
+    return context?.sessionId && run?.chatKey !== context.chatKey ? null : run;
+};
 
 function normalizeSection(value) {
     const normalized = String(value || '').trim().toLowerCase();
@@ -78,6 +85,7 @@ export function configureWorkspace(next) {
 function setSection(next, { focus = true } = {}) {
     const normalized = normalizeSection(next);
     if (!['orchestration', 'run', 'memory', 'diagnostics'].includes(normalized)) return;
+    if (section !== normalized && shell && !confirmAtriaDraftLeave(document, shell.root)) return;
     section = normalized;
     selection = section === 'run' ? selection : {};
     render();
@@ -327,7 +335,7 @@ function renderContent() {
     syncWorkspaceNavigation(shell, section);
     shell.title.textContent = i18n('Atria Workspace');
     const workspaceContext = ports.getWorkspaceContext?.() || {};
-    const scopeParts = [
+    const scopeParts = workspaceContext.sessionId ? [i18n('Session') + ': ' + (workspaceContext.sessionName || workspaceContext.sessionId)] : [
         workspaceContext.character ? `${i18n('Character')}: ${workspaceContext.character}` : '',
         workspaceContext.conversation && workspaceContext.conversation !== 'invalid_target'
             ? `${i18n('Conversation')}: ${workspaceContext.conversation}`
@@ -338,6 +346,7 @@ function renderContent() {
         ? `${workspaceContext.presetName} · ${i18n(workspaceContext.selectionSource || 'default')}`
         : i18n('No preset');
     shell.orchestrationToggle.checked = workspaceContext.enabled === true;
+    shell.root.dataset.atriaAgentSession = workspaceContext.sessionId || '';
     shell.headerStatus.textContent = run ? `${run.mode} · ${i18n(run.status || 'idle')}` : '';
     shell.stop.hidden = !!replay || run?.status !== 'running';
     shell.stop.disabled = !!run?.stopRequested;
@@ -427,12 +436,14 @@ function mount(options = {}) {
             else setSection(next, { focus: false });
         },
         onClose: closeWorkspace,
-        onStop: () => requestRunStop(getCurrentRun()?.runId),
+        onStop: () => { const run = selectedRun(); if (run && !replay) requestRunStop(run.runId); },
         onToggleOrchestration: enabled => {
             ports.setOrchestrationEnabled?.(enabled);
             render();
         },
     });
+    drafts = observeAtriaDrafts({ document, root: shell.root });
+    scopeSubscriptions = [NATIVE_SESSION_LIFECYCLE.SESSION_LOADED, NATIVE_SESSION_LIFECYCLE.SESSION_CLOSED, NATIVE_SESSION_LIFECYCLE.SESSION_METADATA_CHANGED].map(type => onNativeSessionLifecycle(type, () => { selection = {}; replay = null; render(); }));
     bindNavigationKeyboard(shell.nav, !embedded);
     shell.environment = createAtriaShellEnvironment(shell.root);
     let inspectorTrigger = null;
@@ -482,7 +493,7 @@ export function openWorkspace(initialSection, options = {}) {
     if (!container) {
         const workspaceHost = globalThis.Atria?.shell?.getWorkspaceHost?.();
         if (workspaceHost?.isMounted?.()) {
-            workspaceHost.openAgents(initialSection || 'orchestration');
+            workspaceHost.openAgents(initialSection || 'run');
             return null;
         }
     }
@@ -556,6 +567,8 @@ export function destroyWorkspace() {
     clearInterval(timer);
     timer = null;
     shell?.inspectorObserver?.disconnect();
+    drafts?.dispose(); drafts = null;
+    scopeSubscriptions.forEach(dispose => dispose()); scopeSubscriptions = [];
     shell?.environment?.dispose();
     shell?.root.remove();
     shell?.pill?.remove();

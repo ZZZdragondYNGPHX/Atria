@@ -49,7 +49,7 @@ const UTILITY_LABELS = Object.freeze({
 
 function normalizeAgentSection(route) {
     const childId = String(route?.child?.id || '').trim();
-    if (!childId) return 'home';
+    if (!childId) return 'run';
     if (childId.split(':')[0] === 'orchestration') return 'orchestration';
     if (childId === 'memory') return 'memory';
     if (childId === 'run') return 'run';
@@ -262,6 +262,7 @@ export function createAtriaWorkspaceHost({
     let disposed = false;
     let sequence = 0;
     let active = null;
+    let runtimeRepair = null;
     let lastRouteSignature = JSON.stringify(navigation.getRoute());
     const commandDisposers = [];
     let productSearch = null;
@@ -327,10 +328,62 @@ export function createAtriaWorkspaceHost({
         }
     }
 
+    const matchesRepairOrigin = route => runtimeRepair && route.domain === runtimeRepair.route.domain && route.child?.id === runtimeRepair.route.child?.id;
+    function showRepairReturn() {
+        slot.querySelector('[data-atria-runtime-repair-return]')?.remove();
+        if (!runtimeRepair) return;
+        const button = documentRef.createElement('button'); button.type = 'button';
+        button.className = 'atri-library-button'; button.dataset.atriaRuntimeRepairReturn = 'true';
+        button.textContent = translateShellText('Return to model setup');
+        button.addEventListener('click', returnFromRuntimeRepair); slot.prepend(button);
+    }
+    function returnFromRuntimeRepair() {
+        if (!runtimeRepair) return;
+        const route = runtimeRepair.route;
+        return navigation.navigate(route.domain, { child: route.child, reason: 'runtime-repair-return', history: 'push' });
+    }
+    function releaseRuntimeRepair() {
+        const previous = runtimeRepair; runtimeRepair = null;
+        if (previous?.origin && previous.origin !== active) previous.origin.controller?.dispose?.();
+        previous?.holding?.remove();
+    }
+    function openRuntimeRepair(section, onReturn) {
+        if (!runtimeRepair) runtimeRepair = { route: navigation.getRoute(), origin: active, onReturn, holding: null };
+        const route = openRuntimeSection(section);
+        if (route?.domain !== 'runtime' && !runtimeRepair?.holding) runtimeRepair = null;
+        return route;
+    }
+
     async function activate(route, reason = 'workspace-route') {
         if (disposed) return;
         const descriptor = routeDescriptor(route);
         const token = ++sequence;
+        if (matchesRepairOrigin(route) && runtimeRepair.holding) {
+            await disposeActive();
+            if (token !== sequence || disposed) return;
+            const repair = runtimeRepair; runtimeRepair = null;
+            active = repair.origin;
+            slot.replaceChildren(...repair.holding.childNodes); repair.holding.remove();
+            slot.dataset.atriaWorkspaceHost = active.descriptor.key; setWorkspaceContext(active.descriptor);
+            await repair.onReturn?.();
+            return;
+        }
+        if (matchesRepairOrigin(route) && !runtimeRepair.origin) {
+            const repair = runtimeRepair; runtimeRepair = null;
+            await disposeActive();
+            if (token !== sequence || disposed) return;
+            slot.replaceChildren(); slot.dataset.atriaWorkspaceHost = 'idle'; clearOwnedContext();
+            await repair.onReturn?.(); return;
+        }
+        if (runtimeRepair && !matchesRepairOrigin(route)) {
+            const repairDomain = descriptor?.kind === 'runtime' || descriptor?.kind === 'library' && !/^work:/.test(route.child?.id || '');
+            if (!repairDomain) releaseRuntimeRepair();
+            else if (!runtimeRepair.holding && active === runtimeRepair.origin && active) {
+                const holding = documentRef.createElement('section'); holding.hidden = true; holding.inert = true;
+                holding.dataset.atriaRuntimeRepairOrigin = 'true'; holding.append(...slot.childNodes); shell.root.append(holding);
+                runtimeRepair.holding = holding; active = null;
+            }
+        }
 
         if (!descriptor) {
             await disposeActive();
@@ -345,6 +398,7 @@ export function createAtriaWorkspaceHost({
             active.descriptor = descriptor;
             active.controller?.updateRoute?.(route, reason);
             setWorkspaceContext(descriptor);
+            showRepairReturn();
             return;
         }
 
@@ -402,6 +456,7 @@ export function createAtriaWorkspaceHost({
             descriptor,
             controller: controller || {},
         };
+        showRepairReturn();
     }
 
     function navigateToDomain(domain, {
@@ -551,29 +606,13 @@ export function createAtriaWorkspaceHost({
         const aliases = { overview: 'routes', roles: 'routes', presets: 'profiles', capabilities: 'models' };
         const id = aliases[requestedId] || requestedId;
         const item = RUNTIME_SECTIONS.find(candidate => candidate.id === id) || RUNTIME_SECTIONS[0];
-        if (navigation.getRoute().domain !== 'runtime') {
-            navigation.navigate('runtime', {
-                reason: 'workspace-runtime-domain',
-                history: 'push',
-            });
-        }
-        if (item.id === 'routes' && !resourceId) {
-            if (navigation.getRoute().child) {
-                return navigation.clearChild({
-                    history: 'push',
-                    reason: 'workspace-runtime-overview',
-                });
-            }
-            return navigation.getRoute();
-        }
-        return navigation.navigateChild({
+        const child = item.id === 'routes' && !resourceId ? null : {
             id: resourceId ? item.id + ':' + resourceId : item.id,
-            label: item.label,
-            kind: 'workspace',
-        }, {
-            reason: `workspace-runtime-${item.id}`,
-            history: 'push',
-        });
+            label: item.label, kind: 'workspace',
+        };
+        const options = { reason: `workspace-runtime-${item.id}`, history: 'push' };
+        if (navigation.getRoute().domain !== 'runtime') return navigation.navigate('runtime', { ...options, child });
+        return child ? navigation.navigateChild(child, options) : navigation.clearChild(options);
     }
 
     function openBuild(projectId = null, label = '') {
@@ -723,6 +762,7 @@ export function createAtriaWorkspaceHost({
         openOrchestration,
         openLibraryResource,
         openRuntimeSection,
+        openRuntimeRepair, returnFromRuntimeRepair, hasRuntimeRepair: () => Boolean(runtimeRepair),
         openBuild,
         openWorldInfo,
         openUtility,
@@ -741,6 +781,7 @@ export function createAtriaWorkspaceHost({
             documentRef.removeEventListener('atria-command-open', refreshSearchOnOpen);
             unsubscribeNavigation?.();
             leaveGuard.dispose();
+            releaseRuntimeRepair();
             productSearch?.dispose?.();
             productSearch = null;
             for (const dispose of commandDisposers.splice(0)) dispose();

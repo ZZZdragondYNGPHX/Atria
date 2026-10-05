@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { FsEngine } from '../../../src/storage/engines/fs-engine.js';
+import { buildAtriaPackageContainer, inspectAtriaPackageContainer } from '../../../src/native/package-container.js';
+import { createNativeId } from '../../../src/native/index.js';
 import { taskBindingFixture } from '../../native/helpers/task-binding-fixture.js';
 import { seedGenerationProfiles } from '../../native/helpers/generation-fixture.js';
 import { startServer, tearDownServer } from '../_lib/server.js';
@@ -130,4 +132,32 @@ test('Original Occult Western Fantasy 1.0.0 release starts Eastbank Field Regist
     await expect(full(page).getByText(/The record could not be refreshed/)).not.toBeVisible({ timeout: 15000 });
     await page.screenshot({ path: info.outputPath('eastbank-first-start.png'), fullPage: true });
     await info.attach('delete-409', { body: JSON.stringify(conflicts), contentType: 'application/json' }); expect(conflicts).toEqual([]);
+});
+
+
+test('A3 Runtime repair returns to the original startup and preserves its exact old Package version', async ({ page }, info) => {
+    test.setTimeout(150000);
+    await boot(page, 390); const f = await install(page); await openWork(page, f.manifest.packageId);
+    const title = page.getByLabel('Session name (optional)', { exact: true });
+    await title.fill('A3 original startup');
+    await page.getByRole('button', { name: 'Start New', exact: true }).click();
+    await setup(page).getByLabel('Narrative', { exact: true }).selectOption(routes[0].runtimeRouteId);
+    await setup(page).getByRole('button', { name: 'Configure Runtime Routes', exact: true }).click();
+    await expect(setup(page)).toBeHidden();
+    // Install a newer default while the original startup is parked in Runtime.
+    const newer = structuredClone(f.manifest); newer.packageVersionId = createNativeId('packageVersion'); newer.version = '2.0.0';
+    for (const resource of newer.resources) resource.origin.packageVersionId = newer.packageVersionId;
+    const archive = buildAtriaPackageContainer({ manifest: newer, sourceFiles: inspectAtriaPackageContainer(f.archive).sourceFiles }).archive;
+    await api(page, 'product/packages/install', { data: archive.toString('base64'), grantedPermissions: ['generation'] });
+    await page.getByRole('button', { name: 'Return to model setup', exact: true }).click();
+    await expect(setup(page)).toBeVisible(); await expect(title).toHaveValue('A3 original startup');
+    await expect(setup(page).getByLabel('Narrative', { exact: true })).toHaveValue(routes[0].runtimeRouteId);
+    await setup(page).getByLabel('Structured', { exact: true }).selectOption(routes[1].runtimeRouteId);
+    await setup(page).getByRole('button', { name: 'Save and continue', exact: true }).click();
+    await assertFull(page); expect(await sessions(page, f.manifest.packageId)).toBe(1);
+    const snapshot = await page.evaluate(() => Atria.nativeSessionRuntime.snapshot);
+    expect(snapshot.session.packageVersionId).toBe(f.manifest.packageVersionId);
+    expect(snapshot.session.displayTitle).toBe('A3 original startup');
+    await page.screenshot({ path: info.outputPath('a3-runtime-repair-original-390.png'), fullPage: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });

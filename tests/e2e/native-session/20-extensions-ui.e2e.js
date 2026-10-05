@@ -1,14 +1,15 @@
 import { test, expect } from '@playwright/test';
 import { startServer, tearDownServer } from '../_lib/server.js';
 import { awaitMainUI } from '../_lib/page.js';
-import { seedNativeSessionDataRoot } from './_helpers.js';
+import { createAndOpenNativeSession, seedNativeSessionDataRoot } from './_helpers.js';
 
 if (process.env.PW_NATIVE_CHANNEL) test.use({ channel: process.env.PW_NATIVE_CHANNEL });
-let server;
+let server, sessionStart;
 test.describe.configure({ mode: 'serial' });
 
 test.beforeAll(async () => {
     const seeded = await seedNativeSessionDataRoot({ suffix: 'extensions-ui' });
+    sessionStart = seeded.start;
     server = await startServer({ batchKey: 'generation', scenarioId: 'extensions-ui', useExistingDataRoot: seeded.dataRoot });
 });
 
@@ -67,4 +68,55 @@ for (const width of [1440, 320]) test(`Extensions script and Skill settings at $
     await root.getByRole('button', { name: 'Built-in tools', exact: true }).click();
     await expect(root.getByRole('heading', { name: 'Regex', exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+});
+
+
+test('A3 official Illustration retains the full settings draft and exposes Session tools at 390px', async ({ page }, info) => {
+    test.setTimeout(150000); await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/**', route => route.fulfill({ json: [] })); await awaitMainUI(page, server.baseURL);
+    await page.evaluate(() => Atria.shell.getWorkspaceHost().openUtility('plugins'));
+    const root = page.locator('[data-atria-utility-workspace="extensions"]');
+    await root.locator('[data-extension-tab="plugins"]').click(); await root.getByRole('button', { name: '官方插件', exact: true }).click();
+    const settings = root.locator('.atri-illustration-ui'); await expect(settings.getByLabel('风格词', { exact: true })).toBeVisible();
+    await settings.getByLabel('启用官方插图插件', { exact: true }).check();
+    await settings.getByLabel('风格词', { exact: true }).fill('A3 illustration style');
+    await settings.getByText('全局绘图角色库', { exact: true }).click();
+    await settings.getByRole('button', { name: '新增角色', exact: true }).click();
+    await settings.getByLabel('姓名', { exact: true }).fill('A3 drawing character');
+    await settings.getByLabel('别名（每行一个）', { exact: true }).fill('Atria drawing\nA3');
+    await settings.getByLabel('固定外观提示词', { exact: true }).fill('blue eyes');
+    await settings.getByLabel('默认服装', { exact: true }).fill('coat');
+    page.once('dialog', dialog => dialog.dismiss()); await root.locator('[data-extension-tab="skills"]').click();
+    await expect(settings.getByLabel('姓名', { exact: true })).toHaveValue('A3 drawing character');
+    await expect(settings.getByLabel('风格词', { exact: true })).toHaveValue('A3 illustration style');
+    await settings.getByRole('button', { name: '保存配置', exact: true }).click(); await expect(settings).toContainText('配置已保存。');
+    await root.getByRole('button', { name: 'Local scripts', exact: true }).click();
+    await expect(root.getByRole('button', { name: 'New script', exact: true })).toBeVisible();
+    await root.getByRole('button', { name: '官方插件', exact: true }).click();
+    await expect(settings.getByLabel('风格词', { exact: true })).toHaveValue('A3 illustration style');
+    await settings.getByText('全局绘图角色库', { exact: true }).click();
+    const characterId = await settings.getByLabel('编辑绘图角色', { exact: true }).locator('option').last().getAttribute('value');
+    await settings.getByLabel('编辑绘图角色', { exact: true }).selectOption(characterId);
+    await expect(settings.getByLabel('姓名', { exact: true })).toHaveValue('A3 drawing character');
+    await page.screenshot({ path: info.outputPath('a3-illustration-settings-390.png'), fullPage: true });
+    const session = await createAndOpenNativeSession(page, sessionStart);
+    const tools = page.locator('[data-atria-official-illustration="true"]');
+    await expect(tools).toBeAttached();
+    await expect(tools).toBeHidden();
+    await page.evaluate(() => Atria.shell.getWorkspaceHost().openPlay());
+    await expect(page.locator('#atria-app-shell')).toHaveAttribute('data-atria-reading', 'true');
+    await expect(tools.getByRole('button', { name: '正文模式', exact: true })).toBeVisible();
+    await tools.getByRole('button', { name: '标注与历史', exact: true }).click();
+    await expect(tools.getByText('开启生图模式，选择一段正文来创建标注。', { exact: true })).toBeVisible();
+    await tools.getByRole('button', { name: '关闭卡片', exact: true }).click();
+    await tools.getByRole('button', { name: '插图配置', exact: true }).click();
+    await expect(tools.getByLabel('配置范围', { exact: true })).toHaveValue(sessionStart.packageId);
+    await tools.getByLabel('覆盖作品预设', { exact: true }).check();
+    await tools.getByLabel('风格词', { exact: true }).fill('Unsaved work override');
+    page.once('dialog', dialog => dialog.dismiss()); await tools.getByRole('button', { name: '关闭配置', exact: true }).click();
+    await expect(tools.getByLabel('风格词', { exact: true })).toHaveValue('Unsaved work override');
+    expect((await page.evaluate(() => Atria.nativeSessionRuntime.snapshot.session)).sessionId).toBe(session.sessionId);
+    await page.screenshot({ path: info.outputPath('a3-illustration-session-390.png'), fullPage: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 });

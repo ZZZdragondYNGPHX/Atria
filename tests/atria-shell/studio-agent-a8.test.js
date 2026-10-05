@@ -1,4 +1,7 @@
 /** @jest-environment jsdom */
+import { serialize, deserialize } from 'node:v8';
+globalThis.structuredClone = value => deserialize(serialize(value));
+
 import { skillEntryKey } from '../../public/shared/extension-contract.js';
 
 import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals';
@@ -295,6 +298,27 @@ describe('A8 Native Studio Project Agent client', () => {
             return original(url, options);
         });
         await expect(runNativeStudioAgentTask({ projectId, taskId })).rejects.toThrow('not available');
+    });
+
+    test('Agent Commit is blocked by a human draft and a committed Task cannot be replayed after a list failure', async () => {
+        let committed = false; const commit = jest.fn(); const notify = jest.fn(); const projectCommitted = jest.fn();
+        globalThis.fetch = jest.fn(async (url, options = {}) => {
+            if (String(url).endsWith('/commit')) { commit(); committed = true; return response(task('completed')); }
+            if (String(url).endsWith('/agent/tasks')) return committed ? response({ message: 'List unavailable' }, 503) : response([task('review')]);
+            if (String(url).endsWith('/' + taskId)) return response(task(committed ? 'completed' : 'review'));
+            throw new Error('Unexpected ' + url);
+        });
+        document.body.innerHTML = '<aside id="ai"></aside>'; const slot = document.getElementById('ai');
+        const beforeCommit = jest.fn(() => false);
+        const controller = mountNativeStudioAgent({ document, slot, projectId, getRevision: () => ({ revision: baseRevision }), beforeCommit, onTaskState: notify, onProjectCommitted: projectCommitted });
+        const flush = () => new Promise(resolve => setTimeout(resolve, 0)); await flush();
+        const select = slot.querySelector('select'); select.value = taskId; select.dispatchEvent(new Event('change')); await flush();
+        const button = () => [...slot.querySelectorAll('button')].find(node => node.textContent === 'Review & Commit');
+        button().click(); await flush(); expect(commit).not.toHaveBeenCalled();
+        beforeCommit.mockReturnValue(true); button().click(); await flush();
+        expect(commit).toHaveBeenCalledTimes(1); expect(projectCommitted).toHaveBeenCalledTimes(1);
+        expect(notify.mock.calls.at(-1)[0].status).toBe('completed'); expect(button()).toBeUndefined();
+        expect(slot.querySelector('[role="alert"]')).not.toBeNull(); controller.dispose();
     });
 
 });

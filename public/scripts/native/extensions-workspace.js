@@ -1,3 +1,4 @@
+import { confirmAtriaDraftLeave, observeAtriaDrafts } from '../atria-shell/workspace-leave-guard.js';
 import { mountIllustrationSettings } from './illustration-settings-ui.js';
 import { el, action, field, feedback, confirmLibraryAction } from './library-ui.js';
 import { nativeExtensionsClient } from './extensions-client.js';
@@ -25,11 +26,13 @@ export function mountExtensionsWorkspace({ document: doc = document, body, slot 
     const root = el(doc, 'section', 'atria-utility-workspace atri-extensions');
     root.dataset.atriaUtilityWorkspace = 'extensions'; body.replaceChildren(root);
     el(doc, 'h2', '', tl('Extensions'), root);
+    const drafts = observeAtriaDrafts({ document: doc, root });
     let child, disposed = false, sequence = 0;
     const content = el(doc, 'div', 'atri-extensions-content');
     const tabs = extensionTabs(doc, root, [['skills', 'Skills'], ['plugins', 'Plugins']], 'skills', show);
     root.append(content);
     async function show(tab) {
+        if (!confirmAtriaDraftLeave(doc, content)) return;
         const token = ++sequence; child?.dispose(); child = null;
         for (const button of tabs.children) {
             button.classList.toggle('is-selected', button.dataset.extensionTab === tab);
@@ -46,15 +49,16 @@ export function mountExtensionsWorkspace({ document: doc = document, body, slot 
         if (disposed || token !== sequence) controller?.dispose(); else child = controller;
     }
     void show('skills');
-    return { root, dispose() { disposed = true; sequence++; child?.dispose(); root.remove(); } };
+    return { root, dispose() { disposed = true; sequence++; drafts.dispose(); child?.dispose(); root.remove(); } };
 }
 
 export function mountExtensionPlugins({ document: doc = document, body, client = nativeExtensionsClient,
     productClient = nativeProductClient, presets = () => runtimeRequest('/presets'), runtime = globalThis.Atria?.extensions,
     confirm = confirmLibraryAction, ...dependencies } = {}) {
     const root = el(doc, 'section', 'atri-extension-plugins', undefined, body);
-    let kind = 'external', disposed = false, sequence = 0, builtins;
-    const tabs = extensionTabs(doc, root, [['external', 'External plugins'], ['local', 'Local scripts'], ['builtin', 'Built-in tools'], ['official', '官方插件']], kind, async next => { kind = next; await load(); });
+    const drafts = observeAtriaDrafts({ document: doc, root });
+    let kind = 'external', disposed = false, sequence = 0, builtins, saving = false, receipt = null;
+    const tabs = extensionTabs(doc, root, [['external', 'External plugins'], ['local', 'Local scripts'], ['builtin', 'Built-in tools'], ['official', '官方插件']], kind, async next => { if (saving || !confirmAtriaDraftLeave(doc, content)) return; kind = next; await load(); });
     const tools = el(doc, 'div', 'atria-utility-workspace__actions', undefined, root);
     const content = el(doc, 'div', 'atri-extension-list', undefined, root);
     const runtimeStatus = el(doc, 'p', '', undefined, root); runtimeStatus.setAttribute('role', 'status');
@@ -71,7 +75,7 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
         const token = ++sequence; builtins?.dispose(); builtins = null;
         tools.replaceChildren(); content.replaceChildren(); feedback(doc, content, 'Loading…');
         for (const button of tabs.children) { const active = button.dataset.extensionTab === kind; button.classList.toggle('is-selected', active); button.setAttribute('aria-current', active ? 'page' : 'false'); }
-        action(doc, tools, 'Refresh', load);
+        action(doc, tools, 'Refresh', () => { if (!saving && confirmAtriaDraftLeave(doc, content)) return load(); });
         try {
             if (kind === 'official') {
                 content.replaceChildren();
@@ -99,7 +103,7 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
                 });
             } else {
                 const url = field(doc, tools, 'HTTPS repository URL', '', 'url');
-                action(doc, tools, 'Install', async () => { await client.install(url.value.trim()); await load(); });
+                action(doc, tools, 'Install', async () => { receipt = await client.install(url.value.trim()); await load(); });
             }
             const list = await client.list();
             if (disposed || token !== sequence) return;
@@ -114,16 +118,18 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
                 el(doc, 'p', '', '', card).dataset.extensionStatus = item.id;
                 action(doc, card, 'Edit', () => edit(item.id));
                 if (kind === 'external') action(doc, card, 'Update', async () => {
-                    if (await confirm('Update this plugin? It will be disabled until you enable it again.')) { await client.install(item.sourceUrl, { id: item.id, expectedRevision: item.revision }); await load(); }
+                    if (await confirm('Update this plugin? It will be disabled until you enable it again.')) { receipt = await client.install(item.sourceUrl, { id: item.id, expectedRevision: item.revision }); await load(); }
                 });
                 action(doc, card, 'Delete', async () => {
                     if (await confirm('Delete this extension?')) { await client.remove(item.id, item.revision); await load(); }
                 }, { danger: true });
             }
+            if (receipt) { feedback(doc, content, 'Saved successfully.'); receipt = null; }
             status();
-        } catch (error) { if (!disposed && token === sequence) { content.replaceChildren(); feedback(doc, content, error.message, true); } }
+        } catch (error) { if (!disposed && token === sequence) { content.replaceChildren(); feedback(doc, content, receipt ? 'Saved, but the list could not refresh. Reload to see the saved version.' : error.message, true); } }
     }
     async function edit(id, source = 'export function activate(atria) {\n    // Register resources with atria.onDispose or use the SDK helpers.\n}\n', suggestedName = '') {
+        if (saving || !confirmAtriaDraftLeave(doc, content)) return;
         const token = ++sequence;
         const [record, works, promptPresets] = await Promise.all([id ? client.get(id) : null, productClient.listWorks(), presets()]);
         if (disposed || token !== sequence) return;
@@ -162,22 +168,26 @@ export function mountExtensionPlugins({ document: doc = document, body, client =
             for (const [path, text] of Object.entries(value.files)) { const file = el(doc, 'details', '', undefined, files); el(doc, 'summary', '', path, file); el(doc, 'pre', '', text, file); }
         }
         const save = action(doc, form, 'Save', async () => {
-            form.disabled = true;
+            if (saving) return;
+            saving = true; form.disabled = true;
+            const navDisabled = [...tabs.children].map(button => button.disabled); [...tabs.children].forEach(button => button.disabled = true);
+            let saved = false;
             try {
                 const { revision: _revision, ...next } = value;
                 next.name = name.value.trim(); next.enabled = enabled.checked;
                 next.targets = { global: global.checked, presets: selections.presets.filter(input => input.checked).map(input => input.value), works: selections.works.filter(input => input.checked).map(input => input.value) };
                 if (code) next.files = { 'index.js': code.value };
-                await client.save(next, record?.revision ?? null);
+                receipt = await client.save(next, record?.revision ?? null); saved = true;
+                form.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
                 if (!disposed && token === sequence) { await load(); tools.querySelector('button')?.focus(); }
             } catch (error) {
                 if (!disposed && token === sequence) feedback(doc, form, error.status === 409 ? 'This extension changed elsewhere. Your draft is kept. Cancel and reopen it to load the current version.' : error.message, true);
-            } finally { form.disabled = false; }
+            } finally { saving = false; form.disabled = saved; [...tabs.children].forEach((button, index) => button.disabled = navDisabled[index]); }
         }, { primary: true });
         save.dataset.extensionSave = 'true';
-        action(doc, form, 'Cancel', async () => { await load(); tools.querySelector('button')?.focus(); });
+        action(doc, form, 'Cancel', async () => { if (saving || !confirmAtriaDraftLeave(doc, content)) return; await load(); tools.querySelector('button')?.focus(); });
         name.focus();
     }
     void load();
-    return { root, dispose() { disposed = true; sequence++; unsubscribe?.(); builtins?.dispose(); root.remove(); } };
+    return { root, dispose() { disposed = true; sequence++; drafts.dispose(); unsubscribe?.(); builtins?.dispose(); root.remove(); } };
 }

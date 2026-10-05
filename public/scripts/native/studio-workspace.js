@@ -1,3 +1,4 @@
+import { confirmAtriaDraftLeave, observeAtriaDrafts } from '../atria-shell/workspace-leave-guard.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { referenceRemediation } from './library-ui.js';
 import { mountSourceEditor } from './source-editor.js';
@@ -193,6 +194,7 @@ function viewResourceType(view) {
 function viewResourceId(item, view) {
     if (!item) return null;
     if (view === 'actors') return item.actorId;
+    if (view === 'entrypoints') return item.entryPointId;
     if (view === 'worlds') return item.world?.worldId;
     if (view === 'knowledge') return item.knowledgeBase?.knowledgeBaseId;
     if (view === 'assets') return item.assetId;
@@ -306,8 +308,7 @@ function createResourceTree(documentRef, state, selectView) {
                 const name = displayNameFor(item, id);
                 if (needle && !sectionMatch && !name.toLowerCase().includes(needle)) return;
                 const child = button(documentRef, name || `${label} ${index + 1}`, () => {
-                    state.collectionSelection[id] = index;
-                    selectView(id);
+                    selectView(id, index);
                 }, { active: state.activeView === id && state.collectionSelection[id] === index });
                 child.textContent = name || `${label} ${index + 1}`;
                 child.className = 'atria-studio-resource-tree__item atria-studio-resource-tree__item--child';
@@ -321,8 +322,7 @@ function createResourceTree(documentRef, state, selectView) {
             if (needle && !descriptor.displayName.toLowerCase().includes(needle)
                 && !descriptor.resourceType.toLowerCase().includes(needle)) continue;
             const row = button(documentRef, formatProductText('Plugin · ${0}', [descriptor.displayName]), () => {
-                state.selectedPluginResourceType = descriptor.resourceType;
-                selectView('plugin-resource');
+                selectView('plugin-resource', undefined, descriptor.resourceType);
             }, { active: state.activeView === 'plugin-resource' && state.selectedPluginResourceType === descriptor.resourceType });
             row.className = 'atria-studio-resource-tree__item';
             row.dataset.atriaStudioPluginResource = descriptor.resourceType;
@@ -385,6 +385,7 @@ function renderCollectionEditor(documentRef, body, state, view, stageProject) {
         option.textContent = displayNameFor(items[optionIndex], view) || `${title} ${optionIndex + 1}`;
     });
     chooser.addEventListener('change', () => {
+        if (!state.confirmEditorLeave()) { chooser.value = String(index); return; }
         state.collectionSelection[view] = Number(chooser.value);
         state.selectedGraphNode = null;
         state.renderEditor();
@@ -399,16 +400,22 @@ function renderCollectionEditor(documentRef, body, state, view, stageProject) {
     });
 }
 
-async function loadProjectState(projectId) {
-    const [detail, registry, graph, resources, library, history] = await Promise.all([
-        nativeStudioClient.getProject(projectId),
-        nativeStudioClient.getResourceRegistry(),
-        nativeStudioClient.getResourceGraph(),
-        nativeStudioClient.queryResources({ projectId }),
-        nativeStudioClient.listLibraryResources(),
-        nativeStudioClient.history(projectId, 40),
+async function loadProjectSupport(projectId) {
+    const keys = ['registry', 'graph', 'resources', 'library', 'history'];
+    const results = await Promise.allSettled([
+        nativeStudioClient.getResourceRegistry(), nativeStudioClient.getResourceGraph(),
+        nativeStudioClient.queryResources({ projectId }), nativeStudioClient.listLibraryResources(), nativeStudioClient.history(projectId, 40),
     ]);
-    return { detail, registry, graph, resources, library, history };
+    const support = { registry: { descriptors: [] }, graph: { nodes: [], edges: [] }, resources: [], library: [], history: [], failures: [] };
+    results.forEach((result, index) => {
+        if (result.status === 'fulfilled') support[keys[index]] = result.value;
+        else support.failures.push({ source: keys[index], message: result.reason.message });
+    });
+    return support;
+}
+async function loadProjectState(projectId) {
+    const [detail, support] = await Promise.all([nativeStudioClient.getProject(projectId), loadProjectSupport(projectId)]);
+    return { detail, ...support };
 }
 
 async function mountProjectStudio(documentRef, root, projectId, host) {
@@ -422,10 +429,10 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         graph: loaded.graph,
         resources: loaded.resources || [],
         library: loaded.library || [],
-        history: loaded.history || [],
+        history: loaded.history || [], supportFailures: loaded.failures,
         activeView: 'overview',
         lastEditorView: 'overview',
-        mobileView: 'editor',
+        mobileView: loaded.failures.length ? 'more' : 'editor',
         collectionSelection: {},
         selectedGraphNode: null,
         pending: null,
@@ -437,8 +444,8 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         buildReport: null,
         activityTab: 'problems',
         disposed: false,
-        renderEditor: () => {},
-        aiOpen: false, inspectorOpen: false, activityOpen: false, inspecting: false, applying: false,
+        renderEditor: () => {}, editorSequence: 0, refreshRequired: null,
+        aiOpen: false, inspectorOpen: false, activityOpen: Boolean(loaded.failures.length), inspecting: false, applying: false,
     };
 
     const shell = documentRef.createElement('section');
@@ -477,7 +484,12 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     ai.className = 'atria-studio-ai-placeholder';
     ai.dataset.atriaStudioAi = 'agent';
 
-    function resourceTreeSelect(view) {
+    const drafts = observeAtriaDrafts({ document: documentRef, root: shell });
+    state.confirmEditorLeave = () => !state.applying && !state.inspecting && confirmAtriaDraftLeave(documentRef, center);
+    function resourceTreeSelect(view, index, pluginType) {
+        if (!state.confirmEditorLeave()) return false;
+        if (index !== undefined) state.collectionSelection[view] = index;
+        if (pluginType) state.selectedPluginResourceType = pluginType;
         state.selectedGraphNode = null;
         state.activeView = view;
         if (view !== 'preview') state.lastEditorView = view;
@@ -521,6 +533,8 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         state.resources = resources || [];
         state.graph = graph;
         state.history = history || [];
+        state.supportFailures = state.supportFailures.filter(failure => ['registry', 'library'].includes(failure.source));
+        state.refreshRequired = null;
         title.textContent = state.source.project.displayName;
         revision.textContent = formatProductText('Revision ${0}', [state.revision.revision.slice(0, 12)]);
         tree.render();
@@ -539,19 +553,29 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         },
         onLog: log,
         onTaskState: task => {
-            state.agentReview = task.status === 'review' ? task : null;
+            if (state.disposed) return;
+            state.agentReview = task?.status === 'review' ? task : null;
+            if (!task) { renderActivity(); return; }
             if (task.validation) state.validation = task.validation;
             if (task.preview) state.preview = task.preview;
             if (task.simulation) state.simulation = task.simulation;
             if (task.status === 'review') state.activityTab = 'changes';
             else if (task.validation?.status === 'failed') state.activityTab = 'problems';
             renderActivity();
-            if (state.activeView === 'preview' || state.activeView === 'simulation') renderEditor();
+            // Task evidence must not replace a human editing surface.
         },
-        onProjectCommitted: async () => {
-            await refreshProject();
+        beforeCommit: () => !state.pending && state.confirmEditorLeave(),
+        onProjectCommitted: async task => {
+            if (state.disposed) return;
             state.pending = null;
             state.agentReview = null;
+            state.refreshRequired = task;
+            center.dispatchEvent(new documentRef.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
+            try { await refreshProject(); } catch (error) {
+                center.inert = true;
+                log('error', t('Saved, but the list could not refresh. Reload to see the saved version.'), error.message);
+                return;
+            }
             renderEditor();
             renderActivity();
             void renderInspector();
@@ -568,8 +592,8 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     }
 
     async function stageOperations(operations, label) {
-        if (state.inspecting || state.applying) return false;
-        state.inspecting = true;
+        if (state.disposed || state.refreshRequired || state.inspecting || state.applying) return false;
+        state.inspecting = true; renderActivity(); updateMobile();
         const workspace = workspaceFor(operations);
         let accepted = false;
         try {
@@ -615,13 +639,25 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 log('error', formatProductText('ChangeSet ${0} failed validation and was rolled back.', [result.changeSet?.changeSetId || '']), state.validation);
                 return;
             }
+            const forked = state.pending.workspace.operations.find(operation => operation.operationType === 'resource.fork');
             state.pending = null;
+            state.refreshRequired = result.changeSet;
+            center.dispatchEvent(new documentRef.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
             await refreshProject();
+            if (forked) {
+                const id = forked.input.derivativeResourceId;
+                state.activeView = ({ 'core.world': 'worlds', 'core.knowledge': 'knowledge', 'core.asset': 'assets' })[forked.target.resourceType] || state.activeView;
+                const items = sourceSection(state.source, state.activeView) || [];
+                const index = items.findIndex(item => viewResourceId(item, state.activeView) === id);
+                if (index >= 0) state.collectionSelection[state.activeView] = index;
+            }
             renderEditor();
             renderInspector();
             const heading = center.querySelector('h3'); if (heading) { heading.tabIndex = -1; heading.focus(); }
         } catch (error) {
-            if (error.status === 409) {
+            if (state.refreshRequired) {
+                log('error', t('Saved, but the list could not refresh. Reload to see the saved version.'), error.message);
+            } else if (error.status === 409) {
                 state.pending = { ...state.pending, conflict: error };
                 log('conflict', 'ChangeSet conflict: the project advanced. Reload latest before retrying.', error.details);
             } else {
@@ -642,6 +678,8 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     }
 
     async function runPreview() {
+        if (!state.confirmEditorLeave() || state.refreshRequired) return;
+        const editorToken = state.editorSequence, baseRevision = state.revision.revision;
         try {
             const ep = entryPoint(state.source);
             const result = await nativeStudioClient.preview(projectId, {
@@ -651,6 +689,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             if (state.disposed) { void nativeStudioClient.closePreview(result.preview.previewId).catch(() => {}); return; }
             if (state.preview) void nativeStudioClient.closePreview(state.preview.previewId).catch(() => {});
             state.preview = result.preview;
+            if (editorToken !== state.editorSequence || baseRevision !== state.revision.revision) return;
             state.activeView = 'preview';
             state.mobileView = 'preview';
             log('success', formatProductText('Native Preview ${0} created without Session/Branch persistence.', [result.preview.previewId]), result.preview.descriptor);
@@ -662,11 +701,15 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     }
 
     async function runSimulation() {
+        if (!state.confirmEditorLeave() || state.refreshRequired) return;
+        const editorToken = state.editorSequence, baseRevision = state.revision.revision;
         try {
-            state.simulation = await nativeStudioClient.simulate(projectId, {
-                baseRevision: state.revision.revision,
+            const result = await nativeStudioClient.simulate(projectId, {
+                baseRevision,
                 scenario: JSON.parse(state.scenarioDraft ?? '{"schemaVersion":1,"steps":[]}'),
             });
+            if (state.disposed || editorToken !== state.editorSequence || baseRevision !== state.revision.revision) return;
+            state.simulation = result;
             state.activeView = 'simulation'; state.mobileView = 'editor'; updateMobile();
             log(state.simulation.status === 'completed' ? 'success' : 'info', formatProductText('Simulation ${0}.', [t(state.simulation.status)]), state.simulation);
             renderEditor();
@@ -676,12 +719,16 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     }
 
     async function runBuild({ download = false } = {}) {
+        if (!state.confirmEditorLeave() || state.refreshRequired) return;
+        const editorToken = state.editorSequence, baseRevision = state.revision.revision;
         try {
-            const report = await nativeStudioClient.preflight(projectId, state.revision.revision);
+            const report = await nativeStudioClient.preflight(projectId, baseRevision);
+            if (state.disposed || editorToken !== state.editorSequence || baseRevision !== state.revision.revision) return;
             state.buildReport = report;
             log('success', 'Build preflight completed.', report.preflight);
             if (download) {
-                const built = await nativeStudioClient.build(projectId, state.revision.revision);
+                const built = await nativeStudioClient.build(projectId, baseRevision);
+                if (state.disposed || editorToken !== state.editorSequence || baseRevision !== state.revision.revision) return;
                 const bytes = Uint8Array.from(globalThis.atob(built.data), char => char.charCodeAt(0));
                 const url = URL.createObjectURL(new Blob([bytes], { type: built.mediaType || 'application/octet-stream' }));
                 const link = documentRef.createElement('a');
@@ -745,6 +792,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             const openNode = item => {
                 const owner = item.projectId || (String(item.scope).startsWith('project/') ? item.scope.split('/')[1] : null);
                 if (owner && owner !== projectId) return false;
+                if (!state.confirmEditorLeave()) return true;
                 const view = ({ 'core.project': 'overview', 'core.actor': 'actors', 'core.world': 'worlds', 'core.knowledge': 'knowledge', 'core.knowledge-entry': 'knowledge', 'core.knowledge-binding': 'knowledge', 'core.asset': 'assets' })[item.resourceType] || 'prompt-authoring';
                 state.activeView = view; state.selectedGraphNode = item; state.mobileView = 'editor';
                 const items = sourceSection(state.source, view) || [];
@@ -752,7 +800,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
                 if (index >= 0) state.collectionSelection[view] = index;
                 renderEditor(); updateMobile(); return true;
             };
-            const manageNode = item => { state.highlightLibraryReference = resourceReferenceForNode(item); state.activeView = item.resourceType === 'core.world' ? 'worlds' : item.resourceType === 'core.asset' ? 'assets' : 'knowledge'; state.mobileView = 'editor'; renderEditor(); updateMobile(); };
+            const manageNode = item => { if (!state.confirmEditorLeave()) return; state.highlightLibraryReference = resourceReferenceForNode(item); state.activeView = item.resourceType === 'core.world' ? 'worlds' : item.resourceType === 'core.asset' ? 'assets' : 'knowledge'; state.mobileView = 'editor'; renderEditor(); updateMobile(); };
             renderResourceReferenceRows({ document: documentRef, root: refs, references, host, onOpen: openNode, onManage: manageNode });
             const used = documentRef.createElement('div');
             used.className = 'atria-studio-reference-list';
@@ -898,15 +946,17 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         const list = documentRef.createElement('div');
         list.className = 'atria-studio-library-relations';
         for (const item of state.library) {
-            if (!['core.world', 'core.knowledge', 'core.asset'].includes(item.resourceType)) continue;
+            if (item.resourceType !== viewResourceType(state.activeView)) continue;
             const row = documentRef.createElement('div');
             row.className = 'atria-studio-library-relations__row';
             const info = documentRef.createElement('div');
             info.textContent = `${item.displayName} · ${item.resourceType} · ${item.currentRevision}`;
-            const selected = state.highlightLibraryReference?.resourceId === item.resourceId ? state.highlightLibraryReference.revision : item.currentRevision;
+            const selected = state.highlightLibraryReference?.resourceType === item.resourceType && state.highlightLibraryReference?.resourceId === item.resourceId ? state.highlightLibraryReference.revision : item.currentRevision;
             const revisionSelect = selectInput(documentRef, selected, item.revisions || [], 'Exact Library revision');
+            if (selected && !item.revisions?.includes(selected)) { const missing = documentRef.createElement('option'); missing.value = selected; missing.textContent = selected; revisionSelect.append(missing); revisionSelect.value = selected; }
             if (selected && !item.revisions?.includes(selected)) { const note = documentRef.createElement('p'); note.textContent = t('The requested exact revision is unavailable. References never follow latest.'); row.append(note); }
             const prepare = async (operationType, input, label) => {
+                if (!item.revisions?.includes(revisionSelect.value)) throw new Error(t('The requested exact revision is unavailable. References never follow latest.'));
                 const operation = createAuthoringOperation({ operationType, target: { resourceType: item.resourceType, resourceId: item.resourceId }, input });
                 const prepared = await nativeStudioClient.prepareOperation(projectId, operation);
                 return stageOperations([prepared], label);
@@ -917,14 +967,19 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             const update = ['core.world', 'core.knowledge'].includes(item.resourceType)
                 ? button(documentRef, 'Update', () => prepare('resource.update', { fromRevision, toRevision: revisionSelect.value }, formatProductText('Update ${0}', [item.displayName])), { disabled: !fromRevision }) : null;
             const detach = button(documentRef, 'Review detach', async () => {
-                const consumers = item.resourceType === 'core.world'
+                const references = await nativeStudioClient.getResourceReferences({ scope: 'library', resourceType: item.resourceType, resourceId: item.resourceId, revision: fromRevision }, { reverse: true });
+                if (state.disposed || !row.isConnected) return;
+                const consumers = references.filter(({ node }) => node?.scope === 'project/' + projectId && node.resourceType !== 'core.project');
+                const direct = item.resourceType === 'core.world'
                     ? state.source.package.entryPoints.filter(entry => entry.worldIds.includes(item.resourceId)).map(entry => ({ node: { scope: 'project/' + projectId, projectId, resourceType: 'core.entrypoint', resourceId: entry.entryPointId, displayName: entry.displayName }, owner: state.source.project.displayName }))
                     : item.resourceType === 'core.asset' ? state.source.worlds.filter(world => world.revision.assetIds.includes(item.resourceId)).map(world => ({ node: { scope: 'project/' + projectId, projectId, resourceType: 'core.world', resourceId: world.world.worldId, revision: world.revision.worldRevisionId, displayName: world.world.displayName }, owner: state.source.project.displayName })) : [];
+                for (const reference of direct) if (!consumers.some(item => item.node.resourceType === reference.node.resourceType && item.node.resourceId === reference.node.resourceId)) consumers.push(reference);
                 if (consumers.length) {
                     row.querySelector('[data-atria-detach-blockers]')?.remove();
                     const blockers = documentRef.createElement('div'); blockers.dataset.atriaDetachBlockers = 'true'; row.append(blockers);
                     renderResourceReferenceRows({ document: documentRef, root: blockers, references: consumers, host, onOpen: node => {
-                        state.activeView = node.resourceType === 'core.entrypoint' ? 'entrypoints' : 'worlds';
+                        if (!state.confirmEditorLeave()) return true;
+                        state.activeView = ({ 'core.entrypoint': 'entrypoints', 'core.world': 'worlds', 'core.knowledge': 'knowledge', 'core.knowledge-binding': 'knowledge', 'core.asset': 'assets' })[node.resourceType] || 'source';
                         state.collectionSelection[state.activeView] = (sourceSection(state.source, state.activeView) || []).findIndex(value => viewResourceId(value, state.activeView) === node.resourceId);
                         state.mobileView = 'editor'; renderEditor(); updateMobile(); return true;
                     } });
@@ -944,13 +999,13 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             row.append(info, revisionSelect, attach, fork, ...(update ? [update] : []), detach, references);
             list.append(row);
         }
+        if (!list.childElementCount) list.append(panel(documentRef, 'empty', 'No matching results.', 'No resources are available in this category.'));
         body.append(list);
     }
 
     function renderAssets(body) {
         body.append(heading(documentRef, 'Assets', 'Project-owned media files are written through one Workspace/ChangeSet with the manifest update.'));
         mountAssetEditor({ document: documentRef, root: body, source: state.source, projectId, stageOperations, host });
-        renderLibraryRelations(body);
     }
 
     async function renderSource(body) {
@@ -1045,18 +1100,31 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         state.structuredEditor?.dispose(); state.structuredEditor = null;
         state.previewMount?.dispose(); state.previewMount = null;
         if (state.disposed) return;
+        state.editorSequence++;
+        center.inert = Boolean(state.refreshRequired);
         center.replaceChildren();
         const body = documentRef.createElement('section');
         body.className = 'atria-studio-editor-surface';
         body.dataset.atriaStudioView = state.activeView;
         center.append(body);
+        if (['worlds', 'knowledge', 'assets'].includes(state.activeView)) {
+            const tabs = documentRef.createElement('nav'); tabs.className = 'atria-domain-workspace__tabs';
+            tabs.setAttribute('aria-label', t('Resource editor'));
+            const relations = documentRef.createElement('section'); relations.dataset.atriaStudioReferences = 'true';
+            renderLibraryRelations(relations); center.prepend(tabs); center.append(relations);
+            const show = reference => {
+                body.hidden = reference; relations.hidden = !reference;
+                for (const [index, control] of [...tabs.children].entries()) { control.setAttribute('aria-current', reference === Boolean(index) ? 'page' : 'false'); control.classList.toggle('is-selected', reference === Boolean(index)); }
+            };
+            tabs.append(button(documentRef, 'Editor', () => show(false)), button(documentRef, 'Library references', () => show(true)));
+            show(Boolean(state.highlightLibraryReference)); state.highlightLibraryReference = null;
+        }
 
         if (state.activeView === 'overview') renderOverview(body);
         else if (['prompt-authoring', 'runtime-design'].includes(state.activeView)) void mountStudioPromptTools({ document: documentRef, body, state, stageProject, host, runtimeDesign: state.activeView === 'runtime-design' });
         else if (state.activeView === 'experience') renderExperience(body);
         else if (['actors', 'entrypoints', 'worlds', 'knowledge'].includes(state.activeView)) {
             renderCollectionEditor(documentRef, body, state, state.activeView, stageProject);
-            if (['worlds', 'knowledge'].includes(state.activeView)) renderLibraryRelations(body);
         } else if (state.activeView === 'logic') renderPackageJson(body, 'Game Logic', 'processors', 'Structured logic/processors remain part of project source.');
         else if (state.activeView === 'ui') void renderUi(body);
         else if (state.activeView === 'assets') renderAssets(body);
@@ -1111,7 +1179,8 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
 
     function renderActivity() {
         if (state.disposed) return;
-        shell.dataset.atriaDraftDirty = String(Boolean(state.pending || state.agentReview));
+        shell.dataset.atriaDraftDirty = String(Boolean(state.pending || state.agentReview || state.inspecting || state.applying));
+        center.inert = Boolean(state.refreshRequired || state.applying || state.inspecting);
         activity.replaceChildren();
         const tabs = documentRef.createElement('nav');
         tabs.className = 'atria-studio-activity-tabs';
@@ -1134,6 +1203,24 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         body.className = 'atria-studio-activity__body';
         body.dataset.atriaStudioActivityTab = state.activityTab;
         activity.append(body);
+        if (state.supportFailures.length) {
+            for (const failure of state.supportFailures) body.append(panel(documentRef, 'error', 'Some project resources could not load.', failure.source + ': ' + failure.message));
+            body.append(button(documentRef, 'Retry loading', async () => {
+                const support = await loadProjectSupport(projectId); if (state.disposed) return;
+                for (const key of ['registry', 'graph', 'resources', 'library', 'history']) {
+                    if (!support.failures.some(item => item.source === key)) state[key] = support[key];
+                }
+                state.supportFailures = support.failures; tree.render(); renderActivity(); void renderInspector();
+                const relations = center.querySelector('[data-atria-studio-references]');
+                if (relations) { relations.replaceChildren(); renderLibraryRelations(relations); }
+            }));
+        }
+        if (state.refreshRequired) {
+            body.append(panel(documentRef, 'info', 'Saved', 'Saved, but the list could not refresh. Reload to see the saved version.'));
+            body.append(button(documentRef, 'Reload Latest', async () => {
+                await refreshProject(); renderEditor(); renderActivity(); void renderInspector(); updateMobile();
+            }));
+        }
 
         if (state.activityTab === 'problems') {
             const diagnostics = state.validation?.diagnostics || [];
@@ -1185,8 +1272,8 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
             if (state.pending.conflict) {
                 body.append(panel(documentRef, 'error', 'Revision conflict', 'The project advanced. Studio never silently rebases authoring changes. Reload the latest revision and review your edits again.'));
                 body.append(actionRow(documentRef, button(documentRef, 'Reload Latest', async () => {
-                    state.pending = null;
                     await refreshProject();
+                    state.pending = null;
                     renderEditor();
                     renderActivity();
                 }, { primary: true })));
@@ -1245,12 +1332,13 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
     }
 
     function updateMobile() {
-        center.inert = environment.get().mode === 'medium' && (state.inspectorOpen || state.aiOpen);
+        center.inert = Boolean(state.refreshRequired || state.applying || state.inspecting || environment.get().mode === 'medium' && (state.inspectorOpen || state.aiOpen));
         for (const item of topActions.children) { if (item.textContent === t('Inspector')) item.setAttribute('aria-expanded', String(state.inspectorOpen)); if (item.textContent === t('AI')) item.setAttribute('aria-expanded', String(state.aiOpen)); }
         shell.dataset.activityOpen = String(state.activityOpen); shell.dataset.inspectorOpen = String(state.inspectorOpen); shell.dataset.aiOpen = String(state.aiOpen);
         for (const [index, control] of [...mobileNav.querySelectorAll('button')].entries()) { control.dataset.active = String(MOBILE_VIEWS[index][0] === state.mobileView); control.setAttribute('aria-current', MOBILE_VIEWS[index][0] === state.mobileView ? 'page' : 'false'); }
         shell.dataset.atriaStudioMobileView = state.mobileView;
         if (state.mobileView === 'preview' && state.activeView !== 'preview') {
+            if (!state.confirmEditorLeave()) { state.mobileView = 'editor'; shell.dataset.atriaStudioMobileView = 'editor'; return; }
             state.lastEditorView = state.activeView;
             state.activeView = 'preview';
             tree.render();
@@ -1297,6 +1385,7 @@ async function mountProjectStudio(documentRef, root, projectId, host) {
         dismissTransient,
         dispose() {
             state.disposed = true;
+            drafts.dispose();
             state.structuredEditor?.dispose();
             state.previewMount?.dispose();
             if (state.preview) void nativeStudioClient.closePreview(state.preview.previewId).catch(() => {});

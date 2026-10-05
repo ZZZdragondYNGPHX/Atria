@@ -5,12 +5,13 @@ import { seedGenerationProfiles } from '../../native/helpers/generation-fixture.
 import { startServer, tearDownServer } from '../_lib/server.js';
 
 import { awaitMainUI } from '../_lib/page.js';
-import { seedNativeSessionDataRoot } from './_helpers.js';
+import { createAndOpenNativeSession, seedNativeSessionDataRoot } from './_helpers.js';
 
-let server; let routes;
+let server; let routes; let sessionStart;
 
 test.beforeAll(async () => {
     const seeded = await seedNativeSessionDataRoot({ suffix: 'native-agent-routes' });
+    sessionStart = seeded.start;
     const root = resolve(seeded.dataRoot, seeded.handle);
     const engine = new FsEngine({ directoriesByHandle: () => ({ root, assets: resolve(root, 'assets') }) });
     const resources = await seedGenerationProfiles({ engine, handle: seeded.handle, endpoint: 'https://example.invalid/completions', roles: ['orchestrator', 'orchestrator', 'memory', 'memory'] });
@@ -188,4 +189,42 @@ test('Native browser retrieval offers bundled embedding models without extension
     await expect(root.getByLabel('Endpoint URL', { exact: true })).toBeHidden();
     await page.setViewportSize({ width: 390, height: 844 });
     await page.screenshot({ path: 'test-results-native-ux-g8-browser-models.png', fullPage: true });
+});
+
+
+test('A3 Agents fixes the Session scope and rejects a Memory reset confirmed after switching Session', async ({ page }, info) => {
+    test.setTimeout(150000); await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(() => localStorage.setItem('language', 'en'));
+    await page.route('**/api/horde/**', route => route.fulfill({ json: [] }));
+    await awaitMainUI(page, server.baseURL);
+    const first = await createAndOpenNativeSession(page, sessionStart);
+    await page.evaluate(async () => {
+        const store = await import('/scripts/agents/orchestrator/run-state/store.js');
+        const { getChatKey } = await import('/scripts/agents/orchestrator/snapshot-cache.js');
+        const runId = store.startRun({ mode: 'spec', chatKey: getChatKey(Atria.getContext()), quiet: true });
+        store.finishRun({ runId, status: 'completed', finalText: 'First Session evidence' });
+        Atria.shell.getWorkspaceHost().openAgents();
+    });
+    const workspace = page.locator('#agent-memory-workspace');
+    await expect(workspace).toHaveAttribute('data-atria-agent-session', first.sessionId);
+    await expect(workspace.locator('.atria-workspace-context')).toContainText('Session');
+    await page.evaluate(() => Atria.shell.getWorkspaceHost().openAgentSection('memory'));
+    await workspace.getByRole('button', { name: 'Maintenance', exact: true }).click();
+    await workspace.getByRole('button', { name: 'Reset current chat memory', exact: true }).click();
+    const popup = page.locator('dialog.popup[open]').last(); await expect(popup).toBeVisible();
+    let mutations = 0;
+    page.on('request', req => { if (/\/api\/native\/session\/(?:state|states)/.test(req.url()) && req.method() !== 'GET') mutations++; });
+    const second = await createAndOpenNativeSession(page, sessionStart);
+    await popup.locator('.popup-button-ok').click();
+    await page.evaluate(() => Atria.shell.getWorkspaceHost().openAgentSection('run'));
+    await expect(workspace).toHaveAttribute('data-atria-agent-session', second.sessionId);
+    expect(mutations).toBe(0);
+    await page.evaluate(() => Atria.shell.getWorkspaceHost().openAgentSection('run'));
+    await expect(workspace).toContainText('No active run');
+    await expect(workspace.getByRole('button', { name: 'Stop Run', exact: true })).toBeHidden();
+    await page.evaluate(() => Atria.shell.getWorkspaceHost().openAgentSection('orchestration'));
+    await expect(workspace.getByRole('button', { name: 'Bind as Session', exact: true })).toBeEnabled();
+    await expect(workspace.getByRole('button', { name: 'Bind as character', exact: true })).toBeDisabled();
+    await page.screenshot({ path: info.outputPath('a3-agents-session-390.png'), fullPage: true });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

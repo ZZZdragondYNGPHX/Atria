@@ -932,7 +932,7 @@ jQuery(() => {
                 }
                 return tools;
             },
-            getScope: () => ({ character: getCurrentAvatar(getContext()), conversation: getChatKey(getContext()) }) }),
+            getScope: () => ({ character: getCurrentAvatar(getContext()), conversation: getChatKey(getContext()), sessionId: nativeSessionRuntime.snapshot?.session?.sessionId || '' }) }),
         renderMemory: createMemoryWorkspace({ getContext }),
         getWorkspaceContext: () => {
             const scope = { character: getCurrentAvatar(getContext()), conversation: getChatKey(getContext()) };
@@ -943,6 +943,9 @@ jQuery(() => {
                 // The shell can still render before the first default preset is bound.
             }
             return {
+                sessionId: nativeSessionRuntime.snapshot?.session?.sessionId || '',
+                sessionName: nativeSessionRuntime.snapshot?.session?.displayTitle || '',
+                chatKey: scope.conversation,
                 enabled: getSettings().enabled === true,
                 character: scope.character || '',
                 conversation: scope.conversation || '',
@@ -1384,9 +1387,9 @@ jQuery(() => {
         }
         clearCurrentRun();
         const workspaceHost = globalThis.Atria?.shell?.getWorkspaceHost?.();
-        const refreshEmbeddedWorkspace = workspaceHost?.isActive?.('agents');
-        destroyWorkspace(); initRunPanel();
+        const refreshEmbeddedWorkspace = workspaceHost?.isActive?.('agents:workspace');
         if (refreshEmbeddedWorkspace) workspaceHost.refreshActive();
+        else { destroyWorkspace(); initRunPanel(); }
         clearCapsulePrompt(liveContext);
         void loadOrchestratorChatState(liveContext).finally(() => ensureUi());
     };
@@ -1413,11 +1416,10 @@ jQuery(() => {
     for (const eventName of characterRefreshEvents) {
         context.eventSource.on(eventName, () => {
             const workspaceHost = globalThis.Atria?.shell?.getWorkspaceHost?.();
-            const refreshEmbeddedWorkspace = workspaceHost?.isActive?.('agents');
-            destroyWorkspace();
-            initRunPanel();
-            ensureUi();
+            const refreshEmbeddedWorkspace = workspaceHost?.isActive?.('agents:workspace');
             if (refreshEmbeddedWorkspace) workspaceHost.refreshActive();
+            else { destroyWorkspace(); initRunPanel(); }
+            ensureUi();
         });
     }
 });

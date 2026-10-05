@@ -1,3 +1,4 @@
+import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { el, action, feedback } from './library-ui.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 import { nativeStudioClient } from './studio-client.js';
@@ -51,35 +52,38 @@ export async function mountSourceEditor({ document: doc, root, projectId, stageO
         const editor = el(doc, 'textarea', 'text_pole atria-studio-editor__textarea', undefined, shell); editor.setAttribute('aria-label', tl('Source editor')); editor.spellcheck = false;
         const diffBox = el(doc, 'section', 'atri-source-diff', undefined, shell); el(doc, 'h4', '', tl('Proposed text changes'), diffBox);
         const diff = el(doc, 'pre', '', undefined, diffBox); const note = el(doc, 'p', '', undefined, diffBox);
-        let loaded = null, sequence = 0, busy = false; const drafts = new Map();
+        let loaded = null, sequence = 0, busy = false; const drafts = new Map(); const originals = new Map();
+        const markDirty = () => { shell.dataset.atriaDraftDirty = String([...drafts].some(([path, text]) => text !== originals.get(path))); };
         const review = el(doc, 'button', 'atri-library-button atri-library-button--primary', tl('Review Source Change'), shell); review.type = 'button'; review.disabled = true;
         function showDiff() {
             const result = sourceTextDiff(loaded?.info.text || '', editor.value); diff.textContent = result.text || tl('No text changes.');
             note.textContent = result.truncated ? tl('Diff preview is truncated. The complete edited file will be reviewed.') : '';
         }
-        function remember() { if (loaded && !loaded.info.readOnly) drafts.set(loaded.path, editor.value); }
+        function remember() { if (loaded && !loaded.info.readOnly) { drafts.set(loaded.path, editor.value); markDirty(); } }
         async function load(reload = false) {
             remember(); const token = ++sequence, path = chooser.value; busy = true; loaded = null; editor.disabled = true; review.disabled = true; status.textContent = tl('Reading project sources…');
             try {
                 const file = await client.readSource(projectId, path); if (token !== sequence || !shell.isConnected) return;
-                const info = sourceFileInfo(path, file.content); loaded = { path, info }; if (reload) drafts.delete(path);
+                const info = sourceFileInfo(path, file.content); originals.set(path, info.text); loaded = { path, info }; if (reload) drafts.delete(path);
                 editor.value = info.readOnly ? '' : drafts.get(path) ?? info.text; editor.readOnly = info.readOnly; editor.disabled = info.readOnly;
                 status.textContent = `${tl(info.type)} · ${info.size} ${tl('bytes')}` + (info.readOnly ? ' · ' + tl(info.reason) : ' · ' + tl(['json', 'jsonl', 'yaml', 'yml', 'xml', 'svg'].includes(info.extension) ? 'Format validation runs before review.' : 'Plain text editing. Project validation runs when changes are applied.'));
-                shell.querySelector(':scope > .atri-library-feedback')?.remove(); diffBox.hidden = info.readOnly; showDiff(); review.disabled = info.readOnly;
+                shell.querySelector(':scope > .atri-library-feedback')?.remove(); diffBox.hidden = info.readOnly; markDirty(); showDiff(); review.disabled = info.readOnly;
             } catch (error) { if (token === sequence) { status.textContent = tl('Could not load sources'); feedback(doc, shell, error.message, true); } } finally { if (token === sequence) busy = false; }
         }
         editor.addEventListener('input', () => { editor.removeAttribute('aria-invalid'); shell.querySelector(':scope > .atri-library-feedback')?.remove(); remember(); showDiff(); });
         chooser.addEventListener('change', () => void load());
         review.addEventListener('click', async () => {
             if (busy || !loaded || loaded.info.readOnly) return;
+            const current = loaded, text = editor.value;
             busy = true; review.disabled = true; chooser.disabled = true; editor.disabled = true;
             try {
-                await validateSourceText(loaded.info, editor.value, { validateStructured: validateStructured ? (value, text) => validateStructured(loaded.path, value, text) : null });
-                if (loaded.info.text === editor.value) { feedback(doc, shell, tl('No text changes.')); return; }
-                showDiff(); await stageOperations([sourceWriteOperation(loaded.path, editor.value)], tl('Review Source Change'));
+                await validateSourceText(current.info, text, { validateStructured: validateStructured ? (value, text) => validateStructured(current.path, value, text) : null });
+                if (current.info.text === text) { feedback(doc, shell, tl('No text changes.')); return; }
+                if (!shell.isConnected || loaded !== current) return;
+                showDiff(); await stageOperations([sourceWriteOperation(current.path, text)], tl('Review Source Change'));
             } catch (error) { editor.setAttribute('aria-invalid', 'true'); feedback(doc, shell, tl('Check the file format. Your draft is still here.') + ' ' + error.message, true); } finally { busy = false; review.disabled = !loaded || loaded.info.readOnly; chooser.disabled = false; editor.disabled = !loaded || loaded.info.readOnly; }
         });
-        action(doc, shell, 'Reload file', async () => { if (!busy) await load(true); });
+        action(doc, shell, 'Reload file', async () => { if (!busy && confirmAtriaDraftLeave(doc, shell)) await load(true); });
         await load();
     } catch (error) { status.textContent = tl('Could not load sources'); feedback(doc, shell, error.message, true); action(doc, shell, 'Retry', () => { shell.remove(); return mountSourceEditor({ document: doc, root, projectId, stageOperations, client, validateStructured }); }); }
 }

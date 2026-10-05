@@ -4,9 +4,10 @@ import { runtimeRequest } from './runtime-client.js';
 import { translateShellText as tl } from '../atria-shell/localization.js';
 
 export async function renderRetrievalWorkspace(ui) {
-    const { root, node, field, group, button, notice, bindEditorKeyboard, enter, leave, signal } = ui;
+    const { root, node, field, group, button, notice, bindEditorKeyboard, enter, leave, confirmLeave = () => true, signal } = ui;
     const profiles = await listRetrievalProfiles();
     if (signal.aborted) return;
+    if (!Array.isArray(profiles)) throw new TypeError('Invalid retrieval inventory');
     root.replaceChildren(); leave();
     node('h2', 'Retrieval');
     notice('Embedding and rerank resources belong to the player. Memory selects exact revisions; creating a revision never switches an existing selection.');
@@ -29,7 +30,7 @@ export async function renderRetrievalWorkspace(ui) {
     function edit(previous) {
         root.replaceChildren(); enter();
         const head = node('header'); head.className = 'atri-runtime-editor-header';
-        const back = button('Back to retrieval', () => void reload(), head);
+        const back = button('Back to retrieval', () => { if (confirmLeave()) return reload(); }, head);
         bindEditorKeyboard(back);
         node('h2', previous ? 'Create retrieval revision' : 'New retrieval resource', head);
         const form = node('form'); form.className = 'atri-runtime-form';
@@ -125,17 +126,24 @@ export async function renderRetrievalWorkspace(ui) {
         const id = previous?.retrievalProfileId || 'retr_' + crypto.randomUUID().replaceAll('-', '');
         const revision = 'rev_' + crypto.randomUUID().replaceAll('-', '');
         form.addEventListener('submit', async event => {
-            event.preventDefault(); if (save.disabled) return; status.replaceChildren();
+            event.preventDefault(); if (save.disabled) return; status.replaceChildren(); let saved = false;
             try {
                 const values = Object.fromEntries(Object.entries(options).filter(([, input]) => input.value !== '').map(([key, input]) => [key, ['keep', 'lateChunking'].includes(key) ? input.value === 'true' : key === 'dimensions' ? Number(input.value) : input.value]));
                 const local = ['transformers', 'webllm'].includes(source.value);
                 const profile = assertRetrievalProfile({ retrievalProfileId: id, revision, displayName: name.value, mode: mode.value, source: source.value, model: model.value, endpoint: local ? '' : endpoint.value, ...(!local && secret.value ? { secretRef: { secretId: secret.value } } : {}), options: values });
                 save.disabled = back.disabled = true;
                 for (const fields of form.querySelectorAll('fieldset')) fields.disabled = true;
-                await commitRetrievalProfile(profile); if (!signal.aborted) await reload();
-            } catch (error) { if (form.isConnected) notice(error instanceof TypeError ? error.message : 'Could not save retrieval revision. Your edits are preserved; retry to save.', status, true); } finally {
-                save.disabled = back.disabled = false;
-                for (const fields of form.querySelectorAll('fieldset')) fields.disabled = false;
+                await commitRetrievalProfile(profile); saved = true;
+                form.dispatchEvent(new root.ownerDocument.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
+                if (!signal.aborted) await renderRetrievalWorkspace(ui);
+            } catch (error) {
+                if (form.isConnected) {
+                    notice(saved ? 'Saved, but the list could not refresh. Reload to see the saved version.' : error instanceof TypeError ? error.message : 'Could not save retrieval revision. Your edits are preserved; retry to save.', status, true);
+                    if (saved) button('Reload list', reload, status);
+                }
+            } finally {
+                save.disabled = saved; back.disabled = false;
+                if (!saved) for (const fields of form.querySelectorAll('fieldset')) fields.disabled = false;
             }
         });
         name.focus();

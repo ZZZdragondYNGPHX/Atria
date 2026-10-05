@@ -260,3 +260,41 @@ test.each(['generation_provider_endpoint_not_found', 'generation_provider_reques
     expect(observed.mock.calls[0][0].detail.target).toBe(code.endsWith('timeout') ? 'routes' : 'connections');
     document.removeEventListener('atria-native-runtime-error', observed);
 });
+
+
+test('internal Runtime Back cancels without losing the raw connection draft', async () => {
+    globalThis.fetch = jest.fn(async () => response(config));
+    const view = mount(); await flush();
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false);
+    const name = view.root.querySelector('[aria-label="Display name"]'); name.focus(); name.value = 'Unsaved'; name.dispatchEvent(new Event('input', { bubbles: true }));
+    const back = [...view.root.querySelectorAll('button')].find(node => node.textContent === 'Back to connections');
+    back.click(); expect(view.root.querySelector('[aria-label="Display name"]')).toBe(name); expect(name.value).toBe('Unsaved');
+    confirm.mockReturnValue(true); back.click(); expect(view.root.querySelector('form')).toBeNull();
+    view.dispose(); confirm.mockRestore();
+});
+
+test('Retrieval commits once, retains a read-only receipt after list failure and retries only the read', async () => {
+    const randomUUID = globalThis.crypto.randomUUID; globalThis.crypto.randomUUID = () => '12345678-1234-4234-8234-123456789abc';
+    let saved = null, unavailable = false;
+    globalThis.fetch = jest.fn(async (path, options = {}) => {
+        if (path.endsWith('/secrets')) return response([]);
+        if (options.method === 'POST') { saved = JSON.parse(options.body); unavailable = true; return response(saved); }
+        if (unavailable) return response({ message: 'Read unavailable' }, false);
+        return response(saved ? [saved] : []);
+    });
+    const body = document.createElement('main'); document.body.append(body);
+    const view = mountNativeRuntimeWorkspace({ document, body, section: 'retrieval', route: {}, host: {} }); await flush();
+    const click = label => [...view.root.querySelectorAll('button')].find(node => node.textContent === label).click();
+    click('New retrieval resource');
+    view.root.querySelector('[aria-label="Display name"]').value = 'Exact local embedding';
+    const provider = view.root.querySelector('[aria-label="Provider"]'); provider.value = 'transformers'; provider.dispatchEvent(new Event('change'));
+    view.root.querySelector('[aria-label="Model"]').value = 'fixture-model';
+    view.root.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true })); await flush();
+    expect(view.root.textContent).toContain('Saved, but the list could not refresh');
+    expect(view.root.querySelector('[aria-label="Display name"]').matches(':disabled')).toBe(true);
+    expect([...view.root.querySelectorAll('button')].find(node => node.textContent === 'Save exact revision').disabled).toBe(true);
+    unavailable = false; click('Reload list'); await flush();
+    expect(view.root.textContent).toContain('Exact local embedding');
+    expect(globalThis.fetch.mock.calls.filter(([, options]) => options.method === 'POST')).toHaveLength(1);
+    view.dispose(); globalThis.crypto.randomUUID = randomUUID;
+});

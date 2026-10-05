@@ -78,7 +78,9 @@ export async function ensureTaskBindings({ document: doc, root, manifest, packag
             change: value => { if (!value) return; for (const slot of report.slots) { draft[slot.id] = value; pickers.get(slot.id).setValue(value); } updateSave(); } });
         if (report.slots.some(slot => !slot.routes.some(route => route.compatible))) el(doc, 'p', '', t('No compatible Runtime Route is available. Create or configure a route in Runtime, then return here.'), content);
         controls = el(doc, 'div', 'atri-library-actions', undefined, content);
-        button('Configure Runtime Routes', () => host?.openRuntimeSection('routes'));
+        button('Configure Runtime Routes', () => host?.openRuntimeRepair
+            ? host.openRuntimeRepair('routes', async () => { if (!current()) return; const next = await check(draft); if (current()) { draw(next); heading.focus(); } })
+            : host?.openRuntimeSection('routes'));
         button('Refresh Runtime Routes', async () => { const next = await check(draft); if (current()) draw(next); });
         save = button('Save and continue', async () => {
             // Revalidate against current configuration before writing any settings.

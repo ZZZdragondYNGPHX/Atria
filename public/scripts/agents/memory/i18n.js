@@ -493,6 +493,7 @@ export function registerLocaleData() {
         'Manual compression completed. Created=${0}, archived=${1}': '手动压缩完成。新建=${0}，归档=${1}',
         'Manual compression made no changes.': '手动压缩未产生变化。',
         'Event compression completed: ${0} round(s).': '事件压缩完成：本次 ${0} 轮。',
+        'The current Session changed. Reopen Memory before resetting.': '当前 Session 已变更，请重新打开记忆后再重置。',
         'Current chat memory graph reset.': '已重置当前聊天记忆图。',
         'Reset memory graph for current chat.': '已重置当前聊天的记忆图。',
         'Reset current chat memory graph? This cannot be undone.': '确认重置当前聊天记忆图吗？此操作不可撤销。',

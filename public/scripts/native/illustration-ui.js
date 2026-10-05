@@ -34,7 +34,7 @@ export const ILLUSTRATION_CSS = `
 .atri-illustration-ui { color:var(--atri-text-primary); font-size:16px; line-height:1.5; }
 .atri-illustration-ui button,.atri-illustration-ui input,.atri-illustration-ui select,.atri-illustration-ui pre { white-space:pre-wrap; overflow-wrap:anywhere; }
 .atri-illustration-ui textarea { font:inherit; color:inherit; border:1px solid var(--atri-separator-strong); background:var(--atri-surface-2); border-radius:var(--atri-radius-sm,8px); box-sizing:border-box; max-width:100%; }
-.atri-illustration-ui button { min-height:44px; padding:8px 12px; cursor:pointer; }
+.atri-illustration-ui button { min-height:44px; padding:8px 12px; cursor:pointer; color:var(--atri-text-primary); background:var(--atri-surface-2); border:1px solid var(--atri-separator-strong); border-radius:var(--atri-radius-sm,8px); }
 .atri-illustration-ui button:active:not(:disabled) { background:var(--atri-fill-pressed); }
 .atri-illustration-ui button:disabled { opacity:.55; cursor:default; }
 .atri-illustration-ui :focus-visible { outline:2px solid var(--atri-accent-text); outline-offset:2px; }

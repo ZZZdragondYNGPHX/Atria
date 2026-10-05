@@ -203,3 +203,82 @@ test('Build project list, loading failure, retry and native creation', async ({ 
     await expect(page.locator('[data-atria-studio-view="overview"]')).toBeVisible();
     await expect(page.getByLabel('Project display name')).toHaveValue('A first story');
 });
+
+
+test('A3 all twenty Studio views and exact Library Attach Update Fork detach preserve authority at 390px', async ({ page }, info) => {
+    test.setTimeout(180000); await boot(page, 390);
+    const library = await page.evaluate(async () => {
+        const { nativeProductClient: client } = await import('/scripts/native/product-client.js');
+        const world = await client.createWorld('A3 Library World');
+        const content = { schema: {}, baseline: {}, knowledgeBindingIds: [], assetIds: [], metadata: {} };
+        const first = await client.commitWorldRevision(world.worldId, { baseRevisionId: null, content });
+        const second = await client.commitWorldRevision(world.worldId, { baseRevisionId: first.worldRevisionId, content: { ...content, metadata: { notes: 'second' } } });
+        return { worldId: world.worldId, first: first.worldRevisionId, second: second.worldRevisionId };
+    });
+    const projectId = await seedProject(page, 'A3');
+    const studio = page.locator('[data-atria-studio-workspace]');
+    const nav = studio.locator('[data-atria-studio-mobile-nav]');
+    const center = studio.locator('[data-atria-studio-editor]');
+    const activity = studio.locator('[data-atria-studio-activity]');
+    const navigate = async id => {
+        await nav.getByRole('button', { name: 'Project', exact: true }).click();
+        await studio.locator(`[data-atria-studio-resource="${id}"]`).click();
+        await expect(center.locator(`[data-atria-studio-view="${id}"]`)).toBeVisible();
+    };
+    const views = await studio.locator('[data-atria-studio-resource]').evaluateAll(nodes => nodes.map(node => node.dataset.atriaStudioResource));
+    expect(views).toHaveLength(20);
+    for (const id of views) await navigate(id);
+    await navigate('worlds'); await center.getByRole('button', { name: 'Library references', exact: true }).click();
+    const relation = center.locator('.atria-studio-library-relations__row').filter({ hasText: 'A3 Library World' });
+    const apply = async () => {
+        await expect(activity.getByRole('button', { name: 'Apply ChangeSet', exact: true })).toBeVisible();
+        await activity.getByRole('button', { name: 'Apply ChangeSet', exact: true }).click();
+        await expect(activity.getByRole('button', { name: 'Apply ChangeSet', exact: true })).toHaveCount(0);
+        await nav.getByRole('button', { name: 'Editor', exact: true }).click();
+        await center.getByRole('button', { name: 'Library references', exact: true }).click();
+    };
+    await relation.getByLabel('Exact Library revision').selectOption(library.first);
+    await relation.getByRole('button', { name: 'Attach', exact: true }).click();
+    expect((await request(page, `projects/${projectId}`)).source.dependencies.worlds).toHaveLength(0);
+    await apply();
+    expect((await request(page, `projects/${projectId}`)).source.dependencies.worlds).toEqual([{ worldId: library.worldId, worldRevisionId: library.first }]);
+    await relation.getByLabel('Exact Library revision').selectOption(library.second);
+    await relation.getByRole('button', { name: 'Update', exact: true }).click(); await apply();
+    expect((await request(page, `projects/${projectId}`)).source.dependencies.worlds[0].worldRevisionId).toBe(library.second);
+    await relation.getByRole('button', { name: 'Used By', exact: true }).click();
+    await expect(relation.locator('[data-atria-used-by]')).toContainText('The Observatory A3');
+    await relation.getByLabel('Exact Library revision').selectOption(library.first);
+    await relation.getByRole('button', { name: 'Fork', exact: true }).click(); await apply();
+    const forked = (await request(page, `projects/${projectId}`)).source.worlds[0];
+    expect(forked.world.worldId).not.toBe(library.worldId); expect(forked.revision.metadata).toMatchObject({ atriaLibraryOrigin: { resourceId: library.worldId, revision: library.first, relationship: 'fork' } });
+    await relation.getByRole('button', { name: 'Review detach', exact: true }).click(); await apply();
+    expect((await request(page, `projects/${projectId}`)).source.dependencies.worlds).toHaveLength(0);
+    await center.getByRole('button', { name: 'Editor', exact: true }).click();
+    const editor = center.locator('.atri-world-editor');
+    await editor.getByRole('button', { name: 'Source', exact: true }).click();
+    const source = editor.getByRole('textbox'); const original = await source.inputValue();
+    await source.fill(original.replace('A3 Library World', 'A3 human draft'));
+    await center.getByRole('button', { name: 'Library references', exact: true }).click();
+    await center.getByRole('button', { name: 'Editor', exact: true }).click();
+    await expect(source).toHaveValue(/A3 human draft/);
+    page.once('dialog', dialog => dialog.dismiss()); await navigateProjectOnly('overview');
+    await expect(source).toHaveValue(/A3 human draft/);
+    page.once('dialog', dialog => dialog.accept()); await navigate('overview');
+    await center.getByLabel('Project display name').fill('A3 reviewed name');
+    await center.getByRole('button', { name: 'Review Changes', exact: true }).click();
+    await page.route(`**/api/native/studio/projects/${projectId}`, route => route.fulfill({ status: 503, json: { message: 'Refresh unavailable' } }));
+    await activity.getByRole('button', { name: 'Apply ChangeSet', exact: true }).click();
+    await expect(activity).toContainText('Saved, but the list could not refresh');
+    await expect(activity.getByRole('button', { name: 'Apply ChangeSet', exact: true })).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath('a3-studio-receipt-390.png'), fullPage: true });
+    await page.unroute(`**/api/native/studio/projects/${projectId}`);
+    await activity.getByRole('button', { name: 'Reload Latest', exact: true }).click();
+    await nav.getByRole('button', { name: 'Editor', exact: true }).click();
+    await expect(center.getByLabel('Project display name')).toHaveValue('A3 reviewed name');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    async function navigateProjectOnly(id) {
+        await nav.getByRole('button', { name: 'Project', exact: true }).click();
+        await studio.locator(`[data-atria-studio-resource="${id}"]`).click();
+        await nav.getByRole('button', { name: 'Editor', exact: true }).click();
+    }
+});

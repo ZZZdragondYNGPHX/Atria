@@ -1,3 +1,4 @@
+import { confirmAtriaDraftLeave } from '../../../../atria-shell/workspace-leave-guard.js';
 import { callGenericPopup, POPUP_TYPE, POPUP_RESULT } from '../../../../popup.js';
 import { i18n, i18nFormat } from '../../i18n.js';
 import { createWorkspaceFactoryPreset, getWorkspaceLibrary, isNativeWorkspacePresetId, prepareImportedWorkspacePreset, restoreNativeWorkspacePresets, uniqueWorkspacePresetName, workspaceHostProfile } from '../host-presets.js';
@@ -17,6 +18,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
     let notice = '';
     let draft = null;
     let draftPresetId = null;
+    let draftScope = null;
     let selectedAgentId = null;
     let inspectorMode = null;
 
@@ -34,7 +36,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
         lastRequestedId = ui.presetId || null;
         const settings = getSettings();
         const library = getWorkspaceLibrary(settings);
-        const scope = getScope();
+        const currentScope = getScope();
         const selected = library.presets.find(item => item.id === selectedId) || library.presets[0];
 
         if (!selected) {
@@ -52,6 +54,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
         if (!draft || draftPresetId !== selected.id) {
             const presetChanged = draftPresetId !== selected.id;
             draft = structuredClone(selected);
+            draftScope = structuredClone(currentScope);
             draftPresetId = selected.id;
             if (!draft.planTemplate.agents.some(agent => agent.id === selectedAgentId)) {
                 selectedAgentId = draft.planTemplate.agents[0]?.id || null;
@@ -61,11 +64,20 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
             }
         }
 
+        const scope = draftScope;
         const nativePreset = isNativeWorkspacePresetId(draft.id);
 
         const status = el('p', notice, parent);
         status.className = 'workspace-status';
         status.setAttribute('role', 'status');
+        parent.dataset.atriaDraftDirty = String(JSON.stringify(draft) !== JSON.stringify(selected));
+        const markDirty = () => { parent.dataset.atriaDraftDirty = String(JSON.stringify(draft) !== JSON.stringify(selected)); };
+        parent.oninput = markDirty; parent.onchange = markDirty;
+        if (inspector) { inspector.oninput = markDirty; inspector.onchange = markDirty; }
+        if (JSON.stringify(currentScope) !== JSON.stringify(scope)) {
+            status.textContent = i18n('Workspace scope changed. Reopen the preset editor.'); status.setAttribute('role', 'alert');
+            button(parent, 'Reload Latest', () => { if (confirmAtriaDraftLeave(document, parent)) refresh({ resetDraft: true }); });
+        }
 
         const refresh = ({ resetDraft = false } = {}) => {
             if (resetDraft) draft = null;
@@ -499,6 +511,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
         };
         for (const preset of library.presets) {
             const item = button(list, undefined, () => {
+                if (!confirmAtriaDraftLeave(document, parent)) return;
                 selectedId = preset.id;
                 selectedAgentId = null;
                 inspectorMode = null;
@@ -571,6 +584,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
                 if (!file.files[0]) return;
                 const imported = importWorkspacePreset(await file.files[0].text());
                 const preset = prepareImportedWorkspacePreset(getWorkspaceLibrary(settings), imported);
+                if (!confirmAtriaDraftLeave(document, parent)) return;
                 selectedId = preset.id;
                 settings.agentWorkspace = updatePresetLibrary(getWorkspaceLibrary(settings), { type: 'save', preset });
                 save();
@@ -656,10 +670,10 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
         for (const [kind, subjectId, label] of [
             ['default', '', 'Default'],
             ['character', scope.character, 'Character'],
-            ['conversation', scope.conversation, 'Conversation'],
+            ['conversation', scope.conversation, scope.sessionId ? 'Session' : 'Conversation'],
         ]) {
             const action = button(bindingActions, label, () => bindSelected(kind, subjectId));
-            action.setAttribute('aria-label', i18n({ default: 'Bind as default', character: 'Bind as character', conversation: 'Bind as conversation' }[kind]));
+            action.setAttribute('aria-label', i18n(kind === 'conversation' && scope.sessionId ? 'Bind as Session' : { default: 'Bind as default', character: 'Bind as character', conversation: 'Bind as conversation' }[kind]));
             action.disabled = kind !== 'default' && !subjectId;
             const current = kind === 'default'
                 ? library.bindings.defaultPresetId === draft.id
@@ -739,6 +753,7 @@ export function createPresetAuthoring({ getSettings, save, getScope, getTools = 
         }
 
         return () => {
+            if (parent.dataset.atriaDraftDirty !== 'true') { draft = null; draftScope = null; }
             if (inspector) {
                 inspector.replaceChildren();
                 inspector.hidden = true;

@@ -100,6 +100,7 @@ describe('A7 Atria Studio workspace', () => {
             if (path === '/api/native/studio/resources/graph') return response({ nodes: [], edges: [] });
             if (path === `/api/native/studio/resources?projectId=${projectId}`) return response([]);
             if (path === '/api/native/studio/library/resources') return response([]);
+            if (path.startsWith('/api/native/studio/resources/references')) return response([]);
             if (path === `/api/native/studio/projects/${projectId}/history?limit=40`) return response([]);
             if (path === `/api/native/studio/projects/${projectId}/workspaces/inspect` && method === 'POST') {
                 return response({
@@ -147,6 +148,57 @@ describe('A7 Atria Studio workspace', () => {
         const blockers = slot.querySelector('[data-atria-detach-blockers]'); expect(blockers.textContent).toContain('Start');
         expect(requests.some(item => item.path.endsWith('/workspaces/inspect'))).toBe(false);
         blockers.querySelector('button').click(); await flush();
+        expect(slot.querySelector('[data-atria-studio-view="entrypoints"]')).not.toBeNull();
+        controller.dispose();
+    });
+
+    test('internal navigation cancellation preserves fields and Source; reference tabs retain one draft', async () => {
+        const slot = document.querySelector('#slot');
+        const controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false);
+        const field = slot.querySelector('[aria-label="Project display name"]'); field.focus(); field.value = 'Draft'; field.dispatchEvent(new Event('input', { bubbles: true }));
+        const navigate = name => [...slot.querySelectorAll('.atria-studio-resource-tree button')].find(node => node.textContent === name).click();
+        navigate('Worlds'); expect(slot.querySelector('[aria-label="Project display name"]')).toBe(field); expect(field.value).toBe('Draft');
+        confirm.mockReturnValue(true); navigate('Worlds'); await flush();
+        const source = slot.querySelector('.atri-studio-value-editor');
+        [...source.querySelectorAll('button')].find(node => node.textContent === 'Source').click();
+        const editor = source.querySelector('textarea'); editor.value = '[{"custom":true}]'; editor.dispatchEvent(new Event('input', { bubbles: true }));
+        [...slot.querySelectorAll('button')].find(node => node.textContent === 'Library references').click();
+        expect(editor.isConnected).toBe(true);
+        [...slot.querySelectorAll('.atria-studio-center > nav button')].find(node => node.textContent === 'Editor').click();
+        expect(editor.value).toBe('[{"custom":true}]');
+        confirm.mockReturnValue(false); navigate('Overview'); expect(editor.isConnected).toBe(true); expect(editor.value).toBe('[{"custom":true}]');
+        controller.dispose(); confirm.mockRestore();
+    });
+
+    test('committed human ChangeSet remains a receipt after refresh failure and cannot execute twice', async () => {
+        const previous = globalThis.fetch; let committed = false, failRead = true;
+        globalThis.fetch = jest.fn(async (url, options) => {
+            if (url.endsWith('/workspaces/execute')) committed = true;
+            if (committed && failRead && url === `/api/native/studio/projects/${projectId}`) return response({ message: 'Read unavailable' }, 503);
+            return previous(url, options);
+        });
+        const slot = document.querySelector('#slot');
+        const controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        const click = name => [...slot.querySelectorAll('button')].find(node => node.textContent === name).click();
+        click('Review Changes'); await flush(); click('Apply ChangeSet'); await flush();
+        expect(slot.textContent).toContain('Saved, but the list could not refresh');
+        expect(slot.querySelector('[data-atria-studio-editor]').inert).toBe(true);
+        expect([...slot.querySelectorAll('button')].some(node => node.textContent === 'Apply ChangeSet')).toBe(false);
+        failRead = false; click('Reload Latest'); await flush();
+        expect(requests.filter(item => item.path.endsWith('/workspaces/execute'))).toHaveLength(1);
+        expect(slot.querySelector('[data-atria-studio-editor]').inert).toBe(false);
+        controller.dispose();
+    });
+
+    test('late Preview cannot replace an editor opened while its request was pending', async () => {
+        const previous = globalThis.fetch; let finish;
+        globalThis.fetch = jest.fn((url, options) => url.endsWith('/preview') ? new Promise(resolve => { finish = resolve; }) : previous(url, options));
+        const slot = document.querySelector('#slot');
+        const controller = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        [...slot.querySelectorAll('.atria-studio-topbar button')].find(node => node.textContent === 'Preview').click(); await flush();
+        [...slot.querySelectorAll('.atria-studio-resource-tree button')].find(node => node.textContent === 'EntryPoints').click();
+        finish(response({ preview: { previewId: 'preview-test', experience: { mode: 'text' } } })); await flush();
         expect(slot.querySelector('[data-atria-studio-view="entrypoints"]')).not.toBeNull();
         controller.dispose();
     });
@@ -222,4 +274,16 @@ describe('A7 Atria Studio workspace', () => {
 
         controller.dispose();
     });
+    test('an unavailable supporting inventory preserves the project editor and retry keeps its draft', async () => {
+        const fetch = globalThis.fetch; let unavailable = true;
+        globalThis.fetch = jest.fn(async (url, options) => String(url).endsWith('/resources/registry') && unavailable ? response({ message: 'Registry unavailable' }, 503) : fetch(url, options));
+        const slot = document.getElementById('slot'); const view = mountNativeStudioWorkspace({ document, slot, route: { child: { id: 'project:' + projectId } }, host: {} }); await flush();
+        const name = slot.querySelector('[aria-label="Project display name"]'); expect(name).not.toBeNull();
+        name.value = 'Unsaved title'; name.dispatchEvent(new Event('input', { bubbles: true }));
+        expect(slot.textContent).toContain('Some project resources could not load');
+        unavailable = false; [...slot.querySelectorAll('button')].find(node => node.textContent === 'Retry loading').click(); await flush();
+        expect(slot.querySelector('[aria-label="Project display name"]')).toBe(name); expect(name.value).toBe('Unsaved title');
+        expect(slot.textContent).not.toContain('Some project resources could not load'); view.dispose();
+    });
+
 });

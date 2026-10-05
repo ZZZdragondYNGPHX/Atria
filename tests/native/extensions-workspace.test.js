@@ -87,3 +87,17 @@ test('Skill preference conflicts keep the pending selects and never retry blindl
     expect(document.querySelector('[role=alert]').textContent).toContain('Refresh before trying again');
     expect(request).toHaveBeenCalledTimes(2);
 });
+
+
+test('extension tab cancellation retains source; a saved write followed by list failure cannot be replayed', async () => {
+    let saved = false, unavailable = false;
+    const client = { list: jest.fn(async () => { if (unavailable) throw new Error('offline'); return []; }), save: jest.fn(async () => { saved = true; unavailable = true; return { id: 'saved', revision: 'r2' }; }) };
+    const controller = mountExtensionPlugins({ body: document.body, client, presets: async () => [], productClient: { listWorks: async () => [] } });
+    await flush(); button('Local scripts').click(); await flush(); button('New script').click(); await flush();
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false);
+    const name = input('Name'); name.focus(); name.value = 'Preserved'; name.dispatchEvent(new Event('input', { bubbles: true }));
+    button('External plugins').click(); await flush(); expect(input('Name')).toBe(name); expect(name.value).toBe('Preserved');
+    button('Save').click(); await flush(); expect(saved).toBe(true); expect(document.body.textContent).toContain('Saved, but the list could not refresh');
+    expect(button('Save')).toBeUndefined(); unavailable = false; button('Refresh').click(); await flush(); expect(client.save).toHaveBeenCalledTimes(1);
+    controller.dispose(); confirm.mockRestore();
+});

@@ -1,4 +1,11 @@
 export const SHELL_TEXT_KEYS = Object.freeze({
+    'Some project resources could not load.': 'atria.studio.partialFailure',
+    'Return to model setup': 'atria.workspace.runtimeRepairReturn',
+    'Resource editor': 'atria.studio.resourceEditor',
+    'Library references': 'atria.studio.libraryReferences',
+    'No resources are available in this category.': 'atria.studio.noLibraryResources',
+    'Saved successfully.': 'atria.workspace.savedSuccessfully',
+    'Saved': 'atria.workspace.saved',
     'Leave this workspace and discard unsaved changes? Cancel to keep editing.': 'atria.workspace.leaveDraft',
     'Could not open result. Refresh this source or choose another result.': 'atria.search.openFailed',
     'Gateway response mode': 'atria.runtime.gateway.0',

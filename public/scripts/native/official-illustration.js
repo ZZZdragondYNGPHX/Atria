@@ -1,3 +1,4 @@
+import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { createIllustrationDraft, assertIllustrationDraft, matchDrawingCharacters, composeIllustrationPrompt } from '../../shared/illustration-plugin-contract.js';
 import { illustrationNode as node, illustrationField as field, illustrationSelect as select, illustrationButton as button, ILLUSTRATION_CSS } from './illustration-ui.js';
 import { renderIllustrationPreset, mountIllustrationSettings } from './illustration-settings-ui.js';
@@ -8,6 +9,11 @@ export async function activate(sdk) {
     const doc = globalThis.document;
     const root = node(doc, null, 'section', undefined, 'atri-illustration-ui'); root.dataset.atriaOfficialIllustration = 'true';
     sdk.ui.mount(root); sdk.ui.style(ILLUSTRATION_CSS);
+    const shellRoot = globalThis.Atria?.shell?.getRoot?.();
+    if (shellRoot) {
+        shellRoot.append(root);
+        Object.assign(root.style, { position: 'absolute', inset: '0', zIndex: '5', pointerEvents: 'none' });
+    }
     const toolbar = node(doc, root, 'div', undefined, 'atri-illustration-toolbar atri-illustration-actions');
     toolbar.setAttribute('aria-label', '插图工具');
     if (doc.defaultView.ResizeObserver) {
@@ -15,6 +21,7 @@ export async function activate(sdk) {
         observer.observe(toolbar); sdk.onDispose(() => observer.disconnect());
     }
     const panel = node(doc, root, 'aside', undefined, 'atri-illustration-panel'); panel.hidden = true; panel.setAttribute('aria-label', '标注卡片');
+    toolbar.style.pointerEvents = panel.style.pointerEvents = 'auto';
     const status = node(doc, toolbar, 'span'); status.setAttribute('role', 'status');
     let mode = false, pending = null, selectedId = null, settings = (await sdk.illustrations.settings.read()).value, configEditor;
     const drafts = new Map(), operations = new Map(), imageOperations = new Map(), watchers = new Map();
@@ -55,6 +62,14 @@ export async function activate(sdk) {
         void poll();
     }
     let readDraft = () => {}, busy = false, disposed = false;
+    const navigation = globalThis.Atria?.shell?.getNavigation?.();
+    const syncVisibility = () => {
+        const route = navigation?.getRoute();
+        root.hidden = !sdk.context.sessionId || Boolean(route && (route.domain !== 'play' || route.child?.id?.startsWith('utility.') || route.child?.id?.startsWith('skills')));
+        if (root.hidden && configEditor) { configEditor.dispose(); configEditor = null; panel.hidden = true; }
+    };
+    const unsubscribeNavigation = navigation?.subscribe(syncVisibility);
+    sdk.onDispose(() => unsubscribeNavigation?.()); syncVisibility();
     const writable = Boolean(sdk.context.sessionId && !sdk.context.historical);
     toolbar.hidden = !sdk.context.sessionId;
     const notify = (text, error = false) => { if (!disposed) { status.textContent = text; status.setAttribute('role', error ? 'alert' : 'status'); } };
@@ -104,10 +119,11 @@ export async function activate(sdk) {
     // Keep desktop selection on the explicit action. Touch uses its captured
     // canonical range and leaves native selection handles under browser control.
     sdk.events.listen(create, 'mousedown', event => event.preventDefault());
-    button(doc, toolbar, '标注与历史', run(async () => { readDraft(); await refreshTasks(); if (!mode && writable) { mode = true; toggle.textContent = '生图模式'; toggle.setAttribute('aria-pressed', 'true'); sdk.illustrations.setSelectionMode(true); create.hidden = false; } renderCard(); }));
+    button(doc, toolbar, '标注与历史', run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; readDraft(); await refreshTasks(); if (!mode && writable) { mode = true; toggle.textContent = '生图模式'; toggle.setAttribute('aria-pressed', 'true'); sdk.illustrations.setSelectionMode(true); create.hidden = false; } renderCard(); }));
     button(doc, toolbar, '插图配置', run(() => {
+        if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return;
         readDraft(); readDraft = () => {}; configEditor?.dispose(); panel.replaceChildren(); panel.hidden = false;
-        button(doc, panel, '关闭配置', run(async () => { configEditor?.dispose(); configEditor = null; settings = (await sdk.illustrations.settings.read()).value; panel.hidden = true; }));
+        button(doc, panel, '关闭配置', run(async () => { if (configEditor && !confirmAtriaDraftLeave(doc, configEditor.root)) return; configEditor?.dispose(); configEditor = null; settings = (await sdk.illustrations.settings.read()).value; panel.hidden = true; }));
         configEditor = mountIllustrationSettings({ document: doc, parent: panel, client: sdk.illustrations.settings, packageId: sdk.context.packageId, showEnabled: false });
     }));
     sdk.events.listen(doc, 'selectionchange', capture);

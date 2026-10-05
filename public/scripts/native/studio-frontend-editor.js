@@ -1,3 +1,4 @@
+import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { el, action, feedback, field } from './library-ui.js';
 import { nativeStudioClient } from './studio-client.js';
 import { createAuthoringOperation, createStudioWorkspace, sourceWriteOperation } from './studio-authoring.js';
@@ -30,6 +31,7 @@ export async function mountFrontendEditor({ document: doc, root, projectId, owne
     let graph, selected, loaded, disposed = false, sequence = 0;
     let previewMount, previewId;
     const drafts = new Map(), originals = new Map();
+    label.dataset.atriaDraftDirty = ownerLabel.dataset.atriaDraftDirty = 'false';
     const alive = token => !disposed && token === sequence;
     async function evaluate(operations, render = false) {
         if (!graph.previewEntryPointId) throw new Error(t('No EntryPoint uses this frontend. Select an EntryPoint frontend to preview.'));
@@ -54,8 +56,9 @@ export async function mountFrontendEditor({ document: doc, root, projectId, owne
         } catch (error) { await client.closePreview(id); throw error; }
     }
     const sourceText = () => loaded?.text?.includes('\r\n') ? editor.value.replace(/\r?\n/g, '\r\n') : editor.value;
-    function remember() { if (loaded && !loaded.readOnly) drafts.set(loaded.path, sourceText()); }
-    function showDiff() { diff.textContent = sourceTextDiff(loaded?.text || '', sourceText()).text; }
+    function markDirty() { sourceLabel.dataset.atriaDraftDirty = String([...drafts].some(([path, text]) => text !== originals.get(path))); }
+    function remember() { if (loaded && !loaded.readOnly) drafts.set(loaded.path, sourceText()); markDirty(); }
+    function showDiff() { markDirty(); diff.textContent = sourceTextDiff(loaded?.text || '', sourceText()).text; }
     function showDiagnostics(items) {
         diagnosticList.replaceChildren();
         el(doc, 'h4', '', t('Frontend diagnostics'), diagnosticList);
@@ -142,7 +145,7 @@ export async function mountFrontendEditor({ document: doc, root, projectId, owne
         if (result.stale || result.status === 'failed') return;
         await evaluate([...drafts].map(([path, content]) => sourceWriteOperation(path, content)), true);
     });
-    action(doc, controls, 'Reload file', async () => { if (loaded) drafts.delete(loaded.path); loaded = null; await loadEntry(); });
+    action(doc, controls, 'Reload file', async () => { if (!confirmAtriaDraftLeave(doc, shell)) return; if (loaded) drafts.delete(loaded.path); loaded = null; await loadEntry(); });
     editor.addEventListener('input', () => { sequence++; remember(); showDiff(); });
     chooser.addEventListener('change', () => void loadEntry());
     async function loadGraph() {

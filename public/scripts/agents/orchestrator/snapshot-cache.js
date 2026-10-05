@@ -51,7 +51,8 @@ let latestOrchestrationSnapshot = null;
 let latestAnchorMap = null;
 
 export function getCurrentAvatar(context) {
-    return context?.characters?.[context?.characterId]?.avatar || '';
+    const character = context?.characters?.[context?.characterId];
+    return character?.atri_native ? '' : character?.avatar || '';
 }
 
 export function getChatKey(context) {

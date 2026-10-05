@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 import { beforeEach, expect, jest, test } from '@jest/globals';
 import { createAtriaNavigationAuthority } from '../../public/scripts/atria-shell/navigation-authority.js';
-import { installAtriaWorkspaceLeaveGuard } from '../../public/scripts/atria-shell/workspace-leave-guard.js';
+import { installAtriaWorkspaceLeaveGuard, observeAtriaDrafts } from '../../public/scripts/atria-shell/workspace-leave-guard.js';
 import { serialize, deserialize } from 'node:v8';
 import { mountLibraryRevisionEditor } from '../../public/scripts/native/library-revision-editor.js';
 
@@ -81,5 +81,32 @@ test('Library successful save clears its dirty draft even if the following owner
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(saveRevision).toHaveBeenCalledTimes(1); expect(root.textContent).toContain('Owner refresh failed');
     navigation.navigate('runtime'); expect(navigation.getRoute().domain).toBe('runtime'); expect(confirm).not.toHaveBeenCalled();
+    guard.dispose(); navigation.dispose(); confirm.mockRestore();
+});
+
+
+test('a compact Runtime editor outside the shell uses the same guard and committed receipt', () => {
+    const navigation = createAtriaNavigationAuthority({ window, initialDomain: 'runtime' });
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false);
+    const shell = document.querySelector('main'); const form = shell.querySelector('form');
+    const portal = document.createElement('section'); portal.className = 'atri-runtime'; portal.dataset.editor = 'true'; portal.append(form); document.body.append(portal);
+    const guard = installAtriaWorkspaceLeaveGuard({ document, navigation, shell: { root: shell } });
+    const observer = observeAtriaDrafts({ document, root: form });
+    const input = form.querySelector('input'); input.focus(); input.value = 'Portaled draft'; input.dispatchEvent(new Event('input', { bubbles: true }));
+    navigation.navigate('library'); expect(navigation.getRoute().domain).toBe('runtime'); expect(input.value).toBe('Portaled draft');
+    form.dispatchEvent(new CustomEvent('atria-draft-committed', { bubbles: true }));
+    navigation.navigate('library'); expect(navigation.getRoute().domain).toBe('library'); expect(confirm).toHaveBeenCalledTimes(1);
+    observer.dispose(); guard.dispose(); navigation.dispose(); confirm.mockRestore();
+});
+
+
+test('model rendering removes old fields without retaining orphaned dirty observations', () => {
+    const navigation = createAtriaNavigationAuthority({ window, initialDomain: 'runtime' });
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(false);
+    const root = document.querySelector('main'), form = root.querySelector('form'); form.dataset.atriaDraftDirty = 'true';
+    const guard = installAtriaWorkspaceLeaveGuard({ document, navigation, shell: { root } });
+    const input = form.querySelector('input'); input.focus(); input.value = 'Model draft'; input.dispatchEvent(new Event('input', { bubbles: true }));
+    form.replaceChildren(); form.dataset.atriaDraftDirty = 'false';
+    navigation.navigate('library'); expect(navigation.getRoute().domain).toBe('library'); expect(confirm).not.toHaveBeenCalled();
     guard.dispose(); navigation.dispose(); confirm.mockRestore();
 });

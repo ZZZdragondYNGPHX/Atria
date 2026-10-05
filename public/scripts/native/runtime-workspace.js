@@ -1,3 +1,4 @@
+import { confirmAtriaDraftLeave, observeAtriaDrafts } from '../atria-shell/workspace-leave-guard.js';
 import { renderRetrievalWorkspace } from './retrieval-workspace.js';
 import { NATIVE_GENERATION_DEFAULTS as generationDefaults } from '../../shared/native-generation-defaults.js';
 import { formatShellText as fmt, translateShellText } from '../atria-shell/localization.js';
@@ -28,6 +29,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
     const root = doc.createElement('section');
     root.className = 'atri-runtime'; root.dataset.atriaRuntimeNative = section;
     body.replaceChildren(root);
+    const drafts = observeAtriaDrafts({ document: doc, root });
     const environment = createAtriaShellEnvironment(root);
     let loadingSequence = 0; let editorSequence = 0;
     function adaptEditor() {
@@ -206,7 +208,8 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         root.replaceChildren(); root.dataset.editor = 'true';
         adaptEditor();
         const header = node('header'); header.className = 'atri-runtime-editor-header';
-        const back = button(fmt('Back to ${0}', [translateShellText(section)]), () => { renderList(); root.querySelector('input')?.focus(); }, header);
+        const back = button(fmt('Back to ${0}', [translateShellText(section)]), () => { if (!confirmAtriaDraftLeave(doc, root)) return; renderList(); root.querySelector('input')?.focus(); }, header);
+        if (host.hasRuntimeRepair?.()) button('Return to model setup', () => host.returnFromRuntimeRepair(), header);
         const title = node('h2', fmt(original && !fresh ? 'Edit ${0}' : 'New ${0}', [translateShellText(resourceLabels[section])]), header); title.tabIndex = -1;
         const form = node('form'); form.className = 'atri-runtime-form';
         const identity = group(form, 'Identity');
@@ -480,7 +483,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const actions = node('footer', undefined, form); actions.className = 'atri-runtime-actions';
         if (original && !fresh) {
             const lifecycle = group(form, 'Manage this resource');
-            button('Duplicate', () => edit({ ...clone(value), [ids[section]]: createStudioNativeId(prefixes[section]), displayName: value.displayName + ' Copy' }, true), lifecycle);
+            button('Duplicate', () => confirmAtriaDraftLeave(doc, root) && edit({ ...clone(value), [ids[section]]: createStudioNativeId(prefixes[section]), displayName: value.displayName + ' Copy' }, true), lifecycle);
             const remove = button('Delete', async () => {
                 if (remove.disabled) return;
                 remove.disabled = true;
@@ -501,11 +504,13 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const save = node('button', 'Save', actions); save.type = 'submit';
         form.addEventListener('submit', async event => {
             event.preventDefault(); if (save.disabled) return;
+            const fields = [...form.querySelectorAll('input,textarea,select,button')];
+            const disabled = fields.map(input => input.disabled); fields.forEach(input => input.disabled = true);
             status.replaceChildren(); notice('Saving…', status); save.setAttribute('aria-busy', 'true'); save.disabled = true; back.disabled = true; let saved = false;
             try {
-                await runtimeRequest('/configuration/' + section, { method: 'PUT', body: { ...serialize(), displayName: name.value }, signal: controller.signal });
-                saved = true;
-                form.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
+                await runtimeRequest('/configuration/' + section, { method: 'PUT', body: { ...serialize(), displayName: name.value }, signal: controller.signal, onCommitted: () => {
+                    saved = true; form.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true }));
+                } });
                 if (disposed || editorToken !== editorSequence) return;
                 status.replaceChildren();
                 notice('Saved. Refreshing…', status);
@@ -518,7 +523,10 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
                     status.replaceChildren();
                     if (saved) { notice('Saved, but the list could not refresh. Reload to see the saved version.', status, true); button('Reload list', load, status); } else failure(error, status);
                 }
-            } finally { save.removeAttribute('aria-busy'); save.disabled = saved; back.disabled = false; }
+            } finally {
+                if (!saved) fields.forEach((input, index) => input.disabled = disabled[index]);
+                save.removeAttribute('aria-busy'); save.disabled = saved; back.disabled = false;
+            }
         });
         bindEditorKeyboard(back);
         title.focus();
@@ -619,7 +627,7 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         root.replaceChildren(createAtriaStatePanel(doc, 'loading', { title: translateShellText('Loading Native Runtime…') }));
         try {
             if (section === 'retrieval') {
-                await renderRetrievalWorkspace({ root, node, field, group, button, notice, bindEditorKeyboard, signal: controller.signal, enter: () => { activeEditor = 'retrieval'; root.dataset.editor = 'true'; adaptEditor(); }, leave: () => { activeEditor = null; root.onkeydown = null; delete root.dataset.editor; restoreShell(); if (root.parentNode !== body) body.append(root); root.removeAttribute('role'); root.removeAttribute('aria-modal'); root.removeAttribute('aria-label'); } });
+                await renderRetrievalWorkspace({ root, node, field, group, button, notice, bindEditorKeyboard, confirmLeave: () => confirmAtriaDraftLeave(doc, root), signal: controller.signal, enter: () => { activeEditor = 'retrieval'; root.dataset.editor = 'true'; adaptEditor(); }, leave: () => { activeEditor = null; root.onkeydown = null; delete root.dataset.editor; restoreShell(); if (root.parentNode !== body) body.append(root); root.removeAttribute('role'); root.removeAttribute('aria-modal'); root.removeAttribute('aria-label'); } });
                 return;
             }
             const configuration = await runtimeRequest('/configuration', { signal: controller.signal });
@@ -633,5 +641,5 @@ export function mountNativeRuntimeWorkspace({ document: doc, body, section, rout
         const changed = selectedRoute?.child?.id !== next?.child?.id;
         selectedRoute = next;
         if (changed && activeEditor && !next?.child?.id?.includes(':')) { renderList(); root.querySelector('input')?.focus(); } else deepLink(next);
-    }, dispose() { disposed = true; environment.dispose(); restoreShell(); controller.abort(); root.remove(); } };
+    }, dispose() { disposed = true; drafts.dispose(); environment.dispose(); restoreShell(); controller.abort(); root.remove(); } };
 }

@@ -603,6 +603,9 @@ export function registerLocaleData() {
 
         'AI Iteration Studio': 'AI 迭代工作台',
         'Iteration source: ${0}': '当前迭代来源：${0}',
+        'Reload Latest': '重新载入最新修订',
+        'Session': '会话',
+        'Bind as Session': '绑定到会话',
         'Conversation': '对话',
 
         'Approve changes': '批准执行',

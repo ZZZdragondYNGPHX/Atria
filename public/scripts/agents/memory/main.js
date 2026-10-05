@@ -1254,7 +1254,7 @@ async function importMemoryGraphStore(context, parsed) {
     };
 }
 
-async function deleteMemoryStoreByTarget(context, target) {
+async function deleteMemoryStoreByTarget(context, target, assertScope = () => {}) {
     if (typeof context.deleteChatState !== 'function') {
         throw new Error('Chat state delete API is unavailable in extension context.');
     }
@@ -1268,6 +1268,7 @@ async function deleteMemoryStoreByTarget(context, target) {
     const partial = {};
     try {
         const fs = await getFloorStateInstance(context);
+        assertScope();
         const r = await fs.destroy({ purge: true });
         if (!r.ok) {
             partial.fs = r.reason;
@@ -1279,6 +1280,7 @@ async function deleteMemoryStoreByTarget(context, target) {
     }
     // The singleton is now dead; clear the cache so the next mutation gets
     // a fresh instance bound to the (now-empty) namespace.
+    assertScope();
     resetFloorStateInstance();
     try {
         const metaResult = await context.deleteChatState(
@@ -4493,6 +4495,16 @@ async function importMemoryGraphForWorkspace(context, file) {
 
 async function resetMemoryGraphForWorkspace(context) {
     const settings = getSettings();
+    const chatKey = getChatKey(context);
+    const base = nativeSessionRuntime.snapshot;
+    const assertScope = () => {
+        if (chatKey === 'invalid_target' || getChatKey(context) !== chatKey
+            || base && (!nativeSessionRuntime.active || nativeSessionRuntime.history
+                || nativeSessionRuntime.snapshot?.revision?.branchId !== base.revision.branchId)) {
+            throw new Error(i18n('The current Session changed. Reopen Memory before resetting.'));
+        }
+    };
+    assertScope();
     const confirmed = await context.callGenericPopup(
         i18n('Reset current chat memory graph? This cannot be undone.'),
         context.POPUP_TYPE.CONFIRM,
@@ -4501,8 +4513,11 @@ async function resetMemoryGraphForWorkspace(context) {
     );
     if (confirmed !== context.POPUP_RESULT.AFFIRMATIVE) return { cancelled: true };
 
+    assertScope();
+    if (base && nativeSessionRuntime.snapshot?.revision?.revisionId !== base.revision.revisionId) throw new Error(i18n('The current Session changed. Reopen Memory before resetting.'));
     await stopMemoryRuntimeWork();
-    const chatKey = getChatKey(context);
+    assertScope();
+    if (base && nativeSessionRuntime.snapshot?.revision?.revisionId !== base.revision.revisionId) throw new Error(i18n('The current Session changed. Reopen Memory before resetting.'));
     const target = memoryStoreTargets.get(chatKey) || buildMemoryTargetFromContext(context);
     if (target) memoryStoreTargets.set(chatKey, target);
     memoryStoreCache.set(chatKey, createEmptyStore());
@@ -4510,7 +4525,8 @@ async function resetMemoryGraphForWorkspace(context) {
     clearRollbackHistory(chatKey);
 
     let resetResult = { ok: true, partial: {} };
-    if (target) resetResult = await deleteMemoryStoreByTarget(context, target);
+    if (target) resetResult = await deleteMemoryStoreByTarget(context, target, assertScope);
+    assertScope();
     await clearAllMemoryLorebookProjection(context, settings);
     try {
         const vectorConfig = getVectorConfigFromSettings(settings);

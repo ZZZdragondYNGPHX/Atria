@@ -1,4 +1,11 @@
 {
+    "atria.studio.partialFailure": "部分项目资源未能加载。",
+    "atria.workspace.runtimeRepairReturn": "返回模型用途配置",
+    "atria.studio.resourceEditor": "资源编辑器",
+    "atria.studio.libraryReferences": "资料库引用",
+    "atria.studio.noLibraryResources": "此分类暂无可用资源。",
+    "atria.workspace.savedSuccessfully": "已保存。",
+    "atria.workspace.saved": "已保存",
     "atria.runtime.toolSchema.0": "工具参数兼容模式",
     "atria.runtime.toolSchema.1": "标准 JSON Schema",
     "atria.runtime.toolSchema.2": "Gemini 中转：仅字符串枚举",

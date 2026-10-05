@@ -139,9 +139,9 @@ describe('R7G WorkspaceHost', () => {
         await flushWorkspace();
 
         expect(host.getActiveWorkspace()).toMatchObject({
-            key: 'agents:home',
+            key: 'agents:workspace',
             kind: 'agents',
-            section: 'home',
+            section: 'run',
         });
         expect(adapters.agents).toHaveBeenCalledTimes(1);
         expect(shell.slots.workspace.querySelector('[data-test-workspace="agents"]')).not.toBeNull();
@@ -154,12 +154,12 @@ describe('R7G WorkspaceHost', () => {
             child: { id: 'memory', kind: 'workspace' },
         });
         expect(normalizeAgentSection(navigation.getRoute())).toBe('memory');
-        expect(adapters.agents).toHaveBeenCalledTimes(2);
+        expect(adapters.agents).toHaveBeenCalledTimes(1);
 
         host.openAgentSection('run');
         await flushWorkspace();
         expect(navigation.getRoute().child?.id).toBe('run');
-        expect(adapters.agents).toHaveBeenCalledTimes(2);
+        expect(adapters.agents).toHaveBeenCalledTimes(1);
         expect(records.at(-1).controller.updateRoute).toHaveBeenCalled();
         expect(registry.get('workspace.memory')).not.toBeNull();
         expect(registry.get('workspace.orchestration')).not.toBeNull();
@@ -171,7 +171,7 @@ describe('R7G WorkspaceHost', () => {
         navigation.dispose();
     });
 
-    test('Agents primary route renders a chooser hub before mounting child workspaces', async () => {
+    test('Agents primary route opens Run and keeps all session workspace navigation', async () => {
         const navigation = createAtriaNavigationAuthority({ window });
         const shell = createAtriaAppShell({
             document,
@@ -184,12 +184,13 @@ describe('R7G WorkspaceHost', () => {
         host.openAgents();
         await flushWorkspace();
 
-        const hub = shell.slots.workspace.querySelector('[data-atria-agents-hub="true"]');
-        expect(hub).not.toBeNull();
-        expect(hub.querySelectorAll('[data-atria-agent-section]')).toHaveLength(4);
+        const workspace = shell.slots.workspace.querySelector('#agent-memory-workspace');
+        expect(workspace).not.toBeNull();
+        expect(workspace.querySelectorAll('.atria-workspace-nav [data-section]')).toHaveLength(4);
+        expect(workspace.textContent).toContain('No active run');
         expect(navigation.getRoute()).toMatchObject({ domain: 'agents', child: null });
 
-        hub.querySelector('[data-atria-agent-section="memory"]').click();
+        workspace.querySelector('[data-section="memory"]').click();
         await flushWorkspace();
         expect(navigation.getRoute()).toMatchObject({
             domain: 'agents',
@@ -346,7 +347,7 @@ describe('R7G WorkspaceHost', () => {
         await flushWorkspace();
 
         expect(agents).toHaveBeenCalledTimes(1);
-        expect(host.getActiveWorkspace()?.key).toBe('agents:home');
+        expect(host.getActiveWorkspace()?.key).toBe('agents:workspace');
 
         host.dispose();
         shell.destroy();
@@ -603,7 +604,7 @@ describe('R7G WorkspaceHost', () => {
             child: { id: 'utility.account', label: 'Account', kind: 'workspace' },
         })).toMatchObject({ key: 'utility:account', kind: 'account', title: 'Account' });
         expect(routeDescriptor({ domain: 'agents', child: null, breadcrumb: ['Agents'] }))
-            .toMatchObject({ key: 'agents:home', kind: 'agents', section: 'home', title: 'Agents' });
+            .toMatchObject({ key: 'agents:workspace', kind: 'agents', section: 'run', title: 'Run' });
         expect(routeDescriptor({
             domain: 'agents',
             child: { id: 'orchestration', label: 'Orchestration', kind: 'workspace' },
@@ -626,4 +627,22 @@ describe('R7G WorkspaceHost', () => {
         })).toMatchObject({ key: 'runtime', kind: 'runtime', section: 'retrieval', title: 'Retrieval' });
         expect(routeDescriptor({ domain: 'play', child: null, breadcrumb: ['Play'] })).toBeNull();
     });
+});
+
+
+test('Runtime repair returns the original controller and exact startup fields without remounting', async () => {
+    const navigation = createAtriaNavigationAuthority({ window });
+    const shell = createAtriaAppShell({ document, window, registry: createCommandRegistry(), navigation });
+    const records = [], library = makeAdapter('library', records), runtime = makeAdapter('runtime', records);
+    const host = createAtriaWorkspaceHost({ document, window, shell, navigation, adapters: { library, runtime } });
+    host.openLibraryWork('pinned-work'); await flushWorkspace();
+    const original = records[0].controller, field = document.createElement('input'); field.value = 'Old-version startup title'; original.root.append(field);
+    const onReturn = jest.fn(); host.openRuntimeRepair('routes', onReturn); await flushWorkspace();
+    expect(original.dispose).not.toHaveBeenCalled(); expect(field.isConnected).toBe(true);
+    host.openRuntimeSection('models'); await flushWorkspace();
+    host.returnFromRuntimeRepair(); await flushWorkspace();
+    expect(navigation.getRoute()).toMatchObject({ domain: 'library', child: { id: 'work:pinned-work' } });
+    expect(shell.slots.workspace.contains(field)).toBe(true); expect(field.value).toBe('Old-version startup title');
+    expect(library).toHaveBeenCalledTimes(1); expect(onReturn).toHaveBeenCalledTimes(1);
+    host.dispose(); shell.destroy(); navigation.dispose();
 });

@@ -22,9 +22,14 @@ export function mountIllustrationSettings({ document: doc = globalThis.document,
     node(doc, root, 'h3', 'Atria 官方插图');
     const status = node(doc, root, 'p', '读取配置…'); status.setAttribute('role', 'status');
     const content = node(doc, root, 'div');
+    let savedValue = '';
     let disposed = false, record, value, selectedCharacter = '', workId = packageId ?? '', configurationData = {}, workRows = [], readPreset = () => {};
     const fail = error => { if (!disposed) { status.textContent = error.status === 409 ? '配置已被另一处修改，当前编辑已保留。请重新打开配置后合并。' : error.message; status.setAttribute('role', 'alert'); } };
     const run = fn => async () => { try { await fn(); } catch (error) { fail(error); } };
+    const markDirty = () => {
+        try { readPreset(); root.dataset.atriaDraftDirty = String(JSON.stringify(value) !== savedValue); } catch { root.dataset.atriaDraftDirty = 'true'; }
+    };
+    content.addEventListener('input', markDirty); content.addEventListener('change', markDirty);
     function render() {
         const libraryOpen = Boolean(selectedCharacter || content.querySelector('[data-section=characters]')?.open);
         const templateOpen = Boolean(content.querySelector('[data-section=template]')?.open);
@@ -55,17 +60,18 @@ export function mountIllustrationSettings({ document: doc = globalThis.document,
         }
         const scope = node(doc, content, 'fieldset'); node(doc, scope, 'legend', '默认配置');
         select(doc, scope, '配置范围', workId, [['', '全局默认'], ...workRows.map(item => [item.package.packageId, item.package.displayName || item.package.packageId]), ...(packageId && !workRows.some(item => item.package.packageId === packageId) ? [[packageId, packageId]] : [])], id => { try { readPreset(); workId = id; render(); } catch (error) { fail(error); } });
-        const work = workId ? (value.works[workId] ??= { characterIds: [] }) : null;
+        const work = workId ? (value.works[workId] ?? { characterIds: [] }) : null;
+        const ownWork = () => { if (work) value.works[workId] = work; return work; };
         if (work) {
             const characters = node(doc, scope, 'fieldset'); node(doc, characters, 'legend', '作品启用角色');
             if (!value.characters.length) node(doc, characters, 'p', '先在全局角色库添加绘图角色。');
             for (const item of value.characters) {
                 field(doc, characters, item.name + ' · ' + item.id + (item.enabled ? '' : '（已停用）'), work.characterIds.includes(item.id), enabled => {
-                    work.characterIds = enabled ? [...work.characterIds, item.id] : work.characterIds.filter(id => id !== item.id);
+                    ownWork(); work.characterIds = enabled ? [...work.characterIds, item.id] : work.characterIds.filter(id => id !== item.id);
                 }, { type: 'checkbox' });
             }
             field(doc, scope, '覆盖作品预设', Boolean(work.preset), enabled => {
-                try { readPreset(); if (enabled) work.preset = structuredClone(value.preset); else delete work.preset; render(); } catch (error) { fail(error); }
+                try { readPreset(); ownWork(); if (enabled) work.preset = structuredClone(value.preset); else delete work.preset; render(); } catch (error) { fail(error); }
             }, { type: 'checkbox' });
         }
         const presetContainer = node(doc, scope, 'fieldset'); node(doc, presetContainer, 'legend', work && !work.preset ? '继承全局预设' : '预设');
@@ -75,27 +81,29 @@ export function mountIllustrationSettings({ document: doc = globalThis.document,
         const connectionChoices = [['', work ? '继承全局图片连接' : '未选择'], ...(configurationData.connections ?? []).filter(item => NOVELAI_IMAGE_ADAPTERS.includes(item.providerAdapter)).map(item => [item.connectionProfileId, item.displayName || item.connectionProfileId])];
         node(doc, scope, 'p', '在 Runtime → Connections 创建 NovelAI 官方或第三方兼容图片连接，并选择已有密钥。兼容连接需按服务文档声明模型与响应格式。');
         const routeChoices = [['', work ? '继承全局提示词路线' : '未选择'], ...(configurationData.routes ?? []).filter(item => item.role === 'role.illustration_prompt').map(item => [item.runtimeRouteId, item.displayName || item.runtimeRouteId])];
-        select(doc, scope, '默认图片连接', work?.imageConnectionId ?? (work ? '' : value.imageConnectionId), connectionChoices, id => (work ?? value).imageConnectionId = id);
-        select(doc, scope, '提示词模型路线', work?.promptRouteId ?? (work ? '' : value.promptRouteId), routeChoices, id => (work ?? value).promptRouteId = id);
+        select(doc, scope, '默认图片连接', work?.imageConnectionId ?? (work ? '' : value.imageConnectionId), connectionChoices, id => (ownWork() ?? value).imageConnectionId = id);
+        select(doc, scope, '提示词模型路线', work?.promptRouteId ?? (work ? '' : value.promptRouteId), routeChoices, id => (ownWork() ?? value).promptRouteId = id);
         const template = node(doc, content, 'details'); template.dataset.section = 'template'; template.open = templateOpen; node(doc, template, 'summary', '提示词整理模板');
         field(doc, template, '整理模板', value.template, text => value.template = text, { multiline: true });
         button(doc, template, '恢复官方模板', run(() => { readPreset(); value.template = OFFICIAL_PROMPT_TEMPLATE; render(); }));
         const save = node(doc, content, 'div', undefined, 'atri-illustration-actions');
-        button(doc, save, '恢复默认预设', run(() => { if (work) work.preset = defaultIllustrationPreset(); else value.preset = defaultIllustrationPreset(); render(); }));
+        button(doc, save, '恢复默认预设', run(() => { if (work) ownWork().preset = defaultIllustrationPreset(); else value.preset = defaultIllustrationPreset(); render(); }));
         button(doc, save, '保存配置', run(async () => {
             readPreset(); const validated = assertIllustrationSettings(value);
             const fields = [...content.querySelectorAll('input,textarea,select,button')];
             const disabled = fields.map(input => input.disabled); fields.forEach(input => input.disabled = true);
             let next;
             try { next = await client.save(validated, record.revision); } finally { fields.forEach((input, index) => input.disabled = disabled[index]); }
-            if (disposed) return; record = next; value = structuredClone(next.value); status.setAttribute('role', 'status'); status.textContent = '配置已保存。'; render();
+            if (disposed) return; record = next; value = structuredClone(next.value); savedValue = JSON.stringify(value);
+            root.dispatchEvent(new doc.defaultView.CustomEvent('atria-draft-committed', { bubbles: true })); status.setAttribute('role', 'status'); status.textContent = '配置已保存。'; render();
         }));
+        markDirty();
     }
     const ready = (async () => {
         try {
             const [settings, config, availableWorks] = await Promise.all([client.read(), configuration().catch(() => ({})), works().catch(() => [])]);
             if (disposed) return;
-            record = settings; value = structuredClone(settings.value); configurationData = config; workRows = availableWorks;
+            record = settings; value = structuredClone(settings.value); savedValue = JSON.stringify(value); configurationData = config; workRows = availableWorks;
             status.textContent = ''; render();
         } catch (error) { fail(error); }
     })();

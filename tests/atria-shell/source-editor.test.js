@@ -37,6 +37,7 @@ test('switching to binary disables writes and restores unsaved text on return; f
     const ui = await setup(); ui.editor.value = '{"a":2}'; ui.editor.dispatchEvent(new Event('input'));
     ui.chooser.value = 'b.bin'; ui.chooser.dispatchEvent(new Event('change')); await tick(); expect(ui.editor.readOnly).toBe(true); expect(ui.button('Review Source Change').disabled).toBe(true);
     ui.chooser.value = 'a.json'; ui.chooser.dispatchEvent(new Event('change')); await tick(); expect(ui.editor.value).toBe('{"a":2}');
+    const confirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
     ui.client.readSource.mockRejectedValueOnce(new Error('offline')); ui.button('Reload file').click(); await tick(); expect(ui.button('Review Source Change').disabled).toBe(true);
-    ui.button('Reload file').click(); await tick(); expect(ui.editor.value).toBe('{"a":1}'); expect(ui.button('Review Source Change').disabled).toBe(false);
+    ui.button('Reload file').click(); await tick(); expect(ui.editor.value).toBe('{"a":1}'); expect(ui.button('Review Source Change').disabled).toBe(false); confirm.mockRestore();
 });

@@ -1,3 +1,4 @@
+import { confirmAtriaDraftLeave } from '../atria-shell/workspace-leave-guard.js';
 import { resolveSkillInvocation, loadAlwaysSkills, skillInstructions, boundedSkillReadOptions, boundSkillFile } from '../../shared/skill-invocation.js';
 import { formatShellText as formatProductText } from '../atria-shell/localization.js';
 import { translateShellText as t } from '../atria-shell/localization.js';
@@ -328,6 +329,7 @@ export function mountNativeStudioAgent({
     projectId,
     getRevision,
     onProjectCommitted = async () => {},
+    beforeCommit = () => true,
     onTaskState = () => {},
     onReviewRequested = () => {},
     onLog = () => {},
@@ -347,7 +349,7 @@ export function mountNativeStudioAgent({
     };
 
     const notifyTask = () => {
-        if (activeTask) onTaskState(clone(activeTask));
+        if (!disposed) onTaskState(activeTask ? clone(activeTask) : null);
     };
 
     slot.dataset.atriaStudioAi = 'agent';
@@ -366,6 +368,7 @@ export function mountNativeStudioAgent({
         };
         slot.replaceChildren();
         slot.setAttribute('aria-busy', String(running));
+        slot.dataset.atriaDraftDirty = String(Boolean(!activeTask && intentDraft || activeTask?.status === 'review' || running || takingOver));
         const header = node(documentRef, 'header', 'atria-project-agent-header');
         const title = node(documentRef, 'div');
         const h3 = node(documentRef, 'h3');
@@ -391,6 +394,7 @@ export function mountNativeStudioAgent({
         }
         taskSelect.addEventListener('change', async () => {
             if (!taskSelect.value || running || takingOver) return;
+            if (!confirmAtriaDraftLeave(documentRef, slot)) { taskSelect.value = activeTask?.taskId || ''; return; }
             running = true; errorMessage = ''; taskSelect.disabled = true;
             try {
                 activeTask = await nativeStudioClient.getAgentTask(projectId, taskSelect.value);
@@ -412,7 +416,7 @@ export function mountNativeStudioAgent({
             input.setAttribute('aria-label', t('Project Agent intent'));
             input.value = intentDraft;
             input.disabled = running;
-            input.addEventListener('input', () => { intentDraft = input.value; });
+            input.addEventListener('input', () => { intentDraft = input.value; slot.dataset.atriaDraftDirty = String(Boolean(intentDraft)); });
             const create = actionButton(documentRef, 'Create Task', async () => {
                 const intent = input.value.trim();
                 if (!intent || running) return;
@@ -424,7 +428,8 @@ export function mountNativeStudioAgent({
                         intent,
                         baseRevision: revision?.revision,
                     });
-                    tasks = await nativeStudioClient.listAgentTasks(projectId);
+                    if (disposed) return;
+                    tasks = await nativeStudioClient.listAgentTasks(projectId).catch(() => tasks);
                     messages = [{ role: 'user', content: intent }];
                     notifyTask();
                     onLog('agent', 'Created Project Task', activeTask);
@@ -495,15 +500,16 @@ export function mountNativeStudioAgent({
         if (activeTask.status === 'review') {
             actions.append(actionButton(documentRef, 'Inspect changes', onReviewRequested));
             actions.append(actionButton(documentRef, activeTask.review?.highImpact ? 'Review & Commit High-impact Changes' : 'Review & Commit', async () => {
-                if (running || takingOver) return;
+                if (running || takingOver || !beforeCommit()) return;
                 running = true; errorMessage = '';
                 render();
                 try {
                     activeTask = await nativeStudioClient.commitAgentTask(projectId, activeTask.taskId);
-                    tasks = await nativeStudioClient.listAgentTasks(projectId);
+                    if (disposed) return;
                     notifyTask();
                     onLog('agent', 'Committed Project Agent ChangeSet', activeTask.changeSets?.at(-1));
                     await onProjectCommitted(activeTask);
+                    tasks = await nativeStudioClient.listAgentTasks(projectId).catch(error => { showError(error); return tasks; });
                 } catch (error) {
                     showError(error);
                     activeTask = await nativeStudioClient.getAgentTask(projectId, activeTask.taskId).catch(() => activeTask);
@@ -527,7 +533,9 @@ export function mountNativeStudioAgent({
         }
         actions.append(actionButton(documentRef, 'New Task', () => {
             if (running || takingOver) return;
+            if (!confirmAtriaDraftLeave(documentRef, slot)) return;
             activeTask = null; intentDraft = ''; errorMessage = '';
+            notifyTask();
             messages = [];
             render();
             slot.querySelector('textarea')?.focus();
