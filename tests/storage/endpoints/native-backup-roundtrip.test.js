@@ -1,3 +1,4 @@
+import { PERSONA_BACKUP_KINDS } from '../../../src/native/persona-backup.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import multer from 'multer';
@@ -46,6 +47,7 @@ async function seed(h) {
     const hash = await assets.putBlob(h.handle, bytes);
     const records = [];
     for (const kind of Object.values(NATIVE_RESOURCE_KINDS)) {
+        if (PERSONA_BACKUP_KINDS.includes(kind)) continue;
         const key = { kind, handle: h.handle };
         for (const field of getNativeResourceKeyFields(kind)) {
             if (field === 'handle') continue;
@@ -74,7 +76,7 @@ describe.each([['fs', 'fs'], ['fs', 'sqlite'], ['sqlite', 'fs'], ['sqlite', 'sql
     const originalRoot = globalThis.DATA_ROOT;
     afterEach(async () => { if (current) await current.cleanup(); globalThis.DATA_ROOT = originalRoot; });
 
-    test('backup survives loss of source and restores every Native kind, exact metadata, projects and blobs', async () => {
+    test('backup survives loss of source and restores non-Persona Native kinds, exact metadata, projects and blobs', async () => {
         current = await harness(sourceMode);
         const data = await seed(current);
         const archive = await download(current);

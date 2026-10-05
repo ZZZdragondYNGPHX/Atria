@@ -24,6 +24,11 @@ test('accepted Persona lane is separate, opt-in and reports empty/none/legacy/bu
         expect(JSON.stringify(on)).not.toContain('NEVER SEND NOTE');
         const omitted = await compileNativeContextPlan(base, { modelContextLimit: 16000, playerPersona: { enabled: true }, countTokens: async text => text === description ? 100000 : 1 });
         expect(omitted.personaEvidence).toMatchObject({ reason: 'lane_cap', tokenCount: 100000 });
+        const shared = { ...base, manifest: { ...base.manifest, runtime: { experienceContract: { sharedRuntime: {} } } } };
+        const sharedPlan = await compileNativeContextPlan(shared, { modelContextLimit: 16000, playerPersona: { enabled: true } });
+        expect(sharedPlan.personaEvidence).toMatchObject({ reason: 'shared_scope_unsupported', ref: null });
+        expect(sharedPlan.included.some(item => item.lane === 'player_persona')).toBe(false);
+        expect(JSON.stringify(sharedPlan)).not.toContain(description);
         const legacy = { ...base, states: { ...base.states } }; delete legacy.states.atri_player_persona;
         expect((await compileNativeContextPlan(legacy, { modelContextLimit: 16000 })).personaEvidence.reason).toBe('legacy_unbound');
         const none = await f.core.create(h.handle, { ...f.start, personaSelection: null });

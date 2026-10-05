@@ -1,3 +1,4 @@
+import { mountPersonaWorkspace } from '../native/persona-ui.js';
 import { mountPromptLibrary } from '../native/prompt-authoring.js';
 import { mountPromptPresets } from '../native/prompt-presets.js';
 import { mountNativeRuntimeWorkspace } from '../native/runtime-workspace.js';
@@ -23,6 +24,7 @@ export const LIBRARY_SECTIONS = Object.freeze([
     Object.freeze({ id: 'works', label: 'Works' }),
     Object.freeze({ id: 'worlds-knowledge', label: 'Worlds & Knowledge' }),
     Object.freeze({ id: 'prompt-presets', label: 'Prompt Presets' }),
+    Object.freeze({ id: 'personas', label: 'Personas' }),
 ]);
 
 export const RUNTIME_SECTIONS = Object.freeze([
@@ -42,6 +44,7 @@ function sectionById(list, id, fallbackId) {
 export function normalizeLibrarySection(route) {
     const childId = String(route?.child?.id || '').trim();
     if (['prompt-programs', 'prompt-modules', 'generation-profiles'].includes(childId.split(':')[0])) return 'prompt-presets';
+    if (childId.startsWith('persona:')) return 'personas';
     if (!childId || childId === 'works' || childId.startsWith('work:')) return 'works';
     if (
         childId === 'worlds-knowledge'
@@ -173,6 +176,7 @@ export async function mountSkillsWorkspace({ document: documentRef, body, route,
 
 async function mountLibrarySection(args) {
     const section = normalizeLibrarySection(args.route);
+    if (section === 'personas') return mountPersonaWorkspace(args);
     if (section === 'works') return mountNativeWorksWorkspace(args);
     if (section === 'worlds-knowledge') return mountNativeWorldKnowledgeWorkspace(args);
     if (section === 'prompt-presets') {

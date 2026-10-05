@@ -1,3 +1,6 @@
+import { getSettingsRepo } from '../storage/index.js';
+import { captureLocalPersonaSource } from '../native/persona-local-source.js';
+import { personaFields } from '../native/persona-contract.js';
 import { getPersonaRepo } from '../storage/index.js';
 import express from 'express';
 import { sanitizeProductDetails } from '../../public/scripts/native/product-error-details.js';
@@ -105,7 +108,16 @@ export function createNativeProductRouter(getServices = services) {
         }
     };
 
+    for (const command of ['preflight', 'apply']) router.post('/personas/migration/local/' + command, route(async (req, res, service, handle) => {
+        personaFields(req.body, command === 'preflight' ? ['convertUser'] : ['convertUser', 'planDigest', 'expectedFingerprint']);
+        const record = await (service.settings ?? getSettingsRepo()).get(handle);
+        const source = await captureLocalPersonaSource(record?.doc ?? record, req.user.directories ?? getUserDirectories(handle));
+        const input = { ...source, ...req.body };
+        const repo = service.personas ?? getPersonaRepo();
+        res.json(await (command === 'preflight' ? repo.migrationPreflight(handle, input) : repo.migrationApply(handle, input)));
+    }));
     const personaMethods = { list: 'list', get: 'get', revisions: 'revisions', create: 'create', revise: 'revise', archive: 'archive',
+        'migration/preflight': 'migrationPreflight', 'migration/apply': 'migrationApply', 'migration/receipt': 'migrationReceipt', 'migration/adopt-default': 'migrationAdoptDefault',
         'default/read': 'readDefault', 'default/set': 'setDefault', 'used-by': 'usedBy', delete: 'delete', avatar: 'avatar' };
     for (const [command, method] of Object.entries(personaMethods)) router.post('/personas/' + command, route(async (req, res, service, handle) => {
         res.json(await (service.personas ?? getPersonaRepo())[method](handle, req.body));

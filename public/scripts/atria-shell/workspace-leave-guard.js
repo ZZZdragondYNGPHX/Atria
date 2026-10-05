@@ -7,7 +7,7 @@ export function confirmAtriaDraftLeave(doc, root) {
     return doc.defaultView.confirm(tl('Leave this workspace and discard unsaved changes? Cancel to keep editing.'));
 }
 
-const EDITORS = '.atri-prompt-editor, .atri-library-revision-editor, .atri-runtime-form, .atria-studio-editor-surface, .atri-source-editor, .atri-studio-value-editor, .atria-project-agent-new-task, .atri-extension-editor, .atri-illustration-ui, .workspace-preset-editor, .workspace-agent-inspector';
+const EDITORS = '.atri-persona-editor, .atri-prompt-editor, .atri-library-revision-editor, .atri-runtime-form, .atria-studio-editor-surface, .atri-source-editor, .atri-studio-value-editor, .atria-project-agent-new-task, .atri-extension-editor, .atri-illustration-ui, .workspace-preset-editor, .workspace-agent-inspector';
 
 /** Observe existing editable surfaces; never own or persist their draft values. */
 export function observeAtriaDrafts({ document: doc, root }) {

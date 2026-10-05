@@ -1,3 +1,5 @@
+import { previewPersonaBackup } from '../native/persona-backup.js';
+import { personaFields, personaHash } from '../native/persona-contract.js';
 import dns from 'node:dns/promises';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -459,6 +461,8 @@ async function analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, target
     /** @type {object|null} Parsed contents of `_engine_meta.json`, or null if the archive has no engine dump. */
     let engineMeta = null;
     let backupSelection = null;
+    let personaManifest = null;
+    const seenEntries = new Set();
     const directoryAliases = buildRestoreDirectoryAliases(targetRoot, targetDirectories);
     const reportAnalyzeProgress = typeof onProgress === 'function'
         ? (entryCount) => {
@@ -495,6 +499,10 @@ async function analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, target
             zipfile.on('entry', (entry) => {
                 try {
                     report.totalEntries += 1;
+                    if (!entry.fileName.endsWith('/')) {
+                        if (seenEntries.has(entry.fileName)) throw new TypeError('Duplicate backup entry: ' + entry.fileName);
+                        seenEntries.add(entry.fileName);
+                    }
 
                     // Engine sentinel entries (spec §5.1) — case-sensitive
                     // match on the raw name. They live at the archive root,
@@ -518,7 +526,7 @@ async function analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, target
                                 try {
                                     const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
                                     if (entry.fileName === ENGINE_META_ENTRY) engineMeta = parsed;
-                                    else backupSelection = parsed.selection || null;
+                                    else { backupSelection = parsed.selection || null; personaManifest = parsed.personas ?? null; }
                                     zipfile.readEntry();
                                 } catch (parseErr) {
                                     finish(new Error(`Invalid ${ENGINE_META_ENTRY} in backup: ${parseErr.message}`));
@@ -590,7 +598,7 @@ async function analyzeRestoreArchive(uploadPath, targetRoot, targetFiles, target
         });
     });
 
-    return { targetByNormalizedEntry, report, engineMeta, backupSelection };
+    return { targetByNormalizedEntry, report, engineMeta, backupSelection, personaManifest };
 }
 
 const RESTORE_RECOVERY_DIR = '_restore-recovery';
@@ -655,6 +663,15 @@ async function rollbackRestoreRecoveryPoint(handle, directories, engine, recover
             force: true,
         });
     }
+}
+
+function parsePersonaDefaultRestore(value) {
+    if (!value) return { adopt: false };
+    const input = typeof value === 'string' ? JSON.parse(value) : value;
+    personaFields(input, ['adopt', 'expectedFingerprint']);
+    if (typeof input.adopt !== 'boolean') throw new TypeError('Invalid Persona default restore option');
+    if (input.adopt) personaHash(input.expectedFingerprint);
+    return input;
 }
 
 async function restoreUserBackupArchive(uploadPath, directories, selection, mode, options = {}) {
@@ -738,6 +755,8 @@ async function restoreUserBackupArchive(uploadPath, directories, selection, mode
                 includeGlobalExtensions: !!options.includeGlobalExtensions,
                 signal,
                 nativeBackupDeclared: analysis.backupSelection?.native === true,
+                personaManifest: analysis.personaManifest,
+                personaDefault: options.personaDefault,
             },
         );
         const totalMs = Date.now() - restoreStart;
@@ -1593,9 +1612,18 @@ router.post('/restore-backup/probe', async (request, response) => {
             reason = 'Archive contains no entries matching the selected restore categories.';
         }
 
+        let personaReview = null;
+        if (selection.native && !scratchCredsNeeded && compatible) {
+            try {
+                personaReview = await previewPersonaBackup(uploadPath, sourceMeta, { dataRoot: globalThis.DATA_ROOT, targetEngine: currentEngine,
+                    targetHandle: user.handle, manifest: analysis.personaManifest, scratchCreds: parseScratchCreds(request.body) });
+                if (personaReview.conflicts.length) { compatible = false; reason = 'Persona IDs conflict with target resources. Review before restoring.'; }
+            } catch (error) { compatible = false; reason = error.details?.reason ?? error.message; }
+        }
         return response.json({
             compatible,
             reason,
+            personaReview,
             engineKind: sourceKind,
             destinationEngineKind: currentEngine.kind,
             schemaVersion: sourceMeta.schemaVersion ?? null,
@@ -1756,6 +1784,7 @@ router.post('/restore-backup', async (request, response) => {
                 includeGlobalExtensions: isAdminUser,
                 onProgress: stream?.onProgress,
                 scratchCreds,
+                personaDefault: parsePersonaDefaultRestore(request.body?.personaDefault),
                 signal: restoreSession.controller.signal,
             },
         );

@@ -1,3 +1,4 @@
+import { preflightPersonaMigration, applyPersonaMigration, readPersonaMigration, adoptPersonaMigrationDefault } from '../persona-migration.js';
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
@@ -20,6 +21,10 @@ export class PersonaRepo {
         if (!engine || !assetStore) throw new TypeError('PersonaRepo requires engine and AssetStore');
         Object.assign(this, { engine, assets: assetStore, handles });
     }
+    migrationPreflight(handle, input) { return preflightPersonaMigration(this, handle, input); }
+    migrationApply(handle, input) { return applyPersonaMigration(this, handle, input); }
+    migrationReceipt(handle, input) { return readPersonaMigration(this, handle, input); }
+    migrationAdoptDefault(handle, input) { return adoptPersonaMigrationDefault(this, handle, input); }
     lock(handle, operation) { return withNativeResourceWrite(handle, 'personas', operation); }
     locks(handles, operation) {
         const sorted = [...new Set(handles)].sort();
@@ -46,19 +51,20 @@ export class PersonaRepo {
         return { root: root.doc, revision: revision.doc, ref: { personaId: id, revisionId, contentIdentity: revision.integrity }, expectedFingerprint: root.integrity };
     }
     async list(handle, input = {}) {
-        personaFields(input, ['query', 'includeArchived', 'cursor', 'limit']);
-        const { query = '', includeArchived = false, cursor = null, limit = 50 } = input;
-        if (typeof query !== 'string' || query.length > 256 || typeof includeArchived !== 'boolean' || (cursor !== null && typeof cursor !== 'string') || !Number.isInteger(limit) || limit < 1 || limit > 100) throw personaFailure();
+        personaFields(input, ['query', 'includeArchived', 'cursor', 'limit', 'sort']);
+        const { query = '', includeArchived = false, cursor = null, limit = 50, sort = 'id' } = input;
+        if (typeof query !== 'string' || query.length > 256 || typeof includeArchived !== 'boolean' || (cursor !== null && (typeof cursor !== 'string' || cursor.length > 2048)) || !Number.isInteger(limit) || limit < 1 || limit > 100 || !['id', 'name'].includes(sort)) throw personaFailure();
         const roots = await this.engine.withTransaction(handle, tx => tx.listResources({ kind: K.persona, handle }));
         const items = [];
-        for (const record of roots.sort((a, b) => a.key.personaId.localeCompare(b.key.personaId))) {
+        for (const record of roots) {
             checked(record);
-            if ((!includeArchived && record.doc.archived) || (cursor && record.key.personaId <= cursor)) continue;
+            if (!includeArchived && record.doc.archived) continue;
             const item = await this.get(handle, { personaId: record.key.personaId });
             if (item.revision.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())) items.push(item);
-            if (items.length > limit) break;
         }
-        return { items: items.slice(0, limit), nextCursor: items.length > limit ? items[limit - 1].root.personaId : null };
+        const order = item => sort === 'name' ? item.revision.name.toLocaleLowerCase() + '\u0000' + item.root.personaId : item.root.personaId;
+        const page = items.sort((a, b) => order(a).localeCompare(order(b))).filter(item => !cursor || order(item).localeCompare(cursor) > 0);
+        return { items: page.slice(0, limit), nextCursor: page.length > limit ? order(page[limit - 1]) : null };
     }
     async revisions(handle, input) {
         personaFields(input, ['personaId']);

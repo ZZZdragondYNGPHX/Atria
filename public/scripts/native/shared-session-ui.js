@@ -1,3 +1,5 @@
+import { nativeAssetUrl } from './session-projection.js';
+import { openPersonaSelector } from './persona-ui.js';
 import { translateShellText as t } from '../atria-shell/localization.js';
 import { nativeExperienceRequest } from './experience-health-ui.js';
 import { mountNativeSharedExperience } from './shared-client.js';
@@ -37,6 +39,17 @@ export function mountSharedSessionPanel({ document, root, runtime, request = nat
         const contract = mounted.packageState.descriptor.experienceContract;
         const ownSeat = contract.sharedRuntime.seats.find(item => item.id === snapshot.seatId);
         const peers = document.createElement('p'); peers.textContent = snapshot.participants.map(item => `${item.seatId} · ${t(item.role)} · ${t(item.online ? 'Online' : 'Offline')}`).join('\n');
+        const identities = document.createElement('div'); identities.dataset.atriaSharedPersonas = 'true';
+        for (const identity of snapshot.personas ?? []) {
+            const row = document.createElement('p'); row.textContent = identity.seatId + ' · ' + (identity.name || t(identity.status));
+            if (identity.avatar) {
+                const image = document.createElement('img'); image.className = 'atri-persona-avatar'; image.alt = '';
+                image.src = nativeAssetUrl(identity.avatar.assetId) + '?' + new URLSearchParams({ sharedOwner: credentials().owner, sessionId: snapshot.sessionId });
+                image.addEventListener('error', () => image.remove(), { once: true }); row.prepend(image);
+            }
+            identities.append(row);
+        }
+        turnControls.append(identities);
         const rules = document.createElement('select'); rules.setAttribute('aria-label', t('Shared rule'));
         for (const id of ownSeat.ruleIds) { const option = document.createElement('option'); option.value = id; option.textContent = id; rules.append(option); }
         const argumentsRoot = document.createElement('div'); const argumentsInputs = new Map();
@@ -92,7 +105,17 @@ export function mountSharedSessionPanel({ document, root, runtime, request = nat
         await mounted.refresh();
         renderTurnControls();
     }
-    controls.append(button('Enable sharing', async () => {
+    let personaPicker = null;
+    controls.append(button('Choose Persona', () => {
+        const selected = mounted, base = selected?.client.getSnapshot();
+        if (!base || base.role === 'observer') throw new Error(t('Connect as a participant first.'));
+        const adapter = { get snapshot() { const value = selected.client.getSnapshot(); return { session: { sessionId: value?.sessionId }, revision: { revisionId: value?.revisionId } }; },
+            assertWritable() { if (!current() || mounted !== selected || selected.client.getSnapshot()?.role === 'observer') throw new Error(t('Shared identity selection is unavailable.')); } };
+        personaPicker?.close();
+        personaPicker = openPersonaSelector({ document, runtime: adapter, expectedRevisionId: base.revisionId, sessionId: base.sessionId,
+            select: async (selection, revision) => { const result = await selected.client.selectPersona(selection, revision); if (current() && mounted === selected) renderTurnControls(); return result; },
+            statusText: 'Shared descriptions are disabled. Your selection changes seat display only.' });
+    }, () => Boolean(snapshot && snapshot.role !== 'observer')), button('Enable sharing', async () => {
         const base = runtime?.snapshot;
         if (!base || runtime.history || runtime.generation) throw new Error('Sharing requires the active session');
         await request('shared/enable', { sessionId: base.session.sessionId, expectedRevisionId: base.revision.revisionId }, abort.signal);
@@ -108,6 +131,7 @@ export function mountSharedSessionPanel({ document, root, runtime, request = nat
     }), button('Disconnect', () => { mounted?.dispose(); mounted = null; snapshot = null; canvas.replaceChildren(); turnControls.replaceChildren(); status.textContent = t('Disconnected'); }));
     for (const input of [owner, session]) input.addEventListener('input', () => { mounted?.dispose(); mounted = null; snapshot = null; canvas.replaceChildren(); turnControls.replaceChildren(); });
     const note = document.createElement('p'); note.textContent = t('Fixed declared seats. All participants submit once; the Host commits or cancels. Refresh to reconnect.');
-    root.replaceChildren(note, form, controls, status, turnControls, canvas);
-    return { dispose() { disposed = true; abort.abort(); mounted?.dispose(); root.replaceChildren(); root.classList.remove('atri-experience-panel'); } };
+    const personaNote = document.createElement('p'); personaNote.textContent = t('Shared descriptions are disabled. Your selection changes seat display only.');
+    root.replaceChildren(note, personaNote, form, controls, status, turnControls, canvas);
+    return { dispose() { personaPicker?.close(); disposed = true; abort.abort(); mounted?.dispose(); root.replaceChildren(); root.classList.remove('atri-experience-panel'); } };
 }

@@ -91,6 +91,7 @@ export function projectSave(save) {
 }
 
 export function projectPersonaStatus(snapshot) {
+    if (snapshot.manifest?.runtime?.experienceContract?.sharedRuntime) return { status: 'shared-seat-required', name: '', avatarId: '', avatarHash: '', revisionId: snapshot.revision.revisionId };
     const state = snapshot.states?.atri_player_persona, selection = state?.solo;
     return { status: !state ? 'legacy-unbound' : selection ? 'selected' : 'none', name: selection?.snapshot.name ?? '',
         avatarId: selection?.snapshot.avatar?.assetId ?? '', avatarHash: selection?.snapshot.avatar?.contentHash ?? '', revisionId: snapshot.revision.revisionId };

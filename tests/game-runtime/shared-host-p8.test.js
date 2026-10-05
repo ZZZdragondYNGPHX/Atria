@@ -73,3 +73,20 @@ test('Shared participation loads exact native@3 metadata without owner Bridge, P
     mounted.dispose(); expect(onProjection).toHaveBeenLastCalledWith(null);
     expect(() => mounted.client.getProjection()).toThrow(/disposed/);
 });
+
+
+test('A4b seat picker captures access/scope/CAS anchors, denies observers and blocks pending retry', async () => {
+    const view = { ...snapshot(), role: 'participant', accessEpoch: 4, scopes: { session: { epoch: 8, status: 'active' } } };
+    const fetchImpl = jest.fn(async () => response(view));
+    const client = createNativeSharedClient({ owner: 'host', sessionId: 'session', fetchImpl, invocationId: () => 'invoke-persona' });
+    await client.refresh();
+    await expect(client.selectPersona(null, 'old')).rejects.toThrow(/not_ready/);
+    await client.selectPersona(null, 'r1');
+    expect(JSON.parse(fetchImpl.mock.calls.at(-1)[1].body)).toEqual({ owner: 'host', sessionId: 'session', seatId: 'seat1', expectedRevisionId: 'r1',
+        expectedAccessRevisionId: 'a1', accessEpoch: 4, scopeEpoch: 8, selection: null });
+    fetchImpl.mockResolvedValueOnce(response({ ...view, role: 'observer' })); await client.refresh();
+    await expect(client.selectPersona(null, 'r1')).rejects.toThrow(/not_ready/);
+    fetchImpl.mockResolvedValueOnce(response(view)); await client.refresh();
+    fetchImpl.mockRejectedValueOnce(new Error('uncertain')); await expect(client.command({ kind: 'turn.submit' })).rejects.toThrow(/uncertain/);
+    await expect(client.selectPersona(null, 'r1')).rejects.toThrow(/not_ready/); client.dispose();
+});

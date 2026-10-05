@@ -215,3 +215,7 @@ dialog.atria-game-host-surface--transient::backdrop { background: var(--atri-scr
     }
 }
 .atria-play-product > .atria-play-composer-component { background: transparent; padding-top: 12px; }
+
+.atria-play-message__avatar { position: relative; overflow: hidden; }
+.atria-play-message__avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.atria-play-composer [data-atria-persona-select] { grid-column: 1 / -1; justify-self: start; min-height: 44px; max-width: 100%; overflow-wrap: anywhere; }

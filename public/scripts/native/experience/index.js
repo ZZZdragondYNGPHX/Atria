@@ -444,7 +444,8 @@ export async function reloadGamePackage() {
                         settings: getRuntimeSettingsRoot, save: saveSettingsDebounced });
                 },
                 hostActions: {
-                    getCapabilities: () => ({ save: Boolean(nativeSessionRuntime.active && !nativeSessionRuntime.history && !nativeSessionRuntime.failed && !nativeSessionRuntime.generation && document.body.dataset.generating !== 'true'), stop: document.body.dataset.generating === 'true' }),
+                    getCapabilities: () => ({ persona: Boolean(nativeSessionRuntime.active && !nativeSessionRuntime.history && !nativeSessionRuntime.failed && !nativeSessionRuntime.generation && document.body.dataset.generating !== 'true'), save: Boolean(nativeSessionRuntime.active && !nativeSessionRuntime.history && !nativeSessionRuntime.failed && !nativeSessionRuntime.generation && document.body.dataset.generating !== 'true'), stop: document.body.dataset.generating === 'true' }),
+                    openPersonaSelector: input => globalThis.Atria?.shell?.getPlayHost?.()?.product?.openPersonaSelector(input),
                     exitExperience: exitCurrentGameUi,
                     stopGeneration: stopCurrentGeneration,
                     save: saveCurrentGameSession,

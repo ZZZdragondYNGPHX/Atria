@@ -101,6 +101,7 @@ export function createFullGameHost(documentRef = globalThis.document, options = 
         ['exit', 'Exit Experience', options.onExit],
         ['stop', 'Stop generation', options.onStopGeneration],
         ['save', 'Save', options.onSave],
+        ['persona', 'Choose Persona', options.onPersona],
         ['diagnostics', 'Diagnostics', options.onDiagnostics],
         ['recovery', 'Reload presentation', options.onRecover],
     ];

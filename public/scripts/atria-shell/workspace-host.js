@@ -549,6 +549,10 @@ export function createAtriaWorkspaceHost({
         );
     }
 
+    function openLibraryPersona(ref, label = '') {
+        return openLibraryDetail(ref ? 'persona:' + [ref.personaId, ref.revisionId, ref.contentIdentity].join(':') : 'persona:new', label || translateShellText(ref ? 'Personas' : 'New Persona'), 'detail', 'workspace-library-persona-detail');
+    }
+
     function openLibraryWorld(worldId, label = '') {
         return openLibraryDetail(
             `world:${String(worldId || '').trim()}`,
@@ -755,6 +759,7 @@ export function createAtriaWorkspaceHost({
         openPromptPreset,
         openLibraryWork,
         openLibraryWorld,
+        openLibraryPersona,
         openLibraryKnowledge,
         openSession,
         openKnowledgeEntry,

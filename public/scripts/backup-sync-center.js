@@ -1,3 +1,4 @@
+import { translateShellText as tl } from './atria-shell/localization.js';
 import { displayPastChats, getRequestHeaders, importCharacterChat } from '../script.js';
 import { importGroupChat } from './group-chats.js';
 import { downloadFromServer } from './atria-download.js';
@@ -519,6 +520,7 @@ async function restoreArchive({ handle, file, preflight, onProgress = () => {} }
     formData.append('handle', handle);
     formData.append('mode', preflight.mode);
     formData.append('selection', JSON.stringify(preflight.selection));
+    if (preflight.personaDefault?.adopt) formData.append('personaDefault', JSON.stringify(preflight.personaDefault));
     for (const [key, value] of Object.entries(scratchFields)) formData.append(key, value);
 
     const headers = {
@@ -790,6 +792,7 @@ export async function openBackupSyncCenter({
     const rerunPreflight = async () => {
         const version = ++preflightVersion;
         preflight = null;
+        center.querySelector('[data-persona-default-review]')?.remove();
         setRestoreStartEnabled(center, false);
         if (!selectedArchive || archiveRestoreRunning()) return;
         try {
@@ -797,6 +800,16 @@ export async function openBackupSyncCenter({
             if (version !== preflightVersion || archiveRestoreRunning()) return;
             preflight = result;
             renderPreflight(center, result);
+            if (result.personaReview?.hasPersonaManifest && result.selection.native) {
+                const review = document.createElement('section'); review.dataset.personaDefaultReview = 'true';
+                const label = document.createElement('label'); const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.disabled = result.personaReview.defaultStatus === 'archived';
+                label.append(checkbox, document.createTextNode(tl('Adopt the backup Persona default (existing sessions keep their identity)')));
+                const details = document.createElement('pre'); details.textContent = JSON.stringify(result.personaReview.defaultSelection, null, 2);
+                const note = document.createElement('p'); note.textContent = tl('The target account default is preserved unless you select adoption.');
+                const policy = document.createElement('p'); policy.textContent = tl('Persona resources retain exact IDs. Existing target Personas are preserved; ID conflicts require review.');
+                review.append(policy, note, label, details); center.querySelector('.backupPreflightReport').after(review);
+                checkbox.addEventListener('change', () => { if (preflight === result) result.personaDefault = { adopt: checkbox.checked, expectedFingerprint: result.personaReview.expectedDefaultFingerprint }; });
+            }
             setRestoreStartEnabled(center, true);
         } catch (error) {
             if (version !== preflightVersion || archiveRestoreRunning()) return;

@@ -1,3 +1,5 @@
+import { nativeAssetUrl } from './session-projection.js';
+import { openPersonaSelector } from './persona-ui.js';
 import { openHostExternal } from './frontend/external.js';
 import { createHeadlessConversation } from './frontend/conversation.js';
 import { renderSafeProse } from '../../shared/native-safe-prose.js';
@@ -18,7 +20,7 @@ function activeRuntime() {
 }
 
 function actorName(snapshot, entry) {
-    if (entry?.role === 'user') return tl('You');
+    if (entry?.role === 'user') return snapshot.timeline.find(item => item.messageId === entry.messageId)?.metadata?.atri_player_identity?.name || tl('You');
     if (entry?.role === 'system') return tl('System');
     const actor = (snapshot?.manifest?.actors || []).find(item => item.actorId === entry?.actorId);
     return actor?.displayName || snapshot?.manifest?.name || 'Narrator';
@@ -38,6 +40,11 @@ function messageNode(documentRef, snapshot, entry) {
     avatar.className = 'atria-play-message__avatar';
     avatar.setAttribute('aria-hidden', 'true');
     avatar.textContent = name.textContent.slice(0, 1);
+    const identity = snapshot.timeline.find(item => item.messageId === entry.messageId)?.metadata?.atri_player_identity;
+    if (identity?.avatar) {
+        const image = documentRef.createElement('img'); image.alt = ''; image.src = nativeAssetUrl(identity.avatar.assetId);
+        image.addEventListener('error', () => image.remove(), { once: true }); avatar.append(image);
+    }
     const role = documentRef.createElement('span');
     role.className = 'atria-play-message__role';
     role.textContent = tl(entry?.role === 'user' ? 'You' : entry?.role === 'system' ? 'System' : 'Narrator');
@@ -150,7 +157,16 @@ export function mountAtriaPlayProduct({
             composerStatus.textContent = error?.message || String(error);
         } finally { recover.disabled = false; }
     });
-    composer.append(textarea, send, composerStatus, recover);
+    const persona = documentRef.createElement('button');
+    persona.type = 'button'; persona.className = 'atri-library-button'; persona.dataset.atriaPersonaSelect = 'true';
+    persona.setAttribute('aria-label', tl('Choose Persona'));
+    let picker = null;
+    const openPicker = ({ revision, sessionId } = {}) => {
+        picker?.close();
+        picker = openPersonaSelector({ document: documentRef, runtime: activeRuntime(), expectedRevisionId: revision, sessionId });
+    };
+    persona.addEventListener('click', () => { try { openPicker(); } catch (error) { composerStatus.textContent = error.message; } });
+    composer.append(textarea, send, persona, composerStatus, recover);
     const composerAfterSurface = createSurface(documentRef, 'composer.after');
     composerComponent.append(composerBeforeSurface, composer, composerAfterSurface);
 
@@ -290,6 +306,8 @@ export function mountAtriaPlayProduct({
 
         const writable = runtimeWritable(runtime);
         textarea.disabled = !writable || generating() || submitting;
+        persona.disabled = !writable || generating() || submitting || Boolean(runtime.generation);
+        persona.textContent = runtime.snapshot.states?.atri_player_persona?.solo?.snapshot.name || tl('Choose Persona');
         send.disabled = !writable || (submitting && !generating());
         const action = generating() ? 'Stop' : 'Send';
         if (send.getAttribute('aria-label') !== tl(action)) {
@@ -396,7 +414,7 @@ export function mountAtriaPlayProduct({
         clearDraft() { textarea.value = ''; resizeInput(); },
         focus() { textarea.focus(); }, submit: submitDraft, submitCommitted,
     });
-    const headless = createHeadlessConversation({ runtime: activeRuntime, composer: composerApi, generate: type => globalThis.Atria?.getContext?.()?.generate?.(type), stop: () => globalThis.Atria?.getContext?.()?.stopGeneration?.() });
+    const headless = createHeadlessConversation({ runtime: activeRuntime, composer: composerApi, generate: type => globalThis.Atria?.getContext?.()?.generate?.(type), stop: () => globalThis.Atria?.getContext?.()?.stopGeneration?.(), actions: { openPersonaSelector: openPicker } });
     const provisionalNode = documentRef.createElement('aside');
     provisionalNode.dataset.atriaGenerationProjection = 'true'; provisionalNode.setAttribute('role', 'status');
     conversationComponent.append(provisionalNode);
@@ -408,6 +426,7 @@ export function mountAtriaPlayProduct({
         composer,
         textarea,
         composerApi,
+        openPersonaSelector: openPicker,
         headless,
         sessionHeader,
         getComponent(id) {
@@ -418,6 +437,7 @@ export function mountAtriaPlayProduct({
         },
         refresh: render,
         dispose() {
+            picker?.close();
             documentRef.removeEventListener('atria-native-play-draft', updateDraft);
             documentRef.removeEventListener('atria-native-runtime-error', showRuntimeError);
             bodyObserver.disconnect();

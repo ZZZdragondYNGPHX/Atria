@@ -55,6 +55,17 @@ export function createNativeSharedClient({ owner, sessionId, fetchImpl = (...arg
         } finally { busy = false; }
     }
     return Object.freeze({ refresh,
+        async selectPersona(selection, expectedRevisionId) {
+            current();
+            if (!snapshot || busy || pending || snapshot.role === 'observer' || snapshot.revisionId !== expectedRevisionId) throw new Error('native_shared_not_ready_or_busy');
+            const baseline = snapshot, scope = Object.values(baseline.scopes)[0];
+            busy = true; ++sequence;
+            try {
+                const value = await request('persona/select', { seatId: baseline.seatId, expectedRevisionId, expectedAccessRevisionId: baseline.accessRevisionId,
+                    accessEpoch: baseline.accessEpoch, scopeEpoch: scope.epoch, selection });
+                return accept(value);
+            } finally { busy = false; }
+        },
         getProjection: () => { current(); return structuredClone(snapshot?.projection ?? {}); },
         getSnapshot: () => { current(); return structuredClone(snapshot); },
         async heartbeat() { current(); await request('heartbeat'); },

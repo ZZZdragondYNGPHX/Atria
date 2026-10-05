@@ -10,7 +10,7 @@ function safeId(value) {
     return clean(value).replace(/[^a-zA-Z0-9._:-]+/g, '-');
 }
 
-export const PRODUCT_SEARCH_DOMAINS = Object.freeze(['Works', 'Worlds', 'Knowledge Bases', 'Projects', 'Runtime', 'Prompt resources', 'Sessions', 'SavePoints', 'Knowledge entries', 'Skills', 'Orchestration']);
+export const PRODUCT_SEARCH_DOMAINS = Object.freeze(['Works', 'Worlds', 'Knowledge Bases', 'Projects', 'Runtime', 'Prompt resources', 'Sessions', 'SavePoints', 'Knowledge entries', 'Skills', 'Orchestration', 'Personas']);
 
 function fulfilled(result) {
     return result.status === 'fulfilled' && Array.isArray(result.value) ? result.value : [];
@@ -109,6 +109,7 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
                 run: () => host.openBuild(projectId, title),
             });
         }
+        for (const item of fulfilled(result[11])) add({ id: 'persona.' + item.ref.personaId + '.' + item.ref.revisionId, title: item.revision.name, description: 'Personas', group: 'Library', keywords: ['persona', item.ref.personaId, item.revision.name], run: () => host.openLibraryPersona(item.ref, item.revision.name) });
         const runtime = result[4].status === 'fulfilled' ? result[4].value : {};
         for (const [section, key] of Object.entries({ routes: 'runtimeRouteId', models: 'modelProfileId', connections: 'connectionProfileId', retrieval: 'retrievalProfileId' })) {
             for (const item of runtime[section] || []) {
@@ -185,6 +186,7 @@ export function createProductSearchIndex({ registry, host, productClient = nativ
         () => productClient.listWorks(), () => productClient.listWorlds(), () => productClient.listKnowledge(),
         () => productClient.listProjects(), loadRuntime, loadResources, () => productClient.listSessions(),
         null, null, loadSkills, loadOrchestration,
+        async () => { const items = []; let cursor = null; do { const page = await productClient.listPersonas({ cursor, limit: 100, includeArchived: true }); items.push(...page.items); cursor = page.nextCursor; } while (cursor); return items; },
     ];
 
     async function loadSource(index, load, { owner = null, batch = revision } = {}) {

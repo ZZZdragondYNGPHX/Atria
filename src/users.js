@@ -1,3 +1,4 @@
+import { personaBackupManifest } from './native/persona-backup.js';
 // Native Node Modules
 import path from 'node:path';
 import fs from 'node:fs';
@@ -1470,6 +1471,7 @@ async function writeBackupArchive(handle, response, selectionInput, options) {
         throw new Error('At least one backup category must be selected.');
     }
 
+    const personaIndex = selection.native ? await personaBackupManifest(getStorageEngine(), handle, directories) : null;
     console.info('Backup requested for', handle, selection);
     const archive = archiver('zip');
 
@@ -1497,6 +1499,7 @@ async function writeBackupArchive(handle, response, selectionInput, options) {
         createdAt: new Date().toISOString(),
         handle,
         selection,
+        ...(selection.native ? { personas: personaIndex } : {}),
     };
 
     archive.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' });

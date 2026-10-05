@@ -2,7 +2,9 @@
 // testimony, never a World fact, and never reads the account Persona library.
 export function playerPersonaContext(snapshot, { enabled = false, seatId, blockedReason } = {}) {
     const state = snapshot.states?.atri_player_persona;
-    const selection = state ? (seatId ? state.seats?.[seatId] : state.solo) : undefined;
+    const shared = Boolean(snapshot.manifest?.runtime?.experienceContract?.sharedRuntime);
+    if (shared) blockedReason = 'shared_scope_unsupported';
+    const selection = shared && !seatId ? undefined : state ? (seatId ? state.seats?.[seatId] : state.solo) : undefined;
     const evidence = { schemaVersion: 1, ref: selection?.ref ?? null, snapshotHash: selection?.snapshotHash ?? null,
         authority: 'player_provided', providerId: 'context.player-persona', reason: blockedReason ?? (!state ? 'legacy_unbound' : !selection ? 'none'
             : !enabled ? 'not_consumed' : !selection.snapshot.description ? 'empty' : 'candidate'), ...(seatId ? { seatId } : {}) };

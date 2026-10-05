@@ -60,6 +60,7 @@ export async function activateNativeExperienceRuntime(packageState, worldSession
             onExit: options.hostActions?.exitExperience,
             onStopGeneration: options.hostActions?.stopGeneration,
             onSave: options.hostActions?.save,
+            onPersona: options.hostActions?.openPersonaSelector,
             onDiagnostics: options.hostActions?.openDiagnostics,
             onRecover: () => runtime?.recover(),
             onBeforeEscape: () => runtime?.closeOverlay(),

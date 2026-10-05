@@ -105,7 +105,7 @@ export class MigrationRunner {
      *     after the fact. Failed migrations always preserve their snapshot
      *     regardless of this flag, so a rollback can always be redone manually.
      */
-    constructor({ sourceRepos, sourceEngine = null, destRepos, destEngine = null, snapshotPaths, dryRun = false, keepSnapshot = false, categories = null, skipInternalSnapshot = false }) {
+    constructor({ sourceRepos, sourceEngine = null, destRepos, destEngine = null, snapshotPaths, dryRun = false, keepSnapshot = false, categories = null, skipInternalSnapshot = false, skipNativeKinds = [] }) {
         if (!sourceRepos) throw new Error('MigrationRunner: sourceRepos required');
         if (!destRepos) throw new Error('MigrationRunner: destRepos required');
         if (!snapshotPaths || typeof snapshotPaths.getUserRoot !== 'function') {
@@ -114,6 +114,7 @@ export class MigrationRunner {
         if (!snapshotPaths.backupRoot) {
             throw new Error('MigrationRunner: snapshotPaths.backupRoot required');
         }
+        this._skipNativeKinds = new Set(skipNativeKinds);
         this._src = sourceRepos;
         this._srcEngine = sourceEngine || sourceRepos.settings?._engine;
         this._dstEngine = destEngine || destRepos.settings?._engine;
@@ -329,6 +330,7 @@ export class MigrationRunner {
         if (this._categories.native) {
             if (!this._srcEngine || !this._dstEngine) throw new Error('Native migration requires source and destination engines');
             for (const kind of NATIVE_STORAGE_KINDS) {
+                if (this._skipNativeKinds.has(kind)) continue;
                 const records = await this._srcEngine.withTransaction(srcHandle, tx => tx.listResources({ kind, handle: srcHandle }));
                 for (const record of records) {
                     const key = { ...record.key, handle: dstHandle };

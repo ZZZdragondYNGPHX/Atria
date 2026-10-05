@@ -284,3 +284,18 @@
 .atri-regex-resource > label { display: inline-flex; gap: 12px; align-items: center; min-height: 44px; max-width: 100%; overflow-wrap: anywhere; cursor: pointer; }
 .atria-app-shell .atri-regex-resource input[type="checkbox"] { appearance: auto; accent-color: var(--atri-accent); width: 20px; min-width: 20px; height: 20px; min-height: 20px; padding: 0; border: revert; background: revert; }
 .atri-regex-rule-state { display: inline-block; margin-inline: 12px; color: var(--atri-text-secondary); font-size: var(--atri-text-footnote); }
+
+[data-atria-personas] { max-width: 960px; margin-inline: auto; display: grid; gap: 20px; min-width: 0; }
+.atri-persona-editor { display: grid; gap: 16px; min-width: 0; }
+.atri-persona-editor fieldset { display: grid; gap: 18px; border: 0; padding: 0; margin: 0; min-width: 0; }
+.atri-persona-picker { width: min(560px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); box-sizing: border-box; overflow-y: auto; border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-lg); padding: 24px; background: var(--atri-surface-1); color: var(--atri-text-primary); font-family: var(--atri-font-sans); text-shadow: none; }
+.atri-persona-picker::backdrop { background: rgb(0 0 0 / .5); }
+.atri-persona-picker .atri-library-button { background: var(--atri-fill); color: var(--atri-text-primary); border: 0; border-radius: var(--atri-radius-md); padding: 10px 14px; min-height: 44px; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
+.atri-persona-picker .atri-library-field input { width: 100%; min-height: 44px; box-sizing: border-box; background: var(--atri-surface-2); color: var(--atri-text-primary); border: 1px solid var(--atri-separator-strong); border-radius: var(--atri-radius-md); padding: 8px 12px; font: inherit; font-size: max(16px, var(--atri-text-body)); }
+.atri-persona-picker .atri-library-grouped-list { display: grid; gap: 12px; margin-block: 16px; min-width: 0; }
+.atri-persona-picker .atri-library-row { display: block; min-width: 0; }
+.atri-persona-picker pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+[data-atria-personas] .atri-library-button { min-height: 44px; }
+[data-atria-personas] input[type="checkbox"] { width: auto; justify-self: start; }
+.atri-persona-picker button:focus-visible, [data-atria-personas] :is(button, input, textarea, select):focus-visible { outline: 2px solid var(--atri-accent); outline-offset: 3px; }
+.atri-persona-avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; }

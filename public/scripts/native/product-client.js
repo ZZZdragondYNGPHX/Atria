@@ -31,6 +31,12 @@ function encode(value) {
 }
 
 export const nativeProductClient = Object.freeze({
+    preflightLocalPersonas: input => request('personas/migration/local/preflight', { method: 'POST', body: input }),
+    applyLocalPersonas: input => request('personas/migration/local/apply', { method: 'POST', body: input }),
+    preflightPersonaMigration: input => request('personas/migration/preflight', { method: 'POST', body: input }),
+    applyPersonaMigration: input => request('personas/migration/apply', { method: 'POST', body: input }),
+    readPersonaMigration: input => request('personas/migration/receipt', { method: 'POST', body: input }),
+    adoptPersonaMigrationDefault: input => request('personas/migration/adopt-default', { method: 'POST', body: input }),
     listPersonas: input => request('personas/list', { method: 'POST', body: input ?? {} }),
     getPersona: input => request('personas/get', { method: 'POST', body: input }),
     getPersonaRevisions: personaId => request('personas/revisions', { method: 'POST', body: { personaId } }),

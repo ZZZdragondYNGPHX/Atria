@@ -1,3 +1,6 @@
+import { reviewPersonaBackup, PERSONA_BACKUP_KINDS } from '../../native/persona-backup.js';
+import { nativeRecord } from '../../native/repositories/common.js';
+import { EMPTY_PERSONA_FINGERPRINT } from '../../native/persona-contract.js';
 // Cross-mode restore orchestrator. Called by restoreUserBackupArchive when
 // engineMeta.engineKind !== currentEngine.kind.
 //
@@ -76,6 +79,7 @@ async function clearSelectedEngineCategories(engine, handle, selection) {
         if (categories.native) {
             await engine.withTransaction(handle, async tx => {
                 for (const kind of NATIVE_STORAGE_KINDS) {
+                    if (PERSONA_BACKUP_KINDS.includes(kind)) continue;
                     for (const record of await tx.listResources({ kind, handle })) await tx.deleteResource(record.key);
                 }
             });
@@ -284,7 +288,18 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             scratchCreds,
             reuseEngine: sameEngineKind ? currentEngine : null,
         });
+        let personaReview = null;
+        const retainedAvatars = [];
         if (selection.native) {
+            personaReview = await reviewPersonaBackup({ sourceEngine: transient.engine, sourceHandle: scratchHandle, sourceDirs: transient.scratchDirs,
+                manifest: opts.personaManifest, targetEngine: currentEngine, targetHandle: handle });
+            if (personaReview.conflicts.length) throw new Error('Persona restore conflicts require review: ' + JSON.stringify(personaReview.conflicts));
+            const targetAssets = new AssetStore({ engine: currentEngine, directoriesByHandle: () => dirs });
+            const revisions = await currentEngine.withTransaction(handle, tx => tx.listResources({ kind: NATIVE_RESOURCE_KINDS.personaRevision, handle }));
+            for (const record of revisions) if (record.doc.avatar) retainedAvatars.push(await targetAssets.read(handle, record.doc.avatar.assetId));
+            if (opts.personaDefault?.adopt && personaReview.defaultStatus === 'archived') throw new Error('Archived backup Persona cannot become a new default');
+            if (opts.personaDefault?.adopt && !personaReview.hasPersonaManifest) throw new Error('Persona default adoption requires a versioned Persona manifest');
+            if (opts.personaDefault?.adopt && personaReview.expectedDefaultFingerprint !== opts.personaDefault.expectedFingerprint) throw new Error('Persona default restore conflicts with the reviewed selection');
             const assets = new AssetStore({ engine: transient.engine, directoriesByHandle: () => transient.scratchDirs });
             const references = await transient.engine.withTransaction(scratchHandle, async tx => [
                 ...await tx.listResources({ kind: NATIVE_RESOURCE_KINDS.assetRef, handle: scratchHandle }),
@@ -327,6 +342,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             },
             categories: selectionToRunnerCategories(selection),
             skipInternalSnapshot: true,
+            skipNativeKinds: [NATIVE_RESOURCE_KINDS.personaDefault],
         });
 
         throwIfRestoreCancelled(signal);
@@ -349,6 +365,18 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             signal,
         });
         throwIfRestoreCancelled(signal);
+
+        if (selection.native) await withReadOnlyBypass(async () => {
+            const targetAssets = new AssetStore({ engine: currentEngine, directoriesByHandle: () => dirs });
+            for (const avatar of retainedAvatars) if (avatar) await targetAssets.put(handle, avatar.ref, avatar.bytes);
+            if (opts.personaDefault?.adopt) await currentEngine.withTransaction(handle, async tx => {
+                const key = { kind: NATIVE_RESOURCE_KINDS.personaDefault, handle };
+                const existing = await tx.getResource(key);
+                if ((existing?.integrity ?? EMPTY_PERSONA_FINGERPRINT) !== opts.personaDefault.expectedFingerprint) throw new Error('Persona default restore conflict');
+                const result = await tx.putResourceIfMatch(key, existing?.integrity ?? null, nativeRecord({ schemaVersion: 1, selection: personaReview.defaultSelection }, { existing }));
+                if (!result.updated) throw new Error('Persona default restore conflict');
+            });
+        });
 
         // 5. Success: retain the snapshot as the user's recovery point and
         // tear down the transient source.
@@ -384,6 +412,7 @@ export async function crossModeRestore(zipPath, engineMeta, dirs, selection, mod
             staging,
             ...(sameEngineKind ? {} : { crossMode: staging }),
             recoveryPoint: snapshotPath ? path.basename(snapshotPath) : null,
+            personaRestore: personaReview ? { defaultPolicy: opts.personaDefault?.adopt ? 'adopted' : 'preserved', conflicts: [] } : null,
             verification: {
                 ok: Boolean(migrationStats.verified),
                 engineRecordsVerified: Boolean(migrationStats.verified),

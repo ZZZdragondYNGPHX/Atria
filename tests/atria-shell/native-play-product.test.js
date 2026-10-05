@@ -245,6 +245,17 @@ describe('A6 Atria-native Play product', () => {
         expect(product.textarea.value).toBe(''); product.dispose();
     });
 
+    test('A4b displays accepted input name/avatar while later selections keep historical identity', () => {
+        runtime.snapshot.timeline[1].metadata = { atri_player_identity: { name: 'Accepted player', avatar: { assetId: 'asset_accepted' } } };
+        runtime.snapshot.states = { atri_player_persona: { solo: { snapshot: { name: 'Later player' } } } };
+        const product = mountAtriaPlayProduct({ document, root: document.getElementById('host'), native: { sendForm: document.getElementById('send_form'), sendTextarea: document.getElementById('send_textarea') } });
+        const message = product.conversation.querySelector('[data-atria-message-id="msg_2"]');
+        expect(message.querySelector('strong').textContent).toBe('Accepted player');
+        expect(message.querySelector('img').src).toContain('/api/native/session/asset/asset_accepted');
+        expect(product.composer.querySelector('[data-atria-persona-select]').textContent).toBe('Later player');
+        product.dispose();
+    });
+
     test('one pending submit blocks duplicate sending while keeping the real Stop action available', async () => {
         let finish;
         const stopGeneration = jest.fn();

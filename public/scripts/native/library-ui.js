@@ -36,7 +36,7 @@ export function action(doc, parent, label, handler, { disabled = false, primary 
         const hadFocus = doc.activeElement === node;
         node.disabled = true; node.setAttribute('aria-busy', 'true');
         try { await handler(event); } catch (error) { feedback(doc, parent, libraryError(error), true); await referenceRemediation(doc, parent, error); } finally {
-            node.disabled = disabled; node.removeAttribute('aria-busy');
+            node.disabled = disabled || node.dataset.atriaActionComplete === 'true'; node.removeAttribute('aria-busy');
             if (hadFocus && node.isConnected && [doc.body, doc.documentElement].includes(doc.activeElement)) node.focus();
         }
     });
