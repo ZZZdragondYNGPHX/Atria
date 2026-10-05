@@ -45,6 +45,12 @@
 - Agent 未 Commit 提案不修改作者源；冲突和 takeover 后原 task 不继续写。
 - Persona 编辑/改默认不改已有 Session；切换保留草稿，只改变后续 message/request 身份；branch/save/retry 遵守 [personas](personas.md)。
 
+## A3 targeted regression entrypoints
+
+A3 新增用例位于既有 `tests/atria-shell/{studio-workspace-a7,studio-agent-a8,workspace-host,workspace-leave-guard,native-runtime-p5}.test.js` 与 `tests/native/extensions-workspace.test.js`，验证真实控制器的草稿、回执、部分失败、迟到响应、独立 Commit 与 Runtime 修复。原四模式的 `tests/native/agent-settings.test.js` 与 `tests/agent-runtime/workspace-agent-editing.test.js` 保留路由/字段契约检查。
+
+浏览器实际 service/FS 入口为 `tests/e2e/native-session/{10-studio-redesign,12-native-agent-routes,20-extensions-ui,21-task-binding-preflight}.e2e.js` 中的 A3 场景：20 view + exact 引用生命周期、确认框等待时切换 Session 拒绝 Memory reset、插图完整配置保存/取消与会话工具真实点击、修复返回原启动且不跟随新默认版本。Runtime 旧场景在 `09-runtime-redesign.e2e.js` 按触及面选取。原 `native/illustration-settings.test.js` 提供 FS/SQLite CAS、作品范围及冻结草稿契约。实际命令、结果与设备限制只见 Record；不因这里列出入口而推定通过。
+
 ## Persona-specific fixtures
 
 V20 必须包含：不同账户同名、多个修订/缺头像、归档默认、并发保存/切换/发送、无描述 consumer、预算省略/拒绝、不相关角色任务、原请求 retry、分叉与旧 save、新 save 资源闭包、缺来源仍可读、共享不同席位/观察者、自有 UI Host 入口。

@@ -32,6 +32,12 @@ A1 的外壳离开检查接到现有 navigation authority，覆盖跨域、子�
 
 A2 在 Library revision / Prompt editor 与 preset 内部 Back 复用相同 dirty 判定；取消保留原字段和 Source，保存失败保留草稿。revision 与 preset 已保存后的读取失败显示真实回执并仅重试读取。安装/导入的结果页保留 write receipt，打开失败不能再提交；文件/候选 response 只更新原流程。Native 未被接受的输入在失败时恢复到原 Session/基准 revision；已提交输入和新 Session 不接收旧草稿。Stop 在实际生成期间保持可用，防重复提交不覆盖它。历史面板按 facade 实时 capability 禁用动作并在 handler 重验；切换 Session 关闭旧 drawer。
 
+A3 将相同离开判定接入 Studio 内部视图/集合/引用定位、Source reload、Runtime Back/复制/compact 独立编辑层、Agents preset/Task、扩展切换与插图关闭配置。观察器只观察原草稿，不持久化；重绘后移除旧字段观察，模型标记保留未选文件的真实草稿。资源编辑器/Fields/Source/引用页签共用原编辑表面。
+
+Studio/Runtime/检索/扩展成功写入后清除 dirty、保留只读回执并单独重试读取；Agent Commit 在 Task 成功后同步项目，列表失败不能再次 Commit。项目辅助来源失败不阻止已有项目编辑，重试不重建当前草稿。Preview/Simulation/Build 的迟到响应按编辑表面与基准 revision 重验。
+
+Runtime 缺项修复暂存原控制器与 DOM，返回同一启动回调并重验绑定；原标题/选择、PackageVersionId 保留，即使修复期间安装新版也不替换旧版本。它是临时 UI 返回状态，不是新的启动/资源 authority。Agents 固定当前 Session；Session/branch/revision 变化仍由原 lifecycle 清理运行状态与重挂控制器。Memory reset 在确认后、停止任务后及删除前重验目标，迟到确认拒绝写入新 Session。
+
 ## Review authority
 
 - Library/Runtime 管理走各自原生编辑与 revision 操作。

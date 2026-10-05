@@ -36,7 +36,7 @@
 
 世界/知识/资产“资料库引用”页签保留完整 Attach/Fork/Update/Review detach/Used By。它调用现有引用和项目 lifecycle authority：先展示 exact owner/id/revision 与依赖闭包，确认后由原 ChangeSet 路径提交。Fork 跳到真实独立副本；Used By 链接回实际拥有者和资源位置，不把 package 携带的资源变成可随意编辑的 Library 对象。
 
-移除/更新资源涉及 UI 源码、资产 manifest 或派生引用时，必须仍能检查闭包与编译诊断。进入 A3 前按实际 import/call graph 补齐引用动作处理器及测试映射；本表不声称单一按钮已覆盖所有派生类型。
+移除/更新资源涉及 UI 源码、资产 manifest 或派生引用时，必须仍能检查闭包与编译诊断。A3 已按实际 import/call graph 补齐引用动作处理器及针对性测试映射，见下节与 Record；本表不声称单一按钮已覆盖所有派生类型。
 
 ## Remaining capability work
 
@@ -53,3 +53,15 @@ S20 是确定新增工作。其他域以保留并重组为主；若要新增实�
 ## Acceptance ownership
 
 V00–V20 的验证场景、现有测试入口与未覆盖项在 [validation.md](validation.md)。每行闭环至少有：旧动作清单 → 新入口 → 实际 handler → authority 输出 → 状态证据 → 对应验收。一个页面的截图不能替其他行验收。
+
+## A3 implementation checkpoint
+
+S09–S11 沿用 Runtime 原完整表单/角色/exact refs/Secret/检索/compile；保存回执与内部离开补齐。`workspace-host.js` 与 `task-binding-ui.js` 返回原启动，保留控制器、选择与原 PackageVersionId，返回后重新 preflight，不另建任务或配置存储。
+
+S12 保留 20 个实际 view 与完整编辑器/高级 Source；World/Knowledge/Assets 增加独立引用页签，共用同一原编辑表面。Attach/Fork/Update/Review detach/Used By 通过现有 authoring/graph/ChangeSet：缺失 revision 不改用 latest，Fork 保留原来源并选择新独立资源，Detach 先定位 exact 反向消费者。Asset 仍按不可变 contentHash 契约，不添加无后端支持的 Update。人工 Inspect/Apply 与 Agent Review/Commit 保持独立，提交后读取失败不重放。
+
+S13–S14 默认 Run，Session 范围固定并显示 ID/名称；四模式原专属字段、JSON、工具/权限/预算/路线与 Memory/Diagnostics/trace 原入口保持。Native 合成角色不能成为 Character binding；保留既有 chatKey ABI。Session 切换按正确 workspace key 重挂，Memory reset 重验确认时的 Session/branch/revision。
+
+S15–S16 Skills/Plugins 复用原文件、scope、manifest、偏好和更新禁用行为。扩展与插图的草稿/保存回执补齐；官方插图角色/作品覆盖/模板/参数保留，仅查看作品范围不生成修改。会话工具进入现有外壳工具层，跟随 Play/utility 路由可见性，原 SDK cleanup 与 Prompt/图片 task authority 不变。
+
+这里只记录 A3 实施归属；本地验证证据与限制见 [Record A3](../../../records/refactor/atria-immersive-workspace.md#stage-a3--authoring-runtime-agents-and-extensions)。V09–V16 的局部验证不等同于全字段/全设备/所有 provider 的最终集成验收。

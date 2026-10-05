@@ -2,12 +2,12 @@
 
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
-- Status: Active — A1 complete; A2 next
+- Status: Active — A1–A3 complete; A4a next
 - Plan: [Plan index](../../plans/refactor/atria-immersive-workspace/index.md)
 
 ## Summary
 
-本任务承接用户的“整理 Atria 前端界面”讨论。经 v0.2–v0.8 多轮交互原型和确认，2026-10-05 整理成新的 Plan Bundle。旧前端重设计与 Native Frontend v3 的已完成历史保持不变。D1 已完成契约核对与范围冻结，A1 已实现浮动外壳与入口并完成本地针对性验证；S00–S20 全矩阵与最终集成验收仍待后续阶段。
+本任务承接用户的“整理 Atria 前端界面”讨论。经 v0.2–v0.8 多轮交互原型和确认，2026-10-05 整理成新的 Plan Bundle。旧前端重设计与 Native Frontend v3 的已完成历史保持不变。D1 已完成契约核对与范围冻结，A1–A3 已实现浮动外壳、游玩/资料库恢复、创作/运行配置/智能体/扩展接线并完成各阶段本地针对性验证；S00–S20 全矩阵与最终集成验收仍待后续阶段。
 
 ## Stage D0 — Discussion consolidation and Draft Bundle
 
@@ -235,6 +235,83 @@ npm run test:e2e -- e2e/native-session/07-play-redesign.e2e.js e2e/native-sessio
 
 A3 按 index 路由读取 states、coverage S09–S16、delivery 的完整编辑保留清单、validation，再核对本 Record A2 与实际 Git；继续同一分支，推进创作/运行配置/智能体/扩展，不提前实施 A4。
 
+
+
+## Stage A3 — Authoring runtime agents and extensions
+
+- Date: 2026-10-05
+- Product start HEAD: `2d0df2cef1d5580358555f553203a9cf5616700a`
+- Product End/Tested HEAD: `57a37bc8ac69ed0274d04ce0a8d1016d96ac4496`；同一 `refactor/atria-immersive-workspace` 分支，已 commit/push，未合并 main。
+- Docs start HEAD: `0d05c835ee82b900010030691e2e8e3f7a8be64f`
+- Docs End/Tested content: 本 A3 提交中的 index/states/coverage/delivery/validation、同一 Record 与 live HANDOFF；不自引用提交 hash。
+- Status: A3 complete; A4a next
+
+### Completed and authority
+
+按 HANDOFF 读取指定 A3 模块和 A2 Record，再核对实际 controller/call graph。保持原 source/service/persistence，不读取 reference、不引入 Persona 或第四 Library 分类、不开始 A4。
+
+Studio 保留 20 view 和原完整结构/Fields/Source/文件编辑器。World/Knowledge/Assets 的编辑与引用页签保留同一 DOM/草稿。资源 Attach/Update 固定 exact revision；缺失修订仍保留原值并拒绝 prepare，不替换 latest。Fork 保留 Library 来源 provenance、生成独立 project 资源并选择其编辑器。Review detach 查真实 exact 反向引用，并补直接 EntryPoint/World 消费者定位；Used By 仍查原 graph。Asset 资源不可变，不添加原后端未支持的 Update。
+
+人工 Inspect/Review/Apply 与 Project Agent Review/Commit/Takeover 保持不同 authority。人工 draft 或待 Apply 阻止 Agent Commit；New Task 清理旧 Task 审阅。成功写入先记录 receipt，读取失败只提供 Reload Latest/list，不重新 Apply/Commit/create/install。提交中冻结原字段。Preview/Simulation/Build 固定基准与表面，迟到结果不覆盖后来打开的编辑器；Source per-file 草稿、未知结构字段与格式校验保留。registry/graph/resources/library/history 辅助失败独立呈现/重试，不清空已加载项目或当前未保存字段。
+
+Runtime 原全部角色、provider/Secret、模型能力、fallback/exact Prompt/Generation、Embedding/Rerank 和 compile 入口保持；内部 Back/复制与 compact portaled 编辑层接相同离开 guard。已保存刷新失败保留只读 receipt。缺项修复通过现有 navigation authority 暂停原启动控制器/DOM，返回时重验 draft bindings，并继续原标题/选择/PackageVersionId；修复期间安装新默认版本不改变原旧版本启动。临时返回记录只属于 UI，不成为平行 authority。
+
+Agents 默认 Run，显示固定 Session 范围，过滤旧会话 Run/Stop；Native 合成角色的 avatar 不成为 Character binding，Session binding 仍沿用原 chatKey ABI。spec/loop/agenda/director 的原字段/JSON/工人/专家/工具/权限/预算与路由保持。preset draft 固定范围，scope lost 拒绝原写入并允许 guarded Reload。Session lifecycle 使用正确 `agents:workspace` key 重挂；Memory reset 在确认后、停止任务后和删除前重验 Session/branch/revision，迟到确认不写新会话。
+
+Skills/Plugins 文件、scope、manifest、invocation preferences、外部安装/更新禁用逻辑保持。Tab/Cancel/Refresh 离开保留草稿，保存读取失败不重放。官方插图的角色/别名/固定外观/服装、全局/作品覆盖、模板、NovelAI 参数和原两种 task 入口保持；仅查看作品范围不生成修改。会话工具仍由 SDK 清理，在现有外壳内部工具层挂载，只在 Play 会话表面显示，正常点击不被外壳遮挡；管理与配置关闭取消保留草稿。按钮使用现有颜色 tokens 修复深色可读性。
+
+### Findings resolved during local verification
+
+真实 Fork 返回 Library 来源元数据，初始测试误期待空 metadata，按真实契约修正。Studio receipt 实现曾先清 pending 再读取 Fork operation，已改为提交前捕获。检索测试的 response helper 第二参数为布尔 ok，初始误传 HTTP status；disabled fieldset 的控件也应按 `:disabled` 检查，均已修正。
+
+切换 Session 后旧 Agents 面板被销毁但未重挂，根因是 lifecycle 使用了不存在的 `agents` workspace key；改为实际 key 并让 Host 负责刷新。Memory 原确认后才读取当前目标，存在删除新 Session 的风险，已固定确认前目标与上述重验。浏览器在确认框等待时切换 Session，实际 mutation 计数为零。
+
+插图保存后 guard 仍提示未保存：重绘移除了旧字段，但观察器仍保存旧字段条目；已清理脱离 editor 的观察，模型标记继续保留实际隐藏文件草稿。官方工具旧挂载在 body，z-index 低于浮动外壳，真实点击被导航/正文遮挡；移入外壳工具层并接 route 可见性，复验成功。初始测试也需从 utility 返回真正 Play 阅读表面，而不是只调用底层 openNativeSession。
+
+初期测试命令有不存在的名称/错误 cwd，不计为通过；最终明确使用现有路径。新增 Agent panel unit 补 jsdom structuredClone fixture，并按真实产品错误渲染断言。SQLite 首轮因本地 better-sqlite3 为旧 Node ABI 失败；直接执行该已安装依赖的 install script 后验证实际内存 SQLite，再复验该 suite 通过。没有修改锁文件或提交原生二进制。
+
+### Local validation actually executed
+
+仅本地最小相关集合；多轮复验重叠，不累加为不同场景。以下命令在产品根执行。
+
+```bash
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/studio-workspace-a7.test.js atria-shell/studio-agent-a8.test.js atria-shell/studio-value-editor.test.js atria-shell/source-editor.test.js atria-shell/native-runtime-p5.test.js atria-shell/workspace-host.test.js atria-shell/workspace-leave-guard.test.js native/extensions-workspace.test.js orchestrator/snapshot-cache-hits-invalidates.test.js agent-runtime/workspace-agent-editing.test.js native/agent-settings.test.js
+# 11 suites / 94 tests passed；最后两项小修改仅复验相关 suite
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/workspace-leave-guard.test.js
+# 1 suite / 8 tests passed，新增 orphan-field 回归：上述集合最终 95 个不同用例
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath atria-shell/studio-workspace-a7.test.js
+# 1 suite / 7 tests passed，部分失败恢复的最后调整
+npm --prefix tests run test:unit -- --runInBand --runTestsByPath native/illustration-settings.test.js
+# 修复本地 ABI 后 1 suite / 4 tests passed（FS + SQLite）；合计 12 suites / 99 个不同用例有通过证据
+```
+
+Chromium fixture-server E2E 的最终通过集合：
+
+```bash
+npm --prefix tests run test:e2e -- e2e/native-session/10-studio-redesign.e2e.js --workers=1
+# 原 Studio review/source/UI/conflict/Agent 320px 通过；新增 A3 390px 初次 Fork 断言失败，后按真实 provenance 修正
+npm --prefix tests run test:e2e -- e2e/native-session/09-runtime-redesign.e2e.js e2e/native-session/12-native-agent-routes.e2e.js e2e/native-session/20-extensions-ui.e2e.js --workers=1 --grep 'Fallback edits|Diagnostics reports|Retrieval creates a stored|Agents saves distinct|A3 Agents|Extensions script.*320'
+# 原 5 场景通过；A3 Session 重挂问题修复后单独复验
+npm --prefix tests run test:e2e -- e2e/native-session/10-studio-redesign.e2e.js e2e/native-session/12-native-agent-routes.e2e.js e2e/native-session/21-task-binding-preflight.e2e.js --workers=1 --grep 'A3'
+# A3 Studio 全 20 view + exact 引用 lifecycle 通过；后两项按实际生命周期/启动前标题捕获修正后复验
+npm --prefix tests run test:e2e -- e2e/native-session/12-native-agent-routes.e2e.js e2e/native-session/20-extensions-ui.e2e.js e2e/native-session/21-task-binding-preflight.e2e.js --workers=1 --grep 'A3'
+# Agents Session / Memory reset 和 Runtime 原旧版本启动 2 场景通过；插图 guard/挂载层失败已修复
+npm --prefix tests run test:e2e -- e2e/native-session/20-extensions-ui.e2e.js --workers=1 --grep 'A3'
+# 修复后的插图完整配置 + Session 工具 1 场景通过；最后按钮颜色调整后同一场景再通过
+```
+
+共 10 个不同 browser 场景有最终通过证据：Studio 320px 原 Review/Source/UI/conflict/Agent；A3 390px 全 20 view/Attach/Update/Fork/detach/Used By/人工 receipt；fallback role/order/exact；Diagnostics 缺 pinned context 不生成；真实 Secret + Rerank；320px Agents 两条不同 exact route；Session 切换 Memory 迟到确认拒绝与 Run/binding；320px Skill 路径/文件脚本保存/启停/导入；390px 官方插图配置保存/草稿取消/作品覆盖/工具点击；390px 修复返回原启动/保留标题/绑定与旧 PackageVersionId。部分 fixture 使用 run-state evidence，无真实模型发送。
+
+触及生产 JS ESLint、`npm run check:native-localization` 与 `git diff --check` 通过。复查本地插图管理/会话截图与失败遮挡截图；截图/fixture/产物仅 ignored 本地证据，不入库。
+
+### Limits and next checkpoint
+
+未执行全量 tests/完整 E2E、构建、Android/真机/WebView/真实中文 IME、真实远端模型/图片服务或远端 CI。20 view 遍历证明实际挂载可达，原字段保留基于源码复用和上述针对性断言，不冒充所有字段/设备逐项往返。Prompt/图片 cancel/历史/过期及 Skills 文件树全矩阵沿用原 authority，未本轮全跑；V09–V16 和 S00–S20 的完整集成仍归 A5/B/F。FS/SQLite 插图偏好测试不替代 A4 新 Persona 原生持久化/请求/Save/shared 契约。
+
+保留产品 AGENTS.md，以及 docs README.md/WEB-PERSISTENT-PROMPT.md/templates/HANDOFF.md/templates/RECORD.md 的原有 dirty changes，不提交。package/plugin/skills 未改、reference 未读、未提交本地路径/用户数据/Secret/缓存/原生二进制或生成产物。
+
+下一阶段 A4a：按 HANDOFF → index → personas/states/validation → 本 Record A3，继续同一产品分支；先做 Native Persona 资源/资产、Session/message/request 快照、Prompt evidence、branch/save/shared 服务契约与合约测试。A4b 入口开放仍要独立 checkpoint。本轮完成 A3 持久化后停止，不自动进入 A4a，不合并 main。
+
 ## Final state
 
-Task ongoing. A1/A2 implemented and locally verified; A3 next. S00–S20 full integration and final release remain pending.
+Task ongoing. A1–A3 implemented and locally verified; A4a next. S00–S20 full integration and final release remain pending.

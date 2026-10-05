@@ -43,6 +43,8 @@ D1 冻结采用 B1–B4 顺序；每个资源类型为独立 checkpoint，不允
 
 Runtime、Library、Agents、Extensions 的旧字段与动作同样按 [baseline](baseline-inventory.md) 原所属小节逐项保留。只读、归档、引用约束、编译预览、插件更新后重新启用等不因新布局而变更。
 
+A3 checkpoint 已完成上述原编辑器保留与接线；真实 20 view 可达、exact 引用 lifecycle、人工/Agent authority、Runtime 返回原启动与 Session 隔离的本地证据见 [Record A3](../../../records/refactor/atria-immersive-workspace.md#stage-a3--authoring-runtime-agents-and-extensions)。本阶段没有重造编辑器，不把局部检查当作全部字段逐项往返或最终集成验收。下一阶段 A4a，Persona 入口保持关闭。
+
 ## Editor replacement gate for B stages
 
 每个编辑器先提交一份范围映射：旧字段/动作、所有模式与条件、draft/revision 输出、新组件位置、原 handler、数据校验、错误/冲突/离开状态、对应测试。然后替换展示组件，复用既有实体与控制器。

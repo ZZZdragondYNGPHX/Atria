@@ -3,7 +3,7 @@
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
 - Status: **Frozen for staged implementation — 2026-10-05；用户已授权开工与自主处理，新增契约已完成 D1 设计核对。**
-- Current stage: A2 游玩、资料库、安装与恢复完成，下一 checkpoint 为 A3 创作、运行配置、智能体与扩展接线。
+- Current stage: A3 创作、运行配置、智能体与扩展接线完成，下一 checkpoint 为 A4a 用户设定原生持久化与会话 / 请求契约。
 
 ## Goal
 
@@ -55,7 +55,7 @@ A1 → A2 → A3；A4a 依赖稳定会话 / 请求 authority，A4b 依赖 A4a �
 
 目前 S00–S20 均有设计覆盖，均**未完成产品集成验收**。布局偏好已经确认，Native 用户设定的 schema/API、迁移 ledger、旧会话兼容设计已在 personas 冻结，产品实现与合约验证留在 A4a/A4b。不要把占位 HTML 的字段和服务样例复制到产品中作为现有编辑器的替代。
 
-A1/A2 已实现并完成各阶段本地针对性验证；执行证据与限制见 [Record 的 A1](../../../records/refactor/atria-immersive-workspace.md#stage-a1--floating-shell-navigation-and-shared-state)。A2 的详细证据见 [Record 的 A2](../../../records/refactor/atria-immersive-workspace.md#stage-a2--play-library-install-and-recovery)。这只关闭 A1/A2 checkpoints，不表示 S00–S20 全矩阵或最终集成验收完成。
+A1–A3 已实现并完成各阶段本地针对性验证；执行证据与限制见 [Record 的 A1](../../../records/refactor/atria-immersive-workspace.md#stage-a1--floating-shell-navigation-and-shared-state)。A2 的详细证据见 [Record 的 A2](../../../records/refactor/atria-immersive-workspace.md#stage-a2--play-library-install-and-recovery)。A3 的详细证据见 [Record 的 A3](../../../records/refactor/atria-immersive-workspace.md#stage-a3--authoring-runtime-agents-and-extensions)。这只关闭 A1–A3 checkpoints，不表示 S00–S20 全矩阵或最终集成验收完成。
 
 ## Validation strategy
 
@@ -69,3 +69,5 @@ A1/A2 已实现并完成各阶段本地针对性验证；执行证据与限制�
 - 2026-10-05 A1：浮动外壳、compact 阅读顶栏五域菜单、来源/owner 级搜索重试与查询返回、authority 离开草稿检查完成；复用认证/学习/设置/诊断。离开取消保留原编辑表面，确认离开丢弃；不新增跨路由草稿持久化 authority。下一阶段 A2。
 
 - 2026-10-05 A2：平台正文 serif/头像回退与消息序号、P01 输入策略和 Stop、历史分叉/切换/只读、游玩退出、Library 独立安装/导入流程与 exact 旧版本恢复完成；完整资源编辑器保持。产品 `2d0df2cef` 已 push，下一阶段 A3。
+
+- 2026-10-05 A3：20 个 Studio view、资源引用页签与 exact lifecycle、独立人工 Apply / Agent Commit、保存回执/长任务/草稿、Runtime 修复返回原启动、Agents Session 范围和扩展/插图接线完成。产品 `57a37bc8ac69ed0274d04ce0a8d1016d96ac4496` 已 push，下一阶段 A4a；未开放 Persona。
