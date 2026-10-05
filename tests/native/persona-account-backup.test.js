@@ -87,5 +87,11 @@ describe.each([['fs', 'sqlite'], ['sqlite', 'fs']])('Persona account backup %s â
             expect((await restore(h, zip.toBuffer())).status).toBeGreaterThanOrEqual(400);
             expect((await r.get(h.handle, { ref: a.ref })).revision.name).toBe('A');
         }
+        const d = await r.setDefault(h.handle, { selection: a.ref, expectedFingerprint: empty });
+        await r.archive(h.handle, { personaId: a.ref.personaId, archived: true, expectedFingerprint: a.expectedFingerprint });
+        const archived = await archive(h);
+        expect((await probe(h, archived)).body.personaReview.defaultStatus).toBe('archived');
+        expect((await restore(h, archived, { adopt: true, expectedFingerprint: d.expectedFingerprint })).status).toBeGreaterThanOrEqual(400);
+        expect((await r.readDefault(h.handle)).selection).toEqual(a.ref);
     });
 });
