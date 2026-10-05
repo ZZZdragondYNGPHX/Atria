@@ -3,7 +3,7 @@
 - Task ID: `refactor/atria-immersive-workspace`
 - Primary Workspace: `main`
 - Status: **Frozen for staged implementation — 2026-10-05；用户已授权开工与自主处理，新增契约已完成 D1 设计核对。**
-- Current stage: A5 首轮支持范围的本地集成/兼容 checkpoint 完成；下一 checkpoint 为 B1 Actors 字段/动作/authority 映射。Shared 描述明确停用，完整设备/引擎/字段矩阵仍未验收。
+- Current stage: A5 首轮支持范围的本地集成/兼容 checkpoint 完成；B1 Actors 字段/动作/authority 映射已提交，展示替换尚未开始。Shared 描述明确停用，完整设备/引擎/字段矩阵仍未验收。
 
 ## Goal
 
@@ -33,6 +33,7 @@
 | [personas.md](personas.md) | S20 原生身份、Prompt 接入、迁移、恢复与开放门 | states、Native 契约 |
 | [delivery.md](delivery.md) | 分阶段实施、完整编辑能力保留、依赖和阶段门 | coverage、personas |
 | [validation.md](validation.md) | 验证矩阵、证据要求与执行入口 | coverage、states、personas |
+| [actors-mapping.md](actors-mapping.md) | B1 Actors 旧字段/动作/模式、展示去向、draft/revision/authority、已知缺口与测试门 | delivery、coverage S12/S07、baseline、states、validation |
 
 ## Stage routing
 
@@ -46,7 +47,7 @@
 | A4a | 用户设定原生持久化与会话 / 请求契约 | personas、states、validation |
 | A4b | 用户设定管理、选择、迁移、备份与入口开放 | personas、coverage 的 S20 与关联行、validation |
 | A5 | 首阶段集成与兼容验收 | delivery、validation，失败项再路由到其权威模块 |
-| B1–B4 | 编辑器逐类重构（每类独立阶段） | delivery、对应 coverage 行与 baseline 小节、states、validation |
+| B1–B4 | 编辑器逐类重构（每类独立阶段） | delivery、对应 coverage 行与 baseline 小节、states、validation；B1 Actors 增读 actors-mapping |
 | F | 最终验收、集成与清理 | delivery、validation |
 
 ## Dependencies and current design state
@@ -77,3 +78,4 @@ A1–A3 已实现并完成各阶段本地针对性验证；执行证据与限制
 - 2026-10-05 A4b：Persona 管理/选择/草稿与搜索、上传 JSON/账户旧设定预检、durable ledger 回放和默认独立 adoption、现有账户备份 Persona manifest/恢复审阅、Shared 自己席位 UI 与 solo Host picker/独立恢复入口完成。产品 `6bbb69484` 已 push；Shared 描述在 Context 层显式阻断。入口仅开放已验证支持范围，完整矩阵/设备/最终集成归 A5/B/F。
 
 - 2026-10-05 A5：首轮跨域/旧 Session/Save v1–v3/FS↔SQLite/呈现/语言/键盘本地 checkpoint 完成，支持范围冻结；修正跨域父子两步导航和 Persona Tab 焦点。产品 `784bb91a8` 已 push，28 suites/181 不同 unit、18 不同 Chromium 场景的实际范围见 Record A5。Shared 描述停用，缺环境与未执行矩阵继续明示；下一 checkpoint 为 B1 Actors，先做逐字段/动作/状态/authority 映射。
+- 2026-10-05 B1 Actors mapping：基于同一产品 HEAD 提交 actors-mapping；明确 Actor 为 project-source、profile/metadata 任意 JSON、集合 Source/顶层归一化/重复 ID/冲突草稿缺口与替换验收门。本轮只完成映射，未改产品、未执行展示替换；Shared 描述继续停用，下一轮只实施 Actors。
