@@ -4,7 +4,9 @@
 > **Date:** 2026-10-06
 > **Code baseline:** main@ed1fd90521a63363e29856601abbf5e908c99d10
 > **Primary workspace:** docs
-> **Companion research:** plans/architecture/model-prompt-context-frontier-research.md
+> **Companion research:**
+> - plans/architecture/model-prompt-context-frontier-research.md
+> - plans/architecture/model-provider-routing-frontier-research.md
 > **Likely downstream Plan:** plans/architecture/agent-intelligence-runtime/index.md
 > **Purpose:** 在 Atria 正式进入下一轮 Agent / Cognitive Runtime 架构重构前，研究如何避免 Memory、Cognition、ToM、Planner、Critic、World Model、Experience 等能力演化成“每轮正文固定叠加一次模型调用”的昂贵流水线，并形成适合独立 Agent-native RP 产品的稀疏调用、动态算力分配和成本可观测原则。
 > **Not a Plan:** 本文不冻结最终阈值、模型、预算、Schema 或阶段。正式实现前应结合当时 main、模型价格、Provider 能力和真实 RP eval 重新定案。
