@@ -28,9 +28,7 @@ async function judge(fetchImpl, prepare = () => {}) {
     const h = await makeTempFsEngine();
     try {
         const budget = new EvaluationBudget(config); prepare(budget);
-        const port = { maxRequests: budget.maxRequests, maxTotalTokens: budget.maxTotalTokens,
-            reserve: request => budget.reserve({ ...request, kind: 'grader' }), settle: budget.settle.bind(budget), snapshot: budget.snapshot.bind(budget) };
-        const bridge = await createLiveBridge({ engine: h.engine, handle: h.handle, config, secretPort, budget: port, fetchImpl });
+        const bridge = await createLiveBridge({ engine: h.engine, handle: h.handle, config, secretPort, budget, fetchImpl });
         return await runModelJudge(comparison, bridge);
     } finally { h.cleanup(); }
 }

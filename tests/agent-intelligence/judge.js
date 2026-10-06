@@ -50,7 +50,7 @@ export async function runModelJudge(comparison, bridge, { onPair = () => {} } = 
     requireValue(comparison.mode === 'model' && comparison.liveIdentity && equal(comparison.liveIdentity, bridge.identity), 'judge_connection_drift');
     const invocationId = randomUUID();
     const report = { schemaVersion: 1, comparisonHash: hash(comparison), ruleHash: hash(JUDGE_RULE),
-        evaluatorRevision: hash(fs.readFileSync(new URL('./judge.js', import.meta.url), 'utf8')), liveIdentity: bridge.identity,
+        evaluatorRevision: hash(['judge.js', 'live-bridge.js', 'budget.js'].map(name => fs.readFileSync(new URL(name, import.meta.url), 'utf8'))), liveIdentity: bridge.identity,
         limits: { maxRequests: bridge.budget.maxRequests, maxTotalTokens: bridge.budget.maxTotalTokens },
         invocationId, pairs: [], observations: [], ledger: null, summary: null };
     for (const pair of comparison.pairs) {
@@ -60,7 +60,7 @@ export async function runModelJudge(comparison, bridge, { onPair = () => {} } = 
             const input = inputFor(comparison, pair);
             item.binding = blindPair(comparison, pair.pairId, { purpose: 'evaluation' }).binding; item.inputHash = hash(input);
             try {
-                const result = await bridge.rp({ requestId: item.requestId, trialId, fixtureHash: item.inputHash,
+                const result = await bridge.rp({ requestId: item.requestId, trialId, fixtureHash: item.inputHash, kind: 'grader',
                     messages: [{ role: 'user', content: canonical(input) }], tools: [] });
                 item.responseHash = hash(result.response.assistantText);
                 try {

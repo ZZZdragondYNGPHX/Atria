@@ -11,6 +11,7 @@ import { makeTempFsEngine } from '../storage/harness/fs-harness.js';
 import { deferred } from '../agent-runtime/fakes.js';
 import { hash, canonical } from './cases.js';
 import { skillEntryKey } from '../../public/shared/extension-contract.js';
+import { boundedSkillReadOptions } from '../../public/shared/skill-invocation.js';
 import { projectFixtureSource as projectSource } from './evaluation-settings.js';
 
 const response = (payload, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => payload });
@@ -173,7 +174,18 @@ export async function runProject(entry, fixture, capture, evaluation = null) {
             const method = options.method || 'GET';
             if (method === 'GET' && route === '/api/skills?scope=all') return response(evaluation ? [skill] : []);
             if (method === 'GET' && route === '/api/native/extensions/settings') return response({ value: { skills: evaluation ? { [skillEntryKey(skill)]: { paths: { studio: 'always' } } } : {} } });
-            if (evaluation && method === 'GET' && route === `/api/skills/${encodeURIComponent('project/' + source.project.projectId)}/${skill.name}/file?path=SKILL.md`) return response({ content: evaluation.settings.projectSkill });
+            const skillBase = `/api/skills/${encodeURIComponent('project/' + source.project.projectId)}/${skill.name}`;
+            if (evaluation && method === 'GET' && route === skillBase + '/files') return response({ files: [{ path: 'SKILL.md', size: Buffer.byteLength(evaluation.settings.projectSkill), isDirectory: false }] });
+            if (evaluation && method === 'GET' && route.startsWith(skillBase + '/file?')) {
+                const query = new URLSearchParams(route.slice((skillBase + '/file?').length));
+                if ([...query.keys()].some(key => !['path', 'offset', 'limit'].includes(key)) || [...query.keys()].length !== new Set(query.keys()).size) throw new Error('skill_read_invalid');
+                const options = boundedSkillReadOptions({ path: query.get('path') ?? 'SKILL.md', offset: query.has('offset') ? Number(query.get('offset')) : 1,
+                    limit: query.has('limit') ? Number(query.get('limit')) : 200 });
+                if (options.path !== 'SKILL.md') throw new Error('skill_read_invalid');
+                const lines = evaluation.settings.projectSkill.split('\n');
+                return response({ content: query.has('offset') || query.has('limit') ? lines.slice(options.offset - 1, options.offset - 1 + options.limit).join('\n') : evaluation.settings.projectSkill,
+                    totalLines: lines.length, offset: options.offset, limit: options.limit });
+            }
             const base = `/api/native/studio/projects/${source.project.projectId}`;
             const taskPath = `${base}/agent/tasks/${task.taskId}`;
             if (method === 'GET' && route === `${taskPath}/context`) return response(await agent.getContext(h.handle, source.project.projectId, task.taskId));

@@ -78,7 +78,7 @@ export async function createLiveBridge({ engine, handle, config, secretPort, fet
             const pin = prepared.get(hash(rendered));
             if (!pin || !active) throw new Error('Unprepared evaluation send');
             const attemptId = pin.requestId + ':send:' + (attempts.filter(item => item.requestId === pin.requestId).length + 1);
-            if (budget.reserve({ requestId: attemptId, trialId: active.trialId, inputTokens: pin.inputTokens, reservedOutput: config.maxOutputTokens }).status !== 'passed') {
+            if (budget.reserve({ requestId: attemptId, trialId: active.trialId, inputTokens: pin.inputTokens, reservedOutput: config.maxOutputTokens, kind: active.kind ?? 'model' }).status !== 'passed') {
                 active.budgetBlocked = true; throw new Error('evaluation_budget_blocked');
             }
             const attempt = { ...pin, attemptId, trialId: active.trialId, status: 'started', usage: null, durationMs: 0 }; attempts.push(attempt);
@@ -106,9 +106,10 @@ export async function createLiveBridge({ engine, handle, config, secretPort, fet
     return {
         identity, budget, timeoutMs: config.timeoutMs,
         observations: () => structuredClone(attempts),
-        async rp({ requestId, trialId, fixtureHash, messages, tools, signal, onSend }) {
+        async rp({ requestId, trialId, fixtureHash, messages, tools, signal, onSend, kind = 'model' }) {
             if (active) throw new Error('Live evaluation requires serial transport');
-            active = { trialId, budgetBlocked: false, onSend };
+            if (!['model', 'grader'].includes(kind)) throw new Error('Invalid evaluation request kind');
+            active = { trialId, budgetBlocked: false, onSend, kind };
             try {
                 const contextProvider = { buildRequestContextPlan: async () => ({ schemaVersion: 1, requestId,
                     source: { kind: 'task', projectId: id('project'), revision: fixtureHash, taskId: trialId },

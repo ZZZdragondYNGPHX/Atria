@@ -142,6 +142,7 @@ test.each(['project_authoring_d1', 'project_repair_p1'])('original Studio loop %
             secretPort: { resolveSecret: async () => 'synthetic-private-key' }, fetchImpl: async () => {
                 const tools = [
                     { name: 'atri_agent_get_project', args: {} },
+                    { name: 'atri_agent_read_skill', args: { name: 'evaluation-fixture', path: 'SKILL.md', offset: 1, limit: 20 } },
                     ...(caseId.includes('repair') ? [{ name: 'atri_agent_reset_operations', args: {} }] : []),
                     { name: 'atri_agent_set_plan', args: { summary: fixture.input, steps: [{ id: 'metadata', title: 'Rename metadata', impact: 'low' }] } },
                     { name: 'atri_agent_project_save', args: { source: proposed, stepId: 'metadata' } },
@@ -158,6 +159,6 @@ test.each(['project_authoring_d1', 'project_repair_p1'])('original Studio loop %
             } }));
         expect(capture.checks.review_gate.status).toBe('passed');
         expect((capture.checks.single_changeset || capture.checks.repair_bound).status).toBe('passed');
-        expect(bridge.observations()).toHaveLength(caseId.includes('repair') ? 5 : 4);
+        expect(bridge.observations()).toHaveLength(caseId.includes('repair') ? 6 : 5);
     } finally { h.cleanup(); }
 }, 30000);

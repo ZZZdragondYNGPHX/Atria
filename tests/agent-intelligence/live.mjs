@@ -47,9 +47,8 @@ try {
         onChange: snapshot => writeFileAtomic.sync(ledgerPath, JSON.stringify(snapshot, null, 2) + '\n', { mode: 0o600 }) });
     const candidate = comparison ? JSON.parse(fs.readFileSync(options['--candidate'], 'utf8')) : null;
     fixture = await makeTempFsEngine();
-    const bridge = await createLiveBridge({ engine: fixture.engine, handle: fixture.handle, config, budget: judging ? { maxRequests: budget.maxRequests, maxTotalTokens: budget.maxTotalTokens,
-        reserve: request => budget.reserve({ ...request, kind: 'grader' }), settle: budget.settle.bind(budget), snapshot: budget.snapshot.bind(budget) } : budget,
-    secretPort: { resolveSecret: async () => apiKey }, fetchImpl: globalThis.fetch });
+    const bridge = await createLiveBridge({ engine: fixture.engine, handle: fixture.handle, config, budget,
+        secretPort: { resolveSecret: async () => apiKey }, fetchImpl: globalThis.fetch });
     const onTrial = trial => {
         fs.writeSync(progressFd, JSON.stringify({ trial, observations: bridge.observations().filter(item => item.trialId === trial.trialId) }) + '\n');
         fs.fsyncSync(progressFd);
@@ -65,7 +64,9 @@ try {
     fs.writeFileSync(outputFd, JSON.stringify(report, null, 2) + '\n'); fs.fsyncSync(outputFd);
     console.log(JSON.stringify({ summary: report.summary, empiricalReady: report.empiricalReady ?? false,
         cumulativeBudget: { requests: budget.snapshot().requests, tokens: budget.snapshot().tokens, breached: budget.snapshot().breached } }));
-    if (report.summary.failedTrials || report.summary.status === 'failed') process.exitCode = 1;
+    const trials = report.trials || (judging ? [] : report.pairs.flatMap(pair => [pair.baseline.trial, pair.candidate.trial]));
+    if (trials.some(trial => trial.executionStatus === 'failed' || trial.authorityStatus === 'failed')
+        || judging && (report.summary.failed > 0 || report.summary.invalid_response > 0)) process.exitCode = 1;
 } catch (error) {
     // Provider/JSON diagnostics may contain credential-bearing input. Print no body.
     console.error('Live evaluation failed:', /^[a-z_]{1,100}$/.test(error.message) ? error.message : 'inspect_local_progress_and_ledger');
