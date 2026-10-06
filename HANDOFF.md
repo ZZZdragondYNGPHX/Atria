@@ -3,12 +3,14 @@
 ## Task / current state
 
 - Task ID: `agent-intelligence-runtime`；Primary Workspace: `main`。
-- Product branch / HEAD: `feat/agent-intelligence-runtime@57f4e814af373b4659ba247f9891edd80652c356`；已 commit / push，origin 同 HEAD，产品 worktree 干净。
+- Product branch / HEAD: `feat/agent-intelligence-runtime@9b5cb5740e2af7cab8b83b9675576ea01c4f4527`；已 commit / push，origin 同 HEAD，产品 worktree 干净。
 - Stable main: `ed1fd90521a63363e29856601abbf5e908c99d10`；未合并本任务。
-- Auxiliary docs: `docs`；S07 start HEAD `6adb6902df6671af12b26d4280ec07e7798125b7`；仅本任务文档提交，保护治理 / 模板既有 dirty。当前 docs HEAD 以包含本 Record / HANDOFF 的提交为准。
-- Current stage: **D0–D4 / S01–S07 完成；S07 原 Skill authority 完整版本 / candidate / CAS 与 RP / Native / Studio exact read pin 已交付；下一 checkpoint S08，本轮停止**。
+- Auxiliary docs: `docs`；S08 start HEAD `63aa429f409a843c13d6afeedb8f048dcdb99177`；仅本任务文档提交，保护治理 / 模板既有 dirty。当前 docs HEAD 以包含本 Record / HANDOFF 的提交为准。
+- Current stage: **D0–D4 / S01–S08 完成；S08 Native immutable Prompt 候选 / Route CAS 与 ordinary RP Workspace exact version binding 已交付；下一 checkpoint S09，本轮停止**。
 - Plan entrypoint: [index](plans/architecture/agent-intelligence-runtime/index.md) → [decisions](plans/architecture/agent-intelligence-runtime/decisions.md)。
+- S08 stage evidence: [s08-prompts](plans/architecture/agent-intelligence-runtime/s08-prompts.md) / [delivery S08](plans/architecture/agent-intelligence-runtime/delivery.md) → 同一 [Record](records/refactor/agent-intelligence-runtime.md)。
 - Stage evidence: [s07-skills](plans/architecture/agent-intelligence-runtime/s07-skills.md) / [delivery S07](plans/architecture/agent-intelligence-runtime/delivery.md) → 同一 [Record](records/refactor/agent-intelligence-runtime.md)；前序： [s06-comparison](plans/architecture/agent-intelligence-runtime/s06-comparison.md) / [s01-baseline](plans/architecture/agent-intelligence-runtime/s01-baseline.md) / [m1-evolution](plans/architecture/agent-intelligence-runtime/m1-evolution.md) / [delivery S06](plans/architecture/agent-intelligence-runtime/delivery.md) → 同一 [Record](records/refactor/agent-intelligence-runtime.md)。来源 / authority 问题按需读取 [S02](plans/architecture/agent-intelligence-runtime/s02-sources.md) / [S03](plans/architecture/agent-intelligence-runtime/s03-capture.md) / [S04](plans/architecture/agent-intelligence-runtime/s04-project-recovery.md) / [S05](plans/architecture/agent-intelligence-runtime/s05-feedback.md) / baseline 相关段落。
+- S08 code entry: `src/native/model-prompt-runtime/prompt-candidates.js` / 原 Native generation router；`public/scripts/lib/agent-workspace/prompt-versions.js` / 原 Preset library / host profiles / orchestrator capability API；`tests/native/prompt-candidates.test.js` / `tests/agent-runtime/workspace-prompt-versions.test.js`。产品 model-prompt-runtime README 给出手动调用。
 - S07 code entry: `src/skills/{repository,versions}.js` / `src/endpoints/skills.js` → shared `skill-invocation.js` / RP resolver + tools / Native narrative / Studio Agent；`tests/skills/{versions,run-pins,api}.test.js`，原 README 给出调用。
 - S06 code entry: `tests/agent-intelligence/{comparison,live}.mjs` → `comparison.js` / `adapters.js` / `live-bridge.js` / `budget.js` / `judge.js` / `session-copy.js`；README 给出完整本地调用。
 
@@ -34,6 +36,9 @@
 - S07：原 installedHash 完整文件快照、有限 history / candidate 正文 diff、whole-base CAS、所有 repository 入口单 root 队列。RP 同 run / Native generation / Studio loop 读取 exact version，always / read / files / search 一致；新 preparation 读 freshinventory。Package 首次安装保留、different replace / candidate / editor 两层拒绝；旧管理读路径兼容，malformedmanifest 可修复。
 - S07 candidate 仅保留原 frontmatter / 支持文件；check 也拒绝 hash-valid 同步扩权候选。显式 manualapply 沿原 editauthority，重复 desired-current 可 reconcile，不产生自动 promotion 资格。read-only 已有 pin 可消费，缺 snapshot 不写；删除清 history 撤销 pin，name rename 新 identity，scope 迁移保留 history 但旧 candidateidentity 失效。13suites / 247distincttests 通过，真实 RP Director / 派发 Agent 旧 pin、Native / Studio 消费者、原 syncround-trip 与失败点有本地证据；无新增真实模型。
 
+- S08：Native 原 Preset root 保存有限声明 / candidate metadata，正文与 ancestry 使用原 immutable resource revisions。单模块 body 变化，完整 Preset / declaration / Route 与 exact closure 校验；原队列 + storage expectedIntegrity 原子切单一 player Route 的 Program ref，重复 desired match reconcile。Package 先显式导入用户 Library 副本；缺 revision / corruption 不 fallback。body ≤64 KiB、每 Preset ≤16 candidates / metadata≤2 MiB；静态插值沿原 parser，实际参数仍由原 request compiler 校验。
+- S08 ordinary RP：原 Workspace settings 保存完整 base / desired snapshots 与 SHA-256 candidate identity，显式 Agent instructions 声明；只切角色 / 会话 binding 的 promptVersionId，禁止 global / default / builtin。profile / Plan 携带版本，四 mode 下一 preparation 读 exact definition，当前 run 保持 clone。whole base / bindings / declaration 冲突、same-ID body 改写 / unknown / missing 均拒绝；原 bind 清 pin、Preset delete 清对应版本，已选历史版本在原 save 后保留。原 capability API inspect / check / update 沿 settings debounce；仅单 browser client，无 cross-tab / Host CAS 或 durable publication intent，不授权自动模式。
+
 ## Real observations / budget
 
 - Gemini final development pilot：6 / 6 execution 与 authority passed，18 sends / 18 tool calls，21 deterministic checks passed，57167 provider-reported tokens；S01 report `empiricalReady=true`。测试 HEAD `7d7708c1486c5b48b430eb2210e89768f4aabfb0`。
@@ -50,12 +55,15 @@
 
 ## Pending / limits
 
-- 下一 checkpoint **S08**：沿原 Prompt / immutable resource / Preset authority 冻结可演化正文区块、candidate exact ref / diff 与有效 binding。本轮未开始 S08；S06 候选仍 publicationStatus=ineligible，price / 人工偏好 / 无效评分与自动晋升门槛未补齐，不将单次 model observation 当发布批准。
+- 下一 checkpoint **S09**：沿原 Preset / Project 参数与 compiler / policy 冻结有限 allowed fields、candidate diff / complete base、局部 exact binding / conflict / 撤回。S08 已交付正文候选与 Native / ordinary RP exact consumers；本轮未开始 S09；S06 候选仍 publicationStatus=ineligible，price / 人工偏好 / 无效评分与自动晋升门槛未补齐，不将单次 model observation 当发布批准。
 - price、真实 upstream / opaque gateway retries 不可知；显式 local tokenizer / context guard 不是 Gemini 精确能力证明。HTTP header 等待时长非 TTFT，不能声称质量 / 费用 / 延迟收益。其它等价 body / cognition / critic ablations unavailable，Director 仅 scripted graph 观测。
-- 只允许 synthetic evaluator target，S07 已交付 Skill 生产 exact pin 与显式手动 edit；未交付 S08–S09 Prompt / 策略 binding、S10 自动 publication，不新增 storage kind / HTTP / UI / 后台循环。S04 recovery 不重做 generation / rebase / Commit；S05 feedback / diagnosis 不是配置 authority。
-- M1 尚不完整，S08–S34 / G01–G06 未实施；本组分支不删除，main 不合并。D3 / D4 只企划，不重做研究或读取未来 G / Local。
+- 只允许 synthetic evaluator target，S07 已交付 Skill 生产 exact pin 与显式手动 edit；S08 已交付显式手动 Prompt body binding，未交付 S09 策略候选或 S10 自动晋升、S10 自动 publication，不新增 storage kind / HTTP / UI / 后台循环。S04 recovery 不重做 generation / rebase / Commit；S05 feedback / diagnosis 不是配置 authority。
+- M1 尚不完整，S09–S34 / G01–G06 未实施；本组分支不删除，main 不合并。D3 / D4 只企划，不重做研究或读取未来 G / Local。
 
 ## Validation / preservation
+
+- **S08：7 relevant suites / 68 distinct tests passed**：native candidates19、Workspace candidates14、原PromptPreset5、runtimepersistence7、WorkspacePreset4、Native orchestration prompts9、Workspace authoringhelp10。新增两套最终33 tests；原相关5套35 tests，重复不累加。最后只定向新增继承闭包 / 内容哈希 / jsdom package conditions 接线；10触及JS ESLint / diff通过。
+- S08实际证据：FS / SQLite reopen与原SettingsRepo reload；SQLite dump / 原user close+directory removal / restore；metadata失败 / committed response lost、并发RouteCAS、wholebase / declaration / binding冲突、unknown / missing / corrupt / 容量 / 删除 / read-only、Package exactenvelope导入隔离copy。真实RPDirector stub多轮保持候选；原ProjectGenerationHost / scheduler / compiler / providerstub发送candidate，narrator / studio原GenerationService snapshot显示新body和旧preview保持。无完整NativeSessionproductionturn重放、真实model / 全量test / build / browser / Android / 真机 / external DB / CI。未读取或改写S06私有配置 / ledger / 报告。
 
 - **S07：13 relevant suites / 247 distinct tests passed**；versions 23 / run-pins 4 / repository 72 / api-rest 46 / browser api 16 / embed 14 / native invocation 10 / RP tools 14 / resolver 23 / precedence 8 / multi-visible 3 / plumbing 3 / live-bridge 11。12-suite / 174 passed 后，补 legacy repair 仅定向 3-suite / 141 passed，最终 staging guard 仅定向 2-suite / 95 passed，重复不累加。22 触及 JS 的 ESLint / product diff 通过；无 browser / 全量测试 / build / Android / 真机 / externalDB / CI / real model。前序 S06 证据：
 
@@ -67,4 +75,10 @@
 
 ## Next target / bootstrap
 
-读取 `docs:HANDOFF.md`，仅续接 S08。核对真实 Git → HANDOFF → index / decisions → m1-evolution / delivery S08 / s07-skills / s06-comparison → 同一 Record；按需读取 baseline 的 Prompt / resource / Preset authority。沿用 `feat/agent-intelligence-runtime@57f4e814af373b4659ba247f9891edd80652c356`；D0–D4 / S01–S07 完成，main 未合并。S07 已交付原 Skill 完整版本、正文 candidate / CAS，以及 RP 同 run、Native narrative、Studio loop 的 exact read pin；13 suites / 247 distinct local tests 通过，无新增真实模型请求。S08 先冻结可演化正文区块、candidate exact resource / diff、有效 binding、Package 兼容 / missing-version / conflict，再接原消费者。S06 Comparison / JudgeReport 仍 ineligible，不用一次模型偏好批准晋升；S10 仍需 feedback / diagnosis / policy / Evaluation / source-deletion dependency、预算、审阅和自动 publication 闭环。Skill 显式手动 apply 沿原编辑权限，不是评测晋升；禁止 latest fallback。S07 沿单 Host FS authority，无跨进程锁 / ABA counter；directory replace 的 crash 窗口可能 unavailable，完整 publication intent / recovery 归 S10。若确需模型请求，只使用 local Git config 的已授权位置，恢复同一累计 ledger / rate checkpoint 与显式 budget override，不重置或覆盖报告、不扫描 Secret。不得读取或更新 reference / 其它 Experience 草稿；仅 S08，阶段完成 commit / push、同一 Record / live HANDOFF 后停止，不进入 S09、不合并 main。
+读取 `docs:HANDOFF.md`，仅续接 S09。核对真实 Git → HANDOFF → index / decisions → m1-evolution / delivery S09 / s08-prompts / s07-skills / s06-comparison → 同一 Record；按需原 Preset / Project 参数与 compiler / policy authority。沿用 `feat/agent-intelligence-runtime@9b5cb5740e2af7cab8b83b9675576ea01c4f4527`；D0–D4 / S01–S08 完成，产品 commit / push、工作树干净，main 未合并。
+
+S08 Native 复用 Library immutable Prompt closure 与 Preset root 保存声明 / 正文候选，whole Preset / declaration / Route 校验，expectedIntegrity 原子切单一 Route 的 exact Program binding；ordinary RP 沿原 Workspace settings / 角色与会话 binding 固定完整候选，SHA-256 version identity / diff、四 mode exact profile / Plan metadata，当前 run 保持 accepted clone。7 relevant suites / 68 distinct local tests，无新真实模型。Native 单 Host write queue；Workspace 原单 browser client / debounce，不声称跨 tab / Host CAS 或 durable publication intent。S09 先冻结有限 allowed fields / 单目标 candidate / whole base / effective scope binding / conflict / rollback，再接原 compiler / policy / 下一 run消费者；不更改 capability、output owner、必要 guard、Connection / Secret / Privacy 或 Routing 自动发布权限。
+
+S06 Comparison / JudgeReport 仍 ineligible，不用一次模型偏好批准晋升；S10 仍需 feedback / diagnosis / policy / Evaluation / source-deletion dependency、有限共享预算、完整 Review / publication / recovery / rollback。S07 / S08 的 explicit manual apply 沿原编辑权限，不是评测晋升。Package 原版保留；禁止 latest fallback。若确需模型请求，只使用 local Git config 的已授权位置，恢复同一累计 ledger / rate checkpoint 与显式 budget override，不重置 / 覆盖报告，不扫描 Secret。
+
+不得读取或更新 reference / 其它 Experience 草稿；仅 S09，阶段完成 commit / push、同一 Record / live HANDOFF 后停止，不进入 S10、不合并 main。保护 main AGENTS 与 docs README / WEB Adapter / 两模板的既有 dirty；本轮五个 hash保持，见 Record / 前序交接证据。

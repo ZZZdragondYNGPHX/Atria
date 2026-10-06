@@ -478,6 +478,44 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - **下一 checkpoint 仅 S08**：真实 Git → HANDOFF → index / decisions → m1-evolution / deliveryS08 / s07-skills / s06-comparison → 同一 Record；按需 baseline 的 Prompt / resource / Presetauthority。先冻结可演化正文区块、candidate exactref / diff、有效 binding、Package 兼容 / missing-version / conflict，然后实施最小消费者。
 - 本轮 S07 commit / push、同一 Record / live HANDOFF 后停止；S08–S10 / G / Local 未开始，M1 未完整，不合并 main、不删除任务分支。S06candidate 仍 ineligible；若未来确需模型，沿旧 durable ledger / rate checkpoint 且不覆盖报告。
 
+## S08 — 原 Prompt 正文候选与 Native / ordinary RP 精确 binding
+
+- Start product HEAD: `57f4e814af373b4659ba247f9891edd80652c356`。
+- Start docs HEAD: `63aa429f409a843c13d6afeedb8f048dcdb99177`。
+- End / tested product HEAD: `9b5cb5740e2af7cab8b83b9675576ea01c4f4527`；同一 `feat/agent-intelligence-runtime` 已 commit / push，main 仍 `ed1fd90521a63363e29856601abbf5e908c99d10`，未合并。
+- Status: **Complete — S08 only**；先冻结 [s08-prompts](../../plans/architecture/agent-intelligence-runtime/s08-prompts.md)，随后按原 authority 实施。未加载 Skill、未读取 / 更新 reference 或其它 Experience 草稿。
+
+### Implementation / decisions
+
+- Native `PromptCandidateStore` 复用 Library immutable revisions、Preset root 和 runtime write queue。根追加有限 `promptEvolution` metadata，新增 candidate 正文及 ancestry Program revisions 继续沿原 kinds；无新 StorageEngine kind、migration 或平行有效配置 authority。
+- 默认无 evolvable targets；显式 declaration 绑定 Preset current revision 和 active exact module refs。一个 candidate 只改一个模块 `body`，保留整个模块声明、其他模块 / guard、Generation、Regex、工具 / 权限、Connection 与 runtime。完整 Preset / declaration fingerprint、whole original Route、base / desired refs、完整 before / after diff 冻结；候选正文各 ≤64 KiB、每 Preset ≤16 candidates / metadata ≤2 MiB。
+- body 插值复用原 parser / readVariable 校验声明与 forbidden paths；实际参数 / artifacts / host 值仍在每次原 compiler 内验证。check 重建预期完整资源闭包、逐 exact revision 核对内容，unknown schema / corruption / missing / declaration / base 漂移拒绝，不靠 latest fallback。
+- authenticated `POST /presets/:id/prompt-candidates/{inspect,declare,prepare,check,apply}` 沿原 Native Generation router，响应 private / no-store；owner 来自 authenticated handle。apply 在同一 runtime queue 内核对 complete original / desired Route，沿原 storage `putMutable(expectedIntegrity)` 原子切单一 player Route 的 `promptProgramRef`，Generation exact ref 不变；desired complete match 可 reconcile。Preset / declaration 编辑清 pending candidates，删除仍按原 archival history 保留已 pin 定义。Package 须显式 import 为用户 Library 副本，原封装内容 / exact refs 不改。
+- 普通 RP 保留 `agentWorkspace` settings / 原 Preset / graph compiler / local binding。可选 `promptVersions` v1 保存 declaration UUID 与完整 base / desired snapshots；candidateId用已安装 frontend `sha256` 对 canonical 完整 candidate 内容寻址。normalizer 重建单一 Agent `instructions`变化并验内容 hash，防止同 version 改正文 / tools / budgets / topology。≤64 declarations、≤16 candidates / 整个 metadata ≤2 MiB；候选 instructions ≤64 KiB 且非空，避免原 consumer 空值 fallback。
+- Workspace apply 只切 character / conversation binding 的 optional `promptVersionId`，冻结整个原 binding table，禁止default / global / `builtin-*`。下一 resolveWorkspaceProfile 使用该 exact definition，profile 与 Plan metadata 携带 version；Director / Loop / Spec / Agenda沿原 transport，已有 run 使用已接受 clone。原 bind 清 pin；Preset save 保留已选历史 snapshot，但base / declaration变化阻止 pending apply；delete 清该 Preset 候选 / declaration / pins，replacement 不携旧 pin。missing version 拒绝。
+- 原 orchestrator capability API 暴露 inspect / check / update，保存复用原 settings / debounce；未添加 UI或后台循环。该路径只有原单 browser client 支持，无 cross-tab / Host CAS 或持久 publication intent；S10 自动 publication 须先落实所选 target的部署写入边界，不能把本阶段手动apply当自动晋升资格。
+
+### Minimal local validation
+
+- **7 relevant suites / 68 distinct tests passed**：native candidate 19、Workspace candidate 14、Prompt Preset 5、runtime persistence 7、Workspace Preset 4、Native orchestration prompts 9、Workspace authoring help 10；重复不累加。最小新增入口见产品README。
+- 最初Native candidate 15 测中定位 fixture Secret与模型公开文字同名造成原 Secret guard 拒绝、FS transaction port 故障注入位置不符、单 handle harness foreign owner 错误类型；改为独立 synthetic Secret、真实 transaction port / multi-owner FS，未降低生产guard。补原 atomic storage Route CAS后验证metadata 失败和 committed response loss；失败后重复 apply 仅 reconcile，不重写。
+- 真实临时FS / SQLite 候选 reopen / dedup、两 repository 并发 CAS、whole Route 用户编辑、Preset Regex 编辑 / 删除 / redeclare、容量、body-only / Package refs、unknown schema / missing / corrupted / protected content拒绝；新增继承 chain 沿原 schema 保留非空 stage，所有Program / 模块 refs 保持正确。Native单套最终19 passed。
+- 原SQLite binary dump→close / per-user directory removal→restore恢复完整 candidate / immutable versions / active binding。`engine.deleteUser`本身只 close DB，实际删除沿原user目录清理；不声称只调用该方法会 purge files。Package exact envelopes 经原 Preset import 生成隔离 Library copy，原 resources 前后 JSON 不变。
+- 实际HTTP owner 隔离 / 401 / 404 / spoof body / no-store / read-only 503；Native inspect / check 在 read-only 可用。实际GenerationService narrator 与 studio snapshot / rendered request显示candidate / unchanged guard，old preview 保留旧 body；实际Project Generation Host task 经原 scheduler / compiler / provider stub发出candidate。不是新增真实模型、完整 Native Session turn 或 Production Project 修改。
+- Workspace 四 mode exact profile / Plan metadata、原SettingsRepo FS / SQLite reload、whole definition / binding / declarations conflict、hash-valid shape 但同 ID 改 body拒绝、missing version / unknown schema / factory / global / 容量 / delete / unpin。实际RP Director stub在首轮清后续 pin，当前两轮 request 仍同 candidate instructions并写正式 fixture message；下一 preparation 回原版本。
+- hash facade 引入后定向 Workspace 相关三套 27 passed；jsdom authoring help 的原 fflate browser export 不符合 Node ESM，局部 harness 改用 Node package export conditions（保留真实 sha256）后该单套 10 passed。未修改dependency / lockfile / bundler；未进行browser UI验证。
+- 10 触及 JS的ESLint、product / staged diff通过。已通过无新变化的原Preset / persistence检查未重复；最后只复查新增故障面和sha256接线。docs links / fences / 40 stage 依赖与前序 Record、五个既有 dirty hash按收尾检查。
+- 未执行全量 tests、build、browser / UI、Android / 真机、external DB或remote CI；未读取Secret / S06 连接 / ledger / 私有报告，无新真实 model request。main AGENTS 与 docs README / WEB Adapter / 两模板既有 dirty未暂存 / 提交，reference 与其它草稿未读写。
+
+### Limits / next checkpoint
+
+- Native 沿原单 Host write queue，无 cross-process lock；资源 metadata 与 Route commit不声称全局 transaction 或 physical fsync。metadata 失败可留下不可生效 orphan immutable revisions，仍属原 Library history；没有自动retention或crash publication intent，归S10。
+- Workspace 沿原单 client settings authority，原 debounced save不保证响应即 disk durable；跨 tab 更新 / server CAS未实现，不能开放未获证明的自动发布。完整 snapshot compare 和 SHA-256 identity防止合法入口中的stale apply / version 正文替换，不提供外部任意raw settings writer安全边界。
+- Body declaration是用户显式authoring选择；必要runtime guards / builtin 原版不随 candidate 改变。文本行为约束是否退化仍须S06 独立 evaluation 和 S10 Review / policy。手动apply 不与 S05 feedback / diagnosis 绑定、不产生Evaluation eligibility，不改变S06 ineligible 结论。
+- 已选旧资源 / 已准备 run遵循原 pin 生命周期；source Preset 编辑阻止新 apply，历史 retain 或显式 unpin不等于已实现feedback 撤回 / 自动rollback。S10 须接同一 source-deletion / retention / policy / evaluation / 预算和完整publication 闭环。
+- **下一 checkpoint 仅 S09**：核对真实 Git → HANDOFF → index / decisions → m1-evolution / delivery S09 / s08-prompts / s07-skills / s06-comparison → 同一 Record；按需原 Preset / Project 参数与compiler / policy。先冻结有限 allowed fields / whole base / exact binding / conflict，不改变capability / output owner / guards / connection / 隐私或自动Routing。
+- 本轮 S08 产品 / 文档 commit / push 后停止；S09–S10 / G / Local 未开始，M1 未完整，不合并 main、不删除产品分支。S06 若未来补模型测试仍恢复同一 durable ledger / rate checkpoint且不覆盖报告。
+
 ## Final state
 
-长期任务仍进行；D0–D4 / S01–S07 完成。S07 已交付原 Skill repository 完整版本、正文 candidate / base CAS 与 RP / Native / Studio 的真实读取 pin；13 suites / 247 distinct local tests 通过。产品 HEAD `57f4e814af373b4659ba247f9891edd80652c356` 已 push，main 未变化。下一 checkpoint S08，本轮未开始。S06 真实执行与保守 promotion 状态保留；M1 整体、candidate 自动晋升 / publication 和稳定质量 / 成本收益均未计作完成。
+长期任务仍进行；D0–D4 / S01–S08 完成。S08 已交付 Native immutable Prompt正文候选 / whole Route CAS 与 ordinary RP Workspace 精确版本 binding；7 suites / 68 distinct local tests 通过。产品 HEAD `9b5cb5740e2af7cab8b83b9675576ea01c4f4527` 已 push，main 未变化。下一 checkpoint 仅 S09，本轮未开始。S06 promotion 仍 ineligible；M1 整体、自动 publication和稳定质量 / 费用收益均未计作完成。

@@ -2,7 +2,7 @@
 
 - Task ID: `agent-intelligence-runtime`
 - Primary Workspace: `main`
-- Status: **M1 boundary frozen / S01 structural complete / S02 complete / S03 complete / S04 complete / S05 complete / S06 complete / S07 complete**；D3 Reasoning Continuity 与 D4 Execution Reuse / Cache Locality / Adaptive Invocation 企划整合完成；生成基础组与远期技术契约按阶段细化。
+- Status: **M1 boundary frozen / S01 structural complete / S02 complete / S03 complete / S04 complete / S05 complete / S06 complete / S07 complete / S08 complete**；D3 Reasoning Continuity 与 D4 Execution Reuse / Cache Locality / Adaptive Invocation 企划整合完成；生成基础组与远期技术契约按阶段细化。
 - Updated: 2026-10-06
 - S01 implementation / baseline Tested HEAD: `0a41023ef6689b8b80ca64ffdd5cda72838897fe`；`feat/agent-intelligence-runtime` 已 push，尚未合并 main。
 - S02 implementation / Tested HEAD: `072a15d8d5b51117d0c5442e48e345475a274b66`；沿用同一任务分支，已 push，main 未变化。
@@ -11,6 +11,7 @@
 - S05 implementation / Tested HEAD: `caf662842941d3261dc1840242278f5529db10af`；同一任务分支已 push，main 未变化。
 - S06 implementation / local Tested HEAD: `54c79cb8eea7d6ca5c7e5e4ff262fe0ca6666a64`；六槽真实基线 / 六对独立比较已完成，101 distinct local tests；typed judge五个有效观察 / 一个无效响应，候选仍 promotion ineligible。实际模型报告 pin 各自 tested HEAD / source bytes，见 Record。
 - S07 implementation / local Tested HEAD: `57f4e814af373b4659ba247f9891edd80652c356`；完整 Skill snapshots / candidates / CAS 与真实读取 pin；13 relevant suites / 247 distinct tests，未执行真实模型或自动 publication。
+- S08 implementation / local Tested HEAD: `9b5cb5740e2af7cab8b83b9675576ea01c4f4527`；Native Prompt immutable candidates / Route CAS 与 ordinary RP Workspace exact binding；7 relevant suites / 68 distinct local tests，未执行真实模型或自动 publication。
 - Inspected product HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`
 - Source research: [Frontier Agent RP 调研](../agent-intelligence-research.md)；[Prompt / Context](../model-prompt-context-frontier-research.md)、[Sparse AI / Compute](../sparse-ai-invocation-adaptive-compute-research.md)、[Model / Provider / Routing](../model-provider-routing-frontier-research.md)、[Reasoning Continuity](../reasoning-continuity-research.md)、[Execution Reuse / Cache Locality / Adaptive Invocation](../execution-reuse-cache-locality-adaptive-invocation-research.md)
 - D2 source docs HEAD: `40ce08a32`；产品基线未变化。
@@ -59,12 +60,13 @@ D1 已确认逐角色 / Project 开启局部自动，新建对象默认审阅，
 | [s05-feedback.md](s05-feedback.md) | S05 feedback / diagnosis 分层、subject / exact source、撤回 / 删除 / 导出、retention / reflection batch | S02–S04 与原 StorageEngine / authority |
 | [s06-comparison.md](s06-comparison.md) | S06 隔离比较 / explicit live bridge / 共享累计预算 / 真实执行与保守晋升状态 | S01、S05、原 Workspace / Session / generation |
 | [s07-skills.md](s07-skills.md) | S07 原 Skill repository immutable snapshots / candidates、完整 base conflict、真实 run pin / history / lifecycle | S06 与原 Skill authority |
+| [s08-prompts.md](s08-prompts.md) | S08 Native / Workspace Prompt body candidates、声明 / exact refs / diff、局部 binding / conflict / next preparation | S06 与原 Prompt / Preset authority |
 | [behavior-context.md](behavior-context.md) | Behavior / Creative / Context / Generation 分层、语义编译、overlay、压缩与迁移 | 当前 Prompt / Context substrate |
 | [compute-policy.md](compute-policy.md) | sparse 默认路径、共享 cognition、硬预算、后台分流与计算收益评价 | TaskScheduler / RunControl、M1 Eval |
 | [model-routing.md](model-routing.md) | Connection / Target / Identity、动态 evidence / policy / resolver、gateway、恢复与执行观察、Reasoning Continuity、cache capability / locality | 既有 resolver / provider ports、Context / Compute / Reuse 契约 |
 | [execution-reuse.md](execution-reuse.md) | 复用定义 / proof、依赖级失效、Tool / Artifact / Plan / Workflow / Narrative Intent 消费、Trust Domain 与评价 | 原 artifact / source / authority；Context / Compute / Routing 分别管理执行连接 |
 
-已完成 S01–S07；来源、捕获、Project 恢复与反馈生命周期分别由 s02-sources / s03-capture / s04-project-recovery / s05-feedback 管理。S06 比较 / 真实执行与限制由 s06-comparison / Record 管理。下一 S08 读取本入口 → decisions → m1-evolution / delivery S08 / s07-skills 与 s06-comparison → Record；按需读取 baseline 的 Prompt / immutable binding 相关段落。D0–D4 已完成；D4 模块按 G 阶段路由，不成为 S06 新依赖。不重做全量研究，S01 12 cases / test-only 边界保持。
+已完成 S01–S08；来源、捕获、Project 恢复与反馈生命周期分别由 s02-sources / s03-capture / s04-project-recovery / s05-feedback 管理。S06 比较 / 真实执行与限制由 s06-comparison / Record 管理。S08 详细契约与本地证据见 s08-prompts / Record。下一仅 S09 读取本入口 → decisions → m1-evolution / delivery S09 / s08-prompts / s07-skills / s06-comparison → Record；按需 baseline 的 Preset / 原策略 authority。D0–D4 已完成；D4 模块按 G 阶段路由，不成为 S06 新依赖。不重做全量研究，S01 12 cases / test-only 边界保持。
 后续阶段的最小读取集合由 delivery 路由，不要求每次重新加载整份原始研究或全部 Bundle。
 
 ## 阶段图
@@ -105,9 +107,10 @@ D4 的 Reuse semantics → Cache-aware context → Tool / Artifact → Plan / Wo
 | S05 | Complete；双入口反馈与诊断生命周期 | exact source / subject、CAS、纠正 / 撤回 / 删除 / 导出、retention / reflection；5 suites / 137 tests |
 | S06 | Complete；隔离 evaluator 与真实执行 checkpoint | 六槽 pilot / 六对独立比较全部 execution / authority passed；5 model observations / 1 invalid response；候选晋升 ineligible |
 | S07 | Complete；原 Skill authority candidate / version / read pin | full-file history、正文候选 / whole-base CAS、RP shared run / Native / Studio exact consumers；13 suites / 247 tests |
-| S08–S34 / G01–G06 | 未完成正式交付；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
+| S08 | Complete；原 Prompt / Preset authority body candidate / exact binding | Native immutable closure / Route CAS、ordinary RP Workspace pin、下一 request / run 消费；7 suites / 68 tests |
+| S09–S34 / G01–G06 | 未完成正式交付；按阶段深化 | 不将研究性接口或预留字段计为能力落地 |
 
-S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runtime / Native Host 自动 metadata 捕获、持久 repository 与 authenticated HTTP consumer。Director 输出仅绑定原 chat 已保存的 exact variant；capsule-only / legacy 无 ID / 未绑定输出明确 incomplete，不宣称所有 RP 模式均有完整正文关联。S04 已将原 ProjectAgentService 任务写入 StorageEngine，恢复公开对话、Review 与正式 receipt；重启不自动 generation / rebase / commit。`feat/agent-intelligence-runtime` 已提交 / push，main 未变化。S05 已交付 authenticated feedback / technical outcome / diagnosis consumer、source invalidation、retention 与批次 gate；S06 已完成隔离比较、显式 live consumer 与真实运行验证；候选晋升仍拒绝，不声明稳定质量 / 成本收益。S07 已交付原 Skill authority完整版本与读取 pin；下一 checkpoint S08，本轮未开始。G 阶段 opaque checkpoint 与 reuse / cache 功能未实施。D3 / D4 决策与历史保留。
+S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runtime / Native Host 自动 metadata 捕获、持久 repository 与 authenticated HTTP consumer。Director 输出仅绑定原 chat 已保存的 exact variant；capsule-only / legacy 无 ID / 未绑定输出明确 incomplete，不宣称所有 RP 模式均有完整正文关联。S04 已将原 ProjectAgentService 任务写入 StorageEngine，恢复公开对话、Review 与正式 receipt；重启不自动 generation / rebase / commit。`feat/agent-intelligence-runtime` 已提交 / push，main 未变化。S05 已交付 authenticated feedback / technical outcome / diagnosis consumer、source invalidation、retention 与批次 gate；S06 已完成隔离比较、显式 live consumer 与真实运行验证；候选晋升仍拒绝，不声明稳定质量 / 成本收益。S07 已交付原 Skill authority完整版本与读取 pin；S08 已交付原 Prompt / Preset authority 的正文声明 / 候选 / 精确 binding。下一 checkpoint S09，本轮未开始。G 阶段 opaque checkpoint 与 reuse / cache 功能未实施。D3 / D4 决策与历史保留。
 发现的既有未提交 Experience 草稿已保留，其处理方式在 decisions 中明确为待整合事项。
 
 ## 验证与交付原则
@@ -121,6 +124,6 @@ S01 是 test-only 基线；S02 是生产只读来源 consumer；S03 接入 Runti
 
 ## 进入正式实施的条件
 
-产品范围与 S01–S07 已就绪；下一轮复核真实 Git，继续同一产品分支，仅执行 S08。按 m1-evolution / delivery S08 / s07-skills / s06-comparison 与原 Prompt authority 细化可演化正文区块、candidate exact resource ref / diff、有效binding、Package兼容 / missing-version / conflict契约。S07 Skill版本已固定；S06真实执行已完成，候选仍promotion ineligible。S07未做新模型请求；若后续确需补测，只恢复既有有限累计ledger与ratecheckpoint，不用模型观察替代质量 / 费用门槛。
-S08不能建立latest fallback或改写Package原版；依然沿原Prompt / Presetauthority。
-每个正式阶段完成后按治理停止；不能因远期路线已列出而自动跨越阶段边界。
+产品范围与 S01–S08 已交付；下一轮核对真实 Git，继续同一产品分支，仅执行 S09。读取 m1-evolution / delivery S09 / s08-prompts / s07-skills / s06-comparison 与同一 Record，按需核对原 Preset / Project 参数和 compiler / policy authority。先冻结有限 allowed fields、候选 diff / complete base / 有效 scope binding、版本 / conflict / 撤回契约，再实施消费者。不改变 capability、output owner、必要 guard、Connection / Secret / Privacy 或 Routing 自动发布权限。
+S08 Native 与 ordinary RP 的 exact body binding 已落地；S06 仍 promotion ineligible。S07 / S08 无新模型请求；确需模型补测仍恢复同一 finite ledger / rate checkpoint、不覆盖报告，不把一次模型观察当晋升批准。
+每个正式阶段完成后停止；S10 完整 publication / budget / source dependency / rollback 未实施，M1 未完整，不合并 main。
