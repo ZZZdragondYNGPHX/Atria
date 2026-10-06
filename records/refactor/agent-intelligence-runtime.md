@@ -217,6 +217,45 @@ D1：沿已确认的 M1 范围与局部自动启用设计，收敛 scope / 权�
 
 下一产品 checkpoint 仍为 **S03**；先核对实际 Git 和未提交工作，沿同一任务分支读取 HANDOFF → index / decisions → s02-sources / m1-evolution / delivery S03 / baseline RP 与 storage → 同一 Record，衔接已有工作，不覆盖或重复实现。S03 不承接 M8 opaque payload 保存；其新增能力在 G01–G06 局部细化 / 交付后才供后续阶段消费。阶段验证 / 持久化后更新同一 Record / HANDOFF 并停止，不提前 S04，不合并 main。
 
+## S03 — RP 可靠轨迹与持久证据
+
+- Request: 读取 live HANDOFF，沿用现有任务分支，仅执行 S03；每阶段及完成只做本地最小相关验证，记录后停止。
+- Start product HEAD: `072a15d8d5b51117d0c5442e48e345475a274b66`；同一任务 worktree 初始干净。
+- Stable main HEAD: `ed1fd90521a63363e29856601abbf5e908c99d10`；fetch 后本地 / origin 未变化，未合并本任务。
+- Start docs HEAD: `379f0d70228491bd71220caa6e30424e4cfbfa60`；本轮期间并发 D3 文档整合后为 `ebdc6f6a5b50964247dd3db7a4e918ede53d711a`。核对更新并保留 D3 决策、研究和前序 Record；S03 记录基于该实际 docs HEAD 追加。 最终 push 前远端又新增 `aa4d2d2fe` 独立研究提交，仅核对提交路径后并入保留，未读取 / 修改其研究正文。
+- Product branch / End / Tested HEAD: `feat/agent-intelligence-runtime@78acfb65da6b1afa1dee1c2f35482af215832c74`；已 push，origin 同 HEAD。
+- End docs HEAD: 包含本 S03 Record / live HANDOFF 的实际提交；仅暂存本任务七个文档并 push docs。
+- Status: **Complete — S03 bounded RP capture / shared durable evidence**；停止。下一正式阶段 S04，未开始。
+
+### Completed / implementation
+
+- [s03-capture.md](../../plans/architecture/agent-intelligence-runtime/s03-capture.md) 定稿 EvidenceRecord v1 / key / CAS / migration / failure / exact output 边界；同步 index / m1-evolution / delivery / s02-sources 路由。S02 来源与读取 authority 原样复用。
+- `atri_agent_evidence` 使用 authenticated handle + scope/root hash，沿既有 StorageEngine / native_resources registry / repository 资源锁与 integrity CAS；marker 先于执行写入，sequence 单调，prefix 不可重写，重复相同 update 幂等。未知 schema / origin / 额外 trusted 字段 / corruption 拒绝。
+- 共享 trace 限 512 events / 262144 bytes，只保留 run / child / effect / request / attempt / lane / 状态与直接可见 usage；容量、冲突、缺失、transport 失败明确记录。没有 Prompt、工具参数 / 结果全文、raw model payload、credentials 或 opaque continuation。
+- 浏览器 runtime / first-party facade 观察器与 run presentation 分开；source target 在首次异步前冻结，周期保存前缀，旧 run late event 不写新 run。Director bridge 返回 metadata trace 与原 turn anchor。Director output 在原 chat save 后由 server 重新读取 exact message / floor / variant / source hash，独立 outputRef 不能借用 input；GENERATION_ENDED / bind 顺序竞态已覆盖。
+- Native Host 在原 scheduler / provider send / fallback-retry / SessionCore finalization 接入：并发相同请求共享 capture，operationId/effect、原 invocation、独立 root、request / attempt 可归因；后台 / maintenance 与 lifecycle parent 保留。已存在 receipt 的幂等请求不重做执行；失败后新执行保留独立旧 marker。
+- Turn outcome 绑定正式 receipt hash、branch / revision / active message variant；standalone task outcome 仅绑定原 receipt metadata，不展开 / 消费 operation artifact，不建立第二条 World authority。正式写入后的 capture 失败返回独立 failed 状态，保留 pending marker，不重放正式 effect。
+- authenticated `POST /api/native/generation/evidence/{begin,update,inspect,delete}` 复用原 router / persistence；client 不能声明 owner / host outcome，source / output 必须服务端重验。inspect metadata-only，读中 current 不缓存为长期授权；删除走原资源 transaction。
+- OpenAI-compatible / Anthropic / Gemini 的 stream / nonstream 保留 provider 直接报告的最终 usage。未报告为 missing；不将 subdivisions 求和、不推断缺失 total 或费用。浏览器 host_facade 与 Native provider_send 标记分开，不把 facade 重试当 upstream 完整尝试。
+
+### Minimal local validation
+
+- 累计 **8 relevant suites / 200 个不同 tests passed**，不是全量测试；最后变更只复核 capture 与 Native P3 两个 suite：**64 passed / 20 skipped**。新增 capture suite **24 tests**；新增真实 Native background / capture-failure cases 在 FS / SQLite 各执行一次。
+- 八套命令：`node --experimental-vm-modules tests/node_modules/jest/bin/jest.js --config tests/jest.config.json --runInBand tests/agent-intelligence/capture.test.js tests/agent-intelligence/sources.test.js tests/native/task-runtime-p3.test.js tests/native/native-provider-matrix.test.js tests/agent-runtime/prepared-context.test.js tests/agent-runtime/kernel.test.js tests/orchestrator/director/integration.test.js tests/game-runtime/llm-orchestrator-narrative.test.js --testNamePattern='^(?!.*(?:MysqlEngine|PgEngine)).*$'`。该轮 194 passed / 20 skipped；随后新增六个 parser cases，capture suite 24 passed；最后相同最终内容复核 `capture.test.js task-runtime-p3.test.js`，64 passed / 20 skipped。合计 200 distinct tests，未把重复执行累加。
+- 真实临时 FS / SQLite durable marker / reopen、CAS、owner / schema forgery、read-only / corruption、source deletion / regeneration、list / backup / restore、FS→SQLite→FS generic roundtrip。MySQL / PostgreSQL 仅 registry / generic key contract；不声称实际数据库验证。
+- RP 使用实际 Runtime / first-party facade 与 Director bridge 的 isolated fixtures：retry / child / parent / effect / request / attempt、旧观察器隔离、transport 失败、已保存输出绑定与 save/bind 竞态。Native 使用实际 Host / scheduler / SessionCore 与本地 isolated HTTP / synthetic Response：正式 Turn、后台 task receipt、取消 / stale / interpreter failure、formal write 后注入 evidence storage failure 并重放原 receipt，无第二次 effect。三协议实际 parser stream / nonstream usage 已核对。
+- 首次未过滤 native suite 尝试连接本机 MySQL / PostgreSQL，因服务不可用（127.0.0.1:53306 / :55432 ECONNREFUSED）失败；随后仅执行 FS / SQLite 与纯 contract cases，20 外部 DB cases 明确 skipped。没有将初次失败或未运行检查称为通过。
+- 所有触及生产 JS 的本地 ESLint、product diff / staged diff check 通过。复用已安装依赖，无安装 / lockfile 改动。docs 本任务最小检查通过：7 个文档 / 48 个本地链接 / 4 个 anchors、围栏 / 表格、40 个正式阶段与原依赖、状态 / HEAD、前序 Record 逐字保留、dirty hash 与 staged diff。
+- 未执行 build、真实浏览器 / UI、Android / 真机、远程 CI、真实模型 / judge / provider probe；只有本地隔离 fixture 请求，不读取生产数据或 Secret。没有行为收益结论；S01 empiricalReady=false 保持。
+
+### Compatibility / limitations / next checkpoint
+
+- Additive kind，无 backfill、无 SQL DDL / storage version 升级。复用既有 list / migration / backup / restore 和 deleteResource；FS 资源锁仅单 Host writer，不声称跨进程 CAS 原子。record owner 为 key，内嵌 S02 sources.owner 在跨账户恢复后仍须重新捕获。
+- 中断留下的 capturing marker 可重启检查 incomplete，不自动恢复模型执行或 authority 写入。capsule-only / 其它未绑定正文模式、legacy 无 source ID 或未保存输出显式 incomplete；Director 完成只绑定同一已保存 variant。metadata captured 不证明完整 upstream retry、效果 / 费用达标或 publication 权限。scope 删除使 currentness 失效；lesson / feedback 级联与 retention 留待 S05。
+- Project task durable state / recovery 未实施，仍由 S04 交付；Reasoning Continuity 不透明 payload 留在 M8 / G01–G06。M1 尚未完成，不合并 main、不删除本组任务分支。
+- main AGENTS 与 docs README / WEB Adapter / 两模板既有 dirty 未暂存 / 提交；整理记录前后文件 hash 一致。其它工作树 Experience 草稿 / reference 未读写；无第二份 Record / HANDOFF。并发 D3 与前序 Record 逐字保留。
+- 下一正式阶段仅 **S04**：Git → HANDOFF → index / decisions → s02-sources / s03-capture / m1-evolution / delivery S04 / baseline Project 与存储 → 本 Record；沿同一分支细化 Project task / attempts / timeline / recovery，复用 Studio authority / receipt。仅下一阶段用户明确续接后开始；本轮到 S03 记录 / push 停止。
+
 ## Final state
 
-长期任务仍在进行；D0 / D1 / D2 / D3 / S01 / S02 完成。产品已提交 / push HEAD 仍为 S02，main 未变化；S03 有未提交工作，未在本轮验收为正式交付。D3 只更新文档并完成本地最小验证、Record / HANDOFF 与 docs 持久化后停止。
+长期任务仍在进行；D0 / D1 / D2 / D3 / S01 / S02 / S03 完成。S03 实现与本地最小相关验证、产品 / docs 持久化、同一 Record / live HANDOFF 已完成后停止。main 未变化，下一正式阶段 S04 未开始；M1、S01 真实模型基线与远期 G 阶段未计作完成。

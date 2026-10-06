@@ -35,4 +35,4 @@ Evaluation v1 返回 evidenceSetHash、current / incomplete、每个源的 curre
 ## 验收
 
 本地最小测试覆盖 FS / SQLite 的真实 chat 与 Native Session、原 Task Artifact authority 的 grant / dependency 失效、真实 Studio Review / commit / human revision conflict，以及伪造正文 / owner / scope / anchor / hash、删除、重复身份、读中变更、预算和 unknown schema。ProjectStore 原本使用 FS / Git，不宣称 Project 已具备 SQL task 持久化。
-无生产用户数据、Secret、网络、真实模型或 UI 改动；S03 / S04 尚未执行。
+S02 验证未使用生产用户数据、Secret、网络、真实模型或 UI 改动；当时 S03 / S04 尚未执行。后续 S03 已交付 additive EvidenceRecord / bounded runtime capture，详细契约见 [s03-capture.md](s03-capture.md)；S04 Project task 持久恢复仍未实施。
