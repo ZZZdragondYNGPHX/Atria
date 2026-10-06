@@ -608,6 +608,35 @@ Blind grader与被测Gemini相同：rp_agency tie（confidence .9）；rp_memory
 - 下一只复核 M1 验收与集成前置条件，先核对真实 Git → HANDOFF → index / s10-evolution → m1-evolution / delivery M1 → 同一 Record。需要真实验证则先冻结双入口有限范围、人工观察与累计预算；恢复已授权的同一 S06 ledger / rate checkpoint，不清零 / 覆盖，不扫描 Secret。
 - 本轮 S10 product / docs commit / push、同一 Record / live HANDOFF后停止。不合并 main、不删除任务分支、不进入 S11 / G / Local；不因 S01–S10 工程完成自动宣称完整 M1 验收通过。
 
+## M1 — 验收与集成前置条件复核（2026-10-06）
+
+- Scope：仅复核 M1；未执行补测或集成，未进入 S11 / G / Local。产品 HEAD 保持 `ed00f4f0cea53be360ed8dfa082bbd0afeec5398`，main 保持 `ed1fd90521a63363e29856601abbf5e908c99d10`；docs 复核起点 `ee2d530003f6c378e97f10d936a13a7edf5fd455`。
+- 路由：actual Git → 最新 origin/docs HANDOFF → index → s10-evolution / m1-evolution / delivery M1 → 同一 Record S06 / S10。读取完整 Governance 以核对结束 / 集成条件；只对当前 evaluator gate / cases、package runtime 声明和相关 CI workflow 做源码复核，未扫描其它研究或 reference。
+- **验收结论：pending，不能集成 main。** 工程 S01–S10 完成维持原记录；原 tests / fake provider / shared-pane fixture 不转为真实改善证据。S06 的旧 report / source pins 不等于最终 S10 实测；一次重复、无人类标签、一个 malformed judge、价格 / costDelta / latencyBenefit 不可知，原 promotion ineligible 保持。
+
+### 验收缺口与有限实测前置
+
+| 项目 | 复核结果 / 所需证据 |
+| --- | --- |
+| 支持范围 | 三类目标 × RP / Project 的工程 authority 覆盖已记载；实际模型收益尚无合格证据。补测先选两入口各一个支持矩阵内单目标，固定完整 base / target / policy / evaluator / Route / model / connection；不叠加独立报告，不外推未实测目标 |
+| 独立比较 | 每入口三个独立 promotion 场景，每场景三次 paired trial；候选只见允许的 development / feedback / diagnosis。原 S06 一次 repetition 不能替代；S10 不接受导入旧报告取得资格 |
+| 人工与收益 | 每入口九项独立 authenticated human labels 与 exact pairHash；人工和 model preference 无分歧、至少六对 candidate 胜、其余 tie / candidate、重要维度均非负；缺项 / uncertain / malformed 保持 ineligible |
+| 成本 / 配置 | 确认 exact Route / model / connection 的有限价格，逐 actual send 核对 usage / request / snapshot / ledger charge；trial token 与费用不高于 baseline。controller 提炼 / judge / retry 全计 owner / job，额外列出，不把 trial 合格称为净收益 |
+| 真实闭环 | 两入口都需原 binding publication / receipt、下一 run exact target 消费、监测与 guarded rollback 的可核对真实证据；三类原工程覆盖不等于全部真实模型收益。RP trace 保持 client_observation，Project snapshot 保持 Host 来源 |
+| 累计预算 | 原记录110 requests / 300464记账tokens，guard252 / 1000000，历史差额142 / 699536；本轮未读取 actual ledger，不认定当前可用。恢复前核对进程、writer lock、rate checkpoint、ledger、remaining，并冻结整个补测含多轮 / retry / unknown 的总 send / token 上界 |
+| 两种 ledger | S10 product owner ledger 与 S06 CLI ledger 是各自 authority；未证明跨两者累计限额自动联通。不能直接在新 owner ledger 重获额度，不能以换 session / suffix / split 清账；先明确仍遵守原累计额度的执行 / 记账路径 |
+
+工程 gate 的源码与 s10-evolution 门槛一致；上述是原门槛的待验收事项，不新建阶段或修改 Plan。两入口各一轮包含18 trial arms +9 judge，最低54 evaluation sends，尚未含提炼、多轮和重试；不能据最低数宣布剩余预算足够，必须先冻结有限上界。若尝试六个目标各自完整轮次，evaluation 最低162 sends，已高于历史142差额；不能默认全部补测可完成或缩减场景 / repetitions。
+
+### 实际执行的前置检查与限制
+
+- `git status --short --branch`：main 干净；已有 docs-task worktree 干净，fast-forward 到 origin/docs 后仅编辑本任务两文件。旧 docs worktree 的未跟踪 Experience 草稿保持未读写。
+- `git fetch origin` 后实际 product / main pins 与 HANDOFF 一致；`git rev-list --left-right --count origin/main...origin/feat/agent-intelligence-runtime` 返回 `0 16`，任务分支完整包含 main；`git diff --check` 通过。未合并，未声称合并后运行验证。
+- product 相对 main 的 package.json / package-lock.json / AGENTS.md / CLAUDE.md / .github/workflows 差异为空。声明 Node >=20，S10 仅实测 Node24；最低支持版本的 worker / loader 与相关 consumer 兼容证据仍缺失。
+- `gh run list --branch feat/agent-intelligence-runtime --limit 10 --json ...` 与 `gh pr list --head feat/agent-intelligence-runtime --state all --json ...` 均返回空；本轮未创建 PR或dispatch CI。PR Checks 通过 pull_request 触发，包含全 lint、带真实 MySQL / Postgres 的 unit tests、frontend libraries build 与 migration guard；Native Model Prompt workflow 在 main / 对 main PR触发，旧 A8 workflow只匹配旧任务分支或 dispatch。push 本任务分支不自动证明上述检查已运行。集成前应取得 exact HEAD 对应必要 CI / 验证结果，原 lint baseline错误按事实归因，不能屏蔽后冒称完整通过。
+- 本轮未读取 S06 private config / ledger / reports、未发模型请求、未重跑任何已通过tests。full test / build / full app UI / Android / 真机 / external DB 与 Node20 均未新增证据；没有产品改动或新依赖。
+- 仅提交 / push同一 Record与live HANDOFF。下一 checkpoint仍为M1验收：先冻结有限双入口实测、人工观察、价格与累计预算，再取得合格真实闭环 / 改善和必要集成验证；条件不足明确pending。保留产品分支与main，不进入S11 / G。
+
 ## Final state
 
 长期任务仍进行；D0–D4 / S01–S09 与 S10 工程交付完成。产品 HEAD `ed00f4f0cea53be360ed8dfa082bbd0afeec5398` 已 push，233 distinct 相关本地 tests 与 shared-pane Chromium fixture 通过，main 未变化。M1 真实改善 / 集成前置条件待验收；S06 原候选仍 ineligible。下一 checkpoint 只复核 M1 验收，本轮停止，不进入 S11 / G。
